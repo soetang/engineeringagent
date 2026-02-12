@@ -22,8 +22,8 @@ potential_features:
     title: Formalize potential feature backlog workflow
     status: idea
     context: >
-      Define a lightweight process for capturing ideas in `spec/potential_features.yaml`,
-      triaging them, and promoting selected items into active `spec/features/*.yaml`
+      Define a lightweight process for capturing ideas in `docs/spec/potential_features.yaml`,
+      triaging them, and promoting selected items into active `docs/spec/features/*.yaml`
       with FEAT IDs and nested subtasks.
     value:
       - "Keeps exploration separate from execution"

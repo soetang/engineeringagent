@@ -23,24 +23,22 @@ Load only the artifacts relevant to the current task.
 ## 3) System of Record (Read in this order)
 
 1. `AGENTS.md` (this map)
-2. `ARCHITECTURE.md` (high-level architecture map)
-3. `docs/PLANS.md` + relevant docs under `docs/` (`docs/references/spec-writing-llms.md` is required before authoring specs)
-4. `README.md` (workflow + CLI usage)
-5. `harness/gates.yaml` (active gate profiles/commands)
-6. `docs/spec/features/*.yaml` (active feature + subtasks)
-7. `docs/spec/schemas/feature.schema.json` (spec contract)
-8. `src/agent_harness/` (implementation)
+2. `docs/PLANS.md` + relevant docs under `docs/` (`docs/references/spec-writing-llms.md` is required before authoring specs)
+3. `README.md` (workflow + CLI usage)
+4. `harness/gates.yaml` (active gate profiles/commands)
+5. `docs/spec/features/*.yaml` (active feature + subtasks)
+6. `docs/spec/schemas/feature.schema.json` (spec contract)
+7. `src/agent_harness/` (implementation)
 
 ## 4) Repository Zones
 
 - **Code:** `src/agent_harness/`, `scripts/`, `harness/`
 - **Agent execution state:** `docs/spec/features/`, `docs/spec/features_done/`, `progress/runs.jsonl`
 - **Backlog ideas (not loop-picked):** `docs/spec/potential_features.yaml`
-- **Architecture and docs:** `ARCHITECTURE.md`, `docs/`
+- **Documentation:** `docs/`
 
 ## 5) Documentation Layout Reference
 
-- `ARCHITECTURE.md`
 - `docs/design-docs/index.md`
 - `docs/design-docs/core-beliefs.md`
 - `docs/exec-plans/active/`
@@ -63,7 +61,7 @@ Load only the artifacts relevant to the current task.
 
 ## 6) First-Window Boot Sequence
 
-1. Read this file, then `README.md` and `ARCHITECTURE.md`.
+1. Read this file, then `README.md`.
 2. Check repo state: `git status`, recent commits.
 3. Validate specs before coding.
 4. Identify active feature and next eligible subtask.

@@ -24,7 +24,6 @@ def main() -> int:
     parser.add_argument("--opencode-prompt")
     parser.add_argument("--skip-implement", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument("--max-attempts", type=int, default=3)
     args = parser.parse_args()
 
     project_root = Path(__file__).resolve().parents[1]
@@ -36,7 +35,6 @@ def main() -> int:
         opencode_prompt=args.opencode_prompt,
         skip_implement=args.skip_implement,
         dry_run=args.dry_run,
-        max_attempts=args.max_attempts,
     )
 
 

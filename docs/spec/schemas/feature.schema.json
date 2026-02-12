@@ -9,8 +9,7 @@
     "status",
     "priority",
     "objective",
-    "acceptance",
-    "subtasks"
+    "acceptance"
   ],
   "properties": {
     "id": {
@@ -54,7 +53,6 @@
     },
     "subtasks": {
       "type": "array",
-      "minItems": 1,
       "items": {
         "type": "object",
         "additionalProperties": false,

@@ -1,6 +1,6 @@
 id: FEAT-001
 title: Spec model and validator foundation
-status: backlog
+status: in_progress
 priority: high
 objective: Establish a strict, machine-validated YAML spec format for feature-driven
   loop execution.
@@ -63,4 +63,4 @@ subtasks:
   - agent-harness validate
   attempts: 0
   notes: []
-updated_at: '2026-02-12T14:17:05Z'
+updated_at: '2026-02-12T15:11:24Z'

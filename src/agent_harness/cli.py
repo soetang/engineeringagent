@@ -49,7 +49,6 @@ def cmd_loop_run(args: argparse.Namespace) -> int:
         opencode_prompt=args.opencode_prompt,
         skip_implement=args.skip_implement,
         dry_run=args.dry_run,
-        max_attempts=args.max_attempts,
     )
 
 
@@ -92,10 +91,9 @@ def build_parser() -> argparse.ArgumentParser:
     loop_run_parser.add_argument(
         "--skip-implement",
         action="store_true",
-        help="skip the implementation command and run gates/verification only",
+        help="skip the implementation command and run gates only",
     )
     loop_run_parser.add_argument("--dry-run", action="store_true")
-    loop_run_parser.add_argument("--max-attempts", type=int, default=3)
     loop_run_parser.set_defaults(func=cmd_loop_run)
 
     return parser

@@ -18,3 +18,9 @@ agent-harness = "agent_harness.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/agent_harness"]
+
+[tool.pytest.ini_options]
+addopts = "-m 'not integration'"
+markers = [
+  "integration: tests requiring external tools or services",
+]

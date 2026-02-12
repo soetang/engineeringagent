@@ -6,8 +6,8 @@ from .specs import custom_issues, iter_feature_files, load_schema, load_yaml, sc
 
 
 def validate(project_root: Path, schema_only: bool = False) -> list[str]:
-    features_dir = project_root / "spec" / "features"
-    schema_path = project_root / "spec" / "schemas" / "feature.schema.json"
+    features_dir = project_root / "docs" / "spec" / "features"
+    schema_path = project_root / "docs" / "spec" / "schemas" / "feature.schema.json"
 
     schema = load_schema(schema_path)
     files = iter_feature_files(features_dir)

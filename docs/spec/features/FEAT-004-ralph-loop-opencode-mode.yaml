@@ -1,0 +1,74 @@
+id: FEAT-004
+title: Ralph-style OpenCode loop mode
+status: backlog
+priority: high
+objective: Implement a Ralph-style loop mode that runs OpenCode against a feature spec directly, without subtask orchestration.
+context: >
+  Current loop behavior is strict around nested subtasks and pre-selected subtask context.
+  We need an alternative mode aligned with Ralph loop principles: one operator-guided
+  goal per cycle, simple control flow, and fast retry with back-pressure.
+constraints:
+  - "Agent must read the feature YAML file itself from disk during execution."
+  - "Loop execution must not require next-subtask selection to proceed."
+  - "Human remains in control of continuation/termination between iterations."
+implementation_notes: >
+  Keep existing feature schema compatibility, but add a runtime mode that treats a
+  feature as the unit of work and delegates planning/execution details to OpenCode.
+  Preserve run logging and gate checks as back-pressure.
+acceptance:
+  - "A Ralph loop mode can run OpenCode using a selected feature file path as the primary input."
+  - "Default prompt for Ralph mode instructs OpenCode to read and use the YAML file directly."
+  - "Ralph mode does not fail on missing/blocked subtasks and does not require subtask transitions."
+  - "Each Ralph iteration records runs.jsonl telemetry with feature id, result, failed gate, duration, and commit."
+  - "Loop remains human-gated with explicit stop/continue behavior between iterations."
+subtasks:
+  - id: ST-001
+    title: Add Ralph mode CLI and execution path
+    status: backlog
+    order: 1
+    context: >
+      Introduce a dedicated loop mode flag or subcommand that executes by feature-level
+      goal instead of subtask selection.
+    verification:
+      - "agent-harness loop run --feature-id FEAT-004 --dry-run"
+    attempts: 0
+    notes: []
+  - id: ST-002
+    title: Implement spec-file-first OpenCode prompt contract
+    status: backlog
+    order: 2
+    context: >
+      Build the default Ralph prompt so OpenCode is told to read the feature YAML file
+      directly and derive its own next action.
+    constraints:
+      - "Prompt must include explicit path to active feature spec file."
+      - "Prompt should avoid embedding subtask details from Python selection logic."
+    verification:
+      - "agent-harness loop run --feature-id FEAT-004 --dry-run"
+    attempts: 0
+    notes: []
+  - id: ST-003
+    title: Relax subtask coupling in Ralph execution
+    status: backlog
+    order: 3
+    context: >
+      Ensure Ralph mode does not block when subtasks are absent, blocked, or not selected.
+      Feature-level state and verification outcomes should drive result semantics.
+    verification:
+      - "agent-harness loop run --feature-id FEAT-004 --dry-run"
+      - "agent-harness validate"
+    attempts: 0
+    notes: []
+  - id: ST-004
+    title: Preserve back-pressure and telemetry in Ralph mode
+    status: backlog
+    order: 4
+    context: >
+      Keep gate profile execution and append one run record per non-dry iteration,
+      including failures from implement or verification steps.
+    verification:
+      - "agent-harness gates run --profile loop_fast"
+      - "agent-harness loop run --feature-id FEAT-004 --dry-run"
+    attempts: 0
+    notes: []
+updated_at: "2026-02-12T00:00:00Z"
