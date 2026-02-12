@@ -482,6 +482,36 @@ def test_run_loop_requires_clean_worktree(tmp_path: Path, capsys: Any) -> None:
     assert "Precondition failed" in output
 
 
+def test_git_add_failure_exits_immediately(tmp_path: Path) -> None:
+    project_root, feature_path = _make_project_root(
+        tmp_path, feature_data=_base_feature()
+    )
+    script_path = _write_set_done_script(
+        tmp_path.parent / f"{tmp_path.name}-set-done.py"
+    )
+    _init_git_repo(project_root)
+
+    (project_root / ".git" / "index.lock").write_text("locked\n", encoding="utf-8")
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        max_iterations=6,
+    )
+
+    assert code == 1
+    runs = _read_runs(project_root)
+    assert len(runs) == 1
+    assert runs[0]["result"] == "failed"
+    assert runs[0]["failed_gate"] == "git_add"
+    assert runs[0]["attempt"] == 1
+
+
 def test_commit_failure_retries_same_feature(tmp_path: Path) -> None:
     project_root, feature_path = _make_project_root(
         tmp_path, feature_data=_base_feature()

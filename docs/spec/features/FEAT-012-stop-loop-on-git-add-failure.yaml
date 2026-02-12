@@ -1,56 +1,66 @@
 id: FEAT-012
 title: Stop loop immediately on git_add failure during feature completion
-status: backlog
+status: done
 priority: high
 objective: Treat `git_add` commit-stage failures as terminal loop failures so automated
   runs exit immediately instead of retrying non-actionable states.
-context: >
-  The current loop retries both `git_add` and `git_commit` failures until `max_iterations`.
-  This is useful for retriable commit-hook failures (`git_commit`) but creates churn for
-  `git_add` failures, which are typically environmental/index-state issues that should
-  stop the run and require operator intervention.
+context: 'The current loop retries both `git_add` and `git_commit` failures until
+  `max_iterations`. This is useful for retriable commit-hook failures (`git_commit`)
+  but creates churn for `git_add` failures, which are typically environmental/index-state
+  issues that should stop the run and require operator intervention.
+
+  '
 constraints:
-  - "`git_add` failures are terminal for the current run and must return exit code 1 immediately."
-  - "`git_commit` failures remain retriable to preserve existing hook-feedback retry behavior."
-  - "Keep telemetry semantics stable: `failed_gate` values and run logging remain intact."
-  - "Do not include README or other documentation updates in this feature scope."
-implementation_notes: >
-  Update loop control flow so post-iteration handling recognizes `failed_gate=git_add`
-  as a terminal condition and exits the run loop immediately. Preserve existing retry
-  behavior for non-terminal failures, especially `git_commit`, including reuse of hook
-  feedback in subsequent implement attempts.
+- '`git_add` failures are terminal for the current run and must return exit code 1
+  immediately.'
+- '`git_commit` failures remain retriable to preserve existing hook-feedback retry
+  behavior.'
+- 'Keep telemetry semantics stable: `failed_gate` values and run logging remain intact.'
+- Do not include README or other documentation updates in this feature scope.
+implementation_notes: 'Update loop control flow so post-iteration handling recognizes
+  `failed_gate=git_add` as a terminal condition and exits the run loop immediately.
+  Preserve existing retry behavior for non-terminal failures, especially `git_commit`,
+  including reuse of hook feedback in subsequent implement attempts.
+
+  '
 acceptance:
-  - "When commit staging fails with `failed_gate=git_add`, the runner exits immediately with process code 1."
-  - "No additional iteration is attempted for that feature after a `git_add` failure."
-  - "Run telemetry records the failed iteration with `failed_gate=git_add` without follow-up retry records in the same run."
-  - "Existing retriable behavior for `git_commit` failures remains unchanged."
-  - "Targeted loop tests validate both terminal `git_add` and retriable `git_commit` behavior."
+- When commit staging fails with `failed_gate=git_add`, the runner exits immediately
+  with process code 1.
+- No additional iteration is attempted for that feature after a `git_add` failure.
+- Run telemetry records the failed iteration with `failed_gate=git_add` without follow-up
+  retry records in the same run.
+- Existing retriable behavior for `git_commit` failures remains unchanged.
+- Targeted loop tests validate both terminal `git_add` and retriable `git_commit`
+  behavior.
 subtasks:
-  - id: ST-001
-    title: Add terminal loop stop path for git_add failures
-    status: backlog
-    order: 1
-    context: >
-      Adjust loop orchestration so `failed_gate=git_add` exits the current run immediately
-      instead of continuing retry cycles.
-    verification:
-      - "uv run pytest -q tests/test_loop_ralph_mode.py::test_git_add_failure_exits_immediately"
-  - id: ST-002
-    title: Validate telemetry behavior for terminal git_add failure
-    status: backlog
-    order: 2
-    context: >
-      Ensure telemetry output remains consistent and includes a single failed iteration
-      record for `git_add` terminal stop conditions.
-    verification:
-      - "uv run pytest -q tests/test_loop_ralph_mode.py::test_git_add_failure_exits_immediately"
-  - id: ST-003
-    title: Preserve retry semantics for git_commit hook failures
-    status: backlog
-    order: 3
-    context: >
-      Confirm existing commit-hook recovery loop remains active so retriable
-      `git_commit` failures continue to work with subsequent attempts.
-    verification:
-      - "uv run pytest -q tests/test_loop_ralph_mode.py::test_commit_failure_retries_same_feature"
-updated_at: '2026-02-12T00:00:00Z'
+- id: ST-001
+  title: Add terminal loop stop path for git_add failures
+  status: done
+  order: 1
+  context: 'Adjust loop orchestration so `failed_gate=git_add` exits the current run
+    immediately instead of continuing retry cycles.
+
+    '
+  verification:
+  - uv run pytest -q tests/test_loop_ralph_mode.py::test_git_add_failure_exits_immediately
+- id: ST-002
+  title: Validate telemetry behavior for terminal git_add failure
+  status: done
+  order: 2
+  context: 'Ensure telemetry output remains consistent and includes a single failed
+    iteration record for `git_add` terminal stop conditions.
+
+    '
+  verification:
+  - uv run pytest -q tests/test_loop_ralph_mode.py::test_git_add_failure_exits_immediately
+- id: ST-003
+  title: Preserve retry semantics for git_commit hook failures
+  status: done
+  order: 3
+  context: 'Confirm existing commit-hook recovery loop remains active so retriable
+    `git_commit` failures continue to work with subsequent attempts.
+
+    '
+  verification:
+  - uv run pytest -q tests/test_loop_ralph_mode.py::test_commit_failure_retries_same_feature
+updated_at: '2026-02-12T21:52:05Z'

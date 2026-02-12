@@ -671,3 +671,7 @@ def run_loop(
 
             if outcome.completed:
                 break
+
+            if outcome.failed_gate == "git_add":
+                print("Stopping loop: git_add failure requires operator intervention.")
+                return 1
