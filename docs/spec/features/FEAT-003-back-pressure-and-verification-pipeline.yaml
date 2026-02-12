@@ -1,56 +1,82 @@
 id: FEAT-003
-title: Back-pressure and verification pipeline
-status: backlog
+title: Feature-level repeat loop with commit-gated completion
+status: done
 priority: high
-objective: Ensure no subtask can be marked done without passing fast, high-signal verification gates.
+objective: Run selected feature specs in a repeat loop until each is done, and treat done as complete only after commit hooks pass.
 context: >
-  Back-pressure should reject invalid generations quickly while preserving loop speed.
-  Keep per-loop verification under ~10 minutes for fast iteration.
+  The runtime loop is feature-level, not subtask-level. For each selected feature, feed the
+  feature file path to OpenCode, reload the YAML, and repeat if status is not done. When
+  status becomes done, attempt a git commit so pre-commit hooks act as the final quality gate.
+  If hooks fail, feed hook output back into the next OpenCode prompt for the same feature and
+  continue. With multiple input feature files, OpenCode chooses which pending feature to run
+  next until all provided features are done and committed.
 constraints:
-  - "Subtask done requires per-subtask verification + global verify pass."
-  - "Failed gates must be recorded in runs.jsonl."
+  - "Implement this feature after FEAT-007 so public commands use engineeringagent path-first run semantics."
+  - "Runtime loop must not orchestrate subtasks; the agent decides work directly from the feature spec file."
+  - "CLI accepts one or more feature spec file paths in a single run invocation."
+  - "If multiple feature files are provided, OpenCode selects the next pending feature to run."
+  - "Feature completion requires successful commit with pre-commit hooks passing."
+  - "If commit hooks fail, the feature is not complete and hook feedback must be passed into subsequent OpenCode attempts."
+  - "Runner must require a clean working tree before starting automated loop/commit flow."
+  - "Each non-dry iteration records result and failed gate in runs.jsonl."
 implementation_notes: >
-  Use pre-commit for structural quality and a dedicated verify entrypoint for runtime checks.
+  Keep control flow deterministic. On selector failure, use deterministic fallback selection
+  from the provided pending set. Add a max-iteration safety cap to avoid infinite retries.
 acceptance:
-  - "Subtask done state is blocked unless verification commands pass."
-  - "Global verify script blocks completion on failure."
-  - "Pre-commit enforces spec validity and quick code quality checks."
-  - "Loop summary includes failed gate and next suggested action."
+  - "`engineeringagent run <feature-a.yaml> [feature-b.yaml ...]` accepts multiple feature files in one invocation."
+  - "For a selected feature, loop repeats OpenCode execution against that same feature file until YAML status is done."
+  - "Loop does not require or enforce subtask-by-subtask transitions."
+  - "When a feature reaches done, runner attempts commit; successful pre-commit hook execution is required to finalize completion."
+  - "If commit/pre-commit fails, failure output is fed into the next OpenCode attempt for that same feature and loop continues."
+  - "When one feature completes, runner selects next pending feature from provided inputs and continues until all are done."
+  - "Loop emits concise per-iteration summary including selected feature, result, failed gate, and next action signal."
 subtasks:
   - id: ST-001
-    title: Implement scripts/verify.sh with fast default gates
-    status: backlog
+    title: Add multi-feature path input contract to run CLI
+    status: done
     order: 1
-    context: "Python-first defaults: schema checks now, extend with lint/type/tests later."
+    context: >
+      Update run command parsing and validation to accept one or more explicit feature
+      spec paths, with clear errors for missing or invalid files.
     verification:
-      - "agent-harness gates run --profile loop_fast"
+      - "uv run engineeringagent run --help"
+      - "uv run engineeringagent run docs/spec/features/FEAT-003-back-pressure-and-verification-pipeline.yaml --dry-run --skip-implement"
     attempts: 0
     notes: []
   - id: ST-002
-    title: Execute and enforce per-subtask verification commands
-    status: backlog
+    title: Implement feature selector and repeat-until-done execution loop
+    status: done
     order: 2
-    context: "Subtask verification list runs before final state transition."
+    context: >
+      Build selector prompt that asks OpenCode to choose next pending feature from provided
+      inputs, then run OpenCode repeatedly for that feature until status is done or a stop
+      condition is reached.
     verification:
-      - "agent-harness loop run --dry-run"
+      - "uv run engineeringagent run docs/spec/features/FEAT-003-back-pressure-and-verification-pipeline.yaml docs/spec/features/FEAT-004-ralph-loop-opencode-mode.yaml --dry-run --skip-implement"
     attempts: 0
     notes: []
   - id: ST-003
-    title: Wire pre-commit to spec and fast quality gates
-    status: backlog
+    title: Add commit-gated completion and hook-feedback retry flow
+    status: done
     order: 3
-    context: "Keep hook config stable by calling one executable entrypoint."
+    context: >
+      When feature status becomes done, attempt commit so hooks run. On hook failure,
+      capture output and feed it into next OpenCode prompt for the same feature.
     verification:
-      - "pre-commit run --all-files"
+      - "uv run python scripts/gates.py run --profile precommit"
+      - "uv run engineeringagent run docs/spec/features/FEAT-003-back-pressure-and-verification-pipeline.yaml"
     attempts: 0
     notes: []
   - id: ST-004
-    title: Add concise end-of-loop verification summary output
-    status: backlog
+    title: Add guardrails, telemetry, and deterministic fallback behavior
+    status: done
     order: 4
-    context: "Show pass/fail gates, evidence, and next subtask candidate."
+    context: >
+      Enforce clean-tree precondition, max-iteration safety cap, deterministic selection
+      fallback, and clear per-iteration logging in runs.jsonl and stdout summary.
     verification:
-      - "agent-harness loop run --dry-run"
+      - "uv run engineeringagent validate"
+      - "uv run pytest -q"
     attempts: 0
     notes: []
-updated_at: "2026-02-12T00:00:00Z"
+updated_at: "2026-02-12T20:30:00Z"

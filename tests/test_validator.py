@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from agent_harness.validator import validate
+from engineeringagent.validator import validate
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]

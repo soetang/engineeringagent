@@ -39,22 +39,23 @@ def cmd_gates_run(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_loop_run(args: argparse.Namespace) -> int:
+def cmd_run(args: argparse.Namespace) -> int:
     project_root = Path(args.project_root).resolve()
     return run_loop(
         project_root=project_root,
-        feature_id=args.feature_id,
+        feature_paths=args.feature_paths,
         gate_profile=args.gate_profile,
         implement_command=args.implement_command,
         opencode_prompt=args.opencode_prompt,
         skip_implement=args.skip_implement,
         dry_run=args.dry_run,
+        max_iterations=args.max_iterations,
     )
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="agent-harness",
+        prog="engineeringagent",
         description="Human-gated CLI harness for feature-driven coding loops.",
     )
     parser.add_argument("--project-root", default=".")
@@ -74,27 +75,30 @@ def build_parser() -> argparse.ArgumentParser:
     gates_run_parser.add_argument("--profile", required=True)
     gates_run_parser.set_defaults(func=cmd_gates_run)
 
-    loop_parser = sub.add_parser("loop", help="loop operations")
-    loop_sub = loop_parser.add_subparsers(dest="loop_cmd", required=True)
-
-    loop_run_parser = loop_sub.add_parser("run", help="run one loop iteration")
-    loop_run_parser.add_argument("--feature-id", help="pin the loop to a specific feature id")
-    loop_run_parser.add_argument("--gate-profile", default="loop_fast", help="gate profile name")
-    loop_run_parser.add_argument(
+    run_parser = sub.add_parser("run", help="run feature loops from spec file paths")
+    run_parser.add_argument("feature_paths", nargs="+", help="one or more feature spec file paths")
+    run_parser.add_argument("--gate-profile", default="loop_fast", help="gate profile name")
+    run_parser.add_argument(
         "--implement-command",
         help="custom implementation command; defaults to opencode build-agent run",
     )
-    loop_run_parser.add_argument(
+    run_parser.add_argument(
         "--opencode-prompt",
         help="override generated opencode prompt when using default implementer",
     )
-    loop_run_parser.add_argument(
+    run_parser.add_argument(
         "--skip-implement",
         action="store_true",
         help="skip the implementation command and run gates only",
     )
-    loop_run_parser.add_argument("--dry-run", action="store_true")
-    loop_run_parser.set_defaults(func=cmd_loop_run)
+    run_parser.add_argument("--dry-run", action="store_true")
+    run_parser.add_argument(
+        "--max-iterations",
+        type=int,
+        default=50,
+        help="max non-dry iterations across all selected features",
+    )
+    run_parser.set_defaults(func=cmd_run)
 
     return parser
 

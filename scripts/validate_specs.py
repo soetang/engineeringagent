@@ -15,7 +15,7 @@ def _bootstrap_path() -> None:
 
 def main() -> int:
     _bootstrap_path()
-    from agent_harness.validator import validate
+    from engineeringagent.validator import validate
 
     parser = argparse.ArgumentParser(prog="validate_specs.py")
     parser.add_argument("--schema-only", action="store_true")

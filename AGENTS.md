@@ -7,14 +7,14 @@ Load only the artifacts relevant to the current task.
 
 ## 1) Mission
 
-- Build and maintain the `agent-harness` CLI.
+- Build and maintain the `engineeringagent` CLI.
 - Maximize reliable throughput with minimal human attention.
 - Keep each loop incremental, verifiable, and recoverable.
 
 ## 2) Operating Principles
 
 - **Humans steer, agents execute.**
-- **One subtask per loop.**
+- **One feature focus per cycle.**
 - **Interview before spec-writing.** Before drafting a new feature spec, ask the user targeted questions and confirm scope.
 - **Repository is the system of record.** If it is not in-repo, assume it does not exist.
 - **Encode behavior in gates/validators.** Prefer mechanical checks over prose rules.
@@ -23,16 +23,16 @@ Load only the artifacts relevant to the current task.
 ## 3) System of Record (Read in this order)
 
 1. `AGENTS.md` (this map)
-2. `docs/PLANS.md` + relevant docs under `docs/` (`docs/references/spec-writing-llms.md` is required before authoring specs)
+2. Relevant docs under `docs/` (`docs/references/spec-writing-llms.md` is required before authoring specs)
 3. `README.md` (workflow + CLI usage)
 4. `harness/gates.yaml` (active gate profiles/commands)
 5. `docs/spec/features/*.yaml` (active feature + subtasks)
 6. `docs/spec/schemas/feature.schema.json` (spec contract)
-7. `src/agent_harness/` (implementation)
+7. `src/engineeringagent/` (implementation)
 
 ## 4) Repository Zones
 
-- **Code:** `src/agent_harness/`, `scripts/`, `harness/`
+- **Code:** `src/engineeringagent/`, `scripts/`, `harness/`
 - **Agent execution state:** `docs/spec/features/`, `docs/spec/features_done/`, `progress/runs.jsonl`
 - **Backlog ideas (not loop-picked):** `docs/spec/potential_features.yaml`
 - **Documentation:** `docs/`
@@ -53,7 +53,6 @@ Load only the artifacts relevant to the current task.
 - `docs/references/uv-llms.md`
 - `docs/DESIGN.md`
 - `docs/FRONTEND.md`
-- `docs/PLANS.md`
 - `docs/PRODUCT_SENSE.md`
 - `docs/QUALITY_SCORE.md`
 - `docs/RELIABILITY.md`
@@ -64,16 +63,16 @@ Load only the artifacts relevant to the current task.
 1. Read this file, then `README.md`.
 2. Check repo state: `git status`, recent commits.
 3. Validate specs before coding.
-4. Identify active feature and next eligible subtask.
+4. Identify active feature and next eligible execution loop.
 5. Execute one incremental unit only.
 6. Re-run gates and verification.
 7. Persist outcomes for the next context window.
 
 ## 7) Loop Contract
 
-- Advance **at most one** subtask per loop.
-- Never mark subtask `done` without passing verification.
-- Feature `done` requires all subtasks `done`.
+- Advance **at most one** selected feature at a time.
+- Never finalize feature `done` without passing verification and commit hooks.
+- Feature completion is commit-gated in the run loop.
 - Archive completed features to `docs/spec/features_done/`.
 - Record loop outcome in `progress/runs.jsonl`.
 
@@ -86,14 +85,14 @@ Load only the artifacts relevant to the current task.
 - List gate profiles: `uv run python scripts/gates.py list`
 - Run precommit gates: `uv run python scripts/gates.py run --profile precommit`
 - Run loop-fast gates: `uv run python scripts/gates.py run --profile loop_fast`
-- Loop dry-run: `uv run python scripts/loop.py --feature-id FEAT-001 --dry-run`
+- Loop dry-run: `uv run python scripts/loop.py docs/spec/features/FEAT-001-spec-model-and-validator-foundation.yaml --dry-run`
 - Verify wrapper: `bash scripts/verify.sh`
 
 ### Packaged CLI (uvx)
 
-- Help: `uvx --from . agent-harness --help`
-- Validate: `uvx --from . agent-harness validate`
-- Loop dry-run: `uvx --from . agent-harness loop run --feature-id FEAT-001 --dry-run`
+- Help: `uvx --from . engineeringagent --help`
+- Validate: `uvx --from . engineeringagent validate`
+- Loop dry-run: `uvx --from . engineeringagent run docs/spec/features/FEAT-001-spec-model-and-validator-foundation.yaml --dry-run`
 
 ### Tests (when present)
 

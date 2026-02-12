@@ -14,7 +14,7 @@ def _bootstrap_path() -> None:
 
 def main() -> int:
     _bootstrap_path()
-    from agent_harness.opencode_permissions import run_permission_probe
+    from engineeringagent.opencode_permissions import run_permission_probe
 
     project_root = Path(__file__).resolve().parents[1]
     result = run_permission_probe(project_root)

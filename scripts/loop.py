@@ -15,26 +15,28 @@ def _bootstrap_path() -> None:
 
 def main() -> int:
     _bootstrap_path()
-    from agent_harness.loop import run_loop
+    from engineeringagent.loop import run_loop
 
     parser = argparse.ArgumentParser(prog="loop.py")
-    parser.add_argument("--feature-id")
+    parser.add_argument("feature_paths", nargs="+")
     parser.add_argument("--gate-profile", default="loop_fast")
     parser.add_argument("--implement-command")
     parser.add_argument("--opencode-prompt")
     parser.add_argument("--skip-implement", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--max-iterations", type=int, default=50)
     args = parser.parse_args()
 
     project_root = Path(__file__).resolve().parents[1]
     return run_loop(
         project_root=project_root,
-        feature_id=args.feature_id,
+        feature_paths=args.feature_paths,
         gate_profile=args.gate_profile,
         implement_command=args.implement_command,
         opencode_prompt=args.opencode_prompt,
         skip_implement=args.skip_implement,
         dry_run=args.dry_run,
+        max_iterations=args.max_iterations,
     )
 
 

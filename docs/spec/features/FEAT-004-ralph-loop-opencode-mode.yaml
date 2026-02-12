@@ -1,6 +1,6 @@
 id: FEAT-004
 title: Ralph-style OpenCode loop mode
-status: backlog
+status: done
 priority: high
 objective: Implement a Ralph-style loop mode that runs OpenCode against a feature spec directly, without subtask orchestration.
 context: >
@@ -10,7 +10,7 @@ context: >
 constraints:
   - "Agent must read the feature YAML file itself from disk during execution."
   - "Loop execution must not require next-subtask selection to proceed."
-  - "Human remains in control of continuation/termination between iterations."
+  - "This feature defines single feature-iteration execution; outer repeat/scheduling behavior is owned by FEAT-003."
 implementation_notes: >
   Keep existing feature schema compatibility, but add a runtime mode that treats a
   feature as the unit of work and delegates planning/execution details to OpenCode.
@@ -20,22 +20,22 @@ acceptance:
   - "Default prompt for Ralph mode instructs OpenCode to read and use the YAML file directly."
   - "Ralph mode does not fail on missing/blocked subtasks and does not require subtask transitions."
   - "Each Ralph iteration records runs.jsonl telemetry with feature id, result, failed gate, duration, and commit."
-  - "Loop remains human-gated with explicit stop/continue behavior between iterations."
+  - "Feature-level Ralph iteration can be invoked repeatedly by higher-level loop scheduling without subtask coupling."
 subtasks:
   - id: ST-001
-    title: Add Ralph mode CLI and execution path
-    status: backlog
+    title: Add Ralph mode execution path for explicit feature file input
+    status: done
     order: 1
     context: >
-      Introduce a dedicated loop mode flag or subcommand that executes by feature-level
-      goal instead of subtask selection.
+      Support running one feature-level Ralph iteration with an explicit feature spec
+      path and no subtask orchestration requirements.
     verification:
-      - "agent-harness loop run --feature-id FEAT-004 --dry-run"
+      - "uv run engineeringagent run docs/spec/features/FEAT-004-ralph-loop-opencode-mode.yaml --dry-run --skip-implement"
     attempts: 0
     notes: []
   - id: ST-002
     title: Implement spec-file-first OpenCode prompt contract
-    status: backlog
+    status: done
     order: 2
     context: >
       Build the default Ralph prompt so OpenCode is told to read the feature YAML file
@@ -44,31 +44,31 @@ subtasks:
       - "Prompt must include explicit path to active feature spec file."
       - "Prompt should avoid embedding subtask details from Python selection logic."
     verification:
-      - "agent-harness loop run --feature-id FEAT-004 --dry-run"
+      - "uv run engineeringagent run docs/spec/features/FEAT-004-ralph-loop-opencode-mode.yaml --dry-run --skip-implement"
     attempts: 0
     notes: []
   - id: ST-003
     title: Relax subtask coupling in Ralph execution
-    status: backlog
+    status: done
     order: 3
     context: >
       Ensure Ralph mode does not block when subtasks are absent, blocked, or not selected.
       Feature-level state and verification outcomes should drive result semantics.
     verification:
-      - "agent-harness loop run --feature-id FEAT-004 --dry-run"
-      - "agent-harness validate"
+      - "uv run engineeringagent run docs/spec/features/FEAT-004-ralph-loop-opencode-mode.yaml --dry-run --skip-implement"
+      - "uv run engineeringagent validate"
     attempts: 0
     notes: []
   - id: ST-004
     title: Preserve back-pressure and telemetry in Ralph mode
-    status: backlog
+    status: done
     order: 4
     context: >
       Keep gate profile execution and append one run record per non-dry iteration,
       including failures from implement or verification steps.
     verification:
-      - "agent-harness gates run --profile loop_fast"
-      - "agent-harness loop run --feature-id FEAT-004 --dry-run"
+      - "uv run engineeringagent gates run --profile loop_fast"
+      - "uv run engineeringagent run docs/spec/features/FEAT-004-ralph-loop-opencode-mode.yaml --dry-run --skip-implement"
     attempts: 0
     notes: []
-updated_at: "2026-02-12T00:00:00Z"
+updated_at: "2026-02-12T20:45:00Z"

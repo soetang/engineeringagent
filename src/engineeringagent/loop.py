@@ -1,0 +1,522 @@
+from __future__ import annotations
+
+import json
+import subprocess
+import sys
+import time
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Sequence
+
+from .gates import load_gate_config, run_profile
+from .opencode_permissions import output_has_permission_rejection
+from .specs import dump_yaml, feature_sort_key, load_yaml
+
+
+FEATURE_TRANSITIONS: dict[str, set[str]] = {
+    "backlog": {"backlog", "in_progress", "done"},
+    "in_progress": {"in_progress", "blocked", "done"},
+    "blocked": {"blocked", "in_progress", "done"},
+    "done": {"done"},
+}
+
+STATUS_ORDER: dict[str, int] = {
+    "in_progress": 0,
+    "backlog": 1,
+    "blocked": 2,
+}
+
+
+@dataclass(frozen=True)
+class IterationOutcome:
+    completed: bool
+    result: str
+    failed_gate: str | None
+    next_action: str
+    hook_feedback: str | None
+
+
+def now_iso() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def append_run(log_path: Path, payload: dict[str, Any]) -> None:
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    with log_path.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(payload, ensure_ascii=True) + "\n")
+
+
+def set_status(entity: dict[str, Any], target: str, kind: str = "feature") -> None:
+    transitions = FEATURE_TRANSITIONS
+    current = str(entity.get("status", ""))
+    allowed = transitions.get(current)
+    if not allowed:
+        raise ValueError(f"{kind} has unknown status: {current}")
+    if target not in allowed:
+        raise ValueError(f"illegal {kind} status transition: {current} -> {target}")
+    entity["status"] = target
+
+
+def _resolve_feature_paths(project_root: Path, feature_paths: Sequence[str | Path]) -> list[Path]:
+    if not feature_paths:
+        raise ValueError("at least one feature spec path is required")
+
+    resolved: list[Path] = []
+    seen: set[Path] = set()
+    for raw_path in feature_paths:
+        candidate = Path(raw_path)
+        if not candidate.is_absolute():
+            candidate = (project_root / candidate).resolve()
+        else:
+            candidate = candidate.resolve()
+
+        if candidate.suffix not in {".yaml", ".yml"}:
+            raise ValueError(f"feature path must end with .yaml or .yml: {raw_path}")
+        if not candidate.exists():
+            raise ValueError(f"feature path does not exist: {raw_path}")
+        if not candidate.is_file():
+            raise ValueError(f"feature path is not a file: {raw_path}")
+
+        try:
+            load_yaml(candidate)
+        except Exception as exc:  # noqa: BLE001
+            raise ValueError(f"failed to load feature YAML at {raw_path}: {exc}") from exc
+
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        resolved.append(candidate)
+
+    return resolved
+
+
+def _pending_features(feature_paths: Sequence[Path]) -> list[tuple[Path, dict[str, Any]]]:
+    pending: list[tuple[Path, dict[str, Any]]] = []
+    for feature_path in feature_paths:
+        feature = load_yaml(feature_path)
+        if feature.get("status") == "done":
+            continue
+        pending.append((feature_path, feature))
+    return pending
+
+
+def _deterministic_feature_choice(
+    pending: Sequence[tuple[Path, dict[str, Any]]],
+) -> tuple[Path, dict[str, Any]]:
+    def sort_key(item: tuple[Path, dict[str, Any]]) -> tuple[int, int, str, str]:
+        feature_path, feature = item
+        status_rank = STATUS_ORDER.get(str(feature.get("status", "")), 99)
+        priority_rank, feature_id = feature_sort_key(feature)
+        return (status_rank, priority_rank, feature_id, str(feature_path))
+
+    return sorted(pending, key=sort_key)[0]
+
+
+def _build_selector_prompt(pending: Sequence[tuple[Path, dict[str, Any]]]) -> str:
+    choices = []
+    for feature_path, feature in pending:
+        choices.append(
+            f"- id={feature.get('id')} status={feature.get('status')} priority={feature.get('priority')} path={feature_path}"
+        )
+
+    return (
+        "Choose the next feature spec to execute from this pending set. "
+        "Reply with exactly one feature path from the list and no extra text.\n"
+        + "\n".join(choices)
+    )
+
+
+def _parse_selector_output(
+    output: str,
+    pending: Sequence[tuple[Path, dict[str, Any]]],
+) -> Path | None:
+    text = output.strip()
+    if not text:
+        return None
+
+    path_strings = {str(path): path for path, _ in pending}
+    for path_str, path in path_strings.items():
+        if path_str in text:
+            return path
+
+    by_name: dict[str, list[Path]] = {}
+    by_id: dict[str, list[Path]] = {}
+    for path, feature in pending:
+        by_name.setdefault(path.name, []).append(path)
+        feature_id = str(feature.get("id", "")).strip()
+        if feature_id:
+            by_id.setdefault(feature_id, []).append(path)
+
+    tokens = [token.strip("`'\" ,") for token in text.replace("\n", " ").split(" ")]
+    for token in tokens:
+        if token in by_name and len(by_name[token]) == 1:
+            return by_name[token][0]
+        if token in by_id and len(by_id[token]) == 1:
+            return by_id[token][0]
+    return None
+
+
+def _choose_feature_with_selector(
+    project_root: Path,
+    pending: Sequence[tuple[Path, dict[str, Any]]],
+) -> tuple[Path, dict[str, Any]]:
+    if len(pending) == 1:
+        return pending[0]
+
+    prompt = _build_selector_prompt(pending)
+    try:
+        proc = subprocess.run(
+            ["opencode", "run", "--agent", "build", prompt],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError:
+        fallback = _deterministic_feature_choice(pending)
+        print(f"Selector fallback: opencode missing; selected {fallback[1].get('id')}")
+        return fallback
+
+    output = (proc.stdout or "") + (proc.stderr or "")
+    if proc.returncode == 0:
+        chosen_path = _parse_selector_output(output, pending)
+        if chosen_path is not None:
+            chosen_feature = next(feature for path, feature in pending if path == chosen_path)
+            return (chosen_path, chosen_feature)
+
+    fallback = _deterministic_feature_choice(pending)
+    print(f"Selector fallback: parse or command failure; selected {fallback[1].get('id')}")
+    return fallback
+
+
+def git_head_short(project_root: Path) -> str | None:
+    proc = subprocess.run(
+        ["git", "rev-parse", "--short", "HEAD"],
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+    )
+    if proc.returncode != 0:
+        return None
+    return proc.stdout.strip() or None
+
+
+def _truncate_feedback(text: str, max_chars: int = 8_000) -> str:
+    if len(text) <= max_chars:
+        return text
+    return text[:max_chars] + "\n...[truncated]"
+
+
+def build_ralph_opencode_prompt(
+    feature: dict[str, Any],
+    feature_path: Path,
+    hook_feedback: str | None = None,
+) -> str:
+    fid = feature.get("id", "unknown-feature")
+    feature_title = feature.get("title", "")
+    objective = feature.get("objective", "")
+    context = feature.get("context", "")
+    prompt = (
+        f"Read and use this feature spec from disk: {feature_path}. "
+        f"Run one Ralph-style feature loop for {fid} ({feature_title}). "
+        f"Objective: {objective}. Context: {context}. "
+        "Derive the next step directly from the YAML file, make minimal deterministic changes, "
+        "run relevant verification, and report concise results."
+    )
+    if hook_feedback:
+        prompt += (
+            " Previous commit or pre-commit hooks failed. "
+            "Fix the issues reported below before marking the feature complete:\n"
+            f"{_truncate_feedback(hook_feedback)}"
+        )
+    return prompt
+
+
+def run_implement_step(
+    project_root: Path,
+    feature: dict[str, Any],
+    feature_path: Path,
+    implement_command: str | None,
+    opencode_prompt: str | None,
+    skip_implement: bool,
+    hook_feedback: str | None,
+) -> tuple[bool, str | None]:
+    if skip_implement:
+        print("Implement step: skipped")
+        return (True, None)
+
+    if implement_command:
+        print(f"Implement step: custom command ({implement_command})")
+        proc = subprocess.run(implement_command, shell=True, cwd=project_root)
+        if proc.returncode != 0:
+            return (False, "implement_command")
+        return (True, None)
+
+    prompt = opencode_prompt or build_ralph_opencode_prompt(feature, feature_path, hook_feedback=hook_feedback)
+    if opencode_prompt and hook_feedback:
+        prompt = (
+            f"{opencode_prompt}\n\n"
+            "Previous commit or pre-commit hook output (address before completion):\n"
+            f"{_truncate_feedback(hook_feedback)}"
+        )
+
+    print("Implement step: opencode run --agent build")
+    try:
+        proc = subprocess.run(
+            ["opencode", "run", "--agent", "build", prompt],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError:
+        return (False, "opencode_missing")
+
+    if proc.stdout:
+        print(proc.stdout, end="")
+    if proc.stderr:
+        print(proc.stderr, end="", file=sys.stderr)
+
+    output = (proc.stdout or "") + (proc.stderr or "")
+    if output_has_permission_rejection(output):
+        return (False, "opencode_permission")
+
+    if proc.returncode != 0:
+        return (False, "opencode_build")
+    return (True, None)
+
+
+def _require_clean_worktree(project_root: Path) -> tuple[bool, str]:
+    proc = subprocess.run(
+        ["git", "status", "--porcelain"],
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+    )
+    if proc.returncode != 0:
+        return (False, "unable to read git status; run inside a git repository")
+    if proc.stdout.strip():
+        return (False, "working tree must be clean before running automated loop")
+    return (True, "")
+
+
+def _commit_feature_completion(project_root: Path, feature: dict[str, Any]) -> tuple[bool, str | None, str]:
+    fid = str(feature.get("id", "unknown-feature"))
+    title = str(feature.get("title", "")).strip()
+    message = f"feat: complete {fid}"
+    if title:
+        message = f"{message} - {title}"
+
+    add_proc = subprocess.run(
+        ["git", "add", "-A", "--", ".", ":(exclude)progress/runs.jsonl"],
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+    )
+    if add_proc.returncode != 0:
+        output = (add_proc.stdout or "") + (add_proc.stderr or "")
+        return (False, "git_add", output)
+
+    commit_proc = subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=engineeringagent",
+            "-c",
+            "user.email=engineeringagent@local",
+            "commit",
+            "-m",
+            message,
+        ],
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+    )
+    output = (commit_proc.stdout or "") + (commit_proc.stderr or "")
+    if commit_proc.returncode == 0:
+        return (True, None, output)
+    return (False, "git_commit", output)
+
+
+def print_summary(
+    feature_id: str | None,
+    result: str,
+    failed_gate: str | None,
+    attempt: int | None,
+    next_action: str,
+) -> None:
+    print(
+        "Loop summary: "
+        f"result={result} feature={feature_id or '-'} "
+        f"attempt={attempt if attempt is not None else '-'} next={next_action}"
+    )
+    if failed_gate:
+        print(f"Failed gate: {failed_gate}")
+
+
+def _run_feature_iteration(
+    project_root: Path,
+    feature_path: Path,
+    gate_profile: str,
+    implement_command: str | None,
+    opencode_prompt: str | None,
+    skip_implement: bool,
+    attempt: int,
+    hook_feedback: str | None,
+) -> IterationOutcome:
+    runs_log = project_root / "progress" / "runs.jsonl"
+    gates_path = project_root / "harness" / "gates.yaml"
+    started = time.time()
+
+    feature = load_yaml(feature_path)
+    fid = str(feature.get("id", ""))
+
+    if feature.get("status") == "backlog":
+        set_status(feature, "in_progress")
+    feature["updated_at"] = now_iso()
+    dump_yaml(feature_path, feature)
+
+    failed_gate: str | None = None
+    result = "passed"
+
+    ok, implement_failed_gate = run_implement_step(
+        project_root=project_root,
+        feature=feature,
+        feature_path=feature_path,
+        implement_command=implement_command,
+        opencode_prompt=opencode_prompt,
+        skip_implement=skip_implement,
+        hook_feedback=hook_feedback,
+    )
+    if not ok:
+        result = "failed"
+        failed_gate = implement_failed_gate
+
+    if result == "passed":
+        gate_config = load_gate_config(gates_path)
+        ok, failed = run_profile(gate_config, gate_profile, project_root)
+        if not ok:
+            result = "failed"
+            failed_gate = failed
+
+    feature = load_yaml(feature_path)
+    if feature.get("status") == "backlog":
+        set_status(feature, "in_progress")
+    feature["updated_at"] = now_iso()
+    dump_yaml(feature_path, feature)
+
+    completed = False
+    next_action = "retry_same_feature"
+    next_hook_feedback: str | None = None
+
+    if result == "passed" and feature.get("status") == "done":
+        commit_ok, commit_failed_gate, commit_output = _commit_feature_completion(project_root, feature)
+        if commit_ok:
+            completed = True
+            next_action = "select_next_feature"
+        else:
+            result = "failed"
+            failed_gate = commit_failed_gate
+            next_hook_feedback = commit_output
+            next_action = "retry_same_feature"
+
+    run_payload: dict[str, Any] = {
+        "ts": now_iso(),
+        "feature_id": fid,
+        "subtask_id": None,
+        "result": result,
+        "failed_gate": failed_gate,
+        "duration_sec": int(time.time() - started),
+        "attempt": attempt,
+        "commit": git_head_short(project_root),
+        "next_action": next_action,
+    }
+    append_run(runs_log, run_payload)
+    print_summary(fid, result, failed_gate, attempt, next_action)
+    return IterationOutcome(
+        completed=completed,
+        result=result,
+        failed_gate=failed_gate,
+        next_action=next_action,
+        hook_feedback=next_hook_feedback,
+    )
+
+
+def run_loop(
+    project_root: Path,
+    feature_paths: Sequence[str | Path],
+    gate_profile: str,
+    implement_command: str | None,
+    opencode_prompt: str | None,
+    skip_implement: bool,
+    dry_run: bool,
+    max_iterations: int = 50,
+) -> int:
+    if max_iterations < 1:
+        print("max_iterations must be >= 1")
+        return 1
+
+    try:
+        resolved_paths = _resolve_feature_paths(project_root, feature_paths)
+    except ValueError as exc:
+        print(exc)
+        return 1
+
+    if dry_run:
+        pending = _pending_features(resolved_paths)
+        if not pending:
+            print("No pending features found in provided paths.")
+            print_summary(None, "dry_run", None, None, "stop")
+            return 0
+        feature_path, feature = _deterministic_feature_choice(pending)
+        fid = str(feature.get("id", ""))
+        print(f"[dry-run] Resolved {len(resolved_paths)} feature file(s).")
+        print(f"[dry-run] Selected feature={fid} path={feature_path}")
+        print_summary(fid, "dry_run", None, None, "stop")
+        return 0
+
+    clean, reason = _require_clean_worktree(project_root)
+    if not clean:
+        print(f"Precondition failed: {reason}")
+        return 1
+
+    total_iterations = 0
+    hook_feedback_by_path: dict[Path, str] = {}
+
+    while True:
+        pending = _pending_features(resolved_paths)
+        if not pending:
+            print("All provided features are done and committed.")
+            return 0
+
+        if total_iterations >= max_iterations:
+            print(f"Reached max iteration cap ({max_iterations}) before completion.")
+            return 1
+
+        selected_path, selected_feature = _choose_feature_with_selector(project_root, pending)
+        selected_id = str(selected_feature.get("id", ""))
+        print(f"Selected feature={selected_id} path={selected_path}")
+
+        while True:
+            if total_iterations >= max_iterations:
+                print(f"Reached max iteration cap ({max_iterations}) before completion.")
+                return 1
+
+            total_iterations += 1
+            outcome = _run_feature_iteration(
+                project_root=project_root,
+                feature_path=selected_path,
+                gate_profile=gate_profile,
+                implement_command=implement_command,
+                opencode_prompt=opencode_prompt,
+                skip_implement=skip_implement,
+                attempt=total_iterations,
+                hook_feedback=hook_feedback_by_path.get(selected_path),
+            )
+
+            if outcome.hook_feedback:
+                hook_feedback_by_path[selected_path] = outcome.hook_feedback
+            else:
+                hook_feedback_by_path.pop(selected_path, None)
+
+            if outcome.completed:
+                break

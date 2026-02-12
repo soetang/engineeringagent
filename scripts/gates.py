@@ -15,7 +15,7 @@ def _bootstrap_path() -> None:
 
 def main() -> int:
     _bootstrap_path()
-    from agent_harness.gates import list_profiles, load_gate_config, run_profile
+    from engineeringagent.gates import list_profiles, load_gate_config, run_profile
 
     parser = argparse.ArgumentParser(prog="gates.py")
     sub = parser.add_subparsers(dest="command", required=True)

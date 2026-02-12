@@ -14,7 +14,7 @@ uv sync
 uv run python scripts/validate_specs.py
 uv run python scripts/gates.py list
 uv run python scripts/permission_probe.py
-bash scripts/loop.sh --feature-id FEAT-004 --dry-run --skip-implement
+bash scripts/loop.sh docs/spec/features/FEAT-004-ralph-loop-opencode-mode.yaml --dry-run --skip-implement
 ```
 
 ## Daily Commands
@@ -26,8 +26,8 @@ bash scripts/loop.sh --feature-id FEAT-004 --dry-run --skip-implement
 - Run precommit gates: `uv run python scripts/gates.py run --profile precommit`
 - Run permission probe: `uv run python scripts/permission_probe.py`
 - Build permission policy: `.opencode/agents/build.md` and `opencode.json`
-- CLI validate command: `uv run agent-harness validate`
-- Loop dry-run command: `uv run agent-harness loop run --feature-id FEAT-004 --dry-run --skip-implement`
+- CLI validate command: `uv run engineeringagent validate`
+- Loop dry-run command: `uv run engineeringagent run docs/spec/features/FEAT-004-ralph-loop-opencode-mode.yaml --dry-run --skip-implement`
 
 ## Dependency Workflow
 
@@ -37,5 +37,5 @@ bash scripts/loop.sh --feature-id FEAT-004 --dry-run --skip-implement
 
 ## uvx Usage
 
-- Keep `uvx --from . agent-harness ...` examples for ephemeral execution.
+- Keep `uvx --from . engineeringagent ...` examples for ephemeral execution.
 - Prefer `uv run ...` for repeat local development commands.

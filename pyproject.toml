@@ -3,7 +3,7 @@ requires = ["hatchling>=1.26.3"]
 build-backend = "hatchling.build"
 
 [project]
-name = "agent-harness"
+name = "engineeringagent"
 version = "0.1.0"
 description = "Feature-driven harness for human-gated coding loops"
 readme = "README.md"
@@ -14,10 +14,10 @@ dependencies = [
 ]
 
 [project.scripts]
-agent-harness = "agent_harness.cli:main"
+engineeringagent = "engineeringagent.cli:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/agent_harness"]
+packages = ["src/engineeringagent"]
 
 [tool.pytest.ini_options]
 addopts = "-m 'not integration'"
