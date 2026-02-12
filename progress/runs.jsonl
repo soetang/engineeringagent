@@ -1,7 +1,0 @@
-{"ts": "2026-02-12T14:17:05Z", "feature_id": "FEAT-001", "subtask_id": "ST-001", "result": "passed", "failed_gate": null, "duration_sec": 8, "attempt": 1, "commit": null}
-{"ts": "2026-02-12T15:11:24Z", "feature_id": "FEAT-001", "subtask_id": null, "result": "passed", "failed_gate": null, "duration_sec": 25, "attempt": null, "commit": "fe1aa20"}
-{"ts": "2026-02-12T15:39:41Z", "feature_id": "FEAT-001", "subtask_id": null, "result": "passed", "failed_gate": null, "duration_sec": 8, "attempt": null, "commit": "c996d08"}
-{"ts": "2026-02-12T15:39:59Z", "feature_id": "FEAT-001", "subtask_id": null, "result": "passed", "failed_gate": null, "duration_sec": 120, "attempt": null, "commit": "c996d08"}
-{"ts": "2026-02-12T15:42:09Z", "feature_id": "FEAT-001", "subtask_id": "ST-003", "result": "passed", "failed_gate": null, "duration_sec": 0, "attempt": 1, "commit": null}
-{"ts": "2026-02-12T15:42:37Z", "feature_id": "FEAT-001", "subtask_id": null, "result": "passed", "failed_gate": null, "duration_sec": 98, "attempt": null, "commit": "c996d08"}
-{"ts": "2026-02-12T15:45:07Z", "feature_id": "FEAT-001", "subtask_id": null, "result": "passed", "failed_gate": null, "duration_sec": 138, "attempt": null, "commit": "c996d08"}
