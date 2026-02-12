@@ -1,0 +1,73 @@
+id: FEAT-002
+title: Human-gated loop runner core
+status: done
+priority: high
+objective: Implement a Bash-first loop runner that executes one subtask at a time and records deterministic state changes.
+context: >
+  The loop must be simple, inspectable, and safe. Human triggers each iteration,
+  reviews output, and decides whether to continue.
+constraints:
+  - "One loop processes at most one subtask."
+  - "Runner updates only allowed spec fields."
+  - "No silent status flips to done without verification pass."
+implementation_notes: >
+  Keep orchestration in Bash for MVP speed, delegate complex checks to Python scripts.
+acceptance:
+  - "Runner selects one next subtask by order and status."
+  - "Runner enforces legal state transitions."
+  - "Runner appends exactly one run record per loop."
+  - "Runner exits after one loop with concise summary."
+  - "Loop can execute OpenCode with the build agent and project-defined permissions."
+subtasks:
+  - id: ST-001
+    title: Implement active feature and next-subtask selection
+    status: done
+    order: 1
+    context: "Choose in_progress feature first; otherwise highest-priority backlog."
+    verification:
+      - "agent-harness loop run --dry-run"
+    attempts: 1
+    notes: []
+  - id: ST-002
+    title: Implement transition guardrails and update semantics
+    status: done
+    order: 2
+    context: "Allow only declared transitions for feature and nested subtasks."
+    verification:
+      - "agent-harness validate"
+    attempts: 1
+    notes: []
+  - id: ST-003
+    title: Add JSONL run logging
+    status: done
+    order: 3
+    context: "Capture ts, feature_id, subtask_id, result, failed_gate, duration, commit."
+    verification:
+      - "agent-harness loop run --dry-run"
+    attempts: 1
+    notes: []
+  - id: ST-004
+    title: Add failure policy and blocked threshold
+    status: done
+    order: 4
+    context: "After N failed attempts, mark subtask blocked with reason."
+    verification:
+      - "agent-harness loop run --dry-run --max-attempts 1"
+    attempts: 1
+    notes: []
+  - id: ST-005
+    title: Add OpenCode build-agent execution configuration
+    status: done
+    order: 5
+    context: >
+      Ensure loop implementation command uses `--agent build` and repository
+      configuration defines full build-agent permissions in `opencode.json`.
+    constraints:
+      - "Configuration should be repository-local and deterministic."
+      - "Do not rely on interactive permission prompts during loop runs."
+    verification:
+      - "python3 -c \"import json; cfg=json.load(open('opencode.json')); assert cfg['model']=='openai/gpt-5.3-codex'; assert cfg['default_agent']=='build'; assert cfg['agent']['build']['model']=='openai/gpt-5.3-codex'; assert cfg['agent']['build']['permission']['edit']=='allow'; assert cfg['agent']['build']['permission']['webfetch']=='allow'; assert cfg['agent']['build']['permission']['bash']['*']=='allow'; print('ok')\""
+      - "opencode run --agent build \"Reply READY\""
+    attempts: 1
+    notes: []
+updated_at: "2026-02-12T14:26:14Z"
