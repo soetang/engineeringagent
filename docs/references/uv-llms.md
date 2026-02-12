@@ -21,6 +21,7 @@ uvx --from . engineeringagent run --all --dry-run --skip-implement
 
 - Validate specs: `uvx --from . engineeringagent validate`
 - Validate schema only: `uvx --from . engineeringagent validate --schema-only`
+- Scaffold baseline harness files: `uvx --from . engineeringagent init`
 - List gate profiles: `uvx --from . engineeringagent gates list`
 - Run loop-fast gates: `uvx --from . engineeringagent gates run --profile loop_fast`
 - Run precommit gates: `uvx --from . engineeringagent gates run --profile precommit`
@@ -31,6 +32,13 @@ uvx --from . engineeringagent run --all --dry-run --skip-implement
 - CLI validate command: `uvx --from . engineeringagent validate`
 - Loop dry-run command: `uvx --from . engineeringagent run docs/spec/features/FEAT-004-ralph-loop-opencode-mode.yaml --dry-run --skip-implement`
 - Loop auto-discovery dry-run: `uvx --from . engineeringagent run --all --dry-run --skip-implement`
+
+## init Command Notes
+
+- `engineeringagent init` scaffolds a baseline harness layout with deterministic defaults.
+- When `docs/` exists, init requires an explicit reuse-or-separate docs decision.
+- When `AGENTS.md` exists, init requires an explicit overwrite, preserve-by-rename, or abort decision.
+- Default behavior is non-destructive and idempotent unless explicit overwrite/force behavior is selected.
 
 ## run --all Notes
 

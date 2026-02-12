@@ -5,8 +5,107 @@ import sys
 from pathlib import Path
 
 from .gates import list_profiles, load_gate_config, run_profile
+from .init_scaffold import (
+    apply_baseline_scaffold,
+    build_agents_merge_followup_spec,
+    build_scaffold_agents_markdown,
+)
 from .loop import run_loop
 from .validator import validate
+
+
+def _resolve_init_docs_dir(
+    project_root: Path,
+    docs_mode: str | None,
+    scaffold_docs_dir: str,
+) -> tuple[str | None, str | None]:
+    """Resolve the docs target for scaffold output.
+
+    Args:
+        project_root: Repository root where init is running.
+        docs_mode: Explicit docs conflict choice when docs/ already exists.
+        scaffold_docs_dir: Candidate scaffold docs directory for separate mode.
+
+    Returns:
+        Tuple of (resolved docs dir, error message).
+    """
+    normalized_scaffold_docs_dir = scaffold_docs_dir.strip("/")
+    docs_exists = (project_root / "docs").is_dir()
+
+    if not normalized_scaffold_docs_dir:
+        return None, "init input error: --scaffold-docs-dir cannot be empty"
+
+    if not docs_exists:
+        return "docs", None
+
+    selected_mode = docs_mode
+    if selected_mode is None:
+        prompt = (
+            "init conflict: docs/ already exists. Choose docs handling "
+            "[reuse/separate]: "
+        )
+        selected_mode = input(prompt).strip().lower()
+
+    if selected_mode == "reuse":
+        return "docs", None
+    if selected_mode == "separate":
+        if normalized_scaffold_docs_dir == "docs":
+            return (
+                None,
+                "init input error: --scaffold-docs-dir must differ from docs "
+                "when using --docs-mode separate",
+            )
+        return normalized_scaffold_docs_dir, None
+
+    return (
+        None,
+        "init input error: docs mode must be 'reuse' or 'separate' when docs/ exists",
+    )
+
+
+def _resolve_init_agents_mode(
+    project_root: Path,
+    agents_mode: str | None,
+) -> tuple[str | None, str | None]:
+    """Resolve AGENTS.md conflict behavior.
+
+    Args:
+        project_root: Repository root where init is running.
+        agents_mode: Explicit AGENTS conflict mode when AGENTS.md already exists.
+
+    Returns:
+        Tuple of (resolved mode, error message).
+    """
+    agents_path = project_root / "AGENTS.md"
+    if not agents_path.exists():
+        return "create", None
+
+    selected_mode = agents_mode
+    if selected_mode is None:
+        prompt = (
+            "init conflict: AGENTS.md already exists. Choose AGENTS handling "
+            "[overwrite/preserve/abort]: "
+        )
+        selected_mode = input(prompt).strip().lower()
+
+    if selected_mode in {"overwrite", "preserve", "abort"}:
+        return selected_mode, None
+
+    return (
+        None,
+        "init input error: AGENTS mode must be 'overwrite', 'preserve', or 'abort' "
+        "when AGENTS.md exists",
+    )
+
+
+def _next_agents_backup_path(project_root: Path) -> Path:
+    """Select the next available AGENTS backup path."""
+    candidate = project_root / "AGENTS.user.md"
+    suffix = 1
+    while candidate.exists():
+        suffix += 1
+        candidate = project_root / f"AGENTS.user.{suffix}.md"
+    return candidate
 
 
 def cmd_validate(args: argparse.Namespace) -> int:
@@ -55,6 +154,12 @@ def cmd_gates_run(args: argparse.Namespace) -> int:
     """
     project_root = Path(args.project_root).resolve()
     config = load_gate_config(project_root / "harness" / "gates.yaml")
+    profiles = config.get("profiles", {})
+    profile_gates = profiles.get(args.profile, []) if isinstance(profiles, dict) else []
+    if isinstance(profile_gates, list) and len(profile_gates) == 0:
+        print(f"gates profile has no configured gates: {args.profile}")
+        return 0
+
     ok, failed = run_profile(config=config, profile=args.profile, cwd=project_root)
     if not ok:
         print(f"gates profile failed: {failed}")
@@ -91,6 +196,85 @@ def cmd_run(args: argparse.Namespace) -> int:
         dry_run=args.dry_run,
         max_iterations=args.max_iterations,
     )
+
+
+def cmd_init(args: argparse.Namespace) -> int:
+    """Scaffold baseline harness files for a repository.
+
+    Args:
+        args: Parsed CLI arguments for the init subcommand.
+
+    Returns:
+        Process exit code where 0 means success.
+    """
+    project_root = Path(args.project_root).resolve()
+    docs_dir, error = _resolve_init_docs_dir(
+        project_root=project_root,
+        docs_mode=args.docs_mode,
+        scaffold_docs_dir=args.scaffold_docs_dir,
+    )
+    if error is not None or docs_dir is None:
+        print(error)
+        return 1
+
+    resolved_agents_mode, error = _resolve_init_agents_mode(
+        project_root=project_root,
+        agents_mode=args.agents_mode,
+    )
+    if error is not None or resolved_agents_mode is None:
+        print(error)
+        return 1
+    if resolved_agents_mode == "abort":
+        print("init aborted: kept existing AGENTS.md; no scaffold files changed")
+        return 0
+
+    agents_backup_name: str | None = None
+    if resolved_agents_mode == "preserve":
+        agents_backup_path = _next_agents_backup_path(project_root)
+        (project_root / "AGENTS.md").rename(agents_backup_path)
+        agents_backup_name = agents_backup_path.name
+
+    created, skipped = apply_baseline_scaffold(
+        project_root=project_root,
+        force=args.force,
+        docs_dir=docs_dir,
+    )
+
+    if resolved_agents_mode == "overwrite":
+        agents_path = project_root / "AGENTS.md"
+        agents_path.write_text(build_scaffold_agents_markdown(), encoding="utf-8")
+
+    merge_spec_output = ""
+    if resolved_agents_mode == "preserve" and agents_backup_name is not None:
+        merge_spec_relative = (
+            Path(docs_dir)
+            / "spec"
+            / "features"
+            / "FEAT-900-merge-preserved-agents-guidance.yaml"
+        )
+        merge_spec_path = project_root / merge_spec_relative
+        if not merge_spec_path.exists() or args.force:
+            merge_spec_path.parent.mkdir(parents=True, exist_ok=True)
+            merge_spec_path.write_text(
+                build_agents_merge_followup_spec(agents_backup_name),
+                encoding="utf-8",
+            )
+            created += 1
+            merge_spec_output = f" merge_spec={merge_spec_relative}"
+        else:
+            skipped += 1
+            merge_spec_output = f" merge_spec_skipped={merge_spec_relative}"
+
+    agents_mode_output = f" agents_mode={resolved_agents_mode}"
+    if agents_backup_name is not None:
+        agents_mode_output += f" agents_backup={agents_backup_name}"
+
+    print(
+        f"init scaffold complete: docs_dir={docs_dir} "
+        f"created={created} skipped={skipped}"
+        f"{agents_mode_output}{merge_spec_output}"
+    )
+    return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -151,6 +335,31 @@ def build_parser() -> argparse.ArgumentParser:
         help="max non-dry iterations across all selected features",
     )
     run_parser.set_defaults(func=cmd_run)
+
+    init_parser = sub.add_parser(
+        "init", help="scaffold baseline harness files for this repository"
+    )
+    init_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="overwrite scaffold-managed files that already exist",
+    )
+    init_parser.add_argument(
+        "--docs-mode",
+        choices=["reuse", "separate"],
+        help="docs conflict mode when docs/ already exists",
+    )
+    init_parser.add_argument(
+        "--scaffold-docs-dir",
+        default="docs.engineeringagent",
+        help="docs directory to scaffold when using docs-mode=separate",
+    )
+    init_parser.add_argument(
+        "--agents-mode",
+        choices=["overwrite", "preserve", "abort"],
+        help="AGENTS conflict mode when AGENTS.md already exists",
+    )
+    init_parser.set_defaults(func=cmd_init)
 
     return parser
 

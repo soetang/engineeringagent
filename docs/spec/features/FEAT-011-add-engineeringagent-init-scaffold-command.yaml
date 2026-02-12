@@ -1,106 +1,128 @@
 id: FEAT-011
 title: Add engineeringagent init scaffold command with safe conflict handling
-status: backlog
+status: done
 priority: high
 objective: Add a one-command `engineeringagent init` bootstrap flow that scaffolds
   a usable harness baseline, handles existing `docs/` and `AGENTS.md` conflicts safely,
   and generates agent guidance focused on setup/validation (not run execution).
-context: >
-  New repositories need a consistent harness starting point without manual file-by-file
-  setup. POT-001 captured this as an `agent-harness init` idea; this feature formalizes
-  the implementation as `engineeringagent init` and closes critical UX gaps around
-  existing repository content. The command must preserve user-owned docs and AGENTS
-  material via explicit decisions, while still producing deterministic scaffold output
-  and validation-first guidance.
+context: 'New repositories need a consistent harness starting point without manual
+  file-by-file setup. POT-001 captured this as an `agent-harness init` idea; this
+  feature formalizes the implementation as `engineeringagent init` and closes critical
+  UX gaps around existing repository content. The command must preserve user-owned
+  docs and AGENTS material via explicit decisions, while still producing deterministic
+  scaffold output and validation-first guidance.
+
+  '
 constraints:
-  - "Command surface is `engineeringagent init` (no `agent-harness` naming)."
-  - "Support a single scaffold template only (no `--minimal`/`--full` variants)."
-  - "If `docs/` already exists, require an explicit user choice to either reuse existing docs structure or create a separate scaffold docs directory with a distinct name."
-  - "If `AGENTS.md` already exists, provide interactive choices: overwrite, preserve-by-rename+create-scaffold-AGENTS with follow-up merge spec, or abort/do nothing."
-  - "Generated `AGENTS.md` must include setup and validation guidance only; do not mention `engineeringagent run`."
-  - "Scaffold includes pre-commit hook wiring, but does not ship concrete gate run commands by default."
-  - "When a gate profile has no configured gates, CLI output must be a clear user-friendly message (non-error) explaining that no gates are configured."
-  - "Init must be idempotent and non-destructive unless the user explicitly selects overwrite behavior or passes a force-style option."
-implementation_notes: >
-  Introduce an `init` CLI subcommand and scaffold generator that writes the baseline
-  harness layout, docs/spec directories, schema/backlog starters, gate config stubs,
-  and pre-commit hook entrypoint. Add conflict-resolution prompts for existing `docs/`
-  and `AGENTS.md`, plus deterministic non-interactive flags for automation where
-  needed. Update gate execution messaging so empty profiles are explicit and helpful.
-  AGENTS template content should instruct agents how to bootstrap/repair harness assets
-  and validate with CLI commands (`engineeringagent validate`, `engineeringagent gates ...`)
-  without documenting `engineeringagent run`.
+- Command surface is `engineeringagent init` (no `agent-harness` naming).
+- Support a single scaffold template only (no `--minimal`/`--full` variants).
+- If `docs/` already exists, require an explicit user choice to either reuse existing
+  docs structure or create a separate scaffold docs directory with a distinct name.
+- 'If `AGENTS.md` already exists, provide interactive choices: overwrite, preserve-by-rename+create-scaffold-AGENTS
+  with follow-up merge spec, or abort/do nothing.'
+- Generated `AGENTS.md` must include setup and validation guidance only; do not mention
+  `engineeringagent run`.
+- Scaffold includes pre-commit hook wiring, but does not ship concrete gate run commands
+  by default.
+- When a gate profile has no configured gates, CLI output must be a clear user-friendly
+  message (non-error) explaining that no gates are configured.
+- Init must be idempotent and non-destructive unless the user explicitly selects overwrite
+  behavior or passes a force-style option.
+implementation_notes: 'Introduce an `init` CLI subcommand and scaffold generator that
+  writes the baseline harness layout, docs/spec directories, schema/backlog starters,
+  gate config stubs, and pre-commit hook entrypoint. Add conflict-resolution prompts
+  for existing `docs/` and `AGENTS.md`, plus deterministic non-interactive flags for
+  automation where needed. Update gate execution messaging so empty profiles are explicit
+  and helpful. AGENTS template content should instruct agents how to bootstrap/repair
+  harness assets and validate with CLI commands (`engineeringagent validate`, `engineeringagent
+  gates ...`) without documenting `engineeringagent run`.
+
+  '
 acceptance:
-  - "`engineeringagent init` is available as a documented top-level CLI command."
-  - "Running init in an empty repo creates scaffolded spec/harness/pre-commit baseline with one default template."
-  - "When `docs/` already exists, init requires an explicit reuse-vs-separate choice and applies the selected pathing behavior."
-  - "When `AGENTS.md` already exists, init offers the three required outcomes (overwrite, preserve-by-rename + scaffold AGENTS + follow-up merge spec, or abort)."
-  - "Generated `AGENTS.md` includes harness bootstrap and validation instructions via CLI and contains no `engineeringagent run` guidance."
-  - "Scaffolded pre-commit integration exists, and running gates for an empty profile returns a friendly no-gates-configured message with successful exit."
-  - "Re-running init without force/overwrite is idempotent and reports skips/decisions clearly."
+- '`engineeringagent init` is available as a documented top-level CLI command.'
+- Running init in an empty repo creates scaffolded spec/harness/pre-commit baseline
+  with one default template.
+- When `docs/` already exists, init requires an explicit reuse-vs-separate choice
+  and applies the selected pathing behavior.
+- When `AGENTS.md` already exists, init offers the three required outcomes (overwrite,
+  preserve-by-rename + scaffold AGENTS + follow-up merge spec, or abort).
+- Generated `AGENTS.md` includes harness bootstrap and validation instructions via
+  CLI and contains no `engineeringagent run` guidance.
+- Scaffolded pre-commit integration exists, and running gates for an empty profile
+  returns a friendly no-gates-configured message with successful exit.
+- Re-running init without force/overwrite is idempotent and reports skips/decisions
+  clearly.
 subtasks:
-  - id: ST-001
-    title: Add init subcommand and baseline scaffold manifest
-    status: backlog
-    order: 1
-    context: >
-      Register `engineeringagent init` in the CLI and define the canonical baseline
-      scaffold inventory it creates for new repositories.
-    verification:
-      - "uvx --from . engineeringagent --help"
-      - "uvx --from . engineeringagent init --help"
-      - "uv run pytest -q tests/test_init_command.py::test_init_subcommand_registered"
-  - id: ST-002
-    title: Implement existing docs conflict handling flow
-    status: backlog
-    order: 2
-    context: >
-      Detect existing `docs/` and require explicit choice to reuse current docs layout
-      or create a distinct scaffold docs directory and reference it consistently.
-    verification:
-      - "uv run pytest -q tests/test_init_command.py::test_init_prompts_when_docs_exists"
-      - "uv run pytest -q tests/test_init_command.py::test_init_can_use_separate_docs_directory"
-  - id: ST-003
-    title: Implement AGENTS conflict choices and follow-up merge-spec generation
-    status: backlog
-    order: 3
-    context: >
-      Detect existing `AGENTS.md` and provide three-way handling: overwrite, preserve
-      by renaming plus generate scaffold AGENTS and a follow-up merge spec, or abort
-      without modifying files.
-    verification:
-      - "uv run pytest -q tests/test_init_command.py::test_init_agents_conflict_overwrite"
-      - "uv run pytest -q tests/test_init_command.py::test_init_agents_conflict_preserve_and_create_merge_spec"
-      - "uv run pytest -q tests/test_init_command.py::test_init_agents_conflict_abort"
-  - id: ST-004
-    title: Generate scaffold AGENTS guidance without run instructions
-    status: backlog
-    order: 4
-    context: >
-      Ensure scaffolded AGENTS content tells agents how to bootstrap/repair harness
-      assets and run setup validation commands while intentionally excluding run-loop
-      execution guidance.
-    verification:
-      - "uv run pytest -q tests/test_init_command.py::test_generated_agents_includes_validate_commands"
-      - "uv run pytest -q tests/test_init_command.py::test_generated_agents_excludes_run_command_guidance"
-  - id: ST-005
-    title: Scaffold pre-commit + empty-gates baseline and friendly gate UX
-    status: backlog
-    order: 5
-    context: >
-      Write pre-commit hook wiring and gate profile stubs with no concrete gate commands,
-      then update CLI gate execution messaging so empty profiles produce a clear success
-      message instead of ambiguous output.
-    verification:
-      - "uv run pytest -q tests/test_gates.py::test_empty_profile_returns_friendly_success_message"
-      - "uv run pytest -q tests/test_init_command.py::test_init_writes_precommit_and_empty_gate_profiles"
-  - id: ST-006
-    title: Update docs and backlog promotion state
-    status: backlog
-    order: 6
-    context: >
-      Document `engineeringagent init` usage and conflict behaviors in repo docs, and
-      promote POT-001 by removing it from `docs/spec/potential_features.yaml`.
-    verification:
-      - "python3 -c \"from pathlib import Path; t=Path('docs/spec/potential_features.yaml').read_text(encoding='utf-8'); assert 'POT-001' not in t; print('ok')\""
-      - "uvx --from . engineeringagent validate"
+- id: ST-001
+  title: Add init subcommand and baseline scaffold manifest
+  status: done
+  order: 1
+  context: 'Register `engineeringagent init` in the CLI and define the canonical baseline
+    scaffold inventory it creates for new repositories.
+
+    '
+  verification:
+  - uvx --from . engineeringagent --help
+  - uvx --from . engineeringagent init --help
+  - uv run pytest -q tests/test_init_command.py::test_init_subcommand_registered
+- id: ST-002
+  title: Implement existing docs conflict handling flow
+  status: done
+  order: 2
+  context: 'Detect existing `docs/` and require explicit choice to reuse current docs
+    layout or create a distinct scaffold docs directory and reference it consistently.
+
+    '
+  verification:
+  - uv run pytest -q tests/test_init_command.py::test_init_prompts_when_docs_exists
+  - uv run pytest -q tests/test_init_command.py::test_init_can_use_separate_docs_directory
+- id: ST-003
+  title: Implement AGENTS conflict choices and follow-up merge-spec generation
+  status: done
+  order: 3
+  context: 'Detect existing `AGENTS.md` and provide three-way handling: overwrite,
+    preserve by renaming plus generate scaffold AGENTS and a follow-up merge spec,
+    or abort without modifying files.
+
+    '
+  verification:
+  - uv run pytest -q tests/test_init_command.py::test_init_agents_conflict_overwrite
+  - uv run pytest -q tests/test_init_command.py::test_init_agents_conflict_preserve_and_create_merge_spec
+  - uv run pytest -q tests/test_init_command.py::test_init_agents_conflict_abort
+- id: ST-004
+  title: Generate scaffold AGENTS guidance without run instructions
+  status: done
+  order: 4
+  context: 'Ensure scaffolded AGENTS content tells agents how to bootstrap/repair
+    harness assets and run setup validation commands while intentionally excluding
+    run-loop execution guidance.
+
+    '
+  verification:
+  - uv run pytest -q tests/test_init_command.py::test_generated_agents_includes_validate_commands
+  - uv run pytest -q tests/test_init_command.py::test_generated_agents_excludes_run_command_guidance
+- id: ST-005
+  title: Scaffold pre-commit + empty-gates baseline and friendly gate UX
+  status: done
+  order: 5
+  context: 'Write pre-commit hook wiring and gate profile stubs with no concrete gate
+    commands, then update CLI gate execution messaging so empty profiles produce a
+    clear success message instead of ambiguous output.
+
+    '
+  verification:
+  - uv run pytest -q tests/test_gates.py::test_empty_profile_returns_friendly_success_message
+  - uv run pytest -q tests/test_init_command.py::test_init_writes_precommit_and_empty_gate_profiles
+- id: ST-006
+  title: Update docs and backlog promotion state
+  status: done
+  order: 6
+  context: 'Document `engineeringagent init` usage and conflict behaviors in repo
+    docs, and promote POT-001 by removing it from `docs/spec/potential_features.yaml`.
+
+    '
+  verification:
+  - python3 -c "from pathlib import Path; t=Path('docs/spec/potential_features.yaml').read_text(encoding='utf-8');
+    assert 'POT-001' not in t; print('ok')"
+  - uvx --from . engineeringagent validate
+updated_at: '2026-02-12T21:48:06Z'

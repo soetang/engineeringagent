@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from argparse import Namespace
 from pathlib import Path
+from typing import Any
 
 import yaml
 
+from engineeringagent.cli import cmd_gates_run
 from engineeringagent.gates import list_profiles, load_gate_config
 
 
@@ -29,3 +32,29 @@ def test_scaffolded_gates_config_has_expected_commands(tmp_path: Path) -> None:
     assert config["gates"]["pytest_validate"]["run"] == "uv run pytest -q"
     assert "precommit" in config["profiles"]
     assert "loop_fast" in config["profiles"]
+
+
+def test_empty_profile_returns_friendly_success_message(
+    tmp_path: Path, capsys: Any
+) -> None:
+    gates_path = tmp_path / "harness" / "gates.yaml"
+    gates_path.parent.mkdir(parents=True, exist_ok=True)
+    gates_path.write_text(
+        yaml.safe_dump(
+            {
+                "profiles": {
+                    "precommit": [],
+                },
+                "gates": {},
+            },
+            sort_keys=False,
+            allow_unicode=False,
+        ),
+        encoding="utf-8",
+    )
+
+    code = cmd_gates_run(Namespace(project_root=str(tmp_path), profile="precommit"))
+    output = capsys.readouterr().out
+
+    assert code == 0
+    assert "gates profile has no configured gates: precommit" in output

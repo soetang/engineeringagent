@@ -30,11 +30,19 @@ From this folder:
 
 ```bash
 uv sync
+uvx --from . engineeringagent init
 uvx --from . engineeringagent validate
 uvx --from . engineeringagent gates list
 uvx --from . engineeringagent gates run --profile loop_fast
 uvx --from . engineeringagent run --all --dry-run --skip-implement
 ```
+
+## Bootstrap a repository scaffold
+
+- Run `uvx --from . engineeringagent init` to scaffold baseline harness files in one step.
+- If `docs/` already exists, init requires an explicit choice to reuse it or create a separate scaffold docs directory.
+- If `AGENTS.md` already exists, init offers overwrite, preserve-by-rename with scaffold regeneration, or abort.
+- Re-running init is safe by default and reports skipped files unless you explicitly choose overwrite behavior.
 
 Canonical workflow reference: `docs/references/uv-llms.md`
 
