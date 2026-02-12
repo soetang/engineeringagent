@@ -15,6 +15,7 @@ Load only the artifacts relevant to the current task.
 
 - **Humans steer, agents execute.**
 - **One subtask per loop.**
+- **Interview before spec-writing.** Before drafting a new feature spec, ask the user targeted questions and confirm scope.
 - **Repository is the system of record.** If it is not in-repo, assume it does not exist.
 - **Encode behavior in gates/validators.** Prefer mechanical checks over prose rules.
 - **Keep this file short.** Put durable details next to code/config/docs.
@@ -23,18 +24,18 @@ Load only the artifacts relevant to the current task.
 
 1. `AGENTS.md` (this map)
 2. `ARCHITECTURE.md` (high-level architecture map)
-3. `docs/PLANS.md` + relevant docs under `docs/`
+3. `docs/PLANS.md` + relevant docs under `docs/` (`docs/references/spec-writing-llms.md` is required before authoring specs)
 4. `README.md` (workflow + CLI usage)
 5. `harness/gates.yaml` (active gate profiles/commands)
-6. `spec/features/*.yaml` (active feature + subtasks)
-7. `spec/schemas/feature.schema.json` (spec contract)
+6. `docs/spec/features/*.yaml` (active feature + subtasks)
+7. `docs/spec/schemas/feature.schema.json` (spec contract)
 8. `src/agent_harness/` (implementation)
 
 ## 4) Repository Zones
 
 - **Code:** `src/agent_harness/`, `scripts/`, `harness/`
-- **Agent execution state:** `spec/features/`, `spec/features_done/`, `progress/runs.jsonl`
-- **Backlog ideas (not loop-picked):** `spec/potential_features.yaml`
+- **Agent execution state:** `docs/spec/features/`, `docs/spec/features_done/`, `progress/runs.jsonl`
+- **Backlog ideas (not loop-picked):** `docs/spec/potential_features.yaml`
 - **Architecture and docs:** `ARCHITECTURE.md`, `docs/`
 
 ## 5) Documentation Layout Reference
@@ -48,9 +49,10 @@ Load only the artifacts relevant to the current task.
 - `docs/generated/db-schema.md`
 - `docs/product-specs/index.md`
 - `docs/product-specs/new-user-onboarding.md`
-- `docs/references/design-system-reference-llms.txt`
-- `docs/references/nixpacks-llms.txt`
-- `docs/references/uv-llms.txt`
+- `docs/references/design-system-reference-llms.md`
+- `docs/references/nixpacks-llms.md`
+- `docs/references/spec-writing-llms.md`
+- `docs/references/uv-llms.md`
 - `docs/DESIGN.md`
 - `docs/FRONTEND.md`
 - `docs/PLANS.md`
@@ -74,19 +76,19 @@ Load only the artifacts relevant to the current task.
 - Advance **at most one** subtask per loop.
 - Never mark subtask `done` without passing verification.
 - Feature `done` requires all subtasks `done`.
-- Archive completed features to `spec/features_done/`.
+- Archive completed features to `docs/spec/features_done/`.
 - Record loop outcome in `progress/runs.jsonl`.
 
 ## 8) Command Quick Reference
 
 ### Local wrappers
 
-- Validate specs: `python3 scripts/validate_specs.py`
-- Schema-only validate: `python3 scripts/validate_specs.py --schema-only`
-- List gate profiles: `python3 scripts/gates.py list`
-- Run precommit gates: `python3 scripts/gates.py run --profile precommit`
-- Run loop-fast gates: `python3 scripts/gates.py run --profile loop_fast`
-- Loop dry-run: `python3 scripts/loop.py --feature-id FEAT-001 --dry-run`
+- Validate specs: `uv run python scripts/validate_specs.py`
+- Schema-only validate: `uv run python scripts/validate_specs.py --schema-only`
+- List gate profiles: `uv run python scripts/gates.py list`
+- Run precommit gates: `uv run python scripts/gates.py run --profile precommit`
+- Run loop-fast gates: `uv run python scripts/gates.py run --profile loop_fast`
+- Loop dry-run: `uv run python scripts/loop.py --feature-id FEAT-001 --dry-run`
 - Verify wrapper: `bash scripts/verify.sh`
 
 ### Packaged CLI (uvx)

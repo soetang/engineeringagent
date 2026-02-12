@@ -48,7 +48,7 @@ subtasks:
     notes: []
   - id: ST-003
     title: Add uv docs and AGENTS.md references
-    status: backlog
+    status: done
     order: 3
     context: >
       Create or update canonical uv workflow docs under docs/ (including quickstart
@@ -58,7 +58,7 @@ subtasks:
       - "uv run python scripts/validate_specs.py"
       - "python3 -c \"from pathlib import Path; p=Path('docs/references/uv-llms.md'); assert p.exists(); t=Path('AGENTS.md').read_text(encoding='utf-8'); assert 'docs/references/uv-llms.md' in t; print('ok')\""
       - "uvx --from . agent-harness --help"
-    attempts: 0
+    attempts: 1
     notes: []
   - id: ST-004
     title: Verify loop runner behavior under uv-managed environment
@@ -72,4 +72,4 @@ subtasks:
       - "uv run agent-harness validate"
     attempts: 0
     notes: []
-updated_at: "2026-02-12T14:48:06Z"
+updated_at: "2026-02-12T14:51:03Z"

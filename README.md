@@ -11,18 +11,31 @@ Repo-local, human-gated harness for long-running coding loops.
 
 ## Structure
 
-- `spec/features/` active feature specs
-- `spec/features_done/` archived completed features
-- `spec/potential_features.yaml` idea backlog (not picked by loop)
-- `spec/schemas/feature.schema.json` schema for feature files
+- `docs/spec/features/` active feature specs
+- `docs/spec/features_done/` archived completed features
+- `docs/spec/potential_features.yaml` idea backlog (not picked by loop)
+- `docs/spec/schemas/feature.schema.json` schema for feature files
 - `harness/gates.yaml` gate and profile definitions
 - `progress/runs.jsonl` append-only loop telemetry
 - `scripts/` thin wrappers over the CLI
 - `src/agent_harness/` Python package
 
-## Install and run with uvx
+## Quickstart (uv-first)
 
 From this folder:
+
+```bash
+uv sync
+uv run python scripts/validate_specs.py
+uv run python scripts/gates.py list
+bash scripts/loop.sh --feature-id FEAT-002 --dry-run --skip-implement
+```
+
+Canonical workflow reference: `docs/references/uv-llms.md`
+
+## Packaged CLI with uvx
+
+Use uvx for ephemeral execution:
 
 ```bash
 uvx --from . agent-harness validate
@@ -30,25 +43,17 @@ uvx --from . agent-harness gates list
 uvx --from . agent-harness loop run --feature-id FEAT-002 --dry-run --skip-implement
 ```
 
-Or run local script entrypoints (no install required):
+## Optional editable install
 
 ```bash
-python3 scripts/validate_specs.py
-python3 scripts/gates.py list
-bash scripts/loop.sh --feature-id FEAT-002 --dry-run --skip-implement
-```
-
-You can also install editable for local iteration:
-
-```bash
-python -m pip install -e .
+uv pip install -e .
 agent-harness --help
 ```
 
 ## Loop behavior
 
 - `agent-harness loop run` runs one subtask max.
-- If all subtasks for a selected feature are done, it archives the file to `spec/features_done/` and exits.
+- If all subtasks for a selected feature are done, it archives the file to `docs/spec/features_done/` and exits.
 - If `--feature-id` is provided, selection is pinned to that feature.
 
 ## Loop CLI details
@@ -80,7 +85,7 @@ uvx --from . agent-harness loop run --feature-id FEAT-002 --skip-implement
 `.pre-commit-config.yaml` calls a single stable entrypoint:
 
 ```bash
-python3 scripts/gates.py run --profile precommit
+uv run python scripts/gates.py run --profile precommit
 ```
 
 To change checks, edit `harness/gates.yaml` only.

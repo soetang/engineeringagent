@@ -1,0 +1,38 @@
+# uv Workflow Reference (LLM-Oriented)
+
+## Purpose
+
+- Keep local development and automation on a single uv-first workflow.
+- Treat `pyproject.toml` as dependency intent and `uv.lock` as resolved state.
+
+## Quickstart
+
+From the repository root:
+
+```bash
+uv sync
+uv run python scripts/validate_specs.py
+uv run python scripts/gates.py list
+bash scripts/loop.sh --feature-id FEAT-004 --dry-run --skip-implement
+```
+
+## Daily Commands
+
+- Validate specs: `uv run python scripts/validate_specs.py`
+- Validate schema only: `uv run python scripts/validate_specs.py --schema-only`
+- List gate profiles: `uv run python scripts/gates.py list`
+- Run loop-fast gates: `uv run python scripts/gates.py run --profile loop_fast`
+- Run precommit gates: `uv run python scripts/gates.py run --profile precommit`
+- CLI validate command: `uv run agent-harness validate`
+- Loop dry-run command: `uv run agent-harness loop run --feature-id FEAT-004 --dry-run --skip-implement`
+
+## Dependency Workflow
+
+1. Edit dependencies in `pyproject.toml`.
+2. Re-resolve and refresh lockfile with `uv lock`.
+3. Sync the environment with `uv sync`.
+
+## uvx Usage
+
+- Keep `uvx --from . agent-harness ...` examples for ephemeral execution.
+- Prefer `uv run ...` for repeat local development commands.
