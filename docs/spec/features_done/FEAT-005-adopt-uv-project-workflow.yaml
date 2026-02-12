@@ -1,6 +1,6 @@
 id: FEAT-005
 title: Adopt uv project workflow
-status: backlog
+status: done
 priority: medium
 objective: Standardize this repository on uv for environment management, dependency sync, and command execution.
 context: >
@@ -62,7 +62,7 @@ subtasks:
     notes: []
   - id: ST-004
     title: Verify loop runner behavior under uv-managed environment
-    status: backlog
+    status: done
     order: 4
     context: >
       Confirm loop dry-run and verification-only modes work when invoked through
@@ -70,6 +70,6 @@ subtasks:
     verification:
       - "uv run agent-harness loop run --feature-id FEAT-004 --dry-run --skip-implement"
       - "uv run agent-harness validate"
-    attempts: 0
+    attempts: 1
     notes: []
-updated_at: "2026-02-12T14:51:03Z"
+updated_at: "2026-02-12T14:52:03Z"
