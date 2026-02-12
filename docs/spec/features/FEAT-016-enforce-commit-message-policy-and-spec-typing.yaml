@@ -1,0 +1,130 @@
+id: FEAT-016
+title: Enforce commit message policy and spec typing for loop-generated commits
+status: backlog
+priority: high
+objective: >
+  Enforce a repository-wide commit subject contract (`type: summary`) in local commit
+  hooks and CI, add required feature-spec typing metadata, and use spec metadata to
+  generate deterministic loop completion commit messages.
+context: >
+  Commit intent is currently convention-based and not mechanically enforced at commit
+  message time, which allows drift in history quality. Feature specs also do not yet
+  carry a required work-type field that can deterministically drive commit prefixes for
+  automated loop completion commits.
+
+  This feature adds a strict, validated commit message policy and required spec metadata
+  so commit intent is explicit, reviewable, and automatable.
+constraints:
+  - "Commit subject format is required: `type: summary` (single-line subject validation)."
+  - "Allowed commit prefixes are exactly: feat, fix, spec, docs, chore, test."
+  - "Validation must run in both local commit-msg hook execution and CI checks."
+  - "Feature spec top-level `type` is required immediately for active specs; backfill all files in `docs/spec/features/*.yaml`."
+  - "Add feature spec metadata for expected commit subject and use it in loop completion commit generation."
+  - "Loop completion uses expected commit subject from selected feature spec when present; fallback behavior remains deterministic and documented."
+  - "Type-to-prefix mapping is explicit: feature->feat, bug->fix, spec->spec, docs->docs, chore->chore, test->test."
+  - "AGENTS.md must link `docs/references/spec-writing-llms.md` and explicitly state agents must follow that guide when authoring/updating specs."
+  - "Spec-writing guide must include a clear checklist for spec creation, including committing with the correct expected commit subject."
+  - "Expected commit message for adding this spec: `spec: add FEAT-016 commit message policy and spec typing`."
+implementation_notes: >
+  Extend `docs/spec/schemas/feature.schema.json` and validation logic to require new
+  feature metadata fields (`type` and expected commit subject metadata), enforce allowed
+  enums, and validate commit-subject shape. Add shared commit-message validation logic
+  that can run both as a local commit-msg hook and in CI commit-range checks.
+
+  Update loop completion commit generation to prefer expected commit subject metadata
+  from the selected feature spec. Keep deterministic fallback behavior for safety.
+  Update spec-writing guidance with an explicit checklist and AGENTS policy language
+  that makes the guide mandatory.
+acceptance:
+  - "Schema requires top-level `type` and expected commit subject metadata for active feature specs."
+  - "Validator reports clear errors for missing/invalid `type` and invalid expected commit subject format."
+  - "All active specs in `docs/spec/features/*.yaml` are backfilled with valid `type` and expected commit subject metadata."
+  - "Local commit-msg validation blocks invalid subjects and allows valid subjects from the approved prefix list."
+  - "CI fails when commit subjects in scope violate required format or allowed prefixes."
+  - "Loop completion commit uses the selected feature's expected commit subject metadata when present."
+  - "AGENTS.md links the spec-writing guide and explicitly says agents must follow it for spec work."
+  - "Spec-writing guide includes a checklist that explicitly includes committing with the expected commit subject."
+subtasks:
+  - id: ST-001
+    title: Add schema fields for spec type and expected commit subject metadata
+    status: backlog
+    order: 1
+    context: >
+      Update feature schema to require top-level `type` and expected commit subject
+      metadata fields with strict validation and no unknown values.
+    verification:
+      - "uv run pytest -q tests/test_validator.py::test_validate_requires_feature_type"
+      - "uv run pytest -q tests/test_validator.py::test_validate_requires_expected_commit_subject"
+      - "uvx --from . engineeringagent validate --schema-only"
+  - id: ST-002
+    title: Backfill active feature specs with required metadata
+    status: backlog
+    order: 2
+    context: >
+      Add valid `type` and expected commit subject metadata to all existing files in
+      `docs/spec/features/*.yaml` so required-now schema enforcement passes.
+    verification:
+      - "uvx --from . engineeringagent validate"
+      - "python3 -c \"from pathlib import Path; import yaml; files=sorted(Path('docs/spec/features').glob('*.yaml')); assert files; [(_ for _ in ()).throw(AssertionError(str(p))) for p in files if 'type' not in yaml.safe_load(p.read_text(encoding='utf-8'))]; print('ok')\""
+  - id: ST-003
+    title: Implement shared commit message policy validator
+    status: backlog
+    order: 3
+    context: >
+      Add reusable validation for single commit-message files and commit ranges, using
+      one policy source for local hook and CI enforcement.
+    verification:
+      - "uv run pytest -q tests/test_commit_message_validation.py"
+      - "uv run python harness/validate_commit_messages.py --help"
+  - id: ST-004
+    title: Enforce commit message policy in local commit-msg hook
+    status: backlog
+    order: 4
+    context: >
+      Wire commit subject validation into local commit-msg stage so invalid commit
+      subjects fail before commit creation.
+    verification:
+      - "uvx --from . engineeringagent gates run --profile precommit"
+      - "uv run pytest -q tests/test_gates.py::test_commit_msg_hook_configuration"
+  - id: ST-005
+    title: Enforce commit message policy in CI commit range checks
+    status: backlog
+    order: 5
+    context: >
+      Add CI validation step/profile that evaluates commit subjects in push/PR scope and
+      fails on policy violations.
+    verification:
+      - "uv run pytest -q tests/test_gates.py::test_commit_message_ci_gate_registered"
+      - "python3 -c \"from pathlib import Path; t=Path('.github/workflows/ci.yaml').read_text(encoding='utf-8'); assert 'commit' in t.lower() and 'validate' in t.lower(); print('ok')\""
+  - id: ST-006
+    title: Use spec metadata for loop completion commit subject generation
+    status: backlog
+    order: 6
+    context: >
+      Update loop completion commit generation to use selected feature expected commit
+      subject metadata and retain deterministic fallback mapping by feature `type`.
+    verification:
+      - "uv run pytest -q tests/test_loop_ralph_mode.py::test_loop_uses_expected_commit_subject"
+      - "uv run pytest -q tests/test_loop_ralph_mode.py::test_loop_commit_subject_fallback_uses_type_mapping"
+  - id: ST-007
+    title: Update AGENTS and spec-writing guide with mandatory checklist
+    status: backlog
+    order: 7
+    context: >
+      Add explicit AGENTS linkage and must-follow wording for spec-writing guide, and
+      add a checklist section to spec-writing guide including the required commit step.
+    verification:
+      - "python3 -c \"from pathlib import Path; t=Path('AGENTS.md').read_text(encoding='utf-8').lower(); assert 'docs/references/spec-writing-llms.md' in t and 'must follow' in t; print('ok')\""
+      - "python3 -c \"from pathlib import Path; t=Path('docs/references/spec-writing-llms.md').read_text(encoding='utf-8').lower(); assert 'checklist' in t and 'commit' in t and 'type: summary' in t; print('ok')\""
+  - id: ST-008
+    title: Run targeted regression checks for validator loop and gate wiring
+    status: backlog
+    order: 8
+    context: >
+      Execute focused tests for validator behavior, loop commit subject generation, and
+      gate/hook wiring to confirm full policy coverage.
+    verification:
+      - "uv run pytest -q tests/test_validator.py"
+      - "uv run pytest -q tests/test_loop_ralph_mode.py"
+      - "uv run pytest -q tests/test_gates.py"
+      - "uvx --from . engineeringagent validate"

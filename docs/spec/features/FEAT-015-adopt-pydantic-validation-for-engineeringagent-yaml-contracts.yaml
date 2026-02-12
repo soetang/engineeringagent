@@ -1,0 +1,108 @@
+id: FEAT-015
+title: Adopt Pydantic validation for engineeringagent YAML contracts
+status: backlog
+priority: high
+objective: Replace the current jsonschema plus ad-hoc custom validation path with strict
+  Pydantic models for engineeringagent-owned YAML contracts, including enum enforcement,
+  forbidden extra fields, and deterministic error reporting.
+context: >
+  Validation currently splits behavior between JSON Schema checks (`feature.schema.json`)
+  and Python custom rules for feature invariants, while other YAML contracts like
+  `harness/gates.yaml` and `docs/spec/potential_features.yaml` are not enforced by the
+  same strict typed model layer. This creates duplicated contract logic and inconsistent
+  guarantees.
+
+  We want a single model-driven approach where Pydantic is the source of truth for
+  engineeringagent YAML contracts, with strict enums/types and no unknown fields.
+constraints:
+  - "Rollout is immediate replacement: `engineeringagent validate` uses Pydantic instead of jsonschema runtime validation."
+  - "Validation scope includes engineeringagent-owned YAML contracts only: `docs/spec/features/*.yaml`, `docs/spec/features_done/*.yaml`, `docs/spec/potential_features.yaml`, and `harness/gates.yaml`."
+  - "Out of scope for this feature: `.github/workflows/*.yaml`, `.pre-commit-config.yaml`, and test fixtures under `tests/fixtures/`."
+  - "Validation is strict: enums are enforced, unknown fields are forbidden, and implicit coercion is not relied on for contract fields."
+  - "Existing feature/subtask invariant checks remain enforced after migration (for example contiguous subtask order and done-prefix rules)."
+  - "`docs/spec/schemas/feature.schema.json` is generated from the Pydantic feature model and committed as a tracked artifact."
+  - "Validation error output remains actionable and includes file path plus field path context."
+implementation_notes: >
+  Introduce typed Pydantic models and Enums for feature specs, subtasks, potential
+  feature backlog, and gate configuration. Move invariant logic from `custom_issues()`
+  into model validators (or equivalent strict model checks) so one model pass enforces
+  both schema shape and cross-field invariants.
+
+  Refactor the validator pipeline to route each contract file through its Pydantic
+  model and normalize failures into deterministic, readable CLI messages. Add a schema
+  generation step that emits `docs/spec/schemas/feature.schema.json` from the Pydantic
+  feature model to keep external schema consumers aligned.
+acceptance:
+  - "`engineeringagent validate` validates engineeringagent-owned YAML contracts via Pydantic models and fails with exit code 1 when any contract is invalid."
+  - "Feature contract violations for enums, missing required fields, unknown fields, and type errors are reported with clear file and field paths."
+  - "Existing feature/subtask invariants remain enforced after migration with equivalent or clearer validation messages."
+  - "`harness/gates.yaml` and `docs/spec/potential_features.yaml` are validated against strict Pydantic models during `engineeringagent validate`."
+  - "`docs/spec/schemas/feature.schema.json` is generated from the Pydantic feature model and matches the committed artifact used by the repository."
+  - "`engineeringagent validate --schema-only` remains functional with defined, documented behavior under the Pydantic validator pipeline."
+  - "Repository dependencies and imports no longer require `jsonschema` for feature validation runtime paths."
+subtasks:
+  - id: ST-001
+    title: Define strict Pydantic models and enums for feature specs
+    status: backlog
+    order: 1
+    context: >
+      Implement typed models for feature and subtask contracts with strict enum values,
+      forbidden extras, and field-level constraints that replace current JSON Schema
+      shape checks.
+    verification:
+      - "uv run pytest -q tests/test_validator.py::test_validate_reports_enum_unknown_and_type_errors"
+      - "uv run pytest -q tests/test_validator.py::test_validate_missing_required_fields_with_pydantic"
+  - id: ST-002
+    title: Migrate feature invariant rules into Pydantic validators
+    status: backlog
+    order: 2
+    context: >
+      Port custom invariant checks (for example subtask order contiguity, done-prefix,
+      and feature/subtask status coupling) into Pydantic model validation so behavior is
+      enforced in one model-driven pass.
+    verification:
+      - "uv run pytest -q tests/test_validator.py::test_validate_preserves_subtask_order_and_done_prefix_rules"
+      - "uv run pytest -q tests/test_validator.py::test_validate_preserves_feature_status_invariant_rules"
+  - id: ST-003
+    title: Add Pydantic models for potential feature and gate YAML contracts
+    status: backlog
+    order: 3
+    context: >
+      Extend validation coverage to `docs/spec/potential_features.yaml` and
+      `harness/gates.yaml` with strict contract models and deterministic error reporting.
+    verification:
+      - "uv run pytest -q tests/test_validator.py::test_validate_reports_invalid_potential_features_contract"
+      - "uv run pytest -q tests/test_gates.py::test_load_gate_config_rejects_invalid_contract"
+  - id: ST-004
+    title: Refactor validate command pipeline to Pydantic-only runtime path
+    status: backlog
+    order: 4
+    context: >
+      Update validator orchestration and CLI integration to use the new Pydantic model
+      layer for contract validation while preserving deterministic output and exit
+      semantics.
+    verification:
+      - "uv run pytest -q tests/test_validator.py"
+      - "uvx --from . engineeringagent validate"
+      - "uvx --from . engineeringagent validate --schema-only"
+  - id: ST-005
+    title: Generate and enforce feature JSON schema from Pydantic model
+    status: backlog
+    order: 5
+    context: >
+      Add schema generation flow so `docs/spec/schemas/feature.schema.json` is derived
+      from the Pydantic feature model and stays synchronized as a committed repository
+      artifact.
+    verification:
+      - "python3 -c \"from pathlib import Path; import json; p=Path('docs/spec/schemas/feature.schema.json'); data=json.loads(p.read_text(encoding='utf-8')); assert data.get('title'); print('ok')\""
+      - "uv run pytest -q tests/test_validator.py::test_feature_schema_artifact_generated_from_pydantic_model"
+  - id: ST-006
+    title: Finalize dependency cleanup and targeted regression coverage
+    status: backlog
+    order: 6
+    context: >
+      Update project dependencies/import paths for the new model-based validator and run
+      focused regression checks for validators and CLI behavior.
+    verification:
+      - "uv run pytest -q tests/test_validator.py tests/test_gates.py"
+      - "uvx --from . engineeringagent gates run --profile precommit"
