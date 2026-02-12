@@ -1,11 +1,14 @@
 profiles:
   precommit:
+    - yaml_validate
     - spec_validate
   loop_fast:
     - spec_validate
     - opencode_permission_probe
 
 gates:
+  yaml_validate:
+    run: "uv run python scripts/validate_yaml.py"
   spec_validate:
     run: "uv run python scripts/validate_specs.py"
   opencode_permission_probe:

@@ -1,6 +1,6 @@
 id: FEAT-001
 title: Spec model and validator foundation
-status: in_progress
+status: done
 priority: high
 objective: Establish a strict, machine-validated YAML spec format for feature-driven
   loop execution.
@@ -35,7 +35,7 @@ subtasks:
   notes: []
 - id: ST-002
   title: Implement custom validator for invariants
-  status: backlog
+  status: done
   order: 2
   context: 'Add checks JSON Schema cannot express, like state transition validity,
     unique subtask IDs, and order constraints.
@@ -43,24 +43,27 @@ subtasks:
     '
   verification:
   - agent-harness validate
-  attempts: 0
-  notes: []
+  attempts: 1
+  notes:
+  - Enforced contiguous subtask order and done-prefix sequencing in custom validator.
 - id: ST-003
   title: Add pre-commit hooks for YAML and spec validation
-  status: backlog
+  status: done
   order: 3
   context: Hook pipeline should fail fast with actionable output.
   verification:
   - pre-commit run --all-files
-  attempts: 0
-  notes: []
+  attempts: 1
+  notes:
+  - Added yaml_validate gate and wired it into precommit profile before spec validation.
 - id: ST-004
   title: Add invalid-spec fixtures and validator tests
-  status: backlog
+  status: done
   order: 4
   context: 'Cover common failures: missing fields, bad status, illegal transitions.'
   verification:
   - agent-harness validate
-  attempts: 0
-  notes: []
-updated_at: '2026-02-12T15:11:24Z'
+  attempts: 1
+  notes:
+  - Added invalid fixtures and validator tests for schema and custom transition failures.
+updated_at: '2026-02-12T15:45:07Z'

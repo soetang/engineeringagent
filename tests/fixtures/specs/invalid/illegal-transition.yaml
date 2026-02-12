@@ -1,0 +1,14 @@
+id: FEAT-992
+title: Illegal transition fixture
+status: done
+priority: high
+objective: Verify custom transition checks fail clearly.
+acceptance:
+  - This fixture should fail custom validation.
+subtasks:
+  - id: ST-001
+    title: Incomplete subtask
+    status: backlog
+    order: 1
+    verification:
+      - agent-harness validate

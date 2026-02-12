@@ -59,6 +59,8 @@ def custom_issues(feature: dict[str, Any], file_path: Path) -> list[ValidationIs
     in_progress_count = 0
     done_count = 0
 
+    ordered_subtasks: list[tuple[int, int, dict[str, Any]]] = []
+
     for idx, subtask in enumerate(subtasks):
         sid = subtask.get("id")
         status = subtask.get("status")
@@ -73,6 +75,9 @@ def custom_issues(feature: dict[str, Any], file_path: Path) -> list[ValidationIs
             issues.append(ValidationIssue(path=f"{file_path}:{prefix}.order", message=f"duplicate order: {order}"))
         subtask_orders.add(order)
 
+        if isinstance(order, int):
+            ordered_subtasks.append((order, idx, subtask))
+
         if status == "in_progress":
             in_progress_count += 1
         if status == "done":
@@ -85,6 +90,37 @@ def custom_issues(feature: dict[str, Any], file_path: Path) -> list[ValidationIs
                 message="at most one subtask can be in_progress per feature",
             )
         )
+
+    if subtask_orders:
+        expected = set(range(1, len(subtasks) + 1))
+        if subtask_orders != expected:
+            issues.append(
+                ValidationIssue(
+                    path=f"{file_path}:subtasks",
+                    message=(
+                        "subtask order values must be contiguous and start at 1 "
+                        f"(expected {sorted(expected)}, got {sorted(subtask_orders)})"
+                    ),
+                )
+            )
+
+    if ordered_subtasks:
+        seen_non_done = False
+        for order, idx, subtask in sorted(ordered_subtasks, key=lambda item: item[0]):
+            status = str(subtask.get("status", ""))
+
+            if status != "done":
+                seen_non_done = True
+            elif seen_non_done:
+                issues.append(
+                    ValidationIssue(
+                        path=f"{file_path}:subtasks[{idx}].status",
+                        message=(
+                            "done subtasks must form a contiguous prefix by order; "
+                            f"order {order} cannot be done when earlier subtasks are not done"
+                        ),
+                    )
+                )
 
     feature_status = feature.get("status")
     subtask_count = len(subtasks)

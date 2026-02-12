@@ -1,0 +1,6 @@
+id: FEAT-990
+title: Missing objective fixture
+status: backlog
+priority: high
+acceptance:
+  - This fixture should fail schema validation.
