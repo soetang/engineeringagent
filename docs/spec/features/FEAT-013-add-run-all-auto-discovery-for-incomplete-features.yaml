@@ -1,105 +1,125 @@
 id: FEAT-013
 title: Add run --all auto-discovery for incomplete active features
-status: backlog
+status: done
 priority: high
 objective: Add a `engineeringagent run --all` mode that automatically snapshots all
   runnable active feature specs so users can execute loops without manually passing
   file paths.
-context: >
-  The current run contract requires one or more explicit feature YAML paths. This is
-  deterministic but adds friction when the operator wants to process the current active
-  backlog as a batch. We need an explicit auto-discovery mode that keeps deterministic
-  behavior by snapshotting candidates once at startup, excludes blocked work, and preserves
-  existing explicit-path semantics.
+context: 'The current run contract requires one or more explicit feature YAML paths.
+  This is deterministic but adds friction when the operator wants to process the current
+  active backlog as a batch. We need an explicit auto-discovery mode that keeps deterministic
+  behavior by snapshotting candidates once at startup, excludes blocked work, and
+  preserves existing explicit-path semantics.
+
+  '
 constraints:
-  - "CLI flag is `--all` under `engineeringagent run`."
-  - "Positional feature paths and `--all` are mutually exclusive; using both fails with clear usage feedback."
-  - "When `--all` is used, discovery source is `docs/spec/features/*.yaml` only."
-  - "Discovery for `--all` occurs once at run start; no rescanning during loop execution."
-  - "Auto-discovered candidates include only feature statuses `backlog` and `in_progress` at snapshot time."
-  - "Features with status `blocked` or `done` are excluded from the `--all` startup candidate set."
-  - "If `--all` finds no runnable features, command exits 0 with a clear no-work message."
-  - "Existing explicit-path run behavior remains unchanged."
-implementation_notes: >
-  Extend run CLI parsing to support an explicit auto-discovery mode and enforce input-mode
-  validation (either paths or `--all`). Add a loop startup path that resolves a deterministic
-  snapshot of runnable feature files from active specs, then reuse the existing pending
-  selection/execution pipeline against that fixed set. Update dry-run and completion messages
-  to reflect auto-discovery semantics while preserving current deterministic selector fallback
-  behavior.
+- CLI flag is `--all` under `engineeringagent run`.
+- Positional feature paths and `--all` are mutually exclusive; using both fails with
+  clear usage feedback.
+- When `--all` is used, discovery source is `docs/spec/features/*.yaml` only.
+- Discovery for `--all` occurs once at run start; no rescanning during loop execution.
+- Auto-discovered candidates include only feature statuses `backlog` and `in_progress`
+  at snapshot time.
+- Features with status `blocked` or `done` are excluded from the `--all` startup candidate
+  set.
+- If `--all` finds no runnable features, command exits 0 with a clear no-work message.
+- Existing explicit-path run behavior remains unchanged.
+implementation_notes: 'Extend run CLI parsing to support an explicit auto-discovery
+  mode and enforce input-mode validation (either paths or `--all`). Add a loop startup
+  path that resolves a deterministic snapshot of runnable feature files from active
+  specs, then reuse the existing pending selection/execution pipeline against that
+  fixed set. Update dry-run and completion messages to reflect auto-discovery semantics
+  while preserving current deterministic selector fallback behavior.
+
+  '
 acceptance:
-  - "`engineeringagent run --all` executes successfully in dry-run and non-dry modes without positional feature paths."
-  - "Using `engineeringagent run --all <path>` fails fast with a clear mutually-exclusive input error."
-  - "Using `engineeringagent run` without paths and without `--all` fails fast with clear input guidance."
-  - "Startup discovery for `--all` includes only `backlog` and `in_progress` features from `docs/spec/features/*.yaml`."
-  - "Blocked and done features are excluded from the initial `--all` candidate snapshot."
-  - "The `--all` candidate set is snapshotted once at startup and is not expanded by new specs created mid-run."
-  - "When no runnable features are discovered for `--all`, process exits with code 0 and an explicit no-work message."
-  - "Existing explicit-path mode tests continue to pass without behavior changes."
+- '`engineeringagent run --all` executes successfully in dry-run and non-dry modes
+  without positional feature paths.'
+- Using `engineeringagent run --all <path>` fails fast with a clear mutually-exclusive
+  input error.
+- Using `engineeringagent run` without paths and without `--all` fails fast with clear
+  input guidance.
+- Startup discovery for `--all` includes only `backlog` and `in_progress` features
+  from `docs/spec/features/*.yaml`.
+- Blocked and done features are excluded from the initial `--all` candidate snapshot.
+- The `--all` candidate set is snapshotted once at startup and is not expanded by
+  new specs created mid-run.
+- When no runnable features are discovered for `--all`, process exits with code 0
+  and an explicit no-work message.
+- Existing explicit-path mode tests continue to pass without behavior changes.
 subtasks:
-  - id: ST-001
-    title: Add run CLI input modes for --all and explicit paths
-    status: backlog
-    order: 1
-    context: >
-      Update parser and run command wiring so users can invoke auto-discovery with `--all`,
-      while preserving explicit path mode and providing clear validation errors for invalid
-      input combinations.
-    verification:
-      - "uv run pytest -q tests/test_loop_ralph_mode.py::test_cli_run_all_dry_run_skip_implement"
-      - "uv run pytest -q tests/test_loop_ralph_mode.py::test_cli_run_rejects_combined_all_and_paths"
-      - "uv run pytest -q tests/test_loop_ralph_mode.py::test_cli_run_requires_paths_or_all"
-      - "uvx --from . engineeringagent run --help"
-  - id: ST-002
-    title: Implement deterministic startup snapshot for --all discovery
-    status: backlog
-    order: 2
-    context: >
-      Add startup resolution for `--all` that discovers active feature files, filters by
-      runnable statuses (`backlog`, `in_progress`), and produces a deterministic fixed
-      candidate set used for the rest of the run.
-    verification:
-      - "uv run pytest -q tests/test_loop_ralph_mode.py::test_run_loop_all_discovers_backlog_and_in_progress_only"
-      - "uv run pytest -q tests/test_loop_ralph_mode.py::test_run_loop_all_excludes_blocked_and_done_from_startup_snapshot"
-  - id: ST-003
-    title: Integrate --all snapshot behavior into dry-run and non-dry loop flow
-    status: backlog
-    order: 3
-    context: >
-      Ensure dry-run selection, non-dry iteration, and terminal messaging correctly reflect
-      startup snapshot behavior, including no-work success exits and no mid-run candidate
-      expansion from newly created specs.
-    verification:
-      - "uv run pytest -q tests/test_loop_ralph_mode.py::test_run_loop_all_exits_zero_when_no_runnable_features"
-      - "uv run pytest -q tests/test_loop_ralph_mode.py::test_run_loop_all_does_not_include_specs_created_after_startup"
-      - "uv run pytest -q tests/test_loop_ralph_mode.py::test_run_loop_all_dry_run_reports_snapshot_selection"
-  - id: ST-004
-    title: Guard explicit-path mode from regressions
-    status: backlog
-    order: 4
-    context: >
-      Confirm path-first execution still behaves exactly as before so `--all` is purely an
-      additive mode and does not break existing caller workflows.
-    verification:
-      - "uv run pytest -q tests/test_loop_ralph_mode.py::test_cli_run_dry_run_skip_implement_path_first"
-      - "uv run pytest -q tests/test_loop_ralph_mode.py::test_run_loop_reports_invalid_feature_path"
-  - id: ST-005
-    title: Document run --all behavior and deterministic snapshot semantics
-    status: backlog
-    order: 5
-    context: >
-      Update contributor docs to show canonical `run --all` usage, mutual exclusivity rules,
-      blocked-feature exclusion at startup, and one-time snapshot semantics.
-    verification:
-      - "python3 -c \"from pathlib import Path; t=Path('README.md').read_text(encoding='utf-8').lower(); assert '--all' in t and 'snapshot' in t and 'blocked' in t; print('ok')\""
-      - "python3 -c \"from pathlib import Path; t=Path('docs/references/uv-llms.md').read_text(encoding='utf-8').lower(); assert '--all' in t and 'run' in t; print('ok')\""
-  - id: ST-006
-    title: Run targeted regression suite for new run mode
-    status: backlog
-    order: 6
-    context: >
-      Execute focused tests for parser and loop behavior so the new mode is validated with
-      the agreed targeted test depth.
-    verification:
-      - "uv run pytest -q tests/test_loop_ralph_mode.py"
-      - "uvx --from . engineeringagent validate"
+- id: ST-001
+  title: Add run CLI input modes for --all and explicit paths
+  status: done
+  order: 1
+  context: 'Update parser and run command wiring so users can invoke auto-discovery
+    with `--all`, while preserving explicit path mode and providing clear validation
+    errors for invalid input combinations.
+
+    '
+  verification:
+  - uv run pytest -q tests/test_loop_ralph_mode.py::test_cli_run_all_dry_run_skip_implement
+  - uv run pytest -q tests/test_loop_ralph_mode.py::test_cli_run_rejects_combined_all_and_paths
+  - uv run pytest -q tests/test_loop_ralph_mode.py::test_cli_run_requires_paths_or_all
+  - uvx --from . engineeringagent run --help
+- id: ST-002
+  title: Implement deterministic startup snapshot for --all discovery
+  status: done
+  order: 2
+  context: 'Add startup resolution for `--all` that discovers active feature files,
+    filters by runnable statuses (`backlog`, `in_progress`), and produces a deterministic
+    fixed candidate set used for the rest of the run.
+
+    '
+  verification:
+  - uv run pytest -q tests/test_loop_ralph_mode.py::test_run_loop_all_discovers_backlog_and_in_progress_only
+  - uv run pytest -q tests/test_loop_ralph_mode.py::test_run_loop_all_excludes_blocked_and_done_from_startup_snapshot
+- id: ST-003
+  title: Integrate --all snapshot behavior into dry-run and non-dry loop flow
+  status: done
+  order: 3
+  context: 'Ensure dry-run selection, non-dry iteration, and terminal messaging correctly
+    reflect startup snapshot behavior, including no-work success exits and no mid-run
+    candidate expansion from newly created specs.
+
+    '
+  verification:
+  - uv run pytest -q tests/test_loop_ralph_mode.py::test_run_loop_all_exits_zero_when_no_runnable_features
+  - uv run pytest -q tests/test_loop_ralph_mode.py::test_run_loop_all_does_not_include_specs_created_after_startup
+  - uv run pytest -q tests/test_loop_ralph_mode.py::test_run_loop_all_dry_run_reports_snapshot_selection
+- id: ST-004
+  title: Guard explicit-path mode from regressions
+  status: done
+  order: 4
+  context: 'Confirm path-first execution still behaves exactly as before so `--all`
+    is purely an additive mode and does not break existing caller workflows.
+
+    '
+  verification:
+  - uv run pytest -q tests/test_loop_ralph_mode.py::test_cli_run_dry_run_skip_implement_path_first
+  - uv run pytest -q tests/test_loop_ralph_mode.py::test_run_loop_reports_invalid_feature_path
+- id: ST-005
+  title: Document run --all behavior and deterministic snapshot semantics
+  status: done
+  order: 5
+  context: 'Update contributor docs to show canonical `run --all` usage, mutual exclusivity
+    rules, blocked-feature exclusion at startup, and one-time snapshot semantics.
+
+    '
+  verification:
+  - python3 -c "from pathlib import Path; t=Path('README.md').read_text(encoding='utf-8').lower();
+    assert '--all' in t and 'snapshot' in t and 'blocked' in t; print('ok')"
+  - python3 -c "from pathlib import Path; t=Path('docs/references/uv-llms.md').read_text(encoding='utf-8').lower();
+    assert '--all' in t and 'run' in t; print('ok')"
+- id: ST-006
+  title: Run targeted regression suite for new run mode
+  status: done
+  order: 6
+  context: 'Execute focused tests for parser and loop behavior so the new mode is
+    validated with the agreed targeted test depth.
+
+    '
+  verification:
+  - uv run pytest -q tests/test_loop_ralph_mode.py
+  - uvx --from . engineeringagent validate
+updated_at: '2026-02-12T21:07:31Z'

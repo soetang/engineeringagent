@@ -26,6 +26,23 @@ STATUS_ORDER: dict[str, int] = {
     "blocked": 2,
 }
 
+RUN_ALL_RUNNABLE_STATUSES: set[str] = {"backlog", "in_progress"}
+
+
+def _print_run_all_snapshot_banner(resolved_paths: Sequence[Path]) -> None:
+    print(
+        "[run --all] Startup snapshot captured "
+        f"{len(resolved_paths)} runnable feature file(s) from docs/spec/features/*.yaml."
+    )
+
+
+def _print_run_all_no_work_message() -> None:
+    print(
+        "No runnable active features found for --all startup snapshot "
+        "(statuses: backlog, in_progress)."
+    )
+    print_summary(None, "no_work", None, None, "stop")
+
 
 @dataclass(frozen=True)
 class IterationOutcome:
@@ -116,6 +133,23 @@ def _resolve_feature_paths(
             continue
         seen.add(candidate)
         resolved.append(candidate)
+
+    return resolved
+
+
+def _discover_active_feature_paths(project_root: Path) -> list[Path]:
+    features_dir = project_root / "docs" / "spec" / "features"
+    resolved: list[Path] = []
+    for feature_path in sorted(features_dir.glob("*.yaml")):
+        try:
+            feature = load_yaml(feature_path)
+        except Exception as exc:  # noqa: BLE001
+            raise ValueError(
+                f"failed to load feature YAML at {feature_path}: {exc}"
+            ) from exc
+
+        if str(feature.get("status", "")) in RUN_ALL_RUNNABLE_STATUSES:
+            resolved.append(feature_path)
 
     return resolved
 
@@ -531,6 +565,7 @@ def run_loop(
     opencode_prompt: str | None,
     skip_implement: bool,
     dry_run: bool,
+    run_all: bool = False,
     max_iterations: int = 50,
 ) -> int:
     """Execute feature loops until completion or termination condition.
@@ -543,6 +578,7 @@ def run_loop(
         opencode_prompt: Optional prompt override for OpenCode implementation.
         skip_implement: Whether to skip implementation and run gates only.
         dry_run: Whether to resolve and report selection without execution.
+        run_all: Whether to auto-discover active feature files.
         max_iterations: Max non-dry iterations across selected features.
 
     Returns:
@@ -553,17 +589,31 @@ def run_loop(
         return 1
 
     try:
-        resolved_paths = _resolve_feature_paths(project_root, feature_paths)
+        if run_all:
+            resolved_paths = _discover_active_feature_paths(project_root)
+        else:
+            resolved_paths = _resolve_feature_paths(project_root, feature_paths)
     except ValueError as exc:
         print(exc)
         return 1
 
+    if run_all:
+        _print_run_all_snapshot_banner(resolved_paths)
+        if not resolved_paths:
+            _print_run_all_no_work_message()
+            return 0
+
     if dry_run:
         pending = _pending_features(resolved_paths)
         if not pending:
-            print("No pending features found in provided paths.")
-            print_summary(None, "dry_run", None, None, "stop")
+            if run_all:
+                _print_run_all_no_work_message()
+            else:
+                print("No pending features found in provided paths.")
+                print_summary(None, "dry_run", None, None, "stop")
             return 0
+        if run_all:
+            print("[dry-run] Selection is taken from the startup snapshot (no rescan).")
         feature_path, feature = _deterministic_feature_choice(pending)
         fid = str(feature.get("id", ""))
         print(f"[dry-run] Resolved {len(resolved_paths)} feature file(s).")

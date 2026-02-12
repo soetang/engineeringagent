@@ -72,10 +72,18 @@ def cmd_run(args: argparse.Namespace) -> int:
     Returns:
         Process exit code from the loop runner.
     """
+    if args.all and args.feature_paths:
+        print("run input error: positional feature paths cannot be used with --all")
+        return 1
+    if not args.all and not args.feature_paths:
+        print("run input error: provide one or more feature paths, or use --all")
+        return 1
+
     project_root = Path(args.project_root).resolve()
     return run_loop(
         project_root=project_root,
         feature_paths=args.feature_paths,
+        run_all=args.all,
         gate_profile=args.gate_profile,
         implement_command=args.implement_command,
         opencode_prompt=args.opencode_prompt,
@@ -113,8 +121,11 @@ def build_parser() -> argparse.ArgumentParser:
     gates_run_parser.set_defaults(func=cmd_gates_run)
 
     run_parser = sub.add_parser("run", help="run feature loops from spec file paths")
+    run_parser.add_argument("feature_paths", nargs="*", help="feature spec file paths")
     run_parser.add_argument(
-        "feature_paths", nargs="+", help="one or more feature spec file paths"
+        "--all",
+        action="store_true",
+        help="auto-discover active feature specs under docs/spec/features",
     )
     run_parser.add_argument(
         "--gate-profile", default="loop_fast", help="gate profile name"

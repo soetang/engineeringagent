@@ -14,7 +14,7 @@ uv sync
 uvx --from . engineeringagent validate
 uvx --from . engineeringagent gates list
 uvx --from . engineeringagent gates run --profile loop_fast
-uvx --from . engineeringagent run docs/spec/features/FEAT-004-ralph-loop-opencode-mode.yaml --dry-run --skip-implement
+uvx --from . engineeringagent run --all --dry-run --skip-implement
 ```
 
 ## Daily Commands
@@ -30,6 +30,15 @@ uvx --from . engineeringagent run docs/spec/features/FEAT-004-ralph-loop-opencod
 - Build permission policy: `.opencode/agents/build.md` and `opencode.json`
 - CLI validate command: `uvx --from . engineeringagent validate`
 - Loop dry-run command: `uvx --from . engineeringagent run docs/spec/features/FEAT-004-ralph-loop-opencode-mode.yaml --dry-run --skip-implement`
+- Loop auto-discovery dry-run: `uvx --from . engineeringagent run --all --dry-run --skip-implement`
+
+## run --all Notes
+
+- Use `engineeringagent run --all` to auto-discover active feature specs from `docs/spec/features/*.yaml`.
+- Discovery is a one-time startup snapshot; the loop does not rescan for new specs mid-run.
+- Snapshot candidates are limited to `backlog` and `in_progress` statuses.
+- Features marked `blocked` or `done` are excluded from the startup snapshot.
+- `--all` and positional feature paths are mutually exclusive input modes.
 
 ## Dependency Workflow
 

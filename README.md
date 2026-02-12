@@ -33,7 +33,7 @@ uv sync
 uvx --from . engineeringagent validate
 uvx --from . engineeringagent gates list
 uvx --from . engineeringagent gates run --profile loop_fast
-uvx --from . engineeringagent run docs/spec/features/FEAT-004-ralph-loop-opencode-mode.yaml --dry-run --skip-implement
+uvx --from . engineeringagent run --all --dry-run --skip-implement
 ```
 
 Canonical workflow reference: `docs/references/uv-llms.md`
@@ -64,7 +64,11 @@ engineeringagent --help
 
 ## Loop behavior
 
-- `engineeringagent run <feature-a.yaml> [feature-b.yaml ...]` is the canonical entrypoint.
+- `engineeringagent run <feature-a.yaml> [feature-b.yaml ...]` keeps explicit path-first execution.
+- `engineeringagent run --all` snapshots runnable active specs from `docs/spec/features/*.yaml` at startup.
+- `--all` and positional feature paths are mutually exclusive.
+- `--all` snapshot candidates include only `backlog` and `in_progress`; `blocked` and `done` are excluded.
+- If `--all` discovers no runnable features, the command exits 0 with a no-work message.
 - The runner requires no uncommitted changes before non-dry execution by default.
 - Each selected feature repeats until status is `done` and commit hooks pass.
 - If multiple feature files are pending, OpenCode selects the next feature with deterministic fallback.
@@ -92,6 +96,12 @@ Example non-dry loop with default OpenCode build agent:
 
 ```bash
 uvx --from . engineeringagent run docs/spec/features/FEAT-004-ralph-loop-opencode-mode.yaml
+```
+
+Example auto-discovery dry-run against the startup snapshot:
+
+```bash
+uvx --from . engineeringagent run --all --dry-run --skip-implement
 ```
 
 Example verification-only pass (no implement step):
