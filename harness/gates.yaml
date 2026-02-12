@@ -2,6 +2,8 @@ profiles:
   precommit:
     - yaml_validate
     - spec_validate
+    - ruff_validate
+    - pytest_validate
   loop_fast:
     - spec_validate
     - opencode_permission_probe
@@ -11,5 +13,9 @@ gates:
     run: "uv run python harness/validate_yaml.py"
   spec_validate:
     run: "uvx --from . engineeringagent validate"
+  ruff_validate:
+    run: "uv run ruff check src/engineeringagent"
+  pytest_validate:
+    run: "uv run pytest -q"
   opencode_permission_probe:
     run: "uv run python harness/permission_probe.py"

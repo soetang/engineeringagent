@@ -24,3 +24,15 @@ addopts = "-m 'not integration'"
 markers = [
   "integration: tests requiring external tools or services",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+    "ruff>=0.15.0",
+]
+
+[tool.ruff.lint]
+extend-select = ["D103", "D417"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"

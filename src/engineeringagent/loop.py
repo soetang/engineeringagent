@@ -13,7 +13,6 @@ from .gates import load_gate_config, run_profile
 from .opencode_permissions import output_has_permission_rejection
 from .specs import dump_yaml, feature_sort_key, load_yaml
 
-
 FEATURE_TRANSITIONS: dict[str, set[str]] = {
     "backlog": {"backlog", "in_progress", "done"},
     "in_progress": {"in_progress", "blocked", "done"},
@@ -38,16 +37,42 @@ class IterationOutcome:
 
 
 def now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    """Return current UTC timestamp in compact ISO-8601 format.
+
+    Returns:
+        Current timestamp string with trailing Z suffix.
+    """
+    return (
+        datetime.now(timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
 
 
 def append_run(log_path: Path, payload: dict[str, Any]) -> None:
+    """Append a single loop telemetry record as JSONL.
+
+    Args:
+        log_path: Destination JSONL path.
+        payload: Serializable telemetry mapping to append.
+    """
     log_path.parent.mkdir(parents=True, exist_ok=True)
     with log_path.open("a", encoding="utf-8") as f:
         f.write(json.dumps(payload, ensure_ascii=True) + "\n")
 
 
 def set_status(entity: dict[str, Any], target: str, kind: str = "feature") -> None:
+    """Transition a feature or subtask status with guardrails.
+
+    Args:
+        entity: Mutable mapping containing a status field.
+        target: Desired next status.
+        kind: Entity label used in error messages.
+
+    Raises:
+        ValueError: If current status is unknown or transition is not allowed.
+    """
     transitions = FEATURE_TRANSITIONS
     current = str(entity.get("status", ""))
     allowed = transitions.get(current)
@@ -58,7 +83,9 @@ def set_status(entity: dict[str, Any], target: str, kind: str = "feature") -> No
     entity["status"] = target
 
 
-def _resolve_feature_paths(project_root: Path, feature_paths: Sequence[str | Path]) -> list[Path]:
+def _resolve_feature_paths(
+    project_root: Path, feature_paths: Sequence[str | Path]
+) -> list[Path]:
     if not feature_paths:
         raise ValueError("at least one feature spec path is required")
 
@@ -81,7 +108,9 @@ def _resolve_feature_paths(project_root: Path, feature_paths: Sequence[str | Pat
         try:
             load_yaml(candidate)
         except Exception as exc:  # noqa: BLE001
-            raise ValueError(f"failed to load feature YAML at {raw_path}: {exc}") from exc
+            raise ValueError(
+                f"failed to load feature YAML at {raw_path}: {exc}"
+            ) from exc
 
         if candidate in seen:
             continue
@@ -91,7 +120,9 @@ def _resolve_feature_paths(project_root: Path, feature_paths: Sequence[str | Pat
     return resolved
 
 
-def _pending_features(feature_paths: Sequence[Path]) -> list[tuple[Path, dict[str, Any]]]:
+def _pending_features(
+    feature_paths: Sequence[Path],
+) -> list[tuple[Path, dict[str, Any]]]:
     pending: list[tuple[Path, dict[str, Any]]] = []
     for feature_path in feature_paths:
         feature = load_yaml(feature_path)
@@ -181,15 +212,27 @@ def _choose_feature_with_selector(
     if proc.returncode == 0:
         chosen_path = _parse_selector_output(output, pending)
         if chosen_path is not None:
-            chosen_feature = next(feature for path, feature in pending if path == chosen_path)
+            chosen_feature = next(
+                feature for path, feature in pending if path == chosen_path
+            )
             return (chosen_path, chosen_feature)
 
     fallback = _deterministic_feature_choice(pending)
-    print(f"Selector fallback: parse or command failure; selected {fallback[1].get('id')}")
+    print(
+        f"Selector fallback: parse or command failure; selected {fallback[1].get('id')}"
+    )
     return fallback
 
 
 def git_head_short(project_root: Path) -> str | None:
+    """Return short git HEAD hash for a repository.
+
+    Args:
+        project_root: Repository root used as command cwd.
+
+    Returns:
+        Short commit hash when available, otherwise None.
+    """
     proc = subprocess.run(
         ["git", "rev-parse", "--short", "HEAD"],
         cwd=project_root,
@@ -212,6 +255,16 @@ def build_ralph_opencode_prompt(
     feature_path: Path,
     hook_feedback: str | None = None,
 ) -> str:
+    """Build the default Ralph-style implementation prompt.
+
+    Args:
+        feature: Loaded feature mapping.
+        feature_path: Absolute path to the feature YAML file.
+        hook_feedback: Optional prior hook output to include for retries.
+
+    Returns:
+        Prompt text for the default OpenCode implement step.
+    """
     fid = feature.get("id", "unknown-feature")
     feature_title = feature.get("title", "")
     objective = feature.get("objective", "")
@@ -241,6 +294,20 @@ def run_implement_step(
     skip_implement: bool,
     hook_feedback: str | None,
 ) -> tuple[bool, str | None]:
+    """Run the implement phase for one loop iteration.
+
+    Args:
+        project_root: Repository root used for command execution.
+        feature: Loaded feature mapping.
+        feature_path: Path to feature YAML used in prompt generation.
+        implement_command: Optional custom shell command override.
+        opencode_prompt: Optional prompt override for OpenCode execution.
+        skip_implement: Whether to skip implementation and run gates only.
+        hook_feedback: Optional previous hook output to address on retry.
+
+    Returns:
+        Tuple of success flag and failure code when implementation fails.
+    """
     if skip_implement:
         print("Implement step: skipped")
         return (True, None)
@@ -252,7 +319,9 @@ def run_implement_step(
             return (False, "implement_command")
         return (True, None)
 
-    prompt = opencode_prompt or build_ralph_opencode_prompt(feature, feature_path, hook_feedback=hook_feedback)
+    prompt = opencode_prompt or build_ralph_opencode_prompt(
+        feature, feature_path, hook_feedback=hook_feedback
+    )
     if opencode_prompt and hook_feedback:
         prompt = (
             f"{opencode_prompt}\n\n"
@@ -299,7 +368,9 @@ def _require_clean_worktree(project_root: Path) -> tuple[bool, str]:
     return (True, "")
 
 
-def _commit_feature_completion(project_root: Path, feature: dict[str, Any]) -> tuple[bool, str | None, str]:
+def _commit_feature_completion(
+    project_root: Path, feature: dict[str, Any]
+) -> tuple[bool, str | None, str]:
     fid = str(feature.get("id", "unknown-feature"))
     title = str(feature.get("title", "")).strip()
     message = f"feat: complete {fid}"
@@ -307,7 +378,7 @@ def _commit_feature_completion(project_root: Path, feature: dict[str, Any]) -> t
         message = f"{message} - {title}"
 
     add_proc = subprocess.run(
-        ["git", "add", "-A", "--", ".", ":(exclude)progress/runs.jsonl"],
+        ["git", "add", "-A", "--", "."],
         cwd=project_root,
         capture_output=True,
         text=True,
@@ -344,6 +415,15 @@ def print_summary(
     attempt: int | None,
     next_action: str,
 ) -> None:
+    """Print a one-line loop summary and optional gate failure.
+
+    Args:
+        feature_id: Feature identifier for reporting.
+        result: Iteration result label.
+        failed_gate: Failed gate name when iteration fails.
+        attempt: Iteration attempt number.
+        next_action: Suggested next loop action.
+    """
     print(
         "Loop summary: "
         f"result={result} feature={feature_id or '-'} "
@@ -409,7 +489,9 @@ def _run_feature_iteration(
     next_hook_feedback: str | None = None
 
     if result == "passed" and feature.get("status") == "done":
-        commit_ok, commit_failed_gate, commit_output = _commit_feature_completion(project_root, feature)
+        commit_ok, commit_failed_gate, commit_output = _commit_feature_completion(
+            project_root, feature
+        )
         if commit_ok:
             completed = True
             next_action = "select_next_feature"
@@ -451,6 +533,21 @@ def run_loop(
     dry_run: bool,
     max_iterations: int = 50,
 ) -> int:
+    """Execute feature loops until completion or termination condition.
+
+    Args:
+        project_root: Repository root for file and command operations.
+        feature_paths: One or more feature spec file paths.
+        gate_profile: Gate profile name to run after implementation.
+        implement_command: Optional custom shell command for implementation.
+        opencode_prompt: Optional prompt override for OpenCode implementation.
+        skip_implement: Whether to skip implementation and run gates only.
+        dry_run: Whether to resolve and report selection without execution.
+        max_iterations: Max non-dry iterations across selected features.
+
+    Returns:
+        Process exit code where 0 indicates success.
+    """
     if max_iterations < 1:
         print("max_iterations must be >= 1")
         return 1
@@ -492,13 +589,17 @@ def run_loop(
             print(f"Reached max iteration cap ({max_iterations}) before completion.")
             return 1
 
-        selected_path, selected_feature = _choose_feature_with_selector(project_root, pending)
+        selected_path, selected_feature = _choose_feature_with_selector(
+            project_root, pending
+        )
         selected_id = str(selected_feature.get("id", ""))
         print(f"Selected feature={selected_id} path={selected_path}")
 
         while True:
             if total_iterations >= max_iterations:
-                print(f"Reached max iteration cap ({max_iterations}) before completion.")
+                print(
+                    f"Reached max iteration cap ({max_iterations}) before completion."
+                )
                 return 1
 
             total_iterations += 1

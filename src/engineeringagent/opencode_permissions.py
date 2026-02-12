@@ -24,11 +24,31 @@ class PermissionProbeResult:
 
 
 def output_has_permission_rejection(output: str) -> bool:
+    """Detect permission-rejection markers in OpenCode output.
+
+    Args:
+        output: Combined stdout and stderr text from OpenCode.
+
+    Returns:
+        True when known rejection markers are present.
+    """
     lowered = output.lower()
     return any(marker in lowered for marker in PERMISSION_REJECTION_MARKERS)
 
 
-def evaluate_permission_probe(returncode: int, output: str, token: str = PROBE_TOKEN) -> PermissionProbeResult:
+def evaluate_permission_probe(
+    returncode: int, output: str, token: str = PROBE_TOKEN
+) -> PermissionProbeResult:
+    """Evaluate probe process output against success criteria.
+
+    Args:
+        returncode: Exit code returned by the probe process.
+        output: Combined stdout and stderr text from OpenCode.
+        token: Required success token expected in output.
+
+    Returns:
+        Structured evaluation result with pass/fail reason.
+    """
     if output_has_permission_rejection(output):
         return PermissionProbeResult(
             ok=False,
@@ -59,6 +79,14 @@ def evaluate_permission_probe(returncode: int, output: str, token: str = PROBE_T
 
 
 def run_permission_probe(project_root: Path) -> PermissionProbeResult:
+    """Run the OpenCode permission probe command.
+
+    Args:
+        project_root: Repository root where the probe is executed.
+
+    Returns:
+        Probe evaluation result describing pass/fail details.
+    """
     command = ["opencode", "run", "--agent", "build", PROBE_PROMPT]
     try:
         proc = subprocess.run(

@@ -49,6 +49,7 @@ Load only the artifacts relevant to the current task.
 - `docs/product-specs/new-user-onboarding.md`
 - `docs/references/design-system-reference-llms.md`
 - `docs/references/nixpacks-llms.md`
+- `docs/references/python-uv-ruff-llms.md`
 - `docs/references/spec-writing-llms.md`
 - `docs/references/uv-llms.md`
 - `docs/DESIGN.md`

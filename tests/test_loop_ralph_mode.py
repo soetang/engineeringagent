@@ -37,7 +37,9 @@ def _make_project_root(
     gates_data: dict[str, Any] | None = None,
 ) -> tuple[Path, Path]:
     project_root = tmp_path
-    feature_path = project_root / "docs" / "spec" / "features" / "FEAT-900-ralph-test.yaml"
+    feature_path = (
+        project_root / "docs" / "spec" / "features" / "FEAT-900-ralph-test.yaml"
+    )
 
     if gates_data is None:
         gates_data = {
@@ -52,11 +54,15 @@ def _make_project_root(
 
 def _read_runs(project_root: Path) -> list[dict[str, Any]]:
     runs_path = project_root / "progress" / "runs.jsonl"
-    return [json.loads(line) for line in runs_path.read_text(encoding="utf-8").splitlines()]
+    return [
+        json.loads(line) for line in runs_path.read_text(encoding="utf-8").splitlines()
+    ]
 
 
 def _run_git(project_root: Path, *args: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(["git", *args], cwd=project_root, check=True, capture_output=True, text=True)
+    return subprocess.run(
+        ["git", *args], cwd=project_root, check=True, capture_output=True, text=True
+    )
 
 
 def _init_git_repo(project_root: Path) -> None:
@@ -104,7 +110,9 @@ def test_ralph_prompt_includes_feature_file_path(tmp_path: Path) -> None:
 
 
 def test_cli_run_dry_run_skip_implement_path_first(tmp_path: Path, capsys: Any) -> None:
-    project_root, feature_path = _make_project_root(tmp_path, feature_data=_base_feature())
+    project_root, feature_path = _make_project_root(
+        tmp_path, feature_data=_base_feature()
+    )
 
     parser = build_parser()
     args = parser.parse_args(
@@ -127,8 +135,12 @@ def test_cli_run_dry_run_skip_implement_path_first(tmp_path: Path, capsys: Any) 
 
 
 def test_run_loop_completes_feature_and_commits(tmp_path: Path) -> None:
-    project_root, feature_path = _make_project_root(tmp_path, feature_data=_base_feature())
-    script_path = _write_set_done_script(tmp_path.parent / f"{tmp_path.name}-set-done.py")
+    project_root, feature_path = _make_project_root(
+        tmp_path, feature_data=_base_feature()
+    )
+    script_path = _write_set_done_script(
+        tmp_path.parent / f"{tmp_path.name}-set-done.py"
+    )
     _init_git_repo(project_root)
 
     code = run_loop(
@@ -156,8 +168,37 @@ def test_run_loop_completes_feature_and_commits(tmp_path: Path) -> None:
     assert len(log) >= 2
 
 
+def test_run_loop_commit_ignores_runs_jsonl_when_gitignored(tmp_path: Path) -> None:
+    project_root, feature_path = _make_project_root(
+        tmp_path, feature_data=_base_feature()
+    )
+    script_path = _write_set_done_script(
+        tmp_path.parent / f"{tmp_path.name}-set-done.py"
+    )
+    (project_root / ".gitignore").write_text("progress/runs.jsonl\n", encoding="utf-8")
+    _init_git_repo(project_root)
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        max_iterations=5,
+    )
+
+    assert code == 0
+    assert (project_root / "progress" / "runs.jsonl").exists()
+    status = _run_git(project_root, "status", "--short").stdout
+    assert "progress/runs.jsonl" not in status
+
+
 def test_run_loop_requires_clean_worktree(tmp_path: Path, capsys: Any) -> None:
-    project_root, feature_path = _make_project_root(tmp_path, feature_data=_base_feature())
+    project_root, feature_path = _make_project_root(
+        tmp_path, feature_data=_base_feature()
+    )
     _init_git_repo(project_root)
 
     feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
@@ -180,7 +221,9 @@ def test_run_loop_requires_clean_worktree(tmp_path: Path, capsys: Any) -> None:
 
 
 def test_commit_failure_retries_same_feature(tmp_path: Path) -> None:
-    project_root, feature_path = _make_project_root(tmp_path, feature_data=_base_feature())
+    project_root, feature_path = _make_project_root(
+        tmp_path, feature_data=_base_feature()
+    )
     script_path = tmp_path.parent / f"{tmp_path.name}-set-done-allow.py"
     script_path.write_text(
         "\n".join(
@@ -264,7 +307,9 @@ def test_commit_failure_feedback_is_injected_into_next_prompt(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    project_root, feature_path = _make_project_root(tmp_path, feature_data=_base_feature())
+    project_root, feature_path = _make_project_root(
+        tmp_path, feature_data=_base_feature()
+    )
     _init_git_repo(project_root)
 
     hook_path = project_root / ".git" / "hooks" / "pre-commit"
@@ -281,14 +326,18 @@ def test_commit_failure_feedback_is_injected_into_next_prompt(
     real_run = subprocess.run
     prompts: list[str] = []
 
-    def fake_subprocess_run(command: Any, **kwargs: Any) -> subprocess.CompletedProcess[str]:
+    def fake_subprocess_run(
+        command: Any, **kwargs: Any
+    ) -> subprocess.CompletedProcess[str]:
         if isinstance(command, list) and command[:3] == ["opencode", "run", "--agent"]:
             prompt = command[4]
             prompts.append(prompt)
 
             feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
             feature["status"] = "done"
-            feature_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding="utf-8")
+            feature_path.write_text(
+                yaml.safe_dump(feature, sort_keys=False), encoding="utf-8"
+            )
 
             if len(prompts) >= 2:
                 (project_root / ".allow_commit").write_text("ok\n", encoding="utf-8")

@@ -46,8 +46,9 @@ uvx --from . engineeringagent run docs/spec/features/FEAT-004-ralph-loop-opencod
 
 ## Validation commands
 
-- Lint: `uvx --from . engineeringagent gates run --profile precommit`
-- Test: `pytest -q`
+- Precommit gates (specs + Ruff + pytest): `uvx --from . engineeringagent gates run --profile precommit`
+- Ruff lint + docstrings: `uv run ruff check src/engineeringagent`
+- Test: `uv run pytest -q`
 - Spec validation: `uvx --from . engineeringagent validate`
 
 ## Optional editable install

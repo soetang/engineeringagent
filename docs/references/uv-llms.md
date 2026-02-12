@@ -24,6 +24,8 @@ uvx --from . engineeringagent run docs/spec/features/FEAT-004-ralph-loop-opencod
 - List gate profiles: `uvx --from . engineeringagent gates list`
 - Run loop-fast gates: `uvx --from . engineeringagent gates run --profile loop_fast`
 - Run precommit gates: `uvx --from . engineeringagent gates run --profile precommit`
+- Run Ruff checks (lint + docstrings): `uv run ruff check src/engineeringagent`
+- Run pytest suite: `uv run pytest -q`
 - Run permission probe: `uvx --from . engineeringagent gates run --profile loop_fast`
 - Build permission policy: `.opencode/agents/build.md` and `opencode.json`
 - CLI validate command: `uvx --from . engineeringagent validate`
@@ -39,3 +41,4 @@ uvx --from . engineeringagent run docs/spec/features/FEAT-004-ralph-loop-opencod
 
 - Use `uvx --from . engineeringagent ...` as the canonical contributor command style.
 - Keep `uv run ...` for direct tooling operations such as `pytest -q` or local Python modules.
+- The `precommit` profile is the canonical quality gate and includes spec validation, Ruff lint/docstring checks, and pytest execution.

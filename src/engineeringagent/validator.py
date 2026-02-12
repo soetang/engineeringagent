@@ -2,10 +2,25 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .specs import custom_issues, iter_feature_files, load_schema, load_yaml, schema_issues
+from .specs import (
+    custom_issues,
+    iter_feature_files,
+    load_schema,
+    load_yaml,
+    schema_issues,
+)
 
 
 def validate(project_root: Path, schema_only: bool = False) -> list[str]:
+    """Validate active feature files against schema and custom rules.
+
+    Args:
+        project_root: Repository root containing docs/spec artifacts.
+        schema_only: Whether to skip repository-specific custom checks.
+
+    Returns:
+        Validation error messages; empty list means success.
+    """
     features_dir = project_root / "docs" / "spec" / "features"
     schema_path = project_root / "docs" / "spec" / "schemas" / "feature.schema.json"
 

@@ -19,6 +19,17 @@ class ValidationIssue:
 
 
 def load_yaml(path: Path) -> dict[str, Any]:
+    """Load a YAML mapping from disk.
+
+    Args:
+        path: Path to a YAML file.
+
+    Returns:
+        Parsed YAML mapping.
+
+    Raises:
+        ValueError: If YAML top level is not a mapping.
+    """
     with path.open("r", encoding="utf-8") as f:
         data = yaml.safe_load(f)
     if not isinstance(data, dict):
@@ -27,30 +38,75 @@ def load_yaml(path: Path) -> dict[str, Any]:
 
 
 def dump_yaml(path: Path, data: dict[str, Any]) -> None:
+    """Write a YAML mapping to disk.
+
+    Args:
+        path: Destination YAML file path.
+        data: Mapping content to serialize.
+    """
     with path.open("w", encoding="utf-8") as f:
         yaml.safe_dump(data, f, sort_keys=False, allow_unicode=False)
 
 
 def iter_feature_files(features_dir: Path) -> list[Path]:
+    """Return sorted feature spec files from a directory.
+
+    Args:
+        features_dir: Directory containing feature YAML files.
+
+    Returns:
+        Sorted list of matching feature file paths.
+    """
     return sorted(features_dir.glob("*.yaml"))
 
 
 def load_schema(schema_path: Path) -> dict[str, Any]:
+    """Load the JSON schema used for feature validation.
+
+    Args:
+        schema_path: Path to the schema JSON file.
+
+    Returns:
+        Parsed schema mapping.
+    """
     with schema_path.open("r", encoding="utf-8") as f:
         return json.load(f)
 
 
-def schema_issues(feature: dict[str, Any], schema: dict[str, Any], file_path: Path) -> list[ValidationIssue]:
+def schema_issues(
+    feature: dict[str, Any], schema: dict[str, Any], file_path: Path
+) -> list[ValidationIssue]:
+    """Collect schema-validation issues for one feature document.
+
+    Args:
+        feature: Feature mapping to validate.
+        schema: Loaded JSON schema mapping.
+        file_path: Source path used in issue reporting.
+
+    Returns:
+        Validation issues produced by schema checks.
+    """
     validator = Draft202012Validator(schema)
     issues: list[ValidationIssue] = []
     for error in sorted(validator.iter_errors(feature), key=lambda e: str(e.path)):
         path_parts = [str(p) for p in error.absolute_path]
         path = ".".join(path_parts) if path_parts else "<root>"
-        issues.append(ValidationIssue(path=f"{file_path}:{path}", message=error.message))
+        issues.append(
+            ValidationIssue(path=f"{file_path}:{path}", message=error.message)
+        )
     return issues
 
 
 def custom_issues(feature: dict[str, Any], file_path: Path) -> list[ValidationIssue]:
+    """Collect custom rule violations for one feature document.
+
+    Args:
+        feature: Feature mapping to validate.
+        file_path: Source path used in issue reporting.
+
+    Returns:
+        Validation issues produced by repository-specific rules.
+    """
     issues: list[ValidationIssue] = []
     subtasks = feature.get("subtasks", [])
 
@@ -68,11 +124,21 @@ def custom_issues(feature: dict[str, Any], file_path: Path) -> list[ValidationIs
         prefix = f"subtasks[{idx}]"
 
         if sid in subtask_ids:
-            issues.append(ValidationIssue(path=f"{file_path}:{prefix}.id", message=f"duplicate subtask id: {sid}"))
+            issues.append(
+                ValidationIssue(
+                    path=f"{file_path}:{prefix}.id",
+                    message=f"duplicate subtask id: {sid}",
+                )
+            )
         subtask_ids.add(sid)
 
         if order in subtask_orders:
-            issues.append(ValidationIssue(path=f"{file_path}:{prefix}.order", message=f"duplicate order: {order}"))
+            issues.append(
+                ValidationIssue(
+                    path=f"{file_path}:{prefix}.order",
+                    message=f"duplicate order: {order}",
+                )
+            )
         subtask_orders.add(order)
 
         if isinstance(order, int):
@@ -155,11 +221,28 @@ def custom_issues(feature: dict[str, Any], file_path: Path) -> list[ValidationIs
 
 
 def feature_sort_key(feature: dict[str, Any]) -> tuple[int, str]:
+    """Build a deterministic sort key for feature priority.
+
+    Args:
+        feature: Feature mapping with priority and id fields.
+
+    Returns:
+        Tuple used for ascending priority and id ordering.
+    """
     priority = feature.get("priority", "medium")
     return (PRIORITY_ORDER.get(priority, 1), str(feature.get("id", "")))
 
 
 def find_subtask(feature: dict[str, Any], status: str) -> dict[str, Any] | None:
+    """Return the earliest-ordered subtask with a target status.
+
+    Args:
+        feature: Feature mapping containing subtasks.
+        status: Desired subtask status to match.
+
+    Returns:
+        First matching subtask by order, or None when absent.
+    """
     subtasks = feature.get("subtasks", [])
     matches = [s for s in subtasks if s.get("status") == status]
     if not matches:

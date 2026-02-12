@@ -10,6 +10,14 @@ from .validator import validate
 
 
 def cmd_validate(args: argparse.Namespace) -> int:
+    """Run feature spec validation and print failures.
+
+    Args:
+        args: Parsed CLI arguments for the validate subcommand.
+
+    Returns:
+        Process exit code where 0 means validation passed.
+    """
     project_root = Path(args.project_root).resolve()
     messages = validate(project_root=project_root, schema_only=args.schema_only)
     if messages:
@@ -21,6 +29,14 @@ def cmd_validate(args: argparse.Namespace) -> int:
 
 
 def cmd_gates_list(args: argparse.Namespace) -> int:
+    """List configured gate profiles.
+
+    Args:
+        args: Parsed CLI arguments for the gates list subcommand.
+
+    Returns:
+        Process exit code where 0 means success.
+    """
     project_root = Path(args.project_root).resolve()
     config = load_gate_config(project_root / "harness" / "gates.yaml")
     for name in list_profiles(config):
@@ -29,6 +45,14 @@ def cmd_gates_list(args: argparse.Namespace) -> int:
 
 
 def cmd_gates_run(args: argparse.Namespace) -> int:
+    """Run a configured gate profile.
+
+    Args:
+        args: Parsed CLI arguments for the gates run subcommand.
+
+    Returns:
+        Process exit code where 0 means all gates passed.
+    """
     project_root = Path(args.project_root).resolve()
     config = load_gate_config(project_root / "harness" / "gates.yaml")
     ok, failed = run_profile(config=config, profile=args.profile, cwd=project_root)
@@ -40,6 +64,14 @@ def cmd_gates_run(args: argparse.Namespace) -> int:
 
 
 def cmd_run(args: argparse.Namespace) -> int:
+    """Execute the loop runner for one or more feature files.
+
+    Args:
+        args: Parsed CLI arguments for the run subcommand.
+
+    Returns:
+        Process exit code from the loop runner.
+    """
     project_root = Path(args.project_root).resolve()
     return run_loop(
         project_root=project_root,
@@ -54,6 +86,11 @@ def cmd_run(args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build the root CLI parser with all subcommands.
+
+    Returns:
+        Configured argument parser for the engineeringagent CLI.
+    """
     parser = argparse.ArgumentParser(
         prog="engineeringagent",
         description="Human-gated CLI harness for feature-driven coding loops.",
@@ -76,8 +113,12 @@ def build_parser() -> argparse.ArgumentParser:
     gates_run_parser.set_defaults(func=cmd_gates_run)
 
     run_parser = sub.add_parser("run", help="run feature loops from spec file paths")
-    run_parser.add_argument("feature_paths", nargs="+", help="one or more feature spec file paths")
-    run_parser.add_argument("--gate-profile", default="loop_fast", help="gate profile name")
+    run_parser.add_argument(
+        "feature_paths", nargs="+", help="one or more feature spec file paths"
+    )
+    run_parser.add_argument(
+        "--gate-profile", default="loop_fast", help="gate profile name"
+    )
     run_parser.add_argument(
         "--implement-command",
         help="custom implementation command; defaults to opencode build-agent run",
@@ -104,6 +145,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    """Parse CLI arguments and exit with the command status."""
     parser = build_parser()
     args = parser.parse_args()
     code = args.func(args)
