@@ -32,7 +32,7 @@ Load only the artifacts relevant to the current task.
 
 ## 4) Repository Zones
 
-- **Code:** `src/engineeringagent/`, `scripts/`, `harness/`
+- **Code:** `src/engineeringagent/`, `harness/`
 - **Agent execution state:** `docs/spec/features/`, `docs/spec/features_done/`, `progress/runs.jsonl`
 - **Backlog ideas (not loop-picked):** `docs/spec/potential_features.yaml`
 - **Documentation:** `docs/`
@@ -78,20 +78,13 @@ Load only the artifacts relevant to the current task.
 
 ## 8) Command Quick Reference
 
-### Local wrappers
+### Canonical entrypoints
 
-- Validate specs: `uv run python scripts/validate_specs.py`
-- Schema-only validate: `uv run python scripts/validate_specs.py --schema-only`
-- List gate profiles: `uv run python scripts/gates.py list`
-- Run precommit gates: `uv run python scripts/gates.py run --profile precommit`
-- Run loop-fast gates: `uv run python scripts/gates.py run --profile loop_fast`
-- Loop dry-run: `uv run python scripts/loop.py docs/spec/features/FEAT-001-spec-model-and-validator-foundation.yaml --dry-run`
-- Verify wrapper: `bash scripts/verify.sh`
-
-### Packaged CLI (uvx)
-
-- Help: `uvx --from . engineeringagent --help`
-- Validate: `uvx --from . engineeringagent validate`
+- Validate specs: `uvx --from . engineeringagent validate`
+- Schema-only validate: `uvx --from . engineeringagent validate --schema-only`
+- List gate profiles: `uvx --from . engineeringagent gates list`
+- Run precommit gates: `uvx --from . engineeringagent gates run --profile precommit`
+- Run loop-fast gates: `uvx --from . engineeringagent gates run --profile loop_fast`
 - Loop dry-run: `uvx --from . engineeringagent run docs/spec/features/FEAT-001-spec-model-and-validator-foundation.yaml --dry-run`
 
 ### Tests (when present)

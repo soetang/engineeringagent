@@ -3,6 +3,6 @@ repos:
     hooks:
       - id: engineeringagent-precommit
         name: engineeringagent-precommit
-        entry: uv run python scripts/gates.py run --profile precommit
+        entry: uvx --from . engineeringagent gates run --profile precommit
         language: system
         pass_filenames: false

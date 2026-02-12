@@ -11,23 +11,23 @@ From the repository root:
 
 ```bash
 uv sync
-uv run python scripts/validate_specs.py
-uv run python scripts/gates.py list
-uv run python scripts/permission_probe.py
-bash scripts/loop.sh docs/spec/features/FEAT-004-ralph-loop-opencode-mode.yaml --dry-run --skip-implement
+uvx --from . engineeringagent validate
+uvx --from . engineeringagent gates list
+uvx --from . engineeringagent gates run --profile loop_fast
+uvx --from . engineeringagent run docs/spec/features/FEAT-004-ralph-loop-opencode-mode.yaml --dry-run --skip-implement
 ```
 
 ## Daily Commands
 
-- Validate specs: `uv run python scripts/validate_specs.py`
-- Validate schema only: `uv run python scripts/validate_specs.py --schema-only`
-- List gate profiles: `uv run python scripts/gates.py list`
-- Run loop-fast gates: `uv run python scripts/gates.py run --profile loop_fast`
-- Run precommit gates: `uv run python scripts/gates.py run --profile precommit`
-- Run permission probe: `uv run python scripts/permission_probe.py`
+- Validate specs: `uvx --from . engineeringagent validate`
+- Validate schema only: `uvx --from . engineeringagent validate --schema-only`
+- List gate profiles: `uvx --from . engineeringagent gates list`
+- Run loop-fast gates: `uvx --from . engineeringagent gates run --profile loop_fast`
+- Run precommit gates: `uvx --from . engineeringagent gates run --profile precommit`
+- Run permission probe: `uvx --from . engineeringagent gates run --profile loop_fast`
 - Build permission policy: `.opencode/agents/build.md` and `opencode.json`
-- CLI validate command: `uv run engineeringagent validate`
-- Loop dry-run command: `uv run engineeringagent run docs/spec/features/FEAT-004-ralph-loop-opencode-mode.yaml --dry-run --skip-implement`
+- CLI validate command: `uvx --from . engineeringagent validate`
+- Loop dry-run command: `uvx --from . engineeringagent run docs/spec/features/FEAT-004-ralph-loop-opencode-mode.yaml --dry-run --skip-implement`
 
 ## Dependency Workflow
 
@@ -37,5 +37,5 @@ bash scripts/loop.sh docs/spec/features/FEAT-004-ralph-loop-opencode-mode.yaml -
 
 ## uvx Usage
 
-- Keep `uvx --from . engineeringagent ...` examples for ephemeral execution.
-- Prefer `uv run ...` for repeat local development commands.
+- Use `uvx --from . engineeringagent ...` as the canonical contributor command style.
+- Keep `uv run ...` for direct tooling operations such as `pytest -q` or local Python modules.

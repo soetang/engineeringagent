@@ -17,7 +17,7 @@ Repo-local, human-gated harness for long-running coding loops.
 - `docs/spec/schemas/feature.schema.json` schema for feature files.
 - `harness/gates.yaml` gate and profile definitions.
 - `progress/runs.jsonl` append-only loop telemetry.
-- `scripts/` thin wrappers over the CLI.
+- `harness/` domain-owned automation and gate helpers.
 - `src/engineeringagent/` Python package.
 
 ## Quickstart (uv-first)
@@ -26,10 +26,10 @@ From this folder:
 
 ```bash
 uv sync
-uv run python scripts/validate_specs.py
-uv run python scripts/gates.py list
-uv run python scripts/permission_probe.py
-bash scripts/loop.sh docs/spec/features/FEAT-004-ralph-loop-opencode-mode.yaml --dry-run --skip-implement
+uvx --from . engineeringagent validate
+uvx --from . engineeringagent gates list
+uvx --from . engineeringagent gates run --profile loop_fast
+uvx --from . engineeringagent run docs/spec/features/FEAT-004-ralph-loop-opencode-mode.yaml --dry-run --skip-implement
 ```
 
 Canonical workflow reference: `docs/references/uv-llms.md`
@@ -43,6 +43,30 @@ uvx --from . engineeringagent validate
 uvx --from . engineeringagent gates list
 uvx --from . engineeringagent run docs/spec/features/FEAT-004-ralph-loop-opencode-mode.yaml --dry-run --skip-implement
 ```
+
+## Command mapping
+
+Migration contract for removing legacy wrappers and using canonical command entrypoints:
+
+| Old path-based command | Canonical entrypoint |
+| --- | --- |
+| `uv run python legacy/validate_specs.py` | `uvx --from . engineeringagent validate` |
+| `uv run python legacy/validate_specs.py --schema-only` | `uvx --from . engineeringagent validate --schema-only` |
+| `uv run python legacy/gates.py list` | `uvx --from . engineeringagent gates list` |
+| `uv run python legacy/gates.py run --profile <profile>` | `uvx --from . engineeringagent gates run --profile <profile>` |
+| `uv run python legacy/loop.py <feature.yaml> [flags]` | `uvx --from . engineeringagent run <feature.yaml> [flags]` |
+| `bash legacy/loop.sh <feature.yaml> [flags]` | `uvx --from . engineeringagent run <feature.yaml> [flags]` |
+| `bash legacy/verify.sh` | `uvx --from . engineeringagent gates run --profile loop_fast` |
+| `uv run python legacy/permission_probe.py` | `uvx --from . engineeringagent gates run --profile loop_fast` |
+| `uv run python legacy/validate_yaml.py` | `uvx --from . engineeringagent gates run --profile precommit` |
+
+Gate-owned automation remains defined under `harness/gates.yaml` so workflows stay scriptless while checks remain explicit and discoverable.
+
+## Validation commands
+
+- Lint: `uvx --from . engineeringagent gates run --profile precommit`
+- Test: `pytest -q`
+- Spec validation: `uvx --from . engineeringagent validate`
 
 ## Optional editable install
 
@@ -73,8 +97,8 @@ engineeringagent --help
 ## Permission troubleshooting evidence
 
 - Repository policy location: `.opencode/agents/build.md` plus `opencode.json`.
-- Required local probe: `uv run python scripts/permission_probe.py`.
-- Required gate profile: `uv run python scripts/gates.py run --profile loop_fast`.
+- Required local probe: `uvx --from . engineeringagent gates run --profile loop_fast`.
+- Required gate profile: `uvx --from . engineeringagent gates run --profile loop_fast`.
 - Probe failure is actionable: it fails on non-zero execution, missing `PERMISSION_OK`, or output with rejection markers such as `permission requested` or `auto-reject`.
 
 Example non-dry loop with default OpenCode build agent:
@@ -94,7 +118,7 @@ uvx --from . engineeringagent run docs/spec/features/FEAT-004-ralph-loop-opencod
 `.pre-commit-config.yaml` calls a single stable entrypoint:
 
 ```bash
-uv run python scripts/gates.py run --profile precommit
+uvx --from . engineeringagent gates run --profile precommit
 ```
 
 To change checks, edit `harness/gates.yaml` only.

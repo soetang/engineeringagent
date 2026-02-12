@@ -8,8 +8,8 @@ profiles:
 
 gates:
   yaml_validate:
-    run: "uv run python scripts/validate_yaml.py"
+    run: "uv run python harness/validate_yaml.py"
   spec_validate:
-    run: "uv run python scripts/validate_specs.py"
+    run: "uvx --from . engineeringagent validate"
   opencode_permission_probe:
-    run: "uv run python scripts/permission_probe.py"
+    run: "uv run python harness/permission_probe.py"
