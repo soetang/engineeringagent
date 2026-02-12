@@ -1,0 +1,66 @@
+id: FEAT-001
+title: Spec model and validator foundation
+status: backlog
+priority: high
+objective: Establish a strict, machine-validated YAML spec format for feature-driven
+  loop execution.
+context: 'We need human-readable specs with enough narrative context for agent execution,
+  while preserving machine-safe validation and deterministic state transitions. This
+  feature defines the contract used by all later harness features.
+
+  '
+constraints:
+- Acceptance criteria are authoritative for completion.
+- Free-text fields are informational only and cannot mark work as done.
+implementation_notes: 'Keep schema simple and enforce cross-field/state invariants
+  in a custom validator. Prioritize Python-first tooling but keep formats language-agnostic.
+
+  '
+acceptance:
+- Feature YAML files validate against schema with no errors.
+- State transitions are rejected when invalid.
+- Validation runs automatically in pre-commit.
+- Invalid fixtures fail validation with clear error messages.
+subtasks:
+- id: ST-001
+  title: Create feature schema for nested subtasks
+  status: done
+  order: 1
+  context: Define required/optional fields including free-text context fields.
+  constraints:
+  - Schema must support nested subtasks in one feature file.
+  verification:
+  - agent-harness validate --schema-only
+  attempts: 1
+  notes: []
+- id: ST-002
+  title: Implement custom validator for invariants
+  status: backlog
+  order: 2
+  context: 'Add checks JSON Schema cannot express, like state transition validity,
+    unique subtask IDs, and order constraints.
+
+    '
+  verification:
+  - agent-harness validate
+  attempts: 0
+  notes: []
+- id: ST-003
+  title: Add pre-commit hooks for YAML and spec validation
+  status: backlog
+  order: 3
+  context: Hook pipeline should fail fast with actionable output.
+  verification:
+  - pre-commit run --all-files
+  attempts: 0
+  notes: []
+- id: ST-004
+  title: Add invalid-spec fixtures and validator tests
+  status: backlog
+  order: 4
+  context: 'Cover common failures: missing fields, bad status, illegal transitions.'
+  verification:
+  - agent-harness validate
+  attempts: 0
+  notes: []
+updated_at: '2026-02-12T14:17:05Z'

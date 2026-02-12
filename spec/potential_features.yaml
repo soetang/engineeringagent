@@ -1,0 +1,35 @@
+version: 1
+description: >
+  Parking lot for future ideas that are intentionally not part of active loop specs.
+  Items here do not get picked by the loop runner.
+potential_features:
+  - id: POT-001
+    title: Add `agent-harness init` scaffolding command
+    status: idea
+    context: >
+      Provide a one-command bootstrap that creates the standard harness layout
+      (spec folders, schema, scripts, gates config, and starter feature examples)
+      in a target repository.
+    value:
+      - "Faster onboarding for new repos"
+      - "Consistent baseline across projects"
+      - "Lower manual setup errors"
+    acceptance_hint:
+      - "`agent-harness init` creates required folders/files idempotently"
+      - "Supports --minimal and --full templates"
+      - "Does not overwrite existing files unless --force is provided"
+  - id: POT-002
+    title: Formalize potential feature backlog workflow
+    status: idea
+    context: >
+      Define a lightweight process for capturing ideas in `spec/potential_features.yaml`,
+      triaging them, and promoting selected items into active `spec/features/*.yaml`
+      with FEAT IDs and nested subtasks.
+    value:
+      - "Keeps exploration separate from execution"
+      - "Improves prioritization clarity"
+      - "Makes promotion from idea to implementation explicit"
+    acceptance_hint:
+      - "Each potential item has status and clear promotion criteria"
+      - "A documented command/process exists to promote POT -> FEAT"
+      - "Promoted items are removed or marked promoted in potential list"

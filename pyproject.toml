@@ -1,0 +1,20 @@
+[build-system]
+requires = ["hatchling>=1.26.3"]
+build-backend = "hatchling.build"
+
+[project]
+name = "agent-harness"
+version = "0.1.0"
+description = "Feature-driven harness for human-gated coding loops"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "PyYAML>=6.0.2",
+  "jsonschema>=4.23.0",
+]
+
+[project.scripts]
+agent-harness = "agent_harness.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agent_harness"]

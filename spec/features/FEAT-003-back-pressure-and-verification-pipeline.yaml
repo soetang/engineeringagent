@@ -1,0 +1,56 @@
+id: FEAT-003
+title: Back-pressure and verification pipeline
+status: backlog
+priority: high
+objective: Ensure no subtask can be marked done without passing fast, high-signal verification gates.
+context: >
+  Back-pressure should reject invalid generations quickly while preserving loop speed.
+  Keep per-loop verification under ~10 minutes for fast iteration.
+constraints:
+  - "Subtask done requires per-subtask verification + global verify pass."
+  - "Failed gates must be recorded in runs.jsonl."
+implementation_notes: >
+  Use pre-commit for structural quality and a dedicated verify entrypoint for runtime checks.
+acceptance:
+  - "Subtask done state is blocked unless verification commands pass."
+  - "Global verify script blocks completion on failure."
+  - "Pre-commit enforces spec validity and quick code quality checks."
+  - "Loop summary includes failed gate and next suggested action."
+subtasks:
+  - id: ST-001
+    title: Implement scripts/verify.sh with fast default gates
+    status: backlog
+    order: 1
+    context: "Python-first defaults: schema checks now, extend with lint/type/tests later."
+    verification:
+      - "agent-harness gates run --profile loop_fast"
+    attempts: 0
+    notes: []
+  - id: ST-002
+    title: Execute and enforce per-subtask verification commands
+    status: backlog
+    order: 2
+    context: "Subtask verification list runs before final state transition."
+    verification:
+      - "agent-harness loop run --dry-run"
+    attempts: 0
+    notes: []
+  - id: ST-003
+    title: Wire pre-commit to spec and fast quality gates
+    status: backlog
+    order: 3
+    context: "Keep hook config stable by calling one executable entrypoint."
+    verification:
+      - "pre-commit run --all-files"
+    attempts: 0
+    notes: []
+  - id: ST-004
+    title: Add concise end-of-loop verification summary output
+    status: backlog
+    order: 4
+    context: "Show pass/fail gates, evidence, and next subtask candidate."
+    verification:
+      - "agent-harness loop run --dry-run"
+    attempts: 0
+    notes: []
+updated_at: "2026-02-12T00:00:00Z"

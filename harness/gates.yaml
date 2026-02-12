@@ -1,0 +1,9 @@
+profiles:
+  precommit:
+    - spec_validate
+  loop_fast:
+    - spec_validate
+
+gates:
+  spec_validate:
+    run: "python3 scripts/validate_specs.py"

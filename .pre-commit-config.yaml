@@ -1,0 +1,8 @@
+repos:
+  - repo: local
+    hooks:
+      - id: agent-harness-precommit
+        name: agent-harness-precommit
+        entry: python3 scripts/gates.py run --profile precommit
+        language: system
+        pass_filenames: false
