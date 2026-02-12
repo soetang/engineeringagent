@@ -2,6 +2,10 @@
 
 Repo-local, human-gated harness for long-running coding loops.
 
+## Prototype status
+
+- This project is still prototyping; breaking changes are acceptable when they improve reliability, clarity, or loop throughput.
+
 ## Why this setup
 
 - One feature file is the unit of loop work.
@@ -61,7 +65,7 @@ engineeringagent --help
 ## Loop behavior
 
 - `engineeringagent run <feature-a.yaml> [feature-b.yaml ...]` is the canonical entrypoint.
-- The runner requires a clean git worktree before non-dry execution.
+- The runner requires no uncommitted changes before non-dry execution by default.
 - Each selected feature repeats until status is `done` and commit hooks pass.
 - If multiple feature files are pending, OpenCode selects the next feature with deterministic fallback.
 

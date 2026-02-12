@@ -15,6 +15,7 @@ Load only the artifacts relevant to the current task.
 
 - **Humans steer, agents execute.**
 - **One feature focus per cycle.**
+- **Prototype mode.** Breaking changes are acceptable when they improve reliability, clarity, or execution throughput.
 - **Interview before spec-writing.** Before drafting a new feature spec, ask the user targeted questions and confirm scope.
 - **Repository is the system of record.** If it is not in-repo, assume it does not exist.
 - **Encode behavior in gates/validators.** Prefer mechanical checks over prose rules.
@@ -72,6 +73,7 @@ Load only the artifacts relevant to the current task.
 ## 7) Loop Contract
 
 - Advance **at most one** selected feature at a time.
+- Default non-dry loop execution expects no uncommitted changes.
 - Never finalize feature `done` without passing verification and commit hooks.
 - Feature completion is commit-gated in the run loop.
 - Archive completed features to `docs/spec/features_done/`.
