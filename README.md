@@ -44,24 +44,6 @@ uvx --from . engineeringagent gates list
 uvx --from . engineeringagent run docs/spec/features/FEAT-004-ralph-loop-opencode-mode.yaml --dry-run --skip-implement
 ```
 
-## Command mapping
-
-Migration contract for removing legacy wrappers and using canonical command entrypoints:
-
-| Old path-based command | Canonical entrypoint |
-| --- | --- |
-| `uv run python legacy/validate_specs.py` | `uvx --from . engineeringagent validate` |
-| `uv run python legacy/validate_specs.py --schema-only` | `uvx --from . engineeringagent validate --schema-only` |
-| `uv run python legacy/gates.py list` | `uvx --from . engineeringagent gates list` |
-| `uv run python legacy/gates.py run --profile <profile>` | `uvx --from . engineeringagent gates run --profile <profile>` |
-| `uv run python legacy/loop.py <feature.yaml> [flags]` | `uvx --from . engineeringagent run <feature.yaml> [flags]` |
-| `bash legacy/loop.sh <feature.yaml> [flags]` | `uvx --from . engineeringagent run <feature.yaml> [flags]` |
-| `bash legacy/verify.sh` | `uvx --from . engineeringagent gates run --profile loop_fast` |
-| `uv run python legacy/permission_probe.py` | `uvx --from . engineeringagent gates run --profile loop_fast` |
-| `uv run python legacy/validate_yaml.py` | `uvx --from . engineeringagent gates run --profile precommit` |
-
-Gate-owned automation remains defined under `harness/gates.yaml` so workflows stay scriptless while checks remain explicit and discoverable.
-
 ## Validation commands
 
 - Lint: `uvx --from . engineeringagent gates run --profile precommit`
