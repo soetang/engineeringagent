@@ -3,27 +3,21 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
+import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from .gates import load_gate_config, run_profile
-from .specs import dump_yaml, feature_sort_key, find_subtask, iter_feature_files, load_yaml
+from .opencode_permissions import output_has_permission_rejection
+from .specs import dump_yaml, feature_sort_key, iter_feature_files, load_yaml
 
 
 FEATURE_TRANSITIONS: dict[str, set[str]] = {
     "backlog": {"backlog", "in_progress", "done"},
     "in_progress": {"in_progress", "blocked", "done"},
     "blocked": {"blocked", "in_progress", "done"},
-    "done": {"done"},
-}
-
-
-SUBTASK_TRANSITIONS: dict[str, set[str]] = {
-    "backlog": {"backlog", "in_progress"},
-    "in_progress": {"in_progress", "blocked", "done"},
-    "blocked": {"blocked", "in_progress"},
     "done": {"done"},
 }
 
@@ -38,8 +32,8 @@ def append_run(log_path: Path, payload: dict[str, Any]) -> None:
         f.write(json.dumps(payload, ensure_ascii=True) + "\n")
 
 
-def set_status(entity: dict[str, Any], target: str, kind: str) -> None:
-    transitions = SUBTASK_TRANSITIONS if kind == "subtask" else FEATURE_TRANSITIONS
+def set_status(entity: dict[str, Any], target: str, kind: str = "feature") -> None:
+    transitions = FEATURE_TRANSITIONS
     current = str(entity.get("status", ""))
     allowed = transitions.get(current)
     if not allowed:
@@ -70,26 +64,6 @@ def choose_feature(features_dir: Path, feature_id: str | None) -> tuple[Path, di
     return None
 
 
-def choose_next_subtask(feature: dict[str, Any]) -> dict[str, Any] | None:
-    return find_subtask(feature, "in_progress") or find_subtask(feature, "backlog")
-
-
-def all_subtasks_done(feature: dict[str, Any]) -> bool:
-    subtasks = feature.get("subtasks", [])
-    return bool(subtasks) and all(s.get("status") == "done" for s in subtasks)
-
-
-def derive_feature_status(feature: dict[str, Any]) -> str:
-    subtasks = feature.get("subtasks", [])
-    if subtasks and all(s.get("status") == "done" for s in subtasks):
-        return "done"
-    if any(s.get("status") == "in_progress" for s in subtasks):
-        return "in_progress"
-    if any(s.get("status") == "blocked" for s in subtasks):
-        return "blocked"
-    return "backlog"
-
-
 def archive_feature(feature_path: Path, done_dir: Path) -> Path:
     done_dir.mkdir(parents=True, exist_ok=True)
     target = done_dir / feature_path.name
@@ -110,24 +84,24 @@ def git_head_short(project_root: Path) -> str | None:
     return proc.stdout.strip() or None
 
 
-def build_opencode_prompt(feature: dict[str, Any], subtask: dict[str, Any]) -> str:
+def build_ralph_opencode_prompt(feature: dict[str, Any], feature_path: Path) -> str:
     fid = feature.get("id", "unknown-feature")
-    sid = subtask.get("id", "unknown-subtask")
     feature_title = feature.get("title", "")
-    subtask_title = subtask.get("title", "")
     objective = feature.get("objective", "")
-    context = subtask.get("context") or feature.get("context") or ""
+    context = feature.get("context", "")
     return (
-        f"Implement {fid} {sid}. Feature: {feature_title}. Subtask: {subtask_title}. "
+        f"Read and use this feature spec from disk: {feature_path}. "
+        f"Run one Ralph-style feature loop for {fid} ({feature_title}). "
         f"Objective: {objective}. Context: {context}. "
-        "Make minimal deterministic changes, run required verification commands, and report concise results."
+        "Derive the next step directly from the YAML file, make minimal deterministic changes, "
+        "run relevant verification, and report concise results."
     )
 
 
 def run_implement_step(
     project_root: Path,
     feature: dict[str, Any],
-    subtask: dict[str, Any],
+    feature_path: Path,
     implement_command: str | None,
     opencode_prompt: str | None,
     skip_implement: bool,
@@ -143,15 +117,27 @@ def run_implement_step(
             return (False, "implement_command")
         return (True, None)
 
-    prompt = opencode_prompt or build_opencode_prompt(feature, subtask)
+    prompt = opencode_prompt or build_ralph_opencode_prompt(feature, feature_path)
+
     print("Implement step: opencode run --agent build")
     try:
         proc = subprocess.run(
             ["opencode", "run", "--agent", "build", prompt],
             cwd=project_root,
+            capture_output=True,
+            text=True,
         )
     except FileNotFoundError:
         return (False, "opencode_missing")
+
+    if proc.stdout:
+        print(proc.stdout, end="")
+    if proc.stderr:
+        print(proc.stderr, end="", file=sys.stderr)
+
+    output = (proc.stdout or "") + (proc.stderr or "")
+    if output_has_permission_rejection(output):
+        return (False, "opencode_permission")
 
     if proc.returncode != 0:
         return (False, "opencode_build")
@@ -182,10 +168,9 @@ def run_loop(
     opencode_prompt: str | None,
     skip_implement: bool,
     dry_run: bool,
-    max_attempts: int,
 ) -> int:
-    features_dir = project_root / "spec" / "features"
-    done_dir = project_root / "spec" / "features_done"
+    features_dir = project_root / "docs" / "spec" / "features"
+    done_dir = project_root / "docs" / "spec" / "features_done"
     runs_log = project_root / "progress" / "runs.jsonl"
     gates_path = project_root / "harness" / "gates.yaml"
 
@@ -217,8 +202,7 @@ def run_loop(
         fid = str(feature.get("id"))
         run_payload["feature_id"] = fid
 
-        if all_subtasks_done(feature):
-            set_status(feature, "done", "feature")
+        if feature.get("status") == "done":
             feature["updated_at"] = now_iso()
             if dry_run:
                 print(f"[dry-run] Feature {fid} already complete. Would archive {feature_path}.")
@@ -232,31 +216,16 @@ def run_loop(
             print_summary(fid, None, "archived", None, None)
             return 0
 
-        subtask = choose_next_subtask(feature)
-        if not subtask:
-            print(f"Feature {fid} has no available subtask.")
-            run_payload["result"] = "failed"
-            run_payload["failed_gate"] = "subtask_selection"
-            print_summary(fid, None, "failed", "subtask_selection", None)
-            return 1
-
-        sid = str(subtask.get("id"))
-        run_payload["subtask_id"] = sid
-
-        if subtask.get("status") == "backlog":
-            set_status(subtask, "in_progress", "subtask")
-            set_status(feature, "in_progress", "feature")
-
-        subtask["attempts"] = int(subtask.get("attempts", 0)) + 1
-        run_payload["attempt"] = subtask["attempts"]
+        if feature.get("status") == "backlog":
+            set_status(feature, "in_progress")
         feature["updated_at"] = now_iso()
 
-        print(f"Selected feature={fid} subtask={sid}")
+        print(f"Selected feature={fid} mode=ralph")
 
         if dry_run:
             print("[dry-run] No changes executed.")
             run_payload["result"] = "dry_run"
-            print_summary(fid, sid, "dry_run", None, int(subtask.get("attempts", 0)))
+            print_summary(fid, None, "dry_run", None, None)
             return 0
 
         dump_yaml(feature_path, feature)
@@ -267,7 +236,7 @@ def run_loop(
         ok, implement_failed_gate = run_implement_step(
             project_root=project_root,
             feature=feature,
-            subtask=subtask,
+            feature_path=feature_path,
             implement_command=implement_command,
             opencode_prompt=opencode_prompt,
             skip_implement=skip_implement,
@@ -283,35 +252,9 @@ def run_loop(
                 result = "failed"
                 failed_gate = failed
 
-        if result == "passed":
-            for cmd in subtask.get("verification", []):
-                proc = subprocess.run(cmd, shell=True, cwd=project_root)
-                if proc.returncode != 0:
-                    result = "failed"
-                    failed_gate = f"subtask_verification:{cmd}"
-                    break
-
         feature = load_yaml(feature_path)
-        matching = [s for s in feature.get("subtasks", []) if s.get("id") == sid]
-        if not matching:
-            raise RuntimeError(f"subtask {sid} missing during finalize")
-        subtask = matching[0]
-
-        attempts = int(subtask.get("attempts", 0))
-        run_payload["attempt"] = attempts
-        if result == "passed":
-            set_status(subtask, "done", "subtask")
-            subtask.pop("last_error", None)
-        else:
-            if attempts >= max_attempts:
-                set_status(subtask, "blocked", "subtask")
-                subtask.setdefault("notes", []).append(f"blocked after {attempts} failed attempts")
-            else:
-                set_status(subtask, "in_progress", "subtask")
-            subtask["last_error"] = failed_gate or "unknown"
-
-        feature_target_status = derive_feature_status(feature)
-        set_status(feature, feature_target_status, "feature")
+        if feature.get("status") == "backlog":
+            set_status(feature, "in_progress")
 
         feature["updated_at"] = now_iso()
         dump_yaml(feature_path, feature)
@@ -322,7 +265,7 @@ def run_loop(
 
         run_payload["result"] = result
         run_payload["failed_gate"] = failed_gate
-        print_summary(fid, sid, result, failed_gate, attempts)
+        print_summary(fid, None, result, failed_gate, None)
         return 0 if result == "passed" else 1
     finally:
         if not dry_run:

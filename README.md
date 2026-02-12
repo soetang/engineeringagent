@@ -4,10 +4,10 @@ Repo-local, human-gated harness for long-running coding loops.
 
 ## Why this setup
 
-- One feature file with nested subtasks (less file spam)
+- One feature file is the unit of loop work
 - Archive completed features to keep active context small
 - Central gate profiles so pre-commit config stays stable
-- One loop run processes one subtask at most
+- One loop run processes one feature iteration at most
 
 ## Structure
 
@@ -28,6 +28,7 @@ From this folder:
 uv sync
 uv run python scripts/validate_specs.py
 uv run python scripts/gates.py list
+uv run python scripts/permission_probe.py
 bash scripts/loop.sh --feature-id FEAT-002 --dry-run --skip-implement
 ```
 
@@ -52,21 +53,29 @@ agent-harness --help
 
 ## Loop behavior
 
-- `agent-harness loop run` runs one subtask max.
-- If all subtasks for a selected feature are done, it archives the file to `docs/spec/features_done/` and exits.
+- `agent-harness loop run` runs one feature iteration max.
+- If a selected feature is marked `done`, it is archived to `docs/spec/features_done/`.
 - If `--feature-id` is provided, selection is pinned to that feature.
 
 ## Loop CLI details
 
 - Feature selection: pick `in_progress` first, otherwise highest-priority `backlog`.
-- Subtask selection: pick `in_progress` first, otherwise lowest `order` backlog subtask.
 - Default implementer: runs `opencode run --agent build` with an auto-generated prompt.
+- Default prompt contract: OpenCode is instructed to read and use the feature YAML file path directly.
 - Optional overrides:
   - `--implement-command "..."` to run a custom implementation command.
   - `--opencode-prompt "..."` to override the generated OpenCode prompt.
-  - `--skip-implement` to execute only gates + verification.
-- Transition guardrails: loop enforces legal status transitions for feature and subtask states.
-- Logging: every non-dry-run loop appends one JSONL record to `progress/runs.jsonl` with timestamp, feature/subtask ids, result, failed gate, duration, attempt count, and commit.
+  - `--skip-implement` to execute only gates.
+- Permission health gate: `loop_fast` includes a live OpenCode permission probe that runs `git status --short` and expects `PERMISSION_OK`.
+- Transition guardrails: loop enforces legal feature status transitions.
+- Logging: every non-dry-run loop appends one JSONL record to `progress/runs.jsonl` with timestamp, feature id, result, failed gate, duration, and commit.
+
+## Permission troubleshooting evidence
+
+- Repository policy location: `.opencode/agents/build.md` (agent override) plus `opencode.json` (project config)
+- Required local probe: `uv run python scripts/permission_probe.py`
+- Required gate profile: `uv run python scripts/gates.py run --profile loop_fast`
+- Probe failure is actionable: it fails on non-zero execution, missing `PERMISSION_OK`, or output that includes rejection markers such as `permission requested` or `auto-reject`.
 
 Example non-dry loop with default OpenCode build agent:
 

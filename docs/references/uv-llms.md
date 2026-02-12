@@ -13,6 +13,7 @@ From the repository root:
 uv sync
 uv run python scripts/validate_specs.py
 uv run python scripts/gates.py list
+uv run python scripts/permission_probe.py
 bash scripts/loop.sh --feature-id FEAT-004 --dry-run --skip-implement
 ```
 
@@ -23,6 +24,8 @@ bash scripts/loop.sh --feature-id FEAT-004 --dry-run --skip-implement
 - List gate profiles: `uv run python scripts/gates.py list`
 - Run loop-fast gates: `uv run python scripts/gates.py run --profile loop_fast`
 - Run precommit gates: `uv run python scripts/gates.py run --profile precommit`
+- Run permission probe: `uv run python scripts/permission_probe.py`
+- Build permission policy: `.opencode/agents/build.md` and `opencode.json`
 - CLI validate command: `uv run agent-harness validate`
 - Loop dry-run command: `uv run agent-harness loop run --feature-id FEAT-004 --dry-run --skip-implement`
 

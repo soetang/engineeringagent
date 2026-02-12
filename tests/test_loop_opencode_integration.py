@@ -1,0 +1,141 @@
+from __future__ import annotations
+
+import json
+import subprocess
+import shutil
+from pathlib import Path
+from typing import Any
+
+import pytest
+import yaml
+
+import agent_harness.loop as loop_module
+from agent_harness.loop import run_loop
+from agent_harness.opencode_permissions import evaluate_permission_probe
+
+
+def _write_yaml(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
+
+
+def _make_project_root(tmp_path: Path) -> tuple[Path, Path]:
+    project_root = tmp_path
+    feature_path = project_root / "docs" / "spec" / "features" / "FEAT-901-opencode-integration.yaml"
+
+    _write_yaml(
+        project_root / "harness" / "gates.yaml",
+        {
+            "profiles": {"loop_fast": []},
+            "gates": {},
+        },
+    )
+    _write_yaml(
+        feature_path,
+        {
+            "id": "FEAT-901",
+            "title": "OpenCode integration test",
+            "status": "backlog",
+            "priority": "high",
+            "objective": "Verify loop can execute OpenCode from implement step.",
+            "acceptance": ["Loop runs OpenCode successfully."],
+            "updated_at": "2026-02-12T00:00:00Z",
+        },
+    )
+    (project_root / "opencode.json").write_text(
+        json.dumps(
+            {
+                "$schema": "https://opencode.ai/config.json",
+                "model": "openai/gpt-5.1-codex-mini",
+                "default_agent": "build",
+                "agent": {
+                    "build": {
+                        "mode": "primary",
+                        "model": "openai/gpt-5.1-codex-mini",
+                    }
+                },
+            },
+            ensure_ascii=True,
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    return project_root, feature_path
+
+
+@pytest.mark.integration
+def test_loop_runs_opencode_integration(tmp_path: Path) -> None:
+    if shutil.which("opencode") is None:
+        pytest.skip("opencode CLI not found in PATH")
+
+    project_root, feature_path = _make_project_root(tmp_path)
+
+    code = run_loop(
+        project_root=project_root,
+        feature_id="FEAT-901",
+        gate_profile="loop_fast",
+        implement_command=None,
+        opencode_prompt="Reply READY.",
+        skip_implement=False,
+        dry_run=False,
+    )
+
+    assert code == 0
+
+    runs_path = project_root / "progress" / "runs.jsonl"
+    run = json.loads(runs_path.read_text(encoding="utf-8").strip())
+    assert run["feature_id"] == "FEAT-901"
+    assert run["result"] == "passed"
+    assert run["failed_gate"] is None
+
+    feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
+    assert feature["status"] in {"in_progress", "done"}
+
+
+def test_evaluate_permission_probe_detects_rejection_signal() -> None:
+    result = evaluate_permission_probe(
+        returncode=0,
+        output="permission requested: bash git status --short (auto-reject)",
+    )
+
+    assert result.ok is False
+    assert "rejection" in result.reason
+
+
+def test_loop_reports_permission_rejection_in_run_telemetry(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project_root, _ = _make_project_root(tmp_path)
+
+    def fake_subprocess_run(command: Any, **_: Any) -> subprocess.CompletedProcess[str]:
+        if command == "git rev-parse --short HEAD":
+            return subprocess.CompletedProcess(command, 0, stdout="abc123\n", stderr="")
+        if isinstance(command, list) and command[:3] == ["opencode", "run", "--agent"]:
+            return subprocess.CompletedProcess(
+                command,
+                1,
+                stdout="",
+                stderr="permission requested for bash command git status --short (auto-reject)",
+            )
+        raise AssertionError(f"unexpected subprocess.run call: {command}")
+
+    monkeypatch.setattr(loop_module.subprocess, "run", fake_subprocess_run)
+
+    code = run_loop(
+        project_root=project_root,
+        feature_id="FEAT-901",
+        gate_profile="loop_fast",
+        implement_command=None,
+        opencode_prompt="Run exactly: git status --short.",
+        skip_implement=False,
+        dry_run=False,
+    )
+
+    assert code == 1
+    runs_path = project_root / "progress" / "runs.jsonl"
+    run = json.loads(runs_path.read_text(encoding="utf-8").strip())
+    assert run["result"] == "failed"
+    assert run["failed_gate"] == "opencode_permission"

@@ -3,7 +3,10 @@ profiles:
     - spec_validate
   loop_fast:
     - spec_validate
+    - opencode_permission_probe
 
 gates:
   spec_validate:
     run: "uv run python scripts/validate_specs.py"
+  opencode_permission_probe:
+    run: "uv run python scripts/permission_probe.py"
