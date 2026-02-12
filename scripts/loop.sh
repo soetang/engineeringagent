@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-python3 scripts/loop.py "$@"
+uv run python scripts/loop.py "$@"
