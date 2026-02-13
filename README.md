@@ -1,66 +1,69 @@
 # Engineering Agent
 
-Human-guided harness for running repeatable coding loops with an agent.
-
-## Quick start: ship one feature
+EngineeringAgent is a human-guided harness for running reliable coding loops with an agent.
 
 Primary flow: `application spec -> run loop`
 
-1. Write an application feature spec in `docs/spec/features/`.
-1. Run validation and gates.
-1. Run the loop on that spec until it is complete.
+## Getting started (first 10 minutes)
 
-```bash
-uv sync
-uvx --from . engineeringagent validate
-uvx --from . engineeringagent gates run --profile loop_fast
-uvx --from . engineeringagent run docs/spec/features/FEAT-001-example.yaml --dry-run
-```
+1. Install dependencies.
 
-When you are ready for a real pass, remove `--dry-run`.
+   ```bash
+   uv sync
+   ```
 
-Default run-loop output is concise: `engineeringagent run ...` prints lifecycle status lines and keeps raw implement/gate output in `progress/run-feature-<FEATURE_ID>.txt`.
-When attached to a TTY, lifecycle lines use light styling to improve scanability; redirected output stays plain and ANSI-free.
-Set `NO_COLOR=1` (or use `TERM=dumb`) to force plain run output even in an interactive terminal.
-Use `--verbose-output` when you want full implement and gate output streamed in the terminal while the same detailed per-feature log is still written under `progress/`.
+1. Create or pick one feature spec in `docs/spec/features/`.
 
-## What this repo is for
+1. Validate the setup and run gates.
 
-- Keep feature work deterministic through one spec file at a time.
-- Let humans steer priorities while agents execute implementation loops.
-- Preserve quality with explicit validation, gate profiles, and commit hooks.
+   ```bash
+   uvx --from . engineeringagent validate
+   uvx --from . engineeringagent gates run --profile loop_fast
+   ```
 
-## How to work with agents and specs
+1. Do a safe dry run first.
 
-- Use specs to define what to build and how progress is verified.
-- Use agents to implement harness and feature changes from those specs.
-- Keep user-facing onboarding in `README.md`; keep agent execution rules in `AGENTS.md` and `docs/references/*-llms.md`.
+   ```bash
+   uvx --from . engineeringagent run docs/spec/features/FEAT-001-example.yaml --dry-run
+   ```
 
-## Harness engineering principles
+1. Run for real by removing `--dry-run`.
 
-- Run short, repeatable Ralph Loop cycles so each pass is easy to verify and recover.
-- Keep progressive disclosure explicit: README for first-run orientation, deeper docs for details.
-- Use structured YAML specs and automatic validation to keep execution deterministic.
-- Preserve architecture and design quality with fitness functions and gate profiles.
-- Treat agent reviewers as a planned complement for judgment-heavy checks after deterministic automation.
-- Read the deeper guide: `docs/principles/harness-engineering-principles.md`.
+## What this gives you
+
+- Deterministic progress: one spec file at a time.
+- Human control: you set priorities and scope; agents execute loops.
+- Built-in quality checks: validation, gates, and commit hooks.
+
+## Run output tips
+
+- Default output is concise; full implement/gate output stays in `progress/run-feature-<FEATURE_ID>.txt`.
+- Use `--verbose-output` if you want full implement/gate output in the terminal.
+- TTY terminals show light styling for scanability; redirected output stays ANSI-free.
+- Set `NO_COLOR=1` (or `TERM=dumb`) to force plain output.
+
+## Human docs vs agent docs
+
+- `README.md`: first-run, human onboarding.
+- [Harness Engineering Principles](docs/principles/harness-engineering-principles.md): deeper human context.
+- `AGENTS.md` and `docs/references/*-llms.md`: agent execution rules and deterministic procedures.
 
 ## Core files to know
 
-- `docs/spec/features/` active feature specs (`backlog`, `in_progress`, `blocked`)
-- `docs/spec/features_done/` archived completed specs (`done`)
-- `docs/spec/schemas/feature.schema.json` feature schema contract
-- `harness/gates.yaml` gate and profile definitions
-- `progress/runs.jsonl` append-only loop execution history
+- `docs/spec/features/`: active feature specs (`backlog`, `in_progress`, `blocked`)
+- `docs/spec/features_done/`: archived completed specs (`done`)
+- `docs/spec/schemas/feature.schema.json`: feature schema contract
+- `harness/gates.yaml`: gate and profile definitions
+- `progress/runs.jsonl`: append-only loop execution history
 
 ## Go deeper
 
-- CLI workflow details: `docs/references/uv-llms.md`
-- Agent execution map: `AGENTS.md`
-- Docs architecture for agents: `docs/references/docs-architecture-llms.md`
+- [CLI workflow details](docs/references/uv-llms.md)
+- [Agent execution map](AGENTS.md)
+- [Docs architecture for agents](docs/references/docs-architecture-llms.md)
 
 ## Curated external context
 
-- Harness engineering overview: https://openai.com/index/harness-engineering/
-- Agent loop patterns: https://www.anthropic.com/engineering/building-effective-agents
-- Specification writing motivation: https://martinfowler.com/articles/feature-toggles.html
+- [Harness engineering overview (OpenAI)](https://openai.com/index/harness-engineering/)
+- [Ralph Loop background](https://ghuntley.com/loop/)
+- [Agent loop patterns (Anthropic)](https://www.anthropic.com/engineering/building-effective-agents)
