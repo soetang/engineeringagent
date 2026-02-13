@@ -8,7 +8,7 @@ import pytest
 import yaml
 
 from engineeringagent.specs import feature_schema_from_model
-from engineeringagent.validator import validate
+from engineeringagent.validator import _iter_agents_docs_map_references, validate
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -562,3 +562,107 @@ def test_validate_preserves_feature_status_invariant_rules(tmp_path: Path) -> No
     assert any(
         "feature with all subtasks done must be done" in message for message in messages
     )
+
+
+def test_agents_docs_map_extraction_scoped_to_docs_layout_section(
+    tmp_path: Path,
+) -> None:
+    agents_path = tmp_path / "AGENTS.md"
+    agents_path.write_text(
+        "\n".join(
+            [
+                "# AGENTS.md",
+                "",
+                "- `docs/ignored-before-map.md`",
+                "",
+                "## 5) Documentation Layout Reference",
+                "- `docs/kept-from-map.md`",
+                "",
+                "## 6) First-Window Boot Sequence",
+                "- `docs/ignored-after-map.md`",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    references = _iter_agents_docs_map_references(tmp_path)
+
+    assert references == [(6, "docs/kept-from-map.md")]
+
+
+def test_agents_docs_map_extraction_is_deterministic(tmp_path: Path) -> None:
+    agents_path = tmp_path / "AGENTS.md"
+    agents_path.write_text(
+        "\n".join(
+            [
+                "# AGENTS.md",
+                "",
+                "## 5) Documentation Layout Reference",
+                "- `docs/z-last.md` and `docs/a-first.md`",
+                "- `docs/m-middle.md`",
+                "",
+                "## 6) First-Window Boot Sequence",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    first = _iter_agents_docs_map_references(tmp_path)
+    second = _iter_agents_docs_map_references(tmp_path)
+
+    assert first == [
+        (4, "docs/a-first.md"),
+        (4, "docs/z-last.md"),
+        (5, "docs/m-middle.md"),
+    ]
+    assert second == first
+
+
+def test_validate_reports_missing_agents_docs_map_path(tmp_path: Path) -> None:
+    agents_path = tmp_path / "AGENTS.md"
+    agents_path.write_text(
+        "\n".join(
+            [
+                "# AGENTS.md",
+                "",
+                "## 5) Documentation Layout Reference",
+                "- `docs/missing.md`",
+                "",
+                "## 6) First-Window Boot Sequence",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    messages = validate(project_root=tmp_path)
+
+    assert messages == ["AGENTS.md:4: docs-map path does not exist: docs/missing.md"]
+
+
+def test_validate_reports_empty_agents_docs_map_glob(tmp_path: Path) -> None:
+    docs_dir = tmp_path / "docs"
+    docs_dir.mkdir(parents=True, exist_ok=True)
+    (docs_dir / "exists.md").write_text("ok\n", encoding="utf-8")
+
+    agents_path = tmp_path / "AGENTS.md"
+    agents_path.write_text(
+        "\n".join(
+            [
+                "# AGENTS.md",
+                "",
+                "## 5) Documentation Layout Reference",
+                "- `docs/*.txt`",
+                "",
+                "## 6) First-Window Boot Sequence",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    messages = validate(project_root=tmp_path)
+
+    assert messages == ["AGENTS.md:4: docs-map glob matches no paths: docs/*.txt"]

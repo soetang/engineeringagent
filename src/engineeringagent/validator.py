@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from .specs import (
@@ -16,6 +17,10 @@ from .specs import (
 
 DONE_TRANSITION_ALLOWLIST = ".allow-done-active.txt"
 LEGACY_DONE_OPTIONAL_FIELDS = {"type", "expected_commit_subject"}
+AGENTS_DOCS_MAP_HEADER = "## 5) Documentation Layout Reference"
+AGENTS_PATH = Path("AGENTS.md")
+
+_BACKTICK_TOKEN_PATTERN = re.compile(r"`([^`]+)`")
 
 
 def _load_done_transition_allowlist(features_dir: Path) -> set[str]:
@@ -132,7 +137,64 @@ def validate(project_root: Path, schema_only: bool = False) -> list[str]:
             for issue in contract_issues:
                 messages.append(f"{issue.path}: {issue.message}")
 
+    for line_number, reference in _iter_agents_docs_map_references(project_root):
+        if _is_glob_reference(reference):
+            if any(project_root.glob(reference)):
+                continue
+            messages.append(
+                f"AGENTS.md:{line_number}: docs-map glob matches no paths: {reference}"
+            )
+            continue
+
+        if not (project_root / reference).exists():
+            messages.append(
+                f"AGENTS.md:{line_number}: docs-map path does not exist: {reference}"
+            )
+
     return messages
+
+
+def _iter_agents_docs_map_references(project_root: Path) -> list[tuple[int, str]]:
+    """Extract documentation map references from AGENTS.md only.
+
+    Args:
+        project_root: Repository root containing AGENTS.md.
+
+    Returns:
+        Sorted list of (line number, docs reference) tuples from the documentation map
+        section only.
+    """
+    agents_path = project_root / AGENTS_PATH
+    if not agents_path.exists():
+        return []
+
+    lines = agents_path.read_text(encoding="utf-8").splitlines()
+    section_start = _find_section_start(lines, AGENTS_DOCS_MAP_HEADER)
+    if section_start is None:
+        return []
+
+    references: list[tuple[int, str]] = []
+    line_number = section_start + 2
+    for line in lines[section_start + 1 :]:
+        if line.startswith("## "):
+            break
+        for token in _BACKTICK_TOKEN_PATTERN.findall(line):
+            if token.startswith("docs/"):
+                references.append((line_number, token))
+        line_number += 1
+
+    return sorted(references, key=lambda entry: (entry[0], entry[1]))
+
+
+def _find_section_start(lines: list[str], header: str) -> int | None:
+    for index, line in enumerate(lines):
+        if line.strip() == header:
+            return index
+    return None
+
+
+def _is_glob_reference(reference: str) -> bool:
+    return any(char in reference for char in "*?[]")
 
 
 def _filter_legacy_done_contract_issues(

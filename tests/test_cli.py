@@ -57,3 +57,28 @@ def test_fitness_subcommands(tmp_path: Path, capsys: Any) -> None:
         "architecture.dep-directionality",
         "architecture.loop-subprocess-boundary",
     ]
+
+
+def test_validate_fails_on_agents_docs_map_errors(tmp_path: Path, capsys: Any) -> None:
+    (tmp_path / "AGENTS.md").write_text(
+        "\n".join(
+            [
+                "# AGENTS.md",
+                "",
+                "## 5) Documentation Layout Reference",
+                "- `docs/missing.md`",
+                "",
+                "## 6) First-Window Boot Sequence",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    parser = build_parser()
+    args = parser.parse_args(["--project-root", str(tmp_path), "validate"])
+    code = args.func(args)
+    output = capsys.readouterr().out
+
+    assert code == 1
+    assert "AGENTS.md:4: docs-map path does not exist: docs/missing.md" in output

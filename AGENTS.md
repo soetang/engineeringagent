@@ -42,26 +42,18 @@ Load only the artifacts relevant to the current task.
 
 ## 5) Documentation Layout Reference
 
-- `docs/design-docs/index.md`
-- `docs/design-docs/core-beliefs.md`
-- `docs/exec-plans/active/`
-- `docs/exec-plans/completed/`
-- `docs/exec-plans/tech-debt-tracker.md`
-- `docs/generated/db-schema.md`
-- `docs/product-specs/index.md`
-- `docs/product-specs/new-user-onboarding.md`
-- `docs/references/design-system-reference-llms.md`
+- `docs/fitness-functions/`
+- `docs/fitness-functions/README.md`
+- `docs/fitness-functions/architecture.md`
+- `docs/fitness-functions/rules.md`
 - `docs/references/docs-architecture-llms.md`
-- `docs/references/nixpacks-llms.md`
 - `docs/references/python-uv-ruff-llms.md`
 - `docs/references/spec-writing-llms.md`
 - `docs/references/uv-llms.md`
-- `docs/DESIGN.md`
-- `docs/FRONTEND.md`
-- `docs/PRODUCT_SENSE.md`
-- `docs/QUALITY_SCORE.md`
-- `docs/RELIABILITY.md`
-- `docs/SECURITY.md`
+- `docs/spec/features/*.yaml`
+- `docs/spec/features_done/*.yaml`
+- `docs/spec/potential_features.yaml`
+- `docs/spec/schemas/feature.schema.json`
 
 ## 6) First-Window Boot Sequence
 

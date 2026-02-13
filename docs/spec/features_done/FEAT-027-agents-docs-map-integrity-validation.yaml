@@ -2,15 +2,15 @@ id: FEAT-027
 title: Add AGENTS docs-map integrity validation and align documentation map
 type: feature
 expected_commit_subject: 'feat: add FEAT-027 AGENTS docs-map integrity validation'
-status: backlog
+status: done
 priority: high
 objective: 'Ensure AGENTS documentation map references are reliable by adding strict
   validation for docs-map entries and updating AGENTS.md to match current repository
   reality.
 
   '
-context: 'AGENTS.md currently includes several documentation-path references that do
-  not exist. This causes navigation errors for humans and agents and weakens trust
+context: 'AGENTS.md currently includes several documentation-path references that
+  do not exist. This causes navigation errors for humans and agents and weakens trust
   in repository guidance. The validator should enforce only the AGENTS docs-map section
   (not all path-like tokens in AGENTS), fail on missing literal paths, and fail on
   glob patterns that resolve to zero matches.
@@ -47,7 +47,7 @@ acceptance:
 subtasks:
 - id: ST-001
   title: Define AGENTS docs-map extraction and validation rules
-  status: backlog
+  status: done
   order: 1
   context: 'Implement parser logic that reads AGENTS docs-map section only and extracts
     references for literal/glob validation with deterministic ordering.
@@ -58,7 +58,7 @@ subtasks:
   - uv run pytest -q tests/test_validator.py::test_agents_docs_map_extraction_is_deterministic
 - id: ST-002
   title: Integrate docs-map integrity checks into validate command flow
-  status: backlog
+  status: done
   order: 2
   context: 'Add missing-path and empty-glob checks to validator output and fail engineeringagent
     validate with actionable diagnostics.
@@ -70,7 +70,7 @@ subtasks:
   - uv run pytest -q tests/test_cli.py::test_validate_fails_on_agents_docs_map_errors
 - id: ST-003
   title: Align AGENTS documentation map to existing repository structure
-  status: backlog
+  status: done
   order: 3
   context: 'Update AGENTS docs-map references so all listed files/directories/globs
     exist and reflect current repository organization.
@@ -80,14 +80,14 @@ subtasks:
   - uvx --from . engineeringagent validate
 - id: ST-004
   title: Run targeted regressions and loop-fast gate verification
-  status: backlog
+  status: done
   order: 4
-  context: 'Confirm validator behavior and default gate integration remain stable after
-    docs-map enforcement.
+  context: 'Confirm validator behavior and default gate integration remain stable
+    after docs-map enforcement.
 
     '
   verification:
   - uv run pytest -q tests/test_validator.py
   - uvx --from . engineeringagent validate
   - uvx --from . engineeringagent gates run --profile loop_fast
-updated_at: '2026-02-13T00:00:00Z'
+updated_at: '2026-02-13T10:38:43Z'
