@@ -125,3 +125,24 @@ def test_loop_subprocess_boundary_rule_allows_approved_command_boundary_modules(
 
     assert result["status"] == "pass"
     assert result["violations"] == []
+
+
+def test_loop_subprocess_boundary_rule_allows_git_client_module(tmp_path: Path) -> None:
+    """Pass when subprocess calls stay inside the git client boundary."""
+    _write_module(
+        tmp_path,
+        "src/engineeringagent/git/client.py",
+        "\n".join(
+            [
+                "import subprocess",
+                "",
+                "def run_git() -> None:",
+                "    subprocess.run(['git', 'status'], check=False)",
+            ]
+        ),
+    )
+
+    result = evaluate_loop_subprocess_boundary(tmp_path)
+
+    assert result["status"] == "pass"
+    assert result["violations"] == []

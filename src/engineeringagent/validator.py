@@ -18,7 +18,7 @@ from .specs import (
 
 DONE_TRANSITION_ALLOWLIST = ".allow-done-active.txt"
 LEGACY_DONE_OPTIONAL_FIELDS = {"type", "expected_commit_subject"}
-AGENTS_DOCS_MAP_HEADER = "## 5) Documentation Layout Reference"
+AGENTS_DOCS_MAP_SECTION_TITLE = "Documentation Layout Reference"
 AGENTS_PATH = Path("AGENTS.md")
 
 _BACKTICK_TOKEN_PATTERN = re.compile(r"`([^`]+)`")
@@ -138,7 +138,14 @@ def validate(project_root: Path, schema_only: bool = False) -> list[str]:
             for issue in contract_issues:
                 messages.append(f"{issue.path}: {issue.message}")
 
-    for line_number, reference in _iter_agents_docs_map_references(project_root):
+    docs_map_section_line = _agents_docs_map_section_line(project_root)
+    docs_map_references = _iter_agents_docs_map_references(project_root)
+    if docs_map_section_line is not None and not docs_map_references:
+        messages.append(
+            f"AGENTS.md:{docs_map_section_line}: docs-map section is present but contains no docs/* references"
+        )
+
+    for line_number, reference in docs_map_references:
         if _is_glob_reference(reference):
             if any(project_root.glob(reference)):
                 continue
@@ -175,28 +182,58 @@ def _iter_agents_docs_map_references(project_root: Path) -> list[tuple[int, str]
         return []
 
     lines = agents_path.read_text(encoding="utf-8").splitlines()
-    section_start = _find_section_start(lines, AGENTS_DOCS_MAP_HEADER)
+    section_start = _find_agents_docs_map_section_start(lines)
     if section_start is None:
         return []
 
     references: list[tuple[int, str]] = []
-    line_number = section_start + 2
-    for line in lines[section_start + 1 :]:
+    for line_number, line in enumerate(
+        lines[section_start + 1 :], start=section_start + 2
+    ):
         if line.startswith("## "):
             break
-        for token in _BACKTICK_TOKEN_PATTERN.findall(line):
-            if token.startswith("docs/"):
-                references.append((line_number, token))
-        line_number += 1
+        references.extend((line_number, token) for token in _iter_docs_references(line))
 
     return sorted(references, key=lambda entry: (entry[0], entry[1]))
 
 
-def _find_section_start(lines: list[str], header: str) -> int | None:
+def _agents_docs_map_section_line(project_root: Path) -> int | None:
+    agents_path = project_root / AGENTS_PATH
+    if not agents_path.exists():
+        return None
+
+    lines = agents_path.read_text(encoding="utf-8").splitlines()
+    section_start = _find_agents_docs_map_section_start(lines)
+    if section_start is None:
+        return None
+    return section_start + 1
+
+
+def _find_agents_docs_map_section_start(lines: list[str]) -> int | None:
     for index, line in enumerate(lines):
-        if line.strip() == header:
+        if _is_agents_docs_map_header(line):
             return index
     return None
+
+
+def _is_agents_docs_map_header(line: str) -> bool:
+    stripped = line.strip()
+    if not stripped.startswith("## "):
+        return False
+
+    heading = stripped[3:].strip()
+    numbered_prefix, separator, remainder = heading.partition(")")
+    if separator and numbered_prefix.isdigit():
+        heading = remainder.strip()
+    return heading == AGENTS_DOCS_MAP_SECTION_TITLE
+
+
+def _iter_docs_references(line: str) -> list[str]:
+    return [
+        token
+        for token in _BACKTICK_TOKEN_PATTERN.findall(line)
+        if token.startswith("docs/")
+    ]
 
 
 def _is_glob_reference(reference: str) -> bool:

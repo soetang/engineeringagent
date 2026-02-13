@@ -22,6 +22,11 @@ from .loop import run_loop
 from .validator import validate
 
 
+_MISSING_REMEDIATION_TEMPLATE = (
+    "No remediation available: rule metadata missing from active catalog for {rule_id}."
+)
+
+
 def _resolve_init_docs_dir(
     project_root: Path,
     docs_mode: str | None,
@@ -263,7 +268,10 @@ def cmd_fitness_run(args: argparse.Namespace) -> int:
         {
             "rule_id": result.rule_id,
             "status": result.status.value,
-            "remediation": remediation_by_rule_id[result.rule_id],
+            "remediation": _resolve_failed_rule_remediation(
+                rule_id=result.rule_id,
+                remediation_by_rule_id=remediation_by_rule_id,
+            ),
         }
         for result in summary.results
         if result.status in {RuleStatus.FAIL, RuleStatus.ERROR}
@@ -285,6 +293,18 @@ def cmd_fitness_run(args: argparse.Namespace) -> int:
     if summary.has_failures:
         return 1
     return 0
+
+
+def _resolve_failed_rule_remediation(
+    *,
+    rule_id: str,
+    remediation_by_rule_id: dict[str, str],
+) -> str:
+    """Return deterministic remediation text for failed-rule JSON output."""
+    return remediation_by_rule_id.get(
+        rule_id,
+        _MISSING_REMEDIATION_TEMPLATE.format(rule_id=rule_id),
+    )
 
 
 def cmd_fitness_catalog(args: argparse.Namespace) -> int:

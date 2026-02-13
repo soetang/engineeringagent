@@ -107,6 +107,26 @@ class IterationOutcome:
     log_path: str | None
 
 
+@dataclass(frozen=True)
+class InitialFeatureLoadOutcome:
+    feature: dict[str, Any] | None
+    loaded_from_archive: bool
+    result: str
+    failed_gate: str | None
+    hook_feedback: str | None
+
+
+@dataclass(frozen=True)
+class PostImplementFeatureOutcome:
+    feature: dict[str, Any] | None
+    loaded_from_archive: bool
+    archived_in_iteration: bool
+    archived_path: Path | None
+    result: str
+    failed_gate: str | None
+    hook_feedback: str | None
+
+
 def now_iso() -> str:
     """Return current UTC timestamp in compact ISO-8601 format.
 
@@ -281,6 +301,178 @@ def _load_selected_feature_with_archive_fallback(
             f"using archived counterpart at {archive_path}."
         )
         return (archived_feature, True, None)
+
+
+def _archived_feature_mismatch_feedback(
+    feature: dict[str, Any] | None,
+    feature_path: Path,
+    *,
+    missing_message: str,
+    done_message: str,
+) -> str:
+    if feature is None:
+        return f"{missing_message} path={feature_path}"
+    if feature.get("status") != "done":
+        return (
+            "selected feature was archived but archived status is not done; "
+            "restore the active spec path and rerun. "
+            f"path={feature_path}"
+        )
+    return f"{done_message} path={feature_path}"
+
+
+def _evaluate_initial_feature_load(
+    project_root: Path,
+    feature_path: Path,
+) -> InitialFeatureLoadOutcome:
+    feature, loaded_from_archive, load_error = (
+        _load_selected_feature_with_archive_fallback(project_root, feature_path)
+    )
+    if load_error:
+        return InitialFeatureLoadOutcome(
+            feature=feature,
+            loaded_from_archive=loaded_from_archive,
+            result="failed",
+            failed_gate="feature_missing",
+            hook_feedback=load_error,
+        )
+    if loaded_from_archive:
+        return InitialFeatureLoadOutcome(
+            feature=feature,
+            loaded_from_archive=loaded_from_archive,
+            result="failed",
+            failed_gate="feature_missing",
+            hook_feedback=_archived_feature_mismatch_feedback(
+                feature,
+                feature_path,
+                missing_message=(
+                    "selected feature path is missing and only archived fallback was "
+                    "found without a same-iteration completion commit; restore the "
+                    "active spec path and rerun."
+                ),
+                done_message=(
+                    "selected feature path is already archived with status=done, but "
+                    "this iteration did not create a completion commit for that "
+                    "feature; restore the active feature spec or commit the intended "
+                    "completion changes, then rerun."
+                ),
+            ),
+        )
+    return InitialFeatureLoadOutcome(
+        feature=feature,
+        loaded_from_archive=loaded_from_archive,
+        result="passed",
+        failed_gate=None,
+        hook_feedback=None,
+    )
+
+
+def _refresh_feature_after_implement(
+    project_root: Path,
+    feature_path: Path,
+    *,
+    selected_started_active: bool,
+) -> PostImplementFeatureOutcome:
+    post_feature, loaded_post_from_archive, post_load_error = (
+        _load_selected_feature_with_archive_fallback(project_root, feature_path)
+    )
+    if post_load_error:
+        return PostImplementFeatureOutcome(
+            feature=post_feature,
+            loaded_from_archive=loaded_post_from_archive,
+            archived_in_iteration=False,
+            archived_path=None,
+            result="failed",
+            failed_gate="feature_missing",
+            hook_feedback=post_load_error,
+        )
+
+    if loaded_post_from_archive:
+        if selected_started_active and post_feature is not None:
+            if post_feature.get("status") == "done":
+                try:
+                    archived_path = _resolve_archive_path(project_root, feature_path)
+                except ValueError:
+                    return PostImplementFeatureOutcome(
+                        feature=post_feature,
+                        loaded_from_archive=loaded_post_from_archive,
+                        archived_in_iteration=False,
+                        archived_path=None,
+                        result="failed",
+                        failed_gate="feature_archive",
+                        hook_feedback=(
+                            "selected feature path moved to archive during loop "
+                            "iteration but archive path could not be resolved; "
+                            "restore the active spec path and rerun. "
+                            f"path={feature_path}"
+                        ),
+                    )
+                return PostImplementFeatureOutcome(
+                    feature=post_feature,
+                    loaded_from_archive=loaded_post_from_archive,
+                    archived_in_iteration=True,
+                    archived_path=archived_path,
+                    result="passed",
+                    failed_gate=None,
+                    hook_feedback=None,
+                )
+            return PostImplementFeatureOutcome(
+                feature=post_feature,
+                loaded_from_archive=loaded_post_from_archive,
+                archived_in_iteration=False,
+                archived_path=None,
+                result="failed",
+                failed_gate="feature_missing",
+                hook_feedback=(
+                    "selected feature was archived but archived status is not done; "
+                    "restore the active spec path and rerun. "
+                    f"path={feature_path}"
+                ),
+            )
+
+        return PostImplementFeatureOutcome(
+            feature=post_feature,
+            loaded_from_archive=loaded_post_from_archive,
+            archived_in_iteration=False,
+            archived_path=None,
+            result="failed",
+            failed_gate="feature_missing",
+            hook_feedback=_archived_feature_mismatch_feedback(
+                post_feature,
+                feature_path,
+                missing_message=(
+                    "selected feature path disappeared during loop iteration and only "
+                    "archived fallback was found without a same-iteration completion "
+                    "commit; restore the active spec path and rerun."
+                ),
+                done_message=(
+                    "selected feature path was moved to docs/spec/features_done with "
+                    "status=done before completion commit in this iteration; restore "
+                    "the active feature spec or commit the intended completion "
+                    "changes, then rerun."
+                ),
+            ),
+        )
+
+    return PostImplementFeatureOutcome(
+        feature=post_feature,
+        loaded_from_archive=loaded_post_from_archive,
+        archived_in_iteration=False,
+        archived_path=None,
+        result="passed",
+        failed_gate=None,
+        hook_feedback=None,
+    )
+
+
+def _touch_active_feature_for_iteration(
+    feature: dict[str, Any],
+    feature_path: Path,
+) -> None:
+    if feature.get("status") == "backlog":
+        set_status(feature, "in_progress")
+    feature["updated_at"] = now_iso()
+    dump_yaml(feature_path, feature)
 
 
 def _deterministic_feature_choice(
@@ -654,46 +846,18 @@ def _run_feature_iteration(
     archived_in_iteration = False
     selected_started_active = False
 
-    feature, loaded_from_archive, load_error = (
-        _load_selected_feature_with_archive_fallback(project_root, feature_path)
-    )
+    initial_load = _evaluate_initial_feature_load(project_root, feature_path)
+    feature = initial_load.feature
+    loaded_from_archive = initial_load.loaded_from_archive
     fid = str(feature.get("id", "")) if feature else ""
-
-    if load_error:
-        result = "failed"
-        failed_gate = "feature_missing"
-        next_hook_feedback = load_error
-    elif loaded_from_archive:
-        result = "failed"
-        failed_gate = "feature_missing"
-        if feature is None:
-            next_hook_feedback = (
-                "selected feature path is missing and only archived fallback was found "
-                "without a same-iteration completion commit; restore the active spec "
-                "path and rerun. "
-                f"path={feature_path}"
-            )
-        elif feature.get("status") != "done":
-            next_hook_feedback = (
-                "selected feature was archived but archived status is not done; "
-                "restore the active spec path and rerun. "
-                f"path={feature_path}"
-            )
-        else:
-            next_hook_feedback = (
-                "selected feature path is already archived with status=done, but this "
-                "iteration did not create a completion commit for that feature; restore "
-                "the active feature spec or commit the intended completion changes, then "
-                "rerun. "
-                f"path={feature_path}"
-            )
+    if initial_load.result == "failed":
+        result = initial_load.result
+        failed_gate = initial_load.failed_gate
+        next_hook_feedback = initial_load.hook_feedback
 
     if result == "passed" and feature is not None and not loaded_from_archive:
         selected_started_active = True
-        if feature.get("status") == "backlog":
-            set_status(feature, "in_progress")
-        feature["updated_at"] = now_iso()
-        dump_yaml(feature_path, feature)
+        _touch_active_feature_for_iteration(feature, feature_path)
 
     if result == "passed" and feature is not None and not loaded_from_archive:
         implement_status = "skipped" if skip_implement else "passed"
@@ -715,67 +879,21 @@ def _run_feature_iteration(
     post_feature = feature
     loaded_post_from_archive = loaded_from_archive
     if result == "passed" and feature is not None and not loaded_from_archive:
-        post_feature, loaded_post_from_archive, post_load_error = (
-            _load_selected_feature_with_archive_fallback(project_root, feature_path)
+        post_refresh = _refresh_feature_after_implement(
+            project_root,
+            feature_path,
+            selected_started_active=selected_started_active,
         )
-        if post_load_error:
-            result = "failed"
-            failed_gate = "feature_missing"
-            next_hook_feedback = post_load_error
-        elif loaded_post_from_archive:
-            if selected_started_active and post_feature is not None:
-                if post_feature.get("status") == "done":
-                    try:
-                        archived_path = _resolve_archive_path(
-                            project_root, feature_path
-                        )
-                    except ValueError:
-                        result = "failed"
-                        failed_gate = "feature_archive"
-                        next_hook_feedback = (
-                            "selected feature path moved to archive during loop iteration "
-                            "but archive path could not be resolved; restore the active "
-                            f"spec path and rerun. path={feature_path}"
-                        )
-                    else:
-                        archived_in_iteration = True
-                else:
-                    result = "failed"
-                    failed_gate = "feature_missing"
-                    next_hook_feedback = (
-                        "selected feature was archived but archived status is not done; "
-                        "restore the active spec path and rerun. "
-                        f"path={feature_path}"
-                    )
-            else:
-                result = "failed"
-                failed_gate = "feature_missing"
-                if post_feature is None:
-                    next_hook_feedback = (
-                        "selected feature path disappeared during loop iteration and only "
-                        "archived fallback was found without a same-iteration completion "
-                        "commit; restore the active spec path and rerun. "
-                        f"path={feature_path}"
-                    )
-                elif post_feature.get("status") != "done":
-                    next_hook_feedback = (
-                        "selected feature was archived but archived status is not done; "
-                        "restore the active spec path and rerun. "
-                        f"path={feature_path}"
-                    )
-                else:
-                    next_hook_feedback = (
-                        "selected feature path was moved to docs/spec/features_done with "
-                        "status=done before completion commit in this iteration; restore the "
-                        "active feature spec or commit the intended completion changes, then "
-                        "rerun. "
-                        f"path={feature_path}"
-                    )
-        elif post_feature is not None:
-            if post_feature.get("status") == "backlog":
-                set_status(post_feature, "in_progress")
-            post_feature["updated_at"] = now_iso()
-            dump_yaml(feature_path, post_feature)
+        post_feature = post_refresh.feature
+        loaded_post_from_archive = post_refresh.loaded_from_archive
+        archived_in_iteration = post_refresh.archived_in_iteration
+        archived_path = post_refresh.archived_path
+        if post_refresh.result == "failed":
+            result = post_refresh.result
+            failed_gate = post_refresh.failed_gate
+            next_hook_feedback = post_refresh.hook_feedback
+        elif post_feature is not None and not loaded_post_from_archive:
+            _touch_active_feature_for_iteration(post_feature, feature_path)
 
     if (
         result == "passed"

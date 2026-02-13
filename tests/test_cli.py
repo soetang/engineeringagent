@@ -6,8 +6,10 @@ from typing import Any
 
 import yaml
 
+from engineeringagent import cli as cli_module
 from engineeringagent.cli import build_parser
-from engineeringagent.fitness.contracts import CONTRACT_VERSION
+from engineeringagent.fitness import FitnessRunSummary
+from engineeringagent.fitness.contracts import CONTRACT_VERSION, FitnessRuleResult
 
 
 def _write_manifest(tmp_path: Path, rules: list[dict[str, object]]) -> None:
@@ -181,6 +183,58 @@ def test_fitness_run_executes_shell_command_rule(tmp_path: Path, capsys: Any) ->
     assert code == 0
     assert payload["failed"] is False
     assert [result["rule_id"] for result in payload["results"]] == ["custom.shell-pass"]
+
+
+def test_fitness_run_json_uses_fallback_when_remediation_metadata_missing(
+    tmp_path: Path,
+    capsys: Any,
+    monkeypatch: Any,
+) -> None:
+    parser = build_parser()
+
+    orphan_result = FitnessRuleResult.model_validate(
+        {
+            "contract_version": "1.0",
+            "rule_id": "custom.orphan-failure",
+            "status": "fail",
+            "severity": "warning",
+            "summary": "orphan failure",
+            "violations": ["missing metadata"],
+        }
+    )
+
+    monkeypatch.setattr(cli_module, "build_rule_catalog", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(
+        cli_module,
+        "run_rule_catalog",
+        lambda *_args, **_kwargs: FitnessRunSummary(results=(orphan_result,)),
+    )
+
+    args = parser.parse_args(
+        [
+            "--project-root",
+            str(tmp_path),
+            "fitness",
+            "run",
+            "--format",
+            "json",
+        ]
+    )
+    code = args.func(args)
+    payload = json.loads(capsys.readouterr().out)
+
+    assert code == 1
+    assert payload["failed"] is True
+    assert payload["failed_rules"] == [
+        {
+            "rule_id": "custom.orphan-failure",
+            "status": "fail",
+            "remediation": (
+                "No remediation available: rule metadata missing from active "
+                "catalog for custom.orphan-failure."
+            ),
+        }
+    ]
 
 
 def test_fitness_list_shows_declared_shell_rule_only(

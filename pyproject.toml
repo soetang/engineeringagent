@@ -37,7 +37,17 @@ dev = [
 extend-select = [
     "D103", # undocumented public function
     "D417", # docstring arguments are not fully documented
+    "C901", # function complexity threshold
+    "PLR0912", # branch count threshold
+    "PLR0915", # statement count threshold
 ]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 30
+
+[tool.ruff.lint.pylint]
+max-branches = 32
+max-statements = 120
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

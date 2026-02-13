@@ -29,7 +29,7 @@ Load only the artifacts relevant to the current task.
 1. Relevant docs under `docs/` (`docs/references/spec-writing-llms.md` is required before authoring specs; `docs/references/docs-architecture-llms.md` is required before restructuring docs)
 1. `README.md` (workflow + CLI usage)
 1. `harness/gates.yaml` (active gate profiles/commands)
-1. `docs/spec/features/*.yaml` (active feature + subtasks)
+1. `docs/spec/features/` (active feature specs + subtasks, if any)
 1. `docs/spec/schemas/feature.schema.json` (spec contract)
 1. `src/engineeringagent/` (implementation)
 
@@ -50,7 +50,7 @@ Load only the artifacts relevant to the current task.
 - `docs/references/python-uv-ruff-llms.md`
 - `docs/references/spec-writing-llms.md`
 - `docs/references/uv-llms.md`
-- `docs/spec/features/*.yaml`
+- `docs/spec/features/`
 - `docs/spec/features_done/*.yaml`
 - `docs/spec/potential_features.yaml`
 - `docs/spec/schemas/feature.schema.json`

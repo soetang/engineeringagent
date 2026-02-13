@@ -592,6 +592,28 @@ def test_agents_docs_map_extraction_scoped_to_docs_layout_section(
     assert references == [(6, "docs/kept-from-map.md")]
 
 
+def test_agents_docs_map_extraction_allows_section_renumbering(tmp_path: Path) -> None:
+    agents_path = tmp_path / "AGENTS.md"
+    agents_path.write_text(
+        "\n".join(
+            [
+                "# AGENTS.md",
+                "",
+                "## 9) Documentation Layout Reference",
+                "- `docs/kept-after-renumbering.md`",
+                "",
+                "## 10) First-Window Boot Sequence",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    references = _iter_agents_docs_map_references(tmp_path)
+
+    assert references == [(4, "docs/kept-after-renumbering.md")]
+
+
 def test_agents_docs_map_extraction_is_deterministic(tmp_path: Path) -> None:
     agents_path = tmp_path / "AGENTS.md"
     agents_path.write_text(
@@ -667,6 +689,32 @@ def test_validate_reports_empty_agents_docs_map_glob(tmp_path: Path) -> None:
     messages = validate(project_root=tmp_path)
 
     assert messages == ["AGENTS.md:4: docs-map glob matches no paths: docs/*.txt"]
+
+
+def test_validate_reports_agents_docs_map_section_with_no_references(
+    tmp_path: Path,
+) -> None:
+    agents_path = tmp_path / "AGENTS.md"
+    agents_path.write_text(
+        "\n".join(
+            [
+                "# AGENTS.md",
+                "",
+                "## 5) Documentation Layout Reference",
+                "- Keep this list updated.",
+                "",
+                "## 6) First-Window Boot Sequence",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    messages = validate(project_root=tmp_path)
+
+    assert messages == [
+        "AGENTS.md:3: docs-map section is present but contains no docs/* references"
+    ]
 
 
 def test_validate_reports_unknown_builtin_fitness_reference(tmp_path: Path) -> None:
