@@ -1,9 +1,16 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
+from .fitness import (
+    build_rule_catalog,
+    render_rule_catalog_markdown,
+    run_rule_catalog,
+    write_rule_catalog_markdown,
+)
 from .gates import list_profiles, load_gate_config, run_profile
 from .init_scaffold import (
     apply_baseline_scaffold,
@@ -200,6 +207,112 @@ def cmd_run(args: argparse.Namespace) -> int:
     )
 
 
+def cmd_fitness_list(args: argparse.Namespace) -> int:
+    """List active fitness rules from the merged registry."""
+    project_root = Path(args.project_root).resolve()
+    manifest_path = Path(args.manifest_path) if args.manifest_path else None
+    catalog = build_rule_catalog(project_root, manifest_path=manifest_path)
+
+    if args.format == "json":
+        payload = [
+            {
+                "rule_id": definition.metadata.rule_id,
+                "name": definition.metadata.name,
+                "summary": definition.metadata.summary,
+                "severity": definition.metadata.severity.value,
+                "adapter": definition.metadata.adapter.value,
+                "source": definition.metadata.source.value,
+                "scope": definition.metadata.scope,
+                "side_effect_free": definition.metadata.side_effect_free,
+            }
+            for definition in catalog
+        ]
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
+
+    if not catalog:
+        print("No active fitness rules found.")
+        return 0
+
+    for definition in catalog:
+        metadata = definition.metadata
+        print(
+            f"{metadata.rule_id} [{metadata.severity.value}] "
+            f"({metadata.adapter.value}/{metadata.source.value}) - {metadata.summary}"
+        )
+    return 0
+
+
+def cmd_fitness_run(args: argparse.Namespace) -> int:
+    """Execute active fitness rules and return deterministic status."""
+    project_root = Path(args.project_root).resolve()
+    manifest_path = Path(args.manifest_path) if args.manifest_path else None
+    summary = run_rule_catalog(
+        project_root,
+        jobs=args.jobs,
+        manifest_path=manifest_path,
+    )
+
+    if args.format == "json":
+        payload = {
+            "results": [result.model_dump(mode="json") for result in summary.results],
+            "failed": summary.has_failures,
+        }
+        print(json.dumps(payload, indent=2, sort_keys=True))
+    else:
+        if not summary.results:
+            print("No active fitness rules found.")
+        for result in summary.results:
+            print(f"{result.rule_id}: {result.status.value} - {result.summary}")
+
+    if summary.has_failures:
+        return 1
+    return 0
+
+
+def cmd_fitness_catalog(args: argparse.Namespace) -> int:
+    """Generate the fitness-rule catalog from active registry metadata."""
+    project_root = Path(args.project_root).resolve()
+    manifest_path = Path(args.manifest_path) if args.manifest_path else None
+    output_path = Path(args.output) if args.output else None
+    if output_path is not None and not output_path.is_absolute():
+        output_path = project_root / output_path
+
+    catalog = build_rule_catalog(project_root, manifest_path=manifest_path)
+
+    if args.format == "json":
+        payload = [
+            {
+                "rule_id": definition.metadata.rule_id,
+                "name": definition.metadata.name,
+                "summary": definition.metadata.summary,
+                "rationale": definition.metadata.rationale,
+                "remediation": definition.metadata.remediation,
+                "scope": definition.metadata.scope,
+                "severity": definition.metadata.severity.value,
+                "adapter": definition.metadata.adapter.value,
+                "source": definition.metadata.source.value,
+                "side_effect_free": definition.metadata.side_effect_free,
+            }
+            for definition in catalog
+        ]
+        rendered = json.dumps(payload, indent=2, sort_keys=True)
+    else:
+        rendered = render_rule_catalog_markdown(catalog)
+
+    if output_path is not None:
+        write_rule_catalog_markdown(output_path, rendered + "\n")
+        try:
+            shown_path = output_path.relative_to(project_root)
+        except ValueError:
+            shown_path = output_path
+        print(f"fitness catalog written: {shown_path}")
+        return 0
+
+    print(rendered)
+    return 0
+
+
 def cmd_init(args: argparse.Namespace) -> int:
     """Scaffold baseline harness files for a repository.
 
@@ -347,6 +460,61 @@ def build_parser() -> argparse.ArgumentParser:
         help="stream full implement and gate output in terminal",
     )
     run_parser.set_defaults(func=cmd_run)
+
+    fitness_parser = sub.add_parser(
+        "fitness", help="list and run fitness-function rules"
+    )
+    fitness_sub = fitness_parser.add_subparsers(dest="fitness_cmd", required=True)
+
+    fitness_list_parser = fitness_sub.add_parser(
+        "list", help="list active fitness rules"
+    )
+    fitness_list_parser.add_argument(
+        "--manifest-path",
+        help="optional path to custom fitness rules manifest",
+    )
+    fitness_list_parser.add_argument(
+        "--format",
+        choices=["text", "json"],
+        default="text",
+    )
+    fitness_list_parser.set_defaults(func=cmd_fitness_list)
+
+    fitness_run_parser = fitness_sub.add_parser("run", help="run active fitness rules")
+    fitness_run_parser.add_argument(
+        "--manifest-path",
+        help="optional path to custom fitness rules manifest",
+    )
+    fitness_run_parser.add_argument(
+        "--jobs",
+        type=int,
+        default=1,
+        help="number of parallel fitness-rule workers",
+    )
+    fitness_run_parser.add_argument(
+        "--format",
+        choices=["text", "json"],
+        default="text",
+    )
+    fitness_run_parser.set_defaults(func=cmd_fitness_run)
+
+    fitness_catalog_parser = fitness_sub.add_parser(
+        "catalog", help="generate fitness rule catalog"
+    )
+    fitness_catalog_parser.add_argument(
+        "--manifest-path",
+        help="optional path to custom fitness rules manifest",
+    )
+    fitness_catalog_parser.add_argument(
+        "--format",
+        choices=["markdown", "json"],
+        default="markdown",
+    )
+    fitness_catalog_parser.add_argument(
+        "--output",
+        help="write catalog output to a file",
+    )
+    fitness_catalog_parser.set_defaults(func=cmd_fitness_catalog)
 
     init_parser = sub.add_parser(
         "init", help="scaffold baseline harness files for this repository"

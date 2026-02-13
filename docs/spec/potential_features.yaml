@@ -33,20 +33,6 @@ potential_features:
       - "Loop orchestration is readable as a high-level state flow"
       - "Direct subprocess/tool calls are moved behind explicit adapters"
       - "Existing loop behavior is preserved by targeted regression coverage"
-  - id: POT-005
-    title: Add pre-implement OpenCode permission preflight
-    status: idea
-    context: >
-      Fail fast when OpenCode permission setup is not viable, before entering implement
-      retries. This reduces wasted iterations and provides immediate operator guidance.
-    value:
-      - "Cuts noisy retries and wasted compute"
-      - "Provides faster feedback to human operators"
-      - "Improves loop reliability under restricted environments"
-    acceptance_hint:
-      - "Run loop performs permission preflight before implement step"
-      - "Failures stop early with actionable remediation guidance"
-      - "Gate behavior remains compatible with existing profiles"
   - id: POT-006
     title: Keep AGENTS documentation map in sync with repository reality
     status: idea
@@ -62,21 +48,6 @@ potential_features:
       - "AGENTS.md documentation map matches actual repo paths"
       - "A validator or gate checks that referenced docs exist"
       - "Update process for docs-map changes is documented"
-  - id: POT-007
-    title: Harden spec status normalization before schema validation
-    status: idea
-    context: >
-      Loop history shows recoverable failures caused by near-valid status values in
-      feature/subtask fields. Add normalization or safe repair strategy before full
-      validation to keep retries deterministic.
-    value:
-      - "Reduces avoidable spec_validate failures"
-      - "Improves resilience to agent output variance"
-      - "Preserves strict contracts while improving operator ergonomics"
-    acceptance_hint:
-      - "Normalization policy is explicit about which transformations are allowed"
-      - "Validation output clearly reports any repaired values"
-      - "Invalid ambiguous values still fail fast"
   - id: POT-008
     title: Add run telemetry reporting command with invariants checks
     status: idea

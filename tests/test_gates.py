@@ -39,11 +39,16 @@ def test_scaffolded_gates_config_has_expected_commands(tmp_path: Path) -> None:
     assert config["profiles"]["precommit"] == [
         "yaml_validate",
         "spec_validate",
+        "fitness_validate",
         "mdformat_validate",
         "ruff_validate",
         "pyright_validate",
         "pytest_validate",
     ]
+    assert (
+        config["gates"]["fitness_validate"]["run"]
+        == "uv run python -m engineeringagent.cli fitness run --format json"
+    )
     assert "precommit" in config["profiles"]
     assert "loop_fast" in config["profiles"]
 
@@ -217,3 +222,15 @@ def test_cmd_gates_run_output_behavior_unchanged(tmp_path: Path, capfd: Any) -> 
     assert code == 0
     assert output_token in output
     assert "gates profile passed: loop_fast" in output
+
+
+def test_fitness_gate_integration() -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    config = load_gate_config(repo_root / "harness" / "gates.yaml")
+
+    assert "fitness_validate" in config["gates"]
+    assert (
+        config["gates"]["fitness_validate"]["run"]
+        == "uv run python -m engineeringagent.cli fitness run --format json"
+    )
+    assert "fitness_validate" in config["profiles"]["loop_fast"]

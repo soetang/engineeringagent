@@ -14,16 +14,24 @@ DEFAULT_GATE_CONFIG: dict[str, Any] = {
         "precommit": [
             "yaml_validate",
             "spec_validate",
+            "fitness_validate",
             "mdformat_validate",
             "ruff_validate",
             "pyright_validate",
             "pytest_validate",
         ],
-        "loop_fast": ["spec_validate", "opencode_permission_probe"],
+        "loop_fast": [
+            "spec_validate",
+            "fitness_validate",
+            "opencode_permission_probe",
+        ],
     },
     "gates": {
         "yaml_validate": {"run": "uv run python harness/validate_yaml.py"},
         "spec_validate": {"run": "uv run python -m engineeringagent.cli validate"},
+        "fitness_validate": {
+            "run": "uv run python -m engineeringagent.cli fitness run --format json"
+        },
         "mdformat_validate": {
             "run": "uv run mdformat --check README.md AGENTS.md docs/references/docs-architecture-llms.md"
         },

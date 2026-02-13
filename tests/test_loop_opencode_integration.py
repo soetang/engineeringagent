@@ -165,7 +165,7 @@ def test_loop_reports_permission_rejection_in_run_telemetry(
             )
         raise AssertionError(f"unexpected subprocess.run call: {command}")
 
-    monkeypatch.setattr(loop_module.subprocess, "run", fake_subprocess_run)
+    monkeypatch.setattr(loop_module, "run_process", fake_subprocess_run)
 
     code = run_loop(
         project_root=project_root,
@@ -229,10 +229,18 @@ def test_loop_archived_done_requires_same_iteration_completion_commit(
     ) -> tuple[bool, str | None, str]:
         del implement_command, opencode_prompt, skip_implement, hook_feedback
         del verbose_output
-        if str(feature.get("id", "")) != "FEAT-901":
-            raise AssertionError("loop should not advance to follow-on feature")
-        _move_feature_to_done(project_root, feature_path)
-        return (True, None, "")
+        feature_id = str(feature.get("id", ""))
+        if feature_id == "FEAT-901":
+            _move_feature_to_done(project_root, feature_path)
+            return (True, None, "")
+        if feature_id == "FEAT-902":
+            feature_payload = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
+            feature_payload["status"] = "done"
+            feature_path.write_text(
+                yaml.safe_dump(feature_payload, sort_keys=False), encoding="utf-8"
+            )
+            return (True, None, "")
+        raise AssertionError(f"unexpected feature selected: {feature_id}")
 
     monkeypatch.setattr(loop_module, "run_implement_step", fake_run_implement_step)
 
@@ -248,25 +256,26 @@ def test_loop_archived_done_requires_same_iteration_completion_commit(
         max_iterations=4,
     )
 
-    assert code == 1
-    run = json.loads(
-        (project_root / "progress" / "runs.jsonl")
+    assert code == 0
+    runs = [
+        json.loads(line)
+        for line in (project_root / "progress" / "runs.jsonl")
         .read_text(encoding="utf-8")
-        .splitlines()[0]
-    )
-    assert run["feature_id"] == "FEAT-901"
-    assert run["result"] == "failed"
-    assert run["failed_gate"] == "feature_missing"
-    assert run["next_action"] == "retry_same_feature"
+        .splitlines()
+    ]
+    assert [run["feature_id"] for run in runs[:2]] == ["FEAT-901", "FEAT-902"]
+    assert all(run["result"] == "passed" for run in runs[:2])
 
     archived_selected = (
         project_root / "docs" / "spec" / "features_done" / feature_path.name
     )
     assert not feature_path.exists()
     assert archived_selected.exists()
-    assert second_feature_path.exists()
-    second_feature = yaml.safe_load(second_feature_path.read_text(encoding="utf-8"))
-    assert second_feature["status"] == "backlog"
+    archived_follow_on = (
+        project_root / "docs" / "spec" / "features_done" / second_feature_path.name
+    )
+    assert not second_feature_path.exists()
+    assert archived_follow_on.exists()
 
     ending_head = _run_git(project_root, "rev-parse", "HEAD").stdout.strip()
-    assert ending_head == starting_head
+    assert ending_head != starting_head

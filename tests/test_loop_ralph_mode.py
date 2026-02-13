@@ -1572,7 +1572,7 @@ def test_commit_failure_feedback_still_injected_into_next_prompt(
 
         return real_run(command, **kwargs)
 
-    monkeypatch.setattr(loop_module.subprocess, "run", fake_subprocess_run)
+    monkeypatch.setattr(loop_module, "run_process", fake_subprocess_run)
 
     code = run_loop(
         project_root=project_root,
@@ -1632,7 +1632,7 @@ def test_gate_failure_feedback_is_injected_into_next_prompt(
         del args, kwargs
         return next(gate_results)
 
-    monkeypatch.setattr(loop_module.subprocess, "run", fake_subprocess_run)
+    monkeypatch.setattr(loop_module, "run_process", fake_subprocess_run)
     monkeypatch.setattr(loop_module, "run_profile", fake_run_profile)
 
     code = run_loop(
@@ -1692,7 +1692,7 @@ def test_spec_validate_failure_feedback_round_trips_to_retry_prompt(
         del args, kwargs
         return next(gate_results)
 
-    monkeypatch.setattr(loop_module.subprocess, "run", fake_subprocess_run)
+    monkeypatch.setattr(loop_module, "run_process", fake_subprocess_run)
     monkeypatch.setattr(loop_module, "run_profile", fake_run_profile)
 
     code = run_loop(
@@ -1752,7 +1752,7 @@ def test_non_validation_gate_failure_feedback_round_trips_to_retry_prompt(
         del args, kwargs
         return next(gate_results)
 
-    monkeypatch.setattr(loop_module.subprocess, "run", fake_subprocess_run)
+    monkeypatch.setattr(loop_module, "run_process", fake_subprocess_run)
     monkeypatch.setattr(loop_module, "run_profile", fake_run_profile)
 
     code = run_loop(
@@ -1809,7 +1809,7 @@ def test_gate_failure_feedback_replaces_previous_feedback(
         del args, kwargs
         return next(gate_results)
 
-    monkeypatch.setattr(loop_module.subprocess, "run", fake_subprocess_run)
+    monkeypatch.setattr(loop_module, "run_process", fake_subprocess_run)
     monkeypatch.setattr(loop_module, "run_profile", fake_run_profile)
 
     code = run_loop(
@@ -1864,7 +1864,7 @@ def test_gate_failure_feedback_is_truncated_before_prompt_injection(
         del args, kwargs
         return next(gate_results)
 
-    monkeypatch.setattr(loop_module.subprocess, "run", fake_subprocess_run)
+    monkeypatch.setattr(loop_module, "run_process", fake_subprocess_run)
     monkeypatch.setattr(loop_module, "run_profile", fake_run_profile)
 
     code = run_loop(

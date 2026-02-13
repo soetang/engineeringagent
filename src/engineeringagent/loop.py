@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import subprocess
 import sys
 import time
 from dataclasses import dataclass
@@ -11,6 +10,7 @@ from typing import Any, Sequence
 
 from .gates import load_gate_config, run_profile
 from .opencode_permissions import output_has_permission_rejection
+from .process_runner import run_process
 from .specs import dump_yaml, feature_sort_key, load_yaml
 
 FEATURE_TRANSITIONS: dict[str, set[str]] = {
@@ -304,7 +304,7 @@ def _choose_feature_with_selector(
 
     prompt = _build_selector_prompt(pending)
     try:
-        proc = subprocess.run(
+        proc = run_process(
             ["opencode", "run", "--agent", "build", prompt],
             cwd=project_root,
             capture_output=True,
@@ -340,7 +340,7 @@ def git_head_short(project_root: Path) -> str | None:
     Returns:
         Short commit hash when available, otherwise None.
     """
-    proc = subprocess.run(
+    proc = run_process(
         ["git", "rev-parse", "--short", "HEAD"],
         cwd=project_root,
         capture_output=True,
@@ -423,7 +423,7 @@ def run_implement_step(
 
     if implement_command:
         print(f"Implement step: custom command ({implement_command})")
-        proc = subprocess.run(
+        proc = run_process(
             implement_command,
             shell=True,
             cwd=project_root,
@@ -458,7 +458,7 @@ def run_implement_step(
 
     print("Implement step: opencode run --agent build")
     try:
-        proc = subprocess.run(
+        proc = run_process(
             ["opencode", "run", "--agent", "build", prompt],
             cwd=project_root,
             capture_output=True,
@@ -488,7 +488,7 @@ def run_implement_step(
 
 
 def _require_clean_worktree(project_root: Path) -> tuple[bool, str]:
-    proc = subprocess.run(
+    proc = run_process(
         ["git", "status", "--porcelain"],
         cwd=project_root,
         capture_output=True,
@@ -555,7 +555,7 @@ def _commit_feature_completion(
 ) -> tuple[bool, str | None, str]:
     message = _feature_completion_commit_subject(feature)
 
-    add_proc = subprocess.run(
+    add_proc = run_process(
         ["git", "add", "-A", "--", "."],
         cwd=project_root,
         capture_output=True,
@@ -565,7 +565,7 @@ def _commit_feature_completion(
         output = (add_proc.stdout or "") + (add_proc.stderr or "")
         return (False, "git_add", output)
 
-    commit_proc = subprocess.run(
+    commit_proc = run_process(
         [
             "git",
             "-c",
