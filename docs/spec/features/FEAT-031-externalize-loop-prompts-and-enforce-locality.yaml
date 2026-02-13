@@ -1,0 +1,177 @@
+id: FEAT-031
+title: Externalize loop prompts into package templates and enforce prompt locality
+type: feature
+expected_commit_subject: 'feat: add FEAT-031 prompt template locality enforcement'
+status: backlog
+priority: high
+objective: >
+  Move canonical loop selector/implementation prompts into in-package template files,
+  render them through a dedicated prompt module, and prevent future prompt drift with
+  a built-in hybrid prompt-locality fitness rule.
+context: >
+  Current canonical prompts are assembled inline in `src/engineeringagent/loop.py`
+  (`_build_selector_prompt` and `build_ralph_opencode_prompt`). This creates prompt
+  locality drift risk because canonical wording can be duplicated or modified in
+  unrelated modules.
+
+  User-confirmed scope: optimize for reliability and drift prevention, include both
+  template extraction and built-in enforcement, keep CLI surface unchanged, keep
+  selector behavior unchanged, and avoid prompt content rewrites beyond locality
+  migration.
+constraints:
+  - Keep canonical template files inside the package (not harness-level assets).
+  - Do not add or change CLI flags for `engineeringagent run`.
+  - Preserve existing selector behavior and retry loop semantics.
+  - Preserve current prompt meaning and wording except for placeholder substitution
+    mechanics required by template rendering.
+  - Implement prompt-locality enforcement as a built-in fitness rule (not only a
+    manifest custom command).
+  - Keep diagnostics deterministic and actionable with stable `path:line` ordering.
+  - Limit fitness scanning scope to source modules so tests/docs prompt assertions do
+    not create false positives.
+  - Canary matching must be resilient to punctuation and minor wording edits; avoid
+    brittle dependence on long exact sentence matches.
+  - Default implementation prompt wording must be explicit about progress protocol and
+    read the feature spec, execute one incremental step, update YAML status fields to
+    communicate progress, run relevant verification, and report concise outcomes.
+  - Canonical prompt wording should avoid agent-branding phrasing (for example
+    "Ralph-style feature loop") and focus on concrete task instructions.
+implementation_notes: >
+  Add a dedicated prompt package for loading and rendering in-package templates under
+  `src/engineeringagent/prompts/`, with canonical template files in
+  `src/engineeringagent/prompts/templates/`. Default loop selector and implementation
+  prompts must be rendered from those files, not assembled inline in loop orchestration.
+
+  Built-in rule design (`architecture.prompt-locality`) should execute in deterministic
+  phases:
+
+  Phase A (template integrity): verify template directory exists; verify required
+  template files exist; verify each required template is non-empty after `.strip()`.
+
+  Phase B (structural locality): parse Python AST for source files under
+  `src/engineeringagent/` (excluding tests/docs). Enforce an allowlist of approved
+  prompt modules (for example renderer module(s) in `src/engineeringagent/prompts/`).
+  For non-approved modules, fail when canonical prompt-builder function definitions
+  appear (at minimum `_build_selector_prompt` and `build_ralph_opencode_prompt`) or
+  when template file reads are detected (for example `Path.read_text`, `open`, or
+  equivalent reads targeting template markdown files).
+
+  Phase C (canary-content locality): scan string literals and f-string static segments
+  in non-approved source modules for canonical prompt canaries. Use robust normalized
+  matching (case-insensitive, collapse whitespace, ignore punctuation) and keep
+  canaries short/anchor-like rather than full long sentences to reduce brittleness.
+  Initial canaries should be short anchors such as:
+  "choose the next feature spec",
+  "exactly one feature path",
+  "read and use this feature spec from disk", and
+  "previous retry feedback is available".
+
+  Phase D (result envelope): return deterministic sorted violations in stable
+  `path:line` format and include remediation that directs authors to move canonical
+  prompt text and template reads into approved prompt modules/templates.
+
+  Register the new built-in in fitness registry wiring and declare it in
+  `harness/fitness-functions/rules.yaml` so existing gate profiles enforce it.
+
+  Prompt template contract for the default implementation prompt should be explicit
+  and implementation-oriented: identify feature/subtask from YAML, apply minimal
+  deterministic edits, update subtask/feature statuses plus `updated_at` as needed,
+  execute relevant verification commands from the spec, and summarize what changed,
+  what passed, and what remains.
+acceptance:
+  - Default selector and implementation prompts are sourced from in-package template
+    files through a dedicated prompt renderer module; loop behavior remains equivalent.
+  - Default implementation prompt text no longer relies on "Ralph-style" wording and
+    instead gives explicit task and progress-status update instructions.
+  - src/engineeringagent/loop.py no longer contains inline canonical selector or
+    implementation prompt-builder logic.
+  - Built-in rule `architecture.prompt-locality` exists and fails when canonical
+    prompt builders or template reads appear in non-approved modules.
+  - Built-in rule `architecture.prompt-locality` fails when canonical canary prompt
+    phrases appear outside approved template/renderer locations.
+  - Built-in rule passes when templates exist, are non-empty, and prompt rendering is
+    confined to approved prompt modules.
+  - Rule diagnostics are deterministic and include stable `path:line` violation
+    messages with remediation guidance.
+  - Rule fails with explicit deterministic diagnostics when prompt template directory,
+    required files, or non-empty template constraints are violated.
+  - Rule ignores tests/docs scanning scope for content-locality checks to avoid
+    false positives from test fixtures and assertions.
+  - Fitness catalog/list/run surfaces include the new rule when declared in harness
+    manifest references.
+  - Focused prompt, fitness, registry, and validator tests pass, followed by final
+    `loop_fast` gate validation.
+subtasks:
+  - id: ST-001
+    title: Introduce prompt template artifacts and renderer module in package
+    status: backlog
+    order: 1
+    context: >
+      Create in-package template files and a renderer API that can produce selector
+      and implementation prompt text with deterministic variable substitution.
+    verification:
+      - uv run pytest -q tests/test_loop_ralph_mode.py::test_ralph_prompt_includes_feature_file_path
+  - id: ST-002
+    title: Migrate selector prompt generation from loop orchestration to renderer
+    status: backlog
+    order: 2
+    context: >
+      Replace inline selector prompt assembly in loop orchestration with renderer
+      output while preserving feature selection behavior and fallback semantics.
+    verification:
+      - uv run pytest -q tests/test_loop_ralph_mode.py
+  - id: ST-003
+    title: Migrate default implementation prompt and retry-feedback injection to renderer
+    status: backlog
+    order: 3
+    context: >
+      Route default implementation prompt composition through templates/renderer,
+      preserving retry feedback truncation/injection while making task and progress
+      communication instructions explicit (status updates, verification, concise report).
+    verification:
+      - uv run pytest -q tests/test_loop_ralph_mode.py::test_gate_failure_feedback_is_injected_into_next_prompt
+      - uv run pytest -q tests/test_loop_ralph_mode.py::test_gate_failure_feedback_is_truncated_before_prompt_injection
+  - id: ST-004
+    title: Add built-in hybrid prompt-locality fitness rule
+    status: backlog
+    order: 4
+    context: >
+      Implement `architecture.prompt-locality` in built-in fitness rules with
+      structural and canary-content checks plus deterministic violation formatting.
+      Include four explicit checks: template integrity, structural boundary checks,
+      canary phrase leakage checks, and sorted deterministic result envelope output.
+    verification:
+      - uv run pytest -q tests/test_fitness_rules_prompt_locality.py
+  - id: ST-005
+    title: Register and declare prompt-locality rule across fitness surfaces
+    status: backlog
+    order: 5
+    context: >
+      Wire the new built-in rule into registry metadata and explicit harness manifest
+      declarations so list/run/catalog and gates consume it consistently.
+    verification:
+      - uv run pytest -q tests/test_fitness_registry.py
+      - uv run pytest -q tests/test_validator.py
+      - uv run pytest -q tests/test_fitness_catalog_generation.py
+  - id: ST-006
+    title: Add focused loop and fitness regression coverage for prompt locality
+    status: backlog
+    order: 6
+    context: >
+      Add pass/fail coverage for template presence, non-empty templates, locality
+      boundary violations, canary phrase leakage, and deterministic violation ordering.
+    verification:
+      - uv run pytest -q tests/test_loop_ralph_mode.py
+      - uv run pytest -q tests/test_loop_opencode_integration.py
+      - uv run pytest -q tests/test_fitness_rules_prompt_locality.py
+  - id: ST-007
+    title: Run focused validation and final loop_fast gate profile
+    status: backlog
+    order: 7
+    context: >
+      Confirm spec/fitness wiring and targeted regressions pass, then run final gate
+      profile expected by loop execution.
+    verification:
+      - uvx --from . engineeringagent validate
+      - uvx --from . engineeringagent gates run --profile loop_fast
+updated_at: '2026-02-13T13:30:00Z'

@@ -3,21 +3,6 @@ description: >
   Parking lot for future ideas that are intentionally not part of active loop specs.
   Items here do not get picked by the loop runner.
 potential_features:
-  - id: POT-002
-    title: Formalize potential feature backlog workflow
-    status: idea
-    context: >
-      Define a lightweight process for capturing ideas in `docs/spec/potential_features.yaml`,
-      triaging them, and promoting selected items into active `docs/spec/features/*.yaml`
-      with FEAT IDs and nested subtasks.
-    value:
-      - "Keeps exploration separate from execution"
-      - "Improves prioritization clarity"
-      - "Makes promotion from idea to implementation explicit"
-    acceptance_hint:
-      - "Each potential item has status and clear promotion criteria"
-      - "A documented command/process exists to promote POT -> FEAT"
-      - "Promoted items are removed or marked promoted in potential list"
   - id: POT-004
     title: Refactor run loop into a clearer orchestration flow with tool adapters
     status: idea
@@ -91,20 +76,3 @@ potential_features:
       - "Role definitions exist for implementer, reviewer, and refactor agents"
       - "Negotiation protocol defines acceptance, rejection, and escalation paths"
       - "Loop integration points for review feedback are documented"
-  - id: POT-012
-    title: Externalize loop prompts into template files with prompt-locality fitness checks
-    status: idea
-    context: >
-      Prompt text for selection and implementation is currently embedded in Python code,
-      which makes prompt iteration and auditing harder. Refactor prompts into dedicated
-      markdown templates and render them with explicit runtime context. Add a validator/
-      fitness check to ensure canonical prompt content only lives in approved prompt
-      template locations.
-    value:
-      - "Makes prompt tuning safer and faster without touching orchestration logic"
-      - "Improves prompt observability, versioning, and reviewability"
-      - "Reduces drift by enforcing a single source of truth for production prompts"
-    acceptance_hint:
-      - "Selection and implement prompts load from template files and support explicit variable interpolation"
-      - "A validator/gate fails when canonical prompt bodies are introduced outside approved prompt-template and renderer modules"
-      - "Tests cover happy-path rendering plus false-positive/false-negative cases for prompt-locality checks"
