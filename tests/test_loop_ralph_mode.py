@@ -12,6 +12,7 @@ import yaml
 import engineeringagent.loop as loop_module
 from engineeringagent.cli import build_parser
 from engineeringagent.loop import run_loop
+from engineeringagent.loop_runtime import presentation as presentation_module
 from engineeringagent.prompts import build_implementation_prompt
 
 
@@ -545,7 +546,14 @@ def test_run_loop_commit_ignores_runs_jsonl_when_gitignored(tmp_path: Path) -> N
     assert "progress/runs.jsonl" not in status
 
 
-def test_run_loop_writes_per_feature_progress_log(tmp_path: Path) -> None:
+def test_run_loop_writes_per_feature_progress_log(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(presentation_module, "_stdout_is_tty", lambda _stdout: True)
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    monkeypatch.setenv("TERM", "xterm-256color")
+
     project_root, feature_path = _make_project_root(
         tmp_path, feature_data=_base_feature()
     )
@@ -572,6 +580,7 @@ def test_run_loop_writes_per_feature_progress_log(tmp_path: Path) -> None:
     assert "attempt=1" in log_text
     assert "feature_id=FEAT-900" in log_text
     assert "result=passed" in log_text
+    assert "\x1b[" not in log_text
 
 
 def test_run_loop_progress_logs_are_gitignored(tmp_path: Path) -> None:
@@ -725,7 +734,128 @@ def test_run_loop_verbose_output_streams_raw_implement_and_gate_output(
     assert gate_stderr_token in merged_output
 
 
-def test_run_loop_telemetry_includes_log_path(tmp_path: Path) -> None:
+def test_run_loop_plain_output_when_not_tty(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: Any,
+) -> None:
+    monkeypatch.setattr(presentation_module, "_stdout_is_tty", lambda _stdout: False)
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    monkeypatch.setenv("TERM", "xterm-256color")
+
+    loop_module.print_summary(
+        feature_id="FEAT-900",
+        result="passed",
+        failed_gate=None,
+        attempt=1,
+        next_action="select_next_feature",
+    )
+
+    output = capsys.readouterr().out
+    assert "\x1b[" not in output
+    assert "Loop summary: result=passed" in output
+
+
+def test_run_loop_styled_output_when_tty(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: Any,
+) -> None:
+    monkeypatch.setattr(presentation_module, "_stdout_is_tty", lambda _stdout: True)
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    monkeypatch.setenv("TERM", "xterm-256color")
+
+    loop_module.print_summary(
+        feature_id="FEAT-900",
+        result="passed",
+        failed_gate=None,
+        attempt=1,
+        next_action="select_next_feature",
+    )
+
+    output = capsys.readouterr().out
+    assert "\x1b[" in output
+    assert "Loop summary: result=passed" in output
+
+
+def test_run_loop_no_color_env_disables_styling(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: Any,
+) -> None:
+    monkeypatch.setattr(presentation_module, "_stdout_is_tty", lambda _stdout: True)
+    monkeypatch.setenv("NO_COLOR", "1")
+    monkeypatch.setenv("TERM", "xterm-256color")
+
+    loop_module.print_summary(
+        feature_id="FEAT-900",
+        result="failed",
+        failed_gate="spec_validate",
+        attempt=1,
+        next_action="retry_same_feature",
+    )
+
+    output = capsys.readouterr().out
+    assert "\x1b[" not in output
+    assert "Loop summary: result=failed" in output
+    assert "Failed gate: spec_validate" in output
+
+
+def test_run_loop_iteration_output_uses_emoji_contract(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: Any,
+) -> None:
+    monkeypatch.setattr(presentation_module, "_stdout_is_tty", lambda _stdout: False)
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    monkeypatch.setenv("TERM", "xterm-256color")
+
+    loop_module.print_summary(
+        feature_id="FEAT-900",
+        result="passed",
+        failed_gate=None,
+        attempt=1,
+        next_action="select_next_feature",
+        selected_path="docs/spec/features/FEAT-900.yaml",
+        implement_step="default opencode implement step",
+    )
+    loop_module.print_summary(
+        feature_id="FEAT-900",
+        result="failed",
+        failed_gate="spec_validate",
+        attempt=2,
+        next_action="retry_same_feature",
+        selected_path="docs/spec/features/FEAT-900.yaml",
+        implement_step="default opencode implement step",
+        log_path="progress/run-feature-FEAT-900.txt",
+    )
+    loop_module.print_summary(
+        feature_id="FEAT-900",
+        result="passed",
+        failed_gate=None,
+        attempt=3,
+        next_action="select_next_feature",
+        selected_path="docs/spec/features/FEAT-900.yaml",
+        implement_step="default opencode implement step",
+        archived_selection_path="docs/spec/features_done/FEAT-900.yaml",
+    )
+
+    output = capsys.readouterr().out
+    assert "🔁 Iteration 1 · FEAT-900" in output
+    assert "🎯 Selected: docs/spec/features/FEAT-900.yaml" in output
+    assert "🛠 Implement: default opencode implement step" in output
+    assert "✅ Passed" in output
+    assert "🔁 Iteration 2 · FEAT-900" in output
+    assert "❌ Failed: gate=spec_validate" in output
+    assert "📄 Log: progress/run-feature-FEAT-900.txt" in output
+    assert "➡️ Next: retry_same_feature" in output
+    assert "♻️ Selected archived counterpart:" in output
+
+
+def test_run_loop_telemetry_includes_log_path(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(presentation_module, "_stdout_is_tty", lambda _stdout: True)
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    monkeypatch.setenv("TERM", "xterm-256color")
+
     project_root, feature_path = _make_project_root(
         tmp_path, feature_data=_base_feature()
     )
@@ -749,6 +879,9 @@ def test_run_loop_telemetry_includes_log_path(tmp_path: Path) -> None:
     runs = _read_runs(project_root)
     assert runs
     assert runs[-1]["log_path"] == "progress/run-feature-FEAT-900.txt"
+    assert "\x1b[" not in (project_root / "progress" / "runs.jsonl").read_text(
+        encoding="utf-8"
+    )
 
 
 def test_run_loop_failure_prints_detailed_log_pointer(

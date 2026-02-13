@@ -62,7 +62,20 @@ class IterationPipelineDependencies:
     completion_phase_dependencies: CompletionPhaseDependencies
     write_iteration_telemetry: Callable[..., str]
     git_head_resolver: Callable[[Path], str | None]
-    print_summary: Callable[[str | None, str, str | None, int | None, str], None]
+    print_summary: Callable[
+        [
+            str | None,
+            str,
+            str | None,
+            int | None,
+            str,
+            str | None,
+            str | None,
+            str | None,
+            str | None,
+        ],
+        None,
+    ]
 
 
 def run_feature_iteration_pipeline(
@@ -218,12 +231,26 @@ def run_feature_iteration_pipeline(
         telemetry_inputs,
         git_head_resolver=dependencies.git_head_resolver,
     )
+    implement_step = (
+        "skip_implement=true (gates-only mode)"
+        if iteration_inputs.skip_implement
+        else (iteration_inputs.implement_command or "default opencode implement step")
+    )
+    archived_selection_path = (
+        str(archived_path)
+        if loaded_post_from_archive and archived_path is not None
+        else None
+    )
     dependencies.print_summary(
         feature_id,
         result,
         failed_gate,
         iteration_inputs.attempt,
         next_action,
+        str(iteration_inputs.feature_path),
+        implement_step,
+        feature_progress_log_reference if result != "passed" else None,
+        archived_selection_path,
     )
     if result != "passed":
         print(f"Detailed log: {feature_progress_log_reference}")

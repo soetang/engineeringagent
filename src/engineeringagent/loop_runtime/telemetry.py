@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import json
+import re
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Sequence
 
 from .models import IterationTelemetryInputs
+
+ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 
 
 def now_iso() -> str:
@@ -52,6 +55,20 @@ def _truncate_feedback(text: str, max_chars: int = 8_000) -> str:
     return text[:max_chars] + "\n...[truncated]"
 
 
+def _strip_ansi(text: str) -> str:
+    return ANSI_ESCAPE_RE.sub("", text)
+
+
+def _sanitize_payload_strings(payload: dict[str, Any]) -> dict[str, Any]:
+    sanitized: dict[str, Any] = {}
+    for key, value in payload.items():
+        if isinstance(value, str):
+            sanitized[key] = _strip_ansi(value)
+        else:
+            sanitized[key] = value
+    return sanitized
+
+
 def write_iteration_telemetry(
     telemetry_inputs: IterationTelemetryInputs,
     *,
@@ -86,23 +103,24 @@ def write_iteration_telemetry(
         "next_action": telemetry_inputs.next_action,
         "log_path": feature_progress_log_reference,
     }
+    run_payload = _sanitize_payload_strings(run_payload)
 
     feature_progress_log_lines = [
         "ts="
         f"{run_payload['ts']} attempt={telemetry_inputs.iteration_inputs.attempt} "
-        f"feature_id={telemetry_inputs.feature_id or 'unknown-feature'}",
+        f"feature_id={run_payload.get('feature_id') or 'unknown-feature'}",
         f"feature_path={telemetry_inputs.iteration_inputs.feature_path}",
-        f"implement={telemetry_inputs.implement_status}",
-        f"gates={telemetry_inputs.gate_status}",
+        f"implement={_strip_ansi(telemetry_inputs.implement_status)}",
+        f"gates={_strip_ansi(telemetry_inputs.gate_status)}",
         "result="
-        f"{telemetry_inputs.result} failed_gate={telemetry_inputs.failed_gate or '-'} "
-        f"next_action={telemetry_inputs.next_action}",
+        f"{run_payload.get('result')} failed_gate={run_payload.get('failed_gate') or '-'} "
+        f"next_action={run_payload.get('next_action')}",
     ]
     if telemetry_inputs.implement_output:
         feature_progress_log_lines.extend(
             [
                 "implement_output_begin",
-                telemetry_inputs.implement_output.rstrip("\n"),
+                _strip_ansi(telemetry_inputs.implement_output.rstrip("\n")),
                 "implement_output_end",
             ]
         )
@@ -110,14 +128,17 @@ def write_iteration_telemetry(
         feature_progress_log_lines.extend(
             [
                 "gate_output_begin",
-                telemetry_inputs.gate_output.rstrip("\n"),
+                _strip_ansi(telemetry_inputs.gate_output.rstrip("\n")),
                 "gate_output_end",
             ]
         )
     if telemetry_inputs.hook_feedback:
         feature_progress_log_lines.append(
-            f"detail={_truncate_feedback(telemetry_inputs.hook_feedback)}"
+            f"detail={_strip_ansi(_truncate_feedback(telemetry_inputs.hook_feedback))}"
         )
-    _append_feature_progress_log(feature_progress_log_path, feature_progress_log_lines)
+    _append_feature_progress_log(
+        feature_progress_log_path,
+        [_strip_ansi(line) for line in feature_progress_log_lines],
+    )
     append_run(runs_log, run_payload)
     return feature_progress_log_reference

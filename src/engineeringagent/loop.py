@@ -51,6 +51,7 @@ from .loop_runtime.feature_state import (
     _touch_active_feature_for_iteration,
 )
 from .loop_runtime.telemetry import write_iteration_telemetry
+from .loop_runtime.presentation import RunOutputPresenter
 
 FEATURE_TYPE_COMMIT_PREFIX: dict[str, str] = {
     "feature": "feat",
@@ -206,6 +207,10 @@ def print_summary(
     failed_gate: str | None,
     attempt: int | None,
     next_action: str,
+    selected_path: str | None = None,
+    implement_step: str | None = None,
+    log_path: str | None = None,
+    archived_selection_path: str | None = None,
 ) -> None:
     """Print a one-line loop summary and optional gate failure.
 
@@ -215,14 +220,36 @@ def print_summary(
         failed_gate: Failed gate name when iteration fails.
         attempt: Iteration attempt number.
         next_action: Suggested next loop action.
+        selected_path: Selected active feature path for iteration display.
+        implement_step: Implement step descriptor for iteration display.
+        log_path: Optional per-feature log path for failed iterations.
+        archived_selection_path: Archived counterpart path when selection moved.
     """
+    presenter = RunOutputPresenter.for_current_terminal()
+    if attempt is not None:
+        print(f"🔁 Iteration {attempt} · {feature_id or '-'}")
+        if archived_selection_path:
+            print("  ♻️ Selected archived counterpart:")
+            print(f"     {archived_selection_path}")
+        else:
+            print(f"  🎯 Selected: {selected_path or '-'}")
+        print(f"  🛠 Implement: {implement_step or '-'}")
+        if result == "passed":
+            print(f"  {presenter.format_iteration_passed_line()}")
+        else:
+            print(f"  {presenter.format_iteration_failed_line(failed_gate)}")
+            if log_path:
+                print(f"  📄 Log: {log_path}")
+        print(f"  ➡️ Next: {next_action}")
+
     print(
         "Loop summary: "
         f"result={result} feature={feature_id or '-'} "
         f"attempt={attempt if attempt is not None else '-'} next={next_action}"
+        f"{presenter.format_summary_suffix(result)}"
     )
     if failed_gate:
-        print(f"Failed gate: {failed_gate}")
+        print(presenter.format_failed_gate_line(failed_gate))
 
 
 def _iteration_cap_reached(total_iterations: int, max_iterations: int) -> bool:

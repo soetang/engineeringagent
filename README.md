@@ -20,6 +20,8 @@ uvx --from . engineeringagent run docs/spec/features/FEAT-001-example.yaml --dry
 When you are ready for a real pass, remove `--dry-run`.
 
 Default run-loop output is concise: `engineeringagent run ...` prints lifecycle status lines and keeps raw implement/gate output in `progress/run-feature-<FEATURE_ID>.txt`.
+When attached to a TTY, lifecycle lines use light styling to improve scanability; redirected output stays plain and ANSI-free.
+Set `NO_COLOR=1` (or use `TERM=dumb`) to force plain run output even in an interactive terminal.
 Use `--verbose-output` when you want full implement and gate output streamed in the terminal while the same detailed per-feature log is still written under `progress/`.
 
 ## What this repo is for
