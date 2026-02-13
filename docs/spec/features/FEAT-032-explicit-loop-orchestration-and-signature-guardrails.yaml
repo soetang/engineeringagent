@@ -1,0 +1,163 @@
+id: FEAT-032
+title: Make loop orchestration explicit with self-documenting extraction and argument-budget guardrails
+type: feature
+expected_commit_subject: 'feat: add FEAT-032 explicit loop orchestration and signature guardrails'
+status: backlog
+priority: high
+objective: >
+  Improve loop readability and maintainability by keeping control flow explicit,
+  moving non-control-flow logic behind self-documenting helpers, improving variable
+  naming clarity, and enforcing a strict argument-budget guardrail to prevent
+  regression.
+context: >
+  Graduated from POT-004 after user confirmation on scope and tradeoffs.
+
+  User-confirmed scope: keep `engineeringagent.loop` as the public facade, preserve
+  public signatures (especially `run_loop`) and CLI behavior, focus this feature on
+  loop flow readability plus signature simplification, and use focused verification
+  plus final `loop_fast` gate validation.
+
+  Additional user request: include durable agent guidance for resolving wide signatures
+  with generally applicable refactor patterns (for example context objects/dataclasses),
+  plus the same self-documenting principle for variable names.
+
+  Clarified preference: do not introduce a separate loop interface layer; keep
+  `run_loop` and `_run_feature_iteration` as control-flow orchestrators and move
+  non-control-flow logic out behind intention-revealing helper functions.
+constraints:
+  - Preserve `engineeringagent run` CLI surface and runtime semantics.
+  - Keep `src/engineeringagent/loop.py` as the compatibility facade for existing imports and tests.
+  - Keep control-flow orchestration centered in `run_loop` and `_run_feature_iteration`.
+  - Extract non-control-flow logic (I/O, lifecycle details, prompt/log formatting, command wrappers) into helpers or submodules with intention-revealing names.
+  - Preserve targeted monkeypatch seams used by loop tests unless explicitly migrated with equivalent coverage.
+  - Keep behavior stable for selection, retry, archive/restore, gate execution, completion commit, and telemetry outcomes.
+  - Enforce strict Ruff argument-budget checks with repository defaults (`PLR0913` at `max-args = 5`).
+  - Do not use broad per-file or module-wide suppressions for `PLR0913`; any boundary exception must be narrowly scoped and justified inline.
+  - Guidance updates must remain general and reusable across modules, not loop-specific prose only.
+  - Prefer self-documenting variable names over abbreviations or overloaded generic names in orchestration and extracted helpers.
+implementation_notes: >
+  Keep `run_loop` and `_run_feature_iteration` readable as explicit phase control flow
+  (select -> iterate -> decide). Move non-control-flow details into intention-revealing
+  helpers; extraction may stay in `loop.py` or use small submodules when it improves
+  scanability without adding an interface layer.
+
+  Reduce internal argument fan-out with refactors such as phase extraction, cohesive
+  parameter objects, keyword-only secondary controls, or typed result objects, choosing
+  the simplest option that preserves readability and behavior.
+
+  Apply the same self-documenting rule to variable names: prefer clear lifecycle and
+  state names (for example selected_feature_path, archived_feature_path, iteration_outcome)
+  over short or overloaded names.
+
+  Add a short agent-facing guidance section for `PLR0913` remediation in
+  `docs/references/python-uv-ruff-llms.md`, and keep `AGENTS.md` concise by linking to
+  that reference instead of duplicating long rules.
+acceptance:
+  - '`run_loop` and `_run_feature_iteration` read as explicit high-level control-flow phases with non-control-flow details delegated to clearly named helpers.'
+  - Internal loop helpers no longer rely on wide argument lists; repeated parameter bundles are reduced using maintainable refactor patterns without requiring a new interface layer.
+  - Orchestration and extracted helper variables use self-documenting names that communicate lifecycle/state intent.
+  - Strict Ruff `PLR0913` enforcement is enabled in repository configuration and integrated into existing lint gate paths.
+  - Any retained `PLR0913` exception is minimal, boundary-local, and documented with an inline rationale.
+  - Agent guidance for resolving wide signatures is documented in `docs/references/python-uv-ruff-llms.md` with generally applicable patterns (phase extraction, context objects/dataclasses, keyword-only controls, typed result objects, narrow exceptions).
+  - Guidance content includes explicit sections for core intent, preferred refactor order, exception policy, and verification commands.
+  - Guidance content explicitly includes self-documenting variable naming examples for loop lifecycle/state values.
+  - '`AGENTS.md` includes a concise pointer to the detailed Ruff/signature guidance location.'
+  - Focused loop regression tests pass and final validation includes `uvx --from . engineeringagent gates run --profile loop_fast`.
+subtasks:
+  - id: ST-001
+    title: Make control-flow phases explicit in run_loop and _run_feature_iteration
+    status: backlog
+    order: 1
+    context: >
+      Keep high-level control flow easy to scan in existing orchestrators while keeping
+      the public `engineeringagent.loop` surface stable.
+    verification:
+      - uv run pytest -q tests/test_loop_ralph_mode.py
+      - uv run pytest -q tests/test_loop_opencode_integration.py
+  - id: ST-002
+    title: Reduce argument fan-out using maintainable internal refactor patterns
+    status: backlog
+    order: 2
+    context: >
+      Replace long internal helper signatures using the simplest maintainable option
+      (phase extraction, cohesive parameter objects, keyword-only controls, typed results)
+      while preserving behavior and readability.
+    verification:
+      - uv run pytest -q tests/test_loop_ralph_mode.py
+  - id: ST-003
+    title: Extract non-control-flow iteration internals into intention-revealing helpers
+    status: backlog
+    order: 3
+    context: >
+      Move dense non-control-flow iteration logic into focused helpers/modules with
+      clear function names while retaining compatibility seams expected by existing tests.
+    verification:
+      - uv run pytest -q tests/test_loop_ralph_mode.py::test_run_loop_selected_feature_moved_to_features_done_does_not_crash
+      - uv run pytest -q tests/test_loop_ralph_mode.py::test_run_loop_restores_archived_feature_when_gate_fails_after_prearchive
+      - uv run pytest -q tests/test_loop_opencode_integration.py
+  - id: ST-004
+    title: Enable strict PLR0913 guardrail and resolve violations with maintainable refactors
+    status: backlog
+    order: 4
+    context: >
+      Turn on strict argument-budget linting and refactor internals to comply. If a
+      compatibility-boundary exception remains, keep it narrowly scoped and documented.
+    verification:
+      - uv run ruff check src/engineeringagent --select PLR0913
+      - uv run pytest -q tests/test_loop_ralph_mode.py
+  - id: ST-005
+    title: Add agent guidance for PLR0913 remediation and self-documenting naming
+    status: backlog
+    order: 5
+    context: >
+      Document general best-practice options for resolving wide signatures and improving
+      variable naming clarity so future refactors converge on reusable patterns instead
+      of ad-hoc suppressions.
+
+      Guidance draft to include in `docs/references/python-uv-ruff-llms.md`
+      (verbatim or equivalent):
+
+      Core intent:
+      - Keep orchestration control flow explicit in `run_loop` and `_run_feature_iteration`.
+      - Move non-control-flow logic (I/O details, lifecycle helpers, prompt/log formatting,
+        command wrappers) into intention-revealing helpers.
+      - Use self-documenting variable names that communicate lifecycle/state intent.
+
+      Preferred refactor order:
+      1) Extract clearly named phase helpers first.
+      2) Reduce argument fan-out with the smallest useful pattern:
+         phase extraction, cohesive parameter object/dataclass, keyword-only secondary
+         controls, typed result objects.
+      3) Rename variables for intent, not brevity.
+
+      Example variable naming direction:
+      - Prefer `selected_feature_path`, `archived_feature_path`, `iteration_outcome`,
+        `retry_feedback_by_path`.
+      - Avoid overloaded generic names where lifecycle/state is knowable.
+
+      Exception policy:
+      - No broad per-file/module `PLR0913` suppressions.
+      - Compatibility-boundary exceptions must be narrowly scoped with inline rationale.
+
+      Verification:
+      - `uv run ruff check src/engineeringagent --select PLR0913`
+      - Run targeted loop tests for touched paths.
+
+      AGENTS pointer draft to include in `AGENTS.md`:
+      - For PLR0913 remediation and self-documenting naming guidance, follow
+        `docs/references/python-uv-ruff-llms.md`.
+    verification:
+      - uv run pytest -q tests/test_validator.py
+      - uvx --from . engineeringagent validate
+  - id: ST-006
+    title: Run focused verification and final loop_fast gates
+    status: backlog
+    order: 6
+    context: >
+      Confirm refactor safety with focused loop coverage and final gate profile expected
+      by run-loop workflows.
+    verification:
+      - uv run pytest -q tests/test_loop_ralph_mode.py
+      - uv run pytest -q tests/test_loop_opencode_integration.py
+      - uvx --from . engineeringagent gates run --profile loop_fast
+updated_at: '2026-02-13T15:35:00Z'
