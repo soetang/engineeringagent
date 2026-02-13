@@ -18,3 +18,137 @@ potential_features:
       - "Each potential item has status and clear promotion criteria"
       - "A documented command/process exists to promote POT -> FEAT"
       - "Promoted items are removed or marked promoted in potential list"
+  - id: POT-004
+    title: Refactor run loop into a clearer orchestration flow with tool adapters
+    status: idea
+    context: >
+      Improve loop legibility by extracting tool interaction concerns (opencode, git,
+      shell commands, gates execution) into a dedicated subpackage. Keep loop orchestration
+      code easy to scan so control flow and stop conditions are obvious.
+    value:
+      - "Improves maintainability and onboarding speed"
+      - "Lowers risk when modifying loop behavior"
+      - "Makes architecture rules around side effects easier to enforce"
+    acceptance_hint:
+      - "Loop orchestration is readable as a high-level state flow"
+      - "Direct subprocess/tool calls are moved behind explicit adapters"
+      - "Existing loop behavior is preserved by targeted regression coverage"
+  - id: POT-005
+    title: Add pre-implement OpenCode permission preflight
+    status: idea
+    context: >
+      Fail fast when OpenCode permission setup is not viable, before entering implement
+      retries. This reduces wasted iterations and provides immediate operator guidance.
+    value:
+      - "Cuts noisy retries and wasted compute"
+      - "Provides faster feedback to human operators"
+      - "Improves loop reliability under restricted environments"
+    acceptance_hint:
+      - "Run loop performs permission preflight before implement step"
+      - "Failures stop early with actionable remediation guidance"
+      - "Gate behavior remains compatible with existing profiles"
+  - id: POT-006
+    title: Keep AGENTS documentation map in sync with repository reality
+    status: idea
+    context: >
+      AGENTS.md currently references paths that are not present in this repository.
+      Introduce a lightweight docs-map integrity check and align guidance to existing
+      structure.
+    value:
+      - "Improves navigation accuracy for humans and agents"
+      - "Reduces stale documentation risk"
+      - "Prevents context loading mistakes in agent loops"
+    acceptance_hint:
+      - "AGENTS.md documentation map matches actual repo paths"
+      - "A validator or gate checks that referenced docs exist"
+      - "Update process for docs-map changes is documented"
+  - id: POT-007
+    title: Harden spec status normalization before schema validation
+    status: idea
+    context: >
+      Loop history shows recoverable failures caused by near-valid status values in
+      feature/subtask fields. Add normalization or safe repair strategy before full
+      validation to keep retries deterministic.
+    value:
+      - "Reduces avoidable spec_validate failures"
+      - "Improves resilience to agent output variance"
+      - "Preserves strict contracts while improving operator ergonomics"
+    acceptance_hint:
+      - "Normalization policy is explicit about which transformations are allowed"
+      - "Validation output clearly reports any repaired values"
+      - "Invalid ambiguous values still fail fast"
+  - id: POT-008
+    title: Add run telemetry reporting command with invariants checks
+    status: idea
+    context: >
+      Build a CLI view over progress/runs.jsonl to summarize failure patterns, retry
+      streaks, and telemetry anomalies (for example inconsistent result/next_action).
+    value:
+      - "Speeds up triage and prioritization"
+      - "Makes reliability trends visible over time"
+      - "Detects data-quality issues in loop telemetry"
+    acceptance_hint:
+      - "A CLI command summarizes runs by feature and failed_gate"
+      - "Command flags suspicious telemetry invariants"
+      - "Output is concise for humans and parse-friendly for automation"
+  - id: POT-009
+    title: Emit structured per-feature run logs alongside human-readable output
+    status: idea
+    context: >
+      Current per-feature logs mix verbose terminal output and control characters.
+      Add ANSI-safe logging and structured sidecar output for reliable downstream parsing.
+    value:
+      - "Improves machine triage and post-run analytics"
+      - "Retains concise human debugging context"
+      - "Enables better tooling around retries and failure diagnosis"
+    acceptance_hint:
+      - "Feature logs are emitted without ANSI control artifacts"
+      - "Structured sidecar format is documented and stable"
+      - "Loop references both human and structured log paths consistently"
+  - id: POT-010
+    title: Expand init scaffolding to be language-agnostic and harness-extensible
+    status: idea
+    context: >
+      Improve init so generated guidance is not Python-specific by default, while still
+      teaching canonical CLI usage for validation, gates, and run loop. Include clear
+      extension points for custom harness commands per language stack.
+    value:
+      - "Makes adoption easier across polyglot repositories"
+      - "Separates core workflow from language-specific tooling"
+      - "Improves first-run success for new teams"
+    acceptance_hint:
+      - "Init can scaffold language-agnostic baseline docs"
+      - "Docs include clear instructions for adding custom gate/harness commands"
+      - "Existing Python-centric workflow remains available as an optional profile"
+  - id: POT-011
+    title: Define multi-agent review and refactor negotiation workflow
+    status: idea
+    context: >
+      Introduce explicit workflow design for review/refactor agents, including how
+      disagreements are resolved, when escalation to a human is required, and how loop
+      retries consume review feedback.
+    value:
+      - "Improves consistency of autonomous review loops"
+      - "Reduces ambiguous agent-to-agent interactions"
+      - "Makes human escalation intentional and auditable"
+    acceptance_hint:
+      - "Role definitions exist for implementer, reviewer, and refactor agents"
+      - "Negotiation protocol defines acceptance, rejection, and escalation paths"
+      - "Loop integration points for review feedback are documented"
+  - id: POT-012
+    title: Externalize loop prompts into template files with prompt-locality fitness checks
+    status: idea
+    context: >
+      Prompt text for selection and implementation is currently embedded in Python code,
+      which makes prompt iteration and auditing harder. Refactor prompts into dedicated
+      markdown templates and render them with explicit runtime context. Add a validator/
+      fitness check to ensure canonical prompt content only lives in approved prompt
+      template locations.
+    value:
+      - "Makes prompt tuning safer and faster without touching orchestration logic"
+      - "Improves prompt observability, versioning, and reviewability"
+      - "Reduces drift by enforcing a single source of truth for production prompts"
+    acceptance_hint:
+      - "Selection and implement prompts load from template files and support explicit variable interpolation"
+      - "A validator/gate fails when canonical prompt bodies are introduced outside approved prompt-template and renderer modules"
+      - "Tests cover happy-path rendering plus false-positive/false-negative cases for prompt-locality checks"
