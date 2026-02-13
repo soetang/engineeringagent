@@ -7,6 +7,10 @@ from pathlib import Path
 
 PROBE_TOKEN = "PERMISSION_OK"
 PROBE_PROMPT = "Run exactly: git status --short. If it succeeds, reply PERMISSION_OK."
+PERMISSION_REMEDIATION_HINT = (
+    "hint: ensure .opencode/agents/build.md and opencode.json both set "
+    "build permissions to allow-all"
+)
 PERMISSION_REJECTION_MARKERS = (
     "permission requested",
     "auto-reject",

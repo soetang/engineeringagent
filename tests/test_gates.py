@@ -51,6 +51,14 @@ def test_scaffolded_gates_config_has_expected_commands(tmp_path: Path) -> None:
     )
     assert "precommit" in config["profiles"]
     assert "loop_fast" in config["profiles"]
+    assert "opencode_permission_probe" not in config["profiles"]["loop_fast"]
+
+
+def test_default_loop_fast_profile_excludes_permission_probe() -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    config = load_gate_config(repo_root / "harness" / "gates.yaml")
+
+    assert "opencode_permission_probe" not in config["profiles"]["loop_fast"]
 
 
 def test_empty_profile_returns_friendly_success_message(

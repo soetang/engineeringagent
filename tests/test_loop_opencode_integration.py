@@ -11,7 +11,11 @@ import yaml
 
 import engineeringagent.loop as loop_module
 from engineeringagent.loop import run_loop
-from engineeringagent.opencode_permissions import evaluate_permission_probe
+from engineeringagent.opencode_permissions import (
+    PERMISSION_REMEDIATION_HINT,
+    PermissionProbeResult,
+    evaluate_permission_probe,
+)
 
 
 def _write_yaml(path: Path, payload: dict[str, Any]) -> None:
@@ -165,6 +169,11 @@ def test_loop_reports_permission_rejection_in_run_telemetry(
             )
         raise AssertionError(f"unexpected subprocess.run call: {command}")
 
+    monkeypatch.setattr(
+        loop_module,
+        "run_permission_probe",
+        lambda _: PermissionProbeResult(ok=True, reason="ok", returncode=0, output=""),
+    )
     monkeypatch.setattr(loop_module, "run_process", fake_subprocess_run)
 
     code = run_loop(
@@ -191,6 +200,205 @@ def test_loop_reports_permission_rejection_in_run_telemetry(
     run = json.loads(runs_path.read_text(encoding="utf-8").splitlines()[0])
     assert run["result"] == "failed"
     assert run["failed_gate"] == "opencode_permission"
+
+
+def test_run_loop_permission_precheck_applies_only_to_default_implement_mode(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project_root, feature_path = _make_project_root(tmp_path)
+    _init_git_repo(project_root)
+
+    calls = 0
+
+    def fake_run_permission_probe(_: Path) -> PermissionProbeResult:
+        nonlocal calls
+        calls += 1
+        return PermissionProbeResult(ok=True, reason="ok", returncode=0, output="")
+
+    def fake_run_feature_iteration(**_: Any) -> loop_module.IterationOutcome:
+        return loop_module.IterationOutcome(
+            completed=False,
+            result="failed",
+            failed_gate="git_add",
+            next_action="stop",
+            hook_feedback=None,
+            log_path=None,
+        )
+
+    monkeypatch.setattr(loop_module, "run_permission_probe", fake_run_permission_probe)
+    monkeypatch.setattr(
+        loop_module, "_run_feature_iteration", fake_run_feature_iteration
+    )
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        implement_command=None,
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        max_iterations=1,
+    )
+
+    assert code == 1
+    assert calls == 1
+
+
+def test_run_loop_exits_before_selection_when_permission_precheck_fails(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project_root, feature_path = _make_project_root(tmp_path)
+    _init_git_repo(project_root)
+
+    def fake_run_permission_probe(_: Path) -> PermissionProbeResult:
+        return PermissionProbeResult(
+            ok=False,
+            reason="permission request rejection detected in opencode output",
+            returncode=1,
+            output="permission requested for bash command git status --short (auto-reject)",
+        )
+
+    def fail_if_selected(*_: Any, **__: Any) -> Any:
+        raise AssertionError("feature selection should not run when precheck fails")
+
+    def fail_if_iterated(*_: Any, **__: Any) -> Any:
+        raise AssertionError("loop iteration should not run when precheck fails")
+
+    monkeypatch.setattr(loop_module, "run_permission_probe", fake_run_permission_probe)
+    monkeypatch.setattr(loop_module, "_choose_feature_with_selector", fail_if_selected)
+    monkeypatch.setattr(loop_module, "_run_feature_iteration", fail_if_iterated)
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        implement_command=None,
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        max_iterations=1,
+    )
+
+    assert code == 1
+    assert not (project_root / "progress" / "runs.jsonl").exists()
+
+
+def test_run_loop_skips_permission_precheck_with_skip_implement(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project_root, feature_path = _make_project_root(tmp_path)
+    _init_git_repo(project_root)
+
+    def fail_if_prechecked(_: Path) -> PermissionProbeResult:
+        raise AssertionError("permission precheck should be skipped")
+
+    def fake_run_feature_iteration(**_: Any) -> loop_module.IterationOutcome:
+        return loop_module.IterationOutcome(
+            completed=False,
+            result="failed",
+            failed_gate="git_add",
+            next_action="stop",
+            hook_feedback=None,
+            log_path=None,
+        )
+
+    monkeypatch.setattr(loop_module, "run_permission_probe", fail_if_prechecked)
+    monkeypatch.setattr(
+        loop_module, "_run_feature_iteration", fake_run_feature_iteration
+    )
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        implement_command=None,
+        opencode_prompt=None,
+        skip_implement=True,
+        dry_run=False,
+        max_iterations=1,
+    )
+
+    assert code == 1
+
+
+def test_run_loop_skips_permission_precheck_with_custom_implement_command(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project_root, feature_path = _make_project_root(tmp_path)
+    _init_git_repo(project_root)
+
+    def fail_if_prechecked(_: Path) -> PermissionProbeResult:
+        raise AssertionError("permission precheck should be skipped")
+
+    def fake_run_feature_iteration(**_: Any) -> loop_module.IterationOutcome:
+        return loop_module.IterationOutcome(
+            completed=False,
+            result="failed",
+            failed_gate="git_add",
+            next_action="stop",
+            hook_feedback=None,
+            log_path=None,
+        )
+
+    monkeypatch.setattr(loop_module, "run_permission_probe", fail_if_prechecked)
+    monkeypatch.setattr(
+        loop_module, "_run_feature_iteration", fake_run_feature_iteration
+    )
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        implement_command='python -c "print("custom")"',
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        max_iterations=1,
+    )
+
+    assert code == 1
+
+
+def test_run_loop_permission_precheck_failure_prints_remediation_hint(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    project_root, feature_path = _make_project_root(tmp_path)
+    _init_git_repo(project_root)
+
+    def fake_run_permission_probe(_: Path) -> PermissionProbeResult:
+        return PermissionProbeResult(
+            ok=False,
+            reason="opencode exited with status 127",
+            returncode=127,
+            output="",
+        )
+
+    monkeypatch.setattr(loop_module, "run_permission_probe", fake_run_permission_probe)
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        implement_command=None,
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        max_iterations=1,
+    )
+    output = capsys.readouterr().out
+
+    assert code == 1
+    assert "Precondition failed: OpenCode permission precheck failed" in output
+    assert PERMISSION_REMEDIATION_HINT in output
+    assert "--skip-implement" in output
+    assert "--implement-command" in output
 
 
 def test_loop_archived_done_requires_same_iteration_completion_commit(
@@ -242,6 +450,11 @@ def test_loop_archived_done_requires_same_iteration_completion_commit(
             return (True, None, "")
         raise AssertionError(f"unexpected feature selected: {feature_id}")
 
+    monkeypatch.setattr(
+        loop_module,
+        "run_permission_probe",
+        lambda _: PermissionProbeResult(ok=True, reason="ok", returncode=0, output=""),
+    )
     monkeypatch.setattr(loop_module, "run_implement_step", fake_run_implement_step)
 
     code = run_loop(

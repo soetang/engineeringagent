@@ -23,7 +23,6 @@ DEFAULT_GATE_CONFIG: dict[str, Any] = {
         "loop_fast": [
             "spec_validate",
             "fitness_validate",
-            "opencode_permission_probe",
         ],
     },
     "gates": {

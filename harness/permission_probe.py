@@ -14,7 +14,10 @@ def _bootstrap_path() -> None:
 
 def main() -> int:
     _bootstrap_path()
-    from engineeringagent.opencode_permissions import run_permission_probe
+    from engineeringagent.opencode_permissions import (
+        PERMISSION_REMEDIATION_HINT,
+        run_permission_probe,
+    )
 
     project_root = Path(__file__).resolve().parents[1]
     result = run_permission_probe(project_root)
@@ -27,7 +30,7 @@ def main() -> int:
         return 0
 
     print(f"permission probe: failed ({result.reason})")
-    print("hint: ensure .opencode/agents/build.md and opencode.json both set build permissions to allow-all")
+    print(PERMISSION_REMEDIATION_HINT)
     return 1
 
 

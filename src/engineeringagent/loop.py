@@ -9,7 +9,11 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from .gates import load_gate_config, run_profile
-from .opencode_permissions import output_has_permission_rejection
+from .opencode_permissions import (
+    PERMISSION_REMEDIATION_HINT,
+    output_has_permission_rejection,
+    run_permission_probe,
+)
 from .process_runner import run_process
 from .specs import dump_yaml, feature_sort_key, load_yaml
 
@@ -51,6 +55,40 @@ def _print_run_all_no_work_message() -> None:
         "(statuses: backlog, in_progress)."
     )
     print_summary(None, "no_work", None, None, "stop")
+
+
+def _requires_opencode_permission_precheck(
+    implement_command: str | None,
+    skip_implement: bool,
+) -> bool:
+    return implement_command is None and not skip_implement
+
+
+def _run_opencode_permission_precheck(
+    project_root: Path,
+    implement_command: str | None,
+    skip_implement: bool,
+) -> bool:
+    if not _requires_opencode_permission_precheck(
+        implement_command=implement_command,
+        skip_implement=skip_implement,
+    ):
+        return True
+
+    print("Running pre-run OpenCode permission precheck (default implement mode).")
+    result = run_permission_probe(project_root)
+    if result.ok:
+        print("OpenCode permission precheck passed.")
+        return True
+
+    print(f"Precondition failed: OpenCode permission precheck failed ({result.reason})")
+    if result.output:
+        print(result.output, end="" if result.output.endswith("\n") else "\n")
+    print(PERMISSION_REMEDIATION_HINT)
+    print(
+        "Hint: use --skip-implement or --implement-command to bypass default OpenCode implement mode."
+    )
+    return False
 
 
 @dataclass(frozen=True)
@@ -996,6 +1034,13 @@ def run_loop(
             "Allow-dirty override enabled: continuing with uncommitted code "
             "changes by explicit user opt-in."
         )
+
+    if not _run_opencode_permission_precheck(
+        project_root=project_root,
+        implement_command=implement_command,
+        skip_implement=skip_implement,
+    ):
+        return 1
 
     total_iterations = 0
     hook_feedback_by_path: dict[Path, str] = {}

@@ -10,7 +10,6 @@ profiles:
   loop_fast:
     - spec_validate
     - fitness_validate
-    - opencode_permission_probe
 
 gates:
   yaml_validate:
