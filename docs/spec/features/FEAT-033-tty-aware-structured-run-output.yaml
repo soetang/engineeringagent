@@ -1,0 +1,119 @@
+id: FEAT-033
+title: Improve run-loop terminal readability with TTY-aware structured status output
+type: feature
+expected_commit_subject: 'feat: add FEAT-033 tty-aware structured run output'
+status: backlog
+priority: medium
+objective: >
+  Make `engineeringagent run` output easier to scan in interactive terminals by adding
+  consistent lifecycle structure and light status styling, while keeping redirected output
+  and persisted logs plain and parse-friendly.
+context: >
+  FEAT-019 made run output concise, but operators still report that repeated lifecycle
+  lines are visually flat and hard to scan during longer loops.
+
+  User-confirmed scope: apply readability improvements to `engineeringagent run` only,
+  use light ANSI styling when attached to a TTY, keep behavior plain when not attached
+  to a TTY, keep `progress/run-feature-*.txt` ANSI-free, and capture this as a standalone
+  feature. Follow-up preference: adopt the emoji-forward iteration style as the canonical
+  run-loop iteration format for this feature.
+constraints:
+  - Limit styling/readability changes to `engineeringagent run`; do not change output behavior of other CLI commands.
+  - Preserve concise-output semantics from FEAT-019 (raw implement/gate command output still controlled by `--verbose-output`).
+  - Terminal styling must be TTY-aware by default and degrade to plain text in non-interactive output contexts.
+  - Respect common no-color behavior controls (for example `NO_COLOR` and `TERM=dumb`) so output can be forced plain.
+  - Persisted loop logs (`progress/run-feature-*.txt`) and telemetry fields must remain ANSI-free and machine-parse-friendly.
+  - Keep lifecycle message meaning stable and deterministic so existing automation can still match key tokens.
+implementation_notes: |
+  Introduce a small run-output presentation helper for lifecycle labels, spacing, and
+  optional ANSI token styling. Keep core lifecycle text stable and apply color as a
+  non-semantic layer only when terminal capability checks pass.
+
+  Canonical iteration contract (emoji-forward, Style 4):
+  🔁 Iteration <N> · <FEATURE_ID>
+    🎯 Selected: <feature_path_or_note>
+    🛠 Implement: <implement_step>
+    ✅ Passed
+    ➡️ Next: <next_action>
+
+  Failure variant:
+  🔁 Iteration <N> · <FEATURE_ID>
+    🎯 Selected: <feature_path_or_note>
+    🛠 Implement: <implement_step>
+    ❌ Failed: gate=<failed_gate>
+    📄 Log: <progress_log_path>
+    ➡️ Next: <next_action>
+
+  Archived-counterpart variant:
+  🔁 Iteration <N> · <FEATURE_ID>
+    ♻️ Selected archived counterpart:
+       <archived_feature_path>
+    🛠 Implement: <implement_step>
+    ✅ Passed
+    ➡️ Next: <next_action>
+
+  Ensure file-backed logs and telemetry never receive ANSI control sequences. Add focused
+  tests for TTY vs non-TTY rendering and for no-color env overrides, then run existing
+  loop regressions and final gate validation.
+acceptance:
+  - Running `engineeringagent run ...` in an interactive TTY prints structured lifecycle lines with light status styling that improves scanability.
+  - Running `engineeringagent run ...` in non-TTY contexts (captured/redirected output) prints plain, readable, ANSI-free lifecycle lines.
+  - Setting `NO_COLOR` (or equivalent no-color condition such as `TERM=dumb`) disables ANSI styling even in TTY contexts.
+  - Iteration output follows the canonical emoji-forward contract for pass/fail/archived-counterpart cases, including the `🔁`, `🎯`, `🛠`, `✅/❌`, `📄`, and `➡️` markers.
+  - 'Existing concise-output contract remains intact: raw implement/gate output is still hidden by default and shown only with `--verbose-output`.'
+  - '`progress/run-feature-<FEATURE_ID>.txt` and `progress/runs.jsonl` remain plain and contain no ANSI escape sequences.'
+  - Failure and completion messaging remain explicit and actionable while using the new structured output format.
+  - Loop tests covering summary/failure/completion output continue to pass after formatting changes.
+subtasks:
+  - id: ST-001
+    title: Add run-output presentation helper with TTY and no-color detection
+    status: backlog
+    order: 1
+    context: >
+      Implement reusable formatting helpers for lifecycle labels and status tokens,
+      with explicit checks for terminal capability and no-color environment overrides.
+    verification:
+      - uv run pytest -q tests/test_loop_ralph_mode.py::test_run_loop_plain_output_when_not_tty
+      - uv run pytest -q tests/test_loop_ralph_mode.py::test_run_loop_styled_output_when_tty
+      - uv run pytest -q tests/test_loop_ralph_mode.py::test_run_loop_no_color_env_disables_styling
+  - id: ST-002
+    title: Apply structured lifecycle formatting to run loop terminal messages
+    status: backlog
+    order: 2
+    context: >
+      Route `run` lifecycle prints (precheck, selection, implement step, summary,
+      failure detail, completion) through the new formatter while preserving message intent,
+      and render iteration lines using the canonical emoji-forward contract.
+    verification:
+      - uv run pytest -q tests/test_loop_ralph_mode.py::test_run_loop_failure_prints_detailed_log_pointer
+      - uv run pytest -q tests/test_loop_ralph_mode.py::test_run_loop_all_selected_feature_moved_to_features_done_continues
+      - uv run pytest -q tests/test_loop_ralph_mode.py::test_run_loop_iteration_output_uses_emoji_contract
+  - id: ST-003
+    title: Preserve ANSI-free file logs and telemetry
+    status: backlog
+    order: 3
+    context: >
+      Ensure styled terminal rendering does not leak into progress log files or runs telemetry payloads.
+    verification:
+      - uv run pytest -q tests/test_loop_ralph_mode.py::test_run_loop_writes_per_feature_progress_log
+      - uv run pytest -q tests/test_loop_ralph_mode.py::test_run_loop_telemetry_includes_log_path
+  - id: ST-004
+    title: Update run documentation for readability behavior and color fallbacks
+    status: backlog
+    order: 4
+    context: >
+      Document the structured output behavior, TTY-aware styling, and how to force plain output.
+    verification:
+      - python3 -c "from pathlib import Path; t=Path('README.md').read_text(encoding='utf-8').lower(); assert 'verbose-output' in t and 'no_color' in t; print('ok')"
+  - id: ST-005
+    title: Run focused loop regressions and final loop_fast gate profile
+    status: backlog
+    order: 5
+    context: >
+      Validate new output formatting behavior with focused tests and final gate profile
+      used by the run loop workflow.
+    verification:
+      - uv run pytest -q tests/test_loop_ralph_mode.py
+      - uv run pytest -q tests/test_loop_opencode_integration.py
+      - uvx --from . engineeringagent gates run --profile loop_fast
+updated_at: '2026-02-13T16:27:00Z'
