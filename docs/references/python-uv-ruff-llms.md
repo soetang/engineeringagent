@@ -71,6 +71,45 @@ max-statements = 50
 
 - Tune thresholds to this codebase; start from defaults and adjust only with clear signal/noise justification.
 
+## PLR0913 Remediation + Naming Guidance
+
+Use this section when a function signature grows beyond the argument budget (`PLR0913`).
+
+### Core intent
+
+- Keep orchestration functions focused on explicit control flow.
+- Move non-control-flow details (I/O shaping, lifecycle bookkeeping, formatting, command wrappers) into intention-revealing helpers.
+- Prefer self-documenting variable names that make lifecycle/state obvious.
+
+### Preferred refactor order
+
+1. Extract clearly named phase helpers so the main function reads as high-level steps.
+2. Reduce argument fan-out with the smallest useful pattern:
+   - phase extraction into helper functions
+   - cohesive context object or dataclass for repeated parameter groups
+   - keyword-only secondary controls for optional behavior
+   - typed result object when multiple values move together
+3. Rename variables for intent, not brevity, after flow and data shapes are clear.
+
+### Variable naming examples
+
+- Prefer names like `selected_feature_path`, `archived_feature_path`, `iteration_outcome`, `retry_feedback_by_path`.
+- Avoid overloaded generic names (`path`, `result`, `data`) when lifecycle/state is knowable.
+
+### Exception policy
+
+- Do not add broad per-file or module-wide `PLR0913` suppressions.
+- If a compatibility-boundary exception is unavoidable, scope it to one function and add an inline rationale.
+
+### Verification commands
+
+```bash
+uv run ruff check src/engineeringagent --select PLR0913
+uv run pytest -q tests/test_loop_ralph_mode.py
+uv run pytest -q tests/test_loop_opencode_integration.py
+uvx --from . engineeringagent gates run --profile loop_fast
+```
+
 ## Dependency and Lock Discipline
 
 1. Update Python dependencies in `pyproject.toml`.

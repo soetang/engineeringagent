@@ -19,6 +19,7 @@ Load only the artifacts relevant to the current task.
 - **Prototype mode.** Breaking changes are acceptable when they improve reliability, clarity, or execution throughput.
 - **Interview before spec-writing.** Before drafting a new feature spec, ask the user targeted questions and confirm scope.
 - **Spec guide is mandatory.** Agents must follow `docs/references/spec-writing-llms.md` when authoring or updating specs.
+- **Signature/naming refactors follow reference guidance.** For `PLR0913` remediation and self-documenting variable naming patterns, follow `docs/references/python-uv-ruff-llms.md`.
 - **Repository is the system of record.** If it is not in-repo, assume it does not exist.
 - **Encode behavior in gates/validators.** Prefer mechanical checks over prose rules.
 - **Keep this file short.** Put durable details next to code/config/docs.
