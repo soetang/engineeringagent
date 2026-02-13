@@ -402,6 +402,55 @@ def _require_clean_worktree(project_root: Path) -> tuple[bool, str]:
     return (True, "")
 
 
+def _resolve_archive_path(project_root: Path, feature_path: Path) -> Path:
+    active_dir = (project_root / "docs" / "spec" / "features").resolve()
+    done_dir = (project_root / "docs" / "spec" / "features_done").resolve()
+    resolved_feature = feature_path.resolve()
+
+    if resolved_feature.parent != active_dir:
+        raise ValueError(
+            "completed feature archive source must be under docs/spec/features"
+        )
+    return done_dir / resolved_feature.name
+
+
+def _archive_completed_feature(
+    project_root: Path, feature_path: Path
+) -> tuple[bool, Path | None, str]:
+    try:
+        archive_path = _resolve_archive_path(project_root, feature_path)
+    except ValueError as exc:
+        return (False, None, str(exc))
+
+    if not feature_path.exists():
+        return (False, None, f"completed feature spec not found: {feature_path}")
+    if archive_path.exists():
+        return (
+            False,
+            None,
+            f"archive destination already exists: {archive_path}",
+        )
+
+    archive_path.parent.mkdir(parents=True, exist_ok=True)
+    feature_path.rename(archive_path)
+    return (True, archive_path, "")
+
+
+def _restore_archived_feature(
+    archived_path: Path, original_feature_path: Path
+) -> tuple[bool, str]:
+    if not archived_path.exists():
+        return (True, "")
+    if original_feature_path.exists():
+        return (
+            False,
+            "cannot restore archived feature path because source already exists",
+        )
+    original_feature_path.parent.mkdir(parents=True, exist_ok=True)
+    archived_path.rename(original_feature_path)
+    return (True, "")
+
+
 def _commit_feature_completion(
     project_root: Path, feature: dict[str, Any]
 ) -> tuple[bool, str | None, str]:
@@ -523,17 +572,32 @@ def _run_feature_iteration(
     next_hook_feedback: str | None = None
 
     if result == "passed" and feature.get("status") == "done":
-        commit_ok, commit_failed_gate, commit_output = _commit_feature_completion(
-            project_root, feature
+        archived_ok, archived_path, archive_error = _archive_completed_feature(
+            project_root, feature_path
         )
-        if commit_ok:
-            completed = True
-            next_action = "select_next_feature"
-        else:
+        if not archived_ok:
             result = "failed"
-            failed_gate = commit_failed_gate
-            next_hook_feedback = commit_output
-            next_action = "retry_same_feature"
+            failed_gate = "feature_archive"
+            next_hook_feedback = archive_error
+        else:
+            commit_ok, commit_failed_gate, commit_output = _commit_feature_completion(
+                project_root, feature
+            )
+            if commit_ok:
+                completed = True
+                next_action = "select_next_feature"
+            else:
+                rollback_output = ""
+                if archived_path is not None:
+                    restored_ok, restore_error = _restore_archived_feature(
+                        archived_path, feature_path
+                    )
+                    if not restored_ok:
+                        rollback_output = f"\narchive rollback failed: {restore_error}"
+                result = "failed"
+                failed_gate = commit_failed_gate
+                next_hook_feedback = f"{commit_output}{rollback_output}".strip()
+                next_action = "retry_same_feature"
 
     run_payload: dict[str, Any] = {
         "ts": now_iso(),
@@ -567,6 +631,7 @@ def run_loop(
     dry_run: bool,
     run_all: bool = False,
     max_iterations: int = 50,
+    allow_dirty: bool = False,
 ) -> int:
     """Execute feature loops until completion or termination condition.
 
@@ -580,6 +645,7 @@ def run_loop(
         dry_run: Whether to resolve and report selection without execution.
         run_all: Whether to auto-discover active feature files.
         max_iterations: Max non-dry iterations across selected features.
+        allow_dirty: Whether to permit non-dry execution with uncommitted changes.
 
     Returns:
         Process exit code where 0 indicates success.
@@ -622,9 +688,18 @@ def run_loop(
         return 0
 
     clean, reason = _require_clean_worktree(project_root)
-    if not clean:
+    if not clean and not allow_dirty:
         print(f"Precondition failed: {reason}")
+        print(
+            "Hint: re-run with --allow-dirty to explicitly continue with "
+            "uncommitted code changes."
+        )
         return 1
+    if not clean and allow_dirty:
+        print(
+            "Allow-dirty override enabled: continuing with uncommitted code "
+            "changes by explicit user opt-in."
+        )
 
     total_iterations = 0
     hook_feedback_by_path: dict[Path, str] = {}
@@ -670,6 +745,10 @@ def run_loop(
                 hook_feedback_by_path.pop(selected_path, None)
 
             if outcome.completed:
+                if not selected_path.exists():
+                    resolved_paths = [
+                        path for path in resolved_paths if path != selected_path
+                    ]
                 break
 
             if outcome.failed_gate == "git_add":

@@ -195,6 +195,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         skip_implement=args.skip_implement,
         dry_run=args.dry_run,
         max_iterations=args.max_iterations,
+        allow_dirty=args.allow_dirty,
     )
 
 
@@ -333,6 +334,11 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         default=50,
         help="max non-dry iterations across all selected features",
+    )
+    run_parser.add_argument(
+        "--allow-dirty",
+        action="store_true",
+        help="allow run execution with uncommitted code changes",
     )
     run_parser.set_defaults(func=cmd_run)
 

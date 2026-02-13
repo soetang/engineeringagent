@@ -423,7 +423,11 @@ def test_run_loop_completes_feature_and_commits(tmp_path: Path) -> None:
     assert runs[-1]["result"] == "passed"
     assert runs[-1]["failed_gate"] is None
 
-    feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
+    archived_path = project_root / "docs" / "spec" / "features_done" / feature_path.name
+    assert not feature_path.exists()
+    assert archived_path.exists()
+
+    feature = yaml.safe_load(archived_path.read_text(encoding="utf-8"))
     assert feature["status"] == "done"
 
     log = _run_git(project_root, "log", "--oneline").stdout.strip().splitlines()
@@ -457,7 +461,9 @@ def test_run_loop_commit_ignores_runs_jsonl_when_gitignored(tmp_path: Path) -> N
     assert "progress/runs.jsonl" not in status
 
 
-def test_run_loop_requires_clean_worktree(tmp_path: Path, capsys: Any) -> None:
+def test_run_loop_requires_clean_worktree_by_default(
+    tmp_path: Path, capsys: Any
+) -> None:
     project_root, feature_path = _make_project_root(
         tmp_path, feature_data=_base_feature()
     )
@@ -480,6 +486,142 @@ def test_run_loop_requires_clean_worktree(tmp_path: Path, capsys: Any) -> None:
     output = capsys.readouterr().out
     assert code == 1
     assert "Precondition failed" in output
+    assert "--allow-dirty" in output
+
+
+def test_run_loop_allows_uncommitted_changes_with_allow_dirty(
+    tmp_path: Path, capsys: Any
+) -> None:
+    project_root, feature_path = _make_project_root(
+        tmp_path, feature_data=_base_feature()
+    )
+    script_path = _write_set_done_script(
+        tmp_path.parent / f"{tmp_path.name}-set-done-allow-dirty.py"
+    )
+    _init_git_repo(project_root)
+
+    (project_root / "notes.txt").write_text("restart with edits\n", encoding="utf-8")
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        allow_dirty=True,
+        max_iterations=5,
+    )
+
+    output = capsys.readouterr().out
+    assert code == 0
+    assert "Allow-dirty override enabled" in output
+
+
+def test_run_loop_moves_completed_feature_to_features_done(tmp_path: Path) -> None:
+    project_root, feature_path = _make_project_root(
+        tmp_path, feature_data=_base_feature()
+    )
+    script_path = _write_set_done_script(
+        tmp_path.parent / f"{tmp_path.name}-set-done-archive.py"
+    )
+    _init_git_repo(project_root)
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        max_iterations=5,
+    )
+
+    archived_path = project_root / "docs" / "spec" / "features_done" / feature_path.name
+    assert code == 0
+    assert not feature_path.exists()
+    assert archived_path.exists()
+
+
+def test_run_loop_archives_only_selected_feature(tmp_path: Path) -> None:
+    project_root, feature_path = _make_project_root(
+        tmp_path, feature_data=_base_feature()
+    )
+    preexisting_done_path = (
+        project_root / "docs" / "spec" / "features" / "FEAT-901-preexisting-done.yaml"
+    )
+    preexisting_done_feature = _base_feature(status="done")
+    preexisting_done_feature["id"] = "FEAT-901"
+    _write_yaml(preexisting_done_path, preexisting_done_feature)
+
+    script_path = _write_set_done_script(
+        tmp_path.parent / f"{tmp_path.name}-set-done-selected.py"
+    )
+    _init_git_repo(project_root)
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path), str(preexisting_done_path)],
+        gate_profile="loop_fast",
+        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        max_iterations=5,
+    )
+
+    archived_selected_path = (
+        project_root / "docs" / "spec" / "features_done" / feature_path.name
+    )
+    archived_preexisting_done_path = (
+        project_root / "docs" / "spec" / "features_done" / preexisting_done_path.name
+    )
+
+    assert code == 0
+    assert archived_selected_path.exists()
+    assert not feature_path.exists()
+    assert preexisting_done_path.exists()
+    assert not archived_preexisting_done_path.exists()
+
+
+def test_run_loop_completion_commit_includes_archive_move(tmp_path: Path) -> None:
+    project_root, feature_path = _make_project_root(
+        tmp_path, feature_data=_base_feature()
+    )
+    script_path = _write_set_done_script(
+        tmp_path.parent / f"{tmp_path.name}-set-done-commit-move.py"
+    )
+    _init_git_repo(project_root)
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        max_iterations=5,
+    )
+
+    assert code == 0
+    changed_paths = _run_git(
+        project_root,
+        "show",
+        "--name-status",
+        "--pretty=format:",
+        "HEAD",
+    ).stdout.splitlines()
+    expected_rename_suffix = (
+        f"\tdocs/spec/features/{feature_path.name}"
+        f"\tdocs/spec/features_done/{feature_path.name}"
+    )
+    assert any(
+        line.startswith("R") and line.endswith(expected_rename_suffix)
+        for line in changed_paths
+    )
 
 
 def test_git_add_failure_exits_immediately(tmp_path: Path) -> None:
@@ -512,11 +654,14 @@ def test_git_add_failure_exits_immediately(tmp_path: Path) -> None:
     assert runs[0]["attempt"] == 1
 
 
-def test_commit_failure_retries_same_feature(tmp_path: Path) -> None:
+def test_run_loop_commit_failure_preserves_retryable_feature_path(
+    tmp_path: Path,
+) -> None:
     project_root, feature_path = _make_project_root(
         tmp_path, feature_data=_base_feature()
     )
     script_path = tmp_path.parent / f"{tmp_path.name}-set-done-allow.py"
+    attempted_paths_path = project_root / ".attempted_feature_paths"
     script_path.write_text(
         "\n".join(
             [
@@ -529,6 +674,9 @@ def test_commit_failure_retries_same_feature(tmp_path: Path) -> None:
                 "count = int(counter_path.read_text(encoding='utf-8')) if counter_path.exists() else 0",
                 "count += 1",
                 "counter_path.write_text(str(count), encoding='utf-8')",
+                "attempted_paths_path = project_root / '.attempted_feature_paths'",
+                "with attempted_paths_path.open('a', encoding='utf-8') as f:",
+                "    f.write(str(feature_path) + '\\n')",
                 "feature = yaml.safe_load(feature_path.read_text(encoding='utf-8'))",
                 "feature['status'] = 'done'",
                 "feature_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding='utf-8')",
@@ -568,12 +716,25 @@ def test_commit_failure_retries_same_feature(tmp_path: Path) -> None:
     assert len(runs) >= 2
     assert runs[0]["failed_gate"] == "git_commit"
     assert runs[-1]["result"] == "passed"
+    archived_path = project_root / "docs" / "spec" / "features_done" / feature_path.name
+    assert archived_path.exists()
+    attempted_paths = attempted_paths_path.read_text(encoding="utf-8").splitlines()
+    assert attempted_paths
+    assert all(path == str(feature_path) for path in attempted_paths)
 
 
 def test_cli_legacy_loop_command_removed() -> None:
     parser = build_parser()
     with pytest.raises(SystemExit):
         parser.parse_args(["loop", "run", "--feature-id", "FEAT-900"])
+
+
+def test_cli_run_help_includes_allow_dirty_flag(capsys: Any) -> None:
+    parser = build_parser()
+    with pytest.raises(SystemExit):
+        parser.parse_args(["run", "--help"])
+    output = capsys.readouterr().out
+    assert "--allow-dirty" in output
 
 
 def test_run_loop_reports_invalid_feature_path(tmp_path: Path, capsys: Any) -> None:

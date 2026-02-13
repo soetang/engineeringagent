@@ -74,9 +74,10 @@ Load only the artifacts relevant to the current task.
 
 - Advance **at most one** selected feature at a time.
 - Default non-dry loop execution expects no uncommitted changes.
+- Non-dry runs with uncommitted code changes require explicit user opt-in via `--allow-dirty`.
 - Never finalize feature `done` without passing verification and commit hooks.
 - Feature completion is commit-gated in the run loop.
-- Archive completed features to `docs/spec/features_done/`.
+- On successful completion, automatically archive the selected done feature spec from `docs/spec/features/` to `docs/spec/features_done/` in the same completion commit.
 - Record loop outcome in `progress/runs.jsonl`.
 
 ## 8) Command Quick Reference

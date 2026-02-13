@@ -15,8 +15,8 @@ Repo-local, human-gated harness for long-running coding loops.
 
 ## Structure
 
-- `docs/spec/features/` active feature specs.
-- `docs/spec/features_done/` archived completed features.
+- `docs/spec/features/` active feature specs (`backlog`, `in_progress`, `blocked`).
+- `docs/spec/features_done/` archived completed feature specs (`done`).
 - `docs/spec/potential_features.yaml` idea backlog (not picked by loop).
 - `docs/spec/schemas/feature.schema.json` schema for feature files.
 - `harness/gates.yaml` gate and profile definitions.
@@ -78,7 +78,9 @@ engineeringagent --help
 - `--all` snapshot candidates include only `backlog` and `in_progress`; `blocked` and `done` are excluded.
 - If `--all` discovers no runnable features, the command exits 0 with a no-work message.
 - The runner requires no uncommitted changes before non-dry execution by default.
+- Use `--allow-dirty` only when you intentionally need to run with uncommitted code changes (for example, restarting after a failed iteration with local edits still present).
 - Each selected feature repeats until status is `done` and commit hooks pass.
+- When a selected feature reaches `done`, the runner archives that same feature file from `docs/spec/features/` to `docs/spec/features_done/` in the same completion commit.
 - If multiple feature files are pending, OpenCode selects the next feature with deterministic fallback.
 
 ## Loop CLI details
