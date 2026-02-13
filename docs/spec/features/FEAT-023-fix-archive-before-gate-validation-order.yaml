@@ -23,9 +23,9 @@ context: >
   loop-focused regression coverage.
 constraints:
   - Limit changes to run-loop behavior and loop-focused tests; do not change validator rules or gate profile definitions.
-  - When the selected feature becomes `status: done` in an iteration, archive it to `docs/spec/features_done/` before running gate profile commands.
+  - 'When the selected feature becomes `status: done` in an iteration, archive it to `docs/spec/features_done/` before running gate profile commands.'
   - If any gate fails after pre-gate archive, restore the archived feature spec back to its original active path for deterministic retry on the same selected path.
-  - Preserve existing completion semantics: feature completion still requires successful gate execution and successful completion commit.
+  - 'Preserve existing completion semantics: feature completion still requires successful gate execution and successful completion commit.'
   - Preserve existing retry-feedback behavior and deterministic telemetry fields (`result`, `failed_gate`, `next_action`).
   - Keep archive rollback behavior for commit-failure paths compatible with the new pre-gate archive ordering.
 implementation_notes: >
@@ -42,7 +42,7 @@ implementation_notes: >
   and archive rollback, including a regression that reproduces
   done-in-active + `spec_validate` failure in pre-fix behavior.
 acceptance:
-  - A selected feature that becomes `status: done` is archived before gate profile execution in the same iteration.
+  - 'A selected feature that becomes `status: done` is archived before gate profile execution in the same iteration.'
   - With unchanged `loop_fast` ordering (`spec_validate` first), the loop no longer fails solely because selected-feature done state is temporarily in `docs/spec/features/`.
   - If a gate fails after pre-gate archive, the feature spec is restored to `docs/spec/features/<name>.yaml` for deterministic retry.
   - Gate failure details still flow into next retry prompt exactly as latest-only feedback for the selected feature.
