@@ -35,7 +35,8 @@ potential_features:
       - "Existing loop behavior is preserved by targeted regression coverage"
   - id: POT-006
     title: Keep AGENTS documentation map in sync with repository reality
-    status: idea
+    status: promoted
+    promoted_to: FEAT-027
     context: >
       AGENTS.md currently references paths that are not present in this repository.
       Introduce a lightweight docs-map integrity check and align guidance to existing
