@@ -101,6 +101,31 @@ def _write_set_done_script(script_path: Path) -> Path:
     return script_path
 
 
+def _write_set_done_with_output_script(
+    script_path: Path,
+    stdout_token: str,
+    stderr_token: str,
+) -> Path:
+    script_path.write_text(
+        "\n".join(
+            [
+                "from pathlib import Path",
+                "import sys",
+                "import yaml",
+                "feature_path = Path(sys.argv[1])",
+                "feature = yaml.safe_load(feature_path.read_text(encoding='utf-8'))",
+                "feature['status'] = 'done'",
+                "feature_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding='utf-8')",
+                f"print({stdout_token!r})",
+                f"print({stderr_token!r}, file=sys.stderr)",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return script_path
+
+
 def _move_feature_to_done(project_root: Path, feature_path: Path) -> None:
     feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
     feature["status"] = "done"
@@ -337,9 +362,10 @@ def test_run_loop_all_does_not_include_specs_created_after_startup(
         skip_implement: bool,
         attempt: int,
         hook_feedback: str | None,
+        verbose_output: bool,
     ) -> loop_module.IterationOutcome:
         del project_root, gate_profile, implement_command, opencode_prompt
-        del skip_implement, attempt, hook_feedback
+        del skip_implement, attempt, hook_feedback, verbose_output
 
         created = _base_feature(status="backlog")
         created["id"] = "FEAT-999"
@@ -355,6 +381,7 @@ def test_run_loop_all_does_not_include_specs_created_after_startup(
             failed_gate=None,
             next_action="select_next_feature",
             hook_feedback=None,
+            log_path=None,
         )
 
     monkeypatch.setattr(
@@ -472,6 +499,237 @@ def test_run_loop_commit_ignores_runs_jsonl_when_gitignored(tmp_path: Path) -> N
     assert "progress/runs.jsonl" not in status
 
 
+def test_run_loop_writes_per_feature_progress_log(tmp_path: Path) -> None:
+    project_root, feature_path = _make_project_root(
+        tmp_path, feature_data=_base_feature()
+    )
+    script_path = _write_set_done_script(
+        tmp_path.parent / f"{tmp_path.name}-set-done-progress-log.py"
+    )
+    _init_git_repo(project_root)
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        max_iterations=5,
+    )
+
+    assert code == 0
+    feature_log_path = project_root / "progress" / "run-feature-FEAT-900.txt"
+    assert feature_log_path.exists()
+    log_text = feature_log_path.read_text(encoding="utf-8")
+    assert "attempt=1" in log_text
+    assert "feature_id=FEAT-900" in log_text
+    assert "result=passed" in log_text
+
+
+def test_run_loop_progress_logs_are_gitignored(tmp_path: Path) -> None:
+    project_root, feature_path = _make_project_root(
+        tmp_path, feature_data=_base_feature()
+    )
+    script_path = _write_set_done_script(
+        tmp_path.parent / f"{tmp_path.name}-set-done-progress-log-ignore.py"
+    )
+    (project_root / ".gitignore").write_text(
+        "progress/runs.jsonl\nprogress/run-feature-*.txt\n",
+        encoding="utf-8",
+    )
+    _init_git_repo(project_root)
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        max_iterations=5,
+    )
+
+    assert code == 0
+    assert (project_root / "progress" / "run-feature-FEAT-900.txt").exists()
+    status = _run_git(project_root, "status", "--short").stdout
+    assert "progress/runs.jsonl" not in status
+    assert "progress/run-feature-FEAT-900.txt" not in status
+
+
+def test_run_loop_concise_mode_hides_raw_implement_and_gate_output(
+    tmp_path: Path, capsys: Any
+) -> None:
+    implement_stdout_token = "IMPLEMENT_RAW_STDOUT_TOKEN"
+    implement_stderr_token = "IMPLEMENT_RAW_STDERR_TOKEN"
+    gate_stdout_token = "GATE_RAW_STDOUT_TOKEN"
+    gate_stderr_token = "GATE_RAW_STDERR_TOKEN"
+
+    gate_script = tmp_path.parent / f"{tmp_path.name}-emit-gate-output.py"
+    gate_script.write_text(
+        "\n".join(
+            [
+                "import sys",
+                f"print({gate_stdout_token!r})",
+                f"print({gate_stderr_token!r}, file=sys.stderr)",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    gates_data = {
+        "profiles": {"loop_fast": ["emit_gate_output"]},
+        "gates": {"emit_gate_output": {"run": f'"{sys.executable}" "{gate_script}"'}},
+    }
+    project_root, feature_path = _make_project_root(
+        tmp_path,
+        feature_data=_base_feature(),
+        gates_data=gates_data,
+    )
+    script_path = _write_set_done_with_output_script(
+        tmp_path.parent / f"{tmp_path.name}-set-done-with-output.py",
+        stdout_token=implement_stdout_token,
+        stderr_token=implement_stderr_token,
+    )
+    _init_git_repo(project_root)
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        max_iterations=5,
+        verbose_output=False,
+    )
+
+    output = capsys.readouterr().out
+    assert code == 0
+    assert implement_stdout_token not in output
+    assert gate_stdout_token not in output
+
+    feature_log_path = project_root / "progress" / "run-feature-FEAT-900.txt"
+    log_text = feature_log_path.read_text(encoding="utf-8")
+    assert implement_stdout_token in log_text
+    assert implement_stderr_token in log_text
+    assert gate_stdout_token in log_text
+    assert gate_stderr_token in log_text
+
+
+def test_run_loop_verbose_output_streams_raw_implement_and_gate_output(
+    tmp_path: Path, capsys: Any
+) -> None:
+    implement_stdout_token = "IMPLEMENT_VERBOSE_STDOUT_TOKEN"
+    implement_stderr_token = "IMPLEMENT_VERBOSE_STDERR_TOKEN"
+    gate_stdout_token = "GATE_VERBOSE_STDOUT_TOKEN"
+    gate_stderr_token = "GATE_VERBOSE_STDERR_TOKEN"
+
+    gate_script = tmp_path.parent / f"{tmp_path.name}-emit-gate-verbose-output.py"
+    gate_script.write_text(
+        "\n".join(
+            [
+                "import sys",
+                f"print({gate_stdout_token!r})",
+                f"print({gate_stderr_token!r}, file=sys.stderr)",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    gates_data = {
+        "profiles": {"loop_fast": ["emit_gate_output"]},
+        "gates": {"emit_gate_output": {"run": f'"{sys.executable}" "{gate_script}"'}},
+    }
+    project_root, feature_path = _make_project_root(
+        tmp_path,
+        feature_data=_base_feature(),
+        gates_data=gates_data,
+    )
+    script_path = _write_set_done_with_output_script(
+        tmp_path.parent / f"{tmp_path.name}-set-done-with-verbose-output.py",
+        stdout_token=implement_stdout_token,
+        stderr_token=implement_stderr_token,
+    )
+    _init_git_repo(project_root)
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        max_iterations=5,
+        verbose_output=True,
+    )
+
+    captured = capsys.readouterr()
+    merged_output = captured.out + captured.err
+    assert code == 0
+    assert implement_stdout_token in merged_output
+    assert implement_stderr_token in merged_output
+    assert gate_stdout_token in merged_output
+    assert gate_stderr_token in merged_output
+
+
+def test_run_loop_telemetry_includes_log_path(tmp_path: Path) -> None:
+    project_root, feature_path = _make_project_root(
+        tmp_path, feature_data=_base_feature()
+    )
+    script_path = _write_set_done_script(
+        tmp_path.parent / f"{tmp_path.name}-set-done-log-path.py"
+    )
+    _init_git_repo(project_root)
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        max_iterations=5,
+    )
+
+    assert code == 0
+    runs = _read_runs(project_root)
+    assert runs
+    assert runs[-1]["log_path"] == "progress/run-feature-FEAT-900.txt"
+
+
+def test_run_loop_failure_prints_detailed_log_pointer(
+    tmp_path: Path, capsys: Any
+) -> None:
+    project_root, feature_path = _make_project_root(
+        tmp_path, feature_data=_base_feature()
+    )
+    _init_git_repo(project_root)
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        implement_command=f'"{sys.executable}" -c "import sys; sys.exit(1)"',
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        max_iterations=1,
+    )
+
+    output = capsys.readouterr().out
+    assert code == 1
+    assert "result=failed" in output
+    assert "Detailed log: progress/run-feature-FEAT-900.txt" in output
+
+
 def test_run_loop_requires_clean_worktree_by_default(
     tmp_path: Path, capsys: Any
 ) -> None:
@@ -574,10 +832,12 @@ def test_run_loop_selected_feature_moved_to_features_done_does_not_crash(
         opencode_prompt: str | None,
         skip_implement: bool,
         hook_feedback: str | None,
-    ) -> tuple[bool, str | None]:
+        verbose_output: bool,
+    ) -> tuple[bool, str | None, str]:
         del feature, implement_command, opencode_prompt, skip_implement, hook_feedback
+        del verbose_output
         _move_feature_to_done(project_root, feature_path)
-        return (True, None)
+        return (True, None, "")
 
     monkeypatch.setattr(loop_module, "run_implement_step", fake_run_implement_step)
 
@@ -594,19 +854,72 @@ def test_run_loop_selected_feature_moved_to_features_done_does_not_crash(
 
     archived_path = project_root / "docs" / "spec" / "features_done" / feature_path.name
     output = capsys.readouterr().out
-    assert code == 0
+    assert code == 1
     assert not feature_path.exists()
     assert archived_path.exists()
     assert (
         "Selected feature path missing after iteration; using archived counterpart"
         in output
     )
-    assert "Loop summary: result=passed" in output
-    assert "next=select_next_feature" in output
+    assert "Loop summary: result=failed" in output
+    assert "next=retry_same_feature" in output
+    assert "before completion commit in this iteration" in output
     runs = _read_runs(project_root)
     assert runs
-    assert runs[-1]["result"] == "passed"
-    assert runs[-1]["next_action"] == "select_next_feature"
+    assert runs[-1]["result"] == "failed"
+    assert runs[-1]["failed_gate"] == "feature_missing"
+    assert runs[-1]["next_action"] == "retry_same_feature"
+
+
+def test_run_loop_archived_done_without_completion_commit_fails(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: Any,
+) -> None:
+    project_root, feature_path = _make_project_root(
+        tmp_path, feature_data=_base_feature()
+    )
+    _init_git_repo(project_root)
+
+    def fake_run_implement_step(
+        project_root: Path,
+        feature: dict[str, Any],
+        feature_path: Path,
+        implement_command: str | None,
+        opencode_prompt: str | None,
+        skip_implement: bool,
+        hook_feedback: str | None,
+        verbose_output: bool,
+    ) -> tuple[bool, str | None, str]:
+        del feature, implement_command, opencode_prompt, skip_implement, hook_feedback
+        del verbose_output
+        _move_feature_to_done(project_root, feature_path)
+        return (True, None, "")
+
+    monkeypatch.setattr(loop_module, "run_implement_step", fake_run_implement_step)
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        implement_command=None,
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        max_iterations=3,
+    )
+
+    output = capsys.readouterr().out
+    assert code == 1
+    assert "before completion commit in this iteration" in output
+    assert "next=retry_same_feature" in output
+
+    runs = _read_runs(project_root)
+    assert runs
+    assert runs[-1]["result"] == "failed"
+    assert runs[-1]["failed_gate"] == "feature_missing"
+    assert runs[-1]["next_action"] == "retry_same_feature"
+    assert all(run["next_action"] != "select_next_feature" for run in runs)
 
 
 def test_run_loop_all_selected_feature_moved_to_features_done_continues(
@@ -633,14 +946,16 @@ def test_run_loop_all_selected_feature_moved_to_features_done_continues(
         opencode_prompt: str | None,
         skip_implement: bool,
         hook_feedback: str | None,
-    ) -> tuple[bool, str | None]:
+        verbose_output: bool,
+    ) -> tuple[bool, str | None, str]:
         del implement_command, opencode_prompt, skip_implement, hook_feedback
+        del verbose_output
         if str(feature.get("id", "")) == "FEAT-900":
             _move_feature_to_done(project_root, feature_path)
-            return (True, None)
+            return (True, None, "")
         feature["status"] = "done"
         _write_yaml(feature_path, feature)
-        return (True, None)
+        return (True, None, "")
 
     monkeypatch.setattr(loop_module, "run_implement_step", fake_run_implement_step)
 
@@ -663,19 +978,19 @@ def test_run_loop_all_selected_feature_moved_to_features_done_continues(
         project_root / "docs" / "spec" / "features_done" / second_feature_path.name
     )
     output = capsys.readouterr().out
-    assert code == 0
+    assert code == 1
     assert not first_feature_path.exists()
-    assert not second_feature_path.exists()
+    assert second_feature_path.exists()
     assert archived_first.exists()
-    assert archived_second.exists()
+    assert not archived_second.exists()
     assert (
         "Selected feature path missing after iteration; using archived counterpart"
         in output
     )
-    assert "next=select_next_feature" in output
+    assert "next=retry_same_feature" in output
     run_feature_ids = [run["feature_id"] for run in _read_runs(project_root)]
     assert "FEAT-900" in run_feature_ids
-    assert "FEAT-901" in run_feature_ids
+    assert "FEAT-901" not in run_feature_ids
 
 
 def test_run_loop_missing_selected_feature_without_archive_fails_cleanly(
@@ -696,11 +1011,12 @@ def test_run_loop_missing_selected_feature_without_archive_fails_cleanly(
         opencode_prompt: str | None,
         skip_implement: bool,
         hook_feedback: str | None,
-    ) -> tuple[bool, str | None]:
+        verbose_output: bool,
+    ) -> tuple[bool, str | None, str]:
         del project_root, feature, implement_command, opencode_prompt
-        del skip_implement, hook_feedback
+        del skip_implement, hook_feedback, verbose_output
         feature_path.unlink()
-        return (True, None)
+        return (True, None, "")
 
     monkeypatch.setattr(loop_module, "run_implement_step", fake_run_implement_step)
 
@@ -972,6 +1288,14 @@ def test_cli_run_help_includes_allow_dirty_flag(capsys: Any) -> None:
     assert "--allow-dirty" in output
 
 
+def test_cli_run_help_includes_verbose_output_flag(capsys: Any) -> None:
+    parser = build_parser()
+    with pytest.raises(SystemExit):
+        parser.parse_args(["run", "--help"])
+    output = capsys.readouterr().out
+    assert "--verbose-output" in output
+
+
 def test_run_loop_reports_invalid_feature_path(tmp_path: Path, capsys: Any) -> None:
     project_root, _ = _make_project_root(tmp_path, feature_data=_base_feature())
     _init_git_repo(project_root)
@@ -991,7 +1315,7 @@ def test_run_loop_reports_invalid_feature_path(tmp_path: Path, capsys: Any) -> N
     assert "does not exist" in output
 
 
-def test_commit_failure_feedback_is_injected_into_next_prompt(
+def test_commit_failure_feedback_still_injected_into_next_prompt(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -1049,5 +1373,299 @@ def test_commit_failure_feedback_is_injected_into_next_prompt(
 
     assert code == 0
     assert len(prompts) >= 2
-    assert "Previous commit or pre-commit hooks failed" in prompts[1]
+    assert "Previous retry feedback is available" in prompts[1]
     assert "hook blocked" in prompts[1]
+
+
+def test_gate_failure_feedback_is_injected_into_next_prompt(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project_root, feature_path = _make_project_root(
+        tmp_path, feature_data=_base_feature()
+    )
+    _init_git_repo(project_root)
+
+    real_run = subprocess.run
+    prompts: list[str] = []
+
+    def fake_subprocess_run(
+        command: Any, **kwargs: Any
+    ) -> subprocess.CompletedProcess[str]:
+        if isinstance(command, list) and command[:3] == ["opencode", "run", "--agent"]:
+            prompt = command[4]
+            prompts.append(prompt)
+            feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
+            feature["status"] = "done"
+            feature_path.write_text(
+                yaml.safe_dump(feature, sort_keys=False), encoding="utf-8"
+            )
+            return subprocess.CompletedProcess(command, 0, stdout="ok\n", stderr="")
+        return real_run(command, **kwargs)
+
+    gate_results = iter(
+        [
+            (
+                False,
+                "spec_validate",
+                "[gate:spec_validate] command=uv run python -m engineeringagent.cli validate\nSPEC_VALIDATE_FAILED_TOKEN",
+            ),
+            (True, None, ""),
+        ]
+    )
+
+    def fake_run_profile(*args: Any, **kwargs: Any) -> tuple[bool, str | None, str]:
+        del args, kwargs
+        return next(gate_results)
+
+    monkeypatch.setattr(loop_module.subprocess, "run", fake_subprocess_run)
+    monkeypatch.setattr(loop_module, "run_profile", fake_run_profile)
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        implement_command=None,
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        max_iterations=6,
+    )
+
+    assert code == 0
+    assert len(prompts) >= 2
+    assert "SPEC_VALIDATE_FAILED_TOKEN" in prompts[1]
+
+
+def test_spec_validate_failure_feedback_round_trips_to_retry_prompt(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project_root, feature_path = _make_project_root(
+        tmp_path, feature_data=_base_feature()
+    )
+    _init_git_repo(project_root)
+
+    real_run = subprocess.run
+    prompts: list[str] = []
+
+    def fake_subprocess_run(
+        command: Any, **kwargs: Any
+    ) -> subprocess.CompletedProcess[str]:
+        if isinstance(command, list) and command[:3] == ["opencode", "run", "--agent"]:
+            prompt = command[4]
+            prompts.append(prompt)
+            feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
+            feature["status"] = "done"
+            feature_path.write_text(
+                yaml.safe_dump(feature, sort_keys=False), encoding="utf-8"
+            )
+            return subprocess.CompletedProcess(command, 0, stdout="ok\n", stderr="")
+        return real_run(command, **kwargs)
+
+    gate_results = iter(
+        [
+            (
+                False,
+                "spec_validate",
+                "[gate:spec_validate] command=uv run python -m engineeringagent.cli validate\nSPEC_VALIDATE_ROUND_TRIP_TOKEN",
+            ),
+            (True, None, ""),
+        ]
+    )
+
+    def fake_run_profile(*args: Any, **kwargs: Any) -> tuple[bool, str | None, str]:
+        del args, kwargs
+        return next(gate_results)
+
+    monkeypatch.setattr(loop_module.subprocess, "run", fake_subprocess_run)
+    monkeypatch.setattr(loop_module, "run_profile", fake_run_profile)
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        implement_command=None,
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        max_iterations=6,
+    )
+
+    assert code == 0
+    assert len(prompts) >= 2
+    assert "SPEC_VALIDATE_ROUND_TRIP_TOKEN" in prompts[1]
+
+
+def test_non_validation_gate_failure_feedback_round_trips_to_retry_prompt(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project_root, feature_path = _make_project_root(
+        tmp_path, feature_data=_base_feature()
+    )
+    _init_git_repo(project_root)
+
+    real_run = subprocess.run
+    prompts: list[str] = []
+
+    def fake_subprocess_run(
+        command: Any, **kwargs: Any
+    ) -> subprocess.CompletedProcess[str]:
+        if isinstance(command, list) and command[:3] == ["opencode", "run", "--agent"]:
+            prompt = command[4]
+            prompts.append(prompt)
+            feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
+            feature["status"] = "done"
+            feature_path.write_text(
+                yaml.safe_dump(feature, sort_keys=False), encoding="utf-8"
+            )
+            return subprocess.CompletedProcess(command, 0, stdout="ok\n", stderr="")
+        return real_run(command, **kwargs)
+
+    gate_results = iter(
+        [
+            (
+                False,
+                "pytest_validate",
+                "[gate:pytest_validate] command=uv run pytest -q\nNON_VALIDATION_GATE_ROUND_TRIP_TOKEN",
+            ),
+            (True, None, ""),
+        ]
+    )
+
+    def fake_run_profile(*args: Any, **kwargs: Any) -> tuple[bool, str | None, str]:
+        del args, kwargs
+        return next(gate_results)
+
+    monkeypatch.setattr(loop_module.subprocess, "run", fake_subprocess_run)
+    monkeypatch.setattr(loop_module, "run_profile", fake_run_profile)
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        implement_command=None,
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        max_iterations=6,
+    )
+
+    assert code == 0
+    assert len(prompts) >= 2
+    assert "NON_VALIDATION_GATE_ROUND_TRIP_TOKEN" in prompts[1]
+
+
+def test_gate_failure_feedback_replaces_previous_feedback(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project_root, feature_path = _make_project_root(
+        tmp_path, feature_data=_base_feature()
+    )
+    _init_git_repo(project_root)
+
+    real_run = subprocess.run
+    prompts: list[str] = []
+
+    def fake_subprocess_run(
+        command: Any, **kwargs: Any
+    ) -> subprocess.CompletedProcess[str]:
+        if isinstance(command, list) and command[:3] == ["opencode", "run", "--agent"]:
+            prompt = command[4]
+            prompts.append(prompt)
+            feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
+            feature["status"] = "done"
+            feature_path.write_text(
+                yaml.safe_dump(feature, sort_keys=False), encoding="utf-8"
+            )
+            return subprocess.CompletedProcess(command, 0, stdout="ok\n", stderr="")
+        return real_run(command, **kwargs)
+
+    gate_results = iter(
+        [
+            (False, "spec_validate", "FIRST_GATE_FAILURE_TOKEN"),
+            (False, "spec_validate", "SECOND_GATE_FAILURE_TOKEN"),
+            (True, None, ""),
+        ]
+    )
+
+    def fake_run_profile(*args: Any, **kwargs: Any) -> tuple[bool, str | None, str]:
+        del args, kwargs
+        return next(gate_results)
+
+    monkeypatch.setattr(loop_module.subprocess, "run", fake_subprocess_run)
+    monkeypatch.setattr(loop_module, "run_profile", fake_run_profile)
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        implement_command=None,
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        max_iterations=6,
+    )
+
+    assert code == 0
+    assert len(prompts) >= 3
+    assert "FIRST_GATE_FAILURE_TOKEN" in prompts[1]
+    assert "SECOND_GATE_FAILURE_TOKEN" not in prompts[1]
+    assert "SECOND_GATE_FAILURE_TOKEN" in prompts[2]
+    assert "FIRST_GATE_FAILURE_TOKEN" not in prompts[2]
+
+
+def test_gate_failure_feedback_is_truncated_before_prompt_injection(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project_root, feature_path = _make_project_root(
+        tmp_path, feature_data=_base_feature()
+    )
+    _init_git_repo(project_root)
+
+    real_run = subprocess.run
+    prompts: list[str] = []
+
+    def fake_subprocess_run(
+        command: Any, **kwargs: Any
+    ) -> subprocess.CompletedProcess[str]:
+        if isinstance(command, list) and command[:3] == ["opencode", "run", "--agent"]:
+            prompt = command[4]
+            prompts.append(prompt)
+            feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
+            feature["status"] = "done"
+            feature_path.write_text(
+                yaml.safe_dump(feature, sort_keys=False), encoding="utf-8"
+            )
+            return subprocess.CompletedProcess(command, 0, stdout="ok\n", stderr="")
+        return real_run(command, **kwargs)
+
+    large_feedback = "BEGIN_GATE_FEEDBACK\n" + ("A" * 8_200) + "\nEND_GATE_FEEDBACK"
+    gate_results = iter([(False, "spec_validate", large_feedback), (True, None, "")])
+
+    def fake_run_profile(*args: Any, **kwargs: Any) -> tuple[bool, str | None, str]:
+        del args, kwargs
+        return next(gate_results)
+
+    monkeypatch.setattr(loop_module.subprocess, "run", fake_subprocess_run)
+    monkeypatch.setattr(loop_module, "run_profile", fake_run_profile)
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        implement_command=None,
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        max_iterations=6,
+    )
+
+    assert code == 0
+    assert len(prompts) >= 2
+    assert "BEGIN_GATE_FEEDBACK" in prompts[1]
+    assert "END_GATE_FEEDBACK" not in prompts[1]
+    assert "...[truncated]" in prompts[1]

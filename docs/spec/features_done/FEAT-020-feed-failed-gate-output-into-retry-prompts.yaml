@@ -1,0 +1,118 @@
+id: FEAT-020
+title: Feed failed gate output into next retry prompt for selected feature
+type: bug
+expected_commit_subject: 'fix: add FEAT-020 failed gate feedback retry injection'
+status: done
+priority: high
+objective: 'Ensure loop retries receive actionable gate failure context by feeding
+  failed gate output back into the next implementation prompt for the same selected
+  feature.
+
+  '
+context: 'Today the loop retries after gate failures (including spec validation),
+  but the next implementation prompt usually does not include the failed gate output.
+  This causes repeated failures because the implementer lacks the exact validation/gate
+  evidence that blocked progress.
+
+  Scope confirmed with user interview: create a standalone FEAT-020; capture output
+  from any failed gate in the active gate profile; inject only the latest failure
+  output on retry; keep raw text style with truncation; and require targeted loop
+  tests.
+
+  '
+constraints:
+- Capture retry feedback for any failed gate in the configured run profile (not only
+  commit hooks).
+- Retry prompt includes only the latest failed-gate feedback for the selected feature
+  path.
+- Failed-gate feedback is injected as raw text and truncated before prompt inclusion.
+- Existing commit-hook feedback retry flow remains intact and compatible with gate-feedback
+  flow.
+- Gate-output capture for loop retries must not regress direct `engineeringagent gates
+  run` behavior.
+- Keep telemetry and failed-gate semantics deterministic (`failed_gate` values remain
+  stable).
+implementation_notes: 'Extend gate execution contracts so loop mode can capture failed
+  gate command output (stdout/stderr plus enough context to identify the failing gate)
+  while preserving current inherited-stdio behavior for direct gate execution paths.
+
+  In loop iteration flow, when gate profile execution fails, materialize retry feedback
+  from the failed gate output and store it in the per-feature `hook_feedback_by_path`
+  channel already used for commit-hook retries. Reuse existing truncation behavior
+  when appending this feedback to the next OpenCode prompt.
+
+  Add focused tests proving prompt injection on at least one validation gate failure
+  path and one non-validation gate failure path, and verify latest-only behavior across
+  repeated retries.
+
+  '
+acceptance:
+- When `spec_validate` fails in loop execution, the next implementation prompt includes
+  that failed-gate output context.
+- When a non-validation gate in the selected profile fails, the next implementation
+  prompt includes that failed-gate output context.
+- On repeated failures for the same selected feature, only the latest failed-gate
+  output is carried into the next prompt.
+- Retry feedback injected from gate failures is truncated and does not exceed configured
+  prompt feedback cap.
+- Existing commit/pre-commit retry feedback behavior still works after this change.
+- Direct `engineeringagent gates run --profile ...` behavior remains functionally
+  unchanged.
+subtasks:
+- id: ST-001
+  title: Extend gate execution API to expose failed gate output for loop mode
+  status: done
+  order: 1
+  context: 'Refactor gate execution so loop runtime can capture failed gate command
+    output without changing normal direct gate command UX.
+
+    '
+  verification:
+  - uv run pytest -q tests/test_gates.py::test_run_profile_returns_failed_gate_output_for_loop_mode
+  - uv run pytest -q tests/test_gates.py::test_cmd_gates_run_output_behavior_unchanged
+- id: ST-002
+  title: Plumb failed-gate feedback into loop retry state
+  status: done
+  order: 2
+  context: 'Update loop iteration failure handling so gate failures set retry feedback
+    for the same selected feature path using latest-only semantics.
+
+    '
+  verification:
+  - uv run pytest -q tests/test_loop_ralph_mode.py::test_gate_failure_feedback_is_injected_into_next_prompt
+  - uv run pytest -q tests/test_loop_ralph_mode.py::test_gate_failure_feedback_replaces_previous_feedback
+- id: ST-003
+  title: Keep retry prompt formatting and truncation deterministic
+  status: done
+  order: 3
+  context: 'Ensure failed-gate output uses existing truncation limits and clear prompt
+    labeling so implement retries target the reported blocker.
+
+    '
+  verification:
+  - uv run pytest -q tests/test_loop_ralph_mode.py::test_gate_failure_feedback_is_truncated_before_prompt_injection
+  - uv run pytest -q tests/test_loop_ralph_mode.py::test_commit_failure_feedback_still_injected_into_next_prompt
+- id: ST-004
+  title: Cover spec-validate and non-spec gate failure paths
+  status: done
+  order: 4
+  context: 'Add focused loop regression tests that exercise at least one failing validation
+    gate and one failing non-validation gate.
+
+    '
+  verification:
+  - uv run pytest -q tests/test_loop_ralph_mode.py::test_spec_validate_failure_feedback_round_trips_to_retry_prompt
+  - uv run pytest -q tests/test_loop_ralph_mode.py::test_non_validation_gate_failure_feedback_round_trips_to_retry_prompt
+- id: ST-005
+  title: Run focused validation and loop regression checks
+  status: done
+  order: 5
+  context: 'Confirm schema validity and targeted retry-flow coverage after the feature
+    is implemented.
+
+    '
+  verification:
+  - uvx --from . engineeringagent validate --schema-only
+  - uv run pytest -q tests/test_loop_ralph_mode.py
+  - uv run pytest -q tests/test_gates.py
+updated_at: '2026-02-13T06:52:29Z'

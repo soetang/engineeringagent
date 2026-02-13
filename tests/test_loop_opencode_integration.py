@@ -94,6 +94,15 @@ def _init_git_repo(project_root: Path) -> None:
     )
 
 
+def _move_feature_to_done(project_root: Path, feature_path: Path) -> None:
+    feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
+    feature["status"] = "done"
+    done_path = project_root / "docs" / "spec" / "features_done" / feature_path.name
+    done_path.parent.mkdir(parents=True, exist_ok=True)
+    done_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding="utf-8")
+    feature_path.unlink()
+
+
 @pytest.mark.integration
 def test_loop_runs_opencode_integration(tmp_path: Path) -> None:
     if shutil.which("opencode") is None:
@@ -182,3 +191,82 @@ def test_loop_reports_permission_rejection_in_run_telemetry(
     run = json.loads(runs_path.read_text(encoding="utf-8").splitlines()[0])
     assert run["result"] == "failed"
     assert run["failed_gate"] == "opencode_permission"
+
+
+def test_loop_archived_done_requires_same_iteration_completion_commit(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project_root, feature_path = _make_project_root(tmp_path)
+    second_feature_path = (
+        project_root / "docs" / "spec" / "features" / "FEAT-902-follow-on.yaml"
+    )
+    _write_yaml(
+        second_feature_path,
+        {
+            "id": "FEAT-902",
+            "title": "Follow-on feature",
+            "type": "feature",
+            "status": "backlog",
+            "priority": "high",
+            "objective": "Should not run when selected feature fails.",
+            "acceptance": ["Loop must stop before selecting next feature."],
+            "updated_at": "2026-02-12T00:00:00Z",
+        },
+    )
+    _init_git_repo(project_root)
+    starting_head = _run_git(project_root, "rev-parse", "HEAD").stdout.strip()
+
+    def fake_run_implement_step(
+        project_root: Path,
+        feature: dict[str, Any],
+        feature_path: Path,
+        implement_command: str | None,
+        opencode_prompt: str | None,
+        skip_implement: bool,
+        hook_feedback: str | None,
+        verbose_output: bool,
+    ) -> tuple[bool, str | None, str]:
+        del implement_command, opencode_prompt, skip_implement, hook_feedback
+        del verbose_output
+        if str(feature.get("id", "")) != "FEAT-901":
+            raise AssertionError("loop should not advance to follow-on feature")
+        _move_feature_to_done(project_root, feature_path)
+        return (True, None, "")
+
+    monkeypatch.setattr(loop_module, "run_implement_step", fake_run_implement_step)
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[],
+        gate_profile="loop_fast",
+        implement_command=None,
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        run_all=True,
+        max_iterations=4,
+    )
+
+    assert code == 1
+    run = json.loads(
+        (project_root / "progress" / "runs.jsonl")
+        .read_text(encoding="utf-8")
+        .splitlines()[0]
+    )
+    assert run["feature_id"] == "FEAT-901"
+    assert run["result"] == "failed"
+    assert run["failed_gate"] == "feature_missing"
+    assert run["next_action"] == "retry_same_feature"
+
+    archived_selected = (
+        project_root / "docs" / "spec" / "features_done" / feature_path.name
+    )
+    assert not feature_path.exists()
+    assert archived_selected.exists()
+    assert second_feature_path.exists()
+    second_feature = yaml.safe_load(second_feature_path.read_text(encoding="utf-8"))
+    assert second_feature["status"] == "backlog"
+
+    ending_head = _run_git(project_root, "rev-parse", "HEAD").stdout.strip()
+    assert ending_head == starting_head

@@ -60,6 +60,7 @@ class IterationOutcome:
     failed_gate: str | None
     next_action: str
     hook_feedback: str | None
+    log_path: str | None
 
 
 def now_iso() -> str:
@@ -86,6 +87,24 @@ def append_run(log_path: Path, payload: dict[str, Any]) -> None:
     log_path.parent.mkdir(parents=True, exist_ok=True)
     with log_path.open("a", encoding="utf-8") as f:
         f.write(json.dumps(payload, ensure_ascii=True) + "\n")
+
+
+def _sanitize_feature_id_for_log(feature_id: str) -> str:
+    sanitized = "".join(
+        char if char.isalnum() or char in {"-", "_"} else "_" for char in feature_id
+    ).strip("_")
+    return sanitized or "unknown-feature"
+
+
+def _resolve_feature_progress_log_path(project_root: Path, feature_id: str) -> Path:
+    safe_feature_id = _sanitize_feature_id_for_log(feature_id)
+    return project_root / "progress" / f"run-feature-{safe_feature_id}.txt"
+
+
+def _append_feature_progress_log(log_path: Path, lines: Sequence[str]) -> None:
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    with log_path.open("a", encoding="utf-8") as file_handle:
+        file_handle.write("\n".join(lines) + "\n")
 
 
 def set_status(entity: dict[str, Any], target: str, kind: str = "feature") -> None:
@@ -366,7 +385,7 @@ def build_ralph_opencode_prompt(
     )
     if hook_feedback:
         prompt += (
-            " Previous commit or pre-commit hooks failed. "
+            " Previous retry feedback is available. "
             "Fix the issues reported below before marking the feature complete:\n"
             f"{_truncate_feedback(hook_feedback)}"
         )
@@ -381,7 +400,8 @@ def run_implement_step(
     opencode_prompt: str | None,
     skip_implement: bool,
     hook_feedback: str | None,
-) -> tuple[bool, str | None]:
+    verbose_output: bool,
+) -> tuple[bool, str | None, str]:
     """Run the implement phase for one loop iteration.
 
     Args:
@@ -392,20 +412,39 @@ def run_implement_step(
         opencode_prompt: Optional prompt override for OpenCode execution.
         skip_implement: Whether to skip implementation and run gates only.
         hook_feedback: Optional previous hook output to address on retry.
+        verbose_output: Whether run-loop should stream full command output.
 
     Returns:
-        Tuple of success flag and failure code when implementation fails.
+        Tuple of success flag, failure code, and combined command output.
     """
     if skip_implement:
         print("Implement step: skipped")
-        return (True, None)
+        return (True, None, "[implement] skipped")
 
     if implement_command:
         print(f"Implement step: custom command ({implement_command})")
-        proc = subprocess.run(implement_command, shell=True, cwd=project_root)
+        proc = subprocess.run(
+            implement_command,
+            shell=True,
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+        )
+        if verbose_output:
+            if proc.stdout:
+                print(proc.stdout, end="")
+            if proc.stderr:
+                print(proc.stderr, end="", file=sys.stderr)
+
+        output = (proc.stdout or "") + (proc.stderr or "")
+        command_output = (
+            f"[implement] command={implement_command}\n"
+            f"[implement] returncode={proc.returncode}\n"
+            f"{output}"
+        )
         if proc.returncode != 0:
-            return (False, "implement_command")
-        return (True, None)
+            return (False, "implement_command", command_output)
+        return (True, None, command_output)
 
     prompt = opencode_prompt or build_ralph_opencode_prompt(
         feature, feature_path, hook_feedback=hook_feedback
@@ -413,7 +452,7 @@ def run_implement_step(
     if opencode_prompt and hook_feedback:
         prompt = (
             f"{opencode_prompt}\n\n"
-            "Previous commit or pre-commit hook output (address before completion):\n"
+            "Previous retry feedback (address before completion):\n"
             f"{_truncate_feedback(hook_feedback)}"
         )
 
@@ -426,20 +465,26 @@ def run_implement_step(
             text=True,
         )
     except FileNotFoundError:
-        return (False, "opencode_missing")
+        return (False, "opencode_missing", "[implement] opencode executable missing")
 
-    if proc.stdout:
-        print(proc.stdout, end="")
-    if proc.stderr:
-        print(proc.stderr, end="", file=sys.stderr)
+    if verbose_output:
+        if proc.stdout:
+            print(proc.stdout, end="")
+        if proc.stderr:
+            print(proc.stderr, end="", file=sys.stderr)
 
     output = (proc.stdout or "") + (proc.stderr or "")
+    command_output = (
+        "[implement] command=opencode run --agent build <prompt>\n"
+        f"[implement] returncode={proc.returncode}\n"
+        f"{output}"
+    )
     if output_has_permission_rejection(output):
-        return (False, "opencode_permission")
+        return (False, "opencode_permission", command_output)
 
     if proc.returncode != 0:
-        return (False, "opencode_build")
-    return (True, None)
+        return (False, "opencode_build", command_output)
+    return (True, None, command_output)
 
 
 def _require_clean_worktree(project_root: Path) -> tuple[bool, str]:
@@ -590,6 +635,7 @@ def _run_feature_iteration(
     skip_implement: bool,
     attempt: int,
     hook_feedback: str | None,
+    verbose_output: bool,
 ) -> IterationOutcome:
     runs_log = project_root / "progress" / "runs.jsonl"
     gates_path = project_root / "harness" / "gates.yaml"
@@ -600,6 +646,11 @@ def _run_feature_iteration(
     completed = False
     next_action = "retry_same_feature"
     next_hook_feedback: str | None = None
+    implement_status = "not_run"
+    gate_status = "not_run"
+    implement_output = ""
+    gate_output = ""
+    completion_commit_succeeded = False
 
     feature, loaded_from_archive, load_error = (
         _load_selected_feature_with_archive_fallback(project_root, feature_path)
@@ -611,16 +662,29 @@ def _run_feature_iteration(
         failed_gate = "feature_missing"
         next_hook_feedback = load_error
     elif loaded_from_archive:
-        if feature is None or feature.get("status") != "done":
-            result = "failed"
-            failed_gate = "feature_missing"
+        result = "failed"
+        failed_gate = "feature_missing"
+        if feature is None:
+            next_hook_feedback = (
+                "selected feature path is missing and only archived fallback was found "
+                "without a same-iteration completion commit; restore the active spec "
+                "path and rerun. "
+                f"path={feature_path}"
+            )
+        elif feature.get("status") != "done":
             next_hook_feedback = (
                 "selected feature was archived but archived status is not done; "
+                "restore the active spec path and rerun. "
                 f"path={feature_path}"
             )
         else:
-            completed = True
-            next_action = "select_next_feature"
+            next_hook_feedback = (
+                "selected feature path is already archived with status=done, but this "
+                "iteration did not create a completion commit for that feature; restore "
+                "the active feature spec or commit the intended completion changes, then "
+                "rerun. "
+                f"path={feature_path}"
+            )
 
     if result == "passed" and feature is not None and not loaded_from_archive:
         if feature.get("status") == "backlog":
@@ -629,7 +693,8 @@ def _run_feature_iteration(
         dump_yaml(feature_path, feature)
 
     if result == "passed" and feature is not None and not loaded_from_archive:
-        ok, implement_failed_gate = run_implement_step(
+        implement_status = "skipped" if skip_implement else "passed"
+        ok, implement_failed_gate, implement_output = run_implement_step(
             project_root=project_root,
             feature=feature,
             feature_path=feature_path,
@@ -637,17 +702,32 @@ def _run_feature_iteration(
             opencode_prompt=opencode_prompt,
             skip_implement=skip_implement,
             hook_feedback=hook_feedback,
+            verbose_output=verbose_output,
         )
         if not ok:
             result = "failed"
             failed_gate = implement_failed_gate
+            implement_status = f"failed:{implement_failed_gate or 'unknown'}"
 
     if result == "passed":
         gate_config = load_gate_config(gates_path)
-        ok, failed = run_profile(gate_config, gate_profile, project_root)
+        ok, failed, gate_output = run_profile(
+            gate_config,
+            gate_profile,
+            project_root,
+            capture_output=True,
+        )
+        if verbose_output and gate_output:
+            print(gate_output)
         if not ok:
             result = "failed"
             failed_gate = failed
+            gate_status = f"failed:{failed or 'unknown'}"
+            next_hook_feedback = gate_output or (
+                f"gate '{failed or 'unknown'}' failed with no captured output"
+            )
+        else:
+            gate_status = "passed"
 
     post_feature = feature
     loaded_post_from_archive = loaded_from_archive
@@ -660,16 +740,29 @@ def _run_feature_iteration(
             failed_gate = "feature_missing"
             next_hook_feedback = post_load_error
         elif loaded_post_from_archive:
-            if post_feature is None or post_feature.get("status") != "done":
-                result = "failed"
-                failed_gate = "feature_missing"
+            result = "failed"
+            failed_gate = "feature_missing"
+            if post_feature is None:
+                next_hook_feedback = (
+                    "selected feature path disappeared during loop iteration and only "
+                    "archived fallback was found without a same-iteration completion "
+                    "commit; restore the active spec path and rerun. "
+                    f"path={feature_path}"
+                )
+            elif post_feature.get("status") != "done":
                 next_hook_feedback = (
                     "selected feature was archived but archived status is not done; "
+                    "restore the active spec path and rerun. "
                     f"path={feature_path}"
                 )
             else:
-                completed = True
-                next_action = "select_next_feature"
+                next_hook_feedback = (
+                    "selected feature path was moved to docs/spec/features_done with "
+                    "status=done before completion commit in this iteration; restore the "
+                    "active feature spec or commit the intended completion changes, then "
+                    "rerun. "
+                    f"path={feature_path}"
+                )
         elif post_feature is not None:
             if post_feature.get("status") == "backlog":
                 set_status(post_feature, "in_progress")
@@ -694,6 +787,7 @@ def _run_feature_iteration(
                 project_root, post_feature
             )
             if commit_ok:
+                completion_commit_succeeded = True
                 completed = True
                 next_action = "select_next_feature"
             else:
@@ -709,6 +803,20 @@ def _run_feature_iteration(
                 next_hook_feedback = f"{commit_output}{rollback_output}".strip()
                 next_action = "retry_same_feature"
 
+    if result == "passed" and not completion_commit_succeeded:
+        completed = False
+        next_action = "retry_same_feature"
+
+    feature_progress_log_path = _resolve_feature_progress_log_path(
+        project_root, fid or "unknown-feature"
+    )
+    try:
+        feature_progress_log_reference = str(
+            feature_progress_log_path.relative_to(project_root)
+        )
+    except ValueError:
+        feature_progress_log_reference = str(feature_progress_log_path)
+
     run_payload: dict[str, Any] = {
         "ts": now_iso(),
         "feature_id": fid,
@@ -719,15 +827,45 @@ def _run_feature_iteration(
         "attempt": attempt,
         "commit": git_head_short(project_root),
         "next_action": next_action,
+        "log_path": feature_progress_log_reference,
     }
+
+    feature_progress_log_lines = [
+        f"ts={run_payload['ts']} attempt={attempt} feature_id={fid or 'unknown-feature'}",
+        f"feature_path={feature_path}",
+        f"implement={implement_status}",
+        f"gates={gate_status}",
+        f"result={result} failed_gate={failed_gate or '-'} next_action={next_action}",
+    ]
+    if implement_output:
+        feature_progress_log_lines.extend(
+            [
+                "implement_output_begin",
+                implement_output.rstrip("\n"),
+                "implement_output_end",
+            ]
+        )
+    if gate_output:
+        feature_progress_log_lines.extend(
+            ["gate_output_begin", gate_output.rstrip("\n"), "gate_output_end"]
+        )
+    if next_hook_feedback:
+        feature_progress_log_lines.append(
+            f"detail={_truncate_feedback(next_hook_feedback)}"
+        )
+    _append_feature_progress_log(feature_progress_log_path, feature_progress_log_lines)
+
     append_run(runs_log, run_payload)
     print_summary(fid, result, failed_gate, attempt, next_action)
+    if result != "passed":
+        print(f"Detailed log: {feature_progress_log_reference}")
     return IterationOutcome(
         completed=completed,
         result=result,
         failed_gate=failed_gate,
         next_action=next_action,
         hook_feedback=next_hook_feedback,
+        log_path=feature_progress_log_reference,
     )
 
 
@@ -742,6 +880,7 @@ def run_loop(
     run_all: bool = False,
     max_iterations: int = 50,
     allow_dirty: bool = False,
+    verbose_output: bool = False,
 ) -> int:
     """Execute feature loops until completion or termination condition.
 
@@ -756,6 +895,7 @@ def run_loop(
         run_all: Whether to auto-discover active feature files.
         max_iterations: Max non-dry iterations across selected features.
         allow_dirty: Whether to permit non-dry execution with uncommitted changes.
+        verbose_output: Whether to stream full implement and gate command output.
 
     Returns:
         Process exit code where 0 indicates success.
@@ -847,6 +987,7 @@ def run_loop(
                 skip_implement=skip_implement,
                 attempt=total_iterations,
                 hook_feedback=hook_feedback_by_path.get(selected_path),
+                verbose_output=verbose_output,
             )
 
             if outcome.hook_feedback:
@@ -863,12 +1004,16 @@ def run_loop(
 
             if outcome.failed_gate == "git_add":
                 print("Stopping loop: git_add failure requires operator intervention.")
+                if outcome.log_path:
+                    print(f"Detailed log: {outcome.log_path}")
                 return 1
 
             if outcome.failed_gate == "feature_missing":
                 print(
                     "Stopping loop: selected feature path is missing and not recoverable."
                 )
+                if outcome.log_path:
+                    print(f"Detailed log: {outcome.log_path}")
                 if outcome.hook_feedback:
                     print(f"Detail: {outcome.hook_feedback}")
                 return 1

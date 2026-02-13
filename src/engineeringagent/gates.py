@@ -78,17 +78,21 @@ def list_profiles(config: dict[str, Any]) -> list[str]:
 
 
 def run_profile(
-    config: dict[str, Any], profile: str, cwd: Path
-) -> tuple[bool, str | None]:
+    config: dict[str, Any],
+    profile: str,
+    cwd: Path,
+    capture_output: bool = False,
+) -> tuple[bool, str | None, str]:
     """Execute gates in a profile in declaration order.
 
     Args:
         config: Parsed gate configuration mapping.
         profile: Profile name to run.
         cwd: Working directory used for gate commands.
+        capture_output: Whether to capture and return gate command output.
 
     Returns:
-        Tuple of success flag and failed gate name when any command fails.
+        Tuple of success flag, failed gate name, and combined gate output.
 
     Raises:
         ValueError: If profile is unknown or a gate has no run command.
@@ -98,12 +102,29 @@ def run_profile(
     if profile not in profiles:
         raise ValueError(f"unknown profile: {profile}")
 
+    combined_output_parts: list[str] = []
     for gate_name in profiles[profile]:
         gate = gates.get(gate_name, {})
         command = gate.get("run")
         if not command:
             raise ValueError(f"gate '{gate_name}' has no run command")
-        proc = subprocess.run(command, cwd=cwd, shell=True)
+
+        if capture_output:
+            proc = subprocess.run(
+                command,
+                cwd=cwd,
+                shell=True,
+                capture_output=True,
+                text=True,
+            )
+            combined_output_parts.append(f"[gate:{gate_name}] command={command}")
+            if proc.stdout:
+                combined_output_parts.append(proc.stdout.rstrip("\n"))
+            if proc.stderr:
+                combined_output_parts.append(proc.stderr.rstrip("\n"))
+        else:
+            proc = subprocess.run(command, cwd=cwd, shell=True)
+
         if proc.returncode != 0:
-            return (False, gate_name)
-    return (True, None)
+            return (False, gate_name, "\n".join(combined_output_parts).strip())
+    return (True, None, "\n".join(combined_output_parts).strip())

@@ -160,7 +160,7 @@ def cmd_gates_run(args: argparse.Namespace) -> int:
         print(f"gates profile has no configured gates: {args.profile}")
         return 0
 
-    ok, failed = run_profile(config=config, profile=args.profile, cwd=project_root)
+    ok, failed, _ = run_profile(config=config, profile=args.profile, cwd=project_root)
     if not ok:
         print(f"gates profile failed: {failed}")
         return 1
@@ -196,6 +196,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         dry_run=args.dry_run,
         max_iterations=args.max_iterations,
         allow_dirty=args.allow_dirty,
+        verbose_output=args.verbose_output,
     )
 
 
@@ -339,6 +340,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--allow-dirty",
         action="store_true",
         help="allow run execution with uncommitted code changes",
+    )
+    run_parser.add_argument(
+        "--verbose-output",
+        action="store_true",
+        help="stream full implement and gate output in terminal",
     )
     run_parser.set_defaults(func=cmd_run)
 
