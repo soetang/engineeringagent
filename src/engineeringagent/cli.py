@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 from .fitness import (
+    RuleStatus,
     build_rule_catalog,
     render_rule_catalog_markdown,
     run_rule_catalog,
@@ -247,15 +248,31 @@ def cmd_fitness_run(args: argparse.Namespace) -> int:
     """Execute active fitness rules and return deterministic status."""
     project_root = Path(args.project_root).resolve()
     manifest_path = Path(args.manifest_path) if args.manifest_path else None
+    catalog = build_rule_catalog(project_root, manifest_path=manifest_path)
+    remediation_by_rule_id = {
+        definition.metadata.rule_id: definition.metadata.remediation
+        for definition in catalog
+    }
     summary = run_rule_catalog(
         project_root,
         jobs=args.jobs,
         manifest_path=manifest_path,
     )
 
+    failed_rules = [
+        {
+            "rule_id": result.rule_id,
+            "status": result.status.value,
+            "remediation": remediation_by_rule_id[result.rule_id],
+        }
+        for result in summary.results
+        if result.status in {RuleStatus.FAIL, RuleStatus.ERROR}
+    ]
+
     if args.format == "json":
         payload = {
             "results": [result.model_dump(mode="json") for result in summary.results],
+            "failed_rules": failed_rules,
             "failed": summary.has_failures,
         }
         print(json.dumps(payload, indent=2, sort_keys=True))

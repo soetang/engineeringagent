@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-import subprocess
 from dataclasses import dataclass
 from pathlib import Path
+
+from .opencode.client import start_agent
 
 
 PROBE_TOKEN = "PERMISSION_OK"
@@ -91,14 +92,8 @@ def run_permission_probe(project_root: Path) -> PermissionProbeResult:
     Returns:
         Probe evaluation result describing pass/fail details.
     """
-    command = ["opencode", "run", "--agent", "build", PROBE_PROMPT]
     try:
-        proc = subprocess.run(
-            command,
-            cwd=project_root,
-            capture_output=True,
-            text=True,
-        )
+        proc = start_agent(project_root, PROBE_PROMPT, agent="build")
     except FileNotFoundError:
         return PermissionProbeResult(
             ok=False,

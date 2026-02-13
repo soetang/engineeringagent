@@ -82,3 +82,43 @@ def test_validate_fails_on_agents_docs_map_errors(tmp_path: Path, capsys: Any) -
 
     assert code == 1
     assert "AGENTS.md:4: docs-map path does not exist: docs/missing.md" in output
+
+
+def test_fitness_run_json_includes_remediation_for_failures(
+    tmp_path: Path,
+    capsys: Any,
+) -> None:
+    src_dir = tmp_path / "src" / "engineeringagent"
+    src_dir.mkdir(parents=True, exist_ok=True)
+    for module_name in ["specs", "validator", "gates", "loop", "cli"]:
+        (src_dir / f"{module_name}.py").write_text("\n", encoding="utf-8")
+
+    (src_dir / "bad_subprocess.py").write_text(
+        "import subprocess\nsubprocess.run(['git', 'status'], check=False)\n",
+        encoding="utf-8",
+    )
+
+    parser = build_parser()
+    args = parser.parse_args(
+        [
+            "--project-root",
+            str(tmp_path),
+            "fitness",
+            "run",
+            "--format",
+            "json",
+        ]
+    )
+    code = args.func(args)
+    output = capsys.readouterr().out
+    payload = json.loads(output)
+
+    assert code == 1
+    assert payload["failed"] is True
+    assert payload["failed_rules"] == [
+        {
+            "rule_id": "architecture.loop-subprocess-boundary",
+            "status": "fail",
+            "remediation": "Move OpenCode command execution to engineeringagent.opencode.client and Git command execution to engineeringagent.git.client.",
+        }
+    ]

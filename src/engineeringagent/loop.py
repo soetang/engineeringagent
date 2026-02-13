@@ -9,12 +9,18 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from .gates import load_gate_config, run_profile
+from .git.client import (
+    add_all,
+    commit as git_commit,
+    head_short as git_head,
+    status_porcelain,
+)
+from .opencode.client import run_shell_command, start_agent
 from .opencode_permissions import (
     PERMISSION_REMEDIATION_HINT,
     output_has_permission_rejection,
     run_permission_probe,
 )
-from .process_runner import run_process
 from .specs import dump_yaml, feature_sort_key, load_yaml
 
 FEATURE_TRANSITIONS: dict[str, set[str]] = {
@@ -342,12 +348,7 @@ def _choose_feature_with_selector(
 
     prompt = _build_selector_prompt(pending)
     try:
-        proc = run_process(
-            ["opencode", "run", "--agent", "build", prompt],
-            cwd=project_root,
-            capture_output=True,
-            text=True,
-        )
+        proc = start_agent(project_root, prompt)
     except FileNotFoundError:
         fallback = _deterministic_feature_choice(pending)
         print(f"Selector fallback: opencode missing; selected {fallback[1].get('id')}")
@@ -378,12 +379,7 @@ def git_head_short(project_root: Path) -> str | None:
     Returns:
         Short commit hash when available, otherwise None.
     """
-    proc = run_process(
-        ["git", "rev-parse", "--short", "HEAD"],
-        cwd=project_root,
-        capture_output=True,
-        text=True,
-    )
+    proc = git_head(project_root)
     if proc.returncode != 0:
         return None
     return proc.stdout.strip() or None
@@ -461,13 +457,7 @@ def run_implement_step(
 
     if implement_command:
         print(f"Implement step: custom command ({implement_command})")
-        proc = run_process(
-            implement_command,
-            shell=True,
-            cwd=project_root,
-            capture_output=True,
-            text=True,
-        )
+        proc = run_shell_command(project_root, implement_command)
         if verbose_output:
             if proc.stdout:
                 print(proc.stdout, end="")
@@ -496,12 +486,7 @@ def run_implement_step(
 
     print("Implement step: opencode run --agent build")
     try:
-        proc = run_process(
-            ["opencode", "run", "--agent", "build", prompt],
-            cwd=project_root,
-            capture_output=True,
-            text=True,
-        )
+        proc = start_agent(project_root, prompt)
     except FileNotFoundError:
         return (False, "opencode_missing", "[implement] opencode executable missing")
 
@@ -526,12 +511,7 @@ def run_implement_step(
 
 
 def _require_clean_worktree(project_root: Path) -> tuple[bool, str]:
-    proc = run_process(
-        ["git", "status", "--porcelain"],
-        cwd=project_root,
-        capture_output=True,
-        text=True,
-    )
+    proc = status_porcelain(project_root)
     if proc.returncode != 0:
         return (False, "unable to read git status; run inside a git repository")
     if proc.stdout.strip():
@@ -593,31 +573,12 @@ def _commit_feature_completion(
 ) -> tuple[bool, str | None, str]:
     message = _feature_completion_commit_subject(feature)
 
-    add_proc = run_process(
-        ["git", "add", "-A", "--", "."],
-        cwd=project_root,
-        capture_output=True,
-        text=True,
-    )
+    add_proc = add_all(project_root)
     if add_proc.returncode != 0:
         output = (add_proc.stdout or "") + (add_proc.stderr or "")
         return (False, "git_add", output)
 
-    commit_proc = run_process(
-        [
-            "git",
-            "-c",
-            "user.name=engineeringagent",
-            "-c",
-            "user.email=engineeringagent@local",
-            "commit",
-            "-m",
-            message,
-        ],
-        cwd=project_root,
-        capture_output=True,
-        text=True,
-    )
+    commit_proc = git_commit(project_root, message)
     output = (commit_proc.stdout or "") + (commit_proc.stderr or "")
     if commit_proc.returncode == 0:
         return (True, None, output)

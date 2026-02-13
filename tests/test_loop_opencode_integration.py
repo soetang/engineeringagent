@@ -155,26 +155,28 @@ def test_loop_reports_permission_rejection_in_run_telemetry(
     project_root, _ = _make_project_root(tmp_path)
     _init_git_repo(project_root)
 
-    def fake_subprocess_run(command: Any, **_: Any) -> subprocess.CompletedProcess[str]:
-        if command == ["git", "status", "--porcelain"]:
-            return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
-        if command == ["git", "rev-parse", "--short", "HEAD"]:
-            return subprocess.CompletedProcess(command, 0, stdout="abc123\n", stderr="")
-        if isinstance(command, list) and command[:3] == ["opencode", "run", "--agent"]:
-            return subprocess.CompletedProcess(
-                command,
-                1,
-                stdout="",
-                stderr="permission requested for bash command git status --short (auto-reject)",
-            )
-        raise AssertionError(f"unexpected subprocess.run call: {command}")
+    def fake_start_agent(
+        project_root: Path,
+        prompt: str,
+        *,
+        agent: str = "build",
+        capture_output: bool = True,
+        text: bool = True,
+    ) -> subprocess.CompletedProcess[str]:
+        del project_root, prompt, agent, capture_output, text
+        return subprocess.CompletedProcess(
+            ["opencode", "run", "--agent", "build", "<prompt>"],
+            1,
+            stdout="",
+            stderr="permission requested for bash command git status --short (auto-reject)",
+        )
 
     monkeypatch.setattr(
         loop_module,
         "run_permission_probe",
         lambda _: PermissionProbeResult(ok=True, reason="ok", returncode=0, output=""),
     )
-    monkeypatch.setattr(loop_module, "run_process", fake_subprocess_run)
+    monkeypatch.setattr(loop_module, "start_agent", fake_start_agent)
 
     code = run_loop(
         project_root=project_root,

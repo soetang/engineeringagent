@@ -58,10 +58,13 @@ BUILTIN_RULE_DEFINITIONS: tuple[FitnessRuleDefinition, ...] = (
         metadata=FitnessRuleMetadata(
             rule_id=LOOP_SUBPROCESS_BOUNDARY_RULE_ID,
             name="Loop subprocess boundary",
-            summary="Disallow direct subprocess calls in loop orchestration modules.",
+            summary="Enforce subprocess allowlist boundaries for command adapters/clients.",
             rationale="Centralizes command execution paths for consistent control.",
-            remediation="Route command execution through approved adapter modules.",
-            scope="src/engineeringagent/loop.py",
+            remediation=(
+                "Move OpenCode command execution to engineeringagent.opencode.client "
+                "and Git command execution to engineeringagent.git.client."
+            ),
+            scope="src/engineeringagent",
             severity=RuleSeverity.ERROR,
             adapter=RuleAdapter.PYTHON,
             source=RuleSource.BUILTIN,

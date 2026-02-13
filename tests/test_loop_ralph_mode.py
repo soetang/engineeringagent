@@ -67,6 +67,24 @@ def _run_git(project_root: Path, *args: str) -> subprocess.CompletedProcess[str]
     )
 
 
+def _patch_start_agent_with_fake(
+    monkeypatch: pytest.MonkeyPatch,
+    fake_subprocess_run: Any,
+) -> None:
+    def fake_start_agent(
+        project_root: Path,
+        prompt: str,
+        *,
+        agent: str = "build",
+        capture_output: bool = True,
+        text: bool = True,
+    ) -> subprocess.CompletedProcess[str]:
+        del project_root, capture_output, text
+        return fake_subprocess_run(["opencode", "run", "--agent", agent, prompt])
+
+    monkeypatch.setattr(loop_module, "start_agent", fake_start_agent)
+
+
 def _init_git_repo(project_root: Path) -> None:
     _run_git(project_root, "init")
     _run_git(project_root, "add", "-A")
@@ -863,6 +881,11 @@ def test_run_loop_selected_feature_moved_to_features_done_does_not_crash(
         return (True, None, "")
 
     monkeypatch.setattr(loop_module, "run_implement_step", fake_run_implement_step)
+    monkeypatch.setattr(
+        loop_module,
+        "_run_opencode_permission_precheck",
+        lambda **_: True,
+    )
 
     code = run_loop(
         project_root=project_root,
@@ -915,6 +938,11 @@ def test_run_loop_archived_done_without_completion_commit_fails(
         loop_module,
         "_choose_feature_with_selector",
         fake_choose_feature_with_selector,
+    )
+    monkeypatch.setattr(
+        loop_module,
+        "_run_opencode_permission_precheck",
+        lambda **_: True,
     )
 
     code = run_loop(
@@ -978,6 +1006,11 @@ def test_run_loop_all_selected_feature_moved_to_features_done_continues(
         return (True, None, "")
 
     monkeypatch.setattr(loop_module, "run_implement_step", fake_run_implement_step)
+    monkeypatch.setattr(
+        loop_module,
+        "_run_opencode_permission_precheck",
+        lambda **_: True,
+    )
 
     code = run_loop(
         project_root=project_root,
@@ -1039,6 +1072,11 @@ def test_run_loop_missing_selected_feature_without_archive_fails_cleanly(
         return (True, None, "")
 
     monkeypatch.setattr(loop_module, "run_implement_step", fake_run_implement_step)
+    monkeypatch.setattr(
+        loop_module,
+        "_run_opencode_permission_precheck",
+        lambda **_: True,
+    )
 
     code = run_loop(
         project_root=project_root,
@@ -1572,7 +1610,12 @@ def test_commit_failure_feedback_still_injected_into_next_prompt(
 
         return real_run(command, **kwargs)
 
-    monkeypatch.setattr(loop_module, "run_process", fake_subprocess_run)
+    _patch_start_agent_with_fake(monkeypatch, fake_subprocess_run)
+    monkeypatch.setattr(
+        loop_module,
+        "_run_opencode_permission_precheck",
+        lambda **_: True,
+    )
 
     code = run_loop(
         project_root=project_root,
@@ -1632,7 +1675,12 @@ def test_gate_failure_feedback_is_injected_into_next_prompt(
         del args, kwargs
         return next(gate_results)
 
-    monkeypatch.setattr(loop_module, "run_process", fake_subprocess_run)
+    _patch_start_agent_with_fake(monkeypatch, fake_subprocess_run)
+    monkeypatch.setattr(
+        loop_module,
+        "_run_opencode_permission_precheck",
+        lambda **_: True,
+    )
     monkeypatch.setattr(loop_module, "run_profile", fake_run_profile)
 
     code = run_loop(
@@ -1649,6 +1697,79 @@ def test_gate_failure_feedback_is_injected_into_next_prompt(
     assert code == 0
     assert len(prompts) >= 2
     assert "SPEC_VALIDATE_FAILED_TOKEN" in prompts[1]
+
+
+def test_gate_failure_feedback_includes_fitness_remediation_guidance(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project_root, feature_path = _make_project_root(
+        tmp_path, feature_data=_base_feature()
+    )
+    _init_git_repo(project_root)
+
+    real_run = subprocess.run
+    prompts: list[str] = []
+
+    def fake_subprocess_run(
+        command: Any, **kwargs: Any
+    ) -> subprocess.CompletedProcess[str]:
+        if isinstance(command, list) and command[:3] == ["opencode", "run", "--agent"]:
+            prompt = command[4]
+            prompts.append(prompt)
+            feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
+            feature["status"] = "done"
+            feature_path.write_text(
+                yaml.safe_dump(feature, sort_keys=False), encoding="utf-8"
+            )
+            return subprocess.CompletedProcess(command, 0, stdout="ok\n", stderr="")
+        return real_run(command, **kwargs)
+
+    gate_results = iter(
+        [
+            (
+                False,
+                "fitness_validate",
+                "\n".join(
+                    [
+                        "[gate:fitness_validate] command=uv run python -m engineeringagent.cli fitness run --format json",
+                        '{"failed": true, "failed_rules": [{"rule_id": "architecture.loop-subprocess-boundary", "status": "fail", "remediation": "Move OpenCode command execution to engineeringagent.opencode.client and Git command execution to engineeringagent.git.client."}], "results": []}',
+                    ]
+                ),
+            ),
+            (True, None, ""),
+        ]
+    )
+
+    def fake_run_profile(*args: Any, **kwargs: Any) -> tuple[bool, str | None, str]:
+        del args, kwargs
+        return next(gate_results)
+
+    _patch_start_agent_with_fake(monkeypatch, fake_subprocess_run)
+    monkeypatch.setattr(
+        loop_module,
+        "_run_opencode_permission_precheck",
+        lambda **_: True,
+    )
+    monkeypatch.setattr(loop_module, "run_profile", fake_run_profile)
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        implement_command=None,
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        max_iterations=6,
+    )
+
+    assert code == 0
+    assert len(prompts) >= 2
+    assert (
+        "Move OpenCode command execution to engineeringagent.opencode.client "
+        "and Git command execution to engineeringagent.git.client." in prompts[1]
+    )
 
 
 def test_spec_validate_failure_feedback_round_trips_to_retry_prompt(
@@ -1692,7 +1813,12 @@ def test_spec_validate_failure_feedback_round_trips_to_retry_prompt(
         del args, kwargs
         return next(gate_results)
 
-    monkeypatch.setattr(loop_module, "run_process", fake_subprocess_run)
+    _patch_start_agent_with_fake(monkeypatch, fake_subprocess_run)
+    monkeypatch.setattr(
+        loop_module,
+        "_run_opencode_permission_precheck",
+        lambda **_: True,
+    )
     monkeypatch.setattr(loop_module, "run_profile", fake_run_profile)
 
     code = run_loop(
@@ -1752,7 +1878,12 @@ def test_non_validation_gate_failure_feedback_round_trips_to_retry_prompt(
         del args, kwargs
         return next(gate_results)
 
-    monkeypatch.setattr(loop_module, "run_process", fake_subprocess_run)
+    _patch_start_agent_with_fake(monkeypatch, fake_subprocess_run)
+    monkeypatch.setattr(
+        loop_module,
+        "_run_opencode_permission_precheck",
+        lambda **_: True,
+    )
     monkeypatch.setattr(loop_module, "run_profile", fake_run_profile)
 
     code = run_loop(
@@ -1809,7 +1940,12 @@ def test_gate_failure_feedback_replaces_previous_feedback(
         del args, kwargs
         return next(gate_results)
 
-    monkeypatch.setattr(loop_module, "run_process", fake_subprocess_run)
+    _patch_start_agent_with_fake(monkeypatch, fake_subprocess_run)
+    monkeypatch.setattr(
+        loop_module,
+        "_run_opencode_permission_precheck",
+        lambda **_: True,
+    )
     monkeypatch.setattr(loop_module, "run_profile", fake_run_profile)
 
     code = run_loop(
@@ -1864,7 +2000,12 @@ def test_gate_failure_feedback_is_truncated_before_prompt_injection(
         del args, kwargs
         return next(gate_results)
 
-    monkeypatch.setattr(loop_module, "run_process", fake_subprocess_run)
+    _patch_start_agent_with_fake(monkeypatch, fake_subprocess_run)
+    monkeypatch.setattr(
+        loop_module,
+        "_run_opencode_permission_precheck",
+        lambda **_: True,
+    )
     monkeypatch.setattr(loop_module, "run_profile", fake_run_profile)
 
     code = run_loop(
