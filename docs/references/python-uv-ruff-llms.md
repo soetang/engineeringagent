@@ -36,6 +36,41 @@ uvx --from . engineeringagent gates run --profile precommit
 - Ruff enforces missing public-function docstrings (`D103`) and argument documentation (`D417`).
 - Internal helpers (names prefixed with `_`) are not treated as exported public APIs.
 
+## Ruff Rule ID Quick Reference
+
+- Current repository Ruff selection in `pyproject.toml` enables `D103` and `D417`.
+- If complexity guardrails are enabled for refactors, use inline comments so IDs are self-explanatory.
+
+### Common IDs used in this repository
+
+- `D103`: undocumented public function (pydocstyle)
+- `D417`: missing argument descriptions in docstring (pydocstyle)
+- `C901`: complex-structure (McCabe complexity)
+- `PLR0912`: too-many-branches (pylint)
+- `PLR0915`: too-many-statements (pylint)
+
+### Recommended commented Ruff config pattern
+
+```toml
+[tool.ruff.lint]
+extend-select = [
+  "D103",   # public function docstring required
+  "D417",   # docstring args must be documented
+  "C901",   # complex-structure (McCabe complexity)
+  "PLR0912",# too-many-branches
+  "PLR0915",# too-many-statements
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 12
+
+[tool.ruff.lint.pylint]
+max-branches = 12
+max-statements = 50
+```
+
+- Tune thresholds to this codebase; start from defaults and adjust only with clear signal/noise justification.
+
 ## Dependency and Lock Discipline
 
 1. Update Python dependencies in `pyproject.toml`.

@@ -34,7 +34,10 @@ dev = [
 ]
 
 [tool.ruff.lint]
-extend-select = ["D103", "D417"]
+extend-select = [
+    "D103", # undocumented public function
+    "D417", # docstring arguments are not fully documented
+]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
