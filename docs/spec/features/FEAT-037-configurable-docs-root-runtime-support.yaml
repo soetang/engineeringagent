@@ -1,0 +1,89 @@
+id: FEAT-037
+title: Make runtime commands honor configurable docs root for specs and archive flow
+type: feature
+expected_commit_subject: 'feat: add FEAT-037 configurable docs root runtime support'
+status: backlog
+priority: high
+objective: >
+  Make runtime behavior fully honor a configurable docs root so `validate`,
+  `run --all`, and done-spec archival work consistently when scaffolding uses
+  a non-default docs directory.
+context: >
+  Current behavior hardcodes `docs/spec/...` in validator and loop runtime paths,
+  while init can scaffold to alternate docs directories. This mismatch makes separate
+  docs scaffolding incomplete in practice. This feature introduces one docs-root
+  resolution contract and wires it through all spec-path consumers while preserving
+  default backward compatibility.
+constraints:
+  - 'Preserve backward compatibility: repositories without explicit docs-root config continue using `docs`.'
+  - Use one canonical docs-root resolver shared across CLI, validator, and loop runtime paths.
+  - Integrate with init so separate docs mode writes and uses the same docs-root setting.
+  - Keep migration deterministic and low-friction for existing repositories.
+  - Do not broaden into scaffold template redesign or AGENTS architecture changes from FEAT-036.
+implementation_notes: >
+  Introduce a small docs-root configuration contract with default fallback to `docs`.
+  Update validator path construction, run-all discovery, and archive path derivation
+  to consume this resolved docs root. Ensure init separate-docs mode persists the
+  docs-root setting so runtime commands work without extra flags. Add targeted tests
+  for default and non-default docs roots and maintain existing behavior for repos
+  that do not opt into custom docs paths.
+acceptance:
+  - '`engineeringagent validate` reads schema/features/features_done/potential_features from resolved docs root.'
+  - '`engineeringagent run --all` discovers active specs from resolved docs root.'
+  - Done-spec archive behavior uses resolved active and done directories under configured docs root.
+  - '`engineeringagent init --docs-mode separate` writes docs-root configuration that runtime commands automatically honor.'
+  - Existing repositories with no docs-root configuration continue to work with default `docs`.
+  - Regression and targeted tests cover both default and non-default docs-root scenarios.
+subtasks:
+  - id: ST-001
+    title: Define docs-root configuration contract and resolver
+    status: backlog
+    order: 1
+    context: >
+      Add one deterministic source of truth for docs root with fallback behavior and
+      clear error messages for invalid configuration values.
+    verification:
+      - uv run pytest -q tests/test_cli.py::test_docs_root_resolver_defaults_to_docs
+      - uv run pytest -q tests/test_cli.py::test_docs_root_resolver_reads_configured_value
+  - id: ST-002
+    title: Wire validator path resolution to configured docs root
+    status: backlog
+    order: 2
+    context: >
+      Replace hardcoded validator paths with docs-root derived paths for feature
+      specs, done specs, schema artifact, and potential features.
+    verification:
+      - uv run pytest -q tests/test_validator.py::test_validate_uses_configured_docs_root
+      - uvx --from . engineeringagent validate
+  - id: ST-003
+    title: Wire run all discovery and archive flow to configured docs root
+    status: backlog
+    order: 3
+    context: >
+      Update loop discovery and completion archive path logic to use docs-root aware
+      directories while preserving current behavior under default root.
+    verification:
+      - uv run pytest -q tests/test_loop_ralph_mode.py::test_run_all_uses_configured_docs_root
+      - uv run pytest -q tests/test_loop_ralph_mode.py::test_archive_path_uses_configured_docs_root
+  - id: ST-004
+    title: Integrate init separate docs mode with runtime docs-root config
+    status: backlog
+    order: 4
+    context: >
+      Ensure init writes docs-root configuration when separate docs mode is selected
+      and verify runtime commands consume it without extra flags.
+    verification:
+      - uv run pytest -q tests/test_init_command.py::test_init_separate_docs_writes_docs_root_config
+      - uv run pytest -q tests/test_init_command.py::test_validate_and_run_all_use_separate_docs_root
+  - id: ST-005
+    title: Run compatibility regressions for default docs root repositories
+    status: backlog
+    order: 5
+    context: >
+      Confirm existing repositories that rely on `docs/` continue to pass validation,
+      loop-fast checks, and loop behavior unchanged.
+    verification:
+      - uv run pytest -q
+      - uvx --from . engineeringagent validate
+      - uvx --from . engineeringagent gates run --profile loop_fast
+updated_at: null
