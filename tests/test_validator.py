@@ -61,6 +61,8 @@ def test_validate_reports_enum_unknown_and_type_errors(tmp_path: Path) -> None:
             {
                 "id": "FEAT-903",
                 "title": "Contract violations",
+                "type": "feature",
+                "expected_commit_subject": "feat: enforce contract violations fixture",
                 "status": "doing",
                 "priority": "high",
                 "objective": "Force strict contract failures.",
@@ -109,6 +111,8 @@ def test_validate_missing_required_fields_with_pydantic(tmp_path: Path) -> None:
             {
                 "id": "FEAT-904",
                 "title": "Missing fields",
+                "type": "feature",
+                "expected_commit_subject": "feat: validate missing required fields",
                 "status": "backlog",
                 "priority": "high",
                 "acceptance": ["Missing required fields are reported."],
@@ -134,6 +138,65 @@ def test_validate_missing_required_fields_with_pydantic(tmp_path: Path) -> None:
     )
     assert any(
         "subtasks[0].verification" in message and "Field required" in message
+        for message in messages
+    )
+
+
+def test_validate_requires_feature_type(tmp_path: Path) -> None:
+    project_root = tmp_path
+    features_dir = project_root / "docs" / "spec" / "features"
+    features_dir.mkdir(parents=True, exist_ok=True)
+
+    (features_dir / "FEAT-910-missing-type.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "id": "FEAT-910",
+                "title": "Missing type",
+                "expected_commit_subject": "feat: validate missing feature type",
+                "status": "backlog",
+                "priority": "high",
+                "objective": "Feature type is required.",
+                "acceptance": ["Validator reports missing type."],
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    messages = validate(project_root=project_root)
+
+    assert any(
+        "type" in message and "Field required" in message for message in messages
+    )
+
+
+def test_validate_requires_expected_commit_subject(tmp_path: Path) -> None:
+    project_root = tmp_path
+    features_dir = project_root / "docs" / "spec" / "features"
+    features_dir.mkdir(parents=True, exist_ok=True)
+
+    (features_dir / "FEAT-911-missing-expected-subject.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "id": "FEAT-911",
+                "title": "Missing expected commit subject",
+                "type": "feature",
+                "status": "backlog",
+                "priority": "high",
+                "objective": "Expected commit subject is required.",
+                "acceptance": [
+                    "Validator reports missing expected commit subject metadata."
+                ],
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    messages = validate(project_root=project_root)
+
+    assert any(
+        "expected_commit_subject" in message and "Field required" in message
         for message in messages
     )
 
@@ -200,6 +263,8 @@ def test_validate_reports_done_feature_left_in_active_directory(
             {
                 "id": "FEAT-901",
                 "title": "Done spec in active directory",
+                "type": "feature",
+                "expected_commit_subject": "feat: done spec in active directory",
                 "status": "done",
                 "priority": "high",
                 "objective": "Validate done specs are archived.",
@@ -249,6 +314,8 @@ def test_validate_transitional_policy_for_preexisting_done_features(
             {
                 "id": "FEAT-902",
                 "title": "Transition exception",
+                "type": "feature",
+                "expected_commit_subject": "feat: allow temporary done transition",
                 "status": "done",
                 "priority": "high",
                 "objective": "Allow temporary transition policy.",
@@ -278,6 +345,44 @@ def test_validate_transitional_policy_for_preexisting_done_features(
     assert messages == []
 
 
+def test_validate_allows_legacy_done_specs_missing_new_metadata(tmp_path: Path) -> None:
+    project_root = tmp_path
+    features_done_dir = project_root / "docs" / "spec" / "features_done"
+    schema_target = project_root / "docs" / "spec" / "schemas" / "feature.schema.json"
+
+    features_done_dir.mkdir(parents=True, exist_ok=True)
+    schema_target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(SCHEMA_SOURCE, schema_target)
+
+    (features_done_dir / "FEAT-899-legacy-done.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "id": "FEAT-899",
+                "title": "Legacy done spec",
+                "status": "done",
+                "priority": "high",
+                "objective": "Allow transitional done validation.",
+                "acceptance": ["Done specs remain readable during migration."],
+                "subtasks": [
+                    {
+                        "id": "ST-001",
+                        "title": "Already complete",
+                        "status": "done",
+                        "order": 1,
+                        "verification": ["true"],
+                    }
+                ],
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    messages = validate(project_root=project_root)
+
+    assert messages == []
+
+
 def test_validate_preserves_subtask_order_and_done_prefix_rules(tmp_path: Path) -> None:
     project_root = tmp_path
     features_dir = project_root / "docs" / "spec" / "features"
@@ -288,6 +393,8 @@ def test_validate_preserves_subtask_order_and_done_prefix_rules(tmp_path: Path) 
             {
                 "id": "FEAT-905",
                 "title": "Noncontiguous subtask order",
+                "type": "feature",
+                "expected_commit_subject": "feat: preserve contiguous order rule",
                 "status": "backlog",
                 "priority": "high",
                 "objective": "Preserve contiguous order rule.",
@@ -319,6 +426,8 @@ def test_validate_preserves_subtask_order_and_done_prefix_rules(tmp_path: Path) 
             {
                 "id": "FEAT-906",
                 "title": "Done prefix violation",
+                "type": "feature",
+                "expected_commit_subject": "feat: preserve done prefix rule",
                 "status": "in_progress",
                 "priority": "high",
                 "objective": "Preserve done-prefix rule.",
@@ -367,6 +476,8 @@ def test_validate_preserves_feature_status_invariant_rules(tmp_path: Path) -> No
             {
                 "id": "FEAT-907",
                 "title": "Done but subtask open",
+                "type": "feature",
+                "expected_commit_subject": "feat: preserve done status invariant",
                 "status": "done",
                 "priority": "high",
                 "objective": "Preserve done status invariant.",
@@ -391,6 +502,8 @@ def test_validate_preserves_feature_status_invariant_rules(tmp_path: Path) -> No
             {
                 "id": "FEAT-908",
                 "title": "In progress subtask on backlog feature",
+                "type": "feature",
+                "expected_commit_subject": "feat: preserve in progress status invariant",
                 "status": "backlog",
                 "priority": "high",
                 "objective": "Preserve in-progress status invariant.",
@@ -415,6 +528,8 @@ def test_validate_preserves_feature_status_invariant_rules(tmp_path: Path) -> No
             {
                 "id": "FEAT-909",
                 "title": "All done but feature not done",
+                "type": "feature",
+                "expected_commit_subject": "feat: preserve all done status invariant",
                 "status": "in_progress",
                 "priority": "high",
                 "objective": "Preserve all-done status invariant.",

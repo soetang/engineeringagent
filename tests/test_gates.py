@@ -90,3 +90,22 @@ def test_load_gate_config_rejects_invalid_contract(tmp_path: Path) -> None:
     assert "invalid gates config" in message
     assert "gates.yaml:gates.yaml_validate.extra" in message
     assert "gates.yaml:gates.yaml_validate.run" in message
+
+
+def test_commit_msg_hook_configuration() -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    config_text = (repo_root / ".pre-commit-config.yaml").read_text(encoding="utf-8")
+
+    assert "engineeringagent-commit-msg" in config_text
+    assert "validate_commit_messages.py --commit-msg-file" in config_text
+    assert "stages: [commit-msg]" in config_text
+
+
+def test_commit_message_ci_gate_registered() -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    workflow_text = (repo_root / ".github" / "workflows" / "ci.yaml").read_text(
+        encoding="utf-8"
+    )
+
+    assert "Validate commit subjects" in workflow_text
+    assert "validate_commit_messages.py --commit-range" in workflow_text

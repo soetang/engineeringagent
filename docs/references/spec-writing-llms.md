@@ -38,6 +38,15 @@
 - Keep verification commands concrete and executable.
 - Preserve repository language and conventions used in existing FEAT files.
 
+## Spec Creation Checklist
+
+- Include required top-level fields in every active feature spec:
+  - `type` (one of: `feature`, `bug`, `spec`, `docs`, `chore`, `test`)
+  - `expected_commit_subject` in `type: summary` format
+- Keep the expected subject deterministic for the spec intent (example: `spec: add FEAT-016 commit message policy and spec typing`).
+- Verify the spec validates before commit.
+- Commit the spec/doc changes with the exact `expected_commit_subject` value.
+
 ## Post-Draft Commit Workflow
 
 After creating or updating a spec file, commit it in the same loop so state is recoverable.

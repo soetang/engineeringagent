@@ -1,5 +1,7 @@
 id: FEAT-992
 title: Illegal transition fixture
+type: feature
+expected_commit_subject: 'feat: illegal transition fixture'
 status: done
 priority: high
 objective: Verify custom transition checks fail clearly.

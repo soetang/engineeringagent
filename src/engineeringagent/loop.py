@@ -28,6 +28,15 @@ STATUS_ORDER: dict[str, int] = {
 
 RUN_ALL_RUNNABLE_STATUSES: set[str] = {"backlog", "in_progress"}
 
+FEATURE_TYPE_COMMIT_PREFIX: dict[str, str] = {
+    "feature": "feat",
+    "bug": "fix",
+    "spec": "spec",
+    "docs": "docs",
+    "chore": "chore",
+    "test": "test",
+}
+
 
 def _print_run_all_snapshot_banner(resolved_paths: Sequence[Path]) -> None:
     print(
@@ -499,11 +508,7 @@ def _restore_archived_feature(
 def _commit_feature_completion(
     project_root: Path, feature: dict[str, Any]
 ) -> tuple[bool, str | None, str]:
-    fid = str(feature.get("id", "unknown-feature"))
-    title = str(feature.get("title", "")).strip()
-    message = f"feat: complete {fid}"
-    if title:
-        message = f"{message} - {title}"
+    message = _feature_completion_commit_subject(feature)
 
     add_proc = subprocess.run(
         ["git", "add", "-A", "--", "."],
@@ -534,6 +539,21 @@ def _commit_feature_completion(
     if commit_proc.returncode == 0:
         return (True, None, output)
     return (False, "git_commit", output)
+
+
+def _feature_completion_commit_subject(feature: dict[str, Any]) -> str:
+    expected_subject = str(feature.get("expected_commit_subject", "")).strip()
+    if expected_subject:
+        return expected_subject
+
+    fid = str(feature.get("id", "unknown-feature"))
+    title = str(feature.get("title", "")).strip()
+    feature_type = str(feature.get("type", "feature")).strip()
+    prefix = FEATURE_TYPE_COMMIT_PREFIX.get(feature_type, "feat")
+    message = f"{prefix}: complete {fid}"
+    if title:
+        message = f"{message} - {title}"
+    return message
 
 
 def print_summary(

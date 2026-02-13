@@ -19,6 +19,18 @@
       "title": "FeatureStatus",
       "type": "string"
     },
+    "FeatureType": {
+      "enum": [
+        "feature",
+        "bug",
+        "spec",
+        "docs",
+        "chore",
+        "test"
+      ],
+      "title": "FeatureType",
+      "type": "string"
+    },
     "SubtaskSpec": {
       "additionalProperties": false,
       "properties": {
@@ -141,6 +153,14 @@
       "title": "Title",
       "type": "string"
     },
+    "type": {
+      "$ref": "#/$defs/FeatureType"
+    },
+    "expected_commit_subject": {
+      "pattern": "^(feat|fix|spec|docs|chore|test): [^\\n]+$",
+      "title": "Expected Commit Subject",
+      "type": "string"
+    },
     "status": {
       "$ref": "#/$defs/FeatureStatus"
     },
@@ -222,6 +242,8 @@
   "required": [
     "id",
     "title",
+    "type",
+    "expected_commit_subject",
     "status",
     "priority",
     "objective",

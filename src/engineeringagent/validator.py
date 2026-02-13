@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from .specs import (
+    ValidationIssue,
     feature_contract_issues,
     feature_schema_from_model,
     gate_contract_issues,
@@ -14,6 +15,7 @@ from .specs import (
 
 
 DONE_TRANSITION_ALLOWLIST = ".allow-done-active.txt"
+LEGACY_DONE_OPTIONAL_FIELDS = {"type", "expected_commit_subject"}
 
 
 def _load_done_transition_allowlist(features_dir: Path) -> set[str]:
@@ -101,7 +103,9 @@ def validate(project_root: Path, schema_only: bool = False) -> list[str]:
             messages.append(f"{file_path}: failed to parse YAML: {exc}")
             continue
 
-        contract_issues = feature_contract_issues(feature, file_path)
+        contract_issues = _filter_legacy_done_contract_issues(
+            feature_contract_issues(feature, file_path)
+        )
         for issue in contract_issues:
             messages.append(f"{issue.path}: {issue.message}")
 
@@ -129,3 +133,16 @@ def validate(project_root: Path, schema_only: bool = False) -> list[str]:
                 messages.append(f"{issue.path}: {issue.message}")
 
     return messages
+
+
+def _filter_legacy_done_contract_issues(
+    issues: list[ValidationIssue],
+) -> list[ValidationIssue]:
+    """Drop transitional required-field errors for legacy archived specs."""
+    filtered: list = []
+    for issue in issues:
+        field = issue.path.rsplit(":", maxsplit=1)[-1]
+        if field in LEGACY_DONE_OPTIONAL_FIELDS and issue.message == "Field required":
+            continue
+        filtered.append(issue)
+    return filtered

@@ -1,5 +1,7 @@
 id: FEAT-990
 title: Missing objective fixture
+type: feature
+expected_commit_subject: 'feat: missing objective fixture'
 status: backlog
 priority: high
 acceptance:

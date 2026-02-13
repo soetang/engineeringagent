@@ -23,6 +23,8 @@ def _base_feature(status: str = "backlog") -> dict[str, Any]:
     return {
         "id": "FEAT-900",
         "title": "Ralph mode smoke test",
+        "type": "feature",
+        "expected_commit_subject": "feat: complete FEAT-900 ralph mode smoke test",
         "status": status,
         "priority": "high",
         "objective": "Verify feature-level loop mode does not require subtask selection.",
@@ -804,6 +806,57 @@ def test_run_loop_completion_commit_includes_archive_move(tmp_path: Path) -> Non
         line.startswith("R") and line.endswith(expected_rename_suffix)
         for line in changed_paths
     )
+
+
+def test_loop_uses_expected_commit_subject(tmp_path: Path) -> None:
+    feature_data = _base_feature()
+    feature_data["expected_commit_subject"] = "docs: publish FEAT-900 release notes"
+    project_root, feature_path = _make_project_root(tmp_path, feature_data=feature_data)
+    script_path = _write_set_done_script(
+        tmp_path.parent / f"{tmp_path.name}-set-done-expected-subject.py"
+    )
+    _init_git_repo(project_root)
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        max_iterations=5,
+    )
+
+    assert code == 0
+    subject = _run_git(project_root, "log", "-1", "--pretty=%s").stdout.strip()
+    assert subject == "docs: publish FEAT-900 release notes"
+
+
+def test_loop_commit_subject_fallback_uses_type_mapping(tmp_path: Path) -> None:
+    feature_data = _base_feature()
+    feature_data.pop("expected_commit_subject")
+    feature_data["type"] = "bug"
+    project_root, feature_path = _make_project_root(tmp_path, feature_data=feature_data)
+    script_path = _write_set_done_script(
+        tmp_path.parent / f"{tmp_path.name}-set-done-fallback-subject.py"
+    )
+    _init_git_repo(project_root)
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        max_iterations=5,
+    )
+
+    assert code == 0
+    subject = _run_git(project_root, "log", "-1", "--pretty=%s").stdout.strip()
+    assert subject.startswith("fix: complete FEAT-900")
 
 
 def test_git_add_failure_exits_immediately(tmp_path: Path) -> None:

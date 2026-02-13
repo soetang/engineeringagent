@@ -12,6 +12,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -23,6 +25,25 @@ jobs:
 
       - name: Sync dependencies
         run: uv sync
+
+      - name: Validate commit subjects
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            COMMIT_RANGE="$PR_BASE_SHA..$HEAD_SHA"
+          else
+            COMMIT_RANGE="$PUSH_BEFORE_SHA..$HEAD_SHA"
+          fi
+
+          if [ "$PUSH_BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            COMMIT_RANGE="$HEAD_SHA^..$HEAD_SHA"
+          fi
+
+          uv run python harness/validate_commit_messages.py --commit-range "$COMMIT_RANGE"
 
       - name: Lint (precommit profile)
         run: uvx --from . engineeringagent gates run --profile precommit

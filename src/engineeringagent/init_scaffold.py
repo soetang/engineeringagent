@@ -90,6 +90,11 @@ def build_baseline_scaffold_manifest(docs_dir: str = "docs") -> dict[str, str]:
                 "        entry: uvx --from . engineeringagent gates run --profile precommit",
                 "        language: system",
                 "        pass_filenames: false",
+                "      - id: engineeringagent-commit-msg",
+                "        name: engineeringagent-commit-msg",
+                "        entry: uv run python harness/validate_commit_messages.py --commit-msg-file",
+                "        language: system",
+                "        stages: [commit-msg]",
                 "",
             ]
         ),

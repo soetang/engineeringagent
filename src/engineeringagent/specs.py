@@ -21,6 +21,13 @@ FeatureId = Annotated[
 SubtaskId = Annotated[str, Field(strict=True, min_length=1, pattern=r"^ST-[0-9]{3,}$")]
 NonEmptyStr = Annotated[str, Field(strict=True, min_length=1)]
 StrictString = Annotated[str, Field(strict=True)]
+CommitSubject = Annotated[
+    str,
+    Field(
+        strict=True,
+        pattern=r"^(feat|fix|spec|docs|chore|test): [^\n]+$",
+    ),
+]
 
 
 class StrictContractModel(BaseModel):
@@ -38,6 +45,15 @@ class FeaturePriority(str, Enum):
     HIGH = "high"
     MEDIUM = "medium"
     LOW = "low"
+
+
+class FeatureType(str, Enum):
+    FEATURE = "feature"
+    BUG = "bug"
+    SPEC = "spec"
+    DOCS = "docs"
+    CHORE = "chore"
+    TEST = "test"
 
 
 class PotentialFeatureStatus(str, Enum):
@@ -91,6 +107,8 @@ class FeatureSpec(StrictContractModel):
 
     id: FeatureId
     title: NonEmptyStr
+    type: FeatureType
+    expected_commit_subject: CommitSubject
     status: FeatureStatus
     priority: FeaturePriority
     objective: NonEmptyStr

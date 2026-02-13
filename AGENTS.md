@@ -14,9 +14,11 @@ Load only the artifacts relevant to the current task.
 ## 2) Operating Principles
 
 - **Humans steer, agents execute.**
+- **Audience split is explicit.** Use `README.md` for human onboarding and `AGENTS.md` plus `docs/references/*-llms.md` for agent execution guidance.
 - **One feature focus per cycle.**
 - **Prototype mode.** Breaking changes are acceptable when they improve reliability, clarity, or execution throughput.
 - **Interview before spec-writing.** Before drafting a new feature spec, ask the user targeted questions and confirm scope.
+- **Spec guide is mandatory.** Agents must follow `docs/references/spec-writing-llms.md` when authoring or updating specs.
 - **Repository is the system of record.** If it is not in-repo, assume it does not exist.
 - **Encode behavior in gates/validators.** Prefer mechanical checks over prose rules.
 - **Keep this file short.** Put durable details next to code/config/docs.
@@ -24,12 +26,12 @@ Load only the artifacts relevant to the current task.
 ## 3) System of Record (Read in this order)
 
 1. `AGENTS.md` (this map)
-2. Relevant docs under `docs/` (`docs/references/spec-writing-llms.md` is required before authoring specs)
-3. `README.md` (workflow + CLI usage)
-4. `harness/gates.yaml` (active gate profiles/commands)
-5. `docs/spec/features/*.yaml` (active feature + subtasks)
-6. `docs/spec/schemas/feature.schema.json` (spec contract)
-7. `src/engineeringagent/` (implementation)
+1. Relevant docs under `docs/` (`docs/references/spec-writing-llms.md` is required before authoring specs; `docs/references/docs-architecture-llms.md` is required before restructuring docs)
+1. `README.md` (workflow + CLI usage)
+1. `harness/gates.yaml` (active gate profiles/commands)
+1. `docs/spec/features/*.yaml` (active feature + subtasks)
+1. `docs/spec/schemas/feature.schema.json` (spec contract)
+1. `src/engineeringagent/` (implementation)
 
 ## 4) Repository Zones
 
@@ -49,6 +51,7 @@ Load only the artifacts relevant to the current task.
 - `docs/product-specs/index.md`
 - `docs/product-specs/new-user-onboarding.md`
 - `docs/references/design-system-reference-llms.md`
+- `docs/references/docs-architecture-llms.md`
 - `docs/references/nixpacks-llms.md`
 - `docs/references/python-uv-ruff-llms.md`
 - `docs/references/spec-writing-llms.md`
@@ -63,12 +66,12 @@ Load only the artifacts relevant to the current task.
 ## 6) First-Window Boot Sequence
 
 1. Read this file, then `README.md`.
-2. Check repo state: `git status`, recent commits.
-3. Validate specs before coding.
-4. Identify active feature and next eligible execution loop.
-5. Execute one incremental unit only.
-6. Re-run gates and verification.
-7. Persist outcomes for the next context window.
+1. Check repo state: `git status`, recent commits.
+1. Validate specs before coding.
+1. Identify active feature and next eligible execution loop.
+1. Execute one incremental unit only.
+1. Re-run gates and verification.
+1. Persist outcomes for the next context window.
 
 ## 7) Loop Contract
 

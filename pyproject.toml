@@ -27,6 +27,7 @@ markers = [
 
 [dependency-groups]
 dev = [
+    "mdformat>=0.7.22",
     "pytest>=9.0.2",
     "ruff>=0.15.0",
 ]

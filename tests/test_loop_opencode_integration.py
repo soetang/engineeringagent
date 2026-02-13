@@ -21,7 +21,13 @@ def _write_yaml(path: Path, payload: dict[str, Any]) -> None:
 
 def _make_project_root(tmp_path: Path) -> tuple[Path, Path]:
     project_root = tmp_path
-    feature_path = project_root / "docs" / "spec" / "features" / "FEAT-901-opencode-integration.yaml"
+    feature_path = (
+        project_root
+        / "docs"
+        / "spec"
+        / "features"
+        / "FEAT-901-opencode-integration.yaml"
+    )
 
     _write_yaml(
         project_root / "harness" / "gates.yaml",
@@ -35,6 +41,8 @@ def _make_project_root(tmp_path: Path) -> tuple[Path, Path]:
         {
             "id": "FEAT-901",
             "title": "OpenCode integration test",
+            "type": "feature",
+            "expected_commit_subject": "feat: validate opencode integration loop",
             "status": "backlog",
             "priority": "high",
             "objective": "Verify loop can execute OpenCode from implement step.",
@@ -66,7 +74,9 @@ def _make_project_root(tmp_path: Path) -> tuple[Path, Path]:
 
 
 def _run_git(project_root: Path, *args: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(["git", *args], cwd=project_root, check=True, capture_output=True, text=True)
+    return subprocess.run(
+        ["git", *args], cwd=project_root, check=True, capture_output=True, text=True
+    )
 
 
 def _init_git_repo(project_root: Path) -> None:
@@ -150,7 +160,15 @@ def test_loop_reports_permission_rejection_in_run_telemetry(
 
     code = run_loop(
         project_root=project_root,
-        feature_paths=[str(project_root / "docs" / "spec" / "features" / "FEAT-901-opencode-integration.yaml")],
+        feature_paths=[
+            str(
+                project_root
+                / "docs"
+                / "spec"
+                / "features"
+                / "FEAT-901-opencode-integration.yaml"
+            )
+        ],
         gate_profile="loop_fast",
         implement_command=None,
         opencode_prompt="Run exactly: git status --short.",

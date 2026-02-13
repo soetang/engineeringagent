@@ -14,6 +14,7 @@ DEFAULT_GATE_CONFIG: dict[str, Any] = {
         "precommit": [
             "yaml_validate",
             "spec_validate",
+            "mdformat_validate",
             "ruff_validate",
             "pytest_validate",
         ],
@@ -21,7 +22,10 @@ DEFAULT_GATE_CONFIG: dict[str, Any] = {
     },
     "gates": {
         "yaml_validate": {"run": "uv run python harness/validate_yaml.py"},
-        "spec_validate": {"run": "uvx --from . engineeringagent validate"},
+        "spec_validate": {"run": "uv run python -m engineeringagent.cli validate"},
+        "mdformat_validate": {
+            "run": "uv run mdformat --check README.md AGENTS.md docs/references/docs-architecture-llms.md"
+        },
         "ruff_validate": {"run": "uv run ruff check src/engineeringagent"},
         "pytest_validate": {"run": "uv run pytest -q"},
         "opencode_permission_probe": {

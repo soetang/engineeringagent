@@ -192,6 +192,8 @@ def test_init_writes_precommit_and_empty_gate_profiles(
         encoding="utf-8"
     )
     assert "engineeringagent gates run --profile precommit" in precommit_config
+    assert "engineeringagent-commit-msg" in precommit_config
+    assert "validate_commit_messages.py --commit-msg-file" in precommit_config
 
     gates_config = yaml.safe_load(
         (tmp_path / "harness" / "gates.yaml").read_text(encoding="utf-8")
