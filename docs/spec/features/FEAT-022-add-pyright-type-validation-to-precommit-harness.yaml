@@ -35,7 +35,7 @@ implementation_notes: >
   Update contributor references that describe canonical precommit checks so
   Pyright expectations are explicit.
 acceptance:
-  - `harness/gates.yaml` precommit profile includes a `pyright_validate` gate and executes it deterministically.
+  - '`harness/gates.yaml` precommit profile includes a `pyright_validate` gate and executes it deterministically.'
   - Default gate scaffolding in `src/engineeringagent/gates.py` includes `pyright_validate` with the same command contract.
   - Pyright configuration exists and enforces basic mode across `src/engineeringagent`, `tests`, and `harness`.
   - Existing codebase type issues in configured scope are resolved or intentionally narrowed so `uv run pyright` passes.
