@@ -1,1 +1,2 @@
 FEAT-035-harness-engineering-principles-docs-update.yaml
+FEAT-036-language-agnostic-init-scaffolding-and-reference-first-agents.yaml

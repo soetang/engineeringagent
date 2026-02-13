@@ -390,6 +390,7 @@ def cmd_init(args: argparse.Namespace) -> int:
         project_root=project_root,
         force=args.force,
         docs_dir=docs_dir,
+        profile=args.scaffold_profile,
     )
 
     if resolved_agents_mode == "overwrite":
@@ -424,6 +425,7 @@ def cmd_init(args: argparse.Namespace) -> int:
     print(
         f"init scaffold complete: docs_dir={docs_dir} "
         f"created={created} skipped={skipped}"
+        f" profile={args.scaffold_profile}"
         f"{agents_mode_output}{merge_spec_output}"
     )
     return 0
@@ -554,12 +556,22 @@ def build_parser() -> argparse.ArgumentParser:
     fitness_catalog_parser.set_defaults(func=cmd_fitness_catalog)
 
     init_parser = sub.add_parser(
-        "init", help="scaffold baseline harness files for this repository"
+        "init",
+        help="scaffold baseline harness files (default core profile)",
     )
     init_parser.add_argument(
         "--force",
         action="store_true",
         help="overwrite scaffold-managed files that already exist",
+    )
+    init_parser.add_argument(
+        "--scaffold-profile",
+        choices=["core", "python_uv"],
+        default="core",
+        help=(
+            "scaffold profile to apply "
+            "(core=language-agnostic default, python_uv=Python/uv bootstrap)"
+        ),
     )
     init_parser.add_argument(
         "--docs-mode",

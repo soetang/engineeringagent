@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from importlib.resources import files
 from pathlib import Path
 from typing import Any
 
@@ -7,7 +8,10 @@ import pytest
 import yaml
 
 from engineeringagent.cli import build_parser, cmd_init
-from engineeringagent.init_scaffold import build_scaffold_agents_markdown
+from engineeringagent.init_scaffold import (
+    build_baseline_scaffold_manifest,
+    build_scaffold_agents_markdown,
+)
 
 
 def test_init_subcommand_registered() -> None:
@@ -159,20 +163,28 @@ def test_init_agents_conflict_abort(tmp_path: Path, capsys: Any) -> None:
     assert not (tmp_path / "docs" / "spec").exists()
 
 
-def test_generated_agents_includes_validate_commands() -> None:
-    """Verify scaffolded AGENTS guidance includes setup validation commands."""
+def test_generated_agents_is_reference_first_and_minimal() -> None:
+    """Verify scaffolded AGENTS guidance is concise and reference-oriented."""
     scaffold_agents = build_scaffold_agents_markdown()
 
+    assert "Keep this file concise" in scaffold_agents
+    assert "## System of Record (Read in this order)" in scaffold_agents
+    assert "## Repo Extensions (Fill In)" in scaffold_agents
     assert "engineeringagent validate" in scaffold_agents
     assert "engineeringagent gates list" in scaffold_agents
     assert "engineeringagent gates run --profile precommit" in scaffold_agents
 
 
-def test_generated_agents_excludes_run_command_guidance() -> None:
-    """Verify scaffolded AGENTS guidance excludes run-loop command guidance."""
+def test_generated_agents_keeps_major_principles() -> None:
+    """Verify scaffolded AGENTS guidance preserves major operating principles."""
     scaffold_agents = build_scaffold_agents_markdown()
 
-    assert "engineeringagent run" not in scaffold_agents
+    assert "Humans steer, agents execute." in scaffold_agents
+    assert "One feature focus per cycle." in scaffold_agents
+    assert (
+        "Keep audience split explicit: `README.md` for human onboarding"
+        in scaffold_agents
+    )
 
 
 def test_init_writes_precommit_and_empty_gate_profiles(
@@ -191,9 +203,9 @@ def test_init_writes_precommit_and_empty_gate_profiles(
     precommit_config = (tmp_path / ".pre-commit-config.yaml").read_text(
         encoding="utf-8"
     )
-    assert "engineeringagent gates run --profile precommit" in precommit_config
-    assert "engineeringagent-commit-msg" in precommit_config
-    assert "validate_commit_messages.py --commit-msg-file" in precommit_config
+    assert "entry: engineeringagent gates run --profile precommit" in precommit_config
+    assert "uvx --from . engineeringagent" not in precommit_config
+    assert "engineeringagent-commit-msg" not in precommit_config
 
     gates_config = yaml.safe_load(
         (tmp_path / "harness" / "gates.yaml").read_text(encoding="utf-8")
@@ -212,5 +224,112 @@ def test_init_writes_precommit_and_empty_gate_profiles(
         "rules": [
             {"builtin": "architecture.dep-directionality"},
             {"builtin": "architecture.loop-subprocess-boundary"},
+            {"builtin": "architecture.scaffold-template-locality"},
         ],
     }
+
+
+def test_init_defaults_to_core_language_agnostic_profile(
+    tmp_path: Path,
+    capsys: Any,
+) -> None:
+    """Verify init defaults to the language-agnostic core scaffold profile."""
+    parser = build_parser()
+    args = parser.parse_args(["--project-root", str(tmp_path), "init"])
+
+    code = args.func(args)
+    output = capsys.readouterr().out
+
+    assert code == 0
+    assert "profile=core" in output
+
+    precommit_config = (tmp_path / ".pre-commit-config.yaml").read_text(
+        encoding="utf-8"
+    )
+    assert "entry: engineeringagent gates run --profile precommit" in precommit_config
+    assert "uvx --from ." not in precommit_config
+    assert "engineeringagent-commit-msg" not in precommit_config
+
+
+def test_init_python_uv_profile_available(tmp_path: Path, capsys: Any) -> None:
+    """Verify init supports the optional python_uv scaffold profile."""
+    parser = build_parser()
+    args = parser.parse_args(
+        [
+            "--project-root",
+            str(tmp_path),
+            "init",
+            "--scaffold-profile",
+            "python_uv",
+        ]
+    )
+
+    code = args.func(args)
+    output = capsys.readouterr().out
+
+    assert code == 0
+    assert "profile=python_uv" in output
+
+    precommit_config = (tmp_path / ".pre-commit-config.yaml").read_text(
+        encoding="utf-8"
+    )
+    assert (
+        "entry: uvx --from . engineeringagent gates run --profile precommit"
+        in precommit_config
+    )
+    assert "engineeringagent-commit-msg" in precommit_config
+    assert "validate_commit_messages.py --commit-msg-file" in precommit_config
+
+
+def test_init_renders_scaffold_from_template_files() -> None:
+    """Verify scaffold content is rendered from file-based template assets."""
+    template_dir = files("engineeringagent.scaffold_templates")
+    manifest = build_baseline_scaffold_manifest(profile="core")
+
+    assert manifest[".pre-commit-config.yaml"] == template_dir.joinpath(
+        "precommit.core.yaml"
+    ).read_text(encoding="utf-8")
+    assert manifest["AGENTS.md"] == template_dir.joinpath("AGENTS.md").read_text(
+        encoding="utf-8"
+    )
+
+
+def test_init_template_rendering_is_deterministic() -> None:
+    """Verify scaffold template rendering is deterministic across repeated calls."""
+    first = build_baseline_scaffold_manifest(
+        docs_dir="docs.engineeringagent",
+        profile="python_uv",
+    )
+    second = build_baseline_scaffold_manifest(
+        docs_dir="docs.engineeringagent",
+        profile="python_uv",
+    )
+
+    assert first == second
+
+
+def test_init_scaffolds_tool_generic_docs_only(tmp_path: Path, capsys: Any) -> None:
+    """Verify init scaffolds reusable tool docs without repo-internal docs."""
+    parser = build_parser()
+    args = parser.parse_args(["--project-root", str(tmp_path), "init"])
+
+    code = args.func(args)
+    _ = capsys.readouterr()
+
+    assert code == 0
+
+    docs_architecture = (
+        tmp_path / "docs" / "references" / "docs-architecture-llms.md"
+    ).read_text(encoding="utf-8")
+    workflow_reference = (
+        tmp_path / "docs" / "references" / "workflow-llms.md"
+    ).read_text(encoding="utf-8")
+
+    assert "Audience Split" in docs_architecture
+    assert "README.md" in docs_architecture
+    assert "AGENTS.md" in docs_architecture
+    assert "engineeringagent validate" in workflow_reference
+    assert "engineeringagent gates run --profile precommit" in workflow_reference
+
+    assert not (tmp_path / "docs" / "principles").exists()
+    assert not (tmp_path / "docs" / "fitness-functions").exists()

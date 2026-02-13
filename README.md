@@ -37,6 +37,13 @@ If you are starting in a fresh repository, you can scaffold a baseline harness w
 uvx --from . engineeringagent init
 ```
 
+`init` defaults to the language-agnostic `core` scaffold profile.
+Use `python_uv` only when you intentionally want Python/uv-oriented bootstrap defaults:
+
+```bash
+uvx --from . engineeringagent init --scaffold-profile python_uv
+```
+
 `init` creates a starter structure for docs/specs/gates and handles existing `docs/` or
 `AGENTS.md` through explicit conflict choices.
 

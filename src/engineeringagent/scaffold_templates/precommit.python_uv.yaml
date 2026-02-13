@@ -1,0 +1,13 @@
+repos:
+  - repo: local
+    hooks:
+      - id: engineeringagent-precommit
+        name: engineeringagent-precommit
+        entry: uvx --from . engineeringagent gates run --profile precommit
+        language: system
+        pass_filenames: false
+      - id: engineeringagent-commit-msg
+        name: engineeringagent-commit-msg
+        entry: uv run python harness/validate_commit_messages.py --commit-msg-file
+        language: system
+        stages: [commit-msg]

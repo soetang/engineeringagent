@@ -3,6 +3,7 @@ rules:
   - builtin: architecture.dep-directionality
   - builtin: architecture.loop-subprocess-boundary
   - builtin: architecture.prompt-locality
+  - builtin: architecture.scaffold-template-locality
   - rule_id: architecture.loop-facade-line-budget
     name: Loop facade line budget
     summary: Enforce a permanent line budget cap for the loop facade.

@@ -9,6 +9,7 @@ from .contracts import CONTRACT_VERSION, RuleSeverity, RuleStatus
 DEPENDENCY_DIRECTIONALITY_RULE_ID = "architecture.dep-directionality"
 LOOP_SUBPROCESS_BOUNDARY_RULE_ID = "architecture.loop-subprocess-boundary"
 PROMPT_LOCALITY_RULE_ID = "architecture.prompt-locality"
+SCAFFOLD_TEMPLATE_LOCALITY_RULE_ID = "architecture.scaffold-template-locality"
 
 _DISALLOWED_IMPORTS: dict[str, tuple[str, ...]] = {
     "engineeringagent.specs": (
@@ -74,6 +75,27 @@ _PROMPT_LOCALITY_REMEDIATION = (
     "move canonical prompt text and template reads into "
     "src/engineeringagent/prompts/templates and approved modules under "
     "src/engineeringagent/prompts/."
+)
+
+_SCAFFOLD_TEMPLATE_ROOT = _SOURCE_PACKAGE_ROOT / "scaffold_templates"
+_REQUIRED_SCAFFOLD_TEMPLATES = (
+    "AGENTS.md",
+    "precommit.core.yaml",
+    "precommit.python_uv.yaml",
+    "reference.docs-architecture-llms.md",
+    "reference.workflow-llms.md",
+)
+_SCAFFOLD_TEMPLATE_ALLOWED_ROOT = _SOURCE_PACKAGE_ROOT / "scaffold_templates"
+_SCAFFOLD_TEMPLATE_CANARY_TOKENS = (
+    ("agent", "operating", "guide", "for", "this", "repository"),
+    ("keep", "this", "file", "concise"),
+    ("first", "window", "boot", "sequence"),
+    ("audience", "split"),
+)
+_SCAFFOLD_TEMPLATE_LOCALITY_REMEDIATION = (
+    "move scaffold template content into "
+    "src/engineeringagent/scaffold_templates and keep scaffold content reads "
+    "inside engineeringagent.init_scaffold."
 )
 
 
@@ -156,9 +178,99 @@ def evaluate_prompt_locality(project_root: Path) -> dict[str, object]:
     }
 
 
+def evaluate_scaffold_template_locality(project_root: Path) -> dict[str, object]:
+    """Enforce scaffold template locality to file-based assets on disk."""
+    violations = _scaffold_template_integrity_violations(project_root)
+    violations.extend(_scaffold_template_source_locality_violations(project_root))
+
+    return {
+        "contract_version": CONTRACT_VERSION,
+        "rule_id": SCAFFOLD_TEMPLATE_LOCALITY_RULE_ID,
+        "status": RuleStatus.PASS if not violations else RuleStatus.FAIL,
+        "severity": RuleSeverity.ERROR,
+        "summary": (
+            "Scaffold template locality constraints satisfied."
+            if not violations
+            else f"Detected {len(violations)} scaffold template locality violation(s)."
+        ),
+        "violations": sorted(violations),
+    }
+
+
 def _module_path(project_root: Path, module_name: str) -> Path:
     _, _, suffix = module_name.partition("engineeringagent.")
     return project_root / "src" / "engineeringagent" / f"{suffix.replace('.', '/')}.py"
+
+
+def _scaffold_template_integrity_violations(project_root: Path) -> list[str]:
+    template_root = project_root / _SCAFFOLD_TEMPLATE_ROOT
+    violations: list[str] = []
+    if not template_root.exists() or not template_root.is_dir():
+        violations.append(
+            "src/engineeringagent/scaffold_templates:1 missing scaffold template "
+            f"directory; {_SCAFFOLD_TEMPLATE_LOCALITY_REMEDIATION}"
+        )
+        return violations
+
+    for template_name in _REQUIRED_SCAFFOLD_TEMPLATES:
+        template_path = template_root / template_name
+        relative = template_path.relative_to(project_root)
+        if not template_path.exists() or not template_path.is_file():
+            violations.append(
+                f"{relative}:1 missing required scaffold template "
+                f"'{template_name}'; {_SCAFFOLD_TEMPLATE_LOCALITY_REMEDIATION}"
+            )
+            continue
+        if not template_path.read_text(encoding="utf-8").strip():
+            violations.append(
+                f"{relative}:1 required scaffold template '{template_name}' is empty; "
+                f"{_SCAFFOLD_TEMPLATE_LOCALITY_REMEDIATION}"
+            )
+
+    return violations
+
+
+def _scaffold_template_source_locality_violations(project_root: Path) -> list[str]:
+    source_root = project_root / _SOURCE_PACKAGE_ROOT
+    violations: list[str] = []
+    if not source_root.exists():
+        violations.append(
+            f"{_SOURCE_PACKAGE_ROOT}:1 missing source package root; "
+            f"{_SCAFFOLD_TEMPLATE_LOCALITY_REMEDIATION}"
+        )
+        return violations
+
+    canaries = tuple(" ".join(tokens) for tokens in _SCAFFOLD_TEMPLATE_CANARY_TOKENS)
+    normalized_canaries = {
+        canary: _normalize_for_canary_matching(canary) for canary in canaries
+    }
+
+    for file_path in sorted(source_root.rglob("*.py")):
+        relative = file_path.relative_to(project_root)
+        if _is_scaffold_template_allowed_path(relative):
+            continue
+
+        tree = ast.parse(file_path.read_text(encoding="utf-8"), filename=str(file_path))
+        for line, segment in _iter_literal_string_segments(tree):
+            normalized_segment = _normalize_for_canary_matching(segment)
+            if not normalized_segment:
+                continue
+            for canary, normalized_canary in normalized_canaries.items():
+                if normalized_canary and normalized_canary in normalized_segment:
+                    violations.append(
+                        f"{relative}:{line} contains scaffold template canary "
+                        f"'{canary}' outside scaffold template assets; "
+                        f"{_SCAFFOLD_TEMPLATE_LOCALITY_REMEDIATION}"
+                    )
+
+    return violations
+
+
+def _is_scaffold_template_allowed_path(relative_path: Path) -> bool:
+    return (
+        relative_path == _SCAFFOLD_TEMPLATE_ALLOWED_ROOT
+        or _SCAFFOLD_TEMPLATE_ALLOWED_ROOT in relative_path.parents
+    )
 
 
 def _prompt_template_integrity_violations(project_root: Path) -> list[str]:

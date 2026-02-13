@@ -1,45 +1,62 @@
 from __future__ import annotations
 
 import json
+from importlib.resources import files
 from pathlib import Path
+from string import Template
 
 import yaml
 
 from .fitness import (
     DEPENDENCY_DIRECTIONALITY_RULE_ID,
     LOOP_SUBPROCESS_BOUNDARY_RULE_ID,
+    SCAFFOLD_TEMPLATE_LOCALITY_RULE_ID,
 )
 from .specs import feature_schema_from_model
 
 
+_SUPPORTED_SCAFFOLD_PROFILES = {"core", "python_uv"}
+_SCAFFOLD_TEMPLATE_PACKAGE = "engineeringagent.scaffold_templates"
+
+
+def _render_scaffold_template(
+    name: str, substitutions: dict[str, str] | None = None
+) -> str:
+    """Render a scaffold template file with deterministic substitutions."""
+    template_text = (
+        files(_SCAFFOLD_TEMPLATE_PACKAGE).joinpath(name).read_text(encoding="utf-8")
+    )
+    if substitutions is None:
+        return template_text
+    return Template(template_text).substitute(substitutions)
+
+
+def _build_precommit_config(profile: str) -> str:
+    """Build pre-commit hook wiring for a scaffold profile."""
+    if profile == "core":
+        return _render_scaffold_template("precommit.core.yaml")
+
+    if profile == "python_uv":
+        return _render_scaffold_template("precommit.python_uv.yaml")
+
+    raise ValueError(f"unsupported scaffold profile: {profile}")
+
+
 def build_scaffold_agents_markdown() -> str:
     """Build baseline AGENTS.md guidance for scaffolded repositories."""
-    return "\n".join(
-        [
-            "# AGENTS.md",
-            "",
-            "Agent operating guide for this repository.",
-            "",
-            "## Mission",
-            "",
-            "- Keep harness assets healthy and easy to validate.",
-            "- Prefer safe, incremental updates over broad refactors.",
-            "",
-            "## Bootstrap",
-            "",
-            "- Ensure `harness/gates.yaml` exists and profiles reference valid gates.",
-            "- Keep `docs/spec/` directories present for active, done, and backlog specs.",
-            "- Keep pre-commit wired to the stable gate entrypoint.",
-            "- Repair scaffold-managed assets with `engineeringagent init --force` when needed.",
-            "",
-            "## Validation",
-            "",
-            "- Validate feature schema and file structure: `engineeringagent validate`.",
-            "- List configured gate profiles: `engineeringagent gates list`.",
-            "- Execute a gate profile: `engineeringagent gates run --profile precommit`.",
-            "",
-        ]
-    )
+    return _render_scaffold_template("AGENTS.md")
+
+
+def _build_reference_docs_manifest(docs_dir: str) -> dict[str, str]:
+    """Build tool-generic agent docs references for the scaffold docs root."""
+    return {
+        f"{docs_dir}/references/docs-architecture-llms.md": _render_scaffold_template(
+            "reference.docs-architecture-llms.md"
+        ),
+        f"{docs_dir}/references/workflow-llms.md": _render_scaffold_template(
+            "reference.workflow-llms.md"
+        ),
+    }
 
 
 def build_agents_merge_followup_spec(backup_agents_name: str) -> str:
@@ -72,36 +89,26 @@ def build_agents_merge_followup_spec(backup_agents_name: str) -> str:
     )
 
 
-def build_baseline_scaffold_manifest(docs_dir: str = "docs") -> dict[str, str]:
+def build_baseline_scaffold_manifest(
+    docs_dir: str = "docs",
+    profile: str = "core",
+) -> dict[str, str]:
     """Build the baseline scaffold manifest for a docs root.
 
     Args:
         docs_dir: Docs root directory where spec files should be scaffolded.
+        profile: Scaffold profile that determines language/tool defaults.
 
     Returns:
         Mapping of relative file paths to scaffolded file contents.
     """
+    if profile not in _SUPPORTED_SCAFFOLD_PROFILES:
+        raise ValueError(f"unsupported scaffold profile: {profile}")
+
     normalized_docs_dir = docs_dir.strip("/")
 
     return {
-        ".pre-commit-config.yaml": "\n".join(
-            [
-                "repos:",
-                "  - repo: local",
-                "    hooks:",
-                "      - id: engineeringagent-precommit",
-                "        name: engineeringagent-precommit",
-                "        entry: uvx --from . engineeringagent gates run --profile precommit",
-                "        language: system",
-                "        pass_filenames: false",
-                "      - id: engineeringagent-commit-msg",
-                "        name: engineeringagent-commit-msg",
-                "        entry: uv run python harness/validate_commit_messages.py --commit-msg-file",
-                "        language: system",
-                "        stages: [commit-msg]",
-                "",
-            ]
-        ),
+        ".pre-commit-config.yaml": _build_precommit_config(profile=profile),
         f"{normalized_docs_dir}/spec/features/.gitkeep": "",
         f"{normalized_docs_dir}/spec/features_done/.gitkeep": "",
         f"{normalized_docs_dir}/spec/potential_features.yaml": yaml.safe_dump(
@@ -138,12 +145,14 @@ def build_baseline_scaffold_manifest(docs_dir: str = "docs") -> dict[str, str]:
                 "rules": [
                     {"builtin": DEPENDENCY_DIRECTIONALITY_RULE_ID},
                     {"builtin": LOOP_SUBPROCESS_BOUNDARY_RULE_ID},
+                    {"builtin": SCAFFOLD_TEMPLATE_LOCALITY_RULE_ID},
                 ],
             },
             sort_keys=False,
             allow_unicode=False,
         ),
         "AGENTS.md": build_scaffold_agents_markdown(),
+        **_build_reference_docs_manifest(normalized_docs_dir),
     }
 
 
@@ -151,6 +160,7 @@ def apply_baseline_scaffold(
     project_root: Path,
     force: bool = False,
     docs_dir: str = "docs",
+    profile: str = "core",
 ) -> tuple[int, int]:
     """Write the baseline scaffold manifest to disk.
 
@@ -158,6 +168,7 @@ def apply_baseline_scaffold(
         project_root: Repository root where scaffold files should be created.
         force: Whether to overwrite files that already exist.
         docs_dir: Docs root directory where spec files should be scaffolded.
+        profile: Scaffold profile that determines language/tool defaults.
 
     Returns:
         Tuple of (created_count, skipped_count).
@@ -165,7 +176,7 @@ def apply_baseline_scaffold(
     created = 0
     skipped = 0
 
-    manifest = build_baseline_scaffold_manifest(docs_dir=docs_dir)
+    manifest = build_baseline_scaffold_manifest(docs_dir=docs_dir, profile=profile)
 
     for relative_path, content in manifest.items():
         target_path = project_root / relative_path

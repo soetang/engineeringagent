@@ -35,3 +35,4 @@ This guide defines who each documentation surface is for, what belongs in it, an
 - When updating agent docs, optimize for unambiguous execution and verification.
 - Keep changes minimal and scoped to the active feature subtask.
 - Add or update links in `AGENTS.md` when new agent references are introduced.
+- Keep `init` bootstrap guidance explicit in human docs: default `core` profile, optional `python_uv` via `--scaffold-profile`.

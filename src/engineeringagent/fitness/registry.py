@@ -18,9 +18,11 @@ from .builtin_rules import (
     DEPENDENCY_DIRECTIONALITY_RULE_ID,
     LOOP_SUBPROCESS_BOUNDARY_RULE_ID,
     PROMPT_LOCALITY_RULE_ID,
+    SCAFFOLD_TEMPLATE_LOCALITY_RULE_ID,
     evaluate_dependency_directionality,
     evaluate_loop_subprocess_boundary,
     evaluate_prompt_locality,
+    evaluate_scaffold_template_locality,
 )
 
 DEFAULT_CUSTOM_RULE_MANIFEST = Path("harness/fitness-functions/rules.yaml")
@@ -94,6 +96,29 @@ BUILTIN_RULE_DEFINITIONS: tuple[FitnessRuleDefinition, ...] = (
         ),
         origin=f"builtin:{PROMPT_LOCALITY_RULE_ID}",
         python_callable=evaluate_prompt_locality,
+    ),
+    FitnessRuleDefinition(
+        metadata=FitnessRuleMetadata(
+            rule_id=SCAFFOLD_TEMPLATE_LOCALITY_RULE_ID,
+            name="Scaffold template locality",
+            summary="Keep scaffold template payloads in scaffold_templates assets.",
+            rationale=(
+                "Prevents init scaffold regressions from drifting back to inline "
+                "template payloads in source modules."
+            ),
+            remediation=(
+                "Move scaffold template bodies to "
+                "engineeringagent.scaffold_templates assets and load them via "
+                "engineeringagent.init_scaffold."
+            ),
+            scope="src/engineeringagent",
+            severity=RuleSeverity.ERROR,
+            adapter=RuleAdapter.PYTHON,
+            source=RuleSource.BUILTIN,
+            side_effect_free=True,
+        ),
+        origin=f"builtin:{SCAFFOLD_TEMPLATE_LOCALITY_RULE_ID}",
+        python_callable=evaluate_scaffold_template_locality,
     ),
 )
 
