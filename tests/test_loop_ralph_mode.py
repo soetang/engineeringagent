@@ -101,6 +101,29 @@ def _write_set_done_script(script_path: Path) -> Path:
     return script_path
 
 
+def _write_move_to_done_script(script_path: Path) -> Path:
+    script_path.write_text(
+        "\n".join(
+            [
+                "from pathlib import Path",
+                "import sys",
+                "import yaml",
+                "project_root = Path(sys.argv[1])",
+                "feature_path = Path(sys.argv[2])",
+                "feature = yaml.safe_load(feature_path.read_text(encoding='utf-8'))",
+                "feature['status'] = 'done'",
+                "done_path = project_root / 'docs' / 'spec' / 'features_done' / feature_path.name",
+                "done_path.parent.mkdir(parents=True, exist_ok=True)",
+                "done_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding='utf-8')",
+                "feature_path.unlink()",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return script_path
+
+
 def _write_set_done_with_output_script(
     script_path: Path,
     stdout_token: str,
@@ -854,21 +877,20 @@ def test_run_loop_selected_feature_moved_to_features_done_does_not_crash(
 
     archived_path = project_root / "docs" / "spec" / "features_done" / feature_path.name
     output = capsys.readouterr().out
-    assert code == 1
+    assert code == 0
     assert not feature_path.exists()
     assert archived_path.exists()
     assert (
         "Selected feature path missing after iteration; using archived counterpart"
         in output
     )
-    assert "Loop summary: result=failed" in output
-    assert "next=retry_same_feature" in output
-    assert "before completion commit in this iteration" in output
+    assert "Loop summary: result=passed" in output
+    assert "next=select_next_feature" in output
     runs = _read_runs(project_root)
     assert runs
-    assert runs[-1]["result"] == "failed"
-    assert runs[-1]["failed_gate"] == "feature_missing"
-    assert runs[-1]["next_action"] == "retry_same_feature"
+    assert runs[-1]["result"] == "passed"
+    assert runs[-1]["failed_gate"] is None
+    assert runs[-1]["next_action"] == "select_next_feature"
 
 
 def test_run_loop_archived_done_without_completion_commit_fails(
@@ -881,37 +903,35 @@ def test_run_loop_archived_done_without_completion_commit_fails(
     )
     _init_git_repo(project_root)
 
-    def fake_run_implement_step(
+    def fake_choose_feature_with_selector(
         project_root: Path,
-        feature: dict[str, Any],
-        feature_path: Path,
-        implement_command: str | None,
-        opencode_prompt: str | None,
-        skip_implement: bool,
-        hook_feedback: str | None,
-        verbose_output: bool,
-    ) -> tuple[bool, str | None, str]:
-        del feature, implement_command, opencode_prompt, skip_implement, hook_feedback
-        del verbose_output
-        _move_feature_to_done(project_root, feature_path)
-        return (True, None, "")
+        pending: list[tuple[Path, dict[str, Any]]],
+    ) -> tuple[Path, dict[str, Any]]:
+        chosen_path, chosen_feature = pending[0]
+        _move_feature_to_done(project_root, chosen_path)
+        return chosen_path, chosen_feature
 
-    monkeypatch.setattr(loop_module, "run_implement_step", fake_run_implement_step)
+    monkeypatch.setattr(
+        loop_module,
+        "_choose_feature_with_selector",
+        fake_choose_feature_with_selector,
+    )
 
     code = run_loop(
         project_root=project_root,
-        feature_paths=[str(feature_path)],
+        feature_paths=[],
         gate_profile="loop_fast",
         implement_command=None,
         opencode_prompt=None,
         skip_implement=False,
         dry_run=False,
+        run_all=True,
         max_iterations=3,
     )
 
     output = capsys.readouterr().out
     assert code == 1
-    assert "before completion commit in this iteration" in output
+    assert "already archived with status=done" in output
     assert "next=retry_same_feature" in output
 
     runs = _read_runs(project_root)
@@ -978,19 +998,19 @@ def test_run_loop_all_selected_feature_moved_to_features_done_continues(
         project_root / "docs" / "spec" / "features_done" / second_feature_path.name
     )
     output = capsys.readouterr().out
-    assert code == 1
+    assert code == 0
     assert not first_feature_path.exists()
-    assert second_feature_path.exists()
+    assert not second_feature_path.exists()
     assert archived_first.exists()
-    assert not archived_second.exists()
+    assert archived_second.exists()
     assert (
         "Selected feature path missing after iteration; using archived counterpart"
         in output
     )
-    assert "next=retry_same_feature" in output
+    assert "All provided features are done and committed." in output
     run_feature_ids = [run["feature_id"] for run in _read_runs(project_root)]
     assert "FEAT-900" in run_feature_ids
-    assert "FEAT-901" not in run_feature_ids
+    assert "FEAT-901" in run_feature_ids
 
 
 def test_run_loop_missing_selected_feature_without_archive_fails_cleanly(
@@ -1181,8 +1201,8 @@ def test_run_loop_restores_archived_feature_when_gate_fails_after_prearchive(
         feature_data=feature_data,
         gates_data=gates_data,
     )
-    script_path = _write_set_done_script(
-        tmp_path.parent / f"{tmp_path.name}-set-done-rollback.py"
+    script_path = _write_move_to_done_script(
+        tmp_path.parent / f"{tmp_path.name}-move-done-rollback.py"
     )
     _init_git_repo(project_root)
 
@@ -1190,7 +1210,7 @@ def test_run_loop_restores_archived_feature_when_gate_fails_after_prearchive(
         project_root=project_root,
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
-        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
+        implement_command=f'"{sys.executable}" "{script_path}" "{project_root}" "{feature_path}"',
         opencode_prompt=None,
         skip_implement=False,
         dry_run=False,
@@ -1421,7 +1441,10 @@ def test_run_loop_commit_failure_preserves_retryable_feature_path(
                 "    f.write(str(feature_path) + '\\n')",
                 "feature = yaml.safe_load(feature_path.read_text(encoding='utf-8'))",
                 "feature['status'] = 'done'",
-                "feature_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding='utf-8')",
+                "done_path = project_root / 'docs' / 'spec' / 'features_done' / feature_path.name",
+                "done_path.parent.mkdir(parents=True, exist_ok=True)",
+                "done_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding='utf-8')",
+                "feature_path.unlink()",
                 "if count >= 2:",
                 "    (project_root / '.allow_commit').write_text('ok\\n', encoding='utf-8')",
             ]

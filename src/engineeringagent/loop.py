@@ -653,6 +653,7 @@ def _run_feature_iteration(
     completion_commit_succeeded = False
     archived_path: Path | None = None
     archived_in_iteration = False
+    selected_started_active = False
 
     feature, loaded_from_archive, load_error = (
         _load_selected_feature_with_archive_fallback(project_root, feature_path)
@@ -689,6 +690,7 @@ def _run_feature_iteration(
             )
 
     if result == "passed" and feature is not None and not loaded_from_archive:
+        selected_started_active = True
         if feature.get("status") == "backlog":
             set_status(feature, "in_progress")
         feature["updated_at"] = now_iso()
@@ -722,29 +724,54 @@ def _run_feature_iteration(
             failed_gate = "feature_missing"
             next_hook_feedback = post_load_error
         elif loaded_post_from_archive:
-            result = "failed"
-            failed_gate = "feature_missing"
-            if post_feature is None:
-                next_hook_feedback = (
-                    "selected feature path disappeared during loop iteration and only "
-                    "archived fallback was found without a same-iteration completion "
-                    "commit; restore the active spec path and rerun. "
-                    f"path={feature_path}"
-                )
-            elif post_feature.get("status") != "done":
-                next_hook_feedback = (
-                    "selected feature was archived but archived status is not done; "
-                    "restore the active spec path and rerun. "
-                    f"path={feature_path}"
-                )
+            if selected_started_active and post_feature is not None:
+                if post_feature.get("status") == "done":
+                    try:
+                        archived_path = _resolve_archive_path(
+                            project_root, feature_path
+                        )
+                    except ValueError:
+                        result = "failed"
+                        failed_gate = "feature_archive"
+                        next_hook_feedback = (
+                            "selected feature path moved to archive during loop iteration "
+                            "but archive path could not be resolved; restore the active "
+                            f"spec path and rerun. path={feature_path}"
+                        )
+                    else:
+                        archived_in_iteration = True
+                else:
+                    result = "failed"
+                    failed_gate = "feature_missing"
+                    next_hook_feedback = (
+                        "selected feature was archived but archived status is not done; "
+                        "restore the active spec path and rerun. "
+                        f"path={feature_path}"
+                    )
             else:
-                next_hook_feedback = (
-                    "selected feature path was moved to docs/spec/features_done with "
-                    "status=done before completion commit in this iteration; restore the "
-                    "active feature spec or commit the intended completion changes, then "
-                    "rerun. "
-                    f"path={feature_path}"
-                )
+                result = "failed"
+                failed_gate = "feature_missing"
+                if post_feature is None:
+                    next_hook_feedback = (
+                        "selected feature path disappeared during loop iteration and only "
+                        "archived fallback was found without a same-iteration completion "
+                        "commit; restore the active spec path and rerun. "
+                        f"path={feature_path}"
+                    )
+                elif post_feature.get("status") != "done":
+                    next_hook_feedback = (
+                        "selected feature was archived but archived status is not done; "
+                        "restore the active spec path and rerun. "
+                        f"path={feature_path}"
+                    )
+                else:
+                    next_hook_feedback = (
+                        "selected feature path was moved to docs/spec/features_done with "
+                        "status=done before completion commit in this iteration; restore the "
+                        "active feature spec or commit the intended completion changes, then "
+                        "rerun. "
+                        f"path={feature_path}"
+                    )
         elif post_feature is not None:
             if post_feature.get("status") == "backlog":
                 set_status(post_feature, "in_progress")
