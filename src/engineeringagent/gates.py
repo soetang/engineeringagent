@@ -16,6 +16,7 @@ DEFAULT_GATE_CONFIG: dict[str, Any] = {
             "spec_validate",
             "mdformat_validate",
             "ruff_validate",
+            "pyright_validate",
             "pytest_validate",
         ],
         "loop_fast": ["spec_validate", "opencode_permission_probe"],
@@ -27,6 +28,9 @@ DEFAULT_GATE_CONFIG: dict[str, Any] = {
             "run": "uv run mdformat --check README.md AGENTS.md docs/references/docs-architecture-llms.md"
         },
         "ruff_validate": {"run": "uv run ruff check src/engineeringagent"},
+        "pyright_validate": {
+            "run": "uv run pyright src/engineeringagent tests harness"
+        },
         "pytest_validate": {"run": "uv run pytest -q"},
         "opencode_permission_probe": {
             "run": "uv run python harness/permission_probe.py"

@@ -4,15 +4,27 @@ import json
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Annotated
+from typing import Any, Annotated, cast
+
+from typing_extensions import LiteralString
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
-from pydantic_core import PydanticCustomError
+from pydantic_core import InitErrorDetails, PydanticCustomError
 
 
 PRIORITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 JSON_SCHEMA_DRAFT_URL = "https://json-schema.org/draft/2020-12/schema"
+ERR_DUP_SUBTASK_ID: LiteralString = "duplicate subtask id: {subtask_id}"
+ERR_DUP_SUBTASK_ORDER: LiteralString = "duplicate order: {order}"
+ERR_ORDER_SEQUENCE: LiteralString = (
+    "subtask order values must be contiguous and start at 1 "
+    "(expected {expected}, got {got})"
+)
+ERR_DONE_PREFIX: LiteralString = (
+    "done subtasks must form a contiguous prefix by order; "
+    "order {order} cannot be done when earlier subtasks are not done"
+)
 
 
 FeatureId = Annotated[
@@ -122,7 +134,7 @@ class FeatureSpec(StrictContractModel):
     @model_validator(mode="after")
     def enforce_invariants(self) -> FeatureSpec:
         """Apply repository feature invariants in the model layer."""
-        errors: list[dict[str, Any]] = []
+        errors: list[InitErrorDetails] = []
 
         subtask_ids: set[str] = set()
         subtask_orders: set[int] = set()
@@ -133,25 +145,29 @@ class FeatureSpec(StrictContractModel):
         for idx, subtask in enumerate(self.subtasks):
             if subtask.id in subtask_ids:
                 errors.append(
-                    {
-                        "type": PydanticCustomError(
-                            "value_error", f"duplicate subtask id: {subtask.id}"
+                    _init_error_detail(
+                        error=PydanticCustomError(
+                            "value_error",
+                            ERR_DUP_SUBTASK_ID,
+                            {"subtask_id": subtask.id},
                         ),
-                        "loc": ("subtasks", idx, "id"),
-                        "input": subtask.id,
-                    }
+                        loc=("subtasks", idx, "id"),
+                        input_value=subtask.id,
+                    )
                 )
             subtask_ids.add(subtask.id)
 
             if subtask.order in subtask_orders:
                 errors.append(
-                    {
-                        "type": PydanticCustomError(
-                            "value_error", f"duplicate order: {subtask.order}"
+                    _init_error_detail(
+                        error=PydanticCustomError(
+                            "value_error",
+                            ERR_DUP_SUBTASK_ORDER,
+                            {"order": subtask.order},
                         ),
-                        "loc": ("subtasks", idx, "order"),
-                        "input": subtask.order,
-                    }
+                        loc=("subtasks", idx, "order"),
+                        input_value=subtask.order,
+                    )
                 )
             subtask_orders.add(subtask.order)
 
@@ -164,29 +180,32 @@ class FeatureSpec(StrictContractModel):
 
         if in_progress_count > 1:
             errors.append(
-                {
-                    "type": PydanticCustomError(
+                _init_error_detail(
+                    error=PydanticCustomError(
                         "value_error",
                         "at most one subtask can be in_progress per feature",
                     ),
-                    "loc": ("subtasks",),
-                    "input": [subtask.status for subtask in self.subtasks],
-                }
+                    loc=("subtasks",),
+                    input_value=[subtask.status for subtask in self.subtasks],
+                )
             )
 
         if subtask_orders:
             expected = set(range(1, len(self.subtasks) + 1))
             if subtask_orders != expected:
                 errors.append(
-                    {
-                        "type": PydanticCustomError(
+                    _init_error_detail(
+                        error=PydanticCustomError(
                             "value_error",
-                            "subtask order values must be contiguous and start at 1 "
-                            f"(expected {sorted(expected)}, got {sorted(subtask_orders)})",
+                            ERR_ORDER_SEQUENCE,
+                            {
+                                "expected": sorted(expected),
+                                "got": sorted(subtask_orders),
+                            },
                         ),
-                        "loc": ("subtasks",),
-                        "input": sorted(subtask_orders),
-                    }
+                        loc=("subtasks",),
+                        input_value=sorted(subtask_orders),
+                    )
                 )
 
         seen_non_done = False
@@ -195,15 +214,15 @@ class FeatureSpec(StrictContractModel):
                 seen_non_done = True
             elif seen_non_done:
                 errors.append(
-                    {
-                        "type": PydanticCustomError(
+                    _init_error_detail(
+                        error=PydanticCustomError(
                             "value_error",
-                            "done subtasks must form a contiguous prefix by order; "
-                            f"order {order} cannot be done when earlier subtasks are not done",
+                            ERR_DONE_PREFIX,
+                            {"order": order},
                         ),
-                        "loc": ("subtasks", idx, "status"),
-                        "input": subtask.status,
-                    }
+                        loc=("subtasks", idx, "status"),
+                        input_value=subtask.status,
+                    )
                 )
 
         subtask_count = len(self.subtasks)
@@ -212,36 +231,36 @@ class FeatureSpec(StrictContractModel):
 
         if self.status == FeatureStatus.DONE and not all_done:
             errors.append(
-                {
-                    "type": PydanticCustomError(
+                _init_error_detail(
+                    error=PydanticCustomError(
                         "value_error", "feature status done requires all subtasks done"
                     ),
-                    "loc": ("status",),
-                    "input": self.status,
-                }
+                    loc=("status",),
+                    input_value=self.status,
+                )
             )
 
         if any_in_progress and self.status != FeatureStatus.IN_PROGRESS:
             errors.append(
-                {
-                    "type": PydanticCustomError(
+                _init_error_detail(
+                    error=PydanticCustomError(
                         "value_error",
                         "feature with in_progress subtask must be in_progress",
                     ),
-                    "loc": ("status",),
-                    "input": self.status,
-                }
+                    loc=("status",),
+                    input_value=self.status,
+                )
             )
 
         if all_done and self.status != FeatureStatus.DONE:
             errors.append(
-                {
-                    "type": PydanticCustomError(
+                _init_error_detail(
+                    error=PydanticCustomError(
                         "value_error", "feature with all subtasks done must be done"
                     ),
-                    "loc": ("status",),
-                    "input": self.status,
-                }
+                    loc=("status",),
+                    input_value=self.status,
+                )
             )
 
         if errors:
@@ -331,6 +350,22 @@ def _path_from_pydantic_loc(loc: tuple[Any, ...]) -> str:
     if not parts:
         return "<root>"
     return ".".join(parts).replace(".[", "[")
+
+
+def _init_error_detail(
+    *,
+    error: PydanticCustomError,
+    loc: tuple[Any, ...],
+    input_value: Any,
+) -> InitErrorDetails:
+    return cast(
+        InitErrorDetails,
+        {
+            "type": error,
+            "loc": loc,
+            "input": input_value,
+        },
+    )
 
 
 def feature_contract_issues(

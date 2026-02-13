@@ -31,7 +31,19 @@ def test_scaffolded_gates_config_has_expected_commands(tmp_path: Path) -> None:
         config["gates"]["ruff_validate"]["run"]
         == "uv run ruff check src/engineeringagent"
     )
+    assert (
+        config["gates"]["pyright_validate"]["run"]
+        == "uv run pyright src/engineeringagent tests harness"
+    )
     assert config["gates"]["pytest_validate"]["run"] == "uv run pytest -q"
+    assert config["profiles"]["precommit"] == [
+        "yaml_validate",
+        "spec_validate",
+        "mdformat_validate",
+        "ruff_validate",
+        "pyright_validate",
+        "pytest_validate",
+    ]
     assert "precommit" in config["profiles"]
     assert "loop_fast" in config["profiles"]
 
@@ -143,6 +155,39 @@ def test_run_profile_returns_failed_gate_output_for_loop_mode(tmp_path: Path) ->
     assert "[gate:spec_validate]" in output
     assert fail_stdout in output
     assert fail_stderr in output
+    assert "SHOULD_NOT_RUN" not in output
+
+
+def test_run_profile_reports_pyright_gate_failure(tmp_path: Path) -> None:
+    pyright_stdout = "PYRIGHT_STDOUT_TOKEN"
+    pyright_stderr = "PYRIGHT_STDERR_TOKEN"
+    config = {
+        "profiles": {"precommit": ["pyright_validate", "after_fail"]},
+        "gates": {
+            "pyright_validate": {
+                "run": (
+                    f'"{sys.executable}" -c "import sys; '
+                    f"print({pyright_stdout!r}); "
+                    f"print({pyright_stderr!r}, file=sys.stderr); "
+                    'sys.exit(1)"'
+                )
+            },
+            "after_fail": {"run": f'"{sys.executable}" -c "print(\'SHOULD_NOT_RUN\')"'},
+        },
+    }
+
+    ok, failed_gate, output = run_profile(
+        config=config,
+        profile="precommit",
+        cwd=tmp_path,
+        capture_output=True,
+    )
+
+    assert not ok
+    assert failed_gate == "pyright_validate"
+    assert "[gate:pyright_validate]" in output
+    assert pyright_stdout in output
+    assert pyright_stderr in output
     assert "SHOULD_NOT_RUN" not in output
 
 

@@ -26,6 +26,7 @@ uvx --from . engineeringagent run --all --dry-run --skip-implement
 - Run loop-fast gates: `uvx --from . engineeringagent gates run --profile loop_fast`
 - Run precommit gates: `uvx --from . engineeringagent gates run --profile precommit`
 - Run Ruff checks (lint + docstrings): `uv run ruff check src/engineeringagent`
+- Run Pyright type checks: `uv run pyright src/engineeringagent tests harness`
 - Run pytest suite: `uv run pytest -q`
 - Run permission probe: `uvx --from . engineeringagent gates run --profile loop_fast`
 - Build permission policy: `.opencode/agents/build.md` and `opencode.json`
@@ -58,4 +59,4 @@ uvx --from . engineeringagent run --all --dry-run --skip-implement
 
 - Use `uvx --from . engineeringagent ...` as the canonical contributor command style.
 - Keep `uv run ...` for direct tooling operations such as `pytest -q` or local Python modules.
-- The `precommit` profile is the canonical quality gate and includes spec validation, Ruff lint/docstring checks, and pytest execution.
+- The `precommit` profile is the canonical quality gate and includes spec validation, Ruff lint/docstring checks, Pyright type validation, and pytest execution.

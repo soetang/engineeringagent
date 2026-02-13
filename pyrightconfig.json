@@ -1,0 +1,9 @@
+{
+  "pythonVersion": "3.10",
+  "typeCheckingMode": "basic",
+  "include": [
+    "src/engineeringagent",
+    "tests",
+    "harness"
+  ]
+}
