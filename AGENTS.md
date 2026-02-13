@@ -47,6 +47,7 @@ Load only the artifacts relevant to the current task.
 - `docs/fitness-functions/README.md`
 - `docs/fitness-functions/architecture.md`
 - `docs/fitness-functions/rules.md`
+- `docs/principles/harness-engineering-principles.md`
 - `docs/references/docs-architecture-llms.md`
 - `docs/references/python-uv-ruff-llms.md`
 - `docs/references/spec-writing-llms.md`

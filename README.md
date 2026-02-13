@@ -34,6 +34,15 @@ Use `--verbose-output` when you want full implement and gate output streamed in 
 - Use agents to implement harness and feature changes from those specs.
 - Keep user-facing onboarding in `README.md`; keep agent execution rules in `AGENTS.md` and `docs/references/*-llms.md`.
 
+## Harness engineering principles
+
+- Run short, repeatable Ralph Loop cycles so each pass is easy to verify and recover.
+- Keep progressive disclosure explicit: README for first-run orientation, deeper docs for details.
+- Use structured YAML specs and automatic validation to keep execution deterministic.
+- Preserve architecture and design quality with fitness functions and gate profiles.
+- Treat agent reviewers as a planned complement for judgment-heavy checks after deterministic automation.
+- Read the deeper guide: `docs/principles/harness-engineering-principles.md`.
+
 ## Core files to know
 
 - `docs/spec/features/` active feature specs (`backlog`, `in_progress`, `blocked`)
