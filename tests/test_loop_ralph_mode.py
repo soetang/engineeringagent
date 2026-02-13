@@ -99,6 +99,15 @@ def _write_set_done_script(script_path: Path) -> Path:
     return script_path
 
 
+def _move_feature_to_done(project_root: Path, feature_path: Path) -> None:
+    feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
+    feature["status"] = "done"
+    done_path = project_root / "docs" / "spec" / "features_done" / feature_path.name
+    done_path.parent.mkdir(parents=True, exist_ok=True)
+    done_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding="utf-8")
+    feature_path.unlink()
+
+
 def test_ralph_prompt_includes_feature_file_path(tmp_path: Path) -> None:
     _, feature_path = _make_project_root(tmp_path, feature_data=_base_feature())
     feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
@@ -543,6 +552,179 @@ def test_run_loop_moves_completed_feature_to_features_done(tmp_path: Path) -> No
     assert code == 0
     assert not feature_path.exists()
     assert archived_path.exists()
+
+
+def test_run_loop_selected_feature_moved_to_features_done_does_not_crash(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: Any,
+) -> None:
+    project_root, feature_path = _make_project_root(
+        tmp_path, feature_data=_base_feature()
+    )
+    _init_git_repo(project_root)
+
+    def fake_run_implement_step(
+        project_root: Path,
+        feature: dict[str, Any],
+        feature_path: Path,
+        implement_command: str | None,
+        opencode_prompt: str | None,
+        skip_implement: bool,
+        hook_feedback: str | None,
+    ) -> tuple[bool, str | None]:
+        del feature, implement_command, opencode_prompt, skip_implement, hook_feedback
+        _move_feature_to_done(project_root, feature_path)
+        return (True, None)
+
+    monkeypatch.setattr(loop_module, "run_implement_step", fake_run_implement_step)
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        implement_command=None,
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        max_iterations=3,
+    )
+
+    archived_path = project_root / "docs" / "spec" / "features_done" / feature_path.name
+    output = capsys.readouterr().out
+    assert code == 0
+    assert not feature_path.exists()
+    assert archived_path.exists()
+    assert (
+        "Selected feature path missing after iteration; using archived counterpart"
+        in output
+    )
+    assert "Loop summary: result=passed" in output
+    assert "next=select_next_feature" in output
+    runs = _read_runs(project_root)
+    assert runs
+    assert runs[-1]["result"] == "passed"
+    assert runs[-1]["next_action"] == "select_next_feature"
+
+
+def test_run_loop_all_selected_feature_moved_to_features_done_continues(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: Any,
+) -> None:
+    project_root, first_feature_path = _make_project_root(
+        tmp_path, feature_data=_base_feature()
+    )
+    second_feature = _base_feature(status="backlog")
+    second_feature["id"] = "FEAT-901"
+    second_feature_path = (
+        project_root / "docs" / "spec" / "features" / "FEAT-901-secondary.yaml"
+    )
+    _write_yaml(second_feature_path, second_feature)
+    _init_git_repo(project_root)
+
+    def fake_run_implement_step(
+        project_root: Path,
+        feature: dict[str, Any],
+        feature_path: Path,
+        implement_command: str | None,
+        opencode_prompt: str | None,
+        skip_implement: bool,
+        hook_feedback: str | None,
+    ) -> tuple[bool, str | None]:
+        del implement_command, opencode_prompt, skip_implement, hook_feedback
+        if str(feature.get("id", "")) == "FEAT-900":
+            _move_feature_to_done(project_root, feature_path)
+            return (True, None)
+        feature["status"] = "done"
+        _write_yaml(feature_path, feature)
+        return (True, None)
+
+    monkeypatch.setattr(loop_module, "run_implement_step", fake_run_implement_step)
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[],
+        gate_profile="loop_fast",
+        implement_command=None,
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        run_all=True,
+        max_iterations=5,
+    )
+
+    archived_first = (
+        project_root / "docs" / "spec" / "features_done" / first_feature_path.name
+    )
+    archived_second = (
+        project_root / "docs" / "spec" / "features_done" / second_feature_path.name
+    )
+    output = capsys.readouterr().out
+    assert code == 0
+    assert not first_feature_path.exists()
+    assert not second_feature_path.exists()
+    assert archived_first.exists()
+    assert archived_second.exists()
+    assert (
+        "Selected feature path missing after iteration; using archived counterpart"
+        in output
+    )
+    assert "next=select_next_feature" in output
+    run_feature_ids = [run["feature_id"] for run in _read_runs(project_root)]
+    assert "FEAT-900" in run_feature_ids
+    assert "FEAT-901" in run_feature_ids
+
+
+def test_run_loop_missing_selected_feature_without_archive_fails_cleanly(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: Any,
+) -> None:
+    project_root, feature_path = _make_project_root(
+        tmp_path, feature_data=_base_feature()
+    )
+    _init_git_repo(project_root)
+
+    def fake_run_implement_step(
+        project_root: Path,
+        feature: dict[str, Any],
+        feature_path: Path,
+        implement_command: str | None,
+        opencode_prompt: str | None,
+        skip_implement: bool,
+        hook_feedback: str | None,
+    ) -> tuple[bool, str | None]:
+        del project_root, feature, implement_command, opencode_prompt
+        del skip_implement, hook_feedback
+        feature_path.unlink()
+        return (True, None)
+
+    monkeypatch.setattr(loop_module, "run_implement_step", fake_run_implement_step)
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        implement_command=None,
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        max_iterations=3,
+    )
+
+    output = capsys.readouterr().out
+    assert code == 1
+    assert (
+        "Stopping loop: selected feature path is missing and not recoverable." in output
+    )
+    assert "selected feature path disappeared during loop iteration" in output
+    assert str(feature_path) in output
+
+    runs = _read_runs(project_root)
+    assert runs
+    assert runs[-1]["result"] == "failed"
+    assert runs[-1]["failed_gate"] == "feature_missing"
 
 
 def test_run_loop_archives_only_selected_feature(tmp_path: Path) -> None:

@@ -166,6 +166,51 @@ def _pending_features(
     return pending
 
 
+def _load_selected_feature_with_archive_fallback(
+    project_root: Path,
+    feature_path: Path,
+) -> tuple[dict[str, Any] | None, bool, str | None]:
+    try:
+        return (load_yaml(feature_path), False, None)
+    except FileNotFoundError:
+        try:
+            archive_path = _resolve_archive_path(project_root, feature_path)
+        except ValueError:
+            return (
+                None,
+                False,
+                (
+                    "selected feature path disappeared during loop iteration and "
+                    f"cannot be archive-resolved: {feature_path}"
+                ),
+            )
+
+        if not archive_path.exists():
+            return (
+                None,
+                False,
+                (
+                    "selected feature path disappeared during loop iteration: "
+                    f"{feature_path}. Expected archived counterpart at {archive_path}."
+                ),
+            )
+
+        try:
+            archived_feature = load_yaml(archive_path)
+        except Exception as exc:  # noqa: BLE001
+            return (
+                None,
+                False,
+                f"failed to load archived feature YAML at {archive_path}: {exc}",
+            )
+
+        print(
+            "Selected feature path missing after iteration; "
+            f"using archived counterpart at {archive_path}."
+        )
+        return (archived_feature, True, None)
+
+
 def _deterministic_feature_choice(
     pending: Sequence[tuple[Path, dict[str, Any]]],
 ) -> tuple[Path, dict[str, Any]]:
@@ -530,29 +575,52 @@ def _run_feature_iteration(
     gates_path = project_root / "harness" / "gates.yaml"
     started = time.time()
 
-    feature = load_yaml(feature_path)
-    fid = str(feature.get("id", ""))
-
-    if feature.get("status") == "backlog":
-        set_status(feature, "in_progress")
-    feature["updated_at"] = now_iso()
-    dump_yaml(feature_path, feature)
-
     failed_gate: str | None = None
     result = "passed"
+    completed = False
+    next_action = "retry_same_feature"
+    next_hook_feedback: str | None = None
 
-    ok, implement_failed_gate = run_implement_step(
-        project_root=project_root,
-        feature=feature,
-        feature_path=feature_path,
-        implement_command=implement_command,
-        opencode_prompt=opencode_prompt,
-        skip_implement=skip_implement,
-        hook_feedback=hook_feedback,
+    feature, loaded_from_archive, load_error = (
+        _load_selected_feature_with_archive_fallback(project_root, feature_path)
     )
-    if not ok:
+    fid = str(feature.get("id", "")) if feature else ""
+
+    if load_error:
         result = "failed"
-        failed_gate = implement_failed_gate
+        failed_gate = "feature_missing"
+        next_hook_feedback = load_error
+    elif loaded_from_archive:
+        if feature is None or feature.get("status") != "done":
+            result = "failed"
+            failed_gate = "feature_missing"
+            next_hook_feedback = (
+                "selected feature was archived but archived status is not done; "
+                f"path={feature_path}"
+            )
+        else:
+            completed = True
+            next_action = "select_next_feature"
+
+    if result == "passed" and feature is not None and not loaded_from_archive:
+        if feature.get("status") == "backlog":
+            set_status(feature, "in_progress")
+        feature["updated_at"] = now_iso()
+        dump_yaml(feature_path, feature)
+
+    if result == "passed" and feature is not None and not loaded_from_archive:
+        ok, implement_failed_gate = run_implement_step(
+            project_root=project_root,
+            feature=feature,
+            feature_path=feature_path,
+            implement_command=implement_command,
+            opencode_prompt=opencode_prompt,
+            skip_implement=skip_implement,
+            hook_feedback=hook_feedback,
+        )
+        if not ok:
+            result = "failed"
+            failed_gate = implement_failed_gate
 
     if result == "passed":
         gate_config = load_gate_config(gates_path)
@@ -561,17 +629,39 @@ def _run_feature_iteration(
             result = "failed"
             failed_gate = failed
 
-    feature = load_yaml(feature_path)
-    if feature.get("status") == "backlog":
-        set_status(feature, "in_progress")
-    feature["updated_at"] = now_iso()
-    dump_yaml(feature_path, feature)
+    post_feature = feature
+    loaded_post_from_archive = loaded_from_archive
+    if result == "passed" and feature is not None and not loaded_from_archive:
+        post_feature, loaded_post_from_archive, post_load_error = (
+            _load_selected_feature_with_archive_fallback(project_root, feature_path)
+        )
+        if post_load_error:
+            result = "failed"
+            failed_gate = "feature_missing"
+            next_hook_feedback = post_load_error
+        elif loaded_post_from_archive:
+            if post_feature is None or post_feature.get("status") != "done":
+                result = "failed"
+                failed_gate = "feature_missing"
+                next_hook_feedback = (
+                    "selected feature was archived but archived status is not done; "
+                    f"path={feature_path}"
+                )
+            else:
+                completed = True
+                next_action = "select_next_feature"
+        elif post_feature is not None:
+            if post_feature.get("status") == "backlog":
+                set_status(post_feature, "in_progress")
+            post_feature["updated_at"] = now_iso()
+            dump_yaml(feature_path, post_feature)
 
-    completed = False
-    next_action = "retry_same_feature"
-    next_hook_feedback: str | None = None
-
-    if result == "passed" and feature.get("status") == "done":
+    if (
+        result == "passed"
+        and post_feature is not None
+        and post_feature.get("status") == "done"
+        and not loaded_post_from_archive
+    ):
         archived_ok, archived_path, archive_error = _archive_completed_feature(
             project_root, feature_path
         )
@@ -581,7 +671,7 @@ def _run_feature_iteration(
             next_hook_feedback = archive_error
         else:
             commit_ok, commit_failed_gate, commit_output = _commit_feature_completion(
-                project_root, feature
+                project_root, post_feature
             )
             if commit_ok:
                 completed = True
@@ -753,4 +843,12 @@ def run_loop(
 
             if outcome.failed_gate == "git_add":
                 print("Stopping loop: git_add failure requires operator intervention.")
+                return 1
+
+            if outcome.failed_gate == "feature_missing":
+                print(
+                    "Stopping loop: selected feature path is missing and not recoverable."
+                )
+                if outcome.hook_feedback:
+                    print(f"Detail: {outcome.hook_feedback}")
                 return 1
