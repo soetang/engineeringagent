@@ -25,7 +25,7 @@ constraints:
   - Keep README concise and outcome-first; move deeper explanation to a dedicated human doc.
   - Keep repository docs language in English.
   - Explicitly document all six principles in scope, including that agent reviewers are planned/future.
-  - Preserve audience split from FEAT-017: human onboarding in README, deterministic agent rules in AGENTS/references.
+  - 'Preserve audience split from FEAT-017: human onboarding in README, deterministic agent rules in AGENTS/references.'
   - Any agent-doc updates must be minimal and strictly for clarity/alignment with human docs.
 implementation_notes: |
   Add a concise principles section in `README.md` that links to a new human-focused deep-dive,

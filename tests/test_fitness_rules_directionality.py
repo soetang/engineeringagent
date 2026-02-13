@@ -43,3 +43,29 @@ def test_directionality_rule_reports_blocked_import(tmp_path: Path) -> None:
         in violation
         for violation in violations
     )
+
+
+def test_directionality_rule_reports_blocked_loop_runtime_import(
+    tmp_path: Path,
+) -> None:
+    """Fail when protected modules import loop_runtime internals directly."""
+    _write_directionality_fixture(tmp_path)
+    _write_module(
+        tmp_path,
+        "validator.py",
+        "import engineeringagent.loop_runtime.selection\n",
+    )
+
+    result = evaluate_dependency_directionality(tmp_path)
+    violations = result["violations"]
+
+    assert result["status"] == "fail"
+    assert isinstance(violations, list)
+    assert any(
+        (
+            "engineeringagent.validator imports blocked dependency "
+            "engineeringagent.loop_runtime.selection"
+        )
+        in violation
+        for violation in violations
+    )
