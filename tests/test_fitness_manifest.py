@@ -66,3 +66,47 @@ def test_load_custom_rule_definitions_reads_default_manifest_path(
         "python",
         "scripts/check_docs.py",
     )
+
+
+def test_load_custom_rule_definitions_ignores_builtin_references(
+    tmp_path: Path,
+) -> None:
+    """Load only command-backed entries from mixed manifests."""
+    manifest_path = tmp_path / DEFAULT_CUSTOM_RULE_MANIFEST
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    manifest_path.write_text(
+        yaml.safe_dump(
+            {
+                "contract_version": CONTRACT_VERSION,
+                "rules": [
+                    {"builtin": "architecture.dep-directionality"},
+                    {
+                        "rule_id": "custom.docs-links",
+                        "name": "Docs links check",
+                        "summary": "Validate markdown links resolve.",
+                        "rationale": "Broken links hide docs regressions.",
+                        "remediation": "Update stale links.",
+                        "scope": "docs",
+                        "severity": "warning",
+                        "side_effect_free": True,
+                        "adapter": "command",
+                        "command": [
+                            "uv",
+                            "run",
+                            "python",
+                            "scripts/check_docs.py",
+                        ],
+                    },
+                ],
+            },
+            sort_keys=False,
+            allow_unicode=False,
+        ),
+        encoding="utf-8",
+    )
+
+    definitions = load_custom_rule_definitions(tmp_path)
+
+    assert [definition.metadata.rule_id for definition in definitions] == [
+        "custom.docs-links"
+    ]

@@ -33,25 +33,8 @@ def _builtin_definition(rule_id: str) -> FitnessRuleDefinition:
     )
 
 
-def _write_manifest(path: Path, rule_ids: list[str]) -> None:
+def _write_manifest(path: Path, rules: list[dict[str, object]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    rules = []
-    for rule_id in rule_ids:
-        rules.append(
-            {
-                "rule_id": rule_id,
-                "name": f"Custom {rule_id}",
-                "summary": "Custom collision test rule.",
-                "rationale": "Exercise duplicate detection.",
-                "remediation": "Rename manifest rule IDs.",
-                "scope": "docs",
-                "severity": "warning",
-                "side_effect_free": True,
-                "adapter": "command",
-                "command": ["python", "scripts/custom_rule.py"],
-            }
-        )
-
     path.write_text(
         yaml.safe_dump(
             {"contract_version": CONTRACT_VERSION, "rules": rules},
@@ -65,9 +48,26 @@ def _write_manifest(path: Path, rule_ids: list[str]) -> None:
 def test_duplicate_rule_ids_across_builtin_and_custom_sources_fail_fast(
     tmp_path: Path,
 ) -> None:
-    """Raise actionable errors when built-in and custom IDs collide."""
+    """Raise actionable errors when declared builtin and custom IDs collide."""
     manifest_path = tmp_path / "harness" / "fitness-functions" / "rules.yaml"
-    _write_manifest(manifest_path, ["architecture.dep-direction"])
+    _write_manifest(
+        manifest_path,
+        [
+            {"builtin": "architecture.dep-direction"},
+            {
+                "rule_id": "architecture.dep-direction",
+                "name": "Custom architecture.dep-direction",
+                "summary": "Custom collision test rule.",
+                "rationale": "Exercise duplicate detection.",
+                "remediation": "Rename manifest rule IDs.",
+                "scope": "docs",
+                "severity": "warning",
+                "side_effect_free": True,
+                "adapter": "command",
+                "command": ["python", "scripts/custom_rule.py"],
+            },
+        ],
+    )
 
     with pytest.raises(ValueError) as excinfo:
         build_rule_catalog(
@@ -78,14 +78,42 @@ def test_duplicate_rule_ids_across_builtin_and_custom_sources_fail_fast(
     message = str(excinfo.value)
     assert "duplicate fitness rule_id detected" in message
     assert "architecture.dep-direction" in message
-    assert "builtin:architecture.dep-direction" in message
+    assert "builtin-ref:" in message
     assert "custom:" in message
 
 
 def test_duplicate_rule_ids_within_custom_manifest_fail_fast(tmp_path: Path) -> None:
     """Raise actionable errors when custom manifest IDs collide."""
     manifest_path = tmp_path / "harness" / "fitness-functions" / "rules.yaml"
-    _write_manifest(manifest_path, ["custom.docs-links", "custom.docs-links"])
+    _write_manifest(
+        manifest_path,
+        [
+            {
+                "rule_id": "custom.docs-links",
+                "name": "Custom custom.docs-links",
+                "summary": "Custom collision test rule.",
+                "rationale": "Exercise duplicate detection.",
+                "remediation": "Rename manifest rule IDs.",
+                "scope": "docs",
+                "severity": "warning",
+                "side_effect_free": True,
+                "adapter": "command",
+                "command": ["python", "scripts/custom_rule.py"],
+            },
+            {
+                "rule_id": "custom.docs-links",
+                "name": "Custom custom.docs-links again",
+                "summary": "Custom collision test rule.",
+                "rationale": "Exercise duplicate detection.",
+                "remediation": "Rename manifest rule IDs.",
+                "scope": "docs",
+                "severity": "warning",
+                "side_effect_free": True,
+                "adapter": "command",
+                "command": ["python", "scripts/custom_rule.py"],
+            },
+        ],
+    )
 
     with pytest.raises(ValueError) as excinfo:
         build_rule_catalog(tmp_path, builtin_rules=[])

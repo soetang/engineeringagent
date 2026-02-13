@@ -11,7 +11,7 @@ def render_rule_catalog_markdown(definitions: Sequence[FitnessRuleDefinition]) -
     lines: list[str] = [
         "# Fitness Rule Catalog",
         "",
-        "This file is generated from the active fitness-rule registry.",
+        "This file is generated from active manifest-declared fitness rules.",
         "",
     ]
 

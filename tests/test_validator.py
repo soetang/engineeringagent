@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+from engineeringagent.fitness import DEPENDENCY_DIRECTIONALITY_RULE_ID
 from engineeringagent.specs import feature_schema_from_model
 from engineeringagent.validator import _iter_agents_docs_map_references, validate
 
@@ -666,3 +667,46 @@ def test_validate_reports_empty_agents_docs_map_glob(tmp_path: Path) -> None:
     messages = validate(project_root=tmp_path)
 
     assert messages == ["AGENTS.md:4: docs-map glob matches no paths: docs/*.txt"]
+
+
+def test_validate_reports_unknown_builtin_fitness_reference(tmp_path: Path) -> None:
+    manifest_path = tmp_path / "harness" / "fitness-functions" / "rules.yaml"
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    manifest_path.write_text(
+        yaml.safe_dump(
+            {
+                "contract_version": "1.0",
+                "rules": [{"builtin": "unknown.rule"}],
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    messages = validate(project_root=tmp_path)
+
+    assert messages == [
+        (
+            "unknown builtin fitness rule reference 'unknown.rule' at "
+            f"{manifest_path}:rules[0]"
+        )
+    ]
+
+
+def test_validate_accepts_known_builtin_fitness_reference(tmp_path: Path) -> None:
+    manifest_path = tmp_path / "harness" / "fitness-functions" / "rules.yaml"
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    manifest_path.write_text(
+        yaml.safe_dump(
+            {
+                "contract_version": "1.0",
+                "rules": [{"builtin": DEPENDENCY_DIRECTIONALITY_RULE_ID}],
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    messages = validate(project_root=tmp_path)
+
+    assert messages == []

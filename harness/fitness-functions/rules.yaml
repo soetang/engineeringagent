@@ -1,2 +1,4 @@
 contract_version: "1.0"
-rules: []
+rules:
+  - builtin: architecture.dep-directionality
+  - builtin: architecture.loop-subprocess-boundary

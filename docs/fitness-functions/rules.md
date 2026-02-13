@@ -1,6 +1,6 @@
 # Fitness Rule Catalog
 
-This file is generated from the active fitness-rule registry.
+This file is generated from active manifest-declared fitness rules.
 
 ## Active Rules
 

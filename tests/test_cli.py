@@ -4,7 +4,26 @@ import json
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 from engineeringagent.cli import build_parser
+from engineeringagent.fitness.contracts import CONTRACT_VERSION
+
+
+def _write_manifest(tmp_path: Path, rules: list[dict[str, object]]) -> None:
+    manifest_path = tmp_path / "harness" / "fitness-functions" / "rules.yaml"
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    manifest_path.write_text(
+        yaml.safe_dump(
+            {
+                "contract_version": CONTRACT_VERSION,
+                "rules": rules,
+            },
+            sort_keys=False,
+            allow_unicode=False,
+        ),
+        encoding="utf-8",
+    )
 
 
 def test_fitness_subcommands(tmp_path: Path, capsys: Any) -> None:
@@ -30,10 +49,7 @@ def test_fitness_subcommands(tmp_path: Path, capsys: Any) -> None:
     list_payload = json.loads(list_output)
 
     assert list_code == 0
-    assert [entry["rule_id"] for entry in list_payload] == [
-        "architecture.dep-directionality",
-        "architecture.loop-subprocess-boundary",
-    ]
+    assert list_payload == []
 
     args = parser.parse_args(
         [
@@ -53,10 +69,7 @@ def test_fitness_subcommands(tmp_path: Path, capsys: Any) -> None:
 
     assert run_code == 0
     assert run_payload["failed"] is False
-    assert [result["rule_id"] for result in run_payload["results"]] == [
-        "architecture.dep-directionality",
-        "architecture.loop-subprocess-boundary",
-    ]
+    assert run_payload["results"] == []
 
 
 def test_validate_fails_on_agents_docs_map_errors(tmp_path: Path, capsys: Any) -> None:
@@ -97,6 +110,10 @@ def test_fitness_run_json_includes_remediation_for_failures(
         "import subprocess\nsubprocess.run(['git', 'status'], check=False)\n",
         encoding="utf-8",
     )
+    _write_manifest(
+        tmp_path,
+        [{"builtin": "architecture.loop-subprocess-boundary"}],
+    )
 
     parser = build_parser()
     args = parser.parse_args(
@@ -122,3 +139,89 @@ def test_fitness_run_json_includes_remediation_for_failures(
             "remediation": "Move OpenCode command execution to engineeringagent.opencode.client and Git command execution to engineeringagent.git.client.",
         }
     ]
+
+
+def test_fitness_run_executes_shell_command_rule(tmp_path: Path, capsys: Any) -> None:
+    _write_manifest(
+        tmp_path,
+        [
+            {
+                "rule_id": "custom.shell-pass",
+                "name": "Shell pass",
+                "summary": "Passes from shell command adapter.",
+                "rationale": "Confirms manifest-declared command rules execute.",
+                "remediation": "Fix the shell command output contract.",
+                "scope": "harness/fitness-functions",
+                "severity": "warning",
+                "side_effect_free": True,
+                "adapter": "command",
+                "command": [
+                    "sh",
+                    "-c",
+                    'printf \'%s\\n\' \'{"contract_version":"1.0","rule_id":"custom.shell-pass","status":"pass","severity":"warning","summary":"ok","violations":[]}\'',
+                ],
+            }
+        ],
+    )
+
+    parser = build_parser()
+    args = parser.parse_args(
+        [
+            "--project-root",
+            str(tmp_path),
+            "fitness",
+            "run",
+            "--format",
+            "json",
+        ]
+    )
+    code = args.func(args)
+    payload = json.loads(capsys.readouterr().out)
+
+    assert code == 0
+    assert payload["failed"] is False
+    assert [result["rule_id"] for result in payload["results"]] == ["custom.shell-pass"]
+
+
+def test_fitness_list_shows_declared_shell_rule_only(
+    tmp_path: Path,
+    capsys: Any,
+) -> None:
+    _write_manifest(
+        tmp_path,
+        [
+            {
+                "rule_id": "custom.shell-only",
+                "name": "Shell only",
+                "summary": "Only declared shell rule should be listed.",
+                "rationale": "Prevents undeclared implicit rules from appearing.",
+                "remediation": "Declare required rules in the manifest.",
+                "scope": "harness/fitness-functions",
+                "severity": "warning",
+                "side_effect_free": True,
+                "adapter": "command",
+                "command": [
+                    "sh",
+                    "-c",
+                    'printf \'%s\\n\' \'{"contract_version":"1.0","rule_id":"custom.shell-only","status":"pass","severity":"warning","summary":"ok","violations":[]}\'',
+                ],
+            }
+        ],
+    )
+
+    parser = build_parser()
+    args = parser.parse_args(
+        [
+            "--project-root",
+            str(tmp_path),
+            "fitness",
+            "list",
+            "--format",
+            "json",
+        ]
+    )
+    code = args.func(args)
+    payload = json.loads(capsys.readouterr().out)
+
+    assert code == 0
+    assert [entry["rule_id"] for entry in payload] == ["custom.shell-only"]

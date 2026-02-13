@@ -2,22 +2,22 @@ id: FEAT-029
 title: Require explicit harness declarations for all runnable fitness rules
 type: feature
 expected_commit_subject: 'feat: add FEAT-029 explicit harness fitness rule declarations'
-status: backlog
+status: done
 priority: high
-objective: 'Make harness declarations the only source of runnable fitness rules so no
-  implicit/default rules execute, and ensure generated fitness docs reflect only declared
-  active rules.
+objective: 'Make harness declarations the only source of runnable fitness rules so
+  no implicit/default rules execute, and ensure generated fitness docs reflect only
+  declared active rules.
 
   '
-context: 'Today, fitness execution implicitly activates built-in Python rules from the
-  in-code registry even when harness/fitness-functions/rules.yaml is empty. That creates
-  hidden runtime behavior and allows docs generation to include rules not explicitly
-  declared in harness state.
+context: 'Today, fitness execution implicitly activates built-in Python rules from
+  the in-code registry even when harness/fitness-functions/rules.yaml is empty. That
+  creates hidden runtime behavior and allows docs generation to include rules not
+  explicitly declared in harness state.
 
   User-confirmed scope for this feature: keep FEAT-028 unchanged, enforce immediate
-  hard cutover to explicit declarations, represent existing built-ins as manifest references,
-  seed default declarations in init scaffolding, and make docs generation declaration-driven
-  from harness references rather than implicit registry inventory.
+  hard cutover to explicit declarations, represent existing built-ins as manifest
+  references, seed default declarations in init scaffolding, and make docs generation
+  declaration-driven from harness references rather than implicit registry inventory.
 
   '
 constraints:
@@ -34,10 +34,10 @@ constraints:
 - Retain deterministic ordering and deterministic failure behavior across list/run/catalog.
 - Keep result envelope contract_version stable (`1.0`).
 - Validation must fail on invalid or unknown builtin references declared in the manifest.
-- engineeringagent init must seed explicit declarations for the currently shipped architecture
-  rules.
-- Generated fitness docs must be driven by declared manifest references only, not by
-  implicit global registry defaults.
+- engineeringagent init must seed explicit declarations for the currently shipped
+  architecture rules.
+- Generated fitness docs must be driven by declared manifest references only, not
+  by implicit global registry defaults.
 - Avoid fallback/deprecation behavior for implicit built-ins; cutover is immediate.
 implementation_notes: 'Adopt a declaration-driven catalog builder where manifest entries
   explicitly select active rules. Keep a code-level builtin resolver map for implementation
@@ -48,31 +48,33 @@ implementation_notes: 'Adopt a declaration-driven catalog builder where manifest
   for built-ins by resolving canonical metadata from code for referenced IDs.
 
   Update CLI and runner paths so list/run/catalog all consume the same declaration-driven
-  active catalog. Gate behavior should inherit this automatically through fitness run.
+  active catalog. Gate behavior should inherit this automatically through fitness
+  run.
 
   For command-adapter regression tests, use tmp_path as an isolated temporary project
   root with only required harness files (for example harness/fitness-functions/rules.yaml).
-  Do not require git repository initialization for fitness list/run/catalog command tests.
+  Do not require git repository initialization for fitness list/run/catalog command
+  tests.
 
   Add a shell-command fixture pattern that prints a valid JSON envelope through `sh`
   so non-Python custom rules are covered with minimal dependencies.
 
-  Update validator checks to surface actionable errors for manifest references that cannot
-  be resolved. Ensure diagnostics remain deterministic.
+  Update validator checks to surface actionable errors for manifest references that
+  cannot be resolved. Ensure diagnostics remain deterministic.
 
   Update init scaffold defaults to write explicit builtin references into harness/fitness-functions/rules.yaml.
 
-  Keep docs generation unchanged in interface, but source catalog content strictly from
-  declared active references.
+  Keep docs generation unchanged in interface, but source catalog content strictly
+  from declared active references.
 
   '
 acceptance:
 - '`engineeringagent fitness list` shows only rules declared in harness/fitness-functions/rules.yaml.'
 - '`engineeringagent fitness run` executes only rules declared in harness/fitness-functions/rules.yaml.'
-- '`engineeringagent fitness run` supports manifest-declared shell command rules in a
-  temp project root without requiring git repo initialization.'
-- '`engineeringagent fitness catalog` includes only declared active rules and never emits
-  undeclared built-ins.'
+- '`engineeringagent fitness run` supports manifest-declared shell command rules in
+  a temp project root without requiring git repo initialization.'
+- '`engineeringagent fitness catalog` includes only declared active rules and never
+  emits undeclared built-ins.'
 - Generated docs at docs/fitness-functions/rules.md reflect declared references only,
   not implicit registry defaults.
 - Existing built-in architecture rules are declared explicitly in harness/fitness-functions/rules.yaml
@@ -88,7 +90,7 @@ acceptance:
 subtasks:
 - id: ST-001
   title: Extend fitness manifest contract for explicit builtin references
-  status: backlog
+  status: done
   order: 1
   context: 'Add contract support for builtin reference entries in harness/fitness-functions/rules.yaml
     while preserving existing command-rule support.
@@ -99,10 +101,10 @@ subtasks:
   - uv run pytest -q tests/test_fitness_manifest.py
 - id: ST-002
   title: Remove implicit builtin activation from catalog construction
-  status: backlog
+  status: done
   order: 2
-  context: 'Refactor registry and runner so active catalogs are declaration-driven and
-    no longer append built-ins by default.
+  context: 'Refactor registry and runner so active catalogs are declaration-driven
+    and no longer append built-ins by default.
 
     '
   verification:
@@ -110,12 +112,12 @@ subtasks:
   - uv run pytest -q tests/test_fitness_rule_id_collisions.py
 - id: ST-003
   title: Enforce declaration-only behavior across list run and catalog commands
-  status: backlog
+  status: done
   order: 3
-  context: 'Ensure CLI surfaces share one active catalog source and cannot include undeclared
-    rules. Include regression coverage for shell-command custom rules to confirm non-Python
-    declaration and execution paths remain valid. Prefer tmp_path temporary project
-    roots for these tests to keep setup lightweight and deterministic.
+  context: 'Ensure CLI surfaces share one active catalog source and cannot include
+    undeclared rules. Include regression coverage for shell-command custom rules to
+    confirm non-Python declaration and execution paths remain valid. Prefer tmp_path
+    temporary project roots for these tests to keep setup lightweight and deterministic.
 
     '
   verification:
@@ -125,7 +127,7 @@ subtasks:
   - uv run pytest -q tests/test_cli.py::test_fitness_list_shows_declared_shell_rule_only
 - id: ST-004
   title: Add validator checks for manifest builtin reference integrity
-  status: backlog
+  status: done
   order: 4
   context: 'Make validation fail with deterministic diagnostics when builtin manifest
     references are invalid or unresolved.
@@ -136,7 +138,7 @@ subtasks:
   - uvx --from . engineeringagent validate
 - id: ST-005
   title: Seed explicit builtin declarations in repo and init scaffolding
-  status: backlog
+  status: done
   order: 5
   context: 'Populate harness defaults and init-generated manifests with explicit references
     for the current built-in architecture rules.
@@ -147,7 +149,7 @@ subtasks:
   - uv run pytest -q tests/test_gates.py
 - id: ST-006
   title: Run focused regressions and validate gate behavior
-  status: backlog
+  status: done
   order: 6
   context: 'Confirm declaration-driven behavior holds in gate execution and repo-level
     validation flows.
@@ -159,4 +161,4 @@ subtasks:
   - uv run pytest -q tests/test_fitness_registry.py
   - uv run pytest -q tests/test_fitness_catalog_generation.py
   - uvx --from . engineeringagent gates run --profile loop_fast
-updated_at: '2026-02-13T00:00:00Z'
+updated_at: '2026-02-13T11:29:19Z'

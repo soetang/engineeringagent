@@ -32,26 +32,13 @@ def _builtin_definition(rule_id: str) -> FitnessRuleDefinition:
     )
 
 
-def _write_custom_manifest(path: Path, rule_id: str) -> None:
+def _write_manifest(path: Path, rules: list[dict[str, object]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
         yaml.safe_dump(
             {
                 "contract_version": CONTRACT_VERSION,
-                "rules": [
-                    {
-                        "rule_id": rule_id,
-                        "name": "Custom rule",
-                        "summary": "Custom command rule.",
-                        "rationale": "Exercise merged registry behavior.",
-                        "remediation": "Update custom rules manifest.",
-                        "scope": "docs",
-                        "severity": "warning",
-                        "side_effect_free": True,
-                        "adapter": "command",
-                        "command": ["python", "scripts/custom_rule.py"],
-                    }
-                ],
+                "rules": rules,
             },
             sort_keys=False,
             allow_unicode=False,
@@ -60,12 +47,29 @@ def _write_custom_manifest(path: Path, rule_id: str) -> None:
     )
 
 
-def test_build_rule_catalog_merges_builtin_and_custom_rules_sorted_by_id(
+def test_build_rule_catalog_includes_only_manifest_declared_rules_sorted_by_id(
     tmp_path: Path,
 ) -> None:
-    """Merge built-in and custom rules with deterministic ordering by ID."""
+    """Resolve builtins by manifest reference and keep deterministic ordering."""
     manifest_path = tmp_path / "harness" / "fitness-functions" / "rules.yaml"
-    _write_custom_manifest(manifest_path, "custom.middle")
+    _write_manifest(
+        manifest_path,
+        [
+            {"builtin": "builtin.z-last"},
+            {
+                "rule_id": "custom.middle",
+                "name": "Custom rule",
+                "summary": "Custom command rule.",
+                "rationale": "Exercise manifest-driven registry behavior.",
+                "remediation": "Update custom rules manifest.",
+                "scope": "docs",
+                "severity": "warning",
+                "side_effect_free": True,
+                "adapter": "command",
+                "command": ["python", "scripts/custom_rule.py"],
+            },
+        ],
+    )
 
     catalog = build_rule_catalog(
         tmp_path,
@@ -76,7 +80,18 @@ def test_build_rule_catalog_merges_builtin_and_custom_rules_sorted_by_id(
     )
 
     assert [definition.metadata.rule_id for definition in catalog] == [
-        "builtin.a-first",
         "builtin.z-last",
         "custom.middle",
     ]
+
+
+def test_build_rule_catalog_returns_empty_when_manifest_is_missing(
+    tmp_path: Path,
+) -> None:
+    """Do not activate implicit built-ins without a manifest declaration."""
+    catalog = build_rule_catalog(
+        tmp_path,
+        builtin_rules=[_builtin_definition("builtin.a-first")],
+    )
+
+    assert catalog == []

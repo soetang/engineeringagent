@@ -1,4 +1,5 @@
 from .contracts import (
+    BuiltinRuleManifestReference,
     CONTRACT_VERSION,
     CustomRuleManifest,
     CustomRuleManifestEntry,
@@ -30,6 +31,7 @@ from .runner import FitnessRunSummary, run_rule_catalog
 
 __all__ = [
     "CONTRACT_VERSION",
+    "BuiltinRuleManifestReference",
     "CustomRuleManifest",
     "CustomRuleManifestEntry",
     "DEFAULT_CUSTOM_RULE_MANIFEST",

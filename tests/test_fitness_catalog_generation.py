@@ -53,8 +53,8 @@ def test_fitness_catalog_markdown_generation(tmp_path: Path, capsys: Any) -> Non
 
     assert exit_code == 0
     assert "fitness catalog written:" in output
-    assert "`architecture.dep-directionality`" in markdown
-    assert "`architecture.loop-subprocess-boundary`" in markdown
     assert "`custom.shell-contract`" in markdown
+    assert "`architecture.dep-directionality`" not in markdown
+    assert "`architecture.loop-subprocess-boundary`" not in markdown
     assert "Rationale: Keeps custom adapters interoperable." in markdown
     assert "Remediation: Update custom command output to the contract." in markdown

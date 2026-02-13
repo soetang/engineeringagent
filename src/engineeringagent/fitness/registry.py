@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Callable, Sequence
 
 from .contracts import (
     FitnessRuleResult,
+    BuiltinRuleManifestReference,
     CustomRuleManifestEntry,
     FitnessRuleMetadata,
     RuleAdapter,
@@ -112,6 +113,7 @@ def load_custom_rule_definitions(
     return [
         _definition_from_custom_entry(entry, resolved_manifest, index)
         for index, entry in enumerate(manifest.rules)
+        if not isinstance(entry, BuiltinRuleManifestReference)
     ]
 
 
@@ -121,22 +123,61 @@ def build_rule_catalog(
     builtin_rules: Sequence[FitnessRuleDefinition] | None = None,
     manifest_path: Path | None = None,
 ) -> list[FitnessRuleDefinition]:
-    """Build the merged active fitness-rule catalog.
+    """Build the active declaration-driven fitness-rule catalog.
 
-    The merged catalog includes built-in rules plus custom command-backed rules
-    from the configured manifest. Catalog output is sorted by `rule_id` for
-    deterministic listing and gate consumption.
+    Catalog entries are sourced only from manifest declarations. Built-in rules
+    execute only when explicitly referenced in the manifest. Catalog output is
+    sorted by `rule_id` for deterministic listing and gate consumption.
     """
+    resolved_manifest = manifest_path or custom_manifest_path(project_root)
+    if not resolved_manifest.is_absolute():
+        resolved_manifest = project_root / resolved_manifest
+    if not resolved_manifest.exists():
+        return []
+
     builtins = (
         list(builtin_rules) if builtin_rules is not None else builtin_rule_definitions()
     )
-    custom_rules = load_custom_rule_definitions(
-        project_root,
-        manifest_path=manifest_path,
+    builtin_by_id = {definition.metadata.rule_id: definition for definition in builtins}
+
+    manifest = load_custom_rule_manifest(resolved_manifest)
+    active_definitions: list[FitnessRuleDefinition] = []
+    for index, entry in enumerate(manifest.rules):
+        if isinstance(entry, BuiltinRuleManifestReference):
+            builtin_definition = builtin_by_id.get(entry.builtin)
+            if builtin_definition is None:
+                raise ValueError(
+                    "unknown builtin fitness rule reference "
+                    f"{entry.builtin!r} at {resolved_manifest}:rules[{index}]"
+                )
+            active_definitions.append(
+                _definition_from_builtin_reference(
+                    builtin_definition,
+                    resolved_manifest,
+                    index,
+                )
+            )
+            continue
+
+        active_definitions.append(
+            _definition_from_custom_entry(entry, resolved_manifest, index)
+        )
+
+    _raise_on_duplicate_rule_ids(active_definitions)
+    return sorted(
+        active_definitions, key=lambda definition: definition.metadata.rule_id
     )
-    merged = builtins + custom_rules
-    _raise_on_duplicate_rule_ids(merged)
-    return sorted(merged, key=lambda definition: definition.metadata.rule_id)
+
+
+def _definition_from_builtin_reference(
+    definition: FitnessRuleDefinition,
+    manifest_path: Path,
+    index: int,
+) -> FitnessRuleDefinition:
+    return replace(
+        definition,
+        origin=f"builtin-ref:{manifest_path}:rules[{index}]",
+    )
 
 
 def _definition_from_custom_entry(

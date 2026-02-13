@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from .fitness import build_rule_catalog
 from .specs import (
     ValidationIssue,
     feature_contract_issues,
@@ -150,6 +151,11 @@ def validate(project_root: Path, schema_only: bool = False) -> list[str]:
             messages.append(
                 f"AGENTS.md:{line_number}: docs-map path does not exist: {reference}"
             )
+
+    try:
+        build_rule_catalog(project_root)
+    except ValueError as exc:
+        messages.append(str(exc))
 
     return messages
 

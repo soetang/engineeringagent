@@ -5,6 +5,10 @@ from pathlib import Path
 
 import yaml
 
+from .fitness import (
+    DEPENDENCY_DIRECTIONALITY_RULE_ID,
+    LOOP_SUBPROCESS_BOUNDARY_RULE_ID,
+)
 from .specs import feature_schema_from_model
 
 
@@ -124,6 +128,17 @@ def build_baseline_scaffold_manifest(docs_dir: str = "docs") -> dict[str, str]:
                     "loop_fast": [],
                 },
                 "gates": {},
+            },
+            sort_keys=False,
+            allow_unicode=False,
+        ),
+        "harness/fitness-functions/rules.yaml": yaml.safe_dump(
+            {
+                "contract_version": "1.0",
+                "rules": [
+                    {"builtin": DEPENDENCY_DIRECTIONALITY_RULE_ID},
+                    {"builtin": LOOP_SUBPROCESS_BOUNDARY_RULE_ID},
+                ],
             },
             sort_keys=False,
             allow_unicode=False,

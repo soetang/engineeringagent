@@ -179,7 +179,7 @@ def test_init_writes_precommit_and_empty_gate_profiles(
     tmp_path: Path,
     capsys: Any,
 ) -> None:
-    """Verify init writes pre-commit wiring and empty gate profile stubs."""
+    """Verify init writes pre-commit wiring, gate stubs, and fitness declarations."""
     parser = build_parser()
     args = parser.parse_args(["--project-root", str(tmp_path), "init"])
 
@@ -201,3 +201,16 @@ def test_init_writes_precommit_and_empty_gate_profiles(
     assert gates_config["profiles"]["precommit"] == []
     assert gates_config["profiles"]["loop_fast"] == []
     assert gates_config["gates"] == {}
+
+    fitness_manifest = yaml.safe_load(
+        (tmp_path / "harness" / "fitness-functions" / "rules.yaml").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert fitness_manifest == {
+        "contract_version": "1.0",
+        "rules": [
+            {"builtin": "architecture.dep-directionality"},
+            {"builtin": "architecture.loop-subprocess-boundary"},
+        ],
+    }

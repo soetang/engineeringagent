@@ -84,9 +84,16 @@ class CustomRuleManifestEntry(FitnessModel):
     env: dict[NonEmptyStr, str] | None = None
 
 
+class BuiltinRuleManifestReference(FitnessModel):
+    builtin: RuleId
+
+
+ManifestRuleEntry = BuiltinRuleManifestReference | CustomRuleManifestEntry
+
+
 class CustomRuleManifest(FitnessModel):
     contract_version: Annotated[str, Field(strict=True, pattern=r"^1\.0$")]
-    rules: list[CustomRuleManifestEntry] = Field(default_factory=list)
+    rules: list[ManifestRuleEntry] = Field(default_factory=list)
 
 
 def load_custom_rule_manifest(path: Path) -> CustomRuleManifest:
