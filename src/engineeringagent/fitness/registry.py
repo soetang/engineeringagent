@@ -17,8 +17,10 @@ from .contracts import (
 from .builtin_rules import (
     DEPENDENCY_DIRECTIONALITY_RULE_ID,
     LOOP_SUBPROCESS_BOUNDARY_RULE_ID,
+    PROMPT_LOCALITY_RULE_ID,
     evaluate_dependency_directionality,
     evaluate_loop_subprocess_boundary,
+    evaluate_prompt_locality,
 )
 
 DEFAULT_CUSTOM_RULE_MANIFEST = Path("harness/fitness-functions/rules.yaml")
@@ -73,6 +75,25 @@ BUILTIN_RULE_DEFINITIONS: tuple[FitnessRuleDefinition, ...] = (
         ),
         origin=f"builtin:{LOOP_SUBPROCESS_BOUNDARY_RULE_ID}",
         python_callable=evaluate_loop_subprocess_boundary,
+    ),
+    FitnessRuleDefinition(
+        metadata=FitnessRuleMetadata(
+            rule_id=PROMPT_LOCALITY_RULE_ID,
+            name="Prompt locality",
+            summary="Keep canonical loop prompt content and template reads localized.",
+            rationale="Prevents prompt drift and duplicate canonical wording across modules.",
+            remediation=(
+                "Move canonical prompt text and template reads to "
+                "engineeringagent.prompts templates/renderer modules."
+            ),
+            scope="src/engineeringagent",
+            severity=RuleSeverity.ERROR,
+            adapter=RuleAdapter.PYTHON,
+            source=RuleSource.BUILTIN,
+            side_effect_free=True,
+        ),
+        origin=f"builtin:{PROMPT_LOCALITY_RULE_ID}",
+        python_callable=evaluate_prompt_locality,
     ),
 )
 

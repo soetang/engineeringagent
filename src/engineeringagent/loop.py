@@ -21,6 +21,11 @@ from .opencode_permissions import (
     output_has_permission_rejection,
     run_permission_probe,
 )
+from .prompts import (
+    build_implementation_prompt,
+    build_selector_prompt,
+    inject_retry_feedback,
+)
 from .specs import dump_yaml, feature_sort_key, load_yaml
 
 FEATURE_TRANSITIONS: dict[str, set[str]] = {
@@ -487,20 +492,6 @@ def _deterministic_feature_choice(
     return sorted(pending, key=sort_key)[0]
 
 
-def _build_selector_prompt(pending: Sequence[tuple[Path, dict[str, Any]]]) -> str:
-    choices = []
-    for feature_path, feature in pending:
-        choices.append(
-            f"- id={feature.get('id')} status={feature.get('status')} priority={feature.get('priority')} path={feature_path}"
-        )
-
-    return (
-        "Choose the next feature spec to execute from this pending set. "
-        "Reply with exactly one feature path from the list and no extra text.\n"
-        + "\n".join(choices)
-    )
-
-
 def _parse_selector_output(
     output: str,
     pending: Sequence[tuple[Path, dict[str, Any]]],
@@ -538,7 +529,7 @@ def _choose_feature_with_selector(
     if len(pending) == 1:
         return pending[0]
 
-    prompt = _build_selector_prompt(pending)
+    prompt = build_selector_prompt(pending)
     try:
         proc = start_agent(project_root, prompt)
     except FileNotFoundError:
@@ -581,41 +572,6 @@ def _truncate_feedback(text: str, max_chars: int = 8_000) -> str:
     if len(text) <= max_chars:
         return text
     return text[:max_chars] + "\n...[truncated]"
-
-
-def build_ralph_opencode_prompt(
-    feature: dict[str, Any],
-    feature_path: Path,
-    hook_feedback: str | None = None,
-) -> str:
-    """Build the default Ralph-style implementation prompt.
-
-    Args:
-        feature: Loaded feature mapping.
-        feature_path: Absolute path to the feature YAML file.
-        hook_feedback: Optional prior hook output to include for retries.
-
-    Returns:
-        Prompt text for the default OpenCode implement step.
-    """
-    fid = feature.get("id", "unknown-feature")
-    feature_title = feature.get("title", "")
-    objective = feature.get("objective", "")
-    context = feature.get("context", "")
-    prompt = (
-        f"Read and use this feature spec from disk: {feature_path}. "
-        f"Run one Ralph-style feature loop for {fid} ({feature_title}). "
-        f"Objective: {objective}. Context: {context}. "
-        "Derive the next step directly from the YAML file, make minimal deterministic changes, "
-        "run relevant verification, and report concise results."
-    )
-    if hook_feedback:
-        prompt += (
-            " Previous retry feedback is available. "
-            "Fix the issues reported below before marking the feature complete:\n"
-            f"{_truncate_feedback(hook_feedback)}"
-        )
-    return prompt
 
 
 def run_implement_step(
@@ -666,15 +622,13 @@ def run_implement_step(
             return (False, "implement_command", command_output)
         return (True, None, command_output)
 
-    prompt = opencode_prompt or build_ralph_opencode_prompt(
-        feature, feature_path, hook_feedback=hook_feedback
+    prompt = opencode_prompt or build_implementation_prompt(
+        feature=feature,
+        feature_path=feature_path,
+        hook_feedback=hook_feedback,
     )
-    if opencode_prompt and hook_feedback:
-        prompt = (
-            f"{opencode_prompt}\n\n"
-            "Previous retry feedback (address before completion):\n"
-            f"{_truncate_feedback(hook_feedback)}"
-        )
+    if opencode_prompt:
+        prompt = inject_retry_feedback(opencode_prompt, hook_feedback)
 
     print("Implement step: opencode run --agent build")
     try:

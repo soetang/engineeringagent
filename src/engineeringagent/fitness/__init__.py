@@ -16,8 +16,10 @@ from .catalog import render_rule_catalog_markdown, write_rule_catalog_markdown
 from .builtin_rules import (
     DEPENDENCY_DIRECTIONALITY_RULE_ID,
     LOOP_SUBPROCESS_BOUNDARY_RULE_ID,
+    PROMPT_LOCALITY_RULE_ID,
     evaluate_dependency_directionality,
     evaluate_loop_subprocess_boundary,
+    evaluate_prompt_locality,
 )
 from .registry import (
     DEFAULT_CUSTOM_RULE_MANIFEST,
@@ -47,8 +49,10 @@ __all__ = [
     "write_rule_catalog_markdown",
     "DEPENDENCY_DIRECTIONALITY_RULE_ID",
     "LOOP_SUBPROCESS_BOUNDARY_RULE_ID",
+    "PROMPT_LOCALITY_RULE_ID",
     "evaluate_dependency_directionality",
     "evaluate_loop_subprocess_boundary",
+    "evaluate_prompt_locality",
     "build_rule_catalog",
     "builtin_rule_definitions",
     "custom_manifest_path",

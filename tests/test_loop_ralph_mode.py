@@ -11,7 +11,8 @@ import yaml
 
 import engineeringagent.loop as loop_module
 from engineeringagent.cli import build_parser
-from engineeringagent.loop import build_ralph_opencode_prompt, run_loop
+from engineeringagent.loop import run_loop
+from engineeringagent.prompts import build_implementation_prompt
 
 
 def _write_yaml(path: Path, payload: dict[str, Any]) -> None:
@@ -180,7 +181,11 @@ def test_ralph_prompt_includes_feature_file_path(tmp_path: Path) -> None:
     _, feature_path = _make_project_root(tmp_path, feature_data=_base_feature())
     feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
 
-    prompt = build_ralph_opencode_prompt(feature=feature, feature_path=feature_path)
+    prompt = build_implementation_prompt(
+        feature=feature,
+        feature_path=feature_path,
+        hook_feedback=None,
+    )
 
     assert str(feature_path) in prompt
     assert "Read and use this feature spec from disk" in prompt
