@@ -33,22 +33,6 @@ potential_features:
       - "Loop orchestration is readable as a high-level state flow"
       - "Direct subprocess/tool calls are moved behind explicit adapters"
       - "Existing loop behavior is preserved by targeted regression coverage"
-  - id: POT-006
-    title: Keep AGENTS documentation map in sync with repository reality
-    status: promoted
-    promoted_to: FEAT-027
-    context: >
-      AGENTS.md currently references paths that are not present in this repository.
-      Introduce a lightweight docs-map integrity check and align guidance to existing
-      structure.
-    value:
-      - "Improves navigation accuracy for humans and agents"
-      - "Reduces stale documentation risk"
-      - "Prevents context loading mistakes in agent loops"
-    acceptance_hint:
-      - "AGENTS.md documentation map matches actual repo paths"
-      - "A validator or gate checks that referenced docs exist"
-      - "Update process for docs-map changes is documented"
   - id: POT-008
     title: Add run telemetry reporting command with invariants checks
     status: idea
