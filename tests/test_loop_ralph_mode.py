@@ -1086,6 +1086,197 @@ def test_run_loop_archives_only_selected_feature(tmp_path: Path) -> None:
     assert not archived_preexisting_done_path.exists()
 
 
+def test_run_loop_archives_done_feature_before_gate_execution(tmp_path: Path) -> None:
+    gate_script = tmp_path.parent / f"{tmp_path.name}-assert-pre-gate-archive.py"
+    gate_script.write_text(
+        "\n".join(
+            [
+                "from pathlib import Path",
+                "import sys",
+                "active = Path(sys.argv[1])",
+                "archived = Path(sys.argv[2])",
+                "if active.exists() or not archived.exists():",
+                "    raise SystemExit(1)",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    feature_data = _base_feature()
+    gates_data = {
+        "profiles": {"loop_fast": ["assert_pre_gate_archive"]},
+        "gates": {
+            "assert_pre_gate_archive": {
+                "run": (
+                    f'"{sys.executable}" "{gate_script}" '
+                    "docs/spec/features/FEAT-900-ralph-test.yaml "
+                    "docs/spec/features_done/FEAT-900-ralph-test.yaml"
+                )
+            }
+        },
+    }
+    project_root, feature_path = _make_project_root(
+        tmp_path,
+        feature_data=feature_data,
+        gates_data=gates_data,
+    )
+    script_path = _write_set_done_script(
+        tmp_path.parent / f"{tmp_path.name}-set-done-pre-gate-archive.py"
+    )
+    _init_git_repo(project_root)
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        max_iterations=5,
+    )
+
+    archived_path = project_root / "docs" / "spec" / "features_done" / feature_path.name
+    assert code == 0
+    assert not feature_path.exists()
+    assert archived_path.exists()
+
+
+def test_run_loop_restores_archived_feature_when_gate_fails_after_prearchive(
+    tmp_path: Path,
+) -> None:
+    gate_script = tmp_path.parent / f"{tmp_path.name}-fail-after-pre-gate-archive.py"
+    gate_script.write_text(
+        "\n".join(
+            [
+                "from pathlib import Path",
+                "import sys",
+                "active = Path(sys.argv[1])",
+                "archived = Path(sys.argv[2])",
+                "if active.exists() or not archived.exists():",
+                "    raise SystemExit('pre-gate archive ordering check failed')",
+                "raise SystemExit('forced gate failure after pre-archive')",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    feature_data = _base_feature()
+    gates_data = {
+        "profiles": {"loop_fast": ["spec_validate"]},
+        "gates": {
+            "spec_validate": {
+                "run": (
+                    f'"{sys.executable}" "{gate_script}" '
+                    "docs/spec/features/FEAT-900-ralph-test.yaml "
+                    "docs/spec/features_done/FEAT-900-ralph-test.yaml"
+                )
+            }
+        },
+    }
+    project_root, feature_path = _make_project_root(
+        tmp_path,
+        feature_data=feature_data,
+        gates_data=gates_data,
+    )
+    script_path = _write_set_done_script(
+        tmp_path.parent / f"{tmp_path.name}-set-done-rollback.py"
+    )
+    _init_git_repo(project_root)
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        max_iterations=1,
+    )
+
+    archived_path = project_root / "docs" / "spec" / "features_done" / feature_path.name
+    restored_feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
+    runs = _read_runs(project_root)
+
+    assert code == 1
+    assert feature_path.exists()
+    assert not archived_path.exists()
+    assert restored_feature["status"] == "done"
+    assert runs[-1]["result"] == "failed"
+    assert runs[-1]["failed_gate"] == "spec_validate"
+    assert runs[-1]["next_action"] == "retry_same_feature"
+
+
+def test_run_loop_spec_validate_no_longer_blocks_done_archive_ordering(
+    tmp_path: Path,
+) -> None:
+    gate_script = (
+        tmp_path.parent / f"{tmp_path.name}-spec-validate-done-in-active-check.py"
+    )
+    gate_script.write_text(
+        "\n".join(
+            [
+                "from pathlib import Path",
+                "import sys",
+                "import yaml",
+                "active = Path(sys.argv[1])",
+                "if active.exists():",
+                "    feature = yaml.safe_load(active.read_text(encoding='utf-8'))",
+                "    if feature.get('status') == 'done':",
+                "        raise SystemExit('spec_validate blocked: done feature remained in active dir')",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    feature_data = _base_feature()
+    gates_data = {
+        "profiles": {"loop_fast": ["spec_validate"]},
+        "gates": {
+            "spec_validate": {
+                "run": (
+                    f'"{sys.executable}" "{gate_script}" '
+                    "docs/spec/features/FEAT-900-ralph-test.yaml"
+                )
+            }
+        },
+    }
+    project_root, feature_path = _make_project_root(
+        tmp_path,
+        feature_data=feature_data,
+        gates_data=gates_data,
+    )
+    script_path = _write_set_done_script(
+        tmp_path.parent / f"{tmp_path.name}-set-done-spec-validate-ordering.py"
+    )
+    _init_git_repo(project_root)
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        max_iterations=5,
+    )
+
+    archived_path = project_root / "docs" / "spec" / "features_done" / feature_path.name
+    runs = _read_runs(project_root)
+
+    assert code == 0
+    assert not feature_path.exists()
+    assert archived_path.exists()
+    assert len(runs) == 1
+    assert runs[0]["result"] == "passed"
+    assert runs[0]["failed_gate"] is None
+
+
 def test_run_loop_completion_commit_includes_archive_move(tmp_path: Path) -> None:
     project_root, feature_path = _make_project_root(
         tmp_path, feature_data=_base_feature()

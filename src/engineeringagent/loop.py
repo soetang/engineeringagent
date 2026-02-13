@@ -651,6 +651,8 @@ def _run_feature_iteration(
     implement_output = ""
     gate_output = ""
     completion_commit_succeeded = False
+    archived_path: Path | None = None
+    archived_in_iteration = False
 
     feature, loaded_from_archive, load_error = (
         _load_selected_feature_with_archive_fallback(project_root, feature_path)
@@ -709,26 +711,6 @@ def _run_feature_iteration(
             failed_gate = implement_failed_gate
             implement_status = f"failed:{implement_failed_gate or 'unknown'}"
 
-    if result == "passed":
-        gate_config = load_gate_config(gates_path)
-        ok, failed, gate_output = run_profile(
-            gate_config,
-            gate_profile,
-            project_root,
-            capture_output=True,
-        )
-        if verbose_output and gate_output:
-            print(gate_output)
-        if not ok:
-            result = "failed"
-            failed_gate = failed
-            gate_status = f"failed:{failed or 'unknown'}"
-            next_hook_feedback = gate_output or (
-                f"gate '{failed or 'unknown'}' failed with no captured output"
-            )
-        else:
-            gate_status = "passed"
-
     post_feature = feature
     loaded_post_from_archive = loaded_from_archive
     if result == "passed" and feature is not None and not loaded_from_archive:
@@ -782,6 +764,43 @@ def _run_feature_iteration(
             result = "failed"
             failed_gate = "feature_archive"
             next_hook_feedback = archive_error
+        else:
+            archived_in_iteration = True
+
+    if result == "passed":
+        gate_config = load_gate_config(gates_path)
+        ok, failed, gate_output = run_profile(
+            gate_config,
+            gate_profile,
+            project_root,
+            capture_output=True,
+        )
+        if verbose_output and gate_output:
+            print(gate_output)
+        if not ok:
+            if archived_in_iteration and archived_path is not None:
+                restored_ok, restore_error = _restore_archived_feature(
+                    archived_path, feature_path
+                )
+                if not restored_ok:
+                    rollback_output = f"\narchive rollback failed: {restore_error}"
+                    gate_output = f"{gate_output}{rollback_output}".strip()
+            result = "failed"
+            failed_gate = failed
+            gate_status = f"failed:{failed or 'unknown'}"
+            next_hook_feedback = gate_output or (
+                f"gate '{failed or 'unknown'}' failed with no captured output"
+            )
+        else:
+            gate_status = "passed"
+
+    if result == "passed" and archived_in_iteration:
+        if post_feature is None:
+            result = "failed"
+            failed_gate = "feature_archive"
+            next_hook_feedback = (
+                "archived feature payload missing before completion commit"
+            )
         else:
             commit_ok, commit_failed_gate, commit_output = _commit_feature_completion(
                 project_root, post_feature
