@@ -15,12 +15,17 @@ context: >
   the selected feature in the current iteration, which violates the expected
   per-feature commit boundary.
 
+  Clarification: the active file and archived file are two locations for the
+  same selected feature spec (same feature id and filename), not two distinct
+  feature paths to process independently.
+
   This can produce misleading terminal output about committed completion even
   when archive movement or done-state transitions are still uncommitted in the
   working tree.
 constraints:
   - Scope is limited to run-loop behavior and loop-focused tests; do not add validator or schema changes.
   - A selected feature must not be marked completed unless `_commit_feature_completion` succeeds in the same iteration.
+  - Treat `docs/spec/features/<name>.yaml` and `docs/spec/features_done/<name>.yaml` as lifecycle locations for the same selected feature path identity.
   - 'If selected feature path is missing and only an archived `status: done` spec is found without a same-iteration completion commit, fail deterministically with actionable guidance.'
   - Keep existing successful flow unchanged when archive + completion commit both succeed.
   - Preserve existing `--allow-dirty` semantics except it cannot bypass per-feature completion commit enforcement.
@@ -39,6 +44,7 @@ implementation_notes: >
   selected feature.
 acceptance:
   - Loop iteration for a selected feature cannot complete successfully without a same-iteration successful completion commit.
+  - Archive fallback for `<features>/<name>.yaml` -> `<features_done>/<name>.yaml` is interpreted as the same selected feature identity, not an independent second path.
   - 'When selected feature path is missing and only archived `status: done` exists before completion commit, iteration fails with `failed_gate=feature_missing` and actionable detail.'
   - In the normal completion path, feature archive + completion commit still succeed and transition to `next_action=select_next_feature`.
   - Loop terminal messaging does not claim committed completion when the selected feature did not produce a completion commit in that run.
@@ -82,12 +88,24 @@ subtasks:
     verification:
       - uv run pytest -q tests/test_loop_ralph_mode.py::test_run_loop_archived_done_without_completion_commit_fails
   - id: ST-005
-    title: Run targeted regression and schema validation
+    title: Add integration test for per-feature commit enforcement
     status: backlog
     order: 5
+    context: >
+      Add an integration-style test that creates an isolated temp project,
+      initializes a git repository, seeds feature specs and working files, runs
+      loop execution through the archived-done edge case, and asserts the loop
+      does not advance without a same-iteration completion commit.
+    verification:
+      - uv run pytest -q tests/test_loop_opencode_integration.py::test_loop_archived_done_requires_same_iteration_completion_commit
+  - id: ST-006
+    title: Run targeted regression and schema validation
+    status: backlog
+    order: 6
     context: >
       Verify loop behavior and spec validity after implementing the fix.
     verification:
       - uv run pytest -q tests/test_loop_ralph_mode.py
+      - uv run pytest -q tests/test_loop_opencode_integration.py
       - uvx --from . engineeringagent validate --schema-only
 updated_at: '2026-02-13T00:00:00Z'
