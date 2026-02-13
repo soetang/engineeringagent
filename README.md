@@ -71,6 +71,13 @@ the git diff before committing anything produced by `init`.
 - `harness/gates.yaml`: gate and profile definitions
 - `progress/runs.jsonl`: append-only loop execution history
 
+## Contributing
+
+- Pull requests are not accepted for this repository.
+- Code changes are implemented through the project agent workflow.
+- If you want a new capability, open a GitHub issue with the problem, desired outcome, and constraints.
+- Feature requests from issues may be promoted into a formal spec under `docs/spec/features/`.
+
 ## Go deeper
 
 - [CLI workflow details](docs/references/uv-llms.md)
