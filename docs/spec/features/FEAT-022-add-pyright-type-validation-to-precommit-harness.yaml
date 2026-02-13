@@ -1,0 +1,106 @@
+id: FEAT-022
+title: Add Pyright type validation to precommit harness
+type: test
+expected_commit_subject: 'test: add FEAT-022 pyright precommit type validation gate'
+status: backlog
+priority: high
+objective: >
+  Add deterministic Pyright-based type validation to the precommit harness so
+  local quality gates catch type regressions before commit.
+context: >
+  Current precommit gates enforce YAML/spec validation, markdown formatting,
+  Ruff linting, and pytest, but they do not run static type checking. This
+  allows typing regressions to pass local precommit even when type contracts are
+  violated.
+
+  The requested rollout is precommit-only (no CI gate change) and should cover
+  package code, tests, and harness scripts using Pyright at an initial
+  basic-enforcement level.
+constraints:
+  - Keep `.pre-commit-config.yaml` on the stable single entrypoint `uvx --from . engineeringagent gates run --profile precommit`.
+  - Add Pyright gate coverage to `profiles.precommit`; do not add a CI commit/workflow gate in this feature.
+  - Type-check scope must include `src/engineeringagent`, `tests`, and `harness`.
+  - Start with Pyright basic mode for initial adoption; avoid strict-mode expansion in this feature.
+  - Keep `loop_fast` profile behavior unchanged.
+  - Use uv-native deterministic commands for install and execution.
+implementation_notes: >
+  Add Pyright as a development dependency and introduce repository configuration
+  for include paths, Python version alignment, and baseline basic checking mode.
+  Wire a `pyright_validate` gate command into `harness/gates.yaml` and
+  `src/engineeringagent/gates.py` default scaffolding so missing gate
+  configuration still bootstraps correctly.
+
+  Update tests that assert scaffold/default gate commands and profile contents,
+  and add focused assertions for the new gate registration and execution path.
+  Update contributor references that describe canonical precommit checks so
+  Pyright expectations are explicit.
+acceptance:
+  - `harness/gates.yaml` precommit profile includes a `pyright_validate` gate and executes it deterministically.
+  - Default gate scaffolding in `src/engineeringagent/gates.py` includes `pyright_validate` with the same command contract.
+  - Pyright configuration exists and enforces basic mode across `src/engineeringagent`, `tests`, and `harness`.
+  - Existing codebase type issues in configured scope are resolved or intentionally narrowed so `uv run pyright` passes.
+  - Precommit profile succeeds end-to-end with Pyright included.
+  - No CI workflow/gate additions are introduced by this feature.
+  - Docs describing precommit quality workflow mention Pyright.
+subtasks:
+  - id: ST-001
+    title: Add Pyright tooling and baseline config
+    status: backlog
+    order: 1
+    context: >
+      Introduce Pyright dependency and repository config with basic mode and
+      explicit include scope for package, tests, and harness paths.
+    verification:
+      - uv sync
+      - uv run pyright --version
+  - id: ST-002
+    title: Add precommit Pyright gate wiring
+    status: backlog
+    order: 2
+    context: >
+      Register `pyright_validate` command and include it in precommit profile in
+      both checked-in gate config and scaffolded default gate configuration.
+    verification:
+      - uvx --from . engineeringagent gates list
+      - uvx --from . engineeringagent gates run --profile precommit
+  - id: ST-003
+    title: Align type annotations for configured scope
+    status: backlog
+    order: 3
+    context: >
+      Resolve or constrain baseline type issues so Pyright passes in configured
+      coverage scope without introducing strict-mode requirements.
+    verification:
+      - uv run pyright src/engineeringagent tests harness
+  - id: ST-004
+    title: Extend gate and scaffold regression tests
+    status: backlog
+    order: 4
+    context: >
+      Update and add tests that verify pyright gate registration, scaffolded
+      defaults, and profile behavior remain stable.
+    verification:
+      - uv run pytest -q tests/test_gates.py
+      - uv run pytest -q tests/test_init_command.py
+  - id: ST-005
+    title: Update contributor workflow documentation
+    status: backlog
+    order: 5
+    context: >
+      Update docs that describe local quality checks so Pyright is part of the
+      standard precommit workflow narrative and command references.
+    verification:
+      - uv run pytest -q tests/test_gates.py::test_scaffolded_gates_config_has_expected_commands
+      - uvx --from . engineeringagent gates run --profile precommit
+  - id: ST-006
+    title: Run focused validation for spec and harness gates
+    status: backlog
+    order: 6
+    context: >
+      Run targeted validation and test commands to confirm contract compliance
+      and gate behavior before marking the feature ready for execution loops.
+    verification:
+      - uvx --from . engineeringagent validate
+      - uv run pytest -q tests/test_gates.py tests/test_init_command.py
+      - uv run pyright src/engineeringagent tests harness
+updated_at: '2026-02-13T00:00:00Z'
