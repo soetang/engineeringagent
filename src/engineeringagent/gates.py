@@ -6,6 +6,8 @@ from typing import Any
 
 import yaml
 
+from .specs import gate_contract_issues, load_yaml
+
 
 DEFAULT_GATE_CONFIG: dict[str, Any] = {
     "profiles": {
@@ -46,10 +48,13 @@ def load_gate_config(path: Path) -> dict[str, Any]:
         with path.open("w", encoding="utf-8") as f:
             yaml.safe_dump(DEFAULT_GATE_CONFIG, f, sort_keys=False)
 
-    with path.open("r", encoding="utf-8") as f:
-        data = yaml.safe_load(f)
-    if not isinstance(data, dict):
-        raise ValueError("gates config must be a mapping")
+    data = load_yaml(path)
+    contract_issues = gate_contract_issues(data, path)
+    if contract_issues:
+        formatted = "; ".join(
+            f"{issue.path}: {issue.message}" for issue in contract_issues
+        )
+        raise ValueError(f"invalid gates config: {formatted}")
     return data
 
 

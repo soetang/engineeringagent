@@ -2,14 +2,234 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import Any, Annotated
 
 import yaml
-from jsonschema import Draft202012Validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
+from pydantic_core import PydanticCustomError
 
 
 PRIORITY_ORDER = {"high": 0, "medium": 1, "low": 2}
+JSON_SCHEMA_DRAFT_URL = "https://json-schema.org/draft/2020-12/schema"
+
+
+FeatureId = Annotated[
+    str, Field(strict=True, min_length=1, pattern=r"^FEAT-[0-9]{3,}$")
+]
+SubtaskId = Annotated[str, Field(strict=True, min_length=1, pattern=r"^ST-[0-9]{3,}$")]
+NonEmptyStr = Annotated[str, Field(strict=True, min_length=1)]
+StrictString = Annotated[str, Field(strict=True)]
+
+
+class StrictContractModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+class FeatureStatus(str, Enum):
+    BACKLOG = "backlog"
+    IN_PROGRESS = "in_progress"
+    DONE = "done"
+    BLOCKED = "blocked"
+
+
+class FeaturePriority(str, Enum):
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+
+
+class PotentialFeatureStatus(str, Enum):
+    IDEA = "idea"
+
+
+PotentialFeatureId = Annotated[
+    str, Field(strict=True, min_length=1, pattern=r"^POT-[0-9]{3,}$")
+]
+
+
+class PotentialFeatureSpec(StrictContractModel):
+    id: PotentialFeatureId
+    title: NonEmptyStr
+    status: PotentialFeatureStatus
+    context: StrictString | None = None
+    value: list[StrictString] | None = None
+    acceptance_hint: list[StrictString] | None = None
+
+
+class PotentialFeaturesDocument(StrictContractModel):
+    version: Annotated[int, Field(strict=True, ge=1)]
+    description: StrictString | None = None
+    potential_features: list[PotentialFeatureSpec] = Field(default_factory=list)
+
+
+class GateDefinition(StrictContractModel):
+    run: NonEmptyStr
+
+
+class GateConfigDocument(StrictContractModel):
+    profiles: dict[NonEmptyStr, list[NonEmptyStr]]
+    gates: dict[NonEmptyStr, GateDefinition]
+
+
+class SubtaskSpec(StrictContractModel):
+    id: SubtaskId
+    title: NonEmptyStr
+    status: FeatureStatus
+    order: Annotated[int, Field(strict=True, ge=1)]
+    context: StrictString | None = None
+    constraints: list[StrictString] | None = None
+    verification: Annotated[list[StrictString], Field(min_length=1)]
+    attempts: Annotated[int, Field(strict=True, ge=0)] | None = None
+    last_error: StrictString | None = None
+    notes: list[StrictString] | None = None
+
+
+class FeatureSpec(StrictContractModel):
+    model_config = ConfigDict(extra="forbid", title="Agent Harness Feature")
+
+    id: FeatureId
+    title: NonEmptyStr
+    status: FeatureStatus
+    priority: FeaturePriority
+    objective: NonEmptyStr
+    context: StrictString | None = None
+    constraints: list[StrictString] | None = None
+    implementation_notes: StrictString | None = None
+    acceptance: Annotated[list[StrictString], Field(min_length=1)]
+    subtasks: list[SubtaskSpec] = Field(default_factory=list)
+    updated_at: StrictString | None = None
+
+    @model_validator(mode="after")
+    def enforce_invariants(self) -> FeatureSpec:
+        """Apply repository feature invariants in the model layer."""
+        errors: list[dict[str, Any]] = []
+
+        subtask_ids: set[str] = set()
+        subtask_orders: set[int] = set()
+        in_progress_count = 0
+        done_count = 0
+        ordered_subtasks: list[tuple[int, int, SubtaskSpec]] = []
+
+        for idx, subtask in enumerate(self.subtasks):
+            if subtask.id in subtask_ids:
+                errors.append(
+                    {
+                        "type": PydanticCustomError(
+                            "value_error", f"duplicate subtask id: {subtask.id}"
+                        ),
+                        "loc": ("subtasks", idx, "id"),
+                        "input": subtask.id,
+                    }
+                )
+            subtask_ids.add(subtask.id)
+
+            if subtask.order in subtask_orders:
+                errors.append(
+                    {
+                        "type": PydanticCustomError(
+                            "value_error", f"duplicate order: {subtask.order}"
+                        ),
+                        "loc": ("subtasks", idx, "order"),
+                        "input": subtask.order,
+                    }
+                )
+            subtask_orders.add(subtask.order)
+
+            ordered_subtasks.append((subtask.order, idx, subtask))
+
+            if subtask.status == FeatureStatus.IN_PROGRESS:
+                in_progress_count += 1
+            if subtask.status == FeatureStatus.DONE:
+                done_count += 1
+
+        if in_progress_count > 1:
+            errors.append(
+                {
+                    "type": PydanticCustomError(
+                        "value_error",
+                        "at most one subtask can be in_progress per feature",
+                    ),
+                    "loc": ("subtasks",),
+                    "input": [subtask.status for subtask in self.subtasks],
+                }
+            )
+
+        if subtask_orders:
+            expected = set(range(1, len(self.subtasks) + 1))
+            if subtask_orders != expected:
+                errors.append(
+                    {
+                        "type": PydanticCustomError(
+                            "value_error",
+                            "subtask order values must be contiguous and start at 1 "
+                            f"(expected {sorted(expected)}, got {sorted(subtask_orders)})",
+                        ),
+                        "loc": ("subtasks",),
+                        "input": sorted(subtask_orders),
+                    }
+                )
+
+        seen_non_done = False
+        for order, idx, subtask in sorted(ordered_subtasks, key=lambda item: item[0]):
+            if subtask.status != FeatureStatus.DONE:
+                seen_non_done = True
+            elif seen_non_done:
+                errors.append(
+                    {
+                        "type": PydanticCustomError(
+                            "value_error",
+                            "done subtasks must form a contiguous prefix by order; "
+                            f"order {order} cannot be done when earlier subtasks are not done",
+                        ),
+                        "loc": ("subtasks", idx, "status"),
+                        "input": subtask.status,
+                    }
+                )
+
+        subtask_count = len(self.subtasks)
+        all_done = subtask_count > 0 and done_count == subtask_count
+        any_in_progress = in_progress_count > 0
+
+        if self.status == FeatureStatus.DONE and not all_done:
+            errors.append(
+                {
+                    "type": PydanticCustomError(
+                        "value_error", "feature status done requires all subtasks done"
+                    ),
+                    "loc": ("status",),
+                    "input": self.status,
+                }
+            )
+
+        if any_in_progress and self.status != FeatureStatus.IN_PROGRESS:
+            errors.append(
+                {
+                    "type": PydanticCustomError(
+                        "value_error",
+                        "feature with in_progress subtask must be in_progress",
+                    ),
+                    "loc": ("status",),
+                    "input": self.status,
+                }
+            )
+
+        if all_done and self.status != FeatureStatus.DONE:
+            errors.append(
+                {
+                    "type": PydanticCustomError(
+                        "value_error", "feature with all subtasks done must be done"
+                    ),
+                    "loc": ("status",),
+                    "input": self.status,
+                }
+            )
+
+        if errors:
+            raise ValidationError.from_exception_data(self.__class__.__name__, errors)
+
+        return self
 
 
 @dataclass
@@ -73,151 +293,93 @@ def load_schema(schema_path: Path) -> dict[str, Any]:
         return json.load(f)
 
 
-def schema_issues(
-    feature: dict[str, Any], schema: dict[str, Any], file_path: Path
+def feature_schema_from_model() -> dict[str, Any]:
+    """Return feature schema generated from the Pydantic feature model."""
+    schema = FeatureSpec.model_json_schema(mode="validation")
+    schema["$schema"] = JSON_SCHEMA_DRAFT_URL
+    return schema
+
+
+def _path_from_pydantic_loc(loc: tuple[Any, ...]) -> str:
+    parts: list[str] = []
+    for segment in loc:
+        if isinstance(segment, int):
+            if parts:
+                parts[-1] = f"{parts[-1]}[{segment}]"
+            else:
+                parts.append(f"[{segment}]")
+            continue
+        parts.append(str(segment))
+    if not parts:
+        return "<root>"
+    return ".".join(parts).replace(".[", "[")
+
+
+def feature_contract_issues(
+    feature: dict[str, Any], file_path: Path
 ) -> list[ValidationIssue]:
-    """Collect schema-validation issues for one feature document.
-
-    Args:
-        feature: Feature mapping to validate.
-        schema: Loaded JSON schema mapping.
-        file_path: Source path used in issue reporting.
-
-    Returns:
-        Validation issues produced by schema checks.
-    """
-    validator = Draft202012Validator(schema)
-    issues: list[ValidationIssue] = []
-    for error in sorted(validator.iter_errors(feature), key=lambda e: str(e.path)):
-        path_parts = [str(p) for p in error.absolute_path]
-        path = ".".join(path_parts) if path_parts else "<root>"
-        issues.append(
-            ValidationIssue(path=f"{file_path}:{path}", message=error.message)
-        )
-    return issues
-
-
-def custom_issues(feature: dict[str, Any], file_path: Path) -> list[ValidationIssue]:
-    """Collect custom rule violations for one feature document.
+    """Collect strict contract validation issues for one feature document.
 
     Args:
         feature: Feature mapping to validate.
         file_path: Source path used in issue reporting.
 
     Returns:
-        Validation issues produced by repository-specific rules.
+        Validation issues produced by strict Pydantic contract checks.
     """
-    issues: list[ValidationIssue] = []
-    subtasks = feature.get("subtasks", [])
+    return _model_contract_issues(
+        model_type=FeatureSpec,
+        payload=feature,
+        file_path=file_path,
+    )
 
-    subtask_ids: set[str] = set()
-    subtask_orders: set[int] = set()
-    in_progress_count = 0
-    done_count = 0
 
-    ordered_subtasks: list[tuple[int, int, dict[str, Any]]] = []
+def potential_features_contract_issues(
+    document: dict[str, Any], file_path: Path
+) -> list[ValidationIssue]:
+    """Collect strict contract issues for potential features backlog YAML."""
+    return _model_contract_issues(
+        model_type=PotentialFeaturesDocument,
+        payload=document,
+        file_path=file_path,
+    )
 
-    for idx, subtask in enumerate(subtasks):
-        sid = subtask.get("id")
-        status = subtask.get("status")
-        order = subtask.get("order")
-        prefix = f"subtasks[{idx}]"
 
-        if sid in subtask_ids:
+def gate_contract_issues(
+    document: dict[str, Any], file_path: Path
+) -> list[ValidationIssue]:
+    """Collect strict contract issues for gate configuration YAML."""
+    return _model_contract_issues(
+        model_type=GateConfigDocument,
+        payload=document,
+        file_path=file_path,
+    )
+
+
+def _model_contract_issues(
+    model_type: type[BaseModel],
+    payload: dict[str, Any],
+    file_path: Path,
+) -> list[ValidationIssue]:
+    """Collect deterministic issues produced by strict model validation."""
+    try:
+        model_type.model_validate(payload)
+    except ValidationError as exc:
+        issues: list[ValidationIssue] = []
+        errors = sorted(
+            exc.errors(include_url=False),
+            key=lambda err: _path_from_pydantic_loc(tuple(err.get("loc", ()))),
+        )
+        for error in errors:
+            path = _path_from_pydantic_loc(tuple(error.get("loc", ())))
             issues.append(
                 ValidationIssue(
-                    path=f"{file_path}:{prefix}.id",
-                    message=f"duplicate subtask id: {sid}",
+                    path=f"{file_path}:{path}",
+                    message=str(error.get("msg", "invalid value")),
                 )
             )
-        subtask_ids.add(sid)
-
-        if order in subtask_orders:
-            issues.append(
-                ValidationIssue(
-                    path=f"{file_path}:{prefix}.order",
-                    message=f"duplicate order: {order}",
-                )
-            )
-        subtask_orders.add(order)
-
-        if isinstance(order, int):
-            ordered_subtasks.append((order, idx, subtask))
-
-        if status == "in_progress":
-            in_progress_count += 1
-        if status == "done":
-            done_count += 1
-
-    if in_progress_count > 1:
-        issues.append(
-            ValidationIssue(
-                path=f"{file_path}:subtasks",
-                message="at most one subtask can be in_progress per feature",
-            )
-        )
-
-    if subtask_orders:
-        expected = set(range(1, len(subtasks) + 1))
-        if subtask_orders != expected:
-            issues.append(
-                ValidationIssue(
-                    path=f"{file_path}:subtasks",
-                    message=(
-                        "subtask order values must be contiguous and start at 1 "
-                        f"(expected {sorted(expected)}, got {sorted(subtask_orders)})"
-                    ),
-                )
-            )
-
-    if ordered_subtasks:
-        seen_non_done = False
-        for order, idx, subtask in sorted(ordered_subtasks, key=lambda item: item[0]):
-            status = str(subtask.get("status", ""))
-
-            if status != "done":
-                seen_non_done = True
-            elif seen_non_done:
-                issues.append(
-                    ValidationIssue(
-                        path=f"{file_path}:subtasks[{idx}].status",
-                        message=(
-                            "done subtasks must form a contiguous prefix by order; "
-                            f"order {order} cannot be done when earlier subtasks are not done"
-                        ),
-                    )
-                )
-
-    feature_status = feature.get("status")
-    subtask_count = len(subtasks)
-    all_done = subtask_count > 0 and done_count == subtask_count
-    any_in_progress = in_progress_count > 0
-
-    if feature_status == "done" and not all_done:
-        issues.append(
-            ValidationIssue(
-                path=f"{file_path}:status",
-                message="feature status done requires all subtasks done",
-            )
-        )
-
-    if any_in_progress and feature_status != "in_progress":
-        issues.append(
-            ValidationIssue(
-                path=f"{file_path}:status",
-                message="feature with in_progress subtask must be in_progress",
-            )
-        )
-
-    if all_done and feature_status != "done":
-        issues.append(
-            ValidationIssue(
-                path=f"{file_path}:status",
-                message="feature with all subtasks done must be done",
-            )
-        )
-
-    return issues
+        return issues
+    return []
 
 
 def feature_sort_key(feature: dict[str, Any]) -> tuple[int, str]:

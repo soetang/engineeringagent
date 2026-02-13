@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
   "PyYAML>=6.0.2",
-  "jsonschema>=4.23.0",
+  "pydantic>=2.11.0",
 ]
 
 [project.scripts]

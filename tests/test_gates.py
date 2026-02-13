@@ -4,6 +4,7 @@ from argparse import Namespace
 from pathlib import Path
 from typing import Any
 
+import pytest
 import yaml
 
 from engineeringagent.cli import cmd_gates_run
@@ -58,3 +59,34 @@ def test_empty_profile_returns_friendly_success_message(
 
     assert code == 0
     assert "gates profile has no configured gates: precommit" in output
+
+
+def test_load_gate_config_rejects_invalid_contract(tmp_path: Path) -> None:
+    gates_path = tmp_path / "harness" / "gates.yaml"
+    gates_path.parent.mkdir(parents=True, exist_ok=True)
+    gates_path.write_text(
+        yaml.safe_dump(
+            {
+                "profiles": {
+                    "precommit": ["yaml_validate"],
+                },
+                "gates": {
+                    "yaml_validate": {
+                        "run": 123,
+                        "extra": True,
+                    }
+                },
+            },
+            sort_keys=False,
+            allow_unicode=False,
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError) as excinfo:
+        load_gate_config(gates_path)
+
+    message = str(excinfo.value)
+    assert "invalid gates config" in message
+    assert "gates.yaml:gates.yaml_validate.extra" in message
+    assert "gates.yaml:gates.yaml_validate.run" in message

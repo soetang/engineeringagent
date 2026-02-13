@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import json
 import shutil
 from pathlib import Path
 
 import pytest
 import yaml
 
+from engineeringagent.specs import feature_schema_from_model
 from engineeringagent.validator import validate
 
 
@@ -30,8 +32,8 @@ def _make_invalid_project(tmp_path: Path, fixture_name: str) -> Path:
 @pytest.mark.parametrize(
     ("fixture_name", "expected"),
     [
-        ("missing-objective.yaml", "'objective' is a required property"),
-        ("bad-status.yaml", "'doing' is not one of"),
+        ("missing-objective.yaml", "Field required"),
+        ("bad-status.yaml", "Input should be 'backlog'"),
         ("illegal-transition.yaml", "feature status done requires all subtasks done"),
     ],
 )
@@ -46,6 +48,139 @@ def test_invalid_spec_fixtures_report_clear_errors(
 
     assert messages
     assert any(expected in message for message in messages)
+
+
+def test_validate_reports_enum_unknown_and_type_errors(tmp_path: Path) -> None:
+    project_root = tmp_path
+    features_dir = project_root / "docs" / "spec" / "features"
+    features_dir.mkdir(parents=True, exist_ok=True)
+
+    feature_path = features_dir / "FEAT-903-contract-errors.yaml"
+    feature_path.write_text(
+        yaml.safe_dump(
+            {
+                "id": "FEAT-903",
+                "title": "Contract violations",
+                "status": "doing",
+                "priority": "high",
+                "objective": "Force strict contract failures.",
+                "acceptance": ["Validator reports strict errors."],
+                "subtasks": [
+                    {
+                        "id": "ST-001",
+                        "title": "Bad order type",
+                        "status": "backlog",
+                        "order": "first",
+                        "verification": ["true"],
+                    }
+                ],
+                "unknown_field": True,
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    messages = validate(project_root=project_root)
+
+    assert messages
+    assert any(
+        "status" in message and "Input should be 'backlog'" in message
+        for message in messages
+    )
+    assert any(
+        "subtasks[0].order" in message and "valid integer" in message
+        for message in messages
+    )
+    assert any(
+        "unknown_field" in message and "Extra inputs are not permitted" in message
+        for message in messages
+    )
+
+
+def test_validate_missing_required_fields_with_pydantic(tmp_path: Path) -> None:
+    project_root = tmp_path
+    features_dir = project_root / "docs" / "spec" / "features"
+    features_dir.mkdir(parents=True, exist_ok=True)
+
+    feature_path = features_dir / "FEAT-904-missing-required.yaml"
+    feature_path.write_text(
+        yaml.safe_dump(
+            {
+                "id": "FEAT-904",
+                "title": "Missing fields",
+                "status": "backlog",
+                "priority": "high",
+                "acceptance": ["Missing required fields are reported."],
+                "subtasks": [
+                    {
+                        "id": "ST-001",
+                        "title": "No verification",
+                        "status": "backlog",
+                        "order": 1,
+                    }
+                ],
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    messages = validate(project_root=project_root)
+
+    assert messages
+    assert any(
+        "objective" in message and "Field required" in message for message in messages
+    )
+    assert any(
+        "subtasks[0].verification" in message and "Field required" in message
+        for message in messages
+    )
+
+
+def test_validate_reports_invalid_potential_features_contract(tmp_path: Path) -> None:
+    project_root = tmp_path
+    potential_features_path = project_root / "docs" / "spec" / "potential_features.yaml"
+    potential_features_path.parent.mkdir(parents=True, exist_ok=True)
+    potential_features_path.write_text(
+        yaml.safe_dump(
+            {
+                "version": 1,
+                "description": "Potential features backlog",
+                "potential_features": [
+                    {
+                        "id": "POT-001",
+                        "title": "Bad contract",
+                        "status": "queued",
+                        "context": "Use strict status enum.",
+                        "value": ["Contract rejects unknown enums."],
+                        "unexpected": True,
+                    }
+                ],
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    messages = validate(project_root=project_root)
+
+    assert messages
+    assert any(
+        "potential_features[0].status" in message
+        and "Input should be 'idea'" in message
+        for message in messages
+    )
+    assert any(
+        "potential_features[0].unexpected" in message
+        and "Extra inputs are not permitted" in message
+        for message in messages
+    )
+
+
+def test_feature_schema_artifact_generated_from_pydantic_model() -> None:
+    schema_payload = json.loads(SCHEMA_SOURCE.read_text(encoding="utf-8"))
+    assert schema_payload == feature_schema_from_model()
 
 
 def test_validate_reports_done_feature_left_in_active_directory(
@@ -141,3 +276,174 @@ def test_validate_transitional_policy_for_preexisting_done_features(
     messages = validate(project_root=project_root)
 
     assert messages == []
+
+
+def test_validate_preserves_subtask_order_and_done_prefix_rules(tmp_path: Path) -> None:
+    project_root = tmp_path
+    features_dir = project_root / "docs" / "spec" / "features"
+    features_dir.mkdir(parents=True, exist_ok=True)
+
+    (features_dir / "FEAT-905-noncontiguous-order.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "id": "FEAT-905",
+                "title": "Noncontiguous subtask order",
+                "status": "backlog",
+                "priority": "high",
+                "objective": "Preserve contiguous order rule.",
+                "acceptance": ["Validator reports contiguous order violations."],
+                "subtasks": [
+                    {
+                        "id": "ST-001",
+                        "title": "First",
+                        "status": "backlog",
+                        "order": 1,
+                        "verification": ["true"],
+                    },
+                    {
+                        "id": "ST-002",
+                        "title": "Second",
+                        "status": "backlog",
+                        "order": 3,
+                        "verification": ["true"],
+                    },
+                ],
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    (features_dir / "FEAT-906-done-prefix-break.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "id": "FEAT-906",
+                "title": "Done prefix violation",
+                "status": "in_progress",
+                "priority": "high",
+                "objective": "Preserve done-prefix rule.",
+                "acceptance": ["Validator reports done-prefix violations."],
+                "subtasks": [
+                    {
+                        "id": "ST-001",
+                        "title": "First",
+                        "status": "backlog",
+                        "order": 1,
+                        "verification": ["true"],
+                    },
+                    {
+                        "id": "ST-002",
+                        "title": "Second",
+                        "status": "done",
+                        "order": 2,
+                        "verification": ["true"],
+                    },
+                ],
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    messages = validate(project_root=project_root)
+
+    assert any(
+        "subtask order values must be contiguous and start at 1" in message
+        for message in messages
+    )
+    assert any(
+        "done subtasks must form a contiguous prefix by order" in message
+        for message in messages
+    )
+
+
+def test_validate_preserves_feature_status_invariant_rules(tmp_path: Path) -> None:
+    project_root = tmp_path
+    features_dir = project_root / "docs" / "spec" / "features"
+    features_dir.mkdir(parents=True, exist_ok=True)
+
+    (features_dir / "FEAT-907-done-with-open-subtasks.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "id": "FEAT-907",
+                "title": "Done but subtask open",
+                "status": "done",
+                "priority": "high",
+                "objective": "Preserve done status invariant.",
+                "acceptance": ["Validator reports done status mismatch."],
+                "subtasks": [
+                    {
+                        "id": "ST-001",
+                        "title": "Open",
+                        "status": "backlog",
+                        "order": 1,
+                        "verification": ["true"],
+                    }
+                ],
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    (features_dir / "FEAT-908-inprogress-subtask-on-backlog.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "id": "FEAT-908",
+                "title": "In progress subtask on backlog feature",
+                "status": "backlog",
+                "priority": "high",
+                "objective": "Preserve in-progress status invariant.",
+                "acceptance": ["Validator reports feature status mismatch."],
+                "subtasks": [
+                    {
+                        "id": "ST-001",
+                        "title": "Running",
+                        "status": "in_progress",
+                        "order": 1,
+                        "verification": ["true"],
+                    }
+                ],
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    (features_dir / "FEAT-909-all-done-not-done-feature.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "id": "FEAT-909",
+                "title": "All done but feature not done",
+                "status": "in_progress",
+                "priority": "high",
+                "objective": "Preserve all-done status invariant.",
+                "acceptance": ["Validator reports all-done mismatch."],
+                "subtasks": [
+                    {
+                        "id": "ST-001",
+                        "title": "Complete",
+                        "status": "done",
+                        "order": 1,
+                        "verification": ["true"],
+                    }
+                ],
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    messages = validate(project_root=project_root)
+
+    assert any(
+        "feature status done requires all subtasks done" in message
+        for message in messages
+    )
+    assert any(
+        "feature with in_progress subtask must be in_progress" in message
+        for message in messages
+    )
+    assert any(
+        "feature with all subtasks done must be done" in message for message in messages
+    )

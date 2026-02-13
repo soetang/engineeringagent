@@ -5,6 +5,8 @@ from pathlib import Path
 
 import yaml
 
+from .specs import feature_schema_from_model
+
 
 def build_scaffold_agents_markdown() -> str:
     """Build baseline AGENTS.md guidance for scaffolded repositories."""
@@ -106,35 +108,7 @@ def build_baseline_scaffold_manifest(docs_dir: str = "docs") -> dict[str, str]:
             allow_unicode=False,
         ),
         f"{normalized_docs_dir}/spec/schemas/feature.schema.json": json.dumps(
-            {
-                "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "title": "EngineeringAgent Feature",
-                "type": "object",
-                "additionalProperties": False,
-                "required": [
-                    "id",
-                    "title",
-                    "status",
-                    "priority",
-                    "objective",
-                    "acceptance",
-                ],
-                "properties": {
-                    "id": {"type": "string", "pattern": "^FEAT-[0-9]{3,}$"},
-                    "title": {"type": "string", "minLength": 1},
-                    "status": {
-                        "type": "string",
-                        "enum": ["backlog", "in_progress", "done", "blocked"],
-                    },
-                    "priority": {"type": "string", "enum": ["high", "medium", "low"]},
-                    "objective": {"type": "string", "minLength": 1},
-                    "acceptance": {
-                        "type": "array",
-                        "minItems": 1,
-                        "items": {"type": "string"},
-                    },
-                },
-            },
+            feature_schema_from_model(),
             indent=2,
         )
         + "\n",

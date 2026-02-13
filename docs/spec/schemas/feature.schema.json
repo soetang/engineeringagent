@@ -1,8 +1,224 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Agent Harness Feature",
-  "type": "object",
+  "$defs": {
+    "FeaturePriority": {
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ],
+      "title": "FeaturePriority",
+      "type": "string"
+    },
+    "FeatureStatus": {
+      "enum": [
+        "backlog",
+        "in_progress",
+        "done",
+        "blocked"
+      ],
+      "title": "FeatureStatus",
+      "type": "string"
+    },
+    "SubtaskSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "pattern": "^ST-[0-9]{3,}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/FeatureStatus"
+        },
+        "order": {
+          "minimum": 1,
+          "title": "Order",
+          "type": "integer"
+        },
+        "context": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Context"
+        },
+        "constraints": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Constraints"
+        },
+        "verification": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Verification",
+          "type": "array"
+        },
+        "attempts": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Attempts"
+        },
+        "last_error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Error"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notes"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "status",
+        "order",
+        "verification"
+      ],
+      "title": "SubtaskSpec",
+      "type": "object"
+    }
+  },
   "additionalProperties": false,
+  "properties": {
+    "id": {
+      "minLength": 1,
+      "pattern": "^FEAT-[0-9]{3,}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "title": {
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/FeatureStatus"
+    },
+    "priority": {
+      "$ref": "#/$defs/FeaturePriority"
+    },
+    "objective": {
+      "minLength": 1,
+      "title": "Objective",
+      "type": "string"
+    },
+    "context": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Context"
+    },
+    "constraints": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Constraints"
+    },
+    "implementation_notes": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Implementation Notes"
+    },
+    "acceptance": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Acceptance",
+      "type": "array"
+    },
+    "subtasks": {
+      "items": {
+        "$ref": "#/$defs/SubtaskSpec"
+      },
+      "title": "Subtasks",
+      "type": "array"
+    },
+    "updated_at": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Updated At"
+    }
+  },
   "required": [
     "id",
     "title",
@@ -11,103 +227,7 @@
     "objective",
     "acceptance"
   ],
-  "properties": {
-    "id": {
-      "type": "string",
-      "pattern": "^FEAT-[0-9]{3,}$"
-    },
-    "title": {
-      "type": "string",
-      "minLength": 1
-    },
-    "status": {
-      "type": "string",
-      "enum": ["backlog", "in_progress", "done", "blocked"]
-    },
-    "priority": {
-      "type": "string",
-      "enum": ["high", "medium", "low"]
-    },
-    "objective": {
-      "type": "string",
-      "minLength": 1
-    },
-    "context": {
-      "type": "string"
-    },
-    "constraints": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
-    "implementation_notes": {
-      "type": "string"
-    },
-    "acceptance": {
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "type": "string"
-      }
-    },
-    "subtasks": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["id", "title", "status", "order", "verification"],
-        "properties": {
-          "id": {
-            "type": "string",
-            "pattern": "^ST-[0-9]{3,}$"
-          },
-          "title": {
-            "type": "string",
-            "minLength": 1
-          },
-          "status": {
-            "type": "string",
-            "enum": ["backlog", "in_progress", "done", "blocked"]
-          },
-          "order": {
-            "type": "integer",
-            "minimum": 1
-          },
-          "context": {
-            "type": "string"
-          },
-          "constraints": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "verification": {
-            "type": "array",
-            "minItems": 1,
-            "items": {
-              "type": "string"
-            }
-          },
-          "attempts": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "last_error": {
-            "type": "string"
-          },
-          "notes": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        }
-      }
-    },
-    "updated_at": {
-      "type": "string"
-    }
-  }
+  "title": "Agent Harness Feature",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
 }
