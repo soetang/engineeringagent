@@ -29,6 +29,21 @@ Primary flow: `application spec -> run loop`
 
 1. Run for real by removing `--dry-run`.
 
+## Bootstrapping a new repository with `init`
+
+If you are starting in a fresh repository, you can scaffold a baseline harness with:
+
+```bash
+uvx --from . engineeringagent init
+```
+
+`init` creates a starter structure for docs/specs/gates and handles existing `docs/` or
+`AGENTS.md` through explicit conflict choices.
+
+Warning: treat `init` as experimental scaffolding.
+Always inspect generated files, run `uvx --from . engineeringagent validate`, and review
+the git diff before committing anything produced by `init`.
+
 ## What this gives you
 
 - Deterministic progress: one spec file at a time.
