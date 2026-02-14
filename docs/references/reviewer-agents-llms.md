@@ -99,6 +99,36 @@ Plain-English behavior:
 - Uses blocking policy with retry (`max_retries: 2`) and continues with warning on exhaustion when `continue_on_exhausted` is true.
 - When bootstrap fails, required actions must classify the fix surface as README instructions, init/scaffold behavior, or both.
 
+## Default `code_simplifier` reviewer
+
+Use this built-in reviewer when you want simplification guidance on code changes at
+`iteration_end` without default hard-blocking completion behavior.
+
+Copy-pastable `code_simplifier` entry:
+
+```yaml
+code_simplifier:
+  prompt_file: "harness/reviewers/prompts/code_simplifier.md"
+  trigger:
+    phase: "iteration_end"
+    on_change:
+      - "src/**/*.py"
+      - "tests/**/*.py"
+  approval:
+    mode: "advisory"
+    first_feature_approval: true
+    max_retries: 2
+    continue_on_exhausted: true
+```
+
+Plain-English behavior:
+
+- Runs at `iteration_end` only when changed paths match configured code globs.
+- Returns v1 decision JSON (`approve`, `warning`, or `request_changes`) from a harness-managed prompt file.
+- `warning` and `request_changes` are advisory outcomes that require one follow-up implement pass before completion commit eligibility.
+- Does not hard-block completion by default when advice is returned.
+- Non-JSON or malformed output is treated as deterministic advisory guidance that still requires one follow-up implement pass.
+
 ## Decision envelope contract
 
 Reviewer output must be JSON object with required fields:

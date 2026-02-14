@@ -34,6 +34,22 @@ def test_markdown_reference_coverage_passes_with_non_self_reference(
     assert _violations(result) == []
 
 
+def test_markdown_reference_coverage_passes_for_reviewer_prompt_with_reference(
+    tmp_path: Path,
+) -> None:
+    _write_file(tmp_path, "harness/reviewers/prompts/code_simplifier.md")
+    _write_file(
+        tmp_path,
+        "src/engineeringagent/init_scaffold.py",
+        'PROMPT_PATH = "harness/reviewers/prompts/code_simplifier.md"\n',
+    )
+
+    result = evaluate_markdown_locality_reference_coverage(tmp_path)
+
+    assert result["status"] == "pass"
+    assert _violations(result) == []
+
+
 def test_markdown_reference_coverage_fails_when_non_doc_markdown_is_unreferenced(
     tmp_path: Path,
 ) -> None:

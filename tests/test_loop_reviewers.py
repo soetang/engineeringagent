@@ -194,6 +194,92 @@ def test_advisory_feedback_requires_one_followup_implement_pass(tmp_path: Path) 
     assert len(restore_calls) == 1
 
 
+def test_code_simplifier_advisory_requires_one_followup_implement_pass(
+    tmp_path: Path,
+) -> None:
+    config = {
+        "profiles": {"loop_fast": ["code_simplifier"]},
+        "reviewers": {
+            "code_simplifier": {
+                "prompt_file": "harness/reviewers/prompts/code_simplifier.md",
+                "trigger": {
+                    "phase": "feature_done",
+                    "on_change": ["src/**/*.py", "tests/**/*.py"],
+                },
+                "approval": {"mode": "advisory"},
+            }
+        },
+    }
+    state_box: dict[str, dict[str, Any]] = {"state": {"version": "1", "features": {}}}
+    restore_calls: list[tuple[Path, Path]] = []
+    deps = _deps(
+        config,
+        decision="warning",
+        summary="Simplify nested branching before completion.",
+        changed_paths=("src/engineeringagent/phases.py",),
+        state_box=state_box,
+        restore_calls=restore_calls,
+    )
+    archived_path = tmp_path / "docs" / "spec" / "features_done" / "FEAT-054.yaml"
+
+    first = run_reviewer_phase(
+        _iteration_inputs(tmp_path),
+        {"id": "FEAT-054"},
+        archived_in_iteration=True,
+        archived_path=archived_path,
+        dependencies=deps,
+    )
+    second = run_reviewer_phase(
+        _iteration_inputs(tmp_path),
+        {"id": "FEAT-054"},
+        archived_in_iteration=True,
+        archived_path=archived_path,
+        dependencies=deps,
+    )
+
+    assert first.result == "failed"
+    assert first.failed_gate == "reviewer_advisory_followup"
+    assert second.result == "passed"
+    assert second.failed_gate is None
+    assert len(restore_calls) == 1
+
+
+def test_code_simplifier_advisory_does_not_hard_block_by_default(
+    tmp_path: Path,
+) -> None:
+    config = {
+        "profiles": {"loop_fast": ["code_simplifier"]},
+        "reviewers": {
+            "code_simplifier": {
+                "prompt_file": "harness/reviewers/prompts/code_simplifier.md",
+                "trigger": {
+                    "phase": "iteration_end",
+                    "on_change": ["src/**/*.py", "tests/**/*.py"],
+                },
+                "approval": {"mode": "advisory"},
+            }
+        },
+    }
+    outcome = run_reviewer_phase(
+        _iteration_inputs(tmp_path),
+        {"id": "FEAT-054"},
+        archived_in_iteration=False,
+        archived_path=None,
+        dependencies=_deps(
+            config,
+            decision="warning",
+            summary="Advisory simplification suggestions only.",
+            changed_paths=("src/engineeringagent/phases.py",),
+        ),
+    )
+
+    assert outcome.result == "passed"
+    assert outcome.failed_gate is None
+    assert outcome.reviewer_status == "passed:advisory"
+    assert outcome.reviewer_decision == "warning"
+    assert "reviewer 'code_simplifier' advisory feedback" in str(outcome.hook_feedback)
+
+
 def test_blocking_reviewer_exhausted_continues_with_warning_by_default(
     tmp_path: Path,
 ) -> None:

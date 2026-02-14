@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from importlib.resources import files
 from pathlib import Path
 from typing import Any
 
@@ -57,6 +58,14 @@ def test_build_baseline_scaffold_manifest_can_include_reviewers() -> None:
         "README instructions, init/scaffold command behavior, or both" in readme_prompt
     )
     assert "Return strict JSON only" in readme_prompt
+
+    code_simplifier_prompt = manifest["harness/reviewers/prompts/code_simplifier.md"]
+    expected_prompt = (
+        files("engineeringagent.scaffold_templates")
+        .joinpath("reviewer.prompt.code_simplifier.md")
+        .read_text(encoding="utf-8")
+    )
+    assert code_simplifier_prompt == expected_prompt
 
 
 def test_init_include_reviewers_writes_scaffold_files(

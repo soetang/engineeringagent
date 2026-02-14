@@ -202,8 +202,7 @@ def build_baseline_scaffold_manifest(
                     allow_unicode=False,
                 ),
                 "harness/reviewers/prompts/code_simplifier.md": (
-                    "Review scoped code changes for maintainability and readability.\n"
-                    "Return strict JSON only with decision and summary fields.\n"
+                    _render_scaffold_template("reviewer.prompt.code_simplifier.md")
                 ),
                 "harness/reviewers/prompts/readme_process.md": (
                     "Review README.md getting-started/bootstrap instructions for clean-room first-run reliability.\n\n"

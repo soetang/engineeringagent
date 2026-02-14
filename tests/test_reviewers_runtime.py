@@ -59,6 +59,57 @@ def test_plan_reviewers_by_phase_and_change_selectors() -> None:
     ]
 
 
+def test_code_simplifier_plans_only_for_code_scoped_changes() -> None:
+    config = {
+        "profiles": {"loop_fast": ["code_simplifier"]},
+        "reviewers": {
+            "code_simplifier": {
+                "prompt_file": "harness/reviewers/prompts/code_simplifier.md",
+                "trigger": {
+                    "phase": "iteration_end",
+                    "on_change": ["src/**/*.py", "tests/**/*.py"],
+                },
+            }
+        },
+    }
+
+    code_change_decisions = plan_reviewers(
+        config,
+        "loop_fast",
+        phase="iteration_end",
+        changed_paths=ChangedPathsResult(
+            paths=("src/engineeringagent/reviewers.py",),
+            run_all=False,
+            reason=None,
+        ),
+    )
+    assert code_change_decisions == [
+        {
+            "reviewer": "code_simplifier",
+            "decision": "run",
+            "reason": MATCHED_ON_CHANGE_REASON,
+        }
+    ]
+
+    docs_change_decisions = plan_reviewers(
+        config,
+        "loop_fast",
+        phase="iteration_end",
+        changed_paths=ChangedPathsResult(
+            paths=("docs/spec/features/FEAT-054.yaml",),
+            run_all=False,
+            reason=None,
+        ),
+    )
+    assert docs_change_decisions == [
+        {
+            "reviewer": "code_simplifier",
+            "decision": "skip",
+            "reason": NO_ON_CHANGE_MATCH_REASON,
+        }
+    ]
+
+
 def test_plan_reviewers_reports_deterministic_skip_reasons() -> None:
     config = {
         "profiles": {"loop_fast": ["code_simplifier", "readme_process"]},
