@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import dataclasses
 import inspect
 import json
 from inspect import Parameter
@@ -8,6 +7,7 @@ from pathlib import Path
 
 import engineeringagent.loop as loop_module
 import yaml
+from pydantic import BaseModel
 
 from engineeringagent.loop_runtime.models import (
     FeatureIterationInputs,
@@ -113,7 +113,7 @@ def test_loop_facade_signatures_remain_stable() -> None:
 
 def test_iteration_outcome_remains_exposed_on_facade() -> None:
     assert hasattr(loop_module, "IterationOutcome")
-    assert dataclasses.is_dataclass(loop_module.IterationOutcome)
+    assert issubclass(loop_module.IterationOutcome, BaseModel)
 
 
 def test_loop_monkeypatch_seams_remain_available() -> None:

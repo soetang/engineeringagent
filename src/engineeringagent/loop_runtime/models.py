@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from pydantic import BaseModel, ConfigDict
 
-@dataclass(frozen=True)
-class IterationOutcome:
+
+class IterationOutcome(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
     completed: bool
     result: str
     failed_gate: str | None
@@ -19,8 +21,9 @@ class IterationOutcome:
     verification_failed_command: str | None = None
 
 
-@dataclass(frozen=True)
-class InitialFeatureLoadOutcome:
+class InitialFeatureLoadOutcome(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
     feature: dict[str, Any] | None
     loaded_from_archive: bool
     result: str
@@ -28,8 +31,9 @@ class InitialFeatureLoadOutcome:
     hook_feedback: str | None
 
 
-@dataclass(frozen=True)
-class PostImplementFeatureOutcome:
+class PostImplementFeatureOutcome(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
     feature: dict[str, Any] | None
     loaded_from_archive: bool
     archived_in_iteration: bool
@@ -39,8 +43,9 @@ class PostImplementFeatureOutcome:
     hook_feedback: str | None
 
 
-@dataclass(frozen=True)
-class ImplementStepInputs:
+class ImplementStepInputs(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
     project_root: Path
     feature: dict[str, Any]
     feature_path: Path
@@ -51,8 +56,9 @@ class ImplementStepInputs:
     verbose_output: bool
 
 
-@dataclass(frozen=True)
-class FeatureIterationInputs:
+class FeatureIterationInputs(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
     project_root: Path
     feature_path: Path
     gate_profile: str
@@ -64,8 +70,9 @@ class FeatureIterationInputs:
     verbose_output: bool
 
 
-@dataclass(frozen=True)
-class GatePhaseOutcome:
+class GatePhaseOutcome(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
     result: str
     failed_gate: str | None
     gate_status: str
@@ -73,8 +80,9 @@ class GatePhaseOutcome:
     hook_feedback: str | None
 
 
-@dataclass(frozen=True)
-class VerificationPhaseOutcome:
+class VerificationPhaseOutcome(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
     result: str
     verification_status: str
     verification_failed_command: str | None
@@ -82,8 +90,9 @@ class VerificationPhaseOutcome:
     hook_feedback: str | None
 
 
-@dataclass(frozen=True)
-class CompletionCommitOutcome:
+class CompletionCommitOutcome(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
     completed: bool
     completion_commit_succeeded: bool
     result: str
@@ -92,8 +101,9 @@ class CompletionCommitOutcome:
     hook_feedback: str | None
 
 
-@dataclass(frozen=True)
-class IterationTelemetryInputs:
+class IterationTelemetryInputs(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
     iteration_inputs: FeatureIterationInputs
     started: float
     feature_id: str

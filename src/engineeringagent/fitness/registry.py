@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Callable, Sequence
+
+from pydantic import BaseModel, ConfigDict
 
 from .contracts import (
     FitnessRuleResult,
@@ -28,9 +29,10 @@ from .builtin_rules import (
 DEFAULT_CUSTOM_RULE_MANIFEST = Path("harness/fitness-functions/rules.yaml")
 
 
-@dataclass(frozen=True)
-class FitnessRuleDefinition:
+class FitnessRuleDefinition(BaseModel):
     """Executable definition for one registered fitness rule."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     metadata: FitnessRuleMetadata
     origin: str
@@ -220,9 +222,8 @@ def _definition_from_builtin_reference(
     manifest_path: Path,
     index: int,
 ) -> FitnessRuleDefinition:
-    return replace(
-        definition,
-        origin=f"builtin-ref:{manifest_path}:rules[{index}]",
+    return definition.model_copy(
+        update={"origin": f"builtin-ref:{manifest_path}:rules[{index}]"},
     )
 
 

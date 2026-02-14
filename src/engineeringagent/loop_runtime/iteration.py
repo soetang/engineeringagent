@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
+
+from pydantic import BaseModel, ConfigDict
 
 from .models import (
     CompletionCommitOutcome,
@@ -24,8 +25,9 @@ from .phases import (
 )
 
 
-@dataclass(frozen=True)
-class IterationPipelineDependencies:
+class IterationPipelineDependencies(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
     evaluate_initial_feature_load: Callable[[Path, Path], InitialFeatureLoadOutcome]
     ready_for_active_iteration: Callable[[str, dict[str, Any] | None, bool], bool]
     touch_active_feature_for_iteration: Callable[[dict[str, Any], Path], None]

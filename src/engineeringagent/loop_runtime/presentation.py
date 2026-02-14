@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import os
 import sys
-from dataclasses import dataclass
 from typing import Mapping, TextIO
+
+from pydantic import BaseModel, ConfigDict
 
 ANSI_RESET = "\x1b[0m"
 ANSI_BOLD = "\x1b[1m"
@@ -41,9 +42,10 @@ def tty_supports_ansi(
     return True
 
 
-@dataclass(frozen=True)
-class RunOutputPresenter:
+class RunOutputPresenter(BaseModel):
     """Render run-loop summary lines with optional ANSI accents."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     use_ansi: bool
 

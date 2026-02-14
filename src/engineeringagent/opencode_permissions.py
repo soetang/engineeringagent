@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
+
+from pydantic import BaseModel, ConfigDict
 
 from .opencode.client import start_agent
 
@@ -20,8 +21,9 @@ PERMISSION_REJECTION_MARKERS = (
 )
 
 
-@dataclass(frozen=True)
-class PermissionProbeResult:
+class PermissionProbeResult(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
     ok: bool
     reason: str
     returncode: int

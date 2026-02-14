@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Any, Annotated, cast
@@ -269,8 +268,7 @@ class FeatureSpec(StrictContractModel):
         return self
 
 
-@dataclass
-class ValidationIssue:
+class ValidationIssue(StrictContractModel):
     path: str
     message: str
 

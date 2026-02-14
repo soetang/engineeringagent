@@ -1,18 +1,20 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
+
+from pydantic import BaseModel, ConfigDict
 
 from .adapters import execute_rule_definition
 from .contracts import FitnessRuleResult, RuleStatus
 from .registry import FitnessRuleDefinition, build_rule_catalog
 
 
-@dataclass(frozen=True)
-class FitnessRunSummary:
+class FitnessRunSummary(BaseModel):
     """Deterministic aggregate output for one fitness run."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     results: tuple[FitnessRuleResult, ...]
 

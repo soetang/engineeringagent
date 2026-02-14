@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
 import sys
 from typing import Any, Callable
+
+from pydantic import BaseModel, ConfigDict
 
 from .models import (
     CompletionCommitOutcome,
@@ -15,8 +16,9 @@ from .models import (
 )
 
 
-@dataclass(frozen=True)
-class GatePhaseDependencies:
+class GatePhaseDependencies(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
     load_gate_config: Callable[[Path], dict[str, Any]]
     run_profile: Callable[
         [dict[str, Any], str, Path, bool], tuple[bool, str | None, str]
@@ -24,16 +26,18 @@ class GatePhaseDependencies:
     restore_archived_feature: Callable[[Path, Path], tuple[bool, str | None]]
 
 
-@dataclass(frozen=True)
-class CompletionPhaseDependencies:
+class CompletionPhaseDependencies(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
     commit_feature_completion: Callable[
         [Path, dict[str, Any]], tuple[bool, str | None, str]
     ]
     restore_archived_feature: Callable[[Path, Path], tuple[bool, str | None]]
 
 
-@dataclass(frozen=True)
-class VerificationPhaseDependencies:
+class VerificationPhaseDependencies(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
     run_shell_command: Callable[[Path, str], Any]
 
 

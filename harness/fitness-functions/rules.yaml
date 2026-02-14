@@ -18,3 +18,17 @@ rules:
       - run
       - python
       - harness/fitness-functions/check_loop_facade_line_budget.py
+  - rule_id: architecture.no-stdlib-dataclasses-in-src
+    name: No stdlib dataclasses in src
+    summary: Block stdlib dataclasses usage in production source models.
+    rationale: Enforces a single Pydantic BaseModel contract in src/engineeringagent.
+    remediation: Replace stdlib dataclasses usage with pydantic.BaseModel models.
+    scope: src/engineeringagent
+    severity: error
+    side_effect_free: true
+    adapter: command
+    command:
+      - uv
+      - run
+      - python
+      - harness/fitness-functions/check_no_stdlib_dataclasses_in_src.py
