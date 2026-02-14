@@ -17,6 +17,7 @@ from .specs import (
     load_schema,
     load_yaml,
     potential_features_contract_issues,
+    reviewer_contract_issues,
 )
 
 
@@ -52,6 +53,7 @@ def validate(project_root: Path, schema_only: bool = False) -> list[str]:
     schema_path = spec_root / "schemas" / "feature.schema.json"
     potential_features_path = spec_root / "potential_features.yaml"
     gates_path = project_root / "harness" / "gates.yaml"
+    reviewers_path = project_root / "harness" / "reviewers.yaml"
 
     files = iter_feature_files(features_dir)
     done_files = iter_feature_files(features_done_dir)
@@ -72,6 +74,7 @@ def validate(project_root: Path, schema_only: bool = False) -> list[str]:
     _append_done_feature_issues(messages, done_files)
     _append_potential_features_issues(messages, potential_features_path)
     _append_gate_config_issues(messages, gates_path)
+    _append_reviewer_config_issues(messages, reviewers_path)
     _append_agents_docs_map_issues(messages, project_root)
     _append_fitness_catalog_issues(messages, project_root)
 
@@ -138,6 +141,10 @@ def _append_potential_features_issues(
 
 def _append_gate_config_issues(messages: list[str], gates_path: Path) -> None:
     _append_yaml_contract_issues(messages, gates_path, gate_contract_issues)
+
+
+def _append_reviewer_config_issues(messages: list[str], reviewers_path: Path) -> None:
+    _append_yaml_contract_issues(messages, reviewers_path, reviewer_contract_issues)
 
 
 def _append_agents_docs_map_issues(messages: list[str], project_root: Path) -> None:

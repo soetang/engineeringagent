@@ -5,7 +5,7 @@ from typing import Any, Sequence
 
 from pydantic import BaseModel, ConfigDict
 
-from .gates import load_gate_config, run_profile
+from .gates import collect_changed_paths, load_gate_config, run_profile
 from .git.client import (
     add_all,
     commit as git_commit,
@@ -13,6 +13,18 @@ from .git.client import (
     status_porcelain,
 )
 from .opencode.client import run_shell_command, start_agent
+from .reviewers import (
+    advisory_followup_required,
+    clear_advisory_followup_required,
+    evaluate_cached_reviewer_approval,
+    load_reviewer_config,
+    load_reviewers_state,
+    plan_reviewers,
+    record_reviewer_approval,
+    run_reviewer,
+    save_reviewers_state,
+    set_advisory_followup_required,
+)
 from .opencode_permissions import (
     PERMISSION_REMEDIATION_HINT,
     run_permission_probe,
@@ -33,9 +45,11 @@ from .loop_runtime.iteration import (
 from .loop_runtime.phases import (
     CompletionPhaseDependencies,
     GatePhaseDependencies,
+    ReviewerPhaseDependencies,
     VerificationPhaseDependencies,
     run_completion_commit_phase,
     run_gate_phase,
+    run_reviewer_phase,
     run_verification_phase,
 )
 from .loop_runtime.selection import (
@@ -385,6 +399,34 @@ def _run_feature_iteration_with_inputs(
             run_verification_phase=run_verification_phase,
             verification_phase_dependencies=VerificationPhaseDependencies(
                 run_shell_command=run_shell_command,
+            ),
+            run_reviewer_phase=run_reviewer_phase,
+            reviewer_phase_dependencies=ReviewerPhaseDependencies(
+                load_reviewer_config=load_reviewer_config,
+                collect_changed_paths=collect_changed_paths,
+                load_reviewers_state=load_reviewers_state,
+                save_reviewers_state=save_reviewers_state,
+                plan_reviewers=plan_reviewers,
+                evaluate_cached_reviewer_approval=evaluate_cached_reviewer_approval,
+                run_reviewer=run_reviewer,
+                record_reviewer_approval=record_reviewer_approval,
+                advisory_followup_required=(
+                    lambda state, feature_id: advisory_followup_required(
+                        state, feature_id=feature_id
+                    )
+                ),
+                set_advisory_followup_required=(
+                    lambda state, feature_id: set_advisory_followup_required(
+                        state, feature_id=feature_id
+                    )
+                ),
+                clear_advisory_followup_required=(
+                    lambda state, feature_id: clear_advisory_followup_required(
+                        state, feature_id=feature_id
+                    )
+                ),
+                restore_archived_feature=_restore_archived_feature,
+                start_agent=start_agent,
             ),
             run_completion_commit_phase=run_completion_commit_phase,
             completion_phase_dependencies=CompletionPhaseDependencies(

@@ -90,6 +90,16 @@ class VerificationPhaseOutcome(BaseModel):
     hook_feedback: str | None
 
 
+class ReviewerPhaseOutcome(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    result: str
+    failed_gate: str | None
+    reviewer_status: str
+    reviewer_output: str
+    hook_feedback: str | None
+
+
 class CompletionCommitOutcome(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 

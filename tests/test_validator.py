@@ -292,6 +292,35 @@ def test_validate_reports_yaml_parse_errors_across_validator_inputs(
     assert any("harness/gates.yaml: failed to parse YAML" in m for m in messages)
 
 
+def test_validate_reports_invalid_reviewer_contract(tmp_path: Path) -> None:
+    reviewers_path = tmp_path / "harness" / "reviewers.yaml"
+    reviewers_path.parent.mkdir(parents=True, exist_ok=True)
+    reviewers_path.write_text(
+        yaml.safe_dump(
+            {
+                "contract_version": "1.0",
+                "profiles": {"loop_fast": ["readme_process"]},
+                "reviewers": {
+                    "readme_process": {
+                        "prompt_file": "README.md",
+                        "trigger": {"phase": "feature_done"},
+                    }
+                },
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    messages = validate(project_root=tmp_path)
+
+    assert any(
+        "harness/reviewers.yaml:reviewers.readme_process" in message
+        and "harness/reviewers/prompts/" in message
+        for message in messages
+    )
+
+
 def test_validate_accepts_agents_docs_map_glob_when_it_matches(tmp_path: Path) -> None:
     docs_dir = tmp_path / "docs"
     docs_dir.mkdir(parents=True, exist_ok=True)

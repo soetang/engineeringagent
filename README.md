@@ -78,6 +78,13 @@ the git diff before committing anything produced by `init`.
 - [Harness Engineering Principles](docs/principles/harness-engineering-principles.md): deeper human context.
 - `AGENTS.md` and `docs/references/*-llms.md`: agent execution rules and deterministic procedures.
 
+## Reviewer agents (optional)
+
+- Reviewer agents are a harness-managed complement to deterministic gates, configured in `harness/reviewers.yaml`.
+- Use `uvx engineeringagent reviewers init` to scaffold a baseline config and prompt files under `harness/reviewers/prompts/`.
+- Use `uvx engineeringagent reviewers list|plan|run` to inspect and test reviewer behavior.
+- For full contract, policy semantics, decision-envelope examples, and troubleshooting, see [Reviewer agents reference](docs/references/reviewer-agents-llms.md).
+
 ## Core files to know
 
 - `docs/spec/features/`: active feature specs (`backlog`, `in_progress`, `blocked`)

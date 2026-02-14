@@ -45,6 +45,7 @@ Keep this file concise. Add durable references and rules, not task logs.
 - `docs/principles/harness-engineering-principles.md`
 - `docs/references/docs-architecture-llms.md`
 - `docs/references/python-uv-ruff-llms.md`
+- `docs/references/reviewer-agents-llms.md`
 - `docs/references/spec-writing-llms.md`
 - `docs/references/uv-llms.md`
 - `docs/spec/features/`

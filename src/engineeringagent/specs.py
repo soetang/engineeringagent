@@ -116,6 +116,69 @@ class GateConfigDocument(StrictContractModel):
     gates: dict[NonEmptyStr, GateDefinition]
 
 
+class ReviewerTriggerPhase(str, Enum):
+    ITERATION_END = "iteration_end"
+    FEATURE_DONE = "feature_done"
+
+
+class ReviewerApprovalMode(str, Enum):
+    ADVISORY = "advisory"
+    BLOCKING = "blocking"
+
+
+class ReviewerSandboxMode(str, Enum):
+    TEMP_WORKTREE_SNAPSHOT = "temp_worktree_snapshot"
+
+
+class ReviewerTriggerDefinition(StrictContractModel):
+    phase: ReviewerTriggerPhase
+    on_change: Annotated[list[NonEmptyStr], Field(min_length=1)] | None = None
+
+
+class ReviewerApprovalDefinition(StrictContractModel):
+    mode: ReviewerApprovalMode = ReviewerApprovalMode.ADVISORY
+    first_feature_approval: bool = True
+    max_retries: Annotated[int, Field(strict=True, ge=0)] = 2
+    continue_on_exhausted: bool = True
+
+
+class ReviewerSandboxDefinition(StrictContractModel):
+    mode: ReviewerSandboxMode
+
+
+class ReviewerDefinition(StrictContractModel):
+    prompt_file: NonEmptyStr
+    trigger: ReviewerTriggerDefinition
+    approval: ReviewerApprovalDefinition = Field(
+        default_factory=ReviewerApprovalDefinition
+    )
+    sandbox: ReviewerSandboxDefinition | None = None
+
+    @model_validator(mode="after")
+    def enforce_prompt_file_location(self) -> "ReviewerDefinition":
+        prompt_path = Path(self.prompt_file)
+        normalized_parts = [part for part in prompt_path.parts if part not in {"", "."}]
+        if prompt_path.is_absolute() or any(part == ".." for part in prompt_path.parts):
+            raise ValueError(
+                "prompt_file must be a repo-relative path under harness/reviewers/prompts/"
+            )
+        if normalized_parts[:3] != ["harness", "reviewers", "prompts"]:
+            raise ValueError(
+                "prompt_file must be a repo-relative path under harness/reviewers/prompts/"
+            )
+        if len(normalized_parts) <= 3:
+            raise ValueError(
+                "prompt_file must reference a file under harness/reviewers/prompts/"
+            )
+        return self
+
+
+class ReviewerConfigDocument(StrictContractModel):
+    contract_version: Literal["1.0"] = "1.0"
+    profiles: dict[NonEmptyStr, list[NonEmptyStr]]
+    reviewers: dict[NonEmptyStr, ReviewerDefinition]
+
+
 class SubtaskSpec(StrictContractModel):
     id: SubtaskId
     title: NonEmptyStr
@@ -488,6 +551,17 @@ def gate_contract_issues(
     """Collect strict contract issues for gate configuration YAML."""
     return _model_contract_issues(
         model_type=GateConfigDocument,
+        payload=document,
+        file_path=file_path,
+    )
+
+
+def reviewer_contract_issues(
+    document: dict[str, Any], file_path: Path
+) -> list[ValidationIssue]:
+    """Collect strict contract issues for reviewer configuration YAML."""
+    return _model_contract_issues(
+        model_type=ReviewerConfigDocument,
         payload=document,
         file_path=file_path,
     )

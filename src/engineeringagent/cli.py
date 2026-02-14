@@ -27,6 +27,8 @@ from .init_scaffold import (
     build_scaffold_agents_markdown,
 )
 from .loop import run_loop
+from .opencode.client import start_agent
+from .reviewers import load_reviewer_config, plan_reviewers, run_reviewer
 from .validator import validate
 
 
@@ -325,6 +327,139 @@ def cmd_run(args: argparse.Namespace) -> int:
     )
 
 
+def cmd_reviewers_list(args: argparse.Namespace) -> int:
+    """List configured reviewer profiles."""
+    project_root = Path(args.project_root).resolve()
+    config = load_reviewer_config(project_root / "harness" / "reviewers.yaml")
+    profiles = config.get("profiles", {})
+    if not isinstance(profiles, dict):
+        return 0
+    for profile in sorted(profiles):
+        print(profile)
+    return 0
+
+
+def cmd_reviewers_plan(args: argparse.Namespace) -> int:
+    """Print deterministic run/skip reviewer decisions for one profile/phase."""
+    project_root = Path(args.project_root).resolve()
+    config = load_reviewer_config(project_root / "harness" / "reviewers.yaml")
+    changed_paths = collect_changed_paths(
+        project_root,
+        base=args.base,
+        head=args.head,
+    )
+    try:
+        decisions = plan_reviewers(
+            config,
+            args.profile,
+            phase=args.phase,
+            changed_paths=changed_paths,
+        )
+    except ValueError as exc:
+        print(str(exc))
+        return 1
+    print(json.dumps(decisions, sort_keys=True))
+    return 0
+
+
+def cmd_reviewers_run(args: argparse.Namespace) -> int:
+    """Run one configured reviewer and print JSON decision envelope."""
+    project_root = Path(args.project_root).resolve()
+    config = load_reviewer_config(project_root / "harness" / "reviewers.yaml")
+    reviewers = config.get("reviewers", {})
+    reviewer = reviewers.get(args.reviewer) if isinstance(reviewers, dict) else None
+    if not isinstance(reviewer, dict):
+        print(f"unknown reviewer: {args.reviewer}")
+        return 1
+
+    changed_paths = collect_changed_paths(
+        project_root,
+        base=args.base,
+        head=args.head,
+    )
+    feature_path = Path(args.feature_path)
+    if not feature_path.is_absolute():
+        feature_path = project_root / feature_path
+
+    decision = run_reviewer(
+        project_root,
+        args.reviewer,
+        reviewer,
+        feature_id=args.feature_id,
+        feature_path=feature_path,
+        changed_paths=changed_paths,
+        prior_feedback=args.prior_feedback,
+        start_agent_fn=start_agent,
+    )
+    print(json.dumps(decision, sort_keys=True))
+    return 0 if decision.get("decision") != "request_changes" else 1
+
+
+def cmd_reviewers_init(args: argparse.Namespace) -> int:
+    """Write a baseline reviewers config and prompt files."""
+    project_root = Path(args.project_root).resolve()
+    created = 0
+    skipped = 0
+
+    manifest = {
+        "harness/reviewers.yaml": "\n".join(
+            [
+                'contract_version: "1.0"',
+                "profiles:",
+                "  loop_fast:",
+                "    - code_simplifier",
+                "    - readme_process",
+                "reviewers:",
+                "  code_simplifier:",
+                '    prompt_file: "harness/reviewers/prompts/code_simplifier.md"',
+                "    trigger:",
+                '      phase: "iteration_end"',
+                "      on_change:",
+                '        - "src/**/*.py"',
+                '        - "tests/**/*.py"',
+                "    approval:",
+                '      mode: "advisory"',
+                "  readme_process:",
+                '    prompt_file: "harness/reviewers/prompts/readme_process.md"',
+                "    trigger:",
+                '      phase: "feature_done"',
+                '      on_change: ["README.md"]',
+                "    sandbox:",
+                '      mode: "temp_worktree_snapshot"',
+                "    approval:",
+                '      mode: "blocking"',
+                "",
+            ]
+        ),
+        "harness/reviewers/prompts/code_simplifier.md": "\n".join(
+            [
+                "Review only the scoped changed files for readability and maintainability.",
+                "Return strict JSON with decision and summary fields.",
+                "",
+            ]
+        ),
+        "harness/reviewers/prompts/readme_process.md": "\n".join(
+            [
+                "Review README workflow/process guidance for correctness and clarity.",
+                "Return strict JSON with decision and summary fields.",
+                "",
+            ]
+        ),
+    }
+
+    for relative_path, content in manifest.items():
+        target = project_root / relative_path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if target.exists() and not args.force:
+            skipped += 1
+            continue
+        target.write_text(content, encoding="utf-8")
+        created += 1
+
+    print(f"reviewers init complete: created={created} skipped={skipped}")
+    return 0
+
+
 def cmd_fitness_list(args: argparse.Namespace) -> int:
     """List active fitness rules from the merged registry."""
     project_root = Path(args.project_root).resolve()
@@ -481,6 +616,7 @@ def cmd_init(args: argparse.Namespace) -> int:
         force=args.force,
         docs_dir=docs_dir,
         profile=args.scaffold_profile,
+        include_reviewers=args.include_reviewers,
     )
     config_created, config_skipped = _write_init_docs_root_config(
         project_root,
@@ -571,6 +707,62 @@ def build_parser() -> argparse.ArgumentParser:
     gates_run_parser.add_argument("--head")
     gates_run_parser.add_argument("--explain", action="store_true")
     gates_run_parser.set_defaults(func=cmd_gates_run)
+
+    reviewers_parser = sub.add_parser(
+        "reviewers",
+        help="initialize, inspect, and run harness reviewers",
+    )
+    reviewers_sub = reviewers_parser.add_subparsers(
+        dest="reviewers_cmd",
+        required=True,
+    )
+
+    reviewers_init_parser = reviewers_sub.add_parser(
+        "init",
+        help="write baseline reviewers.yaml and prompt files",
+    )
+    reviewers_init_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="overwrite existing reviewer scaffold files",
+    )
+    reviewers_init_parser.set_defaults(func=cmd_reviewers_init)
+
+    reviewers_list_parser = reviewers_sub.add_parser(
+        "list",
+        help="list reviewer profiles",
+    )
+    reviewers_list_parser.set_defaults(func=cmd_reviewers_list)
+
+    reviewers_plan_parser = reviewers_sub.add_parser(
+        "plan",
+        help="show deterministic reviewer run/skip plan",
+    )
+    reviewers_plan_parser.add_argument("--profile", required=True)
+    reviewers_plan_parser.add_argument(
+        "--phase",
+        required=True,
+        choices=["iteration_end", "feature_done"],
+    )
+    reviewers_plan_parser.add_argument("--base")
+    reviewers_plan_parser.add_argument("--head")
+    reviewers_plan_parser.set_defaults(func=cmd_reviewers_plan)
+
+    reviewers_run_parser = reviewers_sub.add_parser(
+        "run",
+        help="run one reviewer and print decision JSON",
+    )
+    reviewers_run_parser.add_argument("--reviewer", required=True)
+    reviewers_run_parser.add_argument("--feature-id", required=True)
+    reviewers_run_parser.add_argument(
+        "--feature-path",
+        required=True,
+        help="feature spec path used in reviewer context",
+    )
+    reviewers_run_parser.add_argument("--prior-feedback")
+    reviewers_run_parser.add_argument("--base")
+    reviewers_run_parser.add_argument("--head")
+    reviewers_run_parser.set_defaults(func=cmd_reviewers_run)
 
     run_parser = sub.add_parser("run", help="run feature loops from spec file paths")
     run_parser.add_argument("feature_paths", nargs="*", help="feature spec file paths")
@@ -701,6 +893,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--agents-mode",
         choices=["overwrite", "preserve", "abort"],
         help="AGENTS conflict mode when AGENTS.md already exists",
+    )
+    init_parser.add_argument(
+        "--include-reviewers",
+        action="store_true",
+        help="include baseline harness reviewers scaffold files",
     )
     init_parser.set_defaults(func=cmd_init)
 

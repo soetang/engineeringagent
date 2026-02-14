@@ -16,11 +16,13 @@ from .models import (
     IterationOutcome,
     IterationTelemetryInputs,
     PostImplementFeatureOutcome,
+    ReviewerPhaseOutcome,
     VerificationPhaseOutcome,
 )
 from .phases import (
     CompletionPhaseDependencies,
     GatePhaseDependencies,
+    ReviewerPhaseDependencies,
     VerificationPhaseDependencies,
 )
 
@@ -61,6 +63,17 @@ class IterationPipelineDependencies(BaseModel):
         VerificationPhaseOutcome,
     ]
     verification_phase_dependencies: VerificationPhaseDependencies
+    run_reviewer_phase: Callable[
+        [
+            FeatureIterationInputs,
+            dict[str, Any] | None,
+            bool,
+            Path | None,
+            ReviewerPhaseDependencies,
+        ],
+        ReviewerPhaseOutcome,
+    ]
+    reviewer_phase_dependencies: ReviewerPhaseDependencies
     run_completion_commit_phase: Callable[
         [
             FeatureIterationInputs,
@@ -104,9 +117,11 @@ class _PipelineState(BaseModel):
     gate_status: str = "not_run"
     verification_status: str = "not_run"
     verification_failed_command: str | None = None
+    reviewer_status: str = "not_run"
     implement_output: str = ""
     gate_output: str = ""
     verification_output: str = ""
+    reviewer_output: str = ""
     completion_commit_succeeded: bool = False
     archived_path: Path | None = None
     archived_in_iteration: bool = False
@@ -303,6 +318,34 @@ def _run_gate_phase_if_passed(
     state.next_hook_feedback = gate_phase.hook_feedback
 
 
+def _run_reviewer_phase_if_passed(
+    state: _PipelineState,
+    iteration_inputs: FeatureIterationInputs,
+    dependencies: IterationPipelineDependencies,
+    post_feature: dict[str, Any] | None,
+) -> None:
+    if state.result != "passed":
+        return
+
+    reviewer_phase = dependencies.run_reviewer_phase(
+        iteration_inputs,
+        post_feature,
+        state.archived_in_iteration,
+        state.archived_path,
+        dependencies.reviewer_phase_dependencies,
+    )
+    state.reviewer_status = reviewer_phase.reviewer_status
+    state.reviewer_output = reviewer_phase.reviewer_output
+    if reviewer_phase.result != "failed":
+        if reviewer_phase.hook_feedback:
+            state.next_hook_feedback = reviewer_phase.hook_feedback
+        return
+
+    state.result = reviewer_phase.result
+    state.failed_gate = reviewer_phase.failed_gate
+    state.next_hook_feedback = reviewer_phase.hook_feedback
+
+
 def _run_completion_phase_if_needed(
     state: _PipelineState,
     iteration_inputs: FeatureIterationInputs,
@@ -372,6 +415,7 @@ def run_feature_iteration_pipeline(
         loaded_post_from_archive,
     )
     _run_gate_phase_if_passed(state, iteration_inputs, dependencies, gates_path)
+    _run_reviewer_phase_if_passed(state, iteration_inputs, dependencies, post_feature)
     _run_completion_phase_if_needed(state, iteration_inputs, dependencies, post_feature)
 
     if state.result == "passed" and not state.completion_commit_succeeded:

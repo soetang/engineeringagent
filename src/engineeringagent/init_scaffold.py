@@ -92,12 +92,14 @@ def build_agents_merge_followup_spec(backup_agents_name: str) -> str:
 def build_baseline_scaffold_manifest(
     docs_dir: str = "docs",
     profile: str = "core",
+    include_reviewers: bool = False,
 ) -> dict[str, str]:
     """Build the baseline scaffold manifest for a docs root.
 
     Args:
         docs_dir: Docs root directory where spec files should be scaffolded.
         profile: Scaffold profile that determines language/tool defaults.
+        include_reviewers: Whether to include baseline reviewer harness scaffolding.
 
     Returns:
         Mapping of relative file paths to scaffolded file contents.
@@ -107,7 +109,7 @@ def build_baseline_scaffold_manifest(
 
     normalized_docs_dir = docs_dir.strip("/")
 
-    return {
+    manifest = {
         ".pre-commit-config.yaml": _build_precommit_config(profile=profile),
         f"{normalized_docs_dir}/spec/features/.gitkeep": "",
         f"{normalized_docs_dir}/spec/features_done/.gitkeep": "",
@@ -155,12 +157,70 @@ def build_baseline_scaffold_manifest(
         **_build_reference_docs_manifest(normalized_docs_dir),
     }
 
+    if include_reviewers:
+        manifest.update(
+            {
+                "harness/reviewers.yaml": yaml.safe_dump(
+                    {
+                        "contract_version": "1.0",
+                        "profiles": {
+                            "loop_fast": ["code_simplifier", "readme_process"],
+                        },
+                        "reviewers": {
+                            "code_simplifier": {
+                                "prompt_file": "harness/reviewers/prompts/code_simplifier.md",
+                                "trigger": {
+                                    "phase": "iteration_end",
+                                    "on_change": ["src/**/*.py", "tests/**/*.py"],
+                                },
+                                "approval": {
+                                    "mode": "advisory",
+                                    "first_feature_approval": True,
+                                    "max_retries": 2,
+                                    "continue_on_exhausted": True,
+                                },
+                            },
+                            "readme_process": {
+                                "prompt_file": "harness/reviewers/prompts/readme_process.md",
+                                "trigger": {
+                                    "phase": "feature_done",
+                                    "on_change": ["README.md"],
+                                },
+                                "sandbox": {
+                                    "mode": "temp_worktree_snapshot",
+                                },
+                                "approval": {
+                                    "mode": "blocking",
+                                    "first_feature_approval": True,
+                                    "max_retries": 2,
+                                    "continue_on_exhausted": True,
+                                },
+                            },
+                        },
+                    },
+                    sort_keys=False,
+                    allow_unicode=False,
+                ),
+                "harness/reviewers/prompts/code_simplifier.md": (
+                    "Review scoped code changes for maintainability and readability.\n"
+                    "Return strict JSON only with decision and summary fields.\n"
+                ),
+                "harness/reviewers/prompts/readme_process.md": (
+                    "Review README process updates in isolation for accuracy.\n"
+                    "Return strict JSON only with decision and summary fields.\n"
+                ),
+            }
+        )
+
+    return manifest
+
 
 def apply_baseline_scaffold(
     project_root: Path,
     force: bool = False,
     docs_dir: str = "docs",
     profile: str = "core",
+    include_reviewers: bool = False,
 ) -> tuple[int, int]:
     """Write the baseline scaffold manifest to disk.
 
@@ -169,6 +229,7 @@ def apply_baseline_scaffold(
         force: Whether to overwrite files that already exist.
         docs_dir: Docs root directory where spec files should be scaffolded.
         profile: Scaffold profile that determines language/tool defaults.
+        include_reviewers: Whether to include baseline reviewer harness scaffolding.
 
     Returns:
         Tuple of (created_count, skipped_count).
@@ -176,7 +237,11 @@ def apply_baseline_scaffold(
     created = 0
     skipped = 0
 
-    manifest = build_baseline_scaffold_manifest(docs_dir=docs_dir, profile=profile)
+    manifest = build_baseline_scaffold_manifest(
+        docs_dir=docs_dir,
+        profile=profile,
+        include_reviewers=include_reviewers,
+    )
 
     for relative_path, content in manifest.items():
         target_path = project_root / relative_path
