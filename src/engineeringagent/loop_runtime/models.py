@@ -19,6 +19,9 @@ class IterationOutcome(BaseModel):
     log_path: str | None
     verification_status: str = "not_run"
     verification_failed_command: str | None = None
+    reviewer_status: str = "not_run"
+    reviewer_decision: str | None = None
+    failed_reviewer_id: str | None = None
 
 
 class InitialFeatureLoadOutcome(BaseModel):
@@ -96,6 +99,8 @@ class ReviewerPhaseOutcome(BaseModel):
     result: str
     failed_gate: str | None
     reviewer_status: str
+    reviewer_decision: str | None = None
+    failed_reviewer_id: str | None = None
     reviewer_output: str
     hook_feedback: str | None
 
@@ -124,7 +129,11 @@ class IterationTelemetryInputs(BaseModel):
     gate_status: str
     verification_status: str
     verification_failed_command: str | None
+    reviewer_status: str = "not_run"
+    reviewer_decision: str | None = None
+    failed_reviewer_id: str | None = None
     implement_output: str
     gate_output: str
     verification_output: str
+    reviewer_output: str = ""
     hook_feedback: str | None

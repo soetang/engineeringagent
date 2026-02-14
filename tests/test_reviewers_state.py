@@ -101,6 +101,9 @@ def test_cached_first_approval_invalidates_when_scoped_paths_change() -> None:
 
     assert reuse is False
     assert reason == FIRST_FEATURE_APPROVAL_INVALIDATED_REASON
+    reviewer_state = state["features"]["FEAT-050"]["reviewers"]["readme_process"]
+    assert reviewer_state["approved"] is False
+    assert "invalidated_at" in reviewer_state
 
 
 def test_cached_first_approval_invalidates_on_run_all_fallback() -> None:
@@ -135,6 +138,9 @@ def test_cached_first_approval_invalidates_on_run_all_fallback() -> None:
 
     assert reuse is False
     assert reason == FIRST_FEATURE_APPROVAL_INVALIDATED_RUN_ALL_REASON
+    reviewer_state = state["features"]["FEAT-050"]["reviewers"]["code_simplifier"]
+    assert reviewer_state["approved"] is False
+    assert "invalidated_at" in reviewer_state
 
 
 def test_cached_first_approval_missing_when_not_previously_approved() -> None:

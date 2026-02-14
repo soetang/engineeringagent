@@ -43,6 +43,9 @@ PRINT_SUMMARY_SIGNATURE = inspect.Signature(
         _parameter("archived_selection_path", None),
         _parameter("verification_status", None),
         _parameter("verification_failed_command", None),
+        _parameter("reviewer_status", None),
+        _parameter("reviewer_decision", None),
+        _parameter("failed_reviewer_id", None),
     )
 )
 

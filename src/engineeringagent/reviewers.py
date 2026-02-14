@@ -201,7 +201,11 @@ def evaluate_cached_reviewer_approval(
     reviewer: dict[str, Any],
     changed_paths: ChangedPathsResult,
 ) -> tuple[bool, str]:
-    """Return whether first-approval cache can be reused and deterministic reason."""
+    """Return whether first-approval cache can be reused and deterministic reason.
+
+    When scoped changes invalidate a cached approval, this function also marks the
+    cached approval as invalid in state so the transition is auditable on disk.
+    """
     approval = reviewer.get("approval", {})
     if not approval.get("first_feature_approval", True):
         return False, FIRST_FEATURE_APPROVAL_DISABLED_REASON
@@ -218,14 +222,29 @@ def evaluate_cached_reviewer_approval(
     trigger = reviewer.get("trigger", {})
     on_change = trigger.get("on_change")
     if changed_paths.run_all:
+        invalidate_reviewer_approval(
+            state,
+            feature_id=feature_id,
+            reviewer_id=reviewer_id,
+        )
         return False, FIRST_FEATURE_APPROVAL_INVALIDATED_RUN_ALL_REASON
 
     if on_change is None:
         if changed_paths.paths:
+            invalidate_reviewer_approval(
+                state,
+                feature_id=feature_id,
+                reviewer_id=reviewer_id,
+            )
             return False, FIRST_FEATURE_APPROVAL_INVALIDATED_REASON
         return True, FIRST_FEATURE_APPROVAL_REUSED_REASON
 
     if any(_path_matches_any_glob(path, on_change) for path in changed_paths.paths):
+        invalidate_reviewer_approval(
+            state,
+            feature_id=feature_id,
+            reviewer_id=reviewer_id,
+        )
         return False, FIRST_FEATURE_APPROVAL_INVALIDATED_REASON
     return True, FIRST_FEATURE_APPROVAL_REUSED_REASON
 

@@ -4,9 +4,24 @@ from pathlib import Path
 from typing import Any
 
 from engineeringagent.gates import ChangedPathsResult
-from engineeringagent.loop_runtime.models import FeatureIterationInputs
+from engineeringagent.loop_runtime.iteration import (
+    IterationPipelineDependencies,
+    run_feature_iteration_pipeline,
+)
+from engineeringagent.loop_runtime.models import (
+    FeatureIterationInputs,
+    CompletionCommitOutcome,
+    GatePhaseOutcome,
+    InitialFeatureLoadOutcome,
+    PostImplementFeatureOutcome,
+    ReviewerPhaseOutcome,
+    VerificationPhaseOutcome,
+)
 from engineeringagent.loop_runtime.phases import (
+    CompletionPhaseDependencies,
+    GatePhaseDependencies,
     ReviewerPhaseDependencies,
+    VerificationPhaseDependencies,
     run_reviewer_phase,
 )
 from engineeringagent.reviewers import (
@@ -252,3 +267,167 @@ def test_blocking_reviewer_exhausted_can_be_configured_to_fail(tmp_path: Path) -
     assert second.result == "failed"
     assert second.failed_gate == "reviewer_blocking_exhausted"
     assert "exhausted retries" in str(second.hook_feedback)
+
+
+def test_reviewer_phase_runs_after_gates_before_commit(tmp_path: Path) -> None:
+    call_order: list[str] = []
+
+    def _run_implement(*_args: Any, **_kwargs: Any) -> tuple[bool, str | None, str]:
+        call_order.append("implement")
+        return True, None, ""
+
+    def _run_verification(
+        _inputs: FeatureIterationInputs,
+        _commands: list[str],
+        _deps: VerificationPhaseDependencies,
+    ) -> VerificationPhaseOutcome:
+        call_order.append("verification")
+        return VerificationPhaseOutcome(
+            result="passed",
+            verification_status="passed",
+            verification_failed_command=None,
+            verification_output="",
+            hook_feedback=None,
+        )
+
+    def _run_gates(
+        _inputs: FeatureIterationInputs,
+        _gates_path: Path,
+        _archived_in_iteration: bool,
+        _archived_path: Path | None,
+        _deps: GatePhaseDependencies,
+    ) -> GatePhaseOutcome:
+        call_order.append("gates")
+        return GatePhaseOutcome(
+            result="passed",
+            failed_gate=None,
+            gate_status="passed",
+            gate_output="",
+            hook_feedback=None,
+        )
+
+    def _run_reviewer(
+        _inputs: FeatureIterationInputs,
+        _feature: dict[str, Any] | None,
+        _archived_in_iteration: bool,
+        _archived_path: Path | None,
+        _deps: ReviewerPhaseDependencies,
+    ) -> ReviewerPhaseOutcome:
+        call_order.append("reviewer")
+        return ReviewerPhaseOutcome(
+            result="passed",
+            failed_gate=None,
+            reviewer_status="passed",
+            reviewer_decision="approve",
+            failed_reviewer_id=None,
+            reviewer_output="",
+            hook_feedback=None,
+        )
+
+    def _run_completion(
+        _inputs: FeatureIterationInputs,
+        _feature: dict[str, Any] | None,
+        _archived_in_iteration: bool,
+        _archived_path: Path | None,
+        _deps: CompletionPhaseDependencies,
+    ) -> CompletionCommitOutcome:
+        call_order.append("completion")
+        return CompletionCommitOutcome(
+            completed=True,
+            completion_commit_succeeded=True,
+            result="passed",
+            failed_gate=None,
+            next_action="select_next_feature",
+            hook_feedback=None,
+        )
+
+    iteration_inputs = FeatureIterationInputs(
+        project_root=tmp_path,
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-051.yaml",
+        gate_profile="loop_fast",
+        implement_command=None,
+        opencode_prompt=None,
+        skip_implement=False,
+        attempt=1,
+        hook_feedback=None,
+        verbose_output=False,
+    )
+
+    outcome = run_feature_iteration_pipeline(
+        iteration_inputs,
+        IterationPipelineDependencies(
+            evaluate_initial_feature_load=(
+                lambda _root, _path: InitialFeatureLoadOutcome(
+                    feature={"id": "FEAT-051", "status": "in_progress"},
+                    loaded_from_archive=False,
+                    result="passed",
+                    failed_gate=None,
+                    hook_feedback=None,
+                )
+            ),
+            ready_for_active_iteration=lambda *_args, **_kwargs: True,
+            touch_active_feature_for_iteration=lambda *_args, **_kwargs: None,
+            run_implement_step=_run_implement,
+            refresh_feature_after_implement=(
+                lambda _root, _path, _started: PostImplementFeatureOutcome(
+                    feature={"id": "FEAT-051", "status": "done"},
+                    loaded_from_archive=False,
+                    archived_in_iteration=True,
+                    archived_path=tmp_path
+                    / "docs"
+                    / "spec"
+                    / "features_done"
+                    / "FEAT-051.yaml",
+                    result="passed",
+                    failed_gate=None,
+                    hook_feedback=None,
+                )
+            ),
+            should_archive_selected_feature=lambda *_args, **_kwargs: False,
+            archive_completed_feature=lambda *_args, **_kwargs: (True, None, None),
+            run_gate_phase=_run_gates,
+            gate_phase_dependencies=GatePhaseDependencies(
+                load_gate_config=lambda _path: {},
+                run_profile=lambda *_args, **_kwargs: (True, None, ""),
+                restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+            ),
+            run_verification_phase=_run_verification,
+            verification_phase_dependencies=VerificationPhaseDependencies(
+                run_shell_command=lambda *_args, **_kwargs: None,
+            ),
+            run_reviewer_phase=_run_reviewer,
+            reviewer_phase_dependencies=ReviewerPhaseDependencies(
+                load_reviewer_config=lambda _path: {},
+                collect_changed_paths=lambda *_args, **_kwargs: None,
+                load_reviewers_state=lambda _root: {"version": "1", "features": {}},
+                save_reviewers_state=lambda *_args, **_kwargs: None,
+                plan_reviewers=lambda *_args, **_kwargs: [],
+                evaluate_cached_reviewer_approval=lambda *_args, **_kwargs: (False, ""),
+                run_reviewer=lambda *_args, **_kwargs: {},
+                record_reviewer_approval=lambda *_args, **_kwargs: None,
+                advisory_followup_required=lambda *_args, **_kwargs: False,
+                set_advisory_followup_required=lambda *_args, **_kwargs: None,
+                clear_advisory_followup_required=lambda *_args, **_kwargs: None,
+                restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+                start_agent=lambda *_args, **_kwargs: None,
+            ),
+            run_completion_commit_phase=_run_completion,
+            completion_phase_dependencies=CompletionPhaseDependencies(
+                commit_feature_completion=lambda *_args, **_kwargs: (True, None, ""),
+                restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+            ),
+            write_iteration_telemetry=lambda *_args, **_kwargs: "progress/runs.jsonl",
+            git_head_resolver=lambda _root: None,
+            print_summary=lambda *_args, **_kwargs: None,
+        ),
+    )
+
+    assert outcome.result == "passed"
+    assert outcome.completed is True
+    assert call_order == [
+        "implement",
+        "verification",
+        "gates",
+        "reviewer",
+        "completion",
+    ]

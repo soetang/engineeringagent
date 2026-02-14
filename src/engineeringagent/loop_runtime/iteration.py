@@ -100,6 +100,9 @@ class IterationPipelineDependencies(BaseModel):
             str | None,
             str | None,
             str | None,
+            str | None,
+            str | None,
+            str | None,
         ],
         None,
     ]
@@ -118,6 +121,8 @@ class _PipelineState(BaseModel):
     verification_status: str = "not_run"
     verification_failed_command: str | None = None
     reviewer_status: str = "not_run"
+    reviewer_decision: str | None = None
+    failed_reviewer_id: str | None = None
     implement_output: str = ""
     gate_output: str = ""
     verification_output: str = ""
@@ -335,6 +340,8 @@ def _run_reviewer_phase_if_passed(
         dependencies.reviewer_phase_dependencies,
     )
     state.reviewer_status = reviewer_phase.reviewer_status
+    state.reviewer_decision = reviewer_phase.reviewer_decision
+    state.failed_reviewer_id = reviewer_phase.failed_reviewer_id
     state.reviewer_output = reviewer_phase.reviewer_output
     if reviewer_phase.result != "failed":
         if reviewer_phase.hook_feedback:
@@ -433,9 +440,13 @@ def run_feature_iteration_pipeline(
         gate_status=state.gate_status,
         verification_status=state.verification_status,
         verification_failed_command=state.verification_failed_command,
+        reviewer_status=state.reviewer_status,
+        reviewer_decision=state.reviewer_decision,
+        failed_reviewer_id=state.failed_reviewer_id,
         implement_output=state.implement_output,
         gate_output=state.gate_output,
         verification_output=state.verification_output,
+        reviewer_output=state.reviewer_output,
         hook_feedback=state.next_hook_feedback,
     )
     feature_progress_log_reference = dependencies.write_iteration_telemetry(
@@ -464,6 +475,9 @@ def run_feature_iteration_pipeline(
         archived_selection_path,
         state.verification_status,
         state.verification_failed_command,
+        state.reviewer_status,
+        state.reviewer_decision,
+        state.failed_reviewer_id,
     )
     if state.result != "passed":
         print(f"Detailed log: {feature_progress_log_reference}")
@@ -476,4 +490,7 @@ def run_feature_iteration_pipeline(
         log_path=feature_progress_log_reference,
         verification_status=state.verification_status,
         verification_failed_command=state.verification_failed_command,
+        reviewer_status=state.reviewer_status,
+        reviewer_decision=state.reviewer_decision,
+        failed_reviewer_id=state.failed_reviewer_id,
     )

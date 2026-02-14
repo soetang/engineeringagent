@@ -168,6 +168,9 @@ def test_iteration_outcome_includes_verification_status() -> None:
 
     assert outcome.verification_status == "not_run"
     assert outcome.verification_failed_command is None
+    assert outcome.reviewer_status == "not_run"
+    assert outcome.reviewer_decision is None
+    assert outcome.failed_reviewer_id is None
 
 
 def test_retry_feedback_contract_accepts_verification_failure(tmp_path: Path) -> None:
@@ -193,9 +196,13 @@ def test_retry_feedback_contract_accepts_verification_failure(tmp_path: Path) ->
         gate_status="not_run",
         verification_status="failed:uv run pytest -q",
         verification_failed_command="uv run pytest -q",
+        reviewer_status="failed:blocking",
+        reviewer_decision="request_changes",
+        failed_reviewer_id="security-reviewer",
         implement_output="",
         gate_output="",
         verification_output="E       assert 1 == 2",
+        reviewer_output="[reviewer:security-reviewer] mode=blocking decision=request_changes",
         hook_feedback="[verification] uv run pytest -q\nE       assert 1 == 2",
     )
 
@@ -207,6 +214,9 @@ def test_retry_feedback_contract_accepts_verification_failure(tmp_path: Path) ->
     run = json.loads((tmp_path / "progress" / "runs.jsonl").read_text(encoding="utf-8"))
     assert run["verification_status"] == "failed:uv run pytest -q"
     assert run["verification_failed_command"] == "uv run pytest -q"
+    assert run["reviewer_status"] == "failed:blocking"
+    assert run["reviewer_decision"] == "request_changes"
+    assert run["failed_reviewer_id"] == "security-reviewer"
 
     feature_log = (tmp_path / "progress" / "run-feature-FEAT-040.txt").read_text(
         encoding="utf-8"
@@ -214,5 +224,9 @@ def test_retry_feedback_contract_accepts_verification_failure(tmp_path: Path) ->
     assert (
         "verification=failed:uv run pytest -q failed_command=uv run pytest -q"
         in feature_log
+    )
+    assert (
+        "reviewer=failed:blocking decision=request_changes "
+        "failed_reviewer=security-reviewer" in feature_log
     )
     assert "detail=[verification] uv run pytest -q" in feature_log

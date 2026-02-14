@@ -16,6 +16,7 @@ from .models import (
     VerificationPhaseOutcome,
 )
 from ..reviewers import (
+    DECISION_APPROVE,
     DECISION_REQUEST_CHANGES,
     DECISION_WARNING,
     increment_blocking_reviewer_retry_count,
@@ -226,6 +227,9 @@ def run_reviewer_phase(
     blocking_feedback: list[str] = []
     blocking_exhausted_warnings: list[str] = []
     blocking_exhausted_failures: list[str] = []
+    ran_reviewer = False
+    first_non_approve_reviewer_id: str | None = None
+    first_non_approve_decision: str | None = None
 
     for entry in planned:
         reviewer_id = entry["reviewer"]
@@ -268,6 +272,10 @@ def run_reviewer_phase(
 
         reviewer_mode = str(reviewer.get("approval", {}).get("mode", "advisory"))
         decision_name = str(decision.get("decision", "request_changes"))
+        ran_reviewer = True
+        if decision_name != DECISION_APPROVE and first_non_approve_decision is None:
+            first_non_approve_reviewer_id = reviewer_id
+            first_non_approve_decision = decision_name
         summary = str(decision.get("summary", ""))
         summaries.append(
             f"[reviewer:{reviewer_id}] mode={reviewer_mode} decision={decision_name} summary={summary}"
@@ -321,6 +329,8 @@ def run_reviewer_phase(
             result="failed",
             failed_gate="reviewer_blocking_exhausted",
             reviewer_status="failed:blocking_exhausted",
+            reviewer_decision=first_non_approve_decision,
+            failed_reviewer_id=first_non_approve_reviewer_id,
             reviewer_output=reviewer_output,
             hook_feedback=feedback,
         )
@@ -336,6 +346,8 @@ def run_reviewer_phase(
             result="failed",
             failed_gate="reviewer_blocking",
             reviewer_status="failed:blocking",
+            reviewer_decision=first_non_approve_decision,
+            failed_reviewer_id=first_non_approve_reviewer_id,
             reviewer_output=reviewer_output,
             hook_feedback=feedback,
         )
@@ -357,6 +369,8 @@ def run_reviewer_phase(
             result="failed",
             failed_gate="reviewer_advisory_followup",
             reviewer_status="failed:advisory_followup",
+            reviewer_decision=first_non_approve_decision,
+            failed_reviewer_id=first_non_approve_reviewer_id,
             reviewer_output=reviewer_output,
             hook_feedback=feedback,
         )
@@ -367,6 +381,8 @@ def run_reviewer_phase(
             result="passed",
             failed_gate=None,
             reviewer_status="passed:blocking_exhausted_continue",
+            reviewer_decision=first_non_approve_decision,
+            failed_reviewer_id=None,
             reviewer_output=reviewer_output,
             hook_feedback="\n".join(blocking_exhausted_warnings),
         )
@@ -376,6 +392,8 @@ def run_reviewer_phase(
             result="passed",
             failed_gate=None,
             reviewer_status="passed:advisory",
+            reviewer_decision=first_non_approve_decision,
+            failed_reviewer_id=None,
             reviewer_output=reviewer_output,
             hook_feedback="\n".join(advisory_feedback),
         )
@@ -384,6 +402,8 @@ def run_reviewer_phase(
         result="passed",
         failed_gate=None,
         reviewer_status="passed",
+        reviewer_decision=DECISION_APPROVE if ran_reviewer else None,
+        failed_reviewer_id=None,
         reviewer_output=reviewer_output,
         hook_feedback=None,
     )

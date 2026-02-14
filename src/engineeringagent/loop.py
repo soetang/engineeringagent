@@ -247,6 +247,9 @@ def print_summary(*args: Any, **kwargs: Any) -> None:
         archived_selection_path: Archived counterpart path when selection moved.
         verification_status: Verification phase status for current iteration.
         verification_failed_command: Failed verification command when available.
+        reviewer_status: Reviewer phase status for current iteration.
+        reviewer_decision: First non-approve reviewer decision when available.
+        failed_reviewer_id: Reviewer id tied to first blocking/non-approve result.
     """
     bound = bind_facade_call(PRINT_SUMMARY_SIGNATURE, args, kwargs)
     feature_id = bound["feature_id"]
@@ -260,6 +263,9 @@ def print_summary(*args: Any, **kwargs: Any) -> None:
     archived_selection_path = bound["archived_selection_path"]
     verification_status = bound["verification_status"]
     verification_failed_command = bound["verification_failed_command"]
+    reviewer_status = bound["reviewer_status"]
+    reviewer_decision = bound["reviewer_decision"]
+    failed_reviewer_id = bound["failed_reviewer_id"]
 
     presenter = RunOutputPresenter.for_current_terminal()
     if attempt is not None:
@@ -274,6 +280,12 @@ def print_summary(*args: Any, **kwargs: Any) -> None:
         if verification_label.startswith("failed:") and verification_failed_command:
             verification_label = f"failed ({verification_failed_command})"
         print(f"  🧪 Verify: {verification_label}")
+        reviewer_label = reviewer_status or "not_run"
+        if reviewer_decision:
+            reviewer_label = f"{reviewer_label} ({reviewer_decision})"
+        if failed_reviewer_id:
+            reviewer_label = f"{reviewer_label} [{failed_reviewer_id}]"
+        print(f"  👀 Reviewer: {reviewer_label}")
         if result == "passed":
             print(f"  {presenter.format_iteration_passed_line()}")
         else:

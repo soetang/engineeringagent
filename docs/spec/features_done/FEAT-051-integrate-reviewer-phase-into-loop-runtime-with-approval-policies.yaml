@@ -1,0 +1,116 @@
+id: FEAT-051
+title: Integrate reviewer phase into loop runtime with advisory follow-up and blocking
+  retry policies
+type: feature
+expected_commit_subject: 'feat: add FEAT-051 loop reviewer phase with advisory and
+  blocking policy handling'
+status: done
+priority: high
+objective: Integrate reviewer execution into the run-loop iteration lifecycle so reviewer
+  decisions become enforceable runtime behavior with deterministic retry and continuation
+  policies.
+context: 'FEAT-050 defines reviewer contract and decision-envelope semantics. This
+  feature implements runtime behavior in loop orchestration: when reviewers run, how
+  outcomes affect iteration flow, how advisory and blocking differ in execution, and
+  how reviewer outcomes propagate into feedback, telemetry, and next actions.'
+constraints:
+- Preserve existing public loop facade signatures and compatibility seams for `run_loop`,
+  `_run_feature_iteration`, and `run_implement_step`.
+- Preserve behavior for repositories that do not define `harness/reviewers.yaml`.
+- Reviewer phase must execute after deterministic gate pass and before completion
+  commit.
+- Advisory outcomes (`warning` or `request_changes`) must require at least one follow-up
+  implement pass before completion commit eligibility.
+- Blocking `request_changes` outcomes must enter retry flow with hook feedback injection.
+- Blocking retries must enforce `max_retries` with deterministic exhausted behavior
+  from config.
+- Continue-on-exhausted default policy is continue with warning, not hard failure.
+- First-approval reuse must be invalidated when reviewer-scoped changes are detected.
+- Reviewer state and outcomes must be auditable in deterministic machine-parse-friendly
+  telemetry.
+implementation_notes: "Add runtime reviewer planner/executor integration and iteration-phase\
+  \ handling.\n- Introduce reviewer phase outcome models in loop runtime models to\
+  \ carry\n  reviewer status, failed reviewer id, decision, and hook feedback.\n\n\
+  - Add reviewer phase function in loop runtime phases module and invoke it in\n \
+  \ iteration sequencing only when earlier phases passed.\n\n- Implement advisory\
+  \ follow-up latch in iteration state so advisory advice\n  requires one additional\
+  \ implement pass before completion commit can proceed.\n\n- Implement blocking retry\
+  \ behavior and exhausted-policy handling, including\n  default continue-with-warning\
+  \ when exhausted.\n\n- Persist first-approval and retry counters in reviewer state\
+  \ file for\n  deterministic reuse and invalidation.\n\n- Extend summary/telemetry\
+  \ payloads to include reviewer fields while\n  preserving existing parse contracts."
+acceptance:
+- Reviewer phase executes in loop iteration only after gates pass and before completion
+  commit.
+- Advisory `warning` and advisory `request_changes` outcomes always force at least
+  one additional implement pass before completion commit.
+- Blocking `request_changes` outcomes produce retry feedback and do not complete until
+  approved or exhausted by policy.
+- Blocking exhaustion respects `continue_on_exhausted` and emits deterministic warning
+  or failure behavior.
+- First-approval reuse and invalidation behavior works as specified by scoped change
+  detection.
+- Iteration summary output and `progress/runs.jsonl` include deterministic reviewer
+  status fields.
+- Existing loop contract tests remain stable for facade signatures and seams.
+subtasks:
+- id: ST-001
+  title: Add reviewer phase outcome models and iteration state fields
+  status: done
+  order: 1
+  context: Extend loop runtime model contracts to carry reviewer status, decision,
+    failed reviewer id, and reviewer feedback.
+  verification:
+  - uv run pytest -q tests/test_loop_contracts.py
+- id: ST-002
+  title: Add reviewer phase execution to iteration sequencing
+  status: done
+  order: 2
+  context: Invoke reviewer phase after gate pass and before completion commit while
+    preserving existing phase-gating behavior.
+  verification:
+  - uv run pytest -q tests/test_loop_reviewers.py::test_reviewer_phase_runs_after_gates_before_commit
+- id: ST-003
+  title: Enforce advisory follow-up implement latch semantics
+  status: done
+  order: 3
+  context: Implement and test required one-pass follow-up behavior after advisory
+    advice.
+  verification:
+  - uv run pytest -q tests/test_loop_reviewers.py::test_advisory_feedback_requires_one_followup_implement_pass
+- id: ST-004
+  title: Implement blocking retry and exhausted-policy handling
+  status: done
+  order: 4
+  context: Apply max retry policy and continue-on-exhausted behavior with deterministic
+    feedback and next-action mapping.
+  verification:
+  - uv run pytest -q tests/test_loop_reviewers.py::test_blocking_reviewer_requests_retry_and_sets_feedback
+  - uv run pytest -q tests/test_loop_reviewers.py::test_blocking_reviewer_exhausted_continues_with_warning_by_default
+  - uv run pytest -q tests/test_loop_reviewers.py::test_blocking_reviewer_exhausted_can_be_configured_to_fail
+- id: ST-005
+  title: Persist reviewer state and approval reuse invalidation
+  status: done
+  order: 5
+  context: Save and load reviewer approval/retry metadata in `progress/reviewers-state.json`
+    and invalidate cache when scoped changes occur.
+  verification:
+  - uv run pytest -q tests/test_reviewers_state.py
+- id: ST-006
+  title: Extend telemetry and summary outputs with reviewer fields
+  status: done
+  order: 6
+  context: Add deterministic reviewer output fields to per-iteration telemetry and
+    human summary lines.
+  verification:
+  - uv run pytest -q tests/test_loop_output.py
+  - uv run pytest -q tests/test_loop_contracts.py::test_retry_feedback_contract_accepts_verification_failure
+- id: ST-007
+  title: Run reviewer and loop regression slice
+  status: done
+  order: 7
+  context: Validate reviewer-loop integration and ensure no regressions in existing
+    loop behavior.
+  verification:
+  - uv run pytest -q tests/test_loop_reviewers.py tests/test_loop_ralph_mode.py tests/test_loop_contracts.py
+updated_at: '2026-02-14T23:20:00Z'
