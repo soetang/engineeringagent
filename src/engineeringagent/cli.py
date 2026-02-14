@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.metadata
 import json
 import sys
 from pathlib import Path
@@ -498,6 +499,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="engineeringagent",
         description="Human-gated CLI harness for feature-driven coding loops.",
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=importlib.metadata.version("engineeringagent"),
     )
     parser.add_argument("--project-root", default=".")
     sub = parser.add_subparsers(dest="command", required=True)

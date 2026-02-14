@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+import pytest
 import yaml
 
 from engineeringagent import cli as cli_module
@@ -73,6 +74,66 @@ def test_fitness_subcommands(tmp_path: Path, capsys: Any) -> None:
     assert run_code == 0
     assert run_payload["failed"] is False
     assert run_payload["results"] == []
+
+
+def test_root_version_flag_outputs_installed_package_version_only(
+    capsys: Any,
+    monkeypatch: Any,
+) -> None:
+    package_names: list[str] = []
+
+    def _fake_version(distribution_name: str) -> str:
+        package_names.append(distribution_name)
+        return "9.9.9"
+
+    monkeypatch.setattr(cli_module.importlib.metadata, "version", _fake_version)
+
+    parser = build_parser()
+    with pytest.raises(SystemExit) as exc_info:
+        parser.parse_args(["--version"])
+
+    captured = capsys.readouterr()
+    assert exc_info.value.code == 0
+    assert captured.out == "9.9.9\n"
+    assert captured.err == ""
+    assert package_names == ["engineeringagent"]
+
+
+def test_root_parser_still_requires_subcommand_without_version_flag(
+    capsys: Any,
+) -> None:
+    parser = build_parser()
+
+    with pytest.raises(SystemExit) as exc_info:
+        parser.parse_args([])
+
+    captured = capsys.readouterr()
+    assert exc_info.value.code == 2
+    assert captured.out == ""
+    assert "the following arguments are required: command" in captured.err
+
+
+def test_root_version_flag_uses_distribution_metadata_source(
+    capsys: Any,
+    monkeypatch: Any,
+) -> None:
+    requested_distribution_names: list[str] = []
+
+    def _fake_version(distribution_name: str) -> str:
+        requested_distribution_names.append(distribution_name)
+        return "3.2.1"
+
+    monkeypatch.setattr(cli_module.importlib.metadata, "version", _fake_version)
+
+    parser = build_parser()
+    with pytest.raises(SystemExit) as exc_info:
+        parser.parse_args(["--version"])
+
+    captured = capsys.readouterr()
+    assert exc_info.value.code == 0
+    assert captured.out == "3.2.1\n"
+    assert captured.err == ""
+    assert requested_distribution_names == ["engineeringagent"]
 
 
 def test_validate_fails_on_agents_docs_map_errors(tmp_path: Path, capsys: Any) -> None:

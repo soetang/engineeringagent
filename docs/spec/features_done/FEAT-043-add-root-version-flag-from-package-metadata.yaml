@@ -2,7 +2,7 @@ id: FEAT-043
 title: Add root --version flag that reports the packaged CLI version
 type: feature
 expected_commit_subject: 'feat: add FEAT-043 root version flag from package metadata'
-status: backlog
+status: done
 priority: high
 objective: Add root-level `--version` support so `uvx engineeringagent --version`
   prints the CLI version and that value stays aligned with the package version declared
@@ -22,19 +22,19 @@ implementation_notes: Wire argparse root `--version` handling before subcommand 
   preserving current required-subcommand behavior for non-version invocations. Add
   targeted CLI tests that assert exact output format and metadata sourcing contract.
 acceptance:
-- Running `uvx engineeringagent --version` exits successfully and prints only the installed
-  package version.
+- Running `uvx engineeringagent --version` exits successfully and prints only the
+  installed package version.
 - The version shown by `--version` matches the installed distribution metadata version,
   which is sourced from `pyproject.toml` at package build/release time.
-- Invocations without `--version` still require a subcommand and preserve current CLI
-  behavior.
+- Invocations without `--version` still require a subcommand and preserve current
+  CLI behavior.
 - No `version` subcommand or `-V` alias is introduced.
 - Targeted CLI tests for version behavior and `uvx --from . engineeringagent validate`
   pass.
 subtasks:
 - id: ST-001
   title: Add root parser --version flag sourced from package metadata
-  status: backlog
+  status: done
   order: 1
   context: Update CLI parser wiring so `--version` prints metadata version with exact
     version-only output and no extra labels.
@@ -42,7 +42,7 @@ subtasks:
   - uv run pytest -q tests/test_cli.py::test_root_version_flag_outputs_installed_package_version_only
 - id: ST-002
   title: Preserve root parser command requirements for non-version invocations
-  status: backlog
+  status: done
   order: 2
   context: Ensure adding `--version` does not relax existing subcommand requirements
     when users invoke the CLI without a command and without the version flag.
@@ -50,11 +50,11 @@ subtasks:
   - uv run pytest -q tests/test_cli.py::test_root_parser_still_requires_subcommand_without_version_flag
 - id: ST-003
   title: Validate metadata contract and spec integrity
-  status: backlog
+  status: done
   order: 3
   context: Add coverage that the reported value comes from package metadata and run
     repository spec validation after updates.
   verification:
   - uv run pytest -q tests/test_cli.py::test_root_version_flag_uses_distribution_metadata_source
   - uvx --from . engineeringagent validate
-updated_at: '2026-02-14T21:09:12Z'
+updated_at: '2026-02-14T21:16:31Z'
