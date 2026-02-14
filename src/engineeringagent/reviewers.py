@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import json
+import shlex
 import shutil
+import sys
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, Callable, Iterator
+
+from pydantic import BaseModel, ConfigDict
 
 from .gates import ChangedPathsResult
 from .on_change_matcher import path_matches_any_glob
@@ -40,6 +44,15 @@ ADVISORY_FOLLOWUP_REQUIRED_KEY = "advisory_followup_required"
 BLOCKING_RETRY_COUNT_KEY = "blocking_request_changes_count"
 BLOCKING_RETRY_UPDATED_AT_KEY = "blocking_retry_updated_at"
 SANDBOX_MODE_TEMP_WORKTREE_SNAPSHOT = "temp_worktree_snapshot"
+SANDBOX_MODE_CLEAN_ROOM_README_CLI = "clean_room_readme_cli"
+CLEAN_ROOM_ENGINEERINGAGENT_HELPER = ".engineeringagent/bin/engineeringagent"
+
+
+class ReviewerSandboxHandle(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    execution_root: Path
+    cleanup: Callable[[], None]
 
 
 def _now_iso() -> str:
@@ -369,7 +382,9 @@ def run_reviewer(
 ) -> dict[str, Any]:
     """Run one reviewer and return a deterministic decision envelope."""
     try:
-        with _reviewer_execution_root(project_root, reviewer) as execution_root:
+        with _reviewer_execution_root(
+            project_root, reviewer_id, reviewer
+        ) as execution_root:
             prompt_file = str(reviewer.get("prompt_file", "")).strip()
             if not prompt_file:
                 return _parser_failure_decision("reviewer prompt_file is required")
@@ -409,6 +424,120 @@ def run_reviewer(
     if not parse_input:
         return _parser_failure_decision("reviewer produced empty output")
     return parse_reviewer_decision(parse_input)
+
+
+def build_reviewer_sandbox(
+    project_root: Path,
+    reviewer_id: str,
+    reviewer_config: dict[str, Any],
+) -> ReviewerSandboxHandle | None:
+    """Build and return a reviewer sandbox handle when mode requires one."""
+    sandbox = reviewer_config.get("sandbox", {})
+    if not isinstance(sandbox, dict):
+        sandbox = {}
+
+    if sandbox.get("mode") != SANDBOX_MODE_CLEAN_ROOM_README_CLI:
+        return None
+
+    return _build_clean_room_readme_cli_sandbox(
+        project_root=project_root,
+        reviewer_id=reviewer_id,
+        reviewer_config=reviewer_config,
+    )
+
+
+def _build_clean_room_readme_cli_sandbox(
+    *,
+    project_root: Path,
+    reviewer_id: str,
+    reviewer_config: dict[str, Any],
+) -> ReviewerSandboxHandle:
+    prompt_file = str(reviewer_config.get("prompt_file", "")).strip()
+    if not prompt_file:
+        raise RuntimeError(
+            f"sandbox setup failed: reviewer {reviewer_id} prompt_file is required"
+        )
+
+    workspace = TemporaryDirectory(
+        prefix=f"engineeringagent-reviewer-{reviewer_id}-clean-room-"
+    )
+    execution_root = Path(workspace.name) / "workspace"
+    execution_root.mkdir(parents=True, exist_ok=True)
+    sandbox_assets = sorted({"README.md", prompt_file})
+
+    try:
+        for relative_path in sandbox_assets:
+            _copy_clean_room_asset(
+                project_root=project_root,
+                execution_root=execution_root,
+                relative_path=relative_path,
+            )
+        _write_clean_room_cli_helper(
+            project_root=project_root,
+            execution_root=execution_root,
+        )
+    except RuntimeError:
+        workspace.cleanup()
+        raise
+    except OSError as exc:
+        workspace.cleanup()
+        raise RuntimeError(f"sandbox setup failed: {exc}") from exc
+
+    return ReviewerSandboxHandle(
+        execution_root=execution_root,
+        cleanup=workspace.cleanup,
+    )
+
+
+def _copy_clean_room_asset(
+    *,
+    project_root: Path,
+    execution_root: Path,
+    relative_path: str,
+) -> None:
+    candidate = Path(relative_path)
+    if candidate.is_absolute() or any(part == ".." for part in candidate.parts):
+        raise RuntimeError(
+            f"sandbox setup failed: invalid sandbox asset path: {relative_path}"
+        )
+
+    source_path = project_root / candidate
+    if not source_path.exists():
+        raise RuntimeError(
+            f"sandbox setup failed: required sandbox asset missing: {relative_path}"
+        )
+    if source_path.is_dir():
+        raise RuntimeError(
+            f"sandbox setup failed: sandbox asset must be a file: {relative_path}"
+        )
+
+    target_path = execution_root / candidate
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source_path, target_path)
+
+
+def _write_clean_room_cli_helper(*, project_root: Path, execution_root: Path) -> None:
+    source_root = project_root / "src"
+    if not source_root.exists() or not source_root.is_dir():
+        raise RuntimeError("sandbox setup failed: required source root missing: src")
+
+    helper_path = execution_root / CLEAN_ROOM_ENGINEERINGAGENT_HELPER
+    helper_path.parent.mkdir(parents=True, exist_ok=True)
+
+    helper_script = "\n".join(
+        [
+            "#!/usr/bin/env sh",
+            "set -eu",
+            (
+                "export PYTHONPATH="
+                f"{shlex.quote(str(source_root))}${{PYTHONPATH:+:${{PYTHONPATH}}}}"
+            ),
+            f'exec {shlex.quote(sys.executable)} -m engineeringagent.cli "$@"',
+            "",
+        ]
+    )
+    helper_path.write_text(helper_script, encoding="utf-8")
+    helper_path.chmod(0o755)
 
 
 def parse_reviewer_decision(output: str) -> dict[str, Any]:
@@ -506,12 +635,25 @@ def _compose_reviewer_prompt(
 @contextmanager
 def _reviewer_execution_root(
     project_root: Path,
+    reviewer_id: str,
     reviewer: dict[str, Any],
 ) -> Iterator[Path]:
     """Yield execution root, optionally isolated via temp worktree snapshot."""
     sandbox = reviewer.get("sandbox", {})
     if not isinstance(sandbox, dict):
         sandbox = {}
+
+    sandbox_handle = build_reviewer_sandbox(
+        project_root=project_root,
+        reviewer_id=reviewer_id,
+        reviewer_config=reviewer,
+    )
+    if sandbox_handle is not None:
+        try:
+            yield sandbox_handle.execution_root
+        finally:
+            sandbox_handle.cleanup()
+        return
 
     if sandbox.get("mode") != SANDBOX_MODE_TEMP_WORKTREE_SNAPSHOT:
         yield project_root

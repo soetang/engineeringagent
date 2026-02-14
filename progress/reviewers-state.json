@@ -22,6 +22,18 @@
           "invalidated_at": "2026-02-14T23:08:59Z"
         }
       }
+    },
+    "FEAT-060": {
+      "reviewers": {
+        "code_simplifier": {
+          "approved": true,
+          "approved_at": "2026-02-14T23:54:28Z",
+          "blocking_request_changes_count": 0,
+          "blocking_retry_updated_at": "2026-02-14T23:54:28Z",
+          "invalidated_at": "2026-02-14T23:47:37Z",
+          "updated_at": "2026-02-14T23:48:11Z"
+        }
+      }
     }
   },
   "version": "1"

@@ -1,0 +1,122 @@
+id: FEAT-064
+title: Centralize reviewer response format contract with $responseformat and human reviewer authoring docs
+type: feature
+expected_commit_subject: 'feat: add FEAT-064 reviewer responseformat contract and authoring docs'
+status: backlog
+priority: high
+objective: Replace per-reviewer output-format instructions with a single mandatory $responseformat contract, enforce it through validation/runtime policy, and add clear human documentation for creating reviewers.
+context: >-
+  Reviewer prompts currently duplicate output-format instructions (including repo-specific
+  edits in code_simplifier), which creates drift risk and inconsistent reviewer behavior.
+  Product direction is to make output-format guidance canonical and centrally maintained,
+  then require all reviewer markdown prompts to opt into that canonical contract using
+  `$responseformat`.
+
+  This is an intentional contract break: existing reviewer prompts that do not include
+  `$responseformat` should fail validation until migrated.
+constraints:
+- Use a literal `$responseformat` placeholder in reviewer markdown prompts as the only supported injection point for response-format instructions.
+- Do not add runtime fallback behavior that appends response-format instructions when `$responseformat` is missing.
+- Preserve reviewer decision envelope keys and semantics (`decision`, `summary`, optional `required_actions`, `confidence`, `scope_notes`).
+- Runtime parser-failure behavior must remain deterministic (`request_changes` envelope with parser-failure summary) when reviewer output is malformed.
+- Validator must fail when any markdown reviewer prompt under `harness/reviewers/prompts/*.md` does not include `$responseformat`.
+- "`engineeringagent reviewers init` and scaffold reviewer prompt templates must emit prompts that include `$responseformat`."
+- Migrate repository-owned reviewer prompts away from bespoke output-format prose to token-based contract insertion.
+- Add a human-facing reviewer authoring markdown guide and link it from `README.md`.
+- Update spec-writing instructions to require explicit fitness-function impact assessment for every new spec, while allowing explicit "no fitness-function changes required" outcomes when justified.
+- Keep changes focused on reviewer prompt contract/doc surfaces; do not expand reviewer approval policy semantics beyond current contract.
+implementation_notes: >-
+  Contract/API deltas for this feature are explicit and intentional:
+
+  - Surface: Reviewer prompt markdown contract.
+    - Old behavior: Prompt files could include ad-hoc output-format guidance and did not
+      require a canonical placeholder.
+    - New behavior: Every reviewer markdown prompt under
+      `harness/reviewers/prompts/*.md` must include `$responseformat`.
+
+  - Surface: Reviewer runtime prompt composition.
+    - Old behavior: Runtime added generic JSON-output instructions and prompt-local
+      guidance could diverge.
+    - New behavior: Runtime injects one canonical JSON decision-spec block at
+      `$responseformat` and treats missing placeholder as a deterministic contract failure.
+
+  - Surface: Validation policy (`engineeringagent validate`).
+    - Old behavior: Reviewer validation focused on YAML contract/path constraints and
+      did not enforce reviewer markdown content token requirements.
+    - New behavior: Validation reports deterministic errors for reviewer markdown prompts
+      missing `$responseformat`.
+
+  - Surface: Reviewer setup/scaffold API.
+    - Old behavior: Seeded reviewer prompts included inline output-format prose.
+    - New behavior: Seeded reviewer prompts include `$responseformat` and rely on
+      canonical injected contract text.
+
+  - Surface: Human documentation.
+    - Old behavior: Reviewer authoring instructions were mostly agent-facing and lacked
+      a dedicated human how-to document.
+    - New behavior: Add a human reviewer-authoring markdown guide and README link.
+
+  Compatibility policy:
+  - Immediate break for reviewer markdown prompts missing `$responseformat`.
+  - No temporary dual-support path and no append fallback.
+
+  Migration scope:
+  - One-time prompt migration for all repository-owned reviewer markdown prompts.
+  - Update tests and docs to align with token contract.
+
+  Verification evidence should include runtime tests for prompt composition/failure,
+  validator tests for placeholder enforcement, scaffold/init tests for seeded prompt
+  content, and repository validation.
+acceptance:
+- Reviewer runtime injects one canonical JSON response-format contract at `$responseformat` for configured reviewers.
+- Missing `$responseformat` in reviewer markdown prompts is treated as a deterministic contract failure (no fallback append behavior).
+- "`engineeringagent validate` reports deterministic errors for any markdown reviewer prompt under `harness/reviewers/prompts/*.md` that lacks `$responseformat`."
+- Repository-owned reviewer prompts (including code_simplifier prompt) are migrated to token-based response-format insertion.
+- "`engineeringagent reviewers init` and scaffold reviewer prompt templates generate prompts containing `$responseformat`."
+- New human-facing reviewer authoring doc exists under `docs/principles/` and explains how to create reviewers, use `$responseformat`, and migrate existing prompts.
+- "`README.md` reviewer section links to the new human reviewer authoring doc."
+- "`docs/references/spec-writing-llms.md` includes explicit guidance to assess fitness-function impact for each new spec and record either required changes or a justified no-change decision."
+- Regression tests cover runtime injection/failure, validator placeholder enforcement, and scaffold/init prompt generation alignment.
+subtasks:
+- id: ST-001
+  title: Add canonical $responseformat injection in reviewer runtime and enforce missing-token failure
+  status: backlog
+  order: 1
+  context: Introduce shared response-format spec text and require token-based substitution in reviewer prompt composition.
+  verification:
+  - uv run pytest -q tests/test_reviewers_runtime.py
+- id: ST-002
+  title: Enforce $responseformat in reviewer markdown prompts through validator policy
+  status: backlog
+  order: 2
+  context: Extend validation to report deterministic contract issues when reviewer markdown prompts omit the required token.
+  verification:
+  - uv run pytest -q tests/test_validator.py
+- id: ST-003
+  title: Update reviewers init and scaffold templates to generate token-based prompts
+  status: backlog
+  order: 3
+  context: Remove duplicated inline response-format prose from seeded templates and ensure generated prompts include `$responseformat`.
+  verification:
+  - uv run pytest -q tests/test_cli_reviewers.py tests/test_init_scaffold.py
+- id: ST-004
+  title: Migrate repository reviewer prompts to token contract and remove bespoke format instructions
+  status: backlog
+  order: 4
+  context: Update existing prompt files under harness reviewer prompts to the new placeholder model.
+  verification:
+  - uv run pytest -q tests/test_reviewers_runtime.py tests/test_loop_reviewers.py
+- id: ST-005
+  title: Add human reviewer-authoring doc and link from README
+  status: backlog
+  order: 5
+  context: Document human workflow for creating reviewers and response-format contract usage; wire link in README reviewer section.
+  verification:
+  - uv run python -m engineeringagent.cli validate
+- id: ST-006
+  title: Update spec-writing guidance to require fitness-function impact assessment
+  status: backlog
+  order: 6
+  context: Add explicit spec-authoring instruction to evaluate whether existing fitness functions must change and record decision.
+  verification:
+  - uv run python -m engineeringagent.cli validate
