@@ -31,8 +31,10 @@ from .loop_runtime.iteration import (
 from .loop_runtime.phases import (
     CompletionPhaseDependencies,
     GatePhaseDependencies,
+    VerificationPhaseDependencies,
     run_completion_commit_phase,
     run_gate_phase,
+    run_verification_phase,
 )
 from .loop_runtime.selection import (
     choose_feature_with_selector,
@@ -201,7 +203,7 @@ def _feature_completion_commit_subject(feature: dict[str, Any]) -> str:
     return message
 
 
-def print_summary(
+def print_summary(  # noqa: PLR0913 - pipeline presentation callback contract.
     feature_id: str | None,
     result: str,
     failed_gate: str | None,
@@ -211,6 +213,8 @@ def print_summary(
     implement_step: str | None = None,
     log_path: str | None = None,
     archived_selection_path: str | None = None,
+    verification_status: str | None = None,
+    verification_failed_command: str | None = None,
 ) -> None:
     """Print a one-line loop summary and optional gate failure.
 
@@ -224,6 +228,8 @@ def print_summary(
         implement_step: Implement step descriptor for iteration display.
         log_path: Optional per-feature log path for failed iterations.
         archived_selection_path: Archived counterpart path when selection moved.
+        verification_status: Verification phase status for current iteration.
+        verification_failed_command: Failed verification command when available.
     """
     presenter = RunOutputPresenter.for_current_terminal()
     if attempt is not None:
@@ -234,6 +240,10 @@ def print_summary(
         else:
             print(f"  🎯 Selected: {selected_path or '-'}")
         print(f"  🛠 Implement: {implement_step or '-'}")
+        verification_label = verification_status or "not_run"
+        if verification_label.startswith("failed:") and verification_failed_command:
+            verification_label = f"failed ({verification_failed_command})"
+        print(f"  🧪 Verify: {verification_label}")
         if result == "passed":
             print(f"  {presenter.format_iteration_passed_line()}")
         else:
@@ -368,6 +378,10 @@ def _run_feature_iteration_with_inputs(
                 load_gate_config=load_gate_config,
                 run_profile=run_profile,
                 restore_archived_feature=_restore_archived_feature,
+            ),
+            run_verification_phase=run_verification_phase,
+            verification_phase_dependencies=VerificationPhaseDependencies(
+                run_shell_command=run_shell_command,
             ),
             run_completion_commit_phase=run_completion_commit_phase,
             completion_phase_dependencies=CompletionPhaseDependencies(

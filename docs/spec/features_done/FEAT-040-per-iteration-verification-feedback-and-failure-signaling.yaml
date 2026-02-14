@@ -1,0 +1,95 @@
+id: FEAT-040
+title: Surface per-iteration verification failures into retry feedback and loop status
+type: bug
+expected_commit_subject: 'fix: add FEAT-040 per-iteration verification feedback signaling'
+status: done
+priority: high
+objective: Ensure each loop iteration captures and reports subtask verification command
+  results deterministically, and feeds failing test output back into the next implementation
+  prompt for the same feature.
+context: Recent FEAT-037 runs showed repeated retries where iteration telemetry reported
+  `implement=passed` and `result=passed` while subtask verification logs still contained
+  failing `uv run pytest -q` output. Because this failure context was not promoted
+  into structured iteration status and retry feedback, the implementer kept repeating
+  the same step without actionable guidance. Primary evidence is captured in `progress/run-feature-FEAT-037.txt`
+  (see repeated `next_action=retry_same_feature` and recurring `tests/test_fitness_parallel_runner.py`
+  failures near the file tail).
+constraints:
+- Do not rely on implementer narration to determine verification success/failure.
+- Execute selected subtask verification commands in harness-controlled flow with deterministic
+  pass/fail outcomes.
+- When any verification command fails, iteration result must not be reported as pass.
+- Failed verification output must be carried into the next retry prompt for the same
+  feature path.
+- Preserve existing gate execution behavior and failed-gate semantics for gate failures.
+- Keep default output concise while preserving full details in progress logs.
+implementation_notes: Add a dedicated verification phase in loop runtime that runs
+  the selected subtask's `verification` commands after implement step and before completion
+  transitions. Record structured verification status in iteration telemetry and progress
+  logs, including the failing command id and captured output when failures occur.
+  Reuse the existing retry feedback channel used for gate/commit failures so the next
+  implementation prompt includes the latest verification failure evidence. Ensure
+  loop action selection does not classify verification-failed iterations as passed.
+acceptance:
+- Selected subtask verification commands run under harness control on each non-dry
+  iteration.
+- Iteration output and telemetry include explicit verification status (`passed` or
+  `failed:<command>`).
+- A failing verification command causes non-pass iteration result and stable failure
+  signaling.
+- Next retry prompt for the same feature includes truncated latest verification failure
+  output.
+- Progress logs include a concise verification summary plus detailed failing command
+  output.
+- Existing gate and commit failure feedback behavior remains intact.
+subtasks:
+- id: ST-001
+  title: Add loop-runtime verification phase contract and telemetry fields
+  status: done
+  order: 1
+  context: Define data contracts for per-iteration verification execution and outcomes,
+    including status strings, failed verification command identity, and prompt-feedback
+    payload.
+  verification:
+  - uv run pytest -q tests/test_loop_contracts.py::test_iteration_outcome_includes_verification_status
+  - uv run pytest -q tests/test_loop_contracts.py::test_retry_feedback_contract_accepts_verification_failure
+- id: ST-002
+  title: Execute selected subtask verification commands in harness runtime
+  status: done
+  order: 2
+  context: Implement the verification phase so loop runtime executes selected subtask
+    `verification` commands and captures deterministic pass/fail outcomes.
+  verification:
+  - uv run pytest -q tests/test_loop_ralph_mode.py::test_selected_subtask_verification_runs_in_iteration
+  - uv run pytest -q tests/test_loop_ralph_mode.py::test_verification_failure_marks_iteration_non_pass
+- id: ST-003
+  title: Inject verification failure output into next retry prompt
+  status: done
+  order: 3
+  context: Reuse retry-feedback plumbing so failed verification output is truncated
+    and injected into the next implement prompt for the same selected feature.
+  verification:
+  - uv run pytest -q tests/test_loop_ralph_mode.py::test_verification_failure_feedback_is_injected_into_next_prompt
+  - uv run pytest -q tests/test_loop_ralph_mode.py::test_verification_failure_feedback_replaces_previous_feedback
+- id: ST-004
+  title: Update presentation and progress logging for verification outcomes
+  status: done
+  order: 4
+  context: Add concise terminal status and structured progress log sections so humans
+    can see verification outcomes without confusing them with gate results. Create
+    a new test module `tests/test_loop_output.py` in this subtask and add focused
+    output assertions there.
+  verification:
+  - uv run pytest -q tests/test_loop_output.py::test_progress_log_records_verification_status
+  - uv run pytest -q tests/test_loop_output.py::test_non_verbose_terminal_output_shows_verification_summary
+- id: ST-005
+  title: Run regression checks for retry and gate compatibility
+  status: done
+  order: 5
+  context: Confirm verification feedback does not regress gate-failure and commit-failure
+    retry flows while resolving repeated verification-failure loops.
+  verification:
+  - uv run pytest -q tests/test_loop_ralph_mode.py
+  - uv run pytest -q tests/test_gates.py
+  - uvx --from . engineeringagent validate
+updated_at: '2026-02-14T09:02:06Z'

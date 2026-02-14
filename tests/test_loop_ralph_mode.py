@@ -178,6 +178,85 @@ def _move_feature_to_done(project_root: Path, feature_path: Path) -> None:
     feature_path.unlink()
 
 
+def test_selected_subtask_verification_runs_in_iteration(tmp_path: Path) -> None:
+    verification_marker = "verification-ran.txt"
+    verification_command = (
+        f'"{sys.executable}" -c "from pathlib import Path; '
+        f"Path('{verification_marker}').write_text('ok', encoding='utf-8')\""
+    )
+    feature_data = _base_feature(status="in_progress")
+    feature_data["subtasks"] = [
+        {
+            "id": "ST-001",
+            "title": "Run verification command",
+            "status": "backlog",
+            "order": 1,
+            "context": "Verify selected subtask commands run under loop control.",
+            "verification": [verification_command],
+        }
+    ]
+    project_root, feature_path = _make_project_root(tmp_path, feature_data=feature_data)
+
+    outcome = loop_module._run_feature_iteration(
+        project_root=project_root,
+        feature_path=feature_path,
+        gate_profile="loop_fast",
+        implement_command=None,
+        opencode_prompt=None,
+        skip_implement=True,
+        attempt=1,
+        hook_feedback=None,
+        verbose_output=False,
+    )
+
+    assert outcome.result == "passed"
+    assert outcome.verification_status == "passed"
+    assert outcome.verification_failed_command is None
+    assert (project_root / verification_marker).read_text(encoding="utf-8") == "ok"
+
+
+def test_verification_failure_marks_iteration_non_pass(tmp_path: Path) -> None:
+    verification_command = (
+        f'"{sys.executable}" -c "import sys; print(\'verification failure\'); '
+        'sys.exit(1)"'
+    )
+    feature_data = _base_feature(status="in_progress")
+    feature_data["subtasks"] = [
+        {
+            "id": "ST-001",
+            "title": "Fail verification command",
+            "status": "in_progress",
+            "order": 1,
+            "context": "Ensure failed verification marks iteration as failed.",
+            "verification": [verification_command],
+        }
+    ]
+    project_root, feature_path = _make_project_root(tmp_path, feature_data=feature_data)
+
+    outcome = loop_module._run_feature_iteration(
+        project_root=project_root,
+        feature_path=feature_path,
+        gate_profile="loop_fast",
+        implement_command=None,
+        opencode_prompt=None,
+        skip_implement=True,
+        attempt=1,
+        hook_feedback=None,
+        verbose_output=False,
+    )
+
+    assert outcome.result == "failed"
+    assert outcome.failed_gate is None
+    assert outcome.next_action == "retry_same_feature"
+    assert outcome.verification_status == f"failed:{verification_command}"
+    assert outcome.verification_failed_command == verification_command
+
+    runs = _read_runs(project_root)
+    assert runs[-1]["result"] == "failed"
+    assert runs[-1]["verification_status"] == f"failed:{verification_command}"
+    assert runs[-1]["verification_failed_command"] == verification_command
+
+
 def test_ralph_prompt_includes_feature_file_path(tmp_path: Path) -> None:
     _, feature_path = _make_project_root(tmp_path, feature_data=_base_feature())
     feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
@@ -1837,6 +1916,89 @@ def test_gate_failure_feedback_is_injected_into_next_prompt(
     assert "SPEC_VALIDATE_FAILED_TOKEN" in prompts[1]
 
 
+def test_verification_failure_feedback_is_injected_into_next_prompt(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    verification_command = "uv run pytest -q tests/test_verification_feedback.py"
+    feature_data = _base_feature(status="in_progress")
+    feature_data["subtasks"] = [
+        {
+            "id": "ST-001",
+            "title": "Inject verification failures into retry prompt",
+            "status": "in_progress",
+            "order": 1,
+            "context": "Ensure failed verification output appears in next prompt.",
+            "verification": [verification_command],
+        }
+    ]
+    project_root, feature_path = _make_project_root(tmp_path, feature_data=feature_data)
+    _init_git_repo(project_root)
+
+    real_run = subprocess.run
+    prompts: list[str] = []
+
+    def fake_subprocess_run(
+        command: Any, **kwargs: Any
+    ) -> subprocess.CompletedProcess[str]:
+        if isinstance(command, list) and command[:3] == ["opencode", "run", "--agent"]:
+            prompt = command[4]
+            prompts.append(prompt)
+            feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
+            feature["status"] = "done"
+            feature_path.write_text(
+                yaml.safe_dump(feature, sort_keys=False), encoding="utf-8"
+            )
+            return subprocess.CompletedProcess(command, 0, stdout="ok\n", stderr="")
+        return real_run(command, **kwargs)
+
+    verification_results = iter(
+        [
+            subprocess.CompletedProcess(
+                ["verify", "attempt-1"],
+                1,
+                stdout="VERIFICATION_FAILURE_TOKEN\n",
+                stderr="",
+            ),
+            subprocess.CompletedProcess(
+                ["verify", "attempt-2"],
+                0,
+                stdout="verification passed\n",
+                stderr="",
+            ),
+        ]
+    )
+
+    def fake_run_shell_command(
+        project_root: Path, command: str
+    ) -> subprocess.CompletedProcess[str]:
+        del project_root, command
+        return next(verification_results)
+
+    _patch_start_agent_with_fake(monkeypatch, fake_subprocess_run)
+    monkeypatch.setattr(
+        loop_module,
+        "_run_opencode_permission_precheck",
+        lambda **_: True,
+    )
+    monkeypatch.setattr(loop_module, "run_shell_command", fake_run_shell_command)
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        implement_command=None,
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        max_iterations=6,
+    )
+
+    assert code == 0
+    assert len(prompts) >= 2
+    assert "VERIFICATION_FAILURE_TOKEN" in prompts[1]
+
+
 def test_gate_failure_feedback_includes_fitness_remediation_guidance(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -2103,6 +2265,98 @@ def test_gate_failure_feedback_replaces_previous_feedback(
     assert "SECOND_GATE_FAILURE_TOKEN" not in prompts[1]
     assert "SECOND_GATE_FAILURE_TOKEN" in prompts[2]
     assert "FIRST_GATE_FAILURE_TOKEN" not in prompts[2]
+
+
+def test_verification_failure_feedback_replaces_previous_feedback(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    verification_command = "uv run pytest -q tests/test_verification_feedback.py"
+    feature_data = _base_feature(status="in_progress")
+    feature_data["subtasks"] = [
+        {
+            "id": "ST-001",
+            "title": "Replace verification feedback between retries",
+            "status": "in_progress",
+            "order": 1,
+            "context": "Ensure latest verification output replaces stale feedback.",
+            "verification": [verification_command],
+        }
+    ]
+    project_root, feature_path = _make_project_root(tmp_path, feature_data=feature_data)
+    _init_git_repo(project_root)
+
+    real_run = subprocess.run
+    prompts: list[str] = []
+
+    def fake_subprocess_run(
+        command: Any, **kwargs: Any
+    ) -> subprocess.CompletedProcess[str]:
+        if isinstance(command, list) and command[:3] == ["opencode", "run", "--agent"]:
+            prompt = command[4]
+            prompts.append(prompt)
+            feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
+            feature["status"] = "done"
+            feature_path.write_text(
+                yaml.safe_dump(feature, sort_keys=False), encoding="utf-8"
+            )
+            return subprocess.CompletedProcess(command, 0, stdout="ok\n", stderr="")
+        return real_run(command, **kwargs)
+
+    verification_results = iter(
+        [
+            subprocess.CompletedProcess(
+                ["verify", "attempt-1"],
+                1,
+                stdout="FIRST_VERIFICATION_FAILURE_TOKEN\n",
+                stderr="",
+            ),
+            subprocess.CompletedProcess(
+                ["verify", "attempt-2"],
+                1,
+                stdout="SECOND_VERIFICATION_FAILURE_TOKEN\n",
+                stderr="",
+            ),
+            subprocess.CompletedProcess(
+                ["verify", "attempt-3"],
+                0,
+                stdout="verification passed\n",
+                stderr="",
+            ),
+        ]
+    )
+
+    def fake_run_shell_command(
+        project_root: Path, command: str
+    ) -> subprocess.CompletedProcess[str]:
+        del project_root, command
+        return next(verification_results)
+
+    _patch_start_agent_with_fake(monkeypatch, fake_subprocess_run)
+    monkeypatch.setattr(
+        loop_module,
+        "_run_opencode_permission_precheck",
+        lambda **_: True,
+    )
+    monkeypatch.setattr(loop_module, "run_shell_command", fake_run_shell_command)
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        implement_command=None,
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        max_iterations=6,
+    )
+
+    assert code == 0
+    assert len(prompts) >= 3
+    assert "FIRST_VERIFICATION_FAILURE_TOKEN" in prompts[1]
+    assert "SECOND_VERIFICATION_FAILURE_TOKEN" not in prompts[1]
+    assert "SECOND_VERIFICATION_FAILURE_TOKEN" in prompts[2]
+    assert "FIRST_VERIFICATION_FAILURE_TOKEN" not in prompts[2]
 
 
 def test_gate_failure_feedback_is_truncated_before_prompt_injection(

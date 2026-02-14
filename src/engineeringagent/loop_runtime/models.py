@@ -15,6 +15,8 @@ class IterationOutcome:
     next_action: str
     hook_feedback: str | None
     log_path: str | None
+    verification_status: str = "not_run"
+    verification_failed_command: str | None = None
 
 
 @dataclass(frozen=True)
@@ -72,6 +74,15 @@ class GatePhaseOutcome:
 
 
 @dataclass(frozen=True)
+class VerificationPhaseOutcome:
+    result: str
+    verification_status: str
+    verification_failed_command: str | None
+    verification_output: str
+    hook_feedback: str | None
+
+
+@dataclass(frozen=True)
 class CompletionCommitOutcome:
     completed: bool
     completion_commit_succeeded: bool
@@ -91,6 +102,9 @@ class IterationTelemetryInputs:
     next_action: str
     implement_status: str
     gate_status: str
+    verification_status: str
+    verification_failed_command: str | None
     implement_output: str
     gate_output: str
+    verification_output: str
     hook_feedback: str | None

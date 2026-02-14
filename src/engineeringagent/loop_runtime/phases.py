@@ -4,9 +4,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+import sys
 from typing import Any, Callable
 
-from .models import CompletionCommitOutcome, FeatureIterationInputs, GatePhaseOutcome
+from .models import (
+    CompletionCommitOutcome,
+    FeatureIterationInputs,
+    GatePhaseOutcome,
+    VerificationPhaseOutcome,
+)
 
 
 @dataclass(frozen=True)
@@ -24,6 +30,11 @@ class CompletionPhaseDependencies:
         [Path, dict[str, Any]], tuple[bool, str | None, str]
     ]
     restore_archived_feature: Callable[[Path, Path], tuple[bool, str | None]]
+
+
+@dataclass(frozen=True)
+class VerificationPhaseDependencies:
+    run_shell_command: Callable[[Path, str], Any]
 
 
 def run_gate_phase(
@@ -69,6 +80,57 @@ def run_gate_phase(
         gate_output=gate_output,
         hook_feedback=gate_output
         or (f"gate '{failed or 'unknown'}' failed with no captured output"),
+    )
+
+
+def run_verification_phase(
+    iteration_inputs: FeatureIterationInputs,
+    verification_commands: list[str],
+    dependencies: VerificationPhaseDependencies,
+) -> VerificationPhaseOutcome:
+    """Run selected-subtask verification commands for the current iteration."""
+    if not verification_commands:
+        return VerificationPhaseOutcome(
+            result="passed",
+            verification_status="not_run",
+            verification_failed_command=None,
+            verification_output="",
+            hook_feedback=None,
+        )
+
+    command_outputs: list[str] = []
+    for command in verification_commands:
+        print(f"Verification step: {command}")
+        proc = dependencies.run_shell_command(iteration_inputs.project_root, command)
+        if iteration_inputs.verbose_output:
+            if proc.stdout:
+                print(proc.stdout, end="")
+            if proc.stderr:
+                print(proc.stderr, end="", file=sys.stderr)
+        output = (proc.stdout or "") + (proc.stderr or "")
+        command_output = (
+            f"[verification] command={command}\n"
+            f"[verification] returncode={proc.returncode}\n"
+            f"{output}"
+        )
+        command_outputs.append(command_output)
+
+        if proc.returncode != 0:
+            verification_output = "\n".join(command_outputs)
+            return VerificationPhaseOutcome(
+                result="failed",
+                verification_status=f"failed:{command}",
+                verification_failed_command=command,
+                verification_output=verification_output,
+                hook_feedback=verification_output,
+            )
+
+    return VerificationPhaseOutcome(
+        result="passed",
+        verification_status="passed",
+        verification_failed_command=None,
+        verification_output="\n".join(command_outputs),
+        hook_feedback=None,
     )
 
 

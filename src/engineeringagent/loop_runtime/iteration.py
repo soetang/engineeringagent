@@ -15,8 +15,13 @@ from .models import (
     IterationOutcome,
     IterationTelemetryInputs,
     PostImplementFeatureOutcome,
+    VerificationPhaseOutcome,
 )
-from .phases import CompletionPhaseDependencies, GatePhaseDependencies
+from .phases import (
+    CompletionPhaseDependencies,
+    GatePhaseDependencies,
+    VerificationPhaseDependencies,
+)
 
 
 @dataclass(frozen=True)
@@ -49,6 +54,11 @@ class IterationPipelineDependencies:
         GatePhaseOutcome,
     ]
     gate_phase_dependencies: GatePhaseDependencies
+    run_verification_phase: Callable[
+        [FeatureIterationInputs, list[str], VerificationPhaseDependencies],
+        VerificationPhaseOutcome,
+    ]
+    verification_phase_dependencies: VerificationPhaseDependencies
     run_completion_commit_phase: Callable[
         [
             FeatureIterationInputs,
@@ -73,9 +83,41 @@ class IterationPipelineDependencies:
             str | None,
             str | None,
             str | None,
+            str | None,
+            str | None,
         ],
         None,
     ]
+
+
+def _selected_subtask_verification_commands(
+    feature: dict[str, Any] | None,
+) -> list[str]:
+    if feature is None:
+        return []
+    subtasks = feature.get("subtasks")
+    if not isinstance(subtasks, list) or not subtasks:
+        return []
+
+    prioritized_statuses = ("in_progress", "backlog")
+    for target_status in prioritized_statuses:
+        matching_subtasks = [
+            subtask
+            for subtask in subtasks
+            if isinstance(subtask, dict) and subtask.get("status") == target_status
+        ]
+        if not matching_subtasks:
+            continue
+
+        selected_subtask = sorted(
+            matching_subtasks,
+            key=lambda subtask: int(subtask.get("order", 1_000_000)),
+        )[0]
+        verification = selected_subtask.get("verification")
+        if not isinstance(verification, list):
+            return []
+        return [str(command) for command in verification]
+    return []
 
 
 def run_feature_iteration_pipeline(
@@ -93,12 +135,16 @@ def run_feature_iteration_pipeline(
     next_hook_feedback: str | None = None
     implement_status = "not_run"
     gate_status = "not_run"
+    verification_status = "not_run"
+    verification_failed_command: str | None = None
     implement_output = ""
     gate_output = ""
+    verification_output = ""
     completion_commit_succeeded = False
     archived_path: Path | None = None
     archived_in_iteration = False
     selected_started_active = False
+    verification_commands: list[str] = []
 
     initial_load = dependencies.evaluate_initial_feature_load(
         iteration_inputs.project_root,
@@ -121,6 +167,7 @@ def run_feature_iteration_pipeline(
 
     if dependencies.ready_for_active_iteration(result, feature, loaded_from_archive):
         assert feature is not None
+        verification_commands = _selected_subtask_verification_commands(feature)
         implement_status = "skipped" if iteration_inputs.skip_implement else "passed"
         ok, implement_failed_gate, implement_output = dependencies.run_implement_step(
             iteration_inputs.project_root,
@@ -136,6 +183,19 @@ def run_feature_iteration_pipeline(
             result = "failed"
             failed_gate = implement_failed_gate
             implement_status = f"failed:{implement_failed_gate or 'unknown'}"
+
+    if result == "passed":
+        verification_phase = dependencies.run_verification_phase(
+            iteration_inputs,
+            verification_commands,
+            dependencies.verification_phase_dependencies,
+        )
+        verification_output = verification_phase.verification_output
+        verification_status = verification_phase.verification_status
+        verification_failed_command = verification_phase.verification_failed_command
+        if verification_phase.result == "failed":
+            result = "failed"
+            next_hook_feedback = verification_phase.hook_feedback
 
     post_feature = feature
     loaded_post_from_archive = loaded_from_archive
@@ -223,8 +283,11 @@ def run_feature_iteration_pipeline(
         next_action=next_action,
         implement_status=implement_status,
         gate_status=gate_status,
+        verification_status=verification_status,
+        verification_failed_command=verification_failed_command,
         implement_output=implement_output,
         gate_output=gate_output,
+        verification_output=verification_output,
         hook_feedback=next_hook_feedback,
     )
     feature_progress_log_reference = dependencies.write_iteration_telemetry(
@@ -251,6 +314,8 @@ def run_feature_iteration_pipeline(
         implement_step,
         feature_progress_log_reference if result != "passed" else None,
         archived_selection_path,
+        verification_status,
+        verification_failed_command,
     )
     if result != "passed":
         print(f"Detailed log: {feature_progress_log_reference}")
@@ -261,4 +326,6 @@ def run_feature_iteration_pipeline(
         next_action=next_action,
         hook_feedback=next_hook_feedback,
         log_path=feature_progress_log_reference,
+        verification_status=verification_status,
+        verification_failed_command=verification_failed_command,
     )

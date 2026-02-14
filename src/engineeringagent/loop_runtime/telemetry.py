@@ -97,6 +97,8 @@ def write_iteration_telemetry(
         "subtask_id": None,
         "result": telemetry_inputs.result,
         "failed_gate": telemetry_inputs.failed_gate,
+        "verification_status": telemetry_inputs.verification_status,
+        "verification_failed_command": telemetry_inputs.verification_failed_command,
         "duration_sec": int(time.time() - telemetry_inputs.started),
         "attempt": telemetry_inputs.iteration_inputs.attempt,
         "commit": git_head_resolver(telemetry_inputs.iteration_inputs.project_root),
@@ -112,6 +114,9 @@ def write_iteration_telemetry(
         f"feature_path={telemetry_inputs.iteration_inputs.feature_path}",
         f"implement={_strip_ansi(telemetry_inputs.implement_status)}",
         f"gates={_strip_ansi(telemetry_inputs.gate_status)}",
+        "verification="
+        f"{_strip_ansi(telemetry_inputs.verification_status)}"
+        f" failed_command={telemetry_inputs.verification_failed_command or '-'}",
         "result="
         f"{run_payload.get('result')} failed_gate={run_payload.get('failed_gate') or '-'} "
         f"next_action={run_payload.get('next_action')}",
@@ -130,6 +135,14 @@ def write_iteration_telemetry(
                 "gate_output_begin",
                 _strip_ansi(telemetry_inputs.gate_output.rstrip("\n")),
                 "gate_output_end",
+            ]
+        )
+    if telemetry_inputs.verification_output:
+        feature_progress_log_lines.extend(
+            [
+                "verification_output_begin",
+                _strip_ansi(telemetry_inputs.verification_output.rstrip("\n")),
+                "verification_output_end",
             ]
         )
     if telemetry_inputs.hook_feedback:

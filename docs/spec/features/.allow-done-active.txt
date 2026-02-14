@@ -1,2 +1,3 @@
 FEAT-035-harness-engineering-principles-docs-update.yaml
 FEAT-036-language-agnostic-init-scaffolding-and-reference-first-agents.yaml
+FEAT-040-per-iteration-verification-feedback-and-failure-signaling.yaml

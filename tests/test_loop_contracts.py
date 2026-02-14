@@ -2,11 +2,18 @@ from __future__ import annotations
 
 import dataclasses
 import inspect
+import json
 from inspect import Parameter
 from pathlib import Path
 
 import engineeringagent.loop as loop_module
 import yaml
+
+from engineeringagent.loop_runtime.models import (
+    FeatureIterationInputs,
+    IterationTelemetryInputs,
+)
+from engineeringagent.loop_runtime.telemetry import write_iteration_telemetry
 
 
 def _assert_signature_parameters(
@@ -147,3 +154,65 @@ def test_loop_facade_line_budget_rule_configuration() -> None:
         "python",
         "harness/fitness-functions/check_loop_facade_line_budget.py",
     ]
+
+
+def test_iteration_outcome_includes_verification_status() -> None:
+    outcome = loop_module.IterationOutcome(
+        completed=False,
+        result="failed",
+        failed_gate="spec_validate",
+        next_action="retry_same_feature",
+        hook_feedback="verification failed",
+        log_path="progress/run-feature-FEAT-040.txt",
+    )
+
+    assert outcome.verification_status == "not_run"
+    assert outcome.verification_failed_command is None
+
+
+def test_retry_feedback_contract_accepts_verification_failure(tmp_path: Path) -> None:
+    iteration_inputs = FeatureIterationInputs(
+        project_root=tmp_path,
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-040.yaml",
+        gate_profile="loop_fast",
+        implement_command=None,
+        opencode_prompt=None,
+        skip_implement=False,
+        attempt=1,
+        hook_feedback=None,
+        verbose_output=False,
+    )
+    telemetry_inputs = IterationTelemetryInputs(
+        iteration_inputs=iteration_inputs,
+        started=0.0,
+        feature_id="FEAT-040",
+        result="failed",
+        failed_gate=None,
+        next_action="retry_same_feature",
+        implement_status="passed",
+        gate_status="not_run",
+        verification_status="failed:uv run pytest -q",
+        verification_failed_command="uv run pytest -q",
+        implement_output="",
+        gate_output="",
+        verification_output="E       assert 1 == 2",
+        hook_feedback="[verification] uv run pytest -q\nE       assert 1 == 2",
+    )
+
+    write_iteration_telemetry(
+        telemetry_inputs,
+        git_head_resolver=lambda _: None,
+    )
+
+    run = json.loads((tmp_path / "progress" / "runs.jsonl").read_text(encoding="utf-8"))
+    assert run["verification_status"] == "failed:uv run pytest -q"
+    assert run["verification_failed_command"] == "uv run pytest -q"
+
+    feature_log = (tmp_path / "progress" / "run-feature-FEAT-040.txt").read_text(
+        encoding="utf-8"
+    )
+    assert (
+        "verification=failed:uv run pytest -q failed_command=uv run pytest -q"
+        in feature_log
+    )
+    assert "detail=[verification] uv run pytest -q" in feature_log
