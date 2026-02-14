@@ -9,6 +9,7 @@ from tempfile import TemporaryDirectory
 from typing import Any, Callable, Iterator
 
 from .gates import ChangedPathsResult
+from .opencode.client import DEFAULT_OPENCODE_AGENT
 from .specs import load_yaml, reviewer_contract_issues
 
 
@@ -395,7 +396,11 @@ def run_reviewer(
             )
 
             try:
-                proc = start_agent_fn(execution_root, composed_prompt, agent="build")
+                proc = start_agent_fn(
+                    execution_root,
+                    composed_prompt,
+                    agent=DEFAULT_OPENCODE_AGENT,
+                )
             except FileNotFoundError:
                 return _parser_failure_decision("opencode executable missing")
     except RuntimeError as exc:

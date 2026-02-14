@@ -81,6 +81,63 @@ def test_progress_log_records_verification_status(tmp_path: Path) -> None:
     assert "reviewer_output_end" in feature_log
 
 
+def test_progress_log_records_code_simplifier_advisory_followup_status(
+    tmp_path: Path,
+) -> None:
+    iteration_inputs = FeatureIterationInputs(
+        project_root=tmp_path,
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-059.yaml",
+        gate_profile="loop_fast",
+        implement_command=None,
+        opencode_prompt=None,
+        skip_implement=False,
+        attempt=2,
+        hook_feedback=None,
+        verbose_output=False,
+    )
+    telemetry_inputs = IterationTelemetryInputs(
+        iteration_inputs=iteration_inputs,
+        started=0.0,
+        feature_id="FEAT-059",
+        result="failed",
+        failed_gate="reviewer_advisory_followup",
+        next_action="retry_same_feature",
+        implement_status="passed",
+        gate_status="passed",
+        verification_status="passed",
+        verification_failed_command=None,
+        reviewer_status="failed:advisory_followup",
+        reviewer_decision="warning",
+        failed_reviewer_id="code_simplifier",
+        implement_output="",
+        gate_output="",
+        verification_output="",
+        reviewer_output="[reviewer:code_simplifier] mode=advisory decision=warning",
+        hook_feedback="reviewer 'code_simplifier' advisory feedback: simplify nested branching.",
+    )
+
+    write_iteration_telemetry(
+        telemetry_inputs,
+        git_head_resolver=lambda _: "def5678",
+    )
+
+    run = json.loads((tmp_path / "progress" / "runs.jsonl").read_text(encoding="utf-8"))
+    assert run["reviewer_status"] == "failed:advisory_followup"
+    assert run["reviewer_decision"] == "warning"
+    assert run["failed_reviewer_id"] == "code_simplifier"
+
+    feature_log = (tmp_path / "progress" / "run-feature-FEAT-059.txt").read_text(
+        encoding="utf-8"
+    )
+    assert (
+        "reviewer=failed:advisory_followup decision=warning "
+        "failed_reviewer=code_simplifier"
+    ) in feature_log
+    assert "reviewer_output_begin" in feature_log
+    assert "[reviewer:code_simplifier] mode=advisory decision=warning" in feature_log
+    assert "reviewer_output_end" in feature_log
+
+
 def test_non_verbose_terminal_output_shows_verification_summary(
     monkeypatch: Any,
     capsys: Any,

@@ -1,0 +1,17 @@
+contract_version: "1.0"
+profiles:
+  loop_fast:
+    - code_simplifier
+reviewers:
+  code_simplifier:
+    prompt_file: "harness/reviewers/prompts/code_simplifier.md"
+    trigger:
+      phase: "iteration_end"
+      on_change:
+        - "src/**/*.py"
+        - "tests/**/*.py"
+    approval:
+      mode: "advisory"
+      first_feature_approval: true
+      max_retries: 2
+      continue_on_exhausted: true

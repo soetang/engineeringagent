@@ -4,6 +4,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from engineeringagent.gates import ChangedPathsResult
+from engineeringagent.opencode.client import DEFAULT_OPENCODE_AGENT
 from engineeringagent.reviewers import PARSER_FAILURE_SUMMARY_PREFIX, run_reviewer
 
 
@@ -18,7 +19,7 @@ def test_readme_process_uses_temp_worktree_snapshot(
 
     captured: dict[str, str] = {}
 
-    def _start_agent(project_root, _prompt, *, agent="build"):
+    def _start_agent(project_root, _prompt, *, agent=DEFAULT_OPENCODE_AGENT):
         captured["project_root"] = str(project_root)
         captured["agent"] = agent
         snapshot_readme = Path(project_root) / "README.md"
@@ -53,7 +54,7 @@ def test_readme_process_uses_temp_worktree_snapshot(
     )
 
     assert decision["decision"] == "approve"
-    assert captured["agent"] == "build"
+    assert captured["agent"] == DEFAULT_OPENCODE_AGENT
     assert captured["project_root"] != str(tmp_path)
     assert captured["snapshot_readme_before"] == "Original README\n"
     assert readme_path.read_text(encoding="utf-8") == "Original README\n"
@@ -73,7 +74,7 @@ def test_readme_process_runs_readme_bootstrap_in_fresh_temp_directory(
 
     captured: dict[str, str] = {}
 
-    def _start_agent(project_root, prompt, *, agent="build"):
+    def _start_agent(project_root, prompt, *, agent=DEFAULT_OPENCODE_AGENT):
         captured["project_root"] = str(project_root)
         captured["prompt"] = prompt
         captured["agent"] = agent
@@ -106,7 +107,7 @@ def test_readme_process_runs_readme_bootstrap_in_fresh_temp_directory(
     )
 
     assert decision["decision"] == "approve"
-    assert captured["agent"] == "build"
+    assert captured["agent"] == DEFAULT_OPENCODE_AGENT
     assert captured["project_root"] != str(tmp_path)
     assert (
         "Create a new temporary directory and run the documented setup there."

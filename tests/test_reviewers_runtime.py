@@ -3,6 +3,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from engineeringagent.gates import ChangedPathsResult
+from engineeringagent.opencode.client import DEFAULT_OPENCODE_AGENT
 from engineeringagent.reviewers import (
     MATCHED_ON_CHANGE_REASON,
     NO_ON_CHANGE_MATCH_REASON,
@@ -229,7 +230,7 @@ def test_run_reviewer_loads_harness_prompt_and_parses_decision(tmp_path) -> None
 
     captured: dict[str, str] = {}
 
-    def _start_agent(project_root, prompt, *, agent="build"):
+    def _start_agent(project_root, prompt, *, agent=DEFAULT_OPENCODE_AGENT):
         captured["project_root"] = str(project_root)
         captured["prompt"] = prompt
         captured["agent"] = agent
@@ -263,7 +264,7 @@ def test_run_reviewer_loads_harness_prompt_and_parses_decision(tmp_path) -> None
         "required_actions": [],
     }
     assert captured["project_root"] == str(tmp_path)
-    assert captured["agent"] == "build"
+    assert captured["agent"] == DEFAULT_OPENCODE_AGENT
     assert "Focus on code readability." in captured["prompt"]
     assert "Feature ID: FEAT-050" in captured["prompt"]
 
@@ -273,7 +274,7 @@ def test_run_reviewer_parse_failure_returns_request_changes(tmp_path) -> None:
     prompt_path.parent.mkdir(parents=True)
     prompt_path.write_text("Return JSON only.", encoding="utf-8")
 
-    def _start_agent(_project_root, _prompt, *, agent="build"):
+    def _start_agent(_project_root, _prompt, *, agent=DEFAULT_OPENCODE_AGENT):
         del agent
         return SimpleNamespace(stdout="this is not json", stderr="", returncode=0)
 
