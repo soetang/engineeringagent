@@ -1,0 +1,85 @@
+id: FEAT-049
+title: Add change-aware path-scoped gate selection contract with deterministic run or skip decisions
+type: feature
+expected_commit_subject: 'feat: add FEAT-049 change-aware path-scoped gate selection contract'
+status: backlog
+priority: high
+objective: Allow gate profiles to execute only relevant gates based on changed paths while preserving deterministic behavior, so spec-only commits can run spec validation without paying for unrelated test and typecheck gates.
+context: Gate profiles currently run every listed gate in declaration order, regardless of what changed. That makes fast, intent-aligned checks difficult (for example spec-only updates still run full test and typecheck suites). We need a strict interface in `harness/gates.yaml` for path-scoped gate selection now, while keeping a forward-compatible contract for future non-command gate runners such as documentation reviewer agents.
+constraints:
+- Preserve backward compatibility for existing `harness/gates.yaml` files where gates only define `run` commands and no change selectors.
+- 'Gate matching must be path-first and deterministic: when `on_change` is set, run the gate when any changed file matches any configured glob.'
+- Omitted `on_change` must mean always run for that gate.
+- Matching input must include added, modified, deleted, and renamed files; rename matching checks both old and new paths.
+- If changed-file discovery fails or no diff baseline can be resolved, fail safe by running all gates and surfacing the reason.
+- Preserve profile declaration order and current fail-fast semantics for gates that are selected to run.
+- Introduce contract fields that keep future runner extensibility explicit (for example command today, agent later) without implementing agent execution in this feature.
+- Keep decision output concise and machine-parse-friendly so later loop telemetry can consume gate run or skip reasons.
+implementation_notes: |
+  Introduce a gate-selection planning step that evaluates each gate in a profile before execution. Extend gate definitions with optional path conditions and normalized runner metadata, while preserving legacy `run: <command>` compatibility via deterministic normalization. Add a planning contract that emits per-gate `decision` (`run` or `skip`) and `reason` so users can see why a gate executed or was skipped.
+
+  CLI contract should support explicit change-set inputs (`--base` and `--head`) and safe defaults when omitted. Add a dry decision surface (for example `gates plan` and or `gates run --explain`) that prints deterministic gate decisions without changing execution semantics. Keep command execution unchanged for selected gates.
+
+  `harness/gates.yaml` should demonstrate path-scoped behavior with concrete examples: spec validation scoped to spec paths, heavier code-quality gates scoped to source or test paths, and at least one always-run gate that omits `on_change`.
+acceptance:
+- Gate configuration contract accepts optional path selectors per gate and validates them with strict, deterministic rules.
+- Gate selection runs when any changed path matches any configured selector and skips when no selectors match.
+- Gates with no `on_change` configuration always run.
+- Change discovery includes added, modified, deleted, and renamed files, and rename matching checks both old and new paths.
+- If change discovery cannot determine a safe diff, execution falls back to running all gates with an explicit fallback reason.
+- Gate planning output reports per-gate run or skip decisions with deterministic reason strings.
+- Running a profile executes only planned `run` gates, preserves declaration order, and keeps fail-fast behavior for selected gates.
+- Repository examples demonstrate that spec-only changes can run spec validation without requiring unrelated heavyweight gates.
+subtasks:
+- id: ST-001
+  title: Extend gate contract for path-scoped selectors and normalized runner metadata
+  status: backlog
+  order: 1
+  context: Add strict contract fields for optional `on_change` selectors and runner metadata while preserving legacy `run` compatibility and clear validation errors.
+  verification:
+  - uv run pytest -q tests/test_gates.py::test_load_gate_config_accepts_on_change_selectors
+  - uv run pytest -q tests/test_gates.py::test_load_gate_config_rejects_invalid_on_change_selectors
+- id: ST-002
+  title: Implement deterministic changed-file discovery for base and head inputs
+  status: backlog
+  order: 2
+  context: Add change-set collection that supports explicit `--base` and `--head`, includes rename old and new paths, and supports safe fallback when diff resolution fails.
+  verification:
+  - uv run pytest -q tests/test_gates.py::test_collect_changed_paths_supports_base_and_head
+  - uv run pytest -q tests/test_gates.py::test_collect_changed_paths_includes_rename_old_and_new
+  - uv run pytest -q tests/test_gates.py::test_collect_changed_paths_falls_back_to_run_all_when_diff_fails
+- id: ST-003
+  title: Add gate planning layer that emits deterministic run or skip decisions
+  status: backlog
+  order: 3
+  context: Evaluate profile gates against changed paths before execution and produce concise machine-parse-friendly decision and reason entries.
+  verification:
+  - uv run pytest -q tests/test_gates.py::test_plan_profile_runs_when_on_change_matches_any_path
+  - uv run pytest -q tests/test_gates.py::test_plan_profile_skips_when_on_change_does_not_match
+  - uv run pytest -q tests/test_gates.py::test_plan_profile_runs_when_on_change_is_omitted
+- id: ST-004
+  title: Wire planner into gates run execution without changing selected gate semantics
+  status: backlog
+  order: 4
+  context: Ensure `gates run` executes only `run` decisions, preserves order, and keeps fail-fast behavior and output contracts for executed gates.
+  verification:
+  - uv run pytest -q tests/test_gates.py::test_run_profile_executes_only_planned_run_gates
+  - uv run pytest -q tests/test_gates.py::test_run_profile_preserves_fail_fast_for_selected_gates
+- id: ST-005
+  title: Expose decision interface in CLI for planning and explainability
+  status: backlog
+  order: 5
+  context: Add CLI inputs for explicit change-set boundaries and a deterministic way to inspect run or skip decisions before execution.
+  verification:
+  - uv run pytest -q tests/test_gates.py::test_cmd_gates_plan_outputs_deterministic_decisions
+  - uv run pytest -q tests/test_gates.py::test_cmd_gates_run_supports_base_head_and_explain_output
+- id: ST-006
+  title: Update default gate examples and regressions for spec-only versus code-change behavior
+  status: backlog
+  order: 6
+  context: Demonstrate path-scoped gate intent in `harness/gates.yaml` and add regression coverage proving spec-only change sets skip unrelated heavyweight gates.
+  verification:
+  - uv run pytest -q tests/test_gates.py
+  - uv run pytest -q tests/test_cli.py
+  - uvx --from . engineeringagent validate
+updated_at: '2026-02-14T20:05:00Z'
