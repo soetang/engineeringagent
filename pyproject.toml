@@ -32,6 +32,11 @@ dev = [
     "pytest>=9.0.2",
     "ruff>=0.15.0",
 ]
+pypi = [
+    "build>=1.4.0",
+    "twine>=6.2.0",
+    "wheel>=0.46.3",
+]
 
 [tool.ruff.lint]
 extend-select = [
@@ -53,3 +58,6 @@ max-statements = 120
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.setuptools.project_urls]
+Source  = "https://github.com/soetang/engineeringagent"
