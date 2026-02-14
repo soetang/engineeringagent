@@ -282,6 +282,76 @@ def test_fitness_list_shows_declared_shell_rule_only(
     assert [entry["rule_id"] for entry in payload] == ["custom.shell-only"]
 
 
+def test_fitness_catalog_json_contract_is_deterministic(
+    tmp_path: Path,
+    capsys: Any,
+) -> None:
+    _write_manifest(
+        tmp_path,
+        [
+            {
+                "rule_id": "custom.catalog-contract",
+                "name": "Catalog contract",
+                "summary": "Ensure JSON catalog output remains stable.",
+                "rationale": "Downstream tools parse catalog payloads.",
+                "remediation": "Keep metadata contract stable.",
+                "scope": "harness/fitness-functions",
+                "severity": "warning",
+                "side_effect_free": True,
+                "adapter": "command",
+                "command": [
+                    "sh",
+                    "-c",
+                    'printf \'%s\\n\' \'{"contract_version":"1.0","rule_id":"custom.catalog-contract","status":"pass","severity":"warning","summary":"ok","violations":[]}\'',
+                ],
+            }
+        ],
+    )
+
+    parser = build_parser()
+    args = parser.parse_args(
+        [
+            "--project-root",
+            str(tmp_path),
+            "fitness",
+            "catalog",
+            "--format",
+            "json",
+        ]
+    )
+    code = args.func(args)
+    output = capsys.readouterr().out
+    payload = json.loads(output)
+
+    assert code == 0
+    assert payload == [
+        {
+            "adapter": "command",
+            "name": "Catalog contract",
+            "rationale": "Downstream tools parse catalog payloads.",
+            "remediation": "Keep metadata contract stable.",
+            "rule_id": "custom.catalog-contract",
+            "scope": "harness/fitness-functions",
+            "severity": "warning",
+            "side_effect_free": True,
+            "source": "custom",
+            "summary": "Ensure JSON catalog output remains stable.",
+        }
+    ]
+    assert tuple(payload[0].keys()) == (
+        "adapter",
+        "name",
+        "rationale",
+        "remediation",
+        "rule_id",
+        "scope",
+        "severity",
+        "side_effect_free",
+        "source",
+        "summary",
+    )
+
+
 def test_docs_root_resolver_defaults_to_docs(tmp_path: Path) -> None:
     assert resolve_docs_root(tmp_path) == tmp_path / "docs"
 

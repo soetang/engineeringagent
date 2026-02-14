@@ -1,0 +1,108 @@
+id: FEAT-053
+title: Add default code_simplifier advisory reviewer with required follow-up implement pass policy
+type: feature
+expected_commit_subject: 'feat: add FEAT-053 default code_simplifier reviewer configuration and policy behavior'
+status: backlog
+priority: high
+objective: Add a default `code_simplifier` reviewer that runs on code changes during `iteration_end`, provides advisory guidance, and always triggers at least one follow-up implement pass when advice is returned.
+context: >-
+  FEAT-050 establishes reviewer contract semantics and FEAT-051 establishes runtime
+  enforcement. This feature delivers a concrete always-run reviewer profile for
+  code simplification guidance using harness-managed prompt content and explicit
+  advisory behavior.
+constraints:
+- The reviewer id is `code_simplifier` and its prompt source is `harness/reviewers/prompts/code_simplifier.md`.
+- 'Seed `harness/reviewers/prompts/code_simplifier.md` as a verbatim copy of `/home/soetang/.config/opencode/agent/code-simplifier.md`, and document that upstream provenance in reviewer docs.'
+- Trigger at `iteration_end` phase.
+- Trigger only when code-scoped files change (for example `src/**/*.py` and `tests/**/*.py`).
+- Approval mode is advisory by default for this reviewer.
+- Advisory outcomes (`warning` or `request_changes`) must require one follow-up implement pass before completion commit eligibility.
+- '`code_simplifier` must not enforce hard blocking completion semantics by default.'
+- Reviewer output must follow the v1 decision JSON envelope contract.
+- Parse failures must be treated as deterministic advisory guidance requiring one follow-up pass.
+implementation_notes: >-
+  Deliver one concrete advisory reviewer profile entry, prompt guidance, and
+  runtime behavior coverage for code simplification scenario.
+
+  - Add default `code_simplifier` example in scaffold and docs exactly matching
+    agreed contract shape.
+
+  - Author `harness/reviewers/prompts/code_simplifier.md` with plain-English
+    instructions for simplification review and strict JSON decision output.
+
+  - Use the linked upstream `code-simplifier.md` as the initial source content
+    and keep wording aligned unless an explicit follow-up spec requests changes.
+
+  - Ensure planner schedules this reviewer only when code-scoped `on_change`
+    selectors match at `iteration_end`.
+
+  - Ensure advisory advice drives hook feedback and follow-up implement latch
+    behavior without default hard failure.
+
+  The expected reviewer config sample for docs and scaffold must include:
+
+  code_simplifier:
+    prompt_file: "harness/reviewers/prompts/code_simplifier.md"
+    trigger:
+      phase: "iteration_end"
+      on_change:
+        - "src/**/*.py"
+        - "tests/**/*.py"
+    approval:
+      mode: "advisory"
+      first_feature_approval: true
+      max_retries: 2
+      continue_on_exhausted: true
+acceptance:
+- Default reviewer docs and scaffold include the exact `code_simplifier` YAML sample agreed in planning.
+- '`code_simplifier` reviewer runs for matching code changes at `iteration_end` and is skipped deterministically for non-matching changes.'
+- '`code_simplifier` advisory `warning` and advisory `request_changes` outcomes always require one follow-up implement pass before completion commit.'
+- '`code_simplifier` does not hard-block completion by default and records advisory outcomes in telemetry and summaries.'
+- '`code_simplifier` parse failures are handled deterministically as advisory follow-up-required outcomes.'
+- '`harness/reviewers/prompts/code_simplifier.md` in repo matches the linked upstream code-simplifier prompt content for initial rollout.'
+- Reviewer prompt content for `code_simplifier` is plain English and includes explicit JSON response instructions.
+subtasks:
+- id: ST-001
+  title: Add scaffolded code_simplifier reviewer entry and upstream-copied prompt file
+  status: backlog
+  order: 1
+  context: Add default code_simplifier reviewer example and prompt artifact to scaffold output, seeded from the linked upstream code-simplifier prompt.
+  verification:
+  - uv run pytest -q tests/test_init_scaffold.py
+- id: ST-002
+  title: Add planner matching for code-scoped on-change selectors at iteration_end
+  status: backlog
+  order: 2
+  context: Ensure planner schedules code_simplifier only when code paths changed and phase matches.
+  verification:
+  - uv run pytest -q tests/test_reviewers_runtime.py::test_code_simplifier_plans_only_for_code_scoped_changes
+- id: ST-003
+  title: Enforce advisory follow-up pass behavior for code_simplifier outcomes
+  status: backlog
+  order: 3
+  context: Ensure advisory decisions from code_simplifier trigger required implement follow-up latch.
+  verification:
+  - uv run pytest -q tests/test_loop_reviewers.py::test_code_simplifier_advisory_requires_one_followup_implement_pass
+- id: ST-004
+  title: Keep advisory non-blocking semantics with deterministic telemetry
+  status: backlog
+  order: 4
+  context: Ensure code_simplifier does not force hard-fail by default and emits stable telemetry/summaries.
+  verification:
+  - uv run pytest -q tests/test_loop_reviewers.py::test_code_simplifier_advisory_does_not_hard_block_by_default
+  - uv run pytest -q tests/test_loop_output.py
+- id: ST-005
+  title: Add docs section with exact code_simplifier sample and policy explanation
+  status: backlog
+  order: 5
+  context: Document code_simplifier trigger, advisory semantics, and follow-up behavior in plain English.
+  verification:
+  - uv run pytest -q tests/test_validator.py::test_agents_docs_map_extraction_scoped_to_docs_layout_section
+- id: ST-006
+  title: Run reviewer-specific regression slice
+  status: backlog
+  order: 6
+  context: Validate planner and loop behavior for code_simplifier scenario end to end.
+  verification:
+  - uv run pytest -q tests/test_reviewers_runtime.py tests/test_loop_reviewers.py tests/test_loop_contracts.py
+updated_at: '2026-02-14T22:20:00Z'

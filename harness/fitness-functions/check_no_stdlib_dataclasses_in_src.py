@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import ast
-import json
 from pathlib import Path
 
+from result_envelope import emit_result_envelope
 
-CONTRACT_VERSION = "1.0"
+
 RULE_ID = "architecture.no-stdlib-dataclasses-in-src"
 SCOPED_ROOT = Path("src/engineeringagent")
 
@@ -105,18 +105,12 @@ def main() -> int:
         )
     )
 
-    print(
-        json.dumps(
-            {
-                "contract_version": CONTRACT_VERSION,
-                "rule_id": RULE_ID,
-                "status": status,
-                "severity": "error",
-                "summary": summary,
-                "violations": sorted(set(violations)),
-            },
-            separators=(",", ":"),
-        )
+    emit_result_envelope(
+        rule_id=RULE_ID,
+        status=status,
+        severity="error",
+        summary=summary,
+        violations=sorted(set(violations)),
     )
     return 0
 

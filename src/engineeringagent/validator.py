@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
@@ -102,12 +103,9 @@ def _append_active_feature_issues(
     archival_context: _DoneArchivalPolicyContext,
 ) -> None:
     for file_path in files:
-        feature = _load_feature_or_record_error(messages, file_path)
+        feature, contract_issues = _append_feature_contract_issues(messages, file_path)
         if feature is None:
             continue
-
-        contract_issues = feature_contract_issues(feature, file_path)
-        _extend_messages_with_contract_issues(messages, contract_issues)
 
         if schema_only or contract_issues:
             continue
@@ -121,47 +119,25 @@ def _append_active_feature_issues(
 
 def _append_done_feature_issues(messages: list[str], done_files: list[Path]) -> None:
     for file_path in done_files:
-        feature = _load_feature_or_record_error(messages, file_path)
-        if feature is None:
-            continue
-
-        contract_issues = _filter_legacy_done_contract_issues(
-            feature_contract_issues(feature, file_path)
+        _append_feature_contract_issues(
+            messages,
+            file_path,
+            issue_filter=_filter_legacy_done_contract_issues,
         )
-        _extend_messages_with_contract_issues(messages, contract_issues)
 
 
 def _append_potential_features_issues(
     messages: list[str], potential_features_path: Path
 ) -> None:
-    if not potential_features_path.exists():
-        return
-
-    try:
-        potential_features = load_yaml(potential_features_path)
-    except Exception as exc:  # noqa: BLE001
-        messages.append(f"{potential_features_path}: failed to parse YAML: {exc}")
-        return
-
-    contract_issues = potential_features_contract_issues(
-        potential_features,
+    _append_yaml_contract_issues(
+        messages,
         potential_features_path,
+        potential_features_contract_issues,
     )
-    _extend_messages_with_contract_issues(messages, contract_issues)
 
 
 def _append_gate_config_issues(messages: list[str], gates_path: Path) -> None:
-    if not gates_path.exists():
-        return
-
-    try:
-        gates_config = load_yaml(gates_path)
-    except Exception as exc:  # noqa: BLE001
-        messages.append(f"{gates_path}: failed to parse YAML: {exc}")
-        return
-
-    contract_issues = gate_contract_issues(gates_config, gates_path)
-    _extend_messages_with_contract_issues(messages, contract_issues)
+    _append_yaml_contract_issues(messages, gates_path, gate_contract_issues)
 
 
 def _append_agents_docs_map_issues(messages: list[str], project_root: Path) -> None:
@@ -194,7 +170,23 @@ def _append_fitness_catalog_issues(messages: list[str], project_root: Path) -> N
         messages.append(str(exc))
 
 
-def _load_feature_or_record_error(
+def _append_yaml_contract_issues(
+    messages: list[str],
+    file_path: Path,
+    contract_issue_builder: Callable[[dict[str, object], Path], list[ValidationIssue]],
+) -> None:
+    if not file_path.exists():
+        return
+
+    payload = _load_yaml_or_record_error(messages, file_path)
+    if payload is None:
+        return
+
+    contract_issues = contract_issue_builder(payload, file_path)
+    _extend_messages_with_contract_issues(messages, contract_issues)
+
+
+def _load_yaml_or_record_error(
     messages: list[str], file_path: Path
 ) -> dict[str, object] | None:
     try:
@@ -202,6 +194,24 @@ def _load_feature_or_record_error(
     except Exception as exc:  # noqa: BLE001
         messages.append(f"{file_path}: failed to parse YAML: {exc}")
         return None
+
+
+def _append_feature_contract_issues(
+    messages: list[str],
+    file_path: Path,
+    issue_filter: Callable[[list[ValidationIssue]], list[ValidationIssue]]
+    | None = None,
+) -> tuple[dict[str, object] | None, list[ValidationIssue]]:
+    feature = _load_yaml_or_record_error(messages, file_path)
+    if feature is None:
+        return None, []
+
+    contract_issues = feature_contract_issues(feature, file_path)
+    if issue_filter is not None:
+        contract_issues = issue_filter(contract_issues)
+
+    _extend_messages_with_contract_issues(messages, contract_issues)
+    return feature, contract_issues
 
 
 def _extend_messages_with_contract_issues(

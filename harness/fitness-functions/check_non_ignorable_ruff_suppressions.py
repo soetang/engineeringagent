@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import argparse
 import io
-import json
 import re
 import tokenize
 from pathlib import Path
 
+from result_envelope import emit_result_envelope
 
-CONTRACT_VERSION = "1.0"
+
 DEFAULT_RULE_ID = "architecture.no-non-ignorable-ruff-suppressions"
 DEFAULT_SCAN_ROOTS = ("src", "tests", "harness")
 
@@ -139,18 +139,12 @@ def main() -> int:
         )
     )
 
-    print(
-        json.dumps(
-            {
-                "contract_version": CONTRACT_VERSION,
-                "rule_id": args.rule_id,
-                "status": status,
-                "severity": "error",
-                "summary": summary,
-                "violations": violations,
-            },
-            separators=(",", ":"),
-        )
+    emit_result_envelope(
+        rule_id=args.rule_id,
+        status=status,
+        severity="error",
+        summary=summary,
+        violations=violations,
     )
     return 0
 

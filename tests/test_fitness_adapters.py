@@ -257,3 +257,34 @@ def test_non_ignorable_suppression_adapter_detects_file_level_and_multicode_noqa
     assert "src/z_module.py:1:29" in result.violations[1]
     assert "targets: PLR0913" in result.violations[1]
     assert "NamedTuple or pydantic model" in result.violations[1]
+
+
+def test_execute_rule_definition_rejects_extra_result_fields(tmp_path: Path) -> None:
+    """Reject command envelopes that drift from the result contract."""
+    rule_script = tmp_path / "rule.py"
+    rule_script.write_text(
+        "\n".join(
+            [
+                "import json",
+                "print(json.dumps({",
+                f"    'contract_version': '{CONTRACT_VERSION}',",
+                "    'rule_id': 'custom.adapter-pass',",
+                "    'status': 'pass',",
+                "    'severity': 'warning',",
+                "    'summary': 'All checks passed.',",
+                "    'violations': [],",
+                "    'unexpected': 'contract drift',",
+                "}))",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    result = execute_rule_definition(
+        _command_definition((sys.executable, str(rule_script))),
+        project_root=tmp_path,
+    )
+
+    assert result.status == RuleStatus.ERROR
+    assert result.rule_id == "custom.adapter-pass"
+    assert result.summary.startswith("Adapter execution failed:")

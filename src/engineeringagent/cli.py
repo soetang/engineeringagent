@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 from .fitness import (
+    FitnessRuleDefinition,
     RuleStatus,
     build_rule_catalog,
     render_rule_catalog_markdown,
@@ -25,6 +26,50 @@ from .validator import validate
 _MISSING_REMEDIATION_TEMPLATE = (
     "No remediation available: rule metadata missing from active catalog for {rule_id}."
 )
+
+
+def _resolve_manifest_path(manifest_path: str | None) -> Path | None:
+    """Return optional manifest path from CLI args."""
+    if manifest_path is None:
+        return None
+    return Path(manifest_path)
+
+
+def _resolve_optional_path(
+    *,
+    path: str | None,
+    project_root: Path,
+) -> Path | None:
+    """Resolve optional path values relative to project root."""
+    if path is None:
+        return None
+    resolved = Path(path)
+    if resolved.is_absolute():
+        return resolved
+    return project_root / resolved
+
+
+def _fitness_metadata_payload(
+    definition: FitnessRuleDefinition,
+    *,
+    include_details: bool,
+) -> dict[str, object]:
+    """Serialize rule metadata into deterministic JSON payload fields."""
+    metadata = definition.metadata
+    payload: dict[str, object] = {
+        "rule_id": metadata.rule_id,
+        "name": metadata.name,
+        "summary": metadata.summary,
+        "scope": metadata.scope,
+        "severity": metadata.severity.value,
+        "adapter": metadata.adapter.value,
+        "source": metadata.source.value,
+        "side_effect_free": metadata.side_effect_free,
+    }
+    if include_details:
+        payload["rationale"] = metadata.rationale
+        payload["remediation"] = metadata.remediation
+    return payload
 
 
 def _resolve_init_docs_dir(
@@ -244,21 +289,12 @@ def cmd_run(args: argparse.Namespace) -> int:
 def cmd_fitness_list(args: argparse.Namespace) -> int:
     """List active fitness rules from the merged registry."""
     project_root = Path(args.project_root).resolve()
-    manifest_path = Path(args.manifest_path) if args.manifest_path else None
+    manifest_path = _resolve_manifest_path(args.manifest_path)
     catalog = build_rule_catalog(project_root, manifest_path=manifest_path)
 
     if args.format == "json":
         payload = [
-            {
-                "rule_id": definition.metadata.rule_id,
-                "name": definition.metadata.name,
-                "summary": definition.metadata.summary,
-                "severity": definition.metadata.severity.value,
-                "adapter": definition.metadata.adapter.value,
-                "source": definition.metadata.source.value,
-                "scope": definition.metadata.scope,
-                "side_effect_free": definition.metadata.side_effect_free,
-            }
+            _fitness_metadata_payload(definition, include_details=False)
             for definition in catalog
         ]
         print(json.dumps(payload, indent=2, sort_keys=True))
@@ -280,7 +316,7 @@ def cmd_fitness_list(args: argparse.Namespace) -> int:
 def cmd_fitness_run(args: argparse.Namespace) -> int:
     """Execute active fitness rules and return deterministic status."""
     project_root = Path(args.project_root).resolve()
-    manifest_path = Path(args.manifest_path) if args.manifest_path else None
+    manifest_path = _resolve_manifest_path(args.manifest_path)
     catalog = build_rule_catalog(project_root, manifest_path=manifest_path)
     remediation_by_rule_id = {
         definition.metadata.rule_id: definition.metadata.remediation
@@ -338,27 +374,14 @@ def _resolve_failed_rule_remediation(
 def cmd_fitness_catalog(args: argparse.Namespace) -> int:
     """Generate the fitness-rule catalog from active registry metadata."""
     project_root = Path(args.project_root).resolve()
-    manifest_path = Path(args.manifest_path) if args.manifest_path else None
-    output_path = Path(args.output) if args.output else None
-    if output_path is not None and not output_path.is_absolute():
-        output_path = project_root / output_path
+    manifest_path = _resolve_manifest_path(args.manifest_path)
+    output_path = _resolve_optional_path(path=args.output, project_root=project_root)
 
     catalog = build_rule_catalog(project_root, manifest_path=manifest_path)
 
     if args.format == "json":
         payload = [
-            {
-                "rule_id": definition.metadata.rule_id,
-                "name": definition.metadata.name,
-                "summary": definition.metadata.summary,
-                "rationale": definition.metadata.rationale,
-                "remediation": definition.metadata.remediation,
-                "scope": definition.metadata.scope,
-                "severity": definition.metadata.severity.value,
-                "adapter": definition.metadata.adapter.value,
-                "source": definition.metadata.source.value,
-                "side_effect_free": definition.metadata.side_effect_free,
-            }
+            _fitness_metadata_payload(definition, include_details=True)
             for definition in catalog
         ]
         rendered = json.dumps(payload, indent=2, sort_keys=True)

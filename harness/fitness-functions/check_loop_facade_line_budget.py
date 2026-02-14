@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
+
+from result_envelope import emit_result_envelope
 
 
 RULE_ID = "architecture.loop-facade-line-budget"
@@ -32,18 +33,12 @@ def main() -> int:
         else f"Detected {len(violations)} loop facade line-budget violation(s)."
     )
 
-    print(
-        json.dumps(
-            {
-                "contract_version": "1.0",
-                "rule_id": RULE_ID,
-                "status": status,
-                "severity": "error",
-                "summary": summary,
-                "violations": violations,
-            },
-            separators=(",", ":"),
-        )
+    emit_result_envelope(
+        rule_id=RULE_ID,
+        status=status,
+        severity="error",
+        summary=summary,
+        violations=violations,
     )
     return 0 if status == "pass" else 1
 

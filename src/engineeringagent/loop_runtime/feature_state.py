@@ -175,12 +175,16 @@ def _archived_feature_mismatch_feedback(
     if feature is None:
         return f"{missing_message} path={feature_path}"
     if feature.get("status") != "done":
-        return (
-            "selected feature was archived but archived status is not done; "
-            "restore the active spec path and rerun. "
-            f"path={feature_path}"
-        )
+        return _archived_status_not_done_feedback(feature_path)
     return f"{done_message} path={feature_path}"
+
+
+def _archived_status_not_done_feedback(feature_path: Path) -> str:
+    return (
+        "selected feature was archived but archived status is not done; "
+        "restore the active spec path and rerun. "
+        f"path={feature_path}"
+    )
 
 
 def _post_implement_failed(
@@ -219,6 +223,23 @@ def _post_implement_passed(
     )
 
 
+def _initial_feature_load_outcome(
+    *,
+    feature: dict[str, Any] | None,
+    loaded_from_archive: bool,
+    result: str,
+    failed_gate: str | None,
+    hook_feedback: str | None,
+) -> InitialFeatureLoadOutcome:
+    return InitialFeatureLoadOutcome(
+        feature=feature,
+        loaded_from_archive=loaded_from_archive,
+        result=result,
+        failed_gate=failed_gate,
+        hook_feedback=hook_feedback,
+    )
+
+
 def _evaluate_initial_feature_load(
     project_root: Path,
     feature_path: Path,
@@ -227,7 +248,7 @@ def _evaluate_initial_feature_load(
         _load_selected_feature_with_archive_fallback(project_root, feature_path)
     )
     if load_error:
-        return InitialFeatureLoadOutcome(
+        return _initial_feature_load_outcome(
             feature=feature,
             loaded_from_archive=loaded_from_archive,
             result="failed",
@@ -235,7 +256,7 @@ def _evaluate_initial_feature_load(
             hook_feedback=load_error,
         )
     if loaded_from_archive:
-        return InitialFeatureLoadOutcome(
+        return _initial_feature_load_outcome(
             feature=feature,
             loaded_from_archive=loaded_from_archive,
             result="failed",
@@ -256,7 +277,7 @@ def _evaluate_initial_feature_load(
                 ),
             ),
         )
-    return InitialFeatureLoadOutcome(
+    return _initial_feature_load_outcome(
         feature=feature,
         loaded_from_archive=loaded_from_archive,
         result="passed",
@@ -274,10 +295,17 @@ def _refresh_feature_after_implement(
     post_feature, loaded_post_from_archive, post_load_error = (
         _load_selected_feature_with_archive_fallback(project_root, feature_path)
     )
-    if post_load_error:
+
+    def _failed(failed_gate: str, hook_feedback: str) -> PostImplementFeatureOutcome:
         return _post_implement_failed(
             feature=post_feature,
             loaded_from_archive=loaded_post_from_archive,
+            failed_gate=failed_gate,
+            hook_feedback=hook_feedback,
+        )
+
+    if post_load_error:
+        return _failed(
             failed_gate="feature_missing",
             hook_feedback=post_load_error,
         )
@@ -288,9 +316,7 @@ def _refresh_feature_after_implement(
                 try:
                     archived_path = _resolve_archive_path(project_root, feature_path)
                 except ValueError:
-                    return _post_implement_failed(
-                        feature=post_feature,
-                        loaded_from_archive=loaded_post_from_archive,
+                    return _failed(
                         failed_gate="feature_archive",
                         hook_feedback=(
                             "selected feature path moved to archive during loop "
@@ -305,20 +331,12 @@ def _refresh_feature_after_implement(
                     archived_in_iteration=True,
                     archived_path=archived_path,
                 )
-            return _post_implement_failed(
-                feature=post_feature,
-                loaded_from_archive=loaded_post_from_archive,
+            return _failed(
                 failed_gate="feature_missing",
-                hook_feedback=(
-                    "selected feature was archived but archived status is not done; "
-                    "restore the active spec path and rerun. "
-                    f"path={feature_path}"
-                ),
+                hook_feedback=_archived_status_not_done_feedback(feature_path),
             )
 
-        return _post_implement_failed(
-            feature=post_feature,
-            loaded_from_archive=loaded_post_from_archive,
+        return _failed(
             failed_gate="feature_missing",
             hook_feedback=_archived_feature_mismatch_feedback(
                 post_feature,
