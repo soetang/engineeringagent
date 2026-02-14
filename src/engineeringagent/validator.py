@@ -19,7 +19,7 @@ from .specs import (
 )
 
 
-DONE_TRANSITION_ALLOWLIST = ".allow-done-active.txt"
+DONE_ACTIVE_UNSUPPORTED_FILE = ".allow-done-active.txt"
 LEGACY_DONE_OPTIONAL_FIELDS = {"type", "expected_commit_subject"}
 AGENTS_DOCS_MAP_SECTION_TITLE = "Documentation Layout Reference"
 AGENTS_PATH = Path("AGENTS.md")
@@ -30,32 +30,8 @@ _BACKTICK_TOKEN_PATTERN = re.compile(r"`([^`]+)`")
 class _DoneArchivalPolicyContext(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    done_transition_allowlist: set[str]
     features_done_dir: Path
-    features_dir: Path
     project_root: Path
-
-
-def _load_done_transition_allowlist(features_dir: Path) -> set[str]:
-    """Load explicit transition allowlist for done specs in active directory.
-
-    Args:
-        features_dir: Active features directory path.
-
-    Returns:
-        Basename entries explicitly allowed to remain in active specs temporarily.
-    """
-    allowlist_path = features_dir / DONE_TRANSITION_ALLOWLIST
-    if not allowlist_path.exists():
-        return set()
-
-    entries: set[str] = set()
-    for raw_line in allowlist_path.read_text(encoding="utf-8").splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#"):
-            continue
-        entries.add(Path(line).name)
-    return entries
 
 
 def validate(project_root: Path, schema_only: bool = False) -> list[str]:
@@ -79,15 +55,13 @@ def validate(project_root: Path, schema_only: bool = False) -> list[str]:
     files = iter_feature_files(features_dir)
     done_files = iter_feature_files(features_done_dir)
     messages: list[str] = []
-    done_transition_allowlist = _load_done_transition_allowlist(features_dir)
     archival_context = _DoneArchivalPolicyContext(
-        done_transition_allowlist=done_transition_allowlist,
         features_done_dir=features_done_dir,
-        features_dir=features_dir,
         project_root=project_root,
     )
 
     _append_schema_sync_issues(messages, schema_path)
+    _append_unsupported_done_active_file_issues(messages, features_dir, project_root)
     _append_active_feature_issues(
         messages,
         files,
@@ -247,16 +221,24 @@ def _append_done_archival_policy_issue(
         return
 
     feature_name = file_path.name
-    if feature_name in archival_context.done_transition_allowlist:
-        return
-
     expected_archive_path = archival_context.features_done_dir / feature_name
-    allowlist_path = archival_context.features_dir / DONE_TRANSITION_ALLOWLIST
     messages.append(
         f"{file_path}:status: completed feature specs must be archived under "
-        f"{expected_archive_path.relative_to(archival_context.project_root)}; move this file there or "
-        f"add '{feature_name}' to {allowlist_path.relative_to(archival_context.project_root)} "
-        "as a temporary transition exception"
+        f"{expected_archive_path.relative_to(archival_context.project_root)}; move this file there"
+    )
+
+
+def _append_unsupported_done_active_file_issues(
+    messages: list[str], features_dir: Path, project_root: Path
+) -> None:
+    unsupported_path = features_dir / DONE_ACTIVE_UNSUPPORTED_FILE
+    if not unsupported_path.exists():
+        return
+
+    messages.append(
+        f"{unsupported_path}: unsupported configuration file; remove "
+        f"{unsupported_path.relative_to(project_root)} because completed specs in "
+        "active features are never allowlisted"
     )
 
 

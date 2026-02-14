@@ -2,26 +2,27 @@ id: FEAT-042
 title: Remove done-spec bypass mechanisms and enforce archival policy unconditionally
 type: bug
 expected_commit_subject: 'fix: add FEAT-042 remove done-active bypass mechanisms'
-status: backlog
+status: done
 priority: high
-objective: Remove all validator bypass paths that allow completed feature specs to stay
-  in the active features directory so done-spec archival rules cannot be ignored.
+objective: Remove all validator bypass paths that allow completed feature specs to
+  stay in the active features directory so done-spec archival rules cannot be ignored.
 context: The validator currently allows two bypasses for done-spec archival enforcement.
   First, `.allow-done-active.txt` can allowlist done specs in `docs/spec/features`.
-  Second, `engineeringagent validate --schema-only` skips done-spec archival policy checks.
-  User-confirmed scope is a hard cutover that removes both bypasses immediately, treats
-  `.allow-done-active.txt` as unsupported configuration, and keeps verification focused
-  on validator behavior plus targeted tests.
+  Second, `engineeringagent validate --schema-only` skips done-spec archival policy
+  checks. User-confirmed scope is a hard cutover that removes both bypasses immediately,
+  treats `.allow-done-active.txt` as unsupported configuration, and keeps verification
+  focused on validator behavior plus targeted tests.
 constraints:
 - Remove runtime support for `.allow-done-active.txt` and remove any validator messages
   that suggest allowlist exceptions.
-- Remove `--schema-only` from CLI and remove schema-only branching from validator contract.
-- Validation must fail deterministically when `.allow-done-active.txt` is present under
-  the active features directory for the resolved docs root.
+- Remove `--schema-only` from CLI and remove schema-only branching from validator
+  contract.
+- Validation must fail deterministically when `.allow-done-active.txt` is present
+  under the active features directory for the resolved docs root.
 - Treat this as an immediate breaking change with no soft-deprecation period.
 - Keep legacy archived-done compatibility behavior in `features_done` unchanged.
-- Update current user-facing command references so `validate --schema-only` is no longer
-  recommended.
+- Update current user-facing command references so `validate --schema-only` is no
+  longer recommended.
 acceptance:
 - '`engineeringagent validate --help` no longer documents a `--schema-only` flag.'
 - Invoking `engineeringagent validate --schema-only` fails at argument parsing.
@@ -35,7 +36,7 @@ acceptance:
 subtasks:
 - id: ST-001
   title: Remove schema-only validation mode from CLI and validator interfaces
-  status: backlog
+  status: done
   order: 1
   context: Remove `--schema-only` argument wiring and simplify validator invocation
     so archival policy checks are always enforced.
@@ -44,28 +45,29 @@ subtasks:
   - uv run pytest -q tests/test_validator.py::test_validate_reports_done_feature_left_in_active_directory
 - id: ST-002
   title: Replace allowlist transition handling with explicit unsupported-file validation
-  status: backlog
+  status: done
   order: 2
-  context: Delete allowlist loading logic and add deterministic validation failure when
-    `.allow-done-active.txt` is present in active features.
+  context: Delete allowlist loading logic and add deterministic validation failure
+    when `.allow-done-active.txt` is present in active features.
   verification:
   - uv run pytest -q tests/test_validator.py::test_validate_transitional_policy_for_preexisting_done_features
   - uv run pytest -q tests/test_validator.py::test_validate_uses_configured_docs_root
 - id: ST-003
   title: Update validator tests for hard enforcement and no-bypass messaging
-  status: backlog
+  status: done
   order: 3
-  context: Replace transitional allowlist expectations with hard-fail assertions, add
-    coverage for unsupported transition file presence, and keep done-archive invariants
+  context: Replace transitional allowlist expectations with hard-fail assertions,
+    add coverage for unsupported transition file presence, and keep done-archive invariants
     explicit.
   verification:
   - uv run pytest -q tests/test_validator.py
 - id: ST-004
   title: Remove transition artifact and align current docs with new command contract
-  status: backlog
+  status: done
   order: 4
   context: Remove `docs/spec/features/.allow-done-active.txt` and update active reference
     docs that currently instruct `validate --schema-only`.
   verification:
   - uv run pytest -q tests/test_validator.py
   - uvx --from . engineeringagent validate
+updated_at: '2026-02-14T10:38:00Z'

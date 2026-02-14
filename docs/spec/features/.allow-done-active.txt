@@ -1,6 +1,0 @@
-FEAT-035-harness-engineering-principles-docs-update.yaml
-FEAT-036-language-agnostic-init-scaffolding-and-reference-first-agents.yaml
-FEAT-040-per-iteration-verification-feedback-and-failure-signaling.yaml
-FEAT-037-configurable-docs-root-runtime-support.yaml
-FEAT-038-pydantic-only-models-custom-fitness-policy.yaml
-FEAT-039-pypi-uvx-readme-and-reference-docs-update.yaml

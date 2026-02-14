@@ -384,10 +384,19 @@ def test_validate_uses_configured_docs_root(tmp_path: Path) -> None:
         ),
         encoding="utf-8",
     )
+    (features_dir / ".allow-done-active.txt").write_text(
+        "FEAT-937-configured-docs-root.yaml\n",
+        encoding="utf-8",
+    )
 
     messages = validate(project_root=project_root)
 
     assert messages
+    assert any(
+        "docs.engineeringagent/spec/features/.allow-done-active.txt" in message
+        and "unsupported configuration file" in message
+        for message in messages
+    )
     assert any(
         "docs.engineeringagent/spec/features_done/FEAT-937-configured-docs-root.yaml"
         in message
@@ -441,7 +450,12 @@ def test_validate_transitional_policy_for_preexisting_done_features(
 
     messages = validate(project_root=project_root)
 
-    assert messages == []
+    assert messages
+    assert any(
+        "docs/spec/features/.allow-done-active.txt" in message
+        and "unsupported configuration file" in message
+        for message in messages
+    )
 
 
 def test_validate_allows_legacy_done_specs_missing_new_metadata(tmp_path: Path) -> None:

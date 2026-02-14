@@ -28,7 +28,6 @@ uvx --from . engineeringagent run --all --dry-run --skip-implement
 ## Daily Commands
 
 - Validate specs: `uvx --from . engineeringagent validate`
-- Validate schema only: `uvx --from . engineeringagent validate --schema-only`
 - Scaffold baseline harness files: `uvx --from . engineeringagent init`
 - List gate profiles: `uvx --from . engineeringagent gates list`
 - Run loop-fast gates: `uvx --from . engineeringagent gates run --profile loop_fast`
