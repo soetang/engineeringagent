@@ -8,6 +8,7 @@ import yaml
 
 from engineeringagent import cli as cli_module
 from engineeringagent.cli import build_parser
+from engineeringagent.config import resolve_docs_root
 from engineeringagent.fitness import FitnessRunSummary
 from engineeringagent.fitness.contracts import CONTRACT_VERSION, FitnessRuleResult
 
@@ -279,3 +280,31 @@ def test_fitness_list_shows_declared_shell_rule_only(
 
     assert code == 0
     assert [entry["rule_id"] for entry in payload] == ["custom.shell-only"]
+
+
+def test_docs_root_resolver_defaults_to_docs(tmp_path: Path) -> None:
+    assert resolve_docs_root(tmp_path) == tmp_path / "docs"
+
+
+def test_docs_root_resolver_prefers_engineeringagent_toml(tmp_path: Path) -> None:
+    (tmp_path / "engineeringagent.toml").write_text(
+        'docs-root = "docs.engineeringagent"\n',
+        encoding="utf-8",
+    )
+    (tmp_path / "pyproject.toml").write_text(
+        '[tool.engineeringagent]\ndocs-root = "docs.from.pyproject"\n',
+        encoding="utf-8",
+    )
+
+    assert resolve_docs_root(tmp_path) == tmp_path / "docs.engineeringagent"
+
+
+def test_docs_root_resolver_reads_pyproject_tool_engineeringagent(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "pyproject.toml").write_text(
+        '[tool.engineeringagent]\ndocs-root = "docs.from.pyproject"\n',
+        encoding="utf-8",
+    )
+
+    assert resolve_docs_root(tmp_path) == tmp_path / "docs.from.pyproject"

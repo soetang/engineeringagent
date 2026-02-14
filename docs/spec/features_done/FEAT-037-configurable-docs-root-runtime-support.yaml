@@ -2,7 +2,7 @@ id: FEAT-037
 title: Make runtime commands honor configurable docs root for specs and archive flow
 type: feature
 expected_commit_subject: 'feat: add FEAT-037 configurable docs root runtime support'
-status: backlog
+status: done
 priority: high
 objective: 'Make runtime behavior fully honor a configurable docs root so `validate`,
   `run --all`, and done-spec archival work consistently when scaffolding uses a non-default
@@ -55,7 +55,7 @@ acceptance:
 subtasks:
 - id: ST-001
   title: Define TOML docs-root configuration contract and resolver precedence
-  status: backlog
+  status: done
   order: 1
   context: 'Add one deterministic resolver for docs root using `engineeringagent.toml`
     first, then `pyproject.toml:[tool.engineeringagent]`, with fallback behavior and
@@ -68,7 +68,7 @@ subtasks:
   - uv run pytest -q tests/test_cli.py::test_docs_root_resolver_reads_pyproject_tool_engineeringagent
 - id: ST-002
   title: Wire validator path resolution to configured docs root
-  status: backlog
+  status: done
   order: 2
   context: 'Replace hardcoded validator paths with docs-root derived paths for feature
     specs, done specs, schema artifact, and potential features.
@@ -79,7 +79,7 @@ subtasks:
   - uvx --from . engineeringagent validate
 - id: ST-003
   title: Wire run all discovery and archive flow to configured docs root
-  status: backlog
+  status: done
   order: 3
   context: 'Update loop discovery and completion archive path logic to use docs-root
     aware directories while preserving current behavior under default root.
@@ -90,7 +90,7 @@ subtasks:
   - uv run pytest -q tests/test_loop_ralph_mode.py::test_archive_path_uses_configured_docs_root
 - id: ST-004
   title: Integrate init separate docs mode with TOML docs-root config
-  status: backlog
+  status: done
   order: 4
   context: 'Ensure init writes docs-root TOML configuration when separate docs mode
     is selected and verify runtime commands consume it without extra flags.
@@ -101,7 +101,7 @@ subtasks:
   - uv run pytest -q tests/test_init_command.py::test_validate_and_run_all_use_separate_docs_root
 - id: ST-005
   title: Run compatibility regressions for default docs root repositories
-  status: backlog
+  status: done
   order: 5
   context: 'Confirm repositories that rely on default `docs/` continue to pass validation,
     loop-fast checks, and loop behavior unchanged when no TOML docs-root config is
@@ -113,4 +113,4 @@ subtasks:
   - uv run pytest -q
   - uvx --from . engineeringagent validate
   - uvx --from . engineeringagent gates run --profile loop_fast
-updated_at: '2026-02-14T08:41:23Z'
+updated_at: '2026-02-14T09:14:23Z'

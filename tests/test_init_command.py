@@ -72,6 +72,112 @@ def test_init_can_use_separate_docs_directory(tmp_path: Path, capsys: Any) -> No
     ).exists()
 
 
+def test_init_separate_docs_writes_engineeringagent_toml_docs_root(
+    tmp_path: Path,
+    capsys: Any,
+) -> None:
+    """Verify init separate docs mode writes docs-root to engineeringagent.toml."""
+    (tmp_path / "docs").mkdir(parents=True)
+
+    parser = build_parser()
+    args = parser.parse_args(
+        [
+            "--project-root",
+            str(tmp_path),
+            "init",
+            "--docs-mode",
+            "separate",
+            "--scaffold-docs-dir",
+            "docs.engineeringagent",
+        ]
+    )
+
+    code = args.func(args)
+    output = capsys.readouterr().out
+
+    assert code == 0
+    assert "docs_dir=docs.engineeringagent" in output
+    assert (tmp_path / "engineeringagent.toml").read_text(encoding="utf-8") == (
+        'docs-root = "docs.engineeringagent"\n'
+    )
+
+
+def test_validate_and_run_all_use_separate_docs_root(
+    tmp_path: Path,
+    capsys: Any,
+) -> None:
+    """Verify separate docs-root config is honored by validate and run --all."""
+    (tmp_path / "docs").mkdir(parents=True)
+
+    parser = build_parser()
+    init_args = parser.parse_args(
+        [
+            "--project-root",
+            str(tmp_path),
+            "init",
+            "--docs-mode",
+            "separate",
+            "--scaffold-docs-dir",
+            "docs.engineeringagent",
+        ]
+    )
+    init_code = init_args.func(init_args)
+    _ = capsys.readouterr().out
+    assert init_code == 0
+
+    feature_path = (
+        tmp_path
+        / "docs.engineeringagent"
+        / "spec"
+        / "features"
+        / "FEAT-950-separate-docs-root.yaml"
+    )
+    feature_path.write_text(
+        yaml.safe_dump(
+            {
+                "id": "FEAT-950",
+                "title": "Separate docs root runtime smoke test",
+                "type": "feature",
+                "expected_commit_subject": "feat: test separate docs root runtime support",
+                "status": "backlog",
+                "priority": "high",
+                "objective": "Validate and run-all consume configured separate docs root.",
+                "acceptance": ["Separate docs root is honored by runtime commands."],
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    validate_args = parser.parse_args(["--project-root", str(tmp_path), "validate"])
+    validate_code = validate_args.func(validate_args)
+    validate_output = capsys.readouterr().out
+
+    assert validate_code == 0
+    assert "spec validation: ok" in validate_output
+
+    run_args = parser.parse_args(
+        [
+            "--project-root",
+            str(tmp_path),
+            "run",
+            "--all",
+            "--dry-run",
+            "--skip-implement",
+        ]
+    )
+    run_code = run_args.func(run_args)
+    run_output = capsys.readouterr().out
+
+    assert run_code == 0
+    assert "[dry-run] Resolved 1 feature file(s)." in run_output
+    assert "feature=FEAT-950" in run_output
+    assert (
+        "docs.engineeringagent/spec/features/FEAT-950-separate-docs-root.yaml"
+        in run_output
+    )
+
+
 def test_init_agents_conflict_overwrite(tmp_path: Path, capsys: Any) -> None:
     """Verify init can explicitly overwrite an existing AGENTS.md."""
     (tmp_path / "AGENTS.md").write_text("user guidance\n", encoding="utf-8")

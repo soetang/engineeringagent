@@ -297,6 +297,104 @@ def test_validate_reports_done_feature_left_in_active_directory(
     )
 
 
+def test_validate_defaults_to_docs_without_toml_config(tmp_path: Path) -> None:
+    project_root = tmp_path
+    features_dir = project_root / "docs" / "spec" / "features"
+    schema_target = project_root / "docs" / "spec" / "schemas" / "feature.schema.json"
+
+    features_dir.mkdir(parents=True, exist_ok=True)
+    schema_target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(SCHEMA_SOURCE, schema_target)
+
+    feature_path = features_dir / "FEAT-938-default-docs-root.yaml"
+    feature_path.write_text(
+        yaml.safe_dump(
+            {
+                "id": "FEAT-938",
+                "title": "Default docs root active done spec",
+                "type": "feature",
+                "expected_commit_subject": "feat: validate default docs root",
+                "status": "done",
+                "priority": "high",
+                "objective": "Use default docs root when TOML config is absent.",
+                "acceptance": [
+                    "Done specs are archived under docs/spec/features_done."
+                ],
+                "subtasks": [
+                    {
+                        "id": "ST-001",
+                        "title": "Already complete",
+                        "status": "done",
+                        "order": 1,
+                        "verification": ["true"],
+                    }
+                ],
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    messages = validate(project_root=project_root)
+
+    assert messages
+    assert any(
+        "docs/spec/features_done/FEAT-938-default-docs-root.yaml" in message
+        for message in messages
+    )
+
+
+def test_validate_uses_configured_docs_root(tmp_path: Path) -> None:
+    project_root = tmp_path
+    docs_root = project_root / "docs.engineeringagent"
+    features_dir = docs_root / "spec" / "features"
+    schema_target = docs_root / "spec" / "schemas" / "feature.schema.json"
+
+    (project_root / "engineeringagent.toml").write_text(
+        'docs-root = "docs.engineeringagent"\n',
+        encoding="utf-8",
+    )
+    features_dir.mkdir(parents=True, exist_ok=True)
+    schema_target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(SCHEMA_SOURCE, schema_target)
+
+    feature_path = features_dir / "FEAT-937-configured-docs-root.yaml"
+    feature_path.write_text(
+        yaml.safe_dump(
+            {
+                "id": "FEAT-937",
+                "title": "Configured docs root active done spec",
+                "type": "feature",
+                "expected_commit_subject": "feat: validate configured docs root",
+                "status": "done",
+                "priority": "high",
+                "objective": "Use configured docs root for validator paths.",
+                "acceptance": ["Done specs are archived under configured docs root."],
+                "subtasks": [
+                    {
+                        "id": "ST-001",
+                        "title": "Already complete",
+                        "status": "done",
+                        "order": 1,
+                        "verification": ["true"],
+                    }
+                ],
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    messages = validate(project_root=project_root)
+
+    assert messages
+    assert any(
+        "docs.engineeringagent/spec/features_done/FEAT-937-configured-docs-root.yaml"
+        in message
+        for message in messages
+    )
+
+
 def test_validate_transitional_policy_for_preexisting_done_features(
     tmp_path: Path,
 ) -> None:

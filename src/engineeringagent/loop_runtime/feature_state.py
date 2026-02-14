@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Sequence
 
+from engineeringagent.config import resolve_docs_root
 from engineeringagent.loop_runtime.models import (
     InitialFeatureLoadOutcome,
     PostImplementFeatureOutcome,
@@ -71,7 +72,7 @@ def _resolve_feature_paths(
 
 
 def _discover_active_feature_paths(project_root: Path) -> list[Path]:
-    features_dir = project_root / "docs" / "spec" / "features"
+    features_dir, _ = _resolve_spec_directories(project_root)
     resolved: list[Path] = []
     for feature_path in sorted(features_dir.glob("*.yaml")):
         try:
@@ -100,8 +101,7 @@ def _pending_features(
 
 
 def _resolve_archive_path(project_root: Path, feature_path: Path) -> Path:
-    active_dir = (project_root / "docs" / "spec" / "features").resolve()
-    done_dir = (project_root / "docs" / "spec" / "features_done").resolve()
+    active_dir, done_dir = _resolve_spec_directories(project_root)
     resolved_feature = feature_path.resolve()
 
     if resolved_feature.parent != active_dir:
@@ -109,6 +109,15 @@ def _resolve_archive_path(project_root: Path, feature_path: Path) -> Path:
             "completed feature archive source must be under docs/spec/features"
         )
     return done_dir / resolved_feature.name
+
+
+def _resolve_spec_directories(project_root: Path) -> tuple[Path, Path]:
+    docs_root = resolve_docs_root(project_root)
+    spec_root = docs_root / "spec"
+    return (
+        (spec_root / "features").resolve(),
+        (spec_root / "features_done").resolve(),
+    )
 
 
 def _load_selected_feature_with_archive_fallback(

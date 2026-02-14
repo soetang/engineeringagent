@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from .config import resolve_docs_root
 from .fitness import build_rule_catalog
 from .specs import (
     ValidationIssue,
@@ -56,10 +57,12 @@ def validate(project_root: Path, schema_only: bool = False) -> list[str]:
     Returns:
         Validation error messages; empty list means success.
     """
-    features_dir = project_root / "docs" / "spec" / "features"
-    features_done_dir = project_root / "docs" / "spec" / "features_done"
-    schema_path = project_root / "docs" / "spec" / "schemas" / "feature.schema.json"
-    potential_features_path = project_root / "docs" / "spec" / "potential_features.yaml"
+    docs_root = resolve_docs_root(project_root)
+    spec_root = docs_root / "spec"
+    features_dir = spec_root / "features"
+    features_done_dir = spec_root / "features_done"
+    schema_path = spec_root / "schemas" / "feature.schema.json"
+    potential_features_path = spec_root / "potential_features.yaml"
     gates_path = project_root / "harness" / "gates.yaml"
 
     files = iter_feature_files(features_dir)
@@ -95,10 +98,12 @@ def validate(project_root: Path, schema_only: bool = False) -> list[str]:
             if feature.get("status") == "done":
                 feature_name = file_path.name
                 if feature_name not in done_transition_allowlist:
+                    expected_archive_path = features_done_dir / feature_name
+                    allowlist_path = features_dir / DONE_TRANSITION_ALLOWLIST
                     messages.append(
                         f"{file_path}:status: completed feature specs must be archived under "
-                        f"docs/spec/features_done/{feature_name}; move this file there or "
-                        f"add '{feature_name}' to docs/spec/features/{DONE_TRANSITION_ALLOWLIST} "
+                        f"{expected_archive_path.relative_to(project_root)}; move this file there or "
+                        f"add '{feature_name}' to {allowlist_path.relative_to(project_root)} "
                         "as a temporary transition exception"
                     )
 

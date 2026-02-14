@@ -121,6 +121,34 @@ def _next_agents_backup_path(project_root: Path) -> Path:
     return candidate
 
 
+def _write_init_docs_root_config(
+    project_root: Path,
+    docs_dir: str,
+    *,
+    force: bool,
+) -> tuple[int, int]:
+    """Persist docs-root TOML config when init uses separate docs mode.
+
+    Args:
+        project_root: Repository root where init is running.
+        docs_dir: Resolved scaffold docs directory.
+        force: Whether init is allowed to overwrite existing config files.
+
+    Returns:
+        Tuple of (created_count, skipped_count).
+    """
+    if docs_dir == "docs":
+        return (0, 0)
+
+    config_path = project_root / "engineeringagent.toml"
+    config_content = f'docs-root = "{docs_dir}"\n'
+    if config_path.exists() and not force:
+        return (0, 1)
+
+    config_path.write_text(config_content, encoding="utf-8")
+    return (1, 0)
+
+
 def cmd_validate(args: argparse.Namespace) -> int:
     """Run feature spec validation and print failures.
 
@@ -392,6 +420,13 @@ def cmd_init(args: argparse.Namespace) -> int:
         docs_dir=docs_dir,
         profile=args.scaffold_profile,
     )
+    config_created, config_skipped = _write_init_docs_root_config(
+        project_root,
+        docs_dir,
+        force=args.force,
+    )
+    created += config_created
+    skipped += config_skipped
 
     if resolved_agents_mode == "overwrite":
         agents_path = project_root / "AGENTS.md"

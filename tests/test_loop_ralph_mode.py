@@ -405,6 +405,54 @@ def test_run_loop_all_discovers_backlog_and_in_progress_only(
     assert "FEAT-904" not in output
 
 
+def test_run_all_uses_configured_docs_root(tmp_path: Path, capsys: Any) -> None:
+    configured_docs_root = tmp_path / "docs.engineeringagent"
+    configured_features_dir = configured_docs_root / "spec" / "features"
+    default_features_dir = tmp_path / "docs" / "spec" / "features"
+
+    (tmp_path / "engineeringagent.toml").write_text(
+        'docs-root = "docs.engineeringagent"\n',
+        encoding="utf-8",
+    )
+    _write_yaml(
+        tmp_path / "harness" / "gates.yaml",
+        {
+            "profiles": {"loop_fast": []},
+            "gates": {},
+        },
+    )
+
+    configured_feature = _base_feature(status="backlog")
+    configured_feature["id"] = "FEAT-910"
+    _write_yaml(
+        configured_features_dir / "FEAT-910-configured-docs-root.yaml",
+        configured_feature,
+    )
+
+    default_feature = _base_feature(status="backlog")
+    default_feature["id"] = "FEAT-911"
+    _write_yaml(
+        default_features_dir / "FEAT-911-default-docs-root.yaml", default_feature
+    )
+
+    code = run_loop(
+        project_root=tmp_path,
+        feature_paths=[],
+        gate_profile="loop_fast",
+        implement_command=None,
+        opencode_prompt=None,
+        skip_implement=True,
+        dry_run=True,
+        run_all=True,
+    )
+
+    output = capsys.readouterr().out
+    assert code == 0
+    assert "[dry-run] Resolved 1 feature file(s)." in output
+    assert "feature=FEAT-910" in output
+    assert "FEAT-911" not in output
+
+
 def test_run_loop_all_excludes_blocked_and_done_from_startup_snapshot(
     tmp_path: Path, capsys: Any
 ) -> None:
@@ -596,6 +644,49 @@ def test_run_loop_completes_feature_and_commits(tmp_path: Path) -> None:
 
     log = _run_git(project_root, "log", "--oneline").stdout.strip().splitlines()
     assert len(log) >= 2
+
+
+def test_archive_path_uses_configured_docs_root(tmp_path: Path) -> None:
+    docs_root = tmp_path / "docs.engineeringagent"
+    feature_path = docs_root / "spec" / "features" / "FEAT-910-configured-archive.yaml"
+    feature = _base_feature(status="backlog")
+    feature["id"] = "FEAT-910"
+
+    (tmp_path / "engineeringagent.toml").write_text(
+        'docs-root = "docs.engineeringagent"\n',
+        encoding="utf-8",
+    )
+    _write_yaml(
+        tmp_path / "harness" / "gates.yaml",
+        {
+            "profiles": {"loop_fast": []},
+            "gates": {},
+        },
+    )
+    _write_yaml(feature_path, feature)
+
+    script_path = _write_set_done_script(
+        tmp_path.parent / f"{tmp_path.name}-set-done-configured-archive.py"
+    )
+    _init_git_repo(tmp_path)
+
+    code = run_loop(
+        project_root=tmp_path,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        max_iterations=5,
+    )
+
+    archived_path = (
+        docs_root / "spec" / "features_done" / "FEAT-910-configured-archive.yaml"
+    )
+    assert code == 0
+    assert not feature_path.exists()
+    assert archived_path.exists()
 
 
 def test_run_loop_commit_ignores_runs_jsonl_when_gitignored(tmp_path: Path) -> None:
