@@ -61,6 +61,27 @@ def test_default_loop_fast_profile_excludes_permission_probe() -> None:
     assert "opencode_permission_probe" not in config["profiles"]["loop_fast"]
 
 
+def test_list_profiles_returns_empty_when_profiles_is_not_mapping() -> None:
+    assert list_profiles({"profiles": ["not", "a", "mapping"]}) == []
+
+
+def test_run_profile_rejects_unknown_profile(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="unknown profile: loop_fast"):
+        run_profile(
+            config={"profiles": {}, "gates": {}}, profile="loop_fast", cwd=tmp_path
+        )
+
+
+def test_run_profile_rejects_gate_without_run_command(tmp_path: Path) -> None:
+    config = {
+        "profiles": {"loop_fast": ["spec_validate"]},
+        "gates": {"spec_validate": {}},
+    }
+
+    with pytest.raises(ValueError, match="gate 'spec_validate' has no run command"):
+        run_profile(config=config, profile="loop_fast", cwd=tmp_path)
+
+
 def test_empty_profile_returns_friendly_success_message(
     tmp_path: Path, capsys: Any
 ) -> None:

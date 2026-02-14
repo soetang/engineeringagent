@@ -21,7 +21,7 @@ engineeringagent = "engineeringagent.cli:main"
 packages = ["src/engineeringagent"]
 
 [tool.pytest.ini_options]
-addopts = "-m 'not integration'"
+addopts = "--cov=engineeringagent --cov-report=term --cov-fail-under=95"
 markers = [
   "integration: tests requiring external tools or services",
 ]
@@ -32,6 +32,7 @@ dev = [
     "mdformat>=0.7.22",
     "pyright>=1.1.405",
     "pytest>=9.0.2",
+    "pytest-cov>=7.0.0",
     "ruff>=0.15.0",
 ]
 pypi = [

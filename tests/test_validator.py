@@ -5,6 +5,7 @@ import shutil
 from pathlib import Path
 
 import pytest
+import tomli
 import yaml
 
 from engineeringagent.fitness import DEPENDENCY_DIRECTIONALITY_RULE_ID
@@ -239,6 +240,114 @@ def test_validate_reports_invalid_potential_features_contract(tmp_path: Path) ->
         "potential_features[0].unexpected" in message
         and "Extra inputs are not permitted" in message
         for message in messages
+    )
+
+
+def test_validate_reports_schema_json_parse_error(tmp_path: Path) -> None:
+    schema_path = tmp_path / "docs" / "spec" / "schemas" / "feature.schema.json"
+    schema_path.parent.mkdir(parents=True, exist_ok=True)
+    schema_path.write_text("{not-json}\n", encoding="utf-8")
+
+    messages = validate(project_root=tmp_path)
+
+    assert messages
+    assert any("failed to parse JSON schema" in message for message in messages)
+
+
+def test_validate_reports_schema_out_of_sync_with_model(tmp_path: Path) -> None:
+    schema_path = tmp_path / "docs" / "spec" / "schemas" / "feature.schema.json"
+    schema_path.parent.mkdir(parents=True, exist_ok=True)
+    schema_path.write_text("{}\n", encoding="utf-8")
+
+    messages = validate(project_root=tmp_path)
+
+    assert messages == [
+        f"{schema_path}:<root>: schema artifact is out of sync with FeatureSpec model"
+    ]
+
+
+def test_validate_reports_yaml_parse_errors_across_validator_inputs(
+    tmp_path: Path,
+) -> None:
+    features_dir = tmp_path / "docs" / "spec" / "features"
+    features_done_dir = tmp_path / "docs" / "spec" / "features_done"
+    potential_features_path = tmp_path / "docs" / "spec" / "potential_features.yaml"
+    gates_path = tmp_path / "harness" / "gates.yaml"
+
+    features_dir.mkdir(parents=True, exist_ok=True)
+    features_done_dir.mkdir(parents=True, exist_ok=True)
+    potential_features_path.parent.mkdir(parents=True, exist_ok=True)
+    gates_path.parent.mkdir(parents=True, exist_ok=True)
+
+    (features_dir / "FEAT-999-bad-active.yaml").write_text("[\n", encoding="utf-8")
+    (features_done_dir / "FEAT-998-bad-done.yaml").write_text("[\n", encoding="utf-8")
+    potential_features_path.write_text("[\n", encoding="utf-8")
+    gates_path.write_text("[\n", encoding="utf-8")
+
+    messages = validate(project_root=tmp_path)
+
+    assert any("FEAT-999-bad-active.yaml: failed to parse YAML" in m for m in messages)
+    assert any("FEAT-998-bad-done.yaml: failed to parse YAML" in m for m in messages)
+    assert any("potential_features.yaml: failed to parse YAML" in m for m in messages)
+    assert any("harness/gates.yaml: failed to parse YAML" in m for m in messages)
+
+
+def test_validate_accepts_agents_docs_map_glob_when_it_matches(tmp_path: Path) -> None:
+    docs_dir = tmp_path / "docs"
+    docs_dir.mkdir(parents=True, exist_ok=True)
+    (docs_dir / "exists.md").write_text("ok\n", encoding="utf-8")
+
+    agents_path = tmp_path / "AGENTS.md"
+    agents_path.write_text(
+        "\n".join(
+            [
+                "# AGENTS.md",
+                "",
+                "## 5) Documentation Layout Reference",
+                "- `docs/*.md`",
+                "",
+                "## 6) First-Window Boot Sequence",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    assert validate(project_root=tmp_path) == []
+
+
+def test_validate_preserves_non_legacy_done_required_field_errors(
+    tmp_path: Path,
+) -> None:
+    features_done_dir = tmp_path / "docs" / "spec" / "features_done"
+    features_done_dir.mkdir(parents=True, exist_ok=True)
+    (features_done_dir / "FEAT-897-missing-priority.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "id": "FEAT-897",
+                "title": "Done spec still requires priority",
+                "status": "done",
+                "objective": "Keep non-legacy required-field errors visible.",
+                "acceptance": ["priority remains required for done specs."],
+                "subtasks": [
+                    {
+                        "id": "ST-001",
+                        "title": "Already complete",
+                        "status": "done",
+                        "order": 1,
+                        "verification": ["true"],
+                    }
+                ],
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    messages = validate(project_root=tmp_path)
+
+    assert any(
+        "FEAT-897-missing-priority.yaml:priority: Field required" in m for m in messages
     )
 
 
@@ -870,3 +979,13 @@ def test_validate_accepts_known_builtin_fitness_reference(tmp_path: Path) -> Non
     messages = validate(project_root=tmp_path)
 
     assert messages == []
+
+
+def test_pytest_default_coverage_contract_is_declared() -> None:
+    pyproject_payload = tomli.loads((REPO_ROOT / "pyproject.toml").read_text("utf-8"))
+    pytest_options = pyproject_payload["tool"]["pytest"]["ini_options"]
+    addopts = pytest_options["addopts"]
+
+    assert "--cov=engineeringagent" in addopts
+    assert "--cov-fail-under=95" in addopts
+    assert "not integration" not in addopts
