@@ -8,6 +8,8 @@ Primary flow: `application spec -> run loop`
 
 - Package usage (PyPI, no clone): `uvx engineeringagent <command>`
 - Package usage (version pinned): `uvx engineeringagent@<version> <command>`
+- In-repo loop execution (source-first): `uv run python -m engineeringagent.cli <command>`
+- In-repo loop policy remediation: replace `uvx --from . engineeringagent ...` with `uv run python -m engineeringagent.cli ...`
 
 ## Quickstart from PyPI (no clone)
 

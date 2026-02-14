@@ -77,5 +77,5 @@ subtasks:
   order: 5
   context: Confirm migrated harness-only fitness stack blocks or passes exactly through existing gate profiles.
   verification:
-  - uvx --from . engineeringagent validate
-  - uvx --from . engineeringagent gates run --profile loop_fast
+  - uv run python -m engineeringagent.cli validate
+  - uv run python -m engineeringagent.cli gates run --profile loop_fast

@@ -2029,7 +2029,7 @@ def test_gate_failure_feedback_includes_fitness_remediation_guidance(
                 "\n".join(
                     [
                         "[gate:fitness_validate] command=uv run python -m engineeringagent.cli fitness run --format json",
-                        '{"failed": true, "failed_rules": [{"rule_id": "architecture.loop-subprocess-boundary", "status": "fail", "remediation": "Move OpenCode command execution to engineeringagent.opencode.client and Git command execution to engineeringagent.git.client."}], "results": []}',
+                        '{"failed": true, "failed_rules": [{"rule_id": "architecture.source-first-loop-command-policy", "status": "fail", "remediation": "Replace forbidden in-repo uvx self-invocations with source-first forms; prefer uv run python -m engineeringagent.cli ..."}], "results": []}',
                     ]
                 ),
             ),
@@ -2063,8 +2063,8 @@ def test_gate_failure_feedback_includes_fitness_remediation_guidance(
     assert code == 0
     assert len(prompts) >= 2
     assert (
-        "Move OpenCode command execution to engineeringagent.opencode.client "
-        "and Git command execution to engineeringagent.git.client." in prompts[1]
+        "Replace forbidden in-repo uvx self-invocations with source-first forms; "
+        "prefer uv run python -m engineeringagent.cli ..." in prompts[1]
     )
 
 

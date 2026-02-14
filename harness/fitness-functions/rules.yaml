@@ -19,6 +19,21 @@ rules:
       - run
       - python
       - harness/fitness-functions/check_loop_facade_line_budget.py
+  - rule_id: architecture.source-first-loop-command-policy
+    name: Source-first loop command policy
+    summary: Enforce source-first workspace execution for loop command surfaces.
+    rationale: Prevent stale cached package artifacts from bypassing current workspace source.
+    remediation: Replace forbidden in-repo uvx self-invocations with source-first
+      forms; prefer uv run python -m engineeringagent.cli ...
+    scope: docs/spec/features/*.yaml and harness/gates.yaml
+    severity: error
+    side_effect_free: true
+    adapter: command
+    command:
+      - uv
+      - run
+      - python
+      - harness/fitness-functions/check_source_first_loop_commands.py
   - rule_id: architecture.no-stdlib-dataclasses-in-src
     name: No stdlib dataclasses in src
     summary: Block stdlib dataclasses usage in production source models.

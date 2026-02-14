@@ -14,6 +14,7 @@ This file is generated from active manifest-declared fitness rules.
 | `architecture.no-stdlib-dataclasses-in-src` | error | command | custom | `src/engineeringagent` | Block stdlib dataclasses usage in production source models. |
 | `architecture.prompt-locality` | error | python | builtin | `src/engineeringagent` | Keep canonical loop prompt content and template reads localized. |
 | `architecture.scaffold-template-locality` | error | python | builtin | `src/engineeringagent` | Keep scaffold template payloads in scaffold_templates assets. |
+| `architecture.source-first-loop-command-policy` | error | command | custom | `docs/spec/features/*.yaml and harness/gates.yaml` | Enforce source-first workspace execution for loop command surfaces. |
 
 ## Rule Details
 
@@ -72,4 +73,11 @@ This file is generated from active manifest-declared fitness rules.
 - Side-effect free: `true`
 - Rationale: Prevents init scaffold regressions from drifting back to inline template payloads in source modules.
 - Remediation: Move scaffold template bodies to engineeringagent.scaffold_templates assets and load them via engineeringagent.init_scaffold.
+
+### `architecture.source-first-loop-command-policy`
+
+- Name: Source-first loop command policy
+- Side-effect free: `true`
+- Rationale: Prevent stale cached package artifacts from bypassing current workspace source.
+- Remediation: Replace forbidden in-repo uvx self-invocations with source-first forms; prefer uv run python -m engineeringagent.cli ...
 

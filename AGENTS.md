@@ -18,6 +18,7 @@ Keep this file concise. Add durable references and rules, not task logs.
 - Interview before drafting a new feature spec.
 - Keep each loop incremental, verifiable, and recoverable.
 - Encode behavior in gates and validators, not prose alone.
+- For in-repo loop execution, use source-first workspace commands (`uv run ...`), not `uvx --from . engineeringagent ...`.
 
 ## 3) System of Record (Read in this order)
 
@@ -65,11 +66,11 @@ Keep this file concise. Add durable references and rules, not task logs.
 
 ## 7) Verification Quick Reference
 
-- Validate specs: `uvx --from . engineeringagent validate`
-- Inspect init profile options: `uvx --from . engineeringagent init --help`
-- List gate profiles: `uvx --from . engineeringagent gates list`
-- Run precommit gates: `uvx --from . engineeringagent gates run --profile precommit`
-- Run loop-fast gates: `uvx --from . engineeringagent gates run --profile loop_fast`
+- Validate specs: `uv run python -m engineeringagent.cli validate`
+- Inspect init profile options: `uv run python -m engineeringagent.cli init --help`
+- List gate profiles: `uv run python -m engineeringagent.cli gates list`
+- Run precommit gates: `uv run python -m engineeringagent.cli gates run --profile precommit`
+- Run loop-fast gates: `uv run python -m engineeringagent.cli gates run --profile loop_fast`
 
 ## 8) Repo Extensions (Fill In)
 

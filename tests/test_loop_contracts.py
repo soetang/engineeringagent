@@ -156,6 +156,30 @@ def test_loop_facade_line_budget_rule_configuration() -> None:
     ]
 
 
+def test_source_first_loop_command_rule_configuration() -> None:
+    manifest_path = Path("harness/fitness-functions/rules.yaml")
+    manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+
+    rules = manifest["rules"]
+    source_first_rules = [
+        rule
+        for rule in rules
+        if isinstance(rule, dict)
+        and rule.get("rule_id") == "architecture.source-first-loop-command-policy"
+    ]
+
+    assert len(source_first_rules) == 1
+    rule = source_first_rules[0]
+    assert rule["adapter"] == "command"
+    assert rule["severity"] == "error"
+    assert rule["command"] == [
+        "uv",
+        "run",
+        "python",
+        "harness/fitness-functions/check_source_first_loop_commands.py",
+    ]
+
+
 def test_iteration_outcome_includes_verification_status() -> None:
     outcome = loop_module.IterationOutcome(
         completed=False,
