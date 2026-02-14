@@ -93,6 +93,7 @@ the git diff before committing anything produced by `init`.
 
 - `README.md`: first-run, human onboarding.
 - [Harness Engineering Principles](docs/principles/harness-engineering-principles.md): deeper human context.
+- [Quality Check Playbook](docs/principles/quality-check-playbook.md): when to run unit tests, fitness functions, and validators.
 - `AGENTS.md` and `docs/references/*-llms.md`: agent execution rules and deterministic procedures.
 
 ## Core files to know

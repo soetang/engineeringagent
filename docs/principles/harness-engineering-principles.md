@@ -47,6 +47,8 @@ At minimum:
 
 This keeps quality gates mechanical instead of relying on memory.
 
+For practical "when to run what" guidance across unit tests, fitness functions, and validators, see the [Quality Check Playbook](quality-check-playbook.md).
+
 ## 5) Fitness functions: protect architecture continuously
 
 A fitness function is an executable check that protects an architectural or process property over time.
