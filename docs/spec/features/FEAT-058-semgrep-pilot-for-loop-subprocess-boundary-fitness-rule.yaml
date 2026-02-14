@@ -3,7 +3,7 @@ title: Add Semgrep pilot for loop subprocess boundary fitness enforcement
 type: feature
 expected_commit_subject: 'feat: add FEAT-058 semgrep pilot for loop subprocess fitness rule'
 status: backlog
-priority: medium
+priority: low
 objective: Introduce a Semgrep-backed pilot for one architecture fitness rule to reduce bespoke AST maintenance while preserving deterministic fitness result contracts.
 context: >-
   The current loop subprocess boundary rule is implemented with custom Python AST
@@ -17,6 +17,7 @@ constraints:
 - Treat `semgrep` as a dev dependency in `[dependency-groups].dev`, not `[project.dependencies]`, because it is only executed by harness/fitness tooling.
 - Keep the existing fitness JSON envelope contract and deterministic violation ordering.
 - Integrate Semgrep via command adapter wiring in `harness/fitness-functions/rules.yaml`.
+- Adapter interface must run semgrep in local/offline mode and emit one strict fitness result JSON object to stdout.
 - 'Keep loop subprocess boundary enforcement blocking (`severity: error`) because this feature replaces an existing blocking architecture rule.'
 - Preserve immediate gate enforcement via `fitness_validate` in precommit and loop profiles (no warning-only transition).
 - Avoid introducing network-required Semgrep modes; the pilot must run fully local.
@@ -26,6 +27,11 @@ implementation_notes: >-
   harness adapter script that executes Semgrep and maps findings into the existing
   fitness result envelope (`contract_version`, `rule_id`, `status`, `summary`,
   `violations`, optional `details`).
+
+  Adapter command interface contract:
+  - Invocation from rules manifest uses command adapter entry with deterministic arguments.
+  - Exit code 0 for pass, non-zero for fail/error.
+  - Output must contain only one JSON envelope compatible with fitness result parsing.
 
   Required integration touch points in this feature:
   - `src/engineeringagent/fitness/builtin_rules.py` (`evaluate_loop_subprocess_boundary`) as migration source/reference

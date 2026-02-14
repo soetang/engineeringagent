@@ -3,7 +3,7 @@ title: Enforce source-first loop command policy via harness fitness rule
 type: feature
 expected_commit_subject: 'feat: add FEAT-055 source-first loop command fitness enforcement'
 status: backlog
-priority: high
+priority: medium
 objective: Prevent stale package-artifact execution during loop iterations by enforcing source-first command usage for loop-executed commands.
 context: >-
   We observed nondeterministic behavior when loop verification commands invoked
@@ -17,6 +17,7 @@ constraints:
 - "Rule scope is loop-executed commands only: active feature verification commands under `docs/spec/features/*.yaml` and gate runner commands in `harness/gates.yaml`."
 - Policy must hard-fail on forbidden self-invocation patterns such as `uvx --from . engineeringagent ...`.
 - Allowed in-repo loop command forms include `uv run ...` and direct local workspace execution forms (for example `.venv/bin/engineeringagent ...`) when deterministic.
+- Checker command interface must be explicit and stable (`uv run python harness/fitness-functions/<script>.py` emitting one fitness result envelope JSON document to stdout).
 - Rule output must be deterministic and machine-readable through the existing fitness result envelope contract.
 - Violation messages must include actionable remediation guidance with direct replacement intent (prefer `uv run python -m engineeringagent.cli ...`).
 - Existing repository violations in scoped files must be auto-migrated to policy-compliant commands as part of this feature.
@@ -28,6 +29,11 @@ implementation_notes: >-
   results. The checker should parse feature verification command arrays and gate command
   runner fields (`run` and structured `runner.command`), detect forbidden in-repo `uvx`
   self-invocation patterns, and report stable path-qualified violations.
+
+  API/interface contract for this checker:
+  - Input: repository root inferred from current working directory; no positional args required.
+  - Output: strict JSON envelope compatible with `FitnessRuleResult` contract.
+  - Exit code: 0 when status is pass, non-zero when status is fail/error.
 
   Register the rule in `harness/fitness-functions/rules.yaml` with `severity: error`
   so the existing `fitness_validate` gate blocks loop progression on policy regressions.

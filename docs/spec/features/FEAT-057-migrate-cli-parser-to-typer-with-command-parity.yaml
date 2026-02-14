@@ -3,7 +3,7 @@ title: Migrate CLI parser to Typer while preserving engineeringagent command par
 type: feature
 expected_commit_subject: 'feat: add FEAT-057 typer-based CLI command parity'
 status: backlog
-priority: medium
+priority: low
 objective: Adopt Typer as the CLI framework to reduce parser boilerplate while keeping existing commands, flags, exit codes, and operator-facing behavior stable.
 context: >-
   The current CLI parser wiring is concentrated in a large argparse construction
@@ -13,6 +13,7 @@ context: >-
 constraints:
 - Preserve top-level command surface and subcommands (`validate`, `gates`, `run`, `fitness`, `init`).
 - Preserve existing option names and command semantics for current automation usage.
+- Preserve parser-level interface for global `--project-root` and `--version` options.
 - Keep existing command handler functions and return-code behavior stable wherever possible.
 - Keep module entrypoints working for both script invocation and module invocation.
 - Treat `typer` as a runtime dependency in `[project.dependencies]` because CLI parsing is part of shipped runtime behavior.
@@ -34,6 +35,7 @@ implementation_notes: >-
 acceptance:
 - Typer is the active parser framework for `engineeringagent` command registration.
 - Existing command names, option names, and success/failure exit code semantics remain stable.
+- engineeringagent help and subcommand help output keep existing command groups and option spellings.
 - Command handlers continue to produce expected output and side effects for validate/gates/run/fitness/init workflows.
 - '`python -m engineeringagent.cli --help` and script entrypoint help output are available and deterministic.'
 - Regression tests covering parser and command routing pass after migration.
