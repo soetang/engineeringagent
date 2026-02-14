@@ -9,3 +9,5 @@ build/
 *.egg-info/
 progress/runs.jsonl
 progress/run-feature-*.txt
+.coverage
+.coverage.*
