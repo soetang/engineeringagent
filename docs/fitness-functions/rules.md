@@ -9,6 +9,8 @@ This file is generated from active manifest-declared fitness rules.
 | `architecture.dep-directionality` | error | python | builtin | `src/engineeringagent` | Enforce core module import direction boundaries. |
 | `architecture.loop-facade-line-budget` | error | command | custom | `src/engineeringagent/loop.py` | Enforce a permanent line budget cap for the loop facade. |
 | `architecture.loop-subprocess-boundary` | error | python | builtin | `src/engineeringagent` | Enforce subprocess allowlist boundaries for command adapters/clients. |
+| `architecture.markdown-locality-reference-coverage` | error | python | builtin | `repository markdown (*.md)` | Restrict markdown to approved paths and require non-doc markdown files to be referenced in-repo. |
+| `architecture.no-non-ignorable-ruff-suppressions` | error | command | custom | `src tests harness` | Block suppression directives for configured high-value Ruff rules. |
 | `architecture.no-stdlib-dataclasses-in-src` | error | command | custom | `src/engineeringagent` | Block stdlib dataclasses usage in production source models. |
 | `architecture.prompt-locality` | error | python | builtin | `src/engineeringagent` | Keep canonical loop prompt content and template reads localized. |
 | `architecture.scaffold-template-locality` | error | python | builtin | `src/engineeringagent` | Keep scaffold template payloads in scaffold_templates assets. |
@@ -35,6 +37,20 @@ This file is generated from active manifest-declared fitness rules.
 - Side-effect free: `true`
 - Rationale: Centralizes command execution paths for consistent control.
 - Remediation: Move OpenCode command execution to engineeringagent.opencode.client and Git command execution to engineeringagent.git.client.
+
+### `architecture.markdown-locality-reference-coverage`
+
+- Name: Markdown locality and reference coverage
+- Side-effect free: `true`
+- Rationale: Prevents markdown sprawl and orphaned non-doc markdown assets across repository zones.
+- Remediation: Move markdown under approved roots and add at least one deterministic in-repo reference for each markdown file outside docs/.
+
+### `architecture.no-non-ignorable-ruff-suppressions`
+
+- Name: No non-ignorable Ruff suppressions
+- Side-effect free: `true`
+- Rationale: Keep lint policy enforceable by requiring refactor-first remediation.
+- Remediation: Remove inline/file-level ignore directives and refactor; for PLR0913, group related arguments into a NamedTuple or pydantic model.
 
 ### `architecture.no-stdlib-dataclasses-in-src`
 

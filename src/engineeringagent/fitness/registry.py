@@ -18,10 +18,12 @@ from .contracts import (
 from .builtin_rules import (
     DEPENDENCY_DIRECTIONALITY_RULE_ID,
     LOOP_SUBPROCESS_BOUNDARY_RULE_ID,
+    MARKDOWN_LOCALITY_REFERENCE_COVERAGE_RULE_ID,
     PROMPT_LOCALITY_RULE_ID,
     SCAFFOLD_TEMPLATE_LOCALITY_RULE_ID,
     evaluate_dependency_directionality,
     evaluate_loop_subprocess_boundary,
+    evaluate_markdown_locality_reference_coverage,
     evaluate_prompt_locality,
     evaluate_scaffold_template_locality,
 )
@@ -79,6 +81,31 @@ BUILTIN_RULE_DEFINITIONS: tuple[FitnessRuleDefinition, ...] = (
         ),
         origin=f"builtin:{LOOP_SUBPROCESS_BOUNDARY_RULE_ID}",
         python_callable=evaluate_loop_subprocess_boundary,
+    ),
+    FitnessRuleDefinition(
+        metadata=FitnessRuleMetadata(
+            rule_id=MARKDOWN_LOCALITY_REFERENCE_COVERAGE_RULE_ID,
+            name="Markdown locality and reference coverage",
+            summary=(
+                "Restrict markdown to approved paths and require non-doc markdown "
+                "files to be referenced in-repo."
+            ),
+            rationale=(
+                "Prevents markdown sprawl and orphaned non-doc markdown assets "
+                "across repository zones."
+            ),
+            remediation=(
+                "Move markdown under approved roots and add at least one deterministic "
+                "in-repo reference for each markdown file outside docs/."
+            ),
+            scope="repository markdown (*.md)",
+            severity=RuleSeverity.ERROR,
+            adapter=RuleAdapter.PYTHON,
+            source=RuleSource.BUILTIN,
+            side_effect_free=True,
+        ),
+        origin=f"builtin:{MARKDOWN_LOCALITY_REFERENCE_COVERAGE_RULE_ID}",
+        python_callable=evaluate_markdown_locality_reference_coverage,
     ),
     FitnessRuleDefinition(
         metadata=FitnessRuleMetadata(
