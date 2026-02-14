@@ -14,7 +14,13 @@ from .fitness import (
     run_rule_catalog,
     write_rule_catalog_markdown,
 )
-from .gates import list_profiles, load_gate_config, run_profile
+from .gates import (
+    collect_changed_paths,
+    list_profiles,
+    load_gate_config,
+    plan_profile,
+    run_profile,
+)
 from .init_scaffold import (
     apply_baseline_scaffold,
     build_agents_merge_followup_spec,
@@ -247,11 +253,43 @@ def cmd_gates_run(args: argparse.Namespace) -> int:
         print(f"gates profile has no configured gates: {args.profile}")
         return 0
 
-    ok, failed, _ = run_profile(config=config, profile=args.profile, cwd=project_root)
+    changed_paths = collect_changed_paths(
+        project_root,
+        base=getattr(args, "base", None),
+        head=getattr(args, "head", None),
+    )
+    if getattr(args, "explain", False):
+        decisions = plan_profile(
+            config,
+            args.profile,
+            changed_paths=changed_paths,
+        )
+        print(json.dumps(decisions, sort_keys=True))
+
+    ok, failed, _ = run_profile(
+        config=config,
+        profile=args.profile,
+        cwd=project_root,
+        changed_paths=changed_paths,
+    )
     if not ok:
         print(f"gates profile failed: {failed}")
         return 1
     print(f"gates profile passed: {args.profile}")
+    return 0
+
+
+def cmd_gates_plan(args: argparse.Namespace) -> int:
+    """Print deterministic run/skip gate decisions for one profile."""
+    project_root = Path(args.project_root).resolve()
+    config = load_gate_config(project_root / "harness" / "gates.yaml")
+    changed_paths = collect_changed_paths(
+        project_root,
+        base=args.base,
+        head=args.head,
+    )
+    decisions = plan_profile(config, args.profile, changed_paths=changed_paths)
+    print(json.dumps(decisions, sort_keys=True))
     return 0
 
 
@@ -518,8 +556,20 @@ def build_parser() -> argparse.ArgumentParser:
     gates_list_parser = gates_sub.add_parser("list", help="list gate profiles")
     gates_list_parser.set_defaults(func=cmd_gates_list)
 
+    gates_plan_parser = gates_sub.add_parser(
+        "plan",
+        help="show deterministic gate run/skip plan",
+    )
+    gates_plan_parser.add_argument("--profile", required=True)
+    gates_plan_parser.add_argument("--base")
+    gates_plan_parser.add_argument("--head")
+    gates_plan_parser.set_defaults(func=cmd_gates_plan)
+
     gates_run_parser = gates_sub.add_parser("run", help="run a gate profile")
     gates_run_parser.add_argument("--profile", required=True)
+    gates_run_parser.add_argument("--base")
+    gates_run_parser.add_argument("--head")
+    gates_run_parser.add_argument("--explain", action="store_true")
     gates_run_parser.set_defaults(func=cmd_gates_run)
 
     run_parser = sub.add_parser("run", help="run feature loops from spec file paths")

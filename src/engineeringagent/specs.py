@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from enum import Enum
 from pathlib import Path
-from typing import Any, Annotated, cast
+from typing import Any, Annotated, Literal, cast
 
 from typing_extensions import LiteralString
 
@@ -91,11 +91,27 @@ class PotentialFeaturesDocument(StrictContractModel):
     potential_features: list[PotentialFeatureSpec] = Field(default_factory=list)
 
 
+class GateRunnerDefinition(StrictContractModel):
+    type: Literal["command"]
+    command: NonEmptyStr
+
+
 class GateDefinition(StrictContractModel):
-    run: NonEmptyStr
+    run: NonEmptyStr | None = None
+    runner: GateRunnerDefinition | None = None
+    on_change: Annotated[list[NonEmptyStr], Field(min_length=1)] | None = None
+
+    @model_validator(mode="after")
+    def enforce_runner_form(self) -> "GateDefinition":
+        has_run = self.run is not None
+        has_runner = self.runner is not None
+        if has_run == has_runner:
+            raise ValueError("define exactly one of run or runner")
+        return self
 
 
 class GateConfigDocument(StrictContractModel):
+    contract_version: Literal["1.0"] = "1.0"
     profiles: dict[NonEmptyStr, list[NonEmptyStr]]
     gates: dict[NonEmptyStr, GateDefinition]
 
