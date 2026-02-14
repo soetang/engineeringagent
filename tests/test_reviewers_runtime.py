@@ -154,6 +154,107 @@ def test_plan_reviewers_reports_deterministic_skip_reasons() -> None:
     ]
 
 
+def test_plan_reviewers_matches_normalized_separator_paths() -> None:
+    config = {
+        "profiles": {"loop_fast": ["code_simplifier"]},
+        "reviewers": {
+            "code_simplifier": {
+                "prompt_file": "harness/reviewers/prompts/code_simplifier.md",
+                "trigger": {
+                    "phase": "iteration_end",
+                    "on_change": ["src/**/*.py"],
+                },
+            }
+        },
+    }
+
+    decisions = plan_reviewers(
+        config,
+        "loop_fast",
+        phase="iteration_end",
+        changed_paths=ChangedPathsResult(
+            paths=(r"src\engineeringagent\reviewers.py",),
+            run_all=False,
+            reason=None,
+        ),
+    )
+
+    assert decisions == [
+        {
+            "reviewer": "code_simplifier",
+            "decision": "run",
+            "reason": MATCHED_ON_CHANGE_REASON,
+        }
+    ]
+
+
+def test_plan_reviewers_runs_when_rename_paths_include_match() -> None:
+    config = {
+        "profiles": {"loop_fast": ["readme_process"]},
+        "reviewers": {
+            "readme_process": {
+                "prompt_file": "harness/reviewers/prompts/readme_process.md",
+                "trigger": {
+                    "phase": "feature_done",
+                    "on_change": ["docs/spec/features/old-name.yaml"],
+                },
+            }
+        },
+    }
+
+    decisions = plan_reviewers(
+        config,
+        "loop_fast",
+        phase="feature_done",
+        changed_paths=ChangedPathsResult(
+            paths=(
+                "docs/spec/features/new-name.yaml",
+                "docs/spec/features/old-name.yaml",
+            ),
+            run_all=False,
+            reason=None,
+        ),
+    )
+
+    assert decisions == [
+        {
+            "reviewer": "readme_process",
+            "decision": "run",
+            "reason": MATCHED_ON_CHANGE_REASON,
+        }
+    ]
+
+
+def test_plan_reviewers_skip_when_changed_paths_are_empty() -> None:
+    config = {
+        "profiles": {"loop_fast": ["code_simplifier"]},
+        "reviewers": {
+            "code_simplifier": {
+                "prompt_file": "harness/reviewers/prompts/code_simplifier.md",
+                "trigger": {
+                    "phase": "iteration_end",
+                    "on_change": ["src/**/*.py"],
+                },
+            }
+        },
+    }
+
+    decisions = plan_reviewers(
+        config,
+        "loop_fast",
+        phase="iteration_end",
+        changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
+    )
+
+    assert decisions == [
+        {
+            "reviewer": "code_simplifier",
+            "decision": "skip",
+            "reason": NO_ON_CHANGE_MATCH_REASON,
+        }
+    ]
+
+
 def test_readme_process_plans_only_for_readme_change_on_feature_done() -> None:
     config = {
         "profiles": {"loop_fast": ["readme_process"]},

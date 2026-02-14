@@ -8,6 +8,7 @@
 ## Hard Rule
 
 - Do not draft a new `docs/spec/features/FEAT-*.yaml` file until you complete a user interview and the user confirms scope.
+- If the feature changes any API/contract behavior, explicit contract-delta documentation is mandatory and high priority in the spec (old behavior -> new behavior, compatibility policy, migration/rollout expectation).
 
 ## Mandatory Interview Flow
 
@@ -23,6 +24,7 @@
 - Success criteria: how the user will judge completion.
 - Constraints: safety, compatibility, or workflow constraints.
 - Verification expectations: required commands or checks.
+- Contract impact: which interfaces/behaviors change, whether compatibility is required, and whether migration is one-time or phased.
 
 ## Question Quality Bar
 
@@ -37,6 +39,11 @@
 - Keep acceptance criteria outcome-based and testable.
 - Keep verification commands concrete and executable.
 - Preserve repository language and conventions used in existing FEAT files.
+- For contract/API changes, encode explicit deltas in spec text (typically `constraints`, `implementation_notes`, and `acceptance`) including:
+  - changed surfaces (schema/model, CLI/runtime behavior, prompt contract, docs),
+  - exact old vs new behavior,
+  - compatibility/deprecation policy,
+  - migration scope and rollback/fallback expectations.
 
 ## Spec Creation Checklist
 
@@ -82,6 +89,18 @@ Notes:
 - User interview completed.
 - Scope summary confirmed by user.
 - Open questions resolved or explicitly deferred.
+
+## Contract Change Declaration (Required When Applicable)
+
+- Include a dedicated contract-change block in the spec narrative (`implementation_notes` recommended).
+- Use concrete statements, not implied intent.
+- Minimum declaration format:
+  - Surface: what contract changes.
+  - Old behavior: what happens today.
+  - New behavior: what must happen after implementation.
+  - Compatibility policy: immediate break, temporary dual-support, or deprecation path.
+  - Migration plan: which files/data/configs change and whether migration is one-time.
+  - Verification evidence: tests/commands that prove the contract transition.
 
 ## If User Asks to "Just Write the Spec"
 

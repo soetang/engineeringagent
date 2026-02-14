@@ -9,6 +9,7 @@ from tempfile import TemporaryDirectory
 from typing import Any, Callable, Iterator
 
 from .gates import ChangedPathsResult
+from .on_change_matcher import path_matches_any_glob
 from .opencode.client import DEFAULT_OPENCODE_AGENT
 from .specs import load_yaml, reviewer_contract_issues
 
@@ -39,12 +40,6 @@ ADVISORY_FOLLOWUP_REQUIRED_KEY = "advisory_followup_required"
 BLOCKING_RETRY_COUNT_KEY = "blocking_request_changes_count"
 BLOCKING_RETRY_UPDATED_AT_KEY = "blocking_retry_updated_at"
 SANDBOX_MODE_TEMP_WORKTREE_SNAPSHOT = "temp_worktree_snapshot"
-
-
-def _path_matches_any_glob(path: str, patterns: list[str]) -> bool:
-    """Return whether a repository-relative path matches any configured glob."""
-    normalized = Path(path)
-    return any(normalized.match(pattern) for pattern in patterns)
 
 
 def _now_iso() -> str:
@@ -240,7 +235,7 @@ def evaluate_cached_reviewer_approval(
             return False, FIRST_FEATURE_APPROVAL_INVALIDATED_REASON
         return True, FIRST_FEATURE_APPROVAL_REUSED_REASON
 
-    if any(_path_matches_any_glob(path, on_change) for path in changed_paths.paths):
+    if any(path_matches_any_glob(path, on_change) for path in changed_paths.paths):
         invalidate_reviewer_approval(
             state,
             feature_id=feature_id,
@@ -340,7 +335,7 @@ def plan_reviewers(
             )
             continue
 
-        if any(_path_matches_any_glob(path, on_change) for path in changed_paths.paths):
+        if any(path_matches_any_glob(path, on_change) for path in changed_paths.paths):
             decisions.append(
                 {
                     "reviewer": reviewer_id,

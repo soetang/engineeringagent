@@ -1,5 +1,17 @@
 {
   "features": {
+    "FEAT-056": {
+      "reviewers": {
+        "code_simplifier": {
+          "approved": false,
+          "approved_at": "2026-02-14T23:34:55Z",
+          "blocking_request_changes_count": 0,
+          "blocking_retry_updated_at": "2026-02-14T23:34:55Z",
+          "invalidated_at": "2026-02-14T23:37:26Z",
+          "updated_at": "2026-02-14T23:37:48Z"
+        }
+      }
+    },
     "FEAT-059": {
       "reviewers": {
         "code_simplifier": {

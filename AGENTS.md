@@ -14,6 +14,7 @@ Keep this file concise. Add durable references and rules, not task logs.
 
 - Humans steer, agents execute.
 - Keep audience split explicit: `README.md` for human onboarding, `AGENTS.md` plus `docs/references/*-llms.md` for agent execution guidance.
+- Treat API/contract changes as critical documentation work: specs and agent docs must explicitly capture old behavior, new behavior, compatibility policy, and migration scope.
 - One feature focus per cycle.
 - Interview before drafting a new feature spec.
 - Keep each loop incremental, verifiable, and recoverable.

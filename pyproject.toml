@@ -9,6 +9,7 @@ description = "Feature-driven harness for human-gated coding loops"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+  "pathspec>=0.12.1",
   "PyYAML>=6.0.2",
   "pydantic>=2.11.0",
   "tomli>=2.4.0",

@@ -20,6 +20,8 @@ This guide defines who each documentation surface is for, what belongs in it, an
 - Keep content text-first, explicit, and deterministic.
 - Prefer normative rules, ordered checklists, and validation commands.
 - Define ownership of behavior in code, gates, and schemas when possible.
+- Treat API/contract change documentation as high priority, not optional context.
+- Require explicit contract deltas in agent docs/specs: old behavior, new behavior, compatibility policy, and migration scope.
 - Avoid decorative writing that does not improve execution quality.
 - For in-repo loop command surfaces, document source-first execution forms (`uv run ...`) and avoid `uvx --from . engineeringagent ...`.
 
@@ -40,6 +42,7 @@ This guide defines who each documentation surface is for, what belongs in it, an
 
 - When updating human docs, optimize for clarity and first-run success.
 - When updating agent docs, optimize for unambiguous execution and verification.
+- If behavior contracts change, include explicit delta statements and verification evidence in the same documentation update.
 - Keep changes minimal and scoped to the active feature subtask.
 - Add or update links in `AGENTS.md` when new agent references are introduced.
 - Keep `init` bootstrap guidance explicit in human docs: default `core` profile, optional `python_uv` via `--scaffold-profile`.

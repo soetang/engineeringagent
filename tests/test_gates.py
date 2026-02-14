@@ -24,6 +24,7 @@ from engineeringagent.gates import (
     plan_profile,
     run_profile,
 )
+from engineeringagent.on_change_matcher import path_matches_any_glob
 
 
 def test_load_gate_config_scaffolds_missing_gates_file(tmp_path: Path) -> None:
@@ -483,6 +484,27 @@ def test_collect_changed_paths_falls_back_to_run_all_when_diff_fails(
     assert result.reason == FALLBACK_CHANGE_DISCOVERY_REASON
 
 
+def test_path_matches_any_glob_matches_nested_path() -> None:
+    assert path_matches_any_glob(
+        "src/engineeringagent/gates.py",
+        ["src/**/*.py"],
+    )
+
+
+def test_path_matches_any_glob_normalizes_mixed_path_separators() -> None:
+    assert path_matches_any_glob(
+        r"src\engineeringagent\gates.py",
+        ["src/**/*.py"],
+    )
+
+
+def test_path_matches_any_glob_returns_false_when_no_pattern_matches() -> None:
+    assert not path_matches_any_glob(
+        "docs/spec/features/FEAT-056.yaml",
+        ["src/**/*.py", "tests/**/*.py"],
+    )
+
+
 def test_plan_profile_emits_gate_decision_reason_envelope() -> None:
     config = {
         "profiles": {"loop_fast": ["spec_validate"]},
@@ -559,6 +581,55 @@ def test_plan_profile_skips_when_on_change_does_not_match() -> None:
     )
 
     assert result[0]["decision"] == "skip"
+
+
+def test_plan_profile_skips_when_changed_paths_are_empty() -> None:
+    config = {
+        "profiles": {"loop_fast": ["pytest_validate"]},
+        "gates": {
+            "pytest_validate": {
+                "run": "uv run pytest -q",
+                "on_change": ["src/**/*.py", "tests/**/*.py"],
+            }
+        },
+    }
+
+    result = plan_profile(
+        config,
+        "loop_fast",
+        changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
+    )
+
+    assert result[0]["decision"] == "skip"
+    assert result[0]["reason"] == NO_ON_CHANGE_MATCH_REASON
+
+
+def test_plan_profile_runs_when_rename_paths_include_match() -> None:
+    config = {
+        "profiles": {"loop_fast": ["spec_validate"]},
+        "gates": {
+            "spec_validate": {
+                "run": "uv run python -m engineeringagent.cli validate",
+                "on_change": ["docs/spec/features/old-name.yaml"],
+            }
+        },
+    }
+
+    result = plan_profile(
+        config,
+        "loop_fast",
+        changed_paths=ChangedPathsResult(
+            paths=(
+                "docs/spec/features/new-name.yaml",
+                "docs/spec/features/old-name.yaml",
+            ),
+            run_all=False,
+            reason=None,
+        ),
+    )
+
+    assert result[0]["decision"] == "run"
+    assert result[0]["reason"] == MATCHED_ON_CHANGE_REASON
 
 
 def test_plan_profile_runs_when_on_change_is_omitted() -> None:

@@ -7,6 +7,7 @@ from typing import Any
 import yaml
 from pydantic import BaseModel, ConfigDict
 
+from .on_change_matcher import path_matches_any_glob
 from .specs import gate_contract_issues, load_yaml
 
 
@@ -90,12 +91,6 @@ class ChangedPathsResult(BaseModel):
     reason: str | None
 
 
-def _path_matches_any_glob(path: str, patterns: list[str]) -> bool:
-    """Return whether a repository-relative path matches any configured glob."""
-    normalized = Path(path)
-    return any(normalized.match(pattern) for pattern in patterns)
-
-
 def plan_profile(
     config: dict[str, Any],
     profile: str,
@@ -146,7 +141,7 @@ def plan_profile(
             )
             continue
 
-        if any(_path_matches_any_glob(path, on_change) for path in changed_paths.paths):
+        if any(path_matches_any_glob(path, on_change) for path in changed_paths.paths):
             decisions.append(
                 {
                     "gate": gate_name,
