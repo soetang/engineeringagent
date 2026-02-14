@@ -1,7 +1,7 @@
-id: FEAT-053
+id: FEAT-054
 title: Add default code_simplifier advisory reviewer with required follow-up implement pass policy
 type: feature
-expected_commit_subject: 'feat: add FEAT-053 default code_simplifier reviewer configuration and policy behavior'
+expected_commit_subject: 'feat: add FEAT-054 default code_simplifier reviewer configuration and policy behavior'
 status: backlog
 priority: high
 objective: Add a default `code_simplifier` reviewer that runs on code changes during `iteration_end`, provides advisory guidance, and always triggers at least one follow-up implement pass when advice is returned.
@@ -105,4 +105,4 @@ subtasks:
   context: Validate planner and loop behavior for code_simplifier scenario end to end.
   verification:
   - uv run pytest -q tests/test_reviewers_runtime.py tests/test_loop_reviewers.py tests/test_loop_contracts.py
-updated_at: '2026-02-14T22:20:00Z'
+updated_at: '2026-02-14T21:09:12Z'
