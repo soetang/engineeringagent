@@ -11,6 +11,7 @@ requires-python = ">=3.10"
 dependencies = [
   "PyYAML>=6.0.2",
   "pydantic>=2.11.0",
+  "tomli>=2.4.0",
 ]
 
 [project.scripts]

@@ -3,7 +3,7 @@ repos:
     hooks:
       - id: engineeringagent-precommit
         name: engineeringagent-precommit
-        entry: uvx engineeringagent gates run --profile precommit
+        entry: uvx --from . engineeringagent gates run --profile precommit
         language: system
         pass_filenames: false
       - id: engineeringagent-commit-msg

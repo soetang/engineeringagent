@@ -8,72 +8,57 @@ Primary flow: `application spec -> run loop`
 
 - Package usage (PyPI, no clone): `uvx engineeringagent <command>`
 - Package usage (version pinned): `uvx engineeringagent@<version> <command>`
-- Contributor usage (from this repository): `uvx --from . engineeringagent <command>`
 
 ## Quickstart from PyPI (no clone)
 
-Run directly from the published package:
-
-```bash
-uvx engineeringagent --help
-uvx engineeringagent validate
-uvx engineeringagent gates run --profile loop_fast
-```
-
-Pin to a specific release when you need reproducible onboarding or CI runs:
-
-```bash
-uvx engineeringagent@<version> --help
-uvx engineeringagent@<version> validate
-```
-
-## Contributor setup (local checkout, first 10 minutes)
-
-The steps below assume contributor usage from this repository checkout.
-
-1. Install dependencies.
+1. If you are starting in a fresh repository, scaffold the baseline harness first.
 
    ```bash
-   uv sync
+   uvx engineeringagent init 
    ```
+
+   Warning: `init` is experimental scaffolding. Inspect generated files,
+   run `uvx engineeringagent validate`, and review the git diff before committing.
+
+   We recommend u do this in a seperat branch or toy project the first time you try out the process.
 
 1. Create or pick one feature spec in `docs/spec/features/`.
 
 1. Validate the setup and run gates.
 
    ```bash
-   uvx --from . engineeringagent validate
-   uvx --from . engineeringagent gates run --profile loop_fast
+   uvx engineeringagent validate
+   uvx engineeringagent gates run --profile loop_fast
    ```
 
 1. Do a safe dry run first.
 
    ```bash
-   uvx --from . engineeringagent run docs/spec/features/FEAT-001-example.yaml --dry-run
+   uvx engineeringagent run docs/spec/features/FEAT-001-example.yaml --dry-run
    ```
 
-1. Run for real by removing `--dry-run`.
+Run for real by removing `--dry-run`.
 
 ## Bootstrapping a new repository with `init`
 
 If you are starting in a fresh repository, you can scaffold a baseline harness with:
 
 ```bash
-uvx --from . engineeringagent init
+uvx engineeringagent init
 ```
 
 `init` defaults to the language-agnostic `core` scaffold profile.
 Use `python_uv` only when you intentionally want Python/uv-oriented bootstrap defaults:
 
 ```bash
-uvx --from . engineeringagent init --scaffold-profile python_uv
+uvx engineeringagent init --scaffold-profile python_uv
 ```
 
 `init` creates a starter structure for docs/specs/gates and handles existing `docs/` or
 `AGENTS.md` through explicit conflict choices.
 
 Warning: treat `init` as experimental scaffolding.
-Always inspect generated files, run `uvx --from . engineeringagent validate`, and review
+Always inspect generated files, run `uvx engineeringagent validate`, and review
 the git diff before committing anything produced by `init`.
 
 ## What this gives you
@@ -86,8 +71,6 @@ the git diff before committing anything produced by `init`.
 
 - Default output is concise; full implement/gate output stays in `progress/run-feature-<FEATURE_ID>.txt`.
 - Use `--verbose-output` if you want full implement/gate output in the terminal.
-- TTY terminals show light styling for scanability; redirected output stays ANSI-free.
-- Set `NO_COLOR=1` (or `TERM=dumb`) to force plain output.
 
 ## Human docs vs agent docs
 
@@ -99,7 +82,6 @@ the git diff before committing anything produced by `init`.
 
 - `docs/spec/features/`: active feature specs (`backlog`, `in_progress`, `blocked`)
 - `docs/spec/features_done/`: archived completed specs (`done`)
-- `docs/spec/schemas/feature.schema.json`: feature schema contract
 - `harness/gates.yaml`: gate and profile definitions
 - `progress/runs.jsonl`: append-only loop execution history
 

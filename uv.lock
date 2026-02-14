@@ -261,6 +261,7 @@ source = { editable = "." }
 dependencies = [
     { name = "pydantic" },
     { name = "pyyaml" },
+    { name = "tomli" },
 ]
 
 [package.dev-dependencies]
@@ -280,6 +281,7 @@ pypi = [
 requires-dist = [
     { name = "pydantic", specifier = ">=2.11.0" },
     { name = "pyyaml", specifier = ">=6.0.2" },
+    { name = "tomli", specifier = ">=2.4.0" },
 ]
 
 [package.metadata.requires-dev]
