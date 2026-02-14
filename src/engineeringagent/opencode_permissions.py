@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
@@ -9,20 +10,29 @@ from .opencode.client import start_agent
 
 PROBE_COMMAND = "git status --short"
 PROBE_TOKEN = "PERMISSION_OK"
+PROBE_DENIED_TOKEN = "PERMISSION_DENIED"
+PROBE_MAX_ATTEMPTS = 3
 PROBE_PROMPT = (
-    "Run exactly this bash command and return only its raw output: "
-    f"{PROBE_COMMAND} && printf '\\n{PROBE_TOKEN}\\n'"
+    "Run exactly this bash command: "
+    f"{PROBE_COMMAND} >/dev/null 2>&1 && printf '{PROBE_TOKEN}' || printf '{PROBE_DENIED_TOKEN}'. "
+    "Respond with exactly one token and nothing else: "
+    f"{PROBE_TOKEN} or {PROBE_DENIED_TOKEN}."
 )
 PERMISSION_REMEDIATION_HINT = (
     "hint: ensure .opencode/agents/build.md and opencode.json both set "
     "build permissions to allow-all"
 )
-PERMISSION_REJECTION_MARKERS = (
-    "permission requested",
-    "auto-reject",
-    "auto reject",
-    "was not granted",
+PERMISSION_REJECTION_LINE_PATTERNS = (
+    re.compile(
+        r"^\s*(?:\[[^\]]+\]\s*)?(?:stderr:\s*)?(?:error:\s*)?permission requested(?::\s*bash\b|(?: for)? (?:the )?bash command\b)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"^\s*(?:\[[^\]]+\]\s*)?(?:stderr:\s*)?(?:error:\s*)?permission .*was not granted\b",
+        re.IGNORECASE,
+    ),
 )
+ANSI_ESCAPE_PATTERN = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 
 
 class PermissionProbeResult(BaseModel):
@@ -34,6 +44,21 @@ class PermissionProbeResult(BaseModel):
     output: str
 
 
+def _extract_probe_decision_token(output: str) -> str | None:
+    decision_tokens: set[str] = set()
+    for line in output.splitlines():
+        cleaned = ANSI_ESCAPE_PATTERN.sub("", line).strip()
+        if cleaned == PROBE_TOKEN:
+            decision_tokens.add(PROBE_TOKEN)
+        elif cleaned == PROBE_DENIED_TOKEN:
+            decision_tokens.add(PROBE_DENIED_TOKEN)
+
+    if len(decision_tokens) != 1:
+        return None
+
+    return next(iter(decision_tokens))
+
+
 def output_has_permission_rejection(output: str) -> bool:
     """Detect permission-rejection markers in OpenCode output.
 
@@ -43,19 +68,26 @@ def output_has_permission_rejection(output: str) -> bool:
     Returns:
         True when known rejection markers are present.
     """
-    lowered = output.lower()
-    return any(marker in lowered for marker in PERMISSION_REJECTION_MARKERS)
+    return any(
+        pattern.search(line)
+        for line in output.splitlines()
+        for pattern in PERMISSION_REJECTION_LINE_PATTERNS
+    )
 
 
 def evaluate_permission_probe(
-    returncode: int, output: str, token: str = PROBE_TOKEN
+    returncode: int,
+    output: str,
+    ok_token: str = PROBE_TOKEN,
+    denied_token: str = PROBE_DENIED_TOKEN,
 ) -> PermissionProbeResult:
     """Evaluate probe process output against success criteria.
 
     Args:
         returncode: Exit code returned by the probe process.
         output: Combined stdout and stderr text from OpenCode.
-        token: Required success token expected in output.
+        ok_token: Explicit allow decision token expected in output.
+        denied_token: Explicit deny decision token expected in output.
 
     Returns:
         Structured evaluation result with pass/fail reason.
@@ -67,23 +99,47 @@ def evaluate_permission_probe(
             returncode=returncode,
             output=output,
         )
-    if returncode != 0:
+
+    decision_token = _extract_probe_decision_token(output)
+
+    if decision_token == denied_token:
+        return PermissionProbeResult(
+            ok=False,
+            reason="permission probe reported explicit denial token",
+            returncode=returncode,
+            output=output,
+        )
+
+    if decision_token == ok_token:
+        if returncode == 0:
+            return PermissionProbeResult(
+                ok=True,
+                reason="permission probe passed with explicit allow token",
+                returncode=returncode,
+                output=output,
+            )
+
         return PermissionProbeResult(
             ok=False,
             reason=f"opencode exited with status {returncode}",
             returncode=returncode,
             output=output,
         )
-    if token not in output:
+
+    if returncode != 0:
         return PermissionProbeResult(
             ok=False,
-            reason=f"success token '{token}' not found in opencode output",
+            reason=f"opencode exited with status {returncode} without explicit decision token",
             returncode=returncode,
             output=output,
         )
+
     return PermissionProbeResult(
-        ok=True,
-        reason="permission probe passed with executable bash contract",
+        ok=False,
+        reason=(
+            "expected exactly one decision token "
+            f"('{ok_token}' or '{denied_token}') in opencode output"
+        ),
         returncode=returncode,
         output=output,
     )
@@ -98,15 +154,33 @@ def run_permission_probe(project_root: Path) -> PermissionProbeResult:
     Returns:
         Probe evaluation result describing pass/fail details.
     """
-    try:
-        proc = start_agent(project_root, PROBE_PROMPT, agent="build")
-    except FileNotFoundError:
-        return PermissionProbeResult(
-            ok=False,
-            reason="opencode CLI not found in PATH",
-            returncode=127,
-            output="",
-        )
+    last_result: PermissionProbeResult | None = None
 
-    output = (proc.stdout or "") + (proc.stderr or "")
-    return evaluate_permission_probe(returncode=proc.returncode, output=output)
+    for attempt in range(1, PROBE_MAX_ATTEMPTS + 1):
+        try:
+            proc = start_agent(project_root, PROBE_PROMPT, agent="build")
+        except FileNotFoundError:
+            return PermissionProbeResult(
+                ok=False,
+                reason="opencode CLI not found in PATH",
+                returncode=127,
+                output="",
+            )
+
+        output = (proc.stdout or "") + (proc.stderr or "")
+        result = evaluate_permission_probe(returncode=proc.returncode, output=output)
+        decision_token = _extract_probe_decision_token(output)
+        if decision_token is not None:
+            return result
+
+        last_result = result
+        if attempt < PROBE_MAX_ATTEMPTS:
+            continue
+
+    assert last_result is not None
+    return PermissionProbeResult(
+        ok=False,
+        reason=(f"{last_result.reason} (after {PROBE_MAX_ATTEMPTS} probe attempts)"),
+        returncode=last_result.returncode,
+        output=last_result.output,
+    )

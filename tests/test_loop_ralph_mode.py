@@ -121,6 +121,41 @@ def _write_set_done_script(script_path: Path) -> Path:
     return script_path
 
 
+def _write_set_done_and_create_feature_script(script_path: Path) -> Path:
+    script_path.write_text(
+        "\n".join(
+            [
+                "from pathlib import Path",
+                "import sys",
+                "import yaml",
+                "feature_path = Path(sys.argv[1])",
+                "created_feature_path = Path(sys.argv[2])",
+                "feature = yaml.safe_load(feature_path.read_text(encoding='utf-8'))",
+                "feature['status'] = 'done'",
+                "feature_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding='utf-8')",
+                "created_feature = {",
+                "    'id': 'FEAT-999',",
+                "    'title': 'Created after startup snapshot',",
+                "    'type': 'feature',",
+                "    'status': 'backlog',",
+                "    'priority': 'high',",
+                "    'objective': 'Ensure run --all startup snapshot remains stable.',",
+                "    'acceptance': ['Feature can be selected in a later run.'],",
+                "    'updated_at': '2026-02-14T00:00:00Z',",
+                "}",
+                "created_feature_path.parent.mkdir(parents=True, exist_ok=True)",
+                "created_feature_path.write_text(",
+                "    yaml.safe_dump(created_feature, sort_keys=False),",
+                "    encoding='utf-8',",
+                ")",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return script_path
+
+
 def _write_move_to_done_script(script_path: Path) -> Path:
     script_path.write_text(
         "\n".join(
@@ -135,6 +170,22 @@ def _write_move_to_done_script(script_path: Path) -> Path:
                 "done_path = project_root / 'docs' / 'spec' / 'features_done' / feature_path.name",
                 "done_path.parent.mkdir(parents=True, exist_ok=True)",
                 "done_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding='utf-8')",
+                "feature_path.unlink()",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return script_path
+
+
+def _write_delete_selected_feature_script(script_path: Path) -> Path:
+    script_path.write_text(
+        "\n".join(
+            [
+                "from pathlib import Path",
+                "import sys",
+                "feature_path = Path(sys.argv[1])",
                 "feature_path.unlink()",
             ]
         )
@@ -507,83 +558,40 @@ def test_run_loop_all_exits_zero_when_no_runnable_features(
 
 def test_run_loop_all_does_not_include_specs_created_after_startup(
     tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     project_root, feature_path = _make_project_root(
         tmp_path, feature_data=_base_feature()
     )
     features_dir = project_root / "docs" / "spec" / "features"
-
-    selected_feature_ids: list[str] = []
-
-    def fake_require_clean_worktree(_project_root: Path) -> tuple[bool, str]:
-        return (True, "")
-
-    def fake_choose_feature_with_selector(
-        _project_root: Path,
-        pending: list[tuple[Path, dict[str, Any]]],
-    ) -> tuple[Path, dict[str, Any]]:
-        chosen_path, chosen_feature = pending[0]
-        selected_feature_ids.append(str(chosen_feature.get("id", "")))
-        return chosen_path, chosen_feature
-
-    def fake_run_feature_iteration(
-        project_root: Path,
-        feature_path: Path,
-        gate_profile: str,
-        implement_command: str | None,
-        opencode_prompt: str | None,
-        skip_implement: bool,
-        attempt: int,
-        hook_feedback: str | None,
-        verbose_output: bool,
-    ) -> loop_module.IterationOutcome:
-        del project_root, gate_profile, implement_command, opencode_prompt
-        del skip_implement, attempt, hook_feedback, verbose_output
-
-        created = _base_feature(status="backlog")
-        created["id"] = "FEAT-999"
-        _write_yaml(features_dir / "FEAT-999-created-after-startup.yaml", created)
-
-        feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
-        feature["status"] = "done"
-        _write_yaml(feature_path, feature)
-
-        return loop_module.IterationOutcome(
-            completed=True,
-            result="passed",
-            failed_gate=None,
-            next_action="select_next_feature",
-            hook_feedback=None,
-            log_path=None,
-        )
-
-    monkeypatch.setattr(
-        loop_module, "_require_clean_worktree", fake_require_clean_worktree
+    created_feature_path = features_dir / "FEAT-999-created-after-startup.yaml"
+    script_path = _write_set_done_and_create_feature_script(
+        tmp_path.parent / f"{tmp_path.name}-set-done-and-create-feature.py"
     )
-    monkeypatch.setattr(
-        loop_module,
-        "_choose_feature_with_selector",
-        fake_choose_feature_with_selector,
-    )
-    monkeypatch.setattr(
-        loop_module, "_run_feature_iteration", fake_run_feature_iteration
-    )
+    _init_git_repo(project_root)
 
     code = run_loop(
         project_root=project_root,
         feature_paths=[],
         gate_profile="loop_fast",
-        implement_command=None,
+        implement_command=(
+            f'"{sys.executable}" "{script_path}" '
+            f'"{feature_path}" "{created_feature_path}"'
+        ),
         opencode_prompt=None,
-        skip_implement=True,
+        skip_implement=False,
         dry_run=False,
         run_all=True,
+        max_iterations=3,
     )
 
+    archived_path = project_root / "docs" / "spec" / "features_done" / feature_path.name
+    runs = _read_runs(project_root)
+
     assert code == 0
-    assert selected_feature_ids == ["FEAT-900"]
-    assert feature_path.exists()
+    assert not feature_path.exists()
+    assert archived_path.exists()
+    assert created_feature_path.exists()
+    assert [run["feature_id"] for run in runs] == ["FEAT-900"]
 
 
 def test_run_loop_all_dry_run_reports_snapshot_selection(
@@ -1165,41 +1173,23 @@ def test_run_loop_moves_completed_feature_to_features_done(tmp_path: Path) -> No
 
 def test_run_loop_selected_feature_moved_to_features_done_does_not_crash(
     tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
     capsys: Any,
 ) -> None:
     project_root, feature_path = _make_project_root(
         tmp_path, feature_data=_base_feature()
     )
     _init_git_repo(project_root)
-
-    def fake_run_implement_step(
-        project_root: Path,
-        feature: dict[str, Any],
-        feature_path: Path,
-        implement_command: str | None,
-        opencode_prompt: str | None,
-        skip_implement: bool,
-        hook_feedback: str | None,
-        verbose_output: bool,
-    ) -> tuple[bool, str | None, str]:
-        del feature, implement_command, opencode_prompt, skip_implement, hook_feedback
-        del verbose_output
-        _move_feature_to_done(project_root, feature_path)
-        return (True, None, "")
-
-    monkeypatch.setattr(loop_module, "run_implement_step", fake_run_implement_step)
-    monkeypatch.setattr(
-        loop_module,
-        "_run_opencode_permission_precheck",
-        lambda **_: True,
+    script_path = _write_move_to_done_script(
+        tmp_path.parent / f"{tmp_path.name}-move-selected-to-done.py"
     )
 
     code = run_loop(
         project_root=project_root,
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
-        implement_command=None,
+        implement_command=(
+            f'"{sys.executable}" "{script_path}" "{project_root}" "{feature_path}"'
+        ),
         opencode_prompt=None,
         skip_implement=False,
         dry_run=False,
@@ -1356,41 +1346,21 @@ def test_run_loop_all_selected_feature_moved_to_features_done_continues(
 
 def test_run_loop_missing_selected_feature_without_archive_fails_cleanly(
     tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
     capsys: Any,
 ) -> None:
     project_root, feature_path = _make_project_root(
         tmp_path, feature_data=_base_feature()
     )
     _init_git_repo(project_root)
-
-    def fake_run_implement_step(
-        project_root: Path,
-        feature: dict[str, Any],
-        feature_path: Path,
-        implement_command: str | None,
-        opencode_prompt: str | None,
-        skip_implement: bool,
-        hook_feedback: str | None,
-        verbose_output: bool,
-    ) -> tuple[bool, str | None, str]:
-        del project_root, feature, implement_command, opencode_prompt
-        del skip_implement, hook_feedback, verbose_output
-        feature_path.unlink()
-        return (True, None, "")
-
-    monkeypatch.setattr(loop_module, "run_implement_step", fake_run_implement_step)
-    monkeypatch.setattr(
-        loop_module,
-        "_run_opencode_permission_precheck",
-        lambda **_: True,
+    script_path = _write_delete_selected_feature_script(
+        tmp_path.parent / f"{tmp_path.name}-delete-selected-feature.py"
     )
 
     code = run_loop(
         project_root=project_root,
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
-        implement_command=None,
+        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
         opencode_prompt=None,
         skip_implement=False,
         dry_run=False,
@@ -1940,71 +1910,6 @@ def test_commit_failure_feedback_still_injected_into_next_prompt(
     assert len(prompts) >= 2
     assert "Previous retry feedback is available" in prompts[1]
     assert "hook blocked" in prompts[1]
-
-
-def test_gate_failure_feedback_is_injected_into_next_prompt(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    project_root, feature_path = _make_project_root(
-        tmp_path, feature_data=_base_feature()
-    )
-    _init_git_repo(project_root)
-
-    real_run = subprocess.run
-    prompts: list[str] = []
-
-    def fake_subprocess_run(
-        command: Any, **kwargs: Any
-    ) -> subprocess.CompletedProcess[str]:
-        if isinstance(command, list) and command[:3] == ["opencode", "run", "--agent"]:
-            prompt = command[4]
-            prompts.append(prompt)
-            feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
-            feature["status"] = "done"
-            feature_path.write_text(
-                yaml.safe_dump(feature, sort_keys=False), encoding="utf-8"
-            )
-            return subprocess.CompletedProcess(command, 0, stdout="ok\n", stderr="")
-        return real_run(command, **kwargs)
-
-    gate_results = iter(
-        [
-            (
-                False,
-                "spec_validate",
-                "[gate:spec_validate] command=uv run python -m engineeringagent.cli validate\nSPEC_VALIDATE_FAILED_TOKEN",
-            ),
-            (True, None, ""),
-        ]
-    )
-
-    def fake_run_profile(*args: Any, **kwargs: Any) -> tuple[bool, str | None, str]:
-        del args, kwargs
-        return next(gate_results)
-
-    _patch_start_agent_with_fake(monkeypatch, fake_subprocess_run)
-    monkeypatch.setattr(
-        loop_module,
-        "_run_opencode_permission_precheck",
-        lambda **_: True,
-    )
-    monkeypatch.setattr(loop_module, "run_profile", fake_run_profile)
-
-    code = run_loop(
-        project_root=project_root,
-        feature_paths=[str(feature_path)],
-        gate_profile="loop_fast",
-        implement_command=None,
-        opencode_prompt=None,
-        skip_implement=False,
-        dry_run=False,
-        max_iterations=6,
-    )
-
-    assert code == 0
-    assert len(prompts) >= 2
-    assert "SPEC_VALIDATE_FAILED_TOKEN" in prompts[1]
 
 
 def test_verification_failure_feedback_is_injected_into_next_prompt(

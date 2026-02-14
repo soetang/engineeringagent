@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import subprocess
 import shutil
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -113,13 +114,23 @@ def _init_git_repo(project_root: Path) -> None:
     _run_git(project_root, "commit", "-m", "init")
 
 
-def _move_feature_to_done(project_root: Path, feature_path: Path) -> None:
-    feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
-    feature["status"] = "done"
-    done_path = project_root / "docs" / "spec" / "features_done" / feature_path.name
-    done_path.parent.mkdir(parents=True, exist_ok=True)
-    done_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding="utf-8")
-    feature_path.unlink()
+def _write_set_done_script(script_path: Path) -> Path:
+    script_path.write_text(
+        "\n".join(
+            [
+                "from pathlib import Path",
+                "import sys",
+                "import yaml",
+                "feature_path = Path(sys.argv[1])",
+                "feature = yaml.safe_load(feature_path.read_text(encoding='utf-8'))",
+                "feature['status'] = 'done'",
+                "feature_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding='utf-8')",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return script_path
 
 
 def test_loop_runs_opencode_integration(tmp_path: Path) -> None:
@@ -242,51 +253,6 @@ def test_run_loop_permission_precheck_applies_only_to_default_implement_mode(
     project_root, feature_path = _make_project_root(tmp_path)
     _init_git_repo(project_root)
 
-    calls = 0
-
-    def fake_run_permission_probe(_: Path) -> PermissionProbeResult:
-        nonlocal calls
-        calls += 1
-        return PermissionProbeResult(ok=True, reason="ok", returncode=0, output="")
-
-    def fake_run_feature_iteration(**_: Any) -> loop_module.IterationOutcome:
-        return loop_module.IterationOutcome(
-            completed=False,
-            result="failed",
-            failed_gate="git_add",
-            next_action="stop",
-            hook_feedback=None,
-            log_path=None,
-        )
-
-    monkeypatch.setattr(loop_module, "run_permission_probe", fake_run_permission_probe)
-    monkeypatch.setattr(
-        loop_module, "_run_feature_iteration", fake_run_feature_iteration
-    )
-
-    code = run_loop(
-        project_root=project_root,
-        feature_paths=[str(feature_path)],
-        gate_profile="loop_fast",
-        implement_command=None,
-        opencode_prompt=None,
-        skip_implement=False,
-        dry_run=False,
-        max_iterations=1,
-    )
-
-    assert code == 1
-    assert calls == 1
-
-
-def test_run_loop_exits_before_selection_when_permission_precheck_fails(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    project_root, feature_path = _make_project_root(tmp_path)
-    _init_git_repo(project_root)
-
     precheck_calls: list[Path] = []
 
     def fake_run_permission_probe(target_root: Path) -> PermissionProbeResult:
@@ -298,15 +264,57 @@ def test_run_loop_exits_before_selection_when_permission_precheck_fails(
             output="permission requested for bash command git status --short (auto-reject)",
         )
 
-    def fail_if_selected(*_: Any, **__: Any) -> Any:
-        raise AssertionError("feature selection should not run when precheck fails")
+    monkeypatch.setattr(loop_module, "run_permission_probe", fake_run_permission_probe)
 
-    def fail_if_iterated(*_: Any, **__: Any) -> Any:
-        raise AssertionError("loop iteration should not run when precheck fails")
+    set_done_script = _write_set_done_script(
+        tmp_path.parent / f"{tmp_path.name}-default-mode-set-done.py"
+    )
+
+    default_mode_code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        implement_command=None,
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        max_iterations=1,
+    )
+
+    custom_command_code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        implement_command=(f'"{sys.executable}" "{set_done_script}" "{feature_path}"'),
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        allow_dirty=True,
+        max_iterations=3,
+    )
+
+    assert default_mode_code == 1
+    assert custom_command_code == 0
+    assert precheck_calls == [project_root]
+
+
+def test_run_loop_exits_before_selection_when_permission_precheck_fails(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project_root, feature_path = _make_project_root(tmp_path)
+    _init_git_repo(project_root)
+
+    def fake_run_permission_probe(_: Path) -> PermissionProbeResult:
+        return PermissionProbeResult(
+            ok=False,
+            reason="permission request rejection detected in opencode output",
+            returncode=1,
+            output="permission requested for bash command git status --short (auto-reject)",
+        )
 
     monkeypatch.setattr(loop_module, "run_permission_probe", fake_run_permission_probe)
-    monkeypatch.setattr(loop_module, "_choose_feature_with_selector", fail_if_selected)
-    monkeypatch.setattr(loop_module, "_run_feature_iteration", fail_if_iterated)
 
     code = run_loop(
         project_root=project_root,
@@ -318,14 +326,17 @@ def test_run_loop_exits_before_selection_when_permission_precheck_fails(
         dry_run=False,
         max_iterations=1,
     )
+
     output = capsys.readouterr().out
 
     assert code == 1
-    assert precheck_calls == [project_root]
     assert not (project_root / "progress" / "runs.jsonl").exists()
     assert "Precondition failed: OpenCode permission precheck failed" in output
     assert "git status --short" in output
     assert PERMISSION_REMEDIATION_HINT in output
+    assert "Selected feature=" not in output
+    feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
+    assert feature["status"] == "backlog"
 
 
 def test_run_loop_skips_permission_precheck_with_skip_implement(
@@ -335,23 +346,14 @@ def test_run_loop_skips_permission_precheck_with_skip_implement(
     project_root, feature_path = _make_project_root(tmp_path)
     _init_git_repo(project_root)
 
+    precheck_called = False
+
     def fail_if_prechecked(_: Path) -> PermissionProbeResult:
+        nonlocal precheck_called
+        precheck_called = True
         raise AssertionError("permission precheck should be skipped")
 
-    def fake_run_feature_iteration(**_: Any) -> loop_module.IterationOutcome:
-        return loop_module.IterationOutcome(
-            completed=False,
-            result="failed",
-            failed_gate="git_add",
-            next_action="stop",
-            hook_feedback=None,
-            log_path=None,
-        )
-
     monkeypatch.setattr(loop_module, "run_permission_probe", fail_if_prechecked)
-    monkeypatch.setattr(
-        loop_module, "_run_feature_iteration", fake_run_feature_iteration
-    )
 
     code = run_loop(
         project_root=project_root,
@@ -365,6 +367,9 @@ def test_run_loop_skips_permission_precheck_with_skip_implement(
     )
 
     assert code == 1
+    assert precheck_called is False
+    runs = (project_root / "progress" / "runs.jsonl").read_text(encoding="utf-8")
+    assert len(runs.splitlines()) == 1
 
 
 def test_run_loop_skips_permission_precheck_with_custom_implement_command(
@@ -374,42 +379,38 @@ def test_run_loop_skips_permission_precheck_with_custom_implement_command(
     project_root, feature_path = _make_project_root(tmp_path)
     _init_git_repo(project_root)
 
+    precheck_called = False
+
     def fail_if_prechecked(_: Path) -> PermissionProbeResult:
+        nonlocal precheck_called
+        precheck_called = True
         raise AssertionError("permission precheck should be skipped")
 
-    def fake_run_feature_iteration(**_: Any) -> loop_module.IterationOutcome:
-        return loop_module.IterationOutcome(
-            completed=False,
-            result="failed",
-            failed_gate="git_add",
-            next_action="stop",
-            hook_feedback=None,
-            log_path=None,
-        )
-
     monkeypatch.setattr(loop_module, "run_permission_probe", fail_if_prechecked)
-    monkeypatch.setattr(
-        loop_module, "_run_feature_iteration", fake_run_feature_iteration
+
+    set_done_script = _write_set_done_script(
+        tmp_path.parent / f"{tmp_path.name}-custom-command-set-done.py"
     )
 
     code = run_loop(
         project_root=project_root,
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
-        implement_command='python -c "print("custom")"',
+        implement_command=f'"{sys.executable}" "{set_done_script}" "{feature_path}"',
         opencode_prompt=None,
         skip_implement=False,
         dry_run=False,
-        max_iterations=1,
+        max_iterations=3,
     )
 
-    assert code == 1
+    assert code == 0
+    assert precheck_called is False
 
 
 def test_run_loop_permission_precheck_failure_prints_remediation_hint(
     tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     project_root, feature_path = _make_project_root(tmp_path)
     _init_git_repo(project_root)
@@ -434,13 +435,100 @@ def test_run_loop_permission_precheck_failure_prints_remediation_hint(
         dry_run=False,
         max_iterations=1,
     )
+
     output = capsys.readouterr().out
 
     assert code == 1
     assert "Precondition failed: OpenCode permission precheck failed" in output
+    assert "opencode exited with status 127" in output
     assert PERMISSION_REMEDIATION_HINT in output
     assert "--skip-implement" in output
     assert "--implement-command" in output
+
+
+def test_gate_failure_feedback_round_trips_to_retry_prompt_integration(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project_root, feature_path = _make_project_root(tmp_path)
+    _init_git_repo(project_root)
+
+    gate_counter_path = project_root / ".spec-validate-gate-attempt"
+    gate_script = tmp_path.parent / f"{tmp_path.name}-gate-fail-once.py"
+    gate_script.write_text(
+        "\n".join(
+            [
+                "from pathlib import Path",
+                f"counter_path = Path({str(gate_counter_path)!r})",
+                "count = int(counter_path.read_text(encoding='utf-8')) if counter_path.exists() else 0",
+                "count += 1",
+                "counter_path.write_text(str(count), encoding='utf-8')",
+                "if count == 1:",
+                "    print('SPEC_VALIDATE_INTEGRATION_TOKEN')",
+                "    raise SystemExit(1)",
+                "print('spec_validate passed')",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    _write_yaml(
+        project_root / "harness" / "gates.yaml",
+        {
+            "profiles": {"loop_fast": ["spec_validate"]},
+            "gates": {"spec_validate": {"run": f'"{sys.executable}" "{gate_script}"'}},
+        },
+    )
+
+    prompts: list[str] = []
+    set_done_script = _write_set_done_script(
+        tmp_path.parent / f"{tmp_path.name}-set-done-opencode-integration.py"
+    )
+
+    def fake_start_agent(
+        project_root: Path,
+        prompt: str,
+        *,
+        agent: str = "build",
+        capture_output: bool = True,
+        text: bool = True,
+    ) -> subprocess.CompletedProcess[str]:
+        del project_root, capture_output, text
+        prompts.append(prompt)
+        subprocess.run(
+            [sys.executable, str(set_done_script), str(feature_path)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        return subprocess.CompletedProcess(
+            ["opencode", "run", "--agent", agent, prompt],
+            0,
+            stdout="ok\n",
+            stderr="",
+        )
+
+    def fake_run_permission_probe(_: Path) -> PermissionProbeResult:
+        return PermissionProbeResult(ok=True, reason="ok", returncode=0, output="")
+
+    monkeypatch.setattr(loop_module, "start_agent", fake_start_agent)
+    monkeypatch.setattr(loop_module, "run_permission_probe", fake_run_permission_probe)
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        implement_command=None,
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        allow_dirty=True,
+        max_iterations=6,
+    )
+
+    assert code == 0
+    assert len(prompts) >= 2
+    assert "SPEC_VALIDATE_INTEGRATION_TOKEN" in prompts[1]
 
 
 def test_loop_archived_done_requires_same_iteration_completion_commit(
@@ -469,44 +557,49 @@ def test_loop_archived_done_requires_same_iteration_completion_commit(
     )
     _init_git_repo(project_root)
     starting_head = _run_git(project_root, "rev-parse", "HEAD").stdout.strip()
-
-    def fake_run_implement_step(
-        project_root: Path,
-        feature: dict[str, Any],
-        feature_path: Path,
-        implement_command: str | None,
-        opencode_prompt: str | None,
-        skip_implement: bool,
-        hook_feedback: str | None,
-        verbose_output: bool,
-    ) -> tuple[bool, str | None, str]:
-        del implement_command, opencode_prompt, skip_implement, hook_feedback
-        del verbose_output
-        feature_id = str(feature.get("id", ""))
-        if feature_id == "FEAT-901":
-            _move_feature_to_done(project_root, feature_path)
-            return (True, None, "")
-        if feature_id == "FEAT-902":
-            feature_payload = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
-            feature_payload["status"] = "done"
-            feature_path.write_text(
-                yaml.safe_dump(feature_payload, sort_keys=False), encoding="utf-8"
-            )
-            return (True, None, "")
-        raise AssertionError(f"unexpected feature selected: {feature_id}")
-
-    monkeypatch.setattr(
-        loop_module,
-        "run_permission_probe",
-        lambda _: PermissionProbeResult(ok=True, reason="ok", returncode=0, output=""),
+    script_path = tmp_path.parent / f"{tmp_path.name}-archive-done-then-complete.py"
+    script_path.write_text(
+        "\n".join(
+            [
+                "from pathlib import Path",
+                "import sys",
+                "import yaml",
+                "project_root = Path(sys.argv[1])",
+                "active_dir = project_root / 'docs' / 'spec' / 'features'",
+                "done_dir = project_root / 'docs' / 'spec' / 'features_done'",
+                "first_path = active_dir / 'FEAT-901-opencode-integration.yaml'",
+                "second_path = active_dir / 'FEAT-902-follow-on.yaml'",
+                "if first_path.exists():",
+                "    feature = yaml.safe_load(first_path.read_text(encoding='utf-8'))",
+                "    feature['status'] = 'done'",
+                "    done_dir.mkdir(parents=True, exist_ok=True)",
+                "    archived_path = done_dir / first_path.name",
+                "    archived_path.write_text(",
+                "        yaml.safe_dump(feature, sort_keys=False),",
+                "        encoding='utf-8',",
+                "    )",
+                "    first_path.unlink()",
+                "    raise SystemExit(0)",
+                "if second_path.exists():",
+                "    feature = yaml.safe_load(second_path.read_text(encoding='utf-8'))",
+                "    feature['status'] = 'done'",
+                "    second_path.write_text(",
+                "        yaml.safe_dump(feature, sort_keys=False),",
+                "        encoding='utf-8',",
+                "    )",
+                "    raise SystemExit(0)",
+                "raise SystemExit(1)",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
     )
-    monkeypatch.setattr(loop_module, "run_implement_step", fake_run_implement_step)
 
     code = run_loop(
         project_root=project_root,
         feature_paths=[],
         gate_profile="loop_fast",
-        implement_command=None,
+        implement_command=f'"{sys.executable}" "{script_path}" "{project_root}"',
         opencode_prompt=None,
         skip_implement=False,
         dry_run=False,

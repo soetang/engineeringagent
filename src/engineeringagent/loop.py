@@ -61,6 +61,11 @@ from .loop_runtime.facade_signatures import (
     RUN_LOOP_SIGNATURE,
     bind_facade_call,
 )
+from .loop_runtime.controller import (
+    RunLoopControllerDependencies,
+    RunLoopControllerInputs,
+    run_loop_controller,
+)
 from .loop_runtime.telemetry import write_iteration_telemetry
 from .loop_runtime.presentation import RunOutputPresenter
 
@@ -542,66 +547,32 @@ def run_loop(*args: Any, **kwargs: Any) -> int:
     Returns:
         Process exit code where 0 indicates success.
     """
-    bound = bind_facade_call(RUN_LOOP_SIGNATURE, args, kwargs)
-    project_root = bound["project_root"]
-    feature_paths = bound["feature_paths"]
-    gate_profile = bound["gate_profile"]
-    implement_command = bound["implement_command"]
-    opencode_prompt = bound["opencode_prompt"]
-    skip_implement = bound["skip_implement"]
-    dry_run = bound["dry_run"]
-    run_all = bound["run_all"]
-    max_iterations = bound["max_iterations"]
-    allow_dirty = bound["allow_dirty"]
-    verbose_output = bound["verbose_output"]
-
-    if max_iterations < 1:
-        print("max_iterations must be >= 1")
-        return 1
-
-    try:
-        resolved_paths = _resolve_run_targets(project_root, feature_paths, run_all)
-    except ValueError as exc:
-        print(exc)
-        return 1
-
-    run_all_feedback_exit_code = _emit_run_all_snapshot_feedback(
-        resolved_paths, run_all
+    inputs = RunLoopControllerInputs(
+        **bind_facade_call(RUN_LOOP_SIGNATURE, args, kwargs)
     )
-    if run_all_feedback_exit_code is not None:
-        return run_all_feedback_exit_code
 
-    dry_run_exit_code = _handle_dry_run(resolved_paths, run_all, dry_run)
-    if dry_run_exit_code is not None:
-        return dry_run_exit_code
+    def _make_iteration_config(
+        controller_inputs: RunLoopControllerInputs,
+    ) -> _SelectedFeatureIterationConfig:
+        return _SelectedFeatureIterationConfig(
+            gate_profile=controller_inputs.gate_profile,
+            implement_command=controller_inputs.implement_command,
+            opencode_prompt=controller_inputs.opencode_prompt,
+            skip_implement=controller_inputs.skip_implement,
+            max_iterations=controller_inputs.max_iterations,
+            verbose_output=controller_inputs.verbose_output,
+        )
 
-    worktree_precondition_exit_code = _enforce_worktree_precondition(
-        project_root,
-        allow_dirty,
+    dependencies = RunLoopControllerDependencies(
+        resolve_run_targets=_resolve_run_targets,
+        emit_run_all_snapshot_feedback=_emit_run_all_snapshot_feedback,
+        handle_dry_run=_handle_dry_run,
+        enforce_worktree_precondition=_enforce_worktree_precondition,
+        run_permission_precheck=_run_opencode_permission_precheck,
+        make_iteration_config=_make_iteration_config,
+        run_selected_feature_iterations=_run_selected_feature_iterations,
     )
-    if worktree_precondition_exit_code is not None:
-        return worktree_precondition_exit_code
-
-    if not _run_opencode_permission_precheck(
-        project_root=project_root,
-        implement_command=implement_command,
-        skip_implement=skip_implement,
-    ):
-        return 1
-
-    iteration_config = _SelectedFeatureIterationConfig(
-        gate_profile=gate_profile,
-        implement_command=implement_command,
-        opencode_prompt=opencode_prompt,
-        skip_implement=skip_implement,
-        max_iterations=max_iterations,
-        verbose_output=verbose_output,
-    )
-    return _run_selected_feature_iterations(
-        project_root=project_root,
-        resolved_paths=resolved_paths,
-        config=iteration_config,
-    )
+    return run_loop_controller(inputs, dependencies)
 
 
 run_loop.__signature__ = RUN_LOOP_SIGNATURE
