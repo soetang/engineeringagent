@@ -206,8 +206,21 @@ def build_baseline_scaffold_manifest(
                     "Return strict JSON only with decision and summary fields.\n"
                 ),
                 "harness/reviewers/prompts/readme_process.md": (
-                    "Review README process updates in isolation for accuracy.\n"
-                    "Return strict JSON only with decision and summary fields.\n"
+                    "Review README.md getting-started/bootstrap instructions for clean-room first-run reliability.\n\n"
+                    "Execution requirements:\n"
+                    "1. Read README.md and identify the documented setup/bootstrap flow.\n"
+                    "2. Create a new temporary directory and run the documented setup there.\n"
+                    "3. Confirm setup reaches a usable scaffolded state (required generated files and validation commands, when listed).\n"
+                    "4. Do not assume unstated steps; treat missing or ambiguous instructions as failures.\n\n"
+                    "Decision policy:\n"
+                    "- Return decision=approve only when the clean-room run succeeds end-to-end.\n"
+                    "- Return decision=request_changes when setup fails, instructions are ambiguous, or scaffold state is incomplete.\n"
+                    "- For each failure, required_actions must classify the fix surface as README instructions, init/scaffold command behavior, or both.\n\n"
+                    "Output contract:\n"
+                    "- Return strict JSON only (no markdown, no prose outside JSON).\n"
+                    "- Required keys: decision, summary.\n"
+                    "- Optional key: required_actions (list of actionable strings).\n"
+                    "- Allowed decisions: approve, request_changes, warning.\n"
                 ),
             }
         )

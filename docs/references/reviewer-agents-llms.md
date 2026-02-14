@@ -68,6 +68,37 @@ reviewers:
       continue_on_exhausted: true
 ```
 
+## Default `readme_process` reviewer
+
+Use this built-in reviewer when you want README getting-started instructions to block
+feature completion until the documented process works in a clean-room run.
+
+Copy-pastable `readme_process` entry:
+
+```yaml
+readme_process:
+  prompt_file: "harness/reviewers/prompts/readme_process.md"
+  trigger:
+    phase: "feature_done"
+    on_change: ["README.md"]
+  sandbox:
+    mode: "temp_worktree_snapshot"
+  approval:
+    mode: "blocking"
+    first_feature_approval: true
+    max_retries: 2
+    continue_on_exhausted: true
+```
+
+Plain-English behavior:
+
+- Runs only for `feature_done`, and only when `README.md` changed.
+- Executes from a temporary worktree snapshot so the active checkout is not mutated.
+- Reviewer instructions require reading `README.md` and attempting documented bootstrap/setup in a fresh temporary directory.
+- Returns strict v1 decision JSON; non-JSON output is treated as deterministic `request_changes`.
+- Uses blocking policy with retry (`max_retries: 2`) and continues with warning on exhaustion when `continue_on_exhausted` is true.
+- When bootstrap fails, required actions must classify the fix surface as README instructions, init/scaffold behavior, or both.
+
 ## Decision envelope contract
 
 Reviewer output must be JSON object with required fields:

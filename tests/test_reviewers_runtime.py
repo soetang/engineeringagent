@@ -102,6 +102,75 @@ def test_plan_reviewers_reports_deterministic_skip_reasons() -> None:
     ]
 
 
+def test_readme_process_plans_only_for_readme_change_on_feature_done() -> None:
+    config = {
+        "profiles": {"loop_fast": ["readme_process"]},
+        "reviewers": {
+            "readme_process": {
+                "prompt_file": "harness/reviewers/prompts/readme_process.md",
+                "trigger": {
+                    "phase": "feature_done",
+                    "on_change": ["README.md"],
+                },
+            }
+        },
+    }
+
+    matching_decisions = plan_reviewers(
+        config,
+        "loop_fast",
+        phase="feature_done",
+        changed_paths=ChangedPathsResult(
+            paths=("README.md",),
+            run_all=False,
+            reason=None,
+        ),
+    )
+    assert matching_decisions == [
+        {
+            "reviewer": "readme_process",
+            "decision": "run",
+            "reason": MATCHED_ON_CHANGE_REASON,
+        }
+    ]
+
+    phase_mismatch_decisions = plan_reviewers(
+        config,
+        "loop_fast",
+        phase="iteration_end",
+        changed_paths=ChangedPathsResult(
+            paths=("README.md",),
+            run_all=False,
+            reason=None,
+        ),
+    )
+    assert phase_mismatch_decisions == [
+        {
+            "reviewer": "readme_process",
+            "decision": "skip",
+            "reason": PHASE_MISMATCH_REASON,
+        }
+    ]
+
+    no_match_decisions = plan_reviewers(
+        config,
+        "loop_fast",
+        phase="feature_done",
+        changed_paths=ChangedPathsResult(
+            paths=("docs/spec/features/FEAT-052.yaml",),
+            run_all=False,
+            reason=None,
+        ),
+    )
+    assert no_match_decisions == [
+        {
+            "reviewer": "readme_process",
+            "decision": "skip",
+            "reason": NO_ON_CHANGE_MATCH_REASON,
+        }
+    ]
+
+
 def test_run_reviewer_loads_harness_prompt_and_parses_decision(tmp_path) -> None:
     prompt_path = tmp_path / "harness" / "reviewers" / "prompts" / "code_simplifier.md"
     prompt_path.parent.mkdir(parents=True)

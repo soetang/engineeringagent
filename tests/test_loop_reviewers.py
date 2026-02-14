@@ -64,6 +64,8 @@ def _deps(
     *,
     decision: str,
     summary: str,
+    required_actions: list[str] | None = None,
+    changed_paths: tuple[str, ...] = ("src/engineeringagent/loop.py",),
     state_box: dict[str, dict[str, Any]] | None = None,
     restore_calls: list[tuple[Path, Path]] | None = None,
 ) -> ReviewerPhaseDependencies:
@@ -81,7 +83,7 @@ def _deps(
     return ReviewerPhaseDependencies(
         load_reviewer_config=lambda _path: config,
         collect_changed_paths=lambda _root: ChangedPathsResult(
-            paths=("src/engineeringagent/loop.py",),
+            paths=changed_paths,
             run_all=False,
             reason=None,
         ),
@@ -94,7 +96,7 @@ def _deps(
         run_reviewer=lambda *_args, **_kwargs: {
             "decision": decision,
             "summary": summary,
-            "required_actions": [],
+            "required_actions": required_actions or [],
         },
         record_reviewer_approval=lambda *_args, **_kwargs: None,
         advisory_followup_required=(
@@ -266,6 +268,150 @@ def test_blocking_reviewer_exhausted_can_be_configured_to_fail(tmp_path: Path) -
     assert first.failed_gate == "reviewer_blocking"
     assert second.result == "failed"
     assert second.failed_gate == "reviewer_blocking_exhausted"
+    assert "exhausted retries" in str(second.hook_feedback)
+
+
+def test_readme_process_request_changes_blocks_until_retry_or_exhaustion(
+    tmp_path: Path,
+) -> None:
+    config = {
+        "profiles": {"loop_fast": ["readme_process"]},
+        "reviewers": {
+            "readme_process": {
+                "prompt_file": "harness/reviewers/prompts/readme_process.md",
+                "trigger": {
+                    "phase": "feature_done",
+                    "on_change": ["README.md"],
+                },
+                "approval": {
+                    "mode": "blocking",
+                    "max_retries": 1,
+                    "continue_on_exhausted": False,
+                },
+            }
+        },
+    }
+    state_box: dict[str, dict[str, Any]] = {"state": {"version": "1", "features": {}}}
+    deps = _deps(
+        config,
+        decision="request_changes",
+        summary="README bootstrap run fails in clean room.",
+        changed_paths=("README.md",),
+        state_box=state_box,
+    )
+
+    first = run_reviewer_phase(
+        _iteration_inputs(tmp_path),
+        {"id": "FEAT-052"},
+        archived_in_iteration=True,
+        archived_path=tmp_path / "docs" / "spec" / "features_done" / "FEAT-052.yaml",
+        dependencies=deps,
+    )
+    second = run_reviewer_phase(
+        _iteration_inputs(tmp_path),
+        {"id": "FEAT-052"},
+        archived_in_iteration=True,
+        archived_path=tmp_path / "docs" / "spec" / "features_done" / "FEAT-052.yaml",
+        dependencies=deps,
+    )
+
+    assert first.result == "failed"
+    assert first.failed_gate == "reviewer_blocking"
+    assert second.result == "failed"
+    assert second.failed_gate == "reviewer_blocking_exhausted"
+
+
+def test_readme_process_feedback_classifies_readme_vs_init_fix_surface(
+    tmp_path: Path,
+) -> None:
+    config = {
+        "profiles": {"loop_fast": ["readme_process"]},
+        "reviewers": {
+            "readme_process": {
+                "prompt_file": "harness/reviewers/prompts/readme_process.md",
+                "trigger": {
+                    "phase": "feature_done",
+                    "on_change": ["README.md"],
+                },
+                "approval": {"mode": "blocking"},
+            }
+        },
+    }
+    deps = _deps(
+        config,
+        decision="request_changes",
+        summary="Bootstrap command from README fails.",
+        required_actions=[
+            "README.md: clarify the missing bootstrap prerequisite step.",
+            "init/scaffold command behavior: ensure init succeeds in a clean temp directory.",
+        ],
+        changed_paths=("README.md",),
+    )
+
+    outcome = run_reviewer_phase(
+        _iteration_inputs(tmp_path),
+        {"id": "FEAT-052"},
+        archived_in_iteration=True,
+        archived_path=tmp_path / "docs" / "spec" / "features_done" / "FEAT-052.yaml",
+        dependencies=deps,
+    )
+
+    assert outcome.result == "failed"
+    assert outcome.failed_gate == "reviewer_blocking"
+    assert "README.md: clarify the missing bootstrap prerequisite step." in str(
+        outcome.hook_feedback
+    )
+    assert "init/scaffold command behavior" in str(outcome.hook_feedback)
+
+
+def test_readme_process_exhaustion_continues_with_warning_by_default(
+    tmp_path: Path,
+) -> None:
+    config = {
+        "profiles": {"loop_fast": ["readme_process"]},
+        "reviewers": {
+            "readme_process": {
+                "prompt_file": "harness/reviewers/prompts/readme_process.md",
+                "trigger": {
+                    "phase": "feature_done",
+                    "on_change": ["README.md"],
+                },
+                "approval": {
+                    "mode": "blocking",
+                    "max_retries": 1,
+                },
+            }
+        },
+    }
+    state_box: dict[str, dict[str, Any]] = {"state": {"version": "1", "features": {}}}
+    deps = _deps(
+        config,
+        decision="request_changes",
+        summary="README bootstrap leaves scaffold incomplete.",
+        changed_paths=("README.md",),
+        state_box=state_box,
+    )
+
+    first = run_reviewer_phase(
+        _iteration_inputs(tmp_path),
+        {"id": "FEAT-052"},
+        archived_in_iteration=True,
+        archived_path=tmp_path / "docs" / "spec" / "features_done" / "FEAT-052.yaml",
+        dependencies=deps,
+    )
+    second = run_reviewer_phase(
+        _iteration_inputs(tmp_path),
+        {"id": "FEAT-052"},
+        archived_in_iteration=True,
+        archived_path=tmp_path / "docs" / "spec" / "features_done" / "FEAT-052.yaml",
+        dependencies=deps,
+    )
+
+    assert first.result == "failed"
+    assert first.failed_gate == "reviewer_blocking"
+    assert second.result == "passed"
+    assert second.failed_gate is None
+    assert second.reviewer_status == "passed:blocking_exhausted_continue"
     assert "exhausted retries" in str(second.hook_feedback)
 
 

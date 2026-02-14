@@ -23,6 +23,16 @@ from ..reviewers import (
 )
 
 
+def _format_reviewer_feedback(summary: str, required_actions: list[str]) -> str:
+    """Compose deterministic reviewer feedback with actionable follow-ups."""
+    message = summary.strip()
+    actions = [action.strip() for action in required_actions if action.strip()]
+    if not actions:
+        return message
+    actions_block = "\n".join(f"- {action}" for action in actions)
+    return f"{message}\nrequired_actions:\n{actions_block}"
+
+
 class GatePhaseDependencies(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -277,6 +287,11 @@ def run_reviewer_phase(
             first_non_approve_reviewer_id = reviewer_id
             first_non_approve_decision = decision_name
         summary = str(decision.get("summary", ""))
+        required_actions_raw = decision.get("required_actions", [])
+        required_actions = (
+            required_actions_raw if isinstance(required_actions_raw, list) else []
+        )
+        reviewer_feedback_message = _format_reviewer_feedback(summary, required_actions)
         summaries.append(
             f"[reviewer:{reviewer_id}] mode={reviewer_mode} decision={decision_name} summary={summary}"
         )
@@ -294,14 +309,15 @@ def run_reviewer_phase(
                 blocking_feedback.append(
                     (
                         f"reviewer '{reviewer_id}' requested changes "
-                        f"(attempt {retry_count}/{max_retries + 1}): {summary}"
+                        f"(attempt {retry_count}/{max_retries + 1}): "
+                        f"{reviewer_feedback_message}"
                     )
                 )
                 continue
 
             exhausted_message = (
                 f"reviewer '{reviewer_id}' exhausted retries "
-                f"(max_retries={max_retries}): {summary}"
+                f"(max_retries={max_retries}): {reviewer_feedback_message}"
             )
             if continue_on_exhausted:
                 blocking_exhausted_warnings.append(exhausted_message)
@@ -314,7 +330,7 @@ def run_reviewer_phase(
             DECISION_WARNING,
         }:
             advisory_feedback.append(
-                f"reviewer '{reviewer_id}' advisory feedback: {summary}"
+                f"reviewer '{reviewer_id}' advisory feedback: {reviewer_feedback_message}"
             )
 
     reviewer_output = "\n".join(summaries)

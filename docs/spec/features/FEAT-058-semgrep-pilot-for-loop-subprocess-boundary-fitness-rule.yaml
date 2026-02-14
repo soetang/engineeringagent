@@ -13,6 +13,7 @@ context: >-
 constraints:
 - Scope this feature to a pilot migration of the loop subprocess boundary rule only.
 - Keep all other builtin architecture rules unchanged in this feature.
+- Preserve the existing rule id (`architecture.loop-subprocess-boundary`) rather than introducing a new architecture rule id.
 - Treat `semgrep` as a dev dependency in `[dependency-groups].dev`, not `[project.dependencies]`, because it is only executed by harness/fitness tooling.
 - Keep the existing fitness JSON envelope contract and deterministic violation ordering.
 - Integrate Semgrep via command adapter wiring in `harness/fitness-functions/rules.yaml`.
@@ -38,6 +39,7 @@ acceptance:
 - Manifest wiring routes loop subprocess boundary evaluation through the Semgrep-backed command adapter for the pilot.
 - Existing subprocess-boundary pass/fail expectations are preserved by regression tests.
 - Subprocess-boundary violations fail `engineeringagent.cli fitness run` and therefore block configured gate profiles.
+- Active architecture rule catalog coverage is unchanged except for implementation backend migration of loop subprocess boundary evaluation.
 - Other builtin architecture fitness rules remain active and unchanged.
 subtasks:
 - id: ST-001

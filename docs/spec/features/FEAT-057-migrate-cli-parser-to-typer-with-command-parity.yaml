@@ -17,6 +17,7 @@ constraints:
 - Keep module entrypoints working for both script invocation and module invocation.
 - Treat `typer` as a runtime dependency in `[project.dependencies]` because CLI parsing is part of shipped runtime behavior.
 - Do not change gate, reviewer, or fitness policy behavior in this feature.
+- Do not add new fitness functions or change active rule catalog contents in this parser migration.
 - Validation, fitness, and regression tests must pass before completion.
 implementation_notes: >-
   Implement Typer command registration in `src/engineeringagent/cli.py` and route
