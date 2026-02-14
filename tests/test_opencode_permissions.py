@@ -71,13 +71,25 @@ def test_run_permission_probe_retries_until_explicit_decision_token(
         calls += 1
         if calls == 1:
             return subprocess.CompletedProcess(
-                ["opencode", "run", "--agent", "build", "<prompt>"],
+                [
+                    "opencode",
+                    "run",
+                    "--agent",
+                    permissions.DEFAULT_OPENCODE_AGENT,
+                    "<prompt>",
+                ],
                 0,
                 stdout="chatty text instead of probe token\n",
                 stderr="",
             )
         return subprocess.CompletedProcess(
-            ["opencode", "run", "--agent", "build", "<prompt>"],
+            [
+                "opencode",
+                "run",
+                "--agent",
+                permissions.DEFAULT_OPENCODE_AGENT,
+                "<prompt>",
+            ],
             0,
             stdout=f"{permissions.PROBE_TOKEN}\n",
             stderr="",
@@ -100,7 +112,13 @@ def test_run_permission_probe_stops_after_max_retries_when_output_is_undecidable
         nonlocal calls
         calls += 1
         return subprocess.CompletedProcess(
-            ["opencode", "run", "--agent", "build", "<prompt>"],
+            [
+                "opencode",
+                "run",
+                "--agent",
+                permissions.DEFAULT_OPENCODE_AGENT,
+                "<prompt>",
+            ],
             0,
             stdout="undecidable probe output\n",
             stderr="",

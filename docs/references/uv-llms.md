@@ -36,7 +36,7 @@ uvx --from . engineeringagent run --all --dry-run --skip-implement
 - Run Pyright type checks: `uv run pyright src/engineeringagent tests harness`
 - Run pytest suite: `uv run pytest -q`
 - Run permission probe: `uvx --from . engineeringagent gates run --profile loop_fast`
-- Build permission policy: `.opencode/agents/build.md` and `opencode.json`
+- Default OpenCode loop agent policy: `.opencode/agents/engineeringagent.md` and `opencode.json` (`default_agent: "engineeringagent"`, `agent.engineeringagent.model: "openai/gpt-5.3-codex"`, `agent.engineeringagent.variant: "high"`)
 - CLI validate command: `uvx --from . engineeringagent validate`
 - Loop dry-run command: `uvx --from . engineeringagent run docs/spec/features/FEAT-004-ralph-loop-opencode-mode.yaml --dry-run --skip-implement`
 - Loop auto-discovery dry-run: `uvx --from . engineeringagent run --all --dry-run --skip-implement`

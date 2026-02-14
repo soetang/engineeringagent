@@ -5,7 +5,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
-from .opencode.client import start_agent
+from .opencode.client import DEFAULT_OPENCODE_AGENT, start_agent
 
 
 PROBE_COMMAND = "git status --short"
@@ -19,8 +19,8 @@ PROBE_PROMPT = (
     f"{PROBE_TOKEN} or {PROBE_DENIED_TOKEN}."
 )
 PERMISSION_REMEDIATION_HINT = (
-    "hint: ensure .opencode/agents/build.md and opencode.json both set "
-    "build permissions to allow-all"
+    "hint: ensure .opencode/agents/engineeringagent.md and opencode.json both set "
+    "engineeringagent permissions to allow-all"
 )
 PERMISSION_REJECTION_LINE_PATTERNS = (
     re.compile(
@@ -158,7 +158,11 @@ def run_permission_probe(project_root: Path) -> PermissionProbeResult:
 
     for attempt in range(1, PROBE_MAX_ATTEMPTS + 1):
         try:
-            proc = start_agent(project_root, PROBE_PROMPT, agent="build")
+            proc = start_agent(
+                project_root,
+                PROBE_PROMPT,
+                agent=DEFAULT_OPENCODE_AGENT,
+            )
         except FileNotFoundError:
             return PermissionProbeResult(
                 ok=False,

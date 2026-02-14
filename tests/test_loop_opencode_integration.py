@@ -181,20 +181,24 @@ def test_loop_reports_permission_rejection_in_run_telemetry(
 ) -> None:
     project_root, _ = _make_project_root(tmp_path)
     _init_git_repo(project_root)
+    build_agent_path = project_root / ".opencode" / "agents" / "build.md"
+    original_build_agent = build_agent_path.read_text(encoding="utf-8")
 
     precheck_calls: list[Path] = []
+    started_agents: list[str] = []
 
     def fake_start_agent(
         project_root: Path,
         prompt: str,
         *,
-        agent: str = "build",
+        agent: str = "engineeringagent",
         capture_output: bool = True,
         text: bool = True,
     ) -> subprocess.CompletedProcess[str]:
-        del project_root, prompt, agent, capture_output, text
+        del project_root, prompt, capture_output, text
+        started_agents.append(agent)
         return subprocess.CompletedProcess(
-            ["opencode", "run", "--agent", "build", "<prompt>"],
+            ["opencode", "run", "--agent", agent, "<prompt>"],
             1,
             stdout="",
             stderr="permission requested for bash command git status --short (auto-reject)",
@@ -238,6 +242,8 @@ def test_loop_reports_permission_rejection_in_run_telemetry(
     assert run["next_action"] == "retry_same_feature"
     assert run["log_path"]
     assert precheck_calls == [project_root]
+    assert started_agents == ["engineeringagent"]
+    assert build_agent_path.read_text(encoding="utf-8") == original_build_agent
 
     feature_log_path = project_root / str(run["log_path"])
     assert feature_log_path.exists()
@@ -414,6 +420,8 @@ def test_run_loop_permission_precheck_failure_prints_remediation_hint(
 ) -> None:
     project_root, feature_path = _make_project_root(tmp_path)
     _init_git_repo(project_root)
+    build_agent_path = project_root / ".opencode" / "agents" / "build.md"
+    original_build_agent = build_agent_path.read_text(encoding="utf-8")
 
     def fake_run_permission_probe(_: Path) -> PermissionProbeResult:
         return PermissionProbeResult(
@@ -442,8 +450,11 @@ def test_run_loop_permission_precheck_failure_prints_remediation_hint(
     assert "Precondition failed: OpenCode permission precheck failed" in output
     assert "opencode exited with status 127" in output
     assert PERMISSION_REMEDIATION_HINT in output
+    assert ".opencode/agents/engineeringagent.md" in output
+    assert ".opencode/agents/build.md" not in output
     assert "--skip-implement" in output
     assert "--implement-command" in output
+    assert build_agent_path.read_text(encoding="utf-8") == original_build_agent
 
 
 def test_gate_failure_feedback_round_trips_to_retry_prompt_integration(

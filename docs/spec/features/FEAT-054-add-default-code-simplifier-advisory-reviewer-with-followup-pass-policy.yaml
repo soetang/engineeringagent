@@ -20,6 +20,8 @@ constraints:
 - '`code_simplifier` must not enforce hard blocking completion semantics by default.'
 - Reviewer output must follow the v1 decision JSON envelope contract.
 - Parse failures must be treated as deterministic advisory guidance requiring one follow-up pass.
+- Allow markdown locality for `harness/reviewers/prompts/*.md` so reviewer prompt files do not violate repository markdown locality policy.
+- Keep markdown-locality scope narrow to reviewer prompt markdown only; do not broaden unrelated markdown allowlists.
 implementation_notes: >-
   Deliver one concrete advisory reviewer profile entry, prompt guidance, and
   runtime behavior coverage for code simplification scenario.
@@ -30,7 +32,8 @@ implementation_notes: >-
   - Author `harness/reviewers/prompts/code_simplifier.md` with plain-English
     instructions for simplification review and strict JSON decision output.
 
-  - Use the linked upstream `code-simplifier.md` as the initial source content
+  - Copy `/home/soetang/.config/opencode/agent/code-simplifier.md` into
+    `harness/reviewers/prompts/code_simplifier.md` as the initial source content,
     and keep wording aligned unless an explicit follow-up spec requests changes.
 
   - Ensure planner schedules this reviewer only when code-scoped `on_change`
@@ -38,6 +41,14 @@ implementation_notes: >-
 
   - Ensure advisory advice drives hook feedback and follow-up implement latch
     behavior without default hard failure.
+
+  - Update markdown-locality allowlist implementation and tests so
+    `harness/reviewers/prompts/code_simplifier.md` is policy-compliant.
+
+  Required integration touch points in this feature:
+  - `src/engineeringagent/fitness/builtin_rules.py` markdown locality allow roots/remediation text
+  - `tests/test_fitness_rules_markdown_locality.py` and `tests/test_fitness_rules_markdown_references.py`
+  - `harness/reviewers/prompts/code_simplifier.md` and one in-repo deterministic reference path
 
   The expected reviewer config sample for docs and scaffold must include:
 
@@ -59,14 +70,15 @@ acceptance:
 - '`code_simplifier` advisory `warning` and advisory `request_changes` outcomes always require one follow-up implement pass before completion commit.'
 - '`code_simplifier` does not hard-block completion by default and records advisory outcomes in telemetry and summaries.'
 - '`code_simplifier` parse failures are handled deterministically as advisory follow-up-required outcomes.'
-- '`harness/reviewers/prompts/code_simplifier.md` in repo matches the linked upstream code-simplifier prompt content for initial rollout.'
+- '`harness/reviewers/prompts/code_simplifier.md` in repo matches `/home/soetang/.config/opencode/agent/code-simplifier.md` for initial rollout.'
 - Reviewer prompt content for `code_simplifier` is plain English and includes explicit JSON response instructions.
+- Reviewer prompt markdown under `harness/reviewers/prompts/` passes markdown locality/reference coverage fitness checks.
 subtasks:
 - id: ST-001
   title: Add scaffolded code_simplifier reviewer entry and upstream-copied prompt file
   status: backlog
   order: 1
-  context: Add default code_simplifier reviewer example and prompt artifact to scaffold output, seeded from the linked upstream code-simplifier prompt.
+  context: Add default code_simplifier reviewer example and prompt artifact to scaffold output, seeded from `/home/soetang/.config/opencode/agent/code-simplifier.md`.
   verification:
   - uv run pytest -q tests/test_init_scaffold.py
 - id: ST-002
@@ -99,10 +111,17 @@ subtasks:
   verification:
   - uv run pytest -q tests/test_validator.py::test_agents_docs_map_extraction_scoped_to_docs_layout_section
 - id: ST-006
-  title: Run reviewer-specific regression slice
+  title: Update markdown locality policy for reviewer prompt markdown path
   status: backlog
   order: 6
+  context: Keep reviewer prompts under harness path compliant with markdown locality and reference coverage checks.
+  verification:
+  - uv run pytest -q tests/test_fitness_rules_markdown_locality.py tests/test_fitness_rules_markdown_references.py
+- id: ST-007
+  title: Run reviewer-specific regression slice
+  status: backlog
+  order: 7
   context: Validate planner and loop behavior for code_simplifier scenario end to end.
   verification:
   - uv run pytest -q tests/test_reviewers_runtime.py tests/test_loop_reviewers.py tests/test_loop_contracts.py
-updated_at: '2026-02-14T21:09:12Z'
+updated_at: '2026-02-14T23:18:00Z'

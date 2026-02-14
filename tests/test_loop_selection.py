@@ -124,6 +124,7 @@ def test_choose_feature_with_selector_falls_back_when_opencode_missing(
     )
 
     output = capsys.readouterr().out
+    assert "Selector step: opencode run --agent engineeringagent" in output
     assert "Selector fallback: opencode missing" in output
     assert chosen_path == Path("docs/spec/features/FEAT-100.yaml")
     assert chosen_feature["id"] == "FEAT-100"
@@ -145,6 +146,7 @@ def test_choose_feature_with_selector_falls_back_on_parse_or_command_failure(
     )
 
     output = capsys.readouterr().out
+    assert "Selector step: opencode run --agent engineeringagent" in output
     assert "Selector fallback: parse or command failure" in output
     assert chosen_path == Path("docs/spec/features/FEAT-100.yaml")
     assert chosen_feature["id"] == "FEAT-100"

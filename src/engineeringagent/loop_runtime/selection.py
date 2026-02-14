@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Callable, Sequence
 
+from engineeringagent.opencode.client import DEFAULT_OPENCODE_AGENT
 from engineeringagent.prompts import build_selector_prompt
 from engineeringagent.specs import feature_sort_key
 
@@ -79,6 +80,7 @@ def choose_feature_with_selector(
         return pending[0]
 
     prompt = build_selector_prompt(pending)
+    print(f"Selector step: opencode run --agent {DEFAULT_OPENCODE_AGENT}")
     try:
         proc = start_agent_fn(project_root, prompt)
     except FileNotFoundError:

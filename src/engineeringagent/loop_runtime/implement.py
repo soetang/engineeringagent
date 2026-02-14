@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from engineeringagent.loop_runtime.models import ImplementStepInputs
+from engineeringagent.opencode.client import DEFAULT_OPENCODE_AGENT
 from engineeringagent.opencode_permissions import output_has_permission_rejection
 from engineeringagent.prompts import (
     build_implementation_prompt,
@@ -69,7 +70,7 @@ def _run_default_opencode_implement(
 ) -> tuple[bool, str | None, str]:
     prompt = _build_implement_prompt(implement_inputs)
 
-    print("Implement step: opencode run --agent build")
+    print(f"Implement step: opencode run --agent {DEFAULT_OPENCODE_AGENT}")
     try:
         proc = start_agent_fn(implement_inputs.project_root, prompt)
     except FileNotFoundError:
@@ -78,7 +79,7 @@ def _run_default_opencode_implement(
     _print_process_output(proc, verbose_output=implement_inputs.verbose_output)
     output = (proc.stdout or "") + (proc.stderr or "")
     command_output = (
-        "[implement] command=opencode run --agent build <prompt>\n"
+        f"[implement] command=opencode run --agent {DEFAULT_OPENCODE_AGENT} <prompt>\n"
         f"[implement] returncode={proc.returncode}\n"
         f"{output}"
     )

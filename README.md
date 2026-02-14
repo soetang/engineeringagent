@@ -72,6 +72,13 @@ the git diff before committing anything produced by `init`.
 - Default output is concise; full implement/gate output stays in `progress/run-feature-<FEATURE_ID>.txt`.
 - Use `--verbose-output` if you want full implement/gate output in the terminal.
 
+## OpenCode default agent contract
+
+- Default loop execution uses the `engineeringagent` OpenCode agent; this contract does not fall back to `build`.
+- Keep `opencode.json` configured with `default_agent: "engineeringagent"` and an `agent.engineeringagent` entry using `model: "openai/gpt-5.3-codex"` plus `variant: "high"`.
+- Keep permission policy remediation anchored to `.opencode/agents/engineeringagent.md` with equivalent allow-all posture for this repository.
+- Existing `.opencode/agents/build.md` and `agent.build` entries can remain for other workflows and should not be overwritten by this loop contract.
+
 ## Human docs vs agent docs
 
 - `README.md`: first-run, human onboarding.

@@ -4,11 +4,14 @@ import subprocess
 from pathlib import Path
 
 
+DEFAULT_OPENCODE_AGENT = "engineeringagent"
+
+
 def start_agent(
     project_root: Path,
     prompt: str,
     *,
-    agent: str = "build",
+    agent: str = DEFAULT_OPENCODE_AGENT,
     capture_output: bool = True,
     text: bool = True,
 ) -> subprocess.CompletedProcess[str]:

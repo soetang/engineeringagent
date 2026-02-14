@@ -29,7 +29,7 @@ def test_start_agent_runs_opencode_with_expected_defaults(
         "opencode",
         "run",
         "--agent",
-        "build",
+        "engineeringagent",
         "Reply READY.",
     ]
     assert captured["kwargs"]["cwd"] == tmp_path
@@ -52,3 +52,7 @@ def test_start_agent_supports_agent_override(tmp_path: Path, monkeypatch: Any) -
     client_module.start_agent(tmp_path, "Do work", agent="review")
 
     assert captured_command == ["opencode", "run", "--agent", "review", "Do work"]
+
+
+def test_default_agent_constant_matches_expected_runtime_identifier() -> None:
+    assert client_module.DEFAULT_OPENCODE_AGENT == "engineeringagent"
