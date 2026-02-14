@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "engineeringagent"
-version = "0.1.0"
+version = "0.1.1"
 description = "Feature-driven harness for human-gated coding loops"
 readme = "README.md"
 requires-python = ">=3.10"
