@@ -7,7 +7,15 @@
 
 ## Quickstart
 
-From the repository root:
+Package users (no repository checkout required):
+
+```bash
+uvx engineeringagent --help
+uvx engineeringagent validate
+uvx engineeringagent@<version> validate
+```
+
+Contributors (from the repository root):
 
 ```bash
 uv sync
@@ -52,11 +60,13 @@ uvx --from . engineeringagent run --all --dry-run --skip-implement
 ## Dependency Workflow
 
 1. Edit dependencies in `pyproject.toml`.
-2. Re-resolve and refresh lockfile with `uv lock`.
-3. Sync the environment with `uv sync`.
+1. Re-resolve and refresh lockfile with `uv lock`.
+1. Sync the environment with `uv sync`.
 
 ## uvx Usage
 
+- Use `uvx engineeringagent ...` for package-consumer execution from PyPI.
+- Use `uvx engineeringagent@<version> ...` when you need version-pinned execution.
 - Use `uvx --from . engineeringagent ...` as the canonical contributor command style.
 - Keep `uv run ...` for direct tooling operations such as `pytest -q` or local Python modules.
 - The `precommit` profile is the canonical quality gate and includes spec validation, Ruff lint/docstring checks, Pyright type validation, and pytest execution.

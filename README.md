@@ -4,7 +4,32 @@ EngineeringAgent is a human-guided harness for running reliable coding loops wit
 
 Primary flow: `application spec -> run loop`
 
-## Getting started (first 10 minutes)
+## Command styles
+
+- Package usage (PyPI, no clone): `uvx engineeringagent <command>`
+- Package usage (version pinned): `uvx engineeringagent@<version> <command>`
+- Contributor usage (from this repository): `uvx --from . engineeringagent <command>`
+
+## Quickstart from PyPI (no clone)
+
+Run directly from the published package:
+
+```bash
+uvx engineeringagent --help
+uvx engineeringagent validate
+uvx engineeringagent gates run --profile loop_fast
+```
+
+Pin to a specific release when you need reproducible onboarding or CI runs:
+
+```bash
+uvx engineeringagent@<version> --help
+uvx engineeringagent@<version> validate
+```
+
+## Contributor setup (local checkout, first 10 minutes)
+
+The steps below assume contributor usage from this repository checkout.
 
 1. Install dependencies.
 
