@@ -7,8 +7,12 @@ from pydantic import BaseModel, ConfigDict
 from .opencode.client import start_agent
 
 
+PROBE_COMMAND = "git status --short"
 PROBE_TOKEN = "PERMISSION_OK"
-PROBE_PROMPT = "Run exactly: git status --short. If it succeeds, reply PERMISSION_OK."
+PROBE_PROMPT = (
+    "Run exactly this bash command and return only its raw output: "
+    f"{PROBE_COMMAND} && printf '\\n{PROBE_TOKEN}\\n'"
+)
 PERMISSION_REMEDIATION_HINT = (
     "hint: ensure .opencode/agents/build.md and opencode.json both set "
     "build permissions to allow-all"
@@ -79,7 +83,7 @@ def evaluate_permission_probe(
         )
     return PermissionProbeResult(
         ok=True,
-        reason="permission probe passed",
+        reason="permission probe passed with executable bash contract",
         returncode=returncode,
         output=output,
     )
