@@ -3,6 +3,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from pydantic import BaseModel, ConfigDict
+
 from .config import resolve_docs_root
 from .fitness import build_rule_catalog
 from .specs import (
@@ -23,6 +25,15 @@ AGENTS_DOCS_MAP_SECTION_TITLE = "Documentation Layout Reference"
 AGENTS_PATH = Path("AGENTS.md")
 
 _BACKTICK_TOKEN_PATTERN = re.compile(r"`([^`]+)`")
+
+
+class _DoneArchivalPolicyContext(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    done_transition_allowlist: set[str]
+    features_done_dir: Path
+    features_dir: Path
+    project_root: Path
 
 
 def _load_done_transition_allowlist(features_dir: Path) -> set[str]:
@@ -69,80 +80,117 @@ def validate(project_root: Path, schema_only: bool = False) -> list[str]:
     done_files = iter_feature_files(features_done_dir)
     messages: list[str] = []
     done_transition_allowlist = _load_done_transition_allowlist(features_dir)
+    archival_context = _DoneArchivalPolicyContext(
+        done_transition_allowlist=done_transition_allowlist,
+        features_done_dir=features_done_dir,
+        features_dir=features_dir,
+        project_root=project_root,
+    )
 
-    if schema_path.exists():
-        try:
-            current_schema = load_schema(schema_path)
-        except Exception as exc:  # noqa: BLE001
-            messages.append(f"{schema_path}: failed to parse JSON schema: {exc}")
-        else:
-            generated_schema = feature_schema_from_model()
-            if current_schema != generated_schema:
-                messages.append(
-                    f"{schema_path}:<root>: schema artifact is out of sync with "
-                    "FeatureSpec model"
-                )
+    _append_schema_sync_issues(messages, schema_path)
+    _append_active_feature_issues(
+        messages,
+        files,
+        schema_only,
+        archival_context,
+    )
+    _append_done_feature_issues(messages, done_files)
+    _append_potential_features_issues(messages, potential_features_path)
+    _append_gate_config_issues(messages, gates_path)
+    _append_agents_docs_map_issues(messages, project_root)
+    _append_fitness_catalog_issues(messages, project_root)
 
+    return messages
+
+
+def _append_schema_sync_issues(messages: list[str], schema_path: Path) -> None:
+    if not schema_path.exists():
+        return
+
+    try:
+        current_schema = load_schema(schema_path)
+    except Exception as exc:  # noqa: BLE001
+        messages.append(f"{schema_path}: failed to parse JSON schema: {exc}")
+        return
+
+    generated_schema = feature_schema_from_model()
+    if current_schema != generated_schema:
+        messages.append(
+            f"{schema_path}:<root>: schema artifact is out of sync with "
+            "FeatureSpec model"
+        )
+
+
+def _append_active_feature_issues(
+    messages: list[str],
+    files: list[Path],
+    schema_only: bool,
+    archival_context: _DoneArchivalPolicyContext,
+) -> None:
     for file_path in files:
-        try:
-            feature = load_yaml(file_path)
-        except Exception as exc:  # noqa: BLE001
-            messages.append(f"{file_path}: failed to parse YAML: {exc}")
+        feature = _load_feature_or_record_error(messages, file_path)
+        if feature is None:
             continue
 
         contract_issues = feature_contract_issues(feature, file_path)
-        for issue in contract_issues:
-            messages.append(f"{issue.path}: {issue.message}")
+        _extend_messages_with_contract_issues(messages, contract_issues)
 
-        if not schema_only and not contract_issues:
-            if feature.get("status") == "done":
-                feature_name = file_path.name
-                if feature_name not in done_transition_allowlist:
-                    expected_archive_path = features_done_dir / feature_name
-                    allowlist_path = features_dir / DONE_TRANSITION_ALLOWLIST
-                    messages.append(
-                        f"{file_path}:status: completed feature specs must be archived under "
-                        f"{expected_archive_path.relative_to(project_root)}; move this file there or "
-                        f"add '{feature_name}' to {allowlist_path.relative_to(project_root)} "
-                        "as a temporary transition exception"
-                    )
+        if schema_only or contract_issues:
+            continue
+        _append_done_archival_policy_issue(
+            messages,
+            feature,
+            file_path,
+            archival_context,
+        )
 
+
+def _append_done_feature_issues(messages: list[str], done_files: list[Path]) -> None:
     for file_path in done_files:
-        try:
-            feature = load_yaml(file_path)
-        except Exception as exc:  # noqa: BLE001
-            messages.append(f"{file_path}: failed to parse YAML: {exc}")
+        feature = _load_feature_or_record_error(messages, file_path)
+        if feature is None:
             continue
 
         contract_issues = _filter_legacy_done_contract_issues(
             feature_contract_issues(feature, file_path)
         )
-        for issue in contract_issues:
-            messages.append(f"{issue.path}: {issue.message}")
+        _extend_messages_with_contract_issues(messages, contract_issues)
 
-    if potential_features_path.exists():
-        try:
-            potential_features = load_yaml(potential_features_path)
-        except Exception as exc:  # noqa: BLE001
-            messages.append(f"{potential_features_path}: failed to parse YAML: {exc}")
-        else:
-            contract_issues = potential_features_contract_issues(
-                potential_features,
-                potential_features_path,
-            )
-            for issue in contract_issues:
-                messages.append(f"{issue.path}: {issue.message}")
 
-    if gates_path.exists():
-        try:
-            gates_config = load_yaml(gates_path)
-        except Exception as exc:  # noqa: BLE001
-            messages.append(f"{gates_path}: failed to parse YAML: {exc}")
-        else:
-            contract_issues = gate_contract_issues(gates_config, gates_path)
-            for issue in contract_issues:
-                messages.append(f"{issue.path}: {issue.message}")
+def _append_potential_features_issues(
+    messages: list[str], potential_features_path: Path
+) -> None:
+    if not potential_features_path.exists():
+        return
 
+    try:
+        potential_features = load_yaml(potential_features_path)
+    except Exception as exc:  # noqa: BLE001
+        messages.append(f"{potential_features_path}: failed to parse YAML: {exc}")
+        return
+
+    contract_issues = potential_features_contract_issues(
+        potential_features,
+        potential_features_path,
+    )
+    _extend_messages_with_contract_issues(messages, contract_issues)
+
+
+def _append_gate_config_issues(messages: list[str], gates_path: Path) -> None:
+    if not gates_path.exists():
+        return
+
+    try:
+        gates_config = load_yaml(gates_path)
+    except Exception as exc:  # noqa: BLE001
+        messages.append(f"{gates_path}: failed to parse YAML: {exc}")
+        return
+
+    contract_issues = gate_contract_issues(gates_config, gates_path)
+    _extend_messages_with_contract_issues(messages, contract_issues)
+
+
+def _append_agents_docs_map_issues(messages: list[str], project_root: Path) -> None:
     docs_map_section_line = _agents_docs_map_section_line(project_root)
     docs_map_references = _iter_agents_docs_map_references(project_root)
     if docs_map_section_line is not None and not docs_map_references:
@@ -164,12 +212,52 @@ def validate(project_root: Path, schema_only: bool = False) -> list[str]:
                 f"AGENTS.md:{line_number}: docs-map path does not exist: {reference}"
             )
 
+
+def _append_fitness_catalog_issues(messages: list[str], project_root: Path) -> None:
     try:
         build_rule_catalog(project_root)
     except ValueError as exc:
         messages.append(str(exc))
 
-    return messages
+
+def _load_feature_or_record_error(
+    messages: list[str], file_path: Path
+) -> dict[str, object] | None:
+    try:
+        return load_yaml(file_path)
+    except Exception as exc:  # noqa: BLE001
+        messages.append(f"{file_path}: failed to parse YAML: {exc}")
+        return None
+
+
+def _extend_messages_with_contract_issues(
+    messages: list[str], contract_issues: list[ValidationIssue]
+) -> None:
+    for issue in contract_issues:
+        messages.append(f"{issue.path}: {issue.message}")
+
+
+def _append_done_archival_policy_issue(
+    messages: list[str],
+    feature: dict[str, object],
+    file_path: Path,
+    archival_context: _DoneArchivalPolicyContext,
+) -> None:
+    if feature.get("status") != "done":
+        return
+
+    feature_name = file_path.name
+    if feature_name in archival_context.done_transition_allowlist:
+        return
+
+    expected_archive_path = archival_context.features_done_dir / feature_name
+    allowlist_path = archival_context.features_dir / DONE_TRANSITION_ALLOWLIST
+    messages.append(
+        f"{file_path}:status: completed feature specs must be archived under "
+        f"{expected_archive_path.relative_to(archival_context.project_root)}; move this file there or "
+        f"add '{feature_name}' to {allowlist_path.relative_to(archival_context.project_root)} "
+        "as a temporary transition exception"
+    )
 
 
 def _iter_agents_docs_map_references(project_root: Path) -> list[tuple[int, str]]:

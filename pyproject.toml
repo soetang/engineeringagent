@@ -49,7 +49,7 @@ extend-select = [
 ]
 
 [tool.ruff.lint.mccabe]
-max-complexity = 30
+max-complexity = 10
 
 [tool.ruff.lint.pylint]
 max-branches = 32

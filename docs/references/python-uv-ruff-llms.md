@@ -40,12 +40,14 @@ uvx --from . engineeringagent gates run --profile precommit
 
 - Current repository Ruff selection in `pyproject.toml` enables `D103` and `D417`.
 - If complexity guardrails are enabled for refactors, use inline comments so IDs are self-explanatory.
+- Repository policy treats suppressions for non-ignorable IDs as gate failures across `src/`, `tests/`, and `harness/`.
 
 ### Common IDs used in this repository
 
 - `D103`: undocumented public function (pydocstyle)
 - `D417`: missing argument descriptions in docstring (pydocstyle)
 - `C901`: complex-structure (McCabe complexity)
+- `PLR0913`: too-many-arguments (pylint)
 - `PLR0912`: too-many-branches (pylint)
 - `PLR0915`: too-many-statements (pylint)
 
@@ -62,7 +64,7 @@ extend-select = [
 ]
 
 [tool.ruff.lint.mccabe]
-max-complexity = 12
+max-complexity = 10
 
 [tool.ruff.lint.pylint]
 max-branches = 12
@@ -98,8 +100,10 @@ Use this section when a function signature grows beyond the argument budget (`PL
 
 ### Exception policy
 
-- Do not add broad per-file or module-wide `PLR0913` suppressions.
-- If a compatibility-boundary exception is unavoidable, scope it to one function and add an inline rationale.
+- Do not add inline or file-level suppression directives for non-ignorable Ruff IDs.
+- Non-ignorable seed IDs are `D103` and `PLR0913`, enforced by `architecture.no-non-ignorable-ruff-suppressions`.
+- Disallowed examples include `# noqa: PLR0913`, `# noqa: D103`, `# noqa: F401,PLR0913`, and `# ruff: noqa: D103`.
+- Preferred remediation for `PLR0913`: split orchestration phases and pass a structured object (`NamedTuple` or `pydantic` model) instead of many scalar arguments.
 
 ### Verification commands
 

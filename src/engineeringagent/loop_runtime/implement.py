@@ -26,37 +26,48 @@ def run_implement_step_from_inputs(
         return (True, None, "[implement] skipped")
 
     if implement_inputs.implement_command:
-        print(f"Implement step: custom command ({implement_inputs.implement_command})")
-        proc = run_shell_command_fn(
-            implement_inputs.project_root,
-            implement_inputs.implement_command,
+        return _run_custom_implement_command(
+            implement_inputs,
+            run_shell_command_fn=run_shell_command_fn,
         )
-        if implement_inputs.verbose_output:
-            if proc.stdout:
-                print(proc.stdout, end="")
-            if proc.stderr:
-                print(proc.stderr, end="", file=sys.stderr)
 
-        output = (proc.stdout or "") + (proc.stderr or "")
-        command_output = (
-            f"[implement] command={implement_inputs.implement_command}\n"
-            f"[implement] returncode={proc.returncode}\n"
-            f"{output}"
-        )
-        if proc.returncode != 0:
-            return (False, "implement_command", command_output)
-        return (True, None, command_output)
-
-    prompt = implement_inputs.opencode_prompt or build_implementation_prompt(
-        feature=implement_inputs.feature,
-        feature_path=implement_inputs.feature_path,
-        hook_feedback=implement_inputs.hook_feedback,
+    return _run_default_opencode_implement(
+        implement_inputs,
+        start_agent_fn=start_agent_fn,
     )
-    if implement_inputs.opencode_prompt:
-        prompt = inject_retry_feedback(
-            implement_inputs.opencode_prompt,
-            implement_inputs.hook_feedback,
-        )
+
+
+def _run_custom_implement_command(
+    implement_inputs: ImplementStepInputs,
+    *,
+    run_shell_command_fn: Callable[[Path, str], Any],
+) -> tuple[bool, str | None, str]:
+    command = implement_inputs.implement_command
+    assert command is not None
+    print(f"Implement step: custom command ({command})")
+    proc = run_shell_command_fn(
+        implement_inputs.project_root,
+        command,
+    )
+    _print_process_output(proc, verbose_output=implement_inputs.verbose_output)
+
+    output = (proc.stdout or "") + (proc.stderr or "")
+    command_output = (
+        f"[implement] command={command}\n"
+        f"[implement] returncode={proc.returncode}\n"
+        f"{output}"
+    )
+    if proc.returncode != 0:
+        return (False, "implement_command", command_output)
+    return (True, None, command_output)
+
+
+def _run_default_opencode_implement(
+    implement_inputs: ImplementStepInputs,
+    *,
+    start_agent_fn: Callable[..., Any],
+) -> tuple[bool, str | None, str]:
+    prompt = _build_implement_prompt(implement_inputs)
 
     print("Implement step: opencode run --agent build")
     try:
@@ -64,12 +75,7 @@ def run_implement_step_from_inputs(
     except FileNotFoundError:
         return (False, "opencode_missing", "[implement] opencode executable missing")
 
-    if implement_inputs.verbose_output:
-        if proc.stdout:
-            print(proc.stdout, end="")
-        if proc.stderr:
-            print(proc.stderr, end="", file=sys.stderr)
-
+    _print_process_output(proc, verbose_output=implement_inputs.verbose_output)
     output = (proc.stdout or "") + (proc.stderr or "")
     command_output = (
         "[implement] command=opencode run --agent build <prompt>\n"
@@ -78,10 +84,31 @@ def run_implement_step_from_inputs(
     )
     if output_has_permission_rejection(output):
         return (False, "opencode_permission", command_output)
-
     if proc.returncode != 0:
         return (False, "opencode_build", command_output)
     return (True, None, command_output)
+
+
+def _build_implement_prompt(implement_inputs: ImplementStepInputs) -> str:
+    if implement_inputs.opencode_prompt:
+        return inject_retry_feedback(
+            implement_inputs.opencode_prompt,
+            implement_inputs.hook_feedback,
+        )
+    return build_implementation_prompt(
+        feature=implement_inputs.feature,
+        feature_path=implement_inputs.feature_path,
+        hook_feedback=implement_inputs.hook_feedback,
+    )
+
+
+def _print_process_output(proc: Any, *, verbose_output: bool) -> None:
+    if not verbose_output:
+        return
+    if proc.stdout:
+        print(proc.stdout, end="")
+    if proc.stderr:
+        print(proc.stderr, end="", file=sys.stderr)
 
 
 def requires_opencode_permission_precheck(

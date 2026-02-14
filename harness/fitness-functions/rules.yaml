@@ -32,3 +32,30 @@ rules:
       - run
       - python
       - harness/fitness-functions/check_no_stdlib_dataclasses_in_src.py
+  - rule_id: architecture.no-non-ignorable-ruff-suppressions
+    name: No non-ignorable Ruff suppressions
+    summary: Block suppression directives for configured high-value Ruff rules.
+    rationale: Keep lint policy enforceable by requiring refactor-first remediation.
+    remediation: Remove inline/file-level ignore directives and refactor; for PLR0913,
+      group related arguments into a NamedTuple or pydantic model.
+    scope: src tests harness
+    severity: error
+    side_effect_free: true
+    adapter: command
+    command:
+      - uv
+      - run
+      - python
+      - harness/fitness-functions/check_non_ignorable_ruff_suppressions.py
+      - --rule-id
+      - architecture.no-non-ignorable-ruff-suppressions
+      - --blocked-rule-id
+      - D103
+      - --blocked-rule-id
+      - PLR0913
+      - --scan-root
+      - src
+      - --scan-root
+      - tests
+      - --scan-root
+      - harness

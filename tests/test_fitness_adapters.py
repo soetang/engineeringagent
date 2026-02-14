@@ -100,3 +100,160 @@ def test_execute_rule_definition_runs_python_adapter_callable(tmp_path: Path) ->
 
     assert result.status == RuleStatus.PASS
     assert result.rule_id == "builtin.python-adapter"
+
+
+def test_execute_rule_definition_runs_non_ignorable_suppression_adapter(
+    tmp_path: Path,
+) -> None:
+    """Surface fail status from the Ruff suppression adapter envelope."""
+    scan_root = tmp_path / "src"
+    scan_root.mkdir(parents=True)
+    target = scan_root / "module.py"
+    target.write_text(
+        "def run(a, b, c, d, e, f):  # noqa: PLR0913\n    return a + b\n",
+        encoding="utf-8",
+    )
+
+    script = Path(__file__).resolve().parents[1] / "harness" / "fitness-functions"
+    script = script / "check_non_ignorable_ruff_suppressions.py"
+
+    definition = FitnessRuleDefinition(
+        metadata=FitnessRuleMetadata(
+            rule_id="custom.no-non-ignorable-ruff-suppressions",
+            name="No non-ignorable Ruff suppressions",
+            summary="Block configured Ruff suppressions.",
+            rationale="High-value lint suppressions must be refactor-first.",
+            remediation="Remove suppression directives and refactor.",
+            scope="src tests harness",
+            severity=RuleSeverity.ERROR,
+            adapter=RuleAdapter.COMMAND,
+            source=RuleSource.CUSTOM,
+            side_effect_free=True,
+        ),
+        origin="custom:harness/fitness-functions/rules.yaml:rules[0]",
+        command=(
+            sys.executable,
+            str(script),
+            "--rule-id",
+            "custom.no-non-ignorable-ruff-suppressions",
+            "--blocked-rule-id",
+            "PLR0913",
+            "--scan-root",
+            "src",
+        ),
+    )
+
+    result = execute_rule_definition(definition, project_root=tmp_path)
+
+    assert result.status == RuleStatus.FAIL
+    assert result.severity == RuleSeverity.ERROR
+    assert result.violations
+
+
+def test_non_ignorable_suppression_adapter_honors_explicit_scan_roots(
+    tmp_path: Path,
+) -> None:
+    """Only scan explicitly configured roots when --scan-root is provided."""
+    src_root = tmp_path / "src"
+    src_root.mkdir(parents=True)
+    (src_root / "module.py").write_text(
+        "def run() -> int:\n    return 1\n", encoding="utf-8"
+    )
+
+    harness_root = tmp_path / "harness"
+    harness_root.mkdir(parents=True)
+    (harness_root / "blocked.py").write_text(
+        "def run(a, b, c, d, e, f):  # noqa: PLR0913\n    return a + b\n",
+        encoding="utf-8",
+    )
+
+    script = Path(__file__).resolve().parents[1] / "harness" / "fitness-functions"
+    script = script / "check_non_ignorable_ruff_suppressions.py"
+
+    definition = FitnessRuleDefinition(
+        metadata=FitnessRuleMetadata(
+            rule_id="custom.no-non-ignorable-ruff-suppressions",
+            name="No non-ignorable Ruff suppressions",
+            summary="Block configured Ruff suppressions.",
+            rationale="High-value lint suppressions must be refactor-first.",
+            remediation="Remove suppression directives and refactor.",
+            scope="src tests harness",
+            severity=RuleSeverity.ERROR,
+            adapter=RuleAdapter.COMMAND,
+            source=RuleSource.CUSTOM,
+            side_effect_free=True,
+        ),
+        origin="custom:harness/fitness-functions/rules.yaml:rules[0]",
+        command=(
+            sys.executable,
+            str(script),
+            "--rule-id",
+            "custom.no-non-ignorable-ruff-suppressions",
+            "--blocked-rule-id",
+            "PLR0913",
+            "--scan-root",
+            "src",
+        ),
+    )
+
+    result = execute_rule_definition(definition, project_root=tmp_path)
+
+    assert result.status == RuleStatus.PASS
+    assert result.violations == []
+
+
+def test_non_ignorable_suppression_adapter_detects_file_level_and_multicode_noqa(
+    tmp_path: Path,
+) -> None:
+    """Detect file-level and inline multi-code suppressions deterministically."""
+    src_root = tmp_path / "src"
+    src_root.mkdir(parents=True)
+    (src_root / "z_module.py").write_text(
+        "def run(a, b, c, d, e, f):  # noqa: F401, PLR0913\n    return a + b\n",
+        encoding="utf-8",
+    )
+    (src_root / "a_module.py").write_text(
+        "# ruff: noqa: D103\n\ndef run() -> int:\n    return 1\n",
+        encoding="utf-8",
+    )
+
+    script = Path(__file__).resolve().parents[1] / "harness" / "fitness-functions"
+    script = script / "check_non_ignorable_ruff_suppressions.py"
+
+    definition = FitnessRuleDefinition(
+        metadata=FitnessRuleMetadata(
+            rule_id="custom.no-non-ignorable-ruff-suppressions",
+            name="No non-ignorable Ruff suppressions",
+            summary="Block configured Ruff suppressions.",
+            rationale="High-value lint suppressions must be refactor-first.",
+            remediation="Remove suppression directives and refactor.",
+            scope="src tests harness",
+            severity=RuleSeverity.ERROR,
+            adapter=RuleAdapter.COMMAND,
+            source=RuleSource.CUSTOM,
+            side_effect_free=True,
+        ),
+        origin="custom:harness/fitness-functions/rules.yaml:rules[0]",
+        command=(
+            sys.executable,
+            str(script),
+            "--rule-id",
+            "custom.no-non-ignorable-ruff-suppressions",
+            "--blocked-rule-id",
+            "D103",
+            "--blocked-rule-id",
+            "PLR0913",
+            "--scan-root",
+            "src",
+        ),
+    )
+
+    result = execute_rule_definition(definition, project_root=tmp_path)
+
+    assert result.status == RuleStatus.FAIL
+    assert len(result.violations) == 2
+    assert "src/a_module.py:1:1" in result.violations[0]
+    assert "targets: D103" in result.violations[0]
+    assert "src/z_module.py:1:29" in result.violations[1]
+    assert "targets: PLR0913" in result.violations[1]
+    assert "NamedTuple or pydantic model" in result.violations[1]

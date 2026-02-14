@@ -133,139 +133,209 @@ class FeatureSpec(StrictContractModel):
     @model_validator(mode="after")
     def enforce_invariants(self) -> FeatureSpec:
         """Apply repository feature invariants in the model layer."""
-        errors: list[InitErrorDetails] = []
+        (
+            errors,
+            subtask_orders,
+            in_progress_count,
+            done_count,
+            ordered_subtasks,
+        ) = _collect_subtask_state(self.subtasks)
 
-        subtask_ids: set[str] = set()
-        subtask_orders: set[int] = set()
-        in_progress_count = 0
-        done_count = 0
-        ordered_subtasks: list[tuple[int, int, SubtaskSpec]] = []
-
-        for idx, subtask in enumerate(self.subtasks):
-            if subtask.id in subtask_ids:
-                errors.append(
-                    _init_error_detail(
-                        error=PydanticCustomError(
-                            "value_error",
-                            ERR_DUP_SUBTASK_ID,
-                            {"subtask_id": subtask.id},
-                        ),
-                        loc=("subtasks", idx, "id"),
-                        input_value=subtask.id,
-                    )
-                )
-            subtask_ids.add(subtask.id)
-
-            if subtask.order in subtask_orders:
-                errors.append(
-                    _init_error_detail(
-                        error=PydanticCustomError(
-                            "value_error",
-                            ERR_DUP_SUBTASK_ORDER,
-                            {"order": subtask.order},
-                        ),
-                        loc=("subtasks", idx, "order"),
-                        input_value=subtask.order,
-                    )
-                )
-            subtask_orders.add(subtask.order)
-
-            ordered_subtasks.append((subtask.order, idx, subtask))
-
-            if subtask.status == FeatureStatus.IN_PROGRESS:
-                in_progress_count += 1
-            if subtask.status == FeatureStatus.DONE:
-                done_count += 1
-
-        if in_progress_count > 1:
-            errors.append(
-                _init_error_detail(
-                    error=PydanticCustomError(
-                        "value_error",
-                        "at most one subtask can be in_progress per feature",
-                    ),
-                    loc=("subtasks",),
-                    input_value=[subtask.status for subtask in self.subtasks],
-                )
+        errors.extend(
+            _in_progress_subtask_count_errors(
+                self.subtasks,
+                in_progress_count,
             )
-
-        if subtask_orders:
-            expected = set(range(1, len(self.subtasks) + 1))
-            if subtask_orders != expected:
-                errors.append(
-                    _init_error_detail(
-                        error=PydanticCustomError(
-                            "value_error",
-                            ERR_ORDER_SEQUENCE,
-                            {
-                                "expected": sorted(expected),
-                                "got": sorted(subtask_orders),
-                            },
-                        ),
-                        loc=("subtasks",),
-                        input_value=sorted(subtask_orders),
-                    )
-                )
-
-        seen_non_done = False
-        for order, idx, subtask in sorted(ordered_subtasks, key=lambda item: item[0]):
-            if subtask.status != FeatureStatus.DONE:
-                seen_non_done = True
-            elif seen_non_done:
-                errors.append(
-                    _init_error_detail(
-                        error=PydanticCustomError(
-                            "value_error",
-                            ERR_DONE_PREFIX,
-                            {"order": order},
-                        ),
-                        loc=("subtasks", idx, "status"),
-                        input_value=subtask.status,
-                    )
-                )
-
-        subtask_count = len(self.subtasks)
-        all_done = subtask_count > 0 and done_count == subtask_count
-        any_in_progress = in_progress_count > 0
-
-        if self.status == FeatureStatus.DONE and not all_done:
-            errors.append(
-                _init_error_detail(
-                    error=PydanticCustomError(
-                        "value_error", "feature status done requires all subtasks done"
-                    ),
-                    loc=("status",),
-                    input_value=self.status,
-                )
+        )
+        errors.extend(_subtask_order_sequence_errors(self.subtasks, subtask_orders))
+        errors.extend(_done_subtask_prefix_errors(ordered_subtasks))
+        errors.extend(
+            _feature_status_alignment_errors(
+                self.status,
+                len(self.subtasks),
+                in_progress_count,
+                done_count,
             )
-
-        if any_in_progress and self.status != FeatureStatus.IN_PROGRESS:
-            errors.append(
-                _init_error_detail(
-                    error=PydanticCustomError(
-                        "value_error",
-                        "feature with in_progress subtask must be in_progress",
-                    ),
-                    loc=("status",),
-                    input_value=self.status,
-                )
-            )
-
-        if all_done and self.status != FeatureStatus.DONE:
-            errors.append(
-                _init_error_detail(
-                    error=PydanticCustomError(
-                        "value_error", "feature with all subtasks done must be done"
-                    ),
-                    loc=("status",),
-                    input_value=self.status,
-                )
-            )
+        )
 
         if errors:
             raise ValidationError.from_exception_data(self.__class__.__name__, errors)
 
         return self
+
+
+def _collect_subtask_state(
+    subtasks: list[SubtaskSpec],
+) -> tuple[
+    list[InitErrorDetails],
+    set[int],
+    int,
+    int,
+    list[tuple[int, int, SubtaskSpec]],
+]:
+    errors: list[InitErrorDetails] = []
+    subtask_ids: set[str] = set()
+    subtask_orders: set[int] = set()
+    in_progress_count = 0
+    done_count = 0
+    ordered_subtasks: list[tuple[int, int, SubtaskSpec]] = []
+
+    for idx, subtask in enumerate(subtasks):
+        if subtask.id in subtask_ids:
+            errors.append(
+                _init_error_detail(
+                    error=PydanticCustomError(
+                        "value_error",
+                        ERR_DUP_SUBTASK_ID,
+                        {"subtask_id": subtask.id},
+                    ),
+                    loc=("subtasks", idx, "id"),
+                    input_value=subtask.id,
+                )
+            )
+        subtask_ids.add(subtask.id)
+
+        if subtask.order in subtask_orders:
+            errors.append(
+                _init_error_detail(
+                    error=PydanticCustomError(
+                        "value_error",
+                        ERR_DUP_SUBTASK_ORDER,
+                        {"order": subtask.order},
+                    ),
+                    loc=("subtasks", idx, "order"),
+                    input_value=subtask.order,
+                )
+            )
+        subtask_orders.add(subtask.order)
+
+        ordered_subtasks.append((subtask.order, idx, subtask))
+
+        if subtask.status == FeatureStatus.IN_PROGRESS:
+            in_progress_count += 1
+        if subtask.status == FeatureStatus.DONE:
+            done_count += 1
+
+    return (
+        errors,
+        subtask_orders,
+        in_progress_count,
+        done_count,
+        ordered_subtasks,
+    )
+
+
+def _in_progress_subtask_count_errors(
+    subtasks: list[SubtaskSpec],
+    in_progress_count: int,
+) -> list[InitErrorDetails]:
+    if in_progress_count <= 1:
+        return []
+    return [
+        _init_error_detail(
+            error=PydanticCustomError(
+                "value_error",
+                "at most one subtask can be in_progress per feature",
+            ),
+            loc=("subtasks",),
+            input_value=[subtask.status for subtask in subtasks],
+        )
+    ]
+
+
+def _subtask_order_sequence_errors(
+    subtasks: list[SubtaskSpec],
+    subtask_orders: set[int],
+) -> list[InitErrorDetails]:
+    if not subtask_orders:
+        return []
+    expected = set(range(1, len(subtasks) + 1))
+    if subtask_orders == expected:
+        return []
+    return [
+        _init_error_detail(
+            error=PydanticCustomError(
+                "value_error",
+                ERR_ORDER_SEQUENCE,
+                {
+                    "expected": sorted(expected),
+                    "got": sorted(subtask_orders),
+                },
+            ),
+            loc=("subtasks",),
+            input_value=sorted(subtask_orders),
+        )
+    ]
+
+
+def _done_subtask_prefix_errors(
+    ordered_subtasks: list[tuple[int, int, SubtaskSpec]],
+) -> list[InitErrorDetails]:
+    errors: list[InitErrorDetails] = []
+    seen_non_done = False
+    for order, idx, subtask in sorted(ordered_subtasks, key=lambda item: item[0]):
+        if subtask.status != FeatureStatus.DONE:
+            seen_non_done = True
+        elif seen_non_done:
+            errors.append(
+                _init_error_detail(
+                    error=PydanticCustomError(
+                        "value_error",
+                        ERR_DONE_PREFIX,
+                        {"order": order},
+                    ),
+                    loc=("subtasks", idx, "status"),
+                    input_value=subtask.status,
+                )
+            )
+    return errors
+
+
+def _feature_status_alignment_errors(
+    feature_status: FeatureStatus,
+    subtask_count: int,
+    in_progress_count: int,
+    done_count: int,
+) -> list[InitErrorDetails]:
+    errors: list[InitErrorDetails] = []
+    all_done = subtask_count > 0 and done_count == subtask_count
+    any_in_progress = in_progress_count > 0
+
+    if feature_status == FeatureStatus.DONE and not all_done:
+        errors.append(
+            _init_error_detail(
+                error=PydanticCustomError(
+                    "value_error", "feature status done requires all subtasks done"
+                ),
+                loc=("status",),
+                input_value=feature_status,
+            )
+        )
+
+    if any_in_progress and feature_status != FeatureStatus.IN_PROGRESS:
+        errors.append(
+            _init_error_detail(
+                error=PydanticCustomError(
+                    "value_error",
+                    "feature with in_progress subtask must be in_progress",
+                ),
+                loc=("status",),
+                input_value=feature_status,
+            )
+        )
+
+    if all_done and feature_status != FeatureStatus.DONE:
+        errors.append(
+            _init_error_detail(
+                error=PydanticCustomError(
+                    "value_error", "feature with all subtasks done must be done"
+                ),
+                loc=("status",),
+                input_value=feature_status,
+            )
+        )
+
+    return errors
 
 
 class ValidationIssue(StrictContractModel):
