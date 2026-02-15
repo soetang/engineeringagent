@@ -3,6 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+import pytest
+
+from engineeringagent import cli as cli_module
 from engineeringagent.cli import build_parser
 
 
@@ -58,3 +61,52 @@ def test_fitness_catalog_markdown_generation(tmp_path: Path, capsys: Any) -> Non
     assert "`architecture.loop-subprocess-boundary`" not in markdown
     assert "Rationale: Keeps custom adapters interoperable." in markdown
     assert "Remediation: Update custom command output to the contract." in markdown
+
+
+def test_main_uses_typer_fitness_tree_without_legacy_forward(monkeypatch: Any) -> None:
+    captured: dict[str, Any] = {}
+
+    def _unexpected_legacy_forward(*_args: Any, **_kwargs: Any) -> int:
+        raise AssertionError("legacy argparse forward should not handle fitness")
+
+    def _fake_cmd_fitness_catalog(args: Any) -> int:
+        captured["project_root"] = args.project_root
+        captured["manifest_path"] = args.manifest_path
+        captured["format"] = args.format
+        captured["output"] = args.output
+        return 3
+
+    monkeypatch.setattr(
+        cli_module,
+        "_run_legacy_cli_command",
+        _unexpected_legacy_forward,
+    )
+    monkeypatch.setattr(
+        cli_module,
+        "cmd_fitness_catalog",
+        _fake_cmd_fitness_catalog,
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        cli_module.main(
+            [
+                "--project-root",
+                "repo",
+                "fitness",
+                "catalog",
+                "--manifest-path",
+                "harness/fitness-functions/rules.yaml",
+                "--format",
+                "json",
+                "--output",
+                "docs/fitness-functions/rules.md",
+            ]
+        )
+
+    assert exc_info.value.code == 3
+    assert captured == {
+        "project_root": "repo",
+        "manifest_path": "harness/fitness-functions/rules.yaml",
+        "format": "json",
+        "output": "docs/fitness-functions/rules.md",
+    }

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
 from typing import Any
@@ -28,6 +29,148 @@ def _write_manifest(tmp_path: Path, rules: list[dict[str, object]]) -> None:
         ),
         encoding="utf-8",
     )
+
+
+def _subcommand_parsers(
+    parser: argparse.ArgumentParser,
+) -> dict[str, argparse.ArgumentParser]:
+    for action in parser._actions:
+        choices = getattr(action, "choices", None)
+        if isinstance(choices, dict):
+            return {
+                name: subparser
+                for name, subparser in choices.items()
+                if isinstance(subparser, argparse.ArgumentParser)
+            }
+    return {}
+
+
+def _option_strings(parser: argparse.ArgumentParser) -> set[str]:
+    return {option for action in parser._actions for option in action.option_strings}
+
+
+def test_cli_surface_inventory_commands() -> None:
+    parser = build_parser()
+    root_commands = _subcommand_parsers(parser)
+
+    assert set(root_commands) == {
+        "fitness",
+        "gates",
+        "init",
+        "reviewers",
+        "run",
+        "validate",
+    }
+    assert _option_strings(parser) == {"-h", "--help", "--project-root", "--version"}
+    assert set(_subcommand_parsers(root_commands["gates"])) == {"list", "plan", "run"}
+    assert set(_subcommand_parsers(root_commands["reviewers"])) == {
+        "init",
+        "list",
+        "plan",
+        "run",
+    }
+    assert set(_subcommand_parsers(root_commands["fitness"])) == {
+        "catalog",
+        "list",
+        "run",
+    }
+
+
+def test_cli_surface_inventory_option_spellings() -> None:
+    parser = build_parser()
+    root_commands = _subcommand_parsers(parser)
+
+    assert _option_strings(root_commands["validate"]) == {
+        "-h",
+        "--help",
+        "--schema-only",
+    }
+
+    gates_commands = _subcommand_parsers(root_commands["gates"])
+    assert _option_strings(gates_commands["list"]) == {"-h", "--help"}
+    assert _option_strings(gates_commands["plan"]) == {
+        "-h",
+        "--help",
+        "--profile",
+        "--base",
+        "--head",
+    }
+    assert _option_strings(gates_commands["run"]) == {
+        "-h",
+        "--help",
+        "--profile",
+        "--base",
+        "--head",
+        "--explain",
+    }
+
+    reviewers_commands = _subcommand_parsers(root_commands["reviewers"])
+    assert _option_strings(reviewers_commands["init"]) == {"-h", "--help", "--force"}
+    assert _option_strings(reviewers_commands["list"]) == {"-h", "--help"}
+    assert _option_strings(reviewers_commands["plan"]) == {
+        "-h",
+        "--help",
+        "--profile",
+        "--phase",
+        "--base",
+        "--head",
+    }
+    assert _option_strings(reviewers_commands["run"]) == {
+        "-h",
+        "--help",
+        "--reviewer",
+        "--feature-id",
+        "--feature-path",
+        "--prior-feedback",
+        "--base",
+        "--head",
+    }
+
+    assert _option_strings(root_commands["run"]) == {
+        "-h",
+        "--help",
+        "--all",
+        "--gate-profile",
+        "--implement-command",
+        "--opencode-prompt",
+        "--skip-implement",
+        "--dry-run",
+        "--max-iterations",
+        "--allow-dirty",
+        "--verbose-output",
+    }
+
+    fitness_commands = _subcommand_parsers(root_commands["fitness"])
+    assert _option_strings(fitness_commands["list"]) == {
+        "-h",
+        "--help",
+        "--manifest-path",
+        "--format",
+    }
+    assert _option_strings(fitness_commands["run"]) == {
+        "-h",
+        "--help",
+        "--manifest-path",
+        "--jobs",
+        "--format",
+    }
+    assert _option_strings(fitness_commands["catalog"]) == {
+        "-h",
+        "--help",
+        "--manifest-path",
+        "--format",
+        "--output",
+    }
+
+    assert _option_strings(root_commands["init"]) == {
+        "-h",
+        "--help",
+        "--force",
+        "--scaffold-profile",
+        "--docs-mode",
+        "--scaffold-docs-dir",
+        "--agents-mode",
+    }
 
 
 def test_fitness_subcommands(tmp_path: Path, capsys: Any) -> None:
@@ -111,6 +254,145 @@ def test_root_parser_still_requires_subcommand_without_version_flag(
     assert exc_info.value.code == 2
     assert captured.out == ""
     assert "the following arguments are required: command" in captured.err
+
+
+def test_main_runs_selected_handler(monkeypatch: Any) -> None:
+    recorded: dict[str, object] = {}
+
+    def _fake_run_legacy_cli_command(
+        *,
+        command: str,
+        args: list[str],
+        project_root: str,
+    ) -> int:
+        recorded["command"] = command
+        recorded["args"] = args
+        recorded["project_root"] = project_root
+        return 0
+
+    monkeypatch.setattr(
+        cli_module,
+        "_run_legacy_cli_command",
+        _fake_run_legacy_cli_command,
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        cli_module.main(
+            [
+                "--project-root",
+                "repo",
+                "validate",
+                "--schema-only",
+            ]
+        )
+
+    assert exc_info.value.code == 0
+    assert recorded == {
+        "command": "validate",
+        "args": ["--schema-only"],
+        "project_root": "repo",
+    }
+
+
+def test_main_run_command_uses_typer_handler(monkeypatch: Any) -> None:
+    recorded: dict[str, object] = {}
+
+    def _fail_if_forwarded(**_kwargs: object) -> int:
+        raise AssertionError("run command should not use legacy forwarding")
+
+    def _fake_cmd_run(args: argparse.Namespace) -> int:
+        recorded["project_root"] = args.project_root
+        recorded["feature_paths"] = args.feature_paths
+        recorded["all"] = args.all
+        recorded["gate_profile"] = args.gate_profile
+        recorded["skip_implement"] = args.skip_implement
+        recorded["dry_run"] = args.dry_run
+        recorded["max_iterations"] = args.max_iterations
+        recorded["allow_dirty"] = args.allow_dirty
+        recorded["verbose_output"] = args.verbose_output
+        return 0
+
+    monkeypatch.setattr(cli_module, "_run_legacy_cli_command", _fail_if_forwarded)
+    monkeypatch.setattr(cli_module, "cmd_run", _fake_cmd_run)
+
+    with pytest.raises(SystemExit) as exc_info:
+        cli_module.main(
+            [
+                "--project-root",
+                "repo",
+                "run",
+                "docs/spec/features/FEAT-900.yaml",
+                "--all",
+                "--gate-profile",
+                "custom",
+                "--skip-implement",
+                "--dry-run",
+                "--max-iterations",
+                "7",
+                "--allow-dirty",
+                "--verbose-output",
+            ]
+        )
+
+    assert exc_info.value.code == 0
+    assert recorded == {
+        "project_root": "repo",
+        "feature_paths": ["docs/spec/features/FEAT-900.yaml"],
+        "all": True,
+        "gate_profile": "custom",
+        "skip_implement": True,
+        "dry_run": True,
+        "max_iterations": 7,
+        "allow_dirty": True,
+        "verbose_output": True,
+    }
+
+
+def test_main_init_command_uses_typer_handler(monkeypatch: Any) -> None:
+    recorded: dict[str, object] = {}
+
+    def _fail_if_forwarded(**_kwargs: object) -> int:
+        raise AssertionError("init command should not use legacy forwarding")
+
+    def _fake_cmd_init(args: argparse.Namespace) -> int:
+        recorded["project_root"] = args.project_root
+        recorded["force"] = args.force
+        recorded["scaffold_profile"] = args.scaffold_profile
+        recorded["docs_mode"] = args.docs_mode
+        recorded["scaffold_docs_dir"] = args.scaffold_docs_dir
+        recorded["agents_mode"] = args.agents_mode
+        return 0
+
+    monkeypatch.setattr(cli_module, "_run_legacy_cli_command", _fail_if_forwarded)
+    monkeypatch.setattr(cli_module, "cmd_init", _fake_cmd_init)
+
+    with pytest.raises(SystemExit) as exc_info:
+        cli_module.main(
+            [
+                "--project-root",
+                "repo",
+                "init",
+                "--force",
+                "--scaffold-profile",
+                "python_uv",
+                "--docs-mode",
+                "separate",
+                "--scaffold-docs-dir",
+                "docs.custom",
+                "--agents-mode",
+                "preserve",
+            ]
+        )
+
+    assert exc_info.value.code == 0
+    assert recorded == {
+        "project_root": "repo",
+        "force": True,
+        "scaffold_profile": "python_uv",
+        "docs_mode": "separate",
+        "scaffold_docs_dir": "docs.custom",
+        "agents_mode": "preserve",
+    }
 
 
 def test_root_version_flag_uses_distribution_metadata_source(

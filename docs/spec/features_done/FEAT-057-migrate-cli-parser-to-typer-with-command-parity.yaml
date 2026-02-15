@@ -1,0 +1,91 @@
+id: FEAT-057
+title: Migrate CLI parser to Typer while preserving engineeringagent command parity
+type: feature
+expected_commit_subject: 'feat: add FEAT-057 typer-based CLI command parity'
+status: done
+priority: low
+objective: Adopt Typer as the CLI framework to reduce parser boilerplate while keeping
+  existing commands, flags, exit codes, and operator-facing behavior stable.
+context: The current CLI parser wiring is concentrated in a large argparse construction
+  path, which increases maintenance cost for command growth and help text drift. Typer
+  provides declarative command registration and typed option handling that can reduce
+  custom parser responsibility without changing command intent.
+constraints:
+- Preserve top-level command surface and subcommands (`validate`, `gates`, `run`,
+  `fitness`, `init`).
+- Preserve existing option names and command semantics for current automation usage.
+- Preserve parser-level interface for global `--project-root` and `--version` options.
+- Keep existing command handler functions and return-code behavior stable wherever
+  possible.
+- Keep module entrypoints working for both script invocation and module invocation.
+- Treat `typer` as a runtime dependency in `[project.dependencies]` because CLI parsing
+  is part of shipped runtime behavior.
+- Do not change gate, reviewer, or fitness policy behavior in this feature.
+- Do not add new fitness functions or change active rule catalog contents in this
+  parser migration.
+- Validation, fitness, and regression tests must pass before completion.
+implementation_notes: 'Implement Typer command registration in `src/engineeringagent/cli.py`
+  and route to existing command handlers to minimize behavioral drift. Keep command
+  execution flow deterministic and preserve existing human-readable status output
+  lines where practical.
+
+  Required integration touch points in this feature: - `src/engineeringagent/cli.py`
+  (`build_parser`, `main`, and command registration) - `pyproject.toml` dependency
+  declaration and entrypoint compatibility - parser-focused and command-dispatch tests
+  in `tests/test_cli.py` - command-specific parsing/dispatch tests in `tests/test_init_command.py`
+  - integration-oriented parser usage in `tests/test_loop_ralph_mode.py` and `tests/test_fitness_catalog_generation.py`'
+acceptance:
+- Typer is the active parser framework for `engineeringagent` command registration.
+- Existing command names, option names, and success/failure exit code semantics remain
+  stable.
+- engineeringagent help and subcommand help output keep existing command groups and
+  option spellings.
+- Command handlers continue to produce expected output and side effects for validate/gates/run/fitness/init
+  workflows.
+- '`python -m engineeringagent.cli --help` and script entrypoint help output are available
+  and deterministic.'
+- Regression tests covering parser and command routing pass after migration.
+subtasks:
+- id: ST-001
+  title: Inventory current CLI surface and lock parity expectations
+  status: done
+  order: 1
+  context: Capture existing commands/options/dispatch expectations from tests before
+    migration to reduce behavior regressions.
+  verification:
+  - uv run pytest -q tests/test_cli.py
+- id: ST-002
+  title: Introduce Typer app scaffold and root command wiring
+  status: done
+  order: 2
+  context: Add Typer app initialization and register current top-level command groups
+    with equivalent option names.
+  verification:
+  - uv run pytest -q tests/test_cli.py::test_main_runs_selected_handler
+- id: ST-003
+  title: Migrate gates and fitness command trees to Typer
+  status: done
+  order: 3
+  context: Port nested subcommands and ensure plan/list/run/catalog options map cleanly
+    to existing handlers.
+  verification:
+  - uv run pytest -q tests/test_gates.py tests/test_fitness_catalog_generation.py
+- id: ST-004
+  title: Migrate run and init command options to Typer
+  status: done
+  order: 4
+  context: Port positional and optional arguments for run and init commands, preserving
+    default values and compatibility constraints.
+  verification:
+  - uv run pytest -q tests/test_init_command.py tests/test_loop_ralph_mode.py
+- id: ST-005
+  title: Complete verification bar for parser migration
+  status: done
+  order: 5
+  context: Ensure repository contract checks and fitness outputs remain stable after
+    parser migration.
+  verification:
+  - uv run pytest -q
+  - uv run python -m engineeringagent.cli validate
+  - uv run python -m engineeringagent.cli fitness run --format json
+updated_at: '2026-02-15T00:32:23Z'

@@ -171,3 +171,43 @@ def test_reviewers_run_returns_decision_json(
         "required_actions": [],
         "summary": "Looks good.",
     }
+
+
+def test_reviewers_init_writes_baseline_files(tmp_path: Path, capsys: Any) -> None:
+    parser = build_parser()
+
+    args = parser.parse_args(["--project-root", str(tmp_path), "reviewers", "init"])
+    code = args.func(args)
+    output = capsys.readouterr().out
+
+    assert code == 0
+    assert output.strip() == "reviewers init complete: created=3 skipped=0"
+    assert (tmp_path / "harness" / "reviewers.yaml").is_file()
+    assert (
+        tmp_path / "harness" / "reviewers" / "prompts" / "code_simplifier.md"
+    ).is_file()
+    assert (
+        tmp_path / "harness" / "reviewers" / "prompts" / "readme_process.md"
+    ).is_file()
+
+
+def test_reviewers_init_skips_existing_files_without_force(
+    tmp_path: Path,
+    capsys: Any,
+) -> None:
+    parser = build_parser()
+
+    first_run = parser.parse_args(
+        ["--project-root", str(tmp_path), "reviewers", "init"]
+    )
+    assert first_run.func(first_run) == 0
+    _ = capsys.readouterr()
+
+    second_run = parser.parse_args(
+        ["--project-root", str(tmp_path), "reviewers", "init"]
+    )
+    code = second_run.func(second_run)
+    output = capsys.readouterr().out
+
+    assert code == 0
+    assert output.strip() == "reviewers init complete: created=0 skipped=3"

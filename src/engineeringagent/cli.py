@@ -4,7 +4,11 @@ import argparse
 import importlib.metadata
 import json
 import sys
+from collections.abc import Callable
 from pathlib import Path
+from typing import Literal
+
+import typer
 
 from .fitness import (
     FitnessRuleDefinition,
@@ -35,6 +39,11 @@ from .validator import validate
 _MISSING_REMEDIATION_TEMPLATE = (
     "No remediation available: rule metadata missing from active catalog for {rule_id}."
 )
+_FORWARD_CONTEXT_SETTINGS: dict[str, object] = {
+    "allow_extra_args": True,
+    "ignore_unknown_options": True,
+    "help_option_names": [],
+}
 
 
 def _resolve_manifest_path(manifest_path: str | None) -> Path | None:
@@ -898,12 +907,365 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main() -> None:
-    """Parse CLI arguments and exit with the command status."""
+def _version_callback(value: bool) -> None:
+    """Print package version and exit early when requested."""
+    if not value:
+        return
+    print(importlib.metadata.version("engineeringagent"))
+    raise typer.Exit(code=0)
+
+
+def _run_legacy_cli_command(*, command: str, args: list[str], project_root: str) -> int:
+    """Dispatch one command through the existing argparse parser."""
     parser = build_parser()
-    args = parser.parse_args()
-    code = args.func(args)
-    raise SystemExit(code)
+    parsed_args = parser.parse_args(["--project-root", project_root, command, *args])
+    return parsed_args.func(parsed_args)
+
+
+def _dispatch_legacy_typer_command(ctx: typer.Context, command: str) -> None:
+    """Forward Typer command arguments to argparse command handlers."""
+    project_root = "."
+    if isinstance(ctx.obj, dict):
+        project_root = str(ctx.obj.get("project_root", "."))
+
+    code = _run_legacy_cli_command(
+        command=command,
+        args=list(ctx.args),
+        project_root=project_root,
+    )
+    raise typer.Exit(code=code)
+
+
+def _project_root_from_typer_context(ctx: typer.Context) -> str:
+    """Extract project-root value stored on the Typer root context."""
+    root_ctx = ctx.find_root()
+    if isinstance(root_ctx.obj, dict):
+        return str(root_ctx.obj.get("project_root", "."))
+    return "."
+
+
+def _exit_with_handler_code(
+    handler: Callable[[argparse.Namespace], int],
+    *,
+    ctx: typer.Context,
+    **kwargs: object,
+) -> None:
+    """Run an argparse command handler and exit with its return code."""
+    args = argparse.Namespace(
+        project_root=_project_root_from_typer_context(ctx),
+        **kwargs,
+    )
+    raise typer.Exit(code=handler(args))
+
+
+def _register_forwarded_command(
+    app: typer.Typer,
+    *,
+    name: str,
+    help_text: str,
+) -> None:
+    """Register one Typer command that forwards to the legacy parser."""
+
+    @app.command(
+        name,
+        context_settings=_FORWARD_CONTEXT_SETTINGS,
+        help=help_text,
+    )
+    def _forwarded_command(ctx: typer.Context) -> None:
+        _dispatch_legacy_typer_command(ctx, name)
+
+
+def _build_typer_gates_app() -> typer.Typer:
+    """Build the Typer gates app with nested command routing."""
+    gates_app = typer.Typer(
+        help="run configured gate profiles",
+        add_completion=False,
+        no_args_is_help=False,
+    )
+
+    @gates_app.command("list", help="list gate profiles")
+    def _gates_list(ctx: typer.Context) -> None:
+        _exit_with_handler_code(cmd_gates_list, ctx=ctx)
+
+    @gates_app.command("plan", help="show deterministic gate run/skip plan")
+    def _gates_plan(
+        ctx: typer.Context,
+        profile: str = typer.Option(..., "--profile"),
+        base: str | None = typer.Option(None, "--base"),
+        head: str | None = typer.Option(None, "--head"),
+    ) -> None:
+        _exit_with_handler_code(
+            cmd_gates_plan,
+            ctx=ctx,
+            profile=profile,
+            base=base,
+            head=head,
+        )
+
+    @gates_app.command("run", help="run a gate profile")
+    def _gates_run(
+        ctx: typer.Context,
+        profile: str = typer.Option(..., "--profile"),
+        base: str | None = typer.Option(None, "--base"),
+        head: str | None = typer.Option(None, "--head"),
+        explain: bool = typer.Option(False, "--explain"),
+    ) -> None:
+        _exit_with_handler_code(
+            cmd_gates_run,
+            ctx=ctx,
+            profile=profile,
+            base=base,
+            head=head,
+            explain=explain,
+        )
+
+    return gates_app
+
+
+def _build_typer_fitness_app() -> typer.Typer:
+    """Build the Typer fitness app with nested command routing."""
+    fitness_app = typer.Typer(
+        help="list and run fitness-function rules",
+        add_completion=False,
+        no_args_is_help=False,
+    )
+
+    @fitness_app.command("list", help="list active fitness rules")
+    def _fitness_list(
+        ctx: typer.Context,
+        manifest_path: str | None = typer.Option(
+            None,
+            "--manifest-path",
+            help="optional path to custom fitness rules manifest",
+        ),
+        output_format: Literal["text", "json"] = typer.Option(
+            "text",
+            "--format",
+        ),
+    ) -> None:
+        _exit_with_handler_code(
+            cmd_fitness_list,
+            ctx=ctx,
+            manifest_path=manifest_path,
+            format=output_format,
+        )
+
+    @fitness_app.command("run", help="run active fitness rules")
+    def _fitness_run(
+        ctx: typer.Context,
+        manifest_path: str | None = typer.Option(
+            None,
+            "--manifest-path",
+            help="optional path to custom fitness rules manifest",
+        ),
+        jobs: int = typer.Option(
+            1,
+            "--jobs",
+            help="number of parallel fitness-rule workers",
+        ),
+        output_format: Literal["text", "json"] = typer.Option(
+            "text",
+            "--format",
+        ),
+    ) -> None:
+        _exit_with_handler_code(
+            cmd_fitness_run,
+            ctx=ctx,
+            manifest_path=manifest_path,
+            jobs=jobs,
+            format=output_format,
+        )
+
+    @fitness_app.command("catalog", help="generate fitness rule catalog")
+    def _fitness_catalog(
+        ctx: typer.Context,
+        manifest_path: str | None = typer.Option(
+            None,
+            "--manifest-path",
+            help="optional path to custom fitness rules manifest",
+        ),
+        output_format: Literal["markdown", "json"] = typer.Option(
+            "markdown",
+            "--format",
+        ),
+        output: str | None = typer.Option(
+            None,
+            "--output",
+            help="write catalog output to a file",
+        ),
+    ) -> None:
+        _exit_with_handler_code(
+            cmd_fitness_catalog,
+            ctx=ctx,
+            manifest_path=manifest_path,
+            format=output_format,
+            output=output,
+        )
+
+    return fitness_app
+
+
+def build_typer_app() -> typer.Typer:
+    """Build the Typer root app with top-level command wiring."""
+    app = typer.Typer(
+        name="engineeringagent",
+        help="Human-gated CLI harness for feature-driven coding loops.",
+        add_completion=False,
+        no_args_is_help=False,
+    )
+
+    @app.callback(invoke_without_command=False)
+    def _root_callback(
+        ctx: typer.Context,
+        project_root: str = typer.Option(".", "--project-root"),
+        version: bool = typer.Option(
+            False,
+            "--version",
+            callback=_version_callback,
+            is_eager=True,
+        ),
+    ) -> None:
+        _ = version
+        ctx.obj = {"project_root": project_root}
+
+    _register_forwarded_command(
+        app,
+        name="validate",
+        help_text="validate feature specs",
+    )
+    app.add_typer(
+        _build_typer_gates_app(),
+        name="gates",
+        help="run configured gate profiles",
+    )
+    _register_forwarded_command(
+        app,
+        name="reviewers",
+        help_text="initialize, inspect, and run harness reviewers",
+    )
+
+    @app.command("run", help="run feature loops from spec file paths")
+    def _run_command(
+        ctx: typer.Context,
+        feature_paths: list[str] | None = typer.Argument(
+            None,
+            help="feature spec file paths",
+        ),
+        run_all: bool = typer.Option(
+            False,
+            "--all",
+            help="auto-discover active feature specs under docs/spec/features",
+        ),
+        gate_profile: str = typer.Option(
+            "loop_fast",
+            "--gate-profile",
+            help="gate profile name",
+        ),
+        implement_command: str | None = typer.Option(
+            None,
+            "--implement-command",
+            help="custom implementation command; defaults to opencode build-agent run",
+        ),
+        opencode_prompt: str | None = typer.Option(
+            None,
+            "--opencode-prompt",
+            help="override generated opencode prompt when using default implementer",
+        ),
+        skip_implement: bool = typer.Option(
+            False,
+            "--skip-implement",
+            help="skip the implementation command and run gates only",
+        ),
+        dry_run: bool = typer.Option(False, "--dry-run"),
+        max_iterations: int = typer.Option(
+            50,
+            "--max-iterations",
+            help="max non-dry iterations across all selected features",
+        ),
+        allow_dirty: bool = typer.Option(
+            False,
+            "--allow-dirty",
+            help="allow run execution with uncommitted code changes",
+        ),
+        verbose_output: bool = typer.Option(
+            False,
+            "--verbose-output",
+            help="stream full implement and gate output in terminal",
+        ),
+    ) -> None:
+        _exit_with_handler_code(
+            cmd_run,
+            ctx=ctx,
+            feature_paths=feature_paths or [],
+            gate_profile=gate_profile,
+            implement_command=implement_command,
+            opencode_prompt=opencode_prompt,
+            skip_implement=skip_implement,
+            dry_run=dry_run,
+            max_iterations=max_iterations,
+            allow_dirty=allow_dirty,
+            verbose_output=verbose_output,
+            **{"all": run_all},
+        )
+
+    app.add_typer(
+        _build_typer_fitness_app(),
+        name="fitness",
+        help="list and run fitness-function rules",
+    )
+
+    @app.command(
+        "init",
+        help="scaffold baseline harness files (default core profile)",
+    )
+    def _init_command(
+        ctx: typer.Context,
+        force: bool = typer.Option(
+            False,
+            "--force",
+            help="overwrite scaffold-managed files that already exist",
+        ),
+        scaffold_profile: Literal["core", "python_uv"] = typer.Option(
+            "core",
+            "--scaffold-profile",
+            help=(
+                "scaffold profile to apply "
+                "(core=language-agnostic default, python_uv=Python/uv bootstrap)"
+            ),
+        ),
+        docs_mode: Literal["reuse", "separate"] | None = typer.Option(
+            None,
+            "--docs-mode",
+            help="docs conflict mode when docs/ already exists",
+        ),
+        scaffold_docs_dir: str = typer.Option(
+            "docs.engineeringagent",
+            "--scaffold-docs-dir",
+            help="docs directory to scaffold when using docs-mode=separate",
+        ),
+        agents_mode: Literal["overwrite", "preserve", "abort"] | None = typer.Option(
+            None,
+            "--agents-mode",
+            help="AGENTS conflict mode when AGENTS.md already exists",
+        ),
+    ) -> None:
+        _exit_with_handler_code(
+            cmd_init,
+            ctx=ctx,
+            force=force,
+            scaffold_profile=scaffold_profile,
+            docs_mode=docs_mode,
+            scaffold_docs_dir=scaffold_docs_dir,
+            agents_mode=agents_mode,
+        )
+
+    return app
+
+
+def main(argv: list[str] | None = None) -> None:
+    """Parse CLI arguments with Typer and exit with command status."""
+    app = build_typer_app()
+    app(args=argv, prog_name="engineeringagent")
 
 
 if __name__ == "__main__":

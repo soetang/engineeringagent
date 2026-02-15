@@ -10,6 +10,7 @@ from typing import Any
 import pytest
 import yaml
 
+from engineeringagent import cli as cli_module
 from engineeringagent.cli import cmd_gates_plan, cmd_gates_run
 from engineeringagent.gates import (
     ALWAYS_RUN_NO_ON_CHANGE_REASON,
@@ -965,6 +966,54 @@ def test_cmd_gates_run_output_behavior_unchanged(tmp_path: Path, capfd: Any) -> 
     assert code == 0
     assert output_token in output
     assert "gates profile passed: loop_fast" in output
+
+
+def test_main_uses_typer_gates_tree_without_legacy_forward(monkeypatch: Any) -> None:
+    captured: dict[str, Any] = {}
+
+    def _unexpected_legacy_forward(*_args: Any, **_kwargs: Any) -> int:
+        raise AssertionError("legacy argparse forward should not handle gates")
+
+    def _fake_cmd_gates_run(args: Namespace) -> int:
+        captured["project_root"] = args.project_root
+        captured["profile"] = args.profile
+        captured["base"] = args.base
+        captured["head"] = args.head
+        captured["explain"] = args.explain
+        return 7
+
+    monkeypatch.setattr(
+        cli_module,
+        "_run_legacy_cli_command",
+        _unexpected_legacy_forward,
+    )
+    monkeypatch.setattr(cli_module, "cmd_gates_run", _fake_cmd_gates_run)
+
+    with pytest.raises(SystemExit) as exc_info:
+        cli_module.main(
+            [
+                "--project-root",
+                "repo",
+                "gates",
+                "run",
+                "--profile",
+                "loop_fast",
+                "--base",
+                "origin/main",
+                "--head",
+                "HEAD",
+                "--explain",
+            ]
+        )
+
+    assert exc_info.value.code == 7
+    assert captured == {
+        "project_root": "repo",
+        "profile": "loop_fast",
+        "base": "origin/main",
+        "head": "HEAD",
+        "explain": True,
+    }
 
 
 def test_cmd_gates_plan_supports_base_and_head_inputs(

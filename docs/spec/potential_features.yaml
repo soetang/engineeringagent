@@ -76,3 +76,20 @@ potential_features:
       - "Role definitions exist for implementer, reviewer, and refactor agents"
       - "Negotiation protocol defines acceptance, rejection, and escalation paths"
       - "Loop integration points for review feedback are documented"
+  - id: POT-012
+    title: Automate per-run branch creation and GitHub pull request workflow
+    status: idea
+    context: >
+      For each non-dry loop run, create a new git branch first, run the loop on that
+      branch, then create a GitHub pull request with all resulting changes using gh.
+      This keeps loop output isolated from the base branch and makes review handoff
+      automatic.
+    value:
+      - "Reduces risk of accidental direct commits to long-lived branches"
+      - "Creates a consistent review handoff artifact for every completed loop"
+      - "Improves auditability by tying each run to a branch and PR"
+    acceptance_hint:
+      - "Each non-dry run creates and switches to a fresh branch before iteration work"
+      - "When loop work produces commits, branch is pushed and PR is created via gh"
+      - "No-change runs skip PR creation with a clear terminal reason"
+      - "Missing remote or gh auth failures are surfaced with actionable remediation"

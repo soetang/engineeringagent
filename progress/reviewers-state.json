@@ -12,6 +12,18 @@
         }
       }
     },
+    "FEAT-057": {
+      "reviewers": {
+        "code_simplifier": {
+          "approved": true,
+          "approved_at": "2026-02-15T00:30:25Z",
+          "blocking_request_changes_count": 0,
+          "blocking_retry_updated_at": "2026-02-15T00:30:25Z",
+          "invalidated_at": "2026-02-15T00:29:47Z",
+          "updated_at": "2026-02-15T00:16:00Z"
+        }
+      }
+    },
     "FEAT-059": {
       "reviewers": {
         "code_simplifier": {
