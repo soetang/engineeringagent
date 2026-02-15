@@ -1,5 +1,7 @@
 # Engineering Agent
 
+# WARNING THIS REPO IS STILL BEING BUILD SCAFOLDING DEFINITELY DONT WORK AS WE WANT YET
+
 Engineeringagent is a CLI that helps you implement code changes directly from feature specs.
 It pairs an agent loop with repository-owned harnesses (validators, gates, fitness functions,
 and optional reviewer agents).
