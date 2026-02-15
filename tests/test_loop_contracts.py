@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import inspect
 import json
+import subprocess
+import sys
 from inspect import Parameter
 from pathlib import Path
 
 import engineeringagent.loop as loop_module
+import engineeringagent.progress_paths as progress_paths
 import yaml
 from pydantic import BaseModel
 
@@ -14,6 +17,24 @@ from engineeringagent.loop_runtime.models import (
     IterationTelemetryInputs,
 )
 from engineeringagent.loop_runtime.telemetry import write_iteration_telemetry
+
+
+def test_progress_paths_contract(tmp_path: Path) -> None:
+    assert progress_paths.runs_jsonl_path(tmp_path) == (
+        tmp_path / "progress" / "runs.jsonl"
+    )
+    assert progress_paths.run_feature_log_path(tmp_path, "FEAT-040") == (
+        tmp_path / "progress" / "run-feature-FEAT-040.txt"
+    )
+    assert progress_paths.run_feature_log_reference(tmp_path, "FEAT-040") == (
+        "progress/run-feature-FEAT-040.txt"
+    )
+    assert progress_paths.run_feature_log_reference(tmp_path, "FEAT 040/../../") == (
+        "progress/run-feature-FEAT_040.txt"
+    )
+    assert progress_paths.run_feature_log_reference(tmp_path, "!!!") == (
+        "progress/run-feature-unknown-feature.txt"
+    )
 
 
 def _assert_signature_parameters(
@@ -196,6 +217,110 @@ def test_harness_root_yaml_only_rule_configuration() -> None:
         "python",
         "harness/fitness-functions/check_harness_root_yaml_only.py",
     ]
+
+
+def test_progress_log_path_locality_rule_configuration() -> None:
+    manifest_path = Path("harness/fitness-functions/rules.yaml")
+    manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+
+    rules = manifest["rules"]
+    locality_rules = [
+        rule
+        for rule in rules
+        if isinstance(rule, dict)
+        and rule.get("rule_id") == "architecture.progress-log-path-locality"
+    ]
+
+    assert len(locality_rules) == 1
+    rule = locality_rules[0]
+    assert rule["adapter"] == "command"
+    assert rule["severity"] == "error"
+    assert rule["command"] == [
+        "uv",
+        "run",
+        "python",
+        "harness/fitness-functions/check_progress_log_locality.py",
+    ]
+
+
+def test_progress_log_path_locality_rule_detects_inline_paths(tmp_path: Path) -> None:
+    project_root = tmp_path
+    source_root = project_root / "src" / "engineeringagent"
+    source_root.mkdir(parents=True)
+    (source_root / "progress_paths.py").write_text(
+        'RUNS_JSONL_FILENAME = "runs.jsonl"\n',
+        encoding="utf-8",
+    )
+    (source_root / "bad_paths.py").write_text(
+        'RUNS_PATH = "progress/runs.jsonl"\n',
+        encoding="utf-8",
+    )
+
+    script_path = (
+        Path(__file__).resolve().parents[1]
+        / "harness"
+        / "fitness-functions"
+        / "check_progress_log_locality.py"
+    )
+    completed = subprocess.run(
+        [sys.executable, str(script_path)],
+        cwd=project_root,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    envelope = json.loads(completed.stdout)
+    assert envelope["rule_id"] == "architecture.progress-log-path-locality"
+    assert envelope["status"] == "fail"
+    assert any(
+        violation.startswith("src/engineeringagent/bad_paths.py:1")
+        for violation in envelope["violations"]
+    )
+
+
+def test_progress_log_path_locality_rule_detects_direct_writes(tmp_path: Path) -> None:
+    project_root = tmp_path
+    source_root = project_root / "src" / "engineeringagent"
+    source_root.mkdir(parents=True)
+    (source_root / "progress_paths.py").write_text(
+        'RUNS_JSONL_FILENAME = "runs.jsonl"\n',
+        encoding="utf-8",
+    )
+    (source_root / "bad_writes.py").write_text(
+        """
+import engineeringagent.progress_paths as progress_paths
+
+
+def write_bad(root):
+    log_path = progress_paths.runs_jsonl_path(root)
+    with log_path.open(\"a\", encoding=\"utf-8\") as handle:
+        handle.write(\"{}\\n\")
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    script_path = (
+        Path(__file__).resolve().parents[1]
+        / "harness"
+        / "fitness-functions"
+        / "check_progress_log_locality.py"
+    )
+    completed = subprocess.run(
+        [sys.executable, str(script_path)],
+        cwd=project_root,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    envelope = json.loads(completed.stdout)
+    assert envelope["rule_id"] == "architecture.progress-log-path-locality"
+    assert envelope["status"] == "fail"
+    assert any(
+        violation.startswith("src/engineeringagent/bad_writes.py:6")
+        for violation in envelope["violations"]
+    )
 
 
 def test_iteration_outcome_includes_verification_status() -> None:

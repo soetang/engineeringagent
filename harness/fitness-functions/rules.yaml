@@ -61,6 +61,20 @@ rules:
       - run
       - python
       - harness/fitness-functions/check_prompt_locality.py
+  - rule_id: architecture.progress-log-path-locality
+    name: Progress log path locality
+    summary: Centralize loop progress artifact paths and writes behind approved helpers.
+    rationale: Prevents regressions that reintroduce inline progress/log path literals or direct file writes.
+    remediation: Construct paths via engineeringagent.progress_paths and write loop log sinks via engineeringagent.progress_logging.
+    scope: src/engineeringagent
+    severity: error
+    side_effect_free: true
+    adapter: command
+    command:
+      - uv
+      - run
+      - python
+      - harness/fitness-functions/check_progress_log_locality.py
   - rule_id: architecture.scaffold-template-locality
     name: Scaffold template locality
     summary: Keep scaffold template payloads in scaffold_templates assets.

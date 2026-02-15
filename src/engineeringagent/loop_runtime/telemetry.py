@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
-import json
 import re
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Sequence
+
+import engineeringagent.progress_logging as progress_logging
+import engineeringagent.progress_paths as progress_paths
 
 from .models import IterationTelemetryInputs
 
@@ -26,27 +28,11 @@ def now_iso() -> str:
 
 def append_run(log_path: Path, payload: dict[str, Any]) -> None:
     """Append one loop telemetry record as JSONL."""
-    log_path.parent.mkdir(parents=True, exist_ok=True)
-    with log_path.open("a", encoding="utf-8") as file_handle:
-        file_handle.write(json.dumps(payload, ensure_ascii=True) + "\n")
-
-
-def _sanitize_feature_id_for_log(feature_id: str) -> str:
-    sanitized = "".join(
-        char if char.isalnum() or char in {"-", "_"} else "_" for char in feature_id
-    ).strip("_")
-    return sanitized or "unknown-feature"
-
-
-def _resolve_feature_progress_log_path(project_root: Path, feature_id: str) -> Path:
-    safe_feature_id = _sanitize_feature_id_for_log(feature_id)
-    return project_root / "progress" / f"run-feature-{safe_feature_id}.txt"
+    progress_logging.append_jsonl_record(log_path=log_path, payload=payload)
 
 
 def _append_feature_progress_log(log_path: Path, lines: Sequence[str]) -> None:
-    log_path.parent.mkdir(parents=True, exist_ok=True)
-    with log_path.open("a", encoding="utf-8") as file_handle:
-        file_handle.write("\n".join(lines) + "\n")
+    progress_logging.append_text_block(log_path=log_path, lines=lines)
 
 
 def _truncate_feedback(text: str, max_chars: int = 8_000) -> str:
@@ -108,21 +94,15 @@ def write_iteration_telemetry(
     git_head_resolver: Callable[[Path], str | None],
 ) -> str:
     """Persist telemetry JSONL and per-feature progress log for one iteration."""
-    runs_log = (
-        telemetry_inputs.iteration_inputs.project_root / "progress" / "runs.jsonl"
+    project_root = telemetry_inputs.iteration_inputs.project_root
+    feature_id = telemetry_inputs.feature_id or "unknown-feature"
+    runs_log = progress_paths.runs_jsonl_path(project_root)
+    feature_progress_log_path = progress_paths.run_feature_log_path(
+        project_root, feature_id
     )
-    feature_progress_log_path = _resolve_feature_progress_log_path(
-        telemetry_inputs.iteration_inputs.project_root,
-        telemetry_inputs.feature_id or "unknown-feature",
+    feature_progress_log_reference = progress_paths.run_feature_log_reference(
+        project_root, feature_id
     )
-    try:
-        feature_progress_log_reference = str(
-            feature_progress_log_path.relative_to(
-                telemetry_inputs.iteration_inputs.project_root
-            )
-        )
-    except ValueError:
-        feature_progress_log_reference = str(feature_progress_log_path)
 
     run_payload: dict[str, Any] = {
         "ts": now_iso(),
@@ -137,7 +117,7 @@ def write_iteration_telemetry(
         "failed_reviewer_id": telemetry_inputs.failed_reviewer_id,
         "duration_sec": int(time.time() - telemetry_inputs.started),
         "attempt": telemetry_inputs.iteration_inputs.attempt,
-        "commit": git_head_resolver(telemetry_inputs.iteration_inputs.project_root),
+        "commit": git_head_resolver(project_root),
         "next_action": telemetry_inputs.next_action,
         "log_path": feature_progress_log_reference,
     }
@@ -155,13 +135,13 @@ def write_iteration_telemetry(
         f"{run_payload['ts']} attempt={telemetry_inputs.iteration_inputs.attempt} "
         f"feature_id={run_payload.get('feature_id') or 'unknown-feature'}",
         f"feature_path={telemetry_inputs.iteration_inputs.feature_path}",
-        f"implement={_strip_ansi(telemetry_inputs.implement_status)}",
-        f"gates={_strip_ansi(telemetry_inputs.gate_status)}",
+        f"implement={telemetry_inputs.implement_status}",
+        f"gates={telemetry_inputs.gate_status}",
         "verification="
-        f"{_strip_ansi(telemetry_inputs.verification_status)}"
+        f"{telemetry_inputs.verification_status}"
         f" failed_command={telemetry_inputs.verification_failed_command or '-'}",
         "reviewer="
-        f"{_strip_ansi(telemetry_inputs.reviewer_status)}"
+        f"{telemetry_inputs.reviewer_status}"
         f" decision={telemetry_inputs.reviewer_decision or '-'}"
         f" failed_reviewer={telemetry_inputs.failed_reviewer_id or '-'}",
         "reviewer_feedback="
@@ -175,7 +155,7 @@ def write_iteration_telemetry(
         feature_progress_log_lines.extend(
             [
                 "implement_output_begin",
-                _strip_ansi(telemetry_inputs.implement_output.rstrip("\n")),
+                telemetry_inputs.implement_output.rstrip("\n"),
                 "implement_output_end",
             ]
         )
@@ -183,7 +163,7 @@ def write_iteration_telemetry(
         feature_progress_log_lines.extend(
             [
                 "gate_output_begin",
-                _strip_ansi(telemetry_inputs.gate_output.rstrip("\n")),
+                telemetry_inputs.gate_output.rstrip("\n"),
                 "gate_output_end",
             ]
         )
@@ -191,7 +171,7 @@ def write_iteration_telemetry(
         feature_progress_log_lines.extend(
             [
                 "verification_output_begin",
-                _strip_ansi(telemetry_inputs.verification_output.rstrip("\n")),
+                telemetry_inputs.verification_output.rstrip("\n"),
                 "verification_output_end",
             ]
         )
@@ -199,7 +179,7 @@ def write_iteration_telemetry(
         feature_progress_log_lines.extend(
             [
                 "reviewer_output_begin",
-                _strip_ansi(telemetry_inputs.reviewer_output.rstrip("\n")),
+                telemetry_inputs.reviewer_output.rstrip("\n"),
                 "reviewer_output_end",
             ]
         )
@@ -213,7 +193,7 @@ def write_iteration_telemetry(
         )
     if telemetry_inputs.hook_feedback:
         feature_progress_log_lines.append(
-            f"detail={_strip_ansi(_truncate_feedback(telemetry_inputs.hook_feedback))}"
+            f"detail={_truncate_feedback(telemetry_inputs.hook_feedback)}"
         )
     _append_feature_progress_log(
         feature_progress_log_path,

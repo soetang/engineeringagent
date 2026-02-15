@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 from engineeringagent.gates import ChangedPathsResult
+import engineeringagent.progress_paths as progress_paths
 from engineeringagent.reviewers import (
     FIRST_FEATURE_APPROVAL_INVALIDATED_REASON,
     FIRST_FEATURE_APPROVAL_INVALIDATED_RUN_ALL_REASON,
@@ -14,6 +16,12 @@ from engineeringagent.reviewers import (
     record_reviewer_approval,
     save_reviewers_state,
 )
+
+
+def test_reviewers_state_path_helper(tmp_path: Path) -> None:
+    assert progress_paths.reviewers_state_path(tmp_path) == (
+        tmp_path / "progress" / "reviewers-state.json"
+    )
 
 
 def test_reviewers_state_round_trip_under_progress_directory(tmp_path) -> None:

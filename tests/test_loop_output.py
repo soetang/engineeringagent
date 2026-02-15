@@ -82,6 +82,129 @@ def test_progress_log_records_verification_status(tmp_path: Path) -> None:
     assert "reviewer_output_end" in feature_log
 
 
+def test_progress_log_writes_do_not_use_path_open(
+    tmp_path: Path,
+    monkeypatch: Any,
+) -> None:
+    iteration_inputs = FeatureIterationInputs(
+        project_root=tmp_path,
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-040.yaml",
+        gate_profile="loop_fast",
+        implement_command=None,
+        skip_implement=False,
+        attempt=1,
+        hook_feedback=None,
+        verbose_output=False,
+    )
+    telemetry_inputs = IterationTelemetryInputs(
+        iteration_inputs=iteration_inputs,
+        started=0.0,
+        feature_id="FEAT-040",
+        result="passed",
+        failed_gate=None,
+        next_action="advance_to_next_feature",
+        implement_status="passed",
+        gate_status="passed",
+        verification_status="passed",
+        verification_failed_command=None,
+        reviewer_status="not_run",
+        reviewer_decision=None,
+        failed_reviewer_id=None,
+        implement_output="ok",
+        gate_output="ok",
+        verification_output="ok",
+        reviewer_output="",
+        hook_feedback="",
+    )
+
+    original_open = Path.open
+
+    def _path_open_forbidden(*_args: Any, **_kwargs: Any) -> Any:
+        raise AssertionError(
+            "Direct Path.open() writes are forbidden for progress log sinks; "
+            "use logging handlers."
+        )
+
+    monkeypatch.setattr(Path, "open", _path_open_forbidden)
+    try:
+        write_iteration_telemetry(
+            telemetry_inputs,
+            git_head_resolver=lambda _: "abc1234",
+        )
+    finally:
+        monkeypatch.setattr(Path, "open", original_open)
+
+    assert (tmp_path / "progress" / "runs.jsonl").exists()
+    assert (tmp_path / "progress" / "run-feature-FEAT-040.txt").exists()
+
+
+def test_progress_log_strips_ansi_only_at_write_time(
+    tmp_path: Path,
+    monkeypatch: Any,
+) -> None:
+    import engineeringagent.loop_runtime.telemetry as telemetry_module
+
+    implement_status = "\x1b[31mpassed\x1b[0m"
+    gate_status = "\x1b[32mpassed\x1b[0m"
+
+    iteration_inputs = FeatureIterationInputs(
+        project_root=tmp_path,
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-040.yaml",
+        gate_profile="loop_fast",
+        implement_command=None,
+        skip_implement=False,
+        attempt=1,
+        hook_feedback=None,
+        verbose_output=False,
+    )
+    telemetry_inputs = IterationTelemetryInputs(
+        iteration_inputs=iteration_inputs,
+        started=0.0,
+        feature_id="FEAT-040",
+        result="passed",
+        failed_gate=None,
+        next_action="advance_to_next_feature",
+        implement_status=implement_status,
+        gate_status=gate_status,
+        verification_status="passed",
+        verification_failed_command=None,
+        reviewer_status="not_run",
+        reviewer_decision=None,
+        failed_reviewer_id=None,
+        implement_output="",
+        gate_output="",
+        verification_output="",
+        reviewer_output="",
+        hook_feedback="",
+    )
+
+    original_strip_ansi = telemetry_module._strip_ansi
+    strip_inputs: list[str] = []
+
+    def _tracking_strip_ansi(text: str) -> str:
+        strip_inputs.append(text)
+        return original_strip_ansi(text)
+
+    monkeypatch.setattr(telemetry_module, "_strip_ansi", _tracking_strip_ansi)
+
+    write_iteration_telemetry(
+        telemetry_inputs,
+        git_head_resolver=lambda _: "abc1234",
+    )
+
+    implement_line = f"implement={implement_status}"
+    gates_line = f"gates={gate_status}"
+    assert implement_status not in strip_inputs
+    assert gate_status not in strip_inputs
+    assert implement_line in strip_inputs
+    assert gates_line in strip_inputs
+
+    feature_log = (tmp_path / "progress" / "run-feature-FEAT-040.txt").read_text(
+        encoding="utf-8"
+    )
+    assert "\x1b[" not in feature_log
+
+
 def test_progress_log_records_code_simplifier_advisory_followup_status(
     tmp_path: Path,
 ) -> None:

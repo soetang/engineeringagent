@@ -6,14 +6,16 @@ This file is generated from active manifest-declared fitness rules.
 
 | Rule ID | Severity | Adapter | Source | Scope | Summary |
 | --- | --- | --- | --- | --- | --- |
-| `architecture.dep-directionality` | error | python | builtin | `src/engineeringagent` | Enforce core module import direction boundaries. |
+| `architecture.dep-directionality` | error | command | custom | `src/engineeringagent` | Enforce core module import direction boundaries. |
+| `architecture.harness-root-yaml-only` | error | command | custom | `harness/ (regular files at root)` | Enforce YAML-only regular files directly under harness root. |
 | `architecture.loop-facade-line-budget` | error | command | custom | `src/engineeringagent/loop.py` | Enforce a permanent line budget cap for the loop facade. |
-| `architecture.loop-subprocess-boundary` | error | python | builtin | `src/engineeringagent` | Enforce subprocess allowlist boundaries for command adapters/clients. |
-| `architecture.markdown-locality-reference-coverage` | error | python | builtin | `repository markdown (*.md)` | Restrict markdown to approved paths and require non-doc markdown files to be referenced in-repo. |
+| `architecture.loop-subprocess-boundary` | error | command | custom | `src/engineeringagent` | Enforce subprocess allowlist boundaries for command adapters/clients. |
+| `architecture.markdown-locality-reference-coverage` | error | command | custom | `repository markdown (*.md)` | Restrict markdown to approved paths and require non-doc markdown files to be referenced in-repo. |
 | `architecture.no-non-ignorable-ruff-suppressions` | error | command | custom | `src tests harness` | Block suppression directives for configured high-value Ruff rules. |
 | `architecture.no-stdlib-dataclasses-in-src` | error | command | custom | `src/engineeringagent` | Block stdlib dataclasses usage in production source models. |
-| `architecture.prompt-locality` | error | python | builtin | `src/engineeringagent` | Keep canonical loop prompt content and template reads localized. |
-| `architecture.scaffold-template-locality` | error | python | builtin | `src/engineeringagent` | Keep scaffold template payloads in scaffold_templates assets. |
+| `architecture.progress-log-path-locality` | error | command | custom | `src/engineeringagent` | Centralize loop progress artifact paths and writes behind approved helpers. |
+| `architecture.prompt-locality` | error | command | custom | `src/engineeringagent` | Keep canonical loop prompt content and template reads localized. |
+| `architecture.scaffold-template-locality` | error | command | custom | `src/engineeringagent` | Keep scaffold template payloads in scaffold_templates assets. |
 | `architecture.source-first-loop-command-policy` | error | command | custom | `docs/spec/features/*.yaml and harness/gates.yaml` | Enforce source-first workspace execution for loop command surfaces. |
 
 ## Rule Details
@@ -24,6 +26,13 @@ This file is generated from active manifest-declared fitness rules.
 - Side-effect free: `true`
 - Rationale: Keeps orchestration and contracts layered for reviewability.
 - Remediation: Refactor imports to follow the declared architecture boundaries.
+
+### `architecture.harness-root-yaml-only`
+
+- Name: Harness root YAML-only
+- Side-effect free: `true`
+- Rationale: Keeps harness root manifest-only and prevents executable/policy file sprawl at repository root policy surfaces.
+- Remediation: Move non-YAML root files under harness/fitness-functions or another harness subdirectory; keep only *.yaml/*.yml files at harness root.
 
 ### `architecture.loop-facade-line-budget`
 
@@ -59,6 +68,13 @@ This file is generated from active manifest-declared fitness rules.
 - Side-effect free: `true`
 - Rationale: Enforces a single Pydantic BaseModel contract in src/engineeringagent.
 - Remediation: Replace stdlib dataclasses usage with pydantic.BaseModel models.
+
+### `architecture.progress-log-path-locality`
+
+- Name: Progress log path locality
+- Side-effect free: `true`
+- Rationale: Prevents regressions that reintroduce inline progress/log path literals or direct file writes.
+- Remediation: Construct paths via engineeringagent.progress_paths and write loop log sinks via engineeringagent.progress_logging.
 
 ### `architecture.prompt-locality`
 

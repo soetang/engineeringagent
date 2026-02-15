@@ -7,6 +7,7 @@ import pytest
 from typer.testing import CliRunner
 
 from engineeringagent import cli as cli_module
+from engineeringagent.fitness import build_rule_catalog, render_rule_catalog_markdown
 
 
 def test_fitness_catalog_markdown_generation(tmp_path: Path) -> None:
@@ -60,6 +61,16 @@ def test_fitness_catalog_markdown_generation(tmp_path: Path) -> None:
     assert "`architecture.loop-subprocess-boundary`" not in markdown
     assert "Rationale: Keeps custom adapters interoperable." in markdown
     assert "Remediation: Update custom command output to the contract." in markdown
+
+
+def test_repo_fitness_catalog_markdown_is_up_to_date() -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    output_path = repo_root / "docs" / "fitness-functions" / "rules.md"
+
+    expected = render_rule_catalog_markdown(build_rule_catalog(repo_root)) + "\n"
+    actual = output_path.read_text(encoding="utf-8")
+
+    assert actual == expected
 
 
 def test_main_uses_typer_fitness_tree_without_legacy_forward(monkeypatch: Any) -> None:

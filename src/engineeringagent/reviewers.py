@@ -12,6 +12,8 @@ from typing import Any, Callable, Iterator
 
 from pydantic import BaseModel, ConfigDict
 
+import engineeringagent.progress_paths as progress_paths
+
 from .gates import ChangedPathsResult
 from .on_change_matcher import path_matches_any_glob
 from .opencode.client import DEFAULT_OPENCODE_AGENT
@@ -98,21 +100,24 @@ def _default_reviewers_state() -> dict[str, Any]:
 
 
 def load_reviewers_state(project_root: Path) -> dict[str, Any]:
-    """Load persisted reviewer state from progress/reviewers-state.json."""
-    state_path = project_root / "progress" / "reviewers-state.json"
+    """Load persisted reviewer state from the progress state file."""
+
+    default = _default_reviewers_state()
+
+    state_path = progress_paths.reviewers_state_path(project_root)
     if not state_path.exists():
-        return _default_reviewers_state()
+        return default
 
     try:
         payload = json.loads(state_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
-        return _default_reviewers_state()
+        return default
 
     if not isinstance(payload, dict):
-        return _default_reviewers_state()
+        return default
     features = payload.get("features")
     if not isinstance(features, dict):
-        return _default_reviewers_state()
+        return default
     return {
         "version": str(payload.get("version", REVIEWERS_STATE_VERSION)),
         "features": features,
@@ -120,8 +125,9 @@ def load_reviewers_state(project_root: Path) -> dict[str, Any]:
 
 
 def save_reviewers_state(project_root: Path, state: dict[str, Any]) -> None:
-    """Persist reviewer state under progress/reviewers-state.json."""
-    state_path = project_root / "progress" / "reviewers-state.json"
+    """Persist reviewer state under the progress state file."""
+
+    state_path = progress_paths.reviewers_state_path(project_root)
     state_path.parent.mkdir(parents=True, exist_ok=True)
     state_path.write_text(
         json.dumps(state, indent=2, sort_keys=True, ensure_ascii=True) + "\n",
@@ -449,9 +455,7 @@ def run_reviewer(
 
     stdout = (getattr(proc, "stdout", "") or "").strip()
     stderr = (getattr(proc, "stderr", "") or "").strip()
-    parse_input = (
-        stdout if stdout else "\n".join(part for part in [stdout, stderr] if part)
-    )
+    parse_input = stdout or stderr
     if not parse_input:
         return _parser_failure_decision("reviewer produced empty output")
     return parse_reviewer_decision(parse_input)
