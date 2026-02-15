@@ -99,7 +99,7 @@ def build_baseline_scaffold_manifest(
     Args:
         docs_dir: Docs root directory where spec files should be scaffolded.
         profile: Scaffold profile that determines language/tool defaults.
-        include_reviewers: Whether to include baseline reviewer harness scaffolding.
+        include_reviewers: Backward-compatible no-op; init does not seed reviewers.
 
     Returns:
         Mapping of relative file paths to scaffolded file contents.
@@ -157,73 +157,6 @@ def build_baseline_scaffold_manifest(
         **_build_reference_docs_manifest(normalized_docs_dir),
     }
 
-    if include_reviewers:
-        manifest.update(
-            {
-                "harness/reviewers.yaml": yaml.safe_dump(
-                    {
-                        "contract_version": "1.0",
-                        "profiles": {
-                            "loop_fast": ["code_simplifier", "readme_process"],
-                        },
-                        "reviewers": {
-                            "code_simplifier": {
-                                "prompt_file": "harness/reviewers/prompts/code_simplifier.md",
-                                "trigger": {
-                                    "phase": "iteration_end",
-                                    "on_change": ["src/**/*.py", "tests/**/*.py"],
-                                },
-                                "approval": {
-                                    "mode": "advisory",
-                                    "first_feature_approval": True,
-                                    "max_retries": 2,
-                                    "continue_on_exhausted": True,
-                                },
-                            },
-                            "readme_process": {
-                                "prompt_file": "harness/reviewers/prompts/readme_process.md",
-                                "trigger": {
-                                    "phase": "feature_done",
-                                    "on_change": ["README.md"],
-                                },
-                                "sandbox": {
-                                    "mode": "temp_worktree_snapshot",
-                                },
-                                "approval": {
-                                    "mode": "blocking",
-                                    "first_feature_approval": True,
-                                    "max_retries": 2,
-                                    "continue_on_exhausted": True,
-                                },
-                            },
-                        },
-                    },
-                    sort_keys=False,
-                    allow_unicode=False,
-                ),
-                "harness/reviewers/prompts/code_simplifier.md": (
-                    _render_scaffold_template("reviewer.prompt.code_simplifier.md")
-                ),
-                "harness/reviewers/prompts/readme_process.md": (
-                    "Review README.md getting-started/bootstrap instructions for clean-room first-run reliability.\n\n"
-                    "Execution requirements:\n"
-                    "1. Read README.md and identify the documented setup/bootstrap flow.\n"
-                    "2. Create a new temporary directory and run the documented setup there.\n"
-                    "3. Confirm setup reaches a usable scaffolded state (required generated files and validation commands, when listed).\n"
-                    "4. Do not assume unstated steps; treat missing or ambiguous instructions as failures.\n\n"
-                    "Decision policy:\n"
-                    "- Return decision=approve only when the clean-room run succeeds end-to-end.\n"
-                    "- Return decision=request_changes when setup fails, instructions are ambiguous, or scaffold state is incomplete.\n"
-                    "- For each failure, required_actions must classify the fix surface as README instructions, init/scaffold command behavior, or both.\n\n"
-                    "Output contract:\n"
-                    "- Return strict JSON only (no markdown, no prose outside JSON).\n"
-                    "- Required keys: decision, summary.\n"
-                    "- Optional key: required_actions (list of actionable strings).\n"
-                    "- Allowed decisions: approve, request_changes, warning.\n"
-                ),
-            }
-        )
-
     return manifest
 
 
@@ -241,7 +174,7 @@ def apply_baseline_scaffold(
         force: Whether to overwrite files that already exist.
         docs_dir: Docs root directory where spec files should be scaffolded.
         profile: Scaffold profile that determines language/tool defaults.
-        include_reviewers: Whether to include baseline reviewer harness scaffolding.
+        include_reviewers: Backward-compatible no-op; init does not seed reviewers.
 
     Returns:
         Tuple of (created_count, skipped_count).

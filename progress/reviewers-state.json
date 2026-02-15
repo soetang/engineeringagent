@@ -34,6 +34,18 @@
           "updated_at": "2026-02-14T23:48:11Z"
         }
       }
+    },
+    "FEAT-061": {
+      "reviewers": {
+        "code_simplifier": {
+          "approved": false,
+          "approved_at": "2026-02-14T23:57:57Z",
+          "blocking_request_changes_count": 0,
+          "blocking_retry_updated_at": "2026-02-14T23:57:57Z",
+          "invalidated_at": "2026-02-14T23:59:36Z",
+          "updated_at": "2026-02-14T23:59:58Z"
+        }
+      }
     }
   },
   "version": "1"

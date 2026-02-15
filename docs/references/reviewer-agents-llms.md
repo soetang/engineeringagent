@@ -8,6 +8,7 @@ and never replace them.
 
 - Reviewer config is repository-local: `harness/reviewers.yaml`.
 - Reviewer prompts are repository-local markdown files under `harness/reviewers/prompts/`.
+- `engineeringagent init` does not seed reviewer files; reviewer setup is explicit via committed harness files or `engineeringagent reviewers init`.
 - Reviewer execution uses shared OpenCode invocation with `agent=build`.
 - Reviewer output must be strict machine-parseable JSON.
 
@@ -234,7 +235,7 @@ Blocking path (`feature_done`):
 
 ## Troubleshooting
 
-- If validation fails, run `uvx --from . engineeringagent validate` and fix `harness/reviewers.yaml` contract issues first.
+- If validation fails, run `uv run python -m engineeringagent.cli validate` and fix `harness/reviewers.yaml` contract issues first.
 - If a reviewer always returns `request_changes` with parser-failure summary, ensure prompt output is strict JSON only.
 - If prompt file errors occur, confirm `prompt_file` path exists under `harness/reviewers/prompts/`.
 - If planner unexpectedly skips a reviewer, confirm phase and `trigger.on_change` patterns against changed paths.

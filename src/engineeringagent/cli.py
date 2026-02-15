@@ -616,7 +616,6 @@ def cmd_init(args: argparse.Namespace) -> int:
         force=args.force,
         docs_dir=docs_dir,
         profile=args.scaffold_profile,
-        include_reviewers=args.include_reviewers,
     )
     config_created, config_skipped = _write_init_docs_root_config(
         project_root,
@@ -893,11 +892,6 @@ def build_parser() -> argparse.ArgumentParser:
         "--agents-mode",
         choices=["overwrite", "preserve", "abort"],
         help="AGENTS conflict mode when AGENTS.md already exists",
-    )
-    init_parser.add_argument(
-        "--include-reviewers",
-        action="store_true",
-        help="include baseline harness reviewers scaffold files",
     )
     init_parser.set_defaults(func=cmd_init)
 

@@ -90,6 +90,7 @@ the git diff before committing anything produced by `init`.
 ## Reviewer agents (optional)
 
 - Reviewer agents are a harness-managed complement to deterministic gates, configured in `harness/reviewers.yaml`.
+- `engineeringagent init` does not scaffold reviewer config or prompts; keep reviewer policy repository-owned through committed harness files.
 - Use `uvx engineeringagent reviewers init` to scaffold a baseline config and prompt files under `harness/reviewers/prompts/`.
 - Use `uvx engineeringagent reviewers list|plan|run` to inspect and test reviewer behavior.
 - For full contract, policy semantics, decision-envelope examples, and troubleshooting, see [Reviewer agents reference](docs/references/reviewer-agents-llms.md).

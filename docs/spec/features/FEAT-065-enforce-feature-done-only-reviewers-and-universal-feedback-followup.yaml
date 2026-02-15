@@ -1,0 +1,125 @@
+id: FEAT-065
+title: Enforce feature_done-only reviewer execution with universal feedback forwarding and follow-up pass policy
+type: feature
+expected_commit_subject: 'feat: add FEAT-065 feature_done-only reviewers and universal feedback follow-up policy'
+status: backlog
+priority: high
+objective: Ensure all configured reviewers run only at feature completion, always forward reviewer feedback to the next implement prompt, require one follow-up implement pass before completion eligibility whenever reviewer feedback is produced, and persist human-readable reviewer feedback summaries in loop logs.
+context: >-
+  Current reviewer behavior is split by phase (`iteration_end` and `feature_done`) and
+  forwards retry feedback mainly for non-approve outcomes. Product direction is to run
+  reviewer judgment only at completion time, avoid reviewer churn on small intermediate
+  steps, and guarantee that reviewer guidance (including approve summaries) is fed back
+  into at least one follow-up implement pass before completion commit.
+
+  This feature is a contract and runtime policy change that keeps blocking retry
+  semantics intact while unifying when reviewers run and how feedback is consumed.
+constraints:
+- Reviewer execution in loop runtime must occur only at `feature_done` (before completion commit), not at `iteration_end`.
+- 'Existing reviewer configs with `trigger.phase: iteration_end` must remain compatible by being auto-mapped to `feature_done` at runtime/planning.'
+- 'Reviewer configs explicitly using `trigger.phase: feature_done` continue to behave as configured.'
+- All reviewer outcomes (`approve`, `warning`, `request_changes`) must produce deterministic feedback text that is forwarded as retry feedback for the next implement prompt.
+- Any reviewer feedback produced during `feature_done` must require one mandatory follow-up implement pass before completion commit eligibility.
+- Follow-up pass enforcement must avoid infinite loops by clearing the latch after one subsequent implement pass and allowing completion when policy conditions are satisfied.
+- Blocking reviewer retry semantics (`max_retries`, `continue_on_exhausted`) must remain unchanged.
+- Reviewer decision envelope contract remains unchanged (`decision`, `summary`, optional `required_actions`, `confidence`, `scope_notes`).
+- Preserve deterministic reviewer telemetry and summary fields for run logs.
+- Persist reviewer feedback summaries in human-visible loop logs with deterministic, sanitized formatting so operators can inspect what the implement agent received.
+- "When reviewer feedback exists, structured telemetry in `progress/runs.jsonl` must include explicit reviewer-feedback fields: `reviewer_feedback_present` (bool) and `reviewer_feedback_summary` (string, truncated/sanitized as needed)."
+- "The per-feature progress log `progress/run-feature-<feature-id>.txt` must include a dedicated block (`reviewer_feedback_forwarded_begin` / `reviewer_feedback_forwarded_end`) containing the forwarded reviewer feedback text."
+- Update reviewer reference documentation to reflect phase unification, compatibility mapping, and universal feedback-forwarding semantics.
+implementation_notes: >-
+  Contract/API deltas for this feature are explicit:
+
+  - Surface: reviewer trigger phase behavior in loop runtime/planner.
+    - Old behavior: Reviewers can run at `iteration_end` or `feature_done` based on
+      configured phase.
+    - New behavior: Runtime executes reviewers only at `feature_done`; legacy
+      `iteration_end` phase configuration is treated as a compatibility alias that
+      resolves to `feature_done`.
+
+  - Surface: feedback propagation into implement prompt.
+    - Old behavior: Feedback forwarding/follow-up latch focuses on advisory non-approve
+      outcomes.
+    - New behavior: All reviewer decisions can emit forwarded feedback for the next
+      implement pass, including `approve` summaries and actions.
+
+  - Surface: completion eligibility policy.
+    - Old behavior: Mandatory follow-up pass before completion is tied to advisory
+      non-approve outcomes.
+    - New behavior: Any reviewer feedback at `feature_done` requires one follow-up
+      implement pass before completion commit eligibility.
+
+  - Surface: operator-visible telemetry/logging.
+    - Old behavior: Reviewer feedback can appear only as generic retry detail text,
+      making reviewer-specific guidance less discoverable for humans.
+    - New behavior: Reviewer feedback summary is logged in explicit, deterministic
+      reviewer-feedback fields/sections in both JSONL run telemetry and per-feature
+      progress logs.
+
+  Compatibility policy:
+  - Backward compatible for existing reviewer config files that still declare
+    `iteration_end`; no immediate config migration is required for execution parity.
+
+  Migration scope:
+  - One-time runtime/planner policy migration plus docs/tests updates.
+  - Optional cleanup migration may later normalize repository configs from
+    `iteration_end` to `feature_done` for clarity, but is not required for this feature.
+
+  Verification evidence should include planner/runtime tests for phase normalization,
+  loop integration tests for universal feedback forwarding and follow-up latch behavior,
+  and docs/validation checks for updated contract guidance.
+acceptance:
+- Loop runtime runs reviewer phase only when selected feature is in `feature_done` path before completion commit.
+- 'Reviewers configured with `trigger.phase: iteration_end` are planned/executed as `feature_done` via deterministic compatibility mapping.'
+- Reviewer feedback is forwarded for all decision types (`approve`, `warning`, `request_changes`) and appears in next-iteration implement prompt input.
+- Any reviewer feedback at completion triggers exactly one required follow-up implement pass before completion commit eligibility.
+- Follow-up latch clears after one implement pass and does not create infinite completion retry loops when reviewer feedback persists.
+- Blocking reviewer retry and exhaustion behavior remains unchanged from current policy.
+- Reviewer run summaries and telemetry remain deterministic and include decision/status context.
+- Human operators can read reviewer feedback summaries without parsing raw prompt output, via `reviewer_feedback_present` and `reviewer_feedback_summary` fields in `progress/runs.jsonl` and a dedicated reviewer-feedback block in `progress/run-feature-<feature-id>.txt`.
+- Reviewer contract/reference docs describe feature_done-only execution and compatibility alias behavior for legacy `iteration_end` configs.
+subtasks:
+- id: ST-001
+  title: Normalize reviewer phase planning/runtime to feature_done-only execution
+  status: backlog
+  order: 1
+  context: Implement deterministic mapping so configured iteration_end reviewers run at feature_done and no reviewer executes during intermediate iteration_end passes.
+  verification:
+  - uv run pytest -q tests/test_reviewers_runtime.py tests/test_loop_reviewers.py::test_reviewer_phase_runs_after_gates_before_commit
+- id: ST-002
+  title: Expand reviewer feedback formatting and forwarding to all decision types
+  status: backlog
+  order: 2
+  context: Ensure approve/warning/request_changes outcomes all contribute retry feedback payloads that are injected into next implement prompt.
+  verification:
+  - uv run pytest -q tests/test_loop_reviewers.py tests/test_loop_runtime_iteration.py
+- id: ST-003
+  title: Generalize follow-up latch policy to require one post-review implement pass for any feedback
+  status: backlog
+  order: 3
+  context: Rework follow-up gating so completion is deferred exactly once when reviewer feedback exists, including approve feedback, while preserving retry stability.
+  verification:
+  - uv run pytest -q tests/test_loop_reviewers.py
+- id: ST-004
+  title: Preserve blocking reviewer retry semantics under feature_done-only policy
+  status: backlog
+  order: 4
+  context: Confirm max_retries and continue_on_exhausted behavior are unaffected by phase and feedback policy changes.
+  verification:
+  - uv run pytest -q tests/test_loop_reviewers.py::test_blocking_reviewer_exhausted_continues_with_warning_by_default
+  - uv run pytest -q tests/test_loop_reviewers.py::test_blocking_reviewer_exhaustion_stops_when_continue_disabled
+- id: ST-005
+  title: Update reviewer reference docs and validate contract narrative
+  status: backlog
+  order: 5
+  context: Align reviewer docs with feature_done-only execution, legacy phase alias behavior, and universal feedback forwarding/follow-up policy.
+  verification:
+  - uv run python -m engineeringagent.cli validate
+- id: ST-006
+  title: Add explicit human-visible reviewer feedback summary logging
+  status: backlog
+  order: 6
+  context: Extend loop telemetry/progress logging so reviewer feedback forwarded to implement is also exposed as deterministic reviewer-feedback summaries for humans in `progress/runs.jsonl` and `progress/run-feature-<feature-id>.txt`.
+  verification:
+  - uv run pytest -q tests/test_loop_output.py tests/test_loop_reviewers.py

@@ -24,6 +24,18 @@ def test_init_subcommand_registered() -> None:
     assert args.func is cmd_init
 
 
+def test_init_rejects_include_reviewers_flag(capsys: Any) -> None:
+    """Verify init no longer accepts the removed include-reviewers flag."""
+    parser = build_parser()
+
+    with pytest.raises(SystemExit) as exc_info:
+        parser.parse_args(["init", "--include-reviewers"])
+
+    output = capsys.readouterr()
+    assert exc_info.value.code == 2
+    assert "unrecognized arguments: --include-reviewers" in output.err
+
+
 def test_init_prompts_when_docs_exists(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

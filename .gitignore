@@ -11,3 +11,5 @@ progress/runs.jsonl
 progress/run-feature-*.txt
 .coverage
 .coverage.*
+progress/reviewers-state.json
+
