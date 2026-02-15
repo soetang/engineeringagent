@@ -39,3 +39,4 @@ Suggested execution outline (adjust to match README.md if it differs):
 
 Approve only if the README-guided flow is coherent and runnable in this clean-room setup.
 
+You feedback should not contain changes that would be helpfull for reviewers. Only changes that real users would find usefull. Like if a missing gate, spec or file? Maybe the scafold or cli should provide an option to provide a toy example? Or whatever makes sense for a user to get a quick feeling of how it works. Make sure to read any new files created in the process. Also you should allways try to run it for real, on a real spec, with a gate.

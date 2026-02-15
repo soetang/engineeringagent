@@ -13,14 +13,6 @@ Primary flow: `feature spec -> run loop`.
 
 - Package usage (PyPI, no clone): `uvx engineeringagent <command>`
 - Package usage (version pinned): `uvx engineeringagent@<version> <command>`
-- Local checkout (this repo): `uv run python -m engineeringagent.cli <command>`
-- Clean-room sandbox helper (used by some reviewers): `../.engineeringagent/bin/engineeringagent <command>`
-
-The examples below use `uvx engineeringagent ...`. If you are running from a local checkout,
-replace `uvx engineeringagent` with `uv run python -m engineeringagent.cli`.
-
-In clean-room sandbox runs (for example, some reviewer workflows), replace `uvx engineeringagent`
-with `../.engineeringagent/bin/engineeringagent`.
 
 ## Quickstart from PyPI (no clone)
 
@@ -40,30 +32,12 @@ with `../.engineeringagent/bin/engineeringagent`.
    If you are just getting started, create a minimal example feature file that
    satisfies `docs/spec/schemas/feature.schema.json`:
 
-   ```bash
-   cat > docs/spec/features/FEAT-001-example.yaml <<'YAML'
-   id: FEAT-001
-   title: Example feature spec
-   type: chore
-   expected_commit_subject: "chore: add example feature spec"
-   status: backlog
-   priority: low
-   objective: "Provide a minimal feature spec that validates and can be used for a dry-run."
-   acceptance:
-     - "The spec validates with engineeringagent validate."
-   YAML
-   ```
-
 1. Validate the setup and run gates.
 
    ```bash
    uvx engineeringagent validate
    uvx engineeringagent gates run --profile loop_fast
    ```
-
-   Note: `init` scaffolds `harness/gates.yaml` with empty `precommit` and `loop_fast`
-   profiles by default. Until you configure gates, the command will succeed but print
-   `gates profile has no configured gates: loop_fast`.
 
 1. Do a safe dry run first.
 
@@ -72,6 +46,8 @@ with `../.engineeringagent/bin/engineeringagent`.
    ```
 
 Run for real by removing `--dry-run`.
+
+1. Test that implemented gates run at commit (remember to init a git repo - if it is not already)
 
 ## Bootstrapping a new repository with `init`
 
