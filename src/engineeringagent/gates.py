@@ -29,7 +29,9 @@ DEFAULT_GATE_CONFIG: dict[str, Any] = {
         ],
     },
     "gates": {
-        "yaml_validate": {"run": "uv run python harness/validate_yaml.py"},
+        "yaml_validate": {
+            "run": "uv run python harness/fitness-functions/validate_yaml.py"
+        },
         "spec_validate": {
             "run": "uv run python -m engineeringagent.cli validate",
             "on_change": [
@@ -69,7 +71,7 @@ DEFAULT_GATE_CONFIG: dict[str, Any] = {
             ],
         },
         "opencode_permission_probe": {
-            "run": "uv run python harness/permission_probe.py"
+            "run": "uv run python harness/fitness-functions/permission_probe.py"
         },
     },
 }

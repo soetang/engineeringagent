@@ -80,6 +80,14 @@ def test_scaffolded_gates_config_has_expected_commands(tmp_path: Path) -> None:
         config["gates"]["fitness_validate"]["run"]
         == "uv run python -m engineeringagent.cli fitness run --format json"
     )
+    assert (
+        config["gates"]["yaml_validate"]["run"]
+        == "uv run python harness/fitness-functions/validate_yaml.py"
+    )
+    assert (
+        config["gates"]["opencode_permission_probe"]["run"]
+        == "uv run python harness/fitness-functions/permission_probe.py"
+    )
     assert "precommit" in config["profiles"]
     assert "loop_fast" in config["profiles"]
     assert "opencode_permission_probe" not in config["profiles"]["loop_fast"]
@@ -637,7 +645,9 @@ def test_plan_profile_runs_when_on_change_is_omitted() -> None:
     config = {
         "profiles": {"loop_fast": ["yaml_validate"]},
         "gates": {
-            "yaml_validate": {"run": "uv run python harness/validate_yaml.py"},
+            "yaml_validate": {
+                "run": "uv run python harness/fitness-functions/validate_yaml.py"
+            },
         },
     }
 
@@ -658,7 +668,9 @@ def test_plan_profile_reason_always_run_no_on_change() -> None:
     config = {
         "profiles": {"loop_fast": ["yaml_validate"]},
         "gates": {
-            "yaml_validate": {"run": "uv run python harness/validate_yaml.py"},
+            "yaml_validate": {
+                "run": "uv run python harness/fitness-functions/validate_yaml.py"
+            },
         },
     }
 
@@ -765,7 +777,10 @@ def test_commit_msg_hook_configuration() -> None:
     config_text = (repo_root / ".pre-commit-config.yaml").read_text(encoding="utf-8")
 
     assert "engineeringagent-commit-msg" in config_text
-    assert "validate_commit_messages.py --commit-msg-file" in config_text
+    assert (
+        "harness/fitness-functions/validate_commit_messages.py --commit-msg-file"
+        in config_text
+    )
     assert "stages: [commit-msg]" in config_text
 
 
@@ -776,7 +791,10 @@ def test_commit_message_ci_gate_registered() -> None:
     )
 
     assert "Validate commit subjects" in workflow_text
-    assert "validate_commit_messages.py --commit-range" in workflow_text
+    assert (
+        "harness/fitness-functions/validate_commit_messages.py --commit-range"
+        in workflow_text
+    )
 
 
 def test_run_profile_returns_failed_gate_output_for_loop_mode(tmp_path: Path) -> None:
@@ -1093,7 +1111,9 @@ def test_cmd_gates_plan_outputs_deterministic_decisions(
             {
                 "profiles": {"loop_fast": ["always_gate", "spec_gate", "code_gate"]},
                 "gates": {
-                    "always_gate": {"run": "uv run python harness/validate_yaml.py"},
+                    "always_gate": {
+                        "run": "uv run python harness/fitness-functions/validate_yaml.py"
+                    },
                     "spec_gate": {
                         "run": "uv run python -m engineeringagent.cli validate",
                         "on_change": ["docs/spec/**/*.yaml"],

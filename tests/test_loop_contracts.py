@@ -174,6 +174,30 @@ def test_source_first_loop_command_rule_configuration() -> None:
     ]
 
 
+def test_harness_root_yaml_only_rule_configuration() -> None:
+    manifest_path = Path("harness/fitness-functions/rules.yaml")
+    manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+
+    rules = manifest["rules"]
+    harness_root_rules = [
+        rule
+        for rule in rules
+        if isinstance(rule, dict)
+        and rule.get("rule_id") == "architecture.harness-root-yaml-only"
+    ]
+
+    assert len(harness_root_rules) == 1
+    rule = harness_root_rules[0]
+    assert rule["adapter"] == "command"
+    assert rule["severity"] == "error"
+    assert rule["command"] == [
+        "uv",
+        "run",
+        "python",
+        "harness/fitness-functions/check_harness_root_yaml_only.py",
+    ]
+
+
 def test_iteration_outcome_includes_verification_status() -> None:
     outcome = loop_module.IterationOutcome(
         completed=False,

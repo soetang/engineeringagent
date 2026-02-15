@@ -60,8 +60,9 @@ subtasks:
   notes:
   - Removed the generic `scripts/` directory, including thin wrapper entrypoints and
     cached bytecode artifacts.
-  - Relocated remaining purpose-owned automation to `harness/` (`harness/validate_yaml.py`
-    and `harness/permission_probe.py`) and updated gate/pre-commit invocation paths.
+  - Relocated remaining purpose-owned automation to `harness/` (`harness/fitness-functions/validate_yaml.py`
+    and `harness/fitness-functions/permission_probe.py`) and updated gate/pre-commit
+    invocation paths.
 - id: ST-003
   title: Ensure canonical CLI coverage for workflows previously reached via scripts
   status: done

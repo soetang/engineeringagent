@@ -43,7 +43,7 @@ jobs:
             COMMIT_RANGE="$HEAD_SHA^..$HEAD_SHA"
           fi
 
-          uv run python harness/validate_commit_messages.py --commit-range "$COMMIT_RANGE"
+          uv run python harness/fitness-functions/validate_commit_messages.py --commit-range "$COMMIT_RANGE"
 
       - name: Lint (precommit profile)
         run: uvx --from . engineeringagent gates run --profile precommit

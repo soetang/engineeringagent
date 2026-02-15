@@ -106,6 +106,22 @@ rules:
       - run
       - python
       - harness/fitness-functions/check_source_first_loop_commands.py
+  - rule_id: architecture.harness-root-yaml-only
+    name: Harness root YAML-only
+    summary: Enforce YAML-only regular files directly under harness root.
+    rationale: Keeps harness root manifest-only and prevents executable/policy file
+      sprawl at repository root policy surfaces.
+    remediation: Move non-YAML root files under harness/fitness-functions or another
+      harness subdirectory; keep only *.yaml/*.yml files at harness root.
+    scope: harness/ (regular files at root)
+    severity: error
+    side_effect_free: true
+    adapter: command
+    command:
+      - uv
+      - run
+      - python
+      - harness/fitness-functions/check_harness_root_yaml_only.py
   - rule_id: architecture.no-stdlib-dataclasses-in-src
     name: No stdlib dataclasses in src
     summary: Block stdlib dataclasses usage in production source models.

@@ -383,7 +383,10 @@ def test_init_python_uv_profile_available(tmp_path: Path, capsys: Any) -> None:
         in precommit_config
     )
     assert "engineeringagent-commit-msg" in precommit_config
-    assert "validate_commit_messages.py --commit-msg-file" in precommit_config
+    assert (
+        "harness/fitness-functions/validate_commit_messages.py --commit-msg-file"
+        in precommit_config
+    )
 
 
 def test_init_renders_scaffold_from_template_files() -> None:

@@ -19,7 +19,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--project-root",
-        default=Path(__file__).resolve().parents[1],
+        default=Path(__file__).resolve().parents[2],
         type=Path,
         help="repository root for git commit-range validation",
     )
