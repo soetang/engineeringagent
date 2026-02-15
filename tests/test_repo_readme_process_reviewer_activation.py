@@ -24,7 +24,22 @@ def test_repo_enables_readme_process_reviewer_in_loop_fast() -> None:
     reviewer = document["reviewers"]["readme_process"]
 
     assert reviewer["prompt_file"] == "harness/reviewers/prompts/readme_process.md"
-    assert reviewer["trigger"] == {"phase": "feature_done", "on_change": ["README.md"]}
+    assert reviewer["trigger"] == {
+        "phase": "feature_done",
+        "on_change": [
+            "README.md",
+            "docs/references/**/*.md",
+            "docs/principles/**/*.md",
+            "src/engineeringagent/cli.py",
+            "src/engineeringagent/init_scaffold.py",
+            "src/engineeringagent/scaffold_templates/**",
+            "src/engineeringagent/validator.py",
+            "src/engineeringagent/gates.py",
+            "src/engineeringagent/loop.py",
+            "src/engineeringagent/loop_runtime/**/*.py",
+        ],
+    }
+    assert "AGENTS.md" not in reviewer["trigger"]["on_change"]
     assert reviewer["approval"] == {
         "mode": "blocking",
         "first_feature_approval": True,

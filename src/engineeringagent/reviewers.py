@@ -8,9 +8,9 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, Callable, Iterator
+from typing import Any, Callable, Iterator, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 import engineeringagent.progress_paths as progress_paths
 
@@ -30,11 +30,6 @@ ITERATION_END_PHASE = "iteration_end"
 DECISION_APPROVE = "approve"
 DECISION_REQUEST_CHANGES = "request_changes"
 DECISION_WARNING = "warning"
-_VALID_DECISIONS = {
-    DECISION_APPROVE,
-    DECISION_REQUEST_CHANGES,
-    DECISION_WARNING,
-}
 PARSER_FAILURE_SUMMARY_PREFIX = "reviewer_output_parse_failure"
 FIRST_FEATURE_APPROVAL_REUSED_REASON = "first_feature_approval_reused"
 FIRST_FEATURE_APPROVAL_NOT_CACHED_REASON = "first_feature_approval_not_cached"
@@ -54,14 +49,79 @@ REVIEWER_RESPONSEFORMAT_PLACEHOLDER = "$responseformat"
 REVIEWER_RESPONSEFORMAT_MISSING_MESSAGE = (
     "reviewer prompt must include the $responseformat placeholder"
 )
+
+REVIEWER_DECISION_PARSE_MAX_RETRIES = 2
+
+REVIEWER_DECISION_PARSE_RETRY_PROMPT_TEMPLATE = "\n".join(
+    (
+        "---",
+        "Your previous output did not validate as a reviewer decision JSON object.",
+        "",
+        "Validation error:",
+        "{{VALIDATION_ERROR}}",
+        "",
+        "Return exactly one strict JSON object and no other text.",
+        "It MUST validate against the JSON Schema provided in the reviewer instructions.",
+        "No Markdown. No code fences. No surrounding commentary.",
+        "---",
+    )
+)
+
+
+class ReviewerDecisionEnvelope(BaseModel):
+    """Schema-validated reviewer decision envelope.
+
+    This is the single output object reviewers are instructed to emit. The harness
+    uses this model both to derive the JSON Schema contract injected into prompts
+    and to validate the extracted decision payload.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    decision: Literal["approve", "request_changes", "warning"]
+    summary: str
+    required_actions: list[str] = Field(default_factory=list)
+    confidence: float | None = Field(default=None, ge=0, le=1)
+    scope_notes: str | None = None
+
+    @field_validator("summary")
+    @classmethod
+    def _summary_must_be_non_empty(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("summary must be a non-empty string")
+        return stripped
+
+
+REVIEWER_DECISION_JSON_SCHEMA = json.dumps(
+    ReviewerDecisionEnvelope.model_json_schema(),
+    indent=2,
+    sort_keys=True,
+    ensure_ascii=True,
+)
+
 REVIEWER_RESPONSEFORMAT_CONTRACT = "\n".join(
     (
+        "---",
         "Return exactly one strict JSON object and no other text.",
-        "Required JSON keys: `decision` and `summary`.",
-        "Optional JSON keys: `required_actions`, `confidence`, `scope_notes`.",
-        "`decision` must be one of: `approve`, `request_changes`, `warning`.",
-        "If `required_actions` is present, it must be a list of strings.",
-        "If `confidence` is present, it must be a number in [0, 1].",
+        "No Markdown. No code fences. No surrounding commentary.",
+        "",
+        "The JSON object MUST validate against the JSON Schema below.",
+        "The schema is derived from the reviewer decision envelope model and is emitted with sorted",
+        "keys for deterministic prompts.",
+        "",
+        "JSON Schema:",
+        REVIEWER_DECISION_JSON_SCHEMA,
+        "",
+        "Notes:",
+        '- `decision` must be one of: "approve", "request_changes", "warning".',
+        "- `summary` must be a non-empty string.",
+        "- If present, `required_actions` must be a list of strings.",
+        "- If present, `confidence` must be a number between 0 and 1.",
+        "",
+        "Example output:",
+        '{"decision":"approve","summary":"Looks good.","required_actions":[]}',
+        "---",
     )
 )
 
@@ -447,15 +507,152 @@ def run_reviewer(
                     execution_root,
                     composed_prompt,
                     agent=DEFAULT_OPENCODE_AGENT,
+                    format="json",
                 )
             except FileNotFoundError:
                 return _parser_failure_decision("opencode executable missing")
+
+            stdout_raw = getattr(proc, "stdout", "") or ""
+            stderr_raw = getattr(proc, "stderr", "") or ""
+
+            session_id, decision_payload = _extract_opencode_json_text_payload(
+                stdout_raw
+            )
+            if session_id and decision_payload:
+                decision = parse_reviewer_decision(decision_payload)
+                if _is_reviewer_parser_failure(decision):
+                    decision = _retry_parse_failure_in_same_session(
+                        execution_root,
+                        run_request,
+                        session_id=session_id,
+                        decision=decision,
+                    )
+                return decision
+
+            return _parse_reviewer_decision_from_stdio(stdout_raw, stderr_raw)
     except RuntimeError as exc:
         return _parser_failure_decision(str(exc))
 
-    stdout = (getattr(proc, "stdout", "") or "").strip()
-    stderr = (getattr(proc, "stderr", "") or "").strip()
-    parse_input = stdout or stderr
+
+def _extract_opencode_json_text_payload(stdout: str) -> tuple[str | None, str | None]:
+    """Extract (session_id, last text payload) from OpenCode JSON event stream.
+
+    Returns (None, None) on any parsing/extraction failure so callers can fall back
+    to legacy stdout/stderr parsing.
+    """
+
+    raw = stdout.strip("\n")
+    if not raw.strip():
+        return None, None
+
+    session_id: str | None = None
+    candidates: list[str] = []
+    for line in raw.splitlines():
+        if not line.strip():
+            continue
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            return None, None
+        if not isinstance(event, dict):
+            continue
+        if session_id is None:
+            maybe_session = event.get("sessionID")
+            if isinstance(maybe_session, str) and maybe_session:
+                session_id = maybe_session
+
+        if event.get("type") != "text":
+            continue
+        part = event.get("part")
+        if not isinstance(part, dict):
+            continue
+        text = part.get("text")
+        if isinstance(text, str):
+            candidates.append(text)
+
+    if session_id is None or not candidates:
+        return None, None
+    return session_id, candidates[-1]
+
+
+def _is_reviewer_parser_failure(decision: dict[str, Any]) -> bool:
+    """Return True when decision represents deterministic parse/schema failure."""
+    if decision.get("decision") != DECISION_REQUEST_CHANGES:
+        return False
+    summary = decision.get("summary")
+    if not isinstance(summary, str):
+        return False
+    return summary.startswith(f"{PARSER_FAILURE_SUMMARY_PREFIX}:")
+
+
+def _extract_reviewer_parser_failure_reason(decision: dict[str, Any]) -> str:
+    summary = decision.get("summary")
+    if not isinstance(summary, str):
+        return "output does not match reviewer decision schema"
+    prefix = f"{PARSER_FAILURE_SUMMARY_PREFIX}:"
+    if summary.startswith(prefix):
+        return (
+            summary[len(prefix) :].strip()
+            or "output does not match reviewer decision schema"
+        )
+    return summary.strip() or "output does not match reviewer decision schema"
+
+
+def _render_reviewer_parse_retry_prompt(*, validation_error: str) -> str:
+    return REVIEWER_DECISION_PARSE_RETRY_PROMPT_TEMPLATE.replace(
+        "{{VALIDATION_ERROR}}",
+        validation_error.strip() or "output does not match reviewer decision schema",
+    )
+
+
+def _retry_parse_failure_in_same_session(
+    execution_root: Path,
+    request: ReviewerRunRequest,
+    *,
+    session_id: str,
+    decision: dict[str, Any],
+) -> dict[str, Any]:
+    """Retry parse/schema failures up to a bounded count in the same OpenCode session."""
+
+    current = decision
+    for _attempt in range(REVIEWER_DECISION_PARSE_MAX_RETRIES):
+        if not _is_reviewer_parser_failure(current):
+            return current
+
+        validation_error = _extract_reviewer_parser_failure_reason(current)
+        followup_prompt = _render_reviewer_parse_retry_prompt(
+            validation_error=validation_error
+        )
+
+        try:
+            proc = request.start_agent_fn(
+                execution_root,
+                followup_prompt,
+                agent=DEFAULT_OPENCODE_AGENT,
+                format="json",
+                session=session_id,
+            )
+        except FileNotFoundError:
+            return _parser_failure_decision("opencode executable missing")
+
+        stdout_raw = getattr(proc, "stdout", "") or ""
+        stderr_raw = getattr(proc, "stderr", "") or ""
+
+        _, decision_payload = _extract_opencode_json_text_payload(stdout_raw)
+        if decision_payload:
+            current = parse_reviewer_decision(decision_payload)
+            continue
+
+        current = _parse_reviewer_decision_from_stdio(stdout_raw, stderr_raw)
+
+    return current
+
+
+def _parse_reviewer_decision_from_stdio(
+    stdout_raw: str,
+    stderr_raw: str,
+) -> dict[str, Any]:
+    parse_input = stdout_raw.strip() or stderr_raw.strip()
     if not parse_input:
         return _parser_failure_decision("reviewer produced empty output")
     return parse_reviewer_decision(parse_input)
@@ -640,43 +837,38 @@ def parse_reviewer_decision(output: str) -> dict[str, Any]:  # noqa: C901
     if not isinstance(payload, dict):
         return _parser_failure_decision("output must be a JSON object")
 
-    decision = payload.get("decision")
-    if decision not in _VALID_DECISIONS:
-        return _parser_failure_decision(
-            "decision must be one of approve, request_changes, warning"
-        )
+    try:
+        envelope = ReviewerDecisionEnvelope.model_validate(payload)
+    except ValidationError as exc:
+        return _parser_failure_decision(_format_reviewer_decision_validation_error(exc))
 
-    summary = payload.get("summary")
-    if not isinstance(summary, str) or not summary.strip():
-        return _parser_failure_decision("summary must be a non-empty string")
+    return envelope.model_dump(exclude_none=True)
 
-    required_actions = payload.get("required_actions", [])
-    if not isinstance(required_actions, list) or any(
-        not isinstance(item, str) for item in required_actions
-    ):
-        return _parser_failure_decision("required_actions must be a list of strings")
 
-    confidence = payload.get("confidence")
-    if confidence is not None:
-        if not isinstance(confidence, (int, float)) or not 0 <= confidence <= 1:
-            return _parser_failure_decision(
-                "confidence must be a number between 0 and 1"
-            )
+def _format_reviewer_decision_validation_error(exc: ValidationError) -> str:
+    """Return a deterministic one-line validation error summary."""
+    parts: list[str] = []
+    for error in exc.errors():
+        loc = error.get("loc")
+        if isinstance(loc, (tuple, list)):
+            loc_text = ".".join(str(item) for item in loc) or "root"
+        else:
+            loc_text = "root"
+        message = str(error.get("msg") or "validation error").strip()
+        parts.append(f"{loc_text}: {message}")
 
-    scope_notes = payload.get("scope_notes")
-    if scope_notes is not None and not isinstance(scope_notes, str):
-        return _parser_failure_decision("scope_notes must be a string")
+    # Preserve order while de-duplicating.
+    seen: set[str] = set()
+    unique: list[str] = []
+    for part in parts:
+        if part in seen:
+            continue
+        unique.append(part)
+        seen.add(part)
 
-    decision_envelope: dict[str, Any] = {
-        "decision": decision,
-        "summary": summary.strip(),
-        "required_actions": required_actions,
-    }
-    if confidence is not None:
-        decision_envelope["confidence"] = float(confidence)
-    if scope_notes is not None:
-        decision_envelope["scope_notes"] = scope_notes
-    return decision_envelope
+    if not unique:
+        return "output does not match reviewer decision schema"
+    return "; ".join(unique)
 
 
 def _extract_reviewer_decision_payload(raw: str) -> dict[str, Any] | None:
@@ -711,7 +903,7 @@ def _parser_failure_decision(reason: str) -> dict[str, Any]:
         "decision": DECISION_REQUEST_CHANGES,
         "summary": f"{PARSER_FAILURE_SUMMARY_PREFIX}: {reason}",
         "required_actions": [
-            "Return a strict JSON decision envelope with decision and summary fields."
+            "Return a strict JSON object that validates against the reviewer decision JSON Schema in the reviewer instructions."
         ],
     }
 

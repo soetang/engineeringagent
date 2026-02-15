@@ -14,6 +14,9 @@ REQUIRED_POLICY_SNIPPETS = (
     "`reviewer_feedback_summary`",
     "`reviewer_feedback_forwarded_begin`",
     "`reviewer_feedback_forwarded_end`",
+    "Reviewer execution prefers OpenCode JSON event output via `opencode run --format json`.",
+    "If the decision payload fails JSON parsing or schema validation, the runner retries up to 2 times in the same OpenCode session.",
+    "The `$responseformat` placeholder expands to a contract that includes the reviewer decision envelope JSON Schema.",
 )
 
 REQUIRED_SANDBOX_SNIPPETS = (

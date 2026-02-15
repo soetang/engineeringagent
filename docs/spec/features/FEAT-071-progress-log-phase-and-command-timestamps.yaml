@@ -1,0 +1,162 @@
+id: FEAT-071
+title: Add per-iteration phase and command timestamps to feature progress logs
+type: feature
+expected_commit_subject: "feat: add phase and command timestamps to progress logs"
+status: backlog
+priority: medium
+objective: |
+  Make `progress/run-feature-<id>.txt` self-contained for answering:
+  "what took the most time in this iteration?"
+
+  Add per-phase and per-command start/end timestamps plus computed durations, and
+  include a one-line `slowest=...` summary for each iteration.
+context: |
+  Today, the loop writes two telemetry sinks:
+
+  - `progress/runs.jsonl` (JSONL): includes `ts` and `duration_sec` for an iteration.
+    - `ts` is written when iteration telemetry is persisted (effectively end-of-iteration).
+    - `duration_sec` is computed as `int(time.time() - started)` where `started` is
+      captured at the beginning of the iteration pipeline.
+    - These fields are useful, but they do not show which phase/command consumed the time.
+
+  - `progress/run-feature-<id>.txt` (text): includes outputs for implement/gates/
+    verification/reviewers and a top-line `ts=...` header per iteration block.
+    - This `ts=...` header is also end-of-iteration, so subtracting consecutive headers
+      only yields an approximation of wall time between iteration ends, not a breakdown.
+
+  As a result, answering "what took most time in each iteration" requires inference
+  from adjacent iteration headers and knowledge of which phases were active.
+
+  We want the per-feature progress log to directly attribute time to phases and
+  commands without relying on `runs.jsonl` or external analysis tools.
+constraints:
+  - |
+    Write timing data to `progress/run-feature-<feature_id>.txt` only.
+    - Do not add or change fields in `progress/runs.jsonl`.
+  - |
+    Record timestamps in UTC ISO-8601 format with second precision
+    (e.g. 2026-02-15T13:45:11Z).
+  - |
+    Record whole-second durations as `duration_sec`, computed from the captured
+    boundaries.
+  - |
+    Major phases must be timed at minimum:
+    - initial_load
+    - implement
+    - verification
+    - archive
+    - gates
+    - reviewers
+    - completion_commit
+  - |
+    Per-command timing must be recorded for executed commands/runs:
+    - implement step (default OpenCode implement and custom `--implement-command`)
+    - each executed gate command
+    - each executed verification command
+    - each executed reviewer run (per reviewer id)
+  - |
+    Each iteration block must include a one-line summary identifying the longest
+    single duration observed in that iteration:
+    - `slowest=<phase|command> duration_sec=<n> started_at=<ts> ended_at=<ts>`
+  - |
+    Existing progress-log section markers and output blocks must remain present and
+    unchanged:
+    - `implement_output_begin`/`implement_output_end`
+    - `gate_output_begin`/`gate_output_end`
+    - `verification_output_begin`/`verification_output_end`
+    - `reviewer_output_begin`/`reviewer_output_end`
+    Timing output must be additive.
+  - |
+    Timing collection must not change loop behavior (logging only).
+  - |
+    Keep output ASCII-only.
+implementation_notes: |
+  Contract/API delta (explicit):
+
+  - Surface: `progress/run-feature-<feature_id>.txt` iteration content.
+    - Old behavior: progress logs include phase outputs but have no per-phase/per-command
+      timestamps.
+    - New behavior: progress logs include:
+      - per-phase `started_at`, `ended_at`, and `duration_sec` lines,
+      - per-command `started_at`, `ended_at`, and `duration_sec` lines for commands/runs,
+      - a one-line `slowest=...` summary per iteration.
+
+  Compatibility policy:
+  - Additive-only within the progress log: do not remove or rename existing markers.
+  - `progress/runs.jsonl` remains unchanged.
+
+  Implementation approach notes:
+  - Capture timing boundaries inside the iteration pipeline while phase boundaries
+    are known; render them once into the feature progress log.
+  - Prefer a monotonic clock for duration measurement and wall-clock UTC timestamps
+    for readability; ensure `duration_sec` is non-negative.
+  - Tests must not rely on real wall-clock time; stub time sources so log output is
+    deterministic.
+acceptance:
+  - |
+    Each iteration block in `progress/run-feature-<id>.txt` contains:
+    - per-phase `started_at`, `ended_at`, and `duration_sec` for all required phases
+    - per-command `started_at`, `ended_at`, and `duration_sec` for implement/gates/
+      verification/reviewers when those commands run
+    - the `slowest=...` one-line summary
+  - |
+    Existing progress-log output markers remain present and unchanged.
+  - |
+    `progress/runs.jsonl` output schema and fields remain unchanged.
+  - |
+    Unit tests cover timing rendering in the feature progress log and do not rely on
+    wall-clock time.
+  - |
+    Fitness-function impact: no fitness-function changes required (timing additions
+    only affect progress log text).
+subtasks:
+  - id: ST-001
+    title: Add per-phase timestamp capture and render into feature progress log
+    status: backlog
+    context: |
+      Extend the iteration pipeline + telemetry writer to capture major phase
+      boundaries with `started_at`/`ended_at` and computed `duration_sec`, and render
+      them into the feature progress log (additive to existing markers).
+    verification:
+      - uv run pytest -q tests/test_loop_output.py tests/test_loop_runtime_iteration.py
+
+  - id: ST-002
+    title: Add per-command timestamps for gate execution
+    status: backlog
+    context: |
+      Instrument gate execution so each executed gate command records
+      `started_at`/`ended_at`/`duration_sec` and is included in the gate output that
+      is persisted into the feature progress log.
+    verification:
+      - uv run pytest -q tests/test_gates.py tests/test_loop_ralph_mode.py
+
+  - id: ST-003
+    title: Add per-command timestamps for verification execution
+    status: backlog
+    context: |
+      Instrument verification command execution so each verification command record
+      includes `started_at`/`ended_at`/`duration_sec` in the verification output that
+      is persisted into the feature progress log.
+    verification:
+      - uv run pytest -q tests/test_loop_output.py
+
+  - id: ST-004
+    title: Add per-reviewer timestamps for reviewer execution
+    status: backlog
+    context: |
+      Instrument reviewer runs so each reviewer execution record includes
+      `started_at`/`ended_at`/`duration_sec` for the reviewer id, and ensure this
+      timing is included in the reviewer output persisted to the feature progress log.
+    verification:
+      - uv run pytest -q tests/test_loop_reviewers.py
+
+  - id: ST-005
+    title: Add slowest summary line and deterministic tests
+    status: backlog
+    context: |
+      Compute the longest single duration among phase and per-command timings and
+      render the `slowest=...` summary line. Add tests that stub time sources so the
+      output is deterministic.
+    verification:
+      - uv run pytest -q tests/test_loop_output.py
+updated_at: "2026-02-15T00:00:00Z"

@@ -1,30 +1,58 @@
 # Engineering Agent
 
-Engineering agent - is agent that helps you implement code changes directly from specs. The intention is to allow the agent to run independently for long time. To achieve this a harness is needed though. This happens through validators: linters, tests, codecoverage requirements, fitness functions, and other agents that review the changes. The repos - comes with a structure for how to do this.
+Engineeringagent is a CLI that helps you implement code changes directly from feature specs.
+It pairs an agent loop with repository-owned harnesses (validators, gates, fitness functions,
+and optional reviewer agents).
 
-You will need to implement the harnesses specific to your repo yourself. You can use the same flow to create harnesses - if you are just starting out i recommend that the first few specs and implementations you write should be harnesses.
+You will still need to implement/configure the harness for your repository. If you are just
+starting out, the first few specs you run should usually be harness improvements.
 
-The primary flow is rather simple: `application spec -> run loop`. You can of cause craft feature specs by hand - but we suggest that you use the agent for this.
+Primary flow: `feature spec -> run loop`.
 
 ## Command styles
 
 - Package usage (PyPI, no clone): `uvx engineeringagent <command>`
 - Package usage (version pinned): `uvx engineeringagent@<version> <command>`
+- Local checkout (this repo): `uv run python -m engineeringagent.cli <command>`
+- Clean-room sandbox helper (used by some reviewers): `../.engineeringagent/bin/engineeringagent <command>`
+
+The examples below use `uvx engineeringagent ...`. If you are running from a local checkout,
+replace `uvx engineeringagent` with `uv run python -m engineeringagent.cli`.
+
+In clean-room sandbox runs (for example, some reviewer workflows), replace `uvx engineeringagent`
+with `../.engineeringagent/bin/engineeringagent`.
 
 ## Quickstart from PyPI (no clone)
 
 1. If you are starting in a fresh repository, scaffold the baseline harness first.
 
    ```bash
-   uvx engineeringagent init 
+   uvx engineeringagent init
    ```
 
    Warning: `init` is experimental scaffolding. Inspect generated files,
    run `uvx engineeringagent validate`, and review the git diff before committing.
 
-   We recommend u do this in a seperat branch or toy project the first time you try out the process.
+   We recommend you do this in a separate branch or toy project the first time you try out the process.
 
 1. Create or pick one feature spec in `docs/spec/features/`.
+
+   If you are just getting started, create a minimal example feature file that
+   satisfies `docs/spec/schemas/feature.schema.json`:
+
+   ```bash
+   cat > docs/spec/features/FEAT-001-example.yaml <<'YAML'
+   id: FEAT-001
+   title: Example feature spec
+   type: chore
+   expected_commit_subject: "chore: add example feature spec"
+   status: backlog
+   priority: low
+   objective: "Provide a minimal feature spec that validates and can be used for a dry-run."
+   acceptance:
+     - "The spec validates with engineeringagent validate."
+   YAML
+   ```
 
 1. Validate the setup and run gates.
 
@@ -32,6 +60,10 @@ The primary flow is rather simple: `application spec -> run loop`. You can of ca
    uvx engineeringagent validate
    uvx engineeringagent gates run --profile loop_fast
    ```
+
+   Note: `init` scaffolds `harness/gates.yaml` with empty `precommit` and `loop_fast`
+   profiles by default. Until you configure gates, the command will succeed but print
+   `gates profile has no configured gates: loop_fast`.
 
 1. Do a safe dry run first.
 
@@ -50,14 +82,17 @@ uvx engineeringagent init
 ```
 
 `init` defaults to the language-agnostic `core` scaffold profile.
-Use `python_uv` only when you intentionally want Python/uv-oriented bootstrap defaults:
+
+Use `python_uv` when you want the scaffolded `.pre-commit-config.yaml` to assume an
+`uv`-based workflow (including a commit-msg hook); it does not add gate definitions
+to `harness/gates.yaml`.
 
 ```bash
 uvx engineeringagent init --scaffold-profile python_uv
 ```
 
-`init` creates a starter structure for docs/specs/gates and handles existing `docs/` or
-`AGENTS.md` through explicit conflict choices.
+`init` creates a starter structure for `docs/spec/` and `harness/gates.yaml` and handles
+existing `docs/` or `AGENTS.md` through explicit conflict choices.
 
 Warning: treat `init` as experimental scaffolding.
 Always inspect generated files, run `uvx engineeringagent validate`, and review
@@ -76,7 +111,7 @@ the git diff before committing anything produced by `init`.
 
 ## OpenCode default agent contract
 
-- Default loop execution uses the `engineeringagent` OpenCode agent, specified under: .opencode/agents/engineeringagent.md
+- Default loop execution uses the `engineeringagent` OpenCode agent, specified under: `.opencode/agents/engineeringagent.md`.
 
 ## Human docs vs agent docs
 
@@ -110,7 +145,7 @@ the git diff before committing anything produced by `init`.
 ## Go deeper
 
 - [CLI workflow details](docs/references/uv-llms.md)
-- [Agent execution map](AGENTS.md)
+- [Agent execution map (scaffolded by init)](AGENTS.md)
 - [Docs architecture for agents](docs/references/docs-architecture-llms.md)
 
 ## Curated external context

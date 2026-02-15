@@ -93,3 +93,25 @@ potential_features:
       - "When loop work produces commits, branch is pushed and PR is created via gh"
       - "No-change runs skip PR creation with a clear terminal reason"
       - "Missing remote or gh auth failures are surfaced with actionable remediation"
+
+  - id: POT-013
+    title: Replace OpenCode runtime with local Pydantic-agent loop runner
+    status: idea
+    context: >
+      Switch implementation loops from the OpenCode runtime to a locally-run agent stack
+      (for example Pydantic-based agents) to avoid subscription requirements. This
+      requires re-implementing the OpenCode-built-in tool surface (file ops, search,
+      shell, git/GitHub helpers) plus the safety controls we currently rely on
+      (tool allowlists, non-interactive execution constraints, secret redaction, and
+      auditable logs).
+    value:
+      - "Removes dependency on OpenCode subscriptions/availability"
+      - "Enables running loops fully offline/on-prem with controlled tool access"
+      - "Makes safety and tool contracts explicit and testable in-repo"
+      - "Makes structured, typed output (events/tool calls/results) cheap to enforce"
+    acceptance_hint:
+      - "A new agent runner backend can execute an end-to-end loop without OpenCode"
+      - "Tooling parity exists for read/write/patch/search/shell with equivalent safety"
+      - "All tool calls are logged with stable, parseable audit records"
+      - "Run output is emitted as versioned JSONL with records validated against typed schemas"
+      - "Behavioral regression coverage ensures loop outputs match baseline"

@@ -341,12 +341,27 @@ def test_run_reviewer_loads_harness_prompt_and_parses_decision(tmp_path) -> None
 
     captured: dict[str, str] = {}
 
-    def _start_agent(project_root, prompt, *, agent=DEFAULT_OPENCODE_AGENT):
+    def _start_agent(
+        project_root,
+        prompt,
+        *,
+        agent=DEFAULT_OPENCODE_AGENT,
+        format: str | None = None,
+        session: str | None = None,
+    ):
         captured["project_root"] = str(project_root)
         captured["prompt"] = prompt
         captured["agent"] = agent
+        captured["format"] = str(format)
+        captured["session"] = str(session)
         return SimpleNamespace(
-            stdout='{"decision":"approve","summary":"No blocking issues."}',
+            stdout="\n".join(
+                [
+                    '{"type":"start","sessionID":"sess-123"}',
+                    '{"type":"text","part":{"text":"{\\"decision\\":\\"warning\\",\\"summary\\":\\"ignore this\\"}"}}',
+                    '{"type":"text","part":{"text":"{\\"decision\\":\\"approve\\",\\"summary\\":\\"No blocking issues.\\"}"}}',
+                ]
+            ),
             stderr="",
             returncode=0,
         )
@@ -376,10 +391,18 @@ def test_run_reviewer_loads_harness_prompt_and_parses_decision(tmp_path) -> None
     }
     assert captured["project_root"] == str(tmp_path)
     assert captured["agent"] == DEFAULT_OPENCODE_AGENT
+    assert captured["format"] == "json"
+    assert captured["session"] == "None"
     assert "$responseformat" not in captured["prompt"]
     assert (
         "Return exactly one strict JSON object and no other text." in captured["prompt"]
     )
+    assert (
+        "The JSON object MUST validate against the JSON Schema below."
+        in captured["prompt"]
+    )
+    assert "JSON Schema:" in captured["prompt"]
+    assert '"additionalProperties": false' in captured["prompt"]
     assert "Focus on code readability." in captured["prompt"]
     assert "Feature ID: FEAT-050" in captured["prompt"]
 
@@ -389,8 +412,17 @@ def test_run_reviewer_parse_failure_returns_request_changes(tmp_path) -> None:
     prompt_path.parent.mkdir(parents=True)
     prompt_path.write_text("$responseformat\n\nReturn JSON only.", encoding="utf-8")
 
-    def _start_agent(_project_root, _prompt, *, agent=DEFAULT_OPENCODE_AGENT):
+    def _start_agent(
+        _project_root,
+        _prompt,
+        *,
+        agent=DEFAULT_OPENCODE_AGENT,
+        format: str | None = None,
+        session: str | None = None,
+    ):
         del agent
+        del format
+        del session
         return SimpleNamespace(stdout="this is not json", stderr="", returncode=0)
 
     decision = run_reviewer(
@@ -411,12 +443,92 @@ def test_run_reviewer_parse_failure_returns_request_changes(tmp_path) -> None:
     assert decision["summary"].startswith(PARSER_FAILURE_SUMMARY_PREFIX)
 
 
+def test_run_reviewer_retries_in_same_session_on_parse_failure(tmp_path) -> None:
+    prompt_path = tmp_path / "harness" / "reviewers" / "prompts" / "code_simplifier.md"
+    prompt_path.parent.mkdir(parents=True)
+    prompt_path.write_text("$responseformat\n\nReturn JSON only.", encoding="utf-8")
+
+    calls: list[dict[str, str]] = []
+
+    def _start_agent(
+        _project_root,
+        prompt,
+        *,
+        agent=DEFAULT_OPENCODE_AGENT,
+        format: str | None = None,
+        session: str | None = None,
+    ):
+        calls.append(
+            {
+                "agent": agent,
+                "format": str(format),
+                "session": str(session),
+                "prompt": prompt,
+            }
+        )
+        if len(calls) == 1:
+            return SimpleNamespace(
+                stdout="\n".join(
+                    [
+                        '{"type":"start","sessionID":"sess-123"}',
+                        '{"type":"text","part":{"text":"not json"}}',
+                    ]
+                ),
+                stderr="",
+                returncode=0,
+            )
+        return SimpleNamespace(
+            stdout="\n".join(
+                [
+                    '{"type":"start","sessionID":"sess-123"}',
+                    '{"type":"text","part":{"text":"{\\"decision\\":\\"approve\\",\\"summary\\":\\"Recovered on retry.\\"}"}}',
+                ]
+            ),
+            stderr="",
+            returncode=0,
+        )
+
+    decision = run_reviewer(
+        tmp_path,
+        "code_simplifier",
+        {
+            "prompt_file": "harness/reviewers/prompts/code_simplifier.md",
+            "trigger": {"phase": "iteration_end"},
+        },
+        feature_id="FEAT-070",
+        feature_path=tmp_path / "docs/spec/features/FEAT-070.yaml",
+        changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
+        prior_feedback=None,
+        start_agent_fn=_start_agent,
+    )
+
+    assert decision == {
+        "decision": "approve",
+        "summary": "Recovered on retry.",
+        "required_actions": [],
+    }
+    assert len(calls) == 2
+    assert calls[0]["format"] == "json"
+    assert calls[0]["session"] == "None"
+    assert calls[1]["format"] == "json"
+    assert calls[1]["session"] == "sess-123"
+    assert "Validation error:" in calls[1]["prompt"]
+    assert "Your previous output did not validate" in calls[1]["prompt"]
+
+
 def test_run_reviewer_requires_responseformat_placeholder(tmp_path) -> None:
     prompt_path = tmp_path / "harness" / "reviewers" / "prompts" / "code_simplifier.md"
     prompt_path.parent.mkdir(parents=True)
     prompt_path.write_text("Focus on code readability.", encoding="utf-8")
 
-    def _start_agent(_project_root, _prompt, *, agent=DEFAULT_OPENCODE_AGENT):
+    def _start_agent(
+        _project_root,
+        _prompt,
+        *,
+        agent=DEFAULT_OPENCODE_AGENT,
+        format: str | None = None,
+        session: str | None = None,
+    ):
         raise AssertionError(f"start_agent_fn should not run; received agent={agent}")
 
     decision = run_reviewer(

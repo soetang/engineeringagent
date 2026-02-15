@@ -32,6 +32,10 @@ Create prompt markdown files under `harness/reviewers/prompts/`.
 Every reviewer prompt must include a literal `$responseformat` placeholder.
 That token is the only supported insertion point for the canonical response-format contract.
 
+The canonical contract includes a machine-readable JSON Schema for the reviewer decision envelope.
+At runtime, reviewer execution prefers OpenCode JSON event output and performs bounded same-session retries
+when the returned decision object does not validate.
+
 Important contract rules:
 
 - Do include `$responseformat` in each prompt file.

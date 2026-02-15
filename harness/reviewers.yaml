@@ -23,6 +23,15 @@ reviewers:
       phase: "feature_done"
       on_change:
         - "README.md"
+        - "docs/references/**/*.md"
+        - "docs/principles/**/*.md"
+        - "src/engineeringagent/cli.py"
+        - "src/engineeringagent/init_scaffold.py"
+        - "src/engineeringagent/scaffold_templates/**"
+        - "src/engineeringagent/validator.py"
+        - "src/engineeringagent/gates.py"
+        - "src/engineeringagent/loop.py"
+        - "src/engineeringagent/loop_runtime/**/*.py"
     approval:
       mode: "blocking"
       first_feature_approval: true
