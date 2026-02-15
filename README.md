@@ -1,15 +1,15 @@
 # Engineering Agent
 
-EngineeringAgent is a human-guided harness for running reliable coding loops with an agent.
+Engineering agent - is agent that helps you implement code changes directly from specs. The intention is to allow the agent to run independently for long time. To achieve this a harness is needed though. This happens through validators: linters, tests, codecoverage requirements, fitness functions, and other agents that review the changes. The repos - comes with a structure for how to do this.
 
-Primary flow: `application spec -> run loop`
+You will need to implement the harnesses specific to your repo yourself. You can use the same flow to create harnesses - if you are just starting our i recommend the first few specs and implementations you write should be
+
+The primary flow is rather simple: `application spec -> run loop`. You can of cause craft feature specs by hand - but we suggest that you use the agent for this.
 
 ## Command styles
 
 - Package usage (PyPI, no clone): `uvx engineeringagent <command>`
 - Package usage (version pinned): `uvx engineeringagent@<version> <command>`
-- In-repo loop execution (source-first): `uv run python -m engineeringagent.cli <command>`
-- In-repo loop policy remediation: replace `uvx --from . engineeringagent ...` with `uv run python -m engineeringagent.cli ...`
 
 ## Quickstart from PyPI (no clone)
 
@@ -83,8 +83,8 @@ the git diff before committing anything produced by `init`.
 
 ## Human docs vs agent docs
 
-- `README.md`: first-run, human onboarding.
-- [Harness Engineering Principles](docs/principles/harness-engineering-principles.md): deeper human context.
+- `README.md`: first-run, for you the developer.
+- [Harness Engineering Principles](docs/principles/harness-engineering-principles.md): deeper for you the developer.
 - `AGENTS.md` and `docs/references/*-llms.md`: agent execution rules and deterministic procedures.
 
 ## Reviewer agents (optional)
@@ -93,7 +93,7 @@ the git diff before committing anything produced by `init`.
 - `engineeringagent init` does not scaffold reviewer config or prompts; keep reviewer policy repository-owned through committed harness files.
 - Use `uvx engineeringagent reviewers init` to scaffold a baseline config and prompt files under `harness/reviewers/prompts/`.
 - Use `uvx engineeringagent reviewers list|plan|run` to inspect and test reviewer behavior.
-- For human setup and migration guidance, see [Reviewer authoring guide](docs/principles/reviewer-authoring-guide.md).
+- For setup and migration guidance, see [Reviewer authoring guide](docs/principles/reviewer-authoring-guide.md).
 - For full contract, policy semantics, decision-envelope examples, and troubleshooting, see [Reviewer agents reference](docs/references/reviewer-agents-llms.md).
 
 ## Core files to know
