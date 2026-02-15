@@ -32,7 +32,8 @@ Optional reviewer fields:
 - `approval.first_feature_approval`: boolean (default `true`).
 - `approval.max_retries`: integer >= 0 (default `2`).
 - `approval.continue_on_exhausted`: boolean (default `true`).
-- `sandbox.mode`: currently only `temp_worktree_snapshot`.
+- `sandbox.mode`: currently `temp_worktree_snapshot` or `clean_room_readme_cli`.
+- `sandbox.assets`: optional list of repo-relative paths (files or directories) to copy into a clean-room sandbox.
 
 Copy-pastable v1 example:
 
@@ -83,7 +84,11 @@ readme_process:
     phase: "feature_done"
     on_change: ["README.md"]
   sandbox:
-    mode: "temp_worktree_snapshot"
+    mode: "clean_room_readme_cli"
+    assets:
+      - "docs"
+      - "opencode.json"
+      - ".opencode/agents"
   approval:
     mode: "blocking"
     first_feature_approval: true
@@ -94,7 +99,8 @@ readme_process:
 Plain-English behavior:
 
 - Runs only for `feature_done`, and only when `README.md` changed.
-- Executes from a temporary worktree snapshot so the active checkout is not mutated.
+- Runs inside a sandbox so the active checkout is not mutated.
+- `clean_room_readme_cli` is recommended for README onboarding checks because it limits sandbox contents to the README flow and the minimal linked docs/assets.
 - Reviewer instructions require reading `README.md` and attempting documented bootstrap/setup in a fresh temporary directory.
 - Returns strict v1 decision JSON; non-JSON output is treated as deterministic `request_changes`.
 - Uses blocking policy with retry (`max_retries: 2`) and continues with warning on exhaustion when `continue_on_exhausted` is true.
@@ -214,6 +220,14 @@ Copy-pastable decision examples:
 
 - `sandbox.mode: temp_worktree_snapshot` executes reviewer in an isolated temporary snapshot.
 - Intended for process/document checks (for example README-process review) without mutating active worktree.
+
+- `sandbox.mode: clean_room_readme_cli` executes the reviewer in a new empty directory populated with:
+  - `README.md`
+  - the configured prompt file
+  - the harness-provided local CLI helper (`.engineeringagent/bin/engineeringagent`)
+  - any configured `sandbox.assets`
+- Intended for clean-room README onboarding checks where README links into `docs/` or other minimal artifacts.
+- Clean-room sandboxes exclude `.git/`, `src/`, and `tests/` by design. They also do not copy `.opencode/node_modules`.
 
 ## End-to-end policy examples
 

@@ -2,7 +2,7 @@
 
 Engineering agent - is agent that helps you implement code changes directly from specs. The intention is to allow the agent to run independently for long time. To achieve this a harness is needed though. This happens through validators: linters, tests, codecoverage requirements, fitness functions, and other agents that review the changes. The repos - comes with a structure for how to do this.
 
-You will need to implement the harnesses specific to your repo yourself. You can use the same flow to create harnesses - if you are just starting our i recommend the first few specs and implementations you write should be
+You will need to implement the harnesses specific to your repo yourself. You can use the same flow to create harnesses - if you are just starting out i recommend that the first few specs and implementations you write should be harnesses.
 
 The primary flow is rather simple: `application spec -> run loop`. You can of cause craft feature specs by hand - but we suggest that you use the agent for this.
 
@@ -76,10 +76,7 @@ the git diff before committing anything produced by `init`.
 
 ## OpenCode default agent contract
 
-- Default loop execution uses the `engineeringagent` OpenCode agent; this contract does not fall back to `build`.
-- Keep `opencode.json` configured with `default_agent: "engineeringagent"` and an `agent.engineeringagent` entry using `model: "openai/gpt-5.3-codex"` plus `variant: "high"`.
-- Keep permission policy remediation anchored to `.opencode/agents/engineeringagent.md` with equivalent allow-all posture for this repository.
-- Existing `.opencode/agents/build.md` and `agent.build` entries can remain for other workflows and should not be overwritten by this loop contract.
+- Default loop execution uses the `engineeringagent` OpenCode agent, specified under: .opencode/agents/engineeringagent.md
 
 ## Human docs vs agent docs
 

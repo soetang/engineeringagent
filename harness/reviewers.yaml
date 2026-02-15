@@ -2,11 +2,12 @@ contract_version: "1.0"
 profiles:
   loop_fast:
     - code_simplifier
+    - readme_process
 reviewers:
   code_simplifier:
     prompt_file: "harness/reviewers/prompts/code_simplifier.md"
     trigger:
-      phase: "iteration_end"
+      phase: "feature_done"
       on_change:
         - "src/**/*.py"
         - "tests/**/*.py"
@@ -15,3 +16,21 @@ reviewers:
       first_feature_approval: true
       max_retries: 2
       continue_on_exhausted: true
+
+  readme_process:
+    prompt_file: "harness/reviewers/prompts/readme_process.md"
+    trigger:
+      phase: "feature_done"
+      on_change:
+        - "README.md"
+    approval:
+      mode: "blocking"
+      first_feature_approval: true
+      max_retries: 2
+      continue_on_exhausted: true
+    sandbox:
+      mode: "clean_room_readme_cli"
+      assets:
+        - "docs"
+        - "opencode.json"
+        - ".opencode/agents"

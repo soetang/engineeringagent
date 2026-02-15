@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "engineeringagent"
 version = "0.1.1"
-description = "Feature-driven harness for human-gated coding loops"
+description = "A framework for running coding agents as long running tasks - with deterministic feedback loops and agent reviewers"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [

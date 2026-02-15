@@ -4,6 +4,8 @@ import subprocess
 from pathlib import Path
 from types import SimpleNamespace
 
+import yaml
+
 from engineeringagent.gates import ChangedPathsResult
 from engineeringagent.opencode.client import DEFAULT_OPENCODE_AGENT
 from engineeringagent.reviewers import (
@@ -19,6 +21,9 @@ RESPONSEFORMAT_PROMPT_SENTENCE = (
 )
 
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
 def _responseformat_prompt(body: str) -> str:
     return f"{REVIEWER_RESPONSEFORMAT_PLACEHOLDER}\n\n{body}"
 
@@ -30,6 +35,16 @@ def test_readme_process_clean_room_sandbox_contains_expected_assets_only(
     prompt_path.parent.mkdir(parents=True)
     prompt_path.write_text("Review README process quality.", encoding="utf-8")
     (tmp_path / "README.md").write_text("Original README\n", encoding="utf-8")
+
+    (tmp_path / "docs").mkdir(parents=True)
+    (tmp_path / "docs" / "index.md").write_text("Docs index\n", encoding="utf-8")
+    (tmp_path / "opencode.json").write_text("{}\n", encoding="utf-8")
+
+    (tmp_path / ".opencode" / "agents").mkdir(parents=True)
+    (tmp_path / ".opencode" / "agents" / "engineeringagent.md").write_text(
+        "# agent\n",
+        encoding="utf-8",
+    )
 
     (tmp_path / "src" / "engineeringagent").mkdir(parents=True)
     (tmp_path / "src" / "engineeringagent" / "cli.py").write_text(
@@ -46,7 +61,10 @@ def test_readme_process_clean_room_sandbox_contains_expected_assets_only(
         "readme_process",
         {
             "prompt_file": "harness/reviewers/prompts/readme_process.md",
-            "sandbox": {"mode": "clean_room_readme_cli"},
+            "sandbox": {
+                "mode": "clean_room_readme_cli",
+                "assets": ["docs", "opencode.json", ".opencode/agents"],
+            },
         },
     )
 
@@ -59,8 +77,11 @@ def test_readme_process_clean_room_sandbox_contains_expected_assets_only(
         )
         assert files == [
             ".engineeringagent/bin/engineeringagent",
+            ".opencode/agents/engineeringagent.md",
             "README.md",
+            "docs/index.md",
             "harness/reviewers/prompts/readme_process.md",
+            "opencode.json",
         ]
         assert not (sandbox.execution_root / "src").exists()
         assert not (sandbox.execution_root / "tests").exists()
@@ -69,6 +90,79 @@ def test_readme_process_clean_room_sandbox_contains_expected_assets_only(
         sandbox.cleanup()
 
     assert not sandbox.execution_root.exists()
+
+
+def test_repo_readme_process_clean_room_sandbox_includes_docs_and_opencode_json() -> (
+    None
+):
+    reviewers_path = REPO_ROOT / "harness" / "reviewers.yaml"
+    config = yaml.safe_load(reviewers_path.read_text(encoding="utf-8"))
+    reviewer = config["reviewers"]["readme_process"]
+
+    assert (REPO_ROOT / "README.md").exists()
+    assert (REPO_ROOT / "docs").is_dir()
+    assert (REPO_ROOT / "opencode.json").exists()
+
+    sandbox = build_reviewer_sandbox(
+        REPO_ROOT,
+        "readme_process",
+        reviewer,
+    )
+
+    assert sandbox is not None
+    try:
+        assert (sandbox.execution_root / "README.md").exists()
+        assert (sandbox.execution_root / "docs").is_dir()
+        assert (sandbox.execution_root / "opencode.json").exists()
+    finally:
+        sandbox.cleanup()
+
+
+def test_clean_room_sandbox_does_not_copy_opencode_node_modules(
+    tmp_path: Path,
+) -> None:
+    prompt_path = tmp_path / "harness" / "reviewers" / "prompts" / "readme_process.md"
+    prompt_path.parent.mkdir(parents=True)
+    prompt_path.write_text("Review README process quality.", encoding="utf-8")
+    (tmp_path / "README.md").write_text("Original README\n", encoding="utf-8")
+
+    (tmp_path / ".opencode" / "agents").mkdir(parents=True)
+    (tmp_path / ".opencode" / "agents" / "engineeringagent.md").write_text(
+        "# agent\n",
+        encoding="utf-8",
+    )
+    (tmp_path / ".opencode" / "node_modules").mkdir(parents=True)
+    (tmp_path / ".opencode" / "node_modules" / "ignored.txt").write_text(
+        "ignore me\n",
+        encoding="utf-8",
+    )
+
+    (tmp_path / "src" / "engineeringagent").mkdir(parents=True)
+    (tmp_path / "src" / "engineeringagent" / "cli.py").write_text(
+        "print('ignored')\n",
+        encoding="utf-8",
+    )
+
+    sandbox = build_reviewer_sandbox(
+        tmp_path,
+        "readme_process",
+        {
+            "prompt_file": "harness/reviewers/prompts/readme_process.md",
+            "sandbox": {"mode": "clean_room_readme_cli", "assets": [".opencode"]},
+        },
+    )
+
+    assert sandbox is not None
+    try:
+        assert (
+            sandbox.execution_root / ".opencode" / "agents" / "engineeringagent.md"
+        ).exists()
+        assert not (
+            sandbox.execution_root / ".opencode" / "node_modules" / "ignored.txt"
+        ).exists()
+        assert not (sandbox.execution_root / "src").exists()
+    finally:
+        sandbox.cleanup()
 
 
 def test_readme_process_uses_harness_clean_room_sandbox(

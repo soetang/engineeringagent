@@ -39,6 +39,30 @@ def test_reviewer_contract_accepts_optional_approval_and_sandbox_fields() -> Non
                     "max_retries": 2,
                     "continue_on_exhausted": True,
                 },
+                "sandbox": {
+                    "mode": "clean_room_readme_cli",
+                    "assets": ["docs"],
+                },
+            }
+        },
+    }
+
+    issues = reviewer_contract_issues(document, Path("harness/reviewers.yaml"))
+
+    assert issues == []
+
+
+def test_reviewer_contract_accepts_temp_worktree_snapshot_sandbox_mode() -> None:
+    document = {
+        "contract_version": "1.0",
+        "profiles": {"loop_fast": ["readme_process"]},
+        "reviewers": {
+            "readme_process": {
+                "prompt_file": "harness/reviewers/prompts/readme_process.md",
+                "trigger": {
+                    "phase": "feature_done",
+                    "on_change": ["README.md"],
+                },
                 "sandbox": {"mode": "temp_worktree_snapshot"},
             }
         },

@@ -16,9 +16,18 @@ REQUIRED_POLICY_SNIPPETS = (
     "`reviewer_feedback_forwarded_end`",
 )
 
+REQUIRED_SANDBOX_SNIPPETS = (
+    "`sandbox.mode`: currently",
+    "`clean_room_readme_cli`",
+    "`sandbox.assets`",
+)
+
 
 def test_reviewer_reference_documents_feature_done_only_policy() -> None:
     body = REVIEWER_REFERENCE_PATH.read_text(encoding="utf-8")
     missing = [snippet for snippet in REQUIRED_POLICY_SNIPPETS if snippet not in body]
+    missing.extend(
+        [snippet for snippet in REQUIRED_SANDBOX_SNIPPETS if snippet not in body]
+    )
 
     assert not missing

@@ -119,6 +119,7 @@ class ReviewerApprovalMode(str, Enum):
 
 class ReviewerSandboxMode(str, Enum):
     TEMP_WORKTREE_SNAPSHOT = "temp_worktree_snapshot"
+    CLEAN_ROOM_README_CLI = "clean_room_readme_cli"
 
 
 class ReviewerTriggerDefinition(StrictContractModel):
@@ -135,6 +136,17 @@ class ReviewerApprovalDefinition(StrictContractModel):
 
 class ReviewerSandboxDefinition(StrictContractModel):
     mode: ReviewerSandboxMode
+    assets: Annotated[list[NonEmptyStr], Field(min_length=1)] | None = None
+
+    @model_validator(mode="after")
+    def enforce_assets_support(self) -> "ReviewerSandboxDefinition":
+        if self.assets is None:
+            return self
+        if self.mode != ReviewerSandboxMode.CLEAN_ROOM_README_CLI:
+            raise ValueError(
+                "sandbox.assets is only supported for clean-room sandbox modes"
+            )
+        return self
 
 
 class ReviewerDefinition(StrictContractModel):

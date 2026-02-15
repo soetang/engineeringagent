@@ -66,6 +66,11 @@ def test_progress_log_records_verification_status(tmp_path: Path) -> None:
     feature_log = (tmp_path / "progress" / "run-feature-FEAT-040.txt").read_text(
         encoding="utf-8"
     )
+    first_line = feature_log.splitlines()[0]
+    assert first_line.startswith("ts=")
+    assert "=== ITERATION" in first_line
+    assert "attempt=3" in first_line
+    assert "feature_id=FEAT-040" in first_line
     assert (
         f"verification=failed:{verification_command} "
         f"failed_command={verification_command}"

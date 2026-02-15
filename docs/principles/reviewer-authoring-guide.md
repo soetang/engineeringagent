@@ -16,7 +16,8 @@ Common optional fields:
 
 - `trigger.on_change`: path globs that scope when the reviewer runs
 - `approval`: `mode`, retry limits, and exhaustion behavior
-- `sandbox.mode`: `temp_worktree_snapshot` for isolated process checks
+- `sandbox.mode`: `temp_worktree_snapshot` (snapshot) or `clean_room_readme_cli` (minimal clean-room)
+- `sandbox.assets`: list of repo-relative paths to include in clean-room sandboxes (files or directories)
 
 You can scaffold a baseline config and prompt set with:
 

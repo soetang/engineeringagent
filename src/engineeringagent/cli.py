@@ -40,7 +40,6 @@ from .reviewers import (
 )
 from .validator import validate
 
-
 _MISSING_REMEDIATION_TEMPLATE = (
     "No remediation available: rule metadata missing from active catalog for {rule_id}."
 )
@@ -920,7 +919,7 @@ def build_typer_app() -> typer.Typer:
     """Build the Typer root app with top-level command wiring."""
     app = typer.Typer(
         name="engineeringagent",
-        help="Human-gated CLI harness for feature-driven coding loops.",
+        help="A framework for running coding agents as long running tasks - with deterministic feedback loops and agent reviewers",
         add_completion=False,
         no_args_is_help=False,
     )

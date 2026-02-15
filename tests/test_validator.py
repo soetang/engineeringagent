@@ -960,6 +960,8 @@ def test_reviewer_authoring_doc_link_and_contract_guidance() -> None:
     assert "$responseformat" in guide_text
     assert "engineeringagent reviewers init" in guide_text
     assert "harness/reviewers/prompts/" in guide_text
+    assert "clean_room_readme_cli" in guide_text
+    assert "sandbox.assets" in guide_text
     assert "migrat" in guide_text.lower()
 
 

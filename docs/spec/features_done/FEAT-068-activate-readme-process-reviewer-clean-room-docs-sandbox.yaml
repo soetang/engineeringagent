@@ -1,0 +1,212 @@
+id: FEAT-068
+title: Activate readme_process reviewer with clean-room sandbox and docs support
+type: feature
+expected_commit_subject: 'feat: add FEAT-068 readme_process reviewer clean-room sandbox
+  and docs support'
+status: done
+priority: high
+objective: 'Make README onboarding quality a first-class, repeatable check by enabling
+  the
+
+  readme_process reviewer in this repository, running it in a clean-room sandbox
+
+  that includes README-linked docs, and ensuring the reviewer executes the local
+
+  (in-repo) engineeringagent CLI so local README/CLI changes are actually exercised.
+
+  '
+context: 'We previously designed and implemented a readme_process reviewer scenario
+
+  intended to read README.md in isolation and attempt the documented getting-started
+
+  flow in a sandbox.
+
+
+  Today, this repository does not have a committed readme_process reviewer prompt
+
+  or harness config entry, so it does not appear in configured reviewer profiles.
+
+
+  In addition, the clean-room sandbox builder currently stages only README.md and
+
+  the reviewer prompt file, which breaks README flows that link into `docs/`.
+
+  Finally, the reviewer config schema must explicitly allow selecting the
+
+  clean_room_readme_cli sandbox mode.
+
+  '
+constraints:
+- Add repository-owned reviewer entry readme_process in harness/reviewers.yaml and
+  enable it in profiles.loop_fast.
+- Trigger only at phase feature_done, and only when README.md changed.
+- Use blocking approval policy with first_feature_approval true, max_retries 2, continue_on_exhausted
+  true.
+- Use sandbox mode clean_room_readme_cli and do not use temp_worktree_snapshot for
+  this reviewer in this repository.
+- Clean-room sandbox contents include README.md, harness/reviewers/prompts/readme_process.md,
+  docs/ (entire directory), opencode.json, .opencode/agents (directory), and the harness-provided
+  engineeringagent CLI helper for local execution. Do not copy .opencode/node_modules
+  into the sandbox.
+- Reviewer prompt includes the literal $responseformat placeholder and instructs the
+  agent to follow README.md by creating a fresh repo directory, running engineeringagent
+  init, creating a feature spec, and performing a dry-run loop run using the sandbox-provided
+  local CLI helper (not uvx).
+- Reviewer prompt must assume the agent starts with its working directory set to the
+  sandbox execution root and must not require leaving the sandbox to complete the
+  flow.
+- Reviewer prompt must classify failures as README instruction issues, CLI/init behavior
+  issues, or both.
+- Contract/schema change required - reviewer config validation accepts sandbox.mode
+  clean_room_readme_cli.
+- Backward compatibility required - preserve sandbox.mode temp_worktree_snapshot behavior
+  unchanged.
+- Fitness-function impact is none and no fitness-function changes required (reviewer
+  behavior is configured via harness and validated by existing spec/reviewer validators).
+implementation_notes: "Contract/API delta (explicit):\n\n- Surface: harness/reviewers.yaml\
+  \ reviewer sandbox contract.\n  - Old behavior: only sandbox.mode temp_worktree_snapshot\
+  \ is accepted by the reviewer\n    config schema.\n  - New behavior: accept sandbox.mode\
+  \ clean_room_readme_cli in reviewer schema validation.\n\n- Surface: clean-room\
+  \ reviewer sandbox content contract.\n  - Old behavior: clean-room sandbox contains\
+  \ only README.md and the reviewer prompt file\n    (plus the CLI helper), so README-linked\
+  \ docs are unavailable.\n  - New behavior: clean-room sandbox additionally includes\
+  \ docs/ so README links can be followed.\n\n- Surface: repository reviewer activation.\n\
+  \  - Old behavior: this repository only configures code_simplifier, so readme_process\n\
+  \    is not available in `loop_fast`.\n  - New behavior: readme_process is present,\
+  \ has a committed prompt, and is included in\n    profiles.loop_fast.\n\nCompatibility\
+  \ policy:\n- Continue to accept and execute `temp_worktree_snapshot` for existing\
+  \ repositories.\n- `clean_room_readme_cli` is additive and opt-in via reviewer config.\n\
+  \nMigration scope:\n- One-time addition of `readme_process` config + prompt files\
+  \ to this repository.\n- One-time schema + sandbox builder extension to support\
+  \ `clean_room_readme_cli` and docs/assets.\n- Update reviewer authoring/reference\
+  \ docs to reflect new sandbox mode and assets support.\n\nPrompt to commit (exact\
+  \ content):\n\nFile: harness/reviewers/prompts/readme_process.md\n\n---\nReview\
+  \ README workflow/process guidance for correctness and clarity.\n\nYour goal is\
+  \ to simulate a clean-room first run by following README.md exactly as a user would.\n\
+  Use the sandbox-provided local engineeringagent CLI helper so local changes are\
+  \ tested.\n\n$responseformat\n\nRules:\n- You are started inside the sandbox execution\
+  \ root (your current working directory is the sandbox root). Do not leave the sandbox.\n\
+  - Confirm expected sandbox contents exist before starting (README.md, docs/, opencode.json,\
+  \ .opencode/agents/engineeringagent.md, and .engineeringagent/bin/engineeringagent).\n\
+  - Read README.md first and treat it as the source of truth.\n- Create a fresh, empty\
+  \ directory under the sandbox root and run the README onboarding flow there.\n-\
+  \ Do NOT use uvx engineeringagent commands in this repository review. Use the local\
+  \ helper.\n- If README links into docs/, follow those links as needed to resolve\
+  \ ambiguity.\n- If the flow fails, classify the fix surface as:\n  - README instructions\
+  \ issue\n  - engineeringagent CLI/init behavior issue\n  - both\n- If decision is\
+  \ warning or request_changes, include concrete required_actions with file paths.\n\
+  \nSuggested execution outline (adjust to match README.md if it differs):\n\n1) Create\
+  \ a new sandbox repo directory.\n   - mkdir -p scratch_repo\n   - cd scratch_repo\n\
+  \n2) Run init using the sandbox helper from the parent directory:\n   - ../.engineeringagent/bin/engineeringagent\
+  \ init\n\n3) Create a minimal feature spec in docs/spec/features/ (or follow README's\
+  \ example).\n   - Ensure the YAML validates and has status backlog or in_progress.\n\
+  \n4) Validate and run gates.\n   - ../.engineeringagent/bin/engineeringagent validate\n\
+  \   - ../.engineeringagent/bin/engineeringagent gates run --profile loop_fast\n\n\
+  5) Dry-run the loop for the spec.\n   - ../.engineeringagent/bin/engineeringagent\
+  \ run docs/spec/features/<your spec>.yaml --dry-run\n\nApprove only if the README-guided\
+  \ flow is coherent and runnable in this clean-room setup.\n---\n"
+acceptance:
+- harness/reviewers.yaml includes a readme_process reviewer and profiles.loop_fast
+  includes it.
+- harness/reviewers/prompts/readme_process.md exists, includes $responseformat, and
+  contains clear instructions to run the README bootstrap flow (init repo, create
+  spec, validate, gates, dry-run) using the sandbox-provided local CLI helper.
+- Reviewer config validation accepts sandbox.mode clean_room_readme_cli.
+- Clean-room sandbox for readme_process includes README.md, the readme_process prompt
+  file, and the docs/ directory (and still excludes full repo source/tests and .git
+  metadata).
+- When README.md is unchanged, readme_process is deterministically skipped; when README.md
+  changes and phase is `feature_done`, it is deterministically planned to run.
+- Blocking retry/exhaustion semantics for `readme_process` remain deterministic and
+  unchanged.
+subtasks:
+- id: ST-001
+  title: Commit readme_process reviewer config + prompt and enable in loop_fast
+  status: done
+  context: 'Add `readme_process` to `harness/reviewers.yaml` and create
+
+    `harness/reviewers/prompts/readme_process.md` with clean-room onboarding instructions
+
+    that execute the local CLI helper (not `uvx`).
+
+    '
+  verification:
+  - uv run python -m engineeringagent.cli validate
+- id: ST-002
+  title: Extend reviewer schema to accept clean_room_readme_cli and sandbox.assets
+  status: done
+  context: "Update reviewer contract validation (pydantic schema) to allow:\n- `sandbox.mode:\
+    \ clean_room_readme_cli`\n- optional `sandbox.assets: [<repo-relative-path>...]`\
+    \ for clean-room sandbox modes\n  (assets may be files or directories).\n"
+  verification:
+  - uv run pytest -q tests/test_reviewers_contract.py tests/test_validator.py
+- id: ST-003
+  title: Include docs and configured assets in clean-room sandbox builder
+  status: done
+  context: 'Extend the clean-room sandbox builder so that for `readme_process` it
+    stages `docs/`
+
+    into the sandbox, and generally supports copying configured `sandbox.assets` entries.
+
+    Preserve guardrails against absolute paths and `..` traversal, and keep `.git`,
+    `src/`,
+
+    and `tests/` excluded from clean-room sandboxes.
+
+    '
+  verification:
+  - uv run pytest -q tests/test_reviewers_sandbox.py
+- id: ST-004
+  title: Update reviewer authoring/reference docs for clean-room mode and assets
+  status: done
+  context: 'Update `docs/references/reviewer-agents-llms.md` and `docs/principles/reviewer-authoring-guide.md`
+
+    to document the `clean_room_readme_cli` sandbox mode and the `sandbox.assets`
+    include mechanism.
+
+    '
+  verification:
+  - uv run python -m engineeringagent.cli validate
+- id: ST-005
+  title: Add or update regression tests for docs availability and planning semantics
+  status: done
+  context: 'Add focused tests that assert `docs/` exists in the clean-room sandbox
+    for `readme_process`,
+
+    that `readme_process` plans only when `README.md` changes at `feature_done`, and
+    that
+
+    blocking retry policy continues to behave deterministically.
+
+    '
+  verification:
+  - uv run pytest -q tests/test_reviewers_runtime.py tests/test_reviewers_sandbox.py
+    tests/test_loop_reviewers.py
+- id: ST-006
+  title: Make reviewer decision parsing resilient to wrapped JSON output
+  status: done
+  context: 'Ensure the harness can still parse a reviewer decision when the agent
+    runner
+
+    wraps the JSON in code fences or adds light prefix/suffix noise. This prevents
+
+    false-negative request_changes due to formatting artifacts while keeping the
+
+    required JSON decision envelope contract.
+
+    Includes a regression case where the wrapped JSON contains nested objects.
+
+    '
+  verification:
+  - uv run pytest -q tests/test_reviewers_parse.py
+- id: ST-007
+  title: Fix README mdformat compliance for precommit
+  status: done
+  context: 'Format README.md to satisfy the mdformat_validate gate so README/process
+
+    changes remain reviewable and deterministic.
+
+    '
+  verification:
+  - uv run mdformat --check README.md AGENTS.md docs/references/docs-architecture-llms.md
+updated_at: '2026-02-15T14:20:36Z'

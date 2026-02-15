@@ -515,7 +515,14 @@ def _build_clean_room_readme_cli_sandbox(
     )
     execution_root = Path(workspace.name) / "workspace"
     execution_root.mkdir(parents=True, exist_ok=True)
-    sandbox_assets = sorted({"README.md", prompt_file})
+    configured_assets: list[str] = []
+    sandbox_config = reviewer_config.get("sandbox", {})
+    if isinstance(sandbox_config, dict):
+        assets = sandbox_config.get("assets", [])
+        if isinstance(assets, list):
+            configured_assets = [str(asset) for asset in assets]
+
+    sandbox_assets = sorted({"README.md", prompt_file, *configured_assets})
 
     try:
         for relative_path in sandbox_assets:
@@ -553,18 +560,43 @@ def _copy_clean_room_asset(
             f"sandbox setup failed: invalid sandbox asset path: {relative_path}"
         )
 
+    forbidden_roots = {".git", "src", "tests"}
+    if candidate.parts and candidate.parts[0] in forbidden_roots:
+        raise RuntimeError(
+            f"sandbox setup failed: forbidden sandbox asset root: {relative_path}"
+        )
+    if candidate.parts[:2] == (".opencode", "node_modules"):
+        raise RuntimeError(
+            f"sandbox setup failed: forbidden sandbox asset path: {relative_path}"
+        )
+
     source_path = project_root / candidate
     if not source_path.exists():
         raise RuntimeError(
             f"sandbox setup failed: required sandbox asset missing: {relative_path}"
         )
-    if source_path.is_dir():
-        raise RuntimeError(
-            f"sandbox setup failed: sandbox asset must be a file: {relative_path}"
-        )
-
     target_path = execution_root / candidate
     target_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if source_path.is_dir():
+        ignore_names = {".git", "__pycache__", ".pytest_cache", ".mypy_cache"}
+
+        ignore_opencode_node_modules = candidate.parts[:1] == (".opencode",)
+
+        def _ignore(_dir_path: str, contents: list[str]) -> set[str]:
+            ignored = ignore_names.intersection(contents)
+            if ignore_opencode_node_modules and "node_modules" in contents:
+                ignored.add("node_modules")
+            return ignored
+
+        shutil.copytree(
+            source_path,
+            target_path,
+            dirs_exist_ok=True,
+            ignore=_ignore,
+        )
+        return
+
     shutil.copy2(source_path, target_path)
 
 
@@ -601,7 +633,9 @@ def parse_reviewer_decision(output: str) -> dict[str, Any]:  # noqa: C901
     try:
         payload = json.loads(raw)
     except json.JSONDecodeError:
-        return _parser_failure_decision("output is not valid JSON")
+        payload = _extract_reviewer_decision_payload(raw)
+        if payload is None:
+            return _parser_failure_decision("output is not valid JSON")
 
     if not isinstance(payload, dict):
         return _parser_failure_decision("output must be a JSON object")
@@ -643,6 +677,33 @@ def parse_reviewer_decision(output: str) -> dict[str, Any]:  # noqa: C901
     if scope_notes is not None:
         decision_envelope["scope_notes"] = scope_notes
     return decision_envelope
+
+
+def _extract_reviewer_decision_payload(raw: str) -> dict[str, Any] | None:
+    """Best-effort extraction for wrapped/annotated reviewer outputs.
+
+    Reviewers are instructed to emit exactly one JSON object. In practice, some
+    runners may wrap the final answer in code fences or add lightweight prefixes.
+    To keep the reviewer loop deterministic and resilient, attempt to locate the
+    last JSON object embedded in the output and treat it as the decision payload.
+    """
+
+    decoder = json.JSONDecoder()
+    last_payload: dict[str, Any] | None = None
+    pos = raw.find("{")
+    while pos != -1:
+        try:
+            candidate, end = decoder.raw_decode(raw[pos:])
+        except json.JSONDecodeError:
+            pos = raw.find("{", pos + 1)
+            continue
+
+        if isinstance(candidate, dict):
+            last_payload = candidate
+        # Skip past the decoded JSON object to avoid re-scanning nested braces.
+        pos = raw.find("{", pos + max(end, 1))
+
+    return last_payload
 
 
 def _parser_failure_decision(reason: str) -> dict[str, Any]:

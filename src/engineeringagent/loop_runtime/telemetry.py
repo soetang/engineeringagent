@@ -131,9 +131,11 @@ def write_iteration_telemetry(
     run_payload = _sanitize_payload_strings(run_payload)
 
     feature_progress_log_lines = [
-        "ts="
-        f"{run_payload['ts']} attempt={telemetry_inputs.iteration_inputs.attempt} "
-        f"feature_id={run_payload.get('feature_id') or 'unknown-feature'}",
+        (
+            f"ts={run_payload['ts']} === ITERATION "
+            f"attempt={telemetry_inputs.iteration_inputs.attempt} "
+            f"feature_id={feature_id} ==="
+        ),
         f"feature_path={telemetry_inputs.iteration_inputs.feature_path}",
         f"implement={telemetry_inputs.implement_status}",
         f"gates={telemetry_inputs.gate_status}",
