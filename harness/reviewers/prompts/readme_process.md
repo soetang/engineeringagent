@@ -19,6 +19,7 @@ Rules:
 - If decision is warning or request_changes, include concrete required_actions with file paths.
 - Go in-depth; also provide feedback based on referenced files.
 - Be aware that some files linked from the README are created by `init`. That is OK and not an error.
+- You can assume users know how to use git.
 
 Suggested execution outline (adjust to match README.md if it differs):
 
@@ -27,7 +28,7 @@ Suggested execution outline (adjust to match README.md if it differs):
    - cd scratch_repo
 
 2) Run init using the sandbox helper from the parent directory:
-   - ../.engineeringagent/bin/engineeringagent init
+   - ../.engineeringagent/bin/engineeringagent init slim
 
 3) Create a minimal feature spec in docs/spec/features/ (or follow README's example).
    - Ensure the YAML validates and has status backlog or in_progress.

@@ -28,7 +28,7 @@ Keep this file concise. Add durable references and rules, not task logs.
 - `docs/references/docs-architecture-llms.md`: Use when adding or restructuring docs; keeps human vs agent doc placement deterministic.
 - `docs/references/workflow-llms.md`: Use before running loop work; defines the expected execution and verification loop.
 
-Note: Some repos use a separate docs root (configured via `engineeringagent.toml`). In that case, these references live under the configured docs root.
+Note: Some repos use a separate docs root for specs (configured via `engineeringagent.toml`). These reference docs remain under `docs/references/`.
 
 ## First-Window Boot Sequence
 

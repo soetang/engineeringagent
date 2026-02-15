@@ -581,6 +581,11 @@ def _run_selected_feature_iterations(
                 break
 
             terminal_failure_exit_code = _terminal_iteration_failure_exit_code(outcome)
+            if config.skip_implement:
+                if terminal_failure_exit_code is not None:
+                    return terminal_failure_exit_code
+                return 0 if outcome.result == "passed" else 1
+
             if terminal_failure_exit_code is not None:
                 return terminal_failure_exit_code
 

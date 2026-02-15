@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import shutil
 import sys
@@ -136,6 +137,8 @@ def _write_set_done_script(script_path: Path) -> Path:
 def test_loop_runs_opencode_integration(tmp_path: Path) -> None:
     if shutil.which("opencode") is None:
         pytest.skip("opencode CLI not found in PATH")
+    if os.environ.get("ENGINEERINGAGENT_OPENCODE_INTEGRATION") != "1":
+        pytest.skip("set ENGINEERINGAGENT_OPENCODE_INTEGRATION=1 to run")
 
     project_root, feature_path = _make_project_root(tmp_path)
     _init_git_repo(project_root)
@@ -372,7 +375,7 @@ def test_run_loop_skips_permission_precheck_with_skip_implement(
         max_iterations=1,
     )
 
-    assert code == 1
+    assert code == 0
     assert precheck_called is False
     runs = (project_root / "progress" / "runs.jsonl").read_text(encoding="utf-8")
     assert len(runs.splitlines()) == 1
@@ -455,6 +458,54 @@ def test_run_loop_permission_precheck_failure_prints_remediation_hint(
     assert "--skip-implement" in output
     assert "--implement-command" in output
     assert build_agent_path.read_text(encoding="utf-8") == original_build_agent
+
+
+def test_run_loop_permission_precheck_pass_prints_bypass_hint_and_log_locations(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project_root, feature_path = _make_project_root(tmp_path)
+    _init_git_repo(project_root)
+
+    def fake_run_permission_probe(_: Path) -> PermissionProbeResult:
+        return PermissionProbeResult(
+            ok=True,
+            reason="ok",
+            returncode=0,
+            output="PERMISSION_OK\n",
+        )
+
+    def fake_start_agent(*_: Any, **__: Any) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(
+            ["opencode", "run", "--agent", "engineeringagent", "<prompt>"],
+            1,
+            stdout="",
+            stderr="opencode failed",
+        )
+
+    monkeypatch.setattr(loop_module, "run_permission_probe", fake_run_permission_probe)
+    monkeypatch.setattr(loop_module, "start_agent", fake_start_agent)
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        implement_command=None,
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        max_iterations=1,
+    )
+
+    output = capsys.readouterr().out
+
+    assert code == 1
+    assert "Running pre-run OpenCode permission precheck" in output
+    assert "--skip-implement" in output
+    assert "--implement-command" in output
+    assert "progress/runs.jsonl" in output
+    assert "progress/run-feature-" in output
 
 
 def test_gate_failure_feedback_round_trips_to_retry_prompt_integration(

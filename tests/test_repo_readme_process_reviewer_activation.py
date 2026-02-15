@@ -12,6 +12,7 @@ REVIEWERS_PATH = REPO_ROOT / "harness" / "reviewers.yaml"
 README_PROCESS_PROMPT_PATH = (
     REPO_ROOT / "harness" / "reviewers" / "prompts" / "readme_process.md"
 )
+README_PATH = REPO_ROOT / "README.md"
 
 
 def test_repo_enables_readme_process_reviewer_in_loop_fast() -> None:
@@ -60,13 +61,26 @@ def test_repo_enables_readme_process_reviewer_in_loop_fast() -> None:
     assert "opencode.json" not in prompt_body
     assert "Do not leave the sandbox" in prompt_body
     assert "Create a fresh, empty directory under the sandbox root" in prompt_body
-    assert "../.engineeringagent/bin/engineeringagent init" in prompt_body
+    assert "../.engineeringagent/bin/engineeringagent init slim" in prompt_body
     assert "../.engineeringagent/bin/engineeringagent validate" in prompt_body
     assert (
         "../.engineeringagent/bin/engineeringagent gates run --profile loop_fast"
         in prompt_body
     )
     assert "--dry-run" in prompt_body
+
+    readme_body = README_PATH.read_text(encoding="utf-8")
+    assert "engineeringagent init slim" in readme_body
+    assert "engineeringagent init standard" in readme_body
+    assert "TTY" in readme_body
+    assert "prompt" in readme_body
+    assert "--allow-dirty" in readme_body
+    assert (
+        "Before the first non-dry `engineeringagent run`, either commit the scaffold/spec changes or pass `--allow-dirty`."
+        in readme_body
+    )
+    assert "progress/runs.jsonl" in readme_body
+    assert "mutates your feature YAML" in readme_body
 
     # Keep the reviewer prompt crisp: avoid obvious typos/grammar issues.
     assert "Beaware" not in prompt_body

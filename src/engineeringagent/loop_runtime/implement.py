@@ -9,6 +9,7 @@ from typing import Any, Callable
 from engineeringagent.loop_runtime.models import ImplementStepInputs
 from engineeringagent.opencode.client import DEFAULT_OPENCODE_AGENT
 from engineeringagent.opencode_permissions import output_has_permission_rejection
+from engineeringagent import progress_paths
 from engineeringagent.prompts import (
     build_implementation_prompt,
 )
@@ -130,6 +131,16 @@ def run_opencode_permission_precheck(
         return True
 
     print("Running pre-run OpenCode permission precheck (default implement mode).")
+    print(
+        "Hint: if OpenCode cannot proceed or appears stuck, interrupt and rerun with "
+        "--skip-implement or --implement-command to bypass default OpenCode implement mode."
+    )
+    print(
+        "Logs: "
+        f"{progress_paths.runs_jsonl_reference(project_root)} and "
+        f"{progress_paths.run_feature_log_template_reference(project_root)} "
+        "(written after each iteration)."
+    )
     result = run_permission_probe_fn(project_root)
     if result.ok:
         print("OpenCode permission precheck passed.")

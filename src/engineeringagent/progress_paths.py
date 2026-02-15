@@ -22,6 +22,16 @@ def runs_jsonl_path(project_root: Path) -> Path:
     return progress_dir(project_root) / RUNS_JSONL_FILENAME
 
 
+def runs_jsonl_reference(project_root: Path) -> str:
+    """Return repository-relative reference for the JSONL run telemetry sink."""
+
+    path = runs_jsonl_path(project_root)
+    try:
+        return str(path.relative_to(project_root))
+    except ValueError:
+        return str(path)
+
+
 def reviewers_state_path(project_root: Path) -> Path:
     return progress_dir(project_root) / REVIEWERS_STATE_FILENAME
 
@@ -53,6 +63,16 @@ def run_feature_log_reference(project_root: Path, feature_id: str) -> str:
     """Return repository-relative reference for a feature progress log path."""
 
     path = run_feature_log_path(project_root, feature_id)
+    try:
+        return str(path.relative_to(project_root))
+    except ValueError:
+        return str(path)
+
+
+def run_feature_log_template_reference(project_root: Path) -> str:
+    """Return a repository-relative reference for the per-feature log template."""
+
+    path = progress_dir(project_root) / "run-feature-<FEATURE_ID>.txt"
     try:
         return str(path.relative_to(project_root))
     except ValueError:

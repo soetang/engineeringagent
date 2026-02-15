@@ -35,8 +35,12 @@ Primary flow: `feature spec -> run loop`.
 1. (Optional) Scaffold a baseline harness.
 
    ```bash
-   uvx engineeringagent init
+   uvx engineeringagent init slim
    ```
+
+   In an interactive TTY, `uvx engineeringagent init` (no pack) prompts you to pick
+   `slim|standard` (default: `slim`). In non-interactive contexts, it defaults to
+   `slim` without prompting. To avoid any prompt, pass the pack explicitly.
 
    Warning: `init` is experimental scaffolding. Inspect generated files,
    run `uvx engineeringagent validate`, and review the git diff before committing.
@@ -83,6 +87,11 @@ Primary flow: `feature spec -> run loop`.
 
 1. Run for real by removing `--dry-run`.
 
+   Before the first non-dry `engineeringagent run`, either commit the scaffold/spec changes or pass `--allow-dirty`.
+
+   Note: a non-dry `run` mutates your feature YAML in place (status/subtask updates,
+   updated_at) and writes progress logs under `progress/`.
+
    If you do not have OpenCode installed/configured, either:
 
    - pass `--implement-command <cmd>` to run your own implementation command, or
@@ -93,8 +102,22 @@ Primary flow: `feature spec -> run loop`.
 If you are starting in a fresh repository, you can scaffold a baseline harness with:
 
 ```bash
-uvx engineeringagent init
+uvx engineeringagent init slim
 ```
+
+Init packs:
+
+- `slim` (default): safe baseline scaffold that runs real validations (at least spec validation)
+- `standard`: also wires a demo fitness rule that always fails into the `precommit` gate profile
+
+```bash
+uvx engineeringagent init standard
+```
+
+If you picked `standard`, your pre-commit gates are expected to fail until you disable the
+demo by removing gate `demo_fail` from `harness/gates.yaml` and deleting
+`harness/fitness-functions/demo_rules.yaml` and `harness/fitness-functions/demo_always_fail.py`
+(or re-run: `uvx engineeringagent init slim --force`).
 
 `init` defaults to the language-agnostic `core` scaffold profile.
 
@@ -103,7 +126,7 @@ Use `python_uv` when you want the scaffolded `.pre-commit-config.yaml` to assume
 to `harness/gates.yaml`.
 
 ```bash
-uvx engineeringagent init --scaffold-profile python_uv
+uvx engineeringagent init slim --scaffold-profile python_uv
 ```
 
 `init` creates a starter structure for `docs/spec/` and `harness/gates.yaml` and handles

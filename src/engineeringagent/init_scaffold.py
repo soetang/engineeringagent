@@ -13,6 +13,21 @@ from .specs import feature_schema_from_model
 _SUPPORTED_SCAFFOLD_PROFILES = {"core", "python_uv"}
 _SCAFFOLD_TEMPLATE_PACKAGE = "engineeringagent.scaffold_templates"
 
+_SUPPORTED_INIT_PACKS = {"slim", "standard"}
+
+
+def _spec_validate_gate(docs_dir_normalized: str) -> dict[str, object]:
+    """Return a stable spec validation gate config for harness profiles."""
+
+    return {
+        "run": "engineeringagent validate",
+        "on_change": [
+            f"{docs_dir_normalized}/spec/**/*.yaml",
+            f"{docs_dir_normalized}/spec/**/*.yml",
+            f"{docs_dir_normalized}/spec/**/*.json",
+        ],
+    }
+
 
 def _render_scaffold_template(
     name: str, substitutions: dict[str, str] | None = None
@@ -42,13 +57,17 @@ def build_scaffold_agents_markdown() -> str:
     return _render_scaffold_template("AGENTS.md")
 
 
-def _build_reference_docs_manifest(docs_dir: str) -> dict[str, str]:
-    """Build tool-generic agent docs references for the scaffold docs root."""
+def _build_reference_docs_manifest() -> dict[str, str]:
+    """Build tool-generic agent docs references.
+
+    Note: These are kept under the default `docs/` directory even when feature specs
+    are configured to live under a separate docs root.
+    """
     return {
-        f"{docs_dir}/references/docs-architecture-llms.md": _render_scaffold_template(
+        "docs/references/docs-architecture-llms.md": _render_scaffold_template(
             "reference.docs-architecture-llms.md"
         ),
-        f"{docs_dir}/references/workflow-llms.md": _render_scaffold_template(
+        "docs/references/workflow-llms.md": _render_scaffold_template(
             "reference.workflow-llms.md"
         ),
     }
@@ -117,14 +136,24 @@ def build_baseline_scaffold_manifest(
     if profile not in _SUPPORTED_SCAFFOLD_PROFILES:
         raise ValueError(f"unsupported scaffold profile: {profile}")
 
-    normalized_docs_dir = docs_dir.strip("/")
+    docs_dir_normalized = docs_dir.strip("/")
+    gate_config = {
+        "contract_version": "1.0",
+        "profiles": {
+            "precommit": ["spec_validate"],
+            "loop_fast": ["spec_validate"],
+        },
+        "gates": {
+            "spec_validate": _spec_validate_gate(docs_dir_normalized),
+        },
+    }
 
     manifest = {
         ".pre-commit-config.yaml": _build_precommit_config(profile=profile),
         **_build_opencode_scaffold_manifest(),
-        f"{normalized_docs_dir}/spec/features/.gitkeep": "",
-        f"{normalized_docs_dir}/spec/features_done/.gitkeep": "",
-        f"{normalized_docs_dir}/spec/potential_features.yaml": yaml.safe_dump(
+        f"{docs_dir_normalized}/spec/features/.gitkeep": "",
+        f"{docs_dir_normalized}/spec/features_done/.gitkeep": "",
+        f"{docs_dir_normalized}/spec/potential_features.yaml": yaml.safe_dump(
             {
                 "version": 1,
                 "description": (
@@ -136,19 +165,13 @@ def build_baseline_scaffold_manifest(
             sort_keys=False,
             allow_unicode=False,
         ),
-        f"{normalized_docs_dir}/spec/schemas/feature.schema.json": json.dumps(
+        f"{docs_dir_normalized}/spec/schemas/feature.schema.json": json.dumps(
             feature_schema_from_model(),
             indent=2,
         )
         + "\n",
         "harness/gates.yaml": yaml.safe_dump(
-            {
-                "profiles": {
-                    "precommit": [],
-                    "loop_fast": [],
-                },
-                "gates": {},
-            },
+            gate_config,
             sort_keys=False,
             allow_unicode=False,
         ),
@@ -213,8 +236,113 @@ def build_baseline_scaffold_manifest(
             allow_unicode=False,
         ),
         "AGENTS.md": build_scaffold_agents_markdown(),
-        **_build_reference_docs_manifest(normalized_docs_dir),
+        **_build_reference_docs_manifest(),
     }
+
+    return manifest
+
+
+def _demo_fail_rule_script() -> str:
+    """Return a deterministic script body that emits a failing rule envelope."""
+    return (
+        "from __future__ import annotations\n"
+        "\n"
+        "import json\n"
+        "\n"
+        "\n"
+        "def main() -> None:\n"
+        "    payload = {\n"
+        '        "contract_version": "1.0",\n'
+        '        "rule_id": "demo.always-fail",\n'
+        '        "status": "fail",\n'
+        '        "severity": "error",\n'
+        '        "summary": "Demo failing rule (standard init pack).",\n'
+        '        "violations": ["Demo rule triggered to show pre-commit failure output."],\n'
+        "    }\n"
+        "    print(json.dumps(payload, sort_keys=True))\n"
+        "\n"
+        "\n"
+        'if __name__ == "__main__":\n'
+        "    main()\n"
+    )
+
+
+def build_init_scaffold_manifest(
+    *,
+    docs_dir: str = "docs",
+    profile: str = "core",
+    pack: str = "slim",
+    include_reviewers: bool = False,
+) -> dict[str, str]:
+    """Build init scaffold manifest for the selected pack.
+
+    Packs:
+    - slim: safe default that runs spec validation
+    - standard: wires an always-failing demo fitness rule into pre-commit gates
+    """
+    if pack not in _SUPPORTED_INIT_PACKS:
+        raise ValueError(f"unsupported init pack: {pack}")
+
+    manifest = build_baseline_scaffold_manifest(
+        docs_dir=docs_dir,
+        profile=profile,
+        include_reviewers=include_reviewers,
+    )
+
+    if pack != "standard":
+        return manifest
+
+    demo_manifest_path = "harness/fitness-functions/demo_rules.yaml"
+    demo_script_path = "harness/fitness-functions/demo_always_fail.py"
+    manifest[demo_manifest_path] = yaml.safe_dump(
+        {
+            "contract_version": "1.0",
+            "rules": [
+                {
+                    "rule_id": "demo.always-fail",
+                    "name": "Demo always failing rule",
+                    "summary": "Demonstration rule that always fails.",
+                    "rationale": (
+                        "Provides an immediate example of a failing fitness rule in pre-commit."
+                    ),
+                    "remediation": (
+                        "Disable the demo by removing gate 'demo_fail' from harness/gates.yaml and deleting "
+                        "harness/fitness-functions/demo_rules.yaml (or re-run: engineeringagent init slim --force)."
+                    ),
+                    "scope": ".",
+                    "severity": "error",
+                    "side_effect_free": True,
+                    "adapter": "command",
+                    "command": ["python", demo_script_path],
+                }
+            ],
+        },
+        sort_keys=False,
+        allow_unicode=False,
+    )
+    manifest[demo_script_path] = _demo_fail_rule_script()
+
+    docs_dir_normalized = docs_dir.strip("/")
+    manifest["harness/gates.yaml"] = yaml.safe_dump(
+        {
+            "contract_version": "1.0",
+            "profiles": {
+                "precommit": ["spec_validate", "demo_fail"],
+                "loop_fast": ["spec_validate"],
+            },
+            "gates": {
+                "spec_validate": _spec_validate_gate(docs_dir_normalized),
+                "demo_fail": {
+                    "run": (
+                        "engineeringagent fitness run --format json "
+                        "--manifest-path harness/fitness-functions/demo_rules.yaml"
+                    )
+                },
+            },
+        },
+        sort_keys=False,
+        allow_unicode=False,
+    )
 
     return manifest
 
@@ -224,15 +352,17 @@ def apply_baseline_scaffold(
     force: bool = False,
     docs_dir: str = "docs",
     profile: str = "core",
+    pack: str = "slim",
     include_reviewers: bool = False,
 ) -> tuple[int, int]:
-    """Write the baseline scaffold manifest to disk.
+    """Write the init scaffold manifest to disk.
 
     Args:
         project_root: Repository root where scaffold files should be created.
         force: Whether to overwrite files that already exist.
         docs_dir: Docs root directory where spec files should be scaffolded.
         profile: Scaffold profile that determines language/tool defaults.
+        pack: Init pack selection (slim|standard).
         include_reviewers: Backward-compatible no-op; init does not seed reviewers.
 
     Returns:
@@ -241,9 +371,10 @@ def apply_baseline_scaffold(
     created = 0
     skipped = 0
 
-    manifest = build_baseline_scaffold_manifest(
+    manifest = build_init_scaffold_manifest(
         docs_dir=docs_dir,
         profile=profile,
+        pack=pack,
         include_reviewers=include_reviewers,
     )
 

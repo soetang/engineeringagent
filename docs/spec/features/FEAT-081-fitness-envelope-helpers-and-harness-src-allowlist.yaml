@@ -1,0 +1,87 @@
+id: FEAT-081
+title: Standardize fitness result envelope helpers and constrain harness-to-src imports
+type: chore
+expected_commit_subject: "chore: standardize fitness envelope helpers"
+status: backlog
+priority: medium
+objective: |
+  Make fitness-function authoring easier and more consistent by providing a single
+  supported result-envelope helper surface under `engineeringagent.fitness.*`, and
+  prevent harness scripts from importing arbitrary `src/` internals by enforcing a
+  narrow harness-to-src import allowlist.
+context: |
+  Today, harness fitness functions emit results via a local helper
+  `harness/fitness-functions/result_envelope.py`, while the canonical schema and
+  contract version live under `src/engineeringagent/fitness/contracts.py`.
+
+  This duplication risks drift in contract versioning and makes it unclear which
+  modules are safe for harness scripts to depend on.
+constraints:
+  - "Fitness rule results must continue to validate against `engineeringagent.fitness.contracts.FitnessRuleResult` (contract_version=1.0)."
+  - "Harness fitness-function scripts may import a small, explicit allowlist from `engineeringagent.*`; by default this allowlist should only include `engineeringagent.fitness.*`."
+  - "Harness fitness-function scripts must not import orchestration/runtime internals (e.g. `engineeringagent.loop`, `engineeringagent.loop_runtime.*`, `engineeringagent.cli`)."
+  - "Result envelope emission must be deterministic (stable keys; stable encoding; no surrounding text)."
+implementation_notes: |
+  Contract/API delta (explicit):
+
+  - Surface: harness fitness-function scripts' import source for emitting result envelopes.
+    - Old behavior: scripts import `emit_result_envelope` from `harness/fitness-functions/result_envelope.py`.
+    - New behavior: scripts import `emit_result_envelope` from `src/engineeringagent/fitness/envelope.py`.
+
+  - Surface: allowed harness-to-src dependency surface.
+    - Old behavior: no explicit enforcement; harness scripts may import arbitrary `engineeringagent.*` modules.
+    - New behavior: a fitness function enforces that harness scripts import only from an explicit allowlist
+      (initially `engineeringagent.fitness.*`), with deterministic diagnostics.
+
+  Compatibility policy:
+  - CLI behavior is unchanged.
+  - Harness scripts remain runnable via the existing command adapter (e.g. `uv run python harness/fitness-functions/...`).
+  - This is an intentional internal refactor; downstream Python imports of harness helpers are not supported.
+acceptance:
+  - "A new module `src/engineeringagent/fitness/envelope.py` provides a canonical `emit_result_envelope(...)` helper that uses `engineeringagent.fitness.contracts.CONTRACT_VERSION`."
+  - "All harness fitness-function scripts import `emit_result_envelope` from `engineeringagent.fitness.envelope` and continue to emit JSON objects that validate as `FitnessRuleResult`."
+  - "`harness/fitness-functions/result_envelope.py` is removed or no longer used by any harness fitness function."
+  - "A new harness fitness function enforces a harness-to-src import allowlist for `harness/fitness-functions/*.py` and is registered in `harness/fitness-functions/rules.yaml`."
+  - "`uv run python -m engineeringagent.cli fitness run --format json` and `uv run pytest -q` pass."
+subtasks:
+  - id: ST-001
+    title: Add canonical src fitness envelope helper
+    status: backlog
+    context: |
+      Introduce `src/engineeringagent/fitness/envelope.py` that emits deterministic
+      JSON envelopes matching `FitnessRuleResult`, sourcing `CONTRACT_VERSION` from
+      `engineeringagent.fitness.contracts`.
+    verification:
+      - uv run python -m engineeringagent.cli fitness run --format json
+      - uv run pytest -q tests/test_fitness_contract.py
+  - id: ST-002
+    title: Update harness fitness functions to use src envelope helper
+    status: backlog
+    context: |
+      Replace `from result_envelope import emit_result_envelope` imports in
+      `harness/fitness-functions/*.py` with `from engineeringagent.fitness.envelope import emit_result_envelope`.
+      Remove or retire the harness-local `result_envelope.py`.
+    verification:
+      - uv run python -m engineeringagent.cli fitness run --format json
+      - uv run pytest -q
+  - id: ST-003
+    title: Add harness-to-src import allowlist fitness rule
+    status: backlog
+    context: |
+      Add a new harness fitness function that scans imports in
+      `harness/fitness-functions/*.py` and fails if any `engineeringagent.*` import
+      is outside the allowlist (initially allow only `engineeringagent.fitness.*`).
+      Register the rule in `harness/fitness-functions/rules.yaml`.
+    verification:
+      - uv run python -m engineeringagent.cli fitness run --format json
+      - uv run pytest -q tests/test_gates.py
+  - id: ST-004
+    title: Document the supported harness helper surface
+    status: backlog
+    context: |
+      Add a brief reference section documenting that harness scripts may depend on
+      `engineeringagent.fitness.*` (and only that surface by default), and that
+      result envelope emission must use `engineeringagent.fitness.envelope`.
+    verification:
+      - uv run python -m engineeringagent.cli validate
+updated_at: "2026-02-15T00:00:00Z"

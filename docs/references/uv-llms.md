@@ -55,6 +55,7 @@ uvx --from . engineeringagent run --all --dry-run --skip-implement
 - Snapshot candidates are limited to `backlog` and `in_progress` statuses.
 - Features marked `blocked` or `done` are excluded from the startup snapshot.
 - `--all` and positional feature paths are mutually exclusive input modes.
+- In `--skip-implement` mode, `engineeringagent run` executes exactly one iteration of gates and exits (0 on pass, 1 on fail).
 
 ## Dependency Workflow
 

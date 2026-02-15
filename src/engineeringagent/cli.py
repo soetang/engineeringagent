@@ -46,6 +46,41 @@ _MISSING_REMEDIATION_TEMPLATE = (
 
 _HandlerArgs = SimpleNamespace
 
+_INIT_PACK_DEFAULT = "slim"
+_INIT_PACK_CHOICES: tuple[str, ...] = ("slim", "standard")
+
+
+def _stdout_is_tty() -> bool:
+    """Return True when stdout looks like an interactive TTY."""
+    isatty = getattr(sys.stdout, "isatty", None)
+    if isatty is None:
+        return False
+    try:
+        return bool(isatty())
+    except Exception:
+        return False
+
+
+def _resolve_init_pack(pack: str | None) -> tuple[str | None, str | None]:
+    """Resolve the init pack (slim|standard), prompting only on TTY when omitted."""
+    if pack is not None:
+        return pack, None
+
+    if not _stdout_is_tty():
+        return _INIT_PACK_DEFAULT, None
+
+    prompt = "init pack: choose [slim/standard] (default slim): "
+    selected = input(prompt).strip().lower()
+    if selected == "":
+        return _INIT_PACK_DEFAULT, None
+    if selected in _INIT_PACK_CHOICES:
+        return selected, None
+
+    return (
+        None,
+        "init input error: pack must be 'slim' or 'standard'",
+    )
+
 
 def _resolve_manifest_path(manifest_path: str | None) -> Path | None:
     """Return optional manifest path from CLI args."""
@@ -594,6 +629,12 @@ def cmd_init(args: _HandlerArgs) -> int:
         Process exit code where 0 means success.
     """
     project_root = Path(args.project_root).resolve()
+
+    pack, error = _resolve_init_pack(getattr(args, "pack", None))
+    if error is not None or pack is None:
+        print(error)
+        return 1
+
     docs_dir, error = _resolve_init_docs_dir(
         project_root=project_root,
         docs_mode=args.docs_mode,
@@ -625,7 +666,13 @@ def cmd_init(args: _HandlerArgs) -> int:
         force=args.force,
         docs_dir=docs_dir,
         profile=args.scaffold_profile,
+        pack=pack,
     )
+
+    if pack == "standard":
+        print(
+            "init pack standard: wired a demo failing fitness rule into precommit (expected to fail)"
+        )
     config_created, config_skipped = _write_init_docs_root_config(
         project_root,
         docs_dir,
@@ -667,6 +714,7 @@ def cmd_init(args: _HandlerArgs) -> int:
         f"init scaffold complete: docs_dir={docs_dir} "
         f"created={created} skipped={skipped}"
         f" profile={args.scaffold_profile}"
+        f" pack={pack}"
         f"{agents_mode_output}{merge_spec_output}"
     )
     return 0
@@ -1025,6 +1073,10 @@ def build_typer_app() -> typer.Typer:
     )
     def _init_command(
         ctx: typer.Context,
+        pack: Literal["slim", "standard"] | None = typer.Argument(
+            None,
+            help="optional init pack (slim|standard); omit to prompt on TTY",
+        ),
         force: bool = typer.Option(
             False,
             "--force",
@@ -1052,6 +1104,7 @@ def build_typer_app() -> typer.Typer:
         _exit_with_handler_code(
             cmd_init,
             ctx=ctx,
+            pack=pack,
             force=force,
             scaffold_profile=scaffold_profile,
             docs_mode=docs_mode,

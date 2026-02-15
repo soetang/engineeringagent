@@ -1536,6 +1536,33 @@ def test_run_loop_requires_clean_worktree_by_default(
     assert "--allow-dirty" in output
 
 
+def test_run_loop_skip_implement_exits_after_one_passing_iteration(
+    tmp_path: Path, capsys: Any
+) -> None:
+    project_root, feature_path = _make_project_root(
+        tmp_path, feature_data=_base_feature()
+    )
+    _init_git_repo(project_root)
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        implement_command=None,
+        opencode_prompt=None,
+        skip_implement=True,
+        dry_run=False,
+        max_iterations=2,
+    )
+
+    output = capsys.readouterr().out
+    assert code == 0
+    runs = _read_runs(project_root)
+    assert len(runs) == 1
+    assert runs[-1]["result"] == "passed"
+    assert "Reached max iteration cap" not in output
+
+
 def test_run_loop_requires_git_repo_before_allow_dirty_hint(
     tmp_path: Path, capsys: Any
 ) -> None:

@@ -45,6 +45,69 @@ def test_init_rejects_include_reviewers_flag() -> None:
     assert "No such option: --include-reviewers" in result.stderr
 
 
+def test_init_defaults_to_slim_pack_without_prompting_in_non_tty(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify init defaults to slim without prompting when not a TTY."""
+    monkeypatch.setattr(cli_module, "_stdout_is_tty", lambda: False, raising=False)
+    monkeypatch.setattr(
+        "builtins.input",
+        lambda _prompt: pytest.fail("init prompted unexpectedly"),
+    )
+
+    result = _invoke_cli(["--project-root", str(tmp_path), "init"])
+
+    assert result.exit_code == 0
+    assert "pack=slim" in result.stdout
+
+
+def test_init_prompts_for_pack_when_omitted_and_tty(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify init prompts for pack selection when omitted in a TTY."""
+    monkeypatch.setattr(cli_module, "_stdout_is_tty", lambda: True, raising=False)
+    monkeypatch.setattr("builtins.input", lambda _prompt: "standard")
+
+    result = _invoke_cli(["--project-root", str(tmp_path), "init"])
+
+    assert result.exit_code == 0
+    assert "pack=standard" in result.stdout
+
+
+def test_init_pack_arg_never_prompts_even_on_tty(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify providing the pack positional disables the interactive prompt."""
+    monkeypatch.setattr(cli_module, "_stdout_is_tty", lambda: True, raising=False)
+    monkeypatch.setattr(
+        "builtins.input",
+        lambda _prompt: pytest.fail("init prompted unexpectedly"),
+    )
+
+    result = _invoke_cli(["--project-root", str(tmp_path), "init", "slim"])
+
+    assert result.exit_code == 0
+    assert "pack=slim" in result.stdout
+
+
+def test_spec_validate_gate_helper_builds_expected_patterns() -> None:
+    """Verify init scaffold shares a single spec_validate gate shape."""
+
+    from engineeringagent.init_scaffold import _spec_validate_gate
+
+    assert _spec_validate_gate("docs") == {
+        "run": "engineeringagent validate",
+        "on_change": [
+            "docs/spec/**/*.yaml",
+            "docs/spec/**/*.yml",
+            "docs/spec/**/*.json",
+        ],
+    }
+
+
 def test_init_prompts_when_docs_exists(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -283,9 +346,9 @@ def test_init_writes_precommit_and_empty_gate_profiles(
     gates_config = yaml.safe_load(
         (tmp_path / "harness" / "gates.yaml").read_text(encoding="utf-8")
     )
-    assert gates_config["profiles"]["precommit"] == []
-    assert gates_config["profiles"]["loop_fast"] == []
-    assert gates_config["gates"] == {}
+    assert gates_config["profiles"]["precommit"] == ["spec_validate"]
+    assert gates_config["profiles"]["loop_fast"] == ["spec_validate"]
+    assert gates_config["gates"]["spec_validate"]["run"] == "engineeringagent validate"
 
     fitness_manifest = yaml.safe_load(
         (tmp_path / "harness" / "fitness-functions" / "rules.yaml").read_text(
@@ -299,6 +362,65 @@ def test_init_writes_precommit_and_empty_gate_profiles(
         "architecture.scaffold-template-locality",
     ]
     assert all(rule["adapter"] == "command" for rule in fitness_manifest["rules"])
+
+
+def test_init_slim_pack_does_not_scaffold_demo_failure(tmp_path: Path) -> None:
+    """Verify slim pack scaffolds validations without demo failing rule wiring."""
+    result = _invoke_cli(["--project-root", str(tmp_path), "init", "slim"])
+
+    assert result.exit_code == 0
+    assert "pack=slim" in result.stdout
+
+    gates_config = yaml.safe_load(
+        (tmp_path / "harness" / "gates.yaml").read_text(encoding="utf-8")
+    )
+    assert gates_config["profiles"]["precommit"] == ["spec_validate"]
+    assert "demo_fail" not in gates_config["gates"]
+
+    assert not (tmp_path / "harness" / "fitness-functions" / "demo_rules.yaml").exists()
+    assert not (
+        tmp_path / "harness" / "fitness-functions" / "demo_always_fail.py"
+    ).exists()
+
+
+def test_init_standard_pack_scaffolds_demo_fail_gate_and_manifest(
+    tmp_path: Path,
+) -> None:
+    """Verify standard pack wires an always-failing demo fitness rule into precommit."""
+    result = _invoke_cli(["--project-root", str(tmp_path), "init", "standard"])
+
+    assert result.exit_code == 0
+    assert "pack=standard" in result.stdout
+    assert "demo failing" in result.stdout.lower()
+
+    gates_config = yaml.safe_load(
+        (tmp_path / "harness" / "gates.yaml").read_text(encoding="utf-8")
+    )
+    assert gates_config["profiles"]["precommit"] == ["spec_validate", "demo_fail"]
+    assert (
+        gates_config["gates"]["demo_fail"]["run"]
+        == "engineeringagent fitness run --format json --manifest-path harness/fitness-functions/demo_rules.yaml"
+    )
+
+    demo_manifest_path = tmp_path / "harness" / "fitness-functions" / "demo_rules.yaml"
+    assert demo_manifest_path.exists()
+    demo_manifest = yaml.safe_load(demo_manifest_path.read_text(encoding="utf-8"))
+    assert demo_manifest["contract_version"] == "1.0"
+    assert [rule["rule_id"] for rule in demo_manifest["rules"]] == ["demo.always-fail"]
+
+    demo_script_path = (
+        tmp_path / "harness" / "fitness-functions" / "demo_always_fail.py"
+    )
+    assert demo_script_path.exists()
+
+    baseline_manifest = yaml.safe_load(
+        (tmp_path / "harness" / "fitness-functions" / "rules.yaml").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert "demo.always-fail" not in [
+        rule["rule_id"] for rule in baseline_manifest["rules"]
+    ]
 
 
 def test_init_defaults_to_core_language_agnostic_profile(

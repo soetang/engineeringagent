@@ -5,6 +5,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 REVIEWER_REFERENCE_PATH = REPO_ROOT / "docs" / "references" / "reviewer-agents-llms.md"
+UV_REFERENCE_PATH = REPO_ROOT / "docs" / "references" / "uv-llms.md"
 REQUIRED_POLICY_SNIPPETS = (
     "Runtime executes reviewers only at `feature_done`.",
     "`trigger.phase: iteration_end` is treated as a compatibility alias and normalized to `feature_done`.",
@@ -26,6 +27,12 @@ REQUIRED_SANDBOX_SNIPPETS = (
 )
 
 
+REQUIRED_UV_SKIP_IMPLEMENT_SNIPPETS = (
+    "In `--skip-implement` mode, `engineeringagent run` executes exactly one iteration",
+    "exits (0 on pass, 1 on fail)",
+)
+
+
 def test_reviewer_reference_documents_feature_done_only_policy() -> None:
     body = REVIEWER_REFERENCE_PATH.read_text(encoding="utf-8")
     missing = [snippet for snippet in REQUIRED_POLICY_SNIPPETS if snippet not in body]
@@ -33,4 +40,14 @@ def test_reviewer_reference_documents_feature_done_only_policy() -> None:
         [snippet for snippet in REQUIRED_SANDBOX_SNIPPETS if snippet not in body]
     )
 
+    assert not missing
+
+
+def test_uv_reference_documents_skip_implement_mode_behavior() -> None:
+    body = UV_REFERENCE_PATH.read_text(encoding="utf-8")
+    missing = [
+        snippet
+        for snippet in REQUIRED_UV_SKIP_IMPLEMENT_SNIPPETS
+        if snippet not in body
+    ]
     assert not missing
