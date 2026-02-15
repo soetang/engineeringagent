@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import argparse
 import importlib.metadata
 import json
 import sys
 from collections.abc import Callable
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Literal
 
 import typer
@@ -44,11 +44,8 @@ from .validator import validate
 _MISSING_REMEDIATION_TEMPLATE = (
     "No remediation available: rule metadata missing from active catalog for {rule_id}."
 )
-_FORWARD_CONTEXT_SETTINGS: dict[str, object] = {
-    "allow_extra_args": True,
-    "ignore_unknown_options": True,
-    "help_option_names": [],
-}
+
+_HandlerArgs = SimpleNamespace
 
 
 def _resolve_manifest_path(manifest_path: str | None) -> Path | None:
@@ -217,7 +214,7 @@ def _write_init_docs_root_config(
     return (1, 0)
 
 
-def cmd_validate(args: argparse.Namespace) -> int:
+def cmd_validate(args: _HandlerArgs) -> int:
     """Run feature spec validation and print failures.
 
     Args:
@@ -236,7 +233,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_gates_list(args: argparse.Namespace) -> int:
+def cmd_gates_list(args: _HandlerArgs) -> int:
     """List configured gate profiles.
 
     Args:
@@ -252,7 +249,7 @@ def cmd_gates_list(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_gates_run(args: argparse.Namespace) -> int:
+def cmd_gates_run(args: _HandlerArgs) -> int:
     """Run a configured gate profile.
 
     Args:
@@ -295,7 +292,7 @@ def cmd_gates_run(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_gates_plan(args: argparse.Namespace) -> int:
+def cmd_gates_plan(args: _HandlerArgs) -> int:
     """Print deterministic run/skip gate decisions for one profile."""
     project_root = Path(args.project_root).resolve()
     config = load_gate_config(project_root / "harness" / "gates.yaml")
@@ -309,7 +306,7 @@ def cmd_gates_plan(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_run(args: argparse.Namespace) -> int:
+def cmd_run(args: _HandlerArgs) -> int:
     """Execute the loop runner for one or more feature files.
 
     Args:
@@ -340,7 +337,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     )
 
 
-def cmd_reviewers_list(args: argparse.Namespace) -> int:
+def cmd_reviewers_list(args: _HandlerArgs) -> int:
     """List configured reviewer profiles."""
     project_root = Path(args.project_root).resolve()
     config = load_reviewer_config(project_root / "harness" / "reviewers.yaml")
@@ -352,7 +349,7 @@ def cmd_reviewers_list(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_reviewers_plan(args: argparse.Namespace) -> int:
+def cmd_reviewers_plan(args: _HandlerArgs) -> int:
     """Print deterministic run/skip reviewer decisions for one profile/phase."""
     project_root = Path(args.project_root).resolve()
     config = load_reviewer_config(project_root / "harness" / "reviewers.yaml")
@@ -375,7 +372,7 @@ def cmd_reviewers_plan(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_reviewers_run(args: argparse.Namespace) -> int:
+def cmd_reviewers_run(args: _HandlerArgs) -> int:
     """Run one configured reviewer and print JSON decision envelope."""
     project_root = Path(args.project_root).resolve()
     config = load_reviewer_config(project_root / "harness" / "reviewers.yaml")
@@ -408,7 +405,7 @@ def cmd_reviewers_run(args: argparse.Namespace) -> int:
     return 0 if decision.get("decision") != "request_changes" else 1
 
 
-def cmd_reviewers_init(args: argparse.Namespace) -> int:
+def cmd_reviewers_init(args: _HandlerArgs) -> int:
     """Write a baseline reviewers config and prompt files."""
     project_root = Path(args.project_root).resolve()
     created = 0
@@ -473,7 +470,7 @@ def cmd_reviewers_init(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_fitness_list(args: argparse.Namespace) -> int:
+def cmd_fitness_list(args: _HandlerArgs) -> int:
     """List active fitness rules from the merged registry."""
     project_root = Path(args.project_root).resolve()
     manifest_path = _resolve_manifest_path(args.manifest_path)
@@ -500,7 +497,7 @@ def cmd_fitness_list(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_fitness_run(args: argparse.Namespace) -> int:
+def cmd_fitness_run(args: _HandlerArgs) -> int:
     """Execute active fitness rules and return deterministic status."""
     project_root = Path(args.project_root).resolve()
     manifest_path = _resolve_manifest_path(args.manifest_path)
@@ -558,7 +555,7 @@ def _resolve_failed_rule_remediation(
     )
 
 
-def cmd_fitness_catalog(args: argparse.Namespace) -> int:
+def cmd_fitness_catalog(args: _HandlerArgs) -> int:
     """Generate the fitness-rule catalog from active registry metadata."""
     project_root = Path(args.project_root).resolve()
     manifest_path = _resolve_manifest_path(args.manifest_path)
@@ -588,7 +585,7 @@ def cmd_fitness_catalog(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_init(args: argparse.Namespace) -> int:
+def cmd_init(args: _HandlerArgs) -> int:
     """Scaffold baseline harness files for a repository.
 
     Args:
@@ -676,274 +673,12 @@ def cmd_init(args: argparse.Namespace) -> int:
     return 0
 
 
-def build_parser() -> argparse.ArgumentParser:
-    """Build the root CLI parser with all subcommands.
-
-    Returns:
-        Configured argument parser for the engineeringagent CLI.
-    """
-    parser = argparse.ArgumentParser(
-        prog="engineeringagent",
-        description="Human-gated CLI harness for feature-driven coding loops.",
-    )
-    parser.add_argument(
-        "--version",
-        action="version",
-        version=importlib.metadata.version("engineeringagent"),
-    )
-    parser.add_argument("--project-root", default=".")
-    sub = parser.add_subparsers(dest="command", required=True)
-
-    validate_parser = sub.add_parser("validate", help="validate feature specs")
-    validate_parser.add_argument("--schema-only", action="store_true")
-    validate_parser.set_defaults(func=cmd_validate)
-
-    gates_parser = sub.add_parser("gates", help="run configured gate profiles")
-    gates_sub = gates_parser.add_subparsers(dest="gates_cmd", required=True)
-
-    gates_list_parser = gates_sub.add_parser("list", help="list gate profiles")
-    gates_list_parser.set_defaults(func=cmd_gates_list)
-
-    gates_plan_parser = gates_sub.add_parser(
-        "plan",
-        help="show deterministic gate run/skip plan",
-    )
-    gates_plan_parser.add_argument("--profile", required=True)
-    gates_plan_parser.add_argument("--base")
-    gates_plan_parser.add_argument("--head")
-    gates_plan_parser.set_defaults(func=cmd_gates_plan)
-
-    gates_run_parser = gates_sub.add_parser("run", help="run a gate profile")
-    gates_run_parser.add_argument("--profile", required=True)
-    gates_run_parser.add_argument("--base")
-    gates_run_parser.add_argument("--head")
-    gates_run_parser.add_argument("--explain", action="store_true")
-    gates_run_parser.set_defaults(func=cmd_gates_run)
-
-    reviewers_parser = sub.add_parser(
-        "reviewers",
-        help="initialize, inspect, and run harness reviewers",
-    )
-    reviewers_sub = reviewers_parser.add_subparsers(
-        dest="reviewers_cmd",
-        required=True,
-    )
-
-    reviewers_init_parser = reviewers_sub.add_parser(
-        "init",
-        help="write baseline reviewers.yaml and prompt files",
-    )
-    reviewers_init_parser.add_argument(
-        "--force",
-        action="store_true",
-        help="overwrite existing reviewer scaffold files",
-    )
-    reviewers_init_parser.set_defaults(func=cmd_reviewers_init)
-
-    reviewers_list_parser = reviewers_sub.add_parser(
-        "list",
-        help="list reviewer profiles",
-    )
-    reviewers_list_parser.set_defaults(func=cmd_reviewers_list)
-
-    reviewers_plan_parser = reviewers_sub.add_parser(
-        "plan",
-        help="show deterministic reviewer run/skip plan",
-    )
-    reviewers_plan_parser.add_argument("--profile", required=True)
-    reviewers_plan_parser.add_argument(
-        "--phase",
-        required=True,
-        choices=["iteration_end", "feature_done"],
-    )
-    reviewers_plan_parser.add_argument("--base")
-    reviewers_plan_parser.add_argument("--head")
-    reviewers_plan_parser.set_defaults(func=cmd_reviewers_plan)
-
-    reviewers_run_parser = reviewers_sub.add_parser(
-        "run",
-        help="run one reviewer and print decision JSON",
-    )
-    reviewers_run_parser.add_argument("--reviewer", required=True)
-    reviewers_run_parser.add_argument("--feature-id", required=True)
-    reviewers_run_parser.add_argument(
-        "--feature-path",
-        required=True,
-        help="feature spec path used in reviewer context",
-    )
-    reviewers_run_parser.add_argument("--prior-feedback")
-    reviewers_run_parser.add_argument("--base")
-    reviewers_run_parser.add_argument("--head")
-    reviewers_run_parser.set_defaults(func=cmd_reviewers_run)
-
-    run_parser = sub.add_parser("run", help="run feature loops from spec file paths")
-    run_parser.add_argument("feature_paths", nargs="*", help="feature spec file paths")
-    run_parser.add_argument(
-        "--all",
-        action="store_true",
-        help="auto-discover active feature specs under docs/spec/features",
-    )
-    run_parser.add_argument(
-        "--implement-command",
-        help="custom implementation command; defaults to opencode build-agent run",
-    )
-    run_parser.add_argument(
-        "--skip-implement",
-        action="store_true",
-        help="skip the implementation command and run gates only",
-    )
-    run_parser.add_argument("--dry-run", action="store_true")
-    run_parser.add_argument(
-        "--max-iterations",
-        type=int,
-        default=50,
-        help="max non-dry iterations across all selected features",
-    )
-    run_parser.add_argument(
-        "--allow-dirty",
-        action="store_true",
-        help="allow run execution with uncommitted code changes",
-    )
-    run_parser.add_argument(
-        "--verbose-output",
-        action="store_true",
-        help="stream full implement and gate output in terminal",
-    )
-    run_parser.set_defaults(
-        func=cmd_run,
-        gate_profile="loop_fast",
-    )
-
-    fitness_parser = sub.add_parser(
-        "fitness", help="list and run fitness-function rules"
-    )
-    fitness_sub = fitness_parser.add_subparsers(dest="fitness_cmd", required=True)
-
-    fitness_list_parser = fitness_sub.add_parser(
-        "list", help="list active fitness rules"
-    )
-    fitness_list_parser.add_argument(
-        "--manifest-path",
-        help="optional path to custom fitness rules manifest",
-    )
-    fitness_list_parser.add_argument(
-        "--format",
-        choices=["text", "json"],
-        default="text",
-    )
-    fitness_list_parser.set_defaults(func=cmd_fitness_list)
-
-    fitness_run_parser = fitness_sub.add_parser("run", help="run active fitness rules")
-    fitness_run_parser.add_argument(
-        "--manifest-path",
-        help="optional path to custom fitness rules manifest",
-    )
-    fitness_run_parser.add_argument(
-        "--jobs",
-        type=int,
-        default=1,
-        help="number of parallel fitness-rule workers",
-    )
-    fitness_run_parser.add_argument(
-        "--format",
-        choices=["text", "json"],
-        default="text",
-    )
-    fitness_run_parser.set_defaults(func=cmd_fitness_run)
-
-    fitness_catalog_parser = fitness_sub.add_parser(
-        "catalog", help="generate fitness rule catalog"
-    )
-    fitness_catalog_parser.add_argument(
-        "--manifest-path",
-        help="optional path to custom fitness rules manifest",
-    )
-    fitness_catalog_parser.add_argument(
-        "--format",
-        choices=["markdown", "json"],
-        default="markdown",
-    )
-    fitness_catalog_parser.add_argument(
-        "--output",
-        help="write catalog output to a file",
-    )
-    fitness_catalog_parser.set_defaults(func=cmd_fitness_catalog)
-
-    init_parser = sub.add_parser(
-        "init",
-        help="scaffold baseline harness files (default core profile)",
-    )
-    init_parser.add_argument(
-        "--force",
-        action="store_true",
-        help="overwrite scaffold-managed files that already exist",
-    )
-    init_parser.add_argument(
-        "--scaffold-profile",
-        choices=["core", "python_uv"],
-        default="core",
-        help=(
-            "scaffold profile to apply "
-            "(core=language-agnostic default, python_uv=Python/uv bootstrap)"
-        ),
-    )
-    init_parser.add_argument(
-        "--docs-mode",
-        choices=["reuse", "separate"],
-        help="docs conflict mode when docs/ already exists",
-    )
-    init_parser.add_argument(
-        "--scaffold-docs-dir",
-        default="docs.engineeringagent",
-        help="docs directory to scaffold when using docs-mode=separate",
-    )
-    init_parser.set_defaults(func=cmd_init, agents_mode=None)
-
-    return parser
-
-
 def _version_callback(value: bool) -> None:
     """Print package version and exit early when requested."""
     if not value:
         return
     print(importlib.metadata.version("engineeringagent"))
     raise typer.Exit(code=0)
-
-
-def _run_legacy_cli_command(*, command: str, args: list[str], project_root: str) -> int:
-    """Dispatch one command through the existing argparse parser."""
-    parser = build_parser()
-    parsed_args = parser.parse_args(["--project-root", project_root, command, *args])
-    return parsed_args.func(parsed_args)
-
-
-def _dispatch_legacy_typer_command(ctx: typer.Context, command: str) -> None:
-    """Forward Typer command arguments to argparse command handlers."""
-    project_root = "."
-    if isinstance(ctx.obj, dict):
-        project_root = str(ctx.obj.get("project_root", "."))
-
-    code = _run_legacy_cli_command(
-        command=command,
-        args=list(ctx.args),
-        project_root=project_root,
-    )
-    raise typer.Exit(code=code)
-
-
-def _dispatch_typer_command_with_argparse(ctx: typer.Context, command: str) -> None:
-    """Parse command args via argparse and execute selected handler."""
-    parser = build_parser()
-    project_root = _project_root_from_typer_context(ctx)
-    parsed_args = parser.parse_args(
-        [
-            "--project-root",
-            project_root,
-            command,
-            *list(ctx.args),
-        ]
-    )
-    raise typer.Exit(code=parsed_args.func(parsed_args))
 
 
 def _project_root_from_typer_context(ctx: typer.Context) -> str:
@@ -955,34 +690,22 @@ def _project_root_from_typer_context(ctx: typer.Context) -> str:
 
 
 def _exit_with_handler_code(
-    handler: Callable[[argparse.Namespace], int],
+    handler: Callable[[_HandlerArgs], int],
     *,
     ctx: typer.Context,
     **kwargs: object,
 ) -> None:
-    """Run an argparse command handler and exit with its return code."""
-    args = argparse.Namespace(
-        project_root=_project_root_from_typer_context(ctx),
-        **kwargs,
-    )
+    """Run a command handler and exit with its return code."""
+    args = _build_handler_args(ctx=ctx, **kwargs)
     raise typer.Exit(code=handler(args))
 
 
-def _register_forwarded_command(
-    app: typer.Typer,
-    *,
-    name: str,
-    help_text: str,
-) -> None:
-    """Register one Typer command that forwards to the legacy parser."""
-
-    @app.command(
-        name,
-        context_settings=_FORWARD_CONTEXT_SETTINGS,
-        help=help_text,
+def _build_handler_args(ctx: typer.Context, **kwargs: object) -> _HandlerArgs:
+    """Build command handler args with root project context."""
+    return _HandlerArgs(
+        project_root=_project_root_from_typer_context(ctx),
+        **kwargs,
     )
-    def _forwarded_command(ctx: typer.Context) -> None:
-        _dispatch_legacy_typer_command(ctx, name)
 
 
 def _build_typer_gates_app() -> typer.Typer:
@@ -1030,6 +753,84 @@ def _build_typer_gates_app() -> typer.Typer:
         )
 
     return gates_app
+
+
+def _build_typer_reviewers_app() -> typer.Typer:
+    """Build the Typer reviewers app with nested command routing."""
+    reviewers_app = typer.Typer(
+        help="initialize, inspect, and run harness reviewers",
+        add_completion=False,
+        no_args_is_help=False,
+    )
+
+    @reviewers_app.command(
+        "init",
+        help="write baseline reviewers.yaml and prompt files",
+    )
+    def _reviewers_init(
+        ctx: typer.Context,
+        force: bool = typer.Option(
+            False,
+            "--force",
+            help="overwrite existing reviewer scaffold files",
+        ),
+    ) -> None:
+        _exit_with_handler_code(
+            cmd_reviewers_init,
+            ctx=ctx,
+            force=force,
+        )
+
+    @reviewers_app.command("list", help="list reviewer profiles")
+    def _reviewers_list(ctx: typer.Context) -> None:
+        _exit_with_handler_code(cmd_reviewers_list, ctx=ctx)
+
+    @reviewers_app.command("plan", help="show deterministic reviewer run/skip plan")
+    def _reviewers_plan(
+        ctx: typer.Context,
+        profile: str = typer.Option(..., "--profile"),
+        phase: Literal["iteration_end", "feature_done"] = typer.Option(
+            ...,
+            "--phase",
+        ),
+        base: str | None = typer.Option(None, "--base"),
+        head: str | None = typer.Option(None, "--head"),
+    ) -> None:
+        _exit_with_handler_code(
+            cmd_reviewers_plan,
+            ctx=ctx,
+            profile=profile,
+            phase=phase,
+            base=base,
+            head=head,
+        )
+
+    @reviewers_app.command("run", help="run one reviewer and print decision JSON")
+    def _reviewers_run(
+        ctx: typer.Context,
+        reviewer: str = typer.Option(..., "--reviewer"),
+        feature_id: str = typer.Option(..., "--feature-id"),
+        feature_path: str = typer.Option(
+            ...,
+            "--feature-path",
+            help="feature spec path used in reviewer context",
+        ),
+        prior_feedback: str | None = typer.Option(None, "--prior-feedback"),
+        base: str | None = typer.Option(None, "--base"),
+        head: str | None = typer.Option(None, "--head"),
+    ) -> None:
+        _exit_with_handler_code(
+            cmd_reviewers_run,
+            ctx=ctx,
+            reviewer=reviewer,
+            feature_id=feature_id,
+            feature_path=feature_path,
+            prior_feedback=prior_feedback,
+            base=base,
+            head=head,
+        )
+
+    return reviewers_app
 
 
 def _build_typer_fitness_app() -> typer.Typer:
@@ -1138,29 +939,80 @@ def build_typer_app() -> typer.Typer:
         _ = version
         ctx.obj = {"project_root": project_root}
 
-    _register_forwarded_command(
-        app,
-        name="validate",
-        help_text="validate feature specs",
-    )
+    @app.command("validate", help="validate feature specs")
+    def _validate_command(
+        ctx: typer.Context,
+        schema_only: bool = typer.Option(False, "--schema-only"),
+    ) -> None:
+        _exit_with_handler_code(
+            cmd_validate,
+            ctx=ctx,
+            schema_only=schema_only,
+        )
+
     app.add_typer(
         _build_typer_gates_app(),
         name="gates",
         help="run configured gate profiles",
     )
-    _register_forwarded_command(
-        app,
+    app.add_typer(
+        _build_typer_reviewers_app(),
         name="reviewers",
-        help_text="initialize, inspect, and run harness reviewers",
+        help="initialize, inspect, and run harness reviewers",
     )
 
     @app.command(
         "run",
-        context_settings=_FORWARD_CONTEXT_SETTINGS,
         help="run feature loops from spec file paths",
     )
-    def _run_command(ctx: typer.Context) -> None:
-        _dispatch_typer_command_with_argparse(ctx, "run")
+    def _run_command(
+        ctx: typer.Context,
+        feature_paths: list[str] = typer.Argument(None, help="feature spec file paths"),
+        run_all: bool = typer.Option(
+            False,
+            "--all",
+            help="auto-discover active feature specs under docs/spec/features",
+        ),
+        implement_command: str | None = typer.Option(
+            None,
+            "--implement-command",
+            help="custom implementation command; defaults to opencode build-agent run",
+        ),
+        skip_implement: bool = typer.Option(
+            False,
+            "--skip-implement",
+            help="skip the implementation command and run gates only",
+        ),
+        dry_run: bool = typer.Option(False, "--dry-run"),
+        max_iterations: int = typer.Option(
+            50,
+            "--max-iterations",
+            help="max non-dry iterations across all selected features",
+        ),
+        allow_dirty: bool = typer.Option(
+            False,
+            "--allow-dirty",
+            help="allow run execution with uncommitted code changes",
+        ),
+        verbose_output: bool = typer.Option(
+            False,
+            "--verbose-output",
+            help="stream full implement and gate output in terminal",
+        ),
+    ) -> None:
+        _exit_with_handler_code(
+            cmd_run,
+            ctx=ctx,
+            feature_paths=list(feature_paths or []),
+            all=run_all,
+            implement_command=implement_command,
+            skip_implement=skip_implement,
+            dry_run=dry_run,
+            max_iterations=max_iterations,
+            allow_dirty=allow_dirty,
+            verbose_output=verbose_output,
+            gate_profile="loop_fast",
+        )
 
     app.add_typer(
         _build_typer_fitness_app(),
@@ -1170,11 +1022,43 @@ def build_typer_app() -> typer.Typer:
 
     @app.command(
         "init",
-        context_settings=_FORWARD_CONTEXT_SETTINGS,
         help="scaffold baseline harness files (default core profile)",
     )
-    def _init_command(ctx: typer.Context) -> None:
-        _dispatch_typer_command_with_argparse(ctx, "init")
+    def _init_command(
+        ctx: typer.Context,
+        force: bool = typer.Option(
+            False,
+            "--force",
+            help="overwrite scaffold-managed files that already exist",
+        ),
+        scaffold_profile: Literal["core", "python_uv"] = typer.Option(
+            "core",
+            "--scaffold-profile",
+            help=(
+                "scaffold profile to apply "
+                "(core=language-agnostic default, python_uv=Python/uv bootstrap)"
+            ),
+        ),
+        docs_mode: Literal["reuse", "separate"] | None = typer.Option(
+            None,
+            "--docs-mode",
+            help="docs conflict mode when docs/ already exists",
+        ),
+        scaffold_docs_dir: str = typer.Option(
+            "docs.engineeringagent",
+            "--scaffold-docs-dir",
+            help="docs directory to scaffold when using docs-mode=separate",
+        ),
+    ) -> None:
+        _exit_with_handler_code(
+            cmd_init,
+            ctx=ctx,
+            force=force,
+            scaffold_profile=scaffold_profile,
+            docs_mode=docs_mode,
+            scaffold_docs_dir=scaffold_docs_dir,
+            agents_mode=None,
+        )
 
     return app
 

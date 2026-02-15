@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from argparse import Namespace
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, cast
@@ -101,7 +100,7 @@ def test_cmd_gates_list_prints_profiles_from_config(
     monkeypatch.setattr(cli_module, "load_gate_config", lambda _path: {})
     monkeypatch.setattr(cli_module, "list_profiles", lambda _config: ["alpha", "beta"])
 
-    code = cli_module.cmd_gates_list(Namespace(project_root=str(tmp_path)))
+    code = cli_module.cmd_gates_list(SimpleNamespace(project_root=str(tmp_path)))
     output = capsys.readouterr().out
 
     assert code == 0
@@ -134,7 +133,7 @@ def test_cmd_gates_run_returns_failure_code_when_profile_fails(
     )
 
     code = cli_module.cmd_gates_run(
-        Namespace(
+        SimpleNamespace(
             project_root=str(tmp_path),
             profile="loop_fast",
             base=None,
@@ -156,7 +155,9 @@ def test_reviewers_cli_error_paths(
     monkeypatch.setattr(
         cli_module, "load_reviewer_config", lambda _path: {"profiles": []}
     )
-    list_code = cli_module.cmd_reviewers_list(Namespace(project_root=str(tmp_path)))
+    list_code = cli_module.cmd_reviewers_list(
+        SimpleNamespace(project_root=str(tmp_path))
+    )
     list_output = capsys.readouterr().out
     assert list_code == 0
     assert list_output == ""
@@ -178,7 +179,7 @@ def test_reviewers_cli_error_paths(
     )
 
     plan_code = cli_module.cmd_reviewers_plan(
-        Namespace(
+        SimpleNamespace(
             project_root=str(tmp_path),
             profile="loop_fast",
             phase="iteration_end",
@@ -194,7 +195,7 @@ def test_reviewers_cli_error_paths(
         cli_module, "load_reviewer_config", lambda _path: {"reviewers": {}}
     )
     run_code = cli_module.cmd_reviewers_run(
-        Namespace(
+        SimpleNamespace(
             project_root=str(tmp_path),
             reviewer="missing",
             feature_id="FEAT-057",
@@ -235,7 +236,7 @@ def test_fitness_text_output_paths_cover_list_and_run(
     )
 
     list_code = cli_module.cmd_fitness_list(
-        Namespace(
+        SimpleNamespace(
             project_root=str(tmp_path),
             manifest_path=None,
             format="text",
@@ -251,7 +252,7 @@ def test_fitness_text_output_paths_cover_list_and_run(
     )
 
     empty_code = cli_module.cmd_fitness_run(
-        Namespace(
+        SimpleNamespace(
             project_root=str(tmp_path),
             manifest_path=None,
             jobs=1,
@@ -280,7 +281,7 @@ def test_fitness_text_output_paths_cover_list_and_run(
     )
 
     nonempty_code = cli_module.cmd_fitness_run(
-        Namespace(
+        SimpleNamespace(
             project_root=str(tmp_path),
             manifest_path=None,
             jobs=1,
@@ -301,7 +302,7 @@ def test_fitness_catalog_prints_absolute_path_when_output_is_outside_project_roo
     outside_path = tmp_path.parent / "external-fitness-catalog.md"
 
     code = cli_module.cmd_fitness_catalog(
-        Namespace(
+        SimpleNamespace(
             project_root=str(tmp_path),
             manifest_path=None,
             format="markdown",
@@ -319,7 +320,7 @@ def test_cmd_init_reports_docs_and_agents_input_errors(
     monkeypatch: Any,
     capsys: Any,
 ) -> None:
-    args = Namespace(
+    args = SimpleNamespace(
         project_root=str(tmp_path),
         force=False,
         scaffold_profile="core",
@@ -379,7 +380,7 @@ def test_cmd_init_preserve_mode_reports_skipped_merge_spec(
     )
 
     code = cli_module.cmd_init(
-        Namespace(
+        SimpleNamespace(
             project_root=str(tmp_path),
             force=False,
             scaffold_profile="core",
@@ -397,35 +398,13 @@ def test_cmd_init_preserve_mode_reports_skipped_merge_spec(
     )
 
 
-def test_version_callback_and_legacy_dispatch_helpers(
+def test_version_callback_exits_with_zero(
     monkeypatch: Any,
 ) -> None:
     monkeypatch.setattr(cli_module.importlib.metadata, "version", lambda _name: "1.2.3")
     with pytest.raises(typer.Exit) as exc_info:
         cli_module._version_callback(True)
     assert exc_info.value.exit_code == 0
-
-    captured: dict[str, Any] = {}
-
-    class _FakeParser:
-        def parse_args(self, values: list[str]) -> Namespace:
-            captured["values"] = values
-            return Namespace(func=lambda _args: 6)
-
-    monkeypatch.setattr(cli_module, "build_parser", lambda: _FakeParser())
-    code = cli_module._run_legacy_cli_command(
-        command="validate",
-        args=["--schema-only"],
-        project_root="repo",
-    )
-
-    assert code == 6
-    assert captured["values"] == [
-        "--project-root",
-        "repo",
-        "validate",
-        "--schema-only",
-    ]
 
 
 def test_project_root_from_context_defaults_to_current_directory() -> None:
@@ -434,3 +413,10 @@ def test_project_root_from_context_defaults_to_current_directory() -> None:
             return SimpleNamespace(obj=None)
 
     assert cli_module._project_root_from_typer_context(cast(Any, _FakeContext())) == "."
+
+
+def test_cli_module_no_longer_exposes_argparse_bridge() -> None:
+    assert not hasattr(cli_module, "CommandArgs")
+    assert not hasattr(cli_module, "build_parser")
+    assert not hasattr(cli_module, "_dispatch_typer_command_with_argparse")
+    assert not hasattr(cli_module, "_run_legacy_cli_command")

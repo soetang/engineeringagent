@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-import argparse
 import json
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
 import yaml
+from typer.testing import CliRunner
 
 from engineeringagent import cli as cli_module
-from engineeringagent.cli import build_parser
 from engineeringagent.config import resolve_docs_root
 from engineeringagent.fitness import FitnessRunSummary
 from engineeringagent.fitness.contracts import CONTRACT_VERSION, FitnessRuleResult
@@ -31,143 +31,84 @@ def _write_manifest(tmp_path: Path, rules: list[dict[str, object]]) -> None:
     )
 
 
-def _subcommand_parsers(
-    parser: argparse.ArgumentParser,
-) -> dict[str, argparse.ArgumentParser]:
-    for action in parser._actions:
-        choices = getattr(action, "choices", None)
-        if isinstance(choices, dict):
-            return {
-                name: subparser
-                for name, subparser in choices.items()
-                if isinstance(subparser, argparse.ArgumentParser)
-            }
-    return {}
-
-
-def _option_strings(parser: argparse.ArgumentParser) -> set[str]:
-    return {option for action in parser._actions for option in action.option_strings}
+def _invoke_cli(args: list[str]) -> Any:
+    runner = CliRunner(mix_stderr=False)
+    return runner.invoke(cli_module.build_typer_app(), args)
 
 
 def test_cli_surface_inventory_commands() -> None:
-    parser = build_parser()
-    root_commands = _subcommand_parsers(parser)
+    result = _invoke_cli(["--help"])
 
-    assert set(root_commands) == {
-        "fitness",
+    assert result.exit_code == 0
+    for token in (
+        "validate",
         "gates",
-        "init",
         "reviewers",
         "run",
-        "validate",
-    }
-    assert _option_strings(parser) == {"-h", "--help", "--project-root", "--version"}
-    assert set(_subcommand_parsers(root_commands["gates"])) == {"list", "plan", "run"}
-    assert set(_subcommand_parsers(root_commands["reviewers"])) == {
+        "fitness",
         "init",
-        "list",
-        "plan",
-        "run",
-    }
-    assert set(_subcommand_parsers(root_commands["fitness"])) == {
-        "catalog",
-        "list",
-        "run",
-    }
+        "--project-root",
+        "--version",
+    ):
+        assert token in result.stdout
 
 
 def test_cli_surface_inventory_option_spellings() -> None:
-    parser = build_parser()
-    root_commands = _subcommand_parsers(parser)
+    cases = [
+        (["validate", "--help"], ["--schema-only"]),
+        (["gates", "list", "--help"], []),
+        (["gates", "plan", "--help"], ["--profile", "--base", "--head"]),
+        (
+            ["gates", "run", "--help"],
+            ["--profile", "--base", "--head", "--explain"],
+        ),
+        (["reviewers", "init", "--help"], ["--force"]),
+        (["reviewers", "list", "--help"], []),
+        (
+            ["reviewers", "plan", "--help"],
+            ["--profile", "--phase", "--base", "--head"],
+        ),
+        (
+            ["reviewers", "run", "--help"],
+            [
+                "--reviewer",
+                "--feature-id",
+                "--feature-path",
+                "--prior-feedback",
+                "--base",
+                "--head",
+            ],
+        ),
+        (
+            ["run", "--help"],
+            [
+                "--all",
+                "--implement-command",
+                "--skip-implement",
+                "--dry-run",
+                "--max-iterations",
+                "--allow-dirty",
+                "--verbose-output",
+            ],
+        ),
+        (["fitness", "list", "--help"], ["--manifest-path", "--format"]),
+        (["fitness", "run", "--help"], ["--manifest-path", "--jobs", "--format"]),
+        (
+            ["fitness", "catalog", "--help"],
+            ["--manifest-path", "--format", "--output"],
+        ),
+        (
+            ["init", "--help"],
+            ["--force", "--scaffold-profile", "--docs-mode", "--scaffold-docs-dir"],
+        ),
+    ]
 
-    assert _option_strings(root_commands["validate"]) == {
-        "-h",
-        "--help",
-        "--schema-only",
-    }
-
-    gates_commands = _subcommand_parsers(root_commands["gates"])
-    assert _option_strings(gates_commands["list"]) == {"-h", "--help"}
-    assert _option_strings(gates_commands["plan"]) == {
-        "-h",
-        "--help",
-        "--profile",
-        "--base",
-        "--head",
-    }
-    assert _option_strings(gates_commands["run"]) == {
-        "-h",
-        "--help",
-        "--profile",
-        "--base",
-        "--head",
-        "--explain",
-    }
-
-    reviewers_commands = _subcommand_parsers(root_commands["reviewers"])
-    assert _option_strings(reviewers_commands["init"]) == {"-h", "--help", "--force"}
-    assert _option_strings(reviewers_commands["list"]) == {"-h", "--help"}
-    assert _option_strings(reviewers_commands["plan"]) == {
-        "-h",
-        "--help",
-        "--profile",
-        "--phase",
-        "--base",
-        "--head",
-    }
-    assert _option_strings(reviewers_commands["run"]) == {
-        "-h",
-        "--help",
-        "--reviewer",
-        "--feature-id",
-        "--feature-path",
-        "--prior-feedback",
-        "--base",
-        "--head",
-    }
-
-    assert _option_strings(root_commands["run"]) == {
-        "-h",
-        "--help",
-        "--all",
-        "--implement-command",
-        "--skip-implement",
-        "--dry-run",
-        "--max-iterations",
-        "--allow-dirty",
-        "--verbose-output",
-    }
-
-    fitness_commands = _subcommand_parsers(root_commands["fitness"])
-    assert _option_strings(fitness_commands["list"]) == {
-        "-h",
-        "--help",
-        "--manifest-path",
-        "--format",
-    }
-    assert _option_strings(fitness_commands["run"]) == {
-        "-h",
-        "--help",
-        "--manifest-path",
-        "--jobs",
-        "--format",
-    }
-    assert _option_strings(fitness_commands["catalog"]) == {
-        "-h",
-        "--help",
-        "--manifest-path",
-        "--format",
-        "--output",
-    }
-
-    assert _option_strings(root_commands["init"]) == {
-        "-h",
-        "--help",
-        "--force",
-        "--scaffold-profile",
-        "--docs-mode",
-        "--scaffold-docs-dir",
-    }
+    for args, expected_options in cases:
+        result = _invoke_cli(args)
+        assert result.exit_code == 0
+        assert "--help" in result.stdout
+        for option in expected_options:
+            assert option in result.stdout
 
 
 def test_fitness_subcommands(tmp_path: Path, capsys: Any) -> None:
@@ -176,38 +117,27 @@ def test_fitness_subcommands(tmp_path: Path, capsys: Any) -> None:
     for module_name in ["specs", "validator", "gates", "loop", "cli"]:
         (src_dir / f"{module_name}.py").write_text("\n", encoding="utf-8")
 
-    parser = build_parser()
-
-    args = parser.parse_args(
-        [
-            "--project-root",
-            str(tmp_path),
-            "fitness",
-            "list",
-            "--format",
-            "json",
-        ]
+    list_code = cli_module.cmd_fitness_list(
+        SimpleNamespace(
+            project_root=str(tmp_path),
+            manifest_path=None,
+            format="json",
+        )
     )
-    list_code = args.func(args)
     list_output = capsys.readouterr().out
     list_payload = json.loads(list_output)
 
     assert list_code == 0
     assert list_payload == []
 
-    args = parser.parse_args(
-        [
-            "--project-root",
-            str(tmp_path),
-            "fitness",
-            "run",
-            "--jobs",
-            "2",
-            "--format",
-            "json",
-        ]
+    run_code = cli_module.cmd_fitness_run(
+        SimpleNamespace(
+            project_root=str(tmp_path),
+            manifest_path=None,
+            jobs=2,
+            format="json",
+        )
     )
-    run_code = args.func(args)
     run_output = capsys.readouterr().out
     run_payload = json.loads(run_output)
 
@@ -216,62 +146,44 @@ def test_fitness_subcommands(tmp_path: Path, capsys: Any) -> None:
     assert run_payload["results"] == []
 
 
-def test_root_version_flag_outputs_installed_package_version_only(
-    capsys: Any,
+@pytest.mark.parametrize("reported_version", ["9.9.9", "3.2.1"])
+def test_root_version_flag_uses_distribution_metadata_source(
+    reported_version: str,
     monkeypatch: Any,
 ) -> None:
-    package_names: list[str] = []
+    requested_distribution_names: list[str] = []
 
     def _fake_version(distribution_name: str) -> str:
-        package_names.append(distribution_name)
-        return "9.9.9"
+        requested_distribution_names.append(distribution_name)
+        return reported_version
 
     monkeypatch.setattr(cli_module.importlib.metadata, "version", _fake_version)
 
-    parser = build_parser()
-    with pytest.raises(SystemExit) as exc_info:
-        parser.parse_args(["--version"])
+    result = _invoke_cli(["--version"])
 
-    captured = capsys.readouterr()
-    assert exc_info.value.code == 0
-    assert captured.out == "9.9.9\n"
-    assert captured.err == ""
-    assert package_names == ["engineeringagent"]
+    assert result.exit_code == 0
+    assert result.stdout == f"{reported_version}\n"
+    assert result.stderr == ""
+    assert requested_distribution_names == ["engineeringagent"]
 
 
-def test_root_parser_still_requires_subcommand_without_version_flag(
-    capsys: Any,
-) -> None:
-    parser = build_parser()
+def test_root_parser_still_requires_subcommand_without_version_flag() -> None:
+    result = _invoke_cli([])
 
-    with pytest.raises(SystemExit) as exc_info:
-        parser.parse_args([])
-
-    captured = capsys.readouterr()
-    assert exc_info.value.code == 2
-    assert captured.out == ""
-    assert "the following arguments are required: command" in captured.err
+    assert result.exit_code == 2
+    assert result.stdout == ""
+    assert "Missing command" in result.stderr
 
 
-def test_main_runs_selected_handler(monkeypatch: Any) -> None:
+def test_main_validate_command_uses_typer_handler(monkeypatch: Any) -> None:
     recorded: dict[str, object] = {}
 
-    def _fake_run_legacy_cli_command(
-        *,
-        command: str,
-        args: list[str],
-        project_root: str,
-    ) -> int:
-        recorded["command"] = command
-        recorded["args"] = args
-        recorded["project_root"] = project_root
+    def _fake_cmd_validate(args: Any) -> int:
+        recorded["project_root"] = args.project_root
+        recorded["schema_only"] = args.schema_only
         return 0
 
-    monkeypatch.setattr(
-        cli_module,
-        "_run_legacy_cli_command",
-        _fake_run_legacy_cli_command,
-    )
+    monkeypatch.setattr(cli_module, "cmd_validate", _fake_cmd_validate)
 
     with pytest.raises(SystemExit) as exc_info:
         cli_module.main(
@@ -285,19 +197,15 @@ def test_main_runs_selected_handler(monkeypatch: Any) -> None:
 
     assert exc_info.value.code == 0
     assert recorded == {
-        "command": "validate",
-        "args": ["--schema-only"],
         "project_root": "repo",
+        "schema_only": True,
     }
 
 
 def test_main_run_command_uses_typer_handler(monkeypatch: Any) -> None:
     recorded: dict[str, object] = {}
 
-    def _fail_if_forwarded(**_kwargs: object) -> int:
-        raise AssertionError("run command should not use legacy forwarding")
-
-    def _fake_cmd_run(args: argparse.Namespace) -> int:
+    def _fake_cmd_run(args: Any) -> int:
         recorded["project_root"] = args.project_root
         recorded["feature_paths"] = args.feature_paths
         recorded["all"] = args.all
@@ -309,7 +217,6 @@ def test_main_run_command_uses_typer_handler(monkeypatch: Any) -> None:
         recorded["verbose_output"] = args.verbose_output
         return 0
 
-    monkeypatch.setattr(cli_module, "_run_legacy_cli_command", _fail_if_forwarded)
     monkeypatch.setattr(cli_module, "cmd_run", _fake_cmd_run)
 
     with pytest.raises(SystemExit) as exc_info:
@@ -346,10 +253,7 @@ def test_main_run_command_uses_typer_handler(monkeypatch: Any) -> None:
 def test_main_init_command_uses_typer_handler(monkeypatch: Any) -> None:
     recorded: dict[str, object] = {}
 
-    def _fail_if_forwarded(**_kwargs: object) -> int:
-        raise AssertionError("init command should not use legacy forwarding")
-
-    def _fake_cmd_init(args: argparse.Namespace) -> int:
+    def _fake_cmd_init(args: Any) -> int:
         recorded["project_root"] = args.project_root
         recorded["force"] = args.force
         recorded["scaffold_profile"] = args.scaffold_profile
@@ -357,7 +261,6 @@ def test_main_init_command_uses_typer_handler(monkeypatch: Any) -> None:
         recorded["scaffold_docs_dir"] = args.scaffold_docs_dir
         return 0
 
-    monkeypatch.setattr(cli_module, "_run_legacy_cli_command", _fail_if_forwarded)
     monkeypatch.setattr(cli_module, "cmd_init", _fake_cmd_init)
 
     with pytest.raises(SystemExit) as exc_info:
@@ -386,29 +289,6 @@ def test_main_init_command_uses_typer_handler(monkeypatch: Any) -> None:
     }
 
 
-def test_root_version_flag_uses_distribution_metadata_source(
-    capsys: Any,
-    monkeypatch: Any,
-) -> None:
-    requested_distribution_names: list[str] = []
-
-    def _fake_version(distribution_name: str) -> str:
-        requested_distribution_names.append(distribution_name)
-        return "3.2.1"
-
-    monkeypatch.setattr(cli_module.importlib.metadata, "version", _fake_version)
-
-    parser = build_parser()
-    with pytest.raises(SystemExit) as exc_info:
-        parser.parse_args(["--version"])
-
-    captured = capsys.readouterr()
-    assert exc_info.value.code == 0
-    assert captured.out == "3.2.1\n"
-    assert captured.err == ""
-    assert requested_distribution_names == ["engineeringagent"]
-
-
 def test_validate_fails_on_agents_docs_map_errors(tmp_path: Path, capsys: Any) -> None:
     (tmp_path / "AGENTS.md").write_text(
         "\n".join(
@@ -425,9 +305,9 @@ def test_validate_fails_on_agents_docs_map_errors(tmp_path: Path, capsys: Any) -
         encoding="utf-8",
     )
 
-    parser = build_parser()
-    args = parser.parse_args(["--project-root", str(tmp_path), "validate"])
-    code = args.func(args)
+    code = cli_module.cmd_validate(
+        SimpleNamespace(project_root=str(tmp_path), schema_only=False)
+    )
     output = capsys.readouterr().out
 
     assert code == 1
@@ -469,18 +349,14 @@ def test_fitness_run_json_includes_remediation_for_failures(
         ],
     )
 
-    parser = build_parser()
-    args = parser.parse_args(
-        [
-            "--project-root",
-            str(tmp_path),
-            "fitness",
-            "run",
-            "--format",
-            "json",
-        ]
+    code = cli_module.cmd_fitness_run(
+        SimpleNamespace(
+            project_root=str(tmp_path),
+            manifest_path=None,
+            jobs=1,
+            format="json",
+        )
     )
-    code = args.func(args)
     output = capsys.readouterr().out
     payload = json.loads(output)
 
@@ -518,18 +394,14 @@ def test_fitness_run_executes_shell_command_rule(tmp_path: Path, capsys: Any) ->
         ],
     )
 
-    parser = build_parser()
-    args = parser.parse_args(
-        [
-            "--project-root",
-            str(tmp_path),
-            "fitness",
-            "run",
-            "--format",
-            "json",
-        ]
+    code = cli_module.cmd_fitness_run(
+        SimpleNamespace(
+            project_root=str(tmp_path),
+            manifest_path=None,
+            jobs=1,
+            format="json",
+        )
     )
-    code = args.func(args)
     payload = json.loads(capsys.readouterr().out)
 
     assert code == 0
@@ -542,8 +414,6 @@ def test_fitness_run_json_uses_fallback_when_remediation_metadata_missing(
     capsys: Any,
     monkeypatch: Any,
 ) -> None:
-    parser = build_parser()
-
     orphan_result = FitnessRuleResult.model_validate(
         {
             "contract_version": "1.0",
@@ -562,17 +432,14 @@ def test_fitness_run_json_uses_fallback_when_remediation_metadata_missing(
         lambda *_args, **_kwargs: FitnessRunSummary(results=(orphan_result,)),
     )
 
-    args = parser.parse_args(
-        [
-            "--project-root",
-            str(tmp_path),
-            "fitness",
-            "run",
-            "--format",
-            "json",
-        ]
+    code = cli_module.cmd_fitness_run(
+        SimpleNamespace(
+            project_root=str(tmp_path),
+            manifest_path=None,
+            jobs=1,
+            format="json",
+        )
     )
-    code = args.func(args)
     payload = json.loads(capsys.readouterr().out)
 
     assert code == 1
@@ -615,18 +482,13 @@ def test_fitness_list_shows_declared_shell_rule_only(
         ],
     )
 
-    parser = build_parser()
-    args = parser.parse_args(
-        [
-            "--project-root",
-            str(tmp_path),
-            "fitness",
-            "list",
-            "--format",
-            "json",
-        ]
+    code = cli_module.cmd_fitness_list(
+        SimpleNamespace(
+            project_root=str(tmp_path),
+            manifest_path=None,
+            format="json",
+        )
     )
-    code = args.func(args)
     payload = json.loads(capsys.readouterr().out)
 
     assert code == 0
@@ -659,18 +521,14 @@ def test_fitness_catalog_json_contract_is_deterministic(
         ],
     )
 
-    parser = build_parser()
-    args = parser.parse_args(
-        [
-            "--project-root",
-            str(tmp_path),
-            "fitness",
-            "catalog",
-            "--format",
-            "json",
-        ]
+    code = cli_module.cmd_fitness_catalog(
+        SimpleNamespace(
+            project_root=str(tmp_path),
+            manifest_path=None,
+            format="json",
+            output=None,
+        )
     )
-    code = args.func(args)
     output = capsys.readouterr().out
     payload = json.loads(output)
 

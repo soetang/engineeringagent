@@ -93,6 +93,16 @@
           "invalidated_at": "2026-02-15T09:47:06Z"
         }
       }
+    },
+    "FEAT-066": {
+      "reviewers": {
+        "code_simplifier": {
+          "approved": true,
+          "approved_at": "2026-02-15T10:20:19Z",
+          "blocking_request_changes_count": 0,
+          "blocking_retry_updated_at": "2026-02-15T10:20:19Z"
+        }
+      }
     }
   },
   "version": "1"

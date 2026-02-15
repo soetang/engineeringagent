@@ -1,11 +1,14 @@
 from __future__ import annotations
 
-from typing import Any
+from typer.testing import CliRunner
 
-import pytest
-
-from engineeringagent.cli import build_parser
+from engineeringagent import cli as cli_module
 from engineeringagent.init_scaffold import build_baseline_scaffold_manifest
+
+
+def _invoke_cli(args: list[str]):
+    runner = CliRunner(mix_stderr=False)
+    return runner.invoke(cli_module.build_typer_app(), args)
 
 
 def test_build_baseline_scaffold_manifest_excludes_reviewers_by_default() -> None:
@@ -24,12 +27,9 @@ def test_build_baseline_scaffold_manifest_ignores_include_reviewers_flag() -> No
     assert "harness/reviewers/prompts/readme_process.md" not in manifest
 
 
-def test_init_rejects_include_reviewers_flag(capsys: Any) -> None:
-    parser = build_parser()
+def test_init_rejects_include_reviewers_flag() -> None:
+    result = _invoke_cli(["init", "--include-reviewers"])
 
-    with pytest.raises(SystemExit) as exc_info:
-        parser.parse_args(["init", "--include-reviewers"])
-
-    output = capsys.readouterr()
-    assert exc_info.value.code == 2
-    assert "unrecognized arguments: --include-reviewers" in output.err
+    assert result.exit_code == 2
+    assert "No such option" in result.stderr
+    assert "--include-reviewers" in result.stderr

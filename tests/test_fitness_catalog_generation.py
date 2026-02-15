@@ -4,12 +4,12 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from typer.testing import CliRunner
 
 from engineeringagent import cli as cli_module
-from engineeringagent.cli import build_parser
 
 
-def test_fitness_catalog_markdown_generation(tmp_path: Path, capsys: Any) -> None:
+def test_fitness_catalog_markdown_generation(tmp_path: Path) -> None:
     manifest_path = tmp_path / "harness" / "fitness-functions" / "rules.yaml"
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(
@@ -36,8 +36,9 @@ def test_fitness_catalog_markdown_generation(tmp_path: Path, capsys: Any) -> Non
     )
 
     output_path = tmp_path / "docs" / "fitness-functions" / "rules.md"
-    parser = build_parser()
-    args = parser.parse_args(
+    runner = CliRunner(mix_stderr=False)
+    result = runner.invoke(
+        cli_module.build_typer_app(),
         [
             "--project-root",
             str(tmp_path),
@@ -47,15 +48,13 @@ def test_fitness_catalog_markdown_generation(tmp_path: Path, capsys: Any) -> Non
             "markdown",
             "--output",
             str(output_path.relative_to(tmp_path)),
-        ]
+        ],
     )
 
-    exit_code = args.func(args)
-    output = capsys.readouterr().out
     markdown = output_path.read_text(encoding="utf-8")
 
-    assert exit_code == 0
-    assert "fitness catalog written:" in output
+    assert result.exit_code == 0
+    assert "fitness catalog written:" in result.stdout
     assert "`custom.shell-contract`" in markdown
     assert "`architecture.dep-directionality`" not in markdown
     assert "`architecture.loop-subprocess-boundary`" not in markdown
@@ -66,9 +65,6 @@ def test_fitness_catalog_markdown_generation(tmp_path: Path, capsys: Any) -> Non
 def test_main_uses_typer_fitness_tree_without_legacy_forward(monkeypatch: Any) -> None:
     captured: dict[str, Any] = {}
 
-    def _unexpected_legacy_forward(*_args: Any, **_kwargs: Any) -> int:
-        raise AssertionError("legacy argparse forward should not handle fitness")
-
     def _fake_cmd_fitness_catalog(args: Any) -> int:
         captured["project_root"] = args.project_root
         captured["manifest_path"] = args.manifest_path
@@ -76,11 +72,7 @@ def test_main_uses_typer_fitness_tree_without_legacy_forward(monkeypatch: Any) -
         captured["output"] = args.output
         return 3
 
-    monkeypatch.setattr(
-        cli_module,
-        "_run_legacy_cli_command",
-        _unexpected_legacy_forward,
-    )
+    assert not hasattr(cli_module, "_run_legacy_cli_command")
     monkeypatch.setattr(
         cli_module,
         "cmd_fitness_catalog",

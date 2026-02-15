@@ -989,9 +989,6 @@ def test_cmd_gates_run_output_behavior_unchanged(tmp_path: Path, capfd: Any) -> 
 def test_main_uses_typer_gates_tree_without_legacy_forward(monkeypatch: Any) -> None:
     captured: dict[str, Any] = {}
 
-    def _unexpected_legacy_forward(*_args: Any, **_kwargs: Any) -> int:
-        raise AssertionError("legacy argparse forward should not handle gates")
-
     def _fake_cmd_gates_run(args: Namespace) -> int:
         captured["project_root"] = args.project_root
         captured["profile"] = args.profile
@@ -1000,11 +997,8 @@ def test_main_uses_typer_gates_tree_without_legacy_forward(monkeypatch: Any) -> 
         captured["explain"] = args.explain
         return 7
 
-    monkeypatch.setattr(
-        cli_module,
-        "_run_legacy_cli_command",
-        _unexpected_legacy_forward,
-    )
+    assert not hasattr(cli_module, "_run_legacy_cli_command")
+
     monkeypatch.setattr(cli_module, "cmd_gates_run", _fake_cmd_gates_run)
 
     with pytest.raises(SystemExit) as exc_info:

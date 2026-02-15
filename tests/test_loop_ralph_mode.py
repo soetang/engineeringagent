@@ -8,12 +8,18 @@ from typing import Any
 
 import pytest
 import yaml
+from typer.testing import CliRunner
 
+from engineeringagent import cli as cli_module
 import engineeringagent.loop as loop_module
-from engineeringagent.cli import build_parser
 from engineeringagent.loop import run_loop
 from engineeringagent.loop_runtime import presentation as presentation_module
 from engineeringagent.prompts import build_implementation_prompt
+
+
+def _invoke_cli(args: list[str]) -> Any:
+    runner = CliRunner(mix_stderr=False)
+    return runner.invoke(cli_module.build_typer_app(), args)
 
 
 def _write_yaml(path: Path, payload: dict[str, Any]) -> None:
@@ -752,13 +758,12 @@ def test_ralph_prompt_includes_feature_file_path(tmp_path: Path) -> None:
         assert phrase in prompt
 
 
-def test_cli_run_dry_run_skip_implement_path_first(tmp_path: Path, capsys: Any) -> None:
+def test_cli_run_dry_run_skip_implement_path_first(tmp_path: Path) -> None:
     project_root, feature_path = _make_project_root(
         tmp_path, feature_data=_base_feature()
     )
 
-    parser = build_parser()
-    args = parser.parse_args(
+    result = _invoke_cli(
         [
             "--project-root",
             str(project_root),
@@ -769,19 +774,15 @@ def test_cli_run_dry_run_skip_implement_path_first(tmp_path: Path, capsys: Any) 
         ]
     )
 
-    code = args.func(args)
-    output = capsys.readouterr().out
-
-    assert code == 0
-    assert "result=dry_run" in output
+    assert result.exit_code == 0
+    assert "result=dry_run" in result.stdout
     assert not (project_root / "progress" / "runs.jsonl").exists()
 
 
-def test_cli_run_all_dry_run_skip_implement(tmp_path: Path, capsys: Any) -> None:
+def test_cli_run_all_dry_run_skip_implement(tmp_path: Path) -> None:
     project_root, _ = _make_project_root(tmp_path, feature_data=_base_feature())
 
-    parser = build_parser()
-    args = parser.parse_args(
+    result = _invoke_cli(
         [
             "--project-root",
             str(project_root),
@@ -792,20 +793,16 @@ def test_cli_run_all_dry_run_skip_implement(tmp_path: Path, capsys: Any) -> None
         ]
     )
 
-    code = args.func(args)
-    output = capsys.readouterr().out
-
-    assert code == 0
-    assert "result=dry_run" in output
+    assert result.exit_code == 0
+    assert "result=dry_run" in result.stdout
 
 
-def test_cli_run_rejects_combined_all_and_paths(tmp_path: Path, capsys: Any) -> None:
+def test_cli_run_rejects_combined_all_and_paths(tmp_path: Path) -> None:
     project_root, feature_path = _make_project_root(
         tmp_path, feature_data=_base_feature()
     )
 
-    parser = build_parser()
-    args = parser.parse_args(
+    result = _invoke_cli(
         [
             "--project-root",
             str(project_root),
@@ -817,18 +814,14 @@ def test_cli_run_rejects_combined_all_and_paths(tmp_path: Path, capsys: Any) -> 
         ]
     )
 
-    code = args.func(args)
-    output = capsys.readouterr().out
-
-    assert code == 1
-    assert "cannot be used with --all" in output
+    assert result.exit_code == 1
+    assert "cannot be used with --all" in result.stdout
 
 
-def test_cli_run_requires_paths_or_all(tmp_path: Path, capsys: Any) -> None:
+def test_cli_run_requires_paths_or_all(tmp_path: Path) -> None:
     project_root, _ = _make_project_root(tmp_path, feature_data=_base_feature())
 
-    parser = build_parser()
-    args = parser.parse_args(
+    result = _invoke_cli(
         [
             "--project-root",
             str(project_root),
@@ -838,11 +831,8 @@ def test_cli_run_requires_paths_or_all(tmp_path: Path, capsys: Any) -> None:
         ]
     )
 
-    code = args.func(args)
-    output = capsys.readouterr().out
-
-    assert code == 1
-    assert "provide one or more feature paths, or use --all" in output
+    assert result.exit_code == 1
+    assert "provide one or more feature paths, or use --all" in result.stdout
 
 
 def test_run_loop_all_discovers_backlog_and_in_progress_only(
@@ -2234,25 +2224,24 @@ def test_run_loop_commit_failure_preserves_retryable_feature_path(
 
 
 def test_cli_legacy_loop_command_removed() -> None:
-    parser = build_parser()
-    with pytest.raises(SystemExit):
-        parser.parse_args(["loop", "run", "--feature-id", "FEAT-900"])
+    result = _invoke_cli(["loop", "run", "--feature-id", "FEAT-900"])
+
+    assert result.exit_code == 2
+    assert "No such command" in result.stderr
 
 
-def test_cli_run_help_includes_allow_dirty_flag(capsys: Any) -> None:
-    parser = build_parser()
-    with pytest.raises(SystemExit):
-        parser.parse_args(["run", "--help"])
-    output = capsys.readouterr().out
-    assert "--allow-dirty" in output
+def test_cli_run_help_includes_allow_dirty_flag() -> None:
+    result = _invoke_cli(["run", "--help"])
+
+    assert result.exit_code == 0
+    assert "--allow-dirty" in result.stdout
 
 
-def test_cli_run_help_includes_verbose_output_flag(capsys: Any) -> None:
-    parser = build_parser()
-    with pytest.raises(SystemExit):
-        parser.parse_args(["run", "--help"])
-    output = capsys.readouterr().out
-    assert "--verbose-output" in output
+def test_cli_run_help_includes_verbose_output_flag() -> None:
+    result = _invoke_cli(["run", "--help"])
+
+    assert result.exit_code == 0
+    assert "--verbose-output" in result.stdout
 
 
 def test_run_loop_reports_invalid_feature_path(tmp_path: Path, capsys: Any) -> None:

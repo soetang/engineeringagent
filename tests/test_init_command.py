@@ -6,62 +6,65 @@ from typing import Any
 
 import pytest
 import yaml
+from typer.testing import CliRunner
 
-from engineeringagent.cli import build_parser, cmd_init
+from engineeringagent import cli as cli_module
 from engineeringagent.init_scaffold import (
     build_baseline_scaffold_manifest,
     build_scaffold_agents_markdown,
 )
 
 
-def test_init_subcommand_registered() -> None:
-    """Verify the init command is registered on the root parser."""
-    parser = build_parser()
-
-    args = parser.parse_args(["init"])
-
-    assert args.command == "init"
-    assert args.func is cmd_init
+def _invoke_cli(args: list[str]) -> Any:
+    runner = CliRunner(mix_stderr=False)
+    return runner.invoke(cli_module.build_typer_app(), args)
 
 
-def test_init_rejects_include_reviewers_flag(capsys: Any) -> None:
+def test_init_subcommand_registered(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Verify Typer routes the init command to the init handler."""
+    recorded: dict[str, object] = {}
+
+    def _fake_cmd_init(args: Any) -> int:
+        recorded["project_root"] = args.project_root
+        return 0
+
+    monkeypatch.setattr(cli_module, "cmd_init", _fake_cmd_init)
+    result = _invoke_cli(["--project-root", str(tmp_path), "init"])
+
+    assert result.exit_code == 0
+    assert recorded == {"project_root": str(tmp_path)}
+
+
+def test_init_rejects_include_reviewers_flag() -> None:
     """Verify init no longer accepts the removed include-reviewers flag."""
-    parser = build_parser()
+    result = _invoke_cli(["init", "--include-reviewers"])
 
-    with pytest.raises(SystemExit) as exc_info:
-        parser.parse_args(["init", "--include-reviewers"])
-
-    output = capsys.readouterr()
-    assert exc_info.value.code == 2
-    assert "unrecognized arguments: --include-reviewers" in output.err
+    assert result.exit_code == 2
+    assert "No such option: --include-reviewers" in result.stderr
 
 
 def test_init_prompts_when_docs_exists(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
-    capsys: Any,
 ) -> None:
     """Verify init prompts for docs conflict and supports reuse mode."""
     (tmp_path / "docs").mkdir(parents=True)
     monkeypatch.setattr("builtins.input", lambda _prompt: "reuse")
 
-    parser = build_parser()
-    args = parser.parse_args(["--project-root", str(tmp_path), "init"])
+    result = _invoke_cli(["--project-root", str(tmp_path), "init"])
 
-    code = args.func(args)
-    output = capsys.readouterr().out
-
-    assert code == 0
-    assert "docs_dir=docs" in output
+    assert result.exit_code == 0
+    assert "docs_dir=docs" in result.stdout
     assert (tmp_path / "docs" / "spec" / "features" / ".gitkeep").exists()
 
 
-def test_init_can_use_separate_docs_directory(tmp_path: Path, capsys: Any) -> None:
+def test_init_can_use_separate_docs_directory(tmp_path: Path) -> None:
     """Verify init can scaffold into a distinct docs directory."""
     (tmp_path / "docs").mkdir(parents=True)
 
-    parser = build_parser()
-    args = parser.parse_args(
+    result = _invoke_cli(
         [
             "--project-root",
             str(tmp_path),
@@ -73,11 +76,8 @@ def test_init_can_use_separate_docs_directory(tmp_path: Path, capsys: Any) -> No
         ]
     )
 
-    code = args.func(args)
-    output = capsys.readouterr().out
-
-    assert code == 0
-    assert "docs_dir=docs.engineeringagent" in output
+    assert result.exit_code == 0
+    assert "docs_dir=docs.engineeringagent" in result.stdout
     assert not (tmp_path / "docs" / "spec").exists()
     assert (
         tmp_path / "docs.engineeringagent" / "spec" / "features" / ".gitkeep"
@@ -86,13 +86,11 @@ def test_init_can_use_separate_docs_directory(tmp_path: Path, capsys: Any) -> No
 
 def test_init_separate_docs_writes_engineeringagent_toml_docs_root(
     tmp_path: Path,
-    capsys: Any,
 ) -> None:
     """Verify init separate docs mode writes docs-root to engineeringagent.toml."""
     (tmp_path / "docs").mkdir(parents=True)
 
-    parser = build_parser()
-    args = parser.parse_args(
+    result = _invoke_cli(
         [
             "--project-root",
             str(tmp_path),
@@ -104,11 +102,8 @@ def test_init_separate_docs_writes_engineeringagent_toml_docs_root(
         ]
     )
 
-    code = args.func(args)
-    output = capsys.readouterr().out
-
-    assert code == 0
-    assert "docs_dir=docs.engineeringagent" in output
+    assert result.exit_code == 0
+    assert "docs_dir=docs.engineeringagent" in result.stdout
     assert (tmp_path / "engineeringagent.toml").read_text(encoding="utf-8") == (
         'docs-root = "docs.engineeringagent"\n'
     )
@@ -116,13 +111,11 @@ def test_init_separate_docs_writes_engineeringagent_toml_docs_root(
 
 def test_validate_and_run_all_use_separate_docs_root(
     tmp_path: Path,
-    capsys: Any,
 ) -> None:
     """Verify separate docs-root config is honored by validate and run --all."""
     (tmp_path / "docs").mkdir(parents=True)
 
-    parser = build_parser()
-    init_args = parser.parse_args(
+    init_result = _invoke_cli(
         [
             "--project-root",
             str(tmp_path),
@@ -133,9 +126,7 @@ def test_validate_and_run_all_use_separate_docs_root(
             "docs.engineeringagent",
         ]
     )
-    init_code = init_args.func(init_args)
-    _ = capsys.readouterr().out
-    assert init_code == 0
+    assert init_result.exit_code == 0
 
     feature_path = (
         tmp_path
@@ -161,14 +152,12 @@ def test_validate_and_run_all_use_separate_docs_root(
         encoding="utf-8",
     )
 
-    validate_args = parser.parse_args(["--project-root", str(tmp_path), "validate"])
-    validate_code = validate_args.func(validate_args)
-    validate_output = capsys.readouterr().out
+    validate_result = _invoke_cli(["--project-root", str(tmp_path), "validate"])
 
-    assert validate_code == 0
-    assert "spec validation: ok" in validate_output
+    assert validate_result.exit_code == 0
+    assert "spec validation: ok" in validate_result.stdout
 
-    run_args = parser.parse_args(
+    run_result = _invoke_cli(
         [
             "--project-root",
             str(tmp_path),
@@ -178,35 +167,28 @@ def test_validate_and_run_all_use_separate_docs_root(
             "--skip-implement",
         ]
     )
-    run_code = run_args.func(run_args)
-    run_output = capsys.readouterr().out
 
-    assert run_code == 0
-    assert "[dry-run] Resolved 1 feature file(s)." in run_output
-    assert "feature=FEAT-950" in run_output
+    assert run_result.exit_code == 0
+    assert "[dry-run] Resolved 1 feature file(s)." in run_result.stdout
+    assert "feature=FEAT-950" in run_result.stdout
     assert (
         "docs.engineeringagent/spec/features/FEAT-950-separate-docs-root.yaml"
-        in run_output
+        in run_result.stdout
     )
 
 
 def test_init_agents_conflict_overwrite(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
-    capsys: Any,
 ) -> None:
     """Verify init can explicitly overwrite an existing AGENTS.md."""
     (tmp_path / "AGENTS.md").write_text("user guidance\n", encoding="utf-8")
     monkeypatch.setattr("builtins.input", lambda _prompt: "overwrite")
 
-    parser = build_parser()
-    args = parser.parse_args(["--project-root", str(tmp_path), "init"])
+    result = _invoke_cli(["--project-root", str(tmp_path), "init"])
 
-    code = args.func(args)
-    output = capsys.readouterr().out
-
-    assert code == 0
-    assert "agents_mode=overwrite" in output
+    assert result.exit_code == 0
+    assert "agents_mode=overwrite" in result.stdout
     scaffold_agents = (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
     assert "user guidance" not in scaffold_agents
     assert "engineeringagent validate" in scaffold_agents
@@ -215,21 +197,16 @@ def test_init_agents_conflict_overwrite(
 def test_init_agents_conflict_preserve_and_create_merge_spec(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
-    capsys: Any,
 ) -> None:
     """Verify preserve mode renames AGENTS and creates a merge follow-up spec."""
     (tmp_path / "AGENTS.md").write_text("legacy guidance\n", encoding="utf-8")
     monkeypatch.setattr("builtins.input", lambda _prompt: "preserve")
 
-    parser = build_parser()
-    args = parser.parse_args(["--project-root", str(tmp_path), "init"])
+    result = _invoke_cli(["--project-root", str(tmp_path), "init"])
 
-    code = args.func(args)
-    output = capsys.readouterr().out
-
-    assert code == 0
-    assert "agents_mode=preserve" in output
-    assert "agents_backup=AGENTS.user.md" in output
+    assert result.exit_code == 0
+    assert "agents_mode=preserve" in result.stdout
+    assert "agents_backup=AGENTS.user.md" in result.stdout
 
     assert (tmp_path / "AGENTS.user.md").read_text(
         encoding="utf-8"
@@ -251,20 +228,15 @@ def test_init_agents_conflict_preserve_and_create_merge_spec(
 def test_init_agents_conflict_abort(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
-    capsys: Any,
 ) -> None:
     """Verify abort mode keeps AGENTS and exits without scaffold writes."""
     (tmp_path / "AGENTS.md").write_text("do not touch\n", encoding="utf-8")
     monkeypatch.setattr("builtins.input", lambda _prompt: "abort")
 
-    parser = build_parser()
-    args = parser.parse_args(["--project-root", str(tmp_path), "init"])
+    result = _invoke_cli(["--project-root", str(tmp_path), "init"])
 
-    code = args.func(args)
-    output = capsys.readouterr().out
-
-    assert code == 0
-    assert "init aborted" in output
+    assert result.exit_code == 0
+    assert "init aborted" in result.stdout
     assert (tmp_path / "AGENTS.md").read_text(encoding="utf-8") == "do not touch\n"
     assert not (tmp_path / "docs" / "spec").exists()
 
@@ -295,16 +267,11 @@ def test_generated_agents_keeps_major_principles() -> None:
 
 def test_init_writes_precommit_and_empty_gate_profiles(
     tmp_path: Path,
-    capsys: Any,
 ) -> None:
     """Verify init writes pre-commit wiring, gate stubs, and fitness declarations."""
-    parser = build_parser()
-    args = parser.parse_args(["--project-root", str(tmp_path), "init"])
+    result = _invoke_cli(["--project-root", str(tmp_path), "init"])
 
-    code = args.func(args)
-    _ = capsys.readouterr()
-
-    assert code == 0
+    assert result.exit_code == 0
 
     precommit_config = (tmp_path / ".pre-commit-config.yaml").read_text(
         encoding="utf-8"
@@ -336,17 +303,12 @@ def test_init_writes_precommit_and_empty_gate_profiles(
 
 def test_init_defaults_to_core_language_agnostic_profile(
     tmp_path: Path,
-    capsys: Any,
 ) -> None:
     """Verify init defaults to the language-agnostic core scaffold profile."""
-    parser = build_parser()
-    args = parser.parse_args(["--project-root", str(tmp_path), "init"])
+    result = _invoke_cli(["--project-root", str(tmp_path), "init"])
 
-    code = args.func(args)
-    output = capsys.readouterr().out
-
-    assert code == 0
-    assert "profile=core" in output
+    assert result.exit_code == 0
+    assert "profile=core" in result.stdout
 
     precommit_config = (tmp_path / ".pre-commit-config.yaml").read_text(
         encoding="utf-8"
@@ -356,10 +318,9 @@ def test_init_defaults_to_core_language_agnostic_profile(
     assert "engineeringagent-commit-msg" not in precommit_config
 
 
-def test_init_python_uv_profile_available(tmp_path: Path, capsys: Any) -> None:
+def test_init_python_uv_profile_available(tmp_path: Path) -> None:
     """Verify init supports the optional python_uv scaffold profile."""
-    parser = build_parser()
-    args = parser.parse_args(
+    result = _invoke_cli(
         [
             "--project-root",
             str(tmp_path),
@@ -369,11 +330,8 @@ def test_init_python_uv_profile_available(tmp_path: Path, capsys: Any) -> None:
         ]
     )
 
-    code = args.func(args)
-    output = capsys.readouterr().out
-
-    assert code == 0
-    assert "profile=python_uv" in output
+    assert result.exit_code == 0
+    assert "profile=python_uv" in result.stdout
 
     precommit_config = (tmp_path / ".pre-commit-config.yaml").read_text(
         encoding="utf-8"
@@ -416,15 +374,11 @@ def test_init_template_rendering_is_deterministic() -> None:
     assert first == second
 
 
-def test_init_scaffolds_tool_generic_docs_only(tmp_path: Path, capsys: Any) -> None:
+def test_init_scaffolds_tool_generic_docs_only(tmp_path: Path) -> None:
     """Verify init scaffolds reusable tool docs without repo-internal docs."""
-    parser = build_parser()
-    args = parser.parse_args(["--project-root", str(tmp_path), "init"])
+    result = _invoke_cli(["--project-root", str(tmp_path), "init"])
 
-    code = args.func(args)
-    _ = capsys.readouterr()
-
-    assert code == 0
+    assert result.exit_code == 0
 
     docs_architecture = (
         tmp_path / "docs" / "references" / "docs-architecture-llms.md"

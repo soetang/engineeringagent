@@ -6,9 +6,10 @@ from types import SimpleNamespace
 from typing import Any
 
 import yaml
+import pytest
+from typer.testing import CliRunner
 
 from engineeringagent import cli as cli_module
-from engineeringagent.cli import build_parser
 from engineeringagent.gates import ChangedPathsResult
 
 
@@ -40,54 +41,48 @@ def _write_reviewers_config(tmp_path: Path) -> None:
     )
 
 
+def _invoke_cli(args: list[str]) -> Any:
+    runner = CliRunner(mix_stderr=False)
+    return runner.invoke(cli_module.build_typer_app(), args)
+
+
 def test_reviewers_subcommands_registered() -> None:
-    parser = build_parser()
+    result = _invoke_cli(["reviewers", "--help"])
 
-    list_args = parser.parse_args(["reviewers", "list"])
-    plan_args = parser.parse_args(
-        ["reviewers", "plan", "--profile", "loop_fast", "--phase", "iteration_end"]
-    )
-    run_args = parser.parse_args(
-        [
-            "reviewers",
-            "run",
-            "--reviewer",
-            "code_simplifier",
-            "--feature-id",
-            "FEAT-050",
-            "--feature-path",
-            "docs/spec/features/FEAT-050.yaml",
-        ]
-    )
-    init_args = parser.parse_args(["reviewers", "init"])
-
-    assert list_args.command == "reviewers"
-    assert list_args.reviewers_cmd == "list"
-    assert callable(list_args.func)
-    assert plan_args.reviewers_cmd == "plan"
-    assert run_args.reviewers_cmd == "run"
-    assert init_args.reviewers_cmd == "init"
+    assert result.exit_code == 0
+    for token in ("init", "list", "plan", "run"):
+        assert token in result.stdout
 
 
-def test_reviewers_list_prints_profile_names(tmp_path: Path, capsys: Any) -> None:
+def test_main_reviewers_list_uses_typer_handler(monkeypatch: Any) -> None:
+    recorded: dict[str, object] = {}
+
+    def _fake_cmd_reviewers_list(args: Any) -> int:
+        recorded["project_root"] = args.project_root
+        return 0
+
+    monkeypatch.setattr(cli_module, "cmd_reviewers_list", _fake_cmd_reviewers_list)
+
+    with pytest.raises(SystemExit) as exc_info:
+        cli_module.main(["--project-root", "repo", "reviewers", "list"])
+
+    assert exc_info.value.code == 0
+    assert recorded == {"project_root": "repo"}
+
+
+def test_reviewers_list_prints_profile_names(tmp_path: Path) -> None:
     _write_reviewers_config(tmp_path)
-    parser = build_parser()
+    result = _invoke_cli(["--project-root", str(tmp_path), "reviewers", "list"])
 
-    args = parser.parse_args(["--project-root", str(tmp_path), "reviewers", "list"])
-    code = args.func(args)
-    output = capsys.readouterr().out
-
-    assert code == 0
-    assert output.strip() == "loop_fast"
+    assert result.exit_code == 0
+    assert result.stdout.strip() == "loop_fast"
 
 
 def test_reviewers_plan_prints_deterministic_json(
     tmp_path: Path,
-    capsys: Any,
     monkeypatch: Any,
 ) -> None:
     _write_reviewers_config(tmp_path)
-    parser = build_parser()
     monkeypatch.setattr(
         cli_module,
         "collect_changed_paths",
@@ -98,7 +93,7 @@ def test_reviewers_plan_prints_deterministic_json(
         ),
     )
 
-    args = parser.parse_args(
+    result = _invoke_cli(
         [
             "--project-root",
             str(tmp_path),
@@ -107,14 +102,12 @@ def test_reviewers_plan_prints_deterministic_json(
             "--profile",
             "loop_fast",
             "--phase",
-            "iteration_end",
+            "feature_done",
         ]
     )
-    code = args.func(args)
-    output = capsys.readouterr().out
 
-    assert code == 0
-    assert json.loads(output) == [
+    assert result.exit_code == 0
+    assert json.loads(result.stdout) == [
         {
             "decision": "run",
             "reason": "always_run_no_on_change",
@@ -125,11 +118,9 @@ def test_reviewers_plan_prints_deterministic_json(
 
 def test_reviewers_run_returns_decision_json(
     tmp_path: Path,
-    capsys: Any,
     monkeypatch: Any,
 ) -> None:
     _write_reviewers_config(tmp_path)
-    parser = build_parser()
 
     monkeypatch.setattr(
         cli_module,
@@ -150,7 +141,7 @@ def test_reviewers_run_returns_decision_json(
         ),
     )
 
-    args = parser.parse_args(
+    result = _invoke_cli(
         [
             "--project-root",
             str(tmp_path),
@@ -164,10 +155,9 @@ def test_reviewers_run_returns_decision_json(
             "docs/spec/features/FEAT-050.yaml",
         ]
     )
-    code = args.func(args)
-    payload = json.loads(capsys.readouterr().out)
+    payload = json.loads(result.stdout)
 
-    assert code == 0
+    assert result.exit_code == 0
     assert payload == {
         "decision": "approve",
         "required_actions": [],
@@ -175,15 +165,11 @@ def test_reviewers_run_returns_decision_json(
     }
 
 
-def test_reviewers_init_writes_baseline_files(tmp_path: Path, capsys: Any) -> None:
-    parser = build_parser()
+def test_reviewers_init_writes_baseline_files(tmp_path: Path) -> None:
+    result = _invoke_cli(["--project-root", str(tmp_path), "reviewers", "init"])
 
-    args = parser.parse_args(["--project-root", str(tmp_path), "reviewers", "init"])
-    code = args.func(args)
-    output = capsys.readouterr().out
-
-    assert code == 0
-    assert output.strip() == "reviewers init complete: created=3 skipped=0"
+    assert result.exit_code == 0
+    assert result.stdout.strip() == "reviewers init complete: created=3 skipped=0"
     assert (tmp_path / "harness" / "reviewers.yaml").is_file()
     code_simplifier_prompt = (
         tmp_path / "harness" / "reviewers" / "prompts" / "code_simplifier.md"
@@ -199,21 +185,13 @@ def test_reviewers_init_writes_baseline_files(tmp_path: Path, capsys: Any) -> No
 
 def test_reviewers_init_skips_existing_files_without_force(
     tmp_path: Path,
-    capsys: Any,
 ) -> None:
-    parser = build_parser()
+    first_result = _invoke_cli(["--project-root", str(tmp_path), "reviewers", "init"])
+    assert first_result.exit_code == 0
 
-    first_run = parser.parse_args(
-        ["--project-root", str(tmp_path), "reviewers", "init"]
+    second_result = _invoke_cli(["--project-root", str(tmp_path), "reviewers", "init"])
+
+    assert second_result.exit_code == 0
+    assert (
+        second_result.stdout.strip() == "reviewers init complete: created=0 skipped=3"
     )
-    assert first_run.func(first_run) == 0
-    _ = capsys.readouterr()
-
-    second_run = parser.parse_args(
-        ["--project-root", str(tmp_path), "reviewers", "init"]
-    )
-    code = second_run.func(second_run)
-    output = capsys.readouterr().out
-
-    assert code == 0
-    assert output.strip() == "reviewers init complete: created=0 skipped=3"

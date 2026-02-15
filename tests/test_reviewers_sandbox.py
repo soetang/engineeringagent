@@ -8,9 +8,19 @@ from engineeringagent.gates import ChangedPathsResult
 from engineeringagent.opencode.client import DEFAULT_OPENCODE_AGENT
 from engineeringagent.reviewers import (
     PARSER_FAILURE_SUMMARY_PREFIX,
+    REVIEWER_RESPONSEFORMAT_PLACEHOLDER,
     build_reviewer_sandbox,
     run_reviewer,
 )
+
+
+RESPONSEFORMAT_PROMPT_SENTENCE = (
+    "Return exactly one strict JSON object and no other text."
+)
+
+
+def _responseformat_prompt(body: str) -> str:
+    return f"{REVIEWER_RESPONSEFORMAT_PLACEHOLDER}\n\n{body}"
 
 
 def test_readme_process_clean_room_sandbox_contains_expected_assets_only(
@@ -66,7 +76,10 @@ def test_readme_process_uses_harness_clean_room_sandbox(
 ) -> None:
     prompt_path = tmp_path / "harness" / "reviewers" / "prompts" / "readme_process.md"
     prompt_path.parent.mkdir(parents=True)
-    prompt_path.write_text("Review README process quality.", encoding="utf-8")
+    prompt_path.write_text(
+        _responseformat_prompt("Review README process quality."),
+        encoding="utf-8",
+    )
     readme_path = tmp_path / "README.md"
     readme_path.write_text("Original README\n", encoding="utf-8")
     (tmp_path / "src" / "engineeringagent").mkdir(parents=True)
@@ -77,10 +90,11 @@ def test_readme_process_uses_harness_clean_room_sandbox(
 
     captured: dict[str, str | bool] = {}
 
-    def _start_agent(project_root, _prompt, *, agent=DEFAULT_OPENCODE_AGENT):
+    def _start_agent(project_root, prompt, *, agent=DEFAULT_OPENCODE_AGENT):
         sandbox_root = Path(project_root)
         captured["project_root"] = str(sandbox_root)
         captured["agent"] = agent
+        captured["prompt"] = prompt
         sandbox_readme = sandbox_root / "README.md"
         captured["sandbox_readme_before"] = sandbox_readme.read_text(encoding="utf-8")
         captured["sandbox_prompt_exists"] = (
@@ -122,6 +136,8 @@ def test_readme_process_uses_harness_clean_room_sandbox(
     assert captured["sandbox_readme_before"] == "Original README\n"
     assert captured["sandbox_prompt_exists"] is True
     assert captured["sandbox_src_exists"] is False
+    assert "$responseformat" not in str(captured["prompt"])
+    assert RESPONSEFORMAT_PROMPT_SENTENCE in str(captured["prompt"])
     assert readme_path.read_text(encoding="utf-8") == "Original README\n"
 
 
@@ -183,8 +199,10 @@ def test_readme_process_runs_readme_bootstrap_in_fresh_temp_directory(
     prompt_path = tmp_path / "harness" / "reviewers" / "prompts" / "readme_process.md"
     prompt_path.parent.mkdir(parents=True)
     prompt_path.write_text(
-        "Read README.md and run the documented bootstrap flow.\n"
-        "Create a new temporary directory and run the documented setup there.\n",
+        _responseformat_prompt(
+            "Read README.md and run the documented bootstrap flow.\n"
+            "Create a new temporary directory and run the documented setup there.\n"
+        ),
         encoding="utf-8",
     )
     (tmp_path / "README.md").write_text("# Getting started\n", encoding="utf-8")
@@ -226,6 +244,8 @@ def test_readme_process_runs_readme_bootstrap_in_fresh_temp_directory(
     assert decision["decision"] == "approve"
     assert captured["agent"] == DEFAULT_OPENCODE_AGENT
     assert captured["project_root"] != str(tmp_path)
+    assert "$responseformat" not in captured["prompt"]
+    assert RESPONSEFORMAT_PROMPT_SENTENCE in captured["prompt"]
     assert (
         "Create a new temporary directory and run the documented setup there."
         in captured["prompt"]
