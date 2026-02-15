@@ -19,8 +19,8 @@ PROBE_PROMPT = (
     f"{PROBE_TOKEN} or {PROBE_DENIED_TOKEN}."
 )
 PERMISSION_REMEDIATION_HINT = (
-    "hint: ensure .opencode/agents/engineeringagent.md and opencode.json both set "
-    "engineeringagent permissions to allow-all"
+    "hint: ensure .opencode/agents/engineeringagent.md grants allow-all permissions "
+    "for the engineeringagent OpenCode agent"
 )
 PERMISSION_REJECTION_LINE_PATTERNS = (
     re.compile(
@@ -45,18 +45,18 @@ class PermissionProbeResult(BaseModel):
 
 
 def _extract_probe_decision_token(output: str) -> str | None:
-    decision_tokens: set[str] = set()
+    token: str | None = None
     for line in output.splitlines():
         cleaned = ANSI_ESCAPE_PATTERN.sub("", line).strip()
-        if cleaned == PROBE_TOKEN:
-            decision_tokens.add(PROBE_TOKEN)
-        elif cleaned == PROBE_DENIED_TOKEN:
-            decision_tokens.add(PROBE_DENIED_TOKEN)
+        if cleaned not in (PROBE_TOKEN, PROBE_DENIED_TOKEN):
+            continue
+        if token is None:
+            token = cleaned
+            continue
+        if token != cleaned:
+            return None
 
-    if len(decision_tokens) != 1:
-        return None
-
-    return next(iter(decision_tokens))
+    return token
 
 
 def output_has_permission_rejection(output: str) -> bool:
@@ -68,11 +68,10 @@ def output_has_permission_rejection(output: str) -> bool:
     Returns:
         True when known rejection markers are present.
     """
-    return any(
-        pattern.search(line)
-        for line in output.splitlines()
-        for pattern in PERMISSION_REJECTION_LINE_PATTERNS
-    )
+    for line in output.splitlines():
+        if any(pattern.search(line) for pattern in PERMISSION_REJECTION_LINE_PATTERNS):
+            return True
+    return False
 
 
 def evaluate_permission_probe(
@@ -178,8 +177,6 @@ def run_permission_probe(project_root: Path) -> PermissionProbeResult:
             return result
 
         last_result = result
-        if attempt < PROBE_MAX_ATTEMPTS:
-            continue
 
     assert last_result is not None
     return PermissionProbeResult(

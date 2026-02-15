@@ -34,7 +34,6 @@ def test_repo_enables_readme_process_reviewer_in_loop_fast() -> None:
     assert reviewer["sandbox"]["mode"] == "clean_room_readme_cli"
     assert reviewer["sandbox"]["assets"] == [
         "docs",
-        "opencode.json",
         ".opencode/agents",
     ]
 
@@ -43,6 +42,7 @@ def test_repo_enables_readme_process_reviewer_in_loop_fast() -> None:
 
     prompt_body = README_PROCESS_PROMPT_PATH.read_text(encoding="utf-8")
     assert "$responseformat" in prompt_body
+    assert "opencode.json" not in prompt_body
     assert "Do not leave the sandbox" in prompt_body
     assert "Create a fresh, empty directory under the sandbox root" in prompt_body
     assert "../.engineeringagent/bin/engineeringagent init" in prompt_body

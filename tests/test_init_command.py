@@ -359,6 +359,38 @@ def test_init_renders_scaffold_from_template_files() -> None:
         encoding="utf-8"
     )
 
+    assert template_dir.joinpath("opencode.agent.engineeringagent.md").read_text(
+        encoding="utf-8"
+    ) == (
+        "---\n"
+        "description: Build agent override for deterministic repository automation.\n"
+        "mode: primary\n"
+        'model: "openai/gpt-5.3-codex"\n'
+        "variant: 'high'\n"
+        "permission:\n"
+        '  "*": allow\n'
+        "  bash: allow\n"
+        "---\n"
+    )
+
+    assert (
+        template_dir.joinpath("opencode.gitignore").read_text(encoding="utf-8")
+        == "node_modules\npackage.json\nbun.lock\n.gitignore\n"
+    )
+
+
+def test_build_baseline_scaffold_manifest_includes_opencode_policy_files() -> None:
+    """Verify init manifest includes deterministic OpenCode agent policy outputs."""
+    template_dir = files("engineeringagent.scaffold_templates")
+    manifest = build_baseline_scaffold_manifest(profile="core")
+
+    assert manifest[".opencode/agents/engineeringagent.md"] == template_dir.joinpath(
+        "opencode.agent.engineeringagent.md"
+    ).read_text(encoding="utf-8")
+    assert manifest[".opencode/.gitignore"] == template_dir.joinpath(
+        "opencode.gitignore"
+    ).read_text(encoding="utf-8")
+
 
 def test_init_template_rendering_is_deterministic() -> None:
     """Verify scaffold template rendering is deterministic across repeated calls."""

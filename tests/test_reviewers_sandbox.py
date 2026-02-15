@@ -38,7 +38,6 @@ def test_readme_process_clean_room_sandbox_contains_expected_assets_only(
 
     (tmp_path / "docs").mkdir(parents=True)
     (tmp_path / "docs" / "index.md").write_text("Docs index\n", encoding="utf-8")
-    (tmp_path / "opencode.json").write_text("{}\n", encoding="utf-8")
 
     (tmp_path / ".opencode" / "agents").mkdir(parents=True)
     (tmp_path / ".opencode" / "agents" / "engineeringagent.md").write_text(
@@ -63,7 +62,7 @@ def test_readme_process_clean_room_sandbox_contains_expected_assets_only(
             "prompt_file": "harness/reviewers/prompts/readme_process.md",
             "sandbox": {
                 "mode": "clean_room_readme_cli",
-                "assets": ["docs", "opencode.json", ".opencode/agents"],
+                "assets": ["docs", ".opencode/agents"],
             },
         },
     )
@@ -81,7 +80,6 @@ def test_readme_process_clean_room_sandbox_contains_expected_assets_only(
             "README.md",
             "docs/index.md",
             "harness/reviewers/prompts/readme_process.md",
-            "opencode.json",
         ]
         assert not (sandbox.execution_root / "src").exists()
         assert not (sandbox.execution_root / "tests").exists()
@@ -92,7 +90,7 @@ def test_readme_process_clean_room_sandbox_contains_expected_assets_only(
     assert not sandbox.execution_root.exists()
 
 
-def test_repo_readme_process_clean_room_sandbox_includes_docs_and_opencode_json() -> (
+def test_repo_readme_process_clean_room_sandbox_includes_docs_and_opencode_agents() -> (
     None
 ):
     reviewers_path = REPO_ROOT / "harness" / "reviewers.yaml"
@@ -101,7 +99,6 @@ def test_repo_readme_process_clean_room_sandbox_includes_docs_and_opencode_json(
 
     assert (REPO_ROOT / "README.md").exists()
     assert (REPO_ROOT / "docs").is_dir()
-    assert (REPO_ROOT / "opencode.json").exists()
 
     sandbox = build_reviewer_sandbox(
         REPO_ROOT,
@@ -113,7 +110,8 @@ def test_repo_readme_process_clean_room_sandbox_includes_docs_and_opencode_json(
     try:
         assert (sandbox.execution_root / "README.md").exists()
         assert (sandbox.execution_root / "docs").is_dir()
-        assert (sandbox.execution_root / "opencode.json").exists()
+        assert (sandbox.execution_root / ".opencode" / "agents").is_dir()
+        assert not (sandbox.execution_root / "opencode.json").exists()
     finally:
         sandbox.cleanup()
 

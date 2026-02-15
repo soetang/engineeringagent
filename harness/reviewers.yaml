@@ -32,5 +32,4 @@ reviewers:
       mode: "clean_room_readme_cli"
       assets:
         - "docs"
-        - "opencode.json"
         - ".opencode/agents"

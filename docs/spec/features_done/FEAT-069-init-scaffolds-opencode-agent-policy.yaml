@@ -1,0 +1,94 @@
+id: FEAT-069
+title: Init scaffolds OpenCode engineeringagent agent policy files
+type: feature
+expected_commit_subject: 'feat: add FEAT-069 init opencode agent policy scaffolding'
+status: done
+priority: high
+objective: 'Make `engineeringagent init` produce a permission-viable, deterministic
+  OpenCode default-agent setup by scaffolding `.opencode/agents/engineeringagent.md`
+  and a minimal `.opencode/.gitignore`, without requiring `opencode.json`.
+
+  '
+context: 'The loop runtime and permission probe invoke OpenCode with a fixed agent
+  name (`--agent engineeringagent`). Today, `engineeringagent init` does not scaffold
+  any `.opencode/` artifacts, so newly scaffolded repositories lack the canonical
+  agent-policy file and can fail default implement-mode prechecks.
+
+  This repository also removed its committed `opencode.json`, but various docs, remediation
+  hints, and the readme_process clean-room sandbox asset list still assume `opencode.json`
+  exists. That makes README-based workflows and sandbox reviews brittle.
+
+  '
+constraints:
+- Init scaffolding must create `.opencode/agents/engineeringagent.md` with Codex high
+  defaults (`openai/gpt-5.3-codex`, `variant=high`) and allow-all permissions for
+  `bash`.
+- Init scaffolding must create `.opencode/.gitignore` that ignores `.opencode/node_modules`
+  and OpenCode-managed package artifacts, but does not ignore `.opencode/agents`.
+- Scaffold output must be idempotent; do not overwrite existing `.opencode/*` files
+  unless `--force` is used.
+- Keep scaffold payloads in `src/engineeringagent/scaffold_templates/` (no inline
+  template bodies in source modules).
+- Backward compatibility; do not require or generate `opencode.json` as part of init
+  scaffolding.
+- Documentation and remediation messaging must not claim that `opencode.json` is required
+  for the default OpenCode agent contract.
+implementation_notes: "Contract/API delta (explicit):\n\n- Surface: `engineeringagent\
+  \ init` scaffolded assets.\n  - Old behavior: init scaffolds harness/spec layout\
+  \ only; no `.opencode/*` files.\n  - New behavior: init additionally scaffolds `.opencode/agents/engineeringagent.md`\n\
+  \    and `.opencode/.gitignore` (idempotent unless `--force`).\n\n- Surface: default\
+  \ OpenCode permission remediation guidance.\n  - Old behavior: remediation/hints\
+  \ reference both `.opencode/agents/engineeringagent.md`\n    and `opencode.json`.\n\
+  \  - New behavior: remediation/hints reference `.opencode/agents/engineeringagent.md`\n\
+  \    as the required policy source; `opencode.json` is treated as optional/deprecated.\n\
+  \nMigration scope:\n- Add new scaffold template files.\n- Extend init scaffold manifest\
+  \ to include `.opencode/*` outputs.\n- Update docs/reviewer prompt/tests that assert\
+  \ `opencode.json` presence.\n"
+acceptance:
+- Running `engineeringagent init` in an empty repo creates `.opencode/agents/engineeringagent.md`.
+- Running `engineeringagent init` in an empty repo creates `.opencode/.gitignore`
+  that ignores `.opencode/node_modules` and does not ignore `.opencode/agents`.
+- Without `--force`, init does not overwrite existing `.opencode/*` files.
+- Default-agent permission remediation messaging no longer claims `opencode.json`
+  is required for allow-all permissions.
+- Repository-owned readme_process reviewer sandbox assets and prompt no longer require
+  `opencode.json` to be present.
+- Specs validate and targeted unit tests pass.
+subtasks:
+- id: ST-001
+  title: Add scaffold template files for .opencode agent policy and gitignore
+  status: done
+  context: 'Add file-based templates under `src/engineeringagent/scaffold_templates/`
+    for: `.opencode/agents/engineeringagent.md` and `.opencode/.gitignore`.
+
+    '
+  verification:
+  - uv run pytest -q tests/test_init_command.py::test_init_renders_scaffold_from_template_files
+- id: ST-002
+  title: Extend init scaffold manifest to write .opencode policy outputs
+  status: done
+  context: 'Update `build_baseline_scaffold_manifest` so init writes the new `.opencode/*`
+    files for all scaffold profiles, respecting existing `--force` behavior.
+
+    '
+  verification:
+  - uv run pytest -q tests/test_init_command.py
+- id: ST-003
+  title: Remove opencode.json requirement from hints, docs, and readme_process sandbox
+  status: done
+  context: 'Update remediation messaging, docs references, and readme_process reviewer
+    prompt/config to stop requiring `opencode.json`, and adjust tests asserting sandbox
+    asset presence accordingly.
+
+    '
+  verification:
+  - uv run pytest -q tests/test_reviewers_sandbox.py tests/test_repo_readme_process_reviewer_activation.py
+  - uv run python -m engineeringagent.cli validate
+- id: ST-004
+  title: Tighten docs examples and simplify permission-probe helpers
+  status: done
+  context: "Follow-up polish from reviewer feedback: make the copy-pastable YAML examples\n    in docs valid and simplify OpenCode permission probe parsing logic without changing\n    behavior."
+  verification:
+  - uv run pytest -q tests/test_opencode_permissions.py tests/test_docs_reviewer_agents_reference.py
+  - uv run python -m engineeringagent.cli validate
+updated_at: '2026-02-15T15:01:38Z'

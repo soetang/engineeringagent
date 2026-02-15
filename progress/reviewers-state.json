@@ -120,6 +120,18 @@
           "updated_at": "2026-02-15T14:23:26Z"
         }
       }
+    },
+    "FEAT-069": {
+      "advisory_followup_required": false,
+      "advisory_followup_updated_at": "2026-02-15T15:05:20Z",
+      "reviewers": {
+        "code_simplifier": {
+          "approved": true,
+          "approved_at": "2026-02-15T15:06:51Z",
+          "blocking_request_changes_count": 0,
+          "blocking_retry_updated_at": "2026-02-15T15:06:51Z"
+        }
+      }
     }
   },
   "version": "1"

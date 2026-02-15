@@ -7,7 +7,7 @@ $responseformat
 
 Rules:
 - You are started inside the sandbox execution root (your current working directory is the sandbox root). Do not leave the sandbox.
-- Confirm expected sandbox contents exist before starting (README.md, docs/, opencode.json, .opencode/agents/engineeringagent.md, and .engineeringagent/bin/engineeringagent).
+- Confirm expected sandbox contents exist before starting (README.md, docs/, .opencode/agents/engineeringagent.md, and .engineeringagent/bin/engineeringagent).
 - Read README.md first and treat it as the source of truth.
 - Create a fresh, empty directory under the sandbox root and run the README onboarding flow there.
 - Do NOT use uvx engineeringagent commands in this repository review. Use the local helper.
@@ -39,6 +39,3 @@ Suggested execution outline (adjust to match README.md if it differs):
 
 Approve only if the README-guided flow is coherent and runnable in this clean-room setup.
 
-Output requirements (since you cannot edit files):
-
-$responseformat

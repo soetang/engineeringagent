@@ -146,3 +146,11 @@ def test_run_permission_probe_reports_missing_opencode_cli(
     assert result.ok is False
     assert result.returncode == 127
     assert result.reason == "opencode CLI not found in PATH"
+
+
+def test_permission_remediation_hint_does_not_require_opencode_json() -> None:
+    assert (
+        ".opencode/agents/engineeringagent.md"
+        in permissions.PERMISSION_REMEDIATION_HINT
+    )
+    assert "opencode.json" not in permissions.PERMISSION_REMEDIATION_HINT

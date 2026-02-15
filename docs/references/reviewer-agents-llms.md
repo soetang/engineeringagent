@@ -9,7 +9,7 @@ and never replace them.
 - Reviewer config is repository-local: `harness/reviewers.yaml`.
 - Reviewer prompts are repository-local markdown files under `harness/reviewers/prompts/`.
 - `engineeringagent init` does not seed reviewer files; reviewer setup is explicit via committed harness files or `engineeringagent reviewers init`.
-- Reviewer execution uses shared OpenCode invocation with `agent=build`.
+- Reviewer execution uses shared OpenCode invocation with `agent=engineeringagent`.
 - Reviewer output must be strict machine-parseable JSON.
 
 ## Contract (`harness/reviewers.yaml`)
@@ -44,7 +44,7 @@ profiles:
     - code_simplifier
     - readme_process
 reviewers:
-code_simplifier:
+  code_simplifier:
     prompt_file: "harness/reviewers/prompts/code_simplifier.md"
     trigger:
       phase: "feature_done"
@@ -87,7 +87,6 @@ readme_process:
     mode: "clean_room_readme_cli"
     assets:
       - "docs"
-      - "opencode.json"
       - ".opencode/agents"
   approval:
     mode: "blocking"
@@ -114,7 +113,7 @@ without default hard-blocking completion behavior.
 Copy-pastable `code_simplifier` entry:
 
 ```yaml
-  code_simplifier:
+code_simplifier:
   prompt_file: "harness/reviewers/prompts/code_simplifier.md"
   trigger:
     phase: "feature_done"

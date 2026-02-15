@@ -54,6 +54,21 @@ def _build_reference_docs_manifest(docs_dir: str) -> dict[str, str]:
     }
 
 
+def _build_opencode_scaffold_manifest() -> dict[str, str]:
+    """Build baseline `.opencode/` scaffold files.
+
+    Template sources (for deterministic reference coverage):
+    - src/engineeringagent/scaffold_templates/opencode.agent.engineeringagent.md
+    - src/engineeringagent/scaffold_templates/opencode.gitignore
+    """
+    return {
+        ".opencode/agents/engineeringagent.md": _render_scaffold_template(
+            "opencode.agent.engineeringagent.md"
+        ),
+        ".opencode/.gitignore": _render_scaffold_template("opencode.gitignore"),
+    }
+
+
 def build_agents_merge_followup_spec(backup_agents_name: str) -> str:
     """Build follow-up feature spec content for AGENTS merge work.
 
@@ -106,6 +121,7 @@ def build_baseline_scaffold_manifest(
 
     manifest = {
         ".pre-commit-config.yaml": _build_precommit_config(profile=profile),
+        **_build_opencode_scaffold_manifest(),
         f"{normalized_docs_dir}/spec/features/.gitkeep": "",
         f"{normalized_docs_dir}/spec/features_done/.gitkeep": "",
         f"{normalized_docs_dir}/spec/potential_features.yaml": yaml.safe_dump(
