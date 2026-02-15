@@ -1,0 +1,27 @@
+contract_version: "1.0"
+docs_root: docs
+human_docs:
+  - docs/fitness-functions/README.md
+  - docs/fitness-functions/architecture.md
+  - docs/fitness-functions/rules.md
+  - docs/principles/harness-engineering-principles.md
+  - docs/principles/quality-check-playbook.md
+  - docs/principles/reviewer-authoring-guide.md
+agent_docs:
+  - docs/references/docs-architecture-llms.md
+  - docs/references/python-uv-ruff-llms.md
+  - docs/references/reviewer-agents-llms.md
+  - docs/references/spec-writing-llms.md
+  - docs/references/uv-llms.md
+  - docs/references/workflow-llms.md
+scaffold_docs:
+  - docs/references/docs-architecture-llms.md
+  - docs/references/workflow-llms.md
+  - docs/references/spec-writing-llms.md
+exact_sync:
+  - docs_path: docs/references/docs-architecture-llms.md
+    template_name: reference.docs-architecture-llms.md
+  - docs_path: docs/references/workflow-llms.md
+    template_name: reference.workflow-llms.md
+  - docs_path: docs/references/spec-writing-llms.md
+    template_name: reference.spec-writing-llms.md

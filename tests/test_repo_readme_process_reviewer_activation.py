@@ -67,3 +67,12 @@ def test_repo_enables_readme_process_reviewer_in_loop_fast() -> None:
         in prompt_body
     )
     assert "--dry-run" in prompt_body
+
+    # Keep the reviewer prompt crisp: avoid obvious typos/grammar issues.
+    assert "Beaware" not in prompt_body
+    assert "helpfull" not in prompt_body
+    assert "usefull" not in prompt_body
+    assert "scafold" not in prompt_body
+    assert "allways" not in prompt_body
+    assert "You feedback" not in prompt_body
+    assert "You dont" not in prompt_body

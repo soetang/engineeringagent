@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 import sys
+import time
 from typing import Any, Callable
 
 from pydantic import BaseModel, ConfigDict
 
 from .models import (
+    CommandTiming,
     CompletionCommitOutcome,
     FeatureIterationInputs,
     GatePhaseOutcome,
@@ -20,6 +22,7 @@ from ..reviewers import (
     DECISION_REQUEST_CHANGES,
     increment_blocking_reviewer_retry_count,
 )
+from .time_format import utc_iso_from_epoch_sec
 
 
 def _format_reviewer_feedback(summary: str, required_actions: list[str]) -> str:
@@ -63,9 +66,7 @@ class GatePhaseDependencies(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     load_gate_config: Callable[[Path], dict[str, Any]]
-    run_profile: Callable[
-        [dict[str, Any], str, Path, bool], tuple[bool, str | None, str]
-    ]
+    run_profile: Callable[..., tuple[bool, str | None, str]]
     restore_archived_feature: Callable[[Path, Path], tuple[bool, str | None]]
 
 
@@ -111,11 +112,32 @@ def run_gate_phase(
 ) -> GatePhaseOutcome:
     """Run post-implement gates and perform archive rollback on failure."""
     gate_config = dependencies.load_gate_config(gates_path)
+
+    command_timings: list[CommandTiming] = []
+
+    def _timing_hook(
+        gate_name: str,
+        command: str,
+        started_epoch_sec: int,
+        ended_epoch_sec: int,
+    ) -> None:
+        command_timings.append(
+            CommandTiming(
+                phase="gates",
+                gate=gate_name,
+                command=command,
+                started_at=utc_iso_from_epoch_sec(started_epoch_sec),
+                ended_at=utc_iso_from_epoch_sec(ended_epoch_sec),
+                duration_sec=max(0, ended_epoch_sec - started_epoch_sec),
+            )
+        )
+
     ok, failed, gate_output = dependencies.run_profile(
         gate_config,
         iteration_inputs.gate_profile,
         iteration_inputs.project_root,
         True,
+        timing_hook=_timing_hook,
     )
     if iteration_inputs.verbose_output and gate_output:
         print(gate_output)
@@ -126,6 +148,7 @@ def run_gate_phase(
             failed_gate=None,
             gate_status="passed",
             gate_output=gate_output,
+            command_timings=command_timings,
             hook_feedback=None,
         )
 
@@ -143,6 +166,7 @@ def run_gate_phase(
         failed_gate=failed,
         gate_status=f"failed:{failed or 'unknown'}",
         gate_output=gate_output,
+        command_timings=command_timings,
         hook_feedback=gate_output
         or (f"gate '{failed or 'unknown'}' failed with no captured output"),
     )
@@ -160,19 +184,32 @@ def run_verification_phase(
             verification_status="not_run",
             verification_failed_command=None,
             verification_output="",
+            command_timings=[],
             hook_feedback=None,
         )
 
     command_outputs: list[str] = []
+    command_timings: list[CommandTiming] = []
     for command in verification_commands:
         print(f"Verification step: {command}")
+        started_epoch_sec = int(time.time())
         proc = dependencies.run_shell_command(iteration_inputs.project_root, command)
+        ended_epoch_sec = max(started_epoch_sec, int(time.time()))
         if iteration_inputs.verbose_output:
             if proc.stdout:
                 print(proc.stdout, end="")
             if proc.stderr:
                 print(proc.stderr, end="", file=sys.stderr)
         output = (proc.stdout or "") + (proc.stderr or "")
+        command_timings.append(
+            CommandTiming(
+                phase="verification",
+                command=command,
+                started_at=utc_iso_from_epoch_sec(started_epoch_sec),
+                ended_at=utc_iso_from_epoch_sec(ended_epoch_sec),
+                duration_sec=ended_epoch_sec - started_epoch_sec,
+            )
+        )
         command_output = (
             f"[verification] command={command}\n"
             f"[verification] returncode={proc.returncode}\n"
@@ -187,6 +224,7 @@ def run_verification_phase(
                 verification_status=f"failed:{command}",
                 verification_failed_command=command,
                 verification_output=verification_output,
+                command_timings=command_timings,
                 hook_feedback=verification_output,
             )
 
@@ -195,6 +233,7 @@ def run_verification_phase(
         verification_status="passed",
         verification_failed_command=None,
         verification_output="\n".join(command_outputs),
+        command_timings=command_timings,
         hook_feedback=None,
     )
 
@@ -207,12 +246,14 @@ def run_reviewer_phase(  # noqa: C901
     dependencies: ReviewerPhaseDependencies,
 ) -> ReviewerPhaseOutcome:
     """Run reviewer policy after deterministic gates and before completion commit."""
+    command_timings: list[CommandTiming] = []
     if feature is None:
         return ReviewerPhaseOutcome(
             result="passed",
             failed_gate=None,
             reviewer_status="not_run",
             reviewer_output="",
+            command_timings=command_timings,
             hook_feedback=None,
         )
 
@@ -225,6 +266,7 @@ def run_reviewer_phase(  # noqa: C901
             failed_gate=None,
             reviewer_status="not_configured",
             reviewer_output="",
+            command_timings=command_timings,
             hook_feedback=None,
         )
 
@@ -243,6 +285,7 @@ def run_reviewer_phase(  # noqa: C901
             failed_gate=None,
             reviewer_status="not_run",
             reviewer_output="",
+            command_timings=command_timings,
             hook_feedback=None,
         )
 
@@ -290,6 +333,7 @@ def run_reviewer_phase(  # noqa: C901
             )
             continue
 
+        started_epoch_sec = int(time.time())
         decision = dependencies.run_reviewer(
             iteration_inputs.project_root,
             reviewer_id,
@@ -299,6 +343,17 @@ def run_reviewer_phase(  # noqa: C901
             changed_paths=changed_paths,
             prior_feedback=iteration_inputs.hook_feedback,
             start_agent_fn=dependencies.start_agent,
+        )
+        ended_epoch_sec = max(started_epoch_sec, int(time.time()))
+        command_timings.append(
+            CommandTiming(
+                phase="reviewers",
+                reviewer_id=reviewer_id,
+                command="run_reviewer",
+                started_at=utc_iso_from_epoch_sec(started_epoch_sec),
+                ended_at=utc_iso_from_epoch_sec(ended_epoch_sec),
+                duration_sec=ended_epoch_sec - started_epoch_sec,
+            )
         )
         dependencies.record_reviewer_approval(
             state,
@@ -380,6 +435,7 @@ def run_reviewer_phase(  # noqa: C901
             reviewer_decision=first_non_approve_decision,
             failed_reviewer_id=first_non_approve_reviewer_id,
             reviewer_output=reviewer_output,
+            command_timings=command_timings,
             hook_feedback=feedback,
         )
 
@@ -397,6 +453,7 @@ def run_reviewer_phase(  # noqa: C901
             reviewer_decision=first_non_approve_decision,
             failed_reviewer_id=first_non_approve_reviewer_id,
             reviewer_output=reviewer_output,
+            command_timings=command_timings,
             hook_feedback=feedback,
         )
 
@@ -420,6 +477,7 @@ def run_reviewer_phase(  # noqa: C901
             reviewer_decision=first_non_approve_decision,
             failed_reviewer_id=first_non_approve_reviewer_id,
             reviewer_output=reviewer_output,
+            command_timings=command_timings,
             hook_feedback=feedback,
         )
 
@@ -432,6 +490,7 @@ def run_reviewer_phase(  # noqa: C901
             reviewer_decision=first_non_approve_decision,
             failed_reviewer_id=None,
             reviewer_output=reviewer_output,
+            command_timings=command_timings,
             hook_feedback="\n".join(blocking_exhausted_warnings),
         )
 
@@ -443,6 +502,7 @@ def run_reviewer_phase(  # noqa: C901
             reviewer_decision=first_non_approve_decision,
             failed_reviewer_id=None,
             reviewer_output=reviewer_output,
+            command_timings=command_timings,
             hook_feedback="\n".join(advisory_feedback),
         )
 
@@ -456,6 +516,7 @@ def run_reviewer_phase(  # noqa: C901
         ),
         failed_reviewer_id=None,
         reviewer_output=reviewer_output,
+        command_timings=command_timings,
         hook_feedback="\n".join(forwarded_feedback) if forwarded_feedback else None,
     )
 

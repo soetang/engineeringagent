@@ -1,0 +1,65 @@
+id: FEAT-074
+title: Make python_uv scaffold run minimal ruff checks without pyright or repo config
+type: feature
+expected_commit_subject: "feat: update python_uv scaffold to run ruff via uvx"
+status: backlog
+priority: high
+objective: |
+  Update the `python_uv` scaffold profile to ship Python validation without requiring
+  any changes to repo TOML/config files and without scaffolding pyright.
+
+  Specifically:
+  - add a ruff gate that runs base checks in isolated mode
+  - do not add pyright gates or pyright config
+  - fix python_uv pre-commit entry to not assume the target repo contains engineeringagent source
+context: |
+  `python_uv` currently changes only pre-commit wiring and includes a commit-msg hook,
+  but it does not provide a useful validation baseline (because init currently scaffolds
+  empty gate profiles). It also uses `uvx --from . engineeringagent ...`, which assumes
+  the target repo contains engineeringagent as a local package.
+constraints:
+  - Do not scaffold pyright config files.
+  - Do not add a pyright gate to scaffolded `harness/gates.yaml`.
+  - Ruff validation must not require repo-local ruff config; use `ruff --isolated`.
+  - Ruff gate must run via `uvx` (tooling is self-contained for python_uv).
+  - "Ruff gate command is exactly: `uvx ruff check --isolated .`"
+  - Update `src/engineeringagent/scaffold_templates/precommit.python_uv.yaml` to use
+    `uvx engineeringagent ...` (not `uvx --from . engineeringagent ...`).
+  - Keep core profile tool-agnostic; these changes apply only to `python_uv`.
+implementation_notes: |
+  Contract/API delta (explicit):
+
+  - Surface: `python_uv` scaffolded `.pre-commit-config.yaml`.
+    - Old behavior: `entry: uvx --from . engineeringagent gates run --profile precommit`
+    - New behavior: `entry: uvx engineeringagent gates run --profile precommit`
+
+  - Surface: `python_uv` scaffolded gate inventory.
+    - Old behavior: empty precommit gates by default.
+    - New behavior: includes at least `spec_validate`, `fitness_validate`, and a
+      `ruff_validate` gate using `uvx ruff check --isolated ...`.
+
+  Compatibility policy:
+  - The `core` scaffold profile remains unchanged by this spec.
+acceptance:
+  - "python_uv scaffolded `.pre-commit-config.yaml` uses `uvx engineeringagent ...` (no `--from .`)."
+  - "python_uv scaffolded `harness/gates.yaml` includes a ruff gate that runs: `uvx ruff check --isolated .`"
+  - "python_uv scaffold contains no pyright gate and does not scaffold pyright config files."
+  - "All init-related tests pass."
+subtasks:
+  - id: ST-001
+    title: Update python_uv pre-commit template entry to uvx engineeringagent
+    status: backlog
+    context: |
+      Change the python_uv scaffold template so it can work in adopters' repos without
+      a local engineeringagent package.
+    verification:
+      - uv run pytest -q tests/test_init_command.py::test_init_python_uv_profile_available
+  - id: ST-002
+    title: Add ruff isolated gate to python_uv scaffolded gates.yaml
+    status: backlog
+    context: |
+      Ensure the python_uv scaffolded precommit profile runs ruff base checks without
+      requiring repo configuration by using `--isolated`.
+    verification:
+      - uv run pytest -q tests/test_init_command.py
+updated_at: "2026-02-15T00:00:00Z"

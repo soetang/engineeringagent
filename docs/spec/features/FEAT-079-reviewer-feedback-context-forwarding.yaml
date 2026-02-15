@@ -1,0 +1,127 @@
+id: FEAT-079
+title: Allow reviewers.yaml to provide feedback context forwarded to implement agent
+type: feature
+expected_commit_subject: "feat: forward reviewer feedback context"
+status: backlog
+priority: medium
+objective: |
+  Reduce incorrect overfitting to reviewer feedback (notably `readme_process`) by
+  allowing repositories to attach explicit context about reviewer scope/limitations
+  that is forwarded verbatim to the implement agent.
+
+  This context should help the implement agent interpret feedback correctly: take
+  reported errors seriously, but choose fixes that align with full codebase + specs
+  even when the reviewer was executed with partial visibility (e.g. clean-room sandbox).
+context: |
+  The loop forwards reviewer feedback into the next implement pass via `hook_feedback`.
+  In practice, implement can treat this feedback as authoritative even when the reviewer
+  prompt/runtime is explicitly scoped or sandboxed.
+
+  Example: `readme_process` runs in a clean-room sandbox that excludes `src/` and
+  `tests/` by design. The reviewer is also instructed that it may not have full
+  overview. Without forwarding this limitation, implement may apply changes in a way
+  that is locally satisfying for the sandbox but suboptimal for the real repository.
+constraints:
+  - Extend the `harness/reviewers.yaml` contract with an optional per-reviewer string
+    field named `feedback_context`.
+  - feedback_context must be a YAML string (single-line or multiline) located at
+    `reviewers.<reviewer_id>.feedback_context`.
+  - |
+    Concrete `harness/reviewers.yaml` shape example:
+
+    contract_version: "1.0"
+    profiles:
+      loop_fast:
+        - readme_process
+    reviewers:
+      readme_process:
+        prompt_file: "harness/reviewers/prompts/readme_process.md"
+        feedback_context: |
+          This reviewer runs with constrained context (e.g. a clean-room sandbox) and may not
+          have access to the full codebase/specs. Treat failures as real, but implement fixes in
+          a way that aligns with the feature spec and overall repository architecture.
+        trigger:
+          phase: "feature_done"
+          on_change: ["README.md"]
+        approval:
+          mode: "blocking"
+  - Preserve backward compatibility; configs without `feedback_context` behave exactly
+    as before.
+  - When present, `feedback_context` must be included in the forwarded reviewer feedback
+    text that becomes the next-iteration `hook_feedback` (and thus appears in the
+    implement prompt retry feedback block).
+  - Preserve existing telemetry parsing assumptions; the forwarded feedback must still
+    start with the deterministic prefix `reviewer '` so reviewer-feedback detection
+    continues to work.
+  - Do not change reviewer decision envelope schema; this feature is only about
+    annotating forwarded feedback.
+implementation_notes: |
+  Contract/API delta (explicit):
+
+  - Surface: `harness/reviewers.yaml` schema.
+    - Old behavior: reviewer definition does not support `feedback_context`.
+    - New behavior: reviewer definition optionally supports `feedback_context: <string>`.
+
+  - Surface: loop retry feedback forwarded to implement.
+    - Old behavior: forwarded feedback contains reviewer id/mode/decision and the
+      decision summary/required actions.
+    - New behavior: forwarded feedback additionally includes `feedback_context` when
+      configured, so implement can interpret reviewer scope/limitations correctly.
+
+  Notes:
+  - Keep formatting deterministic and stable. Add `feedback_context` as an additional
+    line or block after the first-line prefix so existing `reviewer '` detection and
+    human scanning remain consistent.
+acceptance:
+  - "The reviewers.yaml contract accepts optional `reviewers.<id>.feedback_context`."
+  - "When a reviewer returns `warning` or `request_changes`, forwarded feedback includes the configured `feedback_context`."
+  - "When a reviewer returns `approve`, behavior is unchanged (no follow-up is triggered)."
+  - "Docs references (`docs/references/reviewer-agents-llms.md` and reviewer authoring guide) document `feedback_context`."
+  - "This repository's `harness/reviewers.yaml` sets `feedback_context` for `readme_process` to describe clean-room scope and interpretation guidance."
+  - "`uv run python -m engineeringagent.cli validate` and `uv run pytest -q` pass."
+subtasks:
+  - id: ST-001
+    title: Extend reviewer contract model with feedback_context
+    status: backlog
+    context: |
+      Update the strict Pydantic contract so `harness/reviewers.yaml` can include
+      `reviewers.<id>.feedback_context` without validation errors.
+    verification:
+      - uv run pytest -q tests/test_reviewers_contract.py
+      - uv run python -m engineeringagent.cli validate
+  - id: ST-002
+    title: Forward feedback_context in reviewer-phase hook feedback
+    status: backlog
+    context: |
+      Update reviewer forwarding formatting so `feedback_context` is included in the
+      text that becomes the next-iteration `hook_feedback`, while preserving the
+      `reviewer '` prefix used by telemetry extraction.
+    verification:
+      - uv run pytest -q tests/test_loop_reviewers.py tests/test_loop_runtime_iteration.py
+  - id: ST-003
+    title: Document feedback_context in reviewer reference and authoring guide
+    status: backlog
+    context: |
+      Update the reviewer reference doc and authoring guide to list `feedback_context`
+      as an optional reviewer field and describe its forwarding semantics.
+    verification:
+      - uv run python -m engineeringagent.cli validate
+  - id: ST-004
+    title: Configure readme_process feedback_context in this repo
+    status: backlog
+    context: |
+      Update `harness/reviewers.yaml` so `readme_process` provides implement-facing
+      context that it runs in a constrained clean-room sandbox and may not have full
+      repo/spec visibility; implement should still address failures but choose fixes
+      consistent with the full codebase and feature specs.
+    verification:
+      - uv run python -m engineeringagent.cli validate
+  - id: ST-005
+    title: Run full regression and confirm reviewer feedback remains detectable
+    status: backlog
+    context: |
+      Run the full test suite and ensure progress telemetry still records reviewer
+      feedback presence/summary correctly.
+    verification:
+      - uv run pytest -q
+updated_at: "2026-02-15T00:00:00Z"

@@ -1,0 +1,74 @@
+id: FEAT-076
+title: Enforce exact-sync between selected docs and init scaffold templates
+type: feature
+expected_commit_subject: "feat: add exact sync check for scaffolded docs"
+status: backlog
+priority: high
+objective: |
+  Prevent drift between docs content in `docs/` and the corresponding files that init
+  scaffolds from `src/engineeringagent/scaffold_templates/`.
+
+  Introduce an explicit list of exact-sync docs pairs, and add a fitness rule that
+  fails if any configured pair differs byte-for-byte.
+context: |
+  We want it to be obvious and enforced which docs are supposed to ship with init scaffolding
+  and which are repo-internal. For docs that are shipped, some should be exact copies between:
+  - the canonical repo docs file
+  - the scaffold template file used by init
+
+  Example requirement: `docs/references/spec-writing-llms.md` should be exact-sync.
+  Non-example: `AGENTS.md` should not be in exact-sync.
+constraints:
+  - Extend `harness/scaffold_policy.yaml` to include an `exact_sync` list.
+  - "Each exact_sync entry must include `docs_path` (repo-relative path under docs_root) and `template_name` (filename under `src/engineeringagent/scaffold_templates/`)."
+  - "Add a fitness rule that reads `harness/scaffold_policy.yaml`, compares each docs/template pair byte-for-byte, fails on any mismatch, and emits deterministic sorted violations including both paths."
+  - Ensure `docs/references/spec-writing-llms.md` is included in exact-sync and has a corresponding template file.
+  - Update init scaffold manifest and templates to actually scaffold the spec-writing reference doc.
+  - "Ensure the scaffold template `src/engineeringagent/scaffold_templates/AGENTS.md` explicitly links each scaffolded docs reference file (e.g. `docs/references/docs-architecture-llms.md`, `docs/references/workflow-llms.md`, `docs/references/spec-writing-llms.md`) and includes 1-2 sentences describing when to consult each file."
+  - "Add a fitness rule in this repository that fails if scaffolded reference docs are not linked from `src/engineeringagent/scaffold_templates/AGENTS.md`."
+implementation_notes: |
+  Fitness-function impact: this feature adds a new custom fitness rule and likely adds
+  at least one new scaffold template file.
+
+  Implementation approach notes:
+  - Keep comparisons byte-for-byte (do not normalize whitespace) to make drift obvious.
+  - This rule is repository-internal to engineeringagent; it does not need to be scaffolded into adopters' repos.
+acceptance:
+  - "`harness/scaffold_policy.yaml` contains an explicit exact-sync list."
+  - "A new fitness rule fails if any configured docs/template pair differs."
+  - "`docs/references/spec-writing-llms.md` is exact-sync with its scaffold template."
+  - "`engineeringagent init` scaffolds the spec-writing reference doc (in addition to existing tool-generic references)."
+  - "`src/engineeringagent/scaffold_templates/AGENTS.md` contains a short per-file description for each scaffolded reference doc link."
+  - "A fitness rule fails when a scaffolded reference doc is missing from the scaffold template AGENTS.md links."
+  - "The set of scaffolded reference docs and the set of links in `src/engineeringagent/scaffold_templates/AGENTS.md` remain in sync: adding a new scaffolded reference doc requires a corresponding AGENTS.md link and description (enforced by fitness rule)."
+  - "`uv run python -m engineeringagent.cli fitness run --format json` passes."
+subtasks:
+  - id: ST-001
+    title: Add spec-writing scaffold template and wire init to scaffold it
+    status: backlog
+    context: |
+      Add `src/engineeringagent/scaffold_templates/reference.spec-writing-llms.md` and
+      update init to scaffold it to `${docs_root}/references/spec-writing-llms.md`.
+    verification:
+      - uv run pytest -q tests/test_init_command.py
+  - id: ST-002
+    title: Add exact-sync fitness script and manifest entry
+    status: backlog
+    context: |
+      Implement a harness script that compares policy-declared docs to scaffold templates and
+      declare it in `harness/fitness-functions/rules.yaml`.
+    verification:
+      - uv run python -m engineeringagent.cli fitness run --format json
+  - id: ST-003
+    title: Link scaffolded references from scaffold AGENTS and enforce with fitness rule
+    status: backlog
+    context: |
+      Update `src/engineeringagent/scaffold_templates/AGENTS.md` to include explicit links
+      to each scaffolded reference doc, with 1-2 sentences describing when to consult
+      each file.
+
+      Add a repo fitness rule that fails when the scaffold template AGENTS does not
+      include all required links.
+    verification:
+      - uv run python -m engineeringagent.cli fitness run --format json
+updated_at: "2026-02-15T00:00:00Z"

@@ -1,0 +1,70 @@
+id: FEAT-075
+title: Add scaffold policy for docs (human vs agent) with strict allowlist fitness rule
+type: feature
+expected_commit_subject: "feat: add docs allowlist scaffold policy rule"
+status: backlog
+priority: high
+objective: |
+  Introduce a repository-owned policy file that explicitly classifies docs as
+  human-facing vs agent-facing, and enforce that classification with a fitness function.
+
+  Any markdown file under the selected docs root (excluding `spec/`) must be listed
+  in exactly one of:
+  - human_docs
+  - agent_docs
+
+  If a docs markdown file exists but is not on either list, the fitness rule fails.
+context: |
+  We need file selection to be explicit and reviewable whenever docs are added.
+
+  This also supports improving init scaffolding: init can use the policy to decide what
+  it copies into new repos, and the repo can enforce that new docs are intentionally
+  classified rather than accumulating silently.
+constraints:
+  - Add a new YAML policy file at `harness/scaffold_policy.yaml`.
+  - "Policy file must include keys: `contract_version`, `docs_root`, `human_docs`, `agent_docs`."
+  - "Fitness rule must scan `${docs_root}/**/*.md`, exclude `${docs_root}/spec/**`, fail when a markdown file is missing from both lists or appears in both lists, and emit deterministic sorted violations."
+  - "Only markdown under `${docs_root}` is governed by this rule."
+  - Keep the rule implementation stdlib-only (no third-party deps) so it can be scaffolded into adopters' repos.
+  - Update init so that when it scaffolds or reuses a docs root, it also ensures
+    `harness/scaffold_policy.yaml` is present and consistent with that docs root.
+implementation_notes: |
+  Fitness-function impact: this feature adds a new custom fitness rule and script.
+
+  Implementation approach notes:
+  - The allowlist rule should not rely on importing engineeringagent; use only the policy file.
+  - For init on existing repos, to avoid immediate failures, init may populate the policy
+    with existing markdown files under docs_root, defaulting them into `human_docs` (sorted).
+acceptance:
+  - "Repository contains `harness/scaffold_policy.yaml` with explicit human_docs and agent_docs lists."
+  - "New fitness rule fails if any `${docs_root}/**/*.md` (excluding `${docs_root}/spec/**`) is missing from both lists."
+  - "New fitness rule fails if a doc path appears in both human_docs and agent_docs."
+  - "Init ensures the policy exists and sets `docs_root` consistently with the selected docs mode/dir."
+  - "`uv run python -m engineeringagent.cli fitness run --format json` passes in this repository after policy lists are populated."
+subtasks:
+  - id: ST-001
+    title: Define scaffold_policy.yaml contract and seed policy for this repo
+    status: backlog
+    context: |
+      Add `harness/scaffold_policy.yaml` for engineeringagent with `docs_root=docs` and
+      complete allowlists for existing `docs/**/*.md` (excluding docs/spec/**).
+      Decide which are human vs agent docs.
+    verification:
+      - uv run python -m engineeringagent.cli fitness run --format json
+  - id: ST-002
+    title: Add docs allowlist fitness script and manifest rule entry
+    status: backlog
+    context: |
+      Add a stdlib-only harness script (under `harness/fitness-functions/`) that enforces
+      the allowlist policy, and declare it in `harness/fitness-functions/rules.yaml`.
+    verification:
+      - uv run python -m engineeringagent.cli fitness run --format json
+  - id: ST-003
+    title: Update init to create or maintain scaffold_policy.yaml docs_root
+    status: backlog
+    context: |
+      Ensure init writes or updates `harness/scaffold_policy.yaml` in scaffolded repos so it
+      matches the docs root selected by init (reuse vs separate).
+    verification:
+      - uv run pytest -q tests/test_init_command.py
+updated_at: "2026-02-15T00:00:00Z"

@@ -191,15 +191,6 @@ def run_implement_step(*args: Any, **kwargs: Any) -> tuple[bool, str | None, str
 run_implement_step.__signature__ = RUN_IMPLEMENT_STEP_SIGNATURE
 
 
-def _require_clean_worktree(project_root: Path) -> tuple[bool, str]:
-    proc = status_porcelain(project_root)
-    if proc.returncode != 0:
-        return (False, "unable to read git status; run inside a git repository")
-    if proc.stdout.strip():
-        return (False, "working tree must be clean before running automated loop")
-    return (True, "")
-
-
 def _commit_feature_completion(
     project_root: Path, feature: dict[str, Any]
 ) -> tuple[bool, str | None, str]:
@@ -511,16 +502,25 @@ def _enforce_worktree_precondition(
     project_root: Path,
     allow_dirty: bool,
 ) -> int | None:
-    clean, reason = _require_clean_worktree(project_root)
-    if clean:
+    proc = status_porcelain(project_root)
+    if proc.returncode != 0:
+        reason = "unable to read git status; run inside a git repository"
+        print(f"Precondition failed: {reason}")
+        print("Hint: run from inside a git repository (try `git init`).")
+        return 1
+
+    dirty = bool(proc.stdout.strip())
+    if not dirty:
         return None
     if not allow_dirty:
+        reason = "working tree must be clean before running automated loop"
         print(f"Precondition failed: {reason}")
         print(
             "Hint: re-run with --allow-dirty to explicitly continue with "
             "uncommitted code changes."
         )
         return 1
+
     print(
         "Allow-dirty override enabled: continuing with uncommitted code "
         "changes by explicit user opt-in."
@@ -588,22 +588,8 @@ def _run_selected_feature_iterations(
 def run_loop(*args: Any, **kwargs: Any) -> int:
     """Execute feature loops until completion or termination condition.
 
-    Args:
-        *args: Positional arguments matching `RUN_LOOP_SIGNATURE`.
-        **kwargs: Keyword arguments matching `RUN_LOOP_SIGNATURE`.
-        project_root: Repository root for file and command operations.
-        feature_paths: One or more feature spec file paths.
-        gate_profile: Gate profile name to run after implementation.
-        implement_command: Optional custom shell command for implementation.
-        skip_implement: Whether to skip implementation and run gates only.
-        dry_run: Whether to resolve and report selection without execution.
-        run_all: Whether to auto-discover active feature files.
-        max_iterations: Max non-dry iterations across selected features.
-        allow_dirty: Whether to permit non-dry execution with uncommitted changes.
-        verbose_output: Whether to stream full implement and gate command output.
-
-    Returns:
-        Process exit code where 0 indicates success.
+    This facade binds `RUN_LOOP_SIGNATURE` args into `RunLoopControllerInputs` and
+    delegates to `run_loop_controller`.
     """
     if "opencode_prompt" in kwargs:
         kwargs = dict(kwargs)

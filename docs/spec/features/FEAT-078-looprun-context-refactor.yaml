@@ -1,0 +1,121 @@
+id: FEAT-078
+title: Refactor loop orchestration to pass a single LoopRun context object
+type: chore
+expected_commit_subject: "chore: refactor loop to LoopRun context"
+status: backlog
+priority: medium
+objective: |
+  Simplify the loop runtime contract by replacing long parameter lists and facade
+  `*args/**kwargs` shims with a single pass-around `LoopRun` object that contains:
+  - immutable run configuration (`RunConfig`)
+  - immutable dependency/services bundle (`RunServices`)
+  - copy-on-write run state (`RunState`)
+
+  This should reduce "creative compliance" patterns (varargs shims + `__signature__`,
+  ad-hoc kwarg dropping) and make orchestration code easier to read and harder to game,
+  while preserving end-user CLI behavior.
+context: |
+  The current loop facade functions in `src/engineeringagent/loop.py` accept `*args/**kwargs`
+  and manually bind against an `inspect.Signature` to preserve an apparent stable API surface.
+  This pattern exists largely to avoid lint policy constraints (for example, "too many
+  arguments") without allowing non-ignorable lint suppressions.
+
+  We want a clearer, more robust design: a single explicit object that is passed through
+  orchestration and phase functions, with explicit immutability for config/services and
+  explicit state updates via copy-on-write.
+constraints:
+  - Use Pydantic models (no stdlib dataclasses) and set `extra="forbid"` for all new models.
+  - RunConfig and RunServices must be frozen/immutable.
+  - RunState must be copy-on-write (frozen + `model_copy(update=...)`), not mutated in place.
+  - "Breaking change is allowed: update `engineeringagent.loop.run_loop` (and related loop entrypoints as needed) to a model-based API that accepts LoopRun."
+  - Preserve CLI-visible behavior of `engineeringagent run` (flags and semantics) unless an explicit contract delta is documented here.
+  - Remove ad-hoc kwarg dropping (for example, `opencode_prompt`) from loop entrypoints; if an override is still needed, make it an explicit typed field.
+  - Add or extend a fitness function to prevent regressions back to varargs facade shims, `__signature__` assignments, or hidden kwarg dropping without an explicit allowlist.
+  - All changes must satisfy existing fitness functions and gate profiles.
+implementation_notes: |
+  Contract/API delta (explicit):
+
+  - Surface: Python module API `engineeringagent.loop.run_loop` (and related facade helpers).
+    - Old behavior: loop entrypoints accept `*args/**kwargs` and set `__signature__` to present a stable-looking
+      signature; they may also drop unexpected kwargs (for example, `opencode_prompt`) before binding.
+    - New behavior: loop entrypoints accept a single typed LoopRun object (or equivalent typed model) and do not
+      use varargs shims or `__signature__` assignments.
+
+  - Surface: tests that enforce facade signature stability.
+    - Old behavior: `tests/test_loop_contracts.py` asserts specific multi-parameter signatures for facade functions.
+    - New behavior: tests assert the new LoopRun-based entrypoint contract and that config/services/state
+      immutability semantics are enforced.
+
+  Compatibility policy:
+  - This is an intentional breaking change for any external Python callers relying on the old `run_loop(...)` signature.
+  - CLI behavior is intended to remain compatible: `engineeringagent run ...` continues to accept the same flags and
+    perform the same workflow, but will internally construct and pass a LoopRun object.
+
+  Fitness-function impact assessment (required):
+  - New fitness rule expected (or extension of an existing one) to block varargs facade shims and hidden kwarg
+    dropping patterns from reappearing.
+  - Expected updates:
+    - Add `harness/fitness-functions/check_no_facade_varargs_shims.py` (or similar) and register it in
+      `harness/fitness-functions/rules.yaml`.
+    - Regenerate the fitness rule catalog (`docs/fitness-functions/rules.md`) if rule metadata changes.
+acceptance:
+  - "`engineeringagent run --help` output and CLI runtime behavior remain consistent with current documented behavior (no user-facing workflow regression)."
+  - "`engineeringagent.loop.run_loop` (and any other supported loop entrypoints) accept a single typed LoopRun object and no longer use `*args/**kwargs` + `__signature__` shims."
+  - "RunConfig and RunServices are Pydantic models with `frozen=true` and `extra=forbid`."
+  - "RunState updates are performed via copy-on-write (`model_copy(update=...)`) and no in-place mutation is required for counters/maps."
+  - "All previous ad-hoc kwarg dropping in loop entrypoints (for example, `opencode_prompt`) is removed; any remaining override is represented as an explicit typed field."
+  - "A fitness function prevents reintroducing varargs facade shims / `__signature__` assignments / hidden kwarg dropping outside an explicit allowlist."
+  - "`uv run python -m engineeringagent.cli validate`, `uv run python -m engineeringagent.cli fitness run --format json`, and `uv run pytest -q` pass."
+subtasks:
+  - id: ST-001
+    title: Define LoopRun, RunConfig, RunServices, RunState models (immutable + copy-on-write state)
+    status: backlog
+    context: |
+      Introduce the core run context object(s) in an appropriate loop_runtime module so
+      dependency directionality rules remain satisfied. Ensure models are `extra=forbid`,
+      RunConfig/RunServices are frozen, and RunState uses copy-on-write updates.
+    verification:
+      - uv run python -m engineeringagent.cli validate
+      - uv run pytest -q tests/test_loop_contracts.py
+  - id: ST-002
+    title: Refactor loop controller and iteration pipeline to pass LoopRun instead of many scalars
+    status: backlog
+    context: |
+      Replace long parameter threading through orchestration functions with passing LoopRun.
+      Keep behavior equivalent (stop conditions, selection, retries, telemetry, gate/reviewer sequencing).
+    verification:
+      - uv run pytest -q tests/test_loop_runtime_iteration.py
+      - uv run pytest -q tests/test_loop_opencode_integration.py
+  - id: ST-003
+    title: Update CLI to construct LoopRun from flags and preserve run behavior
+    status: backlog
+    context: |
+      Keep existing CLI flags and semantics, but build RunConfig from CLI args and
+      RunServices from the existing adapters/clients, then call the new loop entrypoint.
+    verification:
+      - uv run python -m engineeringagent.cli run --help
+      - uv run pytest -q tests/test_cli.py
+  - id: ST-004
+    title: Update contract tests to assert the new LoopRun-based public API
+    status: backlog
+    context: |
+      Replace signature-stability assertions for varargs facade shims with new tests that:
+      - assert the LoopRun entrypoint signature
+      - assert immutability/copy-on-write invariants
+      - assert important monkeypatch seams remain available (or are replaced with equivalent seams)
+    verification:
+      - uv run pytest -q tests/test_loop_contracts.py
+  - id: ST-005
+    title: Add fitness rule to block facade varargs shims and hidden kwarg dropping regressions
+    status: backlog
+    context: |
+      Add or extend a fitness function that scans `src/engineeringagent` and fails if:
+      - loop entrypoints use `*args/**kwargs` facade shims
+      - code assigns `__signature__ = ...` to mask varargs signatures
+      - code drops unexpected kwargs to bypass binding (unless explicitly allowlisted)
+      Register the rule in `harness/fitness-functions/rules.yaml` and ensure it runs under
+      existing gate profiles.
+    verification:
+      - uv run python -m engineeringagent.cli fitness run --format json
+      - uv run pytest -q tests/test_gates.py
+updated_at: "2026-02-15T00:00:00Z"

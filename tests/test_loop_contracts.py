@@ -171,6 +171,12 @@ def test_loop_facade_line_budget_rule_configuration() -> None:
     ]
 
 
+def test_loop_facade_line_budget_enforced() -> None:
+    loop_path = Path("src/engineeringagent/loop.py")
+    lines = len(loop_path.read_text(encoding="utf-8").splitlines())
+    assert lines <= 650
+
+
 def test_source_first_loop_command_rule_configuration() -> None:
     manifest_path = Path("harness/fitness-functions/rules.yaml")
     manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))

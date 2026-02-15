@@ -6,11 +6,74 @@ from typing import Any
 
 import engineeringagent.loop_runtime.presentation as presentation_module
 from engineeringagent.loop import print_summary
+import engineeringagent.loop_runtime.telemetry as telemetry_module
 from engineeringagent.loop_runtime.models import (
     FeatureIterationInputs,
+    CommandTiming,
     IterationTelemetryInputs,
+    PhaseTiming,
+)
+from engineeringagent.loop_runtime.phases import (
+    VerificationPhaseDependencies,
+    run_verification_phase,
 )
 from engineeringagent.loop_runtime.telemetry import write_iteration_telemetry
+
+
+def test_loop_runtime_models_define_timing_types_before_first_use() -> None:
+    import engineeringagent.loop_runtime.models as models_module
+
+    source = Path(models_module.__file__).read_text(encoding="utf-8")
+
+    phase_class_pos = source.index("class PhaseTiming")
+    assert "PhaseTiming" not in source[:phase_class_pos]
+
+    command_class_pos = source.index("class CommandTiming")
+    assert "CommandTiming" not in source[:command_class_pos]
+
+
+def test_timing_format_helpers_emit_expected_lines() -> None:
+    phase_timing = PhaseTiming(
+        phase="implement",
+        started_at="1970-01-01T00:00:02Z",
+        ended_at="1970-01-01T00:00:07Z",
+        duration_sec=5,
+    )
+    assert telemetry_module._format_phase_timing_line(phase_timing) == (
+        "phase_timing phase=implement started_at=1970-01-01T00:00:02Z "
+        "ended_at=1970-01-01T00:00:07Z duration_sec=5"
+    )
+
+    command_timing = CommandTiming(
+        phase="verification",
+        command="uv run pytest -q tests/test_loop_output.py",
+        started_at="1970-01-01T00:00:10Z",
+        ended_at="1970-01-01T00:00:18Z",
+        duration_sec=8,
+        gate="precommit",
+    )
+    assert telemetry_module._format_command_timing_line(command_timing) == (
+        "command_timing phase=verification gate=precommit "
+        "command=uv run pytest -q tests/test_loop_output.py "
+        "started_at=1970-01-01T00:00:10Z ended_at=1970-01-01T00:00:18Z "
+        "duration_sec=8"
+    )
+
+
+def test_timing_format_helpers_use_concrete_types() -> None:
+    from typing import get_type_hints
+
+    phase_hints = get_type_hints(telemetry_module._format_phase_timing_fields)
+    assert phase_hints["timing"] is PhaseTiming
+
+    phase_line_hints = get_type_hints(telemetry_module._format_phase_timing_line)
+    assert phase_line_hints["timing"] is PhaseTiming
+
+    command_parts_hints = get_type_hints(telemetry_module._command_timing_fields_parts)
+    assert command_parts_hints["timing"] is CommandTiming
+
+    command_line_hints = get_type_hints(telemetry_module._format_command_timing_line)
+    assert command_line_hints["timing"] is CommandTiming
 
 
 def test_progress_log_records_verification_status(tmp_path: Path) -> None:
@@ -208,6 +271,275 @@ def test_progress_log_strips_ansi_only_at_write_time(
         encoding="utf-8"
     )
     assert "\x1b[" not in feature_log
+
+
+def test_progress_log_records_phase_timings(tmp_path: Path, monkeypatch: Any) -> None:
+    import engineeringagent.loop_runtime.telemetry as telemetry_module
+
+    monkeypatch.setattr(telemetry_module, "now_iso", lambda: "1970-01-01T00:00:10Z")
+    monkeypatch.setattr(telemetry_module.time, "time", lambda: 0.0)
+
+    iteration_inputs = FeatureIterationInputs(
+        project_root=tmp_path,
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-040.yaml",
+        gate_profile="loop_fast",
+        implement_command=None,
+        skip_implement=False,
+        attempt=1,
+        hook_feedback=None,
+        verbose_output=False,
+    )
+    telemetry_inputs = IterationTelemetryInputs(
+        iteration_inputs=iteration_inputs,
+        started=0.0,
+        phase_timings=[
+            PhaseTiming(
+                phase="initial_load",
+                started_at="1970-01-01T00:00:00Z",
+                ended_at="1970-01-01T00:00:02Z",
+                duration_sec=2,
+            ),
+            PhaseTiming(
+                phase="implement",
+                started_at="1970-01-01T00:00:02Z",
+                ended_at="1970-01-01T00:00:07Z",
+                duration_sec=5,
+            ),
+        ],
+        feature_id="FEAT-040",
+        result="passed",
+        failed_gate=None,
+        next_action="advance_to_next_feature",
+        implement_status="passed",
+        gate_status="passed",
+        verification_status="passed",
+        verification_failed_command=None,
+        reviewer_status="not_run",
+        reviewer_decision=None,
+        failed_reviewer_id=None,
+        implement_output="",
+        gate_output="",
+        verification_output="",
+        reviewer_output="",
+        hook_feedback="",
+    )
+
+    write_iteration_telemetry(
+        telemetry_inputs,
+        git_head_resolver=lambda _: "abc1234",
+    )
+
+    feature_log = (tmp_path / "progress" / "run-feature-FEAT-040.txt").read_text(
+        encoding="utf-8"
+    )
+    assert (
+        "phase_timing phase=initial_load started_at=1970-01-01T00:00:00Z "
+        "ended_at=1970-01-01T00:00:02Z duration_sec=2"
+    ) in feature_log
+    assert (
+        "phase_timing phase=implement started_at=1970-01-01T00:00:02Z "
+        "ended_at=1970-01-01T00:00:07Z duration_sec=5"
+    ) in feature_log
+
+
+def test_progress_log_records_verification_command_timings(
+    tmp_path: Path,
+    monkeypatch: Any,
+) -> None:
+    import engineeringagent.loop_runtime.phases as phases_module
+    import engineeringagent.loop_runtime.telemetry as telemetry_module
+
+    from types import SimpleNamespace
+
+    monkeypatch.setattr(telemetry_module, "now_iso", lambda: "1970-01-01T00:00:20Z")
+
+    time_values = [10.0, 14.0]
+
+    def _fake_time() -> float:
+        if time_values:
+            return time_values.pop(0)
+        return 14.0
+
+    monkeypatch.setattr(phases_module.time, "time", _fake_time)
+
+    iteration_inputs = FeatureIterationInputs(
+        project_root=tmp_path,
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-040.yaml",
+        gate_profile="loop_fast",
+        implement_command=None,
+        skip_implement=False,
+        attempt=1,
+        hook_feedback=None,
+        verbose_output=False,
+    )
+    command = "uv run pytest -q tests/test_loop_output.py"
+    verification_outcome = run_verification_phase(
+        iteration_inputs,
+        [command],
+        VerificationPhaseDependencies(
+            run_shell_command=lambda *_args, **_kwargs: SimpleNamespace(
+                returncode=0,
+                stdout="ok\n",
+                stderr="",
+            )
+        ),
+    )
+
+    assert len(verification_outcome.command_timings) == 1
+    timing = verification_outcome.command_timings[0]
+    assert timing.phase == "verification"
+    assert timing.command == command
+    assert timing.started_at == "1970-01-01T00:00:10Z"
+    assert timing.ended_at == "1970-01-01T00:00:14Z"
+    assert timing.duration_sec == 4
+
+    telemetry_inputs = IterationTelemetryInputs(
+        iteration_inputs=iteration_inputs,
+        started=0.0,
+        phase_timings=[],
+        command_timings=verification_outcome.command_timings,
+        feature_id="FEAT-040",
+        result="passed",
+        failed_gate=None,
+        next_action="advance_to_next_feature",
+        implement_status="passed",
+        gate_status="passed",
+        verification_status="passed",
+        verification_failed_command=None,
+        reviewer_status="not_run",
+        reviewer_decision=None,
+        failed_reviewer_id=None,
+        implement_output="",
+        gate_output="",
+        verification_output=verification_outcome.verification_output,
+        reviewer_output="",
+        hook_feedback=None,
+    )
+
+    write_iteration_telemetry(
+        telemetry_inputs,
+        git_head_resolver=lambda _: "abc1234",
+    )
+
+    feature_log = (tmp_path / "progress" / "run-feature-FEAT-040.txt").read_text(
+        encoding="utf-8"
+    )
+    assert (
+        "command_timing phase=verification command=uv run pytest -q "
+        "tests/test_loop_output.py started_at=1970-01-01T00:00:10Z "
+        "ended_at=1970-01-01T00:00:14Z duration_sec=4"
+    ) in feature_log
+
+
+def test_verification_command_timing_clamps_ended_at_when_clock_skews_backwards(
+    tmp_path: Path,
+    monkeypatch: Any,
+) -> None:
+    import engineeringagent.loop_runtime.phases as phases_module
+
+    from types import SimpleNamespace
+
+    time_values = [10.0, 9.0]
+
+    def _fake_time() -> float:
+        if time_values:
+            return time_values.pop(0)
+        return 9.0
+
+    monkeypatch.setattr(phases_module.time, "time", _fake_time)
+
+    iteration_inputs = FeatureIterationInputs(
+        project_root=tmp_path,
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-040.yaml",
+        gate_profile="loop_fast",
+        implement_command=None,
+        skip_implement=False,
+        attempt=1,
+        hook_feedback=None,
+        verbose_output=False,
+    )
+    command = "uv run pytest -q tests/test_loop_output.py"
+    verification_outcome = run_verification_phase(
+        iteration_inputs,
+        [command],
+        VerificationPhaseDependencies(
+            run_shell_command=lambda *_args, **_kwargs: SimpleNamespace(
+                returncode=0,
+                stdout="ok\n",
+                stderr="",
+            )
+        ),
+    )
+
+    assert len(verification_outcome.command_timings) == 1
+    timing = verification_outcome.command_timings[0]
+    assert timing.started_at == "1970-01-01T00:00:10Z"
+    assert timing.ended_at == "1970-01-01T00:00:10Z"
+    assert timing.duration_sec == 0
+
+
+def test_progress_log_records_slowest_summary(tmp_path: Path) -> None:
+    iteration_inputs = FeatureIterationInputs(
+        project_root=tmp_path,
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-040.yaml",
+        gate_profile="loop_fast",
+        implement_command=None,
+        skip_implement=False,
+        attempt=1,
+        hook_feedback=None,
+        verbose_output=False,
+    )
+    telemetry_inputs = IterationTelemetryInputs(
+        iteration_inputs=iteration_inputs,
+        started=0.0,
+        phase_timings=[
+            PhaseTiming(
+                phase="implement",
+                started_at="1970-01-01T00:00:02Z",
+                ended_at="1970-01-01T00:00:07Z",
+                duration_sec=5,
+            )
+        ],
+        command_timings=[
+            CommandTiming(
+                phase="verification",
+                command="uv run pytest -q tests/test_loop_output.py",
+                started_at="1970-01-01T00:00:10Z",
+                ended_at="1970-01-01T00:00:18Z",
+                duration_sec=8,
+            )
+        ],
+        feature_id="FEAT-040",
+        result="passed",
+        failed_gate=None,
+        next_action="advance_to_next_feature",
+        implement_status="passed",
+        gate_status="passed",
+        verification_status="passed",
+        verification_failed_command=None,
+        reviewer_status="not_run",
+        reviewer_decision=None,
+        failed_reviewer_id=None,
+        implement_output="",
+        gate_output="",
+        verification_output="",
+        reviewer_output="",
+        hook_feedback="",
+    )
+
+    write_iteration_telemetry(
+        telemetry_inputs,
+        git_head_resolver=lambda _: "abc1234",
+    )
+
+    feature_log = (tmp_path / "progress" / "run-feature-FEAT-040.txt").read_text(
+        encoding="utf-8"
+    )
+    assert (
+        "slowest=command phase=verification command=uv run pytest -q "
+        "tests/test_loop_output.py started_at=1970-01-01T00:00:10Z "
+        "ended_at=1970-01-01T00:00:18Z duration_sec=8"
+    ) in feature_log
 
 
 def test_progress_log_records_code_simplifier_advisory_followup_status(

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import subprocess
+import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import yaml
 from pydantic import BaseModel, ConfigDict
@@ -310,6 +311,7 @@ def run_profile(
     cwd: Path,
     capture_output: bool = False,
     changed_paths: ChangedPathsResult | None = None,
+    timing_hook: Callable[[str, str, int, int], None] | None = None,
 ) -> tuple[bool, str | None, str]:
     """Execute gates in a profile in declaration order.
 
@@ -352,7 +354,10 @@ def run_profile(
             ) from exc
         command = runner["command"]
 
-        if capture_output:
+        def _run_gate_command() -> subprocess.CompletedProcess[Any]:
+            if not capture_output:
+                return subprocess.run(command, cwd=cwd, shell=True)
+
             proc = subprocess.run(
                 command,
                 cwd=cwd,
@@ -365,8 +370,15 @@ def run_profile(
                 combined_output_parts.append(proc.stdout.rstrip("\n"))
             if proc.stderr:
                 combined_output_parts.append(proc.stderr.rstrip("\n"))
+            return proc
+
+        if timing_hook is None:
+            proc = _run_gate_command()
         else:
-            proc = subprocess.run(command, cwd=cwd, shell=True)
+            started_epoch_sec = int(time.time())
+            proc = _run_gate_command()
+            ended_epoch_sec = max(started_epoch_sec, int(time.time()))
+            timing_hook(gate_name, command, started_epoch_sec, ended_epoch_sec)
 
         if proc.returncode != 0:
             return (False, gate_name, "\n".join(combined_output_parts).strip())

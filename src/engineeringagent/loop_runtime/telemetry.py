@@ -11,7 +11,7 @@ from typing import Any, Callable, Sequence
 import engineeringagent.progress_logging as progress_logging
 import engineeringagent.progress_paths as progress_paths
 
-from .models import IterationTelemetryInputs
+from .models import CommandTiming, IterationTelemetryInputs, PhaseTiming
 
 ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 
@@ -88,6 +88,63 @@ def _reviewer_feedback_metadata(
     return forwarded, True, _summarize_reviewer_feedback(forwarded)
 
 
+def _format_phase_timing_fields(timing: PhaseTiming) -> str:
+    return (
+        f"phase={timing.phase} "
+        f"started_at={timing.started_at} "
+        f"ended_at={timing.ended_at} "
+        f"duration_sec={timing.duration_sec}"
+    )
+
+
+def _format_phase_timing_line(timing: PhaseTiming) -> str:
+    return f"phase_timing {_format_phase_timing_fields(timing)}"
+
+
+def _command_timing_fields_parts(timing: CommandTiming) -> list[str]:
+    parts: list[str] = [
+        f"phase={timing.phase}",
+    ]
+    if timing.gate is not None:
+        parts.append(f"gate={timing.gate}")
+    if timing.reviewer_id is not None:
+        parts.append(f"reviewer_id={timing.reviewer_id}")
+    parts.extend(
+        [
+            f"command={timing.command}",
+            f"started_at={timing.started_at}",
+            f"ended_at={timing.ended_at}",
+            f"duration_sec={timing.duration_sec}",
+        ]
+    )
+    return parts
+
+
+def _format_command_timing_line(timing: CommandTiming) -> str:
+    return " ".join(["command_timing", *_command_timing_fields_parts(timing)])
+
+
+def _slowest_summary_line(telemetry_inputs: IterationTelemetryInputs) -> str | None:
+    best_duration = -1
+    best_line: str | None = None
+
+    # Deterministic tie-breaking: prefer the earliest max-duration candidate in
+    # the combined list (phase timings first, then command timings).
+    for timing in telemetry_inputs.phase_timings:
+        if timing.duration_sec > best_duration:
+            best_duration = timing.duration_sec
+            best_line = f"slowest=phase {_format_phase_timing_fields(timing)}"
+
+    for timing in telemetry_inputs.command_timings:
+        if timing.duration_sec > best_duration:
+            best_duration = timing.duration_sec
+            best_line = " ".join(
+                ["slowest=command", *_command_timing_fields_parts(timing)]
+            )
+
+    return best_line
+
+
 def write_iteration_telemetry(
     telemetry_inputs: IterationTelemetryInputs,
     *,
@@ -153,6 +210,17 @@ def write_iteration_telemetry(
         f"{run_payload.get('result')} failed_gate={run_payload.get('failed_gate') or '-'} "
         f"next_action={run_payload.get('next_action')}",
     ]
+
+    for timing in telemetry_inputs.phase_timings:
+        feature_progress_log_lines.append(_format_phase_timing_line(timing))
+
+    for timing in telemetry_inputs.command_timings:
+        feature_progress_log_lines.append(_format_command_timing_line(timing))
+
+    slowest_summary = _slowest_summary_line(telemetry_inputs)
+    if slowest_summary is not None:
+        feature_progress_log_lines.append(slowest_summary)
+
     if telemetry_inputs.implement_output:
         feature_progress_log_lines.extend(
             [

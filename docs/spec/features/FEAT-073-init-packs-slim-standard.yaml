@@ -1,0 +1,74 @@
+id: FEAT-073
+title: Add init packs (slim|standard) with TTY prompt and demo failing rule
+type: feature
+expected_commit_subject: "feat: add init slim and standard packs"
+status: backlog
+priority: high
+objective: |
+  Extend `engineeringagent init` with an explicit pack selection:
+  - `engineeringagent init slim` (default)
+  - `engineeringagent init standard` (includes a demo fitness rule that fails in pre-commit)
+
+  When the pack is omitted and the command runs in an interactive TTY,
+  prompt the user to pick a pack (default: slim). In non-interactive contexts,
+  default to slim without prompting.
+context: |
+  The current init scaffold is ambiguous about "what kind of repo baseline am I getting?"
+  and does not provide an obvious, visible example of fitness rules failing.
+
+  We want:
+  - a safe default (slim) that still runs real validations (at least spec validation)
+  - an opt-in "standard" pack that demonstrates the failing-rule workflow immediately
+    by wiring an always-failing demo rule into the pre-commit gate profile.
+constraints:
+  - "Pack selection is a positional argument to `engineeringagent init`: `slim|standard`."
+  - "Backward-compatible default: `engineeringagent init` must remain valid."
+  - If pack is omitted and stdout is a TTY, prompt for pack with default `slim`.
+  - If pack is omitted and stdout is not a TTY, do not prompt; default `slim`.
+  - If pack is explicitly provided, never prompt.
+  - Output must be ASCII-only.
+  - The final "init complete" line must include `pack=<slim|standard>`.
+  - Standard pack must clearly describe in terminal output that it wires a demo fitness
+    function that always fails into pre-commit.
+implementation_notes: |
+  Contract/API delta (explicit):
+
+  - Surface: `engineeringagent init` CLI.
+    - Old behavior: `engineeringagent init` has no pack concept.
+    - New behavior: `engineeringagent init [PACK]` where PACK is `slim` or `standard`.
+
+  Compatibility policy:
+  - `engineeringagent init` with no pack remains valid and defaults to `slim`.
+  - In TTY usage, omission triggers a prompt; in non-TTY usage, omission does not.
+
+  Implementation approach notes:
+  - Use a deterministic prompt with fixed options and default slim.
+  - Keep `--scaffold-profile` orthogonal; it remains the "toolchain profile" axis.
+acceptance:
+  - "`engineeringagent init --help` documents the optional positional pack argument."
+  - "When pack is omitted and TTY is detected, init prompts to select slim|standard (default slim)."
+  - "When pack is omitted and TTY is not detected, init does not prompt and uses slim."
+  - "When pack is provided (`init slim` or `init standard`), init never prompts."
+  - "Init completion output includes `pack=...`."
+  - "Standard pack prints a one-line explanation that it installs a demo failing fitness rule into pre-commit."
+  - "The standard-pack demo failing rule includes a remediation that explains how to disable the demo failure (by switching to slim and/or removing the demo gate/manifest)."
+subtasks:
+  - id: ST-001
+    title: Add pack arg and TTY-only prompt with deterministic default
+    status: backlog
+    context: |
+      Extend the Typer `init` command to accept `slim|standard` as an optional positional.
+      Implement TTY detection and prompt only when pack is omitted and TTY is true.
+      Add unit tests covering TTY vs non-TTY behavior and "no prompt when pack provided".
+    verification:
+      - uv run pytest -q tests/test_init_command.py
+  - id: ST-002
+    title: Wire standard pack demo-fail into precommit gate plan
+    status: backlog
+    context: |
+      Add standard-pack scaffold differences that cause pre-commit to run a demo
+      fitness rule that always fails (without making the default `fitness run` unusable).
+      Add tests verifying slim vs standard outputs differ as intended.
+    verification:
+      - uv run pytest -q tests/test_init_command.py
+updated_at: "2026-02-15T00:00:00Z"

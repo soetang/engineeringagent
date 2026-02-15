@@ -1,0 +1,338 @@
+id: FEAT-071
+title: Add per-iteration phase and command timestamps to feature progress logs
+type: feature
+expected_commit_subject: 'feat: add phase and command timestamps to progress logs'
+status: done
+priority: medium
+objective: 'Make `progress/run-feature-<id>.txt` self-contained for answering:
+
+  "what took the most time in this iteration?"
+
+
+  Add per-phase and per-command start/end timestamps plus computed durations, and
+
+  include a one-line `slowest=...` summary for each iteration.
+
+  '
+context: "Today, the loop writes two telemetry sinks:\n\n- `progress/runs.jsonl` (JSONL):\
+  \ includes `ts` and `duration_sec` for an iteration.\n  - `ts` is written when iteration\
+  \ telemetry is persisted (effectively end-of-iteration).\n  - `duration_sec` is\
+  \ computed as `int(time.time() - started)` where `started` is\n    captured at the\
+  \ beginning of the iteration pipeline.\n  - These fields are useful, but they do\
+  \ not show which phase/command consumed the time.\n\n- `progress/run-feature-<id>.txt`\
+  \ (text): includes outputs for implement/gates/\n  verification/reviewers and a\
+  \ top-line `ts=...` header per iteration block.\n  - This `ts=...` header is also\
+  \ end-of-iteration, so subtracting consecutive headers\n    only yields an approximation\
+  \ of wall time between iteration ends, not a breakdown.\n\nAs a result, answering\
+  \ \"what took most time in each iteration\" requires inference\nfrom adjacent iteration\
+  \ headers and knowledge of which phases were active.\n\nWe want the per-feature\
+  \ progress log to directly attribute time to phases and\ncommands without relying\
+  \ on `runs.jsonl` or external analysis tools.\n"
+constraints:
+- 'Write timing data to `progress/run-feature-<feature_id>.txt` only.
+
+  - Do not add or change fields in `progress/runs.jsonl`.
+
+  '
+- 'Record timestamps in UTC ISO-8601 format with second precision
+
+  (e.g. 2026-02-15T13:45:11Z).
+
+  '
+- 'Record whole-second durations as `duration_sec`, computed from the captured
+
+  boundaries.
+
+  '
+- 'Major phases must be timed at minimum:
+
+  - initial_load
+
+  - implement
+
+  - verification
+
+  - archive
+
+  - gates
+
+  - reviewers
+
+  - completion_commit
+
+  '
+- 'Per-command timing must be recorded for executed commands/runs:
+
+  - implement step (default OpenCode implement and custom `--implement-command`)
+
+  - each executed gate command
+
+  - each executed verification command
+
+  - each executed reviewer run (per reviewer id)
+
+  '
+- 'Each iteration block must include a one-line summary identifying the longest
+
+  single duration observed in that iteration:
+
+  - `slowest=<phase|command> duration_sec=<n> started_at=<ts> ended_at=<ts>`
+
+  '
+- 'Existing progress-log section markers and output blocks must remain present and
+
+  unchanged:
+
+  - `implement_output_begin`/`implement_output_end`
+
+  - `gate_output_begin`/`gate_output_end`
+
+  - `verification_output_begin`/`verification_output_end`
+
+  - `reviewer_output_begin`/`reviewer_output_end`
+
+  Timing output must be additive.
+
+  '
+- 'Timing collection must not change loop behavior (logging only).
+
+  '
+- 'Keep output ASCII-only.
+
+  '
+implementation_notes: "Contract/API delta (explicit):\n\n- Surface: `progress/run-feature-<feature_id>.txt`\
+  \ iteration content.\n  - Old behavior: progress logs include phase outputs but\
+  \ have no per-phase/per-command\n    timestamps.\n  - New behavior: progress logs\
+  \ include:\n    - per-phase `started_at`, `ended_at`, and `duration_sec` lines,\n\
+  \    - per-command `started_at`, `ended_at`, and `duration_sec` lines for commands/runs,\n\
+  \    - a one-line `slowest=...` summary per iteration.\n\nCompatibility policy:\n\
+  - Additive-only within the progress log: do not remove or rename existing markers.\n\
+  - `progress/runs.jsonl` remains unchanged.\n\nImplementation approach notes:\n-\
+  \ Capture timing boundaries inside the iteration pipeline while phase boundaries\n\
+  \  are known; render them once into the feature progress log.\n- Prefer a monotonic\
+  \ clock for duration measurement and wall-clock UTC timestamps\n  for readability;\
+  \ ensure `duration_sec` is non-negative.\n- Tests must not rely on real wall-clock\
+  \ time; stub time sources so log output is\n  deterministic.\n"
+acceptance:
+- "Each iteration block in `progress/run-feature-<id>.txt` contains:\n- per-phase\
+  \ `started_at`, `ended_at`, and `duration_sec` for all required phases\n- per-command\
+  \ `started_at`, `ended_at`, and `duration_sec` for implement/gates/\n  verification/reviewers\
+  \ when those commands run\n- the `slowest=...` one-line summary\n"
+- 'Existing progress-log output markers remain present and unchanged.
+
+  '
+- '`progress/runs.jsonl` output schema and fields remain unchanged.
+
+  '
+- 'Unit tests cover timing rendering in the feature progress log and do not rely on
+
+  wall-clock time.
+
+  '
+- 'Fitness-function impact: no fitness-function changes required (timing additions
+
+  only affect progress log text).
+
+  '
+subtasks:
+- id: ST-001
+  title: Add per-phase timestamp capture and render into feature progress log
+  status: done
+  context: 'Extend the iteration pipeline + telemetry writer to capture major phase
+
+    boundaries with `started_at`/`ended_at` and computed `duration_sec`, and render
+
+    them into the feature progress log (additive to existing markers).
+
+    '
+  verification:
+  - uv run pytest -q tests/test_loop_output.py tests/test_loop_runtime_iteration.py
+- id: ST-002
+  title: Add per-command timestamps for gate execution
+  status: done
+  context: 'Instrument gate execution so each executed gate command records
+
+    `started_at`/`ended_at`/`duration_sec` and is included in the gate output that
+
+    is persisted into the feature progress log.
+
+    '
+  verification:
+  - uv run pytest -q tests/test_gates.py tests/test_loop_ralph_mode.py
+- id: ST-003
+  title: Add per-command timestamps for verification execution
+  status: done
+  context: 'Instrument verification command execution so each verification command
+    record
+
+    includes `started_at`/`ended_at`/`duration_sec` in the verification output that
+
+    is persisted into the feature progress log.
+
+    '
+  verification:
+  - uv run pytest -q tests/test_loop_output.py
+- id: ST-004
+  title: Add per-reviewer timestamps for reviewer execution
+  status: done
+  context: 'Instrument reviewer runs so each reviewer execution record includes
+
+    `started_at`/`ended_at`/`duration_sec` for the reviewer id, and ensure this
+
+    timing is included in the reviewer output persisted to the feature progress log.
+
+    '
+  verification:
+  - uv run pytest -q tests/test_loop_reviewers.py
+- id: ST-005
+  title: Add slowest summary line and deterministic tests
+  status: done
+  context: 'Compute the longest single duration among phase and per-command timings
+    and
+
+    render the `slowest=...` summary line. Add tests that stub time sources so the
+
+    output is deterministic.
+
+    '
+  verification:
+  - uv run pytest -q tests/test_loop_output.py
+- id: ST-006
+  title: Improve precondition hint when not in a git repo
+  status: done
+  context: 'When `engineeringagent run ...` is executed outside a git repository,
+    the loop
+
+    currently emits a misleading hint to re-run with `--allow-dirty`. Improve the
+
+    precondition hint so it points the user to `git init` (and ensure the
+
+    allow-dirty hint is only used for the dirty-worktree case).
+
+    '
+  verification:
+  - uv run pytest -q tests/test_loop_ralph_mode.py::test_run_loop_requires_git_repo_before_allow_dirty_hint
+- id: ST-007
+  title: README onboarding fixes from review feedback
+  status: done
+  context: 'Address reviewer feedback for README-driven first-run onboarding:
+
+    - include a minimal example feature YAML that passes the feature schema
+
+    - document that non-dry `run` requires a git repo and (by default) a clean worktree
+
+    - document the default OpenCode implement dependency + first-run alternatives
+
+    - clarify what `init` scaffolds vs the recommended `uvx ...` invocation
+
+    '
+  verification:
+  - uv run python -m engineeringagent.cli validate
+- id: ST-008
+  title: Refactor loop facade to satisfy line budget fitness rule
+  status: done
+  context: 'The loop facade module must remain <= 650 lines (fitness rule
+
+    architecture.loop-facade-line-budget). Reduce non-essential facade surface
+
+    text/formatting so feature timing additions do not regress the budget.'
+  verification:
+  - uv run pytest -q tests/test_loop_contracts.py::test_loop_facade_line_budget_enforced
+  - uv run python -m engineeringagent.cli fitness run --format json
+- id: ST-009
+  title: Add per-command timestamps for implement execution
+  status: done
+  context: 'Ensure the implement phase records a `command_timing` entry when the
+
+    implement command runs (default OpenCode mode and custom `--implement-command`).
+
+    '
+  verification:
+  - uv run pytest -q tests/test_loop_runtime_iteration.py::test_iteration_pipeline_records_phase_timings
+- id: ST-010
+  title: Centralize UTC timestamp formatting helper
+  status: done
+  context: 'Deduplicate UTC ISO-8601 formatting so iteration/phases render timing
+
+    timestamps from one helper (avoid drift across modules).
+
+    '
+  verification:
+  - uv run pytest -q tests/test_loop_runtime_time_format.py
+  - uv run pytest -q tests/test_loop_output.py tests/test_loop_runtime_iteration.py
+- id: ST-011
+  title: Refactor telemetry timing formatters to avoid duplication
+  status: done
+  context: 'Extract shared formatting helpers for phase_timing/command_timing lines
+
+    so slowest summary rendering and log line rendering cannot drift.
+
+    '
+  verification:
+  - uv run pytest -q tests/test_loop_output.py
+- id: ST-012
+  title: Simplify gate timing_hook plumbing
+  status: done
+  context: 'Tighten timing_hook control flow and typing in gate execution while
+
+    preserving current behavior and output.
+
+    '
+  verification:
+  - uv run pytest -q tests/test_gates.py
+- id: ST-013
+  title: Improve timing model ordering for readability
+  status: done
+  context: 'Move PhaseTiming/CommandTiming definitions above their first use in
+
+    loop_runtime models.
+
+    '
+  verification:
+  - uv run pytest -q tests/test_loop_output.py
+- id: ST-014
+  title: Fix reviewer prompt typos (readme_process)
+  status: done
+  context: 'Clean up obvious typos/grammar in the readme_process reviewer prompt
+
+    (no behavioral change).
+
+    '
+  verification:
+  - uv run pytest -q tests/test_repo_readme_process_reviewer_activation.py
+- id: ST-015
+  title: Clamp timing end timestamps to avoid negative wall-clock ranges
+  status: done
+  context: 'Ensure phase/command timing records never emit ended_at earlier than
+
+    started_at when wall-clock time skews backwards (keep duration_sec computed
+
+    from clamped boundaries).
+
+    '
+  verification:
+  - uv run pytest -q tests/test_loop_runtime_iteration.py::test_timed_phase_clamps_ended_at_when_clock_skews_backwards
+    tests/test_loop_output.py::test_verification_command_timing_clamps_ended_at_when_clock_skews_backwards
+    tests/test_loop_reviewers.py::test_reviewer_command_timing_clamps_ended_at_when_clock_skews_backwards
+- id: ST-016
+  title: Remove duplicate git status invocation in loop preconditions
+  status: done
+  context: 'Avoid redundant `git status` calls when validating repo/worktree
+
+    preconditions; preserve user-facing hints for repo vs dirty-worktree cases.
+
+    '
+  verification:
+  - uv run pytest -q tests/test_loop_ralph_mode.py::test_run_loop_requires_git_repo_before_allow_dirty_hint
+    tests/test_loop_ralph_mode.py::test_enforce_worktree_precondition_reads_git_status_once
+- id: ST-017
+  title: Tighten telemetry formatter typing and simplify slowest selection
+  status: done
+  context: 'Replace `Any` timing parameters with concrete PhaseTiming/CommandTiming
+
+    and simplify slowest summary selection without changing output.
+
+    '
+  verification:
+  - uv run pytest -q tests/test_loop_output.py
+updated_at: '2026-02-15T20:04:04Z'

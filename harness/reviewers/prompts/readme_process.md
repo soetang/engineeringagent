@@ -17,6 +17,8 @@ Rules:
   - engineeringagent CLI/init behavior issue
   - both
 - If decision is warning or request_changes, include concrete required_actions with file paths.
+- Go in-depth; also provide feedback based on referenced files.
+- Be aware that some files linked from the README are created by `init`. That is OK and not an error.
 
 Suggested execution outline (adjust to match README.md if it differs):
 
@@ -39,4 +41,5 @@ Suggested execution outline (adjust to match README.md if it differs):
 
 Approve only if the README-guided flow is coherent and runnable in this clean-room setup.
 
-You feedback should not contain changes that would be helpfull for reviewers. Only changes that real users would find usefull. Like if a missing gate, spec or file? Maybe the scafold or cli should provide an option to provide a toy example? Or whatever makes sense for a user to get a quick feeling of how it works. Make sure to read any new files created in the process. Also you should allways try to run it for real, on a real spec, with a gate.
+Your feedback should not include changes that would only be helpful for reviewers. Focus on changes that real users would find useful (missing gate/spec/file, unclear prerequisites, confusing output, etc.). Make sure to read any new files created in the process. Also, always try to run it for real (non-dry) on a real spec with a gate.
+Your feedback should capture your observations and what you were missing, but not the proposed solution to the problem. You do not have the full overview for that.

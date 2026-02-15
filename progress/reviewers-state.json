@@ -151,6 +151,26 @@
           "invalidated_at": "2026-02-15T16:15:40Z"
         }
       }
+    },
+    "FEAT-071": {
+      "advisory_followup_required": false,
+      "advisory_followup_updated_at": "2026-02-15T19:48:45Z",
+      "reviewers": {
+        "code_simplifier": {
+          "approved": true,
+          "approved_at": "2026-02-15T19:52:36Z",
+          "blocking_request_changes_count": 0,
+          "blocking_retry_updated_at": "2026-02-15T19:52:36Z",
+          "invalidated_at": "2026-02-15T18:49:32Z",
+          "updated_at": "2026-02-15T19:25:37Z"
+        },
+        "readme_process": {
+          "approved": false,
+          "blocking_request_changes_count": 6,
+          "blocking_retry_updated_at": "2026-02-15T20:15:03Z",
+          "updated_at": "2026-02-15T20:15:03Z"
+        }
+      }
     }
   },
   "version": "1"

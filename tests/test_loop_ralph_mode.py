@@ -1272,6 +1272,7 @@ def test_run_loop_concise_mode_hides_raw_implement_and_gate_output(
     assert implement_stderr_token in log_text
     assert gate_stdout_token in log_text
     assert gate_stderr_token in log_text
+    assert "command_timing phase=gates gate=emit_gate_output" in log_text
 
 
 def test_run_loop_verbose_output_streams_raw_implement_and_gate_output(
@@ -1533,6 +1534,54 @@ def test_run_loop_requires_clean_worktree_by_default(
     assert code == 1
     assert "Precondition failed" in output
     assert "--allow-dirty" in output
+
+
+def test_run_loop_requires_git_repo_before_allow_dirty_hint(
+    tmp_path: Path, capsys: Any
+) -> None:
+    project_root, feature_path = _make_project_root(
+        tmp_path, feature_data=_base_feature()
+    )
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        implement_command=None,
+        opencode_prompt=None,
+        skip_implement=True,
+        dry_run=False,
+    )
+
+    output = capsys.readouterr().out
+    assert code == 1
+    assert "Precondition failed" in output
+    assert "run inside a git repository" in output
+    assert "--allow-dirty" not in output
+    assert "git init" in output
+
+
+def test_enforce_worktree_precondition_reads_git_status_once(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[Path] = []
+
+    def fake_status_porcelain(project_root: Path) -> subprocess.CompletedProcess[str]:
+        calls.append(project_root)
+        return subprocess.CompletedProcess(
+            args=["git", "status", "--porcelain"],
+            returncode=0,
+            stdout="",
+            stderr="",
+        )
+
+    monkeypatch.setattr(loop_module, "status_porcelain", fake_status_porcelain)
+
+    code = loop_module._enforce_worktree_precondition(tmp_path, allow_dirty=False)
+
+    assert code is None
+    assert calls == [tmp_path]
 
 
 def test_run_loop_allows_uncommitted_changes_with_allow_dirty(

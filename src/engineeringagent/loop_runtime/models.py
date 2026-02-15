@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class IterationOutcome(BaseModel):
@@ -71,6 +71,27 @@ class FeatureIterationInputs(BaseModel):
     verbose_output: bool
 
 
+class PhaseTiming(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    phase: str
+    started_at: str
+    ended_at: str
+    duration_sec: int
+
+
+class CommandTiming(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    phase: str
+    command: str
+    started_at: str
+    ended_at: str
+    duration_sec: int
+    gate: str | None = None
+    reviewer_id: str | None = None
+
+
 class GatePhaseOutcome(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -78,6 +99,7 @@ class GatePhaseOutcome(BaseModel):
     failed_gate: str | None
     gate_status: str
     gate_output: str
+    command_timings: list[CommandTiming] = Field(default_factory=list)
     hook_feedback: str | None
 
 
@@ -88,6 +110,7 @@ class VerificationPhaseOutcome(BaseModel):
     verification_status: str
     verification_failed_command: str | None
     verification_output: str
+    command_timings: list[CommandTiming] = Field(default_factory=list)
     hook_feedback: str | None
 
 
@@ -100,6 +123,7 @@ class ReviewerPhaseOutcome(BaseModel):
     reviewer_decision: str | None = None
     failed_reviewer_id: str | None = None
     reviewer_output: str
+    command_timings: list[CommandTiming] = Field(default_factory=list)
     hook_feedback: str | None
 
 
@@ -119,6 +143,8 @@ class IterationTelemetryInputs(BaseModel):
 
     iteration_inputs: FeatureIterationInputs
     started: float
+    phase_timings: list[PhaseTiming] = Field(default_factory=list)
+    command_timings: list[CommandTiming] = Field(default_factory=list)
     feature_id: str
     result: str
     failed_gate: str | None

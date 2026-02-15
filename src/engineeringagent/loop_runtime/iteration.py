@@ -4,17 +4,19 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
-from typing import Any, Callable, Iterable
+from typing import Any, Callable, Iterable, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from .models import (
+    CommandTiming,
     CompletionCommitOutcome,
     FeatureIterationInputs,
     GatePhaseOutcome,
     InitialFeatureLoadOutcome,
     IterationOutcome,
     IterationTelemetryInputs,
+    PhaseTiming,
     PostImplementFeatureOutcome,
     ReviewerPhaseOutcome,
     VerificationPhaseOutcome,
@@ -25,6 +27,7 @@ from .phases import (
     ReviewerPhaseDependencies,
     VerificationPhaseDependencies,
 )
+from .time_format import utc_iso_from_epoch_sec
 
 
 class IterationPipelineDependencies(BaseModel):
@@ -128,11 +131,68 @@ class _PipelineState(BaseModel):
     reviewer_output: str = ""
     reviewer_feedback_forwarded: str | None = None
     completion_commit_succeeded: bool = False
+    command_timings: list[CommandTiming] = Field(default_factory=list)
     archived_path: Path | None = None
     archived_in_iteration: bool = False
     selected_started_active: bool = False
     verification_commands: list[str] = Field(default_factory=list)
     pre_implement_subtask_statuses: dict[str, str] = Field(default_factory=dict)
+
+
+T = TypeVar("T")
+
+
+def _timed_phase(
+    phase_timings: list[PhaseTiming],
+    phase: str,
+    fn: Callable[[], T],
+    *,
+    timing_hook: Callable[[int, int], None] | None = None,
+) -> T:
+    started_epoch_sec = int(time.time())
+    result = fn()
+    ended_epoch_sec = max(started_epoch_sec, int(time.time()))
+    duration_sec = ended_epoch_sec - started_epoch_sec
+    phase_timings.append(
+        PhaseTiming(
+            phase=phase,
+            started_at=utc_iso_from_epoch_sec(started_epoch_sec),
+            ended_at=utc_iso_from_epoch_sec(ended_epoch_sec),
+            duration_sec=duration_sec,
+        )
+    )
+    if timing_hook is not None:
+        timing_hook(started_epoch_sec, ended_epoch_sec)
+    return result
+
+
+def _record_implement_command_timing(
+    state: _PipelineState,
+    iteration_inputs: FeatureIterationInputs,
+    started_epoch_sec: int,
+    ended_epoch_sec: int,
+) -> None:
+    if not state.selected_started_active:
+        return
+    if iteration_inputs.skip_implement:
+        return
+
+    command = iteration_inputs.implement_command
+    if command is None:
+        from engineeringagent.opencode.client import DEFAULT_OPENCODE_AGENT
+
+        command = f"opencode run --agent {DEFAULT_OPENCODE_AGENT}"
+
+    duration_sec = max(0, ended_epoch_sec - started_epoch_sec)
+    state.command_timings.append(
+        CommandTiming(
+            phase="implement",
+            command=command,
+            started_at=utc_iso_from_epoch_sec(started_epoch_sec),
+            ended_at=utc_iso_from_epoch_sec(ended_epoch_sec),
+            duration_sec=duration_sec,
+        )
+    )
 
 
 def _subtask_status_snapshot(
@@ -275,6 +335,7 @@ def _run_verification_phase_if_passed(
         state.verification_commands,
         dependencies.verification_phase_dependencies,
     )
+    state.command_timings.extend(verification_phase.command_timings)
     state.verification_output = verification_phase.verification_output
     state.verification_status = verification_phase.verification_status
     state.verification_failed_command = verification_phase.verification_failed_command
@@ -394,6 +455,7 @@ def _run_gate_phase_if_passed(
     )
     state.gate_output = gate_phase.gate_output
     state.gate_status = gate_phase.gate_status
+    state.command_timings.extend(gate_phase.command_timings)
     if gate_phase.result != "failed":
         return
     state.result = gate_phase.result
@@ -421,6 +483,7 @@ def _run_reviewer_phase_if_passed(
     state.reviewer_decision = reviewer_phase.reviewer_decision
     state.failed_reviewer_id = reviewer_phase.failed_reviewer_id
     state.reviewer_output = reviewer_phase.reviewer_output
+    state.command_timings.extend(reviewer_phase.command_timings)
     if reviewer_phase.hook_feedback:
         state.reviewer_feedback_forwarded = reviewer_phase.hook_feedback
     if reviewer_phase.result != "failed":
@@ -465,26 +528,45 @@ def run_feature_iteration_pipeline(
     gates_path = iteration_inputs.project_root / "harness" / "gates.yaml"
     started = time.time()
     state = _PipelineState()
+    phase_timings: list[PhaseTiming] = []
 
-    initial_load = dependencies.evaluate_initial_feature_load(
-        iteration_inputs.project_root,
-        iteration_inputs.feature_path,
-    )
+    def _run_initial_load_phase() -> InitialFeatureLoadOutcome:
+        initial_load = dependencies.evaluate_initial_feature_load(
+            iteration_inputs.project_root,
+            iteration_inputs.feature_path,
+        )
+        _apply_initial_load_result(
+            state,
+            initial_load.result,
+            initial_load.failed_gate,
+            initial_load.hook_feedback,
+        )
+        return initial_load
+
+    initial_load = _timed_phase(phase_timings, "initial_load", _run_initial_load_phase)
     feature = initial_load.feature
     loaded_from_archive = initial_load.loaded_from_archive
     feature_id = str(feature.get("id", "")) if feature else ""
-    _apply_initial_load_result(
-        state,
-        initial_load.result,
-        initial_load.failed_gate,
-        initial_load.hook_feedback,
-    )
-    _run_implement_phase_if_ready(
-        state,
-        iteration_inputs,
-        dependencies,
-        feature,
-        loaded_from_archive,
+
+    def _implement_timing_hook(started_epoch_sec: int, ended_epoch_sec: int) -> None:
+        _record_implement_command_timing(
+            state,
+            iteration_inputs,
+            started_epoch_sec,
+            ended_epoch_sec,
+        )
+
+    _timed_phase(
+        phase_timings,
+        "implement",
+        lambda: _run_implement_phase_if_ready(
+            state,
+            iteration_inputs,
+            dependencies,
+            feature,
+            loaded_from_archive,
+        ),
+        timing_hook=_implement_timing_hook,
     )
     post_feature, loaded_post_from_archive = _refresh_feature_after_implement_if_ready(
         state,
@@ -493,22 +575,55 @@ def run_feature_iteration_pipeline(
         feature,
         loaded_from_archive,
     )
-    _run_verification_phase_if_passed(
-        state,
-        iteration_inputs,
-        dependencies,
-        post_feature,
+
+    _timed_phase(
+        phase_timings,
+        "verification",
+        lambda: _run_verification_phase_if_passed(
+            state,
+            iteration_inputs,
+            dependencies,
+            post_feature,
+        ),
     )
-    _archive_selected_feature_if_needed(
-        state,
-        iteration_inputs,
-        dependencies,
-        post_feature,
-        loaded_post_from_archive,
+    _timed_phase(
+        phase_timings,
+        "archive",
+        lambda: _archive_selected_feature_if_needed(
+            state,
+            iteration_inputs,
+            dependencies,
+            post_feature,
+            loaded_post_from_archive,
+        ),
     )
-    _run_gate_phase_if_passed(state, iteration_inputs, dependencies, gates_path)
-    _run_reviewer_phase_if_passed(state, iteration_inputs, dependencies, post_feature)
-    _run_completion_phase_if_needed(state, iteration_inputs, dependencies, post_feature)
+    _timed_phase(
+        phase_timings,
+        "gates",
+        lambda: _run_gate_phase_if_passed(
+            state, iteration_inputs, dependencies, gates_path
+        ),
+    )
+    _timed_phase(
+        phase_timings,
+        "reviewers",
+        lambda: _run_reviewer_phase_if_passed(
+            state,
+            iteration_inputs,
+            dependencies,
+            post_feature,
+        ),
+    )
+    _timed_phase(
+        phase_timings,
+        "completion_commit",
+        lambda: _run_completion_phase_if_needed(
+            state,
+            iteration_inputs,
+            dependencies,
+            post_feature,
+        ),
+    )
 
     if state.result == "passed" and not state.completion_commit_succeeded:
         state.completed = False
@@ -517,6 +632,8 @@ def run_feature_iteration_pipeline(
     telemetry_inputs = IterationTelemetryInputs(
         iteration_inputs=iteration_inputs,
         started=started,
+        phase_timings=phase_timings,
+        command_timings=state.command_timings,
         feature_id=feature_id,
         result=state.result,
         failed_gate=state.failed_gate,

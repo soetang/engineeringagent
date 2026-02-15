@@ -222,6 +222,83 @@ def test_blocking_reviewer_warning_feedback_is_forwarded(tmp_path: Path) -> None
     )
 
 
+def test_reviewer_phase_records_reviewer_command_timing(
+    tmp_path: Path,
+    monkeypatch: Any,
+) -> None:
+    import engineeringagent.loop_runtime.phases as phases_module
+
+    time_values = [10.0, 13.0]
+
+    def _fake_time() -> float:
+        if time_values:
+            return time_values.pop(0)
+        return 13.0
+
+    monkeypatch.setattr(phases_module.time, "time", _fake_time)
+
+    config = _base_config("blocking")
+    config["reviewers"]["code_reviewer"]["trigger"]["phase"] = "feature_done"
+
+    outcome = run_reviewer_phase(
+        _iteration_inputs(tmp_path),
+        {"id": "FEAT-050"},
+        archived_in_iteration=True,
+        archived_path=tmp_path / "docs" / "spec" / "features_done" / "FEAT-050.yaml",
+        dependencies=_deps(
+            config,
+            decision="approve",
+            summary="Timing metadata should be recorded.",
+        ),
+    )
+
+    assert len(outcome.command_timings) == 1
+    timing = outcome.command_timings[0]
+    assert timing.phase == "reviewers"
+    assert timing.reviewer_id == "code_reviewer"
+    assert timing.command == "run_reviewer"
+    assert timing.started_at == "1970-01-01T00:00:10Z"
+    assert timing.ended_at == "1970-01-01T00:00:13Z"
+    assert timing.duration_sec == 3
+
+
+def test_reviewer_command_timing_clamps_ended_at_when_clock_skews_backwards(
+    tmp_path: Path,
+    monkeypatch: Any,
+) -> None:
+    import engineeringagent.loop_runtime.phases as phases_module
+
+    time_values = [13.0, 10.0]
+
+    def _fake_time() -> float:
+        if time_values:
+            return time_values.pop(0)
+        return 10.0
+
+    monkeypatch.setattr(phases_module.time, "time", _fake_time)
+
+    config = _base_config("blocking")
+    config["reviewers"]["code_reviewer"]["trigger"]["phase"] = "feature_done"
+
+    outcome = run_reviewer_phase(
+        _iteration_inputs(tmp_path),
+        {"id": "FEAT-050"},
+        archived_in_iteration=True,
+        archived_path=tmp_path / "docs" / "spec" / "features_done" / "FEAT-050.yaml",
+        dependencies=_deps(
+            config,
+            decision="approve",
+            summary="Timing metadata should be clamped.",
+        ),
+    )
+
+    assert len(outcome.command_timings) == 1
+    timing = outcome.command_timings[0]
+    assert timing.started_at == "1970-01-01T00:00:13Z"
+    assert timing.ended_at == "1970-01-01T00:00:13Z"
+    assert timing.duration_sec == 0
+
+
 def test_advisory_feedback_requires_one_followup_implement_pass(tmp_path: Path) -> None:
     config = _base_config("advisory")
     config["reviewers"]["code_reviewer"]["trigger"]["phase"] = "feature_done"

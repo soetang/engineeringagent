@@ -23,6 +23,13 @@ Keep this file concise. Add durable references and rules, not task logs.
 1. `docs/spec/features/` (active feature specs)
 1. `src/` (implementation)
 
+## Documentation Layout Reference
+
+- `docs/references/docs-architecture-llms.md`: Use when adding or restructuring docs; keeps human vs agent doc placement deterministic.
+- `docs/references/workflow-llms.md`: Use before running loop work; defines the expected execution and verification loop.
+
+Note: Some repos use a separate docs root (configured via `engineeringagent.toml`). In that case, these references live under the configured docs root.
+
 ## First-Window Boot Sequence
 
 - Ensure `harness/gates.yaml` exists and profiles reference valid gates.

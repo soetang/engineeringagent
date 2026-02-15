@@ -1,6 +1,7 @@
 # Engineering Agent
 
-# WARNING THIS REPO IS STILL BEING BUILD SCAFOLDING DEFINITELY DONT WORK AS WE WANT YET
+NOTE: This repository is under active development. Treat `engineeringagent init` as
+experimental scaffolding and review all generated changes before committing.
 
 Engineeringagent is a CLI that helps you implement code changes directly from feature specs.
 It pairs an agent loop with repository-owned harnesses (validators, gates, fitness functions,
@@ -15,10 +16,23 @@ Primary flow: `feature spec -> run loop`.
 
 - Package usage (PyPI, no clone): `uvx engineeringagent <command>`
 - Package usage (version pinned): `uvx engineeringagent@<version> <command>`
+- From source (this repo clone): `uv run python -m engineeringagent.cli <command>`
 
 ## Quickstart from PyPI (no clone)
 
-1. If you are starting in a fresh repository, scaffold the baseline harness first.
+1. Make sure you are in a git repository.
+
+   `engineeringagent run` (non-dry) requires a git repo and, by default, a clean
+   worktree.
+
+   ```bash
+   git init
+   git status
+   ```
+
+   If you must run with local changes, pass `--allow-dirty`.
+
+1. (Optional) Scaffold a baseline harness.
 
    ```bash
    uvx engineeringagent init
@@ -31,8 +45,28 @@ Primary flow: `feature spec -> run loop`.
 
 1. Create or pick one feature spec in `docs/spec/features/`.
 
-   If you are just getting started, create a minimal example feature file that
-   satisfies `docs/spec/schemas/feature.schema.json`:
+   Save this as `docs/spec/features/FEAT-001-example.yaml`.
+   Minimal example that satisfies `docs/spec/schemas/feature.schema.json`:
+
+   ```yaml
+   id: FEAT-001
+   title: Example feature spec
+   type: chore
+   expected_commit_subject: 'chore: example feature spec'
+   status: backlog
+   priority: low
+   objective: 'Provide a minimal, schema-valid feature spec for onboarding.'
+   acceptance:
+   - 'Spec validates with `engineeringagent validate`.'
+   subtasks:
+   - id: ST-001
+     title: Validate specs
+     status: backlog
+     context: null
+     verification:
+     - engineeringagent validate
+   updated_at: '2026-02-15T00:00:00Z'
+   ```
 
 1. Validate the setup and run gates.
 
@@ -47,9 +81,12 @@ Primary flow: `feature spec -> run loop`.
    uvx engineeringagent run docs/spec/features/FEAT-001-example.yaml --dry-run
    ```
 
-Run for real by removing `--dry-run`.
+1. Run for real by removing `--dry-run`.
 
-1. Test that implemented gates run at commit (remember to init a git repo - if it is not already)
+   If you do not have OpenCode installed/configured, either:
+
+   - pass `--implement-command <cmd>` to run your own implementation command, or
+   - pass `--skip-implement` to only run gates.
 
 ## Bootstrapping a new repository with `init`
 
@@ -72,6 +109,13 @@ uvx engineeringagent init --scaffold-profile python_uv
 `init` creates a starter structure for `docs/spec/` and `harness/gates.yaml` and handles
 existing `docs/` or `AGENTS.md` through explicit conflict choices.
 
+At a minimum, `init` scaffolds:
+
+- `docs/spec/` directories for feature specs
+- `harness/gates.yaml` as a starting point for your gate profiles
+
+It does not run gates for you or make any commits.
+
 Warning: treat `init` as experimental scaffolding.
 Always inspect generated files, run `uvx engineeringagent validate`, and review
 the git diff before committing anything produced by `init`.
@@ -89,7 +133,11 @@ the git diff before committing anything produced by `init`.
 
 ## OpenCode default agent contract
 
-- Default loop execution uses the `engineeringagent` OpenCode agent, specified under: `.opencode/agents/engineeringagent.md`.
+- By default, `engineeringagent run` shells out to `opencode build-agent run` for the
+  implementation step.
+- Your repo must have OpenCode available and configured, including an agent prompt
+  like `.opencode/agents/engineeringagent.md`.
+- If you are not using OpenCode, use `--implement-command <cmd>` (or `--skip-implement`).
 
 ## Human docs vs agent docs
 

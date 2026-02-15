@@ -161,6 +161,115 @@ def test_run_profile_rejects_gate_without_run_command(tmp_path: Path) -> None:
         run_profile(config=config, profile="loop_fast", cwd=tmp_path)
 
 
+def test_run_profile_calls_timing_hook_for_each_executed_gate(
+    tmp_path: Path,
+    monkeypatch: Any,
+) -> None:
+    import engineeringagent.gates as gates_module
+
+    config = {
+        "profiles": {"loop_fast": ["gate_one", "gate_two"]},
+        "gates": {
+            "gate_one": {"run": "echo one"},
+            "gate_two": {"run": "echo two"},
+        },
+    }
+
+    class FakeProc:
+        def __init__(self) -> None:
+            self.returncode = 0
+            self.stdout = ""
+            self.stderr = ""
+
+    monkeypatch.setattr(gates_module.subprocess, "run", lambda *_a, **_kw: FakeProc())
+
+    times = iter(
+        [
+            10.0,
+            12.0,  # gate_one
+            20.0,
+            25.0,  # gate_two
+        ]
+    )
+    monkeypatch.setattr(gates_module.time, "time", lambda: next(times))
+
+    calls: list[tuple[str, str, int, int]] = []
+
+    def _hook(
+        gate_name: str, command: str, started_epoch_sec: int, ended_epoch_sec: int
+    ) -> None:
+        calls.append((gate_name, command, started_epoch_sec, ended_epoch_sec))
+
+    ok, failed, gate_output = run_profile(
+        config=config,
+        profile="loop_fast",
+        cwd=tmp_path,
+        capture_output=True,
+        timing_hook=_hook,
+    )
+
+    assert ok is True
+    assert failed is None
+    assert (
+        gate_output
+        == "[gate:gate_one] command=echo one\n[gate:gate_two] command=echo two"
+    )
+    assert calls == [
+        ("gate_one", "echo one", 10, 12),
+        ("gate_two", "echo two", 20, 25),
+    ]
+
+
+def test_run_profile_clamps_timing_hook_when_time_goes_backwards(
+    tmp_path: Path,
+    monkeypatch: Any,
+) -> None:
+    import engineeringagent.gates as gates_module
+
+    config = {
+        "profiles": {"loop_fast": ["gate_one"]},
+        "gates": {
+            "gate_one": {"run": "echo one"},
+        },
+    }
+
+    class FakeProc:
+        def __init__(self) -> None:
+            self.returncode = 0
+            self.stdout = ""
+            self.stderr = ""
+
+    monkeypatch.setattr(gates_module.subprocess, "run", lambda *_a, **_kw: FakeProc())
+
+    times = iter(
+        [
+            20.0,
+            10.0,  # time moved backwards
+        ]
+    )
+    monkeypatch.setattr(gates_module.time, "time", lambda: next(times))
+
+    calls: list[tuple[str, str, int, int]] = []
+
+    def _hook(
+        gate_name: str, command: str, started_epoch_sec: int, ended_epoch_sec: int
+    ) -> None:
+        calls.append((gate_name, command, started_epoch_sec, ended_epoch_sec))
+
+    ok, failed, gate_output = run_profile(
+        config=config,
+        profile="loop_fast",
+        cwd=tmp_path,
+        capture_output=True,
+        timing_hook=_hook,
+    )
+
+    assert ok is True
+    assert failed is None
+    assert gate_output == "[gate:gate_one] command=echo one"
+    assert calls == [("gate_one", "echo one", 20, 20)]
+
+
 def test_empty_profile_returns_friendly_success_message(
     tmp_path: Path, capsys: Any
 ) -> None:
