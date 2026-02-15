@@ -323,6 +323,30 @@ def test_validate_reports_invalid_reviewer_contract(tmp_path: Path) -> None:
     )
 
 
+def test_validate_reports_reviewer_prompt_missing_responseformat(
+    tmp_path: Path,
+) -> None:
+    prompts_dir = tmp_path / "harness" / "reviewers" / "prompts"
+    prompts_dir.mkdir(parents=True, exist_ok=True)
+    (prompts_dir / "missing-token.md").write_text(
+        "Return strict JSON only.\n",
+        encoding="utf-8",
+    )
+    (prompts_dir / "has-token.md").write_text(
+        "$responseformat\n\nAssess reviewer output.\n",
+        encoding="utf-8",
+    )
+
+    messages = validate(project_root=tmp_path)
+
+    assert any(
+        "harness/reviewers/prompts/missing-token.md" in message
+        and "must include `$responseformat`" in message
+        for message in messages
+    )
+    assert all("has-token.md" not in message for message in messages)
+
+
 def test_validate_accepts_agents_docs_map_glob_when_it_matches(tmp_path: Path) -> None:
     docs_dir = tmp_path / "docs"
     docs_dir.mkdir(parents=True, exist_ok=True)
@@ -923,6 +947,28 @@ def test_harness_principles_document_importance_first_tdd_wording() -> None:
     assert "most important open subtask" in principles_text
     assert "red -> green -> refactor" in principles_text
     assert "next eligible subtask" not in principles_text
+
+
+def test_reviewer_authoring_doc_link_and_contract_guidance() -> None:
+    guide_path = "docs/principles/reviewer-authoring-guide.md"
+    readme_text = _read_repo_text("README.md")
+
+    assert f"[Reviewer authoring guide]({guide_path})" in readme_text
+
+    guide_text = _read_repo_text(guide_path)
+
+    assert "$responseformat" in guide_text
+    assert "engineeringagent reviewers init" in guide_text
+    assert "harness/reviewers/prompts/" in guide_text
+    assert "migrat" in guide_text.lower()
+
+
+def test_spec_writing_guide_requires_fitness_function_impact_assessment() -> None:
+    guide_text = _read_repo_text("docs/references/spec-writing-llms.md")
+    lowered = guide_text.lower()
+
+    assert "fitness-function impact" in lowered
+    assert '"no fitness-function changes required"' in guide_text
 
 
 def test_validate_reports_missing_agents_docs_map_path(tmp_path: Path) -> None:

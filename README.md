@@ -93,6 +93,7 @@ the git diff before committing anything produced by `init`.
 - `engineeringagent init` does not scaffold reviewer config or prompts; keep reviewer policy repository-owned through committed harness files.
 - Use `uvx engineeringagent reviewers init` to scaffold a baseline config and prompt files under `harness/reviewers/prompts/`.
 - Use `uvx engineeringagent reviewers list|plan|run` to inspect and test reviewer behavior.
+- For human setup and migration guidance, see [Reviewer authoring guide](docs/principles/reviewer-authoring-guide.md).
 - For full contract, policy semantics, decision-envelope examples, and troubleshooting, see [Reviewer agents reference](docs/references/reviewer-agents-llms.md).
 
 ## Core files to know

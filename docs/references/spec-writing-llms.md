@@ -39,6 +39,9 @@
 - Keep acceptance criteria outcome-based and testable.
 - Keep verification commands concrete and executable.
 - Preserve repository language and conventions used in existing FEAT files.
+- Require an explicit fitness-function impact assessment for every new spec.
+  - If fitness functions must change, name the affected rules/scripts and expected updates.
+  - If no fitness updates are needed, record the exact statement "no fitness-function changes required" with a brief justification.
 - For contract/API changes, encode explicit deltas in spec text (typically `constraints`, `implementation_notes`, and `acceptance`) including:
   - changed surfaces (schema/model, CLI/runtime behavior, prompt contract, docs),
   - exact old vs new behavior,

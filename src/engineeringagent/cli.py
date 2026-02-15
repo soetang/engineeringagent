@@ -32,7 +32,12 @@ from .init_scaffold import (
 )
 from .loop import run_loop
 from .opencode.client import start_agent
-from .reviewers import load_reviewer_config, plan_reviewers, run_reviewer
+from .reviewers import (
+    REVIEWER_RESPONSEFORMAT_PLACEHOLDER,
+    load_reviewer_config,
+    plan_reviewers,
+    run_reviewer,
+)
 from .validator import validate
 
 
@@ -442,14 +447,14 @@ def cmd_reviewers_init(args: argparse.Namespace) -> int:
         "harness/reviewers/prompts/code_simplifier.md": "\n".join(
             [
                 "Review only the scoped changed files for readability and maintainability.",
-                "Return strict JSON with decision and summary fields.",
+                REVIEWER_RESPONSEFORMAT_PLACEHOLDER,
                 "",
             ]
         ),
         "harness/reviewers/prompts/readme_process.md": "\n".join(
             [
                 "Review README workflow/process guidance for correctness and clarity.",
-                "Return strict JSON with decision and summary fields.",
+                REVIEWER_RESPONSEFORMAT_PLACEHOLDER,
                 "",
             ]
         ),

@@ -35,7 +35,9 @@ def _write_reviewers_config(tmp_path: Path) -> None:
     )
     prompt_path = tmp_path / "harness" / "reviewers" / "prompts" / "code_simplifier.md"
     prompt_path.parent.mkdir(parents=True, exist_ok=True)
-    prompt_path.write_text("Review code quality.\n", encoding="utf-8")
+    prompt_path.write_text(
+        "$responseformat\n\nReview code quality.\n", encoding="utf-8"
+    )
 
 
 def test_reviewers_subcommands_registered() -> None:
@@ -183,12 +185,16 @@ def test_reviewers_init_writes_baseline_files(tmp_path: Path, capsys: Any) -> No
     assert code == 0
     assert output.strip() == "reviewers init complete: created=3 skipped=0"
     assert (tmp_path / "harness" / "reviewers.yaml").is_file()
-    assert (
+    code_simplifier_prompt = (
         tmp_path / "harness" / "reviewers" / "prompts" / "code_simplifier.md"
-    ).is_file()
-    assert (
+    )
+    readme_process_prompt = (
         tmp_path / "harness" / "reviewers" / "prompts" / "readme_process.md"
-    ).is_file()
+    )
+    assert code_simplifier_prompt.is_file()
+    assert readme_process_prompt.is_file()
+    assert "$responseformat" in code_simplifier_prompt.read_text(encoding="utf-8")
+    assert "$responseformat" in readme_process_prompt.read_text(encoding="utf-8")
 
 
 def test_reviewers_init_skips_existing_files_without_force(

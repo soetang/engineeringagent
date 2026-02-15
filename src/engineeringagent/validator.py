@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict
 
 from .config import resolve_docs_root
 from .fitness import build_rule_catalog
+from .reviewers import REVIEWER_RESPONSEFORMAT_PLACEHOLDER
 from .specs import (
     ValidationIssue,
     feature_contract_issues,
@@ -25,6 +26,7 @@ DONE_ACTIVE_UNSUPPORTED_FILE = ".allow-done-active.txt"
 LEGACY_DONE_OPTIONAL_FIELDS = {"type", "expected_commit_subject"}
 AGENTS_DOCS_MAP_SECTION_TITLE = "Documentation Layout Reference"
 AGENTS_PATH = Path("AGENTS.md")
+REVIEWER_PROMPTS_DIR = Path("harness") / "reviewers" / "prompts"
 
 _BACKTICK_TOKEN_PATTERN = re.compile(r"`([^`]+)`")
 
@@ -54,6 +56,7 @@ def validate(project_root: Path, schema_only: bool = False) -> list[str]:
     potential_features_path = spec_root / "potential_features.yaml"
     gates_path = project_root / "harness" / "gates.yaml"
     reviewers_path = project_root / "harness" / "reviewers.yaml"
+    reviewer_prompts_dir = project_root / REVIEWER_PROMPTS_DIR
 
     files = iter_feature_files(features_dir)
     done_files = iter_feature_files(features_done_dir)
@@ -75,6 +78,7 @@ def validate(project_root: Path, schema_only: bool = False) -> list[str]:
     _append_potential_features_issues(messages, potential_features_path)
     _append_gate_config_issues(messages, gates_path)
     _append_reviewer_config_issues(messages, reviewers_path)
+    _append_reviewer_prompt_issues(messages, reviewer_prompts_dir)
     _append_agents_docs_map_issues(messages, project_root)
     _append_fitness_catalog_issues(messages, project_root)
 
@@ -145,6 +149,30 @@ def _append_gate_config_issues(messages: list[str], gates_path: Path) -> None:
 
 def _append_reviewer_config_issues(messages: list[str], reviewers_path: Path) -> None:
     _append_yaml_contract_issues(messages, reviewers_path, reviewer_contract_issues)
+
+
+def _append_reviewer_prompt_issues(
+    messages: list[str], reviewer_prompts_dir: Path
+) -> None:
+    if not reviewer_prompts_dir.exists():
+        return
+
+    for prompt_path in _iter_reviewer_prompt_files(reviewer_prompts_dir):
+        try:
+            prompt_text = prompt_path.read_text(encoding="utf-8")
+        except OSError as exc:
+            messages.append(f"{prompt_path}: failed to read reviewer prompt: {exc}")
+            continue
+
+        if REVIEWER_RESPONSEFORMAT_PLACEHOLDER in prompt_text:
+            continue
+        messages.append(
+            f"{prompt_path}: reviewer prompt must include `{REVIEWER_RESPONSEFORMAT_PLACEHOLDER}`"
+        )
+
+
+def _iter_reviewer_prompt_files(reviewer_prompts_dir: Path) -> list[Path]:
+    return sorted(reviewer_prompts_dir.glob("*.md"), key=lambda path: path.as_posix())
 
 
 def _append_agents_docs_map_issues(messages: list[str], project_root: Path) -> None:

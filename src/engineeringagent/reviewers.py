@@ -46,6 +46,20 @@ BLOCKING_RETRY_UPDATED_AT_KEY = "blocking_retry_updated_at"
 SANDBOX_MODE_TEMP_WORKTREE_SNAPSHOT = "temp_worktree_snapshot"
 SANDBOX_MODE_CLEAN_ROOM_README_CLI = "clean_room_readme_cli"
 CLEAN_ROOM_ENGINEERINGAGENT_HELPER = ".engineeringagent/bin/engineeringagent"
+REVIEWER_RESPONSEFORMAT_PLACEHOLDER = "$responseformat"
+REVIEWER_RESPONSEFORMAT_MISSING_MESSAGE = (
+    "reviewer prompt must include the $responseformat placeholder"
+)
+REVIEWER_RESPONSEFORMAT_CONTRACT = "\n".join(
+    (
+        "Return exactly one strict JSON object and no other text.",
+        "Required JSON keys: `decision` and `summary`.",
+        "Optional JSON keys: `required_actions`, `confidence`, `scope_notes`.",
+        "`decision` must be one of: `approve`, `request_changes`, `warning`.",
+        "If `required_actions` is present, it must be a list of strings.",
+        "If `confidence` is present, it must be a number in [0, 1].",
+    )
+)
 
 
 class ReviewerSandboxHandle(BaseModel):
@@ -403,11 +417,14 @@ def run_reviewer(
                 )
 
             reviewer_prompt = prompt_path.read_text(encoding="utf-8")
-            composed_prompt = _compose_reviewer_prompt(
-                reviewer_prompt=reviewer_prompt,
-                reviewer_id=reviewer_id,
-                request=run_request,
-            )
+            try:
+                composed_prompt = _compose_reviewer_prompt(
+                    reviewer_prompt=reviewer_prompt,
+                    reviewer_id=reviewer_id,
+                    request=run_request,
+                )
+            except ValueError as exc:
+                return _parser_failure_decision(str(exc))
 
             try:
                 proc = run_request.start_agent_fn(
@@ -631,13 +648,20 @@ def _compose_reviewer_prompt(
     request: ReviewerRunRequest,
 ) -> str:
     """Compose deterministic reviewer context and repository-local prompt text."""
+    reviewer_instructions = reviewer_prompt.strip()
+    if REVIEWER_RESPONSEFORMAT_PLACEHOLDER not in reviewer_instructions:
+        raise ValueError(REVIEWER_RESPONSEFORMAT_MISSING_MESSAGE)
+    reviewer_instructions = reviewer_instructions.replace(
+        REVIEWER_RESPONSEFORMAT_PLACEHOLDER,
+        REVIEWER_RESPONSEFORMAT_CONTRACT,
+    )
+
     changed = "\n".join(f"- {path}" for path in request.changed_paths.paths)
     if not changed:
         changed = "- (none)"
     feedback = request.prior_feedback.strip() if request.prior_feedback else "(none)"
     return (
-        "You are a reviewer agent. Return only JSON with keys decision and summary.\n"
-        "Allowed decisions: approve, request_changes, warning.\n\n"
+        "You are a reviewer agent.\n\n"
         f"Reviewer: {reviewer_id}\n"
         f"Feature ID: {request.feature_id}\n"
         f"Feature path: {request.feature_path}\n"
@@ -646,7 +670,7 @@ def _compose_reviewer_prompt(
         "Prior feedback:\n"
         f"{feedback}\n\n"
         "Reviewer instructions:\n"
-        f"{reviewer_prompt.strip()}\n"
+        f"{reviewer_instructions}\n"
     )
 
 

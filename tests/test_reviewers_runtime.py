@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from types import SimpleNamespace
 
 from engineeringagent.gates import ChangedPathsResult
@@ -11,6 +12,12 @@ from engineeringagent.reviewers import (
     PHASE_MISMATCH_REASON,
     plan_reviewers,
     run_reviewer,
+)
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+CODE_SIMPLIFIER_PROMPT = (
+    REPO_ROOT / "harness" / "reviewers" / "prompts" / "code_simplifier.md"
 )
 
 
@@ -327,7 +334,10 @@ def test_readme_process_plans_only_for_readme_change_on_feature_done() -> None:
 def test_run_reviewer_loads_harness_prompt_and_parses_decision(tmp_path) -> None:
     prompt_path = tmp_path / "harness" / "reviewers" / "prompts" / "code_simplifier.md"
     prompt_path.parent.mkdir(parents=True)
-    prompt_path.write_text("Focus on code readability.", encoding="utf-8")
+    prompt_path.write_text(
+        "$responseformat\n\nFocus on code readability.",
+        encoding="utf-8",
+    )
 
     captured: dict[str, str] = {}
 
@@ -366,6 +376,10 @@ def test_run_reviewer_loads_harness_prompt_and_parses_decision(tmp_path) -> None
     }
     assert captured["project_root"] == str(tmp_path)
     assert captured["agent"] == DEFAULT_OPENCODE_AGENT
+    assert "$responseformat" not in captured["prompt"]
+    assert (
+        "Return exactly one strict JSON object and no other text." in captured["prompt"]
+    )
     assert "Focus on code readability." in captured["prompt"]
     assert "Feature ID: FEAT-050" in captured["prompt"]
 
@@ -373,7 +387,7 @@ def test_run_reviewer_loads_harness_prompt_and_parses_decision(tmp_path) -> None
 def test_run_reviewer_parse_failure_returns_request_changes(tmp_path) -> None:
     prompt_path = tmp_path / "harness" / "reviewers" / "prompts" / "code_simplifier.md"
     prompt_path.parent.mkdir(parents=True)
-    prompt_path.write_text("Return JSON only.", encoding="utf-8")
+    prompt_path.write_text("$responseformat\n\nReturn JSON only.", encoding="utf-8")
 
     def _start_agent(_project_root, _prompt, *, agent=DEFAULT_OPENCODE_AGENT):
         del agent
@@ -395,3 +409,39 @@ def test_run_reviewer_parse_failure_returns_request_changes(tmp_path) -> None:
 
     assert decision["decision"] == "request_changes"
     assert decision["summary"].startswith(PARSER_FAILURE_SUMMARY_PREFIX)
+
+
+def test_run_reviewer_requires_responseformat_placeholder(tmp_path) -> None:
+    prompt_path = tmp_path / "harness" / "reviewers" / "prompts" / "code_simplifier.md"
+    prompt_path.parent.mkdir(parents=True)
+    prompt_path.write_text("Focus on code readability.", encoding="utf-8")
+
+    def _start_agent(_project_root, _prompt, *, agent=DEFAULT_OPENCODE_AGENT):
+        raise AssertionError(f"start_agent_fn should not run; received agent={agent}")
+
+    decision = run_reviewer(
+        tmp_path,
+        "code_simplifier",
+        {
+            "prompt_file": "harness/reviewers/prompts/code_simplifier.md",
+            "trigger": {"phase": "iteration_end"},
+        },
+        feature_id="FEAT-050",
+        feature_path=tmp_path / "docs/spec/features/FEAT-050.yaml",
+        changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
+        prior_feedback=None,
+        start_agent_fn=_start_agent,
+    )
+
+    assert decision["decision"] == "request_changes"
+    assert decision["summary"] == (
+        f"{PARSER_FAILURE_SUMMARY_PREFIX}: "
+        "reviewer prompt must include the $responseformat placeholder"
+    )
+
+
+def test_repository_code_simplifier_prompt_uses_responseformat_contract() -> None:
+    prompt_text = CODE_SIMPLIFIER_PROMPT.read_text(encoding="utf-8")
+
+    assert "$responseformat" in prompt_text
+    assert "Return exactly one strict JSON object and no other text" not in prompt_text

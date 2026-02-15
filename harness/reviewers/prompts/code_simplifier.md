@@ -52,13 +52,7 @@ You will analyze recently modified code and apply refinements that:
 
 Output requirements (since you cannot edit files):
 
-- Return exactly one strict JSON object and no other text (no markdown fences, no prose before/after).
-- Required JSON keys: `decision` and `summary`.
-- Optional JSON keys: `required_actions`, `confidence`, `scope_notes`.
-- `decision` must be one of: `approve`, `request_changes`, `warning`.
-- If `decision` is `warning` or `request_changes`, include at least one actionable entry in `required_actions`.
-- If `confidence` is present, it must be a number in `[0, 1]`.
-- Keep `summary` concise and specific to the reviewed scope.
+$responseformat
 
 - Provide concrete, minimal change suggestions with file references and small before/after snippets (or patch-style diffs)
 - Keep suggestions scoped to touched code unless asked otherwise
