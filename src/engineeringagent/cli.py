@@ -327,7 +327,6 @@ def cmd_run(args: argparse.Namespace) -> int:
         run_all=args.all,
         gate_profile=getattr(args, "gate_profile", "loop_fast"),
         implement_command=args.implement_command,
-        opencode_prompt=getattr(args, "opencode_prompt", None),
         skip_implement=args.skip_implement,
         dry_run=args.dry_run,
         max_iterations=args.max_iterations,
@@ -808,7 +807,6 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.set_defaults(
         func=cmd_run,
         gate_profile="loop_fast",
-        opencode_prompt=None,
     )
 
     fitness_parser = sub.add_parser(

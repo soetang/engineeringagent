@@ -98,7 +98,6 @@ class _SelectedFeatureIterationConfig(BaseModel):
 
     gate_profile: str
     implement_command: str | None
-    opencode_prompt: str | None
     skip_implement: bool
     max_iterations: int
     verbose_output: bool
@@ -169,7 +168,6 @@ def run_implement_step(*args: Any, **kwargs: Any) -> tuple[bool, str | None, str
         feature: Loaded feature mapping.
         feature_path: Path to feature YAML used in prompt generation.
         implement_command: Optional custom shell command override.
-        opencode_prompt: Optional prompt override for OpenCode execution.
         skip_implement: Whether to skip implementation and run gates only.
         hook_feedback: Optional previous hook output to address on retry.
         verbose_output: Whether run-loop should stream full command output.
@@ -177,6 +175,10 @@ def run_implement_step(*args: Any, **kwargs: Any) -> tuple[bool, str | None, str
     Returns:
         Tuple of success flag, failure code, and combined command output.
     """
+    if "opencode_prompt" in kwargs:
+        kwargs = dict(kwargs)
+        kwargs.pop("opencode_prompt", None)
+
     bound = bind_facade_call(RUN_IMPLEMENT_STEP_SIGNATURE, args, kwargs)
     implement_inputs = ImplementStepInputs(**bound)
     return run_implement_step_from_inputs(
@@ -357,6 +359,10 @@ def _terminal_iteration_failure_exit_code(outcome: IterationOutcome) -> int | No
 
 
 def _run_feature_iteration(*args: Any, **kwargs: Any) -> IterationOutcome:
+    if "opencode_prompt" in kwargs:
+        kwargs = dict(kwargs)
+        kwargs.pop("opencode_prompt", None)
+
     bound = bind_facade_call(RUN_FEATURE_ITERATION_SIGNATURE, args, kwargs)
     iteration_inputs = FeatureIterationInputs(**bound)
     return _run_feature_iteration_with_inputs(iteration_inputs)
@@ -555,7 +561,6 @@ def _run_selected_feature_iterations(
                 feature_path=selected_feature_path,
                 gate_profile=config.gate_profile,
                 implement_command=config.implement_command,
-                opencode_prompt=config.opencode_prompt,
                 skip_implement=config.skip_implement,
                 attempt=total_iterations,
                 hook_feedback=retry_feedback_by_path.get(selected_feature_path),
@@ -590,7 +595,6 @@ def run_loop(*args: Any, **kwargs: Any) -> int:
         feature_paths: One or more feature spec file paths.
         gate_profile: Gate profile name to run after implementation.
         implement_command: Optional custom shell command for implementation.
-        opencode_prompt: Optional prompt override for OpenCode implementation.
         skip_implement: Whether to skip implementation and run gates only.
         dry_run: Whether to resolve and report selection without execution.
         run_all: Whether to auto-discover active feature files.
@@ -601,6 +605,10 @@ def run_loop(*args: Any, **kwargs: Any) -> int:
     Returns:
         Process exit code where 0 indicates success.
     """
+    if "opencode_prompt" in kwargs:
+        kwargs = dict(kwargs)
+        kwargs.pop("opencode_prompt", None)
+
     inputs = RunLoopControllerInputs(
         **bind_facade_call(RUN_LOOP_SIGNATURE, args, kwargs)
     )
@@ -611,7 +619,6 @@ def run_loop(*args: Any, **kwargs: Any) -> int:
         return _SelectedFeatureIterationConfig(
             gate_profile=controller_inputs.gate_profile,
             implement_command=controller_inputs.implement_command,
-            opencode_prompt=controller_inputs.opencode_prompt,
             skip_implement=controller_inputs.skip_implement,
             max_iterations=controller_inputs.max_iterations,
             verbose_output=controller_inputs.verbose_output,

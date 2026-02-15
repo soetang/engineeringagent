@@ -17,7 +17,6 @@ class RunLoopControllerInputs(BaseModel):
     feature_paths: Sequence[str | Path]
     gate_profile: str
     implement_command: str | None
-    opencode_prompt: str | None
     skip_implement: bool
     dry_run: bool
     run_all: bool

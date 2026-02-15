@@ -11,7 +11,6 @@ from engineeringagent.opencode.client import DEFAULT_OPENCODE_AGENT
 from engineeringagent.opencode_permissions import output_has_permission_rejection
 from engineeringagent.prompts import (
     build_implementation_prompt,
-    inject_retry_feedback,
 )
 
 
@@ -91,11 +90,6 @@ def _run_default_opencode_implement(
 
 
 def _build_implement_prompt(implement_inputs: ImplementStepInputs) -> str:
-    if implement_inputs.opencode_prompt:
-        return inject_retry_feedback(
-            implement_inputs.opencode_prompt,
-            implement_inputs.hook_feedback,
-        )
     return build_implementation_prompt(
         feature=implement_inputs.feature,
         feature_path=implement_inputs.feature_path,

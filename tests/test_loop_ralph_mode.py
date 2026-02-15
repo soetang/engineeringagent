@@ -1289,12 +1289,11 @@ def test_run_loop_all_selected_feature_moved_to_features_done_continues(
         feature: dict[str, Any],
         feature_path: Path,
         implement_command: str | None,
-        opencode_prompt: str | None,
         skip_implement: bool,
         hook_feedback: str | None,
         verbose_output: bool,
     ) -> tuple[bool, str | None, str]:
-        del implement_command, opencode_prompt, skip_implement, hook_feedback
+        del implement_command, skip_implement, hook_feedback
         del verbose_output
         if str(feature.get("id", "")) == "FEAT-900":
             _move_feature_to_done(project_root, feature_path)
