@@ -130,9 +130,7 @@ def test_cli_surface_inventory_option_spellings() -> None:
         "-h",
         "--help",
         "--all",
-        "--gate-profile",
         "--implement-command",
-        "--opencode-prompt",
         "--skip-implement",
         "--dry-run",
         "--max-iterations",
@@ -169,7 +167,6 @@ def test_cli_surface_inventory_option_spellings() -> None:
         "--scaffold-profile",
         "--docs-mode",
         "--scaffold-docs-dir",
-        "--agents-mode",
     }
 
 
@@ -323,8 +320,6 @@ def test_main_run_command_uses_typer_handler(monkeypatch: Any) -> None:
                 "run",
                 "docs/spec/features/FEAT-900.yaml",
                 "--all",
-                "--gate-profile",
-                "custom",
                 "--skip-implement",
                 "--dry-run",
                 "--max-iterations",
@@ -339,7 +334,7 @@ def test_main_run_command_uses_typer_handler(monkeypatch: Any) -> None:
         "project_root": "repo",
         "feature_paths": ["docs/spec/features/FEAT-900.yaml"],
         "all": True,
-        "gate_profile": "custom",
+        "gate_profile": "loop_fast",
         "skip_implement": True,
         "dry_run": True,
         "max_iterations": 7,
@@ -360,7 +355,6 @@ def test_main_init_command_uses_typer_handler(monkeypatch: Any) -> None:
         recorded["scaffold_profile"] = args.scaffold_profile
         recorded["docs_mode"] = args.docs_mode
         recorded["scaffold_docs_dir"] = args.scaffold_docs_dir
-        recorded["agents_mode"] = args.agents_mode
         return 0
 
     monkeypatch.setattr(cli_module, "_run_legacy_cli_command", _fail_if_forwarded)
@@ -379,8 +373,6 @@ def test_main_init_command_uses_typer_handler(monkeypatch: Any) -> None:
                 "separate",
                 "--scaffold-docs-dir",
                 "docs.custom",
-                "--agents-mode",
-                "preserve",
             ]
         )
 
@@ -391,7 +383,6 @@ def test_main_init_command_uses_typer_handler(monkeypatch: Any) -> None:
         "scaffold_profile": "python_uv",
         "docs_mode": "separate",
         "scaffold_docs_dir": "docs.custom",
-        "agents_mode": "preserve",
     }
 
 
@@ -458,7 +449,24 @@ def test_fitness_run_json_includes_remediation_for_failures(
     )
     _write_manifest(
         tmp_path,
-        [{"builtin": "architecture.loop-subprocess-boundary"}],
+        [
+            {
+                "rule_id": "architecture.loop-subprocess-boundary",
+                "name": "Loop subprocess boundary",
+                "summary": "Enforce subprocess allowlist boundaries for command adapters/clients.",
+                "rationale": "Centralizes command execution paths for consistent control.",
+                "remediation": "Move OpenCode command execution to engineeringagent.opencode.client and Git command execution to engineeringagent.git.client.",
+                "scope": "src/engineeringagent",
+                "severity": "error",
+                "side_effect_free": True,
+                "adapter": "command",
+                "command": [
+                    "sh",
+                    "-c",
+                    'printf \'%s\\n\' \'{"contract_version":"1.0","rule_id":"architecture.loop-subprocess-boundary","status":"fail","severity":"error","summary":"failed","violations":["x"]}\'',
+                ],
+            }
+        ],
     )
 
     parser = build_parser()

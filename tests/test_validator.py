@@ -8,7 +8,6 @@ import pytest
 import tomli
 import yaml
 
-from engineeringagent.fitness import DEPENDENCY_DIRECTIONALITY_RULE_ID
 from engineeringagent.specs import feature_schema_from_model
 from engineeringagent.validator import _iter_agents_docs_map_references, validate
 
@@ -967,7 +966,7 @@ def test_validate_reports_agents_docs_map_section_with_no_references(
     ]
 
 
-def test_validate_reports_unknown_builtin_fitness_reference(tmp_path: Path) -> None:
+def test_validate_rejects_builtin_manifest_references(tmp_path: Path) -> None:
     manifest_path = tmp_path / "harness" / "fitness-functions" / "rules.yaml"
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(
@@ -983,22 +982,31 @@ def test_validate_reports_unknown_builtin_fitness_reference(tmp_path: Path) -> N
 
     messages = validate(project_root=tmp_path)
 
-    assert messages == [
-        (
-            "unknown builtin fitness rule reference 'unknown.rule' at "
-            f"{manifest_path}:rules[0]"
-        )
-    ]
+    assert len(messages) == 1
+    assert "builtin manifest references are no longer supported" in messages[0]
 
 
-def test_validate_accepts_known_builtin_fitness_reference(tmp_path: Path) -> None:
+def test_validate_accepts_command_fitness_manifest_references(tmp_path: Path) -> None:
     manifest_path = tmp_path / "harness" / "fitness-functions" / "rules.yaml"
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(
         yaml.safe_dump(
             {
                 "contract_version": "1.0",
-                "rules": [{"builtin": DEPENDENCY_DIRECTIONALITY_RULE_ID}],
+                "rules": [
+                    {
+                        "rule_id": "custom.docs-links",
+                        "name": "Docs links check",
+                        "summary": "Validate markdown links resolve.",
+                        "rationale": "Broken links hide docs regressions.",
+                        "remediation": "Update stale links.",
+                        "scope": "docs",
+                        "severity": "warning",
+                        "side_effect_free": True,
+                        "adapter": "command",
+                        "command": ["uv", "run", "python", "scripts/check_docs.py"],
+                    }
+                ],
             },
             sort_keys=False,
         ),

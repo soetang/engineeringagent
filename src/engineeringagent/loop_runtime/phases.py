@@ -173,7 +173,7 @@ def run_verification_phase(
     )
 
 
-def run_reviewer_phase(
+def run_reviewer_phase(  # noqa: C901
     iteration_inputs: FeatureIterationInputs,
     feature: dict[str, Any] | None,
     archived_in_iteration: bool,

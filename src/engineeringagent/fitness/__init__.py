@@ -12,16 +12,6 @@ from .contracts import (
 )
 from .adapters import execute_rule_definition
 from .catalog import render_rule_catalog_markdown, write_rule_catalog_markdown
-from .builtin_rules import (
-    DEPENDENCY_DIRECTIONALITY_RULE_ID,
-    LOOP_SUBPROCESS_BOUNDARY_RULE_ID,
-    PROMPT_LOCALITY_RULE_ID,
-    SCAFFOLD_TEMPLATE_LOCALITY_RULE_ID,
-    evaluate_dependency_directionality,
-    evaluate_loop_subprocess_boundary,
-    evaluate_prompt_locality,
-    evaluate_scaffold_template_locality,
-)
 from .registry import (
     DEFAULT_CUSTOM_RULE_MANIFEST,
     FitnessRuleDefinition,
@@ -46,14 +36,6 @@ __all__ = [
     "execute_rule_definition",
     "render_rule_catalog_markdown",
     "write_rule_catalog_markdown",
-    "DEPENDENCY_DIRECTIONALITY_RULE_ID",
-    "LOOP_SUBPROCESS_BOUNDARY_RULE_ID",
-    "PROMPT_LOCALITY_RULE_ID",
-    "SCAFFOLD_TEMPLATE_LOCALITY_RULE_ID",
-    "evaluate_dependency_directionality",
-    "evaluate_loop_subprocess_boundary",
-    "evaluate_prompt_locality",
-    "evaluate_scaffold_template_locality",
     "build_rule_catalog",
     "custom_manifest_path",
     "load_custom_rule_definitions",

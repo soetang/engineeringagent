@@ -1,0 +1,116 @@
+rules:
+  - id: architecture.loop-subprocess-boundary.module-subprocess-calls
+    languages:
+      - python
+    severity: ERROR
+    message: >-
+      Subprocess invocation outside allowlisted modules; move this command call to
+      an approved client/adapter module.
+    paths:
+      include:
+        - src/engineeringagent/**/*.py
+      exclude:
+        - src/engineeringagent/commit_messages.py
+        - src/engineeringagent/fitness/adapters.py
+        - src/engineeringagent/gates.py
+        - src/engineeringagent/git/client.py
+        - src/engineeringagent/opencode/client.py
+    pattern-either:
+      - pattern: subprocess.run(...)
+      - patterns:
+          - pattern-inside: |
+              import subprocess as $SUBPROCESS
+              ...
+          - pattern: $SUBPROCESS.run(...)
+      - pattern: subprocess.Popen(...)
+      - patterns:
+          - pattern-inside: |
+              import subprocess as $SUBPROCESS
+              ...
+          - pattern: $SUBPROCESS.Popen(...)
+      - pattern: subprocess.call(...)
+      - patterns:
+          - pattern-inside: |
+              import subprocess as $SUBPROCESS
+              ...
+          - pattern: $SUBPROCESS.call(...)
+      - pattern: subprocess.check_call(...)
+      - patterns:
+          - pattern-inside: |
+              import subprocess as $SUBPROCESS
+              ...
+          - pattern: $SUBPROCESS.check_call(...)
+      - pattern: subprocess.check_output(...)
+      - patterns:
+          - pattern-inside: |
+              import subprocess as $SUBPROCESS
+              ...
+          - pattern: $SUBPROCESS.check_output(...)
+
+  - id: architecture.loop-subprocess-boundary.direct-subprocess-import-calls
+    languages:
+      - python
+    severity: ERROR
+    message: >-
+      Subprocess invocation outside allowlisted modules; move this command call to
+      an approved client/adapter module.
+    paths:
+      include:
+        - src/engineeringagent/**/*.py
+      exclude:
+        - src/engineeringagent/commit_messages.py
+        - src/engineeringagent/fitness/adapters.py
+        - src/engineeringagent/gates.py
+        - src/engineeringagent/git/client.py
+        - src/engineeringagent/opencode/client.py
+    pattern-either:
+      - patterns:
+          - pattern-inside: |
+              from subprocess import run
+              ...
+          - pattern: run(...)
+      - patterns:
+          - pattern-inside: |
+              from subprocess import run as $RUN_ALIAS
+              ...
+          - pattern: $RUN_ALIAS(...)
+      - patterns:
+          - pattern-inside: |
+              from subprocess import Popen
+              ...
+          - pattern: Popen(...)
+      - patterns:
+          - pattern-inside: |
+              from subprocess import Popen as $POPEN_ALIAS
+              ...
+          - pattern: $POPEN_ALIAS(...)
+      - patterns:
+          - pattern-inside: |
+              from subprocess import call
+              ...
+          - pattern: call(...)
+      - patterns:
+          - pattern-inside: |
+              from subprocess import call as $CALL_ALIAS
+              ...
+          - pattern: $CALL_ALIAS(...)
+      - patterns:
+          - pattern-inside: |
+              from subprocess import check_call
+              ...
+          - pattern: check_call(...)
+      - patterns:
+          - pattern-inside: |
+              from subprocess import check_call as $CHECK_CALL_ALIAS
+              ...
+          - pattern: $CHECK_CALL_ALIAS(...)
+      - patterns:
+          - pattern-inside: |
+              from subprocess import check_output
+              ...
+          - pattern: check_output(...)
+      - patterns:
+          - pattern-inside: |
+              from subprocess import check_output as $CHECK_OUTPUT_ALIAS
+              ...
+          - pattern: $CHECK_OUTPUT_ALIAS(...)

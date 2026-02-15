@@ -190,20 +190,17 @@ def test_validate_and_run_all_use_separate_docs_root(
     )
 
 
-def test_init_agents_conflict_overwrite(tmp_path: Path, capsys: Any) -> None:
+def test_init_agents_conflict_overwrite(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: Any,
+) -> None:
     """Verify init can explicitly overwrite an existing AGENTS.md."""
     (tmp_path / "AGENTS.md").write_text("user guidance\n", encoding="utf-8")
+    monkeypatch.setattr("builtins.input", lambda _prompt: "overwrite")
 
     parser = build_parser()
-    args = parser.parse_args(
-        [
-            "--project-root",
-            str(tmp_path),
-            "init",
-            "--agents-mode",
-            "overwrite",
-        ]
-    )
+    args = parser.parse_args(["--project-root", str(tmp_path), "init"])
 
     code = args.func(args)
     output = capsys.readouterr().out
@@ -217,21 +214,15 @@ def test_init_agents_conflict_overwrite(tmp_path: Path, capsys: Any) -> None:
 
 def test_init_agents_conflict_preserve_and_create_merge_spec(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
     capsys: Any,
 ) -> None:
     """Verify preserve mode renames AGENTS and creates a merge follow-up spec."""
     (tmp_path / "AGENTS.md").write_text("legacy guidance\n", encoding="utf-8")
+    monkeypatch.setattr("builtins.input", lambda _prompt: "preserve")
 
     parser = build_parser()
-    args = parser.parse_args(
-        [
-            "--project-root",
-            str(tmp_path),
-            "init",
-            "--agents-mode",
-            "preserve",
-        ]
-    )
+    args = parser.parse_args(["--project-root", str(tmp_path), "init"])
 
     code = args.func(args)
     output = capsys.readouterr().out
@@ -257,20 +248,17 @@ def test_init_agents_conflict_preserve_and_create_merge_spec(
     assert "AGENTS.user.md" in merge_spec_path.read_text(encoding="utf-8")
 
 
-def test_init_agents_conflict_abort(tmp_path: Path, capsys: Any) -> None:
+def test_init_agents_conflict_abort(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: Any,
+) -> None:
     """Verify abort mode keeps AGENTS and exits without scaffold writes."""
     (tmp_path / "AGENTS.md").write_text("do not touch\n", encoding="utf-8")
+    monkeypatch.setattr("builtins.input", lambda _prompt: "abort")
 
     parser = build_parser()
-    args = parser.parse_args(
-        [
-            "--project-root",
-            str(tmp_path),
-            "init",
-            "--agents-mode",
-            "abort",
-        ]
-    )
+    args = parser.parse_args(["--project-root", str(tmp_path), "init"])
 
     code = args.func(args)
     output = capsys.readouterr().out
@@ -337,14 +325,13 @@ def test_init_writes_precommit_and_empty_gate_profiles(
             encoding="utf-8"
         )
     )
-    assert fitness_manifest == {
-        "contract_version": "1.0",
-        "rules": [
-            {"builtin": "architecture.dep-directionality"},
-            {"builtin": "architecture.loop-subprocess-boundary"},
-            {"builtin": "architecture.scaffold-template-locality"},
-        ],
-    }
+    assert fitness_manifest["contract_version"] == "1.0"
+    assert [rule["rule_id"] for rule in fitness_manifest["rules"]] == [
+        "architecture.dep-directionality",
+        "architecture.loop-subprocess-boundary",
+        "architecture.scaffold-template-locality",
+    ]
+    assert all(rule["adapter"] == "command" for rule in fitness_manifest["rules"])
 
 
 def test_init_defaults_to_core_language_agnostic_profile(

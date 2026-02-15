@@ -55,6 +55,16 @@ class ReviewerSandboxHandle(BaseModel):
     cleanup: Callable[[], None]
 
 
+class ReviewerRunRequest(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    feature_id: str
+    feature_path: Path
+    changed_paths: ChangedPathsResult
+    prior_feedback: str | None
+    start_agent_fn: Callable[..., Any]
+
+
 def _now_iso() -> str:
     return (
         datetime.now(timezone.utc)
@@ -373,14 +383,11 @@ def run_reviewer(
     project_root: Path,
     reviewer_id: str,
     reviewer: dict[str, Any],
-    *,
-    feature_id: str,
-    feature_path: Path,
-    changed_paths: ChangedPathsResult,
-    prior_feedback: str | None,
-    start_agent_fn: Callable[..., Any],
+    request: ReviewerRunRequest | None = None,
+    **legacy_request_kwargs: Any,
 ) -> dict[str, Any]:
     """Run one reviewer and return a deterministic decision envelope."""
+    run_request = _coerce_reviewer_run_request(request, legacy_request_kwargs)
     try:
         with _reviewer_execution_root(
             project_root, reviewer_id, reviewer
@@ -399,14 +406,11 @@ def run_reviewer(
             composed_prompt = _compose_reviewer_prompt(
                 reviewer_prompt=reviewer_prompt,
                 reviewer_id=reviewer_id,
-                feature_id=feature_id,
-                feature_path=feature_path,
-                changed_paths=changed_paths,
-                prior_feedback=prior_feedback,
+                request=run_request,
             )
 
             try:
-                proc = start_agent_fn(
+                proc = run_request.start_agent_fn(
                     execution_root,
                     composed_prompt,
                     agent=DEFAULT_OPENCODE_AGENT,
@@ -424,6 +428,23 @@ def run_reviewer(
     if not parse_input:
         return _parser_failure_decision("reviewer produced empty output")
     return parse_reviewer_decision(parse_input)
+
+
+def _coerce_reviewer_run_request(
+    request: ReviewerRunRequest | None,
+    legacy_request_kwargs: dict[str, Any],
+) -> ReviewerRunRequest:
+    if request is not None:
+        if legacy_request_kwargs:
+            return ReviewerRunRequest.model_validate(
+                {
+                    **request.model_dump(),
+                    **legacy_request_kwargs,
+                }
+            )
+        return request
+
+    return ReviewerRunRequest.model_validate(legacy_request_kwargs)
 
 
 def build_reviewer_sandbox(
@@ -540,7 +561,7 @@ def _write_clean_room_cli_helper(*, project_root: Path, execution_root: Path) ->
     helper_path.chmod(0o755)
 
 
-def parse_reviewer_decision(output: str) -> dict[str, Any]:
+def parse_reviewer_decision(output: str) -> dict[str, Any]:  # noqa: C901
     """Parse strict reviewer decision JSON; return request_changes on failures."""
     raw = output.strip()
     if not raw:
@@ -607,22 +628,19 @@ def _compose_reviewer_prompt(
     *,
     reviewer_prompt: str,
     reviewer_id: str,
-    feature_id: str,
-    feature_path: Path,
-    changed_paths: ChangedPathsResult,
-    prior_feedback: str | None,
+    request: ReviewerRunRequest,
 ) -> str:
     """Compose deterministic reviewer context and repository-local prompt text."""
-    changed = "\n".join(f"- {path}" for path in changed_paths.paths)
+    changed = "\n".join(f"- {path}" for path in request.changed_paths.paths)
     if not changed:
         changed = "- (none)"
-    feedback = prior_feedback.strip() if prior_feedback else "(none)"
+    feedback = request.prior_feedback.strip() if request.prior_feedback else "(none)"
     return (
         "You are a reviewer agent. Return only JSON with keys decision and summary.\n"
         "Allowed decisions: approve, request_changes, warning.\n\n"
         f"Reviewer: {reviewer_id}\n"
-        f"Feature ID: {feature_id}\n"
-        f"Feature path: {feature_path}\n"
+        f"Feature ID: {request.feature_id}\n"
+        f"Feature path: {request.feature_path}\n"
         "Changed paths:\n"
         f"{changed}\n\n"
         "Prior feedback:\n"

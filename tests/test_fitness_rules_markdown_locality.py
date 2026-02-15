@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
+import subprocess
+import sys
 from typing import cast
 
-from engineeringagent.fitness.builtin_rules import (
-    MARKDOWN_LOCALITY_REFERENCE_COVERAGE_RULE_ID,
-    evaluate_markdown_locality_reference_coverage,
+SCRIPT_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "harness"
+    / "fitness-functions"
+    / "check_markdown_locality_reference_coverage.py"
 )
 
 
@@ -21,12 +26,26 @@ def _violations(result: dict[str, object]) -> list[str]:
     return cast(list[str], result["violations"])
 
 
-def test_markdown_locality_rule_uses_expected_rule_id() -> None:
-    """Expose the stable built-in rule id for markdown locality checks."""
-    assert (
-        MARKDOWN_LOCALITY_REFERENCE_COVERAGE_RULE_ID
-        == "architecture.markdown-locality-reference-coverage"
+def _run_checker(
+    project_root: Path,
+) -> tuple[subprocess.CompletedProcess[str], dict[str, object]]:
+    proc = subprocess.run(
+        [sys.executable, str(SCRIPT_PATH)],
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+        check=False,
     )
+    payload = json.loads(proc.stdout)
+    return proc, payload
+
+
+def test_markdown_locality_rule_uses_expected_rule_id() -> None:
+    """Emit the stable rule id from the harness command adapter."""
+    proc, payload = _run_checker(Path(__file__).resolve().parents[1])
+
+    assert proc.returncode == 0
+    assert payload["rule_id"] == "architecture.markdown-locality-reference-coverage"
 
 
 def test_markdown_locality_rule_passes_for_approved_markdown_locations(
@@ -51,8 +70,9 @@ def test_markdown_locality_rule_passes_for_approved_markdown_locations(
         ),
     )
 
-    result = evaluate_markdown_locality_reference_coverage(tmp_path)
+    proc, result = _run_checker(tmp_path)
 
+    assert proc.returncode == 0
     assert result["status"] == "pass"
     assert _violations(result) == []
 
@@ -65,9 +85,10 @@ def test_markdown_locality_rule_fails_for_markdown_outside_approved_roots(
     _write_markdown(tmp_path, "notes/design.md")
     _write_markdown(tmp_path, "docs/refs.md", "CHANGELOG.md\nnotes/design.md\n")
 
-    result = evaluate_markdown_locality_reference_coverage(tmp_path)
+    proc, result = _run_checker(tmp_path)
     violations = _violations(result)
 
+    assert proc.returncode == 0
     assert result["status"] == "fail"
     assert violations == sorted(violations)
     assert violations[0].startswith("CHANGELOG.md:1")
@@ -87,8 +108,9 @@ def test_markdown_locality_rule_ignores_generated_and_cache_directories(
     _write_markdown(tmp_path, ".pytest_cache/cache.md")
     _write_markdown(tmp_path, "__pycache__/cache.md")
 
-    result = evaluate_markdown_locality_reference_coverage(tmp_path)
+    proc, result = _run_checker(tmp_path)
 
+    assert proc.returncode == 0
     assert result["status"] == "pass"
     assert _violations(result) == []
 
@@ -100,7 +122,8 @@ def test_markdown_locality_rule_ignores_tooling_and_vendor_directories(
     _write_markdown(tmp_path, ".opencode/agents/build.md")
     _write_markdown(tmp_path, ".opencode/node_modules/zod/README.md")
 
-    result = evaluate_markdown_locality_reference_coverage(tmp_path)
+    proc, result = _run_checker(tmp_path)
 
+    assert proc.returncode == 0
     assert result["status"] == "pass"
     assert _violations(result) == []

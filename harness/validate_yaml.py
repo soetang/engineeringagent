@@ -6,11 +6,29 @@ from pathlib import Path
 import yaml
 
 
+_IGNORED_DIRECTORIES = {
+    ".git",
+    ".opencode",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".venv",
+    "__pycache__",
+    "dist",
+    "node_modules",
+    "output",
+    "tmp",
+}
+
+
 def _iter_yaml_files(project_root: Path) -> list[Path]:
     files: list[Path] = []
     for pattern in ("*.yaml", "*.yml"):
         files.extend(project_root.rglob(pattern))
-    return sorted(path for path in files if ".git" not in path.parts)
+    return sorted(
+        path
+        for path in files
+        if not any(part in _IGNORED_DIRECTORIES for part in path.parts)
+    )
 
 
 def _validate_yaml(path: Path) -> str | None:
@@ -29,7 +47,9 @@ def _validate_yaml(path: Path) -> str | None:
 
 def main() -> int:
     project_root = Path(__file__).resolve().parents[1]
-    errors = [err for path in _iter_yaml_files(project_root) if (err := _validate_yaml(path))]
+    errors = [
+        err for path in _iter_yaml_files(project_root) if (err := _validate_yaml(path))
+    ]
     if errors:
         for err in errors:
             print(err)

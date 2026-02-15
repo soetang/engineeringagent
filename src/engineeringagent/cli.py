@@ -325,9 +325,9 @@ def cmd_run(args: argparse.Namespace) -> int:
         project_root=project_root,
         feature_paths=args.feature_paths,
         run_all=args.all,
-        gate_profile=args.gate_profile,
+        gate_profile=getattr(args, "gate_profile", "loop_fast"),
         implement_command=args.implement_command,
-        opencode_prompt=args.opencode_prompt,
+        opencode_prompt=getattr(args, "opencode_prompt", None),
         skip_implement=args.skip_implement,
         dry_run=args.dry_run,
         max_iterations=args.max_iterations,
@@ -605,7 +605,7 @@ def cmd_init(args: argparse.Namespace) -> int:
 
     resolved_agents_mode, error = _resolve_init_agents_mode(
         project_root=project_root,
-        agents_mode=args.agents_mode,
+        agents_mode=getattr(args, "agents_mode", None),
     )
     if error is not None or resolved_agents_mode is None:
         print(error)
@@ -780,15 +780,8 @@ def build_parser() -> argparse.ArgumentParser:
         help="auto-discover active feature specs under docs/spec/features",
     )
     run_parser.add_argument(
-        "--gate-profile", default="loop_fast", help="gate profile name"
-    )
-    run_parser.add_argument(
         "--implement-command",
         help="custom implementation command; defaults to opencode build-agent run",
-    )
-    run_parser.add_argument(
-        "--opencode-prompt",
-        help="override generated opencode prompt when using default implementer",
     )
     run_parser.add_argument(
         "--skip-implement",
@@ -812,7 +805,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="stream full implement and gate output in terminal",
     )
-    run_parser.set_defaults(func=cmd_run)
+    run_parser.set_defaults(
+        func=cmd_run,
+        gate_profile="loop_fast",
+        opencode_prompt=None,
+    )
 
     fitness_parser = sub.add_parser(
         "fitness", help="list and run fitness-function rules"
@@ -897,12 +894,7 @@ def build_parser() -> argparse.ArgumentParser:
         default="docs.engineeringagent",
         help="docs directory to scaffold when using docs-mode=separate",
     )
-    init_parser.add_argument(
-        "--agents-mode",
-        choices=["overwrite", "preserve", "abort"],
-        help="AGENTS conflict mode when AGENTS.md already exists",
-    )
-    init_parser.set_defaults(func=cmd_init)
+    init_parser.set_defaults(func=cmd_init, agents_mode=None)
 
     return parser
 
@@ -934,6 +926,21 @@ def _dispatch_legacy_typer_command(ctx: typer.Context, command: str) -> None:
         project_root=project_root,
     )
     raise typer.Exit(code=code)
+
+
+def _dispatch_typer_command_with_argparse(ctx: typer.Context, command: str) -> None:
+    """Parse command args via argparse and execute selected handler."""
+    parser = build_parser()
+    project_root = _project_root_from_typer_context(ctx)
+    parsed_args = parser.parse_args(
+        [
+            "--project-root",
+            project_root,
+            command,
+            *list(ctx.args),
+        ]
+    )
+    raise typer.Exit(code=parsed_args.func(parsed_args))
 
 
 def _project_root_from_typer_context(ctx: typer.Context) -> str:
@@ -1144,69 +1151,13 @@ def build_typer_app() -> typer.Typer:
         help_text="initialize, inspect, and run harness reviewers",
     )
 
-    @app.command("run", help="run feature loops from spec file paths")
-    def _run_command(
-        ctx: typer.Context,
-        feature_paths: list[str] | None = typer.Argument(
-            None,
-            help="feature spec file paths",
-        ),
-        run_all: bool = typer.Option(
-            False,
-            "--all",
-            help="auto-discover active feature specs under docs/spec/features",
-        ),
-        gate_profile: str = typer.Option(
-            "loop_fast",
-            "--gate-profile",
-            help="gate profile name",
-        ),
-        implement_command: str | None = typer.Option(
-            None,
-            "--implement-command",
-            help="custom implementation command; defaults to opencode build-agent run",
-        ),
-        opencode_prompt: str | None = typer.Option(
-            None,
-            "--opencode-prompt",
-            help="override generated opencode prompt when using default implementer",
-        ),
-        skip_implement: bool = typer.Option(
-            False,
-            "--skip-implement",
-            help="skip the implementation command and run gates only",
-        ),
-        dry_run: bool = typer.Option(False, "--dry-run"),
-        max_iterations: int = typer.Option(
-            50,
-            "--max-iterations",
-            help="max non-dry iterations across all selected features",
-        ),
-        allow_dirty: bool = typer.Option(
-            False,
-            "--allow-dirty",
-            help="allow run execution with uncommitted code changes",
-        ),
-        verbose_output: bool = typer.Option(
-            False,
-            "--verbose-output",
-            help="stream full implement and gate output in terminal",
-        ),
-    ) -> None:
-        _exit_with_handler_code(
-            cmd_run,
-            ctx=ctx,
-            feature_paths=feature_paths or [],
-            gate_profile=gate_profile,
-            implement_command=implement_command,
-            opencode_prompt=opencode_prompt,
-            skip_implement=skip_implement,
-            dry_run=dry_run,
-            max_iterations=max_iterations,
-            allow_dirty=allow_dirty,
-            verbose_output=verbose_output,
-            **{"all": run_all},
-        )
+    @app.command(
+        "run",
+        context_settings=_FORWARD_CONTEXT_SETTINGS,
+        help="run feature loops from spec file paths",
+    )
+    def _run_command(ctx: typer.Context) -> None:
+        _dispatch_typer_command_with_argparse(ctx, "run")
 
     app.add_typer(
         _build_typer_fitness_app(),
@@ -1216,48 +1167,11 @@ def build_typer_app() -> typer.Typer:
 
     @app.command(
         "init",
+        context_settings=_FORWARD_CONTEXT_SETTINGS,
         help="scaffold baseline harness files (default core profile)",
     )
-    def _init_command(
-        ctx: typer.Context,
-        force: bool = typer.Option(
-            False,
-            "--force",
-            help="overwrite scaffold-managed files that already exist",
-        ),
-        scaffold_profile: Literal["core", "python_uv"] = typer.Option(
-            "core",
-            "--scaffold-profile",
-            help=(
-                "scaffold profile to apply "
-                "(core=language-agnostic default, python_uv=Python/uv bootstrap)"
-            ),
-        ),
-        docs_mode: Literal["reuse", "separate"] | None = typer.Option(
-            None,
-            "--docs-mode",
-            help="docs conflict mode when docs/ already exists",
-        ),
-        scaffold_docs_dir: str = typer.Option(
-            "docs.engineeringagent",
-            "--scaffold-docs-dir",
-            help="docs directory to scaffold when using docs-mode=separate",
-        ),
-        agents_mode: Literal["overwrite", "preserve", "abort"] | None = typer.Option(
-            None,
-            "--agents-mode",
-            help="AGENTS conflict mode when AGENTS.md already exists",
-        ),
-    ) -> None:
-        _exit_with_handler_code(
-            cmd_init,
-            ctx=ctx,
-            force=force,
-            scaffold_profile=scaffold_profile,
-            docs_mode=docs_mode,
-            scaffold_docs_dir=scaffold_docs_dir,
-            agents_mode=agents_mode,
-        )
+    def _init_command(ctx: typer.Context) -> None:
+        _dispatch_typer_command_with_argparse(ctx, "init")
 
     return app
 
