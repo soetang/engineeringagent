@@ -23,7 +23,7 @@ Top-level keys:
 Required reviewer fields:
 
 - `prompt_file`: repo-relative path under `harness/reviewers/prompts/`.
-- `trigger.phase`: `iteration_end` or `feature_done`.
+- `trigger.phase`: `iteration_end` or `feature_done` in config.
 - `approval.mode`: `advisory` or `blocking` (defaults to `advisory` if omitted).
 
 Optional reviewer fields:
@@ -43,10 +43,10 @@ profiles:
     - code_simplifier
     - readme_process
 reviewers:
-  code_simplifier:
+code_simplifier:
     prompt_file: "harness/reviewers/prompts/code_simplifier.md"
     trigger:
-      phase: "iteration_end"
+      phase: "feature_done"
       on_change:
         - "src/**/*.py"
         - "tests/**/*.py"
@@ -102,16 +102,16 @@ Plain-English behavior:
 
 ## Default `code_simplifier` reviewer
 
-Use this built-in reviewer when you want simplification guidance on code changes at
-`iteration_end` without default hard-blocking completion behavior.
+Use this built-in reviewer when you want simplification guidance on code changes
+without default hard-blocking completion behavior.
 
 Copy-pastable `code_simplifier` entry:
 
 ```yaml
-code_simplifier:
+  code_simplifier:
   prompt_file: "harness/reviewers/prompts/code_simplifier.md"
   trigger:
-    phase: "iteration_end"
+    phase: "feature_done"
     on_change:
       - "src/**/*.py"
       - "tests/**/*.py"
@@ -124,9 +124,9 @@ code_simplifier:
 
 Plain-English behavior:
 
-- Runs at `iteration_end` only when changed paths match configured code globs.
+- Runs at `feature_done` only when changed paths match configured code globs.
 - Returns v1 decision JSON (`approve`, `warning`, or `request_changes`) from a harness-managed prompt file.
-- `warning` and `request_changes` are advisory outcomes that require one follow-up implement pass before completion commit eligibility.
+- Any returned feedback requires one follow-up implement pass before completion commit eligibility.
 - Does not hard-block completion by default when advice is returned.
 - Non-JSON or malformed output is treated as deterministic advisory guidance that still requires one follow-up implement pass.
 
@@ -184,17 +184,18 @@ Copy-pastable decision examples:
 
 ## Trigger and planning semantics
 
-- Reviewers run by profile and phase (`iteration_end` or `feature_done`).
-- A reviewer is skipped when phase does not match.
+- Runtime executes reviewers only at `feature_done`.
+- `trigger.phase: iteration_end` is treated as a compatibility alias and normalized to `feature_done`.
+- Planner accepts both configured phase values and emits deterministic run/skip entries against effective `feature_done` execution.
 - If `trigger.on_change` is set, the reviewer runs only when changed paths match at least one pattern.
 - If changed paths cannot be resolved deterministically, planner falls back to run-all with explicit reason.
-- Planner returns deterministic run/skip entries with reason strings.
 
 ## Approval policy semantics
 
 - `advisory`:
   - Never permanently blocks completion.
-  - `warning` or `request_changes` feedback is surfaced and, for `feature_done`, requires one additional implement pass before completion commit eligibility.
+  - All reviewer decisions (`approve`, `warning`, `request_changes`) produce forwarded feedback for the next implement pass.
+  - Any forwarded reviewer feedback requires exactly one follow-up implement pass before completion commit eligibility.
 - `blocking`:
   - `request_changes` triggers retry behavior.
   - Retry attempts continue until approval or exhaustion (`max_retries`).
@@ -202,6 +203,12 @@ Copy-pastable decision examples:
     - `continue_on_exhausted=true`: continue with warning and recorded non-approval state.
     - `continue_on_exhausted=false`: fail iteration.
 - `first_feature_approval=true` caches first approval per feature and reviewer and reuses it until relevant scoped paths change.
+
+## Feedback forwarding and logging semantics
+
+- Forwarded reviewer feedback is persisted in structured run telemetry as `reviewer_feedback_present` and `reviewer_feedback_summary`.
+- Per-feature loop logs persist forwarded feedback between `reviewer_feedback_forwarded_begin` and `reviewer_feedback_forwarded_end` markers.
+- Feedback text is deterministic and sanitized so humans can inspect exactly what the implement pass received.
 
 ## Sandbox behavior
 

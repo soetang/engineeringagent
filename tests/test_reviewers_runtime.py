@@ -21,7 +21,7 @@ CODE_SIMPLIFIER_PROMPT = (
 )
 
 
-def test_plan_reviewers_by_phase_and_change_selectors() -> None:
+def test_plan_reviewers_maps_iteration_end_config_to_feature_done() -> None:
     config = {
         "profiles": {"loop_fast": ["code_simplifier", "readme_process"]},
         "reviewers": {
@@ -45,7 +45,7 @@ def test_plan_reviewers_by_phase_and_change_selectors() -> None:
     decisions = plan_reviewers(
         config,
         "loop_fast",
-        phase="iteration_end",
+        phase="feature_done",
         changed_paths=ChangedPathsResult(
             paths=("src/engineeringagent/reviewers.py",),
             run_all=False,
@@ -62,7 +62,7 @@ def test_plan_reviewers_by_phase_and_change_selectors() -> None:
         {
             "reviewer": "readme_process",
             "decision": "skip",
-            "reason": PHASE_MISMATCH_REASON,
+            "reason": NO_ON_CHANGE_MATCH_REASON,
         },
     ]
 
@@ -84,7 +84,7 @@ def test_code_simplifier_plans_only_for_code_scoped_changes() -> None:
     code_change_decisions = plan_reviewers(
         config,
         "loop_fast",
-        phase="iteration_end",
+        phase="feature_done",
         changed_paths=ChangedPathsResult(
             paths=("src/engineeringagent/reviewers.py",),
             run_all=False,
@@ -102,7 +102,7 @@ def test_code_simplifier_plans_only_for_code_scoped_changes() -> None:
     docs_change_decisions = plan_reviewers(
         config,
         "loop_fast",
-        phase="iteration_end",
+        phase="feature_done",
         changed_paths=ChangedPathsResult(
             paths=("docs/spec/features/FEAT-054.yaml",),
             run_all=False,
@@ -151,7 +151,7 @@ def test_plan_reviewers_reports_deterministic_skip_reasons() -> None:
         {
             "reviewer": "code_simplifier",
             "decision": "skip",
-            "reason": NO_ON_CHANGE_MATCH_REASON,
+            "reason": PHASE_MISMATCH_REASON,
         },
         {
             "reviewer": "readme_process",
@@ -178,7 +178,7 @@ def test_plan_reviewers_matches_normalized_separator_paths() -> None:
     decisions = plan_reviewers(
         config,
         "loop_fast",
-        phase="iteration_end",
+        phase="feature_done",
         changed_paths=ChangedPathsResult(
             paths=(r"src\engineeringagent\reviewers.py",),
             run_all=False,
@@ -249,7 +249,7 @@ def test_plan_reviewers_skip_when_changed_paths_are_empty() -> None:
     decisions = plan_reviewers(
         config,
         "loop_fast",
-        phase="iteration_end",
+        phase="feature_done",
         changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
     )
 

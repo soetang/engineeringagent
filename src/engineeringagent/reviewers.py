@@ -23,6 +23,8 @@ ALWAYS_RUN_NO_ON_CHANGE_REASON = "always_run_no_on_change"
 MATCHED_ON_CHANGE_REASON = "matched_on_change"
 NO_ON_CHANGE_MATCH_REASON = "no_on_change_match"
 PHASE_MISMATCH_REASON = "phase_mismatch"
+FEATURE_DONE_PHASE = "feature_done"
+ITERATION_END_PHASE = "iteration_end"
 DECISION_APPROVE = "approve"
 DECISION_REQUEST_CHANGES = "request_changes"
 DECISION_WARNING = "warning"
@@ -321,7 +323,7 @@ def plan_reviewers(
     Args:
         config: Parsed reviewer configuration mapping.
         profile: Profile name to evaluate.
-        phase: Review phase (`iteration_end` or `feature_done`).
+        phase: Requested execution phase (`feature_done` in loop runtime).
         changed_paths: Resolved changed-path input and fallback metadata.
 
     Returns:
@@ -340,7 +342,7 @@ def plan_reviewers(
     for reviewer_id in profiles[profile]:
         reviewer = reviewers.get(reviewer_id, {})
         trigger = reviewer.get("trigger", {})
-        trigger_phase = trigger.get("phase")
+        trigger_phase = _resolve_reviewer_trigger_phase(trigger.get("phase"))
         if trigger_phase != phase:
             decisions.append(
                 {
@@ -391,6 +393,14 @@ def plan_reviewers(
         )
 
     return decisions
+
+
+def _resolve_reviewer_trigger_phase(phase: Any) -> str:
+    """Normalize legacy trigger phases to the feature_done execution contract."""
+    normalized_phase = str(phase or "").strip()
+    if normalized_phase == ITERATION_END_PHASE:
+        return FEATURE_DONE_PHASE
+    return normalized_phase
 
 
 def run_reviewer(

@@ -18,7 +18,6 @@ from .models import (
 from ..reviewers import (
     DECISION_APPROVE,
     DECISION_REQUEST_CHANGES,
-    DECISION_WARNING,
     increment_blocking_reviewer_retry_count,
 )
 
@@ -31,6 +30,33 @@ def _format_reviewer_feedback(summary: str, required_actions: list[str]) -> str:
         return message
     actions_block = "\n".join(f"- {action}" for action in actions)
     return f"{message}\nrequired_actions:\n{actions_block}"
+
+
+def _format_forwarded_reviewer_feedback(
+    reviewer_id: str,
+    reviewer_mode: str,
+    decision_name: str,
+    reviewer_feedback_message: str,
+) -> str:
+    """Compose deterministic retry feedback forwarded to the next implement pass."""
+    return (
+        f"reviewer '{reviewer_id}' feedback "
+        f"(mode={reviewer_mode}, decision={decision_name}): "
+        f"{reviewer_feedback_message}"
+    )
+
+
+def _resolve_passed_reviewer_decision(
+    *,
+    ran_reviewer: bool,
+    first_non_approve_decision: str | None,
+) -> str | None:
+    """Return deterministic reviewer decision metadata for passed outcomes."""
+    if first_non_approve_decision is not None:
+        return first_non_approve_decision
+    if ran_reviewer:
+        return DECISION_APPROVE
+    return None
 
 
 class GatePhaseDependencies(BaseModel):
@@ -233,6 +259,7 @@ def run_reviewer_phase(  # noqa: C901
 
     reviewers = config.get("reviewers", {})
     summaries: list[str] = []
+    forwarded_feedback: list[str] = []
     advisory_feedback: list[str] = []
     blocking_feedback: list[str] = []
     blocking_exhausted_warnings: list[str] = []
@@ -292,6 +319,14 @@ def run_reviewer_phase(  # noqa: C901
             required_actions_raw if isinstance(required_actions_raw, list) else []
         )
         reviewer_feedback_message = _format_reviewer_feedback(summary, required_actions)
+        forwarded_feedback.append(
+            _format_forwarded_reviewer_feedback(
+                reviewer_id,
+                reviewer_mode,
+                decision_name,
+                reviewer_feedback_message,
+            )
+        )
         summaries.append(
             f"[reviewer:{reviewer_id}] mode={reviewer_mode} decision={decision_name} summary={summary}"
         )
@@ -325,10 +360,7 @@ def run_reviewer_phase(  # noqa: C901
                 blocking_exhausted_failures.append(exhausted_message)
             continue
 
-        if reviewer_mode == "advisory" and decision_name in {
-            DECISION_REQUEST_CHANGES,
-            DECISION_WARNING,
-        }:
+        if reviewer_mode == "advisory":
             advisory_feedback.append(
                 f"reviewer '{reviewer_id}' advisory feedback: {reviewer_feedback_message}"
             )
@@ -418,10 +450,13 @@ def run_reviewer_phase(  # noqa: C901
         result="passed",
         failed_gate=None,
         reviewer_status="passed",
-        reviewer_decision=DECISION_APPROVE if ran_reviewer else None,
+        reviewer_decision=_resolve_passed_reviewer_decision(
+            ran_reviewer=ran_reviewer,
+            first_non_approve_decision=first_non_approve_decision,
+        ),
         failed_reviewer_id=None,
         reviewer_output=reviewer_output,
-        hook_feedback=None,
+        hook_feedback="\n".join(forwarded_feedback) if forwarded_feedback else None,
     )
 
 

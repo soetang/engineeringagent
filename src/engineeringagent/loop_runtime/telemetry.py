@@ -69,6 +69,39 @@ def _sanitize_payload_strings(payload: dict[str, Any]) -> dict[str, Any]:
     return sanitized
 
 
+def _resolve_forwarded_reviewer_feedback(
+    telemetry_inputs: IterationTelemetryInputs,
+) -> str | None:
+    forwarded = telemetry_inputs.reviewer_feedback_forwarded
+    if isinstance(forwarded, str) and forwarded.strip():
+        return _strip_ansi(forwarded).strip()
+
+    hook_feedback = telemetry_inputs.hook_feedback
+    if not isinstance(hook_feedback, str) or not hook_feedback.strip():
+        return None
+    if telemetry_inputs.reviewer_status == "not_run":
+        return None
+    if not hook_feedback.lstrip().startswith("reviewer '"):
+        return None
+    return _strip_ansi(hook_feedback).strip()
+
+
+def _summarize_reviewer_feedback(text: str, max_chars: int = 240) -> str:
+    compact = " ".join(text.split())
+    if len(compact) <= max_chars:
+        return compact
+    return compact[:max_chars] + "...[truncated]"
+
+
+def _reviewer_feedback_metadata(
+    telemetry_inputs: IterationTelemetryInputs,
+) -> tuple[str | None, bool, str]:
+    forwarded = _resolve_forwarded_reviewer_feedback(telemetry_inputs)
+    if forwarded is None:
+        return None, False, ""
+    return forwarded, True, _summarize_reviewer_feedback(forwarded)
+
+
 def write_iteration_telemetry(
     telemetry_inputs: IterationTelemetryInputs,
     *,
@@ -108,6 +141,13 @@ def write_iteration_telemetry(
         "next_action": telemetry_inputs.next_action,
         "log_path": feature_progress_log_reference,
     }
+    (
+        reviewer_feedback_forwarded,
+        reviewer_feedback_present,
+        reviewer_feedback_summary,
+    ) = _reviewer_feedback_metadata(telemetry_inputs)
+    run_payload["reviewer_feedback_present"] = reviewer_feedback_present
+    run_payload["reviewer_feedback_summary"] = reviewer_feedback_summary
     run_payload = _sanitize_payload_strings(run_payload)
 
     feature_progress_log_lines = [
@@ -124,6 +164,9 @@ def write_iteration_telemetry(
         f"{_strip_ansi(telemetry_inputs.reviewer_status)}"
         f" decision={telemetry_inputs.reviewer_decision or '-'}"
         f" failed_reviewer={telemetry_inputs.failed_reviewer_id or '-'}",
+        "reviewer_feedback="
+        f"{'present' if reviewer_feedback_present else 'absent'}"
+        f" summary={reviewer_feedback_summary or '-'}",
         "result="
         f"{run_payload.get('result')} failed_gate={run_payload.get('failed_gate') or '-'} "
         f"next_action={run_payload.get('next_action')}",
@@ -158,6 +201,14 @@ def write_iteration_telemetry(
                 "reviewer_output_begin",
                 _strip_ansi(telemetry_inputs.reviewer_output.rstrip("\n")),
                 "reviewer_output_end",
+            ]
+        )
+    if reviewer_feedback_forwarded is not None:
+        feature_progress_log_lines.extend(
+            [
+                "reviewer_feedback_forwarded_begin",
+                _truncate_feedback(reviewer_feedback_forwarded.rstrip("\n")),
+                "reviewer_feedback_forwarded_end",
             ]
         )
     if telemetry_inputs.hook_feedback:

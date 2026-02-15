@@ -134,4 +134,5 @@ class IterationTelemetryInputs(BaseModel):
     gate_output: str
     verification_output: str
     reviewer_output: str = ""
+    reviewer_feedback_forwarded: str | None = None
     hook_feedback: str | None

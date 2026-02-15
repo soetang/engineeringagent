@@ -60,6 +60,8 @@ def test_progress_log_records_verification_status(tmp_path: Path) -> None:
     assert run["reviewer_status"] == "failed:blocking"
     assert run["reviewer_decision"] == "request_changes"
     assert run["failed_reviewer_id"] == "security-reviewer"
+    assert run["reviewer_feedback_present"] is False
+    assert run["reviewer_feedback_summary"] == ""
 
     feature_log = (tmp_path / "progress" / "run-feature-FEAT-040.txt").read_text(
         encoding="utf-8"
@@ -123,6 +125,8 @@ def test_progress_log_records_code_simplifier_advisory_followup_status(
     assert run["reviewer_status"] == "failed:advisory_followup"
     assert run["reviewer_decision"] == "warning"
     assert run["failed_reviewer_id"] == "code_simplifier"
+    assert run["reviewer_feedback_present"] is True
+    assert "simplify nested branching" in run["reviewer_feedback_summary"]
 
     feature_log = (tmp_path / "progress" / "run-feature-FEAT-059.txt").read_text(
         encoding="utf-8"
@@ -134,6 +138,9 @@ def test_progress_log_records_code_simplifier_advisory_followup_status(
     assert "reviewer_output_begin" in feature_log
     assert "[reviewer:code_simplifier] mode=advisory decision=warning" in feature_log
     assert "reviewer_output_end" in feature_log
+    assert "reviewer_feedback_forwarded_begin" in feature_log
+    assert "reviewer 'code_simplifier' advisory feedback" in feature_log
+    assert "reviewer_feedback_forwarded_end" in feature_log
 
 
 def test_non_verbose_terminal_output_shows_verification_summary(

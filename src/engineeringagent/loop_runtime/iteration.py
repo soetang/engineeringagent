@@ -126,6 +126,7 @@ class _PipelineState(BaseModel):
     gate_output: str = ""
     verification_output: str = ""
     reviewer_output: str = ""
+    reviewer_feedback_forwarded: str | None = None
     completion_commit_succeeded: bool = False
     archived_path: Path | None = None
     archived_in_iteration: bool = False
@@ -420,6 +421,8 @@ def _run_reviewer_phase_if_passed(
     state.reviewer_decision = reviewer_phase.reviewer_decision
     state.failed_reviewer_id = reviewer_phase.failed_reviewer_id
     state.reviewer_output = reviewer_phase.reviewer_output
+    if reviewer_phase.hook_feedback:
+        state.reviewer_feedback_forwarded = reviewer_phase.hook_feedback
     if reviewer_phase.result != "failed":
         if reviewer_phase.hook_feedback:
             state.next_hook_feedback = reviewer_phase.hook_feedback
@@ -529,6 +532,7 @@ def run_feature_iteration_pipeline(
         gate_output=state.gate_output,
         verification_output=state.verification_output,
         reviewer_output=state.reviewer_output,
+        reviewer_feedback_forwarded=state.reviewer_feedback_forwarded,
         hook_feedback=state.next_hook_feedback,
     )
     feature_progress_log_reference = dependencies.write_iteration_telemetry(
