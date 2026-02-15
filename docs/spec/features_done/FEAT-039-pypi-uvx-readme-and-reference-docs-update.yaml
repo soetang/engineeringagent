@@ -38,7 +38,6 @@ subtasks:
 - id: ST-001
   title: Define uvx command matrix for package users vs contributors
   status: done
-  order: 1
   context: Establish the exact command patterns and terminology to use across docs
     so package-consumer (`uvx engineeringagent ...`) and contributor (`uvx --from
     . engineeringagent ...`) workflows are separated clearly.
@@ -48,7 +47,6 @@ subtasks:
 - id: ST-002
   title: Update README with PyPI-first onboarding and pinning guidance
   status: done
-  order: 2
   context: Revise getting-started content in README so a first-time user can run core
     commands from PyPI with `uvx`, including both unpinned and version-pinned examples.
   verification:
@@ -57,7 +55,6 @@ subtasks:
 - id: ST-003
   title: Align reference docs with package-consumer and contributor command styles
   status: done
-  order: 3
   context: Update relevant files in `docs/references/` so command examples and wording
     consistently distinguish PyPI/uvx package usage from local contributor workflows.
   verification:
@@ -66,7 +63,6 @@ subtasks:
 - id: ST-004
   title: Run docs formatting and spec validation checks
   status: done
-  order: 4
   context: Validate formatting and spec integrity for the documentation update using
     the requested lightweight verification level.
   verification:

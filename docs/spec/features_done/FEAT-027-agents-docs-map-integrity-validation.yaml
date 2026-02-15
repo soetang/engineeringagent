@@ -48,7 +48,6 @@ subtasks:
 - id: ST-001
   title: Define AGENTS docs-map extraction and validation rules
   status: done
-  order: 1
   context: 'Implement parser logic that reads AGENTS docs-map section only and extracts
     references for literal/glob validation with deterministic ordering.
 
@@ -59,7 +58,6 @@ subtasks:
 - id: ST-002
   title: Integrate docs-map integrity checks into validate command flow
   status: done
-  order: 2
   context: 'Add missing-path and empty-glob checks to validator output and fail engineeringagent
     validate with actionable diagnostics.
 
@@ -71,7 +69,6 @@ subtasks:
 - id: ST-003
   title: Align AGENTS documentation map to existing repository structure
   status: done
-  order: 3
   context: 'Update AGENTS docs-map references so all listed files/directories/globs
     exist and reflect current repository organization.
 
@@ -81,7 +78,6 @@ subtasks:
 - id: ST-004
   title: Run targeted regressions and loop-fast gate verification
   status: done
-  order: 4
   context: 'Confirm validator behavior and default gate integration remain stable
     after docs-map enforcement.
 

@@ -105,7 +105,6 @@ subtasks:
 - id: ST-001
   title: Introduce prompt template artifacts and renderer module in package
   status: done
-  order: 1
   context: 'Create in-package template files and a renderer API that can produce selector
     and implementation prompt text with deterministic variable substitution.
 
@@ -115,7 +114,6 @@ subtasks:
 - id: ST-002
   title: Migrate selector prompt generation from loop orchestration to renderer
   status: done
-  order: 2
   context: 'Replace inline selector prompt assembly in loop orchestration with renderer
     output while preserving feature selection behavior and fallback semantics.
 
@@ -125,7 +123,6 @@ subtasks:
 - id: ST-003
   title: Migrate default implementation prompt and retry-feedback injection to renderer
   status: done
-  order: 3
   context: 'Route default implementation prompt composition through templates/renderer,
     preserving retry feedback truncation/injection while making task and progress
     communication instructions explicit (status updates, verification, concise report).
@@ -137,7 +134,6 @@ subtasks:
 - id: ST-004
   title: Add built-in hybrid prompt-locality fitness rule
   status: done
-  order: 4
   context: 'Implement `architecture.prompt-locality` in built-in fitness rules with
     structural and canary-content checks plus deterministic violation formatting.
     Include four explicit checks: template integrity, structural boundary checks,
@@ -149,7 +145,6 @@ subtasks:
 - id: ST-005
   title: Register and declare prompt-locality rule across fitness surfaces
   status: done
-  order: 5
   context: 'Wire the new built-in rule into registry metadata and explicit harness
     manifest declarations so list/run/catalog and gates consume it consistently.
 
@@ -161,7 +156,6 @@ subtasks:
 - id: ST-006
   title: Add focused loop and fitness regression coverage for prompt locality
   status: done
-  order: 6
   context: 'Add pass/fail coverage for template presence, non-empty templates, locality
     boundary violations, canary phrase leakage, and deterministic violation ordering.
 
@@ -173,7 +167,6 @@ subtasks:
 - id: ST-007
   title: Run focused validation and final loop_fast gate profile
   status: done
-  order: 7
   context: 'Confirm spec/fitness wiring and targeted regressions pass, then run final
     gate profile expected by loop execution.
 

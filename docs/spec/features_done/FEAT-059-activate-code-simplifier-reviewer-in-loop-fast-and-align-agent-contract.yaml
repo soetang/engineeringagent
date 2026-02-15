@@ -68,7 +68,6 @@ subtasks:
 - id: ST-001
   title: Add repository-owned reviewers.yaml profile entry for code_simplifier
   status: done
-  order: 1
   context: Create active reviewer config for this repo so loop_fast can plan and run
     code_simplifier.
   verification:
@@ -76,7 +75,6 @@ subtasks:
 - id: ST-002
   title: Align reviewer runtime agent invocation with default OpenCode agent contract
   status: done
-  order: 2
   context: Remove hard-coded build-agent reviewer invocation and use shared default
     agent contract.
   verification:
@@ -84,7 +82,6 @@ subtasks:
 - id: ST-003
   title: Harden code_simplifier prompt for strict decision-envelope output
   status: done
-  order: 3
   context: Lightly edit prompt wording so parser-facing JSON requirements and non-approval
     semantics are explicit.
   verification:
@@ -92,7 +89,6 @@ subtasks:
 - id: ST-004
   title: Prove code_simplifier executes in-loop with deterministic status reporting
   status: done
-  order: 4
   context: Add or update loop integration tests to verify reviewer phase activation
     and telemetry fields for code_simplifier.
   verification:

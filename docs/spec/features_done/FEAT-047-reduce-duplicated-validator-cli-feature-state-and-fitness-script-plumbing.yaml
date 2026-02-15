@@ -52,7 +52,6 @@ subtasks:
 - id: ST-001
   title: Consolidate validator document-load and contract-issue append patterns
   status: done
-  order: 1
   context: Replace repeated YAML parse/contract-issue boilerplate with generic helpers
     while preserving existing message text and path formatting.
   verification:
@@ -61,7 +60,6 @@ subtasks:
   title: Deduplicate feature-state failure constructors and archive mismatch message
     builders
   status: done
-  order: 2
   context: Centralize repeated `PostImplementFeatureOutcome` failure branches and
     archived-mismatch feedback generation in feature-state runtime helpers.
   verification:
@@ -70,7 +68,6 @@ subtasks:
 - id: ST-003
   title: Extract shared fitness CLI metadata payload and path resolution helpers
   status: done
-  order: 3
   context: Reuse deterministic helper functions for fitness JSON payload generation
     and manifest/output path normalization in CLI fitness commands.
   verification:
@@ -78,7 +75,6 @@ subtasks:
 - id: ST-004
   title: Add shared fitness command-envelope helper and adopt it in harness scripts
   status: done
-  order: 4
   context: Introduce one helper for command-rule JSON output envelope and use it across
     loop-line-budget and Ruff/dataclass script rules.
   verification:
@@ -86,7 +82,6 @@ subtasks:
 - id: ST-005
   title: Add focused regressions for deterministic output and contract stability
   status: done
-  order: 5
   context: Ensure refactors preserve output shape and deterministic ordering for CLI
     and command fitness adapters.
   verification:
@@ -94,7 +89,6 @@ subtasks:
 - id: ST-006
   title: Run final validation and loop-fast profile checks
   status: done
-  order: 6
   context: Validate spec contracts and repository gates after the four deduplication
     changes are integrated.
   verification:

@@ -60,7 +60,7 @@ Keep this file concise. Add durable references and rules, not task logs.
 1. Read this file, then `README.md`.
 1. Check repo state: `git status`, recent commits.
 1. Validate specs before coding (`engineeringagent validate`).
-1. Identify active feature and next eligible subtask.
+1. Identify active feature and most important open subtask.
 1. Execute one incremental unit only.
 1. Re-run listed verification commands.
 1. Persist outcomes for the next context window.

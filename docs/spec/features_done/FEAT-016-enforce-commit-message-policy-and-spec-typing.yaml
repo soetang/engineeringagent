@@ -68,7 +68,6 @@ subtasks:
 - id: ST-001
   title: Add schema fields for spec type and expected commit subject metadata
   status: done
-  order: 1
   context: 'Update feature schema to require top-level `type` and expected commit
     subject metadata fields with strict validation and no unknown values.
 
@@ -80,7 +79,6 @@ subtasks:
 - id: ST-002
   title: Backfill active feature specs with required metadata
   status: done
-  order: 2
   context: 'Add valid `type` and expected commit subject metadata to all existing
     files in `docs/spec/features/*.yaml` so required-now schema enforcement passes.
 
@@ -93,7 +91,6 @@ subtasks:
 - id: ST-003
   title: Implement shared commit message policy validator
   status: done
-  order: 3
   context: 'Add reusable validation for single commit-message files and commit ranges,
     using one policy source for local hook and CI enforcement.
 
@@ -104,7 +101,6 @@ subtasks:
 - id: ST-004
   title: Enforce commit message policy in local commit-msg hook
   status: done
-  order: 4
   context: 'Wire commit subject validation into local commit-msg stage so invalid
     commit subjects fail before commit creation.
 
@@ -115,7 +111,6 @@ subtasks:
 - id: ST-005
   title: Enforce commit message policy in CI commit range checks
   status: done
-  order: 5
   context: 'Add CI validation step/profile that evaluates commit subjects in push/PR
     scope and fails on policy violations.
 
@@ -127,7 +122,6 @@ subtasks:
 - id: ST-006
   title: Use spec metadata for loop completion commit subject generation
   status: done
-  order: 6
   context: 'Update loop completion commit generation to use selected feature expected
     commit subject metadata and retain deterministic fallback mapping by feature `type`.
 
@@ -138,7 +132,6 @@ subtasks:
 - id: ST-007
   title: Update AGENTS and spec-writing guide with mandatory checklist
   status: done
-  order: 7
   context: 'Add explicit AGENTS linkage and must-follow wording for spec-writing guide,
     and add a checklist section to spec-writing guide including the required commit
     step.
@@ -152,7 +145,6 @@ subtasks:
 - id: ST-008
   title: Run targeted regression checks for validator loop and gate wiring
   status: done
-  order: 8
   context: 'Execute focused tests for validator behavior, loop commit subject generation,
     and gate/hook wiring to confirm full policy coverage.
 

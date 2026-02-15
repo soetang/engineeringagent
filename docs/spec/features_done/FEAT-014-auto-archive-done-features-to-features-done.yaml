@@ -75,7 +75,6 @@ subtasks:
 - id: ST-001
   title: Add explicit allow-dirty flag for run loop restart
   status: done
-  order: 1
   context: 'Extend CLI/run wiring so uncommitted changes remain blocked by default
     but can be explicitly allowed for restart workflows with a dedicated flag and
     clear runtime messaging.
@@ -88,7 +87,6 @@ subtasks:
 - id: ST-002
   title: Add loop archive-path resolution and safe move helper
   status: done
-  order: 2
   context: 'Define deterministic path handling for moving a completed selected feature
     spec into `docs/spec/features_done/` while preserving filename and ensuring destination
     directory readiness.
@@ -100,7 +98,6 @@ subtasks:
 - id: ST-003
   title: Integrate archive move into single completion commit with retry safety
   status: done
-  order: 3
   context: 'Wire archive behavior into completion flow so status updates and file
     move are committed together, and ensure failed completion commits can retry the
     same feature without path-loss or inconsistent state, including allow-dirty restart
@@ -113,7 +110,6 @@ subtasks:
 - id: ST-004
   title: Add validator rule for done specs in active feature directory
   status: done
-  order: 4
   context: 'Update validation checks so `status: done` specs in `docs/spec/features/`
     produce actionable errors, with an explicit transitional policy for preexisting
     done specs that are intentionally not auto-migrated by loop startup behavior.
@@ -125,7 +121,6 @@ subtasks:
 - id: ST-005
   title: Document automatic archive contract and migration expectations
   status: done
-  order: 5
   context: 'Update repository docs so contributors understand that active features
     are pending execution scope and completed features are automatically archived
     by the loop, including guidance for manual cleanup of historical done specs. Add
@@ -143,7 +138,6 @@ subtasks:
 - id: ST-006
   title: Run focused loop and validator regression coverage
   status: done
-  order: 6
   context: 'Execute targeted regression checks to confirm allow-dirty restart behavior,
     archive-on-completion behavior, and active-spec validation contract all hold under
     expected loop scenarios.

@@ -62,7 +62,6 @@ subtasks:
 - id: ST-001
   title: Add scaffold profile contract and default core language-agnostic behavior
   status: done
-  order: 1
   context: 'Introduce deterministic profile selection for init, defaulting to `core`
     and keeping stack-specific behavior explicit.
 
@@ -73,7 +72,6 @@ subtasks:
 - id: ST-002
   title: Move scaffold payloads to file-based template assets and add renderer
   status: done
-  order: 2
   context: 'Replace inline scaffold content with template files and lightweight deterministic
     substitution logic for dynamic values.
 
@@ -84,7 +82,6 @@ subtasks:
 - id: ST-003
   title: Redesign scaffold AGENTS.md as minimal principles plus references map
   status: done
-  order: 3
   context: 'Keep AGENTS short and usable: major principles plus durable references,
     with clear prompts for teams to fill repo-specific details incrementally.
 
@@ -95,7 +92,6 @@ subtasks:
 - id: ST-004
   title: Scaffold tool-generic docs pack and enforce audience boundaries
   status: done
-  order: 4
   context: 'Ensure init scaffolds reusable docs for approach/workflow and does not
     copy repository-specific internal docs.
 
@@ -106,7 +102,6 @@ subtasks:
 - id: ST-005
   title: Add and activate scaffold template locality fitness rule
   status: done
-  order: 5
   context: 'Implement `architecture.scaffold-template-locality` and wire it into active
     manifest declarations to guard against inline template regressions.
 
@@ -117,7 +112,6 @@ subtasks:
 - id: ST-006
   title: Dogfood AGENTS slim reference-map structure in this repository
   status: done
-  order: 6
   context: 'Apply the same AGENTS information architecture locally to validate template
     practicality and principle alignment.
 
@@ -128,7 +122,6 @@ subtasks:
 - id: ST-007
   title: Update CLI help and docs references for profile-based init
   status: done
-  order: 7
   context: 'Document default core profile behavior and optional profile selection
     in relevant human and agent docs.
 

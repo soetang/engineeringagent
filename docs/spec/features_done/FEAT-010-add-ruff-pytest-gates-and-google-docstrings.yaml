@@ -44,7 +44,6 @@ subtasks:
 - id: ST-001
   title: Add Ruff and pytest tooling configuration
   status: done
-  order: 1
   context: Ensure project tooling includes Ruff and pytest and that lock/sync workflows
     remain uv-native.
   verification:
@@ -54,7 +53,6 @@ subtasks:
 - id: ST-002
   title: Add Ruff and pytest gates to precommit profile
   status: done
-  order: 2
   context: Extend `harness/gates.yaml` with `ruff_validate` and `pytest_validate`,
     then include both in `profiles.precommit`.
   verification:
@@ -66,7 +64,6 @@ subtasks:
 - id: ST-003
   title: Enforce Google docstrings for exported src functions via Ruff
   status: done
-  order: 3
   context: Configure Ruff pydocstyle with Google convention and required rules for
     public functions, then add missing docstrings in `src/engineeringagent` until
     clean.
@@ -76,7 +73,6 @@ subtasks:
 - id: ST-004
   title: Add Python uv+Ruff guide and AGENTS reference
   status: done
-  order: 4
   context: Add a concise Python contributor guide covering uv workflow, Ruff usage,
     and docstring expectations, then link it from AGENTS.md so it is discoverable
     in the default read order.
@@ -88,7 +84,6 @@ subtasks:
 - id: ST-005
   title: Update README and uv workflow docs for new checks
   status: done
-  order: 5
   context: Update README.md and docs/references/uv-llms.md to reflect Ruff + pytest
     checks and command usage within precommit and daily workflow docs.
   verification:
@@ -98,7 +93,6 @@ subtasks:
 - id: ST-006
   title: Run full precommit profile verification
   status: done
-  order: 6
   context: Confirm all configured precommit gates run successfully with the new checks
     enabled.
   verification:
@@ -108,7 +102,6 @@ subtasks:
 - id: ST-007
   title: Scaffold default harness gates file for users
   status: done
-  order: 7
   context: Define and implement a bootstrap path that creates harness/gates.yaml with
     default profiles and gate commands when the file is absent, so new users can run
     documented gate workflows immediately.

@@ -67,7 +67,6 @@ subtasks:
 - id: ST-001
   title: Add same-iteration archived-done adoption signal
   status: done
-  order: 1
   context: 'Track whether selected feature was active at iteration start and became
     archived+done after implement, and use that signal to continue iteration flow
     rather than failing feature-missing.
@@ -78,7 +77,6 @@ subtasks:
 - id: ST-002
   title: Continue gate and commit flow for adopted archived feature
   status: done
-  order: 2
   context: 'Ensure adopted same-iteration archived features execute gate profile and
     completion commit flow with stable summary and telemetry behavior.
 
@@ -88,7 +86,6 @@ subtasks:
 - id: ST-003
   title: Restore active path on gate and commit failures after adoption
   status: done
-  order: 3
   context: 'Reuse restore helpers so adopted archive state rolls back to active path
     on failure and retries remain deterministic.
 
@@ -99,7 +96,6 @@ subtasks:
 - id: ST-004
   title: Preserve strict archived-at-start failure contract
   status: done
-  order: 4
   context: 'Keep deterministic failure behavior for cases where selected feature is
     already archived before iteration start and not eligible for same- iteration adoption.
 
@@ -109,7 +105,6 @@ subtasks:
 - id: ST-005
   title: Run targeted loop regressions and schema validation
   status: done
-  order: 5
   context: 'Execute focused loop tests for adoption and rollback behavior plus schema
     validation before marking feature ready.
 

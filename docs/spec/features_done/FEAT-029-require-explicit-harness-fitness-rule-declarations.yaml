@@ -91,7 +91,6 @@ subtasks:
 - id: ST-001
   title: Extend fitness manifest contract for explicit builtin references
   status: done
-  order: 1
   context: 'Add contract support for builtin reference entries in harness/fitness-functions/rules.yaml
     while preserving existing command-rule support.
 
@@ -102,7 +101,6 @@ subtasks:
 - id: ST-002
   title: Remove implicit builtin activation from catalog construction
   status: done
-  order: 2
   context: 'Refactor registry and runner so active catalogs are declaration-driven
     and no longer append built-ins by default.
 
@@ -113,7 +111,6 @@ subtasks:
 - id: ST-003
   title: Enforce declaration-only behavior across list run and catalog commands
   status: done
-  order: 3
   context: 'Ensure CLI surfaces share one active catalog source and cannot include
     undeclared rules. Include regression coverage for shell-command custom rules to
     confirm non-Python declaration and execution paths remain valid. Prefer tmp_path
@@ -128,7 +125,6 @@ subtasks:
 - id: ST-004
   title: Add validator checks for manifest builtin reference integrity
   status: done
-  order: 4
   context: 'Make validation fail with deterministic diagnostics when builtin manifest
     references are invalid or unresolved.
 
@@ -139,7 +135,6 @@ subtasks:
 - id: ST-005
   title: Seed explicit builtin declarations in repo and init scaffolding
   status: done
-  order: 5
   context: 'Populate harness defaults and init-generated manifests with explicit references
     for the current built-in architecture rules.
 
@@ -150,7 +145,6 @@ subtasks:
 - id: ST-006
   title: Run focused regressions and validate gate behavior
   status: done
-  order: 6
   context: 'Confirm declaration-driven behavior holds in gate execution and repo-level
     validation flows.
 

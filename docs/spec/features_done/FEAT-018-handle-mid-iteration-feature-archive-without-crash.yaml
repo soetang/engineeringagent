@@ -56,7 +56,6 @@ subtasks:
 - id: ST-001
   title: Add regression tests for selected feature moved to features_done
   status: done
-  order: 1
   context: 'Reproduce the reported failure by simulating an implementation step that
     moves the selected feature file to `docs/spec/features_done/` before the second
     feature load path executes.
@@ -68,7 +67,6 @@ subtasks:
 - id: ST-002
   title: Add regression test for missing selected feature without archive counterpart
   status: done
-  order: 2
   context: 'Capture the failure-mode requirement by validating the loop fails cleanly
     and emits actionable messaging when selected feature path disappears and cannot
     be resolved in `docs/spec/features_done/`.
@@ -79,7 +77,6 @@ subtasks:
 - id: ST-003
   title: Implement archive-aware missing selected-feature handling in loop runtime
   status: done
-  order: 3
   context: 'Update loop iteration flow to guard all post-implementation reload points
     against missing selected feature paths and branch behavior based on archive counterpart
     presence.
@@ -91,7 +88,6 @@ subtasks:
 - id: ST-004
   title: Ensure loop bookkeeping and messaging remain deterministic in both modes
   status: done
-  order: 4
   context: 'Confirm selected-path removal, next-action semantics, and summary output
     stay stable in explicit path and `--all` startup snapshot workflows after the
     new missing-path handling is introduced.
@@ -103,7 +99,6 @@ subtasks:
 - id: ST-005
   title: Run focused loop regression and spec validation checks
   status: done
-  order: 5
   context: 'Execute focused tests plus repository spec validation to ensure the change
     is covered and the new feature spec remains valid.
 

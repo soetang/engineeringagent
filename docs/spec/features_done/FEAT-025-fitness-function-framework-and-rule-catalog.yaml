@@ -94,7 +94,6 @@ subtasks:
 - id: ST-001
   title: Define fitness-function domain model and result contract
   status: done
-  order: 1
   context: 'Specify rule identity, severity, scope/target, and pass/fail payload shape
     so rule output is deterministic for both human and gate consumers. Define and
     document the versioned custom rule manifest and result envelope contract.
@@ -106,7 +105,6 @@ subtasks:
 - id: ST-002
   title: Implement registry and rule discovery entrypoints
   status: done
-  order: 2
   context: 'Add a centralized registry that enumerates built-in fitness rules and
     merges user-defined rules loaded from harness/fitness-functions/rules.yaml so
     listing and selection behavior reflects the active combined catalog. Reject duplicate
@@ -120,7 +118,6 @@ subtasks:
 - id: ST-003
   title: Implement command adapter contract for custom polyglot rules
   status: done
-  order: 3
   context: 'Implement the external command adapter contract used by user-defined rules
     so language-native tools can run while preserving a common result envelope. Built-in
     Python rules may keep internal adapter paths but custom rule extension must rely
@@ -134,7 +131,6 @@ subtasks:
 - id: ST-004
   title: Add initial built-in rules for architecture and loop boundaries
   status: done
-  order: 4
   context: 'Implement directionality checks for key dependency boundaries and enforce
     that loop orchestration code does not invoke subprocess directly outside approved
     adapters.
@@ -146,7 +142,6 @@ subtasks:
 - id: ST-005
   title: Integrate fitness execution into CLI and gate profile
   status: done
-  order: 5
   context: 'Add command surface to list and run fitness rules and wire a gate entry
     so violations fail consistently in automated checks. Include configurable parallel
     execution (for example --jobs) while keeping final result output deterministic.
@@ -159,7 +154,6 @@ subtasks:
 - id: ST-006
   title: Publish auto-generated rule catalog docs with diagrams
   status: done
-  order: 6
   context: 'Create a dedicated docs section that lists active rules, scope, rationale,
     and remediation guidance from generated output, plus architecture diagrams for
     execution flow. Canonical rule inventory should be generated from the implemented
@@ -174,7 +168,6 @@ subtasks:
 - id: ST-007
   title: Run full validation and regression suite for feature readiness
   status: done
-  order: 7
   context: 'Ensure schema, typing, lint, and targeted tests pass with the new framework
     and no regression in existing loop behavior.
 

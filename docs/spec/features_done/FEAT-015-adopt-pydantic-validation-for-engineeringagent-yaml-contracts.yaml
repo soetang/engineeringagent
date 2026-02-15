@@ -60,7 +60,6 @@ subtasks:
 - id: ST-001
   title: Define strict Pydantic models and enums for feature specs
   status: done
-  order: 1
   context: 'Implement typed models for feature and subtask contracts with strict enum
     values, forbidden extras, and field-level constraints that replace current JSON
     Schema shape checks.
@@ -72,7 +71,6 @@ subtasks:
 - id: ST-002
   title: Migrate feature invariant rules into Pydantic validators
   status: done
-  order: 2
   context: 'Port custom invariant checks (for example subtask order contiguity, done-prefix,
     and feature/subtask status coupling) into Pydantic model validation so behavior
     is enforced in one model-driven pass.
@@ -84,7 +82,6 @@ subtasks:
 - id: ST-003
   title: Add Pydantic models for potential feature and gate YAML contracts
   status: done
-  order: 3
   context: 'Extend validation coverage to `docs/spec/potential_features.yaml` and
     `harness/gates.yaml` with strict contract models and deterministic error reporting.
 
@@ -95,7 +92,6 @@ subtasks:
 - id: ST-004
   title: Refactor validate command pipeline to Pydantic-only runtime path
   status: done
-  order: 4
   context: 'Update validator orchestration and CLI integration to use the new Pydantic
     model layer for contract validation while preserving deterministic output and
     exit semantics.
@@ -108,7 +104,6 @@ subtasks:
 - id: ST-005
   title: Generate and enforce feature JSON schema from Pydantic model
   status: done
-  order: 5
   context: 'Add schema generation flow so `docs/spec/schemas/feature.schema.json`
     is derived from the Pydantic feature model and stays synchronized as a committed
     repository artifact.
@@ -121,7 +116,6 @@ subtasks:
 - id: ST-006
   title: Finalize dependency cleanup and targeted regression coverage
   status: done
-  order: 6
   context: 'Update project dependencies/import paths for the new model-based validator
     and run focused regression checks for validators and CLI behavior.
 

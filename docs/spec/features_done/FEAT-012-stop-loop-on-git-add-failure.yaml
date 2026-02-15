@@ -36,7 +36,6 @@ subtasks:
 - id: ST-001
   title: Add terminal loop stop path for git_add failures
   status: done
-  order: 1
   context: 'Adjust loop orchestration so `failed_gate=git_add` exits the current run
     immediately instead of continuing retry cycles.
 
@@ -46,7 +45,6 @@ subtasks:
 - id: ST-002
   title: Validate telemetry behavior for terminal git_add failure
   status: done
-  order: 2
   context: 'Ensure telemetry output remains consistent and includes a single failed
     iteration record for `git_add` terminal stop conditions.
 
@@ -56,7 +54,6 @@ subtasks:
 - id: ST-003
   title: Preserve retry semantics for git_commit hook failures
   status: done
-  order: 3
   context: 'Confirm existing commit-hook recovery loop remains active so retriable
     `git_commit` failures continue to work with subsequent attempts.
 

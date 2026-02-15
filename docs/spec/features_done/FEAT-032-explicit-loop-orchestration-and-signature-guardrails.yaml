@@ -91,7 +91,6 @@ subtasks:
 - id: ST-001
   title: Make control-flow phases explicit in run_loop and _run_feature_iteration
   status: done
-  order: 1
   context: 'Keep high-level control flow easy to scan in existing orchestrators while
     keeping the public `engineeringagent.loop` surface stable.
 
@@ -102,7 +101,6 @@ subtasks:
 - id: ST-002
   title: Reduce argument fan-out using maintainable internal refactor patterns
   status: done
-  order: 2
   context: 'Replace long internal helper signatures using the simplest maintainable
     option (phase extraction, cohesive parameter objects, keyword-only controls, typed
     results) while preserving behavior and readability.
@@ -113,7 +111,6 @@ subtasks:
 - id: ST-003
   title: Extract non-control-flow iteration internals into intention-revealing helpers
   status: done
-  order: 3
   context: 'Move dense non-control-flow iteration logic into focused helpers/modules
     with clear function names while retaining compatibility seams expected by existing
     tests.
@@ -127,7 +124,6 @@ subtasks:
   title: Enable strict PLR0913 guardrail and resolve violations with maintainable
     refactors
   status: done
-  order: 4
   context: 'Turn on strict argument-budget linting and refactor internals to comply.
     If a compatibility-boundary exception remains, keep it narrowly scoped and documented.
 
@@ -138,7 +134,6 @@ subtasks:
 - id: ST-005
   title: Add agent guidance for PLR0913 remediation and self-documenting naming
   status: done
-  order: 5
   context: "Document general best-practice options for resolving wide signatures and\
     \ improving variable naming clarity so future refactors converge on reusable patterns\
     \ instead of ad-hoc suppressions.\nGuidance draft to include in `docs/references/python-uv-ruff-llms.md`\
@@ -164,7 +159,6 @@ subtasks:
 - id: ST-006
   title: Run focused verification and final loop_fast gates
   status: done
-  order: 6
   context: 'Confirm refactor safety with focused loop coverage and final gate profile
     expected by run-loop workflows.
 

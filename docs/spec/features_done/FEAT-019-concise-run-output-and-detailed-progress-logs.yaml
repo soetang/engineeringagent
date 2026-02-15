@@ -67,7 +67,6 @@ subtasks:
 - id: ST-001
   title: Add run CLI flag and loop plumbing for output verbosity
   status: done
-  order: 1
   context: 'Add `--verbose-output` to `engineeringagent run` and thread the setting
     into loop iteration execution.
 
@@ -78,7 +77,6 @@ subtasks:
 - id: ST-002
   title: Add per-feature detailed progress log writer and ignore rule
   status: done
-  order: 2
   context: 'Add deterministic log-path resolution for `progress/run-feature-<FEATURE_ID>.txt`,
     append per-attempt details, and update ignore rules so logs do not appear in commit
     status.
@@ -90,7 +88,6 @@ subtasks:
 - id: ST-003
   title: Capture implement and gate output in concise mode with verbose override
   status: done
-  order: 3
   context: 'In default mode, suppress raw implement/gate output from terminal and
     write it to detailed logs. In verbose mode, preserve terminal streaming. Keep
     gate command behavior unchanged for direct `gates run`.
@@ -103,7 +100,6 @@ subtasks:
 - id: ST-004
   title: Include log path in telemetry and failure messaging
   status: done
-  order: 4
   context: 'Add `log_path` to each runs telemetry record and ensure concise failure
     output points operators to the detailed file.
 
@@ -114,7 +110,6 @@ subtasks:
 - id: ST-005
   title: Document concise default and verbose-output usage
   status: done
-  order: 5
   context: 'Update README loop behavior and CLI details to describe concise terminal
     output, detailed per-feature logs, and `--verbose-output` behavior.
 
@@ -126,7 +121,6 @@ subtasks:
 - id: ST-006
   title: Run focused regression and schema checks
   status: done
-  order: 6
   context: 'Validate loop output behavior, telemetry changes, and spec schema compatibility
     after implementing concise output and detailed logs.
 

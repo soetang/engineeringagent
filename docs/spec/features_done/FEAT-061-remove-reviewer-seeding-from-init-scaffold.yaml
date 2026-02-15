@@ -44,14 +44,12 @@ subtasks:
 - id: ST-001
   title: Remove reviewer artifact generation from init scaffold internals
   status: done
-  order: 1
   context: Delete include-reviewers scaffold branch and related template references.
   verification:
   - uv run pytest -q tests/test_init_scaffold.py
 - id: ST-002
   title: Remove reviewer-specific init CLI option surfaces
   status: done
-  order: 2
   context: Update parser and command wiring so init no longer accepts reviewer seeding
     flags.
   verification:
@@ -59,7 +57,6 @@ subtasks:
 - id: ST-003
   title: Update README and reviewer reference setup guidance
   status: done
-  order: 3
   context: Clarify that reviewer config is repository-owned and provisioned through
     reviewer CLI or manual harness files.
   verification:

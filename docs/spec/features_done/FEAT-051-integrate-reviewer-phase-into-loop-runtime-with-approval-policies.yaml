@@ -57,7 +57,6 @@ subtasks:
 - id: ST-001
   title: Add reviewer phase outcome models and iteration state fields
   status: done
-  order: 1
   context: Extend loop runtime model contracts to carry reviewer status, decision,
     failed reviewer id, and reviewer feedback.
   verification:
@@ -65,7 +64,6 @@ subtasks:
 - id: ST-002
   title: Add reviewer phase execution to iteration sequencing
   status: done
-  order: 2
   context: Invoke reviewer phase after gate pass and before completion commit while
     preserving existing phase-gating behavior.
   verification:
@@ -73,7 +71,6 @@ subtasks:
 - id: ST-003
   title: Enforce advisory follow-up implement latch semantics
   status: done
-  order: 3
   context: Implement and test required one-pass follow-up behavior after advisory
     advice.
   verification:
@@ -81,7 +78,6 @@ subtasks:
 - id: ST-004
   title: Implement blocking retry and exhausted-policy handling
   status: done
-  order: 4
   context: Apply max retry policy and continue-on-exhausted behavior with deterministic
     feedback and next-action mapping.
   verification:
@@ -91,7 +87,6 @@ subtasks:
 - id: ST-005
   title: Persist reviewer state and approval reuse invalidation
   status: done
-  order: 5
   context: Save and load reviewer approval/retry metadata in `progress/reviewers-state.json`
     and invalidate cache when scoped changes occur.
   verification:
@@ -99,7 +94,6 @@ subtasks:
 - id: ST-006
   title: Extend telemetry and summary outputs with reviewer fields
   status: done
-  order: 6
   context: Add deterministic reviewer output fields to per-iteration telemetry and
     human summary lines.
   verification:
@@ -108,7 +102,6 @@ subtasks:
 - id: ST-007
   title: Run reviewer and loop regression slice
   status: done
-  order: 7
   context: Validate reviewer-loop integration and ensure no regressions in existing
     loop behavior.
   verification:

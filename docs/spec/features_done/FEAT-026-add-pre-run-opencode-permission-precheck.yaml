@@ -64,7 +64,6 @@ subtasks:
 - id: ST-001
   title: Add deterministic precheck applicability logic for run mode
   status: done
-  order: 1
   context: 'Define and centralize the decision rule for when permission precheck is
     required based on run flags (`--skip-implement`, `--implement-command`, default
     OpenCode implementer).
@@ -75,7 +74,6 @@ subtasks:
 - id: ST-002
   title: Execute permission precheck before feature selection
   status: done
-  order: 2
   context: 'Insert precheck at non-dry run entry so failure exits before any feature
     is selected or iteration begins.
 
@@ -85,7 +83,6 @@ subtasks:
 - id: ST-003
   title: Preserve bypass behavior for skip and custom implement modes
   status: done
-  order: 3
   context: 'Ensure `--skip-implement` and `--implement-command` paths bypass precheck
     and preserve their existing loop behavior.
 
@@ -96,7 +93,6 @@ subtasks:
 - id: ST-004
   title: Remove permission probe from default loop_fast profile
   status: done
-  order: 4
   context: 'Update default gate profile configuration so permission probe is no longer
     part of per-iteration `loop_fast` execution.
 
@@ -106,7 +102,6 @@ subtasks:
 - id: ST-005
   title: Keep remediation guidance actionable and consistent
   status: done
-  order: 5
   context: 'Ensure fail-fast output on precheck failure includes concrete guidance
     consistent with repository OpenCode permission configuration expectations.
 
@@ -116,7 +111,6 @@ subtasks:
 - id: ST-006
   title: Run targeted regressions and validate spec contracts
   status: done
-  order: 6
   context: 'Run focused tests plus schema and loop-fast validation to confirm behavior
     and configuration integrity.
 

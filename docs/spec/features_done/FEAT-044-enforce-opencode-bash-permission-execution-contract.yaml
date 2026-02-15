@@ -43,7 +43,6 @@ subtasks:
 - id: ST-001
   title: Codify probe success as executable bash viability
   status: done
-  order: 1
   context: Ensure the precheck contract clearly requires that the probe command can
     be executed, and rejection markers remain first-class failure signals.
   verification:
@@ -51,7 +50,6 @@ subtasks:
 - id: ST-002
   title: Make integration fixture permission-viable for default build agent
   status: done
-  order: 2
   context: Update OpenCode integration test fixture/config generation so the local
     sandbox mirrors required allow-all behavior for the build agent.
   verification:
@@ -59,7 +57,6 @@ subtasks:
 - id: ST-003
   title: Strengthen integration assertions around precheck and telemetry
   status: done
-  order: 3
   context: Ensure tests assert explicit permission-contract outcomes and avoid indirect
     assertions that break when precheck exits early.
   verification:
@@ -68,7 +65,6 @@ subtasks:
 - id: ST-004
   title: Run full OpenCode integration regression slice
   status: done
-  order: 4
   context: Validate default, bypass, and remediation paths remain aligned after contract
     tightening.
   verification:

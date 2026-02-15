@@ -121,6 +121,97 @@ def _write_set_done_script(script_path: Path) -> Path:
     return script_path
 
 
+def _write_set_subtask_done_script(script_path: Path, subtask_id: str) -> Path:
+    script_path.write_text(
+        "\n".join(
+            [
+                "from pathlib import Path",
+                "import sys",
+                "import yaml",
+                f"target_subtask_id = {subtask_id!r}",
+                "feature_path = Path(sys.argv[1])",
+                "feature = yaml.safe_load(feature_path.read_text(encoding='utf-8'))",
+                "for subtask in feature.get('subtasks', []):",
+                "    if isinstance(subtask, dict) and subtask.get('id') == target_subtask_id:",
+                "        subtask['status'] = 'done'",
+                "        break",
+                "feature_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding='utf-8')",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return script_path
+
+
+def _write_add_done_subtask_script(
+    script_path: Path,
+    subtask_id: str,
+    verification_command: str,
+) -> Path:
+    script_path.write_text(
+        "\n".join(
+            [
+                "from pathlib import Path",
+                "import sys",
+                "import yaml",
+                f"new_subtask_id = {subtask_id!r}",
+                f"verification_command = {verification_command!r}",
+                "feature_path = Path(sys.argv[1])",
+                "feature = yaml.safe_load(feature_path.read_text(encoding='utf-8'))",
+                "subtasks = feature.setdefault('subtasks', [])",
+                "subtasks.append({",
+                "    'id': new_subtask_id,",
+                "    'title': 'Added done subtask',",
+                "    'status': 'done',",
+                "    'context': 'Created during implement step.',",
+                "    'verification': [verification_command],",
+                "})",
+                "feature_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding='utf-8')",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return script_path
+
+
+def _write_set_done_and_duplicate_subtask_script(
+    script_path: Path,
+    subtask_id: str,
+    duplicate_verification_command: str,
+) -> Path:
+    script_path.write_text(
+        "\n".join(
+            [
+                "from pathlib import Path",
+                "import sys",
+                "import yaml",
+                f"target_subtask_id = {subtask_id!r}",
+                f"duplicate_verification_command = {duplicate_verification_command!r}",
+                "feature_path = Path(sys.argv[1])",
+                "feature = yaml.safe_load(feature_path.read_text(encoding='utf-8'))",
+                "subtasks = feature.get('subtasks', [])",
+                "for subtask in subtasks:",
+                "    if isinstance(subtask, dict) and subtask.get('id') == target_subtask_id:",
+                "        subtask['status'] = 'done'",
+                "        subtasks.append({",
+                "            'id': target_subtask_id,",
+                "            'title': 'Duplicated done subtask',",
+                "            'status': 'done',",
+                "            'context': 'Duplicate id added during implement step.',",
+                "            'verification': [duplicate_verification_command],",
+                "        })",
+                "        break",
+                "feature_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding='utf-8')",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return script_path
+
+
 def _write_set_done_and_create_feature_script(script_path: Path) -> Path:
     script_path.write_text(
         "\n".join(
@@ -229,7 +320,7 @@ def _move_feature_to_done(project_root: Path, feature_path: Path) -> None:
     feature_path.unlink()
 
 
-def test_selected_subtask_verification_runs_in_iteration(tmp_path: Path) -> None:
+def test_verification_is_not_run_without_done_transition(tmp_path: Path) -> None:
     verification_marker = "verification-ran.txt"
     verification_command = (
         f'"{sys.executable}" -c "from pathlib import Path; '
@@ -241,7 +332,6 @@ def test_selected_subtask_verification_runs_in_iteration(tmp_path: Path) -> None
             "id": "ST-001",
             "title": "Run verification command",
             "status": "backlog",
-            "order": 1,
             "context": "Verify selected subtask commands run under loop control.",
             "verification": [verification_command],
         }
@@ -261,12 +351,14 @@ def test_selected_subtask_verification_runs_in_iteration(tmp_path: Path) -> None
     )
 
     assert outcome.result == "passed"
-    assert outcome.verification_status == "passed"
+    assert outcome.verification_status == "not_run"
     assert outcome.verification_failed_command is None
-    assert (project_root / verification_marker).read_text(encoding="utf-8") == "ok"
+    assert not (project_root / verification_marker).exists()
 
 
-def test_verification_failure_marks_iteration_non_pass(tmp_path: Path) -> None:
+def test_verification_failure_for_newly_done_subtask_marks_iteration_non_pass(
+    tmp_path: Path,
+) -> None:
     verification_command = (
         f'"{sys.executable}" -c "import sys; print(\'verification failure\'); '
         'sys.exit(1)"'
@@ -276,21 +368,24 @@ def test_verification_failure_marks_iteration_non_pass(tmp_path: Path) -> None:
         {
             "id": "ST-001",
             "title": "Fail verification command",
-            "status": "in_progress",
-            "order": 1,
+            "status": "backlog",
             "context": "Ensure failed verification marks iteration as failed.",
             "verification": [verification_command],
         }
     ]
     project_root, feature_path = _make_project_root(tmp_path, feature_data=feature_data)
+    script_path = _write_set_subtask_done_script(
+        tmp_path.parent / f"{tmp_path.name}-set-subtask-done.py",
+        "ST-001",
+    )
 
     outcome = loop_module._run_feature_iteration(
         project_root=project_root,
         feature_path=feature_path,
         gate_profile="loop_fast",
-        implement_command=None,
+        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
         opencode_prompt=None,
-        skip_implement=True,
+        skip_implement=False,
         attempt=1,
         hook_feedback=None,
         verbose_output=False,
@@ -308,6 +403,332 @@ def test_verification_failure_marks_iteration_non_pass(tmp_path: Path) -> None:
     assert runs[-1]["verification_failed_command"] == verification_command
 
 
+def test_verification_selection_ignores_non_string_commands(
+    tmp_path: Path,
+) -> None:
+    verification_marker = "verification-valid-ran.txt"
+    valid_verification_command = (
+        f'"{sys.executable}" -c "from pathlib import Path; '
+        f"Path('{verification_marker}').write_text('ok', encoding='utf-8')\""
+    )
+    feature_data = _base_feature(status="in_progress")
+    feature_data["subtasks"] = [
+        {
+            "id": "ST-001",
+            "title": "Ignore non-string verification entries",
+            "status": "backlog",
+            "context": "Ensure done-transition verification ignores non-command values.",
+            "verification": [123, valid_verification_command],
+        }
+    ]
+    project_root, feature_path = _make_project_root(tmp_path, feature_data=feature_data)
+    script_path = _write_set_subtask_done_script(
+        tmp_path.parent / f"{tmp_path.name}-set-subtask-done-ignore-invalid.py",
+        "ST-001",
+    )
+
+    outcome = loop_module._run_feature_iteration(
+        project_root=project_root,
+        feature_path=feature_path,
+        gate_profile="loop_fast",
+        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
+        opencode_prompt=None,
+        skip_implement=False,
+        attempt=1,
+        hook_feedback=None,
+        verbose_output=False,
+    )
+
+    assert outcome.result == "passed"
+    assert outcome.verification_status == "passed"
+    assert outcome.verification_failed_command is None
+    assert (project_root / verification_marker).exists()
+
+
+def test_verification_selection_ignores_blank_string_commands(
+    tmp_path: Path,
+) -> None:
+    verification_marker = "verification-blank-filter-ran.txt"
+    valid_verification_command = (
+        f'"{sys.executable}" -c "from pathlib import Path; '
+        f"Path('{verification_marker}').write_text('ok', encoding='utf-8')\""
+    )
+    feature_data = _base_feature(status="in_progress")
+    feature_data["subtasks"] = [
+        {
+            "id": "ST-001",
+            "title": "Ignore blank verification entries",
+            "status": "backlog",
+            "context": "Ensure done-transition verification ignores blank commands.",
+            "verification": ["   ", valid_verification_command],
+        }
+    ]
+    project_root, feature_path = _make_project_root(tmp_path, feature_data=feature_data)
+    script_path = _write_set_subtask_done_script(
+        tmp_path.parent / f"{tmp_path.name}-set-subtask-done-ignore-blank.py",
+        "ST-001",
+    )
+
+    outcome = loop_module._run_feature_iteration(
+        project_root=project_root,
+        feature_path=feature_path,
+        gate_profile="loop_fast",
+        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
+        opencode_prompt=None,
+        skip_implement=False,
+        attempt=1,
+        hook_feedback=None,
+        verbose_output=False,
+    )
+
+    runs = _read_runs(project_root)
+    feature_log = project_root / str(runs[-1]["log_path"])
+    log_text = feature_log.read_text(encoding="utf-8")
+
+    assert outcome.result == "passed"
+    assert outcome.verification_status == "passed"
+    assert outcome.verification_failed_command is None
+    assert (project_root / verification_marker).exists()
+    assert "[verification] command=   " not in log_text
+    assert f"[verification] command={valid_verification_command}" in log_text
+
+
+def test_verification_selection_normalizes_command_whitespace(
+    tmp_path: Path,
+) -> None:
+    verification_marker = "verification-whitespace-normalized-ran.txt"
+    trimmed_verification_command = (
+        f'"{sys.executable}" -c "from pathlib import Path; '
+        f"Path('{verification_marker}').write_text('ok', encoding='utf-8')\""
+    )
+    padded_verification_command = f"  {trimmed_verification_command}  "
+    feature_data = _base_feature(status="in_progress")
+    feature_data["subtasks"] = [
+        {
+            "id": "ST-001",
+            "title": "Normalize command whitespace",
+            "status": "backlog",
+            "context": "Ensure done-transition verification trims command whitespace.",
+            "verification": [padded_verification_command],
+        }
+    ]
+    project_root, feature_path = _make_project_root(tmp_path, feature_data=feature_data)
+    script_path = _write_set_subtask_done_script(
+        tmp_path.parent / f"{tmp_path.name}-set-subtask-done-normalize-whitespace.py",
+        "ST-001",
+    )
+
+    outcome = loop_module._run_feature_iteration(
+        project_root=project_root,
+        feature_path=feature_path,
+        gate_profile="loop_fast",
+        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
+        opencode_prompt=None,
+        skip_implement=False,
+        attempt=1,
+        hook_feedback=None,
+        verbose_output=False,
+    )
+
+    runs = _read_runs(project_root)
+    feature_log = project_root / str(runs[-1]["log_path"])
+    log_text = feature_log.read_text(encoding="utf-8")
+
+    assert outcome.result == "passed"
+    assert outcome.verification_status == "passed"
+    assert (project_root / verification_marker).exists()
+    assert f"[verification] command={trimmed_verification_command}" in log_text
+    assert f"[verification] command={padded_verification_command}" not in log_text
+
+
+def test_verification_ignores_new_done_subtasks_without_pre_snapshot_status(
+    tmp_path: Path,
+) -> None:
+    verification_marker = "verification-added-subtask-ran.txt"
+    verification_command = (
+        f'"{sys.executable}" -c "from pathlib import Path; '
+        f"Path('{verification_marker}').write_text('ok', encoding='utf-8')\""
+    )
+    feature_data = _base_feature(status="in_progress")
+    feature_data["subtasks"] = [
+        {
+            "id": "ST-001",
+            "title": "Leave existing subtask untouched",
+            "status": "backlog",
+            "context": "Ensure only stable-id status transitions drive verification.",
+            "verification": [verification_command],
+        }
+    ]
+    project_root, feature_path = _make_project_root(tmp_path, feature_data=feature_data)
+    script_path = _write_add_done_subtask_script(
+        tmp_path.parent / f"{tmp_path.name}-add-done-subtask.py",
+        "ST-NEW",
+        verification_command,
+    )
+
+    outcome = loop_module._run_feature_iteration(
+        project_root=project_root,
+        feature_path=feature_path,
+        gate_profile="loop_fast",
+        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
+        opencode_prompt=None,
+        skip_implement=False,
+        attempt=1,
+        hook_feedback=None,
+        verbose_output=False,
+    )
+
+    assert outcome.result == "passed"
+    assert outcome.verification_status == "not_run"
+    assert outcome.verification_failed_command is None
+    assert not (project_root / verification_marker).exists()
+
+
+def test_verification_selection_uses_first_post_entry_for_duplicate_subtask_ids(
+    tmp_path: Path,
+) -> None:
+    primary_marker = "verification-primary-ran.txt"
+    duplicate_marker = "verification-duplicate-ran.txt"
+    primary_verification_command = (
+        f'"{sys.executable}" -c "from pathlib import Path; '
+        f"Path('{primary_marker}').write_text('ok', encoding='utf-8')\""
+    )
+    duplicate_verification_command = (
+        f'"{sys.executable}" -c "from pathlib import Path; '
+        f"Path('{duplicate_marker}').write_text('ok', encoding='utf-8')\""
+    )
+    feature_data = _base_feature(status="in_progress")
+    feature_data["subtasks"] = [
+        {
+            "id": "ST-001",
+            "title": "Preserve one stable-id transition",
+            "status": "backlog",
+            "context": "Ensure duplicate post-implement IDs do not duplicate verification.",
+            "verification": [primary_verification_command],
+        }
+    ]
+    project_root, feature_path = _make_project_root(tmp_path, feature_data=feature_data)
+    script_path = _write_set_done_and_duplicate_subtask_script(
+        tmp_path.parent / f"{tmp_path.name}-set-done-and-duplicate-id.py",
+        "ST-001",
+        duplicate_verification_command,
+    )
+
+    outcome = loop_module._run_feature_iteration(
+        project_root=project_root,
+        feature_path=feature_path,
+        gate_profile="loop_fast",
+        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
+        opencode_prompt=None,
+        skip_implement=False,
+        attempt=1,
+        hook_feedback=None,
+        verbose_output=False,
+    )
+
+    assert outcome.result == "passed"
+    assert outcome.verification_status == "passed"
+    assert (project_root / primary_marker).exists()
+    assert not (project_root / duplicate_marker).exists()
+
+
+def test_verification_selection_uses_first_pre_status_for_duplicate_subtask_ids(
+    tmp_path: Path,
+) -> None:
+    verification_marker = "verification-first-pre-status-ran.txt"
+    verification_command = (
+        f'"{sys.executable}" -c "from pathlib import Path; '
+        f"Path('{verification_marker}').write_text('ok', encoding='utf-8')\""
+    )
+    feature_data = _base_feature(status="in_progress")
+    feature_data["subtasks"] = [
+        {
+            "id": "ST-001",
+            "title": "Primary pre-implement entry",
+            "status": "backlog",
+            "context": "Use first pre-implement status for done-transition diffing.",
+            "verification": [verification_command],
+        },
+        {
+            "id": "ST-001",
+            "title": "Duplicate pre-implement entry",
+            "status": "done",
+            "context": "Duplicate id should not mask first-entry transition.",
+            "verification": ["true"],
+        },
+    ]
+    project_root, feature_path = _make_project_root(tmp_path, feature_data=feature_data)
+    script_path = _write_set_subtask_done_script(
+        tmp_path.parent / f"{tmp_path.name}-set-first-duplicate-id-done.py",
+        "ST-001",
+    )
+
+    outcome = loop_module._run_feature_iteration(
+        project_root=project_root,
+        feature_path=feature_path,
+        gate_profile="loop_fast",
+        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
+        opencode_prompt=None,
+        skip_implement=False,
+        attempt=1,
+        hook_feedback=None,
+        verbose_output=False,
+    )
+
+    assert outcome.result == "passed"
+    assert outcome.verification_status == "passed"
+    assert (project_root / verification_marker).exists()
+
+
+def test_verification_failure_restores_feature_archived_during_iteration(
+    tmp_path: Path,
+) -> None:
+    verification_command = f'"{sys.executable}" -c "import sys; sys.exit(1)"'
+    feature_data = _base_feature(status="in_progress")
+    feature_data["subtasks"] = [
+        {
+            "id": "ST-001",
+            "title": "Fail verification after archive move",
+            "status": "backlog",
+            "context": "Ensure verification failure restores active feature path.",
+            "verification": [verification_command],
+        }
+    ]
+    project_root, feature_path = _make_project_root(tmp_path, feature_data=feature_data)
+    set_subtask_done_script = _write_set_subtask_done_script(
+        tmp_path.parent / f"{tmp_path.name}-set-subtask-done-before-archive.py",
+        "ST-001",
+    )
+    move_to_done_script = _write_move_to_done_script(
+        tmp_path.parent / f"{tmp_path.name}-move-to-done-before-verification.py"
+    )
+    implement_command = (
+        f'"{sys.executable}" "{set_subtask_done_script}" "{feature_path}"'
+        f' && "{sys.executable}" "{move_to_done_script}" "{project_root}" "{feature_path}"'
+    )
+
+    outcome = loop_module._run_feature_iteration(
+        project_root=project_root,
+        feature_path=feature_path,
+        gate_profile="loop_fast",
+        implement_command=implement_command,
+        opencode_prompt=None,
+        skip_implement=False,
+        attempt=1,
+        hook_feedback=None,
+        verbose_output=False,
+    )
+
+    archived_path = project_root / "docs" / "spec" / "features_done" / feature_path.name
+
+    assert outcome.result == "failed"
+    assert outcome.failed_gate is None
+    assert outcome.next_action == "retry_same_feature"
+    assert outcome.verification_status == f"failed:{verification_command}"
+    assert feature_path.exists()
+    assert not archived_path.exists()
+
+
 def test_ralph_prompt_includes_feature_file_path(tmp_path: Path) -> None:
     _, feature_path = _make_project_root(tmp_path, feature_data=_base_feature())
     feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
@@ -318,8 +739,17 @@ def test_ralph_prompt_includes_feature_file_path(tmp_path: Path) -> None:
         hook_feedback=None,
     )
 
-    assert str(feature_path) in prompt
-    assert "Read and use this feature spec from disk" in prompt
+    expected_prompt_phrases = (
+        str(feature_path),
+        "Read and use this feature spec from disk",
+        "most important open subtask",
+        "most important open subtask first",
+        "red-green-refactor TDD loop",
+        "red -> green -> refactor",
+        "only after it transitions to done in this iteration",
+    )
+    for phrase in expected_prompt_phrases:
+        assert phrase in prompt
 
 
 def test_cli_run_dry_run_skip_implement_path_first(tmp_path: Path, capsys: Any) -> None:
@@ -1921,7 +2351,7 @@ def test_verification_failure_feedback_is_injected_into_next_prompt(
         {
             "id": "ST-001",
             "title": "Inject verification failures into retry prompt",
-            "status": "in_progress",
+            "status": "backlog",
             "order": 1,
             "context": "Ensure failed verification output appears in next prompt.",
             "verification": [verification_command],
@@ -1940,7 +2370,12 @@ def test_verification_failure_feedback_is_injected_into_next_prompt(
             prompt = command[4]
             prompts.append(prompt)
             feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
-            feature["status"] = "done"
+            subtasks = feature.get("subtasks", [])
+            if len(prompts) == 1 and subtasks and isinstance(subtasks[0], dict):
+                subtasks[0]["status"] = "done"
+                feature["status"] = "in_progress"
+            else:
+                feature["status"] = "done"
             feature_path.write_text(
                 yaml.safe_dump(feature, sort_keys=False), encoding="utf-8"
             )
@@ -2272,11 +2707,19 @@ def test_verification_failure_feedback_replaces_previous_feedback(
         {
             "id": "ST-001",
             "title": "Replace verification feedback between retries",
-            "status": "in_progress",
+            "status": "backlog",
             "order": 1,
             "context": "Ensure latest verification output replaces stale feedback.",
             "verification": [verification_command],
-        }
+        },
+        {
+            "id": "ST-002",
+            "title": "Trigger second verification failure",
+            "status": "backlog",
+            "order": 2,
+            "context": "Ensure second retry carries newer verification feedback.",
+            "verification": [verification_command],
+        },
     ]
     project_root, feature_path = _make_project_root(tmp_path, feature_data=feature_data)
     _init_git_repo(project_root)
@@ -2291,7 +2734,23 @@ def test_verification_failure_feedback_replaces_previous_feedback(
             prompt = command[4]
             prompts.append(prompt)
             feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
-            feature["status"] = "done"
+            subtasks = feature.get("subtasks", [])
+            if (
+                len(prompts) == 1
+                and len(subtasks) >= 1
+                and isinstance(subtasks[0], dict)
+            ):
+                subtasks[0]["status"] = "done"
+                feature["status"] = "in_progress"
+            elif (
+                len(prompts) == 2
+                and len(subtasks) >= 2
+                and isinstance(subtasks[1], dict)
+            ):
+                subtasks[1]["status"] = "done"
+                feature["status"] = "in_progress"
+            else:
+                feature["status"] = "done"
             feature_path.write_text(
                 yaml.safe_dump(feature, sort_keys=False), encoding="utf-8"
             )

@@ -114,7 +114,6 @@ subtasks:
 - id: ST-001
   title: Extend gate contract for path-scoped selectors and normalized runner metadata
   status: done
-  order: 1
   context: Add strict contract fields for optional `on_change` selectors and runner
     metadata while preserving legacy `run` compatibility and clear validation errors.
   verification:
@@ -129,7 +128,6 @@ subtasks:
 - id: ST-002
   title: Implement deterministic changed-file discovery for base and head inputs
   status: done
-  order: 2
   context: Add change-set collection that supports explicit `--base` and `--head`,
     includes rename old and new paths, and supports safe fallback when diff resolution
     fails.
@@ -140,7 +138,6 @@ subtasks:
 - id: ST-003
   title: Add gate planning layer that emits deterministic run or skip decisions
   status: done
-  order: 3
   context: Evaluate profile gates against changed paths before execution and produce
     concise machine-parse-friendly decision and reason entries.
   verification:
@@ -155,7 +152,6 @@ subtasks:
 - id: ST-004
   title: Wire planner into gates run execution without changing selected gate semantics
   status: done
-  order: 4
   context: Ensure `gates run` executes only `run` decisions, preserves order, and
     keeps fail-fast behavior and output contracts for executed gates.
   verification:
@@ -164,7 +160,6 @@ subtasks:
 - id: ST-005
   title: Expose decision interface in CLI for planning and explainability
   status: done
-  order: 5
   context: Add CLI inputs for explicit change-set boundaries and a deterministic way
     to inspect run or skip decisions before execution.
   verification:
@@ -177,7 +172,6 @@ subtasks:
   title: Update default gate examples and regressions for spec-only versus code-change
     behavior
   status: done
-  order: 6
   context: Demonstrate path-scoped gate intent in `harness/gates.yaml` and add regression
     coverage proving spec-only change sets skip unrelated heavyweight gates.
   verification:

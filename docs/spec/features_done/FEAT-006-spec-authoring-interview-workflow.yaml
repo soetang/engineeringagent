@@ -23,7 +23,6 @@ subtasks:
   - id: ST-001
     title: Define interview-first spec authoring guide
     status: done
-    order: 1
     context: >
       Write a concise guide for LLM agents covering required interview topics,
       decision capture, and explicit user confirmation before drafting YAML.
@@ -34,7 +33,6 @@ subtasks:
   - id: ST-002
     title: Wire AGENTS.md to the spec-writing guide
     status: done
-    order: 2
     context: >
       Add explicit references in AGENTS.md so agents discover and read the guide
       before creating new feature specs.
@@ -45,7 +43,6 @@ subtasks:
   - id: ST-003
     title: Define spec interview checklist for future features
     status: done
-    order: 3
     context: >
       Include a reusable checklist/template in the guide so future spec requests
       consistently capture scope, constraints, and verification expectations.

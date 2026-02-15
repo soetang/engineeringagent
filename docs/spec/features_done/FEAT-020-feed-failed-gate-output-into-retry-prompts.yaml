@@ -62,7 +62,6 @@ subtasks:
 - id: ST-001
   title: Extend gate execution API to expose failed gate output for loop mode
   status: done
-  order: 1
   context: 'Refactor gate execution so loop runtime can capture failed gate command
     output without changing normal direct gate command UX.
 
@@ -73,7 +72,6 @@ subtasks:
 - id: ST-002
   title: Plumb failed-gate feedback into loop retry state
   status: done
-  order: 2
   context: 'Update loop iteration failure handling so gate failures set retry feedback
     for the same selected feature path using latest-only semantics.
 
@@ -84,7 +82,6 @@ subtasks:
 - id: ST-003
   title: Keep retry prompt formatting and truncation deterministic
   status: done
-  order: 3
   context: 'Ensure failed-gate output uses existing truncation limits and clear prompt
     labeling so implement retries target the reported blocker.
 
@@ -95,7 +92,6 @@ subtasks:
 - id: ST-004
   title: Cover spec-validate and non-spec gate failure paths
   status: done
-  order: 4
   context: 'Add focused loop regression tests that exercise at least one failing validation
     gate and one failing non-validation gate.
 
@@ -106,7 +102,6 @@ subtasks:
 - id: ST-005
   title: Run focused validation and loop regression checks
   status: done
-  order: 5
   context: 'Confirm schema validity and targeted retry-flow coverage after the feature
     is implemented.
 

@@ -49,7 +49,6 @@ subtasks:
 - id: ST-001
   title: Inventory current CLI surface and lock parity expectations
   status: done
-  order: 1
   context: Capture existing commands/options/dispatch expectations from tests before
     migration to reduce behavior regressions.
   verification:
@@ -57,7 +56,6 @@ subtasks:
 - id: ST-002
   title: Introduce Typer app scaffold and root command wiring
   status: done
-  order: 2
   context: Add Typer app initialization and register current top-level command groups
     with equivalent option names.
   verification:
@@ -65,7 +63,6 @@ subtasks:
 - id: ST-003
   title: Migrate gates and fitness command trees to Typer
   status: done
-  order: 3
   context: Port nested subcommands and ensure plan/list/run/catalog options map cleanly
     to existing handlers.
   verification:
@@ -73,7 +70,6 @@ subtasks:
 - id: ST-004
   title: Migrate run and init command options to Typer
   status: done
-  order: 4
   context: Port positional and optional arguments for run and init commands, preserving
     default values and compatibility constraints.
   verification:
@@ -81,7 +77,6 @@ subtasks:
 - id: ST-005
   title: Complete verification bar for parser migration
   status: done
-  order: 5
   context: Ensure repository contract checks and fitness outputs remain stable after
     parser migration.
   verification:

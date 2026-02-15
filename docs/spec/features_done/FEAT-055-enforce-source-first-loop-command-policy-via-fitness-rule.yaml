@@ -70,7 +70,6 @@ subtasks:
 - id: ST-001
   title: Add source-first loop command policy checker script
   status: done
-  order: 1
   context: Implement deterministic checker logic for scoped command surfaces and forbidden
     pattern detection.
   verification:
@@ -80,7 +79,6 @@ subtasks:
 - id: ST-002
   title: Register checker as error-severity harness fitness rule
   status: done
-  order: 2
   context: Add rule metadata and command wiring in harness fitness manifest and ensure
     catalog visibility.
   verification:
@@ -91,7 +89,6 @@ subtasks:
 - id: ST-003
   title: Auto-migrate scoped in-repo uvx commands to source-first equivalents
   status: done
-  order: 3
   context: Rewrite existing violations in active feature verification commands and
     harness gate commands while preserving behavior.
   verification:
@@ -100,7 +97,6 @@ subtasks:
 - id: ST-004
   title: Enforce immediate hard-fail behavior through loop fitness gate
   status: done
-  order: 4
   context: Ensure loop-fast gate integration blocks on policy violations and reports
     deterministic remediation guidance.
   verification:
@@ -110,7 +106,6 @@ subtasks:
 - id: ST-005
   title: Update docs for command policy rationale and remediation
   status: done
-  order: 5
   context: Document why in-repo loop commands must be source-first and how to remediate
     violations.
   verification:
@@ -119,7 +114,6 @@ subtasks:
 - id: ST-006
   title: Run focused regression suite for policy stability
   status: done
-  order: 6
   context: Verify the new fitness rule, gate enforcement, and command migrations remain
     deterministic.
   verification:

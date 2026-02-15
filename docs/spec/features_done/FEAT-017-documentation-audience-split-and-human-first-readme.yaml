@@ -65,7 +65,6 @@ subtasks:
 - id: ST-001
   title: Define agent-focused docs architecture reference
   status: done
-  order: 1
   context: 'Create docs/references/docs-architecture-llms.md describing doc audience
     boundaries, principles for human-readable docs, principles for agent-only docs,
     and maintenance expectations.
@@ -78,7 +77,6 @@ subtasks:
 - id: ST-002
   title: Link AGENTS to docs architecture and audience policy
   status: done
-  order: 2
   context: 'Update AGENTS.md so agents discover docs/references/docs-architecture-llms.md
     and follow explicit guidance on choosing human-facing versus agent-facing documentation
     artifacts.
@@ -91,7 +89,6 @@ subtasks:
 - id: ST-003
   title: Rewrite README as purpose-driven human-first quick start
   status: done
-  order: 3
   context: 'Replace README structure with concise onboarding: what this project is,
     the primary `application spec -> run loop` workflow, quick start commands, core
     ideas, and where to go next, including explicit guidance to use agents/specs to
@@ -105,7 +102,6 @@ subtasks:
 - id: ST-004
   title: Add curated links for context and deeper CLI usage
   status: done
-  order: 4
   context: 'Ensure README includes the required OpenAI reference plus a small curated
     list of external links, and links to in-repo CLI detail documentation.
 
@@ -117,7 +113,6 @@ subtasks:
 - id: ST-005
   title: Add mdformat check to project quality gates
   status: done
-  order: 5
   context: 'Add mdformat to development dependencies and wire an mdformat check gate
     into harness gate configuration so markdown formatting is validated.
 
@@ -130,7 +125,6 @@ subtasks:
 - id: ST-006
   title: Run full validation for docs and spec integrity
   status: done
-  order: 6
   context: 'Confirm spec validation and configured gate checks pass after documentation
     architecture and markdown quality changes are introduced.
 

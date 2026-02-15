@@ -27,11 +27,12 @@ This split lowers onboarding friction without hiding operational depth.
 
 ## 3) Structured YAML specs: deterministic units of work
 
-Every feature runs from a structured YAML spec with explicit fields for objective, constraints, acceptance criteria, and ordered subtasks.
+Every feature runs from a structured YAML spec with explicit fields for objective, constraints, acceptance criteria, and subtasks.
 
 Practical effect:
 
-- Work selection is explicit (next eligible subtask).
+- Work selection is explicit (most important open subtask).
+- Implementation follows explicit TDD sequencing (red -> green -> refactor).
 - Progress is auditable (`status`, `updated_at`, run logs).
 - Handoffs between humans and agents stay consistent.
 

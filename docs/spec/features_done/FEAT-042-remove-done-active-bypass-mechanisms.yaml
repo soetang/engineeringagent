@@ -37,7 +37,6 @@ subtasks:
 - id: ST-001
   title: Remove schema-only validation mode from CLI and validator interfaces
   status: done
-  order: 1
   context: Remove `--schema-only` argument wiring and simplify validator invocation
     so archival policy checks are always enforced.
   verification:
@@ -46,7 +45,6 @@ subtasks:
 - id: ST-002
   title: Replace allowlist transition handling with explicit unsupported-file validation
   status: done
-  order: 2
   context: Delete allowlist loading logic and add deterministic validation failure
     when `.allow-done-active.txt` is present in active features.
   verification:
@@ -55,7 +53,6 @@ subtasks:
 - id: ST-003
   title: Update validator tests for hard enforcement and no-bypass messaging
   status: done
-  order: 3
   context: Replace transitional allowlist expectations with hard-fail assertions,
     add coverage for unsupported transition file presence, and keep done-archive invariants
     explicit.
@@ -64,7 +61,6 @@ subtasks:
 - id: ST-004
   title: Remove transition artifact and align current docs with new command contract
   status: done
-  order: 4
   context: Remove `docs/spec/features/.allow-done-active.txt` and update active reference
     docs that currently instruct `validate --schema-only`.
   verification:

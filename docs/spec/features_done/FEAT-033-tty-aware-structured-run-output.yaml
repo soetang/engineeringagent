@@ -69,7 +69,6 @@ subtasks:
 - id: ST-001
   title: Add run-output presentation helper with TTY and no-color detection
   status: done
-  order: 1
   context: 'Implement reusable formatting helpers for lifecycle labels and status
     tokens, with explicit checks for terminal capability and no-color environment
     overrides.
@@ -82,7 +81,6 @@ subtasks:
 - id: ST-002
   title: Apply structured lifecycle formatting to run loop terminal messages
   status: done
-  order: 2
   context: 'Route `run` lifecycle prints (precheck, selection, implement step, summary,
     failure detail, completion) through the new formatter while preserving message
     intent, and render iteration lines using the canonical emoji-forward contract.
@@ -95,7 +93,6 @@ subtasks:
 - id: ST-003
   title: Preserve ANSI-free file logs and telemetry
   status: done
-  order: 3
   context: 'Ensure styled terminal rendering does not leak into progress log files
     or runs telemetry payloads.
 
@@ -106,7 +103,6 @@ subtasks:
 - id: ST-004
   title: Update run documentation for readability behavior and color fallbacks
   status: done
-  order: 4
   context: 'Document the structured output behavior, TTY-aware styling, and how to
     force plain output.
 
@@ -117,7 +113,6 @@ subtasks:
 - id: ST-005
   title: Run focused loop regressions and final loop_fast gate profile
   status: done
-  order: 5
   context: 'Validate new output formatting behavior with focused tests and final gate
     profile used by the run loop workflow.
 

@@ -15,15 +15,6 @@ from pydantic_core import InitErrorDetails, PydanticCustomError
 PRIORITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 JSON_SCHEMA_DRAFT_URL = "https://json-schema.org/draft/2020-12/schema"
 ERR_DUP_SUBTASK_ID: LiteralString = "duplicate subtask id: {subtask_id}"
-ERR_DUP_SUBTASK_ORDER: LiteralString = "duplicate order: {order}"
-ERR_ORDER_SEQUENCE: LiteralString = (
-    "subtask order values must be contiguous and start at 1 "
-    "(expected {expected}, got {got})"
-)
-ERR_DONE_PREFIX: LiteralString = (
-    "done subtasks must form a contiguous prefix by order; "
-    "order {order} cannot be done when earlier subtasks are not done"
-)
 
 
 FeatureId = Annotated[
@@ -183,7 +174,6 @@ class SubtaskSpec(StrictContractModel):
     id: SubtaskId
     title: NonEmptyStr
     status: FeatureStatus
-    order: Annotated[int, Field(strict=True, ge=1)]
     context: StrictString | None = None
     constraints: list[StrictString] | None = None
     verification: Annotated[list[StrictString], Field(min_length=1)]
@@ -212,22 +202,7 @@ class FeatureSpec(StrictContractModel):
     @model_validator(mode="after")
     def enforce_invariants(self) -> FeatureSpec:
         """Apply repository feature invariants in the model layer."""
-        (
-            errors,
-            subtask_orders,
-            in_progress_count,
-            done_count,
-            ordered_subtasks,
-        ) = _collect_subtask_state(self.subtasks)
-
-        errors.extend(
-            _in_progress_subtask_count_errors(
-                self.subtasks,
-                in_progress_count,
-            )
-        )
-        errors.extend(_subtask_order_sequence_errors(self.subtasks, subtask_orders))
-        errors.extend(_done_subtask_prefix_errors(ordered_subtasks))
+        errors, in_progress_count, done_count = _collect_subtask_state(self.subtasks)
         errors.extend(
             _feature_status_alignment_errors(
                 self.status,
@@ -247,17 +222,13 @@ def _collect_subtask_state(
     subtasks: list[SubtaskSpec],
 ) -> tuple[
     list[InitErrorDetails],
-    set[int],
     int,
     int,
-    list[tuple[int, int, SubtaskSpec]],
 ]:
     errors: list[InitErrorDetails] = []
     subtask_ids: set[str] = set()
-    subtask_orders: set[int] = set()
     in_progress_count = 0
     done_count = 0
-    ordered_subtasks: list[tuple[int, int, SubtaskSpec]] = []
 
     for idx, subtask in enumerate(subtasks):
         if subtask.id in subtask_ids:
@@ -274,22 +245,6 @@ def _collect_subtask_state(
             )
         subtask_ids.add(subtask.id)
 
-        if subtask.order in subtask_orders:
-            errors.append(
-                _init_error_detail(
-                    error=PydanticCustomError(
-                        "value_error",
-                        ERR_DUP_SUBTASK_ORDER,
-                        {"order": subtask.order},
-                    ),
-                    loc=("subtasks", idx, "order"),
-                    input_value=subtask.order,
-                )
-            )
-        subtask_orders.add(subtask.order)
-
-        ordered_subtasks.append((subtask.order, idx, subtask))
-
         if subtask.status == FeatureStatus.IN_PROGRESS:
             in_progress_count += 1
         if subtask.status == FeatureStatus.DONE:
@@ -297,77 +252,9 @@ def _collect_subtask_state(
 
     return (
         errors,
-        subtask_orders,
         in_progress_count,
         done_count,
-        ordered_subtasks,
     )
-
-
-def _in_progress_subtask_count_errors(
-    subtasks: list[SubtaskSpec],
-    in_progress_count: int,
-) -> list[InitErrorDetails]:
-    if in_progress_count <= 1:
-        return []
-    return [
-        _init_error_detail(
-            error=PydanticCustomError(
-                "value_error",
-                "at most one subtask can be in_progress per feature",
-            ),
-            loc=("subtasks",),
-            input_value=[subtask.status for subtask in subtasks],
-        )
-    ]
-
-
-def _subtask_order_sequence_errors(
-    subtasks: list[SubtaskSpec],
-    subtask_orders: set[int],
-) -> list[InitErrorDetails]:
-    if not subtask_orders:
-        return []
-    expected = set(range(1, len(subtasks) + 1))
-    if subtask_orders == expected:
-        return []
-    return [
-        _init_error_detail(
-            error=PydanticCustomError(
-                "value_error",
-                ERR_ORDER_SEQUENCE,
-                {
-                    "expected": sorted(expected),
-                    "got": sorted(subtask_orders),
-                },
-            ),
-            loc=("subtasks",),
-            input_value=sorted(subtask_orders),
-        )
-    ]
-
-
-def _done_subtask_prefix_errors(
-    ordered_subtasks: list[tuple[int, int, SubtaskSpec]],
-) -> list[InitErrorDetails]:
-    errors: list[InitErrorDetails] = []
-    seen_non_done = False
-    for order, idx, subtask in sorted(ordered_subtasks, key=lambda item: item[0]):
-        if subtask.status != FeatureStatus.DONE:
-            seen_non_done = True
-        elif seen_non_done:
-            errors.append(
-                _init_error_detail(
-                    error=PydanticCustomError(
-                        "value_error",
-                        ERR_DONE_PREFIX,
-                        {"order": order},
-                    ),
-                    loc=("subtasks", idx, "status"),
-                    input_value=subtask.status,
-                )
-            )
-    return errors
 
 
 def _feature_status_alignment_errors(
@@ -607,17 +494,17 @@ def feature_sort_key(feature: dict[str, Any]) -> tuple[int, str]:
 
 
 def find_subtask(feature: dict[str, Any], status: str) -> dict[str, Any] | None:
-    """Return the earliest-ordered subtask with a target status.
+    """Return the first matching subtask with a target status.
 
     Args:
         feature: Feature mapping containing subtasks.
         status: Desired subtask status to match.
 
     Returns:
-        First matching subtask by order, or None when absent.
+        First matching subtask by document order, or None when absent.
     """
     subtasks = feature.get("subtasks", [])
     matches = [s for s in subtasks if s.get("status") == status]
     if not matches:
         return None
-    return sorted(matches, key=lambda s: int(s.get("order", 1_000_000)))[0]
+    return matches[0]

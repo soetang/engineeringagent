@@ -25,7 +25,6 @@ subtasks:
   - id: ST-001
     title: Add Ralph mode execution path for explicit feature file input
     status: done
-    order: 1
     context: >
       Support running one feature-level Ralph iteration with an explicit feature spec
       path and no subtask orchestration requirements.
@@ -36,7 +35,6 @@ subtasks:
   - id: ST-002
     title: Implement spec-file-first OpenCode prompt contract
     status: done
-    order: 2
     context: >
       Build the default Ralph prompt so OpenCode is told to read the feature YAML file
       directly and derive its own next action.
@@ -50,7 +48,6 @@ subtasks:
   - id: ST-003
     title: Relax subtask coupling in Ralph execution
     status: done
-    order: 3
     context: >
       Ensure Ralph mode does not block when subtasks are absent, blocked, or not selected.
       Feature-level state and verification outcomes should drive result semantics.
@@ -62,7 +59,6 @@ subtasks:
   - id: ST-004
     title: Preserve back-pressure and telemetry in Ralph mode
     status: done
-    order: 4
     context: >
       Keep gate profile execution and append one run record per non-dry iteration,
       including failures from implement or verification steps.

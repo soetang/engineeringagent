@@ -25,7 +25,6 @@ subtasks:
   - id: ST-001
     title: Add uv lockfile and baseline project pinning
     status: done
-    order: 1
     context: >
       Generate and commit uv.lock for deterministic dependency resolution; add
       project Python version pinning if needed for consistent local behavior.
@@ -37,7 +36,6 @@ subtasks:
   - id: ST-002
     title: Make script and gate commands uv-first
     status: done
-    order: 2
     context: >
       Update scripts and harness gate commands to execute with uv run so they use
       the project environment without manual activation.
@@ -49,7 +47,6 @@ subtasks:
   - id: ST-003
     title: Add uv docs and AGENTS.md references
     status: done
-    order: 3
     context: >
       Create or update canonical uv workflow docs under docs/ (including quickstart
       and common commands), refresh README references, and ensure AGENTS.md points
@@ -63,7 +60,6 @@ subtasks:
   - id: ST-004
     title: Verify loop runner behavior under uv-managed environment
     status: done
-    order: 4
     context: >
       Confirm loop dry-run and verification-only modes work when invoked through
       uv run after dependency sync.

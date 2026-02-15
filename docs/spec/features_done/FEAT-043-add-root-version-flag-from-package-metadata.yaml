@@ -35,7 +35,6 @@ subtasks:
 - id: ST-001
   title: Add root parser --version flag sourced from package metadata
   status: done
-  order: 1
   context: Update CLI parser wiring so `--version` prints metadata version with exact
     version-only output and no extra labels.
   verification:
@@ -43,7 +42,6 @@ subtasks:
 - id: ST-002
   title: Preserve root parser command requirements for non-version invocations
   status: done
-  order: 2
   context: Ensure adding `--version` does not relax existing subcommand requirements
     when users invoke the CLI without a command and without the version flag.
   verification:
@@ -51,7 +49,6 @@ subtasks:
 - id: ST-003
   title: Validate metadata contract and spec integrity
   status: done
-  order: 3
   context: Add coverage that the reported value comes from package metadata and run
     repository spec validation after updates.
   verification:

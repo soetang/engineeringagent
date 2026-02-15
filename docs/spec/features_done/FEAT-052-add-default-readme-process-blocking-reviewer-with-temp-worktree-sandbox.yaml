@@ -73,7 +73,6 @@ subtasks:
 - id: ST-001
   title: Add scaffolded readme_process reviewer entry and prompt file template
   status: done
-  order: 1
   context: Add default reviewer example plus prompt artifact for readme_process in
     scaffold output, including explicit clean-room README bootstrap instructions.
   verification:
@@ -81,7 +80,6 @@ subtasks:
 - id: ST-002
   title: Add runtime planner filters for feature_done and README on-change scope
   status: done
-  order: 2
   context: Ensure planner only schedules readme_process when required phase and file-change
     criteria match.
   verification:
@@ -89,7 +87,6 @@ subtasks:
 - id: ST-003
   title: Enforce temp worktree snapshot sandbox for readme_process execution
   status: done
-  order: 3
   context: Implement and verify isolated sandbox execution path for readme_process,
     including running README bootstrap flow in fresh temp directory context.
   verification:
@@ -98,7 +95,6 @@ subtasks:
 - id: ST-004
   title: Wire blocking retry and exhaustion behavior for readme_process
   status: done
-  order: 4
   context: Ensure request_changes outcomes map to blocking retry flow, include README-vs-init
     remediation classification, and preserve default exhausted continuation warning
     behavior.
@@ -109,7 +105,6 @@ subtasks:
 - id: ST-005
   title: Add docs section with exact readme_process sample and plain-English semantics
   status: done
-  order: 5
   context: Document readme_process behavior, trigger logic, and policy outcomes with
     exact copy-paste YAML.
   verification:
@@ -117,7 +112,6 @@ subtasks:
 - id: ST-006
   title: Run reviewer-specific regression slice
   status: done
-  order: 6
   context: Validate planner, sandbox, and loop behavior for readme_process scenario
     end to end.
   verification:

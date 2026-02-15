@@ -63,7 +63,6 @@ subtasks:
 - id: ST-001
   title: Port builtin rule implementations to harness command scripts
   status: done
-  order: 1
   context: Create one command script per migrated rule with deterministic envelope
     output.
   verification:
@@ -71,14 +70,12 @@ subtasks:
 - id: ST-002
   title: Replace builtin manifest references with command entries
   status: done
-  order: 2
   context: Update harness fitness manifest so active rule catalog is fully command-backed.
   verification:
   - uv run pytest -q tests/test_fitness_manifest_contract.py tests/test_fitness_registry.py
 - id: ST-003
   title: Remove builtin loader and manifest contract support from runtime
   status: done
-  order: 3
   context: Delete BuiltinRuleManifestReference usage and builtin resolution branches
     from fitness registry/contracts.
   verification:
@@ -86,7 +83,6 @@ subtasks:
 - id: ST-004
   title: Migrate and reorganize rule-specific tests to harness-oriented structure
   status: done
-  order: 4
   context: Move builtin-function tests to harness-command behavior tests while maintaining
     deterministic assertions.
   verification:
@@ -95,7 +91,6 @@ subtasks:
 - id: ST-005
   title: Run full validation and loop-fast gates after migration
   status: done
-  order: 5
   context: Confirm migrated harness-only fitness stack blocks or passes exactly through
     existing gate profiles.
   verification:

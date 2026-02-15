@@ -66,7 +66,6 @@ subtasks:
 - id: ST-001
   title: Introduce a canonical default OpenCode agent identifier for runtime invocation
   status: done
-  order: 1
   context: Centralize default agent naming so OpenCode client and loop runtime call
     sites consistently target `engineeringagent`.
   verification:
@@ -74,7 +73,6 @@ subtasks:
 - id: ST-002
   title: Rebase permission probe and remediation contract on engineeringagent
   status: done
-  order: 2
   context: Keep executable-bash viability checks intact while enforcing no-fallback
     default-agent precheck and updated remediation guidance.
   verification:
@@ -83,7 +81,6 @@ subtasks:
 - id: ST-003
   title: Update implement and selector runtime command surfaces to engineeringagent
   status: done
-  order: 3
   context: Ensure runtime command execution and deterministic output strings no longer
     hard-code `build` for default OpenCode paths.
   verification:
@@ -93,7 +90,6 @@ subtasks:
   title: Add no-fallback and non-overwrite regression coverage for existing build
     config
   status: done
-  order: 4
   context: Prove the loop still fails fast without `engineeringagent` even when `build`
     config exists, and does not mutate build-agent files.
   verification:
@@ -102,7 +98,6 @@ subtasks:
 - id: ST-005
   title: Update docs for custom engineeringagent setup and permission troubleshooting
   status: done
-  order: 5
   context: Align README and agent references with the new default agent and non-overwrite
     contract so operators can configure Codex high defaults and permissions without
     replacing build policy.
@@ -112,7 +107,6 @@ subtasks:
 - id: ST-006
   title: Run targeted OpenCode regression slice and schema validation
   status: done
-  order: 6
   context: Confirm custom-agent migration is stable across unit and integration seams.
   verification:
   - uv run pytest -q tests/test_opencode_client.py tests/test_opencode_permissions.py

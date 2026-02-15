@@ -54,7 +54,6 @@ subtasks:
 - id: ST-001
   title: Relocate harness root scripts into harness fitness-functions and preserve behavior
   status: backlog
-  order: 1
   context: Move validate_yaml, permission_probe, and validate_commit_messages scripts and update internal project-root resolution as needed.
   verification:
   - uv run python harness/fitness-functions/validate_yaml.py
@@ -63,21 +62,18 @@ subtasks:
 - id: ST-002
   title: Update runtime, CI, pre-commit, and scaffold references to relocated script paths
   status: backlog
-  order: 2
   context: Replace all harness/*.py command references with harness/fitness-functions/*.py for active execution surfaces.
   verification:
   - uv run pytest -q tests/test_gates.py tests/test_init_command.py
 - id: ST-003
   title: Add blocking fitness rule for YAML-only harness root file locality
   status: backlog
-  order: 3
   context: Implement and register a command-backed rule that scans harness root and reports deterministic violations for non-YAML files.
   verification:
   - uv run pytest -q tests/test_fitness_rules_harness_root_yaml_only.py tests/test_loop_contracts.py
 - id: ST-004
   title: Update docs/spec references and validate full repository contracts
   status: backlog
-  order: 4
   context: Refresh assertions/examples that mention old harness/*.py paths and run repository-level validation/gates.
   verification:
   - uv run python -m engineeringagent.cli validate

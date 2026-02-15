@@ -58,7 +58,6 @@ subtasks:
 - id: ST-001
   title: Inventory and map all dataclasses usage in src/engineeringagent for migration
   status: done
-  order: 1
   context: 'Identify every stdlib dataclass and dataclasses usage in scoped source
     files and define target Pydantic BaseModel replacements before guardrail activation.
 
@@ -82,7 +81,6 @@ subtasks:
 - id: ST-002
   title: Migrate scoped dataclass models to Pydantic v2 BaseModel
   status: done
-  order: 2
   context: 'Refactor source models in src/engineeringagent from stdlib dataclasses
     to BaseModel, preserving behavior and call-site compatibility where practical.
 
@@ -115,7 +113,6 @@ subtasks:
 - id: ST-003
   title: Add custom no-stdlib-dataclasses fitness checker script under harness
   status: done
-  order: 3
   context: 'Implement command-backed checker script in harness/fitness-functions that
     scans only src/engineeringagent and returns deterministic machine-readable violations.
 
@@ -133,7 +130,6 @@ subtasks:
   title: Register custom rule_id architecture.no-stdlib-dataclasses-in-src in harness
     manifest
   status: done
-  order: 4
   context: 'Declare the new command rule in harness/fitness-functions/rules.yaml with
     rule_id architecture.no-stdlib-dataclasses-in-src, severity error, scope, rationale,
     and remediation text recommending BaseModel.
@@ -149,7 +145,6 @@ subtasks:
 - id: ST-005
   title: Regenerate fitness catalog docs and validate gate enforcement
   status: done
-  order: 5
   context: 'Ensure rule appears in generated catalog and gate profiles fail on violations
     while passing on compliant source.
 

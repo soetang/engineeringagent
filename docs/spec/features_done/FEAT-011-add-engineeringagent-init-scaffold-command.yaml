@@ -56,7 +56,6 @@ subtasks:
 - id: ST-001
   title: Add init subcommand and baseline scaffold manifest
   status: done
-  order: 1
   context: 'Register `engineeringagent init` in the CLI and define the canonical baseline
     scaffold inventory it creates for new repositories.
 
@@ -68,7 +67,6 @@ subtasks:
 - id: ST-002
   title: Implement existing docs conflict handling flow
   status: done
-  order: 2
   context: 'Detect existing `docs/` and require explicit choice to reuse current docs
     layout or create a distinct scaffold docs directory and reference it consistently.
 
@@ -79,7 +77,6 @@ subtasks:
 - id: ST-003
   title: Implement AGENTS conflict choices and follow-up merge-spec generation
   status: done
-  order: 3
   context: 'Detect existing `AGENTS.md` and provide three-way handling: overwrite,
     preserve by renaming plus generate scaffold AGENTS and a follow-up merge spec,
     or abort without modifying files.
@@ -92,7 +89,6 @@ subtasks:
 - id: ST-004
   title: Generate scaffold AGENTS guidance without run instructions
   status: done
-  order: 4
   context: 'Ensure scaffolded AGENTS content tells agents how to bootstrap/repair
     harness assets and run setup validation commands while intentionally excluding
     run-loop execution guidance.
@@ -104,7 +100,6 @@ subtasks:
 - id: ST-005
   title: Scaffold pre-commit + empty-gates baseline and friendly gate UX
   status: done
-  order: 5
   context: 'Write pre-commit hook wiring and gate profile stubs with no concrete gate
     commands, then update CLI gate execution messaging so empty profiles produce a
     clear success message instead of ambiguous output.
@@ -116,7 +111,6 @@ subtasks:
 - id: ST-006
   title: Update docs and backlog promotion state
   status: done
-  order: 6
   context: 'Document `engineeringagent init` usage and conflict behaviors in repo
     docs, and promote POT-001 by removing it from `docs/spec/potential_features.yaml`.
 

@@ -62,7 +62,6 @@ subtasks:
 - id: ST-001
   title: Add shared pathspec matcher utility
   status: done
-  order: 1
   context: Create a reusable matcher API and wire dependency usage behind deterministic
     helper functions.
   verification:
@@ -70,7 +69,6 @@ subtasks:
 - id: ST-002
   title: Migrate gate planner matching to shared matcher
   status: done
-  order: 2
   context: Replace gate-local `Path.match` logic with pathspec-backed matching while
     preserving reason envelopes.
   verification:
@@ -78,7 +76,6 @@ subtasks:
 - id: ST-003
   title: Migrate reviewer planner matching to shared matcher
   status: done
-  order: 3
   context: Replace reviewer-local `Path.match` logic and preserve phase and approval-cache
     behavior.
   verification:
@@ -86,7 +83,6 @@ subtasks:
 - id: ST-004
   title: Add edge-case regression tests for pathspec semantics
   status: done
-  order: 4
   context: Cover nested globs, renamed paths, empty-changes paths, and separator normalization
     behavior.
   verification:
@@ -94,7 +90,6 @@ subtasks:
 - id: ST-005
   title: Run full verification bar for dependency adoption
   status: done
-  order: 5
   context: Confirm the migration meets repository quality gates.
   verification:
   - uv run pytest -q tests/test_gates.py tests/test_reviewers_runtime.py tests/test_reviewers_state.py

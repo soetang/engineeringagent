@@ -46,7 +46,6 @@ subtasks:
 - id: ST-001
   title: Add loop-runtime verification phase contract and telemetry fields
   status: done
-  order: 1
   context: Define data contracts for per-iteration verification execution and outcomes,
     including status strings, failed verification command identity, and prompt-feedback
     payload.
@@ -56,7 +55,6 @@ subtasks:
 - id: ST-002
   title: Execute selected subtask verification commands in harness runtime
   status: done
-  order: 2
   context: Implement the verification phase so loop runtime executes selected subtask
     `verification` commands and captures deterministic pass/fail outcomes.
   verification:
@@ -65,7 +63,6 @@ subtasks:
 - id: ST-003
   title: Inject verification failure output into next retry prompt
   status: done
-  order: 3
   context: Reuse retry-feedback plumbing so failed verification output is truncated
     and injected into the next implement prompt for the same selected feature.
   verification:
@@ -74,7 +71,6 @@ subtasks:
 - id: ST-004
   title: Update presentation and progress logging for verification outcomes
   status: done
-  order: 4
   context: Add concise terminal status and structured progress log sections so humans
     can see verification outcomes without confusing them with gate results. Create
     a new test module `tests/test_loop_output.py` in this subtask and add focused
@@ -85,7 +81,6 @@ subtasks:
 - id: ST-005
   title: Run regression checks for retry and gate compatibility
   status: done
-  order: 5
   context: Confirm verification feedback does not regress gate-failure and commit-failure
     retry flows while resolving repeated verification-failure loops.
   verification:

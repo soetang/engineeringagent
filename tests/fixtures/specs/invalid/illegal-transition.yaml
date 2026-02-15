@@ -11,6 +11,5 @@ subtasks:
   - id: ST-001
     title: Incomplete subtask
     status: backlog
-    order: 1
     verification:
       - agent-harness validate

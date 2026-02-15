@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Iterable
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -131,36 +131,80 @@ class _PipelineState(BaseModel):
     archived_in_iteration: bool = False
     selected_started_active: bool = False
     verification_commands: list[str] = Field(default_factory=list)
+    pre_implement_subtask_statuses: dict[str, str] = Field(default_factory=dict)
 
 
-def _selected_subtask_verification_commands(
+def _subtask_status_snapshot(
     feature: dict[str, Any] | None,
+) -> dict[str, str]:
+    status_by_id: dict[str, str] = {}
+    for subtask in _iter_subtasks(feature):
+        subtask_id = subtask.get("id")
+        subtask_status = subtask.get("status")
+        if not isinstance(subtask_id, str) or not subtask_id:
+            continue
+        if not isinstance(subtask_status, str):
+            continue
+        status_by_id.setdefault(subtask_id, subtask_status)
+    return status_by_id
+
+
+def _done_transition_verification_commands(
+    previous_status_by_subtask_id: dict[str, str],
+    post_feature: dict[str, Any] | None,
 ) -> list[str]:
+    commands: list[str] = []
+    for subtask in _iter_unique_subtasks_by_id(post_feature):
+        subtask_id = subtask.get("id")
+        assert isinstance(subtask_id, str)
+        previous_status = previous_status_by_subtask_id.get(subtask_id)
+        if not _transitioned_to_done(previous_status, subtask.get("status")):
+            continue
+        verification = subtask.get("verification")
+        if not isinstance(verification, list):
+            continue
+        commands.extend(_iter_verification_commands(verification))
+    return commands
+
+
+def _transitioned_to_done(previous_status: str | None, current_status: Any) -> bool:
+    return (
+        previous_status is not None
+        and previous_status != "done"
+        and current_status == "done"
+    )
+
+
+def _iter_unique_subtasks_by_id(
+    feature: dict[str, Any] | None,
+) -> Iterable[dict[str, Any]]:
+    seen_subtask_ids: set[str] = set()
+    for subtask in _iter_subtasks(feature):
+        subtask_id = subtask.get("id")
+        if not isinstance(subtask_id, str) or not subtask_id:
+            continue
+        if subtask_id in seen_subtask_ids:
+            continue
+        seen_subtask_ids.add(subtask_id)
+        yield subtask
+
+
+def _iter_subtasks(feature: dict[str, Any] | None) -> Iterable[dict[str, Any]]:
     if feature is None:
-        return []
+        return ()
     subtasks = feature.get("subtasks")
     if not isinstance(subtasks, list) or not subtasks:
-        return []
+        return ()
+    return (subtask for subtask in subtasks if isinstance(subtask, dict))
 
-    prioritized_statuses = ("in_progress", "backlog")
-    for target_status in prioritized_statuses:
-        matching_subtasks = [
-            subtask
-            for subtask in subtasks
-            if isinstance(subtask, dict) and subtask.get("status") == target_status
-        ]
-        if not matching_subtasks:
+
+def _iter_verification_commands(verification: list[Any]) -> Iterable[str]:
+    for command in verification:
+        if not isinstance(command, str):
             continue
-
-        selected_subtask = sorted(
-            matching_subtasks,
-            key=lambda subtask: int(subtask.get("order", 1_000_000)),
-        )[0]
-        verification = selected_subtask.get("verification")
-        if not isinstance(verification, list):
-            return []
-        return [str(command) for command in verification]
-    return []
+        normalized_command = command.strip()
+        if normalized_command:
+            yield normalized_command
 
 
 def _apply_initial_load_result(
@@ -189,11 +233,11 @@ def _run_implement_phase_if_ready(
         return
 
     assert feature is not None
+    state.pre_implement_subtask_statuses = _subtask_status_snapshot(feature)
     state.selected_started_active = True
     dependencies.touch_active_feature_for_iteration(
         feature, iteration_inputs.feature_path
     )
-    state.verification_commands = _selected_subtask_verification_commands(feature)
     state.implement_status = "skipped" if iteration_inputs.skip_implement else "passed"
     ok, implement_failed_gate, state.implement_output = dependencies.run_implement_step(
         iteration_inputs.project_root,
@@ -215,9 +259,15 @@ def _run_verification_phase_if_passed(
     state: _PipelineState,
     iteration_inputs: FeatureIterationInputs,
     dependencies: IterationPipelineDependencies,
+    post_feature: dict[str, Any] | None,
 ) -> None:
     if state.result != "passed":
         return
+
+    state.verification_commands = _done_transition_verification_commands(
+        state.pre_implement_subtask_statuses,
+        post_feature,
+    )
 
     verification_phase = dependencies.run_verification_phase(
         iteration_inputs,
@@ -231,6 +281,35 @@ def _run_verification_phase_if_passed(
         return
     state.result = "failed"
     state.next_hook_feedback = verification_phase.hook_feedback
+    _rollback_archived_feature_after_verification_failure(
+        state,
+        iteration_inputs,
+        dependencies,
+    )
+
+
+def _rollback_archived_feature_after_verification_failure(
+    state: _PipelineState,
+    iteration_inputs: FeatureIterationInputs,
+    dependencies: IterationPipelineDependencies,
+) -> None:
+    if not state.archived_in_iteration or state.archived_path is None:
+        return
+
+    restored_ok, restore_error = (
+        dependencies.gate_phase_dependencies.restore_archived_feature(
+            state.archived_path,
+            iteration_inputs.feature_path,
+        )
+    )
+    if restored_ok:
+        state.archived_in_iteration = False
+        state.archived_path = None
+        return
+
+    rollback_output = f"\narchive rollback failed: {restore_error}"
+    state.verification_output = f"{state.verification_output}{rollback_output}".strip()
+    state.next_hook_feedback = state.verification_output
 
 
 def _refresh_feature_after_implement_if_ready(
@@ -404,13 +483,18 @@ def run_feature_iteration_pipeline(
         feature,
         loaded_from_archive,
     )
-    _run_verification_phase_if_passed(state, iteration_inputs, dependencies)
     post_feature, loaded_post_from_archive = _refresh_feature_after_implement_if_ready(
         state,
         iteration_inputs,
         dependencies,
         feature,
         loaded_from_archive,
+    )
+    _run_verification_phase_if_passed(
+        state,
+        iteration_inputs,
+        dependencies,
+        post_feature,
     )
     _archive_selected_feature_if_needed(
         state,

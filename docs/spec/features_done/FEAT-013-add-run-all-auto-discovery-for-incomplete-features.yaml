@@ -51,7 +51,6 @@ subtasks:
 - id: ST-001
   title: Add run CLI input modes for --all and explicit paths
   status: done
-  order: 1
   context: 'Update parser and run command wiring so users can invoke auto-discovery
     with `--all`, while preserving explicit path mode and providing clear validation
     errors for invalid input combinations.
@@ -65,7 +64,6 @@ subtasks:
 - id: ST-002
   title: Implement deterministic startup snapshot for --all discovery
   status: done
-  order: 2
   context: 'Add startup resolution for `--all` that discovers active feature files,
     filters by runnable statuses (`backlog`, `in_progress`), and produces a deterministic
     fixed candidate set used for the rest of the run.
@@ -77,7 +75,6 @@ subtasks:
 - id: ST-003
   title: Integrate --all snapshot behavior into dry-run and non-dry loop flow
   status: done
-  order: 3
   context: 'Ensure dry-run selection, non-dry iteration, and terminal messaging correctly
     reflect startup snapshot behavior, including no-work success exits and no mid-run
     candidate expansion from newly created specs.
@@ -90,7 +87,6 @@ subtasks:
 - id: ST-004
   title: Guard explicit-path mode from regressions
   status: done
-  order: 4
   context: 'Confirm path-first execution still behaves exactly as before so `--all`
     is purely an additive mode and does not break existing caller workflows.
 
@@ -101,7 +97,6 @@ subtasks:
 - id: ST-005
   title: Document run --all behavior and deterministic snapshot semantics
   status: done
-  order: 5
   context: 'Update contributor docs to show canonical `run --all` usage, mutual exclusivity
     rules, blocked-feature exclusion at startup, and one-time snapshot semantics.
 
@@ -114,7 +109,6 @@ subtasks:
 - id: ST-006
   title: Run targeted regression suite for new run mode
   status: done
-  order: 6
   context: 'Execute focused tests for parser and loop behavior so the new mode is
     validated with the agreed targeted test depth.
 

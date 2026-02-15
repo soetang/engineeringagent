@@ -77,35 +77,30 @@ subtasks:
 - id: ST-001
   title: Replace argparse-forwarded commands with Typer-native command wiring
   status: backlog
-  order: 1
   context: Migrate remaining forwarded command paths (for example validate/reviewers) to direct Typer handlers and typed option declarations.
   verification:
   - uv run pytest -q tests/test_cli.py tests/test_cli_reviewers.py
 - id: ST-002
   title: Remove argparse parser construction and legacy forwarding helpers from cli.py
   status: backlog
-  order: 2
   context: Delete `build_parser` and related legacy dispatch helpers, ensuring command routing remains deterministic under Typer.
   verification:
   - uv run pytest -q tests/test_cli.py tests/test_cli_typer_parity_helpers.py
 - id: ST-003
   title: Refactor command handlers away from argparse Namespace coupling
   status: backlog
-  order: 3
   context: Update handler signatures/call patterns so command execution uses explicit typed values or Typer context payloads instead of argparse Namespace objects.
   verification:
   - uv run pytest -q tests/test_cli.py tests/test_init_command.py tests/test_loop_ralph_mode.py
 - id: ST-004
   title: Rewrite parser-introspection tests to Typer-native contract assertions
   status: backlog
-  order: 4
   context: Replace tests that inspect argparse parser trees/options with behavior-based Typer invocation coverage including command/flag parity.
   verification:
   - uv run pytest -q tests/test_cli.py tests/test_fitness_catalog_generation.py tests/test_gates.py
 - id: ST-005
   title: Run full regression and validation for Typer-only CLI contract
   status: backlog
-  order: 5
   context: Confirm full repository tests and spec validation pass with argparse removed from main CLI module.
   verification:
   - uv run pytest -q

@@ -62,7 +62,6 @@ subtasks:
 - id: ST-001
   title: Decompose loop iteration orchestration into maintainable helper phases
   status: done
-  order: 1
   context: 'Split `_run_feature_iteration` into focused helpers for feature load/recovery,
     implement-stage evaluation, and post-implement reconciliation. Keep behavior stable.
 
@@ -81,7 +80,6 @@ subtasks:
 - id: ST-002
   title: Harden fitness CLI metadata joins and normalize minor output wording
   status: done
-  order: 2
   context: 'Remove brittle dictionary lookups in fitness JSON shaping and apply minor
     wording normalization where it improves consistency and resilience.
 
@@ -99,7 +97,6 @@ subtasks:
 - id: ST-003
   title: Simplify validator docs-map parsing and reduce section-coupling fragility
   status: done
-  order: 3
   context: 'Refactor docs-map extraction logic to avoid dependence on a hard-coded
     section ordinal while preserving scoped extraction and deterministic errors.
 
@@ -117,7 +114,6 @@ subtasks:
 - id: ST-004
   title: Refactor subprocess allowlist handling and keep architecture policy explicit
   status: done
-  order: 4
   context: 'Reduce drift risk in subprocess allowlist wiring and keep policy intent
     auditable. Add or update tests to lock in allowed and disallowed boundaries.
 
@@ -136,7 +132,6 @@ subtasks:
 - id: ST-005
   title: Add preventive guardrails mapped to discovered issue classes
   status: done
-  order: 5
   context: 'For each high-value refactor class, document and implement whether prevention
     should live in fitness checks, validator checks, Ruff linting, or a combination.
 
@@ -155,7 +150,6 @@ subtasks:
 - id: ST-006
   title: Configure and enforce Ruff complexity thresholds for orchestration hotspots
   status: done
-  order: 6
   context: 'Enable and tune C901, PLR0912, and PLR0915 thresholds in project Ruff
     configuration to surface maintainability regressions with acceptable noise.
 
@@ -174,7 +168,6 @@ subtasks:
 - id: ST-007
   title: Run focused regressions and final loop_fast validation
   status: done
-  order: 7
   context: 'Confirm no behavioral regression across touched surfaces and verify final
     gate profile expected by loop execution.
 

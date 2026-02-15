@@ -22,7 +22,6 @@ subtasks:
   - id: ST-001
     title: Implement active feature and next-subtask selection
     status: done
-    order: 1
     context: "Choose in_progress feature first; otherwise highest-priority backlog."
     verification:
       - "agent-harness loop run --dry-run"
@@ -31,7 +30,6 @@ subtasks:
   - id: ST-002
     title: Implement transition guardrails and update semantics
     status: done
-    order: 2
     context: "Allow only declared transitions for feature and nested subtasks."
     verification:
       - "agent-harness validate"
@@ -40,7 +38,6 @@ subtasks:
   - id: ST-003
     title: Add JSONL run logging
     status: done
-    order: 3
     context: "Capture ts, feature_id, subtask_id, result, failed_gate, duration, commit."
     verification:
       - "agent-harness loop run --dry-run"
@@ -49,7 +46,6 @@ subtasks:
   - id: ST-004
     title: Add failure policy and blocked threshold
     status: done
-    order: 4
     context: "After N failed attempts, mark subtask blocked with reason."
     verification:
       - "agent-harness loop run --dry-run --max-attempts 1"
@@ -58,7 +54,6 @@ subtasks:
   - id: ST-005
     title: Add OpenCode build-agent execution configuration
     status: done
-    order: 5
     context: >
       Ensure loop implementation command uses `--agent build` and repository
       configuration defines full build-agent permissions in `opencode.json`.

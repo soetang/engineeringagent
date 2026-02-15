@@ -93,7 +93,6 @@ subtasks:
 - id: ST-001
   title: Add explicit OpenCode and Git client submodules
   status: done
-  order: 1
   context: 'Create orchestration-focused command clients inside dedicated package
     directories (src/engineeringagent/opencode/ and src/engineeringagent/git/) that
     encapsulate low-level command details and return deterministic process outputs.
@@ -105,7 +104,6 @@ subtasks:
 - id: ST-002
   title: Refactor loop orchestration to use command clients
   status: done
-  order: 2
   context: 'Route loop feature selection, implement execution, worktree checks, completion
     commit, and permission probe command paths through the new clients and remove
     generic bypass wrappers.
@@ -118,7 +116,6 @@ subtasks:
 - id: ST-003
   title: Harden subprocess boundary rule with strict allowlist and alias detection
   status: done
-  order: 3
   context: 'Enforce allowlisted subprocess-using modules and detect alias/import-based
     subprocess usage so wrapper indirection cannot bypass architecture intent.
 
@@ -129,7 +126,6 @@ subtasks:
 - id: ST-004
   title: Surface remediation guidance in fitness run output and retry feedback
   status: done
-  order: 4
   context: 'Expose metadata remediation text for failing rules in fitness CLI output
     so gate failure payloads include clear "what to do instead" guidance.
 
@@ -140,7 +136,6 @@ subtasks:
 - id: ST-005
   title: Update built-in subprocess rule remediation and generated catalog
   status: done
-  order: 5
   context: 'Revise built-in subprocess boundary remediation text to reference the
     new client package modules and regenerate docs/fitness-functions/rules.md.
 
@@ -152,7 +147,6 @@ subtasks:
 - id: ST-006
   title: Run focused regressions and validate contracts
   status: done
-  order: 6
   context: 'Confirm schema validity and no regressions in loop execution, gate behavior,
     and fitness enforcement after the refactor.
 

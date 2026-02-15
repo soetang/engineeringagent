@@ -24,7 +24,6 @@ subtasks:
   - id: ST-001
     title: Define allow-all build-agent permission contract
     status: done
-    order: 1
     context: >
       Establish and implement one explicit allow-all policy in repository OpenCode
       configuration so loop runs do not rely on interactive approvals.
@@ -36,7 +35,6 @@ subtasks:
   - id: ST-002
     title: Add permission probe command for batch bash execution
     status: done
-    order: 2
     context: >
       Create a reproducible probe that calls OpenCode build agent and requires a
       successful `git status --short` execution before returning a success token.
@@ -49,7 +47,6 @@ subtasks:
   - id: ST-003
     title: Wire permission probe into explicit validation workflow
     status: done
-    order: 3
     context: >
       Ensure there is a documented, repeatable validation path for permission health
       that can be run locally before loop execution.
@@ -63,7 +60,6 @@ subtasks:
   - id: ST-004
     title: Add integration coverage for permission-failure signals
     status: done
-    order: 4
     context: >
       Add test coverage around permission rejection detection and loop reporting so
       permission failures are visible as failed gates in summaries/telemetry.

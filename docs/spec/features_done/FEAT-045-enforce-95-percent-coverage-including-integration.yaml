@@ -41,7 +41,6 @@ subtasks:
 - id: ST-001
   title: Configure direct pytest coverage enforcement at 95 percent
   status: done
-  order: 1
   context: Add or update pytest/coverage config so default test execution fails below
     95 percent without gate mediation.
   verification:
@@ -49,7 +48,6 @@ subtasks:
 - id: ST-002
   title: Include integration tests in default pytest execution path
   status: done
-  order: 2
   context: Remove marker-based default exclusion and ensure integration tests are
     part of normal run behavior.
   verification:
@@ -57,7 +55,6 @@ subtasks:
 - id: ST-003
   title: Add regression coverage test for configuration contract
   status: done
-  order: 3
   context: Add a focused test that asserts the configured minimum-coverage policy
     and default inclusion behavior remain intact.
   verification:
@@ -65,7 +62,6 @@ subtasks:
 - id: ST-004
   title: Raise suite coverage to meet 95 percent threshold
   status: done
-  order: 4
   context: Add focused tests for currently under-covered modules so the enforced threshold
     passes consistently.
   verification:

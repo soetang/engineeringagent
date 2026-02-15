@@ -25,7 +25,6 @@ subtasks:
 - id: ST-001
   title: Create feature schema for nested subtasks
   status: done
-  order: 1
   context: Define required/optional fields including free-text context fields.
   constraints:
   - Schema must support nested subtasks in one feature file.
@@ -36,7 +35,6 @@ subtasks:
 - id: ST-002
   title: Implement custom validator for invariants
   status: done
-  order: 2
   context: 'Add checks JSON Schema cannot express, like state transition validity,
     unique subtask IDs, and order constraints.
 
@@ -49,7 +47,6 @@ subtasks:
 - id: ST-003
   title: Add pre-commit hooks for YAML and spec validation
   status: done
-  order: 3
   context: Hook pipeline should fail fast with actionable output.
   verification:
   - pre-commit run --all-files
@@ -59,7 +56,6 @@ subtasks:
 - id: ST-004
   title: Add invalid-spec fixtures and validator tests
   status: done
-  order: 4
   context: 'Cover common failures: missing fields, bad status, illegal transitions.'
   verification:
   - agent-harness validate

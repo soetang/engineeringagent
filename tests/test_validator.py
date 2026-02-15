@@ -17,6 +17,10 @@ SCHEMA_SOURCE = REPO_ROOT / "docs" / "spec" / "schemas" / "feature.schema.json"
 FIXTURES_DIR = REPO_ROOT / "tests" / "fixtures" / "specs" / "invalid"
 
 
+def _read_repo_text(relative_path: str) -> str:
+    return (REPO_ROOT / relative_path).read_text(encoding="utf-8")
+
+
 def _make_invalid_project(tmp_path: Path, fixture_name: str) -> Path:
     project_root = tmp_path
     features_dir = project_root / "docs" / "spec" / "features"
@@ -92,7 +96,7 @@ def test_validate_reports_enum_unknown_and_type_errors(tmp_path: Path) -> None:
         for message in messages
     )
     assert any(
-        "subtasks[0].order" in message and "valid integer" in message
+        "subtasks[0].order" in message and "Extra inputs are not permitted" in message
         for message in messages
     )
     assert any(
@@ -122,7 +126,6 @@ def test_validate_missing_required_fields_with_pydantic(tmp_path: Path) -> None:
                         "id": "ST-001",
                         "title": "No verification",
                         "status": "backlog",
-                        "order": 1,
                     }
                 ],
             },
@@ -362,7 +365,6 @@ def test_validate_preserves_non_legacy_done_required_field_errors(
                         "id": "ST-001",
                         "title": "Already complete",
                         "status": "done",
-                        "order": 1,
                         "verification": ["true"],
                     }
                 ],
@@ -412,7 +414,6 @@ def test_validate_reports_done_feature_left_in_active_directory(
                         "id": "ST-001",
                         "title": "Already complete",
                         "status": "done",
-                        "order": 1,
                         "verification": ["true"],
                     }
                 ],
@@ -462,7 +463,6 @@ def test_validate_defaults_to_docs_without_toml_config(tmp_path: Path) -> None:
                         "id": "ST-001",
                         "title": "Already complete",
                         "status": "done",
-                        "order": 1,
                         "verification": ["true"],
                     }
                 ],
@@ -512,7 +512,6 @@ def test_validate_uses_configured_docs_root(tmp_path: Path) -> None:
                         "id": "ST-001",
                         "title": "Already complete",
                         "status": "done",
-                        "order": 1,
                         "verification": ["true"],
                     }
                 ],
@@ -570,7 +569,6 @@ def test_validate_transitional_policy_for_preexisting_done_features(
                         "id": "ST-001",
                         "title": "Already complete",
                         "status": "done",
-                        "order": 1,
                         "verification": ["true"],
                     }
                 ],
@@ -618,7 +616,6 @@ def test_validate_allows_legacy_done_specs_missing_new_metadata(tmp_path: Path) 
                         "id": "ST-001",
                         "title": "Already complete",
                         "status": "done",
-                        "order": 1,
                         "verification": ["true"],
                     }
                 ],
@@ -633,7 +630,9 @@ def test_validate_allows_legacy_done_specs_missing_new_metadata(tmp_path: Path) 
     assert messages == []
 
 
-def test_validate_preserves_subtask_order_and_done_prefix_rules(tmp_path: Path) -> None:
+def test_validate_allows_noncontiguous_done_and_multiple_in_progress_subtasks(
+    tmp_path: Path,
+) -> None:
     project_root = tmp_path
     features_dir = project_root / "docs" / "spec" / "features"
     features_dir.mkdir(parents=True, exist_ok=True)
@@ -654,14 +653,12 @@ def test_validate_preserves_subtask_order_and_done_prefix_rules(tmp_path: Path) 
                         "id": "ST-001",
                         "title": "First",
                         "status": "backlog",
-                        "order": 1,
                         "verification": ["true"],
                     },
                     {
                         "id": "ST-002",
                         "title": "Second",
                         "status": "backlog",
-                        "order": 3,
                         "verification": ["true"],
                     },
                 ],
@@ -687,14 +684,43 @@ def test_validate_preserves_subtask_order_and_done_prefix_rules(tmp_path: Path) 
                         "id": "ST-001",
                         "title": "First",
                         "status": "backlog",
-                        "order": 1,
                         "verification": ["true"],
                     },
                     {
                         "id": "ST-002",
                         "title": "Second",
                         "status": "done",
-                        "order": 2,
+                        "verification": ["true"],
+                    },
+                ],
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    (features_dir / "FEAT-939-multiple-inprogress.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "id": "FEAT-939",
+                "title": "Multiple in-progress subtasks",
+                "type": "feature",
+                "expected_commit_subject": "feat: allow multiple in-progress subtasks",
+                "status": "in_progress",
+                "priority": "high",
+                "objective": "Allow more than one in-progress subtask.",
+                "acceptance": ["Validator allows multiple in-progress subtasks."],
+                "subtasks": [
+                    {
+                        "id": "ST-001",
+                        "title": "First",
+                        "status": "in_progress",
+                        "verification": ["true"],
+                    },
+                    {
+                        "id": "ST-002",
+                        "title": "Second",
+                        "status": "in_progress",
                         "verification": ["true"],
                     },
                 ],
@@ -706,14 +732,7 @@ def test_validate_preserves_subtask_order_and_done_prefix_rules(tmp_path: Path) 
 
     messages = validate(project_root=project_root)
 
-    assert any(
-        "subtask order values must be contiguous and start at 1" in message
-        for message in messages
-    )
-    assert any(
-        "done subtasks must form a contiguous prefix by order" in message
-        for message in messages
-    )
+    assert messages == []
 
 
 def test_validate_preserves_feature_status_invariant_rules(tmp_path: Path) -> None:
@@ -737,7 +756,6 @@ def test_validate_preserves_feature_status_invariant_rules(tmp_path: Path) -> No
                         "id": "ST-001",
                         "title": "Open",
                         "status": "backlog",
-                        "order": 1,
                         "verification": ["true"],
                     }
                 ],
@@ -763,7 +781,6 @@ def test_validate_preserves_feature_status_invariant_rules(tmp_path: Path) -> No
                         "id": "ST-001",
                         "title": "Running",
                         "status": "in_progress",
-                        "order": 1,
                         "verification": ["true"],
                     }
                 ],
@@ -789,7 +806,6 @@ def test_validate_preserves_feature_status_invariant_rules(tmp_path: Path) -> No
                         "id": "ST-001",
                         "title": "Complete",
                         "status": "done",
-                        "order": 1,
                         "verification": ["true"],
                     }
                 ],
@@ -890,6 +906,23 @@ def test_agents_docs_map_extraction_is_deterministic(tmp_path: Path) -> None:
         (5, "docs/m-middle.md"),
     ]
     assert second == first
+
+
+def test_agents_boot_sequence_uses_importance_first_subtask_wording() -> None:
+    agents_text = _read_repo_text("AGENTS.md")
+
+    assert "most important open subtask" in agents_text
+    assert "next eligible subtask" not in agents_text
+
+
+def test_harness_principles_document_importance_first_tdd_wording() -> None:
+    principles_text = _read_repo_text(
+        "docs/principles/harness-engineering-principles.md"
+    )
+
+    assert "most important open subtask" in principles_text
+    assert "red -> green -> refactor" in principles_text
+    assert "next eligible subtask" not in principles_text
 
 
 def test_validate_reports_missing_agents_docs_map_path(tmp_path: Path) -> None:

@@ -48,11 +48,6 @@
         "status": {
           "$ref": "#/$defs/FeatureStatus"
         },
-        "order": {
-          "minimum": 1,
-          "title": "Order",
-          "type": "integer"
-        },
         "context": {
           "anyOf": [
             {
@@ -133,7 +128,6 @@
         "id",
         "title",
         "status",
-        "order",
         "verification"
       ],
       "title": "SubtaskSpec",

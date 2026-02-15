@@ -79,7 +79,6 @@ subtasks:
 - id: ST-001
   title: Tighten Ruff C901 threshold to default-aligned value
   status: done
-  order: 1
   context: Align `lint.mccabe.max-complexity` from 30 to 10 and ensure docs/reference
     snippets do not drift from enforced policy.
   notes:
@@ -93,7 +92,6 @@ subtasks:
 - id: ST-002
   title: Add configurable non-ignorable Ruff suppression fitness check
   status: done
-  order: 2
   context: Implement a command-backed fitness script that scans `src/`, `tests/`,
     and `harness/` for suppression directives targeting configured blocked IDs.
   notes:
@@ -116,7 +114,6 @@ subtasks:
 - id: ST-003
   title: Register new fitness rule and seed blocked rule IDs
   status: done
-  order: 3
   context: Declare the new rule in `harness/fitness-functions/rules.yaml` with seeded
     blocked IDs (`D103`, `PLR0913`) and deterministic command wiring.
   notes:
@@ -129,7 +126,6 @@ subtasks:
 - id: ST-004
   title: Remove existing PLR0913 suppressions via refactor-first remediation
   status: done
-  order: 4
   context: 'Eliminate current `# noqa: PLR0913` in loop facade code by introducing
     structured parameter grouping and/or narrower helper seams instead of suppressions.'
   notes:
@@ -149,7 +145,6 @@ subtasks:
 - id: ST-005
   title: Add regression tests for suppression detection and remediation feedback
   status: done
-  order: 5
   context: Add focused tests for inline/file-level suppression matching, configured
     blocked-ID behavior, deterministic violation sorting, and remediation text content.
   notes:
@@ -168,7 +163,6 @@ subtasks:
 - id: ST-006
   title: Update Ruff guidance docs and run full gate verification
   status: done
-  order: 6
   context: Document non-ignorable suppression policy and recommended refactor patterns,
     then validate with full precommit gate profile.
   notes:

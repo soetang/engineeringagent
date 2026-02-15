@@ -33,7 +33,6 @@ subtasks:
 - id: ST-001
   title: Inventory current scripts and define old-to-new command mapping
   status: done
-  order: 1
   context: 'Capture each existing script behavior and map it to either a canonical
     CLI command or a purpose-owned automation location. This mapping is the migration
     contract used by docs and CI updates.
@@ -50,7 +49,6 @@ subtasks:
 - id: ST-002
   title: Remove generic scripts folder and relocate only purpose-specific automation
   status: done
-  order: 2
   context: 'Delete wrapper-style scripts and move any genuinely needed automation
     to domain-owned paths with explicit names and ownership.
 
@@ -67,7 +65,6 @@ subtasks:
 - id: ST-003
   title: Ensure canonical CLI coverage for workflows previously reached via scripts
   status: done
-  order: 3
   context: 'Any workflow that required a script path must be reachable via stable
     `engineeringagent` CLI commands so contributors can run functions directly.
 
@@ -83,7 +80,6 @@ subtasks:
 - id: ST-004
   title: Rewrite docs to scriptless command usage with explicit lint/test/spec sections
   status: done
-  order: 4
   context: 'Update README and reference docs to show scriptless usage, including distinct
     lint, test, and spec validation commands and a migration mapping table.
 
@@ -103,7 +99,6 @@ subtasks:
 - id: ST-005
   title: Align CI with documented scriptless commands
   status: done
-  order: 5
   context: 'Update or add CI workflow definitions so automated checks execute the
     same command set documented for contributors.
 

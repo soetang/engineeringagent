@@ -159,7 +159,6 @@ subtasks:
 - id: ST-001
   title: Add strict reviewer contract models and validator wiring
   status: done
-  order: 1
   context: Define `harness/reviewers.yaml` contract models and surface deterministic
     validation failures through `engineeringagent validate`.
   verification:
@@ -168,7 +167,6 @@ subtasks:
 - id: ST-002
   title: Add reviewer config loader and planner with phase and on-change matching
   status: done
-  order: 2
   context: Implement runtime loading and deterministic planning decisions using phase
     trigger, changed paths, and explicit run or skip reasons.
   verification:
@@ -177,7 +175,6 @@ subtasks:
 - id: ST-003
   title: Implement harness prompt loading and shared OpenCode reviewer runner
   status: done
-  order: 3
   context: Load reviewer prompts from harness prompt files, compose execution context,
     run via shared OpenCode agent, and parse strict decision envelopes.
   verification:
@@ -186,7 +183,6 @@ subtasks:
 - id: ST-004
   title: Add approval-state persistence and first-approval reuse invalidation logic
   status: done
-  order: 4
   context: Persist reviewer approval metadata and invalidate cached approval when
     scoped changes require re-review.
   verification:
@@ -194,7 +190,6 @@ subtasks:
 - id: ST-005
   title: Integrate reviewer phase into loop iteration with blocking and advisory policy
   status: done
-  order: 5
   context: Execute reviewer phase after gates and before completion commit, map blocking/advisory
     outcomes into retry flow and hook feedback semantics, and enforce one required
     implement follow-up pass after advisory advice.
@@ -205,7 +200,6 @@ subtasks:
 - id: ST-006
   title: Implement retry and exhausted-policy behavior for blocking reviewers
   status: done
-  order: 6
   context: Enforce max retry handling and continue-on-exhausted warning behavior with
     deterministic telemetry and next-action semantics.
   verification:
@@ -214,7 +208,6 @@ subtasks:
 - id: ST-007
   title: Add temp worktree snapshot sandbox mode for README process reviewers
   status: done
-  order: 7
   context: Support isolated reviewer execution in temporary snapshot/worktree when
     configured, scoped for README process checks.
   verification:
@@ -222,7 +215,6 @@ subtasks:
 - id: ST-008
   title: Add reviewer CLI tooling and scaffold support for custom harness setup
   status: done
-  order: 8
   context: Add `reviewers` CLI subcommands (init/list/plan/run) and scaffolded starter
     config plus prompt examples for easy repository adoption.
   verification:
@@ -231,7 +223,6 @@ subtasks:
 - id: ST-009
   title: Add reviewer docs sections and run final contract and loop-fast checks
   status: done
-  order: 9
   context: Document reviewer contract and workflow in README and agent references
     in plain English, include explicit policy semantics and examples for advisory
     and blocking modes, update AGENTS docs map, then run repository validation and

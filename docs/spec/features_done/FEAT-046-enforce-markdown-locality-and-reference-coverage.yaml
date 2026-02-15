@@ -60,7 +60,6 @@ subtasks:
 - id: ST-001
   title: Define markdown locality and reference coverage contract details
   status: done
-  order: 1
   context: Finalize approved markdown paths, explicit exceptions, ignore-directory
     defaults, and exact reference semantics used by enforcement.
   verification:
@@ -68,7 +67,6 @@ subtasks:
 - id: ST-002
   title: Implement markdown locality enforcement in built-in fitness rule
   status: done
-  order: 2
   context: Add deterministic markdown discovery and allowlist checks with actionable
     diagnostics for out-of-policy markdown locations.
   verification:
@@ -76,7 +74,6 @@ subtasks:
 - id: ST-003
   title: Implement non-doc markdown reference coverage checks
   status: done
-  order: 3
   context: Add path-based reference scanning and fail when non-doc markdown files
     have no non-self references.
   verification:
@@ -84,7 +81,6 @@ subtasks:
 - id: ST-004
   title: Register and declare markdown locality/reference rule across fitness surfaces
   status: done
-  order: 4
   context: Wire rule metadata into registry, add manifest declaration, and ensure
     list/run/catalog commands include the new rule.
   verification:
@@ -93,7 +89,6 @@ subtasks:
 - id: ST-005
   title: Add focused regression coverage for rule diagnostics and ordering
   status: done
-  order: 5
   context: Add pass/fail tests for invalid markdown locations, missing references,
     ignore-directory behavior, and deterministic sorted violations.
   verification:
@@ -102,7 +97,6 @@ subtasks:
 - id: ST-006
   title: Run final validation and loop-fast gate checks
   status: done
-  order: 6
   context: Validate repository contracts and run final gate profile after rule integration.
   verification:
   - uvx --from . engineeringagent validate
