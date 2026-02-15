@@ -192,6 +192,25 @@
           "updated_at": "2026-02-15T21:22:12Z"
         }
       }
+    },
+    "FEAT-074": {
+      "advisory_followup_required": false,
+      "advisory_followup_updated_at": "2026-02-15T22:54:05Z",
+      "reviewers": {
+        "code_simplifier": {
+          "approved": true,
+          "approved_at": "2026-02-15T22:55:18Z",
+          "blocking_request_changes_count": 0,
+          "blocking_retry_updated_at": "2026-02-15T22:55:18Z",
+          "invalidated_at": "2026-02-15T22:54:05Z"
+        },
+        "readme_process": {
+          "approved": false,
+          "blocking_request_changes_count": 1,
+          "blocking_retry_updated_at": "2026-02-15T22:12:11Z",
+          "updated_at": "2026-02-15T23:04:13Z"
+        }
+      }
     }
   },
   "version": "1"

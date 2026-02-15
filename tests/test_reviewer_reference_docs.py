@@ -33,6 +33,15 @@ REQUIRED_UV_SKIP_IMPLEMENT_SNIPPETS = (
 )
 
 
+REQUIRED_UV_INIT_PROFILE_PRECOMMIT_SNIPPETS = (
+    "Init scaffold profile notes (slim pack)",
+    "`core`: the `precommit` profile runs `spec_validate` only.",
+    "`python_uv`: the `precommit` profile runs `spec_validate` + `ruff_validate`.",
+    "Ruff gate command (isolated): `uvx ruff check --isolated .`",
+    "No Pyright gate is scaffolded for `python_uv`.",
+)
+
+
 def test_reviewer_reference_documents_feature_done_only_policy() -> None:
     body = REVIEWER_REFERENCE_PATH.read_text(encoding="utf-8")
     missing = [snippet for snippet in REQUIRED_POLICY_SNIPPETS if snippet not in body]
@@ -48,6 +57,16 @@ def test_uv_reference_documents_skip_implement_mode_behavior() -> None:
     missing = [
         snippet
         for snippet in REQUIRED_UV_SKIP_IMPLEMENT_SNIPPETS
+        if snippet not in body
+    ]
+    assert not missing
+
+
+def test_uv_reference_documents_init_profile_precommit_notes() -> None:
+    body = UV_REFERENCE_PATH.read_text(encoding="utf-8")
+    missing = [
+        snippet
+        for snippet in REQUIRED_UV_INIT_PROFILE_PRECOMMIT_SNIPPETS
         if snippet not in body
     ]
     assert not missing

@@ -182,7 +182,9 @@ def test_readme_process_uses_harness_clean_room_sandbox(
 
     captured: dict[str, str | bool] = {}
 
-    def _start_agent(project_root, prompt, *, agent=DEFAULT_OPENCODE_AGENT):
+    def _start_agent(
+        project_root, prompt, *, agent=DEFAULT_OPENCODE_AGENT, format=None
+    ):
         sandbox_root = Path(project_root)
         captured["project_root"] = str(sandbox_root)
         captured["agent"] = agent
@@ -301,7 +303,9 @@ def test_readme_process_runs_readme_bootstrap_in_fresh_temp_directory(
 
     captured: dict[str, str] = {}
 
-    def _start_agent(project_root, prompt, *, agent=DEFAULT_OPENCODE_AGENT):
+    def _start_agent(
+        project_root, prompt, *, agent=DEFAULT_OPENCODE_AGENT, format=None
+    ):
         captured["project_root"] = str(project_root)
         captured["prompt"] = prompt
         captured["agent"] = agent

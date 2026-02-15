@@ -122,8 +122,15 @@ demo by removing gate `demo_fail` from `harness/gates.yaml` and deleting
 `init` defaults to the language-agnostic `core` scaffold profile.
 
 Use `python_uv` when you want the scaffolded `.pre-commit-config.yaml` to assume an
-`uv`-based workflow (including a commit-msg hook); it does not add gate definitions
-to `harness/gates.yaml`.
+`uv`-based workflow and ship a minimal Python validation baseline.
+
+In `python_uv`, the scaffolded `harness/gates.yaml` `precommit` profile includes:
+
+- `spec_validate`
+- `ruff_validate` (`uvx ruff check --isolated .`), which does not require any repo-local
+  ruff config files.
+
+`python_uv` also wires a `commit-msg` hook; it does not scaffold pyright gates/config.
 
 ```bash
 uvx engineeringagent init slim --scaffold-profile python_uv

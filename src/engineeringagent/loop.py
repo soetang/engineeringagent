@@ -528,6 +528,11 @@ def _enforce_worktree_precondition(
     return None
 
 
+_require_clean_worktree = (
+    _enforce_worktree_precondition  # Back-compat monkeypatch seam.
+)
+
+
 def _run_selected_feature_iterations(
     project_root: Path,
     resolved_paths: list[Path],

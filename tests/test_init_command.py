@@ -459,14 +459,81 @@ def test_init_python_uv_profile_available(tmp_path: Path) -> None:
         encoding="utf-8"
     )
     assert (
-        "entry: uvx --from . engineeringagent gates run --profile precommit"
-        in precommit_config
+        "entry: uvx engineeringagent gates run --profile precommit" in precommit_config
     )
+    assert "uvx --from ." not in precommit_config
     assert "engineeringagent-commit-msg" in precommit_config
     assert (
         "harness/fitness-functions/validate_commit_messages.py --commit-msg-file"
         in precommit_config
     )
+
+    commit_msg_script = (
+        tmp_path / "harness" / "fitness-functions" / "validate_commit_messages.py"
+    )
+    assert commit_msg_script.exists()
+    commit_msg_script_text = commit_msg_script.read_text(encoding="utf-8")
+    assert "--commit-msg-file" in commit_msg_script_text
+    assert "engineeringagent" not in commit_msg_script_text
+
+
+def test_python_uv_commit_msg_validator_avoids_subprocess(tmp_path: Path) -> None:
+    """Verify scaffolded commit-msg validator does not use subprocess."""
+    result = _invoke_cli(
+        [
+            "--project-root",
+            str(tmp_path),
+            "init",
+            "--scaffold-profile",
+            "python_uv",
+        ]
+    )
+
+    assert result.exit_code == 0
+
+    commit_msg_script = (
+        tmp_path / "harness" / "fitness-functions" / "validate_commit_messages.py"
+    )
+    commit_msg_script_text = commit_msg_script.read_text(encoding="utf-8")
+    assert "import subprocess" not in commit_msg_script_text
+    assert "subprocess." not in commit_msg_script_text
+
+    gates_config = yaml.safe_load(
+        (tmp_path / "harness" / "gates.yaml").read_text(encoding="utf-8")
+    )
+    assert gates_config["profiles"]["precommit"] == ["spec_validate", "ruff_validate"]
+    assert "ruff_validate" in gates_config["gates"]
+    assert (
+        gates_config["gates"]["ruff_validate"]["run"] == "uvx ruff check --isolated ."
+    )
+    assert "pyright_validate" not in gates_config["gates"]
+
+
+def test_python_uv_commit_msg_validator_builds_pattern_from_allowed_types(
+    tmp_path: Path,
+) -> None:
+    """Verify scaffolded commit-msg validator keeps types/regex in sync."""
+    result = _invoke_cli(
+        [
+            "--project-root",
+            str(tmp_path),
+            "init",
+            "--scaffold-profile",
+            "python_uv",
+        ]
+    )
+
+    assert result.exit_code == 0
+
+    commit_msg_script = (
+        tmp_path / "harness" / "fitness-functions" / "validate_commit_messages.py"
+    )
+    commit_msg_script_text = commit_msg_script.read_text(encoding="utf-8")
+    assert "ALLOWED_COMMIT_TYPES" in commit_msg_script_text
+    assert "_ALLOWED_TYPES_PATTERN" in commit_msg_script_text
+    assert "re.escape" in commit_msg_script_text
+    assert "COMMIT_SUBJECT_PATTERN" in commit_msg_script_text
+    assert "(feat|fix|spec|docs|chore|test)" not in commit_msg_script_text
 
 
 def test_init_renders_scaffold_from_template_files() -> None:

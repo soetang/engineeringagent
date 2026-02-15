@@ -69,4 +69,10 @@ uvx --from . engineeringagent run --all --dry-run --skip-implement
 - Use `uvx engineeringagent@<version> ...` when you need version-pinned execution.
 - Use `uvx --from . engineeringagent ...` as the canonical contributor command style.
 - Keep `uv run ...` for direct tooling operations such as `pytest -q` or local Python modules.
-- The `precommit` profile is the canonical quality gate and includes spec validation, Ruff lint/docstring checks, Pyright type validation, and pytest execution.
+
+### Init scaffold profile notes (slim pack)
+
+- `core`: the `precommit` profile runs `spec_validate` only.
+- `python_uv`: the `precommit` profile runs `spec_validate` + `ruff_validate`.
+- Ruff gate command (isolated): `uvx ruff check --isolated .`
+- No Pyright gate is scaffolded for `python_uv`.

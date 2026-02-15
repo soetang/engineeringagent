@@ -37,6 +37,31 @@ def test_progress_paths_contract(tmp_path: Path) -> None:
     )
 
 
+def test_progress_path_references_fall_back_when_not_repo_relative(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    external_progress_root = tmp_path.parent / "external_progress"
+    monkeypatch.setattr(
+        progress_paths,
+        "progress_dir",
+        lambda _project_root: external_progress_root,
+    )
+
+    runs_path = external_progress_root / progress_paths.RUNS_JSONL_FILENAME
+    assert progress_paths.runs_jsonl_reference(tmp_path) == str(runs_path)
+
+    log_path = external_progress_root / progress_paths.run_feature_log_filename(
+        "FEAT-1"
+    )
+    assert progress_paths.run_feature_log_reference(tmp_path, "FEAT-1") == str(log_path)
+
+    template_path = external_progress_root / "run-feature-<FEATURE_ID>.txt"
+    assert progress_paths.run_feature_log_template_reference(tmp_path) == str(
+        template_path
+    )
+
+
 def _assert_signature_parameters(
     signature: inspect.Signature,
     expected_names: tuple[str, ...],
@@ -145,6 +170,20 @@ def test_loop_monkeypatch_seams_remain_available() -> None:
 
     for symbol in seam_symbols:
         assert hasattr(loop_module, symbol)
+
+
+def test_drop_completed_feature_from_snapshot_keeps_existing_paths(
+    tmp_path: Path,
+) -> None:
+    feature_path = tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml"
+    feature_path.parent.mkdir(parents=True)
+    feature_path.write_text("id: FEAT-001\n", encoding="utf-8")
+
+    resolved = [feature_path]
+    assert (
+        loop_module._drop_completed_feature_from_snapshot(resolved, feature_path)
+        is resolved
+    )
 
 
 def test_loop_facade_line_budget_rule_configuration() -> None:

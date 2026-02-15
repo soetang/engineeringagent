@@ -82,6 +82,11 @@ def test_repo_enables_readme_process_reviewer_in_loop_fast() -> None:
     assert "progress/runs.jsonl" in readme_body
     assert "mutates your feature YAML" in readme_body
 
+    assert "--scaffold-profile python_uv" in readme_body
+    assert "ruff_validate" in readme_body
+    assert "uvx ruff check --isolated ." in readme_body
+    assert "does not add gate definitions" not in readme_body
+
     # Keep the reviewer prompt crisp: avoid obvious typos/grammar issues.
     assert "Beaware" not in prompt_body
     assert "helpfull" not in prompt_body

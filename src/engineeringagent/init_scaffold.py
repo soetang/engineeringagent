@@ -137,6 +137,7 @@ def build_baseline_scaffold_manifest(
         raise ValueError(f"unsupported scaffold profile: {profile}")
 
     docs_dir_normalized = docs_dir.strip("/")
+    is_python_uv = profile == "python_uv"
     gate_config = {
         "contract_version": "1.0",
         "profiles": {
@@ -147,6 +148,12 @@ def build_baseline_scaffold_manifest(
             "spec_validate": _spec_validate_gate(docs_dir_normalized),
         },
     }
+
+    if is_python_uv:
+        gate_config["profiles"]["precommit"] = ["spec_validate", "ruff_validate"]
+        gate_config["gates"]["ruff_validate"] = {
+            "run": "uvx ruff check --isolated .",
+        }
 
     manifest = {
         ".pre-commit-config.yaml": _build_precommit_config(profile=profile),
@@ -238,6 +245,11 @@ def build_baseline_scaffold_manifest(
         "AGENTS.md": build_scaffold_agents_markdown(),
         **_build_reference_docs_manifest(),
     }
+
+    if is_python_uv:
+        manifest["harness/fitness-functions/validate_commit_messages.py"] = (
+            _render_scaffold_template("fitness.validate_commit_messages.py")
+        )
 
     return manifest
 
