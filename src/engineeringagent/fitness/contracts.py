@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Annotated, Literal
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 CONTRACT_VERSION = "1.0"
@@ -84,16 +84,27 @@ class CustomRuleManifestEntry(FitnessModel):
     env: dict[NonEmptyStr, str] | None = None
 
 
-class BuiltinRuleManifestReference(FitnessModel):
-    builtin: RuleId
-
-
-ManifestRuleEntry = BuiltinRuleManifestReference | CustomRuleManifestEntry
-
-
 class CustomRuleManifest(FitnessModel):
     contract_version: Annotated[str, Field(strict=True, pattern=r"^1\.0$")]
-    rules: list[ManifestRuleEntry] = Field(default_factory=list)
+    rules: list[CustomRuleManifestEntry] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _reject_builtin_references(cls, payload: object) -> object:
+        if not isinstance(payload, dict):
+            return payload
+
+        rules = payload.get("rules")
+        if not isinstance(rules, list):
+            return payload
+
+        for index, rule in enumerate(rules):
+            if isinstance(rule, dict) and "builtin" in rule:
+                raise ValueError(
+                    "builtin manifest references are no longer supported; "
+                    f"replace rules[{index}].builtin with a command adapter entry"
+                )
+        return payload
 
 
 def load_custom_rule_manifest(path: Path) -> CustomRuleManifest:

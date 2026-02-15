@@ -1,10 +1,18 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
+import subprocess
+import sys
 from typing import cast
 
-from engineeringagent.fitness.builtin_rules import evaluate_scaffold_template_locality
-from engineeringagent.fitness.registry import builtin_rule_definitions
+
+SCRIPT_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "harness"
+    / "fitness-functions"
+    / "check_scaffold_template_locality.py"
+)
 
 
 def _write_module(project_root: Path, relative_path: str, body: str) -> None:
@@ -33,21 +41,40 @@ def _violations(result: dict[str, object]) -> list[str]:
     return cast(list[str], result["violations"])
 
 
-def test_builtin_rule_definitions_include_scaffold_template_locality_rule() -> None:
-    """Expose scaffold template locality as a registered built-in rule."""
-    rule_ids = {
-        definition.metadata.rule_id for definition in builtin_rule_definitions()
-    }
-    assert "architecture.scaffold-template-locality" in rule_ids
+def _run_checker(
+    project_root: Path,
+) -> tuple[subprocess.CompletedProcess[str], dict[str, object]]:
+    proc = subprocess.run(
+        [sys.executable, str(SCRIPT_PATH)],
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    payload = json.loads(proc.stdout)
+    return proc, payload
+
+
+def test_scaffold_template_locality_checker_emits_expected_rule_id(
+    tmp_path: Path,
+) -> None:
+    """Emit the stable rule id from the harness command adapter."""
+    _write_scaffold_templates(tmp_path)
+
+    proc, payload = _run_checker(tmp_path)
+
+    assert proc.returncode == 0
+    assert payload["rule_id"] == "architecture.scaffold-template-locality"
 
 
 def test_scaffold_template_locality_rule_fails_when_required_templates_are_missing(
     tmp_path: Path,
 ) -> None:
     """Fail with deterministic diagnostics when scaffold template assets are absent."""
-    result = evaluate_scaffold_template_locality(tmp_path)
+    proc, result = _run_checker(tmp_path)
     violations = _violations(result)
 
+    assert proc.returncode == 0
     assert result["status"] == "fail"
     assert violations == sorted(violations)
     assert any(
@@ -67,9 +94,10 @@ def test_scaffold_template_locality_rule_fails_when_required_template_is_empty(
     )
     agents_template.write_text("\n\t\n", encoding="utf-8")
 
-    result = evaluate_scaffold_template_locality(tmp_path)
+    proc, result = _run_checker(tmp_path)
     violations = _violations(result)
 
+    assert proc.returncode == 0
     assert result["status"] == "fail"
     assert any(
         "src/engineeringagent/scaffold_templates/AGENTS.md:1 required scaffold "
@@ -89,9 +117,10 @@ def test_scaffold_template_locality_rule_fails_on_canary_leakage_outside_templat
         "SCAFFOLD = 'Agent operating guide for this repository.'\n",
     )
 
-    result = evaluate_scaffold_template_locality(tmp_path)
+    proc, result = _run_checker(tmp_path)
     violations = _violations(result)
 
+    assert proc.returncode == 0
     assert result["status"] == "fail"
     assert any(
         "src/engineeringagent/loop.py:1 contains scaffold template canary "
@@ -111,7 +140,8 @@ def test_scaffold_template_locality_rule_passes_for_localized_templates(
         "def render() -> str:\n    return 'ok'\n",
     )
 
-    result = evaluate_scaffold_template_locality(tmp_path)
+    proc, result = _run_checker(tmp_path)
 
+    assert proc.returncode == 0
     assert result["status"] == "pass"
     assert _violations(result) == []

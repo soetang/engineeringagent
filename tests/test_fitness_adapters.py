@@ -34,6 +34,38 @@ def _command_definition(command: tuple[str, ...]) -> FitnessRuleDefinition:
     )
 
 
+def _write_file(project_root: Path, relative_path: str, body: str) -> None:
+    path = project_root / relative_path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(body, encoding="utf-8")
+
+
+def _write_prompt_templates(project_root: Path) -> None:
+    template_root = project_root / "src" / "engineeringagent" / "prompts" / "templates"
+    template_root.mkdir(parents=True, exist_ok=True)
+    (template_root / "loop_selector.md").write_text("selector", encoding="utf-8")
+    (template_root / "loop_implementation.md").write_text(
+        "implementation", encoding="utf-8"
+    )
+    (template_root / "loop_retry_feedback.md").write_text("retry", encoding="utf-8")
+
+
+def _write_scaffold_templates(project_root: Path) -> None:
+    template_root = project_root / "src" / "engineeringagent" / "scaffold_templates"
+    template_root.mkdir(parents=True, exist_ok=True)
+    (template_root / "AGENTS.md").write_text("Agent operating guide", encoding="utf-8")
+    (template_root / "precommit.core.yaml").write_text("repos:\n", encoding="utf-8")
+    (template_root / "precommit.python_uv.yaml").write_text(
+        "repos:\n", encoding="utf-8"
+    )
+    (template_root / "reference.docs-architecture-llms.md").write_text(
+        "Audience Split", encoding="utf-8"
+    )
+    (template_root / "reference.workflow-llms.md").write_text(
+        "Loop workflow", encoding="utf-8"
+    )
+
+
 def test_execute_rule_definition_runs_command_adapter_with_json_envelope(
     tmp_path: Path,
 ) -> None:
@@ -257,6 +289,255 @@ def test_non_ignorable_suppression_adapter_detects_file_level_and_multicode_noqa
     assert "src/z_module.py:1:29" in result.violations[1]
     assert "targets: PLR0913" in result.violations[1]
     assert "NamedTuple or pydantic model" in result.violations[1]
+
+
+def test_execute_rule_definition_runs_loop_subprocess_boundary_adapter(
+    tmp_path: Path,
+) -> None:
+    """Surface fail status from the migrated subprocess-boundary adapter."""
+    src_root = tmp_path / "src" / "engineeringagent"
+    src_root.mkdir(parents=True)
+    (src_root / "loop.py").write_text(
+        "\n".join(
+            [
+                "import subprocess",
+                "",
+                "def run() -> None:",
+                "    subprocess.run(['git', 'status'], check=False)",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    script = Path(__file__).resolve().parents[1] / "harness" / "fitness-functions"
+    script = script / "check_loop_subprocess_boundary.py"
+
+    definition = FitnessRuleDefinition(
+        metadata=FitnessRuleMetadata(
+            rule_id="architecture.loop-subprocess-boundary",
+            name="Loop subprocess boundary",
+            summary="Enforce subprocess allowlist boundaries for command adapters/clients.",
+            rationale="Centralizes command execution paths for consistent control.",
+            remediation=(
+                "Move OpenCode command execution to engineeringagent.opencode.client "
+                "and Git command execution to engineeringagent.git.client."
+            ),
+            scope="src/engineeringagent",
+            severity=RuleSeverity.ERROR,
+            adapter=RuleAdapter.COMMAND,
+            source=RuleSource.CUSTOM,
+            side_effect_free=True,
+        ),
+        origin="custom:harness/fitness-functions/rules.yaml:rules[0]",
+        command=(
+            sys.executable,
+            str(script),
+        ),
+    )
+
+    result = execute_rule_definition(definition, project_root=tmp_path)
+
+    assert result.status == RuleStatus.FAIL
+    assert result.severity == RuleSeverity.ERROR
+    assert any(
+        "src/engineeringagent/loop.py:4 uses subprocess.run" in violation
+        for violation in result.violations
+    )
+
+
+def test_execute_rule_definition_runs_dependency_directionality_adapter(
+    tmp_path: Path,
+) -> None:
+    """Surface fail status from the migrated dependency-directionality adapter."""
+    _write_file(tmp_path, "src/engineeringagent/cli.py", "")
+    _write_file(tmp_path, "src/engineeringagent/loop.py", "")
+    _write_file(tmp_path, "src/engineeringagent/gates.py", "")
+    _write_file(
+        tmp_path,
+        "src/engineeringagent/validator.py",
+        "from .specs import FeatureSpec\n",
+    )
+    _write_file(
+        tmp_path, "src/engineeringagent/specs.py", "import engineeringagent.loop\n"
+    )
+
+    script = Path(__file__).resolve().parents[1] / "harness" / "fitness-functions"
+    script = script / "check_dependency_directionality.py"
+
+    definition = FitnessRuleDefinition(
+        metadata=FitnessRuleMetadata(
+            rule_id="architecture.dep-directionality",
+            name="Dependency directionality",
+            summary="Enforce dependency directionality boundaries.",
+            rationale="Core modules must preserve dependency layering constraints.",
+            remediation=(
+                "Remove blocked imports from protected modules to restore "
+                "dependency directionality."
+            ),
+            scope="src/engineeringagent",
+            severity=RuleSeverity.ERROR,
+            adapter=RuleAdapter.COMMAND,
+            source=RuleSource.CUSTOM,
+            side_effect_free=True,
+        ),
+        origin="custom:harness/fitness-functions/rules.yaml:rules[0]",
+        command=(
+            sys.executable,
+            str(script),
+        ),
+    )
+
+    result = execute_rule_definition(definition, project_root=tmp_path)
+
+    assert result.status == RuleStatus.FAIL
+    assert result.severity == RuleSeverity.ERROR
+    assert any(
+        "engineeringagent.specs imports blocked dependency engineeringagent.loop"
+        in violation
+        for violation in result.violations
+    )
+
+
+def test_execute_rule_definition_runs_prompt_locality_adapter(tmp_path: Path) -> None:
+    """Surface fail status from the migrated prompt-locality adapter."""
+    _write_prompt_templates(tmp_path)
+    _write_file(
+        tmp_path,
+        "src/engineeringagent/loop.py",
+        "PROMPT = 'Read... and use this feature spec from disk!!!'\n",
+    )
+
+    script = Path(__file__).resolve().parents[1] / "harness" / "fitness-functions"
+    script = script / "check_prompt_locality.py"
+
+    definition = FitnessRuleDefinition(
+        metadata=FitnessRuleMetadata(
+            rule_id="architecture.prompt-locality",
+            name="Prompt locality",
+            summary="Enforce canonical prompt locality boundaries.",
+            rationale="Canonical prompt content must stay in approved prompt assets.",
+            remediation=(
+                "Move canonical prompt text and template reads into "
+                "src/engineeringagent/prompts/templates and approved modules under "
+                "src/engineeringagent/prompts/."
+            ),
+            scope="src/engineeringagent",
+            severity=RuleSeverity.ERROR,
+            adapter=RuleAdapter.COMMAND,
+            source=RuleSource.CUSTOM,
+            side_effect_free=True,
+        ),
+        origin="custom:harness/fitness-functions/rules.yaml:rules[0]",
+        command=(
+            sys.executable,
+            str(script),
+        ),
+    )
+
+    result = execute_rule_definition(definition, project_root=tmp_path)
+
+    assert result.status == RuleStatus.FAIL
+    assert result.severity == RuleSeverity.ERROR
+    assert any(
+        "src/engineeringagent/loop.py:1 contains canonical prompt canary "
+        "'read and use this feature spec from disk'" in violation
+        for violation in result.violations
+    )
+
+
+def test_execute_rule_definition_runs_scaffold_template_locality_adapter(
+    tmp_path: Path,
+) -> None:
+    """Surface fail status from the migrated scaffold-template-locality adapter."""
+    _write_scaffold_templates(tmp_path)
+    _write_file(
+        tmp_path,
+        "src/engineeringagent/loop.py",
+        "SCAFFOLD = 'Agent operating guide for this repository.'\n",
+    )
+
+    script = Path(__file__).resolve().parents[1] / "harness" / "fitness-functions"
+    script = script / "check_scaffold_template_locality.py"
+
+    definition = FitnessRuleDefinition(
+        metadata=FitnessRuleMetadata(
+            rule_id="architecture.scaffold-template-locality",
+            name="Scaffold template locality",
+            summary="Enforce scaffold template locality boundaries.",
+            rationale="Scaffold template content must stay in scaffold template assets.",
+            remediation=(
+                "Move scaffold template content into "
+                "src/engineeringagent/scaffold_templates and keep scaffold content "
+                "reads inside engineeringagent.init_scaffold."
+            ),
+            scope="src/engineeringagent",
+            severity=RuleSeverity.ERROR,
+            adapter=RuleAdapter.COMMAND,
+            source=RuleSource.CUSTOM,
+            side_effect_free=True,
+        ),
+        origin="custom:harness/fitness-functions/rules.yaml:rules[0]",
+        command=(
+            sys.executable,
+            str(script),
+        ),
+    )
+
+    result = execute_rule_definition(definition, project_root=tmp_path)
+
+    assert result.status == RuleStatus.FAIL
+    assert result.severity == RuleSeverity.ERROR
+    assert any(
+        "src/engineeringagent/loop.py:1 contains scaffold template canary "
+        "'agent operating guide for this repository'" in violation
+        for violation in result.violations
+    )
+
+
+def test_execute_rule_definition_runs_markdown_locality_reference_adapter(
+    tmp_path: Path,
+) -> None:
+    """Surface fail status from the migrated markdown locality adapter."""
+    _write_file(tmp_path, "README.md", "Root readme\n")
+
+    script = Path(__file__).resolve().parents[1] / "harness" / "fitness-functions"
+    script = script / "check_markdown_locality_reference_coverage.py"
+
+    definition = FitnessRuleDefinition(
+        metadata=FitnessRuleMetadata(
+            rule_id="architecture.markdown-locality-reference-coverage",
+            name="Markdown locality and reference coverage",
+            summary="Enforce markdown locality and reference coverage constraints.",
+            rationale=(
+                "Keeps markdown assets discoverable and ensures non-doc markdown files "
+                "remain referenced from in-repo sources."
+            ),
+            remediation=(
+                "Move markdown files into approved roots and add deterministic "
+                "in-repo references for non-doc markdown files."
+            ),
+            scope="repository",
+            severity=RuleSeverity.ERROR,
+            adapter=RuleAdapter.COMMAND,
+            source=RuleSource.CUSTOM,
+            side_effect_free=True,
+        ),
+        origin="custom:harness/fitness-functions/rules.yaml:rules[0]",
+        command=(
+            sys.executable,
+            str(script),
+        ),
+    )
+
+    result = execute_rule_definition(definition, project_root=tmp_path)
+
+    assert result.status == RuleStatus.FAIL
+    assert result.severity == RuleSeverity.ERROR
+    assert any(
+        "README.md:1 markdown file outside docs/ has no in-repo non-self reference"
+        in violation
+        for violation in result.violations
+    )
 
 
 def test_execute_rule_definition_rejects_extra_result_fields(tmp_path: Path) -> None:

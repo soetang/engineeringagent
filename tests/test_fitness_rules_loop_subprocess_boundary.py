@@ -1,9 +1,17 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
+import subprocess
+import sys
 
-from engineeringagent.fitness.builtin_rules import evaluate_loop_subprocess_boundary
-from engineeringagent.fitness.registry import builtin_rule_definitions
+
+SCRIPT_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "harness"
+    / "fitness-functions"
+    / "check_loop_subprocess_boundary.py"
+)
 
 
 def _write_module(project_root: Path, relative_path: str, body: str) -> None:
@@ -12,12 +20,34 @@ def _write_module(project_root: Path, relative_path: str, body: str) -> None:
     path.write_text(body, encoding="utf-8")
 
 
-def test_builtin_rule_definitions_include_loop_subprocess_boundary_rule() -> None:
-    """Expose loop subprocess boundary as a registered built-in rule."""
-    rule_ids = {
-        definition.metadata.rule_id for definition in builtin_rule_definitions()
-    }
-    assert "architecture.loop-subprocess-boundary" in rule_ids
+def _run_checker(
+    project_root: Path,
+) -> tuple[subprocess.CompletedProcess[str], dict[str, object]]:
+    proc = subprocess.run(
+        [sys.executable, str(SCRIPT_PATH)],
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    payload = json.loads(proc.stdout)
+    return proc, payload
+
+
+def test_loop_subprocess_boundary_checker_emits_expected_rule_id(
+    tmp_path: Path,
+) -> None:
+    """Emit the stable rule id from the harness command adapter."""
+    _write_module(
+        tmp_path,
+        "src/engineeringagent/loop.py",
+        "def run() -> None:\n    return None\n",
+    )
+
+    proc, payload = _run_checker(tmp_path)
+
+    assert proc.returncode == 0
+    assert payload["rule_id"] == "architecture.loop-subprocess-boundary"
 
 
 def test_loop_subprocess_boundary_rule_reports_direct_subprocess_use(
@@ -37,10 +67,11 @@ def test_loop_subprocess_boundary_rule_reports_direct_subprocess_use(
         ),
     )
 
-    result = evaluate_loop_subprocess_boundary(tmp_path)
-    violations = result["violations"]
+    proc, payload = _run_checker(tmp_path)
+    violations = payload["violations"]
 
-    assert result["status"] == "fail"
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
     assert isinstance(violations, list)
     assert any(
         "src/engineeringagent/loop.py:4 uses subprocess.run" in violation
@@ -65,10 +96,11 @@ def test_loop_subprocess_boundary_rule_reports_subprocess_alias_pattern(
         ),
     )
 
-    result = evaluate_loop_subprocess_boundary(tmp_path)
-    violations = result["violations"]
+    proc, payload = _run_checker(tmp_path)
+    violations = payload["violations"]
 
-    assert result["status"] == "fail"
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
     assert isinstance(violations, list)
     assert any(
         "src/engineeringagent/process_runner.py:4 uses sp.run" in violation
@@ -93,10 +125,11 @@ def test_loop_subprocess_boundary_rule_reports_from_import_pattern(
         ),
     )
 
-    result = evaluate_loop_subprocess_boundary(tmp_path)
-    violations = result["violations"]
+    proc, payload = _run_checker(tmp_path)
+    violations = payload["violations"]
 
-    assert result["status"] == "fail"
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
     assert isinstance(violations, list)
     assert any(
         "src/engineeringagent/loop.py:4 uses run_cmd(...) from subprocess" in violation
@@ -121,10 +154,11 @@ def test_loop_subprocess_boundary_rule_allows_approved_command_boundary_modules(
         ),
     )
 
-    result = evaluate_loop_subprocess_boundary(tmp_path)
+    proc, payload = _run_checker(tmp_path)
 
-    assert result["status"] == "pass"
-    assert result["violations"] == []
+    assert proc.returncode == 0
+    assert payload["status"] == "pass"
+    assert payload["violations"] == []
 
 
 def test_loop_subprocess_boundary_rule_allows_git_client_module(tmp_path: Path) -> None:
@@ -142,7 +176,8 @@ def test_loop_subprocess_boundary_rule_allows_git_client_module(tmp_path: Path) 
         ),
     )
 
-    result = evaluate_loop_subprocess_boundary(tmp_path)
+    proc, payload = _run_checker(tmp_path)
 
-    assert result["status"] == "pass"
-    assert result["violations"] == []
+    assert proc.returncode == 0
+    assert payload["status"] == "pass"
+    assert payload["violations"] == []

@@ -1,9 +1,17 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
+import subprocess
+import sys
 
-from engineeringagent.fitness.builtin_rules import evaluate_dependency_directionality
-from engineeringagent.fitness.registry import builtin_rule_definitions
+
+SCRIPT_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "harness"
+    / "fitness-functions"
+    / "check_dependency_directionality.py"
+)
 
 
 def _write_module(project_root: Path, module_path: str, body: str) -> None:
@@ -20,12 +28,26 @@ def _write_directionality_fixture(project_root: Path) -> None:
     _write_module(project_root, "specs.py", "")
 
 
-def test_builtin_rule_definitions_include_directionality_rule() -> None:
-    """Expose dependency directionality as a registered built-in rule."""
-    rule_ids = {
-        definition.metadata.rule_id for definition in builtin_rule_definitions()
-    }
-    assert "architecture.dep-directionality" in rule_ids
+def _run_checker(
+    project_root: Path,
+) -> tuple[subprocess.CompletedProcess[str], dict[str, object]]:
+    proc = subprocess.run(
+        [sys.executable, str(SCRIPT_PATH)],
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    payload = json.loads(proc.stdout)
+    return proc, payload
+
+
+def test_directionality_checker_emits_expected_rule_id(tmp_path: Path) -> None:
+    """Emit the stable rule id from the harness command adapter."""
+    proc, payload = _run_checker(tmp_path)
+
+    assert proc.returncode == 0
+    assert payload["rule_id"] == "architecture.dep-directionality"
 
 
 def test_directionality_rule_reports_blocked_import(tmp_path: Path) -> None:
@@ -33,10 +55,11 @@ def test_directionality_rule_reports_blocked_import(tmp_path: Path) -> None:
     _write_directionality_fixture(tmp_path)
     _write_module(tmp_path, "specs.py", "import engineeringagent.loop\n")
 
-    result = evaluate_dependency_directionality(tmp_path)
-    violations = result["violations"]
+    proc, payload = _run_checker(tmp_path)
+    violations = payload["violations"]
 
-    assert result["status"] == "fail"
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
     assert isinstance(violations, list)
     assert any(
         "engineeringagent.specs imports blocked dependency engineeringagent.loop"
@@ -56,10 +79,11 @@ def test_directionality_rule_reports_blocked_loop_runtime_import(
         "import engineeringagent.loop_runtime.selection\n",
     )
 
-    result = evaluate_dependency_directionality(tmp_path)
-    violations = result["violations"]
+    proc, payload = _run_checker(tmp_path)
+    violations = payload["violations"]
 
-    assert result["status"] == "fail"
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
     assert isinstance(violations, list)
     assert any(
         (

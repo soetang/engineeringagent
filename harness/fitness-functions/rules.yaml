@@ -1,10 +1,82 @@
 contract_version: "1.0"
 rules:
-  - builtin: architecture.dep-directionality
-  - builtin: architecture.loop-subprocess-boundary
-  - builtin: architecture.markdown-locality-reference-coverage
-  - builtin: architecture.prompt-locality
-  - builtin: architecture.scaffold-template-locality
+  - rule_id: architecture.dep-directionality
+    name: Dependency directionality
+    summary: Enforce core module import direction boundaries.
+    rationale: Keeps orchestration and contracts layered for reviewability.
+    remediation: Refactor imports to follow the declared architecture boundaries.
+    scope: src/engineeringagent
+    severity: error
+    side_effect_free: true
+    adapter: command
+    command:
+      - uv
+      - run
+      - python
+      - harness/fitness-functions/check_dependency_directionality.py
+  - rule_id: architecture.loop-subprocess-boundary
+    name: Loop subprocess boundary
+    summary: Enforce subprocess allowlist boundaries for command adapters/clients.
+    rationale: Centralizes command execution paths for consistent control.
+    remediation: Move OpenCode command execution to engineeringagent.opencode.client
+      and Git command execution to engineeringagent.git.client.
+    scope: src/engineeringagent
+    severity: error
+    side_effect_free: true
+    adapter: command
+    command:
+      - uv
+      - run
+      - python
+      - harness/fitness-functions/check_loop_subprocess_boundary.py
+  - rule_id: architecture.markdown-locality-reference-coverage
+    name: Markdown locality and reference coverage
+    summary: Restrict markdown to approved paths and require non-doc markdown files
+      to be referenced in-repo.
+    rationale: Prevents markdown sprawl and orphaned non-doc markdown assets across
+      repository zones.
+    remediation: Move markdown under approved roots and add at least one deterministic
+      in-repo reference for each markdown file outside docs/.
+    scope: repository markdown (*.md)
+    severity: error
+    side_effect_free: true
+    adapter: command
+    command:
+      - uv
+      - run
+      - python
+      - harness/fitness-functions/check_markdown_locality_reference_coverage.py
+  - rule_id: architecture.prompt-locality
+    name: Prompt locality
+    summary: Keep canonical loop prompt content and template reads localized.
+    rationale: Prevents prompt drift and duplicate canonical wording across modules.
+    remediation: Move canonical prompt text and template reads to engineeringagent.prompts
+      templates/renderer modules.
+    scope: src/engineeringagent
+    severity: error
+    side_effect_free: true
+    adapter: command
+    command:
+      - uv
+      - run
+      - python
+      - harness/fitness-functions/check_prompt_locality.py
+  - rule_id: architecture.scaffold-template-locality
+    name: Scaffold template locality
+    summary: Keep scaffold template payloads in scaffold_templates assets.
+    rationale: Prevents init scaffold regressions from drifting back to inline template
+      payloads in source modules.
+    remediation: Move scaffold template bodies to engineeringagent.scaffold_templates
+      assets and load them via engineeringagent.init_scaffold.
+    scope: src/engineeringagent
+    severity: error
+    side_effect_free: true
+    adapter: command
+    command:
+      - uv
+      - run
+      - python
+      - harness/fitness-functions/check_scaffold_template_locality.py
   - rule_id: architecture.loop-facade-line-budget
     name: Loop facade line budget
     summary: Enforce a permanent line budget cap for the loop facade.

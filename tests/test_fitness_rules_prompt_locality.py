@@ -1,10 +1,18 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
+import subprocess
+import sys
 from typing import cast
 
-from engineeringagent.fitness.builtin_rules import evaluate_prompt_locality
-from engineeringagent.fitness.registry import builtin_rule_definitions
+
+SCRIPT_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "harness"
+    / "fitness-functions"
+    / "check_prompt_locality.py"
+)
 
 
 def _write_module(project_root: Path, relative_path: str, body: str) -> None:
@@ -27,21 +35,38 @@ def _violations(result: dict[str, object]) -> list[str]:
     return cast(list[str], result["violations"])
 
 
-def test_builtin_rule_definitions_include_prompt_locality_rule() -> None:
-    """Expose prompt locality as a registered built-in rule."""
-    rule_ids = {
-        definition.metadata.rule_id for definition in builtin_rule_definitions()
-    }
-    assert "architecture.prompt-locality" in rule_ids
+def _run_checker(
+    project_root: Path,
+) -> tuple[subprocess.CompletedProcess[str], dict[str, object]]:
+    proc = subprocess.run(
+        [sys.executable, str(SCRIPT_PATH)],
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    payload = json.loads(proc.stdout)
+    return proc, payload
+
+
+def test_prompt_locality_checker_emits_expected_rule_id(tmp_path: Path) -> None:
+    """Emit the stable rule id from the harness command adapter."""
+    _write_prompt_templates(tmp_path)
+
+    proc, payload = _run_checker(tmp_path)
+
+    assert proc.returncode == 0
+    assert payload["rule_id"] == "architecture.prompt-locality"
 
 
 def test_prompt_locality_rule_fails_when_required_templates_are_missing(
     tmp_path: Path,
 ) -> None:
     """Fail with deterministic diagnostics when template artifacts are absent."""
-    result = evaluate_prompt_locality(tmp_path)
+    proc, result = _run_checker(tmp_path)
     violations = _violations(result)
 
+    assert proc.returncode == 0
     assert result["status"] == "fail"
     assert isinstance(violations, list)
     assert violations == sorted(violations)
@@ -67,9 +92,10 @@ def test_prompt_locality_rule_fails_when_required_template_is_empty(
     )
     retry_template.write_text(" \n\t\n", encoding="utf-8")
 
-    result = evaluate_prompt_locality(tmp_path)
+    proc, result = _run_checker(tmp_path)
     violations = _violations(result)
 
+    assert proc.returncode == 0
     assert result["status"] == "fail"
     assert any(
         "loop_retry_feedback.md:1 required prompt template "
@@ -89,9 +115,10 @@ def test_prompt_locality_rule_fails_on_canonical_builder_definition(
         "def build_ralph_opencode_prompt() -> str:\n    return 'ok'\n",
     )
 
-    result = evaluate_prompt_locality(tmp_path)
+    proc, result = _run_checker(tmp_path)
     violations = _violations(result)
 
+    assert proc.returncode == 0
     assert result["status"] == "fail"
     assert any(
         "src/engineeringagent/loop.py:1 defines canonical prompt builder "
@@ -114,9 +141,10 @@ def test_prompt_locality_rule_fails_on_template_reads_outside_prompt_modules(
         "        return handle.read()\n",
     )
 
-    result = evaluate_prompt_locality(tmp_path)
+    proc, result = _run_checker(tmp_path)
     violations = _violations(result)
 
+    assert proc.returncode == 0
     assert result["status"] == "fail"
     assert any(
         "src/engineeringagent/loop.py:2 reads prompt template markdown" in violation
@@ -135,9 +163,10 @@ def test_prompt_locality_rule_fails_on_normalized_canary_leakage(
         "PROMPT = 'Read... and use this feature spec from disk!!!'\n",
     )
 
-    result = evaluate_prompt_locality(tmp_path)
+    proc, result = _run_checker(tmp_path)
     violations = _violations(result)
 
+    assert proc.returncode == 0
     assert result["status"] == "fail"
     assert any(
         "src/engineeringagent/loop.py:1 contains canonical prompt canary "
@@ -166,8 +195,9 @@ def test_prompt_locality_rule_passes_for_localized_templates_and_prompts(
         "def run() -> None:\n    return None\n",
     )
 
-    result = evaluate_prompt_locality(tmp_path)
+    proc, result = _run_checker(tmp_path)
 
+    assert proc.returncode == 0
     assert result["status"] == "pass"
     assert _violations(result) == []
 
@@ -188,9 +218,10 @@ def test_prompt_locality_rule_reports_sorted_path_line_diagnostics(
         "def build_ralph_opencode_prompt() -> str:\n    return 'ok'\n",
     )
 
-    result = evaluate_prompt_locality(tmp_path)
+    proc, result = _run_checker(tmp_path)
     violations = _violations(result)
 
+    assert proc.returncode == 0
     assert result["status"] == "fail"
     assert violations == sorted(violations)
     assert violations[0].startswith("src/engineeringagent/alpha.py:1")

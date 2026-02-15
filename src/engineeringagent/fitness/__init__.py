@@ -1,5 +1,4 @@
 from .contracts import (
-    BuiltinRuleManifestReference,
     CONTRACT_VERSION,
     CustomRuleManifest,
     CustomRuleManifestEntry,
@@ -27,7 +26,6 @@ from .registry import (
     DEFAULT_CUSTOM_RULE_MANIFEST,
     FitnessRuleDefinition,
     build_rule_catalog,
-    builtin_rule_definitions,
     custom_manifest_path,
     load_custom_rule_definitions,
 )
@@ -35,7 +33,6 @@ from .runner import FitnessRunSummary, run_rule_catalog
 
 __all__ = [
     "CONTRACT_VERSION",
-    "BuiltinRuleManifestReference",
     "CustomRuleManifest",
     "CustomRuleManifestEntry",
     "DEFAULT_CUSTOM_RULE_MANIFEST",
@@ -58,7 +55,6 @@ __all__ = [
     "evaluate_prompt_locality",
     "evaluate_scaffold_template_locality",
     "build_rule_catalog",
-    "builtin_rule_definitions",
     "custom_manifest_path",
     "load_custom_rule_definitions",
     "load_custom_rule_manifest",

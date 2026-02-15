@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 import yaml
+from pydantic import ValidationError
 
 from engineeringagent.fitness.contracts import CONTRACT_VERSION, RuleSource
 from engineeringagent.fitness.registry import (
@@ -68,10 +70,10 @@ def test_load_custom_rule_definitions_reads_default_manifest_path(
     )
 
 
-def test_load_custom_rule_definitions_ignores_builtin_references(
+def test_load_custom_rule_definitions_rejects_builtin_references(
     tmp_path: Path,
 ) -> None:
-    """Load only command-backed entries from mixed manifests."""
+    """Reject deprecated builtin references in manifest rules."""
     manifest_path = tmp_path / DEFAULT_CUSTOM_RULE_MANIFEST
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(
@@ -105,8 +107,9 @@ def test_load_custom_rule_definitions_ignores_builtin_references(
         encoding="utf-8",
     )
 
-    definitions = load_custom_rule_definitions(tmp_path)
+    with pytest.raises(ValidationError) as excinfo:
+        load_custom_rule_definitions(tmp_path)
 
-    assert [definition.metadata.rule_id for definition in definitions] == [
-        "custom.docs-links"
-    ]
+    message = str(excinfo.value)
+    assert "builtin manifest references are no longer supported" in message
+    assert "rules[0].builtin" in message

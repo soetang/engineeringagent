@@ -2,13 +2,12 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Sequence
 
 from pydantic import BaseModel, ConfigDict
 
 from .adapters import execute_rule_definition
 from .contracts import FitnessRuleResult, RuleStatus
-from .registry import FitnessRuleDefinition, build_rule_catalog
+from .registry import build_rule_catalog
 
 
 class FitnessRunSummary(BaseModel):
@@ -32,7 +31,6 @@ def run_rule_catalog(
     *,
     jobs: int = 1,
     manifest_path: Path | None = None,
-    builtin_rules: Sequence[FitnessRuleDefinition] | None = None,
 ) -> FitnessRunSummary:
     """Execute active fitness rules with deterministic result ordering."""
     if jobs < 1:
@@ -40,7 +38,6 @@ def run_rule_catalog(
 
     definitions = build_rule_catalog(
         project_root,
-        builtin_rules=builtin_rules,
         manifest_path=manifest_path,
     )
     if not definitions:
