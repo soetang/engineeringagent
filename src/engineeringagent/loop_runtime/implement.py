@@ -3,16 +3,27 @@
 from __future__ import annotations
 
 import sys
+import subprocess
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
 from engineeringagent.loop_runtime.models import ImplementStepInputs
-from engineeringagent.opencode.client import DEFAULT_OPENCODE_AGENT
+from engineeringagent.opencode.client import (
+    DEFAULT_OPENCODE_AGENT,
+    OPENCODE_TIMEOUT_ENV,
+    resolve_opencode_timeout_sec,
+)
 from engineeringagent.opencode_permissions import output_has_permission_rejection
 from engineeringagent import progress_paths
+from engineeringagent import progress_logging
 from engineeringagent.prompts import (
     build_implementation_prompt,
 )
+
+
+def _format_opencode_run_command(agent: str) -> str:
+    return f"opencode run --agent {agent} <prompt>"
 
 
 def run_implement_step_from_inputs(
@@ -21,10 +32,6 @@ def run_implement_step_from_inputs(
     start_agent_fn: Callable[..., Any],
 ) -> tuple[bool, str | None, str]:
     """Run implement logic while facade keeps public signature seams."""
-    if implement_inputs.skip_implement:
-        print("Implement step: skipped")
-        return (True, None, "[implement] skipped")
-
     return _run_default_opencode_implement(
         implement_inputs,
         start_agent_fn=start_agent_fn,
@@ -37,17 +44,40 @@ def _run_default_opencode_implement(
     start_agent_fn: Callable[..., Any],
 ) -> tuple[bool, str | None, str]:
     prompt = _build_implement_prompt(implement_inputs)
+    command = _format_opencode_run_command(DEFAULT_OPENCODE_AGENT)
 
-    print(f"Implement step: opencode run --agent {DEFAULT_OPENCODE_AGENT}")
+    _ensure_progress_artifacts(implement_inputs)
+    timeout_sec = resolve_opencode_timeout_sec()
+    print(
+        (
+            f"Implement step: opencode run --agent {DEFAULT_OPENCODE_AGENT} "
+            f"(timeout={timeout_sec}s; set {OPENCODE_TIMEOUT_ENV}=<seconds> to adjust)"
+        ),
+        flush=True,
+    )
     try:
         proc = start_agent_fn(implement_inputs.project_root, prompt)
     except FileNotFoundError:
         return (False, "opencode_missing", "[implement] opencode executable missing")
+    except subprocess.TimeoutExpired as exc:
+        timeout_raw = exc.timeout if isinstance(exc.timeout, (int, float)) else None
+        timeout_sec = (
+            int(timeout_raw) if timeout_raw else resolve_opencode_timeout_sec()
+        )
+        command_output = (
+            f"[implement] command={command}\n"
+            f"[implement] error=timeout timeout_sec={timeout_sec}\n"
+            "[implement] opencode timed out before producing output.\n"
+            f"[implement] hint: increase timeout via {OPENCODE_TIMEOUT_ENV}=<seconds>.\n"
+            "[implement] hint: for gate-only execution use `engineeringagent gates run`.\n"
+            "[implement] hint: for a non-mutating preview use `engineeringagent run --dry-run`.\n"
+        )
+        return (False, "opencode_timeout", command_output)
 
     _print_process_output(proc, verbose_output=implement_inputs.verbose_output)
     output = (proc.stdout or "") + (proc.stderr or "")
     command_output = (
-        f"[implement] command=opencode run --agent {DEFAULT_OPENCODE_AGENT} <prompt>\n"
+        f"[implement] command={command}\n"
         f"[implement] returncode={proc.returncode}\n"
         f"{output}"
     )
@@ -66,6 +96,32 @@ def _build_implement_prompt(implement_inputs: ImplementStepInputs) -> str:
     )
 
 
+def _ensure_progress_artifacts(implement_inputs: ImplementStepInputs) -> None:
+    project_root = implement_inputs.project_root
+    feature_id = implement_inputs.feature.get("id")
+    if not isinstance(feature_id, str) or not feature_id.strip():
+        feature_id = "unknown-feature"
+
+    progress_paths.progress_dir(project_root).mkdir(parents=True, exist_ok=True)
+    progress_paths.runs_jsonl_path(project_root).touch(exist_ok=True)
+
+    timestamp = (
+        datetime.now(timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
+    progress_logging.append_text_block(
+        log_path=progress_paths.run_feature_log_path(project_root, feature_id),
+        lines=[
+            (
+                f"ts={timestamp} === IMPLEMENT START feature_id={feature_id} "
+                f"feature_path={implement_inputs.feature_path} ==="
+            )
+        ],
+    )
+
+
 def _print_process_output(proc: Any, *, verbose_output: bool) -> None:
     if not verbose_output:
         return
@@ -75,30 +131,18 @@ def _print_process_output(proc: Any, *, verbose_output: bool) -> None:
         print(proc.stderr, end="", file=sys.stderr)
 
 
-def requires_opencode_permission_precheck(
-    skip_implement: bool,
-) -> bool:
-    """Return whether default OpenCode mode requires permission precheck."""
-    return not skip_implement
-
-
 def run_opencode_permission_precheck(
     project_root: Path,
-    skip_implement: bool,
     *,
     run_permission_probe_fn: Callable[[Path], Any],
     permission_remediation_hint: str,
 ) -> bool:
-    """Run OpenCode permission precheck for default implement mode."""
-    if not requires_opencode_permission_precheck(
-        skip_implement=skip_implement,
-    ):
-        return True
-
-    print("Running pre-run OpenCode permission precheck (default implement mode).")
+    """Run OpenCode permission precheck before entering the loop."""
+    print("Running pre-run OpenCode permission precheck.")
     print(
-        "Hint: if OpenCode cannot proceed or appears stuck, interrupt and rerun with "
-        "--skip-implement to bypass the implement step and run gates only."
+        "Hint: if OpenCode cannot proceed or appears stuck, interrupt and rerun after "
+        "fixing permissions. For gate-only execution, use `engineeringagent gates run`. "
+        "For a non-mutating preview, use `engineeringagent run --dry-run`."
     )
     print(
         "Logs: "
@@ -115,5 +159,4 @@ def run_opencode_permission_precheck(
     if result.output:
         print(result.output, end="" if result.output.endswith("\n") else "\n")
     print(permission_remediation_hint)
-    print("Hint: use --skip-implement to bypass the implement step and run gates only.")
     return False

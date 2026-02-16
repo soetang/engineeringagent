@@ -310,7 +310,7 @@ def run_reviewer_phase(  # noqa: C901
         state, feature_id
     )
     followup_satisfied_in_iteration = False
-    if pending_advisory_followup and not iteration_inputs.skip_implement:
+    if pending_advisory_followup:
         dependencies.clear_advisory_followup_required(state, feature_id)
         pending_advisory_followup = False
         followup_satisfied_in_iteration = True

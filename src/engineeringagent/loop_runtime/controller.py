@@ -50,7 +50,6 @@ def run_loop_controller(
 
     if not services.run_permission_precheck(
         project_root=config.project_root,
-        skip_implement=config.skip_implement,
     ):
         return 1
 

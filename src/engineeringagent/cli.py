@@ -365,7 +365,6 @@ def cmd_run(args: _HandlerArgs) -> int:
         feature_paths=args.feature_paths,
         run_all=args.all,
         gate_profile=gate_profile,
-        skip_implement=args.skip_implement,
         dry_run=args.dry_run,
         max_iterations=args.max_iterations,
         allow_dirty=args.allow_dirty,
@@ -1097,11 +1096,6 @@ def build_typer_app() -> typer.Typer:
             "--all",
             help="auto-discover active feature specs under docs/spec/features",
         ),
-        skip_implement: bool = typer.Option(
-            False,
-            "--skip-implement",
-            help="skip implementation and run gates only",
-        ),
         dry_run: bool = typer.Option(False, "--dry-run"),
         max_iterations: int = typer.Option(
             50,
@@ -1124,7 +1118,6 @@ def build_typer_app() -> typer.Typer:
             ctx=ctx,
             feature_paths=list(feature_paths or []),
             all=run_all,
-            skip_implement=skip_implement,
             dry_run=dry_run,
             max_iterations=max_iterations,
             allow_dirty=allow_dirty,

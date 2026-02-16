@@ -36,9 +36,9 @@ REQUIRED_FEEDBACK_CONTEXT_SNIPPETS = (
 )
 
 
-REQUIRED_UV_SKIP_IMPLEMENT_SNIPPETS = (
-    "In `--skip-implement` mode, `engineeringagent run` executes exactly one iteration",
-    "exits (0 on pass, 1 on fail)",
+REQUIRED_UV_RUN_CONTRACT_SNIPPETS = (
+    "uv run python -m engineeringagent.cli gates run --profile loop_fast",
+    "uv run python -m engineeringagent.cli run --all --dry-run",
 )
 
 
@@ -78,12 +78,12 @@ def test_reviewer_authoring_guide_documents_feedback_context() -> None:
     assert not missing
 
 
-def test_uv_reference_documents_skip_implement_mode_behavior() -> None:
+def test_uv_reference_documents_run_contract_guidance() -> None:
     body = UV_REFERENCE_PATH.read_text(encoding="utf-8")
+    removed_skip_flag = "--skip-" + "implement"
+    assert removed_skip_flag not in body
     missing = [
-        snippet
-        for snippet in REQUIRED_UV_SKIP_IMPLEMENT_SNIPPETS
-        if snippet not in body
+        snippet for snippet in REQUIRED_UV_RUN_CONTRACT_SNIPPETS if snippet not in body
     ]
     assert not missing
 

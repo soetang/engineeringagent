@@ -228,7 +228,6 @@ def test_validate_and_run_all_use_separate_docs_root(
             "run",
             "--all",
             "--dry-run",
-            "--skip-implement",
         ]
     )
 

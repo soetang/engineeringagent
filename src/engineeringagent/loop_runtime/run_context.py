@@ -16,7 +16,6 @@ class RunConfig(BaseModel):
     project_root: Path
     feature_paths: tuple[str | Path, ...]
     gate_profile: str
-    skip_implement: bool
     dry_run: bool
     run_all: bool = False
     max_iterations: int = 50

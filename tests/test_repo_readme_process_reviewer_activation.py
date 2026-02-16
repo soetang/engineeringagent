@@ -77,11 +77,14 @@ def test_repo_enables_readme_process_reviewer_in_loop_fast() -> None:
     assert "--dry-run" in prompt_body
 
     readme_body = README_PATH.read_text(encoding="utf-8")
+    removed_skip_flag = "--skip-" + "implement"
     assert "engineeringagent init slim" in readme_body
     assert "engineeringagent init standard" in readme_body
     assert "TTY" in readme_body
     assert "prompt" in readme_body
     assert "--allow-dirty" in readme_body
+    assert removed_skip_flag not in readme_body
+    assert "uvx engineeringagent gates run --profile loop_fast" in readme_body
     precondition_line = "Before the first non-dry `engineeringagent run`, either commit the scaffold/spec changes or pass `--allow-dirty`."
     assert precondition_line in readme_body
     assert "progress/runs.jsonl" in readme_body
@@ -95,12 +98,18 @@ def test_repo_enables_readme_process_reviewer_in_loop_fast() -> None:
         in readme_body
     )
 
+    # Help users validate OpenCode wiring before first non-dry run.
+    assert "opencode --version" in readme_body
+    assert ".opencode/agents/engineeringagent.md" in readme_body
+    assert "first non-dry run may take" in readme_body
+    assert "progress/run-feature-<FEATURE_ID>.txt" in readme_body
+
     # PyPI README rendering does not reliably resolve relative links.
     # Keep AGENTS.md references non-clickable to avoid broken-link footguns.
     assert "](AGENTS.md)" not in readme_body
 
-    # Keep the first non-dry gates-only command runnable in fresh-init flow.
-    first_non_dry_command = "uvx engineeringagent run docs/spec/features/FEAT-001-example.yaml --skip-implement --allow-dirty"
+    # Keep the first non-dry run command runnable in fresh-init flow.
+    first_non_dry_command = "uvx engineeringagent run docs/spec/features/FEAT-001-example.yaml --allow-dirty"
     assert first_non_dry_command in readme_body
 
     # Surface non-dry preconditions and side effects before that first command.

@@ -91,34 +91,46 @@ uv run python -m engineeringagent.cli gates run --profile loop_fast
 1. Do a safe dry run first.
 
     ```bash
-    uvx engineeringagent run docs/spec/features/FEAT-001-example.yaml --dry-run
-    ```
-
-1. First non-dry run (gates-only, no OpenCode required).
-
-   Before the first non-dry `engineeringagent run`, either commit the scaffold/spec changes or pass `--allow-dirty`.
-
-    Note: a non-dry `run` mutates your feature YAML in place (status/subtask updates,
-    updated_at) and writes progress logs under `progress/`.
-
-    It may also create a git commit and move completed specs from `docs/spec/features/` to `docs/spec/features_done/`.
-    `engineeringagent validate` rejects `status: done` specs under `docs/spec/features/`.
-
-      ```bash
-      uvx engineeringagent run docs/spec/features/FEAT-001-example.yaml --skip-implement --allow-dirty
-      ```
-
-1. Run for real (implementation + gates) by removing `--skip-implement`.
-
-     OpenCode mode (default):
-
-     ```bash
-     uvx engineeringagent run docs/spec/features/FEAT-001-example.yaml --allow-dirty
+     uvx engineeringagent run docs/spec/features/FEAT-001-example.yaml --dry-run
      ```
 
-     If you do not have OpenCode installed/configured yet, run gates-only with `--skip-implement`.
+1. First non-dry run (implementation + gates; requires OpenCode).
 
-    Note: `--skip-implement` is gates-only; it will not perform implementation.
+    Before the first non-dry `engineeringagent run`, either commit the scaffold/spec changes or pass `--allow-dirty`.
+
+      Preflight: confirm OpenCode is installed and runnable (`opencode --version`), and that your repository has an agent prompt like `.opencode/agents/engineeringagent.md`.
+
+      Optional smoke test (recommended if you're in a clean-room/sandbox):
+
+      ```bash
+      opencode run --agent engineeringagent "Reply READY."
+      ```
+
+      The first non-dry run may take a minute or two before you see implement output; watch `progress/run-feature-<FEATURE_ID>.txt` for full logs and `progress/runs.jsonl` for high-level progress.
+
+      If you see `Implement step: opencode run --agent engineeringagent ...` and then no further progress, OpenCode is likely blocked on missing credentials/config (or a prompt/permission issue). Set a shorter timeout to fail fast and surface the error:
+
+      ```bash
+      ENGINEERINGAGENT_OPENCODE_TIMEOUT_SEC=30 uvx engineeringagent run docs/spec/features/FEAT-001-example.yaml --allow-dirty
+      ```
+
+      If you only want to run gates without mutating loop state, use `engineeringagent gates run --profile <profile>`.
+
+      Note: a non-dry `run` mutates your feature YAML in place (status/subtask updates,
+      updated_at) and writes progress logs under `progress/`.
+
+     It may also create a git commit and move completed specs from `docs/spec/features/` to `docs/spec/features_done/`.
+     `engineeringagent validate` rejects `status: done` specs under `docs/spec/features/`.
+
+       ```bash
+       uvx engineeringagent run docs/spec/features/FEAT-001-example.yaml --allow-dirty
+       ```
+
+     If you do not have OpenCode installed/configured yet, run gates directly:
+
+     ```bash
+     uvx engineeringagent gates run --profile loop_fast
+     ```
 
 ## Bootstrapping a new repository with `init`
 
@@ -190,7 +202,7 @@ the git diff before committing anything produced by `init`.
   for the implementation step.
 - Your repo must have OpenCode available and configured, including an agent prompt
   like `.opencode/agents/engineeringagent.md`.
-- If you are not using OpenCode, use `--skip-implement` to run gates only.
+- If you are not using OpenCode, run gate profiles directly via `engineeringagent gates run --profile <profile>`.
 
 ## Human docs vs agent docs
 

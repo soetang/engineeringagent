@@ -1,10 +1,30 @@
 from __future__ import annotations
 
+import os
 import subprocess
 from pathlib import Path
 
 
 DEFAULT_OPENCODE_AGENT = "engineeringagent"
+DEFAULT_OPENCODE_TIMEOUT_SEC = 120
+OPENCODE_TIMEOUT_ENV = "ENGINEERINGAGENT_OPENCODE_TIMEOUT_SEC"
+
+
+def resolve_opencode_timeout_sec(timeout_sec: int | None = None) -> int:
+    """Resolve OpenCode subprocess timeout with deterministic defaults."""
+    if timeout_sec is not None:
+        resolved = int(timeout_sec)
+        return resolved if resolved > 0 else DEFAULT_OPENCODE_TIMEOUT_SEC
+
+    raw = os.environ.get(OPENCODE_TIMEOUT_ENV, "").strip()
+    if raw:
+        try:
+            resolved = int(raw)
+        except ValueError:
+            resolved = DEFAULT_OPENCODE_TIMEOUT_SEC
+        return resolved if resolved > 0 else DEFAULT_OPENCODE_TIMEOUT_SEC
+
+    return DEFAULT_OPENCODE_TIMEOUT_SEC
 
 
 def start_agent(
@@ -14,6 +34,7 @@ def start_agent(
     agent: str = DEFAULT_OPENCODE_AGENT,
     format: str | None = None,
     session: str | None = None,
+    timeout_sec: int | None = None,
     capture_output: bool = True,
     text: bool = True,
 ) -> subprocess.CompletedProcess[str]:
@@ -43,6 +64,7 @@ def start_agent(
         cwd=project_root,
         capture_output=capture_output,
         text=text,
+        timeout=resolve_opencode_timeout_sec(timeout_sec),
     )
 
 

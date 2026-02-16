@@ -84,7 +84,6 @@ def test_cli_surface_inventory_option_spellings() -> None:
             ["run", "--help"],
             [
                 "--all",
-                "--skip-implement",
                 "--dry-run",
                 "--max-iterations",
                 "--allow-dirty",
@@ -112,13 +111,25 @@ def test_cli_surface_inventory_option_spellings() -> None:
 
 
 def test_run_help_does_not_advertise_implement_command() -> None:
+    removed_skip_flag = "--skip-" + "implement"
     result = _invoke_cli(["run", "--help"])
     stdout = result.stdout
 
     assert result.exit_code == 0
     assert "--implement-command" not in stdout
-    assert "skip implementation and run gates only" in stdout
+    assert removed_skip_flag not in stdout
+    assert "skip implementation and run gates only" not in stdout
     assert "skip the implementation command" not in stdout
+
+
+def test_run_rejects_removed_skip_flag() -> None:
+    removed_skip_flag = "--skip-" + "implement"
+    result = _invoke_cli(["run", "docs/spec/features/FEAT-900.yaml", removed_skip_flag])
+
+    assert result.exit_code != 0
+    combined_output = (result.stderr or "") + (result.stdout or "")
+    assert removed_skip_flag in combined_output
+    assert "No such option" in combined_output
 
 
 def test_run_rejects_implement_command_option() -> None:
@@ -227,7 +238,6 @@ def test_main_run_command_uses_typer_handler(monkeypatch: Any) -> None:
         recorded["feature_paths"] = args.feature_paths
         recorded["all"] = args.all
         recorded["gate_profile"] = args.gate_profile
-        recorded["skip_implement"] = args.skip_implement
         recorded["dry_run"] = args.dry_run
         recorded["max_iterations"] = args.max_iterations
         recorded["allow_dirty"] = args.allow_dirty
@@ -244,7 +254,6 @@ def test_main_run_command_uses_typer_handler(monkeypatch: Any) -> None:
                 "run",
                 "docs/spec/features/FEAT-900.yaml",
                 "--all",
-                "--skip-implement",
                 "--dry-run",
                 "--max-iterations",
                 "7",
@@ -259,7 +268,6 @@ def test_main_run_command_uses_typer_handler(monkeypatch: Any) -> None:
         "feature_paths": ["docs/spec/features/FEAT-900.yaml"],
         "all": True,
         "gate_profile": "loop_fast",
-        "skip_implement": True,
         "dry_run": True,
         "max_iterations": 7,
         "allow_dirty": True,
@@ -285,7 +293,6 @@ def test_cmd_run_builds_looprun_context_for_loop_entrypoint(
             feature_paths=["docs/spec/features/FEAT-078.yaml"],
             all=False,
             gate_profile="loop_fast",
-            skip_implement=True,
             dry_run=True,
             max_iterations=7,
             allow_dirty=True,
@@ -300,7 +307,6 @@ def test_cmd_run_builds_looprun_context_for_loop_entrypoint(
         project_root=tmp_path,
         feature_paths=("docs/spec/features/FEAT-078.yaml",),
         gate_profile="loop_fast",
-        skip_implement=True,
         dry_run=True,
         run_all=False,
         max_iterations=7,

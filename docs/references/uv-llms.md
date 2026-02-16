@@ -22,7 +22,7 @@ uv sync
 uv run python -m engineeringagent.cli validate
 uv run python -m engineeringagent.cli gates list
 uv run python -m engineeringagent.cli gates run --profile loop_fast
-uv run python -m engineeringagent.cli run --all --dry-run --skip-implement
+uv run python -m engineeringagent.cli run --all --dry-run
 ```
 
 ## Daily Commands
@@ -38,8 +38,8 @@ uv run python -m engineeringagent.cli run --all --dry-run --skip-implement
 - Run permission probe: `uv run python -m engineeringagent.cli gates run --profile loop_fast`
 - Default OpenCode loop agent policy: `.opencode/agents/engineeringagent.md` (required; scaffolded by `engineeringagent init`). `opencode.json` is optional legacy configuration.
 - CLI validate command: `uv run python -m engineeringagent.cli validate`
-- Loop dry-run command: `uv run python -m engineeringagent.cli run docs/spec/features/FEAT-004-ralph-loop-opencode-mode.yaml --dry-run --skip-implement`
-- Loop auto-discovery dry-run: `uv run python -m engineeringagent.cli run --all --dry-run --skip-implement`
+- Loop dry-run command: `uv run python -m engineeringagent.cli run docs/spec/features/FEAT-004-ralph-loop-opencode-mode.yaml --dry-run`
+- Loop auto-discovery dry-run: `uv run python -m engineeringagent.cli run --all --dry-run`
 
 ## init Command Notes
 
@@ -55,7 +55,7 @@ uv run python -m engineeringagent.cli run --all --dry-run --skip-implement
 - Snapshot candidates are limited to `backlog` and `in_progress` statuses.
 - Features marked `blocked` or `done` are excluded from the startup snapshot.
 - `--all` and positional feature paths are mutually exclusive input modes.
-- In `--skip-implement` mode, `engineeringagent run` executes exactly one iteration of gates and exits (0 on pass, 1 on fail).
+- `engineeringagent run --dry-run` is a non-mutating preview; gate-only execution is `engineeringagent gates run --profile <profile>`.
 
 ## Dependency Workflow
 

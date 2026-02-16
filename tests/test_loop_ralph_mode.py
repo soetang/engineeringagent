@@ -28,7 +28,6 @@ def run_loop(
     feature_paths: list[str],
     gate_profile: str,
     opencode_prompt: str | None,
-    skip_implement: bool,
     dry_run: bool,
     run_all: bool = False,
     max_iterations: int = 50,
@@ -47,7 +46,6 @@ def run_loop(
         feature_paths=feature_paths,
         run_all=run_all,
         gate_profile=gate_profile,
-        skip_implement=skip_implement,
         dry_run=dry_run,
         max_iterations=max_iterations,
         allow_dirty=allow_dirty,
@@ -474,7 +472,6 @@ def test_verification_is_not_run_without_done_transition(tmp_path: Path) -> None
         feature_path=feature_path,
         gate_profile="loop_fast",
         opencode_prompt=None,
-        skip_implement=True,
         attempt=1,
         hook_feedback=None,
         verbose_output=False,
@@ -518,7 +515,6 @@ def test_verification_failure_for_newly_done_subtask_marks_iteration_non_pass(
             feature_path=feature_path,
             gate_profile="loop_fast",
             opencode_prompt=None,
-            skip_implement=False,
             attempt=1,
             hook_feedback=None,
             verbose_output=False,
@@ -569,7 +565,6 @@ def test_verification_selection_ignores_non_string_commands(
             feature_path=feature_path,
             gate_profile="loop_fast",
             opencode_prompt=None,
-            skip_implement=False,
             attempt=1,
             hook_feedback=None,
             verbose_output=False,
@@ -614,7 +609,6 @@ def test_verification_selection_ignores_blank_string_commands(
             feature_path=feature_path,
             gate_profile="loop_fast",
             opencode_prompt=None,
-            skip_implement=False,
             attempt=1,
             hook_feedback=None,
             verbose_output=False,
@@ -666,7 +660,6 @@ def test_verification_selection_normalizes_command_whitespace(
             feature_path=feature_path,
             gate_profile="loop_fast",
             opencode_prompt=None,
-            skip_implement=False,
             attempt=1,
             hook_feedback=None,
             verbose_output=False,
@@ -717,7 +710,6 @@ def test_verification_ignores_new_done_subtasks_without_pre_snapshot_status(
             feature_path=feature_path,
             gate_profile="loop_fast",
             opencode_prompt=None,
-            skip_implement=False,
             attempt=1,
             hook_feedback=None,
             verbose_output=False,
@@ -768,7 +760,6 @@ def test_verification_selection_uses_first_post_entry_for_duplicate_subtask_ids(
             feature_path=feature_path,
             gate_profile="loop_fast",
             opencode_prompt=None,
-            skip_implement=False,
             attempt=1,
             hook_feedback=None,
             verbose_output=False,
@@ -820,7 +811,6 @@ def test_verification_selection_uses_first_pre_status_for_duplicate_subtask_ids(
             feature_path=feature_path,
             gate_profile="loop_fast",
             opencode_prompt=None,
-            skip_implement=False,
             attempt=1,
             hook_feedback=None,
             verbose_output=False,
@@ -864,7 +854,6 @@ def test_verification_failure_restores_feature_archived_during_iteration(
             feature_path=feature_path,
             gate_profile="loop_fast",
             opencode_prompt=None,
-            skip_implement=False,
             attempt=1,
             hook_feedback=None,
             verbose_output=False,
@@ -903,7 +892,7 @@ def test_ralph_prompt_includes_feature_file_path(tmp_path: Path) -> None:
         assert phrase in prompt
 
 
-def test_cli_run_dry_run_skip_implement_path_first(tmp_path: Path) -> None:
+def test_cli_run_dry_run_path_first(tmp_path: Path) -> None:
     project_root, feature_path = _make_project_root(
         tmp_path, feature_data=_base_feature()
     )
@@ -915,7 +904,6 @@ def test_cli_run_dry_run_skip_implement_path_first(tmp_path: Path) -> None:
             "run",
             str(feature_path),
             "--dry-run",
-            "--skip-implement",
         ]
     )
 
@@ -924,7 +912,7 @@ def test_cli_run_dry_run_skip_implement_path_first(tmp_path: Path) -> None:
     assert not (project_root / "progress" / "runs.jsonl").exists()
 
 
-def test_cli_run_all_dry_run_skip_implement(tmp_path: Path) -> None:
+def test_cli_run_all_dry_run(tmp_path: Path) -> None:
     project_root, _ = _make_project_root(tmp_path, feature_data=_base_feature())
 
     result = _invoke_cli(
@@ -934,7 +922,6 @@ def test_cli_run_all_dry_run_skip_implement(tmp_path: Path) -> None:
             "run",
             "--all",
             "--dry-run",
-            "--skip-implement",
         ]
     )
 
@@ -955,7 +942,6 @@ def test_cli_run_rejects_combined_all_and_paths(tmp_path: Path) -> None:
             "--all",
             str(feature_path),
             "--dry-run",
-            "--skip-implement",
         ]
     )
 
@@ -972,7 +958,6 @@ def test_cli_run_requires_paths_or_all(tmp_path: Path) -> None:
             str(project_root),
             "run",
             "--dry-run",
-            "--skip-implement",
         ]
     )
 
@@ -1007,7 +992,6 @@ def test_run_loop_all_discovers_backlog_and_in_progress_only(
         feature_paths=[],
         gate_profile="loop_fast",
         opencode_prompt=None,
-        skip_implement=True,
         dry_run=True,
         run_all=True,
     )
@@ -1055,7 +1039,6 @@ def test_run_all_uses_configured_docs_root(tmp_path: Path, capsys: Any) -> None:
         feature_paths=[],
         gate_profile="loop_fast",
         opencode_prompt=None,
-        skip_implement=True,
         dry_run=True,
         run_all=True,
     )
@@ -1084,7 +1067,6 @@ def test_run_loop_all_excludes_blocked_and_done_from_startup_snapshot(
         feature_paths=[],
         gate_profile="loop_fast",
         opencode_prompt=None,
-        skip_implement=True,
         dry_run=True,
         run_all=True,
     )
@@ -1106,7 +1088,6 @@ def test_run_loop_all_exits_zero_when_no_runnable_features(
         feature_paths=[],
         gate_profile="loop_fast",
         opencode_prompt=None,
-        skip_implement=True,
         dry_run=False,
         run_all=True,
     )
@@ -1139,7 +1120,6 @@ def test_run_loop_all_does_not_include_specs_created_after_startup(
             feature_paths=[],
             gate_profile="loop_fast",
             opencode_prompt=None,
-            skip_implement=False,
             dry_run=False,
             run_all=True,
             max_iterations=3,
@@ -1165,7 +1145,6 @@ def test_run_loop_all_dry_run_reports_snapshot_selection(
         feature_paths=[],
         gate_profile="loop_fast",
         opencode_prompt=None,
-        skip_implement=True,
         dry_run=True,
         run_all=True,
     )
@@ -1194,7 +1173,6 @@ def test_run_loop_completes_feature_and_commits(tmp_path: Path) -> None:
             feature_paths=[str(feature_path)],
             gate_profile="loop_fast",
             opencode_prompt=None,
-            skip_implement=False,
             dry_run=False,
             max_iterations=5,
         )
@@ -1250,7 +1228,6 @@ def test_archive_path_uses_configured_docs_root(tmp_path: Path) -> None:
             feature_paths=[str(feature_path)],
             gate_profile="loop_fast",
             opencode_prompt=None,
-            skip_implement=False,
             dry_run=False,
             max_iterations=5,
         )
@@ -1282,7 +1259,6 @@ def test_run_loop_commit_ignores_runs_jsonl_when_gitignored(tmp_path: Path) -> N
             feature_paths=[str(feature_path)],
             gate_profile="loop_fast",
             opencode_prompt=None,
-            skip_implement=False,
             dry_run=False,
             max_iterations=5,
         )
@@ -1318,7 +1294,6 @@ def test_run_loop_writes_per_feature_progress_log(
             feature_paths=[str(feature_path)],
             gate_profile="loop_fast",
             opencode_prompt=None,
-            skip_implement=False,
             dry_run=False,
             max_iterations=5,
         )
@@ -1355,7 +1330,6 @@ def test_run_loop_progress_logs_are_gitignored(tmp_path: Path) -> None:
             feature_paths=[str(feature_path)],
             gate_profile="loop_fast",
             opencode_prompt=None,
-            skip_implement=False,
             dry_run=False,
             max_iterations=5,
         )
@@ -1419,7 +1393,6 @@ def test_run_loop_concise_mode_hides_raw_implement_and_gate_output(
             feature_paths=[str(feature_path)],
             gate_profile="loop_fast",
             opencode_prompt=None,
-            skip_implement=False,
             dry_run=False,
             max_iterations=5,
             verbose_output=False,
@@ -1491,7 +1464,6 @@ def test_run_loop_verbose_output_streams_raw_implement_and_gate_output(
             feature_paths=[str(feature_path)],
             gate_profile="loop_fast",
             opencode_prompt=None,
-            skip_implement=False,
             dry_run=False,
             max_iterations=5,
             verbose_output=True,
@@ -1645,7 +1617,6 @@ def test_run_loop_telemetry_includes_log_path(
             feature_paths=[str(feature_path)],
             gate_profile="loop_fast",
             opencode_prompt=None,
-            skip_implement=False,
             dry_run=False,
             max_iterations=5,
         )
@@ -1675,7 +1646,6 @@ def test_run_loop_failure_prints_detailed_log_pointer(
             feature_paths=[str(feature_path)],
             gate_profile="loop_fast",
             opencode_prompt=None,
-            skip_implement=False,
             dry_run=False,
             max_iterations=1,
         )
@@ -1703,7 +1673,6 @@ def test_run_loop_requires_clean_worktree_by_default(
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
         opencode_prompt=None,
-        skip_implement=True,
         dry_run=False,
     )
 
@@ -1713,63 +1682,7 @@ def test_run_loop_requires_clean_worktree_by_default(
     assert "--allow-dirty" in output
 
 
-def test_run_loop_skip_implement_exits_after_one_passing_iteration(
-    tmp_path: Path, capsys: Any
-) -> None:
-    project_root, feature_path = _make_project_root(
-        tmp_path, feature_data=_base_feature()
-    )
-    _init_git_repo(project_root)
-
-    code = run_loop(
-        project_root=project_root,
-        feature_paths=[str(feature_path)],
-        gate_profile="loop_fast",
-        opencode_prompt=None,
-        skip_implement=True,
-        dry_run=False,
-        max_iterations=2,
-    )
-
-    output = capsys.readouterr().out
-    assert code == 0
-    runs = _read_runs(project_root)
-    assert len(runs) == 1
-    assert runs[-1]["result"] == "passed"
-    assert "Reached max iteration cap" not in output
-
-
-def test_run_loop_skip_implement_archives_done_active_feature(
-    tmp_path: Path,
-) -> None:
-    project_root, feature_path = _make_project_root(
-        tmp_path,
-        feature_data=_base_feature(status="done"),
-    )
-    _init_git_repo(project_root)
-
-    code = run_loop(
-        project_root=project_root,
-        feature_paths=[str(feature_path)],
-        gate_profile="loop_fast",
-        opencode_prompt=None,
-        skip_implement=True,
-        dry_run=False,
-        max_iterations=2,
-    )
-
-    archived_path = project_root / "docs" / "spec" / "features_done" / feature_path.name
-    assert code == 0
-    assert not feature_path.exists()
-    assert archived_path.exists()
-
-    runs = _read_runs(project_root)
-    assert len(runs) == 1
-    assert runs[-1]["result"] == "passed"
-    assert runs[-1]["next_action"] == "select_next_feature"
-
-
-def test_run_loop_archives_done_active_feature_when_not_skip_implement(
+def test_run_loop_archives_done_active_feature(
     tmp_path: Path,
     monkeypatch: Any,
 ) -> None:
@@ -1795,7 +1708,6 @@ def test_run_loop_archives_done_active_feature_when_not_skip_implement(
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
         opencode_prompt=None,
-        skip_implement=False,
         dry_run=False,
         max_iterations=2,
     )
@@ -1818,7 +1730,6 @@ def test_run_loop_requires_git_repo_before_allow_dirty_hint(
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
         opencode_prompt=None,
-        skip_implement=True,
         dry_run=False,
     )
 
@@ -1875,7 +1786,6 @@ def test_run_loop_allows_uncommitted_changes_with_allow_dirty(
             feature_paths=[str(feature_path)],
             gate_profile="loop_fast",
             opencode_prompt=None,
-            skip_implement=False,
             dry_run=False,
             allow_dirty=True,
             max_iterations=5,
@@ -1904,7 +1814,6 @@ def test_run_loop_moves_completed_feature_to_features_done(tmp_path: Path) -> No
             feature_paths=[str(feature_path)],
             gate_profile="loop_fast",
             opencode_prompt=None,
-            skip_implement=False,
             dry_run=False,
             max_iterations=5,
         )
@@ -1936,7 +1845,6 @@ def test_run_loop_selected_feature_moved_to_features_done_does_not_crash(
             feature_paths=[str(feature_path)],
             gate_profile="loop_fast",
             opencode_prompt=None,
-            skip_implement=False,
             dry_run=False,
             max_iterations=3,
         )
@@ -1993,7 +1901,6 @@ def test_run_loop_archived_done_without_completion_commit_fails(
         feature_paths=[],
         gate_profile="loop_fast",
         opencode_prompt=None,
-        skip_implement=False,
         dry_run=False,
         run_all=True,
         max_iterations=3,
@@ -2032,11 +1939,10 @@ def test_run_loop_all_selected_feature_moved_to_features_done_continues(
         project_root: Path,
         feature: dict[str, Any],
         feature_path: Path,
-        skip_implement: bool,
         hook_feedback: str | None,
         verbose_output: bool,
     ) -> tuple[bool, str | None, str]:
-        del skip_implement, hook_feedback, verbose_output
+        del hook_feedback, verbose_output
         if str(feature.get("id", "")) == "FEAT-900":
             _move_feature_to_done(project_root, feature_path)
             return (True, None, "")
@@ -2056,7 +1962,6 @@ def test_run_loop_all_selected_feature_moved_to_features_done_continues(
         feature_paths=[],
         gate_profile="loop_fast",
         opencode_prompt=None,
-        skip_implement=False,
         dry_run=False,
         run_all=True,
         max_iterations=5,
@@ -2105,7 +2010,6 @@ def test_run_loop_missing_selected_feature_without_archive_fails_cleanly(
             feature_paths=[str(feature_path)],
             gate_profile="loop_fast",
             opencode_prompt=None,
-            skip_implement=False,
             dry_run=False,
             max_iterations=3,
         )
@@ -2144,13 +2048,10 @@ def test_run_loop_archives_preexisting_done_target_after_pending_completes(
         project_root: Path,
         feature: dict[str, Any],
         feature_path: Path,
-        skip_implement: bool,
         hook_feedback: str | None,
         verbose_output: bool,
     ) -> tuple[bool, str | None, str]:
         del project_root, hook_feedback, verbose_output
-        if skip_implement:
-            return (True, None, "")
         if str(feature.get("id", "")) == "FEAT-900":
             feature["status"] = "done"
             _write_yaml(feature_path, feature)
@@ -2167,7 +2068,6 @@ def test_run_loop_archives_preexisting_done_target_after_pending_completes(
         feature_paths=[str(feature_path), str(preexisting_done_path)],
         gate_profile="loop_fast",
         opencode_prompt=None,
-        skip_implement=False,
         dry_run=False,
         max_iterations=5,
     )
@@ -2235,7 +2135,6 @@ def test_run_loop_archives_done_feature_before_gate_execution(tmp_path: Path) ->
             feature_paths=[str(feature_path)],
             gate_profile="loop_fast",
             opencode_prompt=None,
-            skip_implement=False,
             dry_run=False,
             max_iterations=5,
         )
@@ -2298,7 +2197,6 @@ def test_run_loop_restores_archived_feature_when_gate_fails_after_prearchive(
             feature_paths=[str(feature_path)],
             gate_profile="loop_fast",
             opencode_prompt=None,
-            skip_implement=False,
             dry_run=False,
             max_iterations=1,
         )
@@ -2370,7 +2268,6 @@ def test_run_loop_spec_validate_no_longer_blocks_done_archive_ordering(
             feature_paths=[str(feature_path)],
             gate_profile="loop_fast",
             opencode_prompt=None,
-            skip_implement=False,
             dry_run=False,
             max_iterations=5,
         )
@@ -2404,7 +2301,6 @@ def test_run_loop_completion_commit_includes_archive_move(tmp_path: Path) -> Non
             feature_paths=[str(feature_path)],
             gate_profile="loop_fast",
             opencode_prompt=None,
-            skip_implement=False,
             dry_run=False,
             max_iterations=5,
         )
@@ -2445,7 +2341,6 @@ def test_loop_uses_expected_commit_subject(tmp_path: Path) -> None:
             feature_paths=[str(feature_path)],
             gate_profile="loop_fast",
             opencode_prompt=None,
-            skip_implement=False,
             dry_run=False,
             max_iterations=5,
         )
@@ -2474,7 +2369,6 @@ def test_loop_commit_subject_fallback_uses_type_mapping(tmp_path: Path) -> None:
             feature_paths=[str(feature_path)],
             gate_profile="loop_fast",
             opencode_prompt=None,
-            skip_implement=False,
             dry_run=False,
             max_iterations=5,
         )
@@ -2504,7 +2398,6 @@ def test_git_add_failure_exits_immediately(tmp_path: Path) -> None:
             feature_paths=[str(feature_path)],
             gate_profile="loop_fast",
             opencode_prompt=None,
-            skip_implement=False,
             dry_run=False,
             max_iterations=6,
         )
@@ -2575,7 +2468,6 @@ def test_run_loop_commit_failure_preserves_retryable_feature_path(
             feature_paths=[str(feature_path)],
             gate_profile="loop_fast",
             opencode_prompt=None,
-            skip_implement=False,
             dry_run=False,
             max_iterations=6,
         )
@@ -2622,7 +2514,6 @@ def test_run_loop_reports_invalid_feature_path(tmp_path: Path, capsys: Any) -> N
         feature_paths=[str(project_root / "missing.yaml")],
         gate_profile="loop_fast",
         opencode_prompt=None,
-        skip_implement=True,
         dry_run=False,
     )
 
@@ -2686,7 +2577,6 @@ def test_commit_failure_feedback_still_injected_into_next_prompt(
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
         opencode_prompt=None,
-        skip_implement=False,
         dry_run=False,
         max_iterations=6,
     )
@@ -2774,7 +2664,6 @@ def test_verification_failure_feedback_is_injected_into_next_prompt(
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
         opencode_prompt=None,
-        skip_implement=False,
         dry_run=False,
         max_iterations=6,
     )
@@ -2843,7 +2732,6 @@ def test_gate_failure_feedback_includes_fitness_remediation_guidance(
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
         opencode_prompt=None,
-        skip_implement=False,
         dry_run=False,
         max_iterations=6,
     )
@@ -2910,7 +2798,6 @@ def test_spec_validate_failure_feedback_round_trips_to_retry_prompt(
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
         opencode_prompt=None,
-        skip_implement=False,
         dry_run=False,
         max_iterations=6,
     )
@@ -2974,7 +2861,6 @@ def test_non_validation_gate_failure_feedback_round_trips_to_retry_prompt(
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
         opencode_prompt=None,
-        skip_implement=False,
         dry_run=False,
         max_iterations=6,
     )
@@ -3035,7 +2921,6 @@ def test_gate_failure_feedback_replaces_previous_feedback(
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
         opencode_prompt=None,
-        skip_implement=False,
         dry_run=False,
         max_iterations=6,
     )
@@ -3150,7 +3035,6 @@ def test_verification_failure_feedback_replaces_previous_feedback(
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
         opencode_prompt=None,
-        skip_implement=False,
         dry_run=False,
         max_iterations=6,
     )
@@ -3209,7 +3093,6 @@ def test_gate_failure_feedback_is_truncated_before_prompt_injection(
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
         opencode_prompt=None,
-        skip_implement=False,
         dry_run=False,
         max_iterations=6,
     )

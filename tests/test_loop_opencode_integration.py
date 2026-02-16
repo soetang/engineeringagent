@@ -12,6 +12,7 @@ import pytest
 import yaml
 
 import engineeringagent.loop as loop_module
+import engineeringagent.opencode.client as opencode_client
 from engineeringagent.loop import (
     build_loop_run,
     build_run_config,
@@ -30,7 +31,6 @@ def run_loop(
     feature_paths: list[str],
     gate_profile: str,
     opencode_prompt: str | None,
-    skip_implement: bool,
     dry_run: bool,
     run_all: bool = False,
     max_iterations: int = 50,
@@ -43,7 +43,6 @@ def run_loop(
         feature_paths=feature_paths,
         run_all=run_all,
         gate_profile=gate_profile,
-        skip_implement=skip_implement,
         dry_run=dry_run,
         max_iterations=max_iterations,
         allow_dirty=allow_dirty,
@@ -180,7 +179,6 @@ def test_loop_runs_opencode_integration(tmp_path: Path) -> None:
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
         opencode_prompt="Reply READY.",
-        skip_implement=False,
         dry_run=False,
         max_iterations=1,
     )
@@ -258,7 +256,6 @@ def test_loop_reports_permission_rejection_in_run_telemetry(
         ],
         gate_profile="loop_fast",
         opencode_prompt="Run exactly: git status --short.",
-        skip_implement=False,
         dry_run=False,
         max_iterations=1,
     )
@@ -283,6 +280,57 @@ def test_loop_reports_permission_rejection_in_run_telemetry(
     feature_log = feature_log_path.read_text(encoding="utf-8")
     assert "failed_gate=opencode_permission" in feature_log
     assert "permission requested for bash command git status --short" in feature_log
+
+
+def test_run_loop_creates_progress_artifacts_before_implement_invocation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project_root, _feature_path = _make_project_root(tmp_path)
+    _init_git_repo(project_root)
+
+    def fake_run_permission_probe(_: Path) -> PermissionProbeResult:
+        return PermissionProbeResult(ok=True, reason="ok", returncode=0, output="")
+
+    observed: dict[str, bool] = {
+        "saw_implement": False,
+    }
+
+    def fake_start_agent(
+        project_root: Path,
+        prompt: str,
+        *,
+        agent: str = "engineeringagent",
+        capture_output: bool = True,
+        text: bool = True,
+    ) -> subprocess.CompletedProcess[str]:
+        del capture_output, text
+
+        observed["saw_implement"] = True
+        assert (project_root / "progress").exists()
+        assert (project_root / "progress" / "runs.jsonl").exists()
+        assert (project_root / "progress" / "run-feature-FEAT-901.txt").exists()
+        return subprocess.CompletedProcess(
+            ["opencode", "run", "--agent", agent, "<prompt>"],
+            1,
+            stdout="",
+            stderr="opencode failed",
+        )
+
+    monkeypatch.setattr(loop_module, "run_permission_probe", fake_run_permission_probe)
+    monkeypatch.setattr(loop_module, "start_agent", fake_start_agent)
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(_feature_path)],
+        gate_profile="loop_fast",
+        opencode_prompt=None,
+        dry_run=False,
+        max_iterations=1,
+    )
+
+    assert observed["saw_implement"] is True
+    assert code == 1
 
 
 def test_run_loop_permission_precheck_applies_only_to_default_implement_mode(
@@ -310,7 +358,6 @@ def test_run_loop_permission_precheck_applies_only_to_default_implement_mode(
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
         opencode_prompt=None,
-        skip_implement=False,
         dry_run=False,
         max_iterations=1,
     )
@@ -342,7 +389,6 @@ def test_run_loop_exits_before_selection_when_permission_precheck_fails(
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
         opencode_prompt=None,
-        skip_implement=False,
         dry_run=False,
         max_iterations=1,
     )
@@ -359,7 +405,7 @@ def test_run_loop_exits_before_selection_when_permission_precheck_fails(
     assert feature["status"] == "backlog"
 
 
-def test_run_loop_skips_permission_precheck_with_skip_implement(
+def test_run_loop_skips_permission_precheck_in_dry_run(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -380,15 +426,13 @@ def test_run_loop_skips_permission_precheck_with_skip_implement(
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
         opencode_prompt=None,
-        skip_implement=True,
-        dry_run=False,
+        dry_run=True,
         max_iterations=1,
     )
 
     assert code == 0
     assert precheck_called is False
-    runs = (project_root / "progress" / "runs.jsonl").read_text(encoding="utf-8")
-    assert len(runs.splitlines()) == 1
+    assert not (project_root / "progress" / "runs.jsonl").exists()
 
 
 def test_run_loop_permission_precheck_failure_prints_remediation_hint(
@@ -416,7 +460,6 @@ def test_run_loop_permission_precheck_failure_prints_remediation_hint(
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
         opencode_prompt=None,
-        skip_implement=False,
         dry_run=False,
         max_iterations=1,
     )
@@ -429,8 +472,9 @@ def test_run_loop_permission_precheck_failure_prints_remediation_hint(
     assert PERMISSION_REMEDIATION_HINT in output
     assert ".opencode/agents/engineeringagent.md" in output
     assert ".opencode/agents/build.md" not in output
-    assert "--skip-implement" in output
     assert "--implement-command" not in output
+    assert "engineeringagent gates run" in output
+    assert "engineeringagent run --dry-run" in output
     assert build_agent_path.read_text(encoding="utf-8") == original_build_agent
 
 
@@ -466,7 +510,6 @@ def test_run_loop_permission_precheck_pass_prints_bypass_hint_and_log_locations(
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
         opencode_prompt=None,
-        skip_implement=False,
         dry_run=False,
         max_iterations=1,
     )
@@ -475,8 +518,10 @@ def test_run_loop_permission_precheck_pass_prints_bypass_hint_and_log_locations(
 
     assert code == 1
     assert "Running pre-run OpenCode permission precheck" in output
-    assert "--skip-implement" in output
+    assert "default implement mode" not in output
     assert "--implement-command" not in output
+    assert "engineeringagent gates run" in output
+    assert "engineeringagent run --dry-run" in output
     assert "progress/runs.jsonl" in output
     assert "progress/run-feature-" in output
 
@@ -554,7 +599,6 @@ def test_gate_failure_feedback_round_trips_to_retry_prompt_integration(
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
         opencode_prompt=None,
-        skip_implement=False,
         dry_run=False,
         allow_dirty=True,
         max_iterations=6,
@@ -672,7 +716,6 @@ def test_loop_archived_done_requires_same_iteration_completion_commit(
         feature_paths=[],
         gate_profile="loop_fast",
         opencode_prompt=None,
-        skip_implement=False,
         dry_run=False,
         run_all=True,
         max_iterations=4,
@@ -701,3 +744,60 @@ def test_loop_archived_done_requires_same_iteration_completion_commit(
 
     ending_head = _run_git(project_root, "rev-parse", "HEAD").stdout.strip()
     assert ending_head != starting_head
+
+
+def test_start_agent_applies_timeout_by_default(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("ENGINEERINGAGENT_OPENCODE_TIMEOUT_SEC", raising=False)
+
+    observed: dict[str, object] = {}
+
+    def fake_run(*args: Any, **kwargs: Any) -> subprocess.CompletedProcess[str]:
+        observed["timeout"] = kwargs.get("timeout")
+        return subprocess.CompletedProcess(args[0], 0, stdout="", stderr="")
+
+    monkeypatch.setattr(opencode_client.subprocess, "run", fake_run)
+
+    proc = opencode_client.start_agent(tmp_path, "Reply READY.")
+    assert proc.returncode == 0
+    assert observed.get("timeout") == 120
+
+
+def test_run_loop_reports_opencode_timeout_in_run_telemetry(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project_root, feature_path = _make_project_root(tmp_path)
+    _init_git_repo(project_root)
+
+    def fake_run_permission_probe(_: Path) -> PermissionProbeResult:
+        return PermissionProbeResult(ok=True, reason="ok", returncode=0, output="")
+
+    def fake_start_agent(*_: Any, **__: Any) -> subprocess.CompletedProcess[str]:
+        raise subprocess.TimeoutExpired(cmd=["opencode", "run"], timeout=1)
+
+    monkeypatch.setattr(loop_module, "run_permission_probe", fake_run_permission_probe)
+    monkeypatch.setattr(loop_module, "start_agent", fake_start_agent)
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        opencode_prompt=None,
+        dry_run=False,
+        max_iterations=1,
+    )
+
+    assert code == 1
+    runs_path = project_root / "progress" / "runs.jsonl"
+    run = json.loads(runs_path.read_text(encoding="utf-8").splitlines()[0])
+    assert run["result"] == "failed"
+    assert run["failed_gate"] == "opencode_timeout"
+
+    feature_log_path = project_root / str(run["log_path"])
+    feature_log = feature_log_path.read_text(encoding="utf-8")
+    assert "opencode timed out" in feature_log
+    assert "engineeringagent gates run" in feature_log
+    assert "ENGINEERINGAGENT_OPENCODE_TIMEOUT_SEC" in feature_log

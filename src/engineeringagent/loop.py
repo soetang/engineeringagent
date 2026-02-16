@@ -101,11 +101,9 @@ def _print_run_all_no_work_message() -> None:
 
 def _run_opencode_permission_precheck(
     project_root: Path,
-    skip_implement: bool,
 ) -> bool:
     return run_opencode_permission_precheck(
         project_root=project_root,
-        skip_implement=skip_implement,
         run_permission_probe_fn=run_permission_probe,
         permission_remediation_hint=PERMISSION_REMEDIATION_HINT,
     )
@@ -141,7 +139,6 @@ def run_implement_step(
     project_root: Path,
     feature: dict[str, Any],
     feature_path: Path,
-    skip_implement: bool,
     hook_feedback: str | None,
     verbose_output: bool,
 ) -> tuple[bool, str | None, str]:
@@ -150,7 +147,6 @@ def run_implement_step(
         project_root=project_root,
         feature=feature,
         feature_path=feature_path,
-        skip_implement=skip_implement,
         hook_feedback=hook_feedback,
         verbose_output=verbose_output,
     )
@@ -303,7 +299,6 @@ def _run_feature_iteration(
     project_root: Path,
     feature_path: Path,
     gate_profile: str,
-    skip_implement: bool,
     attempt: int,
     hook_feedback: str | None,
     verbose_output: bool,
@@ -314,7 +309,6 @@ def _run_feature_iteration(
         project_root=project_root,
         feature_path=feature_path,
         gate_profile=gate_profile,
-        skip_implement=skip_implement,
         attempt=attempt,
         hook_feedback=hook_feedback,
         verbose_output=verbose_output,
@@ -527,7 +521,6 @@ def _run_selected_feature_iterations(
                 project_root=config.project_root,
                 feature_path=selected_feature_path,
                 gate_profile=config.gate_profile,
-                skip_implement=config.skip_implement,
                 attempt=state.total_iterations,
                 hook_feedback=state.feedback_for(selected_feature_path),
                 verbose_output=config.verbose_output,
@@ -548,11 +541,6 @@ def _run_selected_feature_iterations(
                 break
 
             terminal_failure_exit_code = _terminal_iteration_failure_exit_code(outcome)
-            if config.skip_implement:
-                if terminal_failure_exit_code is not None:
-                    return terminal_failure_exit_code
-                return 0 if outcome.result == "passed" else 1
-
             if terminal_failure_exit_code is not None:
                 return terminal_failure_exit_code
 
@@ -562,7 +550,6 @@ def build_run_config(
     project_root: Path,
     feature_paths: Sequence[str | Path],
     gate_profile: str,
-    skip_implement: bool,
     dry_run: bool,
     run_all: bool,
     max_iterations: int,
@@ -575,7 +562,6 @@ def build_run_config(
         feature_paths=tuple(feature_paths),
         run_all=run_all,
         gate_profile=gate_profile,
-        skip_implement=skip_implement,
         dry_run=dry_run,
         max_iterations=max_iterations,
         allow_dirty=allow_dirty,

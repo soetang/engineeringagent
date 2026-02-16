@@ -25,6 +25,7 @@ from engineeringagent.loop_runtime.run_context import (
     RunState,
 )
 from engineeringagent.loop_runtime.implement import run_implement_step_from_inputs
+import engineeringagent.loop_runtime.implement as implement_module
 from engineeringagent.loop_runtime.telemetry import write_iteration_telemetry
 
 
@@ -76,7 +77,6 @@ def _stub_run_config() -> RunConfig:
         project_root=Path("/tmp/project"),
         feature_paths=("docs/spec/features/FEAT-078.yaml",),
         gate_profile="loop_fast",
-        skip_implement=False,
         dry_run=False,
     )
 
@@ -116,7 +116,6 @@ def test_run_implement_step_signature_is_explicit() -> None:
         "project_root",
         "feature",
         "feature_path",
-        "skip_implement",
         "hook_feedback",
         "verbose_output",
     )
@@ -135,7 +134,6 @@ def test_run_feature_iteration_signature_is_explicit() -> None:
         "project_root",
         "feature_path",
         "gate_profile",
-        "skip_implement",
         "attempt",
         "hook_feedback",
         "verbose_output",
@@ -197,7 +195,6 @@ def test_loop_run_context_contract_immutability_and_extra_forbid() -> None:
                 "project_root": config.project_root,
                 "feature_paths": config.feature_paths,
                 "gate_profile": config.gate_profile,
-                "skip_implement": config.skip_implement,
                 "dry_run": config.dry_run,
                 "unexpected": True,
             }
@@ -239,24 +236,36 @@ def test_loop_monkeypatch_seams_remain_available() -> None:
         assert hasattr(loop_module, symbol)
 
 
-def test_run_implement_step_from_inputs_skipped_mode_does_not_require_shell_override(
+def test_run_implement_step_from_inputs_requires_opencode_when_available(
     tmp_path: Path,
 ) -> None:
     inputs = ImplementStepInputs(
         project_root=tmp_path,
         feature={"id": "FEAT-999"},
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-999.yaml",
-        skip_implement=True,
         hook_feedback=None,
         verbose_output=False,
     )
 
     result = run_implement_step_from_inputs(
         inputs,
-        start_agent_fn=lambda *_args, **_kwargs: None,
+        start_agent_fn=lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            FileNotFoundError()
+        ),
     )
 
-    assert result == (True, None, "[implement] skipped")
+    assert result == (
+        False,
+        "opencode_missing",
+        "[implement] opencode executable missing",
+    )
+
+
+def test_format_opencode_run_command_is_stable() -> None:
+    assert (
+        implement_module._format_opencode_run_command("engineeringagent")
+        == "opencode run --agent engineeringagent <prompt>"
+    )
 
 
 def test_drop_completed_feature_from_snapshot_keeps_existing_paths(
@@ -477,7 +486,6 @@ def test_retry_feedback_contract_accepts_verification_failure(tmp_path: Path) ->
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-040.yaml",
         gate_profile="loop_fast",
-        skip_implement=False,
         attempt=1,
         hook_feedback=None,
         verbose_output=False,

@@ -41,7 +41,6 @@ class IterationPipelineDependencies(BaseModel):
             Path,
             dict[str, Any],
             Path,
-            bool,
             str | None,
             bool,
         ],
@@ -179,8 +178,6 @@ def _record_implement_timing(
 ) -> None:
     if not state.selected_started_active:
         return
-    if iteration_inputs.skip_implement:
-        return
 
     duration_sec = max(0, ended_epoch_sec - started_epoch_sec)
     state.command_timings.append(
@@ -298,12 +295,11 @@ def _run_implement_phase_if_ready(
     dependencies.touch_active_feature_for_iteration(
         feature, iteration_inputs.feature_path
     )
-    state.implement_status = "skipped" if iteration_inputs.skip_implement else "passed"
+    state.implement_status = "passed"
     ok, implement_failed_gate, state.implement_output = dependencies.run_implement_step(
         iteration_inputs.project_root,
         feature,
         iteration_inputs.feature_path,
-        iteration_inputs.skip_implement,
         iteration_inputs.hook_feedback,
         iteration_inputs.verbose_output,
     )
@@ -654,10 +650,7 @@ def run_feature_iteration_pipeline(
         telemetry_inputs,
         git_head_resolver=dependencies.git_head_resolver,
     )
-    if iteration_inputs.skip_implement:
-        implement_step = "skip_implement=true (gates-only mode)"
-    else:
-        implement_step = _default_implement_step_label()
+    implement_step = _default_implement_step_label()
     archived_selection_path = (
         str(state.archived_path)
         if loaded_post_from_archive and state.archived_path is not None
