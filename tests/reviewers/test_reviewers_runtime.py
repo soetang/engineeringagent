@@ -17,7 +17,7 @@ from engineeringagent.reviewers import (
 
 def test_plan_reviewers_maps_iteration_end_config_to_feature_done() -> None:
     config = {
-        "profiles": {"loop_fast": ["code_simplifier", "readme_process"]},
+        "profiles": {"loop_fast": ["code_simplifier", "onboarding_review"]},
         "reviewers": {
             "code_simplifier": {
                 "prompt_file": "harness/reviewers/prompts/code_simplifier.md",
@@ -26,8 +26,8 @@ def test_plan_reviewers_maps_iteration_end_config_to_feature_done() -> None:
                     "on_change": ["src/**/*.py", "tests/**/*.py"],
                 },
             },
-            "readme_process": {
-                "prompt_file": "harness/reviewers/prompts/readme_process.md",
+            "onboarding_review": {
+                "prompt_file": "harness/reviewers/prompts/onboarding_review.md",
                 "trigger": {
                     "phase": "feature_done",
                     "on_change": ["README.md"],
@@ -54,7 +54,7 @@ def test_plan_reviewers_maps_iteration_end_config_to_feature_done() -> None:
             "reason": MATCHED_ON_CHANGE_REASON,
         },
         {
-            "reviewer": "readme_process",
+            "reviewer": "onboarding_review",
             "decision": "skip",
             "reason": NO_ON_CHANGE_MATCH_REASON,
         },
@@ -114,7 +114,7 @@ def test_code_simplifier_plans_only_for_code_scoped_changes() -> None:
 
 def test_plan_reviewers_reports_deterministic_skip_reasons() -> None:
     config = {
-        "profiles": {"loop_fast": ["code_simplifier", "readme_process"]},
+        "profiles": {"loop_fast": ["code_simplifier", "onboarding_review"]},
         "reviewers": {
             "code_simplifier": {
                 "prompt_file": "harness/reviewers/prompts/code_simplifier.md",
@@ -123,8 +123,8 @@ def test_plan_reviewers_reports_deterministic_skip_reasons() -> None:
                     "on_change": ["src/**/*.py"],
                 },
             },
-            "readme_process": {
-                "prompt_file": "harness/reviewers/prompts/readme_process.md",
+            "onboarding_review": {
+                "prompt_file": "harness/reviewers/prompts/onboarding_review.md",
                 "trigger": {"phase": "feature_done"},
             },
         },
@@ -148,7 +148,7 @@ def test_plan_reviewers_reports_deterministic_skip_reasons() -> None:
             "reason": PHASE_MISMATCH_REASON,
         },
         {
-            "reviewer": "readme_process",
+            "reviewer": "onboarding_review",
             "decision": "skip",
             "reason": PHASE_MISMATCH_REASON,
         },
@@ -191,10 +191,10 @@ def test_plan_reviewers_matches_normalized_separator_paths() -> None:
 
 def test_plan_reviewers_runs_when_rename_paths_include_match() -> None:
     config = {
-        "profiles": {"loop_fast": ["readme_process"]},
+        "profiles": {"loop_fast": ["onboarding_review"]},
         "reviewers": {
-            "readme_process": {
-                "prompt_file": "harness/reviewers/prompts/readme_process.md",
+            "onboarding_review": {
+                "prompt_file": "harness/reviewers/prompts/onboarding_review.md",
                 "trigger": {
                     "phase": "feature_done",
                     "on_change": ["docs/spec/features/old-name.yaml"],
@@ -219,7 +219,7 @@ def test_plan_reviewers_runs_when_rename_paths_include_match() -> None:
 
     assert decisions == [
         {
-            "reviewer": "readme_process",
+            "reviewer": "onboarding_review",
             "decision": "run",
             "reason": MATCHED_ON_CHANGE_REASON,
         }
@@ -256,12 +256,12 @@ def test_plan_reviewers_skip_when_changed_paths_are_empty() -> None:
     ]
 
 
-def test_readme_process_plans_only_for_readme_change_on_feature_done() -> None:
+def test_onboarding_review_plans_only_for_readme_change_on_feature_done() -> None:
     config = {
-        "profiles": {"loop_fast": ["readme_process"]},
+        "profiles": {"loop_fast": ["onboarding_review"]},
         "reviewers": {
-            "readme_process": {
-                "prompt_file": "harness/reviewers/prompts/readme_process.md",
+            "onboarding_review": {
+                "prompt_file": "harness/reviewers/prompts/onboarding_review.md",
                 "trigger": {
                     "phase": "feature_done",
                     "on_change": ["README.md"],
@@ -282,7 +282,7 @@ def test_readme_process_plans_only_for_readme_change_on_feature_done() -> None:
     )
     assert matching_decisions == [
         {
-            "reviewer": "readme_process",
+            "reviewer": "onboarding_review",
             "decision": "run",
             "reason": MATCHED_ON_CHANGE_REASON,
         }
@@ -300,7 +300,7 @@ def test_readme_process_plans_only_for_readme_change_on_feature_done() -> None:
     )
     assert phase_mismatch_decisions == [
         {
-            "reviewer": "readme_process",
+            "reviewer": "onboarding_review",
             "decision": "skip",
             "reason": PHASE_MISMATCH_REASON,
         }
@@ -318,7 +318,7 @@ def test_readme_process_plans_only_for_readme_change_on_feature_done() -> None:
     )
     assert no_match_decisions == [
         {
-            "reviewer": "readme_process",
+            "reviewer": "onboarding_review",
             "decision": "skip",
             "reason": NO_ON_CHANGE_MATCH_REASON,
         }

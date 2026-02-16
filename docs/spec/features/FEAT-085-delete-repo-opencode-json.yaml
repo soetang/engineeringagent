@@ -67,7 +67,7 @@ subtasks:
       is required.
     verification:
       - uv run python -m engineeringagent.cli validate
-      - uv run pytest -q tests/test_repo_readme_process_reviewer_activation.py
+      - uv run pytest -q tests/reviewers/test_repo_reviewers_config.py
   - id: ST-003
     title: Lock in invariants with lightweight search assertions
     status: backlog

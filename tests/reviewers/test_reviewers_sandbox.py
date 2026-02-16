@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -25,23 +24,25 @@ def _responseformat_prompt(body: str) -> str:
     return f"{REVIEWER_RESPONSEFORMAT_PLACEHOLDER}\n\n{body}"
 
 
-def test_readme_process_clean_room_sandbox_contains_expected_assets_only(
+def test_empty_folder_sandbox_copies_only_prompt_and_configured_assets_only(
     tmp_path: Path,
 ) -> None:
-    prompt_path = tmp_path / "harness" / "reviewers" / "prompts" / "readme_process.md"
+    prompt_path = (
+        tmp_path / "harness" / "reviewers" / "prompts" / "onboarding_review.md"
+    )
     prompt_path.parent.mkdir(parents=True)
-    prompt_path.write_text("Review README process quality.", encoding="utf-8")
-    (tmp_path / "README.md").write_text("Original README\n", encoding="utf-8")
+    prompt_path.write_text("Review onboarding assets.", encoding="utf-8")
 
+    (tmp_path / "README.md").write_text("Original README\n", encoding="utf-8")
     (tmp_path / "docs").mkdir(parents=True)
     (tmp_path / "docs" / "index.md").write_text("Docs index\n", encoding="utf-8")
-
     (tmp_path / ".opencode" / "agents").mkdir(parents=True)
     (tmp_path / ".opencode" / "agents" / "engineeringagent.md").write_text(
         "# agent\n",
         encoding="utf-8",
     )
 
+    # These exist in the repo root but are not included as assets.
     (tmp_path / "src" / "engineeringagent").mkdir(parents=True)
     (tmp_path / "src" / "engineeringagent" / "cli.py").write_text(
         "print('ignored')\n",
@@ -54,12 +55,12 @@ def test_readme_process_clean_room_sandbox_contains_expected_assets_only(
 
     sandbox = build_reviewer_sandbox(
         tmp_path,
-        "readme_process",
+        "onboarding_review",
         {
-            "prompt_file": "harness/reviewers/prompts/readme_process.md",
+            "prompt_file": "harness/reviewers/prompts/onboarding_review.md",
             "sandbox": {
-                "mode": "clean_room_readme_cli",
-                "assets": ["docs", ".opencode/agents"],
+                "mode": "empty_folder",
+                "assets": ["README.md", "docs", ".opencode/agents"],
             },
         },
     )
@@ -72,54 +73,58 @@ def test_readme_process_clean_room_sandbox_contains_expected_assets_only(
             if path.is_file()
         )
         assert files == [
-            ".engineeringagent/bin/engineeringagent",
             ".opencode/agents/engineeringagent.md",
             "README.md",
             "docs/index.md",
-            "harness/reviewers/prompts/readme_process.md",
+            "harness/reviewers/prompts/onboarding_review.md",
         ]
         assert not (sandbox.execution_root / "src").exists()
         assert not (sandbox.execution_root / "tests").exists()
         assert not (sandbox.execution_root / ".git").exists()
+        assert not (sandbox.execution_root / ".engineeringagent").exists()
     finally:
         sandbox.cleanup()
 
     assert not sandbox.execution_root.exists()
 
 
-def test_repo_readme_process_clean_room_sandbox_includes_docs_and_opencode_agents(
+def test_repo_empty_folder_sandbox_can_include_docs_and_opencode_agents(
     repo_root: Path,
 ) -> None:
     reviewers_path = repo_root / "harness" / "reviewers.yaml"
     config = yaml.safe_load(reviewers_path.read_text(encoding="utf-8"))
-    reviewer = config["reviewers"]["readme_process"]
 
-    assert (repo_root / "README.md").exists()
+    # This repository no longer ships a dedicated onboarding reviewer, but the
+    # sandbox mode remains usable when a repo config opts into it.
+    reviewer = {
+        "prompt_file": "harness/reviewers/prompts/code_simplifier.md",
+        "sandbox": {
+            "mode": "empty_folder",
+            "assets": ["docs", ".opencode/agents"],
+        },
+    }
+
+    assert isinstance(config, dict)
     assert (repo_root / "docs").is_dir()
 
-    sandbox = build_reviewer_sandbox(
-        repo_root,
-        "readme_process",
-        reviewer,
-    )
-
+    sandbox = build_reviewer_sandbox(repo_root, "code_simplifier", reviewer)
     assert sandbox is not None
     try:
-        assert (sandbox.execution_root / "README.md").exists()
         assert (sandbox.execution_root / "docs").is_dir()
         assert (sandbox.execution_root / ".opencode" / "agents").is_dir()
-        assert not (sandbox.execution_root / "opencode.json").exists()
+        assert not (sandbox.execution_root / "README.md").exists()
     finally:
         sandbox.cleanup()
 
 
-def test_clean_room_sandbox_does_not_copy_opencode_node_modules(
+def test_empty_folder_sandbox_does_not_copy_opencode_node_modules(
     tmp_path: Path,
 ) -> None:
-    prompt_path = tmp_path / "harness" / "reviewers" / "prompts" / "readme_process.md"
+    prompt_path = (
+        tmp_path / "harness" / "reviewers" / "prompts" / "onboarding_review.md"
+    )
     prompt_path.parent.mkdir(parents=True)
-    prompt_path.write_text("Review README process quality.", encoding="utf-8")
-    (tmp_path / "README.md").write_text("Original README\n", encoding="utf-8")
+    prompt_path.write_text("Review onboarding assets.", encoding="utf-8")
 
     (tmp_path / ".opencode" / "agents").mkdir(parents=True)
     (tmp_path / ".opencode" / "agents" / "engineeringagent.md").write_text(
@@ -132,18 +137,12 @@ def test_clean_room_sandbox_does_not_copy_opencode_node_modules(
         encoding="utf-8",
     )
 
-    (tmp_path / "src" / "engineeringagent").mkdir(parents=True)
-    (tmp_path / "src" / "engineeringagent" / "cli.py").write_text(
-        "print('ignored')\n",
-        encoding="utf-8",
-    )
-
     sandbox = build_reviewer_sandbox(
         tmp_path,
-        "readme_process",
+        "onboarding_review",
         {
-            "prompt_file": "harness/reviewers/prompts/readme_process.md",
-            "sandbox": {"mode": "clean_room_readme_cli", "assets": [".opencode"]},
+            "prompt_file": "harness/reviewers/prompts/onboarding_review.md",
+            "sandbox": {"mode": "empty_folder", "assets": [".opencode"]},
         },
     )
 
@@ -155,20 +154,22 @@ def test_clean_room_sandbox_does_not_copy_opencode_node_modules(
         assert not (
             sandbox.execution_root / ".opencode" / "node_modules" / "ignored.txt"
         ).exists()
-        assert not (sandbox.execution_root / "src").exists()
     finally:
         sandbox.cleanup()
 
 
-def test_readme_process_uses_harness_clean_room_sandbox(
+def test_run_reviewer_uses_empty_folder_sandbox_when_configured(
     tmp_path: Path,
 ) -> None:
-    prompt_path = tmp_path / "harness" / "reviewers" / "prompts" / "readme_process.md"
+    prompt_path = (
+        tmp_path / "harness" / "reviewers" / "prompts" / "onboarding_review.md"
+    )
     prompt_path.parent.mkdir(parents=True)
     prompt_path.write_text(
-        _responseformat_prompt("Review README process quality."),
+        _responseformat_prompt("Review included onboarding assets."),
         encoding="utf-8",
     )
+
     readme_path = tmp_path / "README.md"
     readme_path.write_text("Original README\n", encoding="utf-8")
     (tmp_path / "src" / "engineeringagent").mkdir(parents=True)
@@ -186,29 +187,29 @@ def test_readme_process_uses_harness_clean_room_sandbox(
         captured["project_root"] = str(sandbox_root)
         captured["agent"] = agent
         captured["prompt"] = prompt
-        sandbox_readme = sandbox_root / "README.md"
-        captured["sandbox_readme_before"] = sandbox_readme.read_text(encoding="utf-8")
+        captured["sandbox_readme_before"] = (sandbox_root / "README.md").read_text(
+            encoding="utf-8"
+        )
         captured["sandbox_prompt_exists"] = (
-            sandbox_root / "harness" / "reviewers" / "prompts" / "readme_process.md"
+            sandbox_root / "harness" / "reviewers" / "prompts" / "onboarding_review.md"
         ).exists()
         captured["sandbox_src_exists"] = (sandbox_root / "src").exists()
-        sandbox_readme.write_text("Sandbox changed\n", encoding="utf-8")
         return SimpleNamespace(
-            stdout='{"decision":"approve","summary":"README process looks good."}',
+            stdout='{"decision":"approve","summary":"Looks good."}',
             stderr="",
             returncode=0,
         )
 
     decision = run_reviewer(
         tmp_path,
-        "readme_process",
+        "onboarding_review",
         {
-            "prompt_file": "harness/reviewers/prompts/readme_process.md",
+            "prompt_file": "harness/reviewers/prompts/onboarding_review.md",
             "trigger": {
                 "phase": "feature_done",
                 "on_change": ["README.md"],
             },
-            "sandbox": {"mode": "clean_room_readme_cli"},
+            "sandbox": {"mode": "empty_folder", "assets": ["README.md"]},
         },
         feature_id="FEAT-050",
         feature_path=tmp_path / "docs/spec/features/FEAT-050.yaml",
@@ -232,62 +233,12 @@ def test_readme_process_uses_harness_clean_room_sandbox(
     assert readme_path.read_text(encoding="utf-8") == "Original README\n"
 
 
-def test_readme_process_clean_room_can_execute_engineeringagent_cli(
+def test_run_reviewer_uses_temp_worktree_snapshot_sandbox_when_configured(
     tmp_path: Path,
 ) -> None:
-    prompt_path = tmp_path / "harness" / "reviewers" / "prompts" / "readme_process.md"
-    prompt_path.parent.mkdir(parents=True)
-    prompt_path.write_text("Review README process quality.", encoding="utf-8")
-    (tmp_path / "README.md").write_text("Original README\n", encoding="utf-8")
-
-    package_root = tmp_path / "src" / "engineeringagent"
-    package_root.mkdir(parents=True)
-    (package_root / "__init__.py").write_text("", encoding="utf-8")
-    (package_root / "cli.py").write_text(
-        "from __future__ import annotations\n"
-        "\n"
-        "import json\n"
-        "import sys\n"
-        "\n"
-        "if __name__ == '__main__':\n"
-        "    print(json.dumps({'argv': sys.argv[1:]}, sort_keys=True))\n",
-        encoding="utf-8",
+    prompt_path = (
+        tmp_path / "harness" / "reviewers" / "prompts" / "onboarding_review.md"
     )
-
-    sandbox = build_reviewer_sandbox(
-        tmp_path,
-        "readme_process",
-        {
-            "prompt_file": "harness/reviewers/prompts/readme_process.md",
-            "sandbox": {"mode": "clean_room_readme_cli"},
-        },
-    )
-
-    assert sandbox is not None
-    try:
-        helper = (
-            sandbox.execution_root / ".engineeringagent" / "bin" / "engineeringagent"
-        )
-        assert helper.exists()
-
-        proc = subprocess.run(
-            [str(helper), "gates", "list"],
-            cwd=sandbox.execution_root,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-
-        assert proc.returncode == 0
-        assert proc.stdout.strip() == '{"argv": ["gates", "list"]}'
-    finally:
-        sandbox.cleanup()
-
-
-def test_readme_process_runs_readme_bootstrap_in_fresh_temp_directory(
-    tmp_path: Path,
-) -> None:
-    prompt_path = tmp_path / "harness" / "reviewers" / "prompts" / "readme_process.md"
     prompt_path.parent.mkdir(parents=True)
     prompt_path.write_text(
         _responseformat_prompt(
@@ -307,16 +258,16 @@ def test_readme_process_runs_readme_bootstrap_in_fresh_temp_directory(
         captured["prompt"] = prompt
         captured["agent"] = agent
         return SimpleNamespace(
-            stdout='{"decision":"approve","summary":"README bootstrap succeeded."}',
+            stdout='{"decision":"approve","summary":"Bootstrap succeeded."}',
             stderr="",
             returncode=0,
         )
 
     decision = run_reviewer(
         tmp_path,
-        "readme_process",
+        "onboarding_review",
         {
-            "prompt_file": "harness/reviewers/prompts/readme_process.md",
+            "prompt_file": "harness/reviewers/prompts/onboarding_review.md",
             "trigger": {
                 "phase": "feature_done",
                 "on_change": ["README.md"],
@@ -345,13 +296,15 @@ def test_readme_process_runs_readme_bootstrap_in_fresh_temp_directory(
     )
 
 
-def test_run_reviewer_returns_request_changes_when_sandbox_setup_fails(
+def test_run_reviewer_returns_request_changes_when_snapshot_setup_fails(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
-    prompt_path = tmp_path / "harness" / "reviewers" / "prompts" / "readme_process.md"
+    prompt_path = (
+        tmp_path / "harness" / "reviewers" / "prompts" / "onboarding_review.md"
+    )
     prompt_path.parent.mkdir(parents=True)
-    prompt_path.write_text("Review README process quality.", encoding="utf-8")
+    prompt_path.write_text("Review onboarding assets.", encoding="utf-8")
 
     def _raise_copytree(*_args, **_kwargs):
         raise OSError("copy failure")
@@ -360,9 +313,9 @@ def test_run_reviewer_returns_request_changes_when_sandbox_setup_fails(
 
     decision = run_reviewer(
         tmp_path,
-        "readme_process",
+        "onboarding_review",
         {
-            "prompt_file": "harness/reviewers/prompts/readme_process.md",
+            "prompt_file": "harness/reviewers/prompts/onboarding_review.md",
             "trigger": {
                 "phase": "feature_done",
                 "on_change": ["README.md"],

@@ -18,6 +18,8 @@ Primary flow: `feature spec -> run loop`.
 - Package usage (version pinned): `uvx engineeringagent@<version> <command>`
 - Source usage (contributors / local changes): `.engineeringagent/bin/engineeringagent <command>`
 
+  Source usage (module entrypoint): `uv run python -m engineeringagent.cli <command>`
+
   Note: if you use `uv`, prefix with `uv run` so the right environment is used.
 
 ## Quickstart from PyPI (no clone)
@@ -63,11 +65,11 @@ Primary flow: `feature spec -> run loop`.
 
 1. Before the first non-dry `engineeringagent run`, either commit the scaffold/spec changes or pass `--allow-dirty`.
 
-    Running non-dry mutates your feature YAML and writes progress logs (for example `progress/runs.jsonl` and `progress/run-feature-<FEATURE_ID>.txt`).
-    Running non-dry will create a commit and may include untracked files; check `git status` and commit/review any `init` scaffold output (and ignore junk like `__pycache__/`) before the first non-dry run.
+   Running non-dry mutates your feature YAML and writes progress logs (for example `progress/runs.jsonl` and `progress/run-feature-<FEATURE_ID>.txt`).
+   Running non-dry will create a commit and may include untracked files; check `git status` and commit/review any `init` scaffold output (and ignore junk like `__pycache__/`) before the first non-dry run.
 
-    After a feature is complete, move completed specs from `docs/spec/features/` to `docs/spec/features_done/` (the loop will usually do this automatically when marking a feature `done`, but move it manually if it did not).
-    `engineeringagent validate` rejects `status: done` specs under `docs/spec/features/`.
+   After a feature is complete, move completed specs from `docs/spec/features/` to `docs/spec/features_done/` (the loop will usually do this automatically when marking a feature `done`, but move it manually if it did not).
+   `engineeringagent validate` rejects `status: done` specs under `docs/spec/features/`.
 
    Help validate OpenCode wiring up-front:
    - `opencode --version`
@@ -78,9 +80,6 @@ Primary flow: `feature spec -> run loop`.
    By default, `engineeringagent run` retries failed iterations up to `--max-iterations` (default 50).
    When debugging OpenCode timeouts, `--max-iterations 1` helps fail fast.
 
-    ```bash
-    ENGINEERINGAGENT_OPENCODE_TIMEOUT_SEC=600 uvx engineeringagent run docs/spec/features/FEAT-001-example.yaml --allow-dirty
-    ```
 
 ## Quickstart from source (contributors / local changes)
 
@@ -107,6 +106,8 @@ existing `docs/` or `AGENTS.md` through explicit conflict choices.
 If you want hooks installed, run `git init` before `engineeringagent init`.
 
 `engineeringagent init` skips pre-commit hook installation when `pre-commit` is not available.
+
+If you install `pre-commit` after running init, you can wire the hooks with `pre-commit install`.
 
 At a minimum, `init` scaffolds:
 

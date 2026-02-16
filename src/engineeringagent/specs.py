@@ -119,7 +119,7 @@ class ReviewerApprovalMode(str, Enum):
 
 class ReviewerSandboxMode(str, Enum):
     TEMP_WORKTREE_SNAPSHOT = "temp_worktree_snapshot"
-    CLEAN_ROOM_README_CLI = "clean_room_readme_cli"
+    EMPTY_FOLDER = "empty_folder"
 
 
 class ReviewerTriggerDefinition(StrictContractModel):
@@ -142,9 +142,9 @@ class ReviewerSandboxDefinition(StrictContractModel):
     def enforce_assets_support(self) -> "ReviewerSandboxDefinition":
         if self.assets is None:
             return self
-        if self.mode != ReviewerSandboxMode.CLEAN_ROOM_README_CLI:
+        if self.mode != ReviewerSandboxMode.EMPTY_FOLDER:
             raise ValueError(
-                "sandbox.assets is only supported for clean-room sandbox modes"
+                "sandbox.assets is only supported for sandbox.mode=empty_folder"
             )
         return self
 

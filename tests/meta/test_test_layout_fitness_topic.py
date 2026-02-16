@@ -18,10 +18,6 @@ import pytest
             "tests/test_fitness_harness_envelope_helper_surface.py",
             "tests/fitness/test_fitness_harness_envelope_helper_surface.py",
         ),
-        (
-            "tests/test_fitness_harness_supported_surface_docs.py",
-            "tests/fitness/test_fitness_harness_supported_surface_docs.py",
-        ),
         ("tests/test_fitness_manifest.py", "tests/fitness/test_fitness_manifest.py"),
         (
             "tests/test_fitness_manifest_contract.py",

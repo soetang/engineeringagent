@@ -2,7 +2,6 @@ contract_version: "1.0"
 profiles:
   loop_fast:
     - code_simplifier
-    - readme_process
 reviewers:
   code_simplifier:
     prompt_file: "harness/reviewers/prompts/code_simplifier.md"
@@ -16,33 +15,3 @@ reviewers:
       first_feature_approval: true
       max_retries: 2
       continue_on_exhausted: true
-
-  readme_process:
-    prompt_file: "harness/reviewers/prompts/readme_process.md"
-    feedback_context: |
-      This reviewer runs with constrained context (e.g. a clean-room sandbox) and may not have access
-      to the full codebase/specs. Treat failures as real, but implement fixes in
-      a way that aligns with the feature spec and overall repository architecture.
-    trigger:
-      phase: "feature_done"
-      on_change:
-        - "README.md"
-        - "docs/references/**/*.md"
-        - "docs/principles/**/*.md"
-        - "src/engineeringagent/cli.py"
-        - "src/engineeringagent/init_scaffold.py"
-        - "src/engineeringagent/scaffold_templates/**"
-        - "src/engineeringagent/validator.py"
-        - "src/engineeringagent/gates.py"
-        - "src/engineeringagent/loop.py"
-        - "src/engineeringagent/loop_runtime/**/*.py"
-    approval:
-      mode: "blocking"
-      first_feature_approval: true
-      max_retries: 2
-      continue_on_exhausted: true
-    sandbox:
-      mode: "clean_room_readme_cli"
-      assets:
-        - "docs"
-        - ".opencode/agents"

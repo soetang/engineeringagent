@@ -49,7 +49,7 @@ def test_cached_first_approval_reused_when_scope_unchanged() -> None:
         "features": {
             "FEAT-050": {
                 "reviewers": {
-                    "readme_process": {
+                    "onboarding_review": {
                         "approved": True,
                         "approved_at": "2026-02-14T00:00:00Z",
                     }
@@ -61,7 +61,7 @@ def test_cached_first_approval_reused_when_scope_unchanged() -> None:
     reuse, reason = evaluate_cached_reviewer_approval(
         state,
         feature_id="FEAT-050",
-        reviewer_id="readme_process",
+        reviewer_id="onboarding_review",
         reviewer={
             "trigger": {"phase": "feature_done", "on_change": ["README.md"]},
             "approval": {"first_feature_approval": True},
@@ -83,7 +83,7 @@ def test_cached_first_approval_invalidates_when_scoped_paths_change() -> None:
         "features": {
             "FEAT-050": {
                 "reviewers": {
-                    "readme_process": {
+                    "onboarding_review": {
                         "approved": True,
                         "approved_at": "2026-02-14T00:00:00Z",
                     }
@@ -95,7 +95,7 @@ def test_cached_first_approval_invalidates_when_scoped_paths_change() -> None:
     reuse, reason = evaluate_cached_reviewer_approval(
         state,
         feature_id="FEAT-050",
-        reviewer_id="readme_process",
+        reviewer_id="onboarding_review",
         reviewer={
             "trigger": {"phase": "feature_done", "on_change": ["README.md"]},
             "approval": {"first_feature_approval": True},
@@ -109,7 +109,7 @@ def test_cached_first_approval_invalidates_when_scoped_paths_change() -> None:
 
     assert reuse is False
     assert reason == FIRST_FEATURE_APPROVAL_INVALIDATED_REASON
-    reviewer_state = state["features"]["FEAT-050"]["reviewers"]["readme_process"]
+    reviewer_state = state["features"]["FEAT-050"]["reviewers"]["onboarding_review"]
     assert reviewer_state["approved"] is False
     assert "invalidated_at" in reviewer_state
 

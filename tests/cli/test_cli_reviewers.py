@@ -169,18 +169,13 @@ def test_reviewers_init_writes_baseline_files(tmp_path: Path) -> None:
     result = _invoke_cli(["--project-root", str(tmp_path), "reviewers", "init"])
 
     assert result.exit_code == 0
-    assert result.stdout.strip() == "reviewers init complete: created=3 skipped=0"
+    assert result.stdout.strip() == "reviewers init complete: created=2 skipped=0"
     assert (tmp_path / "harness" / "reviewers.yaml").is_file()
     code_simplifier_prompt = (
         tmp_path / "harness" / "reviewers" / "prompts" / "code_simplifier.md"
     )
-    readme_process_prompt = (
-        tmp_path / "harness" / "reviewers" / "prompts" / "readme_process.md"
-    )
     assert code_simplifier_prompt.is_file()
-    assert readme_process_prompt.is_file()
     assert "$responseformat" in code_simplifier_prompt.read_text(encoding="utf-8")
-    assert "$responseformat" in readme_process_prompt.read_text(encoding="utf-8")
 
 
 def test_reviewers_init_skips_existing_files_without_force(
@@ -193,5 +188,5 @@ def test_reviewers_init_skips_existing_files_without_force(
 
     assert second_result.exit_code == 0
     assert (
-        second_result.stdout.strip() == "reviewers init complete: created=0 skipped=3"
+        second_result.stdout.strip() == "reviewers init complete: created=0 skipped=2"
     )

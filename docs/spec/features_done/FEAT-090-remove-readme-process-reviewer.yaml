@@ -1,0 +1,148 @@
+id: FEAT-090
+title: Remove README process reviewer and rename clean-room sandbox mode to empty_folder
+type: chore
+expected_commit_subject: "chore: add FEAT-090 remove README process reviewer"
+status: done
+priority: medium
+objective: >
+  Remove the repository's dedicated README onboarding/process reviewer entirely (config, prompt,
+  scaffolding, docs, and tests), and preserve a generic clean-room reviewer sandbox by renaming
+  the existing clean-room sandbox mode to `empty_folder` with explicit asset inclusion.
+context: >
+  This repository currently includes a dedicated reviewer intended to validate README onboarding
+  in an isolated sandbox and treats it as a default reviewer in the fast loop profile.
+
+  We want to delete that reviewer and all active references while keeping the ability to execute
+  a reviewer in a clean, empty workspace and copy in only explicitly configured assets.
+
+  Additionally, repository validation (`engineeringagent validate`) must enforce that removed
+  reviewer identifiers and removed sandbox-mode names do not reappear in active (non-historical)
+  files.
+
+  Note: ripgrep (`rg`) is not available in this environment; purge checks must not depend on it.
+constraints:
+  - "Do not edit archived specs under `docs/spec/features_done/`."
+  - "Do not scrub historical telemetry/state under `progress/`."
+  - "The dedicated README onboarding/process reviewer must not exist in `harness/reviewers.yaml`."
+  - "The README onboarding/process reviewer prompt file must not exist under `harness/reviewers/prompts/`."
+  - "`engineeringagent reviewers init` must not scaffold the removed reviewer or its prompt."
+  - "Rename the existing clean-room sandbox mode enum value to `empty_folder`."
+  - "`empty_folder` sandbox behavior must start from an empty execution root."
+  - "`empty_folder` sandbox must copy only the configured `prompt_file` plus any configured `sandbox.assets`."
+  - "`empty_folder` must not implicitly inject assets (no automatic README/docs/CLI helper injection)."
+  - "`sandbox.assets` support remains restricted to `empty_folder` (other sandbox modes must reject assets)."
+  - "Keep `temp_worktree_snapshot` sandbox behavior unchanged."
+  - "Purge enforcement must be implemented as part of `engineeringagent validate` and must scan tracked files via `git ls-files`."
+implementation_notes: |
+  Contract/API delta (explicit):
+
+  - Surface: repository default reviewer configuration (`harness/reviewers.yaml`).
+    - Old behavior: repository config includes a dedicated README onboarding reviewer and enables it in
+      `profiles.loop_fast`.
+    - New behavior: repository config does not define that reviewer and `profiles.loop_fast` does not include it.
+
+  - Surface: reviewer sandbox mode enum and semantics.
+    - Old behavior: a clean-room sandbox mode exists that implicitly injects onboarding-related assets.
+    - New behavior: the clean-room sandbox mode is renamed to `empty_folder` and has strict explicit-asset
+      semantics: create a fresh empty workspace and copy only `prompt_file` and `sandbox.assets`.
+
+  - Surface: validator behavior.
+    - Old behavior: `engineeringagent validate` does not enforce repository-wide purge invariants.
+    - New behavior: `engineeringagent validate` fails if removed reviewer ids or removed sandbox-mode names appear
+      anywhere in tracked files outside historical zones (`docs/spec/features_done/` and `progress/`).
+
+  Compatibility policy:
+  - Breaking change: reviewer configs using the removed clean-room sandbox-mode value must migrate to `empty_folder`.
+  - Breaking change: users relying on implicit sandbox asset injection must add those paths explicitly to
+    `sandbox.assets` and accept that helper scripts may no longer exist.
+
+  Migration scope (this repo):
+  - Remove the README onboarding reviewer from `harness/reviewers.yaml` and delete its prompt file.
+  - Update docs and tests to avoid any mention of the removed reviewer id.
+  - Update contract validation, runtime sandbox builder, and reference docs to use `empty_folder`.
+acceptance:
+  - "`harness/reviewers.yaml` contains no dedicated README onboarding/process reviewer definition and does not include it in any profile."
+  - "The README onboarding/process reviewer prompt file is removed from `harness/reviewers/prompts/`."
+  - "`engineeringagent reviewers init` scaffolds only supported baseline reviewers and does not scaffold the removed reviewer."
+  - "Reviewer config validation accepts `sandbox.mode: empty_folder` and rejects the removed clean-room sandbox-mode name."
+  - "`empty_folder` sandbox execution root is empty before copying assets and contains only `prompt_file` plus configured `sandbox.assets`."
+  - "`engineeringagent validate` enforces purge invariants by scanning tracked files (`git ls-files`) and failing when removed reviewer ids or removed sandbox-mode names appear outside `docs/spec/features_done/` and `progress/`."
+  - "Active docs and active specs under `docs/spec/features/` contain no references to the removed reviewer id."
+  - "`uv run python -m engineeringagent.cli validate` passes."
+  - "`uv run pytest -q` passes."
+subtasks:
+  - id: ST-001
+    title: Remove README onboarding reviewer config and delete its prompt
+    status: done
+    context: >
+      Remove the dedicated README onboarding/process reviewer from `harness/reviewers.yaml` (both profile inclusion
+      and reviewer definition) and delete its prompt file under `harness/reviewers/prompts/`.
+    verification:
+      - uv run python -m engineeringagent.cli validate
+      - uv run pytest -q
+  - id: ST-002
+    title: Remove README onboarding reviewer scaffolding from reviewers init
+    status: done
+    context: >
+      Update `engineeringagent reviewers init` scaffolding so it no longer generates the dedicated README onboarding
+      reviewer entry or its prompt file.
+    verification:
+      - uv run pytest -q tests/cli/test_cli_reviewers.py
+  - id: ST-003
+    title: Update docs to remove README onboarding reviewer references and align sandbox docs
+    status: done
+    context: >
+      Update reviewer reference documentation so it no longer presents the removed README onboarding reviewer as a
+      default or copy-pastable entry. Keep examples valid without referencing removed reviewer ids. Ensure sandbox-mode
+      documentation reflects `empty_folder`.
+    verification:
+      - uv run pytest -q tests/reviewers/test_docs_reviewer_agents_reference.py
+      - uv run pytest -q tests/reviewers/test_reviewer_reference_docs.py
+  - id: ST-004
+    title: Rename clean-room sandbox mode to empty_folder in contract validation
+    status: done
+    context: >
+      Update the reviewer contract model so the clean-room sandbox mode enum value is `empty_folder`. Restrict
+      `sandbox.assets` support to `empty_folder` only.
+    verification:
+      - uv run pytest -q tests/reviewers/test_reviewers_contract.py
+      - uv run python -m engineeringagent.cli validate
+  - id: ST-005
+    title: Implement empty_folder sandbox runtime with explicit asset copying only
+    status: done
+    context: >
+      Update reviewer runtime sandbox builder so `empty_folder` creates a fresh empty workspace and copies only:
+      (1) the configured prompt file and (2) configured `sandbox.assets`. Remove any implicit asset injection.
+      Keep existing snapshot sandbox behavior unchanged.
+    verification:
+      - uv run pytest -q tests/reviewers/test_reviewers_sandbox.py
+  - id: ST-006
+    title: Update tests to remove removed-reviewer assumptions
+    status: done
+    context: >
+      Remove or refactor tests that assume the repository enables the removed README onboarding reviewer by default or
+      that hardcode removed reviewer ids in output assertions. Replace with generic reviewer ids in test-local configs
+      to preserve coverage of blocking retry semantics and sandbox behavior.
+    verification:
+      - uv run pytest -q
+  - id: ST-007
+    title: Add validate-time purge invariant check (tracked files only)
+    status: done
+    context: >
+      Add a validator check that uses `git ls-files` to scan tracked files for removed reviewer identifiers and removed
+      sandbox mode names. Exclude `docs/spec/features_done/` and `progress/`. Construct the forbidden needles in code
+      without embedding the exact forbidden tokens in the validator source to avoid self-matching.
+    verification:
+      - uv run python -m engineeringagent.cli validate
+      - uv run pytest -q
+  - id: ST-008
+    title: Remove removed-reviewer references from active specs under docs/spec/features
+    status: done
+    context: >
+      Update any active specs under `docs/spec/features/` that reference removed reviewer ids or removed sandbox-mode
+      names. Do not edit archived specs under `docs/spec/features_done/`.
+    verification:
+      - uv run python -m engineeringagent.cli validate
+      - uv run pytest -q
+
+updated_at: "2026-02-16T00:00:00Z"

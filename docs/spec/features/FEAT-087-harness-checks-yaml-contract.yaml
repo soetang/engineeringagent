@@ -121,8 +121,8 @@ implementation_notes: "Contract/API delta (explicit):\n\n- Surface: harness conf
   \ `rule_ids: [\"architecture.dep-directionality\", ...]`\n\n- `type: reviewer`\n\
   \  - required: `prompt_file` (repo-relative path under `harness/reviewers/prompts/`)\n\
   \  - optional: `feedback_context` (string)\n  - optional: `sandbox`:\n    - `mode`:\
-  \ temp_worktree_snapshot|clean_room_readme_cli\n    - `assets` (optional, list of\
-  \ strings, min length 1): only supported when mode=clean_room_readme_cli\n  - optional:\
+  \ temp_worktree_snapshot|empty_folder\n    - `assets` (optional, list of\
+  \ strings, min length 1): only supported when mode=empty_folder\n  - optional:\
   \ `approval`:\n    - `first_feature_approval` (bool, default true)\n    - `max_retries`\
   \ (int, >= 0, default 2)\n    - `continue_on_exhausted` (bool, default true)\n \
   \ - must align with FEAT-086 semantics:\n    - no advisory/blocking config mode\
@@ -141,10 +141,10 @@ implementation_notes: "Contract/API delta (explicit):\n\n- Surface: harness conf
   \nchecks:\n  fitness_all:\n    type: fitness\n    scope: all\n\n  ruff:\n    type:\
   \ command\n    command: \"uv run ruff check src/engineeringagent\"\n    when:\n\
   \      on_change: [\"src/**/*.py\", \"tests/**/*.py\", \"harness/**/*.py\"]\n\n\
-  \  readme_process:\n    type: reviewer\n    prompt_file: \"harness/reviewers/prompts/readme_process.md\"\
+  \  onboarding_review:\n    type: reviewer\n    prompt_file: \"harness/reviewers/prompts/onboarding_review.md\"\
   \n    when:\n      phase: feature_done\n      on_change: [\"README.md\", \"docs/references/**/*.md\"\
-  , \"docs/principles/**/*.md\"]\n    sandbox:\n      mode: clean_room_readme_cli\n\
-  \      assets: [\"docs\", \".opencode/agents\"]\n```\n\nCompatibility policy:\n\
+  , \"docs/principles/**/*.md\"]\n    sandbox:\n      mode: empty_folder\n\
+  \      assets: [\"README.md\", \"docs\", \".opencode/agents\"]\n```\n\nCompatibility policy:\n\
   - Breaking. `engineeringagent run` requires `harness/checks.yaml`.\n- Legacy harness\
   \ inputs (`harness/gates.yaml`, `harness/reviewers.yaml`) are not\n  used by `run`\
   \ after this change.\n- `engineeringagent init` scaffolds `harness/checks.yaml`\

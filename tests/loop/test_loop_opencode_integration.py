@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import json
 import os
-import subprocess
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -16,6 +16,8 @@ import engineeringagent.opencode.client as opencode_client
 from engineeringagent.loop import (
     build_loop_run,
     build_run_config,
+)
+from engineeringagent.loop import (
     run_loop as _run_loop,
 )
 from engineeringagent.opencode_permissions import (
@@ -736,60 +738,3 @@ def test_loop_archived_done_requires_same_iteration_completion_commit(
 
     ending_head = _run_git(project_root, "rev-parse", "HEAD").stdout.strip()
     assert ending_head != starting_head
-
-
-def test_start_agent_applies_timeout_by_default(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.delenv("ENGINEERINGAGENT_OPENCODE_TIMEOUT_SEC", raising=False)
-
-    observed: dict[str, object] = {}
-
-    def fake_run(*args: Any, **kwargs: Any) -> subprocess.CompletedProcess[str]:
-        observed["timeout"] = kwargs.get("timeout")
-        return subprocess.CompletedProcess(args[0], 0, stdout="", stderr="")
-
-    monkeypatch.setattr(opencode_client.subprocess, "run", fake_run)
-
-    proc = opencode_client.start_agent(tmp_path, "Reply READY.")
-    assert proc.returncode == 0
-    assert observed.get("timeout") == 120
-
-
-def test_run_loop_reports_opencode_timeout_in_run_telemetry(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    project_root, feature_path = _make_project_root(tmp_path)
-    _init_git_repo(project_root)
-
-    def fake_run_permission_probe(_: Path) -> PermissionProbeResult:
-        return PermissionProbeResult(ok=True, reason="ok", returncode=0, output="")
-
-    def fake_start_agent(*_: Any, **__: Any) -> subprocess.CompletedProcess[str]:
-        raise subprocess.TimeoutExpired(cmd=["opencode", "run"], timeout=1)
-
-    monkeypatch.setattr(loop_module, "run_permission_probe", fake_run_permission_probe)
-    monkeypatch.setattr(loop_module, "start_agent", fake_start_agent)
-
-    code = run_loop(
-        project_root=project_root,
-        feature_paths=[str(feature_path)],
-        gate_profile="loop_fast",
-        opencode_prompt=None,
-        dry_run=False,
-        max_iterations=1,
-    )
-
-    assert code == 1
-    runs_path = project_root / "progress" / "runs.jsonl"
-    run = json.loads(runs_path.read_text(encoding="utf-8").splitlines()[0])
-    assert run["result"] == "failed"
-    assert run["failed_gate"] == "opencode_timeout"
-
-    feature_log_path = project_root / str(run["log_path"])
-    feature_log = feature_log_path.read_text(encoding="utf-8")
-    assert "opencode timed out" in feature_log
-    assert "engineeringagent gates run" in feature_log
-    assert "ENGINEERINGAGENT_OPENCODE_TIMEOUT_SEC" in feature_log

@@ -16,8 +16,8 @@ Common optional fields:
 
 - `trigger.on_change`: path globs that scope when the reviewer runs
 - `approval`: `mode`, retry limits, and exhaustion behavior
-- `sandbox.mode`: `temp_worktree_snapshot` (snapshot) or `clean_room_readme_cli` (minimal clean-room)
-- `sandbox.assets`: list of repo-relative paths to include in clean-room sandboxes (files or directories)
+- `sandbox.mode`: `temp_worktree_snapshot` (snapshot) or `empty_folder` (explicit-asset sandbox)
+- `sandbox.assets`: list of repo-relative paths to include in an `empty_folder` sandbox (files or directories)
 - `feedback_context`: optional string forwarded verbatim alongside reviewer feedback into the next implement pass.
 
 Use `feedback_context` to describe reviewer scope limitations (for example, clean-room sandboxes that do not include `src/` or `tests/`) so implement treats failures as real but chooses fixes that align with the full repository and feature specs.

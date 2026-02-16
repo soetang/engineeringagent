@@ -597,7 +597,7 @@ def test_run_telemetry_summary_strips_feedback_context_block(tmp_path: Path) -> 
         verbose_output=False,
     )
     hook_feedback = (
-        "reviewer 'readme_process' requested changes (attempt 1/3): "
+        "reviewer 'onboarding_review' requested changes (attempt 1/3): "
         "Add missing usage section.\n"
         "required_actions:\n"
         "- Add CLI example\n"
@@ -619,11 +619,11 @@ def test_run_telemetry_summary_strips_feedback_context_block(tmp_path: Path) -> 
         verification_failed_command=None,
         reviewer_status="failed:blocking",
         reviewer_decision="request_changes",
-        failed_reviewer_id="readme_process",
+        failed_reviewer_id="onboarding_review",
         implement_output="",
         gate_output="",
         verification_output="",
-        reviewer_output="[reviewer:readme_process] mode=blocking decision=request_changes",
+        reviewer_output="[reviewer:onboarding_review] mode=blocking decision=request_changes",
         hook_feedback=hook_feedback,
     )
 
@@ -661,13 +661,13 @@ def test_reviewer_feedback_forwarded_field_takes_precedence(tmp_path: Path) -> N
         verification_failed_command=None,
         reviewer_status="failed:blocking",
         reviewer_decision="request_changes",
-        failed_reviewer_id="readme_process",
+        failed_reviewer_id="onboarding_review",
         implement_output="",
         gate_output="",
         verification_output="",
-        reviewer_output="[reviewer:readme_process] mode=blocking decision=request_changes",
+        reviewer_output="[reviewer:onboarding_review] mode=blocking decision=request_changes",
         reviewer_feedback_forwarded=(
-            "reviewer 'readme_process' feedback (mode=blocking, decision=request_changes): "
+            "reviewer 'onboarding_review' feedback (mode=blocking, decision=request_changes): "
             "Use the repo README conventions.\nfeedback_context:\nclean-room sandbox"
         ),
         hook_feedback="(ignored) not a reviewer line",
@@ -680,12 +680,12 @@ def test_reviewer_feedback_forwarded_field_takes_precedence(tmp_path: Path) -> N
 
     run = json.loads((tmp_path / "progress" / "runs.jsonl").read_text(encoding="utf-8"))
     assert run["reviewer_feedback_present"] is True
-    assert "readme_process" in run["reviewer_feedback_summary"]
+    assert "onboarding_review" in run["reviewer_feedback_summary"]
 
 
 def test_reviewer_feedback_summary_truncates_after_stripping_context() -> None:
     text = (
-        "reviewer 'readme_process' feedback (mode=blocking, decision=request_changes): "
+        "reviewer 'onboarding_review' feedback (mode=blocking, decision=request_changes): "
         + ("x" * 50)
         + "\nfeedback_context:\n"
         + ("y" * 500)
@@ -701,14 +701,14 @@ def test_command_timing_line_includes_reviewer_id() -> None:
     timing = CommandTiming(
         phase="reviewers",
         gate=None,
-        reviewer_id="readme_process",
+        reviewer_id="onboarding_review",
         command="run_reviewer",
         started_at="1970-01-01T00:00:10Z",
         ended_at="1970-01-01T00:00:13Z",
         duration_sec=3,
     )
     line = telemetry_module._format_command_timing_line(timing)
-    assert "reviewer_id=readme_process" in line
+    assert "reviewer_id=onboarding_review" in line
 
 
 def test_non_verbose_terminal_output_shows_verification_summary(

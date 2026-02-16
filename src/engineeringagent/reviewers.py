@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import json
-import shlex
 import shutil
-import sys
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -43,8 +41,7 @@ ADVISORY_FOLLOWUP_REQUIRED_KEY = "advisory_followup_required"
 BLOCKING_RETRY_COUNT_KEY = "blocking_request_changes_count"
 BLOCKING_RETRY_UPDATED_AT_KEY = "blocking_retry_updated_at"
 SANDBOX_MODE_TEMP_WORKTREE_SNAPSHOT = "temp_worktree_snapshot"
-SANDBOX_MODE_CLEAN_ROOM_README_CLI = "clean_room_readme_cli"
-CLEAN_ROOM_ENGINEERINGAGENT_HELPER = ".engineeringagent/bin/engineeringagent"
+SANDBOX_MODE_EMPTY_FOLDER = "empty_folder"
 REVIEWER_RESPONSEFORMAT_PLACEHOLDER = "$responseformat"
 REVIEWER_RESPONSEFORMAT_MISSING_MESSAGE = (
     "reviewer prompt must include the $responseformat placeholder"
@@ -685,17 +682,17 @@ def build_reviewer_sandbox(
     if not isinstance(sandbox, dict):
         sandbox = {}
 
-    if sandbox.get("mode") != SANDBOX_MODE_CLEAN_ROOM_README_CLI:
+    if sandbox.get("mode") != SANDBOX_MODE_EMPTY_FOLDER:
         return None
 
-    return _build_clean_room_readme_cli_sandbox(
+    return _build_empty_folder_sandbox(
         project_root=project_root,
         reviewer_id=reviewer_id,
         reviewer_config=reviewer_config,
     )
 
 
-def _build_clean_room_readme_cli_sandbox(
+def _build_empty_folder_sandbox(
     *,
     project_root: Path,
     reviewer_id: str,
@@ -707,9 +704,7 @@ def _build_clean_room_readme_cli_sandbox(
             f"sandbox setup failed: reviewer {reviewer_id} prompt_file is required"
         )
 
-    workspace = TemporaryDirectory(
-        prefix=f"engineeringagent-reviewer-{reviewer_id}-clean-room-"
-    )
+    workspace = TemporaryDirectory(prefix=f"engineeringagent-reviewer-{reviewer_id}-")
     execution_root = Path(workspace.name) / "workspace"
     execution_root.mkdir(parents=True, exist_ok=True)
     configured_assets: list[str] = []
@@ -719,19 +714,18 @@ def _build_clean_room_readme_cli_sandbox(
         if isinstance(assets, list):
             configured_assets = [str(asset) for asset in assets]
 
-    sandbox_assets = sorted({"README.md", prompt_file, *configured_assets})
+    sandbox_assets = [prompt_file]
+    for asset in configured_assets:
+        if asset and asset != prompt_file:
+            sandbox_assets.append(asset)
 
     try:
         for relative_path in sandbox_assets:
-            _copy_clean_room_asset(
+            _copy_sandbox_asset(
                 project_root=project_root,
                 execution_root=execution_root,
                 relative_path=relative_path,
             )
-        _write_clean_room_cli_helper(
-            project_root=project_root,
-            execution_root=execution_root,
-        )
     except RuntimeError:
         workspace.cleanup()
         raise
@@ -745,7 +739,7 @@ def _build_clean_room_readme_cli_sandbox(
     )
 
 
-def _copy_clean_room_asset(
+def _copy_sandbox_asset(
     *,
     project_root: Path,
     execution_root: Path,
@@ -757,8 +751,7 @@ def _copy_clean_room_asset(
             f"sandbox setup failed: invalid sandbox asset path: {relative_path}"
         )
 
-    forbidden_roots = {".git", "src", "tests"}
-    if candidate.parts and candidate.parts[0] in forbidden_roots:
+    if candidate.parts and candidate.parts[0] == ".git":
         raise RuntimeError(
             f"sandbox setup failed: forbidden sandbox asset root: {relative_path}"
         )
@@ -795,30 +788,6 @@ def _copy_clean_room_asset(
         return
 
     shutil.copy2(source_path, target_path)
-
-
-def _write_clean_room_cli_helper(*, project_root: Path, execution_root: Path) -> None:
-    source_root = project_root / "src"
-    if not source_root.exists() or not source_root.is_dir():
-        raise RuntimeError("sandbox setup failed: required source root missing: src")
-
-    helper_path = execution_root / CLEAN_ROOM_ENGINEERINGAGENT_HELPER
-    helper_path.parent.mkdir(parents=True, exist_ok=True)
-
-    helper_script = "\n".join(
-        [
-            "#!/usr/bin/env sh",
-            "set -eu",
-            (
-                "export PYTHONPATH="
-                f"{shlex.quote(str(source_root))}${{PYTHONPATH:+:${{PYTHONPATH}}}}"
-            ),
-            f'exec {shlex.quote(sys.executable)} -m engineeringagent.cli "$@"',
-            "",
-        ]
-    )
-    helper_path.write_text(helper_script, encoding="utf-8")
-    helper_path.chmod(0o755)
 
 
 def parse_reviewer_decision(output: str) -> dict[str, Any]:  # noqa: C901

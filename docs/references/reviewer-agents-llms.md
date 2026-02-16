@@ -32,8 +32,8 @@ Optional reviewer fields:
 - `approval.first_feature_approval`: boolean (default `true`).
 - `approval.max_retries`: integer >= 0 (default `2`).
 - `approval.continue_on_exhausted`: boolean (default `true`).
-- `sandbox.mode`: currently `temp_worktree_snapshot` or `clean_room_readme_cli`.
-- `sandbox.assets`: optional list of repo-relative paths (files or directories) to copy into a clean-room sandbox.
+- `sandbox.mode`: currently `temp_worktree_snapshot` or `empty_folder`.
+- `sandbox.assets`: optional list of repo-relative paths (files or directories) to copy into an `empty_folder` sandbox.
 - `feedback_context`: optional string forwarded verbatim into the next implement pass feedback when a follow-up implement pass is required.
 
 Copy-pastable v1 example:
@@ -43,7 +43,6 @@ contract_version: "1.0"
 profiles:
   loop_fast:
     - code_simplifier
-    - readme_process
 reviewers:
   code_simplifier:
     prompt_file: "harness/reviewers/prompts/code_simplifier.md"
@@ -57,59 +56,7 @@ reviewers:
       first_feature_approval: true
       max_retries: 2
       continue_on_exhausted: true
-  readme_process:
-    prompt_file: "harness/reviewers/prompts/readme_process.md"
-    trigger:
-      phase: "feature_done"
-      on_change: ["README.md"]
-    sandbox:
-      mode: "temp_worktree_snapshot"
-    approval:
-      mode: "blocking"
-      first_feature_approval: true
-      max_retries: 2
-      continue_on_exhausted: true
 ```
-
-## Default `readme_process` reviewer
-
-Use this built-in reviewer when you want README getting-started instructions to block
-feature completion until the documented process works in a clean-room run.
-
-Copy-pastable `readme_process` entry:
-
-```yaml
-readme_process:
-  prompt_file: "harness/reviewers/prompts/readme_process.md"
-  feedback_context: |
-    This reviewer may run with constrained context (for example, a clean-room sandbox) and may not
-    have access to the full repository (such as `src/` and `tests/`). Treat reported failures as
-    real, but implement fixes in a way that aligns with the feature spec and overall repository
-    architecture.
-  trigger:
-    phase: "feature_done"
-    on_change: ["README.md"]
-  sandbox:
-    mode: "clean_room_readme_cli"
-    assets:
-      - "docs"
-      - ".opencode/agents"
-  approval:
-    mode: "blocking"
-    first_feature_approval: true
-    max_retries: 2
-    continue_on_exhausted: true
-```
-
-Plain-English behavior:
-
-- Runs only for `feature_done`, and only when `README.md` changed.
-- Runs inside a sandbox so the active checkout is not mutated.
-- `clean_room_readme_cli` is recommended for README onboarding checks because it limits sandbox contents to the README flow and the minimal linked docs/assets.
-- Reviewer instructions require reading `README.md` and attempting documented bootstrap/setup in a fresh temporary directory.
-- Returns strict v1 decision JSON; non-JSON output is treated as deterministic `request_changes`.
-- Uses blocking policy with retry (`max_retries: 2`) and continues with warning on exhaustion when `continue_on_exhausted` is true.
-- When bootstrap fails, required actions must classify the fix surface as README instructions, init/scaffold behavior, or both.
 
 ## Default `code_simplifier` reviewer
 
@@ -231,13 +178,11 @@ Copy-pastable decision examples:
 - `sandbox.mode: temp_worktree_snapshot` executes reviewer in an isolated temporary snapshot.
 - Intended for process/document checks (for example README-process review) without mutating active worktree.
 
-- `sandbox.mode: clean_room_readme_cli` executes the reviewer in a new empty directory populated with:
-  - `README.md`
+- `sandbox.mode: empty_folder` executes the reviewer in a new empty directory populated with:
   - the configured prompt file
-  - the harness-provided local CLI helper (`.engineeringagent/bin/engineeringagent`)
   - any configured `sandbox.assets`
-- Intended for clean-room README onboarding checks where README links into `docs/` or other minimal artifacts.
-- Clean-room sandboxes exclude `.git/`, `src/`, and `tests/` by design. They also do not copy `.opencode/node_modules`.
+- `empty_folder` does not implicitly inject assets. If you want `README.md`, `docs/`, or `.opencode/agents`, list them in `sandbox.assets`.
+- `sandbox.assets` is only supported for `empty_folder`.
 
 ## End-to-end policy examples
 

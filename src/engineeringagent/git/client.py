@@ -38,6 +38,25 @@ def head_short(project_root: Path) -> subprocess.CompletedProcess[str]:
     )
 
 
+def ls_files(project_root: Path) -> subprocess.CompletedProcess[str]:
+    """Return tracked file list output.
+
+    Args:
+        project_root: Repository root used as command working directory.
+
+    Returns:
+        Completed process from ``git ls-files``.
+    """
+
+    return subprocess.run(
+        ["git", "ls-files"],
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
 def add_all(project_root: Path) -> subprocess.CompletedProcess[str]:
     """Stage repository changes for feature completion commit.
 

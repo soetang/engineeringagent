@@ -25,10 +25,10 @@ def test_reviewer_contract_accepts_minimal_v1_document() -> None:
 def test_reviewer_contract_accepts_optional_approval_and_sandbox_fields() -> None:
     document = {
         "contract_version": "1.0",
-        "profiles": {"loop_fast": ["readme_process"]},
+        "profiles": {"loop_fast": ["onboarding_review"]},
         "reviewers": {
-            "readme_process": {
-                "prompt_file": "harness/reviewers/prompts/readme_process.md",
+            "onboarding_review": {
+                "prompt_file": "harness/reviewers/prompts/onboarding_review.md",
                 "trigger": {
                     "phase": "feature_done",
                     "on_change": ["README.md"],
@@ -40,8 +40,8 @@ def test_reviewer_contract_accepts_optional_approval_and_sandbox_fields() -> Non
                     "continue_on_exhausted": True,
                 },
                 "sandbox": {
-                    "mode": "clean_room_readme_cli",
-                    "assets": ["docs"],
+                    "mode": "empty_folder",
+                    "assets": ["README.md", "docs"],
                 },
             }
         },
@@ -55,10 +55,10 @@ def test_reviewer_contract_accepts_optional_approval_and_sandbox_fields() -> Non
 def test_reviewer_contract_accepts_feedback_context_string() -> None:
     document = {
         "contract_version": "1.0",
-        "profiles": {"loop_fast": ["readme_process"]},
+        "profiles": {"loop_fast": ["onboarding_review"]},
         "reviewers": {
-            "readme_process": {
-                "prompt_file": "harness/reviewers/prompts/readme_process.md",
+            "onboarding_review": {
+                "prompt_file": "harness/reviewers/prompts/onboarding_review.md",
                 "feedback_context": "This reviewer may run with constrained context.",
                 "trigger": {
                     "phase": "feature_done",
@@ -76,10 +76,10 @@ def test_reviewer_contract_accepts_feedback_context_string() -> None:
 def test_reviewer_contract_accepts_temp_worktree_snapshot_sandbox_mode() -> None:
     document = {
         "contract_version": "1.0",
-        "profiles": {"loop_fast": ["readme_process"]},
+        "profiles": {"loop_fast": ["onboarding_review"]},
         "reviewers": {
-            "readme_process": {
-                "prompt_file": "harness/reviewers/prompts/readme_process.md",
+            "onboarding_review": {
+                "prompt_file": "harness/reviewers/prompts/onboarding_review.md",
                 "trigger": {
                     "phase": "feature_done",
                     "on_change": ["README.md"],
@@ -92,6 +92,60 @@ def test_reviewer_contract_accepts_temp_worktree_snapshot_sandbox_mode() -> None
     issues = reviewer_contract_issues(document, Path("harness/reviewers.yaml"))
 
     assert issues == []
+
+
+def test_reviewer_contract_rejects_assets_when_mode_is_not_empty_folder() -> None:
+    document = {
+        "contract_version": "1.0",
+        "profiles": {"loop_fast": ["onboarding_review"]},
+        "reviewers": {
+            "onboarding_review": {
+                "prompt_file": "harness/reviewers/prompts/onboarding_review.md",
+                "trigger": {
+                    "phase": "feature_done",
+                    "on_change": ["README.md"],
+                },
+                "sandbox": {
+                    "mode": "temp_worktree_snapshot",
+                    "assets": ["README.md"],
+                },
+            }
+        },
+    }
+
+    issues = reviewer_contract_issues(document, Path("harness/reviewers.yaml"))
+
+    assert any(
+        issue.path.endswith("reviewers.onboarding_review.sandbox")
+        and "sandbox.assets" in issue.message
+        for issue in issues
+    )
+
+
+def test_reviewer_contract_rejects_removed_sandbox_mode_name() -> None:
+    removed_mode = "_".join(["clean", "room", "readme", "cli"])
+    document = {
+        "contract_version": "1.0",
+        "profiles": {"loop_fast": ["onboarding_review"]},
+        "reviewers": {
+            "onboarding_review": {
+                "prompt_file": "harness/reviewers/prompts/onboarding_review.md",
+                "trigger": {
+                    "phase": "feature_done",
+                    "on_change": ["README.md"],
+                },
+                "sandbox": {"mode": removed_mode},
+            }
+        },
+    }
+
+    issues = reviewer_contract_issues(document, Path("harness/reviewers.yaml"))
+
+    assert any(
+        issue.path.endswith("reviewers.onboarding_review.sandbox.mode")
+        and "Input should be" in issue.message
+        for issue in issues
+    )
 
 
 def test_reviewer_contract_rejects_invalid_trigger_phase() -> None:

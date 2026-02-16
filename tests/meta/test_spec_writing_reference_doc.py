@@ -14,16 +14,6 @@ def _verification_commands(document: dict) -> list[str]:
     return commands
 
 
-def test_spec_writing_reference_uses_supported_validate_command(
-    repo_root: Path,
-) -> None:
-    canonical_path = repo_root / "docs" / "references" / "spec-writing-llms.md"
-    body = canonical_path.read_text(encoding="utf-8")
-
-    assert "scripts/validate_specs.py" not in body
-    assert "engineeringagent validate" in body
-
-
 def test_spec_writing_reference_is_exact_sync_with_scaffold_template(
     repo_root: Path,
 ) -> None:

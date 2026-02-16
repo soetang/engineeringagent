@@ -9,16 +9,8 @@ import pytest
     ("old_relpath", "new_relpath"),
     [
         (
-            "tests/test_docs_reviewer_agents_reference.py",
-            "tests/reviewers/test_docs_reviewer_agents_reference.py",
-        ),
-        (
-            "tests/test_repo_readme_process_reviewer_activation.py",
-            "tests/reviewers/test_repo_readme_process_reviewer_activation.py",
-        ),
-        (
-            "tests/test_reviewer_reference_docs.py",
-            "tests/reviewers/test_reviewer_reference_docs.py",
+            "tests/test_repo_reviewers_config.py",
+            "tests/reviewers/test_repo_reviewers_config.py",
         ),
         (
             "tests/test_reviewers_contract.py",

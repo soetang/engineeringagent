@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict
 
 from .config import resolve_docs_root
 from .fitness import build_rule_catalog
+from .git import client as git_client
 from .reviewers import REVIEWER_RESPONSEFORMAT_PLACEHOLDER
 from .specs import (
     ValidationIssue,
@@ -81,8 +82,64 @@ def validate(project_root: Path, schema_only: bool = False) -> list[str]:
     _append_reviewer_prompt_issues(messages, reviewer_prompts_dir)
     _append_agents_docs_map_issues(messages, project_root)
     _append_fitness_catalog_issues(messages, project_root)
+    _append_purge_invariant_issues(messages, project_root)
 
     return messages
+
+
+def _append_purge_invariant_issues(messages: list[str], project_root: Path) -> None:
+    """Fail validation when removed identifiers reappear in active tracked files."""
+
+    if not (project_root / ".git").exists():
+        return
+
+    forbidden_needles = _purge_forbidden_needles()
+    if not forbidden_needles:
+        return
+
+    proc = git_client.ls_files(project_root)
+
+    if proc.returncode != 0:
+        stderr = (proc.stderr or "").strip()
+        detail = f": {stderr}" if stderr else ""
+        messages.append(f"validate: git ls-files failed{detail}")
+        return
+
+    excluded_prefixes = (
+        "docs/spec/features_done/",
+        "progress/",
+    )
+    needles = tuple(forbidden_needles)
+    needle_bytes = tuple(needle.encode("utf-8") for needle in needles)
+
+    for rel in (line.strip() for line in (proc.stdout or "").splitlines()):
+        if not rel:
+            continue
+        if rel.endswith("/"):
+            continue
+        if rel.startswith(excluded_prefixes):
+            continue
+
+        path = project_root / rel
+        try:
+            payload = path.read_bytes()
+        except OSError:
+            continue
+
+        for needle, needle_blob in zip(needles, needle_bytes, strict=True):
+            if needle_blob in payload:
+                messages.append(
+                    f"{rel}: forbidden token present (purge invariant): {needle}"
+                )
+                break
+
+
+def _purge_forbidden_needles() -> list[str]:
+    """Return the forbidden identifiers without embedding them verbatim in source."""
+
+    removed_reviewer_id = "_".join(["readme", "process"])
+    removed_sandbox_mode = "_".join(["clean", "room", "readme", "cli"])
+    return [removed_reviewer_id, removed_sandbox_mode]
 
 
 def _append_schema_sync_issues(messages: list[str], schema_path: Path) -> None:

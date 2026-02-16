@@ -533,14 +533,14 @@ def test_blocking_reviewer_exhaustion_stops_when_continue_disabled(
     assert "exhausted retries" in str(second.hook_feedback)
 
 
-def test_readme_process_request_changes_blocks_until_retry_or_exhaustion(
+def test_onboarding_review_request_changes_blocks_until_retry_or_exhaustion(
     tmp_path: Path,
 ) -> None:
     config = {
-        "profiles": {"loop_fast": ["readme_process"]},
+        "profiles": {"loop_fast": ["onboarding_review"]},
         "reviewers": {
-            "readme_process": {
-                "prompt_file": "harness/reviewers/prompts/readme_process.md",
+            "onboarding_review": {
+                "prompt_file": "harness/reviewers/prompts/onboarding_review.md",
                 "trigger": {
                     "phase": "feature_done",
                     "on_change": ["README.md"],
@@ -583,14 +583,14 @@ def test_readme_process_request_changes_blocks_until_retry_or_exhaustion(
     assert second.failed_gate == "reviewer_blocking_exhausted"
 
 
-def test_readme_process_feedback_classifies_readme_vs_init_fix_surface(
+def test_onboarding_review_feedback_classifies_readme_vs_init_fix_surface(
     tmp_path: Path,
 ) -> None:
     config = {
-        "profiles": {"loop_fast": ["readme_process"]},
+        "profiles": {"loop_fast": ["onboarding_review"]},
         "reviewers": {
-            "readme_process": {
-                "prompt_file": "harness/reviewers/prompts/readme_process.md",
+            "onboarding_review": {
+                "prompt_file": "harness/reviewers/prompts/onboarding_review.md",
                 "trigger": {
                     "phase": "feature_done",
                     "on_change": ["README.md"],
@@ -626,14 +626,14 @@ def test_readme_process_feedback_classifies_readme_vs_init_fix_surface(
     assert "init/scaffold command behavior" in str(outcome.hook_feedback)
 
 
-def test_readme_process_exhaustion_continues_with_warning_by_default(
+def test_onboarding_review_exhaustion_continues_with_warning_by_default(
     tmp_path: Path,
 ) -> None:
     config = {
-        "profiles": {"loop_fast": ["readme_process"]},
+        "profiles": {"loop_fast": ["onboarding_review"]},
         "reviewers": {
-            "readme_process": {
-                "prompt_file": "harness/reviewers/prompts/readme_process.md",
+            "onboarding_review": {
+                "prompt_file": "harness/reviewers/prompts/onboarding_review.md",
                 "trigger": {
                     "phase": "feature_done",
                     "on_change": ["README.md"],

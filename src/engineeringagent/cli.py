@@ -455,7 +455,6 @@ def cmd_reviewers_init(args: _HandlerArgs) -> int:
                 "profiles:",
                 "  loop_fast:",
                 "    - code_simplifier",
-                "    - readme_process",
                 "reviewers:",
                 "  code_simplifier:",
                 '    prompt_file: "harness/reviewers/prompts/code_simplifier.md"',
@@ -466,28 +465,12 @@ def cmd_reviewers_init(args: _HandlerArgs) -> int:
                 '        - "tests/**/*.py"',
                 "    approval:",
                 '      mode: "advisory"',
-                "  readme_process:",
-                '    prompt_file: "harness/reviewers/prompts/readme_process.md"',
-                "    trigger:",
-                '      phase: "feature_done"',
-                '      on_change: ["README.md"]',
-                "    sandbox:",
-                '      mode: "temp_worktree_snapshot"',
-                "    approval:",
-                '      mode: "blocking"',
                 "",
             ]
         ),
         "harness/reviewers/prompts/code_simplifier.md": "\n".join(
             [
                 "Review only the scoped changed files for readability and maintainability.",
-                REVIEWER_RESPONSEFORMAT_PLACEHOLDER,
-                "",
-            ]
-        ),
-        "harness/reviewers/prompts/readme_process.md": "\n".join(
-            [
-                "Review README workflow/process guidance for correctness and clarity.",
                 REVIEWER_RESPONSEFORMAT_PLACEHOLDER,
                 "",
             ]

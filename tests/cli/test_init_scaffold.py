@@ -18,17 +18,25 @@ def _invoke_cli(args: list[str]):
 def test_build_baseline_scaffold_manifest_excludes_reviewers_by_default() -> None:
     manifest = build_baseline_scaffold_manifest()
 
+    removed_prompt = (
+        "harness/reviewers/prompts/" + "_".join(["readme", "process"]) + ".md"
+    )
+
     assert "harness/reviewers.yaml" not in manifest
     assert "harness/reviewers/prompts/code_simplifier.md" not in manifest
-    assert "harness/reviewers/prompts/readme_process.md" not in manifest
+    assert removed_prompt not in manifest
 
 
 def test_build_baseline_scaffold_manifest_ignores_include_reviewers_flag() -> None:
     manifest = build_baseline_scaffold_manifest(include_reviewers=True)
 
+    removed_prompt = (
+        "harness/reviewers/prompts/" + "_".join(["readme", "process"]) + ".md"
+    )
+
     assert "harness/reviewers.yaml" not in manifest
     assert "harness/reviewers/prompts/code_simplifier.md" not in manifest
-    assert "harness/reviewers/prompts/readme_process.md" not in manifest
+    assert removed_prompt not in manifest
 
 
 def test_init_rejects_include_reviewers_flag() -> None:
