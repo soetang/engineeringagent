@@ -2,15 +2,31 @@ from __future__ import annotations
 
 import logging
 import subprocess
+import importlib.util
+from functools import lru_cache
 from pathlib import Path
+from types import ModuleType
 from typing import Any
 
 import pytest
 
-from engineeringagent import commit_messages
 from engineeringagent import on_change_matcher
 from engineeringagent import progress_logging
 from engineeringagent.opencode import client as opencode_client
+
+
+@lru_cache(maxsize=1)
+def _load_harness_commit_messages() -> ModuleType:
+    repo_root = Path(__file__).resolve().parents[1]
+    policy_path = repo_root / "harness" / "fitness-functions" / "commit_messages.py"
+    spec = importlib.util.spec_from_file_location(
+        "harness_commit_messages", policy_path
+    )
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"unable to load commit message policy from {policy_path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def test_path_matches_any_glob_normalizes_dot_slash_prefix() -> None:
@@ -71,6 +87,7 @@ def test_progress_logging_skips_non_file_handlers(tmp_path: Path) -> None:
 
 
 def test_validate_commit_subject_rejects_multiline_subject() -> None:
+    commit_messages = _load_harness_commit_messages()
     assert commit_messages.validate_commit_subject("feat: ok\nmore") == (
         "subject must be a single line"
     )
@@ -81,6 +98,8 @@ def test_subject_from_commit_message_file_errors_when_missing_subject(
 ) -> None:
     message_file = tmp_path / "COMMIT_EDITMSG"
     message_file.write_text("# comment\n\n# another\n", encoding="utf-8")
+
+    commit_messages = _load_harness_commit_messages()
 
     with pytest.raises(ValueError, match="does not contain a subject line"):
         commit_messages.subject_from_commit_message_file(message_file)

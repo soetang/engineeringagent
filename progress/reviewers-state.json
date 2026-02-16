@@ -323,6 +323,20 @@
           "blocking_retry_updated_at": "2026-02-16T08:40:27Z"
         }
       }
+    },
+    "FEAT-083": {
+      "advisory_followup_required": false,
+      "advisory_followup_updated_at": "2026-02-16T09:05:41Z",
+      "reviewers": {
+        "code_simplifier": {
+          "approved": false,
+          "approved_at": "2026-02-16T09:02:39Z",
+          "blocking_request_changes_count": 0,
+          "blocking_retry_updated_at": "2026-02-16T09:02:39Z",
+          "invalidated_at": "2026-02-16T09:05:41Z",
+          "updated_at": "2026-02-16T09:06:10Z"
+        }
+      }
     }
   },
   "version": "1"

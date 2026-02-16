@@ -4,7 +4,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from engineeringagent.commit_messages import (
+from commit_messages import (
     commit_subjects_from_range,
     subject_from_commit_message_file,
     validate_commit_subject,
@@ -78,7 +78,7 @@ def main() -> int:
     if args.commit_msg_file is not None:
         return _run_commit_msg_file_mode(args.commit_msg_file)
 
-    return _run_commit_range_mode(args.project_root.resolve(), str(args.commit_range))
+    return _run_commit_range_mode(args.project_root.resolve(), args.commit_range)
 
 
 if __name__ == "__main__":

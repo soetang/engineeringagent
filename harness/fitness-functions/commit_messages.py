@@ -13,7 +13,8 @@ ALLOWED_COMMIT_TYPES: tuple[str, ...] = (
     "chore",
     "test",
 )
-COMMIT_SUBJECT_PATTERN = re.compile(r"^(feat|fix|spec|docs|chore|test): [^\n]+$")
+_ALLOWED_TYPES_PATTERN = "|".join(re.escape(t) for t in ALLOWED_COMMIT_TYPES)
+COMMIT_SUBJECT_PATTERN = re.compile(rf"^(?:{_ALLOWED_TYPES_PATTERN}): [^\n]+$")
 
 
 def validate_commit_subject(subject: str) -> str | None:
@@ -62,7 +63,7 @@ def validate_commit_subjects(subjects: list[str]) -> list[str]:
         subjects: Commit subject lines to validate.
 
     Returns:
-        Sorted validation errors with positional context.
+        Validation errors (in input order) with positional context.
     """
     errors: list[str] = []
     for index, subject in enumerate(subjects, start=1):
