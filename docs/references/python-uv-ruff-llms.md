@@ -5,7 +5,7 @@
 - Keep Python contribution workflows deterministic with uv.
 - Enforce linting and docstring quality with Ruff before commit.
 - Enforce baseline static type validation with Pyright before commit.
-- Keep precommit checks aligned with harness gate profiles.
+- Keep pre-commit checks aligned with `harness/checks.yaml` where applicable.
 
 ## Canonical Workflow
 
@@ -16,7 +16,6 @@ uv sync
 uv run ruff check src/engineeringagent harness
 uv run pyright src/engineeringagent tests harness
 uv run pytest -q
-uvx --from . engineeringagent gates run --profile precommit
 ```
 
 ## Gate and Tool Commands
@@ -26,9 +25,6 @@ uvx --from . engineeringagent gates run --profile precommit
 - Run targeted docstring rules: `uv run ruff check src/engineeringagent --select D103,D417`
 - Run Pyright on package, tests, and harness: `uv run pyright src/engineeringagent tests harness`
 - Run tests: `uv run pytest -q`
-- List configured gate profiles: `uvx --from . engineeringagent gates list`
-- Run loop-fast gates: `uvx --from . engineeringagent gates run --profile loop_fast`
-- Run precommit gates: `uvx --from . engineeringagent gates run --profile precommit`
 
 ## Docstring Policy
 
@@ -111,7 +107,6 @@ Use this section when a function signature grows beyond the argument budget (`PL
 uv run ruff check src/engineeringagent --select PLR0913
 uv run pytest -q tests/test_loop_ralph_mode.py
 uv run pytest -q tests/test_loop_opencode_integration.py
-uvx --from . engineeringagent gates run --profile loop_fast
 ```
 
 ## Dependency and Lock Discipline

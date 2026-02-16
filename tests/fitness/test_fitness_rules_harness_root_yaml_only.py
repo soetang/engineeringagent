@@ -38,8 +38,10 @@ def test_fails_for_non_yaml_regular_files_at_harness_root(
     repo_root: Path,
 ) -> None:
     """Fail when harness root contains regular files that are not YAML manifests."""
-    _write_file(tmp_path / "harness/gates.yaml", "gates: {}\n")
-    _write_file(tmp_path / "harness/reviewers.yml", "reviewers: {}\n")
+    _write_file(
+        tmp_path / "harness/checks.yaml", "contract_version: '1.0'\nchecks: {}\n"
+    )
+    _write_file(tmp_path / "harness/checks.local.yml", "checks: {}\n")
     _write_file(tmp_path / "harness/validate_yaml.py", "print('bad')\n")
     _write_file(tmp_path / "harness/notes.txt", "bad\n")
     _write_file(
@@ -71,8 +73,10 @@ def test_passes_when_harness_root_contains_only_yaml_files(
     repo_root: Path,
 ) -> None:
     """Pass when harness root has YAML files and nested directories only."""
-    _write_file(tmp_path / "harness/gates.yaml", "gates: {}\n")
-    _write_file(tmp_path / "harness/reviewers.yml", "reviewers: {}\n")
+    _write_file(
+        tmp_path / "harness/checks.yaml", "contract_version: '1.0'\nchecks: {}\n"
+    )
+    _write_file(tmp_path / "harness/checks.local.yml", "checks: {}\n")
     _write_file(
         tmp_path / "harness/fitness-functions/validate_yaml.py", "print('ok')\n"
     )

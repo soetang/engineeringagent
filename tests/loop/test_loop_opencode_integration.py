@@ -40,11 +40,11 @@ def run_loop(
     verbose_output: bool = False,
 ) -> int:
     del opencode_prompt  # back-compat signature; intentionally unused
+    del gate_profile
     config = build_run_config(
         project_root=project_root,
         feature_paths=feature_paths,
         run_all=run_all,
-        gate_profile=gate_profile,
         dry_run=dry_run,
         max_iterations=max_iterations,
         allow_dirty=allow_dirty,
@@ -75,10 +75,11 @@ def _make_project_root(tmp_path: Path) -> tuple[Path, Path]:
     )
 
     _write_yaml(
-        project_root / "harness" / "gates.yaml",
+        project_root / "harness" / "checks.yaml",
         {
-            "profiles": {"loop_fast": []},
-            "gates": {},
+            "contract_version": "1.0",
+            "defaults": {"when": {"phase": "iteration_end"}},
+            "checks": {},
         },
     )
     _write_yaml(
@@ -467,7 +468,6 @@ def test_run_loop_permission_precheck_failure_prints_remediation_hint(
     assert ".opencode/agents/engineeringagent.md" in output
     assert ".opencode/agents/build.md" not in output
     assert "--implement-command" not in output
-    assert "engineeringagent gates run" in output
     assert "engineeringagent run --dry-run" in output
     assert build_agent_path.read_text(encoding="utf-8") == original_build_agent
 
@@ -514,7 +514,6 @@ def test_run_loop_permission_precheck_pass_prints_bypass_hint_and_log_locations(
     assert "Running pre-run OpenCode permission precheck" in output
     assert "default implement mode" not in output
     assert "--implement-command" not in output
-    assert "engineeringagent gates run" in output
     assert "engineeringagent run --dry-run" in output
     assert "progress/runs.jsonl" in output
     assert "progress/run-feature-" in output
@@ -547,10 +546,16 @@ def test_gate_failure_feedback_round_trips_to_retry_prompt_integration(
         encoding="utf-8",
     )
     _write_yaml(
-        project_root / "harness" / "gates.yaml",
+        project_root / "harness" / "checks.yaml",
         {
-            "profiles": {"loop_fast": ["spec_validate"]},
-            "gates": {"spec_validate": {"run": f'"{sys.executable}" "{gate_script}"'}},
+            "contract_version": "1.0",
+            "defaults": {"when": {"phase": "iteration_end"}},
+            "checks": {
+                "spec_validate": {
+                    "type": "command",
+                    "command": f'"{sys.executable}" "{gate_script}"',
+                }
+            },
         },
     )
 

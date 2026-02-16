@@ -10,7 +10,6 @@ import typer
 from engineeringagent import cli as cli_module
 from engineeringagent.fitness import FitnessRunSummary
 from engineeringagent.fitness.contracts import FitnessRuleResult
-from engineeringagent.gates import ChangedPathsResult
 
 
 def test_path_resolution_helpers_cover_manifest_and_absolute_paths(
@@ -90,124 +89,6 @@ def test_write_init_docs_root_config_skips_existing_file_without_force(
     )
 
     assert (created, skipped) == (0, 1)
-
-
-def test_cmd_gates_list_prints_profiles_from_config(
-    tmp_path: Path,
-    monkeypatch: Any,
-    capsys: Any,
-) -> None:
-    monkeypatch.setattr(cli_module, "load_gate_config", lambda _path: {})
-    monkeypatch.setattr(cli_module, "list_profiles", lambda _config: ["alpha", "beta"])
-
-    code = cli_module.cmd_gates_list(SimpleNamespace(project_root=str(tmp_path)))
-    output = capsys.readouterr().out
-
-    assert code == 0
-    assert output.splitlines() == ["alpha", "beta"]
-
-
-def test_cmd_gates_run_returns_failure_code_when_profile_fails(
-    tmp_path: Path,
-    monkeypatch: Any,
-    capsys: Any,
-) -> None:
-    monkeypatch.setattr(
-        cli_module,
-        "load_gate_config",
-        lambda _path: {"profiles": {"loop_fast": ["gate_a"]}},
-    )
-    monkeypatch.setattr(
-        cli_module,
-        "collect_changed_paths",
-        lambda *_args, **_kwargs: ChangedPathsResult(
-            paths=(),
-            run_all=True,
-            reason="fallback_run_all_change_discovery_failed",
-        ),
-    )
-    monkeypatch.setattr(
-        cli_module,
-        "run_profile",
-        lambda **_kwargs: (False, "gate_a", ()),
-    )
-
-    code = cli_module.cmd_gates_run(
-        SimpleNamespace(
-            project_root=str(tmp_path),
-            profile="loop_fast",
-            base=None,
-            head=None,
-            explain=False,
-        )
-    )
-    output = capsys.readouterr().out
-
-    assert code == 1
-    assert "gates profile failed: gate_a" in output
-
-
-def test_reviewers_cli_error_paths(
-    tmp_path: Path,
-    monkeypatch: Any,
-    capsys: Any,
-) -> None:
-    monkeypatch.setattr(
-        cli_module, "load_reviewer_config", lambda _path: {"profiles": []}
-    )
-    list_code = cli_module.cmd_reviewers_list(
-        SimpleNamespace(project_root=str(tmp_path))
-    )
-    list_output = capsys.readouterr().out
-    assert list_code == 0
-    assert list_output == ""
-
-    monkeypatch.setattr(cli_module, "load_reviewer_config", lambda _path: {})
-    monkeypatch.setattr(
-        cli_module,
-        "collect_changed_paths",
-        lambda *_args, **_kwargs: ChangedPathsResult(
-            paths=(),
-            run_all=False,
-            reason=None,
-        ),
-    )
-    monkeypatch.setattr(
-        cli_module,
-        "plan_reviewers",
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(ValueError("bad profile")),
-    )
-
-    plan_code = cli_module.cmd_reviewers_plan(
-        SimpleNamespace(
-            project_root=str(tmp_path),
-            profile="loop_fast",
-            phase="iteration_end",
-            base=None,
-            head=None,
-        )
-    )
-    plan_output = capsys.readouterr().out
-    assert plan_code == 1
-    assert "bad profile" in plan_output
-
-    monkeypatch.setattr(
-        cli_module, "load_reviewer_config", lambda _path: {"reviewers": {}}
-    )
-    run_code = cli_module.cmd_reviewers_run(
-        SimpleNamespace(
-            project_root=str(tmp_path),
-            reviewer="missing",
-            feature_id="FEAT-057",
-            feature_path="docs/spec/features/FEAT-057.yaml",
-            prior_feedback=None,
-            base=None,
-            head=None,
-        )
-    )
-    run_output = capsys.readouterr().out
-    assert run_code == 1
-    assert "unknown reviewer: missing" in run_output
 
 
 def test_fitness_text_output_paths_cover_list_and_run(

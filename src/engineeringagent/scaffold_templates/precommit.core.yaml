@@ -3,6 +3,6 @@ repos:
     hooks:
       - id: engineeringagent-precommit
         name: engineeringagent-precommit
-        entry: engineeringagent gates run --profile precommit
+        entry: engineeringagent validate
         language: system
         pass_filenames: false

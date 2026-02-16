@@ -58,7 +58,6 @@ def _run_default_opencode_implement(
             "[implement] error=timeout\n"
             "[implement] opencode timed out before producing output.\n"
             "[implement] hint: interrupt stuck runs and investigate OpenCode credentials/config.\n"
-            "[implement] hint: for gate-only execution use `engineeringagent gates run`.\n"
             "[implement] hint: for a non-mutating preview use `engineeringagent run --dry-run`.\n"
         )
         return (False, "opencode_build", command_output)
@@ -130,8 +129,7 @@ def run_opencode_permission_precheck(
     print("Running pre-run OpenCode permission precheck.")
     print(
         "Hint: if OpenCode cannot proceed or appears stuck, interrupt and rerun after "
-        "fixing permissions. For gate-only execution, use `engineeringagent gates run`. "
-        "For a non-mutating preview, use `engineeringagent run --dry-run`."
+        "fixing permissions. For a non-mutating preview, use `engineeringagent run --dry-run`."
     )
     print(
         "Logs: "

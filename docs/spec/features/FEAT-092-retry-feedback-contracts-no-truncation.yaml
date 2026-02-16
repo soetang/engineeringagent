@@ -30,13 +30,13 @@ constraints:
   - Do not inject links/pointers that allow the agent to fetch the full log output
     from progress artifacts.
   - For command-based failures (gates/verification), injected feedback MUST include
-    the exact failing command and a deterministic instruction to rerun it from the
-    repo root.
-  - If a command failure occurs under pre-commit, injected feedback MUST include that
-    context (profile=precommit or commit hook rejection).
+     the exact failing command and a deterministic instruction to rerun it from the
+     repo root.
+  - If a command failure occurs under the pre-commit gate profile, injected feedback
+    MUST include that context via gate_profile set to "precommit".
   - Fitness failures must inject failures-only feedback (no full results list).
   - Reviewer failures/forwarded feedback must inject the full structured reviewer
-    decision payload (parsed/validated JSON), not raw OpenCode logs.
+     decision payload (parsed/validated JSON), not raw OpenCode logs.
   - Remove prompt-time truncation for retry feedback injection; ensure injected
     feedback is bounded by construction (contract caps), not by slicing.
   - Keep existing progress logging behavior (full raw outputs in progress logs)
@@ -46,17 +46,16 @@ implementation_notes: |
   - Introduce a v1 retry-feedback envelope as strict JSON injected into the retry
     feedback section of the implement prompt.
   - For gate/verification command failures, inject a minimal envelope:
-    - phase (gates|verification|completion_commit)
-    - gate/check name where available
-    - gate profile (when present) and/or pre-commit context
-    - exact failing command
-    - rerun instruction (repo root)
-    - optional bounded tail snippet (small, deterministic cap)
+     - phase (gates|verification|completion_commit)
+     - gate/check name where available
+     - gate profile when applicable (e.g. precommit)
+     - exact failing command
+     - rerun instruction (repo root)
   - For fitness failures, parse the fitness JSON output and inject only:
-    - failed_rules (rule_id/status/remediation)
-    - matching failing rule violations/details for those failed rule_ids
+     - failed_rules (rule_id/status/remediation)
+     - matching failing rule violations/details for those failed rule_ids
   - For reviewers, inject the full reviewer decision JSON (as produced by the
-    reviewer contract) with reviewer_id and phase metadata.
+     reviewer contract) with reviewer_id and phase metadata.
 
   Retry-feedback envelope contract (v1, normative)
 
@@ -70,7 +69,6 @@ implementation_notes: |
 
   ```json
   {
-    "retry_feedback_contract": "1.0",
     "kind": "command_failure|fitness_failure|reviewer_feedback",
     "phase": "gates|verification|completion_commit|reviewers",
     "message": "Short human-readable header (non-empty)."
@@ -82,29 +80,19 @@ implementation_notes: |
   - Used for gate and verification command failures (including pre-commit context).
   - Must include the exact failing command string and rerun instruction.
   - gate_profile must be included when the failure occurs during a configured profile
-    that has semantic meaning (e.g. precommit).
+     that has semantic meaning (e.g. precommit).
 
   ```json
   {
-    "retry_feedback_contract": "1.0",
     "kind": "command_failure",
     "phase": "gates",
     "gate": "ruff_validate",
     "gate_profile": "precommit",
-    "precommit_context": {
-      "profile_precommit": true,
-      "git_hook_suspected": false
-    },
     "command": "uv run ruff check src/engineeringagent harness",
     "rerun": {
       "cwd": "repo_root",
       "instructions": "Run the command exactly as shown from the repository root."
     },
-    "exit_code": 1,
-    "snippet_tail": [
-      "<optional bounded tail lines>",
-      "<max N lines>"
-    ],
     "message": "Command check failed. Rerun the command to see full diagnostics."
   }
   ```
@@ -117,7 +105,6 @@ implementation_notes: |
 
   ```json
   {
-    "retry_feedback_contract": "1.0",
     "kind": "fitness_failure",
     "phase": "gates",
     "gate": "fitness_validate",
@@ -148,7 +135,6 @@ implementation_notes: |
 
   ```json
   {
-    "retry_feedback_contract": "1.0",
     "kind": "reviewer_feedback",
     "phase": "reviewers",
     "reviewer_id": "code_simplifier",
@@ -179,8 +165,8 @@ acceptance:
     raw concatenated tool output.
   - For gate and verification command failures, the injected feedback includes the
     exact failing command and rerun instruction.
-  - When failures occur under pre-commit (profile or hook), injected feedback includes
-    explicit pre-commit context.
+  - When failures occur under the pre-commit gate profile, injected feedback includes
+    explicit pre-commit context via gate_profile set to "precommit".
   - Fitness failure feedback injected into prompts includes only failing rules and
     their violations/remediation (no pass noise).
   - Reviewer forwarded feedback injected into prompts includes the full parsed

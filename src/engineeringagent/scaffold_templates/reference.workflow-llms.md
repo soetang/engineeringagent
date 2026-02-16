@@ -12,9 +12,8 @@ This reference describes the expected loop workflow for agent execution.
 
 ## Verification Baseline
 
-- Validate specs and layout: `engineeringagent validate`.
-- Inspect configured gates: `engineeringagent gates list`.
-- Run required gates: `engineeringagent gates run --profile precommit`.
+- Primary verification flow: `engineeringagent run --all` (consumes `harness/checks.yaml`).
+- Optional spec-only validation: `engineeringagent validate`.
 
 ## Loop outcome taxonomy
 

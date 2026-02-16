@@ -19,6 +19,7 @@ from engineeringagent.fitness.contracts import (
 )
 from engineeringagent.fitness.registry import FitnessRuleDefinition
 from engineeringagent.loop_runtime.models import FeatureIterationInputs
+from engineeringagent.changed_paths import ChangedPathsResult
 from engineeringagent.loop_runtime.phases import (
     CompletionPhaseDependencies,
     GatePhaseDependencies,
@@ -300,26 +301,49 @@ def test_feature_state_error_paths(tmp_path: Path, monkeypatch: Any) -> None:
     assert "source already exists" in message
 
 
-def test_gate_and_verification_phase_error_paths(capsys: Any) -> None:
+def test_gate_and_verification_phase_error_paths(tmp_path: Path, capsys: Any) -> None:
+    checks_path = tmp_path / "harness" / "checks.yaml"
+    checks_path.parent.mkdir(parents=True, exist_ok=True)
+    checks_path.write_text(
+        "\n".join(
+            [
+                'contract_version: "1.0"',
+                "checks:",
+                "  failing:",
+                "    type: command",
+                "    command: echo fail",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
     inputs = FeatureIterationInputs(
-        project_root=Path("."),
-        feature_path=Path("docs/spec/features/FEAT-001.yaml"),
-        gate_profile="loop_fast",
+        project_root=tmp_path,
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        run_all=True,
         attempt=1,
         hook_feedback=None,
         verbose_output=True,
     )
 
     gate_deps = GatePhaseDependencies(
-        load_gate_config=lambda _path: {"profiles": {"loop_fast": ["x"]}},
-        run_profile=lambda *_args, **_kwargs: (False, "spec_validate", "gate output"),
         restore_archived_feature=lambda *_args: (False, "rollback-failed"),
+        collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
+            paths=(),
+            run_all=True,
+            reason=None,
+        ),
+        run_shell_command=lambda *_args, **_kwargs: SimpleNamespace(
+            returncode=1,
+            stdout="failed\n",
+            stderr="",
+        ),
     )
     gate_outcome = run_gate_phase(
         inputs,
-        Path("harness/gates.yaml"),
         archived_in_iteration=True,
-        archived_path=Path("docs/spec/features_done/FEAT-001.yaml"),
+        archived_path=tmp_path / "docs" / "spec" / "features_done" / "FEAT-001.yaml",
         dependencies=gate_deps,
     )
     assert gate_outcome.result == "failed"
@@ -344,7 +368,6 @@ def test_completion_phase_fallback_paths() -> None:
     inputs = FeatureIterationInputs(
         project_root=Path("."),
         feature_path=Path("docs/spec/features/FEAT-001.yaml"),
-        gate_profile="loop_fast",
         attempt=1,
         hook_feedback=None,
         verbose_output=False,

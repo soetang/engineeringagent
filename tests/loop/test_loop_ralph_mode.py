@@ -41,11 +41,11 @@ def run_loop(
     """
 
     del opencode_prompt
+    del gate_profile
     config = build_run_config(
         project_root=project_root,
         feature_paths=feature_paths,
         run_all=run_all,
-        gate_profile=gate_profile,
         dry_run=dry_run,
         max_iterations=max_iterations,
         allow_dirty=allow_dirty,
@@ -165,13 +165,31 @@ def _make_project_root(
         project_root / "docs" / "spec" / "features" / "FEAT-900-ralph-test.yaml"
     )
 
-    if gates_data is None:
-        gates_data = {
-            "profiles": {"loop_fast": []},
-            "gates": {},
-        }
+    checks: dict[str, Any] = {}
+    if gates_data is not None:
+        gates = gates_data.get("gates") if isinstance(gates_data, dict) else None
+        if isinstance(gates, dict):
+            for gate_id, gate in gates.items():
+                if not isinstance(gate_id, str) or not gate_id:
+                    continue
+                if not isinstance(gate, dict):
+                    continue
+                command = gate.get("run")
+                if not isinstance(command, str) or not command.strip():
+                    continue
+                checks[gate_id] = {
+                    "type": "command",
+                    "command": command,
+                }
 
-    _write_yaml(project_root / "harness" / "gates.yaml", gates_data)
+    _write_yaml(
+        project_root / "harness" / "checks.yaml",
+        {
+            "contract_version": "1.0",
+            "defaults": {"when": {"phase": "iteration_end"}},
+            "checks": checks,
+        },
+    )
     _write_yaml(feature_path, feature_data)
     return project_root, feature_path
 
@@ -470,7 +488,7 @@ def test_verification_is_not_run_without_done_transition(tmp_path: Path) -> None
     outcome = loop_module._run_feature_iteration(
         project_root=project_root,
         feature_path=feature_path,
-        gate_profile="loop_fast",
+        run_all=False,
         opencode_prompt=None,
         attempt=1,
         hook_feedback=None,
@@ -513,7 +531,7 @@ def test_verification_failure_for_newly_done_subtask_marks_iteration_non_pass(
         outcome = loop_module._run_feature_iteration(
             project_root=project_root,
             feature_path=feature_path,
-            gate_profile="loop_fast",
+            run_all=False,
             opencode_prompt=None,
             attempt=1,
             hook_feedback=None,
@@ -563,7 +581,7 @@ def test_verification_selection_ignores_non_string_commands(
         outcome = loop_module._run_feature_iteration(
             project_root=project_root,
             feature_path=feature_path,
-            gate_profile="loop_fast",
+            run_all=False,
             opencode_prompt=None,
             attempt=1,
             hook_feedback=None,
@@ -607,7 +625,7 @@ def test_verification_selection_ignores_blank_string_commands(
         outcome = loop_module._run_feature_iteration(
             project_root=project_root,
             feature_path=feature_path,
-            gate_profile="loop_fast",
+            run_all=False,
             opencode_prompt=None,
             attempt=1,
             hook_feedback=None,
@@ -658,7 +676,7 @@ def test_verification_selection_normalizes_command_whitespace(
         outcome = loop_module._run_feature_iteration(
             project_root=project_root,
             feature_path=feature_path,
-            gate_profile="loop_fast",
+            run_all=False,
             opencode_prompt=None,
             attempt=1,
             hook_feedback=None,
@@ -708,7 +726,7 @@ def test_verification_ignores_new_done_subtasks_without_pre_snapshot_status(
         outcome = loop_module._run_feature_iteration(
             project_root=project_root,
             feature_path=feature_path,
-            gate_profile="loop_fast",
+            run_all=False,
             opencode_prompt=None,
             attempt=1,
             hook_feedback=None,
@@ -758,7 +776,7 @@ def test_verification_selection_uses_first_post_entry_for_duplicate_subtask_ids(
         outcome = loop_module._run_feature_iteration(
             project_root=project_root,
             feature_path=feature_path,
-            gate_profile="loop_fast",
+            run_all=False,
             opencode_prompt=None,
             attempt=1,
             hook_feedback=None,
@@ -809,7 +827,7 @@ def test_verification_selection_uses_first_pre_status_for_duplicate_subtask_ids(
         outcome = loop_module._run_feature_iteration(
             project_root=project_root,
             feature_path=feature_path,
-            gate_profile="loop_fast",
+            run_all=False,
             opencode_prompt=None,
             attempt=1,
             hook_feedback=None,
@@ -852,7 +870,7 @@ def test_verification_failure_restores_feature_archived_during_iteration(
         outcome = loop_module._run_feature_iteration(
             project_root=project_root,
             feature_path=feature_path,
-            gate_profile="loop_fast",
+            run_all=False,
             opencode_prompt=None,
             attempt=1,
             hook_feedback=None,
@@ -2716,8 +2734,41 @@ def test_gate_failure_feedback_includes_fitness_remediation_guidance(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    remediation = (
+        "Replace forbidden in-repo uvx self-invocations with source-first forms; "
+        "prefer uv run python -m engineeringagent.cli ..."
+    )
+    counter_path = tmp_path / ".check-attempt"
+    check_script = tmp_path.parent / f"{tmp_path.name}-check-fail-once.py"
+    check_script.write_text(
+        "\n".join(
+            [
+                "from pathlib import Path",
+                "import sys",
+                "counter = Path(sys.argv[1])",
+                "count = int(counter.read_text(encoding='utf-8')) if counter.exists() else 0",
+                "count += 1",
+                "counter.write_text(str(count), encoding='utf-8')",
+                "if count == 1:",
+                f"    print({remediation!r})",
+                "    raise SystemExit(1)",
+                "print('ok')",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
     project_root, feature_path = _make_project_root(
-        tmp_path, feature_data=_base_feature()
+        tmp_path,
+        feature_data=_base_feature(),
+        gates_data={
+            "gates": {
+                "fitness_validate": {
+                    "run": f'"{sys.executable}" "{check_script}" "{counter_path}"'
+                }
+            }
+        },
     )
     _init_git_repo(project_root)
 
@@ -2738,33 +2789,12 @@ def test_gate_failure_feedback_includes_fitness_remediation_guidance(
             return subprocess.CompletedProcess(command, 0, stdout="ok\n", stderr="")
         return real_run(command, **kwargs)
 
-    gate_results = iter(
-        [
-            (
-                False,
-                "fitness_validate",
-                "\n".join(
-                    [
-                        "[gate:fitness_validate] command=uv run python -m engineeringagent.cli fitness run --format json",
-                        '{"failed": true, "failed_rules": [{"rule_id": "architecture.source-first-loop-command-policy", "status": "fail", "remediation": "Replace forbidden in-repo uvx self-invocations with source-first forms; prefer uv run python -m engineeringagent.cli ..."}], "results": []}',
-                    ]
-                ),
-            ),
-            (True, None, ""),
-        ]
-    )
-
-    def fake_run_profile(*args: Any, **kwargs: Any) -> tuple[bool, str | None, str]:
-        del args, kwargs
-        return next(gate_results)
-
     _patch_start_agent_with_fake(monkeypatch, fake_subprocess_run)
     monkeypatch.setattr(
         loop_module,
         "_run_opencode_permission_precheck",
         lambda **_: True,
     )
-    monkeypatch.setattr(loop_module, "run_profile", fake_run_profile)
 
     code = run_loop(
         project_root=project_root,
@@ -2777,18 +2807,45 @@ def test_gate_failure_feedback_includes_fitness_remediation_guidance(
 
     assert code == 0
     assert len(prompts) >= 2
-    assert (
-        "Replace forbidden in-repo uvx self-invocations with source-first forms; "
-        "prefer uv run python -m engineeringagent.cli ..." in prompts[1]
-    )
+    assert remediation in prompts[1]
 
 
 def test_spec_validate_failure_feedback_round_trips_to_retry_prompt(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    token = "SPEC_VALIDATE_ROUND_TRIP_TOKEN"
+    counter_path = tmp_path / ".check-attempt"
+    check_script = tmp_path.parent / f"{tmp_path.name}-check-spec-validate-fail-once.py"
+    check_script.write_text(
+        "\n".join(
+            [
+                "from pathlib import Path",
+                "import sys",
+                "counter = Path(sys.argv[1])",
+                "count = int(counter.read_text(encoding='utf-8')) if counter.exists() else 0",
+                "count += 1",
+                "counter.write_text(str(count), encoding='utf-8')",
+                "if count == 1:",
+                f"    print({token!r})",
+                "    raise SystemExit(1)",
+                "print('ok')",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
     project_root, feature_path = _make_project_root(
-        tmp_path, feature_data=_base_feature()
+        tmp_path,
+        feature_data=_base_feature(),
+        gates_data={
+            "gates": {
+                "spec_validate": {
+                    "run": f'"{sys.executable}" "{check_script}" "{counter_path}"'
+                }
+            }
+        },
     )
     _init_git_repo(project_root)
 
@@ -2809,28 +2866,12 @@ def test_spec_validate_failure_feedback_round_trips_to_retry_prompt(
             return subprocess.CompletedProcess(command, 0, stdout="ok\n", stderr="")
         return real_run(command, **kwargs)
 
-    gate_results = iter(
-        [
-            (
-                False,
-                "spec_validate",
-                "[gate:spec_validate] command=uv run python -m engineeringagent.cli validate\nSPEC_VALIDATE_ROUND_TRIP_TOKEN",
-            ),
-            (True, None, ""),
-        ]
-    )
-
-    def fake_run_profile(*args: Any, **kwargs: Any) -> tuple[bool, str | None, str]:
-        del args, kwargs
-        return next(gate_results)
-
     _patch_start_agent_with_fake(monkeypatch, fake_subprocess_run)
     monkeypatch.setattr(
         loop_module,
         "_run_opencode_permission_precheck",
         lambda **_: True,
     )
-    monkeypatch.setattr(loop_module, "run_profile", fake_run_profile)
 
     code = run_loop(
         project_root=project_root,
@@ -2843,15 +2884,45 @@ def test_spec_validate_failure_feedback_round_trips_to_retry_prompt(
 
     assert code == 0
     assert len(prompts) >= 2
-    assert "SPEC_VALIDATE_ROUND_TRIP_TOKEN" in prompts[1]
+    assert token in prompts[1]
 
 
 def test_non_validation_gate_failure_feedback_round_trips_to_retry_prompt(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    token = "NON_VALIDATION_GATE_ROUND_TRIP_TOKEN"
+    counter_path = tmp_path / ".check-attempt"
+    check_script = tmp_path.parent / f"{tmp_path.name}-check-pytest-fail-once.py"
+    check_script.write_text(
+        "\n".join(
+            [
+                "from pathlib import Path",
+                "import sys",
+                "counter = Path(sys.argv[1])",
+                "count = int(counter.read_text(encoding='utf-8')) if counter.exists() else 0",
+                "count += 1",
+                "counter.write_text(str(count), encoding='utf-8')",
+                "if count == 1:",
+                f"    print({token!r})",
+                "    raise SystemExit(1)",
+                "print('ok')",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
     project_root, feature_path = _make_project_root(
-        tmp_path, feature_data=_base_feature()
+        tmp_path,
+        feature_data=_base_feature(),
+        gates_data={
+            "gates": {
+                "pytest_validate": {
+                    "run": f'"{sys.executable}" "{check_script}" "{counter_path}"'
+                }
+            }
+        },
     )
     _init_git_repo(project_root)
 
@@ -2872,28 +2943,12 @@ def test_non_validation_gate_failure_feedback_round_trips_to_retry_prompt(
             return subprocess.CompletedProcess(command, 0, stdout="ok\n", stderr="")
         return real_run(command, **kwargs)
 
-    gate_results = iter(
-        [
-            (
-                False,
-                "pytest_validate",
-                "[gate:pytest_validate] command=uv run pytest -q\nNON_VALIDATION_GATE_ROUND_TRIP_TOKEN",
-            ),
-            (True, None, ""),
-        ]
-    )
-
-    def fake_run_profile(*args: Any, **kwargs: Any) -> tuple[bool, str | None, str]:
-        del args, kwargs
-        return next(gate_results)
-
     _patch_start_agent_with_fake(monkeypatch, fake_subprocess_run)
     monkeypatch.setattr(
         loop_module,
         "_run_opencode_permission_precheck",
         lambda **_: True,
     )
-    monkeypatch.setattr(loop_module, "run_profile", fake_run_profile)
 
     code = run_loop(
         project_root=project_root,
@@ -2906,15 +2961,49 @@ def test_non_validation_gate_failure_feedback_round_trips_to_retry_prompt(
 
     assert code == 0
     assert len(prompts) >= 2
-    assert "NON_VALIDATION_GATE_ROUND_TRIP_TOKEN" in prompts[1]
+    assert token in prompts[1]
 
 
 def test_gate_failure_feedback_replaces_previous_feedback(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    first_token = "FIRST_GATE_FAILURE_TOKEN"
+    second_token = "SECOND_GATE_FAILURE_TOKEN"
+    counter_path = tmp_path / ".check-attempt"
+    check_script = tmp_path.parent / f"{tmp_path.name}-check-fail-twice.py"
+    check_script.write_text(
+        "\n".join(
+            [
+                "from pathlib import Path",
+                "import sys",
+                "counter = Path(sys.argv[1])",
+                "count = int(counter.read_text(encoding='utf-8')) if counter.exists() else 0",
+                "count += 1",
+                "counter.write_text(str(count), encoding='utf-8')",
+                "if count == 1:",
+                f"    print({first_token!r})",
+                "    raise SystemExit(1)",
+                "if count == 2:",
+                f"    print({second_token!r})",
+                "    raise SystemExit(1)",
+                "print('ok')",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
     project_root, feature_path = _make_project_root(
-        tmp_path, feature_data=_base_feature()
+        tmp_path,
+        feature_data=_base_feature(),
+        gates_data={
+            "gates": {
+                "spec_validate": {
+                    "run": f'"{sys.executable}" "{check_script}" "{counter_path}"'
+                }
+            }
+        },
     )
     _init_git_repo(project_root)
 
@@ -2935,25 +3024,12 @@ def test_gate_failure_feedback_replaces_previous_feedback(
             return subprocess.CompletedProcess(command, 0, stdout="ok\n", stderr="")
         return real_run(command, **kwargs)
 
-    gate_results = iter(
-        [
-            (False, "spec_validate", "FIRST_GATE_FAILURE_TOKEN"),
-            (False, "spec_validate", "SECOND_GATE_FAILURE_TOKEN"),
-            (True, None, ""),
-        ]
-    )
-
-    def fake_run_profile(*args: Any, **kwargs: Any) -> tuple[bool, str | None, str]:
-        del args, kwargs
-        return next(gate_results)
-
     _patch_start_agent_with_fake(monkeypatch, fake_subprocess_run)
     monkeypatch.setattr(
         loop_module,
         "_run_opencode_permission_precheck",
         lambda **_: True,
     )
-    monkeypatch.setattr(loop_module, "run_profile", fake_run_profile)
 
     code = run_loop(
         project_root=project_root,
@@ -2966,10 +3042,10 @@ def test_gate_failure_feedback_replaces_previous_feedback(
 
     assert code == 0
     assert len(prompts) >= 3
-    assert "FIRST_GATE_FAILURE_TOKEN" in prompts[1]
-    assert "SECOND_GATE_FAILURE_TOKEN" not in prompts[1]
-    assert "SECOND_GATE_FAILURE_TOKEN" in prompts[2]
-    assert "FIRST_GATE_FAILURE_TOKEN" not in prompts[2]
+    assert first_token in prompts[1]
+    assert second_token not in prompts[1]
+    assert second_token in prompts[2]
+    assert first_token not in prompts[2]
 
 
 def test_verification_failure_feedback_replaces_previous_feedback(
@@ -3090,8 +3166,41 @@ def test_gate_failure_feedback_is_truncated_before_prompt_injection(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    counter_path = tmp_path / ".check-attempt"
+    check_script = (
+        tmp_path.parent / f"{tmp_path.name}-check-large-feedback-fail-once.py"
+    )
+    check_script.write_text(
+        "\n".join(
+            [
+                "from pathlib import Path",
+                "import sys",
+                "counter = Path(sys.argv[1])",
+                "count = int(counter.read_text(encoding='utf-8')) if counter.exists() else 0",
+                "count += 1",
+                "counter.write_text(str(count), encoding='utf-8')",
+                "if count == 1:",
+                "    print('BEGIN_GATE_FEEDBACK')",
+                "    print('A' * 8200)",
+                "    print('END_GATE_FEEDBACK')",
+                "    raise SystemExit(1)",
+                "print('ok')",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
     project_root, feature_path = _make_project_root(
-        tmp_path, feature_data=_base_feature()
+        tmp_path,
+        feature_data=_base_feature(),
+        gates_data={
+            "gates": {
+                "spec_validate": {
+                    "run": f'"{sys.executable}" "{check_script}" "{counter_path}"'
+                }
+            }
+        },
     )
     _init_git_repo(project_root)
 
@@ -3112,20 +3221,12 @@ def test_gate_failure_feedback_is_truncated_before_prompt_injection(
             return subprocess.CompletedProcess(command, 0, stdout="ok\n", stderr="")
         return real_run(command, **kwargs)
 
-    large_feedback = "BEGIN_GATE_FEEDBACK\n" + ("A" * 8_200) + "\nEND_GATE_FEEDBACK"
-    gate_results = iter([(False, "spec_validate", large_feedback), (True, None, "")])
-
-    def fake_run_profile(*args: Any, **kwargs: Any) -> tuple[bool, str | None, str]:
-        del args, kwargs
-        return next(gate_results)
-
     _patch_start_agent_with_fake(monkeypatch, fake_subprocess_run)
     monkeypatch.setattr(
         loop_module,
         "_run_opencode_permission_precheck",
         lambda **_: True,
     )
-    monkeypatch.setattr(loop_module, "run_profile", fake_run_profile)
 
     code = run_loop(
         project_root=project_root,

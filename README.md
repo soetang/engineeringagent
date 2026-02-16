@@ -1,9 +1,10 @@
 # Engineering Agent
 
-NOTE: This repository is under active development. And you should probably not run it locally for now.
+NOTE: This repository is under active development. You should probably not use it for anything important yet.
+Treat `engineeringagent init` as experimental scaffolding and review all generated changes before committing.
 
 Engineeringagent is a CLI that helps you implement code changes directly from feature specs.
-It pairs an agent loop with repository-owned harnesses (validators, gates, fitness functions,
+It pairs an agent loop with repository-owned harnesses (validators, checks, fitness functions,
 and optional reviewer agents).
 
 You will still need to implement/configure the harness for your repository. If you are just
@@ -15,11 +16,6 @@ Primary flow: `feature spec -> run loop`.
 
 - Package usage (PyPI, no clone): `uvx engineeringagent <command>`
 - Package usage (version pinned): `uvx engineeringagent@<version> <command>`
-- Source usage (contributors / local changes): `.engineeringagent/bin/engineeringagent <command>`
-
-  Source usage (module entrypoint): `uv run python -m engineeringagent.cli <command>`
-
-  Note: if you use `uv`, prefix with `uv run` so the right environment is used.
 
 ## Quickstart from PyPI (no clone)
 
@@ -49,11 +45,11 @@ Primary flow: `feature spec -> run loop`.
    Use the schema `docs/spec/schemas/feature.schema.json` to create a spec.
    Save this as `docs/spec/features/FEAT-001-example.yaml`.
 
-1. Validate and run the fast gate profile:
+1. Validate and dry-run the loop first:
 
    ```bash
    uvx engineeringagent validate
-   uvx engineeringagent gates run --profile loop_fast
+   uvx engineeringagent run --all --dry-run
    ```
 
 1. Dry-run the loop first:
@@ -85,9 +81,9 @@ Primary flow: `feature spec -> run loop`.
 If you are developing this repo and want to exercise local changes (not the PyPI package), run the same flow using the repo helper:
 
 ```bash
-uv run .engineeringagent/bin/engineeringagent init slim
-uv run .engineeringagent/bin/engineeringagent validate
-uv run .engineeringagent/bin/engineeringagent gates run --profile loop_fast
+ uv run .engineeringagent/bin/engineeringagent init slim
+ uv run .engineeringagent/bin/engineeringagent validate
+ uv run .engineeringagent/bin/engineeringagent run --all --dry-run
 ```
 
 ## Bootstrapping with `init`
@@ -98,7 +94,7 @@ If you want to use the agent in one of your repositories, you can scaffold a bas
 uvx engineeringagent init
 ```
 
-`init` creates a starter structure for `docs/spec/` and `harness/gates.yaml` and handles
+`init` creates a starter structure for `docs/spec/` and `harness/checks.yaml` and handles
 existing `docs/` or `AGENTS.md` through explicit conflict choices.
 
 `engineeringagent init` skips pre-commit hook installation when `.git/` does not exist.
@@ -111,27 +107,21 @@ If you install `pre-commit` after running init, you can wire the hooks with `pre
 At a minimum, `init` scaffolds:
 
 - `docs/spec/` directories for feature specs
-- `harness/gates.yaml` as a starting point for your gate profiles
+- `harness/checks.yaml` as the repo-owned verification contract
 
-It does not run gates for you or make any commits.
+It does not run checks for you or make any commits.
 
 Warning: treat `init` as experimental scaffolding.
 
 Always inspect generated files, run `uvx engineeringagent validate`, and review
 the git diff before committing anything produced by `init`.
 
-If you picked `standard`, your pre-commit gates are expected to fail until you disable the
-demo by removing gate `demo_fail` from `harness/gates.yaml` and deleting
-`harness/fitness-functions/demo_rules.yaml` and `harness/fitness-functions/demo_always_fail.py`
-(or re-run: `uvx engineeringagent init slim --force`).
+If you picked `standard`, the scaffold may include demo checks. Remove any demo-only
+checks from `harness/checks.yaml` if you want a clean baseline (or re-run:
+`uvx engineeringagent init slim --force`).
 
 Use `python_uv` as a profile when you want the scaffolded `.pre-commit-config.yaml` to assume an
 `uv`-based workflow and ship a minimal Python validation baseline.
-
-In `python_uv`, the scaffolded `harness/gates.yaml` `precommit` profile includes:
-
-- `spec_validate`
-- `ruff_validate` (`uvx ruff check --isolated .`).
 
 `python_uv` also wires a `commit-msg` hook.
 
@@ -143,20 +133,20 @@ uvx engineeringagent init slim --scaffold-profile python_uv
 
 - Deterministic progress: one spec file at a time.
 - Human control: you set priorities and scope; agents execute loops.
-- Built-in quality checks: validation, gates, and commit hooks.
+- Built-in quality checks: validation, checks, and commit hooks.
 
 ## Run output tips
 
-- Default output is concise; full implement/gate output stays in `progress/run-feature-<FEATURE_ID>.txt`.
-- Use `--verbose-output` if you want full implement/gate output in the terminal.
+- Default output is concise; full implement/check output stays in `progress/run-feature-<FEATURE_ID>.txt`.
+- Use `--verbose-output` if you want full implement/check output in the terminal.
 
 ## OpenCode default agent contract
 
 - By default, `engineeringagent run` shells out to `opencode run --agent engineeringagent`
-  for the implementation step.
+   for the implementation step.
 - Your repo must have OpenCode available and configured, including an agent prompt
   like `.opencode/agents/engineeringagent.md`.
-- If you are not using OpenCode, run gate profiles directly via `engineeringagent gates run --profile <profile>`.
+- If you are not using OpenCode, run the direct verification tools for your repository (for example `uv run pytest -q`).
 
 ## Human docs vs agent docs
 
@@ -166,10 +156,8 @@ uvx engineeringagent init slim --scaffold-profile python_uv
 
 ## Reviewer agents (optional)
 
-- Reviewer agents are a harness-managed complement to deterministic gates. After initialization, config lives in `harness/reviewers.yaml`.
-- `engineeringagent init` does not scaffold reviewer config or prompts. `harness/reviewers.yaml` is created by `engineeringagent reviewers init`.
-- Use `uvx engineeringagent reviewers init` to scaffold a baseline config and prompt files under `harness/reviewers/prompts/`.
-- Use `uvx engineeringagent reviewers list|plan|run` to inspect and test reviewer behavior.
+- Reviewer agents are a harness-managed complement to deterministic checks.
+- Reviewer checks are declared in `harness/checks.yaml` and reference prompts under `harness/reviewers/prompts/`.
 - For setup and migration guidance, see [Reviewer authoring guide](docs/principles/reviewer-authoring-guide.md).
 - For full contract, policy semantics, decision-envelope examples, and troubleshooting, see [Reviewer agents reference](docs/references/reviewer-agents-llms.md).
 
@@ -177,7 +165,7 @@ uvx engineeringagent init slim --scaffold-profile python_uv
 
 - `docs/spec/features/`: active feature specs (`backlog`, `in_progress`, `blocked`)
 - `docs/spec/features_done/`: archived completed specs (`done`)
-- `harness/gates.yaml`: gate and profile definitions
+- `harness/checks.yaml`: repo-owned verification contract
 - `progress/runs.jsonl`: append-only loop execution history
 
 ## Contributing

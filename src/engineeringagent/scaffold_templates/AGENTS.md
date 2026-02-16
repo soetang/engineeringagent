@@ -19,7 +19,7 @@ Keep this file concise. Add durable references and rules, not task logs.
 
 1. `AGENTS.md` (this map)
 1. `README.md` (workflow and local setup)
-1. `harness/gates.yaml` (active gate profiles and commands)
+1. `harness/checks.yaml` (repo-owned verification contract)
 1. `docs/spec/features/` (active feature specs)
 1. `src/` (implementation)
 
@@ -33,7 +33,7 @@ Note: Some repos use a separate docs root for specs (configured via `engineering
 
 ## First-Window Boot Sequence
 
-- Ensure `harness/gates.yaml` exists and profiles reference valid gates.
+- Ensure `harness/checks.yaml` exists and validates.
 - Keep `docs/spec/` directories present for active, done, and backlog specs.
 - Select one eligible feature/subtask before editing.
 - Execute one incremental unit and record outcomes.
@@ -41,8 +41,7 @@ Note: Some repos use a separate docs root for specs (configured via `engineering
 ## Verification Quick Reference
 
 - Validate feature schema and file structure: `engineeringagent validate`.
-- List configured gate profiles: `engineeringagent gates list`.
-- Execute a gate profile: `engineeringagent gates run --profile precommit`.
+- Run the engineering loop: `engineeringagent run --all`.
 
 ## Repo Extensions (Fill In)
 

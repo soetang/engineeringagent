@@ -58,16 +58,6 @@ def test_detects_forbidden_uvx_from_dot_in_feature_verification(
             ],
         },
     )
-    _write_yaml(
-        tmp_path / "harness/gates.yaml",
-        {
-            "gates": {
-                "spec_validate": {
-                    "run": "uv run python -m engineeringagent.cli validate"
-                }
-            }
-        },
-    )
 
     proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
 
@@ -81,11 +71,11 @@ def test_detects_forbidden_uvx_from_dot_in_feature_verification(
     )
 
 
-def test_detects_forbidden_uvx_from_dot_in_gates_config(
+def test_detects_forbidden_uvx_from_dot_in_checks_config(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Fail when a gate command uses uvx --from . engineeringagent."""
+    """Fail when a command check uses uvx --from . engineeringagent."""
     _write_yaml(
         tmp_path / "docs/spec/features/FEAT-001.yaml",
         {
@@ -99,13 +89,15 @@ def test_detects_forbidden_uvx_from_dot_in_gates_config(
         },
     )
     _write_yaml(
-        tmp_path / "harness/gates.yaml",
+        tmp_path / "harness/checks.yaml",
         {
-            "gates": {
+            "contract_version": "1.0",
+            "checks": {
                 "fitness_validate": {
-                    "run": "uvx --from . engineeringagent fitness run --format json"
+                    "type": "command",
+                    "command": "uvx --from . engineeringagent fitness run --format json",
                 }
-            }
+            },
         },
     )
 
@@ -116,7 +108,7 @@ def test_detects_forbidden_uvx_from_dot_in_gates_config(
     violations = payload["violations"]
     assert isinstance(violations, list)
     assert len(violations) == 1
-    assert "harness/gates.yaml:gates.fitness_validate.run" in violations[0]
+    assert "harness/checks.yaml:checks.fitness_validate.command" in violations[0]
 
 
 def test_allows_uv_run_source_first_forms(tmp_path: Path, repo_root: Path) -> None:
@@ -130,26 +122,26 @@ def test_allows_uv_run_source_first_forms(tmp_path: Path, repo_root: Path) -> No
                     "id": "ST-001",
                     "verification": [
                         "uv run python -m engineeringagent.cli validate",
-                        ".venv/bin/engineeringagent gates run --profile loop_fast",
+                        ".venv/bin/engineeringagent run --all --dry-run",
                     ],
                 }
             ],
         },
     )
     _write_yaml(
-        tmp_path / "harness/gates.yaml",
+        tmp_path / "harness/checks.yaml",
         {
-            "gates": {
+            "contract_version": "1.0",
+            "checks": {
                 "spec_validate": {
-                    "runner": {
-                        "type": "command",
-                        "command": "uv run python -m engineeringagent.cli validate",
-                    }
+                    "type": "command",
+                    "command": "uv run python -m engineeringagent.cli validate",
                 },
                 "fitness_validate": {
-                    "run": "uv run python -m engineeringagent.cli fitness run --format json"
+                    "type": "command",
+                    "command": "uv run python -m engineeringagent.cli fitness run --format json",
                 },
-            }
+            },
         },
     )
 

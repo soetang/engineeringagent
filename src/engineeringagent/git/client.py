@@ -127,3 +127,41 @@ def precommit_install(
         text=True,
         check=False,
     )
+
+
+def diff_name_status(
+    project_root: Path,
+    *,
+    base: str | None = None,
+    head: str | None = None,
+) -> subprocess.CompletedProcess[str]:
+    """Return `git diff --name-status` output for changed-path discovery.
+
+    Args:
+        project_root: Repository root used as command working directory.
+        base: Optional base revision passed to `git diff`.
+        head: Optional head revision passed to `git diff`.
+
+    Returns:
+        Completed process from the git diff invocation.
+    """
+
+    command = [
+        "git",
+        "diff",
+        "--name-status",
+        "--find-renames",
+        "--diff-filter=AMDR",
+    ]
+    if base is not None:
+        command.append(base)
+    if head is not None:
+        command.append(head)
+
+    return subprocess.run(
+        command,
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )

@@ -9,6 +9,16 @@ from typing import Any, Callable
 
 from pydantic import BaseModel, ConfigDict
 
+from ..changed_paths import ChangedPathsResult
+from ..specs import HarnessCheckPhase
+from ..harness_checks_runtime import (
+    iter_planned_reviewer_checks,
+    load_checks_document,
+    plan_reviewer_checks,
+    run_planned_command_checks,
+    run_planned_fitness_checks,
+)
+
 from .models import (
     CommandTiming,
     CompletionCommitOutcome,
@@ -51,9 +61,9 @@ def _append_feedback_context(message: str, feedback_context: str | None) -> str:
 class GatePhaseDependencies(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    load_gate_config: Callable[[Path], dict[str, Any]]
-    run_profile: Callable[..., tuple[bool, str | None, str]]
     restore_archived_feature: Callable[[Path, Path], tuple[bool, str | None]]
+    collect_changed_paths: Callable[[Path], ChangedPathsResult]
+    run_shell_command: Callable[[Path, str], Any]
 
 
 class CompletionPhaseDependencies(BaseModel):
@@ -88,49 +98,98 @@ class ReviewerPhaseDependencies(BaseModel):
 
 def run_gate_phase(
     iteration_inputs: FeatureIterationInputs,
-    gates_path: Path,
     archived_in_iteration: bool,
     archived_path: Path | None,
     dependencies: GatePhaseDependencies,
 ) -> GatePhaseOutcome:
     """Run post-implement gates and perform archive rollback on failure."""
-    gate_config = dependencies.load_gate_config(gates_path)
-
-    command_timings: list[CommandTiming] = []
-
-    def _timing_hook(
-        gate_name: str,
-        command: str,
-        started_epoch_sec: int,
-        ended_epoch_sec: int,
-    ) -> None:
-        command_timings.append(
-            CommandTiming(
-                phase="gates",
-                gate=gate_name,
-                command=command,
-                started_at=utc_iso_from_epoch_sec(started_epoch_sec),
-                ended_at=utc_iso_from_epoch_sec(ended_epoch_sec),
-                duration_sec=max(0, ended_epoch_sec - started_epoch_sec),
+    checks_path = iteration_inputs.project_root / "harness" / "checks.yaml"
+    if not checks_path.exists():
+        if iteration_inputs.run_all:
+            output = "missing harness/checks.yaml (required for --all)"
+            return GatePhaseOutcome(
+                result="failed",
+                failed_gate="checks_config",
+                gate_status="failed:checks_config",
+                gate_output=output,
+                command_timings=[],
+                hook_feedback=output,
             )
+        return GatePhaseOutcome(
+            result="passed",
+            failed_gate=None,
+            gate_status="not_configured",
+            gate_output="",
+            command_timings=[],
+            hook_feedback=None,
         )
 
-    ok, failed, gate_output = dependencies.run_profile(
-        gate_config,
-        iteration_inputs.gate_profile,
-        iteration_inputs.project_root,
-        True,
-        timing_hook=_timing_hook,
+    try:
+        checks_doc = load_checks_document(checks_path)
+    except Exception as exc:  # noqa: BLE001
+        output = f"failed to load harness/checks.yaml: {exc}".strip()
+        return GatePhaseOutcome(
+            result="failed",
+            failed_gate="checks_config",
+            gate_status="failed:checks_config",
+            gate_output=output,
+            command_timings=[],
+            hook_feedback=output,
+        )
+
+    changed_paths = dependencies.collect_changed_paths(iteration_inputs.project_root)
+    command_timings: list[CommandTiming] = []
+
+    ok, failed, output, timings = run_planned_command_checks(
+        project_root=iteration_inputs.project_root,
+        doc=checks_doc,
+        phase=HarnessCheckPhase.ITERATION_END,
+        changed_paths=changed_paths,
+        verbose_output=iteration_inputs.verbose_output,
+        run_shell_command=dependencies.run_shell_command,
     )
-    if iteration_inputs.verbose_output and gate_output:
-        print(gate_output)
+    command_timings.extend(timings)
+
+    if ok:
+        ok, failed, fitness_output, fitness_timings = run_planned_fitness_checks(
+            project_root=iteration_inputs.project_root,
+            doc=checks_doc,
+            phase=HarnessCheckPhase.ITERATION_END,
+            changed_paths=changed_paths,
+        )
+        command_timings.extend(fitness_timings)
+        output = "\n".join(part for part in (output, fitness_output) if part).strip()
+
+    if ok and archived_in_iteration:
+        ok, failed, feature_output, feature_timings = run_planned_command_checks(
+            project_root=iteration_inputs.project_root,
+            doc=checks_doc,
+            phase=HarnessCheckPhase.FEATURE_DONE,
+            changed_paths=changed_paths,
+            verbose_output=iteration_inputs.verbose_output,
+            run_shell_command=dependencies.run_shell_command,
+        )
+        command_timings.extend(feature_timings)
+
+        if ok:
+            ok, failed, fitness_output, fitness_timings = run_planned_fitness_checks(
+                project_root=iteration_inputs.project_root,
+                doc=checks_doc,
+                phase=HarnessCheckPhase.FEATURE_DONE,
+                changed_paths=changed_paths,
+            )
+            command_timings.extend(fitness_timings)
+            feature_output = "\n".join(
+                part for part in (feature_output, fitness_output) if part
+            ).strip()
+        output = "\n".join(part for part in (output, feature_output) if part).strip()
 
     if ok:
         return GatePhaseOutcome(
             result="passed",
             failed_gate=None,
             gate_status="passed",
-            gate_output=gate_output,
+            gate_output=output,
             command_timings=command_timings,
             hook_feedback=None,
         )
@@ -142,16 +201,16 @@ def run_gate_phase(
         )
         if not restored_ok:
             rollback_output = f"\narchive rollback failed: {restore_error}"
-            gate_output = f"{gate_output}{rollback_output}".strip()
+            output = f"{output}{rollback_output}".strip()
 
     return GatePhaseOutcome(
         result="failed",
         failed_gate=failed,
         gate_status=f"failed:{failed or 'unknown'}",
-        gate_output=gate_output,
+        gate_output=output,
         command_timings=command_timings,
-        hook_feedback=gate_output
-        or (f"gate '{failed or 'unknown'}' failed with no captured output"),
+        hook_feedback=output
+        or (f"check '{failed or 'unknown'}' failed with no captured output"),
     )
 
 
@@ -240,157 +299,180 @@ def run_reviewer_phase(  # noqa: C901
             hook_feedback=None,
         )
 
-    reviewers_path = iteration_inputs.project_root / "harness" / "reviewers.yaml"
-    config = dependencies.load_reviewer_config(reviewers_path)
-    profiles = config.get("profiles", {})
-    if not isinstance(profiles, dict) or iteration_inputs.gate_profile not in profiles:
-        return ReviewerPhaseOutcome(
-            result="passed",
-            failed_gate=None,
-            reviewer_status="not_configured",
-            reviewer_output="",
-            command_timings=command_timings,
-            hook_feedback=None,
-        )
-
-    phase = "feature_done"
-    changed_paths = dependencies.collect_changed_paths(iteration_inputs.project_root)
-    planned = dependencies.plan_reviewers(
-        config,
-        iteration_inputs.gate_profile,
-        phase=phase,
-        changed_paths=changed_paths,
-    )
-
-    if not planned:
-        return ReviewerPhaseOutcome(
-            result="passed",
-            failed_gate=None,
-            reviewer_status="not_run",
-            reviewer_output="",
-            command_timings=command_timings,
-            hook_feedback=None,
-        )
-
-    feature_id = str(feature.get("id", ""))
-    state = dependencies.load_reviewers_state(iteration_inputs.project_root)
-
-    reviewers = config.get("reviewers", {})
-    summaries: list[str] = []
-    request_changes_feedback: list[str] = []
-    ran_reviewer = False
-    first_non_approve_reviewer_id: str | None = None
-    first_non_approve_decision: str | None = None
-
-    for entry in planned:
-        reviewer_id = entry["reviewer"]
-        if entry["decision"] != "run":
-            summaries.append(f"[reviewer:{reviewer_id}] skip reason={entry['reason']}")
-            continue
-
-        reviewer = reviewers.get(reviewer_id, {})
-        if not isinstance(reviewer, dict):
-            continue
-        reuse, reuse_reason = dependencies.evaluate_cached_reviewer_approval(
-            state,
-            feature_id=feature_id,
-            reviewer_id=reviewer_id,
-            reviewer=reviewer,
-            changed_paths=changed_paths,
-        )
-        if reuse:
-            summaries.append(
-                f"[reviewer:{reviewer_id}] decision=approve reused={reuse_reason}"
+    if iteration_inputs.run_all:
+        checks_path = iteration_inputs.project_root / "harness" / "checks.yaml"
+        try:
+            checks_doc = load_checks_document(checks_path)
+        except Exception as exc:  # noqa: BLE001
+            output = f"failed to load harness/checks.yaml: {exc}".strip()
+            return ReviewerPhaseOutcome(
+                result="failed",
+                failed_gate="checks_config",
+                reviewer_status="failed:checks_config",
+                reviewer_output=output,
+                command_timings=command_timings,
+                hook_feedback=output,
             )
-            continue
 
-        started_epoch_sec = int(time.time())
-        decision = dependencies.run_reviewer(
-            iteration_inputs.project_root,
-            reviewer_id,
-            reviewer,
-            feature_id=feature_id,
-            feature_path=archived_path or iteration_inputs.feature_path,
-            changed_paths=changed_paths,
-            prior_feedback=iteration_inputs.hook_feedback,
-            start_agent_fn=dependencies.start_agent,
+        phase = HarnessCheckPhase.FEATURE_DONE
+        changed_paths = dependencies.collect_changed_paths(
+            iteration_inputs.project_root
         )
-        ended_epoch_sec = max(started_epoch_sec, int(time.time()))
-        command_timings.append(
-            CommandTiming(
-                phase="reviewers",
+        planned = plan_reviewer_checks(
+            checks_doc,
+            phase=phase,
+            changed_paths=changed_paths,
+        )
+
+        if not planned:
+            return ReviewerPhaseOutcome(
+                result="passed",
+                failed_gate=None,
+                reviewer_status="not_run",
+                reviewer_output="",
+                command_timings=command_timings,
+                hook_feedback=None,
+            )
+
+        feature_id = str(feature.get("id", ""))
+        state = dependencies.load_reviewers_state(iteration_inputs.project_root)
+
+        summaries: list[str] = []
+        request_changes_feedback: list[str] = []
+        ran_reviewer = False
+        first_non_approve_reviewer_id: str | None = None
+        first_non_approve_decision: str | None = None
+
+        planned_by_id = {entry.check_id: entry for entry in planned}
+        for reviewer_id, reviewer_def in iter_planned_reviewer_checks(
+            checks_doc, planned
+        ):
+            entry = planned_by_id.get(reviewer_id)
+            if entry is None:
+                continue
+            if entry.decision != "run":
+                summaries.append(f"[reviewer:{reviewer_id}] skip reason={entry.reason}")
+                continue
+
+            reviewer = reviewer_def.model_dump(mode="python")
+            on_change = None
+            if reviewer_def.when is not None:
+                on_change = reviewer_def.when.on_change
+            reviewer["trigger"] = {"on_change": on_change} if on_change else {}
+
+            reuse, reuse_reason = dependencies.evaluate_cached_reviewer_approval(
+                state,
+                feature_id=feature_id,
                 reviewer_id=reviewer_id,
-                command="run_reviewer",
-                started_at=utc_iso_from_epoch_sec(started_epoch_sec),
-                ended_at=utc_iso_from_epoch_sec(ended_epoch_sec),
-                duration_sec=ended_epoch_sec - started_epoch_sec,
+                reviewer=reviewer,
+                changed_paths=changed_paths,
             )
-        )
-        dependencies.record_reviewer_approval(
-            state,
-            feature_id=feature_id,
-            reviewer_id=reviewer_id,
-            decision=str(decision.get("decision", "")),
-        )
+            if reuse:
+                summaries.append(
+                    f"[reviewer:{reviewer_id}] decision=approve reused={reuse_reason}"
+                )
+                continue
 
-        decision_name = str(decision.get("decision", DECISION_REQUEST_CHANGES))
-        if decision_name != DECISION_APPROVE:
-            decision_name = DECISION_REQUEST_CHANGES
-        ran_reviewer = True
-        if decision_name != DECISION_APPROVE and first_non_approve_decision is None:
-            first_non_approve_reviewer_id = reviewer_id
-            first_non_approve_decision = decision_name
-        summary = str(decision.get("summary", ""))
-        required_actions_raw = decision.get("required_actions", [])
-        required_actions = (
-            required_actions_raw if isinstance(required_actions_raw, list) else []
-        )
-        feedback_context = _normalize_feedback_context(reviewer.get("feedback_context"))
-        forwarded_context = (
-            feedback_context if decision_name != DECISION_APPROVE else None
-        )
-        reviewer_feedback_message = _format_reviewer_feedback(summary, required_actions)
-        reviewer_feedback = _append_feedback_context(
-            reviewer_feedback_message,
-            forwarded_context,
-        )
-        summaries.append(
-            f"[reviewer:{reviewer_id}] decision={decision_name} summary={summary}"
-        )
-
-        if decision_name == DECISION_REQUEST_CHANGES:
-            request_changes_feedback.append(
-                f"reviewer '{reviewer_id}' requested changes: {reviewer_feedback}"
+            started_epoch_sec = int(time.time())
+            decision = dependencies.run_reviewer(
+                iteration_inputs.project_root,
+                reviewer_id,
+                reviewer,
+                feature_id=feature_id,
+                feature_path=archived_path or iteration_inputs.feature_path,
+                changed_paths=changed_paths,
+                prior_feedback=iteration_inputs.hook_feedback,
+                start_agent_fn=dependencies.start_agent,
+            )
+            ended_epoch_sec = max(started_epoch_sec, int(time.time()))
+            command_timings.append(
+                CommandTiming(
+                    phase="reviewers",
+                    reviewer_id=reviewer_id,
+                    command="run_reviewer",
+                    started_at=utc_iso_from_epoch_sec(started_epoch_sec),
+                    ended_at=utc_iso_from_epoch_sec(ended_epoch_sec),
+                    duration_sec=ended_epoch_sec - started_epoch_sec,
+                )
+            )
+            dependencies.record_reviewer_approval(
+                state,
+                feature_id=feature_id,
+                reviewer_id=reviewer_id,
+                decision=str(decision.get("decision", "")),
             )
 
-    reviewer_output = "\n".join(summaries)
-
-    if request_changes_feedback:
-        if archived_path is not None:
-            dependencies.restore_archived_feature(
-                archived_path, iteration_inputs.feature_path
+            decision_name = str(decision.get("decision", DECISION_REQUEST_CHANGES))
+            if decision_name != DECISION_APPROVE:
+                decision_name = DECISION_REQUEST_CHANGES
+            ran_reviewer = True
+            if decision_name != DECISION_APPROVE and first_non_approve_decision is None:
+                first_non_approve_reviewer_id = reviewer_id
+                first_non_approve_decision = decision_name
+            summary = str(decision.get("summary", ""))
+            required_actions_raw = decision.get("required_actions", [])
+            required_actions = (
+                required_actions_raw if isinstance(required_actions_raw, list) else []
             )
+            feedback_context = _normalize_feedback_context(
+                reviewer.get("feedback_context")
+            )
+            forwarded_context = (
+                feedback_context if decision_name != DECISION_APPROVE else None
+            )
+            reviewer_feedback_message = _format_reviewer_feedback(
+                summary, required_actions
+            )
+            reviewer_feedback = _append_feedback_context(
+                reviewer_feedback_message,
+                forwarded_context,
+            )
+            summaries.append(
+                f"[reviewer:{reviewer_id}] decision={decision_name} summary={summary}"
+            )
+
+            if decision_name == DECISION_REQUEST_CHANGES:
+                request_changes_feedback.append(
+                    f"reviewer '{reviewer_id}' requested changes: {reviewer_feedback}"
+                )
+
+        reviewer_output = "\n".join(summaries)
+
+        if request_changes_feedback:
+            if archived_path is not None:
+                dependencies.restore_archived_feature(
+                    archived_path, iteration_inputs.feature_path
+                )
+            dependencies.save_reviewers_state(iteration_inputs.project_root, state)
+            feedback = "\n".join(request_changes_feedback)
+            return ReviewerPhaseOutcome(
+                result="failed",
+                failed_gate="reviewer_request_changes",
+                reviewer_status="failed:request_changes",
+                reviewer_decision=first_non_approve_decision,
+                failed_reviewer_id=first_non_approve_reviewer_id,
+                reviewer_output=reviewer_output,
+                command_timings=command_timings,
+                hook_feedback=feedback,
+            )
+
         dependencies.save_reviewers_state(iteration_inputs.project_root, state)
-        feedback = "\n".join(request_changes_feedback)
         return ReviewerPhaseOutcome(
-            result="failed",
-            failed_gate="reviewer_request_changes",
-            reviewer_status="failed:request_changes",
-            reviewer_decision=first_non_approve_decision,
-            failed_reviewer_id=first_non_approve_reviewer_id,
+            result="passed",
+            failed_gate=None,
+            reviewer_status="passed",
+            reviewer_decision=DECISION_APPROVE if ran_reviewer else None,
+            failed_reviewer_id=None,
             reviewer_output=reviewer_output,
             command_timings=command_timings,
-            hook_feedback=feedback,
+            hook_feedback=None,
         )
 
-    dependencies.save_reviewers_state(iteration_inputs.project_root, state)
     return ReviewerPhaseOutcome(
         result="passed",
         failed_gate=None,
-        reviewer_status="passed",
-        reviewer_decision=DECISION_APPROVE if ran_reviewer else None,
-        failed_reviewer_id=None,
-        reviewer_output=reviewer_output,
+        reviewer_status="not_configured",
+        reviewer_output="",
         command_timings=command_timings,
         hook_feedback=None,
     )

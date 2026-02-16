@@ -76,7 +76,6 @@ def _stub_run_config() -> RunConfig:
     return RunConfig(
         project_root=Path("/tmp/project"),
         feature_paths=("docs/spec/features/FEAT-078.yaml",),
-        gate_profile="loop_fast",
         dry_run=False,
     )
 
@@ -133,7 +132,7 @@ def test_run_feature_iteration_signature_is_explicit() -> None:
     assert tuple(parameters) == (
         "project_root",
         "feature_path",
-        "gate_profile",
+        "run_all",
         "attempt",
         "hook_feedback",
         "verbose_output",
@@ -194,7 +193,6 @@ def test_loop_run_context_contract_immutability_and_extra_forbid() -> None:
             {
                 "project_root": config.project_root,
                 "feature_paths": config.feature_paths,
-                "gate_profile": config.gate_profile,
                 "dry_run": config.dry_run,
                 "unexpected": True,
             }
@@ -224,7 +222,6 @@ def test_loop_monkeypatch_seams_remain_available() -> None:
     seam_symbols = (
         "start_agent",
         "run_permission_probe",
-        "run_profile",
         "_require_clean_worktree",
         "_run_opencode_permission_precheck",
         "_choose_feature_with_selector",
@@ -487,7 +484,6 @@ def test_retry_feedback_contract_accepts_verification_failure(tmp_path: Path) ->
     iteration_inputs = FeatureIterationInputs(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-040.yaml",
-        gate_profile="loop_fast",
         attempt=1,
         hook_feedback=None,
         verbose_output=False,

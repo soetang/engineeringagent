@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Sequence
 
-from .gates import collect_changed_paths, load_gate_config, run_profile
+from .changed_paths import collect_changed_paths
 from .git.client import (
     add_all,
     commit as git_commit,
@@ -295,7 +295,7 @@ def _terminal_iteration_failure_exit_code(outcome: IterationOutcome) -> int | No
 def _run_feature_iteration(
     project_root: Path,
     feature_path: Path,
-    gate_profile: str,
+    run_all: bool,
     attempt: int,
     hook_feedback: str | None,
     verbose_output: bool,
@@ -305,7 +305,7 @@ def _run_feature_iteration(
     iteration_inputs = FeatureIterationInputs(
         project_root=project_root,
         feature_path=feature_path,
-        gate_profile=gate_profile,
+        run_all=run_all,
         attempt=attempt,
         hook_feedback=hook_feedback,
         verbose_output=verbose_output,
@@ -352,9 +352,9 @@ def _run_feature_iteration_with_inputs(
             archive_completed_feature=_archive_completed_feature,
             run_gate_phase=run_gate_phase,
             gate_phase_dependencies=GatePhaseDependencies(
-                load_gate_config=load_gate_config,
-                run_profile=run_profile,
                 restore_archived_feature=_restore_archived_feature,
+                collect_changed_paths=collect_changed_paths,
+                run_shell_command=run_shell_command,
             ),
             run_verification_phase=run_verification_phase,
             verification_phase_dependencies=VerificationPhaseDependencies(
@@ -502,7 +502,7 @@ def _run_selected_feature_iterations(
             outcome = _run_feature_iteration(
                 project_root=config.project_root,
                 feature_path=selected_feature_path,
-                gate_profile=config.gate_profile,
+                run_all=config.run_all,
                 attempt=state.total_iterations,
                 hook_feedback=state.feedback_for(selected_feature_path),
                 verbose_output=config.verbose_output,
@@ -531,7 +531,6 @@ def build_run_config(
     *,
     project_root: Path,
     feature_paths: Sequence[str | Path],
-    gate_profile: str,
     dry_run: bool,
     run_all: bool,
     max_iterations: int,
@@ -543,7 +542,6 @@ def build_run_config(
         project_root=project_root,
         feature_paths=tuple(feature_paths),
         run_all=run_all,
-        gate_profile=gate_profile,
         dry_run=dry_run,
         max_iterations=max_iterations,
         allow_dirty=allow_dirty,

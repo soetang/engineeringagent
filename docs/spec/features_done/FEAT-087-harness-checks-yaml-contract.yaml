@@ -2,7 +2,7 @@ id: FEAT-087
 title: Unify harness verification into harness/checks.yaml (contract + runtime)
 type: feature
 expected_commit_subject: 'feat: unify harness checks into checks.yaml'
-status: in_progress
+status: done
 priority: high
 objective: 'Replace the multi-surface harness configuration (gates/reviewers wiring
   plus
@@ -121,14 +121,14 @@ implementation_notes: "Contract/API delta (explicit):\n\n- Surface: harness conf
   \ `rule_ids: [\"architecture.dep-directionality\", ...]`\n\n- `type: reviewer`\n\
   \  - required: `prompt_file` (repo-relative path under `harness/reviewers/prompts/`)\n\
   \  - optional: `feedback_context` (string)\n  - optional: `sandbox`:\n    - `mode`:\
-  \ temp_worktree_snapshot|empty_folder\n    - `assets` (optional, list of\
-  \ strings, min length 1): only supported when mode=empty_folder\n  - optional:\
-   \ `approval`:\n    - `first_feature_approval` (bool, default true)\n \
-  \ - must align with FEAT-086 semantics:\n    - no advisory/blocking config mode\
-  \ (no approval mode)\n    - reviewer decisions at feature_done are enforceable approve/request_changes\n\
-  \    - no advisory followup mechanism\n\nReviewer phase restriction (v1):\n- reviewer\
-  \ checks must declare `when.phase: feature_done` (or manual). Any reviewer\n  configured\
-  \ for iteration_end is rejected by validation.\n\nExecution semantics (high level):\n\
+  \ temp_worktree_snapshot|empty_folder\n    - `assets` (optional, list of strings,\
+  \ min length 1): only supported when mode=empty_folder\n  - optional: `approval`:\n\
+  \    - `first_feature_approval` (bool, default true)\n  - must align with FEAT-086\
+  \ semantics:\n    - no advisory/blocking config mode (no approval mode)\n    - reviewer\
+  \ decisions at feature_done are enforceable approve/request_changes\n    - no advisory\
+  \ followup mechanism\n\nReviewer phase restriction (v1):\n- reviewer checks must\
+  \ declare `when.phase: feature_done` (or manual). Any reviewer\n  configured for\
+  \ iteration_end is rejected by validation.\n\nExecution semantics (high level):\n\
   - Tool-owned contract validation runs implicitly before loop execution.\n- Repo-owned\
   \ checks run at:\n  - `iteration_end`: after implement step succeeds\n  - `feature_done`:\
   \ after a feature transitions to done and before completion\n  - `manual`: never\
@@ -142,8 +142,8 @@ implementation_notes: "Contract/API delta (explicit):\n\n- Surface: harness conf
   \      on_change: [\"src/**/*.py\", \"tests/**/*.py\", \"harness/**/*.py\"]\n\n\
   \  onboarding_review:\n    type: reviewer\n    prompt_file: \"harness/reviewers/prompts/onboarding_review.md\"\
   \n    when:\n      phase: feature_done\n      on_change: [\"README.md\", \"docs/references/**/*.md\"\
-  , \"docs/principles/**/*.md\"]\n    sandbox:\n      mode: empty_folder\n\
-  \      assets: [\"README.md\", \"docs\", \".opencode/agents\"]\n```\n\nCompatibility policy:\n\
+  , \"docs/principles/**/*.md\"]\n    sandbox:\n      mode: empty_folder\n      assets:\
+  \ [\"README.md\", \"docs\", \".opencode/agents\"]\n```\n\nCompatibility policy:\n\
   - Breaking. `engineeringagent run` requires `harness/checks.yaml`.\n- Legacy harness\
   \ inputs (`harness/gates.yaml`, `harness/reviewers.yaml`) are not\n  used by `run`\
   \ after this change.\n- `engineeringagent init` scaffolds `harness/checks.yaml`\
@@ -177,7 +177,7 @@ acceptance:
 subtasks:
 - id: ST-001
   title: Add strict Pydantic models and validators for checks.yaml
-  status: backlog
+  status: done
   context: 'Add contract models and semantic validation for `harness/checks.yaml`.
 
     Enforce:
@@ -200,7 +200,7 @@ subtasks:
   - uv run pytest -q
 - id: ST-002
   title: Implement checks.yaml planner/executor in loop runtime
-  status: backlog
+  status: done
   context: 'Implement:
 
     - load + validate checks.yaml
@@ -217,12 +217,23 @@ subtasks:
     followup).
 
     '
+  notes:
+  - Wire `harness/checks.yaml` command checks into loop gate phase when `run --all`.
+  - Run `iteration_end` checks every iteration; run `feature_done` checks only when
+    the feature is archived for completion.
+  - 'Execute `type: reviewer` checks from `harness/checks.yaml` during `run --all`
+    feature_done.'
+  - Plan run/skip deterministically with `when.on_change` using one changed-path snapshot
+    per iteration.
+  - Migrate runtime planning models to Pydantic (no stdlib dataclasses in src).
+  - 'Execute `type: fitness` checks from `harness/checks.yaml` during `run --all`
+    (iteration_end + feature_done).'
   verification:
   - uv run python -m engineeringagent.cli run --all --dry-run
   - uv run pytest -q
 - id: ST-003
   title: Update init scaffolding and migrate this repo harness
-  status: backlog
+  status: done
   context: 'Update `engineeringagent init` scaffolding to write `harness/checks.yaml`
     by default.
 
@@ -231,6 +242,10 @@ subtasks:
     Remove or disable legacy harness paths in `run`.
 
     '
+  notes:
+  - Init scaffolding now writes harness/checks.yaml (minimal empty contract).
+  - This repo uses harness/checks.yaml; legacy harness contract files removed.
+  - Tests no longer scaffold harness/gates.yaml into the repo root.
   verification:
   - uv run python -m engineeringagent.cli validate
   - uv run pytest -q
@@ -240,7 +255,7 @@ subtasks:
     print('ok')"
 - id: ST-004
   title: Document single-file harness contract and remove legacy docs
-  status: backlog
+  status: done
   context: 'Update README/docs references to describe `harness/checks.yaml` as the
     sole
 
@@ -249,21 +264,29 @@ subtasks:
     edit legacy harness files.
 
     '
+  notes:
+  - Updated README and docs references to use `harness/checks.yaml` and removed `gates`/`reviewers`
+    CLI guidance.
+  - Updated fitness docs and regenerated `docs/fitness-functions/rules.md`.
   verification:
   - uv run python -m engineeringagent.cli validate
   - uv run pytest -q
 - id: ST-005
   title: Remove gate profile references from active code and docs
-  status: backlog
+  status: done
   context: 'Remove or update any remaining references to gate profiles / gate-profile
 
     plumbing outside `docs/spec/**` (code + docs).
 
     '
+  notes:
+  - Removed legacy `engineeringagent gates` and `engineeringagent reviewers` CLI surfaces
+    and deleted legacy harness contract files.
+  - Removed `gate_profile` plumbing from runtime models and execution paths.
+  - Added meta test to enforce no gate-profile references outside `docs/spec/**`.
+  - Replaced ripgrep (`rg`) verification with pytest-only meta checks.
   verification:
   - uv run pytest -q
-  - uv run python -c "import subprocess,sys; pattern=r'(gate_profile|loop_fast|precommit|engineeringagent
-    gates|gates run|harness/gates\\.yaml)'; paths=['src/engineeringagent','harness','README.md','docs/references','docs/principles','docs/fitness-functions'];
-    proc=subprocess.run(['rg','-n',pattern,*paths], capture_output=True, text=True);
-    print(proc.stdout.strip()); sys.exit(1 if proc.returncode==0 else 0)"
-updated_at: '2026-02-16T15:54:20Z'
+  attempts: 1
+  last_error: null
+updated_at: '2026-02-16T22:00:05Z'

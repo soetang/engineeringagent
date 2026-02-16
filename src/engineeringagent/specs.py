@@ -175,6 +175,135 @@ class ReviewerConfigDocument(StrictContractModel):
     reviewers: dict[NonEmptyStr, ReviewerDefinition]
 
 
+class HarnessCheckPhase(str, Enum):
+    ITERATION_END = "iteration_end"
+    FEATURE_DONE = "feature_done"
+    MANUAL = "manual"
+
+
+class HarnessCheckWhenDefinition(StrictContractModel):
+    phase: HarnessCheckPhase | None = None
+    on_change: Annotated[list[NonEmptyStr], Field(min_length=1)] | None = None
+
+
+class HarnessCheckDefaultsDefinition(StrictContractModel):
+    when: HarnessCheckWhenDefinition | None = None
+
+
+class HarnessCheckCommandDefinition(StrictContractModel):
+    type: Literal["command"]
+    command: NonEmptyStr
+    when: HarnessCheckWhenDefinition | None = None
+
+
+class HarnessCheckFitnessDefinition(StrictContractModel):
+    type: Literal["fitness"]
+    when: HarnessCheckWhenDefinition | None = None
+    scope: Literal["all"] | None = None
+    rule_ids: Annotated[list[NonEmptyStr], Field(min_length=1)] | None = None
+
+    @model_validator(mode="after")
+    def enforce_fitness_selection(self) -> "HarnessCheckFitnessDefinition":
+        has_scope = self.scope is not None
+        has_rule_ids = self.rule_ids is not None
+        if has_scope == has_rule_ids:
+            error = PydanticCustomError(
+                "value_error",
+                "define exactly one of scope: all or rule_ids",
+            )
+            errors = [
+                _init_error_detail(error=error, loc=("scope",), input_value=self.scope),
+                _init_error_detail(
+                    error=error, loc=("rule_ids",), input_value=self.rule_ids
+                ),
+            ]
+            raise ValidationError.from_exception_data(self.__class__.__name__, errors)
+        return self
+
+
+class HarnessCheckReviewerDefinition(StrictContractModel):
+    type: Literal["reviewer"]
+    prompt_file: NonEmptyStr
+    feedback_context: StrictString | None = None
+    when: HarnessCheckWhenDefinition | None = None
+    sandbox: ReviewerSandboxDefinition | None = None
+    approval: ReviewerApprovalDefinition = Field(
+        default_factory=ReviewerApprovalDefinition
+    )
+
+    @model_validator(mode="after")
+    def enforce_prompt_file_location(self) -> "HarnessCheckReviewerDefinition":
+        prompt_path = Path(self.prompt_file)
+        normalized_parts = [part for part in prompt_path.parts if part not in {"", "."}]
+        if prompt_path.is_absolute() or any(part == ".." for part in prompt_path.parts):
+            raise ValueError(
+                "prompt_file must be a repo-relative path under harness/reviewers/prompts/"
+            )
+        if normalized_parts[:3] != ["harness", "reviewers", "prompts"]:
+            raise ValueError(
+                "prompt_file must be a repo-relative path under harness/reviewers/prompts/"
+            )
+        if len(normalized_parts) <= 3:
+            raise ValueError(
+                "prompt_file must reference a file under harness/reviewers/prompts/"
+            )
+        return self
+
+
+HarnessCheckDefinition = Annotated[
+    HarnessCheckCommandDefinition
+    | HarnessCheckFitnessDefinition
+    | HarnessCheckReviewerDefinition,
+    Field(discriminator="type"),
+]
+
+
+class HarnessChecksDocument(StrictContractModel):
+    contract_version: Literal["1.0"]
+    defaults: HarnessCheckDefaultsDefinition | None = None
+    checks: dict[NonEmptyStr, HarnessCheckDefinition]
+
+    @model_validator(mode="after")
+    def enforce_reviewer_phase_restrictions(self) -> "HarnessChecksDocument":
+        default_phase = _effective_default_check_phase(self.defaults)
+        errors: list[InitErrorDetails] = []
+        for check_id, check in self.checks.items():
+            if not isinstance(check, HarnessCheckReviewerDefinition):
+                continue
+            phase = _effective_check_phase(check.when, default_phase)
+            if phase == HarnessCheckPhase.ITERATION_END:
+                errors.append(
+                    _init_error_detail(
+                        error=PydanticCustomError(
+                            "value_error",
+                            "reviewer checks must set when.phase to feature_done or manual",
+                        ),
+                        loc=("checks", check_id, "when", "phase"),
+                        input_value=phase,
+                    )
+                )
+        if errors:
+            raise ValidationError.from_exception_data(self.__class__.__name__, errors)
+        return self
+
+
+def _effective_default_check_phase(
+    defaults: HarnessCheckDefaultsDefinition | None,
+) -> HarnessCheckPhase:
+    if defaults is None or defaults.when is None or defaults.when.phase is None:
+        return HarnessCheckPhase.ITERATION_END
+    return defaults.when.phase
+
+
+def _effective_check_phase(
+    when: HarnessCheckWhenDefinition | None,
+    default_phase: HarnessCheckPhase,
+) -> HarnessCheckPhase:
+    if when is None or when.phase is None:
+        return default_phase
+    return when.phase
+
+
 class SubtaskSpec(StrictContractModel):
     id: SubtaskId
     title: NonEmptyStr
@@ -454,6 +583,17 @@ def reviewer_contract_issues(
     """Collect strict contract issues for reviewer configuration YAML."""
     return _model_contract_issues(
         model_type=ReviewerConfigDocument,
+        payload=document,
+        file_path=file_path,
+    )
+
+
+def checks_contract_issues(
+    document: dict[str, Any], file_path: Path
+) -> list[ValidationIssue]:
+    """Collect strict contract issues for harness/checks.yaml."""
+    return _model_contract_issues(
+        model_type=HarnessChecksDocument,
         payload=document,
         file_path=file_path,
     )

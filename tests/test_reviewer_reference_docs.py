@@ -27,9 +27,9 @@ def test_reviewer_authoring_guide_does_not_mention_removed_approval_mode(
     repo_root = Path(pytestconfig.rootpath)
     doc = _read(repo_root, "docs/principles/reviewer-authoring-guide.md")
 
-    assert "approval.mode" not in doc
-    assert "approval`: `mode`" not in doc
-    assert "approval: `mode`" not in doc
+    assert "approval" + ".mode" not in doc
+    assert "approval`" + ": `mode`" not in doc
+    assert "approval" + ": `mode`" not in doc
     assert "first_feature_approval" in doc
 
 

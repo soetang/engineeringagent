@@ -1,35 +1,32 @@
 # Reviewer agents reference
 
 This document defines the v1 reviewer-agent contract and loop policy.
-Reviewer agents complement deterministic checks (`engineeringagent validate`, gates)
-and never replace them.
+Reviewer agents complement deterministic repo-owned checks declared in
+`harness/checks.yaml` and never replace them.
 
 ## Purpose and scope
 
-- Reviewer config is repository-local: `harness/reviewers.yaml`.
+- Reviewer checks are repository-local: `harness/checks.yaml` (`type: reviewer`).
 - Reviewer prompts are repository-local markdown files under `harness/reviewers/prompts/`.
-- `engineeringagent init` does not seed reviewer files; reviewer setup is explicit via committed harness files or `engineeringagent reviewers init`.
+- Reviewer prompt setup is explicit via committed harness files.
 - Reviewer execution uses shared OpenCode invocation with `agent=engineeringagent`.
 - Reviewer output must be strict machine-parseable JSON.
 
-## Contract (`harness/reviewers.yaml`)
+## Contract (reviewer checks in `harness/checks.yaml`)
 
-Top-level keys:
-
-- `contract_version`: exact string `"1.0"`.
-- `profiles`: map of profile name -> ordered reviewer id list.
-- `reviewers`: map of reviewer id -> reviewer definition.
+Reviewer checks live under the shared checks contract and follow the `type: reviewer`
+shape.
 
 Required reviewer fields:
 
 - `prompt_file`: repo-relative path under `harness/reviewers/prompts/`.
-- `trigger.phase`: `iteration_end` or `feature_done` in config.
 
 Optional reviewer fields:
 
-- `trigger.on_change`: list of glob patterns; if omitted, reviewer is considered for all changes at its phase.
+- `when.phase`: `feature_done` (or `manual`).
+- `when.on_change`: list of glob patterns; if omitted, reviewer is considered for all changes at its phase.
 - `approval.first_feature_approval`: boolean (default `true`).
-- `sandbox.mode`: currently `temp_worktree_snapshot` or `empty_folder`.
+- `sandbox.mode`: `temp_worktree_snapshot` or `empty_folder`.
 - `sandbox.assets`: optional list of repo-relative paths (files or directories) to copy into an `empty_folder` sandbox.
 - `feedback_context`: optional string forwarded verbatim into the next implement pass feedback when a follow-up implement pass is required.
 
@@ -37,14 +34,16 @@ Copy-pastable v1 example:
 
 ```yaml
 contract_version: "1.0"
-profiles:
-  loop_fast:
-    - code_simplifier
-reviewers:
+defaults:
+  when:
+    phase: iteration_end
+
+checks:
   code_simplifier:
+    type: reviewer
     prompt_file: "harness/reviewers/prompts/code_simplifier.md"
-    trigger:
-      phase: "feature_done"
+    when:
+      phase: feature_done
       on_change:
         - "src/**/*.py"
         - "tests/**/*.py"
@@ -61,8 +60,8 @@ Copy-pastable `code_simplifier` entry:
 ```yaml
 code_simplifier:
   prompt_file: "harness/reviewers/prompts/code_simplifier.md"
-  trigger:
-    phase: "feature_done"
+  when:
+    phase: feature_done
     on_change:
       - "src/**/*.py"
       - "tests/**/*.py"
@@ -155,20 +154,17 @@ Copy-pastable decision examples:
 
 Feature completion path (`feature_done`):
 
-1. Deterministic gates pass.
+1. Deterministic repo-owned checks pass.
 1. Reviewer returns `approve` -> completion may proceed.
 1. Reviewer returns `request_changes` -> completion is blocked and the loop continues the same feature with forwarded feedback.
 
-## CLI surfaces
+## Execution surface
 
-- `engineeringagent reviewers init`: scaffold baseline reviewer config and prompts.
-- `engineeringagent reviewers list`: list configured reviewer profiles.
-- `engineeringagent reviewers plan --profile <name> --phase <phase>`: print deterministic plan.
-- `engineeringagent reviewers run --reviewer <id> --feature-id <id> --feature-path <path>`: execute one reviewer and print decision JSON.
+- Reviewer checks run via `engineeringagent run --all` based on `harness/checks.yaml`.
 
 ## Troubleshooting
 
-- If validation fails, run `uv run python -m engineeringagent.cli validate` and fix `harness/reviewers.yaml` contract issues first.
+- If validation fails, run `uv run python -m engineeringagent.cli validate` and fix `harness/checks.yaml` contract issues first.
 - If a reviewer always returns `request_changes` with parser-failure summary, ensure prompt output is strict JSON only.
 - If prompt file errors occur, confirm `prompt_file` path exists under `harness/reviewers/prompts/`.
-- If planner unexpectedly skips a reviewer, confirm phase and `trigger.on_change` patterns against changed paths.
+- If planner unexpectedly skips a reviewer, confirm phase and `when.on_change` patterns against changed paths.

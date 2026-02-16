@@ -43,8 +43,6 @@ def test_cli_surface_inventory_commands() -> None:
     assert result.exit_code == 0
     for token in (
         "validate",
-        "gates",
-        "reviewers",
         "run",
         "fitness",
         "init",
@@ -57,29 +55,6 @@ def test_cli_surface_inventory_commands() -> None:
 def test_cli_surface_inventory_option_spellings() -> None:
     cases = [
         (["validate", "--help"], ["--schema-only"]),
-        (["gates", "list", "--help"], []),
-        (["gates", "plan", "--help"], ["--profile", "--base", "--head"]),
-        (
-            ["gates", "run", "--help"],
-            ["--profile", "--base", "--head", "--explain"],
-        ),
-        (["reviewers", "init", "--help"], ["--force"]),
-        (["reviewers", "list", "--help"], []),
-        (
-            ["reviewers", "plan", "--help"],
-            ["--profile", "--phase", "--base", "--head"],
-        ),
-        (
-            ["reviewers", "run", "--help"],
-            [
-                "--reviewer",
-                "--feature-id",
-                "--feature-path",
-                "--prior-feedback",
-                "--base",
-                "--head",
-            ],
-        ),
         (
             ["run", "--help"],
             [
@@ -139,10 +114,73 @@ def test_run_rejects_implement_command_option() -> None:
     assert "--implement-command" in (result.stderr or result.stdout)
 
 
+def test_run_all_requires_checks_yaml(tmp_path: Path) -> None:
+    result = _invoke_cli(
+        [
+            "--project-root",
+            str(tmp_path),
+            "run",
+            "--all",
+            "--dry-run",
+        ]
+    )
+
+    assert result.exit_code == 1
+    assert "missing harness/checks.yaml" in result.stdout
+    assert "engineeringagent init" in result.stdout
+
+
+def test_run_all_rejects_invalid_checks_yaml(tmp_path: Path) -> None:
+    checks_path = tmp_path / "harness" / "checks.yaml"
+    checks_path.parent.mkdir(parents=True, exist_ok=True)
+    checks_path.write_text("checks: {}\n", encoding="utf-8")
+
+    result = _invoke_cli(
+        [
+            "--project-root",
+            str(tmp_path),
+            "run",
+            "--all",
+            "--dry-run",
+        ]
+    )
+
+    assert result.exit_code == 1
+    assert "invalid harness/checks.yaml" in result.stdout
+    assert "harness/checks.yaml:contract_version" in result.stdout
+
+
+def test_run_all_rejects_legacy_harness_contract_files(tmp_path: Path) -> None:
+    checks_path = tmp_path / "harness" / "checks.yaml"
+    checks_path.parent.mkdir(parents=True, exist_ok=True)
+    checks_path.write_text(
+        "contract_version: '1.0'\nchecks: {}\n",
+        encoding="utf-8",
+    )
+
+    legacy_path = tmp_path / "harness" / "gates.yaml"
+    legacy_path.write_text("profiles: {}\n", encoding="utf-8")
+
+    result = _invoke_cli(
+        [
+            "--project-root",
+            str(tmp_path),
+            "run",
+            "--all",
+            "--dry-run",
+        ]
+    )
+
+    assert result.exit_code == 1
+    assert "legacy harness contract" in result.stdout
+    assert "harness/gates.yaml" in result.stdout
+    assert "engineeringagent init" in result.stdout
+
+
 def test_fitness_subcommands(tmp_path: Path, capsys: Any) -> None:
     src_dir = tmp_path / "src" / "engineeringagent"
     src_dir.mkdir(parents=True, exist_ok=True)
-    for module_name in ["specs", "validator", "gates", "loop", "cli"]:
+    for module_name in ["specs", "validator", "loop", "cli"]:
         (src_dir / f"{module_name}.py").write_text("\n", encoding="utf-8")
 
     list_code = cli_module.cmd_fitness_list(
@@ -237,7 +275,6 @@ def test_main_run_command_uses_typer_handler(monkeypatch: Any) -> None:
         recorded["project_root"] = args.project_root
         recorded["feature_paths"] = args.feature_paths
         recorded["all"] = args.all
-        recorded["gate_profile"] = args.gate_profile
         recorded["dry_run"] = args.dry_run
         recorded["max_iterations"] = args.max_iterations
         recorded["allow_dirty"] = args.allow_dirty
@@ -267,7 +304,6 @@ def test_main_run_command_uses_typer_handler(monkeypatch: Any) -> None:
         "project_root": "repo",
         "feature_paths": ["docs/spec/features/FEAT-900.yaml"],
         "all": True,
-        "gate_profile": "loop_fast",
         "dry_run": True,
         "max_iterations": 7,
         "allow_dirty": True,
@@ -292,7 +328,6 @@ def test_cmd_run_builds_looprun_context_for_loop_entrypoint(
             project_root=str(tmp_path),
             feature_paths=["docs/spec/features/FEAT-078.yaml"],
             all=False,
-            gate_profile="loop_fast",
             dry_run=True,
             max_iterations=7,
             allow_dirty=True,
@@ -306,7 +341,6 @@ def test_cmd_run_builds_looprun_context_for_loop_entrypoint(
     assert loop_run.config == RunConfig(
         project_root=tmp_path,
         feature_paths=("docs/spec/features/FEAT-078.yaml",),
-        gate_profile="loop_fast",
         dry_run=True,
         run_all=False,
         max_iterations=7,
@@ -385,7 +419,7 @@ def test_fitness_run_json_includes_remediation_for_failures(
 ) -> None:
     src_dir = tmp_path / "src" / "engineeringagent"
     src_dir.mkdir(parents=True, exist_ok=True)
-    for module_name in ["specs", "validator", "gates", "loop", "cli"]:
+    for module_name in ["specs", "validator", "loop", "cli"]:
         (src_dir / f"{module_name}.py").write_text("\n", encoding="utf-8")
 
     (src_dir / "bad_subprocess.py").write_text(

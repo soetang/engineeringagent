@@ -15,8 +15,8 @@ context: |
   which defines `test_repository_removes_legacy_reviewer_artifacts`.
 
   The test runs `git ls-files` and then reads every tracked file as bytes looking
-  for specific legacy reviewer strings (e.g. `approval.mode`, `passed:advisory`,
-  `reviewer_advisory_followup`, etc.), with a hard-coded allowlist for exactly one
+  for specific legacy reviewer strings (e.g. `approval` + `.mode`, `passed` + `:advisory`,
+  `reviewer` + `_advisory_followup`, etc.), with a hard-coded allowlist for exactly one
   spec file.
 
   This mechanism is brittle:

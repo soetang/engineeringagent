@@ -61,7 +61,7 @@ class FeatureIterationInputs(BaseModel):
 
     project_root: Path
     feature_path: Path
-    gate_profile: str
+    run_all: bool = False
     attempt: int
     hook_feedback: str | None
     verbose_output: bool

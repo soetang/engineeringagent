@@ -20,8 +20,6 @@ Contributors (from the repository root):
 ```bash
 uv sync
 uv run python -m engineeringagent.cli validate
-uv run python -m engineeringagent.cli gates list
-uv run python -m engineeringagent.cli gates run --profile loop_fast
 uv run python -m engineeringagent.cli run --all --dry-run
 ```
 
@@ -29,13 +27,9 @@ uv run python -m engineeringagent.cli run --all --dry-run
 
 - Validate specs: `uv run python -m engineeringagent.cli validate`
 - Scaffold baseline harness files: `uv run python -m engineeringagent.cli init`
-- List gate profiles: `uv run python -m engineeringagent.cli gates list`
-- Run loop-fast gates: `uv run python -m engineeringagent.cli gates run --profile loop_fast`
-- Run precommit gates: `uv run python -m engineeringagent.cli gates run --profile precommit`
 - Run Ruff checks (lint + docstrings): `uv run ruff check src/engineeringagent harness`
 - Run Pyright type checks: `uv run pyright src/engineeringagent tests harness`
 - Run pytest suite: `uv run pytest -q`
-- Run permission probe: `uv run python -m engineeringagent.cli gates run --profile loop_fast`
 - Default OpenCode loop agent policy: `.opencode/agents/engineeringagent.md` (required; scaffolded by `engineeringagent init`). `opencode.json` is optional legacy configuration.
 - CLI validate command: `uv run python -m engineeringagent.cli validate`
 - Loop dry-run command: `uv run python -m engineeringagent.cli run docs/spec/features/FEAT-004-ralph-loop-opencode-mode.yaml --dry-run`
@@ -55,7 +49,7 @@ uv run python -m engineeringagent.cli run --all --dry-run
 - Snapshot candidates are limited to `backlog` and `in_progress` statuses.
 - Features marked `blocked` or `done` are excluded from the startup snapshot.
 - `--all` and positional feature paths are mutually exclusive input modes.
-- `engineeringagent run --dry-run` is a non-mutating preview; gate-only execution is `engineeringagent gates run --profile <profile>`.
+- `engineeringagent run --dry-run` is a non-mutating preview.
 
 ## Dependency Workflow
 
@@ -72,7 +66,6 @@ uv run python -m engineeringagent.cli run --all --dry-run
 
 ### Init scaffold profile notes (slim pack)
 
-- `core`: the `precommit` profile runs `spec_validate` only.
-- `python_uv`: the `precommit` profile runs `spec_validate` + `ruff_validate`.
-- Ruff gate command (isolated): `uvx ruff check --isolated .`
-- No Pyright gate is scaffolded for `python_uv`.
+- `core`: language-agnostic baseline scaffold (includes `harness/checks.yaml`).
+- `python_uv`: Python/uv bootstrap scaffold (includes `harness/checks.yaml` plus Python-focused defaults).
+- Ruff command (isolated): `uvx ruff check --isolated .`

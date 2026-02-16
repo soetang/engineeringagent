@@ -19,13 +19,6 @@ from .fitness import (
     run_rule_catalog,
     write_rule_catalog_markdown,
 )
-from .gates import (
-    collect_changed_paths,
-    list_profiles,
-    load_gate_config,
-    plan_profile,
-    run_profile,
-)
 from .git import client as git_client
 from .init_scaffold import (
     apply_baseline_scaffold,
@@ -33,13 +26,6 @@ from .init_scaffold import (
     build_scaffold_agents_markdown,
 )
 from .loop import build_loop_run, build_run_config, run_loop
-from .opencode.client import start_agent
-from .reviewers import (
-    REVIEWER_RESPONSEFORMAT_PLACEHOLDER,
-    load_reviewer_config,
-    plan_reviewers,
-    run_reviewer,
-)
 from .validator import validate
 
 _MISSING_REMEDIATION_TEMPLATE = (
@@ -269,79 +255,6 @@ def cmd_validate(args: _HandlerArgs) -> int:
     return 0
 
 
-def cmd_gates_list(args: _HandlerArgs) -> int:
-    """List configured gate profiles.
-
-    Args:
-        args: Parsed CLI arguments for the gates list subcommand.
-
-    Returns:
-        Process exit code where 0 means success.
-    """
-    project_root = Path(args.project_root).resolve()
-    config = load_gate_config(project_root / "harness" / "gates.yaml")
-    for name in list_profiles(config):
-        print(name)
-    return 0
-
-
-def cmd_gates_run(args: _HandlerArgs) -> int:
-    """Run a configured gate profile.
-
-    Args:
-        args: Parsed CLI arguments for the gates run subcommand.
-
-    Returns:
-        Process exit code where 0 means all gates passed.
-    """
-    project_root = Path(args.project_root).resolve()
-    config = load_gate_config(project_root / "harness" / "gates.yaml")
-    profiles = config.get("profiles", {})
-    profile_gates = profiles.get(args.profile, []) if isinstance(profiles, dict) else []
-    if isinstance(profile_gates, list) and len(profile_gates) == 0:
-        print(f"gates profile has no configured gates: {args.profile}")
-        return 0
-
-    changed_paths = collect_changed_paths(
-        project_root,
-        base=getattr(args, "base", None),
-        head=getattr(args, "head", None),
-    )
-    if getattr(args, "explain", False):
-        decisions = plan_profile(
-            config,
-            args.profile,
-            changed_paths=changed_paths,
-        )
-        print(json.dumps(decisions, sort_keys=True))
-
-    ok, failed, _ = run_profile(
-        config=config,
-        profile=args.profile,
-        cwd=project_root,
-        changed_paths=changed_paths,
-    )
-    if not ok:
-        print(f"gates profile failed: {failed}")
-        return 1
-    print(f"gates profile passed: {args.profile}")
-    return 0
-
-
-def cmd_gates_plan(args: _HandlerArgs) -> int:
-    """Print deterministic run/skip gate decisions for one profile."""
-    project_root = Path(args.project_root).resolve()
-    config = load_gate_config(project_root / "harness" / "gates.yaml")
-    changed_paths = collect_changed_paths(
-        project_root,
-        base=args.base,
-        head=args.head,
-    )
-    decisions = plan_profile(config, args.profile, changed_paths=changed_paths)
-    print(json.dumps(decisions, sort_keys=True))
-    return 0
-
-
 def cmd_run(args: _HandlerArgs) -> int:
     """Execute the loop runner for one or more feature files.
 
@@ -359,12 +272,49 @@ def cmd_run(args: _HandlerArgs) -> int:
         return 1
 
     project_root = Path(args.project_root).resolve()
-    gate_profile = getattr(args, "gate_profile", "loop_fast")
+
+    checks_path = project_root / "harness" / "checks.yaml"
+    if args.all:
+        legacy_paths = (
+            project_root / "harness" / "gates.yaml",
+            project_root / "harness" / "reviewers.yaml",
+        )
+        legacy_present = [path for path in legacy_paths if path.exists()]
+        if legacy_present:
+            rendered = ", ".join(
+                sorted(
+                    str(path.relative_to(project_root)).replace("\\", "/")
+                    for path in legacy_present
+                )
+            )
+            print(
+                "run config error: legacy harness contract file(s) are no longer supported: "
+                f"{rendered}. Migrate to harness/checks.yaml and delete legacy files. "
+                "Remediation: run `engineeringagent init`."
+            )
+            return 1
+        if not checks_path.exists():
+            print(
+                "run config error: missing harness/checks.yaml (required for --all). "
+                "Remediation: run `engineeringagent init`."
+            )
+            return 1
+        try:
+            from .specs import checks_contract_issues, load_yaml
+
+            issues = checks_contract_issues(load_yaml(checks_path), checks_path)
+        except Exception as exc:  # noqa: BLE001
+            print(f"run config error: failed to load harness/checks.yaml: {exc}")
+            return 1
+        if issues:
+            rendered = "\n".join(f"- {issue.path}: {issue.message}" for issue in issues)
+            print(f"run config error: invalid harness/checks.yaml\n{rendered}")
+            return 1
+
     config = build_run_config(
         project_root=project_root,
         feature_paths=args.feature_paths,
         run_all=args.all,
-        gate_profile=gate_profile,
         dry_run=args.dry_run,
         max_iterations=args.max_iterations,
         allow_dirty=args.allow_dirty,
@@ -372,122 +322,6 @@ def cmd_run(args: _HandlerArgs) -> int:
     )
     loop_run = build_loop_run(config)
     return run_loop(loop_run)
-
-
-def cmd_reviewers_list(args: _HandlerArgs) -> int:
-    """List configured reviewer profiles."""
-    project_root = Path(args.project_root).resolve()
-    config = load_reviewer_config(project_root / "harness" / "reviewers.yaml")
-    profiles = config.get("profiles", {})
-    if not isinstance(profiles, dict):
-        return 0
-    for profile in sorted(profiles):
-        print(profile)
-    return 0
-
-
-def cmd_reviewers_plan(args: _HandlerArgs) -> int:
-    """Print deterministic run/skip reviewer decisions for one profile/phase."""
-    project_root = Path(args.project_root).resolve()
-    config = load_reviewer_config(project_root / "harness" / "reviewers.yaml")
-    changed_paths = collect_changed_paths(
-        project_root,
-        base=args.base,
-        head=args.head,
-    )
-    try:
-        decisions = plan_reviewers(
-            config,
-            args.profile,
-            phase=args.phase,
-            changed_paths=changed_paths,
-        )
-    except ValueError as exc:
-        print(str(exc))
-        return 1
-    print(json.dumps(decisions, sort_keys=True))
-    return 0
-
-
-def cmd_reviewers_run(args: _HandlerArgs) -> int:
-    """Run one configured reviewer and print JSON decision envelope."""
-    project_root = Path(args.project_root).resolve()
-    config = load_reviewer_config(project_root / "harness" / "reviewers.yaml")
-    reviewers = config.get("reviewers", {})
-    reviewer = reviewers.get(args.reviewer) if isinstance(reviewers, dict) else None
-    if not isinstance(reviewer, dict):
-        print(f"unknown reviewer: {args.reviewer}")
-        return 1
-
-    changed_paths = collect_changed_paths(
-        project_root,
-        base=args.base,
-        head=args.head,
-    )
-    feature_path = Path(args.feature_path)
-    if not feature_path.is_absolute():
-        feature_path = project_root / feature_path
-
-    decision = run_reviewer(
-        project_root,
-        args.reviewer,
-        reviewer,
-        feature_id=args.feature_id,
-        feature_path=feature_path,
-        changed_paths=changed_paths,
-        prior_feedback=args.prior_feedback,
-        start_agent_fn=start_agent,
-    )
-    print(json.dumps(decision, sort_keys=True))
-    return 0 if decision.get("decision") != "request_changes" else 1
-
-
-def cmd_reviewers_init(args: _HandlerArgs) -> int:
-    """Write a baseline reviewers config and prompt files."""
-    project_root = Path(args.project_root).resolve()
-    created = 0
-    skipped = 0
-
-    manifest = {
-        "harness/reviewers.yaml": "\n".join(
-            [
-                'contract_version: "1.0"',
-                "profiles:",
-                "  loop_fast:",
-                "    - code_simplifier",
-                "reviewers:",
-                "  code_simplifier:",
-                '    prompt_file: "harness/reviewers/prompts/code_simplifier.md"',
-                "    trigger:",
-                '      phase: "iteration_end"',
-                "      on_change:",
-                '        - "src/**/*.py"',
-                '        - "tests/**/*.py"',
-                "    approval:",
-                '      mode: "advisory"',
-                "",
-            ]
-        ),
-        "harness/reviewers/prompts/code_simplifier.md": "\n".join(
-            [
-                "Review only the scoped changed files for readability and maintainability.",
-                REVIEWER_RESPONSEFORMAT_PLACEHOLDER,
-                "",
-            ]
-        ),
-    }
-
-    for relative_path, content in manifest.items():
-        target = project_root / relative_path
-        target.parent.mkdir(parents=True, exist_ok=True)
-        if target.exists() and not args.force:
-            skipped += 1
-            continue
-        target.write_text(content, encoding="utf-8")
-        created += 1
-
-    print(f"reviewers init complete: created={created} skipped={skipped}")
-    return 0
 
 
 def cmd_fitness_list(args: _HandlerArgs) -> int:
@@ -814,131 +648,6 @@ def _build_handler_args(ctx: typer.Context, **kwargs: object) -> _HandlerArgs:
     )
 
 
-def _build_typer_gates_app() -> typer.Typer:
-    """Build the Typer gates app with nested command routing."""
-    gates_app = typer.Typer(
-        help="run configured gate profiles",
-        add_completion=False,
-        no_args_is_help=False,
-    )
-
-    @gates_app.command("list", help="list gate profiles")
-    def _gates_list(ctx: typer.Context) -> None:
-        _exit_with_handler_code(cmd_gates_list, ctx=ctx)
-
-    @gates_app.command("plan", help="show deterministic gate run/skip plan")
-    def _gates_plan(
-        ctx: typer.Context,
-        profile: str = typer.Option(..., "--profile"),
-        base: str | None = typer.Option(None, "--base"),
-        head: str | None = typer.Option(None, "--head"),
-    ) -> None:
-        _exit_with_handler_code(
-            cmd_gates_plan,
-            ctx=ctx,
-            profile=profile,
-            base=base,
-            head=head,
-        )
-
-    @gates_app.command("run", help="run a gate profile")
-    def _gates_run(
-        ctx: typer.Context,
-        profile: str = typer.Option(..., "--profile"),
-        base: str | None = typer.Option(None, "--base"),
-        head: str | None = typer.Option(None, "--head"),
-        explain: bool = typer.Option(False, "--explain"),
-    ) -> None:
-        _exit_with_handler_code(
-            cmd_gates_run,
-            ctx=ctx,
-            profile=profile,
-            base=base,
-            head=head,
-            explain=explain,
-        )
-
-    return gates_app
-
-
-def _build_typer_reviewers_app() -> typer.Typer:
-    """Build the Typer reviewers app with nested command routing."""
-    reviewers_app = typer.Typer(
-        help="initialize, inspect, and run harness reviewers",
-        add_completion=False,
-        no_args_is_help=False,
-    )
-
-    @reviewers_app.command(
-        "init",
-        help="write baseline reviewers.yaml and prompt files",
-    )
-    def _reviewers_init(
-        ctx: typer.Context,
-        force: bool = typer.Option(
-            False,
-            "--force",
-            help="overwrite existing reviewer scaffold files",
-        ),
-    ) -> None:
-        _exit_with_handler_code(
-            cmd_reviewers_init,
-            ctx=ctx,
-            force=force,
-        )
-
-    @reviewers_app.command("list", help="list reviewer profiles")
-    def _reviewers_list(ctx: typer.Context) -> None:
-        _exit_with_handler_code(cmd_reviewers_list, ctx=ctx)
-
-    @reviewers_app.command("plan", help="show deterministic reviewer run/skip plan")
-    def _reviewers_plan(
-        ctx: typer.Context,
-        profile: str = typer.Option(..., "--profile"),
-        phase: Literal["iteration_end", "feature_done"] = typer.Option(
-            ...,
-            "--phase",
-        ),
-        base: str | None = typer.Option(None, "--base"),
-        head: str | None = typer.Option(None, "--head"),
-    ) -> None:
-        _exit_with_handler_code(
-            cmd_reviewers_plan,
-            ctx=ctx,
-            profile=profile,
-            phase=phase,
-            base=base,
-            head=head,
-        )
-
-    @reviewers_app.command("run", help="run one reviewer and print decision JSON")
-    def _reviewers_run(
-        ctx: typer.Context,
-        reviewer: str = typer.Option(..., "--reviewer"),
-        feature_id: str = typer.Option(..., "--feature-id"),
-        feature_path: str = typer.Option(
-            ...,
-            "--feature-path",
-            help="feature spec path used in reviewer context",
-        ),
-        prior_feedback: str | None = typer.Option(None, "--prior-feedback"),
-        base: str | None = typer.Option(None, "--base"),
-        head: str | None = typer.Option(None, "--head"),
-    ) -> None:
-        _exit_with_handler_code(
-            cmd_reviewers_run,
-            ctx=ctx,
-            reviewer=reviewer,
-            feature_id=feature_id,
-            feature_path=feature_path,
-            prior_feedback=prior_feedback,
-            base=base,
-            head=head,
-        )
-
-    return reviewers_app
-
-
 def _build_typer_fitness_app() -> typer.Typer:
     """Build the Typer fitness app with nested command routing."""
     fitness_app = typer.Typer(
@@ -1056,17 +765,6 @@ def build_typer_app() -> typer.Typer:
             schema_only=schema_only,
         )
 
-    app.add_typer(
-        _build_typer_gates_app(),
-        name="gates",
-        help="run configured gate profiles",
-    )
-    app.add_typer(
-        _build_typer_reviewers_app(),
-        name="reviewers",
-        help="initialize, inspect, and run harness reviewers",
-    )
-
     @app.command(
         "run",
         help="run feature loops from spec file paths",
@@ -1105,7 +803,6 @@ def build_typer_app() -> typer.Typer:
             max_iterations=max_iterations,
             allow_dirty=allow_dirty,
             verbose_output=verbose_output,
-            gate_profile="loop_fast",
         )
 
     app.add_typer(

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import shutil
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 import tomli
@@ -10,6 +11,7 @@ import yaml
 
 from engineeringagent.specs import feature_schema_from_model
 from engineeringagent.validator import _iter_agents_docs_map_references, validate
+import engineeringagent.validator as validator_module
 
 
 def _schema_source(repo_root: Path) -> Path:
@@ -298,7 +300,10 @@ def test_validate_reports_yaml_parse_errors_across_validator_inputs(
     assert any("FEAT-999-bad-active.yaml: failed to parse YAML" in m for m in messages)
     assert any("FEAT-998-bad-done.yaml: failed to parse YAML" in m for m in messages)
     assert any("potential_features.yaml: failed to parse YAML" in m for m in messages)
-    assert any("harness/gates.yaml: failed to parse YAML" in m for m in messages)
+    assert any(
+        "harness/gates.yaml" in m and "legacy harness contract file" in m
+        for m in messages
+    )
 
 
 def test_validate_reports_invalid_reviewer_contract(tmp_path: Path) -> None:
@@ -324,8 +329,8 @@ def test_validate_reports_invalid_reviewer_contract(tmp_path: Path) -> None:
     messages = validate(project_root=tmp_path)
 
     assert any(
-        "harness/reviewers.yaml:reviewers.onboarding_review" in message
-        and "harness/reviewers/prompts/" in message
+        "harness/reviewers.yaml" in message
+        and "legacy harness contract file" in message
         for message in messages
     )
 
@@ -352,6 +357,44 @@ def test_validate_reports_reviewer_prompt_missing_responseformat(
         for message in messages
     )
     assert all("has-token.md" not in message for message in messages)
+
+
+def test_legacy_harness_contract_issue_formatter_handles_external_paths(
+    tmp_path: Path,
+) -> None:
+    project_root = tmp_path / "root"
+    project_root.mkdir(parents=True, exist_ok=True)
+
+    legacy_root = tmp_path / "external"
+    gates_path = legacy_root / "harness" / "gates.yaml"
+    gates_path.parent.mkdir(parents=True, exist_ok=True)
+    gates_path.write_text("contract_version: '1.0'\n", encoding="utf-8")
+
+    messages: list[str] = []
+    validator_module._append_legacy_harness_contract_file_issues(
+        messages,
+        project_root=project_root,
+        gates_path=gates_path,
+        reviewers_path=legacy_root / "harness" / "reviewers.yaml",
+    )
+
+    assert any("legacy harness contract file" in message for message in messages)
+
+
+def test_validate_reports_git_ls_files_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    (tmp_path / ".git").mkdir(parents=True, exist_ok=True)
+
+    monkeypatch.setattr(
+        validator_module.git_client,
+        "ls_files",
+        lambda _root: SimpleNamespace(returncode=1, stdout="", stderr="boom"),
+    )
+
+    messages = validate(project_root=tmp_path)
+    assert any("validate: git ls-files failed" in message for message in messages)
 
 
 def test_validate_enforces_purge_invariants_using_git_ls_files(tmp_path: Path) -> None:

@@ -115,3 +115,21 @@ potential_features:
       - "All tool calls are logged with stable, parseable audit records"
       - "Run output is emitted as versioned JSONL with records validated against typed schemas"
       - "Behavioral regression coverage ensures loop outputs match baseline"
+
+  - id: POT-014
+    title: Reintroduce reviewer retry budget (max_retries) as an explicit policy knob
+    status: idea
+    context: >
+      The reviewer contract and runtime were simplified to remove blocking-mode retries
+      (`approval` config `max_retries` and `continue_on_` `exhausted`). Consider reintroducing
+      a bounded retry budget later so reviewer-requested changes do not cause unbounded
+      loop churn. This could be modeled as a per-reviewer cap (similar to prior behavior)
+      or as a loop-level cap that limits total retry iterations per feature.
+    value:
+      - "Prevents pathological retry loops on persistent reviewer feedback"
+      - "Makes retry policy explicit, configurable, and testable"
+      - "Improves operator control over time/cost of runs"
+    acceptance_hint:
+      - "A documented, versioned config knob controls retry budgets"
+      - "Telemetry captures when retry budgets are hit and how the run proceeds"
+      - "Regression tests cover budget enforcement and compatibility migration"

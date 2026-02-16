@@ -54,7 +54,7 @@ class IterationPipelineDependencies(BaseModel):
         [Path, Path], tuple[bool, Path | None, str | None]
     ]
     run_gate_phase: Callable[
-        [FeatureIterationInputs, Path, bool, Path | None, GatePhaseDependencies],
+        [FeatureIterationInputs, bool, Path | None, GatePhaseDependencies],
         GatePhaseOutcome,
     ]
     gate_phase_dependencies: GatePhaseDependencies
@@ -435,17 +435,16 @@ def _run_gate_phase_if_passed(
     state: _PipelineState,
     iteration_inputs: FeatureIterationInputs,
     dependencies: IterationPipelineDependencies,
-    gates_path: Path,
+    gate_phase_dependencies: GatePhaseDependencies,
 ) -> None:
     if state.result != "passed":
         return
 
     gate_phase = dependencies.run_gate_phase(
         iteration_inputs,
-        gates_path,
         state.archived_in_iteration,
         state.archived_path,
-        dependencies.gate_phase_dependencies,
+        gate_phase_dependencies,
     )
     state.gate_output = gate_phase.gate_output
     state.gate_status = gate_phase.gate_status
@@ -462,6 +461,7 @@ def _run_reviewer_phase_if_passed(
     iteration_inputs: FeatureIterationInputs,
     dependencies: IterationPipelineDependencies,
     post_feature: dict[str, Any] | None,
+    reviewer_phase_dependencies: ReviewerPhaseDependencies,
 ) -> None:
     if state.result != "passed":
         return
@@ -471,7 +471,7 @@ def _run_reviewer_phase_if_passed(
         post_feature,
         state.archived_in_iteration,
         state.archived_path,
-        dependencies.reviewer_phase_dependencies,
+        reviewer_phase_dependencies,
     )
     state.reviewer_status = reviewer_phase.reviewer_status
     state.reviewer_decision = reviewer_phase.reviewer_decision
@@ -532,7 +532,26 @@ def run_feature_iteration_pipeline(
     dependencies: IterationPipelineDependencies,
 ) -> IterationOutcome:
     """Execute one feature iteration while preserving facade seam behavior."""
-    gates_path = iteration_inputs.project_root / "harness" / "gates.yaml"
+    changed_paths_cached: Any | None = None
+    changed_paths_captured = False
+
+    def _collect_changed_paths_once(project_root: Path) -> Any:
+        nonlocal changed_paths_cached, changed_paths_captured
+        if changed_paths_captured:
+            return changed_paths_cached
+        changed_paths_cached = (
+            dependencies.gate_phase_dependencies.collect_changed_paths(project_root)
+        )
+        changed_paths_captured = True
+        return changed_paths_cached
+
+    gate_phase_dependencies = dependencies.gate_phase_dependencies.model_copy(
+        update={"collect_changed_paths": _collect_changed_paths_once}
+    )
+    reviewer_phase_dependencies = dependencies.reviewer_phase_dependencies.model_copy(
+        update={"collect_changed_paths": _collect_changed_paths_once}
+    )
+
     started = time.time()
     state = _PipelineState()
     phase_timings: list[PhaseTiming] = []
@@ -608,7 +627,10 @@ def run_feature_iteration_pipeline(
         phase_timings,
         "gates",
         lambda: _run_gate_phase_if_passed(
-            state, iteration_inputs, dependencies, gates_path
+            state,
+            iteration_inputs,
+            dependencies,
+            gate_phase_dependencies,
         ),
     )
     _timed_phase(
@@ -619,6 +641,7 @@ def run_feature_iteration_pipeline(
             iteration_inputs,
             dependencies,
             post_feature,
+            reviewer_phase_dependencies,
         ),
     )
     _timed_phase(

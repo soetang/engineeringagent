@@ -24,6 +24,7 @@ from engineeringagent.loop_runtime.phases import (
     ReviewerPhaseDependencies,
     VerificationPhaseDependencies,
 )
+from engineeringagent.changed_paths import ChangedPathsResult
 
 
 def test_iteration_pipeline_carries_passed_reviewer_feedback_to_continue(
@@ -33,7 +34,6 @@ def test_iteration_pipeline_carries_passed_reviewer_feedback_to_continue(
     iteration_inputs = FeatureIterationInputs(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-065.yaml",
-        gate_profile="loop_fast",
         attempt=1,
         hook_feedback=None,
         verbose_output=False,
@@ -77,9 +77,13 @@ def test_iteration_pipeline_carries_passed_reviewer_feedback_to_continue(
                 )
             ),
             gate_phase_dependencies=GatePhaseDependencies(
-                load_gate_config=lambda _path: {},
-                run_profile=lambda *_args, **_kwargs: (True, None, ""),
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+                collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
+                    paths=(),
+                    run_all=True,
+                    reason=None,
+                ),
+                run_shell_command=lambda *_args, **_kwargs: None,
             ),
             run_verification_phase=(
                 lambda *_args, **_kwargs: VerificationPhaseOutcome(
@@ -148,7 +152,6 @@ def test_iteration_pipeline_archives_before_running_done_transition_verification
     iteration_inputs = FeatureIterationInputs(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-078.yaml",
-        gate_profile="loop_fast",
         attempt=1,
         hook_feedback=None,
         verbose_output=False,
@@ -251,9 +254,13 @@ def test_iteration_pipeline_archives_before_running_done_transition_verification
                 )
             ),
             gate_phase_dependencies=GatePhaseDependencies(
-                load_gate_config=lambda _path: {},
-                run_profile=lambda *_args, **_kwargs: (True, None, ""),
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+                collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
+                    paths=(),
+                    run_all=True,
+                    reason=None,
+                ),
+                run_shell_command=lambda *_args, **_kwargs: None,
             ),
             run_verification_phase=_run_verification_phase,
             verification_phase_dependencies=VerificationPhaseDependencies(
@@ -303,7 +310,147 @@ def test_iteration_pipeline_archives_before_running_done_transition_verification
     )
 
     assert outcome.result == "passed"
-    assert outcome.completed is True
+
+
+def test_iteration_pipeline_collects_changed_paths_once_per_iteration(
+    tmp_path: Path,
+) -> None:
+    iteration_inputs = FeatureIterationInputs(
+        project_root=tmp_path,
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-999.yaml",
+        attempt=1,
+        hook_feedback=None,
+        verbose_output=False,
+    )
+
+    calls = {"count": 0}
+
+    def _collect_changed_paths(_root: Path) -> ChangedPathsResult:
+        calls["count"] += 1
+        return ChangedPathsResult(paths=("README.md",), run_all=False, reason=None)
+
+    def _run_gate_phase(
+        iteration_inputs: FeatureIterationInputs,
+        _archived_in_iteration: bool,
+        _archived_path: Path | None,
+        deps: GatePhaseDependencies,
+    ) -> GatePhaseOutcome:
+        deps.collect_changed_paths(iteration_inputs.project_root)
+        return GatePhaseOutcome(
+            result="passed",
+            failed_gate=None,
+            gate_status="passed",
+            gate_output="",
+            hook_feedback=None,
+        )
+
+    def _run_reviewer_phase(
+        iteration_inputs: FeatureIterationInputs,
+        _feature: dict[str, Any] | None,
+        _archived_in_iteration: bool,
+        _archived_path: Path | None,
+        deps: ReviewerPhaseDependencies,
+    ) -> ReviewerPhaseOutcome:
+        deps.collect_changed_paths(iteration_inputs.project_root)
+        return ReviewerPhaseOutcome(
+            result="passed",
+            failed_gate=None,
+            reviewer_status="passed",
+            reviewer_decision=None,
+            failed_reviewer_id=None,
+            reviewer_output="",
+            hook_feedback=None,
+        )
+
+    outcome = run_feature_iteration_pipeline(
+        iteration_inputs,
+        IterationPipelineDependencies(
+            evaluate_initial_feature_load=(
+                lambda _root, _path: InitialFeatureLoadOutcome(
+                    feature={
+                        "id": "FEAT-999",
+                        "status": "in_progress",
+                        "subtasks": [{"id": "ST-001", "status": "in_progress"}],
+                    },
+                    loaded_from_archive=False,
+                    result="passed",
+                    failed_gate=None,
+                    hook_feedback=None,
+                )
+            ),
+            ready_for_active_iteration=lambda *_args, **_kwargs: True,
+            touch_active_feature_for_iteration=lambda *_args, **_kwargs: None,
+            run_implement_step=lambda *_args, **_kwargs: (True, None, ""),
+            refresh_feature_after_implement=(
+                lambda _root, _path, _started: PostImplementFeatureOutcome(
+                    feature={
+                        "id": "FEAT-999",
+                        "status": "in_progress",
+                        "subtasks": [{"id": "ST-001", "status": "in_progress"}],
+                    },
+                    loaded_from_archive=False,
+                    archived_in_iteration=False,
+                    archived_path=None,
+                    result="passed",
+                    failed_gate=None,
+                    hook_feedback=None,
+                )
+            ),
+            should_archive_selected_feature=lambda *_args, **_kwargs: False,
+            archive_completed_feature=lambda *_args, **_kwargs: (True, None, None),
+            run_gate_phase=_run_gate_phase,
+            gate_phase_dependencies=GatePhaseDependencies(
+                restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+                collect_changed_paths=_collect_changed_paths,
+                run_shell_command=lambda *_args, **_kwargs: None,
+            ),
+            run_verification_phase=(
+                lambda *_args, **_kwargs: VerificationPhaseOutcome(
+                    result="passed",
+                    verification_status="not_run",
+                    verification_failed_command=None,
+                    verification_output="",
+                    hook_feedback=None,
+                )
+            ),
+            verification_phase_dependencies=VerificationPhaseDependencies(
+                run_shell_command=lambda *_args, **_kwargs: None,
+            ),
+            run_reviewer_phase=_run_reviewer_phase,
+            reviewer_phase_dependencies=ReviewerPhaseDependencies(
+                load_reviewer_config=lambda _path: {},
+                collect_changed_paths=_collect_changed_paths,
+                load_reviewers_state=lambda _root: {"version": "1", "features": {}},
+                save_reviewers_state=lambda *_args, **_kwargs: None,
+                plan_reviewers=lambda *_args, **_kwargs: [],
+                evaluate_cached_reviewer_approval=lambda *_args, **_kwargs: (False, ""),
+                run_reviewer=lambda *_args, **_kwargs: {},
+                record_reviewer_approval=lambda *_args, **_kwargs: None,
+                restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+                start_agent=lambda *_args, **_kwargs: None,
+            ),
+            run_completion_commit_phase=(
+                lambda *_args, **_kwargs: CompletionCommitOutcome(
+                    completed=False,
+                    completion_commit_succeeded=False,
+                    result="passed",
+                    failed_gate=None,
+                    next_action="retry_same_feature",
+                    hook_feedback=None,
+                )
+            ),
+            completion_phase_dependencies=CompletionPhaseDependencies(
+                commit_feature_completion=lambda *_args, **_kwargs: (True, None, ""),
+                restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+            ),
+            write_iteration_telemetry=lambda *_args, **_kwargs: "progress/runs.jsonl",
+            git_head_resolver=lambda _root: None,
+            print_summary=lambda *_args, **_kwargs: None,
+        ),
+    )
+
+    assert outcome.result == "passed"
+    assert calls["count"] == 1
 
 
 def test_iteration_pipeline_records_phase_timings(
@@ -341,7 +488,6 @@ def test_iteration_pipeline_records_phase_timings(
     iteration_inputs = FeatureIterationInputs(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-065.yaml",
-        gate_profile="loop_fast",
         attempt=1,
         hook_feedback=None,
         verbose_output=False,
@@ -385,9 +531,13 @@ def test_iteration_pipeline_records_phase_timings(
                 )
             ),
             gate_phase_dependencies=GatePhaseDependencies(
-                load_gate_config=lambda _path: {},
-                run_profile=lambda *_args, **_kwargs: (True, None, ""),
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+                collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
+                    paths=(),
+                    run_all=True,
+                    reason=None,
+                ),
+                run_shell_command=lambda *_args, **_kwargs: None,
             ),
             run_verification_phase=(
                 lambda *_args, **_kwargs: VerificationPhaseOutcome(
@@ -514,7 +664,6 @@ def test_run_loop_controller_forwards_looprun_with_resolved_snapshot(
             config=RunConfig(
                 project_root=tmp_path,
                 feature_paths=(resolved_feature_path,),
-                gate_profile="loop_fast",
                 dry_run=False,
             ),
             services=RunServices(

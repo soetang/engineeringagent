@@ -10,14 +10,13 @@ from engineeringagent.loop_runtime.facade_signatures import (
 def test_bind_facade_call_applies_defaults_for_run_loop_signature() -> None:
     bound = bind_facade_call(
         RUN_LOOP_SIGNATURE,
-        args=("root", ("docs/spec/features/FEAT-001.yaml",), "precommit", True),
+        args=("root", ("docs/spec/features/FEAT-001.yaml",), True),
         kwargs={},
     )
 
     assert bound == {
         "project_root": "root",
         "feature_paths": ("docs/spec/features/FEAT-001.yaml",),
-        "gate_profile": "precommit",
         "dry_run": True,
         "run_all": False,
         "max_iterations": 50,

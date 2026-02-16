@@ -22,7 +22,7 @@ This file is generated from active manifest-declared fitness rules.
 | `architecture.scaffold-docs-exact-sync` | error | command | custom | `docs and src/engineeringagent/scaffold_templates` | Enforce byte-for-byte sync between selected docs and scaffold templates. |
 | `architecture.scaffold-template-agents-doc-links` | error | command | custom | `src/engineeringagent/scaffold_templates/AGENTS.md` | Require scaffolded reference docs to be linked from scaffold AGENTS.md. |
 | `architecture.scaffold-template-locality` | error | command | custom | `src/engineeringagent` | Keep scaffold template payloads in scaffold_templates assets. |
-| `architecture.source-first-loop-command-policy` | error | command | custom | `docs/spec/features/*.yaml and harness/gates.yaml` | Enforce source-first workspace execution for loop command surfaces. |
+| `architecture.source-first-loop-command-policy` | error | command | custom | `docs/spec/features/*.yaml and harness/checks.yaml` | Enforce source-first workspace execution for loop command surfaces. |
 
 ## Rule Details
 

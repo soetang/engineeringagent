@@ -1,0 +1,37 @@
+contract_version: "1.0"
+
+defaults:
+  when:
+    phase: iteration_end
+
+checks:
+  fitness_all:
+    type: fitness
+    scope: all
+
+  ruff_validate:
+    type: command
+    command: "uv run ruff check src/engineeringagent harness"
+    when:
+      on_change: ["src/**/*.py", "tests/**/*.py", "harness/**/*.py"]
+
+  pyright_validate:
+    type: command
+    command: "uv run pyright src/engineeringagent tests harness"
+    when:
+      on_change: ["src/**/*.py", "tests/**/*.py", "harness/**/*.py"]
+
+  pytest_validate:
+    type: command
+    command: "uv run pytest -q"
+    when:
+      on_change: ["src/**/*.py", "tests/**/*.py", "harness/**/*.py"]
+
+  code_simplifier:
+    type: reviewer
+    prompt_file: "harness/reviewers/prompts/code_simplifier.md"
+    when:
+      phase: feature_done
+      on_change: ["src/**/*.py", "tests/**/*.py"]
+    approval:
+      first_feature_approval: true

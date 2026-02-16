@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import yaml
 
-from engineeringagent.gates import ChangedPathsResult
+from engineeringagent.changed_paths import ChangedPathsResult
 from engineeringagent.opencode.client import DEFAULT_OPENCODE_AGENT
 from engineeringagent.reviewers import (
     PARSER_FAILURE_SUMMARY_PREFIX,
@@ -91,9 +91,6 @@ def test_empty_folder_sandbox_copies_only_prompt_and_configured_assets_only(
 def test_repo_empty_folder_sandbox_can_include_docs_and_opencode_agents(
     repo_root: Path,
 ) -> None:
-    reviewers_path = repo_root / "harness" / "reviewers.yaml"
-    config = yaml.safe_load(reviewers_path.read_text(encoding="utf-8"))
-
     # This repository no longer ships a dedicated onboarding reviewer, but the
     # sandbox mode remains usable when a repo config opts into it.
     reviewer = {
@@ -104,7 +101,6 @@ def test_repo_empty_folder_sandbox_can_include_docs_and_opencode_agents(
         },
     }
 
-    assert isinstance(config, dict)
     assert (repo_root / "docs").is_dir()
 
     sandbox = build_reviewer_sandbox(repo_root, "code_simplifier", reviewer)

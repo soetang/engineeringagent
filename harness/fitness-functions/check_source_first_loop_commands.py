@@ -10,7 +10,7 @@ from engineeringagent.fitness.envelope import emit_result_envelope
 
 RULE_ID = "architecture.source-first-loop-command-policy"
 FEATURES_ROOT = Path("docs/spec/features")
-GATES_PATH = Path("harness/gates.yaml")
+CHECKS_PATH = Path("harness/checks.yaml")
 REMEDIATION = (
     "replace with source-first workspace execution; prefer "
     "`uv run python -m engineeringagent.cli ...`."
@@ -107,43 +107,33 @@ def _scan_feature_verification_commands() -> list[str]:
     return violations
 
 
-def _scan_gate_commands() -> list[str]:
-    if not GATES_PATH.is_file():
+def _scan_check_commands() -> list[str]:
+    if not CHECKS_PATH.is_file():
         return []
 
-    document = yaml.safe_load(GATES_PATH.read_text(encoding="utf-8")) or {}
-    gates = document.get("gates") if isinstance(document, dict) else None
-    if not isinstance(gates, dict):
+    document = yaml.safe_load(CHECKS_PATH.read_text(encoding="utf-8")) or {}
+    checks = document.get("checks") if isinstance(document, dict) else None
+    if not isinstance(checks, dict):
         return []
 
     violations: list[str] = []
-    for gate_id in sorted(gates):
-        gate = gates[gate_id]
-        if not isinstance(gate, dict):
+    for check_id in sorted(checks):
+        check = checks[check_id]
+        if not isinstance(check, dict):
+            continue
+        if check.get("type") != "command":
             continue
 
-        run_command = gate.get("run")
-        if _is_forbidden_uvx_self_invocation(run_command):
-            violations.append(
-                (
-                    f"{GATES_PATH.as_posix()}:gates.{gate_id}.run forbidden "
-                    f"in-repo uvx self-invocation `{_format_command(run_command)}`; "
-                    f"{REMEDIATION}"
-                )
-            )
-
-        runner = gate.get("runner")
-        if not isinstance(runner, dict):
+        command = check.get("command")
+        if not _is_forbidden_uvx_self_invocation(command):
             continue
-        runner_command = runner.get("command")
-        if _is_forbidden_uvx_self_invocation(runner_command):
-            violations.append(
-                (
-                    f"{GATES_PATH.as_posix()}:gates.{gate_id}.runner.command "
-                    "forbidden in-repo uvx self-invocation "
-                    f"`{_format_command(runner_command)}`; {REMEDIATION}"
-                )
+        violations.append(
+            (
+                f"{CHECKS_PATH.as_posix()}:checks.{check_id}.command forbidden "
+                "in-repo uvx self-invocation "
+                f"`{_format_command(command)}`; {REMEDIATION}"
             )
+        )
 
     return violations
 
@@ -151,7 +141,7 @@ def _scan_gate_commands() -> list[str]:
 def main() -> int:
     """Check scoped loop commands for forbidden in-repo uvx self-invocation."""
     violations = sorted(
-        set(_scan_feature_verification_commands() + _scan_gate_commands())
+        set(_scan_feature_verification_commands() + _scan_check_commands())
     )
     status = "pass" if not violations else "fail"
     summary = (

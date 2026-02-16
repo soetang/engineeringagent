@@ -312,8 +312,8 @@ def test_generated_agents_is_reference_first_and_minimal() -> None:
     assert "## System of Record (Read in this order)" in scaffold_agents
     assert "## Repo Extensions (Fill In)" in scaffold_agents
     assert "engineeringagent validate" in scaffold_agents
-    assert "engineeringagent gates list" in scaffold_agents
-    assert "engineeringagent gates run --profile precommit" in scaffold_agents
+    assert "harness/checks.yaml" in scaffold_agents
+    assert "engineeringagent run --all" in scaffold_agents
 
 
 def test_generated_agents_keeps_major_principles() -> None:
@@ -331,7 +331,7 @@ def test_generated_agents_keeps_major_principles() -> None:
 def test_init_writes_precommit_and_empty_gate_profiles(
     tmp_path: Path,
 ) -> None:
-    """Verify init writes pre-commit wiring, gate stubs, and empty fitness manifest."""
+    """Verify init writes pre-commit wiring and harness/checks.yaml."""
     result = _invoke_cli(["--project-root", str(tmp_path), "init"])
 
     assert result.exit_code == 0
@@ -339,16 +339,19 @@ def test_init_writes_precommit_and_empty_gate_profiles(
     precommit_config = (tmp_path / ".pre-commit-config.yaml").read_text(
         encoding="utf-8"
     )
-    assert "entry: engineeringagent gates run --profile precommit" in precommit_config
+    assert "entry: engineeringagent validate" in precommit_config
     assert "uvx --from . engineeringagent" not in precommit_config
     assert "engineeringagent-commit-msg" not in precommit_config
 
-    gates_config = yaml.safe_load(
-        (tmp_path / "harness" / "gates.yaml").read_text(encoding="utf-8")
+    assert not (tmp_path / "harness" / "gates.yaml").exists()
+    assert not (tmp_path / "harness" / "reviewers.yaml").exists()
+
+    checks_config = yaml.safe_load(
+        (tmp_path / "harness" / "checks.yaml").read_text(encoding="utf-8")
     )
-    assert gates_config["profiles"]["precommit"] == ["spec_validate"]
-    assert gates_config["profiles"]["loop_fast"] == ["spec_validate"]
-    assert gates_config["gates"]["spec_validate"]["run"] == "engineeringagent validate"
+    assert checks_config["contract_version"] == "1.0"
+    assert checks_config["defaults"]["when"]["phase"] == "iteration_end"
+    assert checks_config["checks"] == {}
 
     fitness_manifest = yaml.safe_load(
         (tmp_path / "harness" / "fitness-functions" / "rules.yaml").read_text(
@@ -570,42 +573,31 @@ def test_init_slim_pack_does_not_scaffold_demo_failure(tmp_path: Path) -> None:
     assert result.exit_code == 0
     assert "pack=slim" in result.stdout
 
-    gates_config = yaml.safe_load(
-        (tmp_path / "harness" / "gates.yaml").read_text(encoding="utf-8")
-    )
-    assert gates_config["profiles"]["precommit"] == ["spec_validate"]
-    assert "demo_fail" not in gates_config["gates"]
-
-    assert not (tmp_path / "harness" / "fitness-functions" / "demo_rules.yaml").exists()
+    assert not (tmp_path / "harness" / "gates.yaml").exists()
+    assert not (tmp_path / "harness" / "reviewers.yaml").exists()
     assert not (
         tmp_path / "harness" / "fitness-functions" / "demo_always_fail.py"
     ).exists()
 
+    checks_config = yaml.safe_load(
+        (tmp_path / "harness" / "checks.yaml").read_text(encoding="utf-8")
+    )
+    assert checks_config["contract_version"] == "1.0"
+    assert checks_config["checks"] == {}
 
-def test_init_standard_pack_scaffolds_demo_fail_gate_and_manifest(
+
+def test_init_standard_pack_scaffolds_demo_failing_fitness_rule(
     tmp_path: Path,
 ) -> None:
-    """Verify standard pack wires an always-failing demo fitness rule into precommit."""
+    """Verify standard pack wires an always-failing demo fitness rule."""
     result = _invoke_cli(["--project-root", str(tmp_path), "init", "standard"])
 
     assert result.exit_code == 0
     assert "pack=standard" in result.stdout
     assert "demo failing" in result.stdout.lower()
 
-    gates_config = yaml.safe_load(
-        (tmp_path / "harness" / "gates.yaml").read_text(encoding="utf-8")
-    )
-    assert gates_config["profiles"]["precommit"] == ["spec_validate", "demo_fail"]
-    assert (
-        gates_config["gates"]["demo_fail"]["run"]
-        == "engineeringagent fitness run --format json --manifest-path harness/fitness-functions/demo_rules.yaml"
-    )
-
-    demo_manifest_path = tmp_path / "harness" / "fitness-functions" / "demo_rules.yaml"
-    assert demo_manifest_path.exists()
-    demo_manifest = yaml.safe_load(demo_manifest_path.read_text(encoding="utf-8"))
-    assert demo_manifest["contract_version"] == "1.0"
-    assert [rule["rule_id"] for rule in demo_manifest["rules"]] == ["demo.always-fail"]
+    assert not (tmp_path / "harness" / "gates.yaml").exists()
+    assert not (tmp_path / "harness" / "reviewers.yaml").exists()
 
     demo_script_path = (
         tmp_path / "harness" / "fitness-functions" / "demo_always_fail.py"
@@ -617,9 +609,17 @@ def test_init_standard_pack_scaffolds_demo_fail_gate_and_manifest(
             encoding="utf-8"
         )
     )
-    assert "demo.always-fail" not in [
-        rule["rule_id"] for rule in baseline_manifest["rules"]
+
+    assert baseline_manifest["contract_version"] == "1.0"
+    assert [rule["rule_id"] for rule in baseline_manifest["rules"]] == [
+        "demo.always-fail"
     ]
+
+    checks_config = yaml.safe_load(
+        (tmp_path / "harness" / "checks.yaml").read_text(encoding="utf-8")
+    )
+    assert checks_config["contract_version"] == "1.0"
+    assert checks_config["checks"]["fitness_all"]["type"] == "fitness"
 
 
 def test_init_defaults_to_core_language_agnostic_profile(
@@ -634,7 +634,7 @@ def test_init_defaults_to_core_language_agnostic_profile(
     precommit_config = (tmp_path / ".pre-commit-config.yaml").read_text(
         encoding="utf-8"
     )
-    assert "entry: engineeringagent gates run --profile precommit" in precommit_config
+    assert "entry: engineeringagent validate" in precommit_config
     assert "uvx --from ." not in precommit_config
     assert "engineeringagent-commit-msg" not in precommit_config
 
@@ -657,9 +657,7 @@ def test_init_python_uv_profile_available(tmp_path: Path) -> None:
     precommit_config = (tmp_path / ".pre-commit-config.yaml").read_text(
         encoding="utf-8"
     )
-    assert (
-        "entry: uvx engineeringagent gates run --profile precommit" in precommit_config
-    )
+    assert "entry: uv run python -m engineeringagent.cli validate" in precommit_config
     assert "uvx --from ." not in precommit_config
     assert "engineeringagent-commit-msg" in precommit_config
     assert (
@@ -697,15 +695,7 @@ def test_python_uv_commit_msg_validator_avoids_subprocess(tmp_path: Path) -> Non
     assert "import subprocess" not in commit_msg_script_text
     assert "subprocess." not in commit_msg_script_text
 
-    gates_config = yaml.safe_load(
-        (tmp_path / "harness" / "gates.yaml").read_text(encoding="utf-8")
-    )
-    assert gates_config["profiles"]["precommit"] == ["spec_validate", "ruff_validate"]
-    assert "ruff_validate" in gates_config["gates"]
-    assert (
-        gates_config["gates"]["ruff_validate"]["run"] == "uvx ruff check --isolated ."
-    )
-    assert "pyright_validate" not in gates_config["gates"]
+    assert not (tmp_path / "harness" / "gates.yaml").exists()
 
 
 def test_python_uv_commit_msg_validator_builds_pattern_from_allowed_types(
@@ -811,7 +801,7 @@ def test_init_scaffolds_tool_generic_docs_only(tmp_path: Path) -> None:
     assert "README.md" in docs_architecture
     assert "AGENTS.md" in docs_architecture
     assert "engineeringagent validate" in workflow_reference
-    assert "engineeringagent gates run --profile precommit" in workflow_reference
+    assert "engineeringagent run --all" in workflow_reference
 
     assert not (tmp_path / "docs" / "principles").exists()
     assert not (tmp_path / "docs" / "fitness-functions").exists()

@@ -50,7 +50,7 @@ RUN_FEATURE_ITERATION_SIGNATURE = inspect.Signature(
     parameters=(
         _parameter("project_root"),
         _parameter("feature_path"),
-        _parameter("gate_profile"),
+        _parameter("run_all"),
         _parameter("attempt"),
         _parameter("hook_feedback"),
         _parameter("verbose_output"),
@@ -61,7 +61,6 @@ RUN_LOOP_SIGNATURE = inspect.Signature(
     parameters=(
         _parameter("project_root"),
         _parameter("feature_paths"),
-        _parameter("gate_profile"),
         _parameter("dry_run"),
         _parameter("run_all", False),
         _parameter("max_iterations", 50),

@@ -16,6 +16,25 @@ _SCAFFOLD_TEMPLATE_PACKAGE = "engineeringagent.scaffold_templates"
 _SUPPORTED_INIT_PACKS = {"slim", "standard"}
 
 
+def _build_checks_yaml() -> str:
+    """Build a minimal harness/checks.yaml scaffold.
+
+    Notes:
+    - The checks contract is repo-owned and is required for `engineeringagent run --all`.
+    - Keep the default scaffold empty and language-agnostic.
+    """
+
+    return yaml.safe_dump(
+        {
+            "contract_version": "1.0",
+            "defaults": {"when": {"phase": "iteration_end"}},
+            "checks": {},
+        },
+        sort_keys=False,
+        allow_unicode=False,
+    )
+
+
 def _build_scaffold_policy_yaml(*, docs_root: str, agent_docs: list[str]) -> str:
     """Build a minimal scaffold policy file.
 
@@ -166,22 +185,6 @@ def build_baseline_scaffold_manifest(
     policy_agent_docs: list[str] = []
     if docs_dir_normalized == "docs":
         policy_agent_docs = sorted(reference_docs_manifest.keys())
-    gate_config = {
-        "contract_version": "1.0",
-        "profiles": {
-            "precommit": ["spec_validate"],
-            "loop_fast": ["spec_validate"],
-        },
-        "gates": {
-            "spec_validate": _spec_validate_gate(docs_dir_normalized),
-        },
-    }
-
-    if is_python_uv:
-        gate_config["profiles"]["precommit"] = ["spec_validate", "ruff_validate"]
-        gate_config["gates"]["ruff_validate"] = {
-            "run": "uvx ruff check --isolated .",
-        }
 
     manifest = {
         ".pre-commit-config.yaml": _build_precommit_config(profile=profile),
@@ -205,11 +208,7 @@ def build_baseline_scaffold_manifest(
             indent=2,
         )
         + "\n",
-        "harness/gates.yaml": yaml.safe_dump(
-            gate_config,
-            sort_keys=False,
-            allow_unicode=False,
-        ),
+        "harness/checks.yaml": _build_checks_yaml(),
         "harness/fitness-functions/rules.yaml": yaml.safe_dump(
             {
                 "contract_version": "1.0",
@@ -270,7 +269,7 @@ def build_init_scaffold_manifest(
 
     Packs:
     - slim: safe default that runs spec validation
-    - standard: wires an always-failing demo fitness rule into pre-commit gates
+    - standard: scaffolds an always-failing demo fitness rule for `run --all`
     """
     if pack not in _SUPPORTED_INIT_PACKS:
         raise ValueError(f"unsupported init pack: {pack}")
@@ -284,9 +283,10 @@ def build_init_scaffold_manifest(
     if pack != "standard":
         return manifest
 
-    demo_manifest_path = "harness/fitness-functions/demo_rules.yaml"
     demo_script_path = "harness/fitness-functions/demo_always_fail.py"
-    manifest[demo_manifest_path] = yaml.safe_dump(
+    manifest[demo_script_path] = _demo_fail_rule_script()
+
+    manifest["harness/fitness-functions/rules.yaml"] = yaml.safe_dump(
         {
             "contract_version": "1.0",
             "rules": [
@@ -295,11 +295,12 @@ def build_init_scaffold_manifest(
                     "name": "Demo always failing rule",
                     "summary": "Demonstration rule that always fails.",
                     "rationale": (
-                        "Provides an immediate example of a failing fitness rule in pre-commit."
+                        "Provides an immediate example of a failing fitness rule "
+                        "when running repo-owned checks."
                     ),
                     "remediation": (
-                        "Disable the demo by removing gate 'demo_fail' from harness/gates.yaml and deleting "
-                        "harness/fitness-functions/demo_rules.yaml (or re-run: engineeringagent init slim --force)."
+                        "Disable the demo by removing rule_id 'demo.always-fail' "
+                        "from harness/fitness-functions/rules.yaml (or re-run: engineeringagent init slim --force)."
                     ),
                     "scope": ".",
                     "severity": "error",
@@ -312,24 +313,12 @@ def build_init_scaffold_manifest(
         sort_keys=False,
         allow_unicode=False,
     )
-    manifest[demo_script_path] = _demo_fail_rule_script()
-
-    docs_dir_normalized = docs_dir.strip("/")
-    manifest["harness/gates.yaml"] = yaml.safe_dump(
+    manifest["harness/checks.yaml"] = yaml.safe_dump(
         {
             "contract_version": "1.0",
-            "profiles": {
-                "precommit": ["spec_validate", "demo_fail"],
-                "loop_fast": ["spec_validate"],
-            },
-            "gates": {
-                "spec_validate": _spec_validate_gate(docs_dir_normalized),
-                "demo_fail": {
-                    "run": (
-                        "engineeringagent fitness run --format json "
-                        "--manifest-path harness/fitness-functions/demo_rules.yaml"
-                    )
-                },
+            "defaults": {"when": {"phase": "iteration_end"}},
+            "checks": {
+                "fitness_all": {"type": "fitness", "scope": "all"},
             },
         },
         sort_keys=False,

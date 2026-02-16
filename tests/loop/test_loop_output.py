@@ -84,7 +84,6 @@ def test_progress_log_records_verification_status(tmp_path: Path) -> None:
     iteration_inputs = FeatureIterationInputs(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-040.yaml",
-        gate_profile="loop_fast",
         attempt=3,
         hook_feedback=None,
         verbose_output=False,
@@ -155,7 +154,6 @@ def test_progress_log_writes_do_not_use_path_open(
     iteration_inputs = FeatureIterationInputs(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-040.yaml",
-        gate_profile="loop_fast",
         attempt=1,
         hook_feedback=None,
         verbose_output=False,
@@ -214,7 +212,6 @@ def test_progress_log_strips_ansi_only_at_write_time(
     iteration_inputs = FeatureIterationInputs(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-040.yaml",
-        gate_profile="loop_fast",
         attempt=1,
         hook_feedback=None,
         verbose_output=False,
@@ -276,7 +273,6 @@ def test_progress_log_records_phase_timings(tmp_path: Path, monkeypatch: Any) ->
     iteration_inputs = FeatureIterationInputs(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-040.yaml",
-        gate_profile="loop_fast",
         attempt=1,
         hook_feedback=None,
         verbose_output=False,
@@ -357,7 +353,6 @@ def test_progress_log_records_verification_command_timings(
     iteration_inputs = FeatureIterationInputs(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-040.yaml",
-        gate_profile="loop_fast",
         attempt=1,
         hook_feedback=None,
         verbose_output=False,
@@ -441,7 +436,6 @@ def test_verification_command_timing_clamps_ended_at_when_clock_skews_backwards(
     iteration_inputs = FeatureIterationInputs(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-040.yaml",
-        gate_profile="loop_fast",
         attempt=1,
         hook_feedback=None,
         verbose_output=False,
@@ -470,7 +464,6 @@ def test_progress_log_records_slowest_summary(tmp_path: Path) -> None:
     iteration_inputs = FeatureIterationInputs(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-040.yaml",
-        gate_profile="loop_fast",
         attempt=1,
         hook_feedback=None,
         verbose_output=False,
@@ -534,7 +527,6 @@ def test_progress_log_records_reviewer_warning_status(
     iteration_inputs = FeatureIterationInputs(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-059.yaml",
-        gate_profile="loop_fast",
         attempt=2,
         hook_feedback=None,
         verbose_output=False,
@@ -590,7 +582,6 @@ def test_run_telemetry_summary_strips_feedback_context_block(tmp_path: Path) -> 
     iteration_inputs = FeatureIterationInputs(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-059.yaml",
-        gate_profile="loop_fast",
         attempt=2,
         hook_feedback=None,
         verbose_output=False,
@@ -642,7 +633,6 @@ def test_reviewer_feedback_forwarded_field_takes_precedence(tmp_path: Path) -> N
     iteration_inputs = FeatureIterationInputs(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-059.yaml",
-        gate_profile="loop_fast",
         attempt=1,
         hook_feedback=None,
         verbose_output=False,

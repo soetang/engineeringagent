@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 
-from engineeringagent.gates import ChangedPathsResult
+from engineeringagent.changed_paths import ChangedPathsResult
 from engineeringagent.opencode.client import DEFAULT_OPENCODE_AGENT
 from engineeringagent.reviewers import (
     MATCHED_ON_CHANGE_REASON,

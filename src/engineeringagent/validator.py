@@ -77,8 +77,12 @@ def validate(project_root: Path, schema_only: bool = False) -> list[str]:
     )
     _append_done_feature_issues(messages, done_files)
     _append_potential_features_issues(messages, potential_features_path)
-    _append_gate_config_issues(messages, gates_path)
-    _append_reviewer_config_issues(messages, reviewers_path)
+    _append_legacy_harness_contract_file_issues(
+        messages,
+        project_root=project_root,
+        gates_path=gates_path,
+        reviewers_path=reviewers_path,
+    )
     _append_reviewer_prompt_issues(messages, reviewer_prompts_dir)
     _append_agents_docs_map_issues(messages, project_root)
     _append_fitness_catalog_issues(messages, project_root)
@@ -206,6 +210,36 @@ def _append_gate_config_issues(messages: list[str], gates_path: Path) -> None:
 
 def _append_reviewer_config_issues(messages: list[str], reviewers_path: Path) -> None:
     _append_yaml_contract_issues(messages, reviewers_path, reviewer_contract_issues)
+
+
+def _append_legacy_harness_contract_file_issues(
+    messages: list[str],
+    *,
+    project_root: Path,
+    gates_path: Path,
+    reviewers_path: Path,
+) -> None:
+    """Fail validation when removed harness contract files are present.
+
+    The repo-owned verification contract is `harness/checks.yaml`. Legacy harness
+    contract files are intentionally not supported after migration.
+    """
+
+    legacy_paths = (gates_path, reviewers_path)
+    for legacy_path in legacy_paths:
+        if not legacy_path.exists():
+            continue
+        rel = legacy_path
+        try:
+            rel = legacy_path.relative_to(project_root)
+        except ValueError:
+            pass
+        rel_text = rel.as_posix()
+        messages.append(
+            f"{rel_text}: legacy harness contract file is no longer supported; "
+            "migrate to harness/checks.yaml and delete this file "
+            "(remediation: run `engineeringagent init`)"
+        )
 
 
 def _append_reviewer_prompt_issues(

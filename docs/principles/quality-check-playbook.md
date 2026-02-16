@@ -18,9 +18,9 @@ Use this playbook as a practical default, then apply judgment based on risk.
 ## When to Run What
 
 - During normal implementation loops:
-  - `uv run python -m engineeringagent.cli gates run --profile loop_fast`
+  - `engineeringagent run --all` (consumes `harness/checks.yaml`)
 - Before commit or merge:
-  - `uv run python -m engineeringagent.cli gates run --profile precommit`
+  - run the relevant direct tools (`uv run ruff ...`, `uv run pyright ...`, `uv run pytest ...`)
 - When editing feature specs or schema-related files:
   - `uv run python -m engineeringagent.cli validate`
 - When debugging a specific class of failure:
@@ -65,8 +65,8 @@ Avoid checks that can be satisfied by comment edits or keyword stuffing. Prefer 
 
 ## Practical Workflow
 
-1. Run `loop_fast` while iterating.
+1. Iterate with small, deterministic changes.
 2. Add or update unit tests for behavior changes.
 3. Add or update fitness checks when introducing or protecting structural constraints.
-4. Run `precommit` before finalizing.
+4. Run `uv run pytest -q` before finalizing.
 5. If a check fails, fix root cause first. Relax thresholds or rules only with explicit rationale.

@@ -13,15 +13,9 @@ _DISALLOWED_IMPORTS: dict[str, tuple[str, ...]] = {
         "engineeringagent.cli",
         "engineeringagent.loop",
         "engineeringagent.loop_runtime",
-        "engineeringagent.gates",
         "engineeringagent.validator",
     ),
     "engineeringagent.validator": (
-        "engineeringagent.cli",
-        "engineeringagent.loop",
-        "engineeringagent.loop_runtime",
-    ),
-    "engineeringagent.gates": (
         "engineeringagent.cli",
         "engineeringagent.loop",
         "engineeringagent.loop_runtime",
