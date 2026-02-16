@@ -509,9 +509,22 @@ def _run_completion_phase_if_needed(
     state.result = completion_phase.result
     state.failed_gate = completion_phase.failed_gate
     state.next_hook_feedback = completion_phase.hook_feedback
-    state.next_action = completion_phase.next_action
     state.completed = completion_phase.completed
     state.completion_commit_succeeded = completion_phase.completion_commit_succeeded
+
+
+def _derive_next_action(*, result: str, completion_commit_succeeded: bool) -> str:
+    """Derive next_action deterministically from final iteration state.
+
+    This mapping is intentionally narrow so telemetry/output cleanly distinguishes:
+    - passed continuation vs failed retry vs select-next after completion.
+    """
+
+    if result == "failed":
+        return "retry_same_feature"
+    if completion_commit_succeeded:
+        return "select_next_feature"
+    return "continue_same_feature"
 
 
 def run_feature_iteration_pipeline(
@@ -619,9 +632,12 @@ def run_feature_iteration_pipeline(
         ),
     )
 
-    if state.result == "passed" and not state.completion_commit_succeeded:
+    if state.result != "passed":
         state.completed = False
-        state.next_action = "retry_same_feature"
+    state.next_action = _derive_next_action(
+        result=state.result,
+        completion_commit_succeeded=state.completion_commit_succeeded,
+    )
 
     telemetry_inputs = IterationTelemetryInputs(
         iteration_inputs=iteration_inputs,

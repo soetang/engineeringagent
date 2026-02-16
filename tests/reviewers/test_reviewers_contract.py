@@ -34,10 +34,7 @@ def test_reviewer_contract_accepts_optional_approval_and_sandbox_fields() -> Non
                     "on_change": ["README.md"],
                 },
                 "approval": {
-                    "mode": "blocking",
                     "first_feature_approval": True,
-                    "max_retries": 2,
-                    "continue_on_exhausted": True,
                 },
                 "sandbox": {
                     "mode": "empty_folder",
@@ -50,6 +47,35 @@ def test_reviewer_contract_accepts_optional_approval_and_sandbox_fields() -> Non
     issues = reviewer_contract_issues(document, Path("harness/reviewers.yaml"))
 
     assert issues == []
+
+
+def test_reviewer_contract_rejects_removed_approval_mode() -> None:
+    document = {
+        "contract_version": "1.0",
+        "profiles": {"loop_fast": ["onboarding_review"]},
+        "reviewers": {
+            "onboarding_review": {
+                "prompt_file": "harness/reviewers/prompts/onboarding_review.md",
+                "trigger": {
+                    "phase": "feature_done",
+                    "on_change": ["README.md"],
+                },
+                "approval": {
+                    "mode": "blocking",
+                    "first_feature_approval": True,
+                },
+            }
+        },
+    }
+
+    issues = reviewer_contract_issues(document, Path("harness/reviewers.yaml"))
+
+    assert any(
+        ".approval." in issue.path
+        and issue.path.endswith(".mode")
+        and "Extra inputs are not permitted" in issue.message
+        for issue in issues
+    )
 
 
 def test_reviewer_contract_accepts_feedback_context_string() -> None:

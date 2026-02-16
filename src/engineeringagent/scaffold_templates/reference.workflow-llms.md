@@ -16,6 +16,15 @@ This reference describes the expected loop workflow for agent execution.
 - Inspect configured gates: `engineeringagent gates list`.
 - Run required gates: `engineeringagent gates run --profile precommit`.
 
+## Loop outcome taxonomy
+
+The run loop records a deterministic `next_action` in terminal output and in `progress/runs.jsonl`.
+
+- `continue_same_feature`: iteration result is `passed`, but the feature is not completed yet (keep working).
+- `retry_same_feature`: iteration result is `failed` (fix and try again).
+- `select_next_feature`: completion commit succeeded and the loop should move to the next eligible feature.
+- `stop`: dry-run or no-work terminal states.
+
 ## Scope Boundaries
 
 - Keep implementation edits in code and configuration, not in run logs.

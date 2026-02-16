@@ -37,7 +37,6 @@ FIRST_FEATURE_APPROVAL_INVALIDATED_RUN_ALL_REASON = (
     "first_feature_approval_invalidated_run_all"
 )
 REVIEWERS_STATE_VERSION = "1"
-ADVISORY_FOLLOWUP_REQUIRED_KEY = "advisory_followup_required"
 BLOCKING_RETRY_COUNT_KEY = "blocking_request_changes_count"
 BLOCKING_RETRY_UPDATED_AT_KEY = "blocking_retry_updated_at"
 SANDBOX_MODE_TEMP_WORKTREE_SNAPSHOT = "temp_worktree_snapshot"
@@ -238,37 +237,6 @@ def increment_blocking_reviewer_retry_count(
     reviewer_state[BLOCKING_RETRY_UPDATED_AT_KEY] = _now_iso()
     reviewer_state["approved"] = False
     return count
-
-
-def set_advisory_followup_required(state: dict[str, Any], *, feature_id: str) -> None:
-    """Mark that one implement follow-up pass is required before completion."""
-    features = state.setdefault("features", {})
-    feature_state = features.setdefault(feature_id, {})
-    feature_state[ADVISORY_FOLLOWUP_REQUIRED_KEY] = True
-    feature_state["advisory_followup_updated_at"] = _now_iso()
-
-
-def clear_advisory_followup_required(state: dict[str, Any], *, feature_id: str) -> None:
-    """Clear advisory follow-up latch after one subsequent implement pass."""
-    features = state.get("features")
-    if not isinstance(features, dict):
-        return
-    feature_state = features.get(feature_id)
-    if not isinstance(feature_state, dict):
-        return
-    feature_state[ADVISORY_FOLLOWUP_REQUIRED_KEY] = False
-    feature_state["advisory_followup_updated_at"] = _now_iso()
-
-
-def advisory_followup_required(state: dict[str, Any], *, feature_id: str) -> bool:
-    """Return whether the feature currently requires one follow-up pass."""
-    features = state.get("features")
-    if not isinstance(features, dict):
-        return False
-    feature_state = features.get(feature_id)
-    if not isinstance(feature_state, dict):
-        return False
-    return bool(feature_state.get(ADVISORY_FOLLOWUP_REQUIRED_KEY, False))
 
 
 def invalidate_reviewer_approval(

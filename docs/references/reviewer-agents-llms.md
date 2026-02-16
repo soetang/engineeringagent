@@ -24,14 +24,11 @@ Required reviewer fields:
 
 - `prompt_file`: repo-relative path under `harness/reviewers/prompts/`.
 - `trigger.phase`: `iteration_end` or `feature_done` in config.
-- `approval.mode`: `advisory` or `blocking` (defaults to `advisory` if omitted).
 
 Optional reviewer fields:
 
 - `trigger.on_change`: list of glob patterns; if omitted, reviewer is considered for all changes at its phase.
 - `approval.first_feature_approval`: boolean (default `true`).
-- `approval.max_retries`: integer >= 0 (default `2`).
-- `approval.continue_on_exhausted`: boolean (default `true`).
 - `sandbox.mode`: currently `temp_worktree_snapshot` or `empty_folder`.
 - `sandbox.assets`: optional list of repo-relative paths (files or directories) to copy into an `empty_folder` sandbox.
 - `feedback_context`: optional string forwarded verbatim into the next implement pass feedback when a follow-up implement pass is required.
@@ -52,16 +49,12 @@ reviewers:
         - "src/**/*.py"
         - "tests/**/*.py"
     approval:
-      mode: "advisory"
       first_feature_approval: true
-      max_retries: 2
-      continue_on_exhausted: true
 ```
 
 ## Default `code_simplifier` reviewer
 
-Use this built-in reviewer when you want simplification guidance on code changes
-without default hard-blocking completion behavior.
+Use this reviewer when you want simplification guidance on code changes at `feature_done`.
 
 Copy-pastable `code_simplifier` entry:
 
@@ -74,19 +67,15 @@ code_simplifier:
       - "src/**/*.py"
       - "tests/**/*.py"
   approval:
-    mode: "advisory"
     first_feature_approval: true
-    max_retries: 2
-    continue_on_exhausted: true
 ```
 
 Plain-English behavior:
 
 - Runs at `feature_done` only when changed paths match configured code globs.
-- Returns v1 decision JSON (`approve`, `warning`, or `request_changes`) from a harness-managed prompt file.
-- Any returned feedback requires one follow-up implement pass before completion commit eligibility.
-- Does not hard-block completion by default when advice is returned.
-- Non-JSON or malformed output is treated as deterministic advisory guidance that still requires one follow-up implement pass.
+- Returns v1 decision JSON (`approve` or `request_changes`) from a harness-managed prompt file.
+- At `feature_done`, any decision other than `approve` blocks completion and continues the same feature with forwarded feedback.
+- Non-JSON or malformed output is treated as deterministic `request_changes` with a parser-failure summary.
 
 ## Decision envelope contract
 
@@ -96,7 +85,7 @@ Plain-English behavior:
 
 Reviewer output must be JSON object with required fields:
 
-- `decision`: one of `approve`, `request_changes`, `warning`.
+- `decision`: one of `approve`, `request_changes`.
 - `summary`: non-empty string.
 
 Optional fields:
@@ -132,18 +121,6 @@ Copy-pastable decision examples:
 }
 ```
 
-```json
-{
-  "decision": "warning",
-  "summary": "Readability can improve, but no hard blocker.",
-  "required_actions": [
-    "Consider simplifying nested conditional in reviewer planner"
-  ],
-  "confidence": 0.73,
-  "scope_notes": "Advisory readability guidance only."
-}
-```
-
 ## Trigger and planning semantics
 
 - Runtime executes reviewers only at `feature_done`.
@@ -152,19 +129,9 @@ Copy-pastable decision examples:
 - If `trigger.on_change` is set, the reviewer runs only when changed paths match at least one pattern.
 - If changed paths cannot be resolved deterministically, planner falls back to run-all with explicit reason.
 
-## Approval policy semantics
+## Approval caching semantics
 
-- `advisory`:
-  - Never permanently blocks completion.
-  - All reviewer decisions (`approve`, `warning`, `request_changes`) produce forwarded feedback for the next implement pass.
-  - Any forwarded reviewer feedback requires exactly one follow-up implement pass before completion commit eligibility.
-- `blocking`:
-  - `request_changes` triggers retry behavior.
-  - Retry attempts continue until approval or exhaustion (`max_retries`).
-  - On exhaustion:
-    - `continue_on_exhausted=true`: continue with warning and recorded non-approval state.
-    - `continue_on_exhausted=false`: fail iteration.
-- `first_feature_approval=true` caches first approval per feature and reviewer and reuses it until relevant scoped paths change.
+- `approval.first_feature_approval=true` caches first approval per feature and reviewer and reuses it until relevant scoped paths change.
 
 ## Feedback forwarding and logging semantics
 
@@ -186,21 +153,11 @@ Copy-pastable decision examples:
 
 ## End-to-end policy examples
 
-Advisory path (`feature_done`):
+Feature completion path (`feature_done`):
 
 1. Deterministic gates pass.
-1. Advisory reviewer returns `warning`.
-1. Loop records feedback and requires one follow-up implement pass.
-1. Next iteration runs implement once, then reviewer phase can pass without blocking completion.
-
-Blocking path (`feature_done`):
-
-1. Deterministic gates pass.
-1. Blocking reviewer returns `request_changes`.
-1. Loop retries implement and reruns reviewer (bounded by `max_retries`).
-1. If reviewer still requests changes after exhaustion:
-   - continue with warning when `continue_on_exhausted=true`, or
-   - fail iteration when `continue_on_exhausted=false`.
+1. Reviewer returns `approve` -> completion may proceed.
+1. Reviewer returns `request_changes` -> completion is blocked and the loop continues the same feature with forwarded feedback.
 
 ## CLI surfaces
 

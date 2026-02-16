@@ -12,8 +12,6 @@ from .git.client import (
 )
 from .opencode.client import run_shell_command, start_agent
 from .reviewers import (
-    advisory_followup_required,
-    clear_advisory_followup_required,
     evaluate_cached_reviewer_approval,
     load_reviewer_config,
     load_reviewers_state,
@@ -21,7 +19,6 @@ from .reviewers import (
     record_reviewer_approval,
     run_reviewer,
     save_reviewers_state,
-    set_advisory_followup_required,
 )
 from .opencode_permissions import (
     PERMISSION_REMEDIATION_HINT,
@@ -373,21 +370,6 @@ def _run_feature_iteration_with_inputs(
                 evaluate_cached_reviewer_approval=evaluate_cached_reviewer_approval,
                 run_reviewer=run_reviewer,
                 record_reviewer_approval=record_reviewer_approval,
-                advisory_followup_required=(
-                    lambda state, feature_id: advisory_followup_required(
-                        state, feature_id=feature_id
-                    )
-                ),
-                set_advisory_followup_required=(
-                    lambda state, feature_id: set_advisory_followup_required(
-                        state, feature_id=feature_id
-                    )
-                ),
-                clear_advisory_followup_required=(
-                    lambda state, feature_id: clear_advisory_followup_required(
-                        state, feature_id=feature_id
-                    )
-                ),
                 restore_archived_feature=_restore_archived_feature,
                 start_agent=start_agent,
             ),

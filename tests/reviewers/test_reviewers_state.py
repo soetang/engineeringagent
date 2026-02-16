@@ -43,6 +43,43 @@ def test_reviewers_state_round_trip_under_progress_directory(tmp_path) -> None:
     assert payload["version"] == "1"
 
 
+def test_load_reviewers_state_returns_default_on_invalid_json(tmp_path: Path) -> None:
+    state_path = progress_paths.reviewers_state_path(tmp_path)
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    state_path.write_text("{not json}\n", encoding="utf-8")
+
+    loaded = load_reviewers_state(tmp_path)
+
+    assert loaded == {"version": "1", "features": {}}
+
+
+def test_load_reviewers_state_returns_default_on_non_mapping_payload(
+    tmp_path: Path,
+) -> None:
+    state_path = progress_paths.reviewers_state_path(tmp_path)
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    state_path.write_text(json.dumps(["not", "a", "mapping"]) + "\n", encoding="utf-8")
+
+    loaded = load_reviewers_state(tmp_path)
+
+    assert loaded == {"version": "1", "features": {}}
+
+
+def test_load_reviewers_state_returns_default_when_features_is_not_a_mapping(
+    tmp_path: Path,
+) -> None:
+    state_path = progress_paths.reviewers_state_path(tmp_path)
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    state_path.write_text(
+        json.dumps({"version": "1", "features": ["not", "a", "mapping"]}) + "\n",
+        encoding="utf-8",
+    )
+
+    loaded = load_reviewers_state(tmp_path)
+
+    assert loaded == {"version": "1", "features": {}}
+
+
 def test_cached_first_approval_reused_when_scope_unchanged() -> None:
     state = {
         "version": "1",

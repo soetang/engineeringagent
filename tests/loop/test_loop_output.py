@@ -100,13 +100,13 @@ def test_progress_log_records_verification_status(tmp_path: Path) -> None:
         gate_status="not_run",
         verification_status=f"failed:{verification_command}",
         verification_failed_command=verification_command,
-        reviewer_status="failed:blocking",
+        reviewer_status="failed:request_changes",
         reviewer_decision="request_changes",
         failed_reviewer_id="security-reviewer",
         implement_output="",
         gate_output="",
         verification_output="E       assert 1 == 2",
-        reviewer_output="[reviewer:security-reviewer] mode=blocking decision=request_changes",
+        reviewer_output="[reviewer:security-reviewer] decision=request_changes",
         hook_feedback=f"[verification] command={verification_command}",
     )
 
@@ -118,7 +118,7 @@ def test_progress_log_records_verification_status(tmp_path: Path) -> None:
     run = json.loads((tmp_path / "progress" / "runs.jsonl").read_text(encoding="utf-8"))
     assert run["verification_status"] == f"failed:{verification_command}"
     assert run["verification_failed_command"] == verification_command
-    assert run["reviewer_status"] == "failed:blocking"
+    assert run["reviewer_status"] == "failed:request_changes"
     assert run["reviewer_decision"] == "request_changes"
     assert run["failed_reviewer_id"] == "security-reviewer"
     assert run["reviewer_feedback_present"] is False
@@ -140,11 +140,11 @@ def test_progress_log_records_verification_status(tmp_path: Path) -> None:
     assert "E       assert 1 == 2" in feature_log
     assert "verification_output_end" in feature_log
     assert (
-        "reviewer=failed:blocking decision=request_changes "
+        "reviewer=failed:request_changes decision=request_changes "
         "failed_reviewer=security-reviewer"
     ) in feature_log
     assert "reviewer_output_begin" in feature_log
-    assert "mode=blocking decision=request_changes" in feature_log
+    assert "decision=request_changes" in feature_log
     assert "reviewer_output_end" in feature_log
 
 
@@ -166,7 +166,7 @@ def test_progress_log_writes_do_not_use_path_open(
         feature_id="FEAT-040",
         result="passed",
         failed_gate=None,
-        next_action="advance_to_next_feature",
+        next_action="continue_same_feature",
         implement_status="passed",
         gate_status="passed",
         verification_status="passed",
@@ -225,7 +225,7 @@ def test_progress_log_strips_ansi_only_at_write_time(
         feature_id="FEAT-040",
         result="passed",
         failed_gate=None,
-        next_action="advance_to_next_feature",
+        next_action="continue_same_feature",
         implement_status=implement_status,
         gate_status=gate_status,
         verification_status="passed",
@@ -301,7 +301,7 @@ def test_progress_log_records_phase_timings(tmp_path: Path, monkeypatch: Any) ->
         feature_id="FEAT-040",
         result="passed",
         failed_gate=None,
-        next_action="advance_to_next_feature",
+        next_action="continue_same_feature",
         implement_status="passed",
         gate_status="passed",
         verification_status="passed",
@@ -391,7 +391,7 @@ def test_progress_log_records_verification_command_timings(
         feature_id="FEAT-040",
         result="passed",
         failed_gate=None,
-        next_action="advance_to_next_feature",
+        next_action="continue_same_feature",
         implement_status="passed",
         gate_status="passed",
         verification_status="passed",
@@ -498,7 +498,7 @@ def test_progress_log_records_slowest_summary(tmp_path: Path) -> None:
         feature_id="FEAT-040",
         result="passed",
         failed_gate=None,
-        next_action="advance_to_next_feature",
+        next_action="continue_same_feature",
         implement_status="passed",
         gate_status="passed",
         verification_status="passed",
@@ -528,7 +528,7 @@ def test_progress_log_records_slowest_summary(tmp_path: Path) -> None:
     ) in feature_log
 
 
-def test_progress_log_records_code_simplifier_advisory_followup_status(
+def test_progress_log_records_reviewer_warning_status(
     tmp_path: Path,
 ) -> None:
     iteration_inputs = FeatureIterationInputs(
@@ -543,21 +543,23 @@ def test_progress_log_records_code_simplifier_advisory_followup_status(
         iteration_inputs=iteration_inputs,
         started=0.0,
         feature_id="FEAT-059",
-        result="failed",
-        failed_gate="reviewer_advisory_followup",
-        next_action="retry_same_feature",
+        result="passed",
+        failed_gate=None,
+        next_action="continue_same_feature",
         implement_status="passed",
         gate_status="passed",
         verification_status="passed",
         verification_failed_command=None,
-        reviewer_status="failed:advisory_followup",
+        reviewer_status="passed",
         reviewer_decision="warning",
-        failed_reviewer_id="code_simplifier",
+        failed_reviewer_id=None,
         implement_output="",
         gate_output="",
         verification_output="",
-        reviewer_output="[reviewer:code_simplifier] mode=advisory decision=warning",
-        hook_feedback="reviewer 'code_simplifier' advisory feedback: simplify nested branching.",
+        reviewer_output="[reviewer:code_simplifier] decision=warning",
+        hook_feedback=(
+            "reviewer 'code_simplifier' feedback (decision=warning): simplify nested branching."
+        ),
     )
 
     write_iteration_telemetry(
@@ -566,24 +568,21 @@ def test_progress_log_records_code_simplifier_advisory_followup_status(
     )
 
     run = json.loads((tmp_path / "progress" / "runs.jsonl").read_text(encoding="utf-8"))
-    assert run["reviewer_status"] == "failed:advisory_followup"
+    assert run["reviewer_status"] == "passed"
     assert run["reviewer_decision"] == "warning"
-    assert run["failed_reviewer_id"] == "code_simplifier"
+    assert run["failed_reviewer_id"] is None
     assert run["reviewer_feedback_present"] is True
     assert "simplify nested branching" in run["reviewer_feedback_summary"]
 
     feature_log = (tmp_path / "progress" / "run-feature-FEAT-059.txt").read_text(
         encoding="utf-8"
     )
-    assert (
-        "reviewer=failed:advisory_followup decision=warning "
-        "failed_reviewer=code_simplifier"
-    ) in feature_log
+    assert ("reviewer=passed decision=warning failed_reviewer=-") in feature_log
     assert "reviewer_output_begin" in feature_log
-    assert "[reviewer:code_simplifier] mode=advisory decision=warning" in feature_log
+    assert "[reviewer:code_simplifier] decision=warning" in feature_log
     assert "reviewer_output_end" in feature_log
     assert "reviewer_feedback_forwarded_begin" in feature_log
-    assert "reviewer 'code_simplifier' advisory feedback" in feature_log
+    assert "reviewer 'code_simplifier' feedback" in feature_log
     assert "reviewer_feedback_forwarded_end" in feature_log
 
 
@@ -611,19 +610,19 @@ def test_run_telemetry_summary_strips_feedback_context_block(tmp_path: Path) -> 
         started=0.0,
         feature_id="FEAT-079",
         result="failed",
-        failed_gate="reviewer_blocking",
+        failed_gate="reviewer_request_changes",
         next_action="retry_same_feature",
         implement_status="passed",
         gate_status="passed",
         verification_status="passed",
         verification_failed_command=None,
-        reviewer_status="failed:blocking",
+        reviewer_status="failed:request_changes",
         reviewer_decision="request_changes",
         failed_reviewer_id="onboarding_review",
         implement_output="",
         gate_output="",
         verification_output="",
-        reviewer_output="[reviewer:onboarding_review] mode=blocking decision=request_changes",
+        reviewer_output="[reviewer:onboarding_review] decision=request_changes",
         hook_feedback=hook_feedback,
     )
 
@@ -653,21 +652,21 @@ def test_reviewer_feedback_forwarded_field_takes_precedence(tmp_path: Path) -> N
         started=0.0,
         feature_id="FEAT-079",
         result="failed",
-        failed_gate="reviewer_blocking",
+        failed_gate="reviewer_request_changes",
         next_action="retry_same_feature",
         implement_status="passed",
         gate_status="passed",
         verification_status="passed",
         verification_failed_command=None,
-        reviewer_status="failed:blocking",
+        reviewer_status="failed:request_changes",
         reviewer_decision="request_changes",
         failed_reviewer_id="onboarding_review",
         implement_output="",
         gate_output="",
         verification_output="",
-        reviewer_output="[reviewer:onboarding_review] mode=blocking decision=request_changes",
+        reviewer_output="[reviewer:onboarding_review] decision=request_changes",
         reviewer_feedback_forwarded=(
-            "reviewer 'onboarding_review' feedback (mode=blocking, decision=request_changes): "
+            "reviewer 'onboarding_review' feedback (decision=request_changes): "
             "Use the repo README conventions.\nfeedback_context:\nclean-room sandbox"
         ),
         hook_feedback="(ignored) not a reviewer line",
@@ -685,7 +684,7 @@ def test_reviewer_feedback_forwarded_field_takes_precedence(tmp_path: Path) -> N
 
 def test_reviewer_feedback_summary_truncates_after_stripping_context() -> None:
     text = (
-        "reviewer 'onboarding_review' feedback (mode=blocking, decision=request_changes): "
+        "reviewer 'onboarding_review' feedback (decision=request_changes): "
         + ("x" * 50)
         + "\nfeedback_context:\n"
         + ("y" * 500)
@@ -731,7 +730,7 @@ def test_non_verbose_terminal_output_shows_verification_summary(
         log_path="progress/run-feature-FEAT-040.txt",
         verification_status=f"failed:{verification_command}",
         verification_failed_command=verification_command,
-        reviewer_status="failed:blocking",
+        reviewer_status="failed:request_changes",
         reviewer_decision="request_changes",
         failed_reviewer_id="security-reviewer",
     )
@@ -739,6 +738,7 @@ def test_non_verbose_terminal_output_shows_verification_summary(
     output = capsys.readouterr().out
     assert "🧪 Verify: failed (uv run pytest -q tests/test_loop_output.py)" in output
     assert (
-        "👀 Reviewer: failed:blocking (request_changes) [security-reviewer]" in output
+        "👀 Reviewer: failed:request_changes (request_changes) [security-reviewer]"
+        in output
     )
     assert "❌ Failed: gate=unknown" in output

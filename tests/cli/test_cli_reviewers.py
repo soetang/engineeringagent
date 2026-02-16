@@ -24,8 +24,7 @@ def _write_reviewers_config(tmp_path: Path) -> None:
                 "reviewers": {
                     "code_simplifier": {
                         "prompt_file": "harness/reviewers/prompts/code_simplifier.md",
-                        "trigger": {"phase": "iteration_end"},
-                        "approval": {"mode": "advisory"},
+                        "trigger": {"phase": "feature_done"},
                     }
                 },
             },

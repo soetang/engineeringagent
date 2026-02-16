@@ -1,0 +1,59 @@
+id: FEAT-092
+title: Remove repository-wide legacy reviewer artifact scan test
+type: test
+expected_commit_subject: "test: remove legacy reviewer artifacts scan test"
+status: backlog
+priority: medium
+objective: |
+  Remove the repository-wide grep-style test that scans all tracked files for legacy
+  reviewer artifacts.
+
+  This test is now creating false coupling between active specs/docs (which may
+  legitimately mention legacy terms for migration context) and the unit test suite.
+context: |
+  The repository currently contains `tests/test_no_legacy_reviewer_artifacts.py`,
+  which defines `test_repository_removes_legacy_reviewer_artifacts`.
+
+  The test runs `git ls-files` and then reads every tracked file as bytes looking
+  for specific legacy reviewer strings (e.g. `approval.mode`, `passed:advisory`,
+  `reviewer_advisory_followup`, etc.), with a hard-coded allowlist for exactly one
+  spec file.
+
+  This mechanism is brittle:
+  - it is too broad (it treats documentation/spec text as a test failure)
+  - it requires constant allowlist maintenance as new specs reference historical
+    behavior for clarity
+  - it does not directly validate runtime behavior; it only enforces that certain
+    substrings do not appear anywhere in tracked files
+constraints:
+  - "No runtime behavior change: this is a test-suite / repository hygiene change only."
+  - "Do not edit or delete archived specs under `docs/spec/features_done/`."
+  - "Do not remove legitimate migration context from active specs/docs solely to satisfy the removed test."
+implementation_notes: |
+  Contract/API delta (explicit):
+
+  - Surface: repository test suite behavior.
+    - Old behavior: `pytest` fails if any tracked file contains a legacy reviewer
+      artifact substring (except for one hard-coded allowlist path).
+    - New behavior: that repository-wide substring scan is removed.
+
+  Notes:
+  - If we still want regression protection, add a *new* narrowly-scoped test that
+    targets only runtime-relevant surfaces (e.g. `src/engineeringagent/`), and
+    explicitly excludes specs/docs. That follow-up is out of scope for this spec
+    unless it is required to preserve a safety invariant.
+acceptance:
+  - "`tests/test_no_legacy_reviewer_artifacts.py` is removed from the repository (or the `test_repository_removes_legacy_reviewer_artifacts` test is removed such that it no longer runs)."
+  - "`uv run pytest -q` passes."
+  - "`uv run python -m engineeringagent.cli validate` passes (spec validation remains green)."
+subtasks:
+  - id: ST-001
+    title: Remove the legacy reviewer artifact scan test
+    status: backlog
+    context: |
+      Delete `tests/test_no_legacy_reviewer_artifacts.py` (or remove the single test
+      it contains) and ensure no other tests rely on it.
+    verification:
+      - uv run python -m engineeringagent.cli validate
+      - uv run pytest -q
+updated_at: "2026-02-16T00:00:00Z"

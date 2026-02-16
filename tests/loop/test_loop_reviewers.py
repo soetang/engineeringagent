@@ -24,12 +24,7 @@ from engineeringagent.loop_runtime.phases import (
     VerificationPhaseDependencies,
     run_reviewer_phase,
 )
-from engineeringagent.reviewers import (
-    advisory_followup_required,
-    clear_advisory_followup_required,
-    plan_reviewers,
-    set_advisory_followup_required,
-)
+from engineeringagent.reviewers import plan_reviewers
 
 
 def _iteration_inputs(tmp_path: Path) -> FeatureIterationInputs:
@@ -43,14 +38,13 @@ def _iteration_inputs(tmp_path: Path) -> FeatureIterationInputs:
     )
 
 
-def _base_config(mode: str) -> dict[str, Any]:
+def _base_config() -> dict[str, Any]:
     return {
         "profiles": {"loop_fast": ["code_reviewer"]},
         "reviewers": {
             "code_reviewer": {
                 "prompt_file": "harness/reviewers/prompts/code_reviewer.md",
                 "trigger": {"phase": "iteration_end"},
-                "approval": {"mode": mode},
             }
         },
     }
@@ -96,30 +90,15 @@ def _deps(
             "required_actions": required_actions or [],
         },
         record_reviewer_approval=lambda *_args, **_kwargs: None,
-        advisory_followup_required=(
-            lambda state, feature_id: advisory_followup_required(
-                state, feature_id=feature_id
-            )
-        ),
-        set_advisory_followup_required=(
-            lambda state, feature_id: set_advisory_followup_required(
-                state,
-                feature_id=feature_id,
-            )
-        ),
-        clear_advisory_followup_required=(
-            lambda state, feature_id: clear_advisory_followup_required(
-                state,
-                feature_id=feature_id,
-            )
-        ),
         restore_archived_feature=_restore,
         start_agent=lambda *_args, **_kwargs: None,
     )
 
 
-def test_blocking_reviewer_requests_retry_and_sets_feedback(tmp_path: Path) -> None:
-    config = _base_config("blocking")
+def test_feature_done_reviewer_request_changes_blocks_completion_and_sets_feedback(
+    tmp_path: Path,
+) -> None:
+    config = _base_config()
     config["reviewers"]["code_reviewer"]["trigger"]["phase"] = "feature_done"
     config["reviewers"]["code_reviewer"]["feedback_context"] = (
         "This reviewer runs with constrained context and may not see the full repo."
@@ -137,35 +116,258 @@ def test_blocking_reviewer_requests_retry_and_sets_feedback(tmp_path: Path) -> N
     )
 
     assert outcome.result == "failed"
-    assert outcome.failed_gate == "reviewer_blocking"
+    assert outcome.failed_gate == "reviewer_request_changes"
     assert "requested changes" in str(outcome.hook_feedback)
     assert "feedback_context:" in str(outcome.hook_feedback)
     assert "may not see the full repo" in str(outcome.hook_feedback)
 
 
-def test_advisory_reviewer_records_warning_without_blocking(tmp_path: Path) -> None:
+def test_iteration_end_reviewer_does_not_run_when_feature_not_archived(
+    tmp_path: Path,
+) -> None:
     outcome = run_reviewer_phase(
         _iteration_inputs(tmp_path),
         {"id": "FEAT-050"},
         archived_in_iteration=False,
         archived_path=None,
         dependencies=_deps(
-            _base_config("advisory"),
-            decision="warning",
+            _base_config(),
+            decision="approve",
             summary="Optional readability cleanup.",
         ),
     )
 
     assert outcome.result == "passed"
     assert outcome.failed_gate is None
-    assert outcome.reviewer_status == "passed"
+    assert outcome.reviewer_status == "not_run"
     assert outcome.hook_feedback is None
 
 
-def test_advisory_reviewer_approve_feedback_requires_one_followup_pass(
+def test_reviewer_phase_skips_when_feature_payload_missing(tmp_path: Path) -> None:
+    outcome = run_reviewer_phase(
+        _iteration_inputs(tmp_path),
+        None,
+        archived_in_iteration=True,
+        archived_path=tmp_path / "docs" / "spec" / "features_done" / "FEAT-050.yaml",
+        dependencies=_deps(
+            _base_config(),
+            decision="approve",
+            summary="unused",
+        ),
+    )
+
+    assert outcome.result == "passed"
+    assert outcome.reviewer_status == "not_run"
+
+
+def test_reviewer_phase_returns_not_run_when_planner_selects_no_reviewers(
     tmp_path: Path,
 ) -> None:
-    config = _base_config("advisory")
+    config = _base_config()
+    config["reviewers"]["code_reviewer"]["trigger"]["phase"] = "feature_done"
+
+    deps = ReviewerPhaseDependencies(
+        load_reviewer_config=lambda _path: config,
+        collect_changed_paths=lambda _root: ChangedPathsResult(
+            paths=("src/engineeringagent/loop.py",),
+            run_all=False,
+            reason=None,
+        ),
+        load_reviewers_state=lambda _root: {"version": "1", "features": {}},
+        save_reviewers_state=lambda *_args, **_kwargs: None,
+        plan_reviewers=lambda *_args, **_kwargs: [],
+        evaluate_cached_reviewer_approval=lambda *_args, **_kwargs: (False, ""),
+        run_reviewer=lambda *_args, **_kwargs: {},
+        record_reviewer_approval=lambda *_args, **_kwargs: None,
+        restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+        start_agent=lambda *_args, **_kwargs: None,
+    )
+
+    outcome = run_reviewer_phase(
+        _iteration_inputs(tmp_path),
+        {"id": "FEAT-050"},
+        archived_in_iteration=True,
+        archived_path=tmp_path / "docs" / "spec" / "features_done" / "FEAT-050.yaml",
+        dependencies=deps,
+    )
+
+    assert outcome.result == "passed"
+    assert outcome.reviewer_status == "not_run"
+
+
+def test_reviewer_phase_passes_when_all_planned_entries_are_skips(
+    tmp_path: Path,
+) -> None:
+    config = _base_config()
+    config["reviewers"]["code_reviewer"]["trigger"]["phase"] = "feature_done"
+
+    deps = ReviewerPhaseDependencies(
+        load_reviewer_config=lambda _path: config,
+        collect_changed_paths=lambda _root: ChangedPathsResult(
+            paths=("src/engineeringagent/loop.py",),
+            run_all=False,
+            reason=None,
+        ),
+        load_reviewers_state=lambda _root: {"version": "1", "features": {}},
+        save_reviewers_state=lambda *_args, **_kwargs: None,
+        plan_reviewers=lambda *_args, **_kwargs: [
+            {
+                "reviewer": "code_reviewer",
+                "decision": "skip",
+                "reason": "phase_mismatch",
+            }
+        ],
+        evaluate_cached_reviewer_approval=lambda *_args, **_kwargs: (False, ""),
+        run_reviewer=lambda *_args, **_kwargs: {},
+        record_reviewer_approval=lambda *_args, **_kwargs: None,
+        restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+        start_agent=lambda *_args, **_kwargs: None,
+    )
+
+    outcome = run_reviewer_phase(
+        _iteration_inputs(tmp_path),
+        {"id": "FEAT-050"},
+        archived_in_iteration=True,
+        archived_path=tmp_path / "docs" / "spec" / "features_done" / "FEAT-050.yaml",
+        dependencies=deps,
+    )
+
+    assert outcome.result == "passed"
+    assert outcome.reviewer_status == "passed"
+    assert "skip reason=phase_mismatch" in outcome.reviewer_output
+
+
+def test_reviewer_phase_passes_when_reviewer_entry_is_not_a_mapping(
+    tmp_path: Path,
+) -> None:
+    config = _base_config()
+    config["reviewers"]["code_reviewer"] = "not-a-mapping"
+
+    deps = ReviewerPhaseDependencies(
+        load_reviewer_config=lambda _path: config,
+        collect_changed_paths=lambda _root: ChangedPathsResult(
+            paths=("src/engineeringagent/loop.py",),
+            run_all=False,
+            reason=None,
+        ),
+        load_reviewers_state=lambda _root: {"version": "1", "features": {}},
+        save_reviewers_state=lambda *_args, **_kwargs: None,
+        plan_reviewers=lambda *_args, **_kwargs: [
+            {
+                "reviewer": "code_reviewer",
+                "decision": "run",
+                "reason": "always_run_no_on_change",
+            }
+        ],
+        evaluate_cached_reviewer_approval=lambda *_args, **_kwargs: (False, ""),
+        run_reviewer=lambda *_args, **_kwargs: {},
+        record_reviewer_approval=lambda *_args, **_kwargs: None,
+        restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+        start_agent=lambda *_args, **_kwargs: None,
+    )
+
+    outcome = run_reviewer_phase(
+        _iteration_inputs(tmp_path),
+        {"id": "FEAT-050"},
+        archived_in_iteration=True,
+        archived_path=tmp_path / "docs" / "spec" / "features_done" / "FEAT-050.yaml",
+        dependencies=deps,
+    )
+
+    assert outcome.result == "passed"
+
+
+def test_reviewer_phase_records_reused_approvals_in_output(tmp_path: Path) -> None:
+    config = _base_config()
+    config["reviewers"]["code_reviewer"]["trigger"]["phase"] = "feature_done"
+
+    deps = ReviewerPhaseDependencies(
+        load_reviewer_config=lambda _path: config,
+        collect_changed_paths=lambda _root: ChangedPathsResult(
+            paths=("src/engineeringagent/loop.py",),
+            run_all=False,
+            reason=None,
+        ),
+        load_reviewers_state=lambda _root: {"version": "1", "features": {}},
+        save_reviewers_state=lambda *_args, **_kwargs: None,
+        plan_reviewers=lambda *_args, **_kwargs: [
+            {
+                "reviewer": "code_reviewer",
+                "decision": "run",
+                "reason": "always_run_no_on_change",
+            }
+        ],
+        evaluate_cached_reviewer_approval=lambda *_args, **_kwargs: (
+            True,
+            "first_feature_approval_reused",
+        ),
+        run_reviewer=lambda *_args, **_kwargs: {},
+        record_reviewer_approval=lambda *_args, **_kwargs: None,
+        restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+        start_agent=lambda *_args, **_kwargs: None,
+    )
+
+    outcome = run_reviewer_phase(
+        _iteration_inputs(tmp_path),
+        {"id": "FEAT-050"},
+        archived_in_iteration=True,
+        archived_path=tmp_path / "docs" / "spec" / "features_done" / "FEAT-050.yaml",
+        dependencies=deps,
+    )
+
+    assert outcome.result == "passed"
+    assert "reused=first_feature_approval_reused" in outcome.reviewer_output
+
+
+def test_reviewer_phase_treats_empty_feedback_context_as_missing(
+    tmp_path: Path,
+) -> None:
+    config = _base_config()
+    config["reviewers"]["code_reviewer"]["trigger"]["phase"] = "feature_done"
+    config["reviewers"]["code_reviewer"]["feedback_context"] = "\n"
+
+    deps = ReviewerPhaseDependencies(
+        load_reviewer_config=lambda _path: config,
+        collect_changed_paths=lambda _root: ChangedPathsResult(
+            paths=("src/engineeringagent/loop.py",),
+            run_all=False,
+            reason=None,
+        ),
+        load_reviewers_state=lambda _root: {"version": "1", "features": {}},
+        save_reviewers_state=lambda *_args, **_kwargs: None,
+        plan_reviewers=lambda *_args, **_kwargs: [
+            {
+                "reviewer": "code_reviewer",
+                "decision": "run",
+                "reason": "always_run_no_on_change",
+            }
+        ],
+        evaluate_cached_reviewer_approval=lambda *_args, **_kwargs: (False, ""),
+        run_reviewer=lambda *_args, **_kwargs: {
+            "decision": "approve",
+            "summary": "Looks good.",
+            "required_actions": [],
+        },
+        record_reviewer_approval=lambda *_args, **_kwargs: None,
+        restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+        start_agent=lambda *_args, **_kwargs: None,
+    )
+
+    outcome = run_reviewer_phase(
+        _iteration_inputs(tmp_path),
+        {"id": "FEAT-050"},
+        archived_in_iteration=True,
+        archived_path=tmp_path / "docs" / "spec" / "features_done" / "FEAT-050.yaml",
+        dependencies=deps,
+    )
+
+    assert outcome.result == "passed"
+
+
+def test_feature_done_reviewer_approve_does_not_forward_non_blocking_feedback(
+    tmp_path: Path,
+) -> None:
+    config = _base_config()
     config["reviewers"]["code_reviewer"]["trigger"]["phase"] = "feature_done"
     state_box: dict[str, dict[str, Any]] = {"state": {"version": "1", "features": {}}}
     restore_calls: list[tuple[Path, Path]] = []
@@ -179,14 +381,7 @@ def test_advisory_reviewer_approve_feedback_requires_one_followup_pass(
     )
     archived_path = tmp_path / "docs" / "spec" / "features_done" / "FEAT-050.yaml"
 
-    first = run_reviewer_phase(
-        _iteration_inputs(tmp_path),
-        {"id": "FEAT-050"},
-        archived_in_iteration=True,
-        archived_path=archived_path,
-        dependencies=deps,
-    )
-    second = run_reviewer_phase(
+    outcome = run_reviewer_phase(
         _iteration_inputs(tmp_path),
         {"id": "FEAT-050"},
         archived_in_iteration=True,
@@ -194,17 +389,17 @@ def test_advisory_reviewer_approve_feedback_requires_one_followup_pass(
         dependencies=deps,
     )
 
-    assert first.result == "failed"
-    assert first.failed_gate == "reviewer_advisory_followup"
-    assert "Looks good to ship after one polish pass." in str(first.hook_feedback)
-    assert "Polish variable names for readability." in str(first.hook_feedback)
-    assert second.result == "passed"
-    assert second.failed_gate is None
-    assert len(restore_calls) == 1
+    assert outcome.result == "passed"
+    assert outcome.failed_gate is None
+    assert outcome.hook_feedback is None
+    assert len(restore_calls) == 0
+    assert state_box["state"]["features"].get("FEAT-050") is None
 
 
-def test_blocking_reviewer_warning_feedback_is_forwarded(tmp_path: Path) -> None:
-    config = _base_config("blocking")
+def test_feature_done_reviewer_warning_is_normalized_to_request_changes(
+    tmp_path: Path,
+) -> None:
+    config = _base_config()
     config["reviewers"]["code_reviewer"]["trigger"]["phase"] = "feature_done"
     config["reviewers"]["code_reviewer"]["feedback_context"] = (
         "Runs in a clean-room sandbox; treat failures as real but align fixes with the full codebase."
@@ -221,9 +416,8 @@ def test_blocking_reviewer_warning_feedback_is_forwarded(tmp_path: Path) -> None
         ),
     )
 
-    assert outcome.result == "passed"
-    assert outcome.failed_gate is None
-    assert str(outcome.hook_feedback).lstrip().startswith("reviewer 'code_reviewer'")
+    assert outcome.result == "failed"
+    assert outcome.failed_gate == "reviewer_request_changes"
     assert "Reviewer warning should still reach implement prompt." in str(
         outcome.hook_feedback
     )
@@ -246,7 +440,7 @@ def test_reviewer_phase_records_reviewer_command_timing(
 
     monkeypatch.setattr(phases_module.time, "time", _fake_time)
 
-    config = _base_config("blocking")
+    config = _base_config()
     config["reviewers"]["code_reviewer"]["trigger"]["phase"] = "feature_done"
 
     outcome = run_reviewer_phase(
@@ -286,7 +480,7 @@ def test_reviewer_command_timing_clamps_ended_at_when_clock_skews_backwards(
 
     monkeypatch.setattr(phases_module.time, "time", _fake_time)
 
-    config = _base_config("blocking")
+    config = _base_config()
     config["reviewers"]["code_reviewer"]["trigger"]["phase"] = "feature_done"
 
     outcome = run_reviewer_phase(
@@ -308,8 +502,8 @@ def test_reviewer_command_timing_clamps_ended_at_when_clock_skews_backwards(
     assert timing.duration_sec == 0
 
 
-def test_advisory_feedback_requires_one_followup_implement_pass(tmp_path: Path) -> None:
-    config = _base_config("advisory")
+def test_feature_done_reviewer_warning_blocks_completion(tmp_path: Path) -> None:
+    config = _base_config()
     config["reviewers"]["code_reviewer"]["trigger"]["phase"] = "feature_done"
     state_box: dict[str, dict[str, Any]] = {"state": {"version": "1", "features": {}}}
     restore_calls: list[tuple[Path, Path]] = []
@@ -322,14 +516,7 @@ def test_advisory_feedback_requires_one_followup_implement_pass(tmp_path: Path) 
     )
     archived_path = tmp_path / "docs" / "spec" / "features_done" / "FEAT-050.yaml"
 
-    first = run_reviewer_phase(
-        _iteration_inputs(tmp_path),
-        {"id": "FEAT-050"},
-        archived_in_iteration=True,
-        archived_path=archived_path,
-        dependencies=deps,
-    )
-    second = run_reviewer_phase(
+    outcome = run_reviewer_phase(
         _iteration_inputs(tmp_path),
         {"id": "FEAT-050"},
         archived_in_iteration=True,
@@ -337,16 +524,12 @@ def test_advisory_feedback_requires_one_followup_implement_pass(tmp_path: Path) 
         dependencies=deps,
     )
 
-    assert first.result == "failed"
-    assert first.failed_gate == "reviewer_advisory_followup"
-    assert second.result == "passed"
-    assert second.failed_gate is None
+    assert outcome.result == "failed"
+    assert outcome.failed_gate == "reviewer_request_changes"
     assert len(restore_calls) == 1
 
 
-def test_code_simplifier_advisory_requires_one_followup_implement_pass(
-    tmp_path: Path,
-) -> None:
+def test_code_simplifier_warning_blocks_completion(tmp_path: Path) -> None:
     config = {
         "profiles": {"loop_fast": ["code_simplifier"]},
         "reviewers": {
@@ -356,7 +539,6 @@ def test_code_simplifier_advisory_requires_one_followup_implement_pass(
                     "phase": "feature_done",
                     "on_change": ["src/**/*.py", "tests/**/*.py"],
                 },
-                "approval": {"mode": "advisory"},
             }
         },
     }
@@ -372,14 +554,7 @@ def test_code_simplifier_advisory_requires_one_followup_implement_pass(
     )
     archived_path = tmp_path / "docs" / "spec" / "features_done" / "FEAT-054.yaml"
 
-    first = run_reviewer_phase(
-        _iteration_inputs(tmp_path),
-        {"id": "FEAT-054"},
-        archived_in_iteration=True,
-        archived_path=archived_path,
-        dependencies=deps,
-    )
-    second = run_reviewer_phase(
+    outcome = run_reviewer_phase(
         _iteration_inputs(tmp_path),
         {"id": "FEAT-054"},
         archived_in_iteration=True,
@@ -387,16 +562,12 @@ def test_code_simplifier_advisory_requires_one_followup_implement_pass(
         dependencies=deps,
     )
 
-    assert first.result == "failed"
-    assert first.failed_gate == "reviewer_advisory_followup"
-    assert second.result == "passed"
-    assert second.failed_gate is None
+    assert outcome.result == "failed"
+    assert outcome.failed_gate == "reviewer_request_changes"
     assert len(restore_calls) == 1
 
 
-def test_code_simplifier_advisory_approve_requires_one_followup_implement_pass(
-    tmp_path: Path,
-) -> None:
+def test_code_simplifier_approve_allows_completion(tmp_path: Path) -> None:
     config = {
         "profiles": {"loop_fast": ["code_simplifier"]},
         "reviewers": {
@@ -406,7 +577,6 @@ def test_code_simplifier_advisory_approve_requires_one_followup_implement_pass(
                     "phase": "feature_done",
                     "on_change": ["src/**/*.py", "tests/**/*.py"],
                 },
-                "approval": {"mode": "advisory"},
             }
         },
     }
@@ -422,14 +592,7 @@ def test_code_simplifier_advisory_approve_requires_one_followup_implement_pass(
     )
     archived_path = tmp_path / "docs" / "spec" / "features_done" / "FEAT-054.yaml"
 
-    first = run_reviewer_phase(
-        _iteration_inputs(tmp_path),
-        {"id": "FEAT-054"},
-        archived_in_iteration=True,
-        archived_path=archived_path,
-        dependencies=deps,
-    )
-    second = run_reviewer_phase(
+    outcome = run_reviewer_phase(
         _iteration_inputs(tmp_path),
         {"id": "FEAT-054"},
         archived_in_iteration=True,
@@ -437,29 +600,18 @@ def test_code_simplifier_advisory_approve_requires_one_followup_implement_pass(
         dependencies=deps,
     )
 
-    assert first.result == "failed"
-    assert first.failed_gate == "reviewer_advisory_followup"
-    assert first.reviewer_decision is None
-    assert "Advisory reviewer approval should still forward guidance." in str(
-        first.hook_feedback
-    )
-    assert second.result == "passed"
-    assert second.failed_gate is None
-    assert second.reviewer_status == "passed:advisory"
-    assert second.reviewer_decision is None
-    assert len(restore_calls) == 1
+    assert outcome.result == "passed"
+    assert outcome.failed_gate is None
+    assert outcome.hook_feedback is None
+    assert len(restore_calls) == 0
+    assert state_box["state"]["features"].get("FEAT-054") is None
 
 
-def test_blocking_reviewer_exhausted_continues_with_warning_by_default(
+def test_feature_done_reviewer_request_changes_keeps_blocking_on_repeat(
     tmp_path: Path,
 ) -> None:
-    config = _base_config("blocking")
+    config = _base_config()
     config["reviewers"]["code_reviewer"]["trigger"]["phase"] = "feature_done"
-    config["reviewers"]["code_reviewer"]["approval"] = {
-        "mode": "blocking",
-        "max_retries": 1,
-        "continue_on_exhausted": True,
-    }
     state_box: dict[str, dict[str, Any]] = {"state": {"version": "1", "features": {}}}
     deps = _deps(
         config,
@@ -485,102 +637,9 @@ def test_blocking_reviewer_exhausted_continues_with_warning_by_default(
     )
 
     assert first.result == "failed"
-    assert first.failed_gate == "reviewer_blocking"
-    assert second.result == "passed"
-    assert second.failed_gate is None
-    assert second.reviewer_status == "passed:blocking_exhausted_continue"
-    assert "exhausted retries" in str(second.hook_feedback)
-
-
-def test_blocking_reviewer_exhaustion_stops_when_continue_disabled(
-    tmp_path: Path,
-) -> None:
-    config = _base_config("blocking")
-    config["reviewers"]["code_reviewer"]["trigger"]["phase"] = "feature_done"
-    config["reviewers"]["code_reviewer"]["approval"] = {
-        "mode": "blocking",
-        "max_retries": 1,
-        "continue_on_exhausted": False,
-    }
-    state_box: dict[str, dict[str, Any]] = {"state": {"version": "1", "features": {}}}
-    deps = _deps(
-        config,
-        decision="request_changes",
-        summary="Address parser branch duplication.",
-        state_box=state_box,
-    )
-    archived_path = tmp_path / "docs" / "spec" / "features_done" / "FEAT-050.yaml"
-
-    first = run_reviewer_phase(
-        _iteration_inputs(tmp_path),
-        {"id": "FEAT-050"},
-        archived_in_iteration=True,
-        archived_path=archived_path,
-        dependencies=deps,
-    )
-    second = run_reviewer_phase(
-        _iteration_inputs(tmp_path),
-        {"id": "FEAT-050"},
-        archived_in_iteration=True,
-        archived_path=archived_path,
-        dependencies=deps,
-    )
-
-    assert first.result == "failed"
-    assert first.failed_gate == "reviewer_blocking"
+    assert first.failed_gate == "reviewer_request_changes"
     assert second.result == "failed"
-    assert second.failed_gate == "reviewer_blocking_exhausted"
-    assert "exhausted retries" in str(second.hook_feedback)
-
-
-def test_onboarding_review_request_changes_blocks_until_retry_or_exhaustion(
-    tmp_path: Path,
-) -> None:
-    config = {
-        "profiles": {"loop_fast": ["onboarding_review"]},
-        "reviewers": {
-            "onboarding_review": {
-                "prompt_file": "harness/reviewers/prompts/onboarding_review.md",
-                "trigger": {
-                    "phase": "feature_done",
-                    "on_change": ["README.md"],
-                },
-                "approval": {
-                    "mode": "blocking",
-                    "max_retries": 1,
-                    "continue_on_exhausted": False,
-                },
-            }
-        },
-    }
-    state_box: dict[str, dict[str, Any]] = {"state": {"version": "1", "features": {}}}
-    deps = _deps(
-        config,
-        decision="request_changes",
-        summary="README bootstrap run fails in clean room.",
-        changed_paths=("README.md",),
-        state_box=state_box,
-    )
-
-    first = run_reviewer_phase(
-        _iteration_inputs(tmp_path),
-        {"id": "FEAT-052"},
-        archived_in_iteration=True,
-        archived_path=tmp_path / "docs" / "spec" / "features_done" / "FEAT-052.yaml",
-        dependencies=deps,
-    )
-    second = run_reviewer_phase(
-        _iteration_inputs(tmp_path),
-        {"id": "FEAT-052"},
-        archived_in_iteration=True,
-        archived_path=tmp_path / "docs" / "spec" / "features_done" / "FEAT-052.yaml",
-        dependencies=deps,
-    )
-
-    assert first.result == "failed"
-    assert first.failed_gate == "reviewer_blocking"
-    assert second.result == "failed"
-    assert second.failed_gate == "reviewer_blocking_exhausted"
+    assert second.failed_gate == "reviewer_request_changes"
 
 
 def test_onboarding_review_feedback_classifies_readme_vs_init_fix_surface(
@@ -595,7 +654,6 @@ def test_onboarding_review_feedback_classifies_readme_vs_init_fix_surface(
                     "phase": "feature_done",
                     "on_change": ["README.md"],
                 },
-                "approval": {"mode": "blocking"},
             }
         },
     }
@@ -619,62 +677,11 @@ def test_onboarding_review_feedback_classifies_readme_vs_init_fix_surface(
     )
 
     assert outcome.result == "failed"
-    assert outcome.failed_gate == "reviewer_blocking"
+    assert outcome.failed_gate == "reviewer_request_changes"
     assert "README.md: clarify the missing bootstrap prerequisite step." in str(
         outcome.hook_feedback
     )
     assert "init/scaffold command behavior" in str(outcome.hook_feedback)
-
-
-def test_onboarding_review_exhaustion_continues_with_warning_by_default(
-    tmp_path: Path,
-) -> None:
-    config = {
-        "profiles": {"loop_fast": ["onboarding_review"]},
-        "reviewers": {
-            "onboarding_review": {
-                "prompt_file": "harness/reviewers/prompts/onboarding_review.md",
-                "trigger": {
-                    "phase": "feature_done",
-                    "on_change": ["README.md"],
-                },
-                "approval": {
-                    "mode": "blocking",
-                    "max_retries": 1,
-                },
-            }
-        },
-    }
-    state_box: dict[str, dict[str, Any]] = {"state": {"version": "1", "features": {}}}
-    deps = _deps(
-        config,
-        decision="request_changes",
-        summary="README bootstrap leaves scaffold incomplete.",
-        changed_paths=("README.md",),
-        state_box=state_box,
-    )
-
-    first = run_reviewer_phase(
-        _iteration_inputs(tmp_path),
-        {"id": "FEAT-052"},
-        archived_in_iteration=True,
-        archived_path=tmp_path / "docs" / "spec" / "features_done" / "FEAT-052.yaml",
-        dependencies=deps,
-    )
-    second = run_reviewer_phase(
-        _iteration_inputs(tmp_path),
-        {"id": "FEAT-052"},
-        archived_in_iteration=True,
-        archived_path=tmp_path / "docs" / "spec" / "features_done" / "FEAT-052.yaml",
-        dependencies=deps,
-    )
-
-    assert first.result == "failed"
-    assert first.failed_gate == "reviewer_blocking"
-    assert second.result == "passed"
-    assert second.failed_gate is None
-    assert second.reviewer_status == "passed:blocking_exhausted_continue"
-    assert "exhausted retries" in str(second.hook_feedback)
 
 
 def test_reviewer_phase_runs_after_gates_before_commit(tmp_path: Path) -> None:
@@ -810,9 +817,6 @@ def test_reviewer_phase_runs_after_gates_before_commit(tmp_path: Path) -> None:
                 evaluate_cached_reviewer_approval=lambda *_args, **_kwargs: (False, ""),
                 run_reviewer=lambda *_args, **_kwargs: {},
                 record_reviewer_approval=lambda *_args, **_kwargs: None,
-                advisory_followup_required=lambda *_args, **_kwargs: False,
-                set_advisory_followup_required=lambda *_args, **_kwargs: None,
-                clear_advisory_followup_required=lambda *_args, **_kwargs: None,
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
                 start_agent=lambda *_args, **_kwargs: None,
             ),

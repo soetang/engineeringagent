@@ -11,7 +11,4 @@ reviewers:
         - "src/**/*.py"
         - "tests/**/*.py"
     approval:
-      mode: "advisory"
       first_feature_approval: true
-      max_retries: 2
-      continue_on_exhausted: true

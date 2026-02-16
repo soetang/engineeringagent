@@ -70,7 +70,7 @@ constraints:
 - Support consistent timing via `when.phase` in {iteration_end, feature_done, manual}.
 - Support deterministic run/skip decisions via optional `when.on_change` globs for
   all check types.
-- Reviewer execution and configuration must align with FEAT-086 (no approval.mode;
+- Reviewer execution and configuration must align with FEAT-086 (no approval mode;
   enforce approve/request_changes at feature_done; no advisory followup).
 - The new contract must not introduce a `blocking` field; all repo-owned checks are
   enforceable and failing checks fail the iteration deterministically.
@@ -95,7 +95,7 @@ implementation_notes: "Contract/API delta (explicit):\n\n- Surface: harness conf
   \ run startup and is not a check.\n  - Old: fitness execution is configured as a\
   \ gate (`fitness_validate`).\n  - New: fitness execution is a repo-owned check (`type:\
   \ fitness`) when desired.\n\n- Replaces `harness/reviewers.yaml` as the system-of-record\
-  \ for reviewers.\n  - Old: reviewers are configured separately with approval.mode\
+  \ for reviewers.\n  - Old: reviewers are configured separately with approval mode\
   \ (advisory/blocking).\n  - New: reviewers are configured as `type: reviewer` checks\
   \ in `harness/checks.yaml`.\n    Reviewer configuration does not include advisory/blocking\
   \ modes, matching FEAT-086.\n\n- Does NOT replace the fitness rule registry metadata.\n\
@@ -123,10 +123,9 @@ implementation_notes: "Contract/API delta (explicit):\n\n- Surface: harness conf
   \  - optional: `feedback_context` (string)\n  - optional: `sandbox`:\n    - `mode`:\
   \ temp_worktree_snapshot|empty_folder\n    - `assets` (optional, list of\
   \ strings, min length 1): only supported when mode=empty_folder\n  - optional:\
-  \ `approval`:\n    - `first_feature_approval` (bool, default true)\n    - `max_retries`\
-  \ (int, >= 0, default 2)\n    - `continue_on_exhausted` (bool, default true)\n \
+   \ `approval`:\n    - `first_feature_approval` (bool, default true)\n \
   \ - must align with FEAT-086 semantics:\n    - no advisory/blocking config mode\
-  \ (no approval.mode)\n    - reviewer decisions at feature_done are enforceable approve/request_changes\n\
+  \ (no approval mode)\n    - reviewer decisions at feature_done are enforceable approve/request_changes\n\
   \    - no advisory followup mechanism\n\nReviewer phase restriction (v1):\n- reviewer\
   \ checks must declare `when.phase: feature_done` (or manual). Any reviewer\n  configured\
   \ for iteration_end is rejected by validation.\n\nExecution semantics (high level):\n\
@@ -158,7 +157,7 @@ acceptance:
 - The contract has no `blocking` field; any `blocking` key present in checks.yaml
   is rejected by validation.
 - Reviewer configuration in the contract does not include advisory/blocking modes
-  (no approval.mode); reviewer enforcement at feature_done is approve/request_changes
+  (no approval mode); reviewer enforcement at feature_done is approve/request_changes
   only (aligns with FEAT-086).
 - '`engineeringagent run --all` fails fast when `harness/checks.yaml` is missing and
   prints deterministic remediation: run `engineeringagent init`.'

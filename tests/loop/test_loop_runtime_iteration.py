@@ -26,7 +26,7 @@ from engineeringagent.loop_runtime.phases import (
 )
 
 
-def test_iteration_pipeline_carries_passed_reviewer_feedback_to_retry(
+def test_iteration_pipeline_carries_passed_reviewer_feedback_to_continue(
     tmp_path: Path,
 ) -> None:
     reviewer_feedback = "reviewer follow-up summary for next implement pass"
@@ -113,9 +113,6 @@ def test_iteration_pipeline_carries_passed_reviewer_feedback_to_retry(
                 evaluate_cached_reviewer_approval=lambda *_args, **_kwargs: (False, ""),
                 run_reviewer=lambda *_args, **_kwargs: {},
                 record_reviewer_approval=lambda *_args, **_kwargs: None,
-                advisory_followup_required=lambda *_args, **_kwargs: False,
-                set_advisory_followup_required=lambda *_args, **_kwargs: None,
-                clear_advisory_followup_required=lambda *_args, **_kwargs: None,
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
                 start_agent=lambda *_args, **_kwargs: None,
             ),
@@ -141,6 +138,7 @@ def test_iteration_pipeline_carries_passed_reviewer_feedback_to_retry(
 
     assert outcome.result == "passed"
     assert outcome.completed is False
+    assert outcome.next_action == "continue_same_feature"
     assert outcome.hook_feedback == reviewer_feedback
 
 
@@ -281,9 +279,6 @@ def test_iteration_pipeline_archives_before_running_done_transition_verification
                 evaluate_cached_reviewer_approval=lambda *_args, **_kwargs: (False, ""),
                 run_reviewer=lambda *_args, **_kwargs: {},
                 record_reviewer_approval=lambda *_args, **_kwargs: None,
-                advisory_followup_required=lambda *_args, **_kwargs: False,
-                set_advisory_followup_required=lambda *_args, **_kwargs: None,
-                clear_advisory_followup_required=lambda *_args, **_kwargs: None,
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
                 start_agent=lambda *_args, **_kwargs: None,
             ),
@@ -426,9 +421,6 @@ def test_iteration_pipeline_records_phase_timings(
                 evaluate_cached_reviewer_approval=lambda *_args, **_kwargs: (False, ""),
                 run_reviewer=lambda *_args, **_kwargs: {},
                 record_reviewer_approval=lambda *_args, **_kwargs: None,
-                advisory_followup_required=lambda *_args, **_kwargs: False,
-                set_advisory_followup_required=lambda *_args, **_kwargs: None,
-                clear_advisory_followup_required=lambda *_args, **_kwargs: None,
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
                 start_agent=lambda *_args, **_kwargs: None,
             ),

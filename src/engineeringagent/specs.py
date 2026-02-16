@@ -112,11 +112,6 @@ class ReviewerTriggerPhase(str, Enum):
     FEATURE_DONE = "feature_done"
 
 
-class ReviewerApprovalMode(str, Enum):
-    ADVISORY = "advisory"
-    BLOCKING = "blocking"
-
-
 class ReviewerSandboxMode(str, Enum):
     TEMP_WORKTREE_SNAPSHOT = "temp_worktree_snapshot"
     EMPTY_FOLDER = "empty_folder"
@@ -128,10 +123,7 @@ class ReviewerTriggerDefinition(StrictContractModel):
 
 
 class ReviewerApprovalDefinition(StrictContractModel):
-    mode: ReviewerApprovalMode = ReviewerApprovalMode.ADVISORY
     first_feature_approval: bool = True
-    max_retries: Annotated[int, Field(strict=True, ge=0)] = 2
-    continue_on_exhausted: bool = True
 
 
 class ReviewerSandboxDefinition(StrictContractModel):

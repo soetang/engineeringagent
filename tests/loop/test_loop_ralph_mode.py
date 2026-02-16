@@ -1491,12 +1491,13 @@ def test_run_loop_plain_output_when_not_tty(
         result="passed",
         failed_gate=None,
         attempt=1,
-        next_action="select_next_feature",
+        next_action="continue_same_feature",
     )
 
     output = capsys.readouterr().out
     assert "\x1b[" not in output
     assert "Loop summary: result=passed" in output
+    assert "next=continue_same_feature" in output
 
 
 def test_run_loop_styled_output_when_tty(
@@ -1512,12 +1513,13 @@ def test_run_loop_styled_output_when_tty(
         result="passed",
         failed_gate=None,
         attempt=1,
-        next_action="select_next_feature",
+        next_action="continue_same_feature",
     )
 
     output = capsys.readouterr().out
     assert "\x1b[" in output
     assert "Loop summary: result=passed" in output
+    assert "next=continue_same_feature" in output
 
 
 def test_run_loop_no_color_env_disables_styling(
@@ -1555,7 +1557,7 @@ def test_run_loop_iteration_output_uses_emoji_contract(
         result="passed",
         failed_gate=None,
         attempt=1,
-        next_action="select_next_feature",
+        next_action="continue_same_feature",
         selected_path="docs/spec/features/FEAT-900.yaml",
         implement_step="opencode run --agent engineeringagent",
     )
@@ -1585,11 +1587,48 @@ def test_run_loop_iteration_output_uses_emoji_contract(
     assert "🎯 Selected: docs/spec/features/FEAT-900.yaml" in output
     assert "🛠 Implement: opencode run --agent engineeringagent" in output
     assert "✅ Passed" in output
+    assert "➡️ Next: continue_same_feature" in output
     assert "🔁 Iteration 2 · FEAT-900" in output
     assert "❌ Failed: gate=spec_validate" in output
     assert "📄 Log: progress/run-feature-FEAT-900.txt" in output
     assert "➡️ Next: retry_same_feature" in output
     assert "♻️ Selected archived counterpart:" in output
+    assert "➡️ Next: select_next_feature" in output
+
+
+def test_run_loop_passed_iteration_not_completed_records_continue_next_action(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: Any,
+) -> None:
+    monkeypatch.setattr(presentation_module, "_stdout_is_tty", lambda _stdout: False)
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    monkeypatch.setenv("TERM", "xterm-256color")
+
+    project_root, feature_path = _make_project_root(
+        tmp_path, feature_data=_base_feature(status="backlog")
+    )
+    _init_git_repo(project_root)
+
+    with _with_opencode_implement_result(returncode=0, stdout="ok\n", stderr=""):
+        code = run_loop(
+            project_root=project_root,
+            feature_paths=[str(feature_path)],
+            gate_profile="loop_fast",
+            opencode_prompt=None,
+            dry_run=False,
+            max_iterations=1,
+        )
+
+    output = capsys.readouterr().out
+    assert code == 1
+    assert "Reached max iteration cap (1) before completion." in output
+    assert "next=continue_same_feature" in output
+
+    runs = _read_runs(project_root)
+    assert runs
+    assert runs[-1]["result"] == "passed"
+    assert runs[-1]["next_action"] == "continue_same_feature"
 
 
 def test_run_loop_telemetry_includes_log_path(
