@@ -5,6 +5,9 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 REVIEWER_REFERENCE_PATH = REPO_ROOT / "docs" / "references" / "reviewer-agents-llms.md"
+REVIEWER_AUTHORING_GUIDE_PATH = (
+    REPO_ROOT / "docs" / "principles" / "reviewer-authoring-guide.md"
+)
 UV_REFERENCE_PATH = REPO_ROOT / "docs" / "references" / "uv-llms.md"
 REQUIRED_POLICY_SNIPPETS = (
     "Runtime executes reviewers only at `feature_done`.",
@@ -24,6 +27,12 @@ REQUIRED_SANDBOX_SNIPPETS = (
     "`sandbox.mode`: currently",
     "`clean_room_readme_cli`",
     "`sandbox.assets`",
+)
+
+
+REQUIRED_FEEDBACK_CONTEXT_SNIPPETS = (
+    "`feedback_context`: optional string forwarded verbatim into the next implement pass feedback when a follow-up implement pass is required.",
+    "`feedback_context`: optional string forwarded verbatim alongside reviewer feedback into the next implement pass.",
 )
 
 
@@ -48,7 +57,24 @@ def test_reviewer_reference_documents_feature_done_only_policy() -> None:
     missing.extend(
         [snippet for snippet in REQUIRED_SANDBOX_SNIPPETS if snippet not in body]
     )
+    missing.extend(
+        [
+            snippet
+            for snippet in REQUIRED_FEEDBACK_CONTEXT_SNIPPETS[:1]
+            if snippet not in body
+        ]
+    )
 
+    assert not missing
+
+
+def test_reviewer_authoring_guide_documents_feedback_context() -> None:
+    body = REVIEWER_AUTHORING_GUIDE_PATH.read_text(encoding="utf-8")
+    missing = [
+        snippet
+        for snippet in REQUIRED_FEEDBACK_CONTEXT_SNIPPETS[1:]
+        if snippet not in body
+    ]
     assert not missing
 
 

@@ -4,7 +4,6 @@
   "agent": {
     "engineeringagent": {
       "model": "openai/gpt-5.3-codex",
-      "variant": "high",
       "permission": {
         "*": "allow",
         "bash": "allow"

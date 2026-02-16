@@ -19,6 +19,10 @@ reviewers:
 
   readme_process:
     prompt_file: "harness/reviewers/prompts/readme_process.md"
+    feedback_context: |
+      This reviewer runs with constrained context (e.g. a clean-room sandbox) and may not have access
+      to the full codebase/specs. Treat failures as real, but implement fixes in
+      a way that aligns with the feature spec and overall repository architecture.
     trigger:
       phase: "feature_done"
       on_change:

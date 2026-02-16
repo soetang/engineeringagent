@@ -122,6 +122,9 @@ def _deps(
 def test_blocking_reviewer_requests_retry_and_sets_feedback(tmp_path: Path) -> None:
     config = _base_config("blocking")
     config["reviewers"]["code_reviewer"]["trigger"]["phase"] = "feature_done"
+    config["reviewers"]["code_reviewer"]["feedback_context"] = (
+        "This reviewer runs with constrained context and may not see the full repo."
+    )
     outcome = run_reviewer_phase(
         _iteration_inputs(tmp_path),
         {"id": "FEAT-050"},
@@ -137,6 +140,8 @@ def test_blocking_reviewer_requests_retry_and_sets_feedback(tmp_path: Path) -> N
     assert outcome.result == "failed"
     assert outcome.failed_gate == "reviewer_blocking"
     assert "requested changes" in str(outcome.hook_feedback)
+    assert "feedback_context:" in str(outcome.hook_feedback)
+    assert "may not see the full repo" in str(outcome.hook_feedback)
 
 
 def test_advisory_reviewer_records_warning_without_blocking(tmp_path: Path) -> None:
@@ -202,6 +207,9 @@ def test_advisory_reviewer_approve_feedback_requires_one_followup_pass(
 def test_blocking_reviewer_warning_feedback_is_forwarded(tmp_path: Path) -> None:
     config = _base_config("blocking")
     config["reviewers"]["code_reviewer"]["trigger"]["phase"] = "feature_done"
+    config["reviewers"]["code_reviewer"]["feedback_context"] = (
+        "Runs in a clean-room sandbox; treat failures as real but align fixes with the full codebase."
+    )
     outcome = run_reviewer_phase(
         _iteration_inputs(tmp_path),
         {"id": "FEAT-050"},
@@ -216,9 +224,12 @@ def test_blocking_reviewer_warning_feedback_is_forwarded(tmp_path: Path) -> None
 
     assert outcome.result == "passed"
     assert outcome.failed_gate is None
+    assert str(outcome.hook_feedback).lstrip().startswith("reviewer 'code_reviewer'")
     assert "Reviewer warning should still reach implement prompt." in str(
         outcome.hook_feedback
     )
+    assert "feedback_context:" in str(outcome.hook_feedback)
+    assert "clean-room sandbox" in str(outcome.hook_feedback)
 
 
 def test_reviewer_phase_records_reviewer_command_timing(

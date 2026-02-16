@@ -52,6 +52,27 @@ def test_reviewer_contract_accepts_optional_approval_and_sandbox_fields() -> Non
     assert issues == []
 
 
+def test_reviewer_contract_accepts_feedback_context_string() -> None:
+    document = {
+        "contract_version": "1.0",
+        "profiles": {"loop_fast": ["readme_process"]},
+        "reviewers": {
+            "readme_process": {
+                "prompt_file": "harness/reviewers/prompts/readme_process.md",
+                "feedback_context": "This reviewer may run with constrained context.",
+                "trigger": {
+                    "phase": "feature_done",
+                    "on_change": ["README.md"],
+                },
+            }
+        },
+    }
+
+    issues = reviewer_contract_issues(document, Path("harness/reviewers.yaml"))
+
+    assert issues == []
+
+
 def test_reviewer_contract_accepts_temp_worktree_snapshot_sandbox_mode() -> None:
     document = {
         "contract_version": "1.0",

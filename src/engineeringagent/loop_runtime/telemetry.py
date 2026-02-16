@@ -14,6 +14,14 @@ import engineeringagent.progress_paths as progress_paths
 from .models import CommandTiming, IterationTelemetryInputs, PhaseTiming
 
 ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+FEEDBACK_CONTEXT_BLOCK_RE = re.compile(
+    r"\nfeedback_context:\n.*?(?=\nreviewer '|\Z)",
+    re.DOTALL,
+)
+
+
+def _strip_feedback_context_blocks(text: str) -> str:
+    return FEEDBACK_CONTEXT_BLOCK_RE.sub("", text)
 
 
 def now_iso() -> str:
@@ -73,7 +81,8 @@ def _resolve_forwarded_reviewer_feedback(
 
 
 def _summarize_reviewer_feedback(text: str, max_chars: int = 240) -> str:
-    compact = " ".join(text.split())
+    cleaned = _strip_feedback_context_blocks(text)
+    compact = " ".join(cleaned.split())
     if len(compact) <= max_chars:
         return compact
     return compact[:max_chars] + "...[truncated]"

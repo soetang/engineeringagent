@@ -151,6 +151,7 @@ class ReviewerSandboxDefinition(StrictContractModel):
 
 class ReviewerDefinition(StrictContractModel):
     prompt_file: NonEmptyStr
+    feedback_context: StrictString | None = None
     trigger: ReviewerTriggerDefinition
     approval: ReviewerApprovalDefinition = Field(
         default_factory=ReviewerApprovalDefinition

@@ -20,6 +20,7 @@ from .models import (
 from ..reviewers import (
     DECISION_APPROVE,
     DECISION_REQUEST_CHANGES,
+    DECISION_WARNING,
     increment_blocking_reviewer_retry_count,
 )
 from .time_format import utc_iso_from_epoch_sec
@@ -35,17 +36,31 @@ def _format_reviewer_feedback(summary: str, required_actions: list[str]) -> str:
     return f"{message}\nrequired_actions:\n{actions_block}"
 
 
+def _normalize_feedback_context(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    if not value.strip():
+        return None
+    return value.strip("\n")
+
+
+def _append_feedback_context(message: str, feedback_context: str | None) -> str:
+    if not feedback_context:
+        return message
+    return f"{message}\nfeedback_context:\n{feedback_context}"
+
+
 def _format_forwarded_reviewer_feedback(
     reviewer_id: str,
     reviewer_mode: str,
     decision_name: str,
-    reviewer_feedback_message: str,
+    reviewer_feedback: str,
 ) -> str:
     """Compose deterministic retry feedback forwarded to the next implement pass."""
     return (
         f"reviewer '{reviewer_id}' feedback "
         f"(mode={reviewer_mode}, decision={decision_name}): "
-        f"{reviewer_feedback_message}"
+        f"{reviewer_feedback}"
     )
 
 
@@ -373,13 +388,23 @@ def run_reviewer_phase(  # noqa: C901
         required_actions = (
             required_actions_raw if isinstance(required_actions_raw, list) else []
         )
+        feedback_context = _normalize_feedback_context(reviewer.get("feedback_context"))
+        forwarded_context = (
+            feedback_context
+            if decision_name in (DECISION_REQUEST_CHANGES, DECISION_WARNING)
+            else None
+        )
         reviewer_feedback_message = _format_reviewer_feedback(summary, required_actions)
+        reviewer_feedback = _append_feedback_context(
+            reviewer_feedback_message,
+            forwarded_context,
+        )
         forwarded_feedback.append(
             _format_forwarded_reviewer_feedback(
                 reviewer_id,
                 reviewer_mode,
                 decision_name,
-                reviewer_feedback_message,
+                reviewer_feedback,
             )
         )
         summaries.append(
@@ -400,14 +425,14 @@ def run_reviewer_phase(  # noqa: C901
                     (
                         f"reviewer '{reviewer_id}' requested changes "
                         f"(attempt {retry_count}/{max_retries + 1}): "
-                        f"{reviewer_feedback_message}"
+                        f"{reviewer_feedback}"
                     )
                 )
                 continue
 
             exhausted_message = (
                 f"reviewer '{reviewer_id}' exhausted retries "
-                f"(max_retries={max_retries}): {reviewer_feedback_message}"
+                f"(max_retries={max_retries}): {reviewer_feedback}"
             )
             if continue_on_exhausted:
                 blocking_exhausted_warnings.append(exhausted_message)
@@ -417,7 +442,7 @@ def run_reviewer_phase(  # noqa: C901
 
         if reviewer_mode == "advisory":
             advisory_feedback.append(
-                f"reviewer '{reviewer_id}' advisory feedback: {reviewer_feedback_message}"
+                f"reviewer '{reviewer_id}' advisory feedback: {reviewer_feedback}"
             )
 
     reviewer_output = "\n".join(summaries)

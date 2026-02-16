@@ -26,6 +26,12 @@ def test_repo_enables_readme_process_reviewer_in_loop_fast() -> None:
     reviewer = document["reviewers"]["readme_process"]
 
     assert reviewer["prompt_file"] == "harness/reviewers/prompts/readme_process.md"
+
+    feedback_context = reviewer["feedback_context"]
+    assert "clean-room" in feedback_context
+    assert "constrained" in feedback_context
+    assert "may not have access" in feedback_context
+    assert "align" in feedback_context
     assert reviewer["trigger"] == {
         "phase": "feature_done",
         "on_change": [

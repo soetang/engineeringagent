@@ -595,6 +595,132 @@ def test_progress_log_records_code_simplifier_advisory_followup_status(
     assert "reviewer_feedback_forwarded_end" in feature_log
 
 
+def test_run_telemetry_summary_strips_feedback_context_block(tmp_path: Path) -> None:
+    iteration_inputs = FeatureIterationInputs(
+        project_root=tmp_path,
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-059.yaml",
+        gate_profile="loop_fast",
+        skip_implement=False,
+        attempt=2,
+        hook_feedback=None,
+        verbose_output=False,
+    )
+    hook_feedback = (
+        "reviewer 'readme_process' requested changes (attempt 1/3): "
+        "Add missing usage section.\n"
+        "required_actions:\n"
+        "- Add CLI example\n"
+        "- Document sandbox scope\n"
+        "feedback_context:\n"
+        "This reviewer runs with constrained context and may not see the full repo.\n"
+        "Treat failures as real, but align fixes with the full codebase."
+    )
+    telemetry_inputs = IterationTelemetryInputs(
+        iteration_inputs=iteration_inputs,
+        started=0.0,
+        feature_id="FEAT-079",
+        result="failed",
+        failed_gate="reviewer_blocking",
+        next_action="retry_same_feature",
+        implement_status="passed",
+        gate_status="passed",
+        verification_status="passed",
+        verification_failed_command=None,
+        reviewer_status="failed:blocking",
+        reviewer_decision="request_changes",
+        failed_reviewer_id="readme_process",
+        implement_output="",
+        gate_output="",
+        verification_output="",
+        reviewer_output="[reviewer:readme_process] mode=blocking decision=request_changes",
+        hook_feedback=hook_feedback,
+    )
+
+    write_iteration_telemetry(
+        telemetry_inputs,
+        git_head_resolver=lambda _: "abc1234",
+    )
+
+    run = json.loads((tmp_path / "progress" / "runs.jsonl").read_text(encoding="utf-8"))
+    assert run["reviewer_feedback_present"] is True
+    assert "requested changes" in run["reviewer_feedback_summary"]
+    assert "Add missing usage section" in run["reviewer_feedback_summary"]
+    assert "feedback_context:" not in run["reviewer_feedback_summary"]
+
+
+def test_reviewer_feedback_forwarded_field_takes_precedence(tmp_path: Path) -> None:
+    iteration_inputs = FeatureIterationInputs(
+        project_root=tmp_path,
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-059.yaml",
+        gate_profile="loop_fast",
+        skip_implement=False,
+        attempt=1,
+        hook_feedback=None,
+        verbose_output=False,
+    )
+    telemetry_inputs = IterationTelemetryInputs(
+        iteration_inputs=iteration_inputs,
+        started=0.0,
+        feature_id="FEAT-079",
+        result="failed",
+        failed_gate="reviewer_blocking",
+        next_action="retry_same_feature",
+        implement_status="passed",
+        gate_status="passed",
+        verification_status="passed",
+        verification_failed_command=None,
+        reviewer_status="failed:blocking",
+        reviewer_decision="request_changes",
+        failed_reviewer_id="readme_process",
+        implement_output="",
+        gate_output="",
+        verification_output="",
+        reviewer_output="[reviewer:readme_process] mode=blocking decision=request_changes",
+        reviewer_feedback_forwarded=(
+            "reviewer 'readme_process' feedback (mode=blocking, decision=request_changes): "
+            "Use the repo README conventions.\nfeedback_context:\nclean-room sandbox"
+        ),
+        hook_feedback="(ignored) not a reviewer line",
+    )
+
+    write_iteration_telemetry(
+        telemetry_inputs,
+        git_head_resolver=lambda _: "abc1234",
+    )
+
+    run = json.loads((tmp_path / "progress" / "runs.jsonl").read_text(encoding="utf-8"))
+    assert run["reviewer_feedback_present"] is True
+    assert "readme_process" in run["reviewer_feedback_summary"]
+
+
+def test_reviewer_feedback_summary_truncates_after_stripping_context() -> None:
+    text = (
+        "reviewer 'readme_process' feedback (mode=blocking, decision=request_changes): "
+        + ("x" * 50)
+        + "\nfeedback_context:\n"
+        + ("y" * 500)
+    )
+    stripped = telemetry_module._strip_feedback_context_blocks(text)
+    assert "feedback_context:" not in stripped
+    summarized = telemetry_module._summarize_reviewer_feedback(text, max_chars=32)
+    assert summarized.endswith("...[truncated]")
+    assert "feedback_context:" not in summarized
+
+
+def test_command_timing_line_includes_reviewer_id() -> None:
+    timing = CommandTiming(
+        phase="reviewers",
+        gate=None,
+        reviewer_id="readme_process",
+        command="run_reviewer",
+        started_at="1970-01-01T00:00:10Z",
+        ended_at="1970-01-01T00:00:13Z",
+        duration_sec=3,
+    )
+    line = telemetry_module._format_command_timing_line(timing)
+    assert "reviewer_id=readme_process" in line
+
+
 def test_non_verbose_terminal_output_shows_verification_summary(
     monkeypatch: Any,
     capsys: Any,

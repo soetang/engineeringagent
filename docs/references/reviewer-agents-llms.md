@@ -34,6 +34,7 @@ Optional reviewer fields:
 - `approval.continue_on_exhausted`: boolean (default `true`).
 - `sandbox.mode`: currently `temp_worktree_snapshot` or `clean_room_readme_cli`.
 - `sandbox.assets`: optional list of repo-relative paths (files or directories) to copy into a clean-room sandbox.
+- `feedback_context`: optional string forwarded verbatim into the next implement pass feedback when a follow-up implement pass is required.
 
 Copy-pastable v1 example:
 
@@ -80,6 +81,11 @@ Copy-pastable `readme_process` entry:
 ```yaml
 readme_process:
   prompt_file: "harness/reviewers/prompts/readme_process.md"
+  feedback_context: |
+    This reviewer may run with constrained context (for example, a clean-room sandbox) and may not
+    have access to the full repository (such as `src/` and `tests/`). Treat reported failures as
+    real, but implement fixes in a way that aligns with the feature spec and overall repository
+    architecture.
   trigger:
     phase: "feature_done"
     on_change: ["README.md"]
@@ -218,6 +224,7 @@ Copy-pastable decision examples:
 - Forwarded reviewer feedback is persisted in structured run telemetry as `reviewer_feedback_present` and `reviewer_feedback_summary`.
 - Per-feature loop logs persist forwarded feedback between `reviewer_feedback_forwarded_begin` and `reviewer_feedback_forwarded_end` markers.
 - Feedback text is deterministic and sanitized so humans can inspect exactly what the implement pass received.
+- If `feedback_context` is configured for a reviewer, it is included verbatim in the forwarded feedback text so the implement pass can interpret scoped or sandboxed reviewer feedback correctly.
 
 ## Sandbox behavior
 
