@@ -16,121 +16,40 @@ Primary flow: `feature spec -> run loop`.
 
 - Package usage (PyPI, no clone): `uvx engineeringagent <command>`
 - Package usage (version pinned): `uvx engineeringagent@<version> <command>`
-- From source (this repo clone): `uv run python -m engineeringagent.cli <command>`
-
-Verify from a repo checkout: if you are working from a clone (including developing this
-repository), run spec validation and gates against your local working tree, not the
-published package.
-
-```bash
-uv run python -m engineeringagent.cli validate
-uv run python -m engineeringagent.cli gates run --profile loop_fast
-```
 
 ## Quickstart from PyPI (no clone)
 
 1. Make sure you are in a git repository.
 
-   `engineeringagent run` (non-dry) requires a git repo and, by default, a clean
-   worktree.
+   When the process starts a minimum of one commit will be made pr. feature that is implemented.
+
+1. Create the relevant files with init
 
    ```bash
-   git init
-   git status
+   uvx engineeringagent init
    ```
-
-   If you must run with local changes, pass `--allow-dirty`.
-
-1. (Optional) Scaffold a baseline harness.
-
-   ```bash
-   uvx engineeringagent init slim
-   ```
-
-   In an interactive TTY, `uvx engineeringagent init` (no pack) prompts you to pick
-   `slim|standard` (default: `slim`). In non-interactive contexts, it defaults to
-   `slim` without prompting. To avoid any prompt, pass the pack explicitly.
 
    Warning: `init` is experimental scaffolding. Inspect generated files,
    run `uvx engineeringagent validate`, and review the git diff before committing.
 
    We recommend you do this in a separate branch or toy project the first time you try out the process.
 
-1. Create or pick one feature spec in `docs/spec/features/`.
+1. Create a feature spec in `docs/spec/features/`.
 
+   Use the schema `docs/spec/schemas/feature.schema.json` to create a spec. You can handcraft or write it with your favorite coding agent(recommended)
    Save this as `docs/spec/features/FEAT-001-example.yaml`.
-   Minimal example that satisfies `docs/spec/schemas/feature.schema.json`:
 
-   ```yaml
-   id: FEAT-001
-   title: Example feature spec
-   type: chore
-   expected_commit_subject: 'chore: example feature spec'
-   status: backlog
-   priority: low
-   objective: 'Provide a minimal, schema-valid feature spec for onboarding.'
-   acceptance:
-   - 'Spec validates with `engineeringagent validate`.'
-   subtasks:
-   - id: ST-001
-     title: Validate specs
-     status: backlog
-     context: null
-     verification:
-     - engineeringagent validate
-   updated_at: '2026-02-15T00:00:00Z'
-   ```
+1. Run the agent to implement the feature:
 
-1. Validate the setup and run gates.
+  ```bash
+    uvx engineeringagent run docs/spec/features/FEAT-001-example.yaml 
+  ```
 
-   ```bash
-   uvx engineeringagent validate
-   uvx engineeringagent gates run --profile loop_fast
-   ```
+  This will commit the changes. The command can take some time depending on the complexity of your feature.
 
-1. Do a safe dry run first.
+## Bootstrapping with `init`
 
-    ```bash
-     uvx engineeringagent run docs/spec/features/FEAT-001-example.yaml --dry-run
-     ```
-
-1. First non-dry run (implementation + gates; requires OpenCode).
-
-    Before the first non-dry `engineeringagent run`, either commit the scaffold/spec changes or pass `--allow-dirty`.
-
-      Preflight: confirm OpenCode is installed and runnable (`opencode --version`), and that your repository has an agent prompt like `.opencode/agents/engineeringagent.md`.
-
-      Optional smoke test (recommended if you're in a clean-room/sandbox):
-
-      ```bash
-      opencode run --agent engineeringagent "Reply READY."
-      ```
-
-      The first non-dry run may take a minute or two before you see implement output; watch `progress/run-feature-<FEATURE_ID>.txt` for full logs and `progress/runs.jsonl` for high-level progress.
-
-      If you see `Implement step: opencode run --agent engineeringagent ...` and then no further progress, OpenCode is likely blocked on missing credentials/config (or a prompt/permission issue). Interrupt the run and investigate OpenCode setup (credentials, model access, permissions), then rerun.
-
-      If you only want to run gates without mutating loop state, use `engineeringagent gates run --profile <profile>`.
-
-      Note: a non-dry `run` mutates your feature YAML in place (status/subtask updates,
-      updated_at) and writes progress logs under `progress/`.
-
-     It may also create a git commit and move completed specs from `docs/spec/features/` to `docs/spec/features_done/`.
-     `engineeringagent validate` rejects `status: done` specs under `docs/spec/features/`.
-
-       ```bash
-       uvx engineeringagent run docs/spec/features/FEAT-001-example.yaml --allow-dirty
-       ```
-
-     If you do not have OpenCode installed/configured yet, run gates directly:
-
-     ```bash
-     uvx engineeringagent gates run --profile loop_fast
-     ```
-
-## Bootstrapping a new repository with `init`
-
-If you are starting in a fresh repository, you can scaffold a baseline harness with:
+If want to use the agent in one of your respositories, you can scaffold a baseline harness with:
 
 ```bash
 uvx engineeringagent init slim
@@ -161,7 +80,7 @@ In `python_uv`, the scaffolded `harness/gates.yaml` `precommit` profile includes
 - `ruff_validate` (`uvx ruff check --isolated .`), which does not require any repo-local
   ruff config files.
 
-`python_uv` also wires a `commit-msg` hook; it does not scaffold pyright gates/config.
+`python_uv` also wires a `commit-msg` hook.
 
 ```bash
 uvx engineeringagent init slim --scaffold-profile python_uv
@@ -209,7 +128,7 @@ the git diff before committing anything produced by `init`.
 ## Reviewer agents (optional)
 
 - Reviewer agents are a harness-managed complement to deterministic gates, configured in `harness/reviewers.yaml`.
-- `engineeringagent init` does not scaffold reviewer config or prompts; keep reviewer policy repository-owned through committed harness files.
+- `engineeringagent init` does not scaffold reviewer config or prompts; keep reviewer policy repository-owned through committed reviewer prompts.
 - Use `uvx engineeringagent reviewers init` to scaffold a baseline config and prompt files under `harness/reviewers/prompts/`.
 - Use `uvx engineeringagent reviewers list|plan|run` to inspect and test reviewer behavior.
 - For setup and migration guidance, see [Reviewer authoring guide](docs/principles/reviewer-authoring-guide.md).
