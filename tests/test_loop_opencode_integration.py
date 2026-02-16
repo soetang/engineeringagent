@@ -746,26 +746,25 @@ def test_loop_archived_done_requires_same_iteration_completion_commit(
     assert ending_head != starting_head
 
 
-def test_start_agent_applies_timeout_by_default(
+def test_start_agent_does_not_pass_timeout_argument(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.delenv("ENGINEERINGAGENT_OPENCODE_TIMEOUT_SEC", raising=False)
-
-    observed: dict[str, object] = {}
+    observed_kwargs: dict[str, Any] = {}
 
     def fake_run(*args: Any, **kwargs: Any) -> subprocess.CompletedProcess[str]:
-        observed["timeout"] = kwargs.get("timeout")
+        observed_kwargs.clear()
+        observed_kwargs.update(kwargs)
         return subprocess.CompletedProcess(args[0], 0, stdout="", stderr="")
 
     monkeypatch.setattr(opencode_client.subprocess, "run", fake_run)
 
     proc = opencode_client.start_agent(tmp_path, "Reply READY.")
     assert proc.returncode == 0
-    assert observed.get("timeout") == 120
+    assert "timeout" not in observed_kwargs
 
 
-def test_run_loop_reports_opencode_timeout_in_run_telemetry(
+def test_run_loop_does_not_classify_timeout_as_distinct_failed_gate(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -794,10 +793,10 @@ def test_run_loop_reports_opencode_timeout_in_run_telemetry(
     runs_path = project_root / "progress" / "runs.jsonl"
     run = json.loads(runs_path.read_text(encoding="utf-8").splitlines()[0])
     assert run["result"] == "failed"
-    assert run["failed_gate"] == "opencode_timeout"
+    assert run["failed_gate"] != "opencode_timeout"
 
     feature_log_path = project_root / str(run["log_path"])
     feature_log = feature_log_path.read_text(encoding="utf-8")
     assert "opencode timed out" in feature_log
     assert "engineeringagent gates run" in feature_log
-    assert "ENGINEERINGAGENT_OPENCODE_TIMEOUT_SEC" in feature_log
+    assert "ENGINEERINGAGENT_OPENCODE_TIMEOUT_SEC" not in feature_log

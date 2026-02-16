@@ -9,11 +9,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from engineeringagent.loop_runtime.models import ImplementStepInputs
-from engineeringagent.opencode.client import (
-    DEFAULT_OPENCODE_AGENT,
-    OPENCODE_TIMEOUT_ENV,
-    resolve_opencode_timeout_sec,
-)
+from engineeringagent.opencode.client import DEFAULT_OPENCODE_AGENT
 from engineeringagent.opencode_permissions import output_has_permission_rejection
 from engineeringagent import progress_paths
 from engineeringagent import progress_logging
@@ -47,12 +43,8 @@ def _run_default_opencode_implement(
     command = _format_opencode_run_command(DEFAULT_OPENCODE_AGENT)
 
     _ensure_progress_artifacts(implement_inputs)
-    timeout_sec = resolve_opencode_timeout_sec()
     print(
-        (
-            f"Implement step: opencode run --agent {DEFAULT_OPENCODE_AGENT} "
-            f"(timeout={timeout_sec}s; set {OPENCODE_TIMEOUT_ENV}=<seconds> to adjust)"
-        ),
+        f"Implement step: opencode run --agent {DEFAULT_OPENCODE_AGENT}",
         flush=True,
     )
     try:
@@ -60,19 +52,16 @@ def _run_default_opencode_implement(
     except FileNotFoundError:
         return (False, "opencode_missing", "[implement] opencode executable missing")
     except subprocess.TimeoutExpired as exc:
-        timeout_raw = exc.timeout if isinstance(exc.timeout, (int, float)) else None
-        timeout_sec = (
-            int(timeout_raw) if timeout_raw else resolve_opencode_timeout_sec()
-        )
+        del exc
         command_output = (
             f"[implement] command={command}\n"
-            f"[implement] error=timeout timeout_sec={timeout_sec}\n"
+            "[implement] error=timeout\n"
             "[implement] opencode timed out before producing output.\n"
-            f"[implement] hint: increase timeout via {OPENCODE_TIMEOUT_ENV}=<seconds>.\n"
+            "[implement] hint: interrupt stuck runs and investigate OpenCode credentials/config.\n"
             "[implement] hint: for gate-only execution use `engineeringagent gates run`.\n"
             "[implement] hint: for a non-mutating preview use `engineeringagent run --dry-run`.\n"
         )
-        return (False, "opencode_timeout", command_output)
+        return (False, "opencode_build", command_output)
 
     _print_process_output(proc, verbose_output=implement_inputs.verbose_output)
     output = (proc.stdout or "") + (proc.stderr or "")

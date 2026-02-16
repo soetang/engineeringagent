@@ -108,11 +108,7 @@ uv run python -m engineeringagent.cli gates run --profile loop_fast
 
       The first non-dry run may take a minute or two before you see implement output; watch `progress/run-feature-<FEATURE_ID>.txt` for full logs and `progress/runs.jsonl` for high-level progress.
 
-      If you see `Implement step: opencode run --agent engineeringagent ...` and then no further progress, OpenCode is likely blocked on missing credentials/config (or a prompt/permission issue). Set a shorter timeout to fail fast and surface the error:
-
-      ```bash
-      ENGINEERINGAGENT_OPENCODE_TIMEOUT_SEC=30 uvx engineeringagent run docs/spec/features/FEAT-001-example.yaml --allow-dirty
-      ```
+      If you see `Implement step: opencode run --agent engineeringagent ...` and then no further progress, OpenCode is likely blocked on missing credentials/config (or a prompt/permission issue). Interrupt the run and investigate OpenCode setup (credentials, model access, permissions), then rerun.
 
       If you only want to run gates without mutating loop state, use `engineeringagent gates run --profile <profile>`.
 
