@@ -13,7 +13,7 @@ From the repository root:
 
 ```bash
 uv sync
-uv run ruff check src/engineeringagent
+uv run ruff check src/engineeringagent harness
 uv run pyright src/engineeringagent tests harness
 uv run pytest -q
 uvx --from . engineeringagent gates run --profile precommit
@@ -22,7 +22,7 @@ uvx --from . engineeringagent gates run --profile precommit
 ## Gate and Tool Commands
 
 - Install and sync environment: `uv sync`
-- Run Ruff on package code: `uv run ruff check src/engineeringagent`
+- Run Ruff on package + harness code: `uv run ruff check src/engineeringagent harness`
 - Run targeted docstring rules: `uv run ruff check src/engineeringagent --select D103,D417`
 - Run Pyright on package, tests, and harness: `uv run pyright src/engineeringagent tests harness`
 - Run tests: `uv run pytest -q`

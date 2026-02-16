@@ -16,40 +16,85 @@ Primary flow: `feature spec -> run loop`.
 
 - Package usage (PyPI, no clone): `uvx engineeringagent <command>`
 - Package usage (version pinned): `uvx engineeringagent@<version> <command>`
+- Source usage (contributors / local changes): `.engineeringagent/bin/engineeringagent <command>`
+
+  Note: if you use `uv`, prefix with `uv run` so the right environment is used.
 
 ## Quickstart from PyPI (no clone)
 
 1. Make sure you are in a git repository.
 
-   When the process starts a minimum of one commit will be made pr. feature that is implemented.
+   When the process starts, at least one commit will be made per implemented feature.
 
-1. Create the relevant files with init
+1. Scaffold the baseline harness with `init`.
+
+   `init` is interactive (it requires a TTY and will prompt you with choices).
 
    ```bash
-   uvx engineeringagent init
+   uvx engineeringagent init slim
+   ```
+
+   You can also scaffold a more complete baseline:
+
+   ```bash
+   uvx engineeringagent init standard
    ```
 
    Warning: `init` is experimental scaffolding. Inspect generated files,
    run `uvx engineeringagent validate`, and review the git diff before committing.
 
-   We recommend you do this in a separate branch or toy project the first time you try out the process.
-
 1. Create a feature spec in `docs/spec/features/`.
 
-   Use the schema `docs/spec/schemas/feature.schema.json` to create a spec. You can handcraft or write it with your favorite coding agent(recommended)
+   Use the schema `docs/spec/schemas/feature.schema.json` to create a spec.
    Save this as `docs/spec/features/FEAT-001-example.yaml`.
 
-1. Run the agent to implement the feature:
+1. Validate and run the fast gate profile:
 
-  ```bash
-    uvx engineeringagent run docs/spec/features/FEAT-001-example.yaml 
-  ```
+   ```bash
+   uvx engineeringagent validate
+   uvx engineeringagent gates run --profile loop_fast
+   ```
 
-  This will commit the changes. The command can take some time depending on the complexity of your feature.
+1. Dry-run the loop first:
+
+   ```bash
+   uvx engineeringagent run docs/spec/features/FEAT-001-example.yaml --dry-run
+   ```
+
+1. Before the first non-dry `engineeringagent run`, either commit the scaffold/spec changes or pass `--allow-dirty`.
+
+    Running non-dry mutates your feature YAML and writes progress logs (for example `progress/runs.jsonl` and `progress/run-feature-<FEATURE_ID>.txt`).
+    Running non-dry will create a commit and may include untracked files; check `git status` and commit/review any `init` scaffold output (and ignore junk like `__pycache__/`) before the first non-dry run.
+
+    After a feature is complete, move completed specs from `docs/spec/features/` to `docs/spec/features_done/` (the loop will usually do this automatically when marking a feature `done`, but move it manually if it did not).
+    `engineeringagent validate` rejects `status: done` specs under `docs/spec/features/`.
+
+   Help validate OpenCode wiring up-front:
+   - `opencode --version`
+   - `.opencode/agents/engineeringagent.md`
+
+   The first non-dry run may take a while (especially the first time, when OpenCode is cold-starting).
+
+   By default, `engineeringagent run` retries failed iterations up to `--max-iterations` (default 50).
+   When debugging OpenCode timeouts, `--max-iterations 1` helps fail fast.
+
+    ```bash
+    ENGINEERINGAGENT_OPENCODE_TIMEOUT_SEC=600 uvx engineeringagent run docs/spec/features/FEAT-001-example.yaml --allow-dirty
+    ```
+
+## Quickstart from source (contributors / local changes)
+
+If you are developing this repo and want to exercise local changes (not the PyPI package), run the same flow using the repo helper:
+
+```bash
+uv run .engineeringagent/bin/engineeringagent init slim
+uv run .engineeringagent/bin/engineeringagent validate
+uv run .engineeringagent/bin/engineeringagent gates run --profile loop_fast
+```
 
 ## Bootstrapping with `init`
 
-If want to use the agent in one of your respositories, you can scaffold a baseline harness with:
+If you want to use the agent in one of your repositories, you can scaffold a baseline harness with:
 
 ```bash
 uvx engineeringagent init
@@ -57,6 +102,11 @@ uvx engineeringagent init
 
 `init` creates a starter structure for `docs/spec/` and `harness/gates.yaml` and handles
 existing `docs/` or `AGENTS.md` through explicit conflict choices.
+
+`engineeringagent init` skips pre-commit hook installation when `.git/` does not exist.
+If you want hooks installed, run `git init` before `engineeringagent init`.
+
+`engineeringagent init` skips pre-commit hook installation when `pre-commit` is not available.
 
 At a minimum, `init` scaffolds:
 
@@ -116,8 +166,8 @@ uvx engineeringagent init slim --scaffold-profile python_uv
 
 ## Reviewer agents (optional)
 
-- Reviewer agents are a harness-managed complement to deterministic gates, configured in `harness/reviewers.yaml`.
-- `engineeringagent init` does not scaffold reviewer config or prompts; keep reviewer policy repository-owned through committed reviewer prompts.
+- Reviewer agents are a harness-managed complement to deterministic gates. After initialization, config lives in `harness/reviewers.yaml`.
+- `engineeringagent init` does not scaffold reviewer config or prompts. `harness/reviewers.yaml` is created by `engineeringagent reviewers init`.
 - Use `uvx engineeringagent reviewers init` to scaffold a baseline config and prompt files under `harness/reviewers/prompts/`.
 - Use `uvx engineeringagent reviewers list|plan|run` to inspect and test reviewer behavior.
 - For setup and migration guidance, see [Reviewer authoring guide](docs/principles/reviewer-authoring-guide.md).

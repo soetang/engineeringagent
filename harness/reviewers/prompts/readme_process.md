@@ -12,10 +12,8 @@ Rules:
 - Create a fresh, empty directory under the sandbox root and run the README onboarding flow there.
 - Do NOT use uvx engineeringagent commands in this repository review. Use the local helper.
 - If README links into docs/, follow those links as needed to resolve ambiguity.
-- If the flow fails, classify the fix surface as:
-  - README instructions issue
-  - engineeringagent CLI/init behavior issue
-  - both
+- We almost entirely want the flow to work with init -> spec -> validate -> gates -> run, so errors are more likely code issues than documentation issues.
+- The CLI itself can provide some of the docs, to keep README.md concise.
 - If decision is warning or request_changes, include concrete required_actions with file paths.
 - Go in-depth; also provide feedback based on referenced files.
 - Be aware that some files linked from the README are created by `init`. That is OK and not an error.
@@ -33,7 +31,7 @@ Suggested execution outline (adjust to match README.md if it differs):
 3) Create a minimal feature spec in docs/spec/features/ (or follow README's example).
    - Ensure the YAML validates and has status backlog or in_progress.
 
-4) Validate and run gates.
+4) Validate specs and run gates.
    - ../.engineeringagent/bin/engineeringagent validate
    - ../.engineeringagent/bin/engineeringagent gates run --profile loop_fast
 

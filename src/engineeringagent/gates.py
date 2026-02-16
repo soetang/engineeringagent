@@ -48,7 +48,7 @@ DEFAULT_GATE_CONFIG: dict[str, Any] = {
             "run": "uv run mdformat --check README.md AGENTS.md docs/references/docs-architecture-llms.md"
         },
         "ruff_validate": {
-            "run": "uv run ruff check src/engineeringagent",
+            "run": "uv run ruff check src/engineeringagent harness",
             "on_change": [
                 "src/**/*.py",
                 "tests/**/*.py",

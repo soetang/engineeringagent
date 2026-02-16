@@ -45,12 +45,22 @@ pypi = [
 
 [tool.ruff.lint]
 extend-select = [
-    "D103", # undocumented public function
-    "D417", # docstring arguments are not fully documented
-    "C901", # function complexity threshold
-    "PLR0912", # branch count threshold
-    "PLR0913", # argument count threshold
-    "PLR0915", # statement count threshold
+  "D103",  # undocumented public function
+  "D417",  # docstring arguments are not fully documented
+  "C901",  # function complexity threshold
+  "PLR0912",  # branch count threshold
+  "PLR0913",  # argument count threshold
+  "PLR0915",  # statement count threshold
+]
+
+[tool.ruff.lint.per-file-ignores]
+"harness/fitness-functions/*.py" = [
+  "D103",
+  "D417",
+  "C901",
+  "PLR0912",
+  "PLR0913",
+  "PLR0915",
 ]
 
 [tool.ruff.lint.mccabe]

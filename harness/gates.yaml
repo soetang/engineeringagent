@@ -22,7 +22,7 @@ gates:
   fitness_validate:
     run: uv run python -m engineeringagent.cli fitness run --format json
   ruff_validate:
-    run: uv run ruff check src/engineeringagent
+    run: uv run ruff check src/engineeringagent harness
     on_change:
     - src/**/*.py
     - tests/**/*.py

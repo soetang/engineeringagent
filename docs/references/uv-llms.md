@@ -32,7 +32,7 @@ uv run python -m engineeringagent.cli run --all --dry-run
 - List gate profiles: `uv run python -m engineeringagent.cli gates list`
 - Run loop-fast gates: `uv run python -m engineeringagent.cli gates run --profile loop_fast`
 - Run precommit gates: `uv run python -m engineeringagent.cli gates run --profile precommit`
-- Run Ruff checks (lint + docstrings): `uv run ruff check src/engineeringagent`
+- Run Ruff checks (lint + docstrings): `uv run ruff check src/engineeringagent harness`
 - Run Pyright type checks: `uv run pyright src/engineeringagent tests harness`
 - Run pytest suite: `uv run pytest -q`
 - Run permission probe: `uv run python -m engineeringagent.cli gates run --profile loop_fast`

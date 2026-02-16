@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
@@ -28,3 +29,10 @@ def pytest_configure(config) -> None:  # type: ignore[no-untyped-def]
 
     config.option.cov_fail_under = 0
     cov_plugin.options.cov_fail_under = 0
+
+
+@pytest.fixture
+def repo_root(pytestconfig: pytest.Config) -> Path:
+    """Return the repository root for stable path resolution in tests."""
+
+    return Path(pytestconfig.rootpath)

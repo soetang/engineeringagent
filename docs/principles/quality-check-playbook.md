@@ -18,13 +18,13 @@ Use this playbook as a practical default, then apply judgment based on risk.
 ## When to Run What
 
 - During normal implementation loops:
-  - `uvx --from . engineeringagent gates run --profile loop_fast`
+  - `uv run python -m engineeringagent.cli gates run --profile loop_fast`
 - Before commit or merge:
-  - `uvx --from . engineeringagent gates run --profile precommit`
+  - `uv run python -m engineeringagent.cli gates run --profile precommit`
 - When editing feature specs or schema-related files:
-  - `uvx --from . engineeringagent validate`
+  - `uv run python -m engineeringagent.cli validate`
 - When debugging a specific class of failure:
-  - Ruff: `uv run ruff check src/engineeringagent`
+  - Ruff: `uv run ruff check src/engineeringagent harness`
   - Pyright: `uv run pyright src/engineeringagent tests harness`
   - Unit tests: `uv run pytest -q`
   - Fitness functions: `uv run python -m engineeringagent.cli fitness run --format json`

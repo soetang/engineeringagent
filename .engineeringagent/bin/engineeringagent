@@ -1,0 +1,10 @@
+#!/usr/bin/env sh
+set -eu
+
+# Run engineeringagent against local source (src/) without installing the package.
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+PROJECT_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/../.." && pwd)
+
+export PYTHONPATH="$PROJECT_ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
+
+exec python -m engineeringagent.cli "$@"
