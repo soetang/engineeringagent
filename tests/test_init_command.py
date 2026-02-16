@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from importlib.resources import files
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -50,7 +51,7 @@ def test_init_defaults_to_slim_pack_without_prompting_in_non_tty(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Verify init defaults to slim without prompting when not a TTY."""
-    monkeypatch.setattr(cli_module, "_stdout_is_tty", lambda: False, raising=False)
+    monkeypatch.setattr(cli_module, "_stdout_is_tty", lambda: False)
     monkeypatch.setattr(
         "builtins.input",
         lambda _prompt: pytest.fail("init prompted unexpectedly"),
@@ -67,7 +68,7 @@ def test_init_prompts_for_pack_when_omitted_and_tty(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Verify init prompts for pack selection when omitted in a TTY."""
-    monkeypatch.setattr(cli_module, "_stdout_is_tty", lambda: True, raising=False)
+    monkeypatch.setattr(cli_module, "_stdout_is_tty", lambda: True)
     monkeypatch.setattr("builtins.input", lambda _prompt: "standard")
 
     result = _invoke_cli(["--project-root", str(tmp_path), "init"])
@@ -81,7 +82,7 @@ def test_init_pack_arg_never_prompts_even_on_tty(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Verify providing the pack positional disables the interactive prompt."""
-    monkeypatch.setattr(cli_module, "_stdout_is_tty", lambda: True, raising=False)
+    monkeypatch.setattr(cli_module, "_stdout_is_tty", lambda: True)
     monkeypatch.setattr(
         "builtins.input",
         lambda _prompt: pytest.fail("init prompted unexpectedly"),
@@ -357,6 +358,210 @@ def test_init_writes_precommit_and_empty_gate_profiles(
     )
     assert fitness_manifest["contract_version"] == "1.0"
     assert fitness_manifest["rules"] == []
+
+
+def test_init_attempts_precommit_install_when_git_repo_and_precommit_available(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify init best-effort installs pre-commit hooks when possible."""
+    (tmp_path / ".git").mkdir(parents=True)
+    calls: list[tuple[Path, str | None]] = []
+
+    monkeypatch.setattr(cli_module.shutil, "which", lambda _name: "/bin/pre-commit")
+
+    def _fake_precommit_install(
+        project_root: Path,
+        *,
+        hook_type: str | None = None,
+    ) -> object:
+        calls.append((project_root, hook_type))
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(
+        cli_module.git_client, "precommit_install", _fake_precommit_install
+    )
+
+    result = _invoke_cli(["--project-root", str(tmp_path), "init"])
+
+    assert result.exit_code == 0
+    assert calls == [(tmp_path.resolve(), None)]
+
+
+def test_init_attempts_precommit_install_when_git_marker_is_file(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify init treats worktree-style .git files as git repos."""
+    (tmp_path / ".git").write_text("gitdir: /tmp/gitdir\n", encoding="utf-8")
+    calls: list[tuple[Path, str | None]] = []
+
+    monkeypatch.setattr(cli_module.shutil, "which", lambda _name: "/bin/pre-commit")
+
+    def _fake_precommit_install(
+        project_root: Path,
+        *,
+        hook_type: str | None = None,
+    ) -> object:
+        calls.append((project_root, hook_type))
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(
+        cli_module.git_client, "precommit_install", _fake_precommit_install
+    )
+
+    result = _invoke_cli(["--project-root", str(tmp_path), "init"])
+
+    assert result.exit_code == 0
+    assert calls == [(tmp_path.resolve(), None)]
+
+
+def test_init_python_uv_attempts_commit_msg_hook_install(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify python_uv init attempts installing the commit-msg hook type."""
+    (tmp_path / ".git").mkdir(parents=True)
+    calls: list[tuple[Path, str | None]] = []
+
+    monkeypatch.setattr(cli_module.shutil, "which", lambda _name: "/bin/pre-commit")
+
+    def _fake_precommit_install(
+        project_root: Path,
+        *,
+        hook_type: str | None = None,
+    ) -> object:
+        calls.append((project_root, hook_type))
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(
+        cli_module.git_client, "precommit_install", _fake_precommit_install
+    )
+
+    result = _invoke_cli(
+        [
+            "--project-root",
+            str(tmp_path),
+            "init",
+            "--scaffold-profile",
+            "python_uv",
+        ]
+    )
+
+    assert result.exit_code == 0
+    assert calls == [
+        (tmp_path.resolve(), None),
+        (tmp_path.resolve(), "commit-msg"),
+    ]
+
+
+def test_init_non_git_repo_prints_precommit_remediation_hint(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify init hints how to wire hooks when not in a git repo."""
+    monkeypatch.setattr(
+        cli_module.git_client,
+        "precommit_install",
+        lambda *_args, **_kwargs: pytest.fail("unexpected pre-commit install attempt"),
+    )
+
+    result = _invoke_cli(["--project-root", str(tmp_path), "init"])
+
+    assert result.exit_code == 0
+    assert "skipped pre-commit hook install" in result.stdout
+    assert "git init" in result.stdout
+    assert "pre-commit install" in result.stdout
+
+
+def test_init_missing_precommit_prints_remediation_hint(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify init succeeds and hints when pre-commit is missing."""
+    (tmp_path / ".git").mkdir(parents=True)
+    monkeypatch.setattr(cli_module.shutil, "which", lambda _name: None)
+    monkeypatch.setattr(
+        cli_module.git_client,
+        "precommit_install",
+        lambda *_args, **_kwargs: pytest.fail("unexpected pre-commit install attempt"),
+    )
+
+    result = _invoke_cli(["--project-root", str(tmp_path), "init"])
+
+    assert result.exit_code == 0
+    assert "skipped pre-commit hook install" in result.stdout
+    assert "pre-commit not found" in result.stdout
+    assert "pre-commit install" in result.stdout
+
+
+def test_init_precommit_install_failure_is_non_fatal(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify init does not fail solely due to hook installation failure."""
+    (tmp_path / ".git").mkdir(parents=True)
+    monkeypatch.setattr(cli_module.shutil, "which", lambda _name: "/bin/pre-commit")
+
+    def _fake_precommit_install(
+        _project_root: Path,
+        *,
+        hook_type: str | None = None,
+    ) -> object:
+        assert hook_type is None
+        return SimpleNamespace(returncode=1, stdout="", stderr="boom")
+
+    monkeypatch.setattr(
+        cli_module.git_client, "precommit_install", _fake_precommit_install
+    )
+
+    result = _invoke_cli(["--project-root", str(tmp_path), "init"])
+
+    assert result.exit_code == 0
+    assert "init warning" in result.stdout
+    assert "exit_code=1" in result.stdout
+    assert "pre-commit install" in result.stdout
+
+
+def test_init_precommit_install_exception_is_non_fatal(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify init survives unexpected subprocess errors during hook install."""
+    (tmp_path / ".git").mkdir(parents=True)
+    monkeypatch.setattr(cli_module.shutil, "which", lambda _name: "/bin/pre-commit")
+
+    def _boom(_project_root: Path, *, hook_type: str | None = None) -> object:  # noqa: ARG001
+        raise FileNotFoundError("pre-commit")
+
+    monkeypatch.setattr(cli_module.git_client, "precommit_install", _boom)
+
+    result = _invoke_cli(["--project-root", str(tmp_path), "init"])
+
+    assert result.exit_code == 0
+    assert "init warning" in result.stdout
+    assert "error=FileNotFoundError" in result.stdout
+    assert "pre-commit install" in result.stdout
+
+
+def test_init_no_precommit_install_flag_skips_install_attempts(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify --no-precommit-install disables all hook installation attempts."""
+    (tmp_path / ".git").mkdir(parents=True)
+    monkeypatch.setattr(cli_module.shutil, "which", lambda _name: "/bin/pre-commit")
+    monkeypatch.setattr(
+        cli_module.git_client,
+        "precommit_install",
+        lambda *_args, **_kwargs: pytest.fail("unexpected pre-commit install attempt"),
+    )
+
+    result = _invoke_cli(
+        ["--project-root", str(tmp_path), "init", "--no-precommit-install"]
+    )
+
+    assert result.exit_code == 0
 
 
 def test_init_slim_pack_does_not_scaffold_demo_failure(tmp_path: Path) -> None:

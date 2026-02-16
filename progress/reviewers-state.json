@@ -244,6 +244,25 @@
           "updated_at": "2026-02-16T00:21:30Z"
         }
       }
+    },
+    "FEAT-077": {
+      "advisory_followup_required": false,
+      "advisory_followup_updated_at": "2026-02-16T01:37:44Z",
+      "reviewers": {
+        "code_simplifier": {
+          "approved": true,
+          "approved_at": "2026-02-16T01:39:09Z",
+          "blocking_request_changes_count": 0,
+          "blocking_retry_updated_at": "2026-02-16T01:39:09Z",
+          "invalidated_at": "2026-02-16T01:37:44Z"
+        },
+        "readme_process": {
+          "approved": true,
+          "approved_at": "2026-02-16T01:44:10Z",
+          "blocking_request_changes_count": 0,
+          "blocking_retry_updated_at": "2026-02-16T01:44:10Z"
+        }
+      }
     }
   },
   "version": "1"

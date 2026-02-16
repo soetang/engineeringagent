@@ -80,3 +80,31 @@ def commit(project_root: Path, message: str) -> subprocess.CompletedProcess[str]
         capture_output=True,
         text=True,
     )
+
+
+def precommit_install(
+    project_root: Path,
+    *,
+    hook_type: str | None = None,
+) -> subprocess.CompletedProcess[str]:
+    """Install pre-commit git hooks for the repository.
+
+    Args:
+        project_root: Repository root used as command working directory.
+        hook_type: Optional hook type (e.g. "commit-msg").
+
+    Returns:
+        Completed process from the ``pre-commit install`` invocation.
+    """
+    command = ["pre-commit", "install"]
+    if hook_type is not None:
+        command.extend(["--hook-type", hook_type])
+
+    return subprocess.run(
+        command,
+        cwd=project_root,
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        text=True,
+        check=False,
+    )

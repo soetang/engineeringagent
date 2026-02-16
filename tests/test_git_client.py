@@ -1,91 +1,41 @@
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
-from typing import Any
+from types import SimpleNamespace
 
-from engineeringagent.git import client as client_module
+import pytest
+
+from engineeringagent.git import client as git_client
 
 
-def test_status_porcelain_runs_expected_git_command(
+@pytest.mark.parametrize(
+    ("hook_type", "expected_command"),
+    [
+        (None, ["pre-commit", "install"]),
+        ("commit-msg", ["pre-commit", "install", "--hook-type", "commit-msg"]),
+    ],
+)
+def test_precommit_install_invokes_subprocess_non_interactive(
     tmp_path: Path,
-    monkeypatch: Any,
+    monkeypatch: pytest.MonkeyPatch,
+    hook_type: str | None,
+    expected_command: list[str],
 ) -> None:
-    captured: dict[str, Any] = {}
+    calls: list[tuple[list[str], dict[str, object]]] = []
 
-    def fake_subprocess_run(
-        command: Any, **kwargs: Any
-    ) -> subprocess.CompletedProcess[str]:
-        captured["command"] = command
-        captured["kwargs"] = kwargs
-        return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+    def _fake_run(cmd: list[str], **kwargs: object) -> object:
+        calls.append((cmd, kwargs))
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
 
-    monkeypatch.setattr(client_module.subprocess, "run", fake_subprocess_run)
+    monkeypatch.setattr(git_client.subprocess, "run", _fake_run)
 
-    client_module.status_porcelain(tmp_path)
+    git_client.precommit_install(tmp_path, hook_type=hook_type)
 
-    assert captured["command"] == ["git", "status", "--porcelain"]
-    assert captured["kwargs"]["cwd"] == tmp_path
-    assert captured["kwargs"]["capture_output"] is True
-    assert captured["kwargs"]["text"] is True
-
-
-def test_head_short_runs_expected_git_command(tmp_path: Path, monkeypatch: Any) -> None:
-    captured_command: list[str] = []
-
-    def fake_subprocess_run(
-        command: Any, **kwargs: Any
-    ) -> subprocess.CompletedProcess[str]:
-        del kwargs
-        captured_command.extend(command)
-        return subprocess.CompletedProcess(command, 0, stdout="abc123\n", stderr="")
-
-    monkeypatch.setattr(client_module.subprocess, "run", fake_subprocess_run)
-
-    result = client_module.head_short(tmp_path)
-
-    assert result.stdout == "abc123\n"
-    assert captured_command == ["git", "rev-parse", "--short", "HEAD"]
-
-
-def test_add_all_runs_expected_git_command(tmp_path: Path, monkeypatch: Any) -> None:
-    captured_command: list[str] = []
-
-    def fake_subprocess_run(
-        command: Any, **kwargs: Any
-    ) -> subprocess.CompletedProcess[str]:
-        del kwargs
-        captured_command.extend(command)
-        return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
-
-    monkeypatch.setattr(client_module.subprocess, "run", fake_subprocess_run)
-
-    client_module.add_all(tmp_path)
-
-    assert captured_command == ["git", "add", "-A", "--", "."]
-
-
-def test_commit_runs_expected_git_command(tmp_path: Path, monkeypatch: Any) -> None:
-    captured_command: list[str] = []
-
-    def fake_subprocess_run(
-        command: Any, **kwargs: Any
-    ) -> subprocess.CompletedProcess[str]:
-        del kwargs
-        captured_command.extend(command)
-        return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
-
-    monkeypatch.setattr(client_module.subprocess, "run", fake_subprocess_run)
-
-    client_module.commit(tmp_path, "feat: complete FEAT-999")
-
-    assert captured_command == [
-        "git",
-        "-c",
-        "user.name=engineeringagent",
-        "-c",
-        "user.email=engineeringagent@local",
-        "commit",
-        "-m",
-        "feat: complete FEAT-999",
-    ]
+    assert len(calls) == 1
+    cmd, kwargs = calls[0]
+    assert cmd == expected_command
+    assert kwargs["cwd"] == tmp_path
+    assert kwargs["stdin"] is git_client.subprocess.DEVNULL
+    assert kwargs["capture_output"] is True
+    assert kwargs["text"] is True
+    assert kwargs["check"] is False

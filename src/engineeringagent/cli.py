@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.metadata
 import json
+import shutil
 import sys
 from collections.abc import Callable
 from pathlib import Path
@@ -25,6 +26,7 @@ from .gates import (
     plan_profile,
     run_profile,
 )
+from .git import client as git_client
 from .init_scaffold import (
     apply_baseline_scaffold,
     build_agents_merge_followup_spec,
@@ -706,6 +708,12 @@ def cmd_init(args: _HandlerArgs) -> int:
             skipped += 1
             merge_spec_output = f" merge_spec_skipped={merge_spec_relative}"
 
+    if not getattr(args, "no_precommit_install", False):
+        _install_precommit_hooks_best_effort(
+            project_root=project_root,
+            scaffold_profile=args.scaffold_profile,
+        )
+
     agents_mode_output = f" agents_mode={resolved_agents_mode}"
     if agents_backup_name is not None:
         agents_mode_output += f" agents_backup={agents_backup_name}"
@@ -718,6 +726,73 @@ def cmd_init(args: _HandlerArgs) -> int:
         f"{agents_mode_output}{merge_spec_output}"
     )
     return 0
+
+
+def _precommit_remediation_commands(*, scaffold_profile: str) -> list[str]:
+    """Return deterministic remediation commands for hook installation."""
+    commands = ["pre-commit install"]
+    if scaffold_profile == "python_uv":
+        commands.append("pre-commit install --hook-type commit-msg")
+    return commands
+
+
+def _install_precommit_hooks_best_effort(
+    *,
+    project_root: Path,
+    scaffold_profile: str,
+) -> None:
+    """Best-effort install pre-commit hooks when prerequisites are met.
+
+    Notes:
+    - Non-fatal: failures emit deterministic warnings but never raise.
+    - Non-interactive: stdin is redirected away from TTY.
+    """
+    if not (project_root / ".git").exists():
+        remediation = " && ".join(
+            [
+                "git init",
+                *_precommit_remediation_commands(scaffold_profile=scaffold_profile),
+            ]
+        )
+        print(
+            "init hint: skipped pre-commit hook install (no .git directory). "
+            f"To enable later: {remediation}"
+        )
+        return
+
+    if shutil.which("pre-commit") is None:
+        remediation = " && ".join(
+            _precommit_remediation_commands(scaffold_profile=scaffold_profile)
+        )
+        print(
+            "init hint: skipped pre-commit hook install (pre-commit not found on PATH). "
+            f"To enable later: {remediation}"
+        )
+        return
+
+    hook_types: list[str | None] = [None]
+    if scaffold_profile == "python_uv":
+        hook_types.append("commit-msg")
+
+    for hook_type in hook_types:
+        retry_command = "pre-commit install"
+        if hook_type is not None:
+            retry_command = f"pre-commit install --hook-type {hook_type}"
+
+        try:
+            result = git_client.precommit_install(project_root, hook_type=hook_type)
+        except Exception as exc:
+            print(
+                "init warning: pre-commit hook install failed "
+                f"(error={exc.__class__.__name__}). To retry: {retry_command}"
+            )
+            continue
+        if result.returncode == 0:
+            continue
+        print(
+            "init warning: pre-commit hook install failed "
+            f"(exit_code={result.returncode}). To retry: {retry_command}"
+        )
 
 
 def _version_callback(value: bool) -> None:
@@ -1100,6 +1175,11 @@ def build_typer_app() -> typer.Typer:
             "--scaffold-docs-dir",
             help="docs directory to scaffold when using docs-mode=separate",
         ),
+        no_precommit_install: bool = typer.Option(
+            False,
+            "--no-precommit-install",
+            help="skip best-effort pre-commit hook installation",
+        ),
     ) -> None:
         _exit_with_handler_code(
             cmd_init,
@@ -1110,6 +1190,7 @@ def build_typer_app() -> typer.Typer:
             docs_mode=docs_mode,
             scaffold_docs_dir=scaffold_docs_dir,
             agents_mode=None,
+            no_precommit_install=no_precommit_install,
         )
 
     return app
