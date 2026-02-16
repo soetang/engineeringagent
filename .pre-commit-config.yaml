@@ -3,7 +3,7 @@ repos:
     hooks:
       - id: engineeringagent-precommit
         name: engineeringagent-precommit
-        entry: uvx --from . engineeringagent gates run --profile precommit
+        entry: uv run python -m engineeringagent.cli checks run --phase iteration_end
         language: system
         pass_filenames: false
       - id: engineeringagent-commit-msg

@@ -26,6 +26,7 @@ from .init_scaffold import (
     build_scaffold_agents_markdown,
 )
 from .loop import build_loop_run, build_run_config, run_loop
+from .specs import HarnessCheckPhase
 from .validator import validate
 
 _MISSING_REMEDIATION_TEMPLATE = (
@@ -439,6 +440,88 @@ def cmd_fitness_catalog(args: _HandlerArgs) -> int:
     return 0
 
 
+def cmd_checks_run(args: _HandlerArgs) -> int:
+    """Execute repo-owned checks declared in harness/checks.yaml.
+
+    This command is intended for automation surfaces (e.g. pre-commit, CI) that
+    want deterministic execution of repo-owned verification without running the
+    full feature loop.
+    """
+
+    project_root = Path(args.project_root).resolve()
+    checks_path = project_root / "harness" / "checks.yaml"
+    if not checks_path.exists():
+        print(
+            "checks config error: missing harness/checks.yaml. "
+            "Remediation: run `engineeringagent init`."
+        )
+        return 1
+
+    try:
+        from .specs import checks_contract_issues, load_yaml
+
+        issues = checks_contract_issues(load_yaml(checks_path), checks_path)
+    except Exception as exc:  # noqa: BLE001
+        print(f"checks config error: failed to load harness/checks.yaml: {exc}")
+        return 1
+    if issues:
+        rendered = "\n".join(f"- {issue.path}: {issue.message}" for issue in issues)
+        print(f"checks config error: invalid harness/checks.yaml\n{rendered}")
+        return 1
+
+    from .changed_paths import collect_changed_paths
+    from .harness_checks_runtime import (
+        load_checks_document,
+        run_planned_command_checks,
+        run_planned_fitness_checks,
+    )
+    from .opencode.client import run_shell_command
+
+    try:
+        doc = load_checks_document(checks_path)
+    except Exception as exc:  # noqa: BLE001
+        print(f"checks config error: failed to validate harness/checks.yaml: {exc}")
+        return 1
+
+    phase = args.phase
+    changed_paths = collect_changed_paths(
+        project_root,
+        base=getattr(args, "base", None),
+        head=getattr(args, "head", None),
+    )
+
+    ok, failed_id, output, timings = run_planned_command_checks(
+        project_root=project_root,
+        doc=doc,
+        phase=phase,
+        changed_paths=changed_paths,
+        verbose_output=bool(getattr(args, "verbose_output", False)),
+        run_shell_command=run_shell_command,
+    )
+    _ = timings
+    if output:
+        print(output)
+    if not ok:
+        print(f"checks failed: type=command check_id={failed_id}")
+        return 1
+
+    ok, failed_id, output, timings = run_planned_fitness_checks(
+        project_root=project_root,
+        doc=doc,
+        phase=phase,
+        changed_paths=changed_paths,
+    )
+    _ = timings
+    if output:
+        print(output)
+    if not ok:
+        print(f"checks failed: type=fitness check_id={failed_id}")
+        return 1
+
+    print("checks run: ok")
+    return 0
+
+
 def cmd_init(args: _HandlerArgs) -> int:
     """Scaffold baseline harness files for a repository.
 
@@ -731,6 +814,50 @@ def _build_typer_fitness_app() -> typer.Typer:
     return fitness_app
 
 
+def _build_typer_checks_app() -> typer.Typer:
+    """Build the Typer checks app with nested command routing."""
+    checks_app = typer.Typer(
+        help="run repo-owned checks from harness/checks.yaml",
+        add_completion=False,
+        no_args_is_help=False,
+    )
+
+    @checks_app.command("run", help="run checks declared in harness/checks.yaml")
+    def _checks_run(
+        ctx: typer.Context,
+        phase: HarnessCheckPhase = typer.Option(
+            HarnessCheckPhase.ITERATION_END,
+            "--phase",
+            help="check execution phase to run (iteration_end|feature_done|manual)",
+        ),
+        base: str | None = typer.Option(
+            None,
+            "--base",
+            help="optional base revision for on_change diff",
+        ),
+        head: str | None = typer.Option(
+            None,
+            "--head",
+            help="optional head revision for on_change diff",
+        ),
+        verbose_output: bool = typer.Option(
+            False,
+            "--verbose-output",
+            help="stream full command output in terminal",
+        ),
+    ) -> None:
+        _exit_with_handler_code(
+            cmd_checks_run,
+            ctx=ctx,
+            phase=phase,
+            base=base,
+            head=head,
+            verbose_output=verbose_output,
+        )
+
+    return checks_app
+
+
 def build_typer_app() -> typer.Typer:
     """Build the Typer root app with top-level command wiring."""
     app = typer.Typer(
@@ -809,6 +936,12 @@ def build_typer_app() -> typer.Typer:
         _build_typer_fitness_app(),
         name="fitness",
         help="list and run fitness-function rules",
+    )
+
+    app.add_typer(
+        _build_typer_checks_app(),
+        name="checks",
+        help="run repo-owned checks from harness/checks.yaml",
     )
 
     @app.command(

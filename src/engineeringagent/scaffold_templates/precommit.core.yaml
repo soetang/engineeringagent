@@ -3,6 +3,6 @@ repos:
     hooks:
       - id: engineeringagent-precommit
         name: engineeringagent-precommit
-        entry: engineeringagent validate
+        entry: engineeringagent checks run --phase iteration_end
         language: system
         pass_filenames: false

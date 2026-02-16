@@ -339,7 +339,9 @@ def test_init_writes_precommit_and_empty_gate_profiles(
     precommit_config = (tmp_path / ".pre-commit-config.yaml").read_text(
         encoding="utf-8"
     )
-    assert "entry: engineeringagent validate" in precommit_config
+    assert (
+        "entry: engineeringagent checks run --phase iteration_end" in precommit_config
+    )
     assert "uvx --from . engineeringagent" not in precommit_config
     assert "engineeringagent-commit-msg" not in precommit_config
 
@@ -634,7 +636,9 @@ def test_init_defaults_to_core_language_agnostic_profile(
     precommit_config = (tmp_path / ".pre-commit-config.yaml").read_text(
         encoding="utf-8"
     )
-    assert "entry: engineeringagent validate" in precommit_config
+    assert (
+        "entry: engineeringagent checks run --phase iteration_end" in precommit_config
+    )
     assert "uvx --from ." not in precommit_config
     assert "engineeringagent-commit-msg" not in precommit_config
 
@@ -657,7 +661,10 @@ def test_init_python_uv_profile_available(tmp_path: Path) -> None:
     precommit_config = (tmp_path / ".pre-commit-config.yaml").read_text(
         encoding="utf-8"
     )
-    assert "entry: uv run python -m engineeringagent.cli validate" in precommit_config
+    assert (
+        "entry: uv run python -m engineeringagent.cli checks run --phase iteration_end"
+        in precommit_config
+    )
     assert "uvx --from ." not in precommit_config
     assert "engineeringagent-commit-msg" in precommit_config
     assert (

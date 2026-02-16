@@ -46,10 +46,10 @@ jobs:
           uv run python harness/fitness-functions/validate_commit_messages.py --commit-range "$COMMIT_RANGE"
 
       - name: Lint (precommit profile)
-        run: uvx --from . engineeringagent gates run --profile precommit
+        run: uv run python -m engineeringagent.cli checks run --phase iteration_end
 
       - name: Test
         run: pytest -q
 
       - name: Spec validation
-        run: uvx --from . engineeringagent validate
+        run: uv run python -m engineeringagent.cli validate
