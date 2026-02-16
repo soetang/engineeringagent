@@ -16,6 +16,26 @@ _SCAFFOLD_TEMPLATE_PACKAGE = "engineeringagent.scaffold_templates"
 _SUPPORTED_INIT_PACKS = {"slim", "standard"}
 
 
+def _build_scaffold_policy_yaml(*, docs_root: str, agent_docs: list[str]) -> str:
+    """Build a minimal scaffold policy file.
+
+    Notes:
+    - The docs allowlist fitness rule is stdlib-only and reads this file directly.
+    - Keep the contract small and deterministic for reviewability.
+    """
+
+    return yaml.safe_dump(
+        {
+            "contract_version": "1.0",
+            "docs_root": docs_root,
+            "human_docs": [],
+            "agent_docs": agent_docs,
+        },
+        sort_keys=False,
+        allow_unicode=False,
+    )
+
+
 def _spec_validate_gate(docs_dir_normalized: str) -> dict[str, object]:
     """Return a stable spec validation gate config for harness profiles."""
 
@@ -141,6 +161,11 @@ def build_baseline_scaffold_manifest(
 
     docs_dir_normalized = docs_dir.strip("/")
     is_python_uv = profile == "python_uv"
+
+    reference_docs_manifest = _build_reference_docs_manifest()
+    policy_agent_docs: list[str] = []
+    if docs_dir_normalized == "docs":
+        policy_agent_docs = sorted(reference_docs_manifest.keys())
     gate_config = {
         "contract_version": "1.0",
         "profiles": {
@@ -193,8 +218,12 @@ def build_baseline_scaffold_manifest(
             sort_keys=False,
             allow_unicode=False,
         ),
+        "harness/scaffold_policy.yaml": _build_scaffold_policy_yaml(
+            docs_root=docs_dir_normalized,
+            agent_docs=policy_agent_docs,
+        ),
         "AGENTS.md": build_scaffold_agents_markdown(),
-        **_build_reference_docs_manifest(),
+        **reference_docs_manifest,
     }
 
     if is_python_uv:

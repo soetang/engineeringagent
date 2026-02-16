@@ -624,3 +624,49 @@ def test_init_scaffolds_spec_writing_reference_doc(tmp_path: Path) -> None:
     ).read_text(encoding="utf-8")
     assert "Spec Writing Guide" in spec_writing_reference
     assert "Mandatory Interview Flow" in spec_writing_reference
+
+
+def test_init_scaffolds_scaffold_policy_with_resolved_docs_root(tmp_path: Path) -> None:
+    """Verify init creates scaffold_policy.yaml with docs_root aligned to docs_dir."""
+    result = _invoke_cli(["--project-root", str(tmp_path), "init"])
+
+    assert result.exit_code == 0
+
+    policy_path = tmp_path / "harness" / "scaffold_policy.yaml"
+    assert policy_path.exists()
+
+    payload = yaml.safe_load(policy_path.read_text(encoding="utf-8"))
+    assert payload["contract_version"] == "1.0"
+    assert payload["docs_root"] == "docs"
+    assert payload["human_docs"] == []
+    assert payload["agent_docs"] == [
+        "docs/references/docs-architecture-llms.md",
+        "docs/references/spec-writing-llms.md",
+        "docs/references/workflow-llms.md",
+    ]
+
+
+def test_init_separate_docs_updates_scaffold_policy_docs_root(tmp_path: Path) -> None:
+    """Verify init separate docs mode sets scaffold policy docs_root to selected dir."""
+    (tmp_path / "docs").mkdir(parents=True)
+
+    result = _invoke_cli(
+        [
+            "--project-root",
+            str(tmp_path),
+            "init",
+            "--docs-mode",
+            "separate",
+            "--scaffold-docs-dir",
+            "docs.engineeringagent",
+        ]
+    )
+
+    assert result.exit_code == 0
+    assert "docs_dir=docs.engineeringagent" in result.stdout
+
+    policy_path = tmp_path / "harness" / "scaffold_policy.yaml"
+    payload = yaml.safe_load(policy_path.read_text(encoding="utf-8"))
+    assert payload["docs_root"] == "docs.engineeringagent"
+    assert isinstance(payload["human_docs"], list)
+    assert isinstance(payload["agent_docs"], list)
