@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from result_envelope import emit_result_envelope
+from engineeringagent.fitness.envelope import emit_result_envelope
 
 
 RULE_ID = "architecture.loop-facade-line-budget"

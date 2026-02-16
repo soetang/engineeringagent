@@ -1473,6 +1473,30 @@ def test_fitness_manifest_registers_no_facade_varargs_rule() -> None:
     ]
 
 
+def test_fitness_manifest_registers_harness_src_import_allowlist_rule() -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    manifest = yaml.safe_load(
+        (repo_root / "harness" / "fitness-functions" / "rules.yaml").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    matching_rules = [
+        rule
+        for rule in manifest["rules"]
+        if isinstance(rule, dict)
+        and rule.get("rule_id") == "architecture.harness-src-import-allowlist"
+    ]
+
+    assert len(matching_rules) == 1
+    assert matching_rules[0]["command"] == [
+        "uv",
+        "run",
+        "python",
+        "harness/fitness-functions/check_harness_src_import_allowlist.py",
+    ]
+
+
 def test_no_facade_varargs_rule_disallows_run_implement_step_shim() -> None:
     repo_root = Path(__file__).resolve().parents[1]
     checker_path = (

@@ -14,6 +14,20 @@ rules:
       - run
       - python
       - harness/fitness-functions/check_dependency_directionality.py
+  - rule_id: architecture.harness-src-import-allowlist
+    name: Harness-to-src import allowlist
+    summary: Restrict harness fitness functions to a narrow supported engineeringagent surface.
+    rationale: Prevents harness scripts from depending on orchestration/runtime internals that are not part of the supported authoring API.
+    remediation: Replace forbidden imports with the supported helpers under engineeringagent.fitness.*.
+    scope: harness/fitness-functions
+    severity: error
+    side_effect_free: true
+    adapter: command
+    command:
+      - uv
+      - run
+      - python
+      - harness/fitness-functions/check_harness_src_import_allowlist.py
   - rule_id: architecture.loop-subprocess-boundary
     name: Loop subprocess boundary
     summary: Enforce subprocess allowlist boundaries for command adapters/clients.

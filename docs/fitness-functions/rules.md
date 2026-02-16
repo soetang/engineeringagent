@@ -9,6 +9,7 @@ This file is generated from active manifest-declared fitness rules.
 | `architecture.dep-directionality` | error | command | custom | `src/engineeringagent` | Enforce core module import direction boundaries. |
 | `architecture.docs-allowlist-policy` | error | command | custom | `docs_root markdown (*.md) excluding docs_root/spec/**` | Require each docs_root markdown file to be listed in exactly one policy list. |
 | `architecture.harness-root-yaml-only` | error | command | custom | `harness/ (regular files at root)` | Enforce YAML-only regular files directly under harness root. |
+| `architecture.harness-src-import-allowlist` | error | command | custom | `harness/fitness-functions` | Restrict harness fitness functions to a narrow supported engineeringagent surface. |
 | `architecture.loop-facade-line-budget` | error | command | custom | `src/engineeringagent/loop.py` | Enforce a permanent line budget cap for the loop facade. |
 | `architecture.loop-subprocess-boundary` | error | command | custom | `src/engineeringagent` | Enforce subprocess allowlist boundaries for command adapters/clients. |
 | `architecture.markdown-locality-reference-coverage` | error | command | custom | `repository markdown (*.md)` | Restrict markdown to approved paths and require non-doc markdown files to be referenced in-repo. |
@@ -44,6 +45,13 @@ This file is generated from active manifest-declared fitness rules.
 - Side-effect free: `true`
 - Rationale: Keeps harness root manifest-only and prevents executable/policy file sprawl at repository root policy surfaces.
 - Remediation: Move non-YAML root files under harness/fitness-functions or another harness subdirectory; keep only *.yaml/*.yml files at harness root.
+
+### `architecture.harness-src-import-allowlist`
+
+- Name: Harness-to-src import allowlist
+- Side-effect free: `true`
+- Rationale: Prevents harness scripts from depending on orchestration/runtime internals that are not part of the supported authoring API.
+- Remediation: Replace forbidden imports with the supported helpers under engineeringagent.fitness.*.
 
 ### `architecture.loop-facade-line-budget`
 

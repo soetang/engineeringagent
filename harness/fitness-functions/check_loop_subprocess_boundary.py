@@ -5,7 +5,7 @@ from pathlib import Path
 import re
 import subprocess
 
-from result_envelope import emit_result_envelope
+from engineeringagent.fitness.envelope import emit_result_envelope
 
 
 RULE_ID = "architecture.loop-subprocess-boundary"

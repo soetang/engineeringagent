@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import pytest
 from pydantic import ValidationError
 
@@ -8,6 +10,8 @@ from engineeringagent.fitness.contracts import (
     FitnessRuleMetadata,
     FitnessRuleResult,
 )
+
+from engineeringagent.fitness.envelope import emit_result_envelope
 
 
 def test_rule_metadata_requires_side_effect_free_true() -> None:
@@ -56,3 +60,55 @@ def test_rule_result_rejects_missing_contract_version() -> None:
                 "summary": "Boundary contract is satisfied.",
             }
         )
+
+
+def test_emit_result_envelope_is_deterministic_and_validates(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    emit_result_envelope(
+        rule_id="architecture.dep-direction",
+        status="pass",
+        severity="error",
+        summary="Boundary contract is satisfied.",
+        violations=[],
+    )
+
+    stdout = capsys.readouterr().out
+    expected = (
+        '{"contract_version":"1.0",'
+        '"rule_id":"architecture.dep-direction",'
+        '"status":"pass",'
+        '"severity":"error",'
+        '"summary":"Boundary contract is satisfied.",'
+        '"violations":[]}\n'
+    )
+    assert stdout == expected
+
+    payload = json.loads(stdout)
+    result = FitnessRuleResult.model_validate(payload)
+    assert result.contract_version == CONTRACT_VERSION
+
+
+def test_emit_result_envelope_includes_details_when_provided(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    emit_result_envelope(
+        rule_id="architecture.dep-direction",
+        status="pass",
+        severity="error",
+        summary="Boundary contract is satisfied.",
+        violations=[],
+        details={"a": 1, "b": "x"},
+    )
+
+    stdout = capsys.readouterr().out
+    expected = (
+        '{"contract_version":"1.0",'
+        '"rule_id":"architecture.dep-direction",'
+        '"status":"pass",'
+        '"severity":"error",'
+        '"summary":"Boundary contract is satisfied.",'
+        '"violations":[],'
+        '"details":{"a":1,"b":"x"}}\n'
+    )
+    assert stdout == expected

@@ -6,7 +6,7 @@ import re
 import tokenize
 from pathlib import Path
 
-from result_envelope import emit_result_envelope
+from engineeringagent.fitness.envelope import emit_result_envelope
 
 
 DEFAULT_RULE_ID = "architecture.no-non-ignorable-ruff-suppressions"
