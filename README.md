@@ -52,38 +52,7 @@ Primary flow: `feature spec -> run loop`.
 If want to use the agent in one of your respositories, you can scaffold a baseline harness with:
 
 ```bash
-uvx engineeringagent init slim
-```
-
-Init packs:
-
-- `slim` (default): safe baseline scaffold that runs real validations (at least spec validation)
-- `standard`: also wires a demo fitness rule that always fails into the `precommit` gate profile
-
-```bash
-uvx engineeringagent init standard
-```
-
-If you picked `standard`, your pre-commit gates are expected to fail until you disable the
-demo by removing gate `demo_fail` from `harness/gates.yaml` and deleting
-`harness/fitness-functions/demo_rules.yaml` and `harness/fitness-functions/demo_always_fail.py`
-(or re-run: `uvx engineeringagent init slim --force`).
-
-`init` defaults to the language-agnostic `core` scaffold profile.
-
-Use `python_uv` when you want the scaffolded `.pre-commit-config.yaml` to assume an
-`uv`-based workflow and ship a minimal Python validation baseline.
-
-In `python_uv`, the scaffolded `harness/gates.yaml` `precommit` profile includes:
-
-- `spec_validate`
-- `ruff_validate` (`uvx ruff check --isolated .`), which does not require any repo-local
-  ruff config files.
-
-`python_uv` also wires a `commit-msg` hook.
-
-```bash
-uvx engineeringagent init slim --scaffold-profile python_uv
+uvx engineeringagent init
 ```
 
 `init` creates a starter structure for `docs/spec/` and `harness/gates.yaml` and handles
@@ -97,8 +66,28 @@ At a minimum, `init` scaffolds:
 It does not run gates for you or make any commits.
 
 Warning: treat `init` as experimental scaffolding.
+
 Always inspect generated files, run `uvx engineeringagent validate`, and review
 the git diff before committing anything produced by `init`.
+
+If you picked `standard`, your pre-commit gates are expected to fail until you disable the
+demo by removing gate `demo_fail` from `harness/gates.yaml` and deleting
+`harness/fitness-functions/demo_rules.yaml` and `harness/fitness-functions/demo_always_fail.py`
+(or re-run: `uvx engineeringagent init slim --force`).
+
+Use `python_uv` as a profile when you want the scaffolded `.pre-commit-config.yaml` to assume an
+`uv`-based workflow and ship a minimal Python validation baseline.
+
+In `python_uv`, the scaffolded `harness/gates.yaml` `precommit` profile includes:
+
+- `spec_validate`
+- `ruff_validate` (`uvx ruff check --isolated .`).
+
+`python_uv` also wires a `commit-msg` hook.
+
+```bash
+uvx engineeringagent init slim --scaffold-profile python_uv
+```
 
 ## What this gives you
 
