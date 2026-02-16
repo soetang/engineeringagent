@@ -13,6 +13,7 @@ README_PROCESS_PROMPT_PATH = (
     REPO_ROOT / "harness" / "reviewers" / "prompts" / "readme_process.md"
 )
 README_PATH = REPO_ROOT / "README.md"
+UV_REFERENCE_PATH = REPO_ROOT / "docs" / "references" / "uv-llms.md"
 
 
 def test_repo_enables_readme_process_reviewer_in_loop_fast() -> None:
@@ -81,6 +82,32 @@ def test_repo_enables_readme_process_reviewer_in_loop_fast() -> None:
     )
     assert "progress/runs.jsonl" in readme_body
     assert "mutates your feature YAML" in readme_body
+
+    # PyPI README rendering does not reliably resolve relative links.
+    # Keep AGENTS.md references non-clickable to avoid broken-link footguns.
+    assert "](AGENTS.md)" not in readme_body
+
+    # Make the first non-dry run obvious even without OpenCode.
+    assert (
+        "uvx engineeringagent run docs/spec/features/FEAT-001-example.yaml --skip-implement"
+        in readme_body
+    )
+
+    # Keep the Quickstart step sequence internally consistent.
+    assert "Run for real by removing `--dry-run`." not in readme_body
+    assert (
+        "uvx engineeringagent run docs/spec/features/FEAT-001-example.yaml"
+        in readme_body
+    )
+    assert '--implement-command "bash ./scripts/implement.sh"' in readme_body
+
+    uv_reference_body = UV_REFERENCE_PATH.read_text(encoding="utf-8")
+    assert "uvx --from . engineeringagent" not in uv_reference_body
+    assert "uv run python -m engineeringagent.cli validate" in uv_reference_body
+    assert (
+        "uv run python -m engineeringagent.cli gates run --profile loop_fast"
+        in uv_reference_body
+    )
 
     assert "--scaffold-profile python_uv" in readme_body
     assert "ruff_validate" in readme_body

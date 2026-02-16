@@ -70,6 +70,9 @@ def _build_reference_docs_manifest() -> dict[str, str]:
         "docs/references/workflow-llms.md": _render_scaffold_template(
             "reference.workflow-llms.md"
         ),
+        "docs/references/spec-writing-llms.md": _render_scaffold_template(
+            "reference.spec-writing-llms.md"
+        ),
     }
 
 
@@ -185,59 +188,7 @@ def build_baseline_scaffold_manifest(
         "harness/fitness-functions/rules.yaml": yaml.safe_dump(
             {
                 "contract_version": "1.0",
-                "rules": [
-                    {
-                        "rule_id": "architecture.dep-directionality",
-                        "name": "Dependency directionality",
-                        "summary": "Enforce core module import direction boundaries.",
-                        "rationale": "Keeps orchestration and contracts layered for reviewability.",
-                        "remediation": "Refactor imports to follow the declared architecture boundaries.",
-                        "scope": "src/engineeringagent",
-                        "severity": "error",
-                        "side_effect_free": True,
-                        "adapter": "command",
-                        "command": [
-                            "uv",
-                            "run",
-                            "python",
-                            "harness/fitness-functions/check_dependency_directionality.py",
-                        ],
-                    },
-                    {
-                        "rule_id": "architecture.loop-subprocess-boundary",
-                        "name": "Loop subprocess boundary",
-                        "summary": "Enforce subprocess allowlist boundaries for command adapters/clients.",
-                        "rationale": "Centralizes command execution paths for consistent control.",
-                        "remediation": "Move OpenCode command execution to engineeringagent.opencode.client and Git command execution to engineeringagent.git.client.",
-                        "scope": "src/engineeringagent",
-                        "severity": "error",
-                        "side_effect_free": True,
-                        "adapter": "command",
-                        "command": [
-                            "uv",
-                            "run",
-                            "python",
-                            "harness/fitness-functions/check_loop_subprocess_boundary.py",
-                        ],
-                    },
-                    {
-                        "rule_id": "architecture.scaffold-template-locality",
-                        "name": "Scaffold template locality",
-                        "summary": "Keep scaffold template payloads in scaffold_templates assets.",
-                        "rationale": "Prevents init scaffold regressions from drifting back to inline template payloads in source modules.",
-                        "remediation": "Move scaffold template bodies to engineeringagent.scaffold_templates assets and load them via engineeringagent.init_scaffold.",
-                        "scope": "src/engineeringagent",
-                        "severity": "error",
-                        "side_effect_free": True,
-                        "adapter": "command",
-                        "command": [
-                            "uv",
-                            "run",
-                            "python",
-                            "harness/fitness-functions/check_scaffold_template_locality.py",
-                        ],
-                    },
-                ],
+                "rules": [],
             },
             sort_keys=False,
             allow_unicode=False,

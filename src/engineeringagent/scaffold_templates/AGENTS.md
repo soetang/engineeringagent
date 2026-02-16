@@ -27,6 +27,7 @@ Keep this file concise. Add durable references and rules, not task logs.
 
 - `docs/references/docs-architecture-llms.md`: Use when adding or restructuring docs; keeps human vs agent doc placement deterministic.
 - `docs/references/workflow-llms.md`: Use before running loop work; defines the expected execution and verification loop.
+- `docs/references/spec-writing-llms.md`: Use when drafting feature specs; defines the feature schema expectations and the expected red-green-refactor loop.
 
 Note: Some repos use a separate docs root for specs (configured via `engineeringagent.toml`). These reference docs remain under `docs/references/`.
 

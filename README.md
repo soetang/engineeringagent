@@ -81,21 +81,36 @@ Primary flow: `feature spec -> run loop`.
 
 1. Do a safe dry run first.
 
-   ```bash
-   uvx engineeringagent run docs/spec/features/FEAT-001-example.yaml --dry-run
-   ```
+    ```bash
+    uvx engineeringagent run docs/spec/features/FEAT-001-example.yaml --dry-run
+    ```
 
-1. Run for real by removing `--dry-run`.
+1. First non-dry run (gates-only, no OpenCode required).
+
+     ```bash
+     uvx engineeringagent run docs/spec/features/FEAT-001-example.yaml --skip-implement
+     ```
+
+1. Run for real (implementation + gates) by removing `--skip-implement`.
 
    Before the first non-dry `engineeringagent run`, either commit the scaffold/spec changes or pass `--allow-dirty`.
 
    Note: a non-dry `run` mutates your feature YAML in place (status/subtask updates,
    updated_at) and writes progress logs under `progress/`.
 
-   If you do not have OpenCode installed/configured, either:
+    OpenCode mode (default):
 
-   - pass `--implement-command <cmd>` to run your own implementation command, or
-   - pass `--skip-implement` to only run gates.
+    ```bash
+    uvx engineeringagent run docs/spec/features/FEAT-001-example.yaml
+    ```
+
+    If you do not have OpenCode installed/configured, provide your own implementation runner:
+
+    ```bash
+    uvx engineeringagent run docs/spec/features/FEAT-001-example.yaml --implement-command "bash ./scripts/implement.sh"
+    ```
+
+    Note: `--skip-implement` is gates-only; it will not perform implementation.
 
 ## Bootstrapping a new repository with `init`
 
@@ -201,7 +216,7 @@ the git diff before committing anything produced by `init`.
 ## Go deeper
 
 - [CLI workflow details](docs/references/uv-llms.md)
-- [Agent execution map (scaffolded by init)](AGENTS.md)
+- Agent execution map (scaffolded by init): see `AGENTS.md` (repo root)
 - [Docs architecture for agents](docs/references/docs-architecture-llms.md)
 
 ## Curated external context

@@ -19,27 +19,27 @@ Contributors (from the repository root):
 
 ```bash
 uv sync
-uvx --from . engineeringagent validate
-uvx --from . engineeringagent gates list
-uvx --from . engineeringagent gates run --profile loop_fast
-uvx --from . engineeringagent run --all --dry-run --skip-implement
+uv run python -m engineeringagent.cli validate
+uv run python -m engineeringagent.cli gates list
+uv run python -m engineeringagent.cli gates run --profile loop_fast
+uv run python -m engineeringagent.cli run --all --dry-run --skip-implement
 ```
 
 ## Daily Commands
 
-- Validate specs: `uvx --from . engineeringagent validate`
-- Scaffold baseline harness files: `uvx --from . engineeringagent init`
-- List gate profiles: `uvx --from . engineeringagent gates list`
-- Run loop-fast gates: `uvx --from . engineeringagent gates run --profile loop_fast`
-- Run precommit gates: `uvx --from . engineeringagent gates run --profile precommit`
+- Validate specs: `uv run python -m engineeringagent.cli validate`
+- Scaffold baseline harness files: `uv run python -m engineeringagent.cli init`
+- List gate profiles: `uv run python -m engineeringagent.cli gates list`
+- Run loop-fast gates: `uv run python -m engineeringagent.cli gates run --profile loop_fast`
+- Run precommit gates: `uv run python -m engineeringagent.cli gates run --profile precommit`
 - Run Ruff checks (lint + docstrings): `uv run ruff check src/engineeringagent`
 - Run Pyright type checks: `uv run pyright src/engineeringagent tests harness`
 - Run pytest suite: `uv run pytest -q`
-- Run permission probe: `uvx --from . engineeringagent gates run --profile loop_fast`
+- Run permission probe: `uv run python -m engineeringagent.cli gates run --profile loop_fast`
 - Default OpenCode loop agent policy: `.opencode/agents/engineeringagent.md` (required; scaffolded by `engineeringagent init`). `opencode.json` is optional legacy configuration.
-- CLI validate command: `uvx --from . engineeringagent validate`
-- Loop dry-run command: `uvx --from . engineeringagent run docs/spec/features/FEAT-004-ralph-loop-opencode-mode.yaml --dry-run --skip-implement`
-- Loop auto-discovery dry-run: `uvx --from . engineeringagent run --all --dry-run --skip-implement`
+- CLI validate command: `uv run python -m engineeringagent.cli validate`
+- Loop dry-run command: `uv run python -m engineeringagent.cli run docs/spec/features/FEAT-004-ralph-loop-opencode-mode.yaml --dry-run --skip-implement`
+- Loop auto-discovery dry-run: `uv run python -m engineeringagent.cli run --all --dry-run --skip-implement`
 
 ## init Command Notes
 
@@ -67,7 +67,7 @@ uvx --from . engineeringagent run --all --dry-run --skip-implement
 
 - Use `uvx engineeringagent ...` for package-consumer execution from PyPI.
 - Use `uvx engineeringagent@<version> ...` when you need version-pinned execution.
-- Use `uvx --from . engineeringagent ...` as the canonical contributor command style.
+- For contributor/source execution, prefer `uv run python -m engineeringagent.cli ...` to ensure you run workspace source.
 - Keep `uv run ...` for direct tooling operations such as `pytest -q` or local Python modules.
 
 ### Init scaffold profile notes (slim pack)

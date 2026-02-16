@@ -331,7 +331,7 @@ def test_generated_agents_keeps_major_principles() -> None:
 def test_init_writes_precommit_and_empty_gate_profiles(
     tmp_path: Path,
 ) -> None:
-    """Verify init writes pre-commit wiring, gate stubs, and fitness declarations."""
+    """Verify init writes pre-commit wiring, gate stubs, and empty fitness manifest."""
     result = _invoke_cli(["--project-root", str(tmp_path), "init"])
 
     assert result.exit_code == 0
@@ -356,12 +356,7 @@ def test_init_writes_precommit_and_empty_gate_profiles(
         )
     )
     assert fitness_manifest["contract_version"] == "1.0"
-    assert [rule["rule_id"] for rule in fitness_manifest["rules"]] == [
-        "architecture.dep-directionality",
-        "architecture.loop-subprocess-boundary",
-        "architecture.scaffold-template-locality",
-    ]
-    assert all(rule["adapter"] == "command" for rule in fitness_manifest["rules"])
+    assert fitness_manifest["rules"] == []
 
 
 def test_init_slim_pack_does_not_scaffold_demo_failure(tmp_path: Path) -> None:
@@ -616,3 +611,16 @@ def test_init_scaffolds_tool_generic_docs_only(tmp_path: Path) -> None:
 
     assert not (tmp_path / "docs" / "principles").exists()
     assert not (tmp_path / "docs" / "fitness-functions").exists()
+
+
+def test_init_scaffolds_spec_writing_reference_doc(tmp_path: Path) -> None:
+    """Verify init scaffolds the spec-writing reference doc."""
+    result = _invoke_cli(["--project-root", str(tmp_path), "init"])
+
+    assert result.exit_code == 0
+
+    spec_writing_reference = (
+        tmp_path / "docs" / "references" / "spec-writing-llms.md"
+    ).read_text(encoding="utf-8")
+    assert "Spec Writing Guide" in spec_writing_reference
+    assert "Mandatory Interview Flow" in spec_writing_reference
