@@ -1,7 +1,6 @@
 # Engineering Agent
 
-NOTE: This repository is under active development. Treat `engineeringagent init` as
-experimental scaffolding and review all generated changes before committing.
+NOTE: This repository is under active development. And you should probably not run it locally for now.
 
 Engineeringagent is a CLI that helps you implement code changes directly from feature specs.
 It pairs an agent loop with repository-owned harnesses (validators, gates, fitness functions,
