@@ -965,6 +965,20 @@ def test_reviewer_authoring_doc_link_and_contract_guidance() -> None:
     assert "migrat" in guide_text.lower()
 
 
+def test_readme_clarifies_uvx_vs_from_source_verification_commands() -> None:
+    readme_text = _read_repo_text("README.md")
+
+    assert "Command styles" in readme_text
+    assert "uvx engineeringagent" in readme_text
+    assert "uv run python -m engineeringagent.cli" in readme_text
+
+    # Guard against onboarding confusion: verification commands should exercise the
+    # local checkout when you're working from source.
+    assert "verify from a repo checkout" in readme_text.lower()
+    assert "uv run python -m engineeringagent.cli validate" in readme_text
+    assert "uv run python -m engineeringagent.cli gates run" in readme_text
+
+
 def test_spec_writing_guide_requires_fitness_function_impact_assessment() -> None:
     guide_text = _read_repo_text("docs/references/spec-writing-llms.md")
     lowered = guide_text.lower()

@@ -12,6 +12,7 @@ This file is generated from active manifest-declared fitness rules.
 | `architecture.loop-facade-line-budget` | error | command | custom | `src/engineeringagent/loop.py` | Enforce a permanent line budget cap for the loop facade. |
 | `architecture.loop-subprocess-boundary` | error | command | custom | `src/engineeringagent` | Enforce subprocess allowlist boundaries for command adapters/clients. |
 | `architecture.markdown-locality-reference-coverage` | error | command | custom | `repository markdown (*.md)` | Restrict markdown to approved paths and require non-doc markdown files to be referenced in-repo. |
+| `architecture.no-facade-varargs-shims` | error | command | custom | `src/engineeringagent` | Block facade varargs shims, __signature__ masking, and hidden kwargs dropping. |
 | `architecture.no-non-ignorable-ruff-suppressions` | error | command | custom | `src tests harness` | Block suppression directives for configured high-value Ruff rules. |
 | `architecture.no-stdlib-dataclasses-in-src` | error | command | custom | `src/engineeringagent` | Block stdlib dataclasses usage in production source models. |
 | `architecture.progress-log-path-locality` | error | command | custom | `src/engineeringagent` | Centralize loop progress artifact paths and writes behind approved helpers. |
@@ -64,6 +65,13 @@ This file is generated from active manifest-declared fitness rules.
 - Side-effect free: `true`
 - Rationale: Prevents markdown sprawl and orphaned non-doc markdown assets across repository zones.
 - Remediation: Move markdown under approved roots and add at least one deterministic in-repo reference for each markdown file outside docs/.
+
+### `architecture.no-facade-varargs-shims`
+
+- Name: No facade varargs shims
+- Side-effect free: `true`
+- Rationale: Keeps loop orchestration contracts explicit and typed instead of compatibility shims.
+- Remediation: Replace varargs facade wrappers with explicit typed contracts and remove hidden kwargs dropping.
 
 ### `architecture.no-non-ignorable-ruff-suppressions`
 

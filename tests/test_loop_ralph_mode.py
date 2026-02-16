@@ -13,9 +13,47 @@ from typer.testing import CliRunner
 
 from engineeringagent import cli as cli_module
 import engineeringagent.loop as loop_module
-from engineeringagent.loop import run_loop
+from engineeringagent.loop import (
+    build_loop_run,
+    build_run_config,
+    run_loop as _run_loop,
+)
 from engineeringagent.loop_runtime import presentation as presentation_module
 from engineeringagent.prompts import build_implementation_prompt
+
+
+def run_loop(
+    *,
+    project_root: Path,
+    feature_paths: list[str],
+    gate_profile: str,
+    opencode_prompt: str | None,
+    skip_implement: bool,
+    dry_run: bool,
+    run_all: bool = False,
+    max_iterations: int = 50,
+    allow_dirty: bool = False,
+    verbose_output: bool = False,
+) -> int:
+    """Compatibility wrapper for legacy scalar run_loop tests.
+
+    The production contract is `engineeringagent.loop.run_loop(loop_run: LoopRun)`.
+    These integration-style tests predate the LoopRun context refactor.
+    """
+
+    del opencode_prompt
+    config = build_run_config(
+        project_root=project_root,
+        feature_paths=feature_paths,
+        run_all=run_all,
+        gate_profile=gate_profile,
+        skip_implement=skip_implement,
+        dry_run=dry_run,
+        max_iterations=max_iterations,
+        allow_dirty=allow_dirty,
+        verbose_output=verbose_output,
+    )
+    return _run_loop(build_loop_run(config))
 
 
 _OPENCODE_IMPLEMENT_SIDE_EFFECT: Callable[[], None] | None = None
@@ -1731,6 +1769,43 @@ def test_run_loop_skip_implement_archives_done_active_feature(
     assert runs[-1]["next_action"] == "select_next_feature"
 
 
+def test_run_loop_archives_done_active_feature_when_not_skip_implement(
+    tmp_path: Path,
+    monkeypatch: Any,
+) -> None:
+    project_root, feature_path = _make_project_root(
+        tmp_path,
+        feature_data=_base_feature(status="done"),
+    )
+    _init_git_repo(project_root)
+
+    monkeypatch.setattr(
+        loop_module,
+        "run_implement_step",
+        lambda *_args, **_kwargs: (True, None, ""),
+    )
+    monkeypatch.setattr(
+        loop_module,
+        "_run_opencode_permission_precheck",
+        lambda **_: True,
+    )
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        max_iterations=2,
+    )
+
+    archived_path = project_root / "docs" / "spec" / "features_done" / feature_path.name
+    assert code == 0
+    assert not feature_path.exists()
+    assert archived_path.exists()
+
+
 def test_run_loop_requires_git_repo_before_allow_dirty_hint(
     tmp_path: Path, capsys: Any
 ) -> None:
@@ -2049,7 +2124,10 @@ def test_run_loop_missing_selected_feature_without_archive_fails_cleanly(
     assert runs[-1]["failed_gate"] == "feature_missing"
 
 
-def test_run_loop_archives_only_selected_feature(tmp_path: Path) -> None:
+def test_run_loop_archives_preexisting_done_target_after_pending_completes(
+    tmp_path: Path,
+    monkeypatch: Any,
+) -> None:
     project_root, feature_path = _make_project_root(
         tmp_path, feature_data=_base_feature()
     )
@@ -2060,24 +2138,39 @@ def test_run_loop_archives_only_selected_feature(tmp_path: Path) -> None:
     preexisting_done_feature["id"] = "FEAT-901"
     _write_yaml(preexisting_done_path, preexisting_done_feature)
 
-    script_path = _write_set_done_script(
-        tmp_path.parent / f"{tmp_path.name}-set-done-selected.py"
-    )
     _init_git_repo(project_root)
 
-    def implement_effect() -> None:
-        _run_python_script(script_path, feature_path)
+    def fake_run_implement_step(
+        project_root: Path,
+        feature: dict[str, Any],
+        feature_path: Path,
+        skip_implement: bool,
+        hook_feedback: str | None,
+        verbose_output: bool,
+    ) -> tuple[bool, str | None, str]:
+        del project_root, hook_feedback, verbose_output
+        if skip_implement:
+            return (True, None, "")
+        if str(feature.get("id", "")) == "FEAT-900":
+            feature["status"] = "done"
+            _write_yaml(feature_path, feature)
+        return (True, None, "")
 
-    with _with_opencode_implement_side_effect(implement_effect):
-        code = run_loop(
-            project_root=project_root,
-            feature_paths=[str(feature_path), str(preexisting_done_path)],
-            gate_profile="loop_fast",
-            opencode_prompt=None,
-            skip_implement=False,
-            dry_run=False,
-            max_iterations=5,
-        )
+    monkeypatch.setattr(loop_module, "run_implement_step", fake_run_implement_step)
+    monkeypatch.setattr(
+        loop_module,
+        "_run_opencode_permission_precheck",
+        lambda **_: True,
+    )
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path), str(preexisting_done_path)],
+        gate_profile="loop_fast",
+        opencode_prompt=None,
+        skip_implement=False,
+        dry_run=False,
+        max_iterations=5,
+    )
 
     archived_selected_path = (
         project_root / "docs" / "spec" / "features_done" / feature_path.name
@@ -2089,8 +2182,8 @@ def test_run_loop_archives_only_selected_feature(tmp_path: Path) -> None:
     assert code == 0
     assert archived_selected_path.exists()
     assert not feature_path.exists()
-    assert preexisting_done_path.exists()
-    assert not archived_preexisting_done_path.exists()
+    assert not preexisting_done_path.exists()
+    assert archived_preexisting_done_path.exists()
 
 
 def test_run_loop_archives_done_feature_before_gate_execution(tmp_path: Path) -> None:

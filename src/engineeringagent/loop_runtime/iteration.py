@@ -576,16 +576,6 @@ def run_feature_iteration_pipeline(
 
     _timed_phase(
         phase_timings,
-        "verification",
-        lambda: _run_verification_phase_if_passed(
-            state,
-            iteration_inputs,
-            dependencies,
-            post_feature,
-        ),
-    )
-    _timed_phase(
-        phase_timings,
         "archive",
         lambda: _archive_selected_feature_if_needed(
             state,
@@ -593,6 +583,16 @@ def run_feature_iteration_pipeline(
             dependencies,
             post_feature,
             loaded_post_from_archive,
+        ),
+    )
+    _timed_phase(
+        phase_timings,
+        "verification",
+        lambda: _run_verification_phase_if_passed(
+            state,
+            iteration_inputs,
+            dependencies,
+            post_feature,
         ),
     )
     _timed_phase(

@@ -18,6 +18,15 @@ Primary flow: `feature spec -> run loop`.
 - Package usage (version pinned): `uvx engineeringagent@<version> <command>`
 - From source (this repo clone): `uv run python -m engineeringagent.cli <command>`
 
+Verify from a repo checkout: if you are working from a clone (including developing this
+repository), run spec validation and gates against your local working tree, not the
+published package.
+
+```bash
+uv run python -m engineeringagent.cli validate
+uv run python -m engineeringagent.cli gates run --profile loop_fast
+```
+
 ## Quickstart from PyPI (no clone)
 
 1. Make sure you are in a git repository.
@@ -89,8 +98,11 @@ Primary flow: `feature spec -> run loop`.
 
    Before the first non-dry `engineeringagent run`, either commit the scaffold/spec changes or pass `--allow-dirty`.
 
-   Note: a non-dry `run` mutates your feature YAML in place (status/subtask updates,
-   updated_at) and writes progress logs under `progress/`.
+    Note: a non-dry `run` mutates your feature YAML in place (status/subtask updates,
+    updated_at) and writes progress logs under `progress/`.
+
+    It may also create a git commit and move completed specs from `docs/spec/features/` to `docs/spec/features_done/`.
+    `engineeringagent validate` rejects `status: done` specs under `docs/spec/features/`.
 
       ```bash
       uvx engineeringagent run docs/spec/features/FEAT-001-example.yaml --skip-implement --allow-dirty

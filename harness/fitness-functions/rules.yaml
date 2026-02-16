@@ -147,6 +147,20 @@ rules:
       - run
       - python
       - harness/fitness-functions/check_loop_facade_line_budget.py
+  - rule_id: architecture.no-facade-varargs-shims
+    name: No facade varargs shims
+    summary: Block facade varargs shims, __signature__ masking, and hidden kwargs dropping.
+    rationale: Keeps loop orchestration contracts explicit and typed instead of compatibility shims.
+    remediation: Replace varargs facade wrappers with explicit typed contracts and remove hidden kwargs dropping.
+    scope: src/engineeringagent
+    severity: error
+    side_effect_free: true
+    adapter: command
+    command:
+      - uv
+      - run
+      - python
+      - harness/fitness-functions/check_no_facade_varargs_shims.py
   - rule_id: architecture.source-first-loop-command-policy
     name: Source-first loop command policy
     summary: Enforce source-first workspace execution for loop command surfaces.

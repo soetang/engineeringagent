@@ -80,6 +80,14 @@ def test_repo_enables_readme_process_reviewer_in_loop_fast() -> None:
     assert precondition_line in readme_body
     assert "progress/runs.jsonl" in readme_body
     assert "mutates your feature YAML" in readme_body
+    assert (
+        "move completed specs from `docs/spec/features/` to `docs/spec/features_done/`"
+        in readme_body
+    )
+    assert (
+        "`engineeringagent validate` rejects `status: done` specs under `docs/spec/features/`."
+        in readme_body
+    )
 
     # PyPI README rendering does not reliably resolve relative links.
     # Keep AGENTS.md references non-clickable to avoid broken-link footguns.
@@ -93,6 +101,18 @@ def test_repo_enables_readme_process_reviewer_in_loop_fast() -> None:
     first_command_index = readme_body.index(first_non_dry_command)
     assert readme_body.index(precondition_line) < first_command_index
     assert readme_body.index("mutates your feature YAML") < first_command_index
+    assert (
+        readme_body.index(
+            "move completed specs from `docs/spec/features/` to `docs/spec/features_done/`"
+        )
+        < first_command_index
+    )
+    assert (
+        readme_body.index(
+            "`engineeringagent validate` rejects `status: done` specs under `docs/spec/features/`."
+        )
+        < first_command_index
+    )
 
     # Keep the Quickstart step sequence internally consistent.
     assert "Run for real by removing `--dry-run`." not in readme_body

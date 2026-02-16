@@ -9,13 +9,20 @@ from pathlib import Path
 
 import engineeringagent.loop as loop_module
 import engineeringagent.progress_paths as progress_paths
+import pytest
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from engineeringagent.loop_runtime.models import (
     FeatureIterationInputs,
     ImplementStepInputs,
     IterationTelemetryInputs,
+)
+from engineeringagent.loop_runtime.run_context import (
+    LoopRun,
+    RunConfig,
+    RunServices,
+    RunState,
 )
 from engineeringagent.loop_runtime.implement import run_implement_step_from_inputs
 from engineeringagent.loop_runtime.telemetry import write_iteration_telemetry
@@ -64,87 +71,151 @@ def test_progress_path_references_fall_back_when_not_repo_relative(
     )
 
 
-def _assert_signature_parameters(
-    signature: inspect.Signature,
-    expected_names: tuple[str, ...],
-    expected_defaults: dict[str, object],
-) -> None:
+def _stub_run_config() -> RunConfig:
+    return RunConfig(
+        project_root=Path("/tmp/project"),
+        feature_paths=("docs/spec/features/FEAT-078.yaml",),
+        gate_profile="loop_fast",
+        skip_implement=False,
+        dry_run=False,
+    )
+
+
+def _stub_run_services() -> RunServices:
+    return RunServices(
+        resolve_run_targets=lambda *_args, **_kwargs: [],
+        emit_run_all_snapshot_feedback=lambda *_args, **_kwargs: None,
+        handle_dry_run=lambda *_args, **_kwargs: None,
+        enforce_worktree_precondition=lambda *_args, **_kwargs: None,
+        run_permission_precheck=lambda **_kwargs: True,
+        run_selected_feature_iterations=lambda *_args, **_kwargs: 0,
+    )
+
+
+def test_loop_entrypoint_signature_uses_looprun_context() -> None:
+    signature = inspect.signature(loop_module.run_loop)
     parameters = signature.parameters
-    assert tuple(parameters) == expected_names
-    for name in expected_names:
-        parameter = parameters[name]
-        assert parameter.kind is Parameter.POSITIONAL_OR_KEYWORD
-        assert parameter.default == expected_defaults[name]
 
+    assert tuple(parameters) == ("loop_run",)
 
-def test_loop_facade_signatures_remain_stable() -> None:
-    _assert_signature_parameters(
-        inspect.signature(loop_module.run_implement_step),
-        (
-            "project_root",
-            "feature",
-            "feature_path",
-            "skip_implement",
-            "hook_feedback",
-            "verbose_output",
-        ),
-        {
-            "project_root": Parameter.empty,
-            "feature": Parameter.empty,
-            "feature_path": Parameter.empty,
-            "skip_implement": Parameter.empty,
-            "hook_feedback": Parameter.empty,
-            "verbose_output": Parameter.empty,
-        },
+    loop_run_parameter = parameters["loop_run"]
+    assert loop_run_parameter.kind is Parameter.POSITIONAL_OR_KEYWORD
+    assert loop_run_parameter.default is Parameter.empty
+    assert loop_run_parameter.annotation in {"LoopRun", LoopRun}
+    assert all(
+        parameter.kind not in {Parameter.VAR_POSITIONAL, Parameter.VAR_KEYWORD}
+        for parameter in parameters.values()
     )
 
-    _assert_signature_parameters(
-        inspect.signature(loop_module._run_feature_iteration),
-        (
-            "project_root",
-            "feature_path",
-            "gate_profile",
-            "skip_implement",
-            "attempt",
-            "hook_feedback",
-            "verbose_output",
-        ),
-        {
-            "project_root": Parameter.empty,
-            "feature_path": Parameter.empty,
-            "gate_profile": Parameter.empty,
-            "skip_implement": Parameter.empty,
-            "attempt": Parameter.empty,
-            "hook_feedback": Parameter.empty,
-            "verbose_output": Parameter.empty,
-        },
-    )
 
-    _assert_signature_parameters(
-        inspect.signature(loop_module.run_loop),
-        (
-            "project_root",
-            "feature_paths",
-            "gate_profile",
-            "skip_implement",
-            "dry_run",
-            "run_all",
-            "max_iterations",
-            "allow_dirty",
-            "verbose_output",
-        ),
-        {
-            "project_root": Parameter.empty,
-            "feature_paths": Parameter.empty,
-            "gate_profile": Parameter.empty,
-            "skip_implement": Parameter.empty,
-            "dry_run": Parameter.empty,
-            "run_all": False,
-            "max_iterations": 50,
-            "allow_dirty": False,
-            "verbose_output": False,
-        },
+def test_run_implement_step_signature_is_explicit() -> None:
+    signature = inspect.signature(loop_module.run_implement_step)
+    parameters = signature.parameters
+
+    assert tuple(parameters) == (
+        "project_root",
+        "feature",
+        "feature_path",
+        "skip_implement",
+        "hook_feedback",
+        "verbose_output",
     )
+    assert all(
+        parameter.kind not in {Parameter.VAR_POSITIONAL, Parameter.VAR_KEYWORD}
+        for parameter in parameters.values()
+    )
+    assert not hasattr(loop_module.run_implement_step, "__signature__")
+
+
+def test_run_feature_iteration_signature_is_explicit() -> None:
+    signature = inspect.signature(loop_module._run_feature_iteration)
+    parameters = signature.parameters
+
+    assert tuple(parameters) == (
+        "project_root",
+        "feature_path",
+        "gate_profile",
+        "skip_implement",
+        "attempt",
+        "hook_feedback",
+        "verbose_output",
+        "opencode_prompt",
+    )
+    assert all(
+        parameter.kind not in {Parameter.VAR_POSITIONAL, Parameter.VAR_KEYWORD}
+        for parameter in parameters.values()
+    )
+    assert parameters["opencode_prompt"].default is None
+    assert not hasattr(loop_module._run_feature_iteration, "__signature__")
+
+
+def test_print_summary_signature_is_explicit() -> None:
+    signature = inspect.signature(loop_module.print_summary)
+    parameters = signature.parameters
+
+    assert tuple(parameters) == (
+        "feature_id",
+        "result",
+        "failed_gate",
+        "attempt",
+        "next_action",
+        "selected_path",
+        "implement_step",
+        "log_path",
+        "archived_selection_path",
+        "verification_status",
+        "verification_failed_command",
+        "reviewer_status",
+        "reviewer_decision",
+        "failed_reviewer_id",
+    )
+    assert all(
+        parameter.kind not in {Parameter.VAR_POSITIONAL, Parameter.VAR_KEYWORD}
+        for parameter in parameters.values()
+    )
+    assert not hasattr(loop_module.print_summary, "__signature__")
+
+
+def test_loop_run_context_contract_immutability_and_extra_forbid() -> None:
+    config = _stub_run_config()
+    services = _stub_run_services()
+    state = RunState()
+    loop_run = LoopRun(config=config, services=services, state=state)
+
+    assert RunConfig.model_config.get("frozen") is True
+    assert RunServices.model_config.get("frozen") is True
+    assert RunState.model_config.get("frozen") is True
+    assert RunConfig.model_config.get("extra") == "forbid"
+    assert RunServices.model_config.get("extra") == "forbid"
+    assert RunState.model_config.get("extra") == "forbid"
+    assert "make_iteration_config" not in RunServices.model_fields
+    assert loop_run.state is state
+
+    with pytest.raises(ValidationError):
+        RunConfig.model_validate(
+            {
+                "project_root": config.project_root,
+                "feature_paths": config.feature_paths,
+                "gate_profile": config.gate_profile,
+                "skip_implement": config.skip_implement,
+                "dry_run": config.dry_run,
+                "unexpected": True,
+            }
+        )
+
+
+def test_run_state_copy_on_write_uses_model_copy_update() -> None:
+    state = RunState(total_iterations=0)
+
+    next_state = state.model_copy(update={"total_iterations": 1})
+    next_run = LoopRun(
+        config=_stub_run_config(),
+        services=_stub_run_services(),
+    ).model_copy(update={"state": next_state})
+
+    assert state.total_iterations == 0
+    assert next_state.total_iterations == 1
+    assert next_run.state.total_iterations == 1
 
 
 def test_iteration_outcome_remains_exposed_on_facade() -> None:

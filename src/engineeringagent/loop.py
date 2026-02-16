@@ -3,8 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Sequence
 
-from pydantic import BaseModel, ConfigDict
-
 from .gates import collect_changed_paths, load_gate_config, run_profile
 from .git.client import (
     add_all,
@@ -69,18 +67,10 @@ from .loop_runtime.feature_state import (
     _should_archive_selected_feature,
     _touch_active_feature_for_iteration,
 )
-from .loop_runtime.facade_signatures import (
-    PRINT_SUMMARY_SIGNATURE,
-    RUN_FEATURE_ITERATION_SIGNATURE,
-    RUN_IMPLEMENT_STEP_SIGNATURE,
-    RUN_LOOP_SIGNATURE,
-    bind_facade_call,
-)
 from .loop_runtime.controller import (
-    RunLoopControllerDependencies,
-    RunLoopControllerInputs,
     run_loop_controller,
 )
+from .loop_runtime.run_context import LoopRun, RunConfig, RunServices
 from .loop_runtime.telemetry import write_iteration_telemetry
 from .loop_runtime.presentation import RunOutputPresenter
 
@@ -92,15 +82,6 @@ FEATURE_TYPE_COMMIT_PREFIX: dict[str, str] = {
     "chore": "chore",
     "test": "test",
 }
-
-
-class _SelectedFeatureIterationConfig(BaseModel):
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-    gate_profile: str
-    skip_implement: bool
-    max_iterations: int
-    verbose_output: bool
 
 
 def _print_run_all_snapshot_banner(resolved_paths: Sequence[Path]) -> None:
@@ -156,35 +137,27 @@ def git_head_short(project_root: Path) -> str | None:
     return proc.stdout.strip() or None
 
 
-def run_implement_step(*args: Any, **kwargs: Any) -> tuple[bool, str | None, str]:
-    """Run the implement phase for one loop iteration.
-
-    Args:
-        *args: Positional arguments matching `RUN_IMPLEMENT_STEP_SIGNATURE`.
-        **kwargs: Keyword arguments matching `RUN_IMPLEMENT_STEP_SIGNATURE`.
-        project_root: Repository root used for command execution.
-        feature: Loaded feature mapping.
-        feature_path: Path to feature YAML used in prompt generation.
-        skip_implement: Whether to skip implementation and run gates only.
-        hook_feedback: Optional previous hook output to address on retry.
-        verbose_output: Whether run-loop should stream full command output.
-
-    Returns:
-        Tuple of success flag, failure code, and combined command output.
-    """
-    if "opencode_prompt" in kwargs:
-        kwargs = dict(kwargs)
-        kwargs.pop("opencode_prompt", None)
-
-    bound = bind_facade_call(RUN_IMPLEMENT_STEP_SIGNATURE, args, kwargs)
-    implement_inputs = ImplementStepInputs(**bound)
+def run_implement_step(
+    project_root: Path,
+    feature: dict[str, Any],
+    feature_path: Path,
+    skip_implement: bool,
+    hook_feedback: str | None,
+    verbose_output: bool,
+) -> tuple[bool, str | None, str]:
+    """Run the implement phase for one loop iteration."""
+    implement_inputs = ImplementStepInputs(
+        project_root=project_root,
+        feature=feature,
+        feature_path=feature_path,
+        skip_implement=skip_implement,
+        hook_feedback=hook_feedback,
+        verbose_output=verbose_output,
+    )
     return run_implement_step_from_inputs(
         implement_inputs,
         start_agent_fn=start_agent,
     )
-
-
-run_implement_step.__signature__ = RUN_IMPLEMENT_STEP_SIGNATURE
 
 
 def _commit_feature_completion(
@@ -219,42 +192,23 @@ def _feature_completion_commit_subject(feature: dict[str, Any]) -> str:
     return message
 
 
-def print_summary(*args: Any, **kwargs: Any) -> None:
-    """Print a one-line loop summary and optional gate failure.
-
-    Args:
-        *args: Positional arguments matching `PRINT_SUMMARY_SIGNATURE`.
-        **kwargs: Keyword arguments matching `PRINT_SUMMARY_SIGNATURE`.
-        feature_id: Feature identifier for reporting.
-        result: Iteration result label.
-        failed_gate: Failed gate name when iteration fails.
-        attempt: Iteration attempt number.
-        next_action: Suggested next loop action.
-        selected_path: Selected active feature path for iteration display.
-        implement_step: Implement step descriptor for iteration display.
-        log_path: Optional per-feature log path for failed iterations.
-        archived_selection_path: Archived counterpart path when selection moved.
-        verification_status: Verification phase status for current iteration.
-        verification_failed_command: Failed verification command when available.
-        reviewer_status: Reviewer phase status for current iteration.
-        reviewer_decision: First non-approve reviewer decision when available.
-        failed_reviewer_id: Reviewer id tied to first blocking/non-approve result.
-    """
-    bound = bind_facade_call(PRINT_SUMMARY_SIGNATURE, args, kwargs)
-    feature_id = bound["feature_id"]
-    result = bound["result"]
-    failed_gate = bound["failed_gate"]
-    attempt = bound["attempt"]
-    next_action = bound["next_action"]
-    selected_path = bound["selected_path"]
-    implement_step = bound["implement_step"]
-    log_path = bound["log_path"]
-    archived_selection_path = bound["archived_selection_path"]
-    verification_status = bound["verification_status"]
-    verification_failed_command = bound["verification_failed_command"]
-    reviewer_status = bound["reviewer_status"]
-    reviewer_decision = bound["reviewer_decision"]
-    failed_reviewer_id = bound["failed_reviewer_id"]
+def print_summary(
+    feature_id: str | None,
+    result: str,
+    failed_gate: str | None,
+    attempt: int | None,
+    next_action: str,
+    selected_path: str | None = None,
+    implement_step: str | None = None,
+    log_path: str | None = None,
+    archived_selection_path: str | None = None,
+    verification_status: str | None = None,
+    verification_failed_command: str | None = None,
+    reviewer_status: str | None = None,
+    reviewer_decision: str | None = None,
+    failed_reviewer_id: str | None = None,
+) -> None:
+    """Print a one-line loop summary and optional gate failure."""
 
     presenter = RunOutputPresenter.for_current_terminal()
     if attempt is not None:
@@ -293,25 +247,11 @@ def print_summary(*args: Any, **kwargs: Any) -> None:
         print(presenter.format_failed_gate_line(failed_gate))
 
 
-print_summary.__signature__ = PRINT_SUMMARY_SIGNATURE
-
-
 def _iteration_cap_reached(total_iterations: int, max_iterations: int) -> bool:
     if total_iterations >= max_iterations:
         print(f"Reached max iteration cap ({max_iterations}) before completion.")
         return True
     return False
-
-
-def _update_retry_feedback_for_feature(
-    retry_feedback_by_path: dict[Path, str],
-    selected_feature_path: Path,
-    outcome: IterationOutcome,
-) -> None:
-    if outcome.hook_feedback:
-        retry_feedback_by_path[selected_feature_path] = outcome.hook_feedback
-        return
-    retry_feedback_by_path.pop(selected_feature_path, None)
 
 
 def _drop_completed_feature_from_snapshot(
@@ -329,13 +269,16 @@ def _drop_completed_feature_from_snapshot(
 
 def _runnable_feature_candidates(
     resolved_paths: list[Path],
-    *,
-    skip_implement: bool,
 ) -> list[tuple[Path, dict[str, Any]]]:
     pending = _pending_features(resolved_paths)
-    if pending or not skip_implement:
+    if pending:
         return pending
-    return _done_features_pending_archive(resolved_paths)
+
+    done_pending_archive = _done_features_pending_archive(resolved_paths)
+    if done_pending_archive:
+        return done_pending_archive
+
+    return []
 
 
 def _terminal_iteration_failure_exit_code(outcome: IterationOutcome) -> int | None:
@@ -356,17 +299,27 @@ def _terminal_iteration_failure_exit_code(outcome: IterationOutcome) -> int | No
     return None
 
 
-def _run_feature_iteration(*args: Any, **kwargs: Any) -> IterationOutcome:
-    if "opencode_prompt" in kwargs:
-        kwargs = dict(kwargs)
-        kwargs.pop("opencode_prompt", None)
-
-    bound = bind_facade_call(RUN_FEATURE_ITERATION_SIGNATURE, args, kwargs)
-    iteration_inputs = FeatureIterationInputs(**bound)
+def _run_feature_iteration(
+    project_root: Path,
+    feature_path: Path,
+    gate_profile: str,
+    skip_implement: bool,
+    attempt: int,
+    hook_feedback: str | None,
+    verbose_output: bool,
+    opencode_prompt: str | None = None,
+) -> IterationOutcome:
+    del opencode_prompt  # back-compat signature; intentionally unused
+    iteration_inputs = FeatureIterationInputs(
+        project_root=project_root,
+        feature_path=feature_path,
+        gate_profile=gate_profile,
+        skip_implement=skip_implement,
+        attempt=attempt,
+        hook_feedback=hook_feedback,
+        verbose_output=verbose_output,
+    )
     return _run_feature_iteration_with_inputs(iteration_inputs)
-
-
-_run_feature_iteration.__signature__ = RUN_FEATURE_ITERATION_SIGNATURE
 
 
 def _run_feature_iteration_with_inputs(
@@ -541,56 +494,56 @@ _require_clean_worktree = (
 
 
 def _run_selected_feature_iterations(
-    project_root: Path,
-    resolved_paths: list[Path],
-    config: _SelectedFeatureIterationConfig,
+    loop_run: LoopRun,
 ) -> int:
-    total_iterations = 0
-    retry_feedback_by_path: dict[Path, str] = {}
+    config = loop_run.config
+    state = loop_run.state
 
     while True:
+        resolved_paths = list(state.resolved_feature_paths)
         pending = _runnable_feature_candidates(
             resolved_paths,
-            skip_implement=config.skip_implement,
         )
         if not pending:
             print("All provided features are done and committed.")
             return 0
 
-        if _iteration_cap_reached(total_iterations, config.max_iterations):
+        if _iteration_cap_reached(state.total_iterations, config.max_iterations):
             return 1
 
         selected_feature_path, selected_feature = _choose_feature_with_selector(
-            project_root, pending
+            config.project_root,
+            pending,
         )
         selected_feature_id = str(selected_feature.get("id", ""))
         print(f"Selected feature={selected_feature_id} path={selected_feature_path}")
 
         while True:
-            if _iteration_cap_reached(total_iterations, config.max_iterations):
+            if _iteration_cap_reached(state.total_iterations, config.max_iterations):
                 return 1
 
-            total_iterations += 1
+            state = state.increment_total_iterations()
             outcome = _run_feature_iteration(
-                project_root=project_root,
+                project_root=config.project_root,
                 feature_path=selected_feature_path,
                 gate_profile=config.gate_profile,
                 skip_implement=config.skip_implement,
-                attempt=total_iterations,
-                hook_feedback=retry_feedback_by_path.get(selected_feature_path),
+                attempt=state.total_iterations,
+                hook_feedback=state.feedback_for(selected_feature_path),
                 verbose_output=config.verbose_output,
             )
 
-            _update_retry_feedback_for_feature(
-                retry_feedback_by_path,
+            state = state.with_retry_feedback(
                 selected_feature_path,
-                outcome,
+                outcome.hook_feedback,
             )
 
             if outcome.completed:
-                resolved_paths = _drop_completed_feature_from_snapshot(
-                    resolved_paths,
-                    selected_feature_path,
+                state = state.with_resolved_feature_paths(
+                    _drop_completed_feature_from_snapshot(
+                        resolved_paths,
+                        selected_feature_path,
+                    )
                 )
                 break
 
@@ -604,40 +557,45 @@ def _run_selected_feature_iterations(
                 return terminal_failure_exit_code
 
 
-def run_loop(*args: Any, **kwargs: Any) -> int:
-    """Execute feature loops until completion or termination condition.
-
-    This facade binds `RUN_LOOP_SIGNATURE` args into `RunLoopControllerInputs` and
-    delegates to `run_loop_controller`.
-    """
-    if "opencode_prompt" in kwargs:
-        kwargs = dict(kwargs)
-        kwargs.pop("opencode_prompt", None)
-
-    inputs = RunLoopControllerInputs(
-        **bind_facade_call(RUN_LOOP_SIGNATURE, args, kwargs)
+def build_run_config(
+    *,
+    project_root: Path,
+    feature_paths: Sequence[str | Path],
+    gate_profile: str,
+    skip_implement: bool,
+    dry_run: bool,
+    run_all: bool,
+    max_iterations: int,
+    allow_dirty: bool,
+    verbose_output: bool,
+) -> RunConfig:
+    """Build run configuration from CLI-compatible scalar arguments."""
+    return RunConfig(
+        project_root=project_root,
+        feature_paths=tuple(feature_paths),
+        run_all=run_all,
+        gate_profile=gate_profile,
+        skip_implement=skip_implement,
+        dry_run=dry_run,
+        max_iterations=max_iterations,
+        allow_dirty=allow_dirty,
+        verbose_output=verbose_output,
     )
 
-    def _make_iteration_config(
-        controller_inputs: RunLoopControllerInputs,
-    ) -> _SelectedFeatureIterationConfig:
-        return _SelectedFeatureIterationConfig(
-            gate_profile=controller_inputs.gate_profile,
-            skip_implement=controller_inputs.skip_implement,
-            max_iterations=controller_inputs.max_iterations,
-            verbose_output=controller_inputs.verbose_output,
-        )
 
-    dependencies = RunLoopControllerDependencies(
+def build_loop_run(config: RunConfig) -> LoopRun:
+    """Build the default loop runtime context from run configuration."""
+    services = RunServices(
         resolve_run_targets=_resolve_run_targets,
         emit_run_all_snapshot_feedback=_emit_run_all_snapshot_feedback,
         handle_dry_run=_handle_dry_run,
         enforce_worktree_precondition=_enforce_worktree_precondition,
         run_permission_precheck=_run_opencode_permission_precheck,
-        make_iteration_config=_make_iteration_config,
         run_selected_feature_iterations=_run_selected_feature_iterations,
     )
-    return run_loop_controller(inputs, dependencies)
+    return LoopRun(config=config, services=services)
 
 
-run_loop.__signature__ = RUN_LOOP_SIGNATURE
+def run_loop(loop_run: LoopRun) -> int:
+    """Execute feature loops from a typed loop context."""
+    return run_loop_controller(loop_run)

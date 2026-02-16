@@ -283,6 +283,27 @@
           "blocking_retry_updated_at": "2026-02-16T01:44:10Z"
         }
       }
+    },
+    "FEAT-078": {
+      "advisory_followup_required": false,
+      "advisory_followup_updated_at": "2026-02-16T07:32:47Z",
+      "reviewers": {
+        "code_simplifier": {
+          "approved": true,
+          "approved_at": "2026-02-16T07:34:23Z",
+          "blocking_request_changes_count": 0,
+          "blocking_retry_updated_at": "2026-02-16T07:34:23Z",
+          "invalidated_at": "2026-02-16T07:32:47Z"
+        },
+        "readme_process": {
+          "approved": false,
+          "approved_at": "2026-02-16T07:27:50Z",
+          "blocking_request_changes_count": 0,
+          "blocking_retry_updated_at": "2026-02-16T07:27:50Z",
+          "invalidated_at": "2026-02-16T07:34:23Z",
+          "updated_at": "2026-02-16T07:41:26Z"
+        }
+      }
     }
   },
   "version": "1"

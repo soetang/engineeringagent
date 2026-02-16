@@ -12,12 +12,44 @@ import pytest
 import yaml
 
 import engineeringagent.loop as loop_module
-from engineeringagent.loop import run_loop
+from engineeringagent.loop import (
+    build_loop_run,
+    build_run_config,
+    run_loop as _run_loop,
+)
 from engineeringagent.opencode_permissions import (
     PERMISSION_REMEDIATION_HINT,
     PermissionProbeResult,
     evaluate_permission_probe,
 )
+
+
+def run_loop(
+    *,
+    project_root: Path,
+    feature_paths: list[str],
+    gate_profile: str,
+    opencode_prompt: str | None,
+    skip_implement: bool,
+    dry_run: bool,
+    run_all: bool = False,
+    max_iterations: int = 50,
+    allow_dirty: bool = False,
+    verbose_output: bool = False,
+) -> int:
+    del opencode_prompt
+    config = build_run_config(
+        project_root=project_root,
+        feature_paths=feature_paths,
+        run_all=run_all,
+        gate_profile=gate_profile,
+        skip_implement=skip_implement,
+        dry_run=dry_run,
+        max_iterations=max_iterations,
+        allow_dirty=allow_dirty,
+        verbose_output=verbose_output,
+    )
+    return _run_loop(build_loop_run(config))
 
 
 BUILD_AGENT_ALLOW_ALL_PERMISSION = {

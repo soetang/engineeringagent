@@ -13,6 +13,7 @@ from engineeringagent import cli as cli_module
 from engineeringagent.config import resolve_docs_root
 from engineeringagent.fitness import FitnessRunSummary
 from engineeringagent.fitness.contracts import CONTRACT_VERSION, FitnessRuleResult
+from engineeringagent.loop_runtime.run_context import LoopRun, RunConfig
 
 
 def _write_manifest(tmp_path: Path, rules: list[dict[str, object]]) -> None:
@@ -264,6 +265,48 @@ def test_main_run_command_uses_typer_handler(monkeypatch: Any) -> None:
         "allow_dirty": True,
         "verbose_output": True,
     }
+
+
+def test_cmd_run_builds_looprun_context_for_loop_entrypoint(
+    tmp_path: Path,
+    monkeypatch: Any,
+) -> None:
+    captured: dict[str, LoopRun] = {}
+
+    def _fake_run_loop(loop_run: LoopRun) -> int:
+        captured["loop_run"] = loop_run
+        return 7
+
+    monkeypatch.setattr(cli_module, "run_loop", _fake_run_loop)
+
+    exit_code = cli_module.cmd_run(
+        SimpleNamespace(
+            project_root=str(tmp_path),
+            feature_paths=["docs/spec/features/FEAT-078.yaml"],
+            all=False,
+            gate_profile="loop_fast",
+            skip_implement=True,
+            dry_run=True,
+            max_iterations=7,
+            allow_dirty=True,
+            verbose_output=True,
+        )
+    )
+
+    assert exit_code == 7
+    loop_run = captured["loop_run"]
+    assert isinstance(loop_run, LoopRun)
+    assert loop_run.config == RunConfig(
+        project_root=tmp_path,
+        feature_paths=("docs/spec/features/FEAT-078.yaml",),
+        gate_profile="loop_fast",
+        skip_implement=True,
+        dry_run=True,
+        run_all=False,
+        max_iterations=7,
+        allow_dirty=True,
+        verbose_output=True,
+    )
 
 
 def test_main_init_command_uses_typer_handler(monkeypatch: Any) -> None:

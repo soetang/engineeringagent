@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import json
 import subprocess
 import sys
@@ -1446,3 +1447,92 @@ def test_fitness_gate_integration() -> None:
         == "uv run python -m engineeringagent.cli fitness run --format json"
     )
     assert "fitness_validate" in config["profiles"]["loop_fast"]
+
+
+def test_fitness_manifest_registers_no_facade_varargs_rule() -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    manifest = yaml.safe_load(
+        (repo_root / "harness" / "fitness-functions" / "rules.yaml").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    matching_rules = [
+        rule
+        for rule in manifest["rules"]
+        if isinstance(rule, dict)
+        and rule.get("rule_id") == "architecture.no-facade-varargs-shims"
+    ]
+
+    assert len(matching_rules) == 1
+    assert matching_rules[0]["command"] == [
+        "uv",
+        "run",
+        "python",
+        "harness/fitness-functions/check_no_facade_varargs_shims.py",
+    ]
+
+
+def test_no_facade_varargs_rule_disallows_run_implement_step_shim() -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    checker_path = (
+        repo_root / "harness" / "fitness-functions" / "check_no_facade_varargs_shims.py"
+    )
+    checker_tree = ast.parse(checker_path.read_text(encoding="utf-8"))
+
+    allowlists: dict[str, set[tuple[str, ...]]] = {
+        "_ALLOWED_VARARG_FUNCTIONS": set(),
+        "_ALLOWED_SIGNATURE_ASSIGNMENTS": set(),
+        "_ALLOWED_HIDDEN_KWARG_DROPS": set(),
+    }
+
+    for node in checker_tree.body:
+        if not isinstance(node, ast.Assign):
+            continue
+        for target in node.targets:
+            if not isinstance(target, ast.Name):
+                continue
+            target_name = target.id
+            if target_name not in allowlists:
+                continue
+            if not isinstance(node.value, ast.Set):
+                continue
+
+            entries: set[tuple[str, ...]] = set()
+            for element in node.value.elts:
+                if not isinstance(element, ast.Tuple):
+                    continue
+                values: list[str] = []
+                for item in element.elts:
+                    if not isinstance(item, ast.Constant) or not isinstance(
+                        item.value, str
+                    ):
+                        values = []
+                        break
+                    values.append(item.value)
+                if values:
+                    entries.add(tuple(values))
+
+            allowlists[target_name] = entries
+
+    assert (
+        "src/engineeringagent/loop.py",
+        "run_implement_step",
+    ) not in allowlists["_ALLOWED_VARARG_FUNCTIONS"]
+    assert (
+        "src/engineeringagent/loop.py",
+        "run_implement_step",
+    ) not in allowlists["_ALLOWED_SIGNATURE_ASSIGNMENTS"]
+    assert (
+        "src/engineeringagent/loop.py",
+        "run_implement_step",
+        "opencode_prompt",
+    ) not in allowlists["_ALLOWED_HIDDEN_KWARG_DROPS"]
+    assert (
+        "src/engineeringagent/loop.py",
+        "print_summary",
+    ) not in allowlists["_ALLOWED_VARARG_FUNCTIONS"]
+    assert (
+        "src/engineeringagent/loop.py",
+        "print_summary",
+    ) not in allowlists["_ALLOWED_SIGNATURE_ASSIGNMENTS"]

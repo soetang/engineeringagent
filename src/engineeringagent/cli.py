@@ -32,7 +32,7 @@ from .init_scaffold import (
     build_agents_merge_followup_spec,
     build_scaffold_agents_markdown,
 )
-from .loop import run_loop
+from .loop import build_loop_run, build_run_config, run_loop
 from .opencode.client import start_agent
 from .reviewers import (
     REVIEWER_RESPONSEFORMAT_PLACEHOLDER,
@@ -359,17 +359,20 @@ def cmd_run(args: _HandlerArgs) -> int:
         return 1
 
     project_root = Path(args.project_root).resolve()
-    return run_loop(
+    gate_profile = getattr(args, "gate_profile", "loop_fast")
+    config = build_run_config(
         project_root=project_root,
         feature_paths=args.feature_paths,
         run_all=args.all,
-        gate_profile=getattr(args, "gate_profile", "loop_fast"),
+        gate_profile=gate_profile,
         skip_implement=args.skip_implement,
         dry_run=args.dry_run,
         max_iterations=args.max_iterations,
         allow_dirty=args.allow_dirty,
         verbose_output=args.verbose_output,
     )
+    loop_run = build_loop_run(config)
+    return run_loop(loop_run)
 
 
 def cmd_reviewers_list(args: _HandlerArgs) -> int:
