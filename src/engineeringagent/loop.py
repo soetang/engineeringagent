@@ -58,6 +58,7 @@ from .loop_runtime.selection import (
 )
 from .loop_runtime.feature_state import (
     _archive_completed_feature,
+    _done_features_pending_archive,
     _discover_active_feature_paths,
     _evaluate_initial_feature_load,
     _pending_features,
@@ -97,7 +98,6 @@ class _SelectedFeatureIterationConfig(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     gate_profile: str
-    implement_command: str | None
     skip_implement: bool
     max_iterations: int
     verbose_output: bool
@@ -120,12 +120,10 @@ def _print_run_all_no_work_message() -> None:
 
 def _run_opencode_permission_precheck(
     project_root: Path,
-    implement_command: str | None,
     skip_implement: bool,
 ) -> bool:
     return run_opencode_permission_precheck(
         project_root=project_root,
-        implement_command=implement_command,
         skip_implement=skip_implement,
         run_permission_probe_fn=run_permission_probe,
         permission_remediation_hint=PERMISSION_REMEDIATION_HINT,
@@ -167,7 +165,6 @@ def run_implement_step(*args: Any, **kwargs: Any) -> tuple[bool, str | None, str
         project_root: Repository root used for command execution.
         feature: Loaded feature mapping.
         feature_path: Path to feature YAML used in prompt generation.
-        implement_command: Optional custom shell command override.
         skip_implement: Whether to skip implementation and run gates only.
         hook_feedback: Optional previous hook output to address on retry.
         verbose_output: Whether run-loop should stream full command output.
@@ -183,7 +180,6 @@ def run_implement_step(*args: Any, **kwargs: Any) -> tuple[bool, str | None, str
     implement_inputs = ImplementStepInputs(**bound)
     return run_implement_step_from_inputs(
         implement_inputs,
-        run_shell_command_fn=run_shell_command,
         start_agent_fn=start_agent,
     )
 
@@ -329,6 +325,17 @@ def _drop_completed_feature_from_snapshot(
         for feature_path in resolved_feature_paths
         if feature_path != completed_feature_path
     ]
+
+
+def _runnable_feature_candidates(
+    resolved_paths: list[Path],
+    *,
+    skip_implement: bool,
+) -> list[tuple[Path, dict[str, Any]]]:
+    pending = _pending_features(resolved_paths)
+    if pending or not skip_implement:
+        return pending
+    return _done_features_pending_archive(resolved_paths)
 
 
 def _terminal_iteration_failure_exit_code(outcome: IterationOutcome) -> int | None:
@@ -542,7 +549,10 @@ def _run_selected_feature_iterations(
     retry_feedback_by_path: dict[Path, str] = {}
 
     while True:
-        pending = _pending_features(resolved_paths)
+        pending = _runnable_feature_candidates(
+            resolved_paths,
+            skip_implement=config.skip_implement,
+        )
         if not pending:
             print("All provided features are done and committed.")
             return 0
@@ -565,7 +575,6 @@ def _run_selected_feature_iterations(
                 project_root=project_root,
                 feature_path=selected_feature_path,
                 gate_profile=config.gate_profile,
-                implement_command=config.implement_command,
                 skip_implement=config.skip_implement,
                 attempt=total_iterations,
                 hook_feedback=retry_feedback_by_path.get(selected_feature_path),
@@ -614,7 +623,6 @@ def run_loop(*args: Any, **kwargs: Any) -> int:
     ) -> _SelectedFeatureIterationConfig:
         return _SelectedFeatureIterationConfig(
             gate_profile=controller_inputs.gate_profile,
-            implement_command=controller_inputs.implement_command,
             skip_implement=controller_inputs.skip_implement,
             max_iterations=controller_inputs.max_iterations,
             verbose_output=controller_inputs.verbose_output,

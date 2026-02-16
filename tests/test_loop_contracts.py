@@ -14,8 +14,10 @@ from pydantic import BaseModel
 
 from engineeringagent.loop_runtime.models import (
     FeatureIterationInputs,
+    ImplementStepInputs,
     IterationTelemetryInputs,
 )
+from engineeringagent.loop_runtime.implement import run_implement_step_from_inputs
 from engineeringagent.loop_runtime.telemetry import write_iteration_telemetry
 
 
@@ -82,7 +84,6 @@ def test_loop_facade_signatures_remain_stable() -> None:
             "project_root",
             "feature",
             "feature_path",
-            "implement_command",
             "skip_implement",
             "hook_feedback",
             "verbose_output",
@@ -91,7 +92,6 @@ def test_loop_facade_signatures_remain_stable() -> None:
             "project_root": Parameter.empty,
             "feature": Parameter.empty,
             "feature_path": Parameter.empty,
-            "implement_command": Parameter.empty,
             "skip_implement": Parameter.empty,
             "hook_feedback": Parameter.empty,
             "verbose_output": Parameter.empty,
@@ -104,7 +104,6 @@ def test_loop_facade_signatures_remain_stable() -> None:
             "project_root",
             "feature_path",
             "gate_profile",
-            "implement_command",
             "skip_implement",
             "attempt",
             "hook_feedback",
@@ -114,7 +113,6 @@ def test_loop_facade_signatures_remain_stable() -> None:
             "project_root": Parameter.empty,
             "feature_path": Parameter.empty,
             "gate_profile": Parameter.empty,
-            "implement_command": Parameter.empty,
             "skip_implement": Parameter.empty,
             "attempt": Parameter.empty,
             "hook_feedback": Parameter.empty,
@@ -128,7 +126,6 @@ def test_loop_facade_signatures_remain_stable() -> None:
             "project_root",
             "feature_paths",
             "gate_profile",
-            "implement_command",
             "skip_implement",
             "dry_run",
             "run_all",
@@ -140,7 +137,6 @@ def test_loop_facade_signatures_remain_stable() -> None:
             "project_root": Parameter.empty,
             "feature_paths": Parameter.empty,
             "gate_profile": Parameter.empty,
-            "implement_command": Parameter.empty,
             "skip_implement": Parameter.empty,
             "dry_run": Parameter.empty,
             "run_all": False,
@@ -170,6 +166,26 @@ def test_loop_monkeypatch_seams_remain_available() -> None:
 
     for symbol in seam_symbols:
         assert hasattr(loop_module, symbol)
+
+
+def test_run_implement_step_from_inputs_skipped_mode_does_not_require_shell_override(
+    tmp_path: Path,
+) -> None:
+    inputs = ImplementStepInputs(
+        project_root=tmp_path,
+        feature={"id": "FEAT-999"},
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-999.yaml",
+        skip_implement=True,
+        hook_feedback=None,
+        verbose_output=False,
+    )
+
+    result = run_implement_step_from_inputs(
+        inputs,
+        start_agent_fn=lambda *_args, **_kwargs: None,
+    )
+
+    assert result == (True, None, "[implement] skipped")
 
 
 def test_drop_completed_feature_from_snapshot_keeps_existing_paths(
@@ -390,7 +406,6 @@ def test_retry_feedback_contract_accepts_verification_failure(tmp_path: Path) ->
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-040.yaml",
         gate_profile="loop_fast",
-        implement_command=None,
         skip_implement=False,
         attempt=1,
         hook_feedback=None,

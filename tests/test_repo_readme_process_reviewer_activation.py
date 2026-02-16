@@ -76,10 +76,8 @@ def test_repo_enables_readme_process_reviewer_in_loop_fast() -> None:
     assert "TTY" in readme_body
     assert "prompt" in readme_body
     assert "--allow-dirty" in readme_body
-    assert (
-        "Before the first non-dry `engineeringagent run`, either commit the scaffold/spec changes or pass `--allow-dirty`."
-        in readme_body
-    )
+    precondition_line = "Before the first non-dry `engineeringagent run`, either commit the scaffold/spec changes or pass `--allow-dirty`."
+    assert precondition_line in readme_body
     assert "progress/runs.jsonl" in readme_body
     assert "mutates your feature YAML" in readme_body
 
@@ -87,11 +85,14 @@ def test_repo_enables_readme_process_reviewer_in_loop_fast() -> None:
     # Keep AGENTS.md references non-clickable to avoid broken-link footguns.
     assert "](AGENTS.md)" not in readme_body
 
-    # Make the first non-dry run obvious even without OpenCode.
-    assert (
-        "uvx engineeringagent run docs/spec/features/FEAT-001-example.yaml --skip-implement"
-        in readme_body
-    )
+    # Keep the first non-dry gates-only command runnable in fresh-init flow.
+    first_non_dry_command = "uvx engineeringagent run docs/spec/features/FEAT-001-example.yaml --skip-implement --allow-dirty"
+    assert first_non_dry_command in readme_body
+
+    # Surface non-dry preconditions and side effects before that first command.
+    first_command_index = readme_body.index(first_non_dry_command)
+    assert readme_body.index(precondition_line) < first_command_index
+    assert readme_body.index("mutates your feature YAML") < first_command_index
 
     # Keep the Quickstart step sequence internally consistent.
     assert "Run for real by removing `--dry-run`." not in readme_body
@@ -99,7 +100,7 @@ def test_repo_enables_readme_process_reviewer_in_loop_fast() -> None:
         "uvx engineeringagent run docs/spec/features/FEAT-001-example.yaml"
         in readme_body
     )
-    assert '--implement-command "bash ./scripts/implement.sh"' in readme_body
+    assert "--implement-command" not in readme_body
 
     uv_reference_body = UV_REFERENCE_PATH.read_text(encoding="utf-8")
     assert "uvx --from . engineeringagent" not in uv_reference_body

@@ -16,7 +16,6 @@ class RunLoopControllerInputs(BaseModel):
     project_root: Path
     feature_paths: Sequence[str | Path]
     gate_profile: str
-    implement_command: str | None
     skip_implement: bool
     dry_run: bool
     run_all: bool
@@ -82,7 +81,6 @@ def run_loop_controller(
 
     if not dependencies.run_permission_precheck(
         project_root=inputs.project_root,
-        implement_command=inputs.implement_command,
         skip_implement=inputs.skip_implement,
     ):
         return 1

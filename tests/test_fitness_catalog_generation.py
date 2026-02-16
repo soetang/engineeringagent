@@ -9,6 +9,11 @@ from typer.testing import CliRunner
 from engineeringagent import cli as cli_module
 from engineeringagent.fitness import build_rule_catalog, render_rule_catalog_markdown
 
+REGENERATE_CATALOG_COMMAND = (
+    "uv run python -m engineeringagent.cli "
+    "fitness catalog --format markdown --output docs/fitness-functions/rules.md"
+)
+
 
 def test_fitness_catalog_markdown_generation(tmp_path: Path) -> None:
     manifest_path = tmp_path / "harness" / "fitness-functions" / "rules.yaml"
@@ -70,7 +75,10 @@ def test_repo_fitness_catalog_markdown_is_up_to_date() -> None:
     expected = render_rule_catalog_markdown(build_rule_catalog(repo_root)) + "\n"
     actual = output_path.read_text(encoding="utf-8")
 
-    assert actual == expected
+    assert actual == expected, (
+        "docs/fitness-functions/rules.md is out of date. "
+        f"Regenerate it with: {REGENERATE_CATALOG_COMMAND}"
+    )
 
 
 def test_main_uses_typer_fitness_tree_without_legacy_forward(monkeypatch: Any) -> None:

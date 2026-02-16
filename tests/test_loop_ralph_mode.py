@@ -3,8 +3,9 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable, Iterator
 
 import pytest
 import yaml
@@ -15,6 +16,83 @@ import engineeringagent.loop as loop_module
 from engineeringagent.loop import run_loop
 from engineeringagent.loop_runtime import presentation as presentation_module
 from engineeringagent.prompts import build_implementation_prompt
+
+
+_OPENCODE_IMPLEMENT_SIDE_EFFECT: Callable[[], None] | None = None
+_OPENCODE_IMPLEMENT_FAKE_RESULT: tuple[int, str, str] | None = None
+
+
+@contextmanager
+def _with_opencode_implement_side_effect(
+    effect: Callable[[], None],
+) -> Iterator[None]:
+    global _OPENCODE_IMPLEMENT_SIDE_EFFECT
+    previous = _OPENCODE_IMPLEMENT_SIDE_EFFECT
+    _OPENCODE_IMPLEMENT_SIDE_EFFECT = effect
+    try:
+        yield
+    finally:
+        _OPENCODE_IMPLEMENT_SIDE_EFFECT = previous
+
+
+@contextmanager
+def _with_opencode_implement_result(
+    *,
+    returncode: int = 0,
+    stdout: str = "ok\n",
+    stderr: str = "",
+) -> Iterator[None]:
+    global _OPENCODE_IMPLEMENT_FAKE_RESULT
+    previous = _OPENCODE_IMPLEMENT_FAKE_RESULT
+    _OPENCODE_IMPLEMENT_FAKE_RESULT = (returncode, stdout, stderr)
+    try:
+        yield
+    finally:
+        _OPENCODE_IMPLEMENT_FAKE_RESULT = previous
+
+
+@pytest.fixture(autouse=True)
+def _stub_opencode_start_agent(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fake_start_agent(
+        project_root: Path,
+        prompt: str,
+        **kwargs: Any,
+    ) -> subprocess.CompletedProcess[str]:
+        del project_root
+        if "Read and use this feature spec from disk:" in prompt:
+            effect = _OPENCODE_IMPLEMENT_SIDE_EFFECT
+            if effect is not None:
+                effect()
+
+        agent = kwargs.get("agent", "engineeringagent")
+        override = (
+            _OPENCODE_IMPLEMENT_FAKE_RESULT
+            if "Read and use this feature spec from disk:" in prompt
+            else None
+        )
+        if override is None:
+            override = (0, "ok\n", "")
+
+        returncode, stdout, stderr = override
+        return subprocess.CompletedProcess(
+            ["opencode", "run", "--agent", str(agent), prompt],
+            returncode,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+    monkeypatch.setattr(loop_module, "start_agent", fake_start_agent)
+
+
+@pytest.fixture(autouse=True)
+def _stub_permission_precheck(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        loop_module,
+        "_run_opencode_permission_precheck",
+        lambda **_: True,
+    )
 
 
 def _invoke_cli(args: list[str]) -> Any:
@@ -73,6 +151,40 @@ def _run_git(project_root: Path, *args: str) -> subprocess.CompletedProcess[str]
     return subprocess.run(
         ["git", *args], cwd=project_root, check=True, capture_output=True, text=True
     )
+
+
+def _run_python_script(script_path: Path, *args: Path) -> None:
+    subprocess.run(
+        [sys.executable, str(script_path), *(str(arg) for arg in args)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_run_python_script_executes_with_path_args(tmp_path: Path) -> None:
+    script_path = tmp_path / "copy-source-to-output.py"
+    source_path = tmp_path / "source.txt"
+    output_path = tmp_path / "output.txt"
+
+    source_path.write_text("ok\n", encoding="utf-8")
+    script_path.write_text(
+        "\n".join(
+            [
+                "from pathlib import Path",
+                "import sys",
+                "output_path = Path(sys.argv[1])",
+                "source_path = Path(sys.argv[2])",
+                "output_path.write_text(source_path.read_text(encoding='utf-8'), encoding='utf-8')",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    _run_python_script(script_path, output_path, source_path)
+
+    assert output_path.read_text(encoding="utf-8") == "ok\n"
 
 
 def _patch_start_agent_with_fake(
@@ -292,31 +404,6 @@ def _write_delete_selected_feature_script(script_path: Path) -> Path:
     return script_path
 
 
-def _write_set_done_with_output_script(
-    script_path: Path,
-    stdout_token: str,
-    stderr_token: str,
-) -> Path:
-    script_path.write_text(
-        "\n".join(
-            [
-                "from pathlib import Path",
-                "import sys",
-                "import yaml",
-                "feature_path = Path(sys.argv[1])",
-                "feature = yaml.safe_load(feature_path.read_text(encoding='utf-8'))",
-                "feature['status'] = 'done'",
-                "feature_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding='utf-8')",
-                f"print({stdout_token!r})",
-                f"print({stderr_token!r}, file=sys.stderr)",
-            ]
-        )
-        + "\n",
-        encoding="utf-8",
-    )
-    return script_path
-
-
 def _move_feature_to_done(project_root: Path, feature_path: Path) -> None:
     feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
     feature["status"] = "done"
@@ -348,7 +435,6 @@ def test_verification_is_not_run_without_done_transition(tmp_path: Path) -> None
         project_root=project_root,
         feature_path=feature_path,
         gate_profile="loop_fast",
-        implement_command=None,
         opencode_prompt=None,
         skip_implement=True,
         attempt=1,
@@ -385,17 +471,20 @@ def test_verification_failure_for_newly_done_subtask_marks_iteration_non_pass(
         "ST-001",
     )
 
-    outcome = loop_module._run_feature_iteration(
-        project_root=project_root,
-        feature_path=feature_path,
-        gate_profile="loop_fast",
-        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
-        opencode_prompt=None,
-        skip_implement=False,
-        attempt=1,
-        hook_feedback=None,
-        verbose_output=False,
-    )
+    def implement_effect() -> None:
+        _run_python_script(script_path, feature_path)
+
+    with _with_opencode_implement_side_effect(implement_effect):
+        outcome = loop_module._run_feature_iteration(
+            project_root=project_root,
+            feature_path=feature_path,
+            gate_profile="loop_fast",
+            opencode_prompt=None,
+            skip_implement=False,
+            attempt=1,
+            hook_feedback=None,
+            verbose_output=False,
+        )
 
     assert outcome.result == "failed"
     assert outcome.failed_gate is None
@@ -433,17 +522,20 @@ def test_verification_selection_ignores_non_string_commands(
         "ST-001",
     )
 
-    outcome = loop_module._run_feature_iteration(
-        project_root=project_root,
-        feature_path=feature_path,
-        gate_profile="loop_fast",
-        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
-        opencode_prompt=None,
-        skip_implement=False,
-        attempt=1,
-        hook_feedback=None,
-        verbose_output=False,
-    )
+    def implement_effect() -> None:
+        _run_python_script(script_path, feature_path)
+
+    with _with_opencode_implement_side_effect(implement_effect):
+        outcome = loop_module._run_feature_iteration(
+            project_root=project_root,
+            feature_path=feature_path,
+            gate_profile="loop_fast",
+            opencode_prompt=None,
+            skip_implement=False,
+            attempt=1,
+            hook_feedback=None,
+            verbose_output=False,
+        )
 
     assert outcome.result == "passed"
     assert outcome.verification_status == "passed"
@@ -475,17 +567,20 @@ def test_verification_selection_ignores_blank_string_commands(
         "ST-001",
     )
 
-    outcome = loop_module._run_feature_iteration(
-        project_root=project_root,
-        feature_path=feature_path,
-        gate_profile="loop_fast",
-        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
-        opencode_prompt=None,
-        skip_implement=False,
-        attempt=1,
-        hook_feedback=None,
-        verbose_output=False,
-    )
+    def implement_effect() -> None:
+        _run_python_script(script_path, feature_path)
+
+    with _with_opencode_implement_side_effect(implement_effect):
+        outcome = loop_module._run_feature_iteration(
+            project_root=project_root,
+            feature_path=feature_path,
+            gate_profile="loop_fast",
+            opencode_prompt=None,
+            skip_implement=False,
+            attempt=1,
+            hook_feedback=None,
+            verbose_output=False,
+        )
 
     runs = _read_runs(project_root)
     feature_log = project_root / str(runs[-1]["log_path"])
@@ -524,17 +619,20 @@ def test_verification_selection_normalizes_command_whitespace(
         "ST-001",
     )
 
-    outcome = loop_module._run_feature_iteration(
-        project_root=project_root,
-        feature_path=feature_path,
-        gate_profile="loop_fast",
-        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
-        opencode_prompt=None,
-        skip_implement=False,
-        attempt=1,
-        hook_feedback=None,
-        verbose_output=False,
-    )
+    def implement_effect() -> None:
+        _run_python_script(script_path, feature_path)
+
+    with _with_opencode_implement_side_effect(implement_effect):
+        outcome = loop_module._run_feature_iteration(
+            project_root=project_root,
+            feature_path=feature_path,
+            gate_profile="loop_fast",
+            opencode_prompt=None,
+            skip_implement=False,
+            attempt=1,
+            hook_feedback=None,
+            verbose_output=False,
+        )
 
     runs = _read_runs(project_root)
     feature_log = project_root / str(runs[-1]["log_path"])
@@ -572,17 +670,20 @@ def test_verification_ignores_new_done_subtasks_without_pre_snapshot_status(
         verification_command,
     )
 
-    outcome = loop_module._run_feature_iteration(
-        project_root=project_root,
-        feature_path=feature_path,
-        gate_profile="loop_fast",
-        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
-        opencode_prompt=None,
-        skip_implement=False,
-        attempt=1,
-        hook_feedback=None,
-        verbose_output=False,
-    )
+    def implement_effect() -> None:
+        _run_python_script(script_path, feature_path)
+
+    with _with_opencode_implement_side_effect(implement_effect):
+        outcome = loop_module._run_feature_iteration(
+            project_root=project_root,
+            feature_path=feature_path,
+            gate_profile="loop_fast",
+            opencode_prompt=None,
+            skip_implement=False,
+            attempt=1,
+            hook_feedback=None,
+            verbose_output=False,
+        )
 
     assert outcome.result == "passed"
     assert outcome.verification_status == "not_run"
@@ -620,17 +721,20 @@ def test_verification_selection_uses_first_post_entry_for_duplicate_subtask_ids(
         duplicate_verification_command,
     )
 
-    outcome = loop_module._run_feature_iteration(
-        project_root=project_root,
-        feature_path=feature_path,
-        gate_profile="loop_fast",
-        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
-        opencode_prompt=None,
-        skip_implement=False,
-        attempt=1,
-        hook_feedback=None,
-        verbose_output=False,
-    )
+    def implement_effect() -> None:
+        _run_python_script(script_path, feature_path)
+
+    with _with_opencode_implement_side_effect(implement_effect):
+        outcome = loop_module._run_feature_iteration(
+            project_root=project_root,
+            feature_path=feature_path,
+            gate_profile="loop_fast",
+            opencode_prompt=None,
+            skip_implement=False,
+            attempt=1,
+            hook_feedback=None,
+            verbose_output=False,
+        )
 
     assert outcome.result == "passed"
     assert outcome.verification_status == "passed"
@@ -669,17 +773,20 @@ def test_verification_selection_uses_first_pre_status_for_duplicate_subtask_ids(
         "ST-001",
     )
 
-    outcome = loop_module._run_feature_iteration(
-        project_root=project_root,
-        feature_path=feature_path,
-        gate_profile="loop_fast",
-        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
-        opencode_prompt=None,
-        skip_implement=False,
-        attempt=1,
-        hook_feedback=None,
-        verbose_output=False,
-    )
+    def implement_effect() -> None:
+        _run_python_script(script_path, feature_path)
+
+    with _with_opencode_implement_side_effect(implement_effect):
+        outcome = loop_module._run_feature_iteration(
+            project_root=project_root,
+            feature_path=feature_path,
+            gate_profile="loop_fast",
+            opencode_prompt=None,
+            skip_implement=False,
+            attempt=1,
+            hook_feedback=None,
+            verbose_output=False,
+        )
 
     assert outcome.result == "passed"
     assert outcome.verification_status == "passed"
@@ -708,22 +815,22 @@ def test_verification_failure_restores_feature_archived_during_iteration(
     move_to_done_script = _write_move_to_done_script(
         tmp_path.parent / f"{tmp_path.name}-move-to-done-before-verification.py"
     )
-    implement_command = (
-        f'"{sys.executable}" "{set_subtask_done_script}" "{feature_path}"'
-        f' && "{sys.executable}" "{move_to_done_script}" "{project_root}" "{feature_path}"'
-    )
 
-    outcome = loop_module._run_feature_iteration(
-        project_root=project_root,
-        feature_path=feature_path,
-        gate_profile="loop_fast",
-        implement_command=implement_command,
-        opencode_prompt=None,
-        skip_implement=False,
-        attempt=1,
-        hook_feedback=None,
-        verbose_output=False,
-    )
+    def implement_effect() -> None:
+        _run_python_script(set_subtask_done_script, feature_path)
+        _run_python_script(move_to_done_script, project_root, feature_path)
+
+    with _with_opencode_implement_side_effect(implement_effect):
+        outcome = loop_module._run_feature_iteration(
+            project_root=project_root,
+            feature_path=feature_path,
+            gate_profile="loop_fast",
+            opencode_prompt=None,
+            skip_implement=False,
+            attempt=1,
+            hook_feedback=None,
+            verbose_output=False,
+        )
 
     archived_path = project_root / "docs" / "spec" / "features_done" / feature_path.name
 
@@ -861,7 +968,6 @@ def test_run_loop_all_discovers_backlog_and_in_progress_only(
         project_root=project_root,
         feature_paths=[],
         gate_profile="loop_fast",
-        implement_command=None,
         opencode_prompt=None,
         skip_implement=True,
         dry_run=True,
@@ -910,7 +1016,6 @@ def test_run_all_uses_configured_docs_root(tmp_path: Path, capsys: Any) -> None:
         project_root=tmp_path,
         feature_paths=[],
         gate_profile="loop_fast",
-        implement_command=None,
         opencode_prompt=None,
         skip_implement=True,
         dry_run=True,
@@ -940,7 +1045,6 @@ def test_run_loop_all_excludes_blocked_and_done_from_startup_snapshot(
         project_root=project_root,
         feature_paths=[],
         gate_profile="loop_fast",
-        implement_command=None,
         opencode_prompt=None,
         skip_implement=True,
         dry_run=True,
@@ -963,7 +1067,6 @@ def test_run_loop_all_exits_zero_when_no_runnable_features(
         project_root=project_root,
         feature_paths=[],
         gate_profile="loop_fast",
-        implement_command=None,
         opencode_prompt=None,
         skip_implement=True,
         dry_run=False,
@@ -989,20 +1092,20 @@ def test_run_loop_all_does_not_include_specs_created_after_startup(
     )
     _init_git_repo(project_root)
 
-    code = run_loop(
-        project_root=project_root,
-        feature_paths=[],
-        gate_profile="loop_fast",
-        implement_command=(
-            f'"{sys.executable}" "{script_path}" '
-            f'"{feature_path}" "{created_feature_path}"'
-        ),
-        opencode_prompt=None,
-        skip_implement=False,
-        dry_run=False,
-        run_all=True,
-        max_iterations=3,
-    )
+    def implement_effect() -> None:
+        _run_python_script(script_path, feature_path, created_feature_path)
+
+    with _with_opencode_implement_side_effect(implement_effect):
+        code = run_loop(
+            project_root=project_root,
+            feature_paths=[],
+            gate_profile="loop_fast",
+            opencode_prompt=None,
+            skip_implement=False,
+            dry_run=False,
+            run_all=True,
+            max_iterations=3,
+        )
 
     archived_path = project_root / "docs" / "spec" / "features_done" / feature_path.name
     runs = _read_runs(project_root)
@@ -1023,7 +1126,6 @@ def test_run_loop_all_dry_run_reports_snapshot_selection(
         project_root=project_root,
         feature_paths=[],
         gate_profile="loop_fast",
-        implement_command=None,
         opencode_prompt=None,
         skip_implement=True,
         dry_run=True,
@@ -1045,16 +1147,19 @@ def test_run_loop_completes_feature_and_commits(tmp_path: Path) -> None:
     )
     _init_git_repo(project_root)
 
-    code = run_loop(
-        project_root=project_root,
-        feature_paths=[str(feature_path)],
-        gate_profile="loop_fast",
-        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
-        opencode_prompt=None,
-        skip_implement=False,
-        dry_run=False,
-        max_iterations=5,
-    )
+    def implement_effect() -> None:
+        _run_python_script(script_path, feature_path)
+
+    with _with_opencode_implement_side_effect(implement_effect):
+        code = run_loop(
+            project_root=project_root,
+            feature_paths=[str(feature_path)],
+            gate_profile="loop_fast",
+            opencode_prompt=None,
+            skip_implement=False,
+            dry_run=False,
+            max_iterations=5,
+        )
 
     assert code == 0
     runs = _read_runs(project_root)
@@ -1098,16 +1203,19 @@ def test_archive_path_uses_configured_docs_root(tmp_path: Path) -> None:
     )
     _init_git_repo(tmp_path)
 
-    code = run_loop(
-        project_root=tmp_path,
-        feature_paths=[str(feature_path)],
-        gate_profile="loop_fast",
-        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
-        opencode_prompt=None,
-        skip_implement=False,
-        dry_run=False,
-        max_iterations=5,
-    )
+    def implement_effect() -> None:
+        _run_python_script(script_path, feature_path)
+
+    with _with_opencode_implement_side_effect(implement_effect):
+        code = run_loop(
+            project_root=tmp_path,
+            feature_paths=[str(feature_path)],
+            gate_profile="loop_fast",
+            opencode_prompt=None,
+            skip_implement=False,
+            dry_run=False,
+            max_iterations=5,
+        )
 
     archived_path = (
         docs_root / "spec" / "features_done" / "FEAT-910-configured-archive.yaml"
@@ -1127,16 +1235,19 @@ def test_run_loop_commit_ignores_runs_jsonl_when_gitignored(tmp_path: Path) -> N
     (project_root / ".gitignore").write_text("progress/runs.jsonl\n", encoding="utf-8")
     _init_git_repo(project_root)
 
-    code = run_loop(
-        project_root=project_root,
-        feature_paths=[str(feature_path)],
-        gate_profile="loop_fast",
-        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
-        opencode_prompt=None,
-        skip_implement=False,
-        dry_run=False,
-        max_iterations=5,
-    )
+    def implement_effect() -> None:
+        _run_python_script(script_path, feature_path)
+
+    with _with_opencode_implement_side_effect(implement_effect):
+        code = run_loop(
+            project_root=project_root,
+            feature_paths=[str(feature_path)],
+            gate_profile="loop_fast",
+            opencode_prompt=None,
+            skip_implement=False,
+            dry_run=False,
+            max_iterations=5,
+        )
 
     assert code == 0
     assert (project_root / "progress" / "runs.jsonl").exists()
@@ -1160,16 +1271,19 @@ def test_run_loop_writes_per_feature_progress_log(
     )
     _init_git_repo(project_root)
 
-    code = run_loop(
-        project_root=project_root,
-        feature_paths=[str(feature_path)],
-        gate_profile="loop_fast",
-        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
-        opencode_prompt=None,
-        skip_implement=False,
-        dry_run=False,
-        max_iterations=5,
-    )
+    def implement_effect() -> None:
+        _run_python_script(script_path, feature_path)
+
+    with _with_opencode_implement_side_effect(implement_effect):
+        code = run_loop(
+            project_root=project_root,
+            feature_paths=[str(feature_path)],
+            gate_profile="loop_fast",
+            opencode_prompt=None,
+            skip_implement=False,
+            dry_run=False,
+            max_iterations=5,
+        )
 
     assert code == 0
     feature_log_path = project_root / "progress" / "run-feature-FEAT-900.txt"
@@ -1194,16 +1308,19 @@ def test_run_loop_progress_logs_are_gitignored(tmp_path: Path) -> None:
     )
     _init_git_repo(project_root)
 
-    code = run_loop(
-        project_root=project_root,
-        feature_paths=[str(feature_path)],
-        gate_profile="loop_fast",
-        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
-        opencode_prompt=None,
-        skip_implement=False,
-        dry_run=False,
-        max_iterations=5,
-    )
+    def implement_effect() -> None:
+        _run_python_script(script_path, feature_path)
+
+    with _with_opencode_implement_side_effect(implement_effect):
+        code = run_loop(
+            project_root=project_root,
+            feature_paths=[str(feature_path)],
+            gate_profile="loop_fast",
+            opencode_prompt=None,
+            skip_implement=False,
+            dry_run=False,
+            max_iterations=5,
+        )
 
     assert code == 0
     assert (project_root / "progress" / "run-feature-FEAT-900.txt").exists()
@@ -1242,24 +1359,33 @@ def test_run_loop_concise_mode_hides_raw_implement_and_gate_output(
         feature_data=_base_feature(),
         gates_data=gates_data,
     )
-    script_path = _write_set_done_with_output_script(
-        tmp_path.parent / f"{tmp_path.name}-set-done-with-output.py",
-        stdout_token=implement_stdout_token,
-        stderr_token=implement_stderr_token,
-    )
     _init_git_repo(project_root)
 
-    code = run_loop(
-        project_root=project_root,
-        feature_paths=[str(feature_path)],
-        gate_profile="loop_fast",
-        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
-        opencode_prompt=None,
-        skip_implement=False,
-        dry_run=False,
-        max_iterations=5,
-        verbose_output=False,
-    )
+    def implement_effect() -> None:
+        feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
+        feature["status"] = "done"
+        feature_path.write_text(
+            yaml.safe_dump(feature, sort_keys=False),
+            encoding="utf-8",
+        )
+
+    with (
+        _with_opencode_implement_side_effect(implement_effect),
+        _with_opencode_implement_result(
+            stdout=f"{implement_stdout_token}\n",
+            stderr=f"{implement_stderr_token}\n",
+        ),
+    ):
+        code = run_loop(
+            project_root=project_root,
+            feature_paths=[str(feature_path)],
+            gate_profile="loop_fast",
+            opencode_prompt=None,
+            skip_implement=False,
+            dry_run=False,
+            max_iterations=5,
+            verbose_output=False,
+        )
 
     output = capsys.readouterr().out
     assert code == 0
@@ -1305,24 +1431,33 @@ def test_run_loop_verbose_output_streams_raw_implement_and_gate_output(
         feature_data=_base_feature(),
         gates_data=gates_data,
     )
-    script_path = _write_set_done_with_output_script(
-        tmp_path.parent / f"{tmp_path.name}-set-done-with-verbose-output.py",
-        stdout_token=implement_stdout_token,
-        stderr_token=implement_stderr_token,
-    )
     _init_git_repo(project_root)
 
-    code = run_loop(
-        project_root=project_root,
-        feature_paths=[str(feature_path)],
-        gate_profile="loop_fast",
-        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
-        opencode_prompt=None,
-        skip_implement=False,
-        dry_run=False,
-        max_iterations=5,
-        verbose_output=True,
-    )
+    def implement_effect() -> None:
+        feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
+        feature["status"] = "done"
+        feature_path.write_text(
+            yaml.safe_dump(feature, sort_keys=False),
+            encoding="utf-8",
+        )
+
+    with (
+        _with_opencode_implement_side_effect(implement_effect),
+        _with_opencode_implement_result(
+            stdout=f"{implement_stdout_token}\n",
+            stderr=f"{implement_stderr_token}\n",
+        ),
+    ):
+        code = run_loop(
+            project_root=project_root,
+            feature_paths=[str(feature_path)],
+            gate_profile="loop_fast",
+            opencode_prompt=None,
+            skip_implement=False,
+            dry_run=False,
+            max_iterations=5,
+            verbose_output=True,
+        )
 
     captured = capsys.readouterr()
     merged_output = captured.out + captured.err
@@ -1412,7 +1547,7 @@ def test_run_loop_iteration_output_uses_emoji_contract(
         attempt=1,
         next_action="select_next_feature",
         selected_path="docs/spec/features/FEAT-900.yaml",
-        implement_step="default opencode implement step",
+        implement_step="opencode run --agent engineeringagent",
     )
     loop_module.print_summary(
         feature_id="FEAT-900",
@@ -1421,7 +1556,7 @@ def test_run_loop_iteration_output_uses_emoji_contract(
         attempt=2,
         next_action="retry_same_feature",
         selected_path="docs/spec/features/FEAT-900.yaml",
-        implement_step="default opencode implement step",
+        implement_step="opencode run --agent engineeringagent",
         log_path="progress/run-feature-FEAT-900.txt",
     )
     loop_module.print_summary(
@@ -1431,14 +1566,14 @@ def test_run_loop_iteration_output_uses_emoji_contract(
         attempt=3,
         next_action="select_next_feature",
         selected_path="docs/spec/features/FEAT-900.yaml",
-        implement_step="default opencode implement step",
+        implement_step="opencode run --agent engineeringagent",
         archived_selection_path="docs/spec/features_done/FEAT-900.yaml",
     )
 
     output = capsys.readouterr().out
     assert "🔁 Iteration 1 · FEAT-900" in output
     assert "🎯 Selected: docs/spec/features/FEAT-900.yaml" in output
-    assert "🛠 Implement: default opencode implement step" in output
+    assert "🛠 Implement: opencode run --agent engineeringagent" in output
     assert "✅ Passed" in output
     assert "🔁 Iteration 2 · FEAT-900" in output
     assert "❌ Failed: gate=spec_validate" in output
@@ -1463,16 +1598,19 @@ def test_run_loop_telemetry_includes_log_path(
     )
     _init_git_repo(project_root)
 
-    code = run_loop(
-        project_root=project_root,
-        feature_paths=[str(feature_path)],
-        gate_profile="loop_fast",
-        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
-        opencode_prompt=None,
-        skip_implement=False,
-        dry_run=False,
-        max_iterations=5,
-    )
+    def implement_effect() -> None:
+        _run_python_script(script_path, feature_path)
+
+    with _with_opencode_implement_side_effect(implement_effect):
+        code = run_loop(
+            project_root=project_root,
+            feature_paths=[str(feature_path)],
+            gate_profile="loop_fast",
+            opencode_prompt=None,
+            skip_implement=False,
+            dry_run=False,
+            max_iterations=5,
+        )
 
     assert code == 0
     runs = _read_runs(project_root)
@@ -1491,16 +1629,18 @@ def test_run_loop_failure_prints_detailed_log_pointer(
     )
     _init_git_repo(project_root)
 
-    code = run_loop(
-        project_root=project_root,
-        feature_paths=[str(feature_path)],
-        gate_profile="loop_fast",
-        implement_command=f'"{sys.executable}" -c "import sys; sys.exit(1)"',
-        opencode_prompt=None,
-        skip_implement=False,
-        dry_run=False,
-        max_iterations=1,
-    )
+    with _with_opencode_implement_result(
+        returncode=1, stdout="", stderr="opencode failed"
+    ):
+        code = run_loop(
+            project_root=project_root,
+            feature_paths=[str(feature_path)],
+            gate_profile="loop_fast",
+            opencode_prompt=None,
+            skip_implement=False,
+            dry_run=False,
+            max_iterations=1,
+        )
 
     output = capsys.readouterr().out
     assert code == 1
@@ -1524,7 +1664,6 @@ def test_run_loop_requires_clean_worktree_by_default(
         project_root=project_root,
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
-        implement_command=None,
         opencode_prompt=None,
         skip_implement=True,
         dry_run=False,
@@ -1548,7 +1687,6 @@ def test_run_loop_skip_implement_exits_after_one_passing_iteration(
         project_root=project_root,
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
-        implement_command=None,
         opencode_prompt=None,
         skip_implement=True,
         dry_run=False,
@@ -1563,6 +1701,36 @@ def test_run_loop_skip_implement_exits_after_one_passing_iteration(
     assert "Reached max iteration cap" not in output
 
 
+def test_run_loop_skip_implement_archives_done_active_feature(
+    tmp_path: Path,
+) -> None:
+    project_root, feature_path = _make_project_root(
+        tmp_path,
+        feature_data=_base_feature(status="done"),
+    )
+    _init_git_repo(project_root)
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        opencode_prompt=None,
+        skip_implement=True,
+        dry_run=False,
+        max_iterations=2,
+    )
+
+    archived_path = project_root / "docs" / "spec" / "features_done" / feature_path.name
+    assert code == 0
+    assert not feature_path.exists()
+    assert archived_path.exists()
+
+    runs = _read_runs(project_root)
+    assert len(runs) == 1
+    assert runs[-1]["result"] == "passed"
+    assert runs[-1]["next_action"] == "select_next_feature"
+
+
 def test_run_loop_requires_git_repo_before_allow_dirty_hint(
     tmp_path: Path, capsys: Any
 ) -> None:
@@ -1574,7 +1742,6 @@ def test_run_loop_requires_git_repo_before_allow_dirty_hint(
         project_root=project_root,
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
-        implement_command=None,
         opencode_prompt=None,
         skip_implement=True,
         dry_run=False,
@@ -1624,17 +1791,20 @@ def test_run_loop_allows_uncommitted_changes_with_allow_dirty(
 
     (project_root / "notes.txt").write_text("restart with edits\n", encoding="utf-8")
 
-    code = run_loop(
-        project_root=project_root,
-        feature_paths=[str(feature_path)],
-        gate_profile="loop_fast",
-        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
-        opencode_prompt=None,
-        skip_implement=False,
-        dry_run=False,
-        allow_dirty=True,
-        max_iterations=5,
-    )
+    def implement_effect() -> None:
+        _run_python_script(script_path, feature_path)
+
+    with _with_opencode_implement_side_effect(implement_effect):
+        code = run_loop(
+            project_root=project_root,
+            feature_paths=[str(feature_path)],
+            gate_profile="loop_fast",
+            opencode_prompt=None,
+            skip_implement=False,
+            dry_run=False,
+            allow_dirty=True,
+            max_iterations=5,
+        )
 
     output = capsys.readouterr().out
     assert code == 0
@@ -1650,16 +1820,19 @@ def test_run_loop_moves_completed_feature_to_features_done(tmp_path: Path) -> No
     )
     _init_git_repo(project_root)
 
-    code = run_loop(
-        project_root=project_root,
-        feature_paths=[str(feature_path)],
-        gate_profile="loop_fast",
-        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
-        opencode_prompt=None,
-        skip_implement=False,
-        dry_run=False,
-        max_iterations=5,
-    )
+    def implement_effect() -> None:
+        _run_python_script(script_path, feature_path)
+
+    with _with_opencode_implement_side_effect(implement_effect):
+        code = run_loop(
+            project_root=project_root,
+            feature_paths=[str(feature_path)],
+            gate_profile="loop_fast",
+            opencode_prompt=None,
+            skip_implement=False,
+            dry_run=False,
+            max_iterations=5,
+        )
 
     archived_path = project_root / "docs" / "spec" / "features_done" / feature_path.name
     assert code == 0
@@ -1679,18 +1852,19 @@ def test_run_loop_selected_feature_moved_to_features_done_does_not_crash(
         tmp_path.parent / f"{tmp_path.name}-move-selected-to-done.py"
     )
 
-    code = run_loop(
-        project_root=project_root,
-        feature_paths=[str(feature_path)],
-        gate_profile="loop_fast",
-        implement_command=(
-            f'"{sys.executable}" "{script_path}" "{project_root}" "{feature_path}"'
-        ),
-        opencode_prompt=None,
-        skip_implement=False,
-        dry_run=False,
-        max_iterations=3,
-    )
+    def implement_effect() -> None:
+        _run_python_script(script_path, project_root, feature_path)
+
+    with _with_opencode_implement_side_effect(implement_effect):
+        code = run_loop(
+            project_root=project_root,
+            feature_paths=[str(feature_path)],
+            gate_profile="loop_fast",
+            opencode_prompt=None,
+            skip_implement=False,
+            dry_run=False,
+            max_iterations=3,
+        )
 
     archived_path = project_root / "docs" / "spec" / "features_done" / feature_path.name
     output = capsys.readouterr().out
@@ -1743,7 +1917,6 @@ def test_run_loop_archived_done_without_completion_commit_fails(
         project_root=project_root,
         feature_paths=[],
         gate_profile="loop_fast",
-        implement_command=None,
         opencode_prompt=None,
         skip_implement=False,
         dry_run=False,
@@ -1784,13 +1957,11 @@ def test_run_loop_all_selected_feature_moved_to_features_done_continues(
         project_root: Path,
         feature: dict[str, Any],
         feature_path: Path,
-        implement_command: str | None,
         skip_implement: bool,
         hook_feedback: str | None,
         verbose_output: bool,
     ) -> tuple[bool, str | None, str]:
-        del implement_command, skip_implement, hook_feedback
-        del verbose_output
+        del skip_implement, hook_feedback, verbose_output
         if str(feature.get("id", "")) == "FEAT-900":
             _move_feature_to_done(project_root, feature_path)
             return (True, None, "")
@@ -1809,7 +1980,6 @@ def test_run_loop_all_selected_feature_moved_to_features_done_continues(
         project_root=project_root,
         feature_paths=[],
         gate_profile="loop_fast",
-        implement_command=None,
         opencode_prompt=None,
         skip_implement=False,
         dry_run=False,
@@ -1851,16 +2021,19 @@ def test_run_loop_missing_selected_feature_without_archive_fails_cleanly(
         tmp_path.parent / f"{tmp_path.name}-delete-selected-feature.py"
     )
 
-    code = run_loop(
-        project_root=project_root,
-        feature_paths=[str(feature_path)],
-        gate_profile="loop_fast",
-        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
-        opencode_prompt=None,
-        skip_implement=False,
-        dry_run=False,
-        max_iterations=3,
-    )
+    def implement_effect() -> None:
+        _run_python_script(script_path, feature_path)
+
+    with _with_opencode_implement_side_effect(implement_effect):
+        code = run_loop(
+            project_root=project_root,
+            feature_paths=[str(feature_path)],
+            gate_profile="loop_fast",
+            opencode_prompt=None,
+            skip_implement=False,
+            dry_run=False,
+            max_iterations=3,
+        )
 
     output = capsys.readouterr().out
     assert code == 1
@@ -1892,16 +2065,19 @@ def test_run_loop_archives_only_selected_feature(tmp_path: Path) -> None:
     )
     _init_git_repo(project_root)
 
-    code = run_loop(
-        project_root=project_root,
-        feature_paths=[str(feature_path), str(preexisting_done_path)],
-        gate_profile="loop_fast",
-        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
-        opencode_prompt=None,
-        skip_implement=False,
-        dry_run=False,
-        max_iterations=5,
-    )
+    def implement_effect() -> None:
+        _run_python_script(script_path, feature_path)
+
+    with _with_opencode_implement_side_effect(implement_effect):
+        code = run_loop(
+            project_root=project_root,
+            feature_paths=[str(feature_path), str(preexisting_done_path)],
+            gate_profile="loop_fast",
+            opencode_prompt=None,
+            skip_implement=False,
+            dry_run=False,
+            max_iterations=5,
+        )
 
     archived_selected_path = (
         project_root / "docs" / "spec" / "features_done" / feature_path.name
@@ -1957,16 +2133,19 @@ def test_run_loop_archives_done_feature_before_gate_execution(tmp_path: Path) ->
     )
     _init_git_repo(project_root)
 
-    code = run_loop(
-        project_root=project_root,
-        feature_paths=[str(feature_path)],
-        gate_profile="loop_fast",
-        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
-        opencode_prompt=None,
-        skip_implement=False,
-        dry_run=False,
-        max_iterations=5,
-    )
+    def implement_effect() -> None:
+        _run_python_script(script_path, feature_path)
+
+    with _with_opencode_implement_side_effect(implement_effect):
+        code = run_loop(
+            project_root=project_root,
+            feature_paths=[str(feature_path)],
+            gate_profile="loop_fast",
+            opencode_prompt=None,
+            skip_implement=False,
+            dry_run=False,
+            max_iterations=5,
+        )
 
     archived_path = project_root / "docs" / "spec" / "features_done" / feature_path.name
     assert code == 0
@@ -2017,16 +2196,19 @@ def test_run_loop_restores_archived_feature_when_gate_fails_after_prearchive(
     )
     _init_git_repo(project_root)
 
-    code = run_loop(
-        project_root=project_root,
-        feature_paths=[str(feature_path)],
-        gate_profile="loop_fast",
-        implement_command=f'"{sys.executable}" "{script_path}" "{project_root}" "{feature_path}"',
-        opencode_prompt=None,
-        skip_implement=False,
-        dry_run=False,
-        max_iterations=1,
-    )
+    def implement_effect() -> None:
+        _run_python_script(script_path, project_root, feature_path)
+
+    with _with_opencode_implement_side_effect(implement_effect):
+        code = run_loop(
+            project_root=project_root,
+            feature_paths=[str(feature_path)],
+            gate_profile="loop_fast",
+            opencode_prompt=None,
+            skip_implement=False,
+            dry_run=False,
+            max_iterations=1,
+        )
 
     archived_path = project_root / "docs" / "spec" / "features_done" / feature_path.name
     restored_feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
@@ -2086,16 +2268,19 @@ def test_run_loop_spec_validate_no_longer_blocks_done_archive_ordering(
     )
     _init_git_repo(project_root)
 
-    code = run_loop(
-        project_root=project_root,
-        feature_paths=[str(feature_path)],
-        gate_profile="loop_fast",
-        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
-        opencode_prompt=None,
-        skip_implement=False,
-        dry_run=False,
-        max_iterations=5,
-    )
+    def implement_effect() -> None:
+        _run_python_script(script_path, feature_path)
+
+    with _with_opencode_implement_side_effect(implement_effect):
+        code = run_loop(
+            project_root=project_root,
+            feature_paths=[str(feature_path)],
+            gate_profile="loop_fast",
+            opencode_prompt=None,
+            skip_implement=False,
+            dry_run=False,
+            max_iterations=5,
+        )
 
     archived_path = project_root / "docs" / "spec" / "features_done" / feature_path.name
     runs = _read_runs(project_root)
@@ -2117,16 +2302,19 @@ def test_run_loop_completion_commit_includes_archive_move(tmp_path: Path) -> Non
     )
     _init_git_repo(project_root)
 
-    code = run_loop(
-        project_root=project_root,
-        feature_paths=[str(feature_path)],
-        gate_profile="loop_fast",
-        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
-        opencode_prompt=None,
-        skip_implement=False,
-        dry_run=False,
-        max_iterations=5,
-    )
+    def implement_effect() -> None:
+        _run_python_script(script_path, feature_path)
+
+    with _with_opencode_implement_side_effect(implement_effect):
+        code = run_loop(
+            project_root=project_root,
+            feature_paths=[str(feature_path)],
+            gate_profile="loop_fast",
+            opencode_prompt=None,
+            skip_implement=False,
+            dry_run=False,
+            max_iterations=5,
+        )
 
     assert code == 0
     changed_paths = _run_git(
@@ -2155,16 +2343,19 @@ def test_loop_uses_expected_commit_subject(tmp_path: Path) -> None:
     )
     _init_git_repo(project_root)
 
-    code = run_loop(
-        project_root=project_root,
-        feature_paths=[str(feature_path)],
-        gate_profile="loop_fast",
-        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
-        opencode_prompt=None,
-        skip_implement=False,
-        dry_run=False,
-        max_iterations=5,
-    )
+    def implement_effect() -> None:
+        _run_python_script(script_path, feature_path)
+
+    with _with_opencode_implement_side_effect(implement_effect):
+        code = run_loop(
+            project_root=project_root,
+            feature_paths=[str(feature_path)],
+            gate_profile="loop_fast",
+            opencode_prompt=None,
+            skip_implement=False,
+            dry_run=False,
+            max_iterations=5,
+        )
 
     assert code == 0
     subject = _run_git(project_root, "log", "-1", "--pretty=%s").stdout.strip()
@@ -2181,16 +2372,19 @@ def test_loop_commit_subject_fallback_uses_type_mapping(tmp_path: Path) -> None:
     )
     _init_git_repo(project_root)
 
-    code = run_loop(
-        project_root=project_root,
-        feature_paths=[str(feature_path)],
-        gate_profile="loop_fast",
-        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
-        opencode_prompt=None,
-        skip_implement=False,
-        dry_run=False,
-        max_iterations=5,
-    )
+    def implement_effect() -> None:
+        _run_python_script(script_path, feature_path)
+
+    with _with_opencode_implement_side_effect(implement_effect):
+        code = run_loop(
+            project_root=project_root,
+            feature_paths=[str(feature_path)],
+            gate_profile="loop_fast",
+            opencode_prompt=None,
+            skip_implement=False,
+            dry_run=False,
+            max_iterations=5,
+        )
 
     assert code == 0
     subject = _run_git(project_root, "log", "-1", "--pretty=%s").stdout.strip()
@@ -2208,16 +2402,19 @@ def test_git_add_failure_exits_immediately(tmp_path: Path) -> None:
 
     (project_root / ".git" / "index.lock").write_text("locked\n", encoding="utf-8")
 
-    code = run_loop(
-        project_root=project_root,
-        feature_paths=[str(feature_path)],
-        gate_profile="loop_fast",
-        implement_command=f'"{sys.executable}" "{script_path}" "{feature_path}"',
-        opencode_prompt=None,
-        skip_implement=False,
-        dry_run=False,
-        max_iterations=6,
-    )
+    def implement_effect() -> None:
+        _run_python_script(script_path, feature_path)
+
+    with _with_opencode_implement_side_effect(implement_effect):
+        code = run_loop(
+            project_root=project_root,
+            feature_paths=[str(feature_path)],
+            gate_profile="loop_fast",
+            opencode_prompt=None,
+            skip_implement=False,
+            dry_run=False,
+            max_iterations=6,
+        )
 
     assert code == 1
     runs = _read_runs(project_root)
@@ -2276,16 +2473,19 @@ def test_run_loop_commit_failure_preserves_retryable_feature_path(
     )
     hook_path.chmod(0o755)
 
-    code = run_loop(
-        project_root=project_root,
-        feature_paths=[str(feature_path)],
-        gate_profile="loop_fast",
-        implement_command=f'"{sys.executable}" "{script_path}" "{project_root}" "{feature_path}"',
-        opencode_prompt=None,
-        skip_implement=False,
-        dry_run=False,
-        max_iterations=6,
-    )
+    def implement_effect() -> None:
+        _run_python_script(script_path, project_root, feature_path)
+
+    with _with_opencode_implement_side_effect(implement_effect):
+        code = run_loop(
+            project_root=project_root,
+            feature_paths=[str(feature_path)],
+            gate_profile="loop_fast",
+            opencode_prompt=None,
+            skip_implement=False,
+            dry_run=False,
+            max_iterations=6,
+        )
 
     assert code == 0
     runs = _read_runs(project_root)
@@ -2328,7 +2528,6 @@ def test_run_loop_reports_invalid_feature_path(tmp_path: Path, capsys: Any) -> N
         project_root=project_root,
         feature_paths=[str(project_root / "missing.yaml")],
         gate_profile="loop_fast",
-        implement_command=None,
         opencode_prompt=None,
         skip_implement=True,
         dry_run=False,
@@ -2393,7 +2592,6 @@ def test_commit_failure_feedback_still_injected_into_next_prompt(
         project_root=project_root,
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
-        implement_command=None,
         opencode_prompt=None,
         skip_implement=False,
         dry_run=False,
@@ -2482,7 +2680,6 @@ def test_verification_failure_feedback_is_injected_into_next_prompt(
         project_root=project_root,
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
-        implement_command=None,
         opencode_prompt=None,
         skip_implement=False,
         dry_run=False,
@@ -2552,7 +2749,6 @@ def test_gate_failure_feedback_includes_fitness_remediation_guidance(
         project_root=project_root,
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
-        implement_command=None,
         opencode_prompt=None,
         skip_implement=False,
         dry_run=False,
@@ -2620,7 +2816,6 @@ def test_spec_validate_failure_feedback_round_trips_to_retry_prompt(
         project_root=project_root,
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
-        implement_command=None,
         opencode_prompt=None,
         skip_implement=False,
         dry_run=False,
@@ -2685,7 +2880,6 @@ def test_non_validation_gate_failure_feedback_round_trips_to_retry_prompt(
         project_root=project_root,
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
-        implement_command=None,
         opencode_prompt=None,
         skip_implement=False,
         dry_run=False,
@@ -2747,7 +2941,6 @@ def test_gate_failure_feedback_replaces_previous_feedback(
         project_root=project_root,
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
-        implement_command=None,
         opencode_prompt=None,
         skip_implement=False,
         dry_run=False,
@@ -2863,7 +3056,6 @@ def test_verification_failure_feedback_replaces_previous_feedback(
         project_root=project_root,
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
-        implement_command=None,
         opencode_prompt=None,
         skip_implement=False,
         dry_run=False,
@@ -2923,7 +3115,6 @@ def test_gate_failure_feedback_is_truncated_before_prompt_injection(
         project_root=project_root,
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
-        implement_command=None,
         opencode_prompt=None,
         skip_implement=False,
         dry_run=False,

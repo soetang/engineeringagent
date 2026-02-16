@@ -7,6 +7,7 @@ This file is generated from active manifest-declared fitness rules.
 | Rule ID | Severity | Adapter | Source | Scope | Summary |
 | --- | --- | --- | --- | --- | --- |
 | `architecture.dep-directionality` | error | command | custom | `src/engineeringagent` | Enforce core module import direction boundaries. |
+| `architecture.docs-allowlist-policy` | error | command | custom | `docs_root markdown (*.md) excluding docs_root/spec/**` | Require each docs_root markdown file to be listed in exactly one policy list. |
 | `architecture.harness-root-yaml-only` | error | command | custom | `harness/ (regular files at root)` | Enforce YAML-only regular files directly under harness root. |
 | `architecture.loop-facade-line-budget` | error | command | custom | `src/engineeringagent/loop.py` | Enforce a permanent line budget cap for the loop facade. |
 | `architecture.loop-subprocess-boundary` | error | command | custom | `src/engineeringagent` | Enforce subprocess allowlist boundaries for command adapters/clients. |
@@ -15,6 +16,8 @@ This file is generated from active manifest-declared fitness rules.
 | `architecture.no-stdlib-dataclasses-in-src` | error | command | custom | `src/engineeringagent` | Block stdlib dataclasses usage in production source models. |
 | `architecture.progress-log-path-locality` | error | command | custom | `src/engineeringagent` | Centralize loop progress artifact paths and writes behind approved helpers. |
 | `architecture.prompt-locality` | error | command | custom | `src/engineeringagent` | Keep canonical loop prompt content and template reads localized. |
+| `architecture.scaffold-docs-exact-sync` | error | command | custom | `docs and src/engineeringagent/scaffold_templates` | Enforce byte-for-byte sync between selected docs and scaffold templates. |
+| `architecture.scaffold-template-agents-doc-links` | error | command | custom | `src/engineeringagent/scaffold_templates/AGENTS.md` | Require scaffolded reference docs to be linked from scaffold AGENTS.md. |
 | `architecture.scaffold-template-locality` | error | command | custom | `src/engineeringagent` | Keep scaffold template payloads in scaffold_templates assets. |
 | `architecture.source-first-loop-command-policy` | error | command | custom | `docs/spec/features/*.yaml and harness/gates.yaml` | Enforce source-first workspace execution for loop command surfaces. |
 
@@ -26,6 +29,13 @@ This file is generated from active manifest-declared fitness rules.
 - Side-effect free: `true`
 - Rationale: Keeps orchestration and contracts layered for reviewability.
 - Remediation: Refactor imports to follow the declared architecture boundaries.
+
+### `architecture.docs-allowlist-policy`
+
+- Name: Docs allowlist policy
+- Side-effect free: `true`
+- Rationale: Keeps docs additions explicit and reviewable by classifying each file as human-facing or agent-facing.
+- Remediation: Add every docs markdown file to exactly one of human_docs or agent_docs in harness/scaffold_policy.yaml.
 
 ### `architecture.harness-root-yaml-only`
 
@@ -82,6 +92,20 @@ This file is generated from active manifest-declared fitness rules.
 - Side-effect free: `true`
 - Rationale: Prevents prompt drift and duplicate canonical wording across modules.
 - Remediation: Move canonical prompt text and template reads to engineeringagent.prompts templates/renderer modules.
+
+### `architecture.scaffold-docs-exact-sync`
+
+- Name: Scaffold docs exact sync
+- Side-effect free: `true`
+- Rationale: Prevents drift between canonical docs/ and init scaffold templates.
+- Remediation: Update scaffold template files to match canonical docs per harness/scaffold_policy.yaml.
+
+### `architecture.scaffold-template-agents-doc-links`
+
+- Name: Scaffold template AGENTS doc links
+- Side-effect free: `true`
+- Rationale: Keeps scaffolded reference docs discoverable and prevents drift between what init scaffolds and what AGENTS.md points users to.
+- Remediation: Add missing links and short descriptions for each scaffolded reference doc in src/engineeringagent/scaffold_templates/AGENTS.md.
 
 ### `architecture.scaffold-template-locality`
 

@@ -41,7 +41,6 @@ class IterationPipelineDependencies(BaseModel):
             Path,
             dict[str, Any],
             Path,
-            str | None,
             bool,
             str | None,
             bool,
@@ -166,7 +165,13 @@ def _timed_phase(
     return result
 
 
-def _record_implement_command_timing(
+def _default_implement_step_label() -> str:
+    from engineeringagent.opencode.client import DEFAULT_OPENCODE_AGENT
+
+    return f"opencode run --agent {DEFAULT_OPENCODE_AGENT}"
+
+
+def _record_implement_timing(
     state: _PipelineState,
     iteration_inputs: FeatureIterationInputs,
     started_epoch_sec: int,
@@ -177,17 +182,11 @@ def _record_implement_command_timing(
     if iteration_inputs.skip_implement:
         return
 
-    command = iteration_inputs.implement_command
-    if command is None:
-        from engineeringagent.opencode.client import DEFAULT_OPENCODE_AGENT
-
-        command = f"opencode run --agent {DEFAULT_OPENCODE_AGENT}"
-
     duration_sec = max(0, ended_epoch_sec - started_epoch_sec)
     state.command_timings.append(
         CommandTiming(
             phase="implement",
-            command=command,
+            command=_default_implement_step_label(),
             started_at=utc_iso_from_epoch_sec(started_epoch_sec),
             ended_at=utc_iso_from_epoch_sec(ended_epoch_sec),
             duration_sec=duration_sec,
@@ -304,7 +303,6 @@ def _run_implement_phase_if_ready(
         iteration_inputs.project_root,
         feature,
         iteration_inputs.feature_path,
-        iteration_inputs.implement_command,
         iteration_inputs.skip_implement,
         iteration_inputs.hook_feedback,
         iteration_inputs.verbose_output,
@@ -549,7 +547,7 @@ def run_feature_iteration_pipeline(
     feature_id = str(feature.get("id", "")) if feature else ""
 
     def _implement_timing_hook(started_epoch_sec: int, ended_epoch_sec: int) -> None:
-        _record_implement_command_timing(
+        _record_implement_timing(
             state,
             iteration_inputs,
             started_epoch_sec,
@@ -656,11 +654,10 @@ def run_feature_iteration_pipeline(
         telemetry_inputs,
         git_head_resolver=dependencies.git_head_resolver,
     )
-    implement_step = (
-        "skip_implement=true (gates-only mode)"
-        if iteration_inputs.skip_implement
-        else (iteration_inputs.implement_command or "default opencode implement step")
-    )
+    if iteration_inputs.skip_implement:
+        implement_step = "skip_implement=true (gates-only mode)"
+    else:
+        implement_step = _default_implement_step_label()
     archived_selection_path = (
         str(state.archived_path)
         if loaded_post_from_archive and state.archived_path is not None

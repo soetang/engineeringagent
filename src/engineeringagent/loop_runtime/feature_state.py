@@ -100,6 +100,18 @@ def _pending_features(
     return pending
 
 
+def _done_features_pending_archive(
+    feature_paths: Sequence[Path],
+) -> list[tuple[Path, dict[str, Any]]]:
+    done_features: list[tuple[Path, dict[str, Any]]] = []
+    for feature_path in feature_paths:
+        feature = load_yaml(feature_path)
+        if feature.get("status") != "done":
+            continue
+        done_features.append((feature_path, feature))
+    return done_features
+
+
 def _resolve_archive_path(project_root: Path, feature_path: Path) -> Path:
     active_dir, done_dir = _resolve_spec_directories(project_root)
     resolved_feature = feature_path.resolve()

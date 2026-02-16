@@ -147,7 +147,6 @@ def test_loop_runs_opencode_integration(tmp_path: Path) -> None:
         project_root=project_root,
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
-        implement_command=None,
         opencode_prompt="Reply READY.",
         skip_implement=False,
         dry_run=False,
@@ -226,7 +225,6 @@ def test_loop_reports_permission_rejection_in_run_telemetry(
             )
         ],
         gate_profile="loop_fast",
-        implement_command=None,
         opencode_prompt="Run exactly: git status --short.",
         skip_implement=False,
         dry_run=False,
@@ -275,35 +273,17 @@ def test_run_loop_permission_precheck_applies_only_to_default_implement_mode(
 
     monkeypatch.setattr(loop_module, "run_permission_probe", fake_run_permission_probe)
 
-    set_done_script = _write_set_done_script(
-        tmp_path.parent / f"{tmp_path.name}-default-mode-set-done.py"
-    )
-
     default_mode_code = run_loop(
         project_root=project_root,
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
-        implement_command=None,
         opencode_prompt=None,
         skip_implement=False,
         dry_run=False,
         max_iterations=1,
     )
 
-    custom_command_code = run_loop(
-        project_root=project_root,
-        feature_paths=[str(feature_path)],
-        gate_profile="loop_fast",
-        implement_command=(f'"{sys.executable}" "{set_done_script}" "{feature_path}"'),
-        opencode_prompt=None,
-        skip_implement=False,
-        dry_run=False,
-        allow_dirty=True,
-        max_iterations=3,
-    )
-
     assert default_mode_code == 1
-    assert custom_command_code == 0
     assert precheck_calls == [project_root]
 
 
@@ -329,7 +309,6 @@ def test_run_loop_exits_before_selection_when_permission_precheck_fails(
         project_root=project_root,
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
-        implement_command=None,
         opencode_prompt=None,
         skip_implement=False,
         dry_run=False,
@@ -368,7 +347,6 @@ def test_run_loop_skips_permission_precheck_with_skip_implement(
         project_root=project_root,
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
-        implement_command=None,
         opencode_prompt=None,
         skip_implement=True,
         dry_run=False,
@@ -379,41 +357,6 @@ def test_run_loop_skips_permission_precheck_with_skip_implement(
     assert precheck_called is False
     runs = (project_root / "progress" / "runs.jsonl").read_text(encoding="utf-8")
     assert len(runs.splitlines()) == 1
-
-
-def test_run_loop_skips_permission_precheck_with_custom_implement_command(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    project_root, feature_path = _make_project_root(tmp_path)
-    _init_git_repo(project_root)
-
-    precheck_called = False
-
-    def fail_if_prechecked(_: Path) -> PermissionProbeResult:
-        nonlocal precheck_called
-        precheck_called = True
-        raise AssertionError("permission precheck should be skipped")
-
-    monkeypatch.setattr(loop_module, "run_permission_probe", fail_if_prechecked)
-
-    set_done_script = _write_set_done_script(
-        tmp_path.parent / f"{tmp_path.name}-custom-command-set-done.py"
-    )
-
-    code = run_loop(
-        project_root=project_root,
-        feature_paths=[str(feature_path)],
-        gate_profile="loop_fast",
-        implement_command=f'"{sys.executable}" "{set_done_script}" "{feature_path}"',
-        opencode_prompt=None,
-        skip_implement=False,
-        dry_run=False,
-        max_iterations=3,
-    )
-
-    assert code == 0
-    assert precheck_called is False
 
 
 def test_run_loop_permission_precheck_failure_prints_remediation_hint(
@@ -440,7 +383,6 @@ def test_run_loop_permission_precheck_failure_prints_remediation_hint(
         project_root=project_root,
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
-        implement_command=None,
         opencode_prompt=None,
         skip_implement=False,
         dry_run=False,
@@ -456,7 +398,7 @@ def test_run_loop_permission_precheck_failure_prints_remediation_hint(
     assert ".opencode/agents/engineeringagent.md" in output
     assert ".opencode/agents/build.md" not in output
     assert "--skip-implement" in output
-    assert "--implement-command" in output
+    assert "--implement-command" not in output
     assert build_agent_path.read_text(encoding="utf-8") == original_build_agent
 
 
@@ -491,7 +433,6 @@ def test_run_loop_permission_precheck_pass_prints_bypass_hint_and_log_locations(
         project_root=project_root,
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
-        implement_command=None,
         opencode_prompt=None,
         skip_implement=False,
         dry_run=False,
@@ -503,7 +444,7 @@ def test_run_loop_permission_precheck_pass_prints_bypass_hint_and_log_locations(
     assert code == 1
     assert "Running pre-run OpenCode permission precheck" in output
     assert "--skip-implement" in output
-    assert "--implement-command" in output
+    assert "--implement-command" not in output
     assert "progress/runs.jsonl" in output
     assert "progress/run-feature-" in output
 
@@ -580,7 +521,6 @@ def test_gate_failure_feedback_round_trips_to_retry_prompt_integration(
         project_root=project_root,
         feature_paths=[str(feature_path)],
         gate_profile="loop_fast",
-        implement_command=None,
         opencode_prompt=None,
         skip_implement=False,
         dry_run=False,
@@ -657,11 +597,48 @@ def test_loop_archived_done_requires_same_iteration_completion_commit(
         encoding="utf-8",
     )
 
+    def fake_run_permission_probe(_: Path) -> PermissionProbeResult:
+        return PermissionProbeResult(ok=True, reason="ok", returncode=0, output="")
+
+    def fake_start_agent(
+        project_root: Path,
+        prompt: str,
+        *,
+        agent: str = "build",
+        capture_output: bool = True,
+        text: bool = True,
+    ) -> subprocess.CompletedProcess[str]:
+        del agent, capture_output, text
+
+        if "Choose the next feature spec to execute" in prompt:
+            return subprocess.CompletedProcess(
+                ["opencode", "run", "--agent", "engineeringagent", "<prompt>"],
+                0,
+                stdout=str(feature_path),
+                stderr="",
+            )
+
+        del prompt
+        subprocess.run(
+            [sys.executable, str(script_path), str(project_root)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        return subprocess.CompletedProcess(
+            ["opencode", "run", "--agent", "engineeringagent", "<prompt>"],
+            0,
+            stdout="ok\n",
+            stderr="",
+        )
+
+    monkeypatch.setattr(loop_module, "run_permission_probe", fake_run_permission_probe)
+    monkeypatch.setattr(loop_module, "start_agent", fake_start_agent)
+
     code = run_loop(
         project_root=project_root,
         feature_paths=[],
         gate_profile="loop_fast",
-        implement_command=f'"{sys.executable}" "{script_path}" "{project_root}"',
         opencode_prompt=None,
         skip_implement=False,
         dry_run=False,

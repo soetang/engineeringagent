@@ -52,7 +52,6 @@ class ImplementStepInputs(BaseModel):
     project_root: Path
     feature: dict[str, Any]
     feature_path: Path
-    implement_command: str | None
     skip_implement: bool
     hook_feedback: str | None
     verbose_output: bool
@@ -64,7 +63,6 @@ class FeatureIterationInputs(BaseModel):
     project_root: Path
     feature_path: Path
     gate_profile: str
-    implement_command: str | None
     skip_implement: bool
     attempt: int
     hook_feedback: str | None

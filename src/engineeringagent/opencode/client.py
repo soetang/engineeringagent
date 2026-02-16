@@ -53,11 +53,11 @@ def run_shell_command(
     capture_output: bool = True,
     text: bool = True,
 ) -> subprocess.CompletedProcess[str]:
-    """Run a custom implement shell command from loop orchestration.
+    """Run a shell command from loop orchestration.
 
     Args:
         project_root: Repository root used as command working directory.
-        command: Shell command string passed by loop implement override.
+        command: Shell command string to execute.
         capture_output: Whether to capture stdout/stderr.
         text: Whether command streams are decoded as text.
 

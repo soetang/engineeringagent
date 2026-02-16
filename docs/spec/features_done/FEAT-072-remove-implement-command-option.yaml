@@ -1,0 +1,197 @@
+id: FEAT-072
+title: Remove implement-command option and references
+type: chore
+expected_commit_subject: 'chore: remove implement-command option'
+status: done
+priority: medium
+objective: 'Simplify the loop runtime contract by removing the `engineeringagent run
+  implement-command`
+
+  implementation override.
+
+
+  After this change, the run loop either:
+
+  - runs the default OpenCode implement step (`opencode run --agent engineeringagent`),
+  or
+
+  - skips implementation via `--skip-implement` and only runs gates.
+
+  '
+context: 'Today, `engineeringagent run` supports a custom implementation override
+  via
+
+  `implement-command <cmd>`. This exists primarily as an escape hatch when OpenCode
+  is
+
+  not installed/configured, or when operators want to run a different implementation
+  tool.
+
+
+  This extra execution mode expands the public CLI surface area and introduces a separate
+
+  runtime path (shell execution) with its own failure semantics. It also changes pre-run
+
+  readiness behavior: default OpenCode permission prechecks are bypassed when using
+
+  `implement-command`.
+
+
+  We want to standardize on a single implementation mechanism (OpenCode) and treat
+
+  `--skip-implement` as the only supported bypass.
+
+
+  Scope note: keep historical references in archived feature specs (`docs/spec/features_done/*`)
+
+  intact; remove the option and references from active code and user-facing documentation.
+
+  '
+constraints:
+- Remove the `implement-command` option from `engineeringagent run`.
+- Remove all internal plumbing for `implement_command` across loop runtime models,
+  configuration structures, and phase wiring.
+- Remove the custom-implement shell execution path; implement step must be OpenCode-only
+  unless `--skip-implement` is set.
+- Permission precheck behavior must remain fail-fast for default OpenCode implement
+  mode, and the only supported bypass must be `--skip-implement`.
+- Update user-facing documentation and help/error text to remove references to `implement-command`.
+- Update non-archived in-repo specs/docs that reference `implement-command` (for example
+  active specs under `docs/spec/features/`), except for archived specs under `docs/spec/features_done/`.
+- Update tests that depend on `implement-command` or `implement_command` plumbing,
+  including CLI help/option assertions, loop contract signature assertions, and loop
+  runtime integration tests.
+- Update Ralph-mode tests that currently rely on `implement_command` as a deterministic
+  fake implementer to instead stub the OpenCode client seam (e.g. `start_agent`).
+- Simplify implement-step presentation/telemetry so output no longer branches on a
+  custom implement-command descriptor.
+- Do not edit archived specs under `docs/spec/features_done/` as part of this change.
+- Preserve existing `--skip-implement` behavior and gate-only workflows.
+implementation_notes: "Contract/API deltas for this feature are explicit:\n\n- Surface:\
+  \ `engineeringagent run` CLI options.\n  - Old behavior: supports `implement-command\
+  \ <cmd>` to run a custom shell command for\n    the implement step.\n  - New behavior:\
+  \ `implement-command` is removed; implement step uses OpenCode only.\n\n- Surface:\
+  \ loop runtime data models and implement runtime helpers.\n  - Old behavior: `implement_command`\
+  \ is threaded through iteration inputs and enables a\n    custom shell execution\
+  \ path.\n  - New behavior: `implement_command` is removed from models and wiring;\
+  \ the implement\n    step either runs OpenCode or is skipped.\n\nCompatibility policy:\n\
+  - This is an intentional breaking change for operators relying on custom implementation\n\
+  \  commands.\n- Migration guidance should direct non-OpenCode users to install/configure\
+  \ OpenCode or use\n  `--skip-implement` (gate-only mode).\n"
+acceptance:
+- '`engineeringagent run --help` no longer mentions `implement-command`.'
+- Passing `implement-command` to `engineeringagent run` fails with an unknown-option
+  style error and a non-zero exit code.
+- Loop runtime models and configuration no longer contain an `implement_command` field.
+- The implement phase has no custom-shell-command path; it is OpenCode-only unless
+  skipped.
+- Pre-run OpenCode permission precheck messaging no longer references `implement-command`;
+  `--skip-implement` remains the only documented bypass.
+- User-facing docs (including `README.md`) no longer mention `implement-command`.
+- A repository search for `implement-command` returns no matches outside `docs/spec/features_done/`.
+- A repository search for `implement_command` returns no matches in `src/`.
+- '`uv run pytest -q` and `uv run python -m engineeringagent.cli validate` pass.'
+subtasks:
+- id: ST-001
+  title: Remove CLI option and loop wiring for implement-command
+  status: done
+  context: 'Remove the `implement-command` option from `src/engineeringagent/cli.py`
+    and delete
+
+    all runtime plumbing that threads `implement_command` through selection/iteration
+
+    configuration and models.
+
+    '
+  verification:
+  - uv run python -m engineeringagent.cli run --help
+  - uv run pytest -q tests/test_cli.py
+- id: ST-002
+  title: Remove custom implement execution path and update permission precheck text
+  status: done
+  context: 'Delete the custom implement-command execution branch from
+
+    `src/engineeringagent/loop_runtime/implement.py` and adjust permission precheck
+
+    signatures and remediation hints to reference `--skip-implement` only.
+
+    '
+  verification:
+  - uv run pytest -q tests/test_loop_opencode_integration.py
+- id: ST-003
+  title: Remove docs and active-spec references
+  status: done
+  context: 'Update `README.md` (and any other non-archived user-facing docs/help text)
+    to remove
+
+    guidance that suggests `implement-command` as a supported execution mode.
+
+
+    Also remove references from other active specs under `docs/spec/features/` so
+    the
+
+    active contract narrative matches the new CLI surface.
+
+    '
+  verification:
+  - uv run python -m engineeringagent.cli validate
+  - uv run pytest -q tests/test_repo_readme_process_reviewer_activation.py tests/test_spec_writing_reference_doc.py
+- id: ST-004
+  title: Update tests and remove implement-command assumptions
+  status: done
+  context: "Update the test suite to remove dependencies on `implement-command` and\n\
+    `implement_command` runtime wiring.\n\nExpected touchpoints include:\n- CLI option/help\
+    \ assertions (e.g. `tests/test_cli.py`).\n- Loop contract signature assertions\
+    \ (e.g. `tests/test_loop_contracts.py`).\n- Permission precheck messaging tests\
+    \ (e.g. `tests/test_loop_opencode_integration.py`).\n- Ralph-mode tests that used\
+    \ custom implement commands as a fake implementer\n  (e.g. `tests/test_loop_ralph_mode.py`),\
+    \ replacing that seam with OpenCode client\n  stubbing (e.g. patch `engineeringagent.opencode.client.start_agent`).\n"
+  verification:
+  - uv run pytest -q tests/test_cli.py tests/test_loop_contracts.py
+  - uv run pytest -q tests/test_loop_opencode_integration.py tests/test_loop_ralph_mode.py
+  - uv run python -c "from pathlib import Path; import sys; src = Path('src'); hits
+    = [str(path) for path in src.rglob('*') if path.is_file() and 'implement_command'
+    in path.read_text(encoding='utf-8', errors='ignore')]; print('\\n'.join(hits));
+    sys.exit(1 if hits else 0)"
+  attempts: 3
+  last_error: null
+- id: ST-005
+  title: Run full regression and ensure gates remain viable
+  status: done
+  context: 'Ensure tests and validation pass after removing the option.
+
+    '
+  verification:
+  - uv run pytest -q
+  - uv run python -m engineeringagent.cli validate
+  attempts: 3
+  last_error: null
+- id: ST-006
+  title: Align gates-only done-spec completion/archive handling
+  status: done
+  context: 'When `--skip-implement` is used and a selected active spec is already
+    `status: done`, run-loop behavior should not silently treat it as "done and committed"
+    while leaving the file under `docs/spec/features/`.
+
+    Process that done active spec through archive + completion commit so subsequent
+    run messaging and validation state are consistent.
+
+    '
+  verification:
+  - uv run pytest -q tests/test_loop_ralph_mode.py::test_run_loop_skip_implement_archives_done_active_feature
+  attempts: 1
+  last_error: null
+- id: ST-007
+  title: Apply follow-up simplifications from code review
+  status: done
+  context: 'Address reviewer simplification feedback by removing dead helper code,
+    consolidating repeated Python script execution boilerplate in Ralph-mode tests,
+    and deduplicating the default implement-step label builder used by runtime timing
+    and summary output.
+
+    '
+  verification:
+  - uv run pytest -q tests/test_loop_ralph_mode.py tests/test_loop_runtime_iteration.py
+  attempts: 1
+  last_error: null
+updated_at: '2026-02-16T04:13:45Z'

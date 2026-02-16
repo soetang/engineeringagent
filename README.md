@@ -87,28 +87,24 @@ Primary flow: `feature spec -> run loop`.
 
 1. First non-dry run (gates-only, no OpenCode required).
 
-     ```bash
-     uvx engineeringagent run docs/spec/features/FEAT-001-example.yaml --skip-implement
-     ```
-
-1. Run for real (implementation + gates) by removing `--skip-implement`.
-
    Before the first non-dry `engineeringagent run`, either commit the scaffold/spec changes or pass `--allow-dirty`.
 
    Note: a non-dry `run` mutates your feature YAML in place (status/subtask updates,
    updated_at) and writes progress logs under `progress/`.
 
-    OpenCode mode (default):
+      ```bash
+      uvx engineeringagent run docs/spec/features/FEAT-001-example.yaml --skip-implement --allow-dirty
+      ```
 
-    ```bash
-    uvx engineeringagent run docs/spec/features/FEAT-001-example.yaml
-    ```
+1. Run for real (implementation + gates) by removing `--skip-implement`.
 
-    If you do not have OpenCode installed/configured, provide your own implementation runner:
+     OpenCode mode (default):
 
-    ```bash
-    uvx engineeringagent run docs/spec/features/FEAT-001-example.yaml --implement-command "bash ./scripts/implement.sh"
-    ```
+     ```bash
+     uvx engineeringagent run docs/spec/features/FEAT-001-example.yaml --allow-dirty
+     ```
+
+     If you do not have OpenCode installed/configured yet, run gates-only with `--skip-implement`.
 
     Note: `--skip-implement` is gates-only; it will not perform implementation.
 
@@ -178,11 +174,11 @@ the git diff before committing anything produced by `init`.
 
 ## OpenCode default agent contract
 
-- By default, `engineeringagent run` shells out to `opencode build-agent run` for the
-  implementation step.
+- By default, `engineeringagent run` shells out to `opencode run --agent engineeringagent`
+  for the implementation step.
 - Your repo must have OpenCode available and configured, including an agent prompt
   like `.opencode/agents/engineeringagent.md`.
-- If you are not using OpenCode, use `--implement-command <cmd>` (or `--skip-implement`).
+- If you are not using OpenCode, use `--skip-implement` to run gates only.
 
 ## Human docs vs agent docs
 

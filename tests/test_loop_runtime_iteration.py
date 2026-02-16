@@ -32,7 +32,6 @@ def test_iteration_pipeline_carries_passed_reviewer_feedback_to_retry(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-065.yaml",
         gate_profile="loop_fast",
-        implement_command=None,
         skip_implement=False,
         attempt=1,
         hook_feedback=None,
@@ -180,7 +179,6 @@ def test_iteration_pipeline_records_phase_timings(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-065.yaml",
         gate_profile="loop_fast",
-        implement_command=None,
         skip_implement=False,
         attempt=1,
         hook_feedback=None,
@@ -299,12 +297,12 @@ def test_iteration_pipeline_records_phase_timings(
         "completion_commit",
     ]
     assert len(telemetry_inputs.command_timings) == 1
-    implement_command = telemetry_inputs.command_timings[0]
-    assert implement_command.phase == "implement"
-    assert implement_command.command.startswith("opencode run --agent")
-    assert implement_command.started_at == "1970-01-01T00:16:43Z"
-    assert implement_command.ended_at == "1970-01-01T00:16:48Z"
-    assert implement_command.duration_sec == 5
+    implement_timing = telemetry_inputs.command_timings[0]
+    assert implement_timing.phase == "implement"
+    assert implement_timing.command.startswith("opencode run --agent")
+    assert implement_timing.started_at == "1970-01-01T00:16:43Z"
+    assert implement_timing.ended_at == "1970-01-01T00:16:48Z"
+    assert implement_timing.duration_sec == 5
     duration_by_phase = {
         timing.phase: timing.duration_sec for timing in telemetry_inputs.phase_timings
     }

@@ -83,7 +83,6 @@ def test_cli_surface_inventory_option_spellings() -> None:
             ["run", "--help"],
             [
                 "--all",
-                "--implement-command",
                 "--skip-implement",
                 "--dry-run",
                 "--max-iterations",
@@ -109,6 +108,23 @@ def test_cli_surface_inventory_option_spellings() -> None:
         assert "--help" in result.stdout
         for option in expected_options:
             assert option in result.stdout
+
+
+def test_run_help_does_not_advertise_implement_command() -> None:
+    result = _invoke_cli(["run", "--help"])
+    stdout = result.stdout
+
+    assert result.exit_code == 0
+    assert "--implement-command" not in stdout
+    assert "skip implementation and run gates only" in stdout
+    assert "skip the implementation command" not in stdout
+
+
+def test_run_rejects_implement_command_option() -> None:
+    result = _invoke_cli(["run", "--implement-command", "echo hi"])
+
+    assert result.exit_code != 0
+    assert "--implement-command" in (result.stderr or result.stdout)
 
 
 def test_fitness_subcommands(tmp_path: Path, capsys: Any) -> None:

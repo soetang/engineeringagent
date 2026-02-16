@@ -172,6 +172,26 @@
         }
       }
     },
+    "FEAT-072": {
+      "advisory_followup_required": false,
+      "advisory_followup_updated_at": "2026-02-16T04:13:53Z",
+      "reviewers": {
+        "code_simplifier": {
+          "approved": true,
+          "approved_at": "2026-02-16T04:15:08Z",
+          "blocking_request_changes_count": 0,
+          "blocking_retry_updated_at": "2026-02-16T04:15:08Z"
+        },
+        "readme_process": {
+          "approved": true,
+          "approved_at": "2026-02-16T04:23:53Z",
+          "blocking_request_changes_count": 0,
+          "blocking_retry_updated_at": "2026-02-16T04:23:53Z",
+          "invalidated_at": "2026-02-16T04:15:08Z",
+          "updated_at": "2026-02-16T03:34:04Z"
+        }
+      }
+    },
     "FEAT-073": {
       "advisory_followup_required": false,
       "advisory_followup_updated_at": "2026-02-15T21:40:45Z",
