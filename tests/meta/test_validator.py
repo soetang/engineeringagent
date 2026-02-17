@@ -1223,6 +1223,364 @@ def test_validate_accepts_command_fitness_manifest_references(tmp_path: Path) ->
     assert messages == []
 
 
+def test_validate_rejects_filename_frontmatter_id_mismatch_active_and_done(
+    tmp_path: Path,
+) -> None:
+    project_root = tmp_path
+    features_dir = project_root / "docs" / "spec" / "features"
+    features_done_dir = project_root / "docs" / "spec" / "features_done"
+    features_dir.mkdir(parents=True, exist_ok=True)
+    features_done_dir.mkdir(parents=True, exist_ok=True)
+
+    (features_dir / "FEAT-002-mismatch.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "id": "FEAT-001",
+                "title": "Active filename mismatch",
+                "type": "feature",
+                "expected_commit_subject": "feat: active filename mismatch",
+                "status": "backlog",
+                "priority": "high",
+                "objective": "Reject filename/frontmatter id drift.",
+                "acceptance": ["Validator rejects mismatched filename ids."],
+                "subtasks": [
+                    {
+                        "id": "ST-001",
+                        "title": "Stub",
+                        "status": "backlog",
+                        "verification": ["true"],
+                    }
+                ],
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    (features_done_dir / "FEAT-004-mismatch.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "id": "FEAT-003",
+                "title": "Done filename mismatch",
+                "status": "done",
+                "priority": "high",
+                "objective": "Reject filename/frontmatter id drift for done specs.",
+                "acceptance": ["Validator rejects mismatched filename ids."],
+                "subtasks": [
+                    {
+                        "id": "ST-001",
+                        "title": "Already complete",
+                        "status": "done",
+                        "verification": ["true"],
+                    }
+                ],
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    messages = validate(project_root=project_root)
+
+    assert any(
+        "FEAT-002-mismatch.yaml:id: filename id token FEAT-002 does not match frontmatter id FEAT-001"
+        in message
+        for message in messages
+    )
+    assert any(
+        "FEAT-004-mismatch.yaml:id: filename id token FEAT-004 does not match frontmatter id FEAT-003"
+        in message
+        for message in messages
+    )
+
+
+def test_validate_rejects_duplicate_feature_ids_in_active_specs_without_opt_out(
+    tmp_path: Path,
+) -> None:
+    project_root = tmp_path
+    features_dir = project_root / "docs" / "spec" / "features"
+    features_dir.mkdir(parents=True, exist_ok=True)
+
+    payload = {
+        "id": "FEAT-010",
+        "title": "Duplicate active id",
+        "type": "feature",
+        "expected_commit_subject": "feat: duplicate active id",
+        "status": "backlog",
+        "priority": "high",
+        "objective": "Reject overlapping active feature ids.",
+        "acceptance": ["Validator rejects duplicate feature ids."],
+        "subtasks": [
+            {
+                "id": "ST-001",
+                "title": "Stub",
+                "status": "backlog",
+                "verification": ["true"],
+            }
+        ],
+    }
+
+    (features_dir / "FEAT-010-a.yaml").write_text(
+        yaml.safe_dump(payload, sort_keys=False),
+        encoding="utf-8",
+    )
+    (features_dir / "FEAT-010-b.yaml").write_text(
+        yaml.safe_dump(payload, sort_keys=False),
+        encoding="utf-8",
+    )
+
+    messages = validate(project_root=project_root)
+
+    assert any("duplicate base feature id" in message for message in messages)
+    assert all(
+        "allow-duplicate-done-base-ids-below" not in message for message in messages
+    )
+
+
+def test_validate_rejects_duplicate_feature_ids_in_done_specs_by_default_with_opt_out_hint(
+    tmp_path: Path,
+) -> None:
+    project_root = tmp_path
+    features_done_dir = project_root / "docs" / "spec" / "features_done"
+    features_done_dir.mkdir(parents=True, exist_ok=True)
+
+    payload = {
+        "id": "FEAT-050",
+        "title": "Duplicate done id",
+        "status": "done",
+        "priority": "high",
+        "objective": "Reject overlapping done feature ids by default.",
+        "acceptance": ["Validator rejects duplicate done ids by default."],
+        "subtasks": [
+            {
+                "id": "ST-001",
+                "title": "Already complete",
+                "status": "done",
+                "verification": ["true"],
+            }
+        ],
+    }
+
+    (features_done_dir / "FEAT-050-one.yaml").write_text(
+        yaml.safe_dump(payload, sort_keys=False),
+        encoding="utf-8",
+    )
+    (features_done_dir / "FEAT-050-two.yaml").write_text(
+        yaml.safe_dump(payload, sort_keys=False),
+        encoding="utf-8",
+    )
+
+    messages = validate(project_root=project_root)
+
+    assert any("duplicate base feature id" in message for message in messages)
+    assert any(
+        "allow-duplicate-done-base-ids-below" in message
+        and "[tool.engineeringagent.specs]" in message
+        for message in messages
+    )
+
+
+def test_validate_allows_duplicate_done_ids_below_threshold_when_configured(
+    tmp_path: Path,
+) -> None:
+    project_root = tmp_path
+    (project_root / "pyproject.toml").write_text(
+        "\n".join(
+            [
+                "[tool.engineeringagent.specs]",
+                "allow-duplicate-done-base-ids-below = 100",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    features_done_dir = project_root / "docs" / "spec" / "features_done"
+    features_done_dir.mkdir(parents=True, exist_ok=True)
+
+    payload = {
+        "id": "FEAT-050",
+        "title": "Duplicate done id",
+        "status": "done",
+        "priority": "high",
+        "objective": "Allow legacy duplicate done ids below threshold.",
+        "acceptance": ["Validator allows duplicates below threshold."],
+        "subtasks": [
+            {
+                "id": "ST-001",
+                "title": "Already complete",
+                "status": "done",
+                "verification": ["true"],
+            }
+        ],
+    }
+
+    (features_done_dir / "FEAT-050-one.yaml").write_text(
+        yaml.safe_dump(payload, sort_keys=False),
+        encoding="utf-8",
+    )
+    (features_done_dir / "FEAT-050-two.yaml").write_text(
+        yaml.safe_dump(payload, sort_keys=False),
+        encoding="utf-8",
+    )
+
+    assert validate(project_root=project_root) == []
+
+
+def test_validate_reports_filename_id_token_extraction_failure(tmp_path: Path) -> None:
+    project_root = tmp_path
+    features_dir = project_root / "docs" / "spec" / "features"
+    features_dir.mkdir(parents=True, exist_ok=True)
+
+    (features_dir / "FEAT999.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "id": "FEAT-999",
+                "title": "Bad filename token",
+                "type": "feature",
+                "expected_commit_subject": "feat: bad filename token",
+                "status": "backlog",
+                "priority": "high",
+                "objective": "Force filename token extraction failure.",
+                "acceptance": ["Validator reports filename token extraction failure."],
+                "subtasks": [
+                    {
+                        "id": "ST-001",
+                        "title": "Stub",
+                        "status": "backlog",
+                        "verification": ["true"],
+                    }
+                ],
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    messages = validate(project_root=project_root)
+
+    assert any(
+        "FEAT999.yaml:id: failed to extract filename id token" in message
+        for message in messages
+    )
+
+
+def test_validate_rejects_duplicate_feature_id_across_active_and_done_specs(
+    tmp_path: Path,
+) -> None:
+    project_root = tmp_path
+    features_dir = project_root / "docs" / "spec" / "features"
+    features_done_dir = project_root / "docs" / "spec" / "features_done"
+    features_dir.mkdir(parents=True, exist_ok=True)
+    features_done_dir.mkdir(parents=True, exist_ok=True)
+
+    (features_dir / "FEAT-020-active.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "id": "FEAT-020",
+                "title": "Active",
+                "type": "feature",
+                "expected_commit_subject": "feat: active",
+                "status": "backlog",
+                "priority": "high",
+                "objective": "Create active/done collision.",
+                "acceptance": ["Validator rejects collisions involving active specs."],
+                "subtasks": [
+                    {
+                        "id": "ST-001",
+                        "title": "Stub",
+                        "status": "backlog",
+                        "verification": ["true"],
+                    }
+                ],
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    (features_done_dir / "FEAT-020-archived.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "id": "FEAT-020",
+                "title": "Archived",
+                "status": "done",
+                "priority": "high",
+                "objective": "Create active/done collision.",
+                "acceptance": ["Validator rejects collisions involving active specs."],
+                "subtasks": [
+                    {
+                        "id": "ST-001",
+                        "title": "Already complete",
+                        "status": "done",
+                        "verification": ["true"],
+                    }
+                ],
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    messages = validate(project_root=project_root)
+
+    assert any(
+        "across active and done specs" in message
+        and "duplicate base feature id" in message
+        for message in messages
+    )
+    assert all(
+        "allow-duplicate-done-base-ids-below" not in message for message in messages
+    )
+
+
+def test_validate_rejects_duplicate_done_ids_above_threshold_even_when_configured(
+    tmp_path: Path,
+) -> None:
+    project_root = tmp_path
+    (project_root / "pyproject.toml").write_text(
+        "\n".join(
+            [
+                "[tool.engineeringagent.specs]",
+                "allow-duplicate-done-base-ids-below = 100",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    features_done_dir = project_root / "docs" / "spec" / "features_done"
+    features_done_dir.mkdir(parents=True, exist_ok=True)
+
+    payload = {
+        "id": "FEAT-150",
+        "title": "Duplicate done id above threshold",
+        "status": "done",
+        "priority": "high",
+        "objective": "Ensure threshold does not allow higher ids.",
+        "acceptance": ["Validator rejects duplicates above threshold."],
+        "subtasks": [
+            {
+                "id": "ST-001",
+                "title": "Already complete",
+                "status": "done",
+                "verification": ["true"],
+            }
+        ],
+    }
+
+    (features_done_dir / "FEAT-150-one.yaml").write_text(
+        yaml.safe_dump(payload, sort_keys=False),
+        encoding="utf-8",
+    )
+    (features_done_dir / "FEAT-150-two.yaml").write_text(
+        yaml.safe_dump(payload, sort_keys=False),
+        encoding="utf-8",
+    )
+
+    messages = validate(project_root=project_root)
+    assert any("duplicate base feature id" in message for message in messages)
+    assert any("allow-duplicate-done-base-ids-below" in message for message in messages)
+
+
 def test_pytest_default_coverage_contract_is_declared(repo_root: Path) -> None:
     pyproject_payload = tomli.loads(
         (repo_root / "pyproject.toml").read_text(encoding="utf-8")

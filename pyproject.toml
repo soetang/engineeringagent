@@ -85,3 +85,6 @@ convention = "google"
 
 [tool.setuptools.project_urls]
 Source  = "https://github.com/soetang/engineeringagent"
+
+[tool.engineeringagent.specs]
+allow-duplicate-done-base-ids-below = 100
