@@ -19,21 +19,21 @@ Contributors (from the repository root):
 
 ```bash
 uv sync
-uv run python -m engineeringagent.cli validate
-uv run python -m engineeringagent.cli run --all --dry-run
+uv run engineeringagent validate
+uv run engineeringagent run --all --dry-run
 ```
 
 ## Daily Commands
 
-- Validate specs: `uv run python -m engineeringagent.cli validate`
-- Scaffold baseline harness files: `uv run python -m engineeringagent.cli init`
+- Validate specs: `uv run engineeringagent validate`
+- Scaffold baseline harness files: `uv run engineeringagent init`
 - Run Ruff checks (lint + docstrings): `uv run ruff check src/engineeringagent harness`
 - Run Pyright type checks: `uv run pyright src/engineeringagent tests harness`
 - Run pytest suite: `uv run pytest -q`
 - Default OpenCode loop agent policy: `.opencode/agents/engineeringagent.md` (required; scaffolded by `engineeringagent init`). `opencode.json` is optional legacy configuration.
-- CLI validate command: `uv run python -m engineeringagent.cli validate`
-- Loop dry-run command: `uv run python -m engineeringagent.cli run docs/spec/features/FEAT-004-ralph-loop-opencode-mode.yaml --dry-run`
-- Loop auto-discovery dry-run: `uv run python -m engineeringagent.cli run --all --dry-run`
+- CLI validate command: `uv run engineeringagent validate`
+- Loop dry-run command: `uv run engineeringagent run docs/spec/features/FEAT-004-ralph-loop-opencode-mode.yaml --dry-run`
+- Loop auto-discovery dry-run: `uv run engineeringagent run --all --dry-run`
 
 ## init Command Notes
 
@@ -61,7 +61,7 @@ uv run python -m engineeringagent.cli run --all --dry-run
 
 - Use `uvx engineeringagent ...` for package-consumer execution from PyPI.
 - Use `uvx engineeringagent@<version> ...` when you need version-pinned execution.
-- For contributor/source execution, prefer `uv run python -m engineeringagent.cli ...` to ensure you run workspace source.
+- For contributor/source execution, prefer `uv run engineeringagent ...` to ensure you run workspace source.
 - Keep `uv run ...` for direct tooling operations such as `pytest -q` or local Python modules.
 
 ### Init scaffold profile notes (slim pack)

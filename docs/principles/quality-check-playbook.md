@@ -22,12 +22,12 @@ Use this playbook as a practical default, then apply judgment based on risk.
 - Before commit or merge:
   - run the relevant direct tools (`uv run ruff ...`, `uv run pyright ...`, `uv run pytest ...`)
 - When editing feature specs or schema-related files:
-  - `uv run python -m engineeringagent.cli validate`
+  - `uv run engineeringagent validate`
 - When debugging a specific class of failure:
   - Ruff: `uv run ruff check src/engineeringagent harness`
   - Pyright: `uv run pyright src/engineeringagent tests harness`
   - Unit tests: `uv run pytest -q`
-  - Fitness functions: `uv run python -m engineeringagent.cli fitness run --format json`
+  - Fitness functions: `uv run engineeringagent fitness run --format json`
 
 ## How to Think About Fitness Functions
 

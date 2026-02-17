@@ -19,7 +19,7 @@ FEATURES_ROOT = Path("docs/spec/features")
 CHECKS_PATH = Path("harness/checks.yaml")
 REMEDIATION = (
     "replace with source-first workspace execution; prefer "
-    "`uv run python -m engineeringagent.cli ...`."
+    "`uv run engineeringagent ...`."
 )
 
 

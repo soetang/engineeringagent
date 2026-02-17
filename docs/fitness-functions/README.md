@@ -29,5 +29,5 @@ emit_result_envelope(...)
 Regenerate the catalog after rule metadata changes:
 
 ```bash
-uv run python -m engineeringagent.cli fitness catalog --format markdown --output docs/fitness-functions/rules.md
+uv run engineeringagent fitness catalog --format markdown --output docs/fitness-functions/rules.md
 ```

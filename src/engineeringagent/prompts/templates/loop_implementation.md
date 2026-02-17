@@ -9,5 +9,5 @@ Use a red-green-refactor TDD loop (red -> green -> refactor) when adding or chan
 
 Make minimal deterministic code/documentation edits, and keep CLI behavior unchanged unless the spec explicitly requires it.
 
-Update progress in the same feature YAML by setting relevant subtask/feature status fields and `updated_at`. Edits of the spec/feature should adhere to the feature-spec contract. Validate with: `uv run python -m engineeringagent.cli validate`.
+Update progress in the same feature YAML by setting relevant subtask/feature status fields and `updated_at`. Edits of the spec/feature should adhere to the feature-spec contract. Validate with: `uv run engineeringagent validate`.
 Run the chosen subtask's listed verification command(s) only after it transitions to done in this iteration, then report concise outcomes covering: what changed, which verification passed/failed, and what remains.

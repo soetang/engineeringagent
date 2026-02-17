@@ -1,0 +1,117 @@
+id: FEAT-089
+title: Prefer `uv run engineeringagent` for local (from-source) execution
+type: chore
+expected_commit_subject: 'chore: prefer uv run engineeringagent locally'
+status: done
+priority: medium
+objective: 'Replace local/from-source command guidance and in-repo gate commands that
+  currently
+
+  use `uv run python -m engineeringagent.cli ...` with `uv run engineeringagent ...`.
+
+
+  This repo already defines the `engineeringagent` console script entrypoint
+
+  (pyproject `[project.scripts]`). When the project is installed into the uv
+
+  environment (for example via `uv sync` or `uv pip install -e .`), we can run the
+
+  CLI directly without an explicit `python -m`.
+
+  '
+context: "Today the repository frequently documents and embeds commands like:\n\n\
+  - `uv run python -m engineeringagent.cli validate`\n- `uv run python -m engineeringagent.cli\
+  \ gates run --profile precommit`\n\nThis works, but it is noisier than needed when\
+  \ developing locally.\n\nWe want to keep the existing \u201Csource-first\u201D policy\
+  \ (avoid `uvx --from . ...` for\nloop-scoped command surfaces), while simplifying\
+  \ the preferred local command form\nto `uv run engineeringagent ...`.\n"
+constraints:
+- 'Do not change the PyPI/consumer guidance: keep `uvx engineeringagent ...` usage
+  for no-clone/package workflows.'
+- Do not remove support for `python -m engineeringagent.cli`; this is a preference
+  + docs/config update, not a breaking runtime removal.
+- 'Keep the in-repo source-first policy intact: continue to forbid `uvx --from . engineeringagent
+  ...` in loop-scoped command surfaces.'
+implementation_notes: "Contract/API delta (explicit):\n\n- Surface: local contributor\
+  \ command style.\n  - Old guidance/defaults: `uv run python -m engineeringagent.cli\
+  \ <command>`\n  - New guidance/defaults: `uv run engineeringagent <command>`\n\n\
+  Compatibility policy:\n- Backwards compatible: existing `uv run python -m engineeringagent.cli\
+  \ ...`\n  invocations still work.\n- We will update documentation, default gate\
+  \ config, and harness examples to\n  prefer the shorter form.\n\nNotes:\n- The `engineeringagent`\
+  \ console script is defined in `pyproject.toml`.\n- Verify that `uv run engineeringagent\
+  \ --help` works from a repo checkout.\n"
+acceptance:
+- '`harness/gates.yaml` uses `uv run engineeringagent ...` for engineeringagent CLI
+  invocations (validate/fitness/gates/etc.).'
+- Default gate config in `src/engineeringagent/gates.py` uses `uv run engineeringagent
+  ...` (keeps defaults aligned with harness examples).
+- Agent-facing docs and playbooks that currently recommend `uv run python -m engineeringagent.cli
+  ...` are updated to `uv run engineeringagent ...`.
+- Fitness rule remediation strings that mention `uv run python -m engineeringagent.cli
+  ...` are updated to `uv run engineeringagent ...` to match the new guidance.
+- Tests that assert the old command strings are updated and pass.
+- '`uv run engineeringagent validate` passes.'
+- '`uv run pytest -q` passes.'
+subtasks:
+- id: ST-001
+  title: Update repo gate/check invocations to call `uv run engineeringagent`
+  status: done
+  context: 'Update repo-owned check invocations and scaffold defaults to prefer `uv
+    run engineeringagent ...` over `uv run python -m engineeringagent.cli ...` for
+    local/from-source execution.
+
+
+    Primary touch points:
+
+    - `.pre-commit-config.yaml`
+
+    - `.github/workflows/ci.yaml`
+
+    - `src/engineeringagent/scaffold_templates/precommit.python_uv.yaml`
+
+    '
+  verification:
+  - uv run engineeringagent --help
+  - uv run pytest -q tests/cli/test_init_command.py
+- id: ST-002
+  title: Update local/from-source documentation to prefer `uv run engineeringagent`
+  status: done
+  context: "Update repo docs that describe contributor/local verification commands.\n\
+    \nExpected touch points include:\n- `AGENTS.md` verification quick reference\n\
+    - `docs/references/uv-llms.md`\n- `docs/principles/quality-check-playbook.md`\n\
+    - `docs/references/docs-architecture-llms.md` and its scaffold template\n  `src/engineeringagent/scaffold_templates/reference.docs-architecture-llms.md`\n\
+    - Any other agent-only references that embed the old form.\n"
+  verification:
+  - uv run pytest -q tests/meta/test_docs_prefer_uv_run_engineeringagent.py
+  - uv run pytest -q tests/fitness/test_fitness_rules_scaffold_docs_exact_sync.py
+  notes:
+  - Normalize Markdown list indentation in `docs/references/uv-llms.md`.
+- id: ST-003
+  title: Update fitness rule remediation strings and any policy text that references
+    the old form
+  status: done
+  context: "Update remediation strings so failures recommend the new local command\
+    \ style.\n\nExpected touch points include:\n- `harness/fitness-functions/check_source_first_loop_commands.py`\
+    \ REMEDIATION\n- `harness/fitness-functions/rules.yaml` rule remediation for\n\
+    \  `architecture.source-first-loop-command-policy`\n- `docs/fitness-functions/rules.md`\
+    \ (either update directly or regenerate via\n  the catalog generator if that is\
+    \ the established workflow)\n"
+  verification:
+  - uv run engineeringagent fitness run --format json
+  - uv run pytest -q tests/fitness/test_fitness_rules_source_first_loop_commands.py
+- id: ST-004
+  title: Align README and meta tests with the new local command style
+  status: done
+  context: 'Update README contributor/from-source guidance to use `uv run engineeringagent
+    ...`
+
+    (while keeping `uvx engineeringagent ...` for package usage).
+
+
+    Update meta tests that assert the exact README command strings.
+
+    '
+  verification:
+  - uv run pytest -q tests/meta/test_validator.py
+  - uv run engineeringagent --help
+updated_at: '2026-02-17T06:18:24Z'

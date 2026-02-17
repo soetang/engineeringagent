@@ -2754,7 +2754,7 @@ def test_gate_failure_feedback_includes_fitness_remediation_guidance(
 ) -> None:
     remediation = (
         "Replace forbidden in-repo uvx self-invocations with source-first forms; "
-        "prefer uv run python -m engineeringagent.cli ..."
+        "prefer uv run engineeringagent ..."
     )
     counter_path = tmp_path / ".check-attempt"
     check_script = tmp_path.parent / f"{tmp_path.name}-check-fail-once.py"

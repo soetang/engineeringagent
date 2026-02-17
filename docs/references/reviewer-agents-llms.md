@@ -161,7 +161,7 @@ Feature completion path (`feature_done`):
 
 ## Troubleshooting
 
-- If validation fails, run `uv run python -m engineeringagent.cli validate` and fix `harness/checks.yaml` contract issues first.
+- If validation fails, run `uv run engineeringagent validate` and fix `harness/checks.yaml` contract issues first.
 - If a reviewer always returns `request_changes` with parser-failure summary, ensure prompt output is strict JSON only.
 - If prompt file errors occur, confirm `prompt_file` path exists under `harness/reviewers/prompts/`.
 - If planner unexpectedly skips a reviewer, confirm phase and `when.on_change` patterns against changed paths.

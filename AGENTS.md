@@ -68,11 +68,11 @@ Keep this file concise. Add durable references and rules, not task logs.
 
 ## 7) Verification Quick Reference
 
-- Validate specs: `uv run python -m engineeringagent.cli validate`
-- Inspect init profile options: `uv run python -m engineeringagent.cli init --help`
-- List gate profiles: `uv run python -m engineeringagent.cli gates list`
-- Run precommit gates: `uv run python -m engineeringagent.cli gates run --profile precommit`
-- Run loop-fast gates: `uv run python -m engineeringagent.cli gates run --profile loop_fast`
+- Validate specs: `uv run engineeringagent validate`
+- Inspect init profile options: `uv run engineeringagent init --help`
+- List gate profiles: `uv run engineeringagent gates list`
+- Run precommit gates: `uv run engineeringagent gates run --profile precommit`
+- Run loop-fast gates: `uv run engineeringagent gates run --profile loop_fast`
 
 ## 8) Repo Extensions (Fill In)
 

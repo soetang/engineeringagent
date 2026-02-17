@@ -67,7 +67,7 @@ When migrating older reviewer prompts:
 Recommended checks:
 
 ```bash
-uv run python -m engineeringagent.cli validate
+uv run engineeringagent validate
 uvx engineeringagent reviewers list
 ```
 

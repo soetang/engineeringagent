@@ -29,7 +29,7 @@ This guide defines who each documentation surface is for, what belongs in it, an
 
 - Scope policy guidance to loop-executed command surfaces: feature verification commands under `docs/spec/features/*.yaml` and command checks in `harness/checks.yaml`.
 - Treat `uvx --from . engineeringagent ...` as forbidden for in-repo loop execution because it can execute cached package artifacts instead of workspace source.
-- Provide actionable remediation with direct replacement intent, preferring `uv run python -m engineeringagent.cli ...`.
+- Provide actionable remediation with direct replacement intent, preferring `uv run engineeringagent ...`.
 
 ## Ownership and Placement
 

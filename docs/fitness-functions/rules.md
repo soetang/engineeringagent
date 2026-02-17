@@ -151,5 +151,5 @@ This file is generated from active manifest-declared fitness rules.
 - Name: Source-first loop command policy
 - Side-effect free: `true`
 - Rationale: Prevent stale cached package artifacts from bypassing current workspace source.
-- Remediation: Replace forbidden in-repo uvx self-invocations with source-first forms; prefer uv run python -m engineeringagent.cli ...
+- Remediation: Replace forbidden in-repo uvx self-invocations with source-first forms; prefer uv run engineeringagent ...
 

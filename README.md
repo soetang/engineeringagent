@@ -78,12 +78,13 @@ Primary flow: `feature spec -> run loop`.
 
 ## Quickstart from source (contributors / local changes)
 
-If you are developing this repo and want to exercise local changes (not the PyPI package), run the same flow using the repo helper:
+If you are developing this repo and want to exercise local changes (not the PyPI package), install the project into your local uv environment and run the CLI via the console script:
 
 ```bash
- uv run .engineeringagent/bin/engineeringagent init slim
- uv run .engineeringagent/bin/engineeringagent validate
- uv run .engineeringagent/bin/engineeringagent run --all --dry-run
+uv sync
+uv run engineeringagent init slim
+uv run engineeringagent validate
+uv run engineeringagent run --all --dry-run
 ```
 
 ## Bootstrapping with `init`

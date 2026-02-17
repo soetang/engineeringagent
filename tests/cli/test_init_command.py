@@ -662,7 +662,7 @@ def test_init_python_uv_profile_available(tmp_path: Path) -> None:
         encoding="utf-8"
     )
     assert (
-        "entry: uv run python -m engineeringagent.cli checks run --phase iteration_end"
+        "entry: uv run engineeringagent checks run --phase iteration_end"
         in precommit_config
     )
     assert "uvx --from ." not in precommit_config
