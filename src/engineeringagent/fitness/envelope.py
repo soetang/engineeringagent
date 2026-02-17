@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import json
-from typing import Any
-
-from engineeringagent.fitness.contracts import CONTRACT_VERSION, FitnessRuleResult
+from engineeringagent.checks.fitness_api import emit_fitness_result
+from engineeringagent.fitness.contracts import FitnessRuleResult
 
 
 def emit_result_envelope(result: FitnessRuleResult) -> None:
@@ -12,6 +10,4 @@ def emit_result_envelope(result: FitnessRuleResult) -> None:
     This is the supported helper surface for harness fitness functions.
     """
 
-    payload: dict[str, Any] = result.model_dump(mode="json", exclude_none=True)
-    payload["contract_version"] = CONTRACT_VERSION
-    print(json.dumps(payload, separators=(",", ":")))
+    emit_fitness_result(result)

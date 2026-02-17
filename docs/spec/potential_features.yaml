@@ -133,3 +133,23 @@ potential_features:
       - "A documented, versioned config knob controls retry budgets"
       - "Telemetry captures when retry budgets are hit and how the run proceeds"
       - "Regression tests cover budget enforcement and compatibility migration"
+
+  - id: POT-015
+    title: Revisit ignore-pattern matching and TOML parsing dependencies
+    status: idea
+    context: >
+      We currently depend on pathspec for gitignore-style matching and tomli for TOML
+      parsing (as a fallback to stdlib tomllib on Python < 3.11). Explore whether we
+      should replace pathspec (license/supply-chain surface, feature scope vs our needs)
+      and whether our TOML strategy should change (conditional dependency, version pin,
+      or raising requires-python to drop the fallback).
+    value:
+      - "Reduce dependency/license risk for gitignore-style matching"
+      - "Make TOML parsing strategy explicit and aligned with supported Python versions"
+      - "Avoid unnecessary version caps that complicate downstream resolution"
+    acceptance_hint:
+      - "Decision record compares pathspec vs alternatives (gitmatch/gitignorant/etc) vs in-house matcher"
+      - "If replacing pathspec, behavior remains equivalent for our supported pattern set"
+      - "tomli is only installed when needed (python_version < 3.11) or requires-python is raised to >=3.11"
+      - "Dependency constraints are updated with a clear rationale (remove/adjust tomli <2.1.0 cap)"
+      - "Targeted tests cover ignore matching and TOML parsing across supported Python versions"
