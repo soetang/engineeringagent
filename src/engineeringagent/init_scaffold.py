@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from importlib.resources import files
 from pathlib import Path
+from typing import NamedTuple
 from string import Template
 
 import yaml
@@ -328,23 +329,24 @@ def build_init_scaffold_manifest(
     return manifest
 
 
+class BaselineScaffoldOptions(NamedTuple):
+    force: bool = False
+    docs_dir: str = "docs"
+    profile: str = "core"
+    pack: str = "slim"
+    include_reviewers: bool = False
+
+
 def apply_baseline_scaffold(
     project_root: Path,
-    force: bool = False,
-    docs_dir: str = "docs",
-    profile: str = "core",
-    pack: str = "slim",
-    include_reviewers: bool = False,
+    *,
+    options: BaselineScaffoldOptions = BaselineScaffoldOptions(),
 ) -> tuple[int, int]:
     """Write the init scaffold manifest to disk.
 
     Args:
         project_root: Repository root where scaffold files should be created.
-        force: Whether to overwrite files that already exist.
-        docs_dir: Docs root directory where spec files should be scaffolded.
-        profile: Scaffold profile that determines language/tool defaults.
-        pack: Init pack selection (slim|standard).
-        include_reviewers: Backward-compatible no-op; init does not seed reviewers.
+        options: Baseline scaffold write options.
 
     Returns:
         Tuple of (created_count, skipped_count).
@@ -353,17 +355,17 @@ def apply_baseline_scaffold(
     skipped = 0
 
     manifest = build_init_scaffold_manifest(
-        docs_dir=docs_dir,
-        profile=profile,
-        pack=pack,
-        include_reviewers=include_reviewers,
+        docs_dir=options.docs_dir,
+        profile=options.profile,
+        pack=options.pack,
+        include_reviewers=options.include_reviewers,
     )
 
     for relative_path, content in manifest.items():
         target_path = project_root / relative_path
         target_path.parent.mkdir(parents=True, exist_ok=True)
 
-        if target_path.exists() and not force:
+        if target_path.exists() and not options.force:
             skipped += 1
             continue
 

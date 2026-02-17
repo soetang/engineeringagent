@@ -132,6 +132,7 @@ class CompletionCommitOutcome(BaseModel):
     failed_gate: str | None
     next_action: str
     hook_feedback: str | None
+    completion_output: str = ""
 
 
 class IterationTelemetryInputs(BaseModel):
@@ -158,3 +159,4 @@ class IterationTelemetryInputs(BaseModel):
     reviewer_output: str = ""
     reviewer_feedback_forwarded: str | None = None
     hook_feedback: str | None
+    completion_output: str = ""

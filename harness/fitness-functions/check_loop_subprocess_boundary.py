@@ -5,6 +5,12 @@ from pathlib import Path
 import re
 import subprocess
 
+from engineeringagent.fitness.contracts import (
+    CONTRACT_VERSION,
+    FitnessRuleResult,
+    RuleSeverity,
+    RuleStatus,
+)
 from engineeringagent.fitness.envelope import emit_result_envelope
 
 
@@ -175,27 +181,30 @@ def _direct_call_name(code_line: str) -> str:
 
 def main() -> int:
     violations: list[str] = []
-    status = "pass"
+    status = RuleStatus.PASS
     summary = "Subprocess boundary allowlist constraints satisfied."
 
     try:
         violations = _loop_subprocess_boundary_violations(Path("."))
-        status = "pass" if not violations else "fail"
-        if status == "fail":
+        status = RuleStatus.PASS if not violations else RuleStatus.FAIL
+        if status == RuleStatus.FAIL:
             summary = (
                 "Detected "
                 f"{len(violations)} subprocess invocation(s) outside allowlisted modules."
             )
     except Exception as exc:  # noqa: BLE001
-        status = "error"
+        status = RuleStatus.ERROR
         summary = f"Semgrep subprocess-boundary scan failed: {exc}"
 
     emit_result_envelope(
-        rule_id=RULE_ID,
-        status=status,
-        severity="error",
-        summary=summary,
-        violations=violations,
+        FitnessRuleResult(
+            contract_version=CONTRACT_VERSION,
+            rule_id=RULE_ID,
+            status=status,
+            severity=RuleSeverity.ERROR,
+            summary=summary,
+            violations=violations,
+        )
     )
     return 0
 

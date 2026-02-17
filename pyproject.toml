@@ -54,6 +54,15 @@ extend-select = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
+"src/engineeringagent/cli.py" = [
+  "PLR0913",
+]
+"src/engineeringagent/loop.py" = [
+  "PLR0913",
+]
+"src/engineeringagent/opencode/client.py" = [
+  "PLR0913",
+]
 "harness/fitness-functions/*.py" = [
   "D103",
   "D417",

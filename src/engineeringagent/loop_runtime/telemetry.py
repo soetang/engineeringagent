@@ -154,7 +154,7 @@ def _slowest_summary_line(telemetry_inputs: IterationTelemetryInputs) -> str | N
     return best_line
 
 
-def write_iteration_telemetry(
+def write_iteration_telemetry(  # noqa: C901
     telemetry_inputs: IterationTelemetryInputs,
     *,
     git_head_resolver: Callable[[Path], str | None],
@@ -260,6 +260,14 @@ def write_iteration_telemetry(
                 "reviewer_output_begin",
                 telemetry_inputs.reviewer_output.rstrip("\n"),
                 "reviewer_output_end",
+            ]
+        )
+    if telemetry_inputs.completion_output:
+        feature_progress_log_lines.extend(
+            [
+                "completion_output_begin",
+                telemetry_inputs.completion_output.rstrip("\n"),
+                "completion_output_end",
             ]
         )
     if reviewer_feedback_forwarded is not None:

@@ -19,6 +19,7 @@ This file is generated from active manifest-declared fitness rules.
 | `architecture.no-stdlib-dataclasses-in-src` | error | command | custom | `src/engineeringagent` | Block stdlib dataclasses usage in production source models. |
 | `architecture.progress-log-path-locality` | error | command | custom | `src/engineeringagent` | Centralize loop progress artifact paths and writes behind approved helpers. |
 | `architecture.prompt-locality` | error | command | custom | `src/engineeringagent` | Keep canonical loop prompt content and template reads localized. |
+| `architecture.retry-feedback-no-truncation` | error | command | custom | `src/engineeringagent/prompts/renderer.py` | Block truncation-by-slicing in retry feedback prompt injection. |
 | `architecture.scaffold-docs-exact-sync` | error | command | custom | `docs and src/engineeringagent/scaffold_templates` | Enforce byte-for-byte sync between selected docs and scaffold templates. |
 | `architecture.scaffold-template-agents-doc-links` | error | command | custom | `src/engineeringagent/scaffold_templates/AGENTS.md` | Require scaffolded reference docs to be linked from scaffold AGENTS.md. |
 | `architecture.scaffold-template-locality` | error | command | custom | `src/engineeringagent` | Keep scaffold template payloads in scaffold_templates assets. |
@@ -116,6 +117,13 @@ This file is generated from active manifest-declared fitness rules.
 - Side-effect free: `true`
 - Rationale: Prevents prompt drift and duplicate canonical wording across modules.
 - Remediation: Move canonical prompt text and template reads to engineeringagent.prompts templates/renderer modules.
+
+### `architecture.retry-feedback-no-truncation`
+
+- Name: Retry feedback no truncation
+- Side-effect free: `true`
+- Rationale: Prevents prompt retries from losing the most relevant failure details.
+- Remediation: Remove truncation-by-slicing from retry feedback injection; bound retry feedback by contract caps and canonical re-serialization.
 
 ### `architecture.scaffold-docs-exact-sync`
 

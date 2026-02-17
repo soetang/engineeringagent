@@ -6,6 +6,12 @@ import re
 import tokenize
 from pathlib import Path
 
+from engineeringagent.fitness.contracts import (
+    CONTRACT_VERSION,
+    FitnessRuleResult,
+    RuleSeverity,
+    RuleStatus,
+)
 from engineeringagent.fitness.envelope import emit_result_envelope
 
 
@@ -127,11 +133,11 @@ def main() -> int:
         violations.extend(_scan_file(file_path, blocked_rule_ids))
 
     violations = sorted(set(violations))
-    status = "pass" if not violations else "fail"
+    status = RuleStatus.PASS if not violations else RuleStatus.FAIL
 
     summary = (
         "No non-ignorable Ruff suppressions detected under configured scan roots."
-        if status == "pass"
+        if status == RuleStatus.PASS
         else (
             "Detected non-ignorable Ruff suppressions. Remove inline/file-level "
             "ignore directives and refactor code (for PLR0913, prefer structured "
@@ -140,11 +146,14 @@ def main() -> int:
     )
 
     emit_result_envelope(
-        rule_id=args.rule_id,
-        status=status,
-        severity="error",
-        summary=summary,
-        violations=violations,
+        FitnessRuleResult(
+            contract_version=CONTRACT_VERSION,
+            rule_id=args.rule_id,
+            status=status,
+            severity=RuleSeverity.ERROR,
+            summary=summary,
+            violations=violations,
+        )
     )
     return 0
 

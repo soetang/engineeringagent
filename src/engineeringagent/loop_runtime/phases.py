@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import shlex
 import sys
 import time
 from typing import Any, Callable
@@ -12,11 +13,12 @@ from pydantic import BaseModel, ConfigDict
 from ..changed_paths import ChangedPathsResult
 from ..specs import HarnessCheckPhase
 from ..harness_checks_runtime import (
+    PlannedCommandChecksInputs,
     iter_planned_reviewer_checks,
     load_checks_document,
     plan_reviewer_checks,
     run_planned_command_checks,
-    run_planned_fitness_checks,
+    run_planned_fitness_checks_with_failures,
 )
 
 from .models import (
@@ -32,6 +34,12 @@ from ..reviewers import (
     DECISION_REQUEST_CHANGES,
 )
 from .time_format import utc_iso_from_epoch_sec
+from ..retry_feedback.builders import (
+    build_command_failure_retry_feedback,
+    build_fitness_failure_retry_feedback,
+    build_reviewer_feedback_retry_feedback,
+)
+from ..feature_commit import feature_completion_commit_subject
 
 
 def _format_reviewer_feedback(summary: str, required_actions: list[str]) -> str:
@@ -96,7 +104,7 @@ class ReviewerPhaseDependencies(BaseModel):
     start_agent: Callable[..., Any]
 
 
-def run_gate_phase(
+def run_gate_phase(  # noqa: C901
     iteration_inputs: FeatureIterationInputs,
     archived_in_iteration: bool,
     archived_path: Path | None,
@@ -139,49 +147,111 @@ def run_gate_phase(
 
     changed_paths = dependencies.collect_changed_paths(iteration_inputs.project_root)
     command_timings: list[CommandTiming] = []
+    command_failure_feedback: str | None = None
+    fitness_failure_feedback: str | None = None
 
     ok, failed, output, timings = run_planned_command_checks(
-        project_root=iteration_inputs.project_root,
-        doc=checks_doc,
-        phase=HarnessCheckPhase.ITERATION_END,
-        changed_paths=changed_paths,
-        verbose_output=iteration_inputs.verbose_output,
-        run_shell_command=dependencies.run_shell_command,
+        PlannedCommandChecksInputs(
+            iteration_inputs.project_root,
+            checks_doc,
+            HarnessCheckPhase.ITERATION_END,
+            changed_paths,
+            iteration_inputs.verbose_output,
+            dependencies.run_shell_command,
+        )
     )
     command_timings.extend(timings)
 
+    if not ok and failed:
+        failed_command = next(
+            (
+                timing.command
+                for timing in reversed(timings)
+                if timing.gate == failed and timing.command
+            ),
+            None,
+        )
+        command_failure_feedback = build_command_failure_retry_feedback(
+            phase="gates",
+            gate=failed,
+            command=failed_command or "unknown",
+            precommit=False,
+            message="Command check failed. Rerun the command to see full diagnostics.",
+        )
+
     if ok:
-        ok, failed, fitness_output, fitness_timings = run_planned_fitness_checks(
-            project_root=iteration_inputs.project_root,
-            doc=checks_doc,
-            phase=HarnessCheckPhase.ITERATION_END,
-            changed_paths=changed_paths,
+        ok, failed, fitness_output, fitness_timings, failed_rules = (
+            run_planned_fitness_checks_with_failures(
+                project_root=iteration_inputs.project_root,
+                doc=checks_doc,
+                phase=HarnessCheckPhase.ITERATION_END,
+                changed_paths=changed_paths,
+            )
         )
         command_timings.extend(fitness_timings)
         output = "\n".join(part for part in (output, fitness_output) if part).strip()
 
+        if not ok and failed and failed_rules:
+            fitness_failure_feedback = build_fitness_failure_retry_feedback(
+                gate=failed,
+                command="uv run python -m engineeringagent.cli fitness run --format json",
+                failed_rules=failed_rules,
+            )
+
     if ok and archived_in_iteration:
         ok, failed, feature_output, feature_timings = run_planned_command_checks(
-            project_root=iteration_inputs.project_root,
-            doc=checks_doc,
-            phase=HarnessCheckPhase.FEATURE_DONE,
-            changed_paths=changed_paths,
-            verbose_output=iteration_inputs.verbose_output,
-            run_shell_command=dependencies.run_shell_command,
+            PlannedCommandChecksInputs(
+                iteration_inputs.project_root,
+                checks_doc,
+                HarnessCheckPhase.FEATURE_DONE,
+                changed_paths,
+                iteration_inputs.verbose_output,
+                dependencies.run_shell_command,
+            )
         )
         command_timings.extend(feature_timings)
 
+        if not ok and failed:
+            failed_command = next(
+                (
+                    timing.command
+                    for timing in reversed(feature_timings)
+                    if timing.gate == failed and timing.command
+                ),
+                None,
+            )
+            command_failure_feedback = build_command_failure_retry_feedback(
+                phase="gates",
+                gate=failed,
+                command=failed_command or "unknown",
+                precommit=False,
+                message=(
+                    "Command check failed. Rerun the command to see full diagnostics."
+                ),
+            )
+
         if ok:
-            ok, failed, fitness_output, fitness_timings = run_planned_fitness_checks(
-                project_root=iteration_inputs.project_root,
-                doc=checks_doc,
-                phase=HarnessCheckPhase.FEATURE_DONE,
-                changed_paths=changed_paths,
+            ok, failed, fitness_output, fitness_timings, failed_rules = (
+                run_planned_fitness_checks_with_failures(
+                    project_root=iteration_inputs.project_root,
+                    doc=checks_doc,
+                    phase=HarnessCheckPhase.FEATURE_DONE,
+                    changed_paths=changed_paths,
+                )
             )
             command_timings.extend(fitness_timings)
             feature_output = "\n".join(
                 part for part in (feature_output, fitness_output) if part
             ).strip()
+
+            if not ok and failed and failed_rules:
+                fitness_failure_feedback = build_fitness_failure_retry_feedback(
+                    gate=failed,
+                    command=(
+                        "uv run python -m engineeringagent.cli fitness run --format json"
+                    ),
+                    failed_rules=failed_rules,
+                )
         output = "\n".join(part for part in (output, feature_output) if part).strip()
 
     if ok:
@@ -209,7 +279,9 @@ def run_gate_phase(
         gate_status=f"failed:{failed or 'unknown'}",
         gate_output=output,
         command_timings=command_timings,
-        hook_feedback=output
+        hook_feedback=command_failure_feedback
+        or fitness_failure_feedback
+        or output
         or (f"check '{failed or 'unknown'}' failed with no captured output"),
     )
 
@@ -261,13 +333,22 @@ def run_verification_phase(
 
         if proc.returncode != 0:
             verification_output = "\n".join(command_outputs)
+            hook_feedback = build_command_failure_retry_feedback(
+                phase="verification",
+                gate=None,
+                command=command,
+                precommit=False,
+                message=(
+                    "Verification command failed. Rerun the command to see full diagnostics."
+                ),
+            )
             return VerificationPhaseOutcome(
                 result="failed",
                 verification_status=f"failed:{command}",
                 verification_failed_command=command,
                 verification_output=verification_output,
                 command_timings=command_timings,
-                hook_feedback=verification_output,
+                hook_feedback=hook_feedback,
             )
 
     return VerificationPhaseOutcome(
@@ -338,10 +419,10 @@ def run_reviewer_phase(  # noqa: C901
         state = dependencies.load_reviewers_state(iteration_inputs.project_root)
 
         summaries: list[str] = []
-        request_changes_feedback: list[str] = []
         ran_reviewer = False
         first_non_approve_reviewer_id: str | None = None
         first_non_approve_decision: str | None = None
+        first_non_approve_payload: dict[str, Any] | None = None
 
         planned_by_id = {entry.check_id: entry for entry in planned}
         for reviewer_id, reviewer_def in iter_planned_reviewer_checks(
@@ -402,13 +483,18 @@ def run_reviewer_phase(  # noqa: C901
                 decision=str(decision.get("decision", "")),
             )
 
-            decision_name = str(decision.get("decision", DECISION_REQUEST_CHANGES))
-            if decision_name != DECISION_APPROVE:
-                decision_name = DECISION_REQUEST_CHANGES
+            raw_decision = str(decision.get("decision", DECISION_REQUEST_CHANGES))
+            decision_name = (
+                DECISION_APPROVE
+                if raw_decision == DECISION_APPROVE
+                else DECISION_REQUEST_CHANGES
+            )
             ran_reviewer = True
             if decision_name != DECISION_APPROVE and first_non_approve_decision is None:
                 first_non_approve_reviewer_id = reviewer_id
                 first_non_approve_decision = decision_name
+                if isinstance(decision, dict):
+                    first_non_approve_payload = dict(decision)
             summary = str(decision.get("summary", ""))
             required_actions_raw = decision.get("required_actions", [])
             required_actions = (
@@ -423,7 +509,7 @@ def run_reviewer_phase(  # noqa: C901
             reviewer_feedback_message = _format_reviewer_feedback(
                 summary, required_actions
             )
-            reviewer_feedback = _append_feedback_context(
+            _append_feedback_context(
                 reviewer_feedback_message,
                 forwarded_context,
             )
@@ -431,20 +517,25 @@ def run_reviewer_phase(  # noqa: C901
                 f"[reviewer:{reviewer_id}] decision={decision_name} summary={summary}"
             )
 
-            if decision_name == DECISION_REQUEST_CHANGES:
-                request_changes_feedback.append(
-                    f"reviewer '{reviewer_id}' requested changes: {reviewer_feedback}"
-                )
-
         reviewer_output = "\n".join(summaries)
 
-        if request_changes_feedback:
+        if first_non_approve_reviewer_id is not None:
             if archived_path is not None:
                 dependencies.restore_archived_feature(
                     archived_path, iteration_inputs.feature_path
                 )
             dependencies.save_reviewers_state(iteration_inputs.project_root, state)
-            feedback = "\n".join(request_changes_feedback)
+
+            payload = first_non_approve_payload or {
+                "decision": DECISION_REQUEST_CHANGES,
+                "summary": "(reviewer payload missing)",
+                "required_actions": [],
+            }
+            feedback = build_reviewer_feedback_retry_feedback(
+                reviewer_id=first_non_approve_reviewer_id,
+                reviewer_phase="feature_done",
+                decision=payload,
+            )
             return ReviewerPhaseOutcome(
                 result="failed",
                 failed_gate="reviewer_request_changes",
@@ -530,11 +621,35 @@ def run_completion_commit_phase(
         )
         if not restored_ok:
             rollback_output = f"\narchive rollback failed: {restore_error}"
+
+    completion_output = f"{commit_output}{rollback_output}".strip()
+
+    completion_command: str
+    if commit_failed_gate == "git_add":
+        completion_command = "git add -A -- ."
+    else:
+        commit_subject = feature_completion_commit_subject(post_feature)
+        completion_command = (
+            "git -c user.name=engineeringagent -c user.email=engineeringagent@local "
+            f"commit -m {shlex.quote(commit_subject)}"
+        )
+
+    hook_feedback = build_command_failure_retry_feedback(
+        phase="completion_commit",
+        gate=commit_failed_gate,
+        command=completion_command,
+        precommit=False,
+        message=(
+            "Completion commit failed. Rerun the command to see full diagnostics."
+        ),
+    )
+
     return CompletionCommitOutcome(
         completed=False,
         completion_commit_succeeded=False,
         result="failed",
         failed_gate=commit_failed_gate,
         next_action="retry_same_feature",
-        hook_feedback=f"{commit_output}{rollback_output}".strip(),
+        hook_feedback=hook_feedback,
+        completion_output=completion_output,
     )

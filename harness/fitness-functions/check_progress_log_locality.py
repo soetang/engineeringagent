@@ -3,6 +3,12 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
+from engineeringagent.fitness.contracts import (
+    CONTRACT_VERSION,
+    FitnessRuleResult,
+    RuleSeverity,
+    RuleStatus,
+)
 from engineeringagent.fitness.envelope import emit_result_envelope
 
 
@@ -243,19 +249,22 @@ def _progress_log_locality_violations(project_root: Path) -> list[str]:
 
 def main() -> int:
     violations = _progress_log_locality_violations(Path("."))
-    status = "pass" if not violations else "fail"
+    status = RuleStatus.PASS if not violations else RuleStatus.FAIL
     summary = (
         "Progress log path locality constraints satisfied."
-        if status == "pass"
+        if status == RuleStatus.PASS
         else f"Detected {len(violations)} progress log locality violation(s)."
     )
 
     emit_result_envelope(
-        rule_id=RULE_ID,
-        status=status,
-        severity="error",
-        summary=summary,
-        violations=violations,
+        FitnessRuleResult(
+            contract_version=CONTRACT_VERSION,
+            rule_id=RULE_ID,
+            status=status,
+            severity=RuleSeverity.ERROR,
+            summary=summary,
+            violations=violations,
+        )
     )
     return 0
 

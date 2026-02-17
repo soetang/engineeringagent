@@ -15,10 +15,12 @@ REVIEWERS_STATE_FILENAME = "reviewers-state.json"
 
 
 def progress_dir(project_root: Path) -> Path:
+    """Return the absolute progress directory for a repo root."""
     return project_root / PROGRESS_DIRNAME
 
 
 def runs_jsonl_path(project_root: Path) -> Path:
+    """Return absolute path to the loop telemetry JSONL sink."""
     return progress_dir(project_root) / RUNS_JSONL_FILENAME
 
 
@@ -33,6 +35,7 @@ def runs_jsonl_reference(project_root: Path) -> str:
 
 
 def reviewers_state_path(project_root: Path) -> Path:
+    """Return absolute path to the reviewers state JSON file."""
     return progress_dir(project_root) / REVIEWERS_STATE_FILENAME
 
 
@@ -51,11 +54,13 @@ def sanitize_feature_id_for_log(feature_id: str) -> str:
 
 
 def run_feature_log_filename(feature_id: str) -> str:
+    """Return the per-feature progress log filename."""
     safe_feature_id = sanitize_feature_id_for_log(feature_id)
     return f"run-feature-{safe_feature_id}.txt"
 
 
 def run_feature_log_path(project_root: Path, feature_id: str) -> Path:
+    """Return absolute path to the per-feature progress log."""
     return progress_dir(project_root) / run_feature_log_filename(feature_id)
 
 

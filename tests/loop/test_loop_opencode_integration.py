@@ -13,7 +13,11 @@ import yaml
 
 import engineeringagent.loop as loop_module
 import engineeringagent.opencode.client as opencode_client
+from engineeringagent.retry_feedback.builders import (
+    build_command_failure_retry_feedback,
+)
 from engineeringagent.loop import (
+    RunConfigOptions,
     build_loop_run,
     build_run_config,
 )
@@ -44,11 +48,13 @@ def run_loop(
     config = build_run_config(
         project_root=project_root,
         feature_paths=feature_paths,
-        run_all=run_all,
-        dry_run=dry_run,
-        max_iterations=max_iterations,
-        allow_dirty=allow_dirty,
-        verbose_output=verbose_output,
+        options=RunConfigOptions(
+            dry_run,
+            run_all,
+            max_iterations,
+            allow_dirty,
+            verbose_output,
+        ),
     )
     return _run_loop(build_loop_run(config))
 
@@ -605,7 +611,17 @@ def test_gate_failure_feedback_round_trips_to_retry_prompt_integration(
 
     assert code == 0
     assert len(prompts) >= 2
-    assert "SPEC_VALIDATE_INTEGRATION_TOKEN" in prompts[1]
+    assert "SPEC_VALIDATE_INTEGRATION_TOKEN" not in prompts[1]
+    assert '"kind":"command_failure"' in prompts[1]
+    assert '"phase":"gates"' in prompts[1]
+    expected = build_command_failure_retry_feedback(
+        phase="gates",
+        gate="spec_validate",
+        command=f'"{sys.executable}" "{gate_script}"',
+        precommit=False,
+        message="Command check failed. Rerun the command to see full diagnostics.",
+    )
+    assert expected in prompts[1]
 
 
 def test_loop_archived_done_requires_same_iteration_completion_commit(

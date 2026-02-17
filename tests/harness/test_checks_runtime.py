@@ -10,6 +10,7 @@ from engineeringagent.harness_checks_runtime import (
     iter_planned_reviewer_checks,
     load_checks_document,
     PlannedCheck,
+    PlannedCommandChecksInputs,
     plan_command_checks,
     plan_fitness_checks,
     plan_reviewer_checks,
@@ -981,12 +982,14 @@ def test_run_planned_command_checks_fails_and_emits_verbose_output(
         )()
 
     ok, failed, output, _timings = run_planned_command_checks(
-        project_root=tmp_path,
-        doc=doc,
-        phase=HarnessCheckPhase.ITERATION_END,
-        changed_paths=ChangedPathsResult(paths=(), run_all=True, reason=None),
-        verbose_output=True,
-        run_shell_command=_run,
+        PlannedCommandChecksInputs(
+            tmp_path,
+            doc,
+            HarnessCheckPhase.ITERATION_END,
+            ChangedPathsResult(paths=(), run_all=True, reason=None),
+            True,
+            _run,
+        )
     )
 
     assert ok is False

@@ -5,6 +5,14 @@ from pathlib import Path
 from string import Template
 from typing import Any, Mapping, Sequence
 
+from pydantic import ValidationError
+
+from ..retry_feedback.builders import build_command_failure_retry_feedback
+from ..retry_feedback.contracts import (
+    parse_retry_feedback_envelope,
+    serialize_retry_feedback_envelope,
+)
+
 _TEMPLATE_PACKAGE = "engineeringagent.prompts.templates"
 
 
@@ -33,10 +41,28 @@ def build_selector_prompt(pending: Sequence[tuple[Path, Mapping[str, Any]]]) -> 
     return selector_template.substitute(choices="\n".join(choices))
 
 
-def _truncate_feedback(text: str, max_chars: int = 8_000) -> str:
-    if len(text) <= max_chars:
-        return text
-    return text[:max_chars] + "\n...[truncated]"
+def _normalize_retry_feedback(hook_feedback: str) -> str:
+    """Normalize serialized retry feedback for deterministic prompt injection.
+
+    The retry-feedback block is contract-driven. We validate the incoming payload
+    and re-serialize it with sorted keys and compact separators.
+    """
+
+    try:
+        envelope = parse_retry_feedback_envelope(hook_feedback)
+    except ValidationError:
+        return build_command_failure_retry_feedback(
+            phase="gates",
+            gate="retry_feedback_parse_error",
+            command="<unknown>",
+            precommit=False,
+            message=(
+                "Retry feedback payload was not a valid v1 envelope. "
+                "Re-run the failing command(s) to reproduce the issue."
+            ),
+        )
+
+    return serialize_retry_feedback_envelope(envelope)
 
 
 def inject_retry_feedback(prompt: str, hook_feedback: str | None) -> str:
@@ -54,7 +80,7 @@ def inject_retry_feedback(prompt: str, hook_feedback: str | None) -> str:
 
     retry_feedback_template = _load_template("loop_retry_feedback.md")
     return prompt + retry_feedback_template.substitute(
-        feedback=_truncate_feedback(hook_feedback),
+        feedback=_normalize_retry_feedback(hook_feedback),
     )
 
 

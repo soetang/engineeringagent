@@ -9,6 +9,8 @@ from engineeringagent.fitness.contracts import (
     CONTRACT_VERSION,
     FitnessRuleMetadata,
     FitnessRuleResult,
+    RuleSeverity,
+    RuleStatus,
 )
 
 from engineeringagent.fitness.envelope import emit_result_envelope
@@ -66,11 +68,14 @@ def test_emit_result_envelope_is_deterministic_and_validates(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     emit_result_envelope(
-        rule_id="architecture.dep-direction",
-        status="pass",
-        severity="error",
-        summary="Boundary contract is satisfied.",
-        violations=[],
+        FitnessRuleResult(
+            contract_version=CONTRACT_VERSION,
+            rule_id="architecture.dep-direction",
+            status=RuleStatus.PASS,
+            severity=RuleSeverity.ERROR,
+            summary="Boundary contract is satisfied.",
+            violations=[],
+        )
     )
 
     stdout = capsys.readouterr().out
@@ -93,12 +98,15 @@ def test_emit_result_envelope_includes_details_when_provided(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     emit_result_envelope(
-        rule_id="architecture.dep-direction",
-        status="pass",
-        severity="error",
-        summary="Boundary contract is satisfied.",
-        violations=[],
-        details={"a": 1, "b": "x"},
+        FitnessRuleResult(
+            contract_version=CONTRACT_VERSION,
+            rule_id="architecture.dep-direction",
+            status=RuleStatus.PASS,
+            severity=RuleSeverity.ERROR,
+            summary="Boundary contract is satisfied.",
+            violations=[],
+            details={"a": 1, "b": "x"},
+        )
     )
 
     stdout = capsys.readouterr().out

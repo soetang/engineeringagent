@@ -59,3 +59,14 @@ def test_parse_reviewer_decision_parse_failures_point_to_schema_contract() -> No
     assert isinstance(required_actions, list)
     assert required_actions
     assert "schema" in str(required_actions[0]).lower()
+
+
+def test_parse_reviewer_decision_rejects_confidence_field() -> None:
+    payload = {"decision": "approve", "summary": "Looks good.", "confidence": 0.9}
+    output = json.dumps(payload)
+
+    decision = parse_reviewer_decision(output)
+
+    assert decision["decision"] == "request_changes"
+    assert decision["summary"].startswith(f"{PARSER_FAILURE_SUMMARY_PREFIX}:")
+    assert "confidence" in decision["summary"]

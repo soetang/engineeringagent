@@ -22,10 +22,11 @@ from .fitness import (
 from .git import client as git_client
 from .init_scaffold import (
     apply_baseline_scaffold,
+    BaselineScaffoldOptions,
     build_agents_merge_followup_spec,
     build_scaffold_agents_markdown,
 )
-from .loop import build_loop_run, build_run_config, run_loop
+from .loop import RunConfigOptions, build_loop_run, build_run_config, run_loop
 from .specs import HarnessCheckPhase
 from .validator import validate
 
@@ -315,11 +316,13 @@ def cmd_run(args: _HandlerArgs) -> int:
     config = build_run_config(
         project_root=project_root,
         feature_paths=args.feature_paths,
-        run_all=args.all,
-        dry_run=args.dry_run,
-        max_iterations=args.max_iterations,
-        allow_dirty=args.allow_dirty,
-        verbose_output=args.verbose_output,
+        options=RunConfigOptions(
+            args.dry_run,
+            args.all,
+            args.max_iterations,
+            args.allow_dirty,
+            args.verbose_output,
+        ),
     )
     loop_run = build_loop_run(config)
     return run_loop(loop_run)
@@ -471,6 +474,7 @@ def cmd_checks_run(args: _HandlerArgs) -> int:
 
     from .changed_paths import collect_changed_paths
     from .harness_checks_runtime import (
+        PlannedCommandChecksInputs,
         load_checks_document,
         run_planned_command_checks,
         run_planned_fitness_checks,
@@ -491,12 +495,14 @@ def cmd_checks_run(args: _HandlerArgs) -> int:
     )
 
     ok, failed_id, output, timings = run_planned_command_checks(
-        project_root=project_root,
-        doc=doc,
-        phase=phase,
-        changed_paths=changed_paths,
-        verbose_output=bool(getattr(args, "verbose_output", False)),
-        run_shell_command=run_shell_command,
+        PlannedCommandChecksInputs(
+            project_root,
+            doc,
+            phase,
+            changed_paths,
+            bool(getattr(args, "verbose_output", False)),
+            run_shell_command,
+        )
     )
     _ = timings
     if output:
@@ -522,7 +528,7 @@ def cmd_checks_run(args: _HandlerArgs) -> int:
     return 0
 
 
-def cmd_init(args: _HandlerArgs) -> int:
+def cmd_init(args: _HandlerArgs) -> int:  # noqa: C901
     """Scaffold baseline harness files for a repository.
 
     Args:
@@ -566,10 +572,12 @@ def cmd_init(args: _HandlerArgs) -> int:
 
     created, skipped = apply_baseline_scaffold(
         project_root=project_root,
-        force=args.force,
-        docs_dir=docs_dir,
-        profile=args.scaffold_profile,
-        pack=pack,
+        options=BaselineScaffoldOptions(
+            args.force,
+            docs_dir,
+            args.scaffold_profile,
+            pack,
+        ),
     )
 
     if pack == "standard":

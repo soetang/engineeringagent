@@ -73,6 +73,7 @@ def _run_commit_msg_file_mode(commit_msg_file: Path) -> int:
 
 
 def main() -> int:
+    """CLI entrypoint for commit subject validation."""
     args = build_parser().parse_args()
     return _run_commit_msg_file_mode(args.commit_msg_file)
 

@@ -90,7 +90,6 @@ Reviewer output must be JSON object with required fields:
 Optional fields:
 
 - `required_actions`: list of strings.
-- `confidence`: number in `[0, 1]`.
 - `scope_notes`: string.
 
 Any non-JSON or malformed output is treated as deterministic `request_changes` with a parser-failure summary.
@@ -102,7 +101,6 @@ Copy-pastable decision examples:
   "decision": "approve",
   "summary": "No blocking issues found in scoped changes.",
   "required_actions": [],
-  "confidence": 0.94,
   "scope_notes": "Reviewed src and tests changes only."
 }
 ```
@@ -115,7 +113,6 @@ Copy-pastable decision examples:
     "Extract shared parser helper in src/engineeringagent/reviewers.py",
     "Add regression test for malformed decision payload"
   ],
-  "confidence": 0.88,
   "scope_notes": "Focused on reviewer-runtime module changes."
 }
 ```

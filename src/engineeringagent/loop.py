@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, NamedTuple, Sequence
 
 from .changed_paths import collect_changed_paths
 from .git.client import (
@@ -70,15 +70,7 @@ from .loop_runtime.controller import (
 from .loop_runtime.run_context import LoopRun, RunConfig, RunServices
 from .loop_runtime.telemetry import write_iteration_telemetry
 from .loop_runtime.presentation import RunOutputPresenter
-
-FEATURE_TYPE_COMMIT_PREFIX: dict[str, str] = {
-    "feature": "feat",
-    "bug": "fix",
-    "spec": "spec",
-    "docs": "docs",
-    "chore": "chore",
-    "test": "test",
-}
+from .feature_commit import feature_completion_commit_subject
 
 
 def _print_run_all_snapshot_banner(resolved_paths: Sequence[Path]) -> None:
@@ -156,7 +148,7 @@ def run_implement_step(
 def _commit_feature_completion(
     project_root: Path, feature: dict[str, Any]
 ) -> tuple[bool, str | None, str]:
-    message = _feature_completion_commit_subject(feature)
+    message = feature_completion_commit_subject(feature)
 
     add_proc = add_all(project_root)
     if add_proc.returncode != 0:
@@ -168,21 +160,6 @@ def _commit_feature_completion(
     if commit_proc.returncode == 0:
         return (True, None, output)
     return (False, "git_commit", output)
-
-
-def _feature_completion_commit_subject(feature: dict[str, Any]) -> str:
-    expected_subject = str(feature.get("expected_commit_subject", "")).strip()
-    if expected_subject:
-        return expected_subject
-
-    fid = str(feature.get("id", "unknown-feature"))
-    title = str(feature.get("title", "")).strip()
-    feature_type = str(feature.get("type", "feature")).strip()
-    prefix = FEATURE_TYPE_COMMIT_PREFIX.get(feature_type, "feat")
-    message = f"{prefix}: complete {fid}"
-    if title:
-        message = f"{message} - {title}"
-    return message
 
 
 def print_summary(
@@ -527,25 +504,29 @@ def _run_selected_feature_iterations(
                 return terminal_failure_exit_code
 
 
+class RunConfigOptions(NamedTuple):
+    dry_run: bool
+    run_all: bool = False
+    max_iterations: int = 50
+    allow_dirty: bool = False
+    verbose_output: bool = False
+
+
 def build_run_config(
     *,
     project_root: Path,
     feature_paths: Sequence[str | Path],
-    dry_run: bool,
-    run_all: bool,
-    max_iterations: int,
-    allow_dirty: bool,
-    verbose_output: bool,
+    options: RunConfigOptions,
 ) -> RunConfig:
     """Build run configuration from CLI-compatible scalar arguments."""
     return RunConfig(
         project_root=project_root,
         feature_paths=tuple(feature_paths),
-        run_all=run_all,
-        dry_run=dry_run,
-        max_iterations=max_iterations,
-        allow_dirty=allow_dirty,
-        verbose_output=verbose_output,
+        run_all=options.run_all,
+        dry_run=options.dry_run,
+        max_iterations=options.max_iterations,
+        allow_dirty=options.allow_dirty,
+        verbose_output=options.verbose_output,
     )
 
 

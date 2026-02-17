@@ -3,6 +3,12 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
+from engineeringagent.fitness.contracts import (
+    CONTRACT_VERSION,
+    FitnessRuleResult,
+    RuleSeverity,
+    RuleStatus,
+)
 from engineeringagent.fitness.envelope import emit_result_envelope
 
 
@@ -95,10 +101,10 @@ def main() -> int:
     for file_path in files:
         violations.extend(_scan_file(file_path))
 
-    status = "pass" if not violations else "fail"
+    status = RuleStatus.PASS if not violations else RuleStatus.FAIL
     summary = (
         "No stdlib dataclasses usage detected in src/engineeringagent."
-        if status == "pass"
+        if status == RuleStatus.PASS
         else (
             "Detected stdlib dataclasses usage in src/engineeringagent. "
             "Migrate models to pydantic.BaseModel."
@@ -106,11 +112,14 @@ def main() -> int:
     )
 
     emit_result_envelope(
-        rule_id=RULE_ID,
-        status=status,
-        severity="error",
-        summary=summary,
-        violations=sorted(set(violations)),
+        FitnessRuleResult(
+            contract_version=CONTRACT_VERSION,
+            rule_id=RULE_ID,
+            status=status,
+            severity=RuleSeverity.ERROR,
+            summary=summary,
+            violations=sorted(set(violations)),
+        )
     )
     return 0
 

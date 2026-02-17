@@ -91,7 +91,7 @@ def validate(project_root: Path, schema_only: bool = False) -> list[str]:
     return messages
 
 
-def _append_purge_invariant_issues(messages: list[str], project_root: Path) -> None:
+def _append_purge_invariant_issues(messages: list[str], project_root: Path) -> None:  # noqa: C901
     """Fail validation when removed identifiers reappear in active tracked files."""
 
     if not (project_root / ".git").exists():

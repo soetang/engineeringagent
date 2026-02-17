@@ -5,6 +5,12 @@ from pathlib import Path
 
 import yaml
 
+from engineeringagent.fitness.contracts import (
+    CONTRACT_VERSION,
+    FitnessRuleResult,
+    RuleSeverity,
+    RuleStatus,
+)
 from engineeringagent.fitness.envelope import emit_result_envelope
 
 
@@ -143,10 +149,10 @@ def main() -> int:
     violations = sorted(
         set(_scan_feature_verification_commands() + _scan_check_commands())
     )
-    status = "pass" if not violations else "fail"
+    status = RuleStatus.PASS if not violations else RuleStatus.FAIL
     summary = (
         "All scoped loop commands use source-first workspace execution forms."
-        if status == "pass"
+        if status == RuleStatus.PASS
         else (
             "Detected forbidden in-repo uvx self-invocation patterns in loop command "
             "surfaces."
@@ -154,13 +160,16 @@ def main() -> int:
     )
 
     emit_result_envelope(
-        rule_id=RULE_ID,
-        status=status,
-        severity="error",
-        summary=summary,
-        violations=violations,
+        FitnessRuleResult(
+            contract_version=CONTRACT_VERSION,
+            rule_id=RULE_ID,
+            status=status,
+            severity=RuleSeverity.ERROR,
+            summary=summary,
+            violations=violations,
+        )
     )
-    return 0 if status == "pass" else 1
+    return 0 if status == RuleStatus.PASS else 1
 
 
 if __name__ == "__main__":

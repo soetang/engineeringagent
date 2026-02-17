@@ -129,6 +129,7 @@ class _PipelineState(BaseModel):
     reviewer_output: str = ""
     reviewer_feedback_forwarded: str | None = None
     completion_commit_succeeded: bool = False
+    completion_output: str = ""
     command_timings: list[CommandTiming] = Field(default_factory=list)
     archived_path: Path | None = None
     archived_in_iteration: bool = False
@@ -511,6 +512,7 @@ def _run_completion_phase_if_needed(
     state.next_hook_feedback = completion_phase.hook_feedback
     state.completed = completion_phase.completed
     state.completion_commit_succeeded = completion_phase.completion_commit_succeeded
+    state.completion_output = completion_phase.completion_output
 
 
 def _derive_next_action(*, result: str, completion_commit_succeeded: bool) -> str:
@@ -684,6 +686,7 @@ def run_feature_iteration_pipeline(
         reviewer_output=state.reviewer_output,
         reviewer_feedback_forwarded=state.reviewer_feedback_forwarded,
         hook_feedback=state.next_hook_feedback,
+        completion_output=state.completion_output,
     )
     feature_progress_log_reference = dependencies.write_iteration_telemetry(
         telemetry_inputs,

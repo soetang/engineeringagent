@@ -2,6 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from engineeringagent.fitness.contracts import (
+    CONTRACT_VERSION,
+    FitnessRuleResult,
+    RuleSeverity,
+    RuleStatus,
+)
 from engineeringagent.fitness.envelope import emit_result_envelope
 
 
@@ -26,21 +32,24 @@ def main() -> int:
             f"{MAX_LINE_BUDGET}; current={lines}"
         )
 
-    status = "pass" if not violations else "fail"
+    status = RuleStatus.PASS if not violations else RuleStatus.FAIL
     summary = (
         f"loop facade line budget satisfied at {lines} lines."
-        if status == "pass"
+        if status == RuleStatus.PASS
         else f"Detected {len(violations)} loop facade line-budget violation(s)."
     )
 
     emit_result_envelope(
-        rule_id=RULE_ID,
-        status=status,
-        severity="error",
-        summary=summary,
-        violations=violations,
+        FitnessRuleResult(
+            contract_version=CONTRACT_VERSION,
+            rule_id=RULE_ID,
+            status=status,
+            severity=RuleSeverity.ERROR,
+            summary=summary,
+            violations=violations,
+        )
     )
-    return 0 if status == "pass" else 1
+    return 0 if status == RuleStatus.PASS else 1
 
 
 if __name__ == "__main__":

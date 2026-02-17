@@ -53,7 +53,7 @@ After `$responseformat`, keep the rest of the prompt specific to what the review
 - quality criteria (readability, correctness, docs/process, etc.)
 - required evidence or failure reporting expectations
 
-The decision envelope stays canonical (`decision`, `summary`, optional `required_actions`, `confidence`, `scope_notes`).
+The decision envelope stays canonical (`decision`, `summary`, optional `required_actions`, `scope_notes`).
 
 ## 4) Migrate existing prompts
 

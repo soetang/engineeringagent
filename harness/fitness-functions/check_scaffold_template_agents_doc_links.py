@@ -4,6 +4,12 @@ from pathlib import Path
 
 import yaml
 
+from engineeringagent.fitness.contracts import (
+    CONTRACT_VERSION,
+    FitnessRuleResult,
+    RuleSeverity,
+    RuleStatus,
+)
 from engineeringagent.fitness.envelope import emit_result_envelope
 
 
@@ -116,18 +122,21 @@ def _agents_links_violations(project_root: Path) -> list[str]:
 def main() -> int:
     """Run the scaffolded-docs AGENTS link check and emit a result envelope."""
     violations = _agents_links_violations(Path("."))
-    status = "pass" if not violations else "fail"
+    status = RuleStatus.PASS if not violations else RuleStatus.FAIL
     summary = (
         "Scaffold template AGENTS links each scaffolded reference doc."
-        if status == "pass"
+        if status == RuleStatus.PASS
         else f"Detected {len(violations)} scaffold AGENTS docs link violation(s)."
     )
     emit_result_envelope(
-        rule_id=RULE_ID,
-        status=status,
-        severity="error",
-        summary=summary,
-        violations=violations,
+        FitnessRuleResult(
+            contract_version=CONTRACT_VERSION,
+            rule_id=RULE_ID,
+            status=status,
+            severity=RuleSeverity.ERROR,
+            summary=summary,
+            violations=violations,
+        )
     )
     return 0
 

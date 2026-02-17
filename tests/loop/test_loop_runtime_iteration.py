@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -30,7 +31,24 @@ from engineeringagent.changed_paths import ChangedPathsResult
 def test_iteration_pipeline_carries_passed_reviewer_feedback_to_continue(
     tmp_path: Path,
 ) -> None:
-    reviewer_feedback = "reviewer follow-up summary for next implement pass"
+    reviewer_feedback = json.dumps(
+        {
+            "kind": "reviewer_feedback",
+            "phase": "reviewers",
+            "reviewer_id": "code_reviewer",
+            "reviewer_phase": "feature_done",
+            "decision": {
+                "decision": "warning",
+                "summary": "Minor nits.",
+                "required_actions": [],
+                "scope_notes": "Reviewed src changes only.",
+            },
+            "message": "Reviewer provided non-blocking feedback.",
+        },
+        sort_keys=True,
+        ensure_ascii=True,
+        separators=(",", ":"),
+    )
     iteration_inputs = FeatureIterationInputs(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-065.yaml",

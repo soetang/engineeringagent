@@ -77,7 +77,6 @@ class ReviewerDecisionEnvelope(BaseModel):
     decision: Literal["approve", "request_changes", "warning"]
     summary: str
     required_actions: list[str] = Field(default_factory=list)
-    confidence: float | None = Field(default=None, ge=0, le=1)
     scope_notes: str | None = None
 
     @field_validator("summary")
@@ -113,7 +112,6 @@ REVIEWER_RESPONSEFORMAT_CONTRACT = "\n".join(
         '- `decision` must be one of: "approve", "request_changes", "warning".',
         "- `summary` must be a non-empty string.",
         "- If present, `required_actions` must be a list of strings.",
-        "- If present, `confidence` must be a number between 0 and 1.",
         "",
         "Example output:",
         '{"decision":"approve","summary":"Looks good.","required_actions":[]}',
@@ -499,7 +497,7 @@ def run_reviewer(
         return _parser_failure_decision(str(exc))
 
 
-def _extract_opencode_json_text_payload(stdout: str) -> tuple[str | None, str | None]:
+def _extract_opencode_json_text_payload(stdout: str) -> tuple[str | None, str | None]:  # noqa: C901
     """Extract (session_id, last text payload) from OpenCode JSON event stream.
 
     Returns (None, None) on any parsing/extraction failure so callers can fall back

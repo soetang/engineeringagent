@@ -89,6 +89,21 @@ rules:
       - run
       - python
       - harness/fitness-functions/check_prompt_locality.py
+  - rule_id: architecture.retry-feedback-no-truncation
+    name: Retry feedback no truncation
+    summary: Block truncation-by-slicing in retry feedback prompt injection.
+    rationale: Prevents prompt retries from losing the most relevant failure details.
+    remediation: Remove truncation-by-slicing from retry feedback injection; bound retry
+      feedback by contract caps and canonical re-serialization.
+    scope: src/engineeringagent/prompts/renderer.py
+    severity: error
+    side_effect_free: true
+    adapter: command
+    command:
+      - uv
+      - run
+      - python
+      - harness/fitness-functions/check_retry_feedback_no_truncation.py
   - rule_id: architecture.progress-log-path-locality
     name: Progress log path locality
     summary: Centralize loop progress artifact paths and writes behind approved helpers.

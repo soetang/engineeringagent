@@ -405,7 +405,9 @@ def test_completion_phase_fallback_paths() -> None:
         dependencies=deps,
     )
     assert commit_failed.result == "failed"
-    assert "archive rollback failed: restore failed" in str(commit_failed.hook_feedback)
+    assert "archive rollback failed: restore failed" in commit_failed.completion_output
+    assert commit_failed.hook_feedback is not None
+    assert '"kind":"command_failure"' in commit_failed.hook_feedback
 
 
 def test_command_adapter_error_paths(monkeypatch: Any, tmp_path: Path) -> None:

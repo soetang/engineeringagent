@@ -14,12 +14,16 @@ from typer.testing import CliRunner
 from engineeringagent import cli as cli_module
 import engineeringagent.loop as loop_module
 from engineeringagent.loop import (
+    RunConfigOptions,
     build_loop_run,
     build_run_config,
     run_loop as _run_loop,
 )
 from engineeringagent.loop_runtime import presentation as presentation_module
 from engineeringagent.prompts import build_implementation_prompt
+from engineeringagent.retry_feedback.builders import (
+    build_command_failure_retry_feedback,
+)
 
 
 def run_loop(
@@ -45,11 +49,13 @@ def run_loop(
     config = build_run_config(
         project_root=project_root,
         feature_paths=feature_paths,
-        run_all=run_all,
-        dry_run=dry_run,
-        max_iterations=max_iterations,
-        allow_dirty=allow_dirty,
-        verbose_output=verbose_output,
+        options=RunConfigOptions(
+            dry_run,
+            run_all,
+            max_iterations,
+            allow_dirty,
+            verbose_output,
+        ),
     )
     return _run_loop(build_loop_run(config))
 
@@ -2641,7 +2647,16 @@ def test_commit_failure_feedback_still_injected_into_next_prompt(
     assert code == 0
     assert len(prompts) >= 2
     assert "Previous retry feedback is available" in prompts[1]
-    assert "hook blocked" in prompts[1]
+
+    feedback_line = next(
+        line for line in prompts[1].splitlines() if line.lstrip().startswith("{")
+    )
+    envelope = json.loads(feedback_line)
+    assert envelope["kind"] == "command_failure"
+    assert envelope["phase"] == "completion_commit"
+    assert envelope["gate"] == "git_commit"
+    assert "git -c user.name=engineeringagent" in envelope["command"]
+    assert envelope["rerun"]["cwd"] == "repo_root"
 
 
 def test_verification_failure_feedback_is_injected_into_next_prompt(
@@ -2727,7 +2742,10 @@ def test_verification_failure_feedback_is_injected_into_next_prompt(
 
     assert code == 0
     assert len(prompts) >= 2
-    assert "VERIFICATION_FAILURE_TOKEN" in prompts[1]
+    assert "VERIFICATION_FAILURE_TOKEN" not in prompts[1]
+    assert '"kind":"command_failure"' in prompts[1]
+    assert '"phase":"verification"' in prompts[1]
+    assert f'"command":"{verification_command}"' in prompts[1]
 
 
 def test_gate_failure_feedback_includes_fitness_remediation_guidance(
@@ -2807,7 +2825,17 @@ def test_gate_failure_feedback_includes_fitness_remediation_guidance(
 
     assert code == 0
     assert len(prompts) >= 2
-    assert remediation in prompts[1]
+    assert remediation not in prompts[1]
+    assert '"kind":"command_failure"' in prompts[1]
+    assert '"phase":"gates"' in prompts[1]
+    expected = build_command_failure_retry_feedback(
+        phase="gates",
+        gate="fitness_validate",
+        command=f'"{sys.executable}" "{check_script}" "{counter_path}"',
+        precommit=False,
+        message="Command check failed. Rerun the command to see full diagnostics.",
+    )
+    assert expected in prompts[1]
 
 
 def test_spec_validate_failure_feedback_round_trips_to_retry_prompt(
@@ -2884,7 +2912,9 @@ def test_spec_validate_failure_feedback_round_trips_to_retry_prompt(
 
     assert code == 0
     assert len(prompts) >= 2
-    assert token in prompts[1]
+    assert token not in prompts[1]
+    assert '"kind":"command_failure"' in prompts[1]
+    assert '"phase":"gates"' in prompts[1]
 
 
 def test_non_validation_gate_failure_feedback_round_trips_to_retry_prompt(
@@ -2961,7 +2991,9 @@ def test_non_validation_gate_failure_feedback_round_trips_to_retry_prompt(
 
     assert code == 0
     assert len(prompts) >= 2
-    assert token in prompts[1]
+    assert token not in prompts[1]
+    assert '"kind":"command_failure"' in prompts[1]
+    assert '"phase":"gates"' in prompts[1]
 
 
 def test_gate_failure_feedback_replaces_previous_feedback(
@@ -3042,10 +3074,12 @@ def test_gate_failure_feedback_replaces_previous_feedback(
 
     assert code == 0
     assert len(prompts) >= 3
-    assert first_token in prompts[1]
+    assert first_token not in prompts[1]
     assert second_token not in prompts[1]
-    assert second_token in prompts[2]
     assert first_token not in prompts[2]
+    assert second_token not in prompts[2]
+    assert '"kind":"command_failure"' in prompts[1]
+    assert '"kind":"command_failure"' in prompts[2]
 
 
 def test_verification_failure_feedback_replaces_previous_feedback(
@@ -3156,10 +3190,14 @@ def test_verification_failure_feedback_replaces_previous_feedback(
 
     assert code == 0
     assert len(prompts) >= 3
-    assert "FIRST_VERIFICATION_FAILURE_TOKEN" in prompts[1]
+    assert "FIRST_VERIFICATION_FAILURE_TOKEN" not in prompts[1]
     assert "SECOND_VERIFICATION_FAILURE_TOKEN" not in prompts[1]
-    assert "SECOND_VERIFICATION_FAILURE_TOKEN" in prompts[2]
     assert "FIRST_VERIFICATION_FAILURE_TOKEN" not in prompts[2]
+    assert "SECOND_VERIFICATION_FAILURE_TOKEN" not in prompts[2]
+    assert '"kind":"command_failure"' in prompts[1]
+    assert '"kind":"command_failure"' in prompts[2]
+    assert '"phase":"verification"' in prompts[1]
+    assert '"phase":"verification"' in prompts[2]
 
 
 def test_gate_failure_feedback_is_truncated_before_prompt_injection(
@@ -3239,6 +3277,7 @@ def test_gate_failure_feedback_is_truncated_before_prompt_injection(
 
     assert code == 0
     assert len(prompts) >= 2
-    assert "BEGIN_GATE_FEEDBACK" in prompts[1]
+    assert "BEGIN_GATE_FEEDBACK" not in prompts[1]
     assert "END_GATE_FEEDBACK" not in prompts[1]
-    assert "...[truncated]" in prompts[1]
+    assert "...[truncated]" not in prompts[1]
+    assert '"kind":"command_failure"' in prompts[1]
