@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import posixpath
 from pathlib import Path
 
 from engineeringagent.fitness.contracts import (
@@ -13,6 +14,15 @@ from engineeringagent.fitness.envelope import emit_result_envelope
 
 
 RULE_ID = "architecture.no-doc-content-tests"
+
+
+def _normalize_relpath(relpath: str) -> str:
+    normalized = relpath.replace("\\", "/").strip()
+    while normalized.startswith("./"):
+        normalized = normalized[2:]
+    normalized = normalized.lstrip("/")
+    normalized = posixpath.normpath(normalized)
+    return "" if normalized in (".", "") else normalized
 
 
 def _extract_repo_root_relpath(expr: ast.AST, *, repo_root_name: str) -> str | None:
@@ -30,6 +40,30 @@ def _extract_repo_root_relpath(expr: ast.AST, *, repo_root_name: str) -> str | N
     if not (isinstance(cursor, ast.Name) and cursor.id == repo_root_name):
         return None
 
+    normalized = "/".join(part.strip("/") for part in segments if part)
+    return normalized or None
+
+
+def _extract_repo_root_path_call_relpath(
+    expr: ast.AST,
+    *,
+    repo_root_name: str,
+) -> str | None:
+    """Extract relpath from expressions like: Path(repo_root, "docs", "x.md")."""
+
+    if not isinstance(expr, ast.Call):
+        return None
+    if not (isinstance(expr.func, ast.Name) and expr.func.id == "Path"):
+        return None
+    if not expr.args:
+        return None
+    if not (isinstance(expr.args[0], ast.Name) and expr.args[0].id == repo_root_name):
+        return None
+    segments: list[str] = []
+    for arg in expr.args[1:]:
+        if not (isinstance(arg, ast.Constant) and isinstance(arg.value, str)):
+            return None
+        segments.append(arg.value)
     normalized = "/".join(part.strip("/") for part in segments if part)
     return normalized or None
 
@@ -71,6 +105,7 @@ def _scan_function_body(
     relpaths_by_name: dict[str, str] = {}
 
     def _note_call(lineno: int, relpath: str) -> None:
+        relpath = _normalize_relpath(relpath)
         if not _is_banned_doc_target(relpath):
             return
         if _is_allowed_doc_target(relpath):
@@ -80,24 +115,39 @@ def _scan_function_body(
             f"remove read/word assertions for {relpath}"
         )
 
+    def _extract_relpath(expr: ast.AST) -> str | None:
+        relpath = _extract_repo_root_relpath(expr, repo_root_name=repo_root_name)
+        if relpath is not None:
+            return relpath
+
+        relpath = _extract_repo_root_path_call_relpath(
+            expr, repo_root_name=repo_root_name
+        )
+        if relpath is not None:
+            return relpath
+
+        if isinstance(expr, ast.Constant) and isinstance(expr.value, str):
+            return expr.value
+
+        if isinstance(expr, ast.Name):
+            return relpaths_by_name.get(expr.id)
+
+        return None
+
     def _scan_expr(expr: ast.AST) -> None:
         for child in ast.walk(expr):
             if not isinstance(child, ast.Call):
                 continue
 
-            # _read_repo_text(repo_root, "docs/...md") helper.
-            if isinstance(child.func, ast.Name) and child.func.id == "_read_repo_text":
-                if len(child.args) >= 2:
-                    root_arg = child.args[0]
-                    path_arg = child.args[1]
-                    if (
-                        isinstance(root_arg, ast.Name)
-                        and root_arg.id == repo_root_name
-                        and isinstance(path_arg, ast.Constant)
-                        and isinstance(path_arg.value, str)
-                    ):
-                        _note_call(getattr(child, "lineno", 1), path_arg.value)
-                continue
+            # Wrapper helpers like _read(repo_root, "docs/x.md") or
+            # _read(repo_root, doc_path), regardless of helper name.
+            if len(child.args) >= 2:
+                root_arg = child.args[0]
+                path_arg = child.args[1]
+                if isinstance(root_arg, ast.Name) and root_arg.id == repo_root_name:
+                    relpath = _extract_relpath(path_arg)
+                    if relpath is not None:
+                        _note_call(getattr(child, "lineno", 1), relpath)
 
             # Path.read_text(...)
             if not (
@@ -106,11 +156,7 @@ def _scan_function_body(
                 continue
 
             receiver = child.func.value
-            relpath = _extract_repo_root_relpath(
-                receiver, repo_root_name=repo_root_name
-            )
-            if relpath is None and isinstance(receiver, ast.Name):
-                relpath = relpaths_by_name.get(receiver.id)
+            relpath = _extract_relpath(receiver)
             if relpath is None:
                 continue
 
@@ -121,12 +167,11 @@ def _scan_function_body(
             if len(statement.targets) == 1 and isinstance(
                 statement.targets[0], ast.Name
             ):
-                relpath = _extract_repo_root_relpath(
-                    statement.value,
-                    repo_root_name=repo_root_name,
-                )
+                relpath = _extract_relpath(statement.value)
                 if relpath is not None:
-                    relpaths_by_name[statement.targets[0].id] = relpath
+                    relpaths_by_name[statement.targets[0].id] = _normalize_relpath(
+                        relpath
+                    )
             _scan_expr(statement.value)
             return
 
@@ -134,12 +179,9 @@ def _scan_function_body(
             statement.target, ast.Name
         ):
             if statement.value is not None:
-                relpath = _extract_repo_root_relpath(
-                    statement.value,
-                    repo_root_name=repo_root_name,
-                )
+                relpath = _extract_relpath(statement.value)
                 if relpath is not None:
-                    relpaths_by_name[statement.target.id] = relpath
+                    relpaths_by_name[statement.target.id] = _normalize_relpath(relpath)
                 _scan_expr(statement.value)
             return
 
