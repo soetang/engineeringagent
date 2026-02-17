@@ -187,7 +187,7 @@ def test_fitness_subcommands(tmp_path: Path, capsys: Any) -> None:
         SimpleNamespace(
             project_root=str(tmp_path),
             manifest_path=None,
-            format="json",
+            output_format="json",
         )
     )
     list_output = capsys.readouterr().out
@@ -201,7 +201,7 @@ def test_fitness_subcommands(tmp_path: Path, capsys: Any) -> None:
             project_root=str(tmp_path),
             manifest_path=None,
             jobs=2,
-            format="json",
+            output_format="json",
         )
     )
     run_output = capsys.readouterr().out
@@ -274,7 +274,7 @@ def test_main_run_command_uses_typer_handler(monkeypatch: Any) -> None:
     def _fake_cmd_run(args: Any) -> int:
         recorded["project_root"] = args.project_root
         recorded["feature_paths"] = args.feature_paths
-        recorded["all"] = args.all
+        recorded["run_all"] = args.run_all
         recorded["dry_run"] = args.dry_run
         recorded["max_iterations"] = args.max_iterations
         recorded["allow_dirty"] = args.allow_dirty
@@ -303,7 +303,7 @@ def test_main_run_command_uses_typer_handler(monkeypatch: Any) -> None:
     assert recorded == {
         "project_root": "repo",
         "feature_paths": ["docs/spec/features/FEAT-900.yaml"],
-        "all": True,
+        "run_all": True,
         "dry_run": True,
         "max_iterations": 7,
         "allow_dirty": True,
@@ -327,7 +327,7 @@ def test_cmd_run_builds_looprun_context_for_loop_entrypoint(
         SimpleNamespace(
             project_root=str(tmp_path),
             feature_paths=["docs/spec/features/FEAT-078.yaml"],
-            all=False,
+            run_all=False,
             dry_run=True,
             max_iterations=7,
             allow_dirty=True,
@@ -453,7 +453,7 @@ def test_fitness_run_json_includes_remediation_for_failures(
             project_root=str(tmp_path),
             manifest_path=None,
             jobs=1,
-            format="json",
+            output_format="json",
         )
     )
     output = capsys.readouterr().out
@@ -498,7 +498,7 @@ def test_fitness_run_executes_shell_command_rule(tmp_path: Path, capsys: Any) ->
             project_root=str(tmp_path),
             manifest_path=None,
             jobs=1,
-            format="json",
+            output_format="json",
         )
     )
     payload = json.loads(capsys.readouterr().out)
@@ -536,7 +536,7 @@ def test_fitness_run_json_uses_fallback_when_remediation_metadata_missing(
             project_root=str(tmp_path),
             manifest_path=None,
             jobs=1,
-            format="json",
+            output_format="json",
         )
     )
     payload = json.loads(capsys.readouterr().out)
@@ -585,7 +585,7 @@ def test_fitness_list_shows_declared_shell_rule_only(
         SimpleNamespace(
             project_root=str(tmp_path),
             manifest_path=None,
-            format="json",
+            output_format="json",
         )
     )
     payload = json.loads(capsys.readouterr().out)
@@ -624,7 +624,7 @@ def test_fitness_catalog_json_contract_is_deterministic(
         SimpleNamespace(
             project_root=str(tmp_path),
             manifest_path=None,
-            format="json",
+            output_format="json",
             output=None,
         )
     )

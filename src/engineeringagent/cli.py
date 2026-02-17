@@ -266,17 +266,17 @@ def cmd_run(args: _HandlerArgs) -> int:
     Returns:
         Process exit code from the loop runner.
     """
-    if args.all and args.feature_paths:
+    if args.run_all and args.feature_paths:
         print("run input error: positional feature paths cannot be used with --all")
         return 1
-    if not args.all and not args.feature_paths:
+    if not args.run_all and not args.feature_paths:
         print("run input error: provide one or more feature paths, or use --all")
         return 1
 
     project_root = Path(args.project_root).resolve()
 
     checks_path = project_root / "harness" / "checks.yaml"
-    if args.all:
+    if args.run_all:
         legacy_paths = (
             project_root / "harness" / "gates.yaml",
             project_root / "harness" / "reviewers.yaml",
@@ -318,7 +318,7 @@ def cmd_run(args: _HandlerArgs) -> int:
         feature_paths=args.feature_paths,
         options=RunConfigOptions(
             args.dry_run,
-            args.all,
+            args.run_all,
             args.max_iterations,
             args.allow_dirty,
             args.verbose_output,
@@ -334,7 +334,7 @@ def cmd_fitness_list(args: _HandlerArgs) -> int:
     manifest_path = _resolve_manifest_path(args.manifest_path)
     catalog = build_rule_catalog(project_root, manifest_path=manifest_path)
 
-    if args.format == "json":
+    if args.output_format == "json":
         payload = [
             _fitness_metadata_payload(definition, include_details=False)
             for definition in catalog
@@ -383,7 +383,7 @@ def cmd_fitness_run(args: _HandlerArgs) -> int:
         if result.status in {RuleStatus.FAIL, RuleStatus.ERROR}
     ]
 
-    if args.format == "json":
+    if args.output_format == "json":
         payload = {
             "results": [result.model_dump(mode="json") for result in summary.results],
             "failed_rules": failed_rules,
@@ -421,7 +421,7 @@ def cmd_fitness_catalog(args: _HandlerArgs) -> int:
 
     catalog = build_rule_catalog(project_root, manifest_path=manifest_path)
 
-    if args.format == "json":
+    if args.output_format == "json":
         payload = [
             _fitness_metadata_payload(definition, include_details=True)
             for definition in catalog
@@ -764,7 +764,7 @@ def _build_typer_fitness_app() -> typer.Typer:
             cmd_fitness_list,
             ctx=ctx,
             manifest_path=manifest_path,
-            format=output_format,
+            output_format=output_format,
         )
 
     @fitness_app.command("run", help="run active fitness rules")
@@ -790,7 +790,7 @@ def _build_typer_fitness_app() -> typer.Typer:
             ctx=ctx,
             manifest_path=manifest_path,
             jobs=jobs,
-            format=output_format,
+            output_format=output_format,
         )
 
     @fitness_app.command("catalog", help="generate fitness rule catalog")
@@ -815,7 +815,7 @@ def _build_typer_fitness_app() -> typer.Typer:
             cmd_fitness_catalog,
             ctx=ctx,
             manifest_path=manifest_path,
-            format=output_format,
+            output_format=output_format,
             output=output,
         )
 
@@ -933,7 +933,7 @@ def build_typer_app() -> typer.Typer:
             cmd_run,
             ctx=ctx,
             feature_paths=list(feature_paths or []),
-            all=run_all,
+            run_all=run_all,
             dry_run=dry_run,
             max_iterations=max_iterations,
             allow_dirty=allow_dirty,

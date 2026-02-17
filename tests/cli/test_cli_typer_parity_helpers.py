@@ -120,7 +120,7 @@ def test_fitness_text_output_paths_cover_list_and_run(
         SimpleNamespace(
             project_root=str(tmp_path),
             manifest_path=None,
-            format="text",
+            output_format="text",
         )
     )
     list_output = capsys.readouterr().out
@@ -137,7 +137,7 @@ def test_fitness_text_output_paths_cover_list_and_run(
             project_root=str(tmp_path),
             manifest_path=None,
             jobs=1,
-            format="text",
+            output_format="text",
         )
     )
     empty_output = capsys.readouterr().out
@@ -166,7 +166,7 @@ def test_fitness_text_output_paths_cover_list_and_run(
             project_root=str(tmp_path),
             manifest_path=None,
             jobs=1,
-            format="text",
+            output_format="text",
         )
     )
     nonempty_output = capsys.readouterr().out
@@ -186,7 +186,7 @@ def test_fitness_catalog_prints_absolute_path_when_output_is_outside_project_roo
         SimpleNamespace(
             project_root=str(tmp_path),
             manifest_path=None,
-            format="markdown",
+            output_format="markdown",
             output=str(outside_path),
         )
     )

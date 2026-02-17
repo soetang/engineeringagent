@@ -86,7 +86,7 @@ def test_main_uses_typer_fitness_tree_without_legacy_forward(monkeypatch: Any) -
     def _fake_cmd_fitness_catalog(args: Any) -> int:
         captured["project_root"] = args.project_root
         captured["manifest_path"] = args.manifest_path
-        captured["format"] = args.format
+        captured["output_format"] = args.output_format
         captured["output"] = args.output
         return 3
 
@@ -117,6 +117,6 @@ def test_main_uses_typer_fitness_tree_without_legacy_forward(monkeypatch: Any) -
     assert captured == {
         "project_root": "repo",
         "manifest_path": "harness/fitness-functions/rules.yaml",
-        "format": "json",
+        "output_format": "json",
         "output": "docs/fitness-functions/rules.md",
     }
