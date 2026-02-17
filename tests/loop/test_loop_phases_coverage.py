@@ -3,10 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
-
-import pytest
-
-import engineeringagent.loop_runtime.phases as phases_module
 from engineeringagent.changed_paths import ChangedPathsResult
 from engineeringagent.loop_runtime.models import FeatureIterationInputs
 from engineeringagent.loop_runtime.phases import (
@@ -64,16 +60,21 @@ def test_run_gate_phase_fails_fast_when_checks_yaml_missing_for_run_all(
 
 def test_run_gate_phase_reports_load_error_when_checks_document_raises(
     tmp_path: Path,
-    monkeypatch: Any,
 ) -> None:
     _write_text(
-        tmp_path / "harness" / "checks.yaml", "contract_version: '1.0'\nchecks: {}\n"
+        tmp_path / "harness" / "checks.yaml",
+        "\n".join(
+            [
+                'contract_version: "1.0"',
+                "checks:",
+                "  smoke:",
+                "    type: command",
+                "    command: ''",
+                "",
+            ]
+        )
+        + "\n",
     )
-
-    def boom(*_args: Any, **_kwargs: Any) -> Any:
-        raise RuntimeError("kaboom")
-
-    monkeypatch.setattr(phases_module, "load_checks_document", boom)
 
     inputs = FeatureIterationInputs(
         project_root=tmp_path,
@@ -102,7 +103,7 @@ def test_run_gate_phase_reports_load_error_when_checks_document_raises(
 
     assert outcome.result == "failed"
     assert outcome.failed_gate == "checks_config"
-    assert "kaboom" in outcome.gate_output
+    assert "invalid harness/checks.yaml" in outcome.gate_output
 
 
 def test_run_reviewer_phase_forwards_request_changes_feedback_for_run_all(
@@ -138,33 +139,37 @@ def test_run_reviewer_phase_forwards_request_changes_feedback_for_run_all(
         verbose_output=False,
     )
 
-    reviewer_state: dict[str, Any] = {"version": "1", "features": {}}
+    archived_feature_path = (
+        tmp_path / "docs" / "spec" / "features_done" / "FEAT-001.yaml"
+    )
+    _write_text(archived_feature_path, "id: FEAT-001\n")
+
+    class _Proc:
+        def __init__(self, stdout: str) -> None:
+            self.stdout = stdout
+            self.stderr = ""
+
+    def _start_agent(execution_root: Path, prompt: str, **_kwargs: object) -> _Proc:
+        del execution_root, prompt
+        return _Proc(
+            '{"decision":"request_changes","summary":"needs work","required_actions":["fix it"]}'
+        )
+
     deps = ReviewerPhaseDependencies(
-        load_reviewer_config=lambda *_args, **_kwargs: {},
         collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
             paths=(),
             run_all=True,
             reason="fallback_run_all_change_discovery_failed",
         ),
-        load_reviewers_state=lambda *_args, **_kwargs: reviewer_state,
-        save_reviewers_state=lambda *_args, **_kwargs: None,
-        plan_reviewers=lambda *_args, **_kwargs: [],
-        evaluate_cached_reviewer_approval=lambda *_args, **_kwargs: (False, ""),
-        run_reviewer=lambda *_args, **_kwargs: {
-            "decision": "request_changes",
-            "summary": "needs work",
-            "required_actions": ["fix it"],
-        },
-        record_reviewer_approval=lambda *_args, **_kwargs: None,
         restore_archived_feature=lambda *_args, **_kwargs: (True, None),
-        start_agent=lambda *_args, **_kwargs: None,
+        start_agent=_start_agent,
     )
 
     outcome = run_reviewer_phase(
         inputs,
         {"id": "FEAT-001"},
         archived_in_iteration=True,
-        archived_path=tmp_path / "docs" / "spec" / "features_done" / "FEAT-001.yaml",
+        archived_path=archived_feature_path,
         dependencies=deps,
     )
 

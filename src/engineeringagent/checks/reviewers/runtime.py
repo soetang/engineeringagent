@@ -10,7 +10,8 @@ from engineeringagent.changed_paths import (
     FALLBACK_CHANGE_DISCOVERY_REASON,
 )
 from engineeringagent.on_change_matcher import path_matches_any_glob
-from engineeringagent.reviewers import (
+
+from engineeringagent.checks.reviewers.engine import (
     DECISION_APPROVE,
     DECISION_REQUEST_CHANGES,
     evaluate_cached_reviewer_approval,
@@ -137,7 +138,7 @@ def plan_reviewer_checks(
 
 def run_planned_reviewer_checks(
     request: RunPlannedReviewerChecksRequest,
-) -> tuple[bool, str | None, str]:
+) -> tuple[bool, str | None, str, dict[str, Any] | None]:
     """Execute planned reviewer checks and return deterministic outcome."""
 
     planned = plan_reviewer_checks(
@@ -146,7 +147,7 @@ def run_planned_reviewer_checks(
         changed_paths=request.changed_paths,
     )
     if not planned:
-        return True, None, ""
+        return True, None, "", None
 
     state = load_reviewers_state(request.project_root)
     output_parts: list[str] = []
@@ -221,7 +222,8 @@ def run_planned_reviewer_checks(
 
         if decision_name != DECISION_APPROVE:
             save_reviewers_state(request.project_root, state)
-            return False, reviewer_id, "\n".join(output_parts).strip()
+            payload = decision if isinstance(decision, dict) else None
+            return False, reviewer_id, "\n".join(output_parts).strip(), payload
 
     save_reviewers_state(request.project_root, state)
-    return True, None, "\n".join(output_parts).strip()
+    return True, None, "\n".join(output_parts).strip(), None

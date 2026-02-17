@@ -11,15 +11,6 @@ from .git.client import (
     status_porcelain,
 )
 from .opencode.client import run_shell_command, start_agent
-from .reviewers import (
-    evaluate_cached_reviewer_approval,
-    load_reviewer_config,
-    load_reviewers_state,
-    plan_reviewers,
-    record_reviewer_approval,
-    run_reviewer,
-    save_reviewers_state,
-)
 from .opencode_permissions import (
     PERMISSION_REMEDIATION_HINT,
     run_permission_probe,
@@ -339,14 +330,7 @@ def _run_feature_iteration_with_inputs(
             ),
             run_reviewer_phase=run_reviewer_phase,
             reviewer_phase_dependencies=ReviewerPhaseDependencies(
-                load_reviewer_config=load_reviewer_config,
                 collect_changed_paths=collect_changed_paths,
-                load_reviewers_state=load_reviewers_state,
-                save_reviewers_state=save_reviewers_state,
-                plan_reviewers=plan_reviewers,
-                evaluate_cached_reviewer_approval=evaluate_cached_reviewer_approval,
-                run_reviewer=run_reviewer,
-                record_reviewer_approval=record_reviewer_approval,
                 restore_archived_feature=_restore_archived_feature,
                 start_agent=start_agent,
             ),

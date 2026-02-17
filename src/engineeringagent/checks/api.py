@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Callable, TypedDict
+from typing import Any, Callable, TypedDict, cast
 
 from pydantic import BaseModel, ConfigDict
 from typing_extensions import Unpack
+
+from engineeringagent.changed_paths import ChangedPathsResult
 
 
 _CHECK_GROUP_VALIDATE = "validate"
@@ -43,6 +45,7 @@ class ChecksRunResult(BaseModel):
     ok: bool
     failed_group: str | None = None
     failed_check_id: str | None = None
+    failed_payload: dict[str, Any] | None = None
     output: str = ""
 
 
@@ -61,6 +64,9 @@ class _RunChecksRequest(BaseModel):
     base: str | None
     head: str | None
     start_agent_fn: Callable[..., object] | None
+    prior_feedback: str | None
+    collect_changed_paths_fn: Callable[..., object] | None
+    run_shell_command_fn: Callable[..., object] | None
 
 
 class _RunChecksKwargs(TypedDict, total=False):
@@ -70,6 +76,18 @@ class _RunChecksKwargs(TypedDict, total=False):
     base: str | None
     head: str | None
     start_agent_fn: Callable[..., object] | None
+    prior_feedback: str | None
+    collect_changed_paths: Callable[..., object] | None
+    run_shell_command: Callable[..., object] | None
+
+
+class _GroupRunResult(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    ok: bool
+    failed_check_id: str | None
+    output: str
+    failed_payload: dict[str, Any] | None = None
 
 
 def _normalize_groups(checks: list[str] | None) -> tuple[str, ...]:
@@ -115,6 +133,36 @@ def _coerce_phase(phase: Any) -> Any:
         ) from exc
 
 
+def _call_collect_changed_paths(
+    fn: Callable[..., object],
+    project_root: Path,
+    *,
+    base: str | None,
+    head: str | None,
+) -> object:
+    """Call collect_changed_paths with optional base/head.
+
+    The loop runtime wires a memoized collector that only accepts a single
+    positional argument; checks must tolerate that narrower callable.
+    """
+
+    kwargs: dict[str, str] = {}
+    if base is not None:
+        kwargs["base"] = base
+    if head is not None:
+        kwargs["head"] = head
+    if not kwargs:
+        return fn(project_root)
+    try:
+        return fn(project_root, **kwargs)
+    except TypeError as exc:
+        # Only fallback for the known compatibility case where callers inject
+        # base/head but the collector only accepts a single positional argument.
+        if "unexpected keyword argument" not in str(exc):
+            raise
+        return fn(project_root)
+
+
 def _load_harness_checks_doc(project_root: Path) -> tuple[Any | None, str | None]:
     checks_path = project_root / "harness" / "checks.yaml"
     if not checks_path.exists():
@@ -125,9 +173,14 @@ def _load_harness_checks_doc(project_root: Path) -> tuple[Any | None, str | None
         )
 
     try:
-        from engineeringagent.specs import checks_contract_issues, load_yaml
+        from engineeringagent.specs import (
+            HarnessChecksDocument,
+            checks_contract_issues,
+            load_yaml,
+        )
 
-        issues = checks_contract_issues(load_yaml(checks_path), checks_path)
+        payload = load_yaml(checks_path)
+        issues = checks_contract_issues(payload, checks_path)
     except Exception as exc:  # noqa: BLE001
         return None, f"checks config error: failed to load harness/checks.yaml: {exc}"
     if issues:
@@ -138,9 +191,7 @@ def _load_harness_checks_doc(project_root: Path) -> tuple[Any | None, str | None
         )
 
     try:
-        from engineeringagent.harness_checks_runtime import load_checks_document
-
-        doc = load_checks_document(checks_path)
+        doc = HarnessChecksDocument.model_validate(payload)
     except Exception as exc:  # noqa: BLE001
         return (
             None,
@@ -225,20 +276,24 @@ def _apply_check_id_selection(
     return _filter_doc_to_check_id(doc, request.check_id), None
 
 
-def _run_validate_group(project_root: Path) -> tuple[bool, str | None, str]:
+def _run_validate_group(project_root: Path) -> _GroupRunResult:
     from engineeringagent.checks.validate.runtime import run_validate
 
     messages = run_validate(project_root)
     if not messages:
-        return True, None, ""
-    return False, None, "\n".join(messages).strip()
+        return _GroupRunResult(ok=True, failed_check_id=None, output="")
+    return _GroupRunResult(
+        ok=False,
+        failed_check_id=None,
+        output="\n".join(messages).strip(),
+    )
 
 
 def _run_commands_group(
     project_root: Path,
     doc: Any,
     request: _RunChecksRequest,
-) -> tuple[bool, str | None, str]:
+) -> _GroupRunResult:
     from engineeringagent.changed_paths import collect_changed_paths
     from engineeringagent.opencode.client import run_shell_command
 
@@ -247,10 +302,15 @@ def _run_commands_group(
         run_planned_command_checks,
     )
 
-    changed_paths = collect_changed_paths(
-        project_root,
-        base=request.base,
-        head=request.head,
+    collect_changed_paths_fn = request.collect_changed_paths_fn or collect_changed_paths
+    changed_paths = cast(
+        ChangedPathsResult,
+        _call_collect_changed_paths(
+            collect_changed_paths_fn,
+            project_root,
+            base=request.base,
+            head=request.head,
+        ),
     )
     run_request = RunPlannedCommandChecksRequest(
         project_root=project_root,
@@ -259,18 +319,19 @@ def _run_commands_group(
         changed_paths=changed_paths,
         verbose_output=request.verbose_output,
     )
+    run_shell_command_fn = request.run_shell_command_fn or run_shell_command
     ok, failed_id, output = run_planned_command_checks(
         run_request,
-        run_shell_command=run_shell_command,
+        run_shell_command=run_shell_command_fn,
     )
-    return ok, failed_id, output
+    return _GroupRunResult(ok=ok, failed_check_id=failed_id, output=output)
 
 
 def _run_fitness_group(
     project_root: Path,
     doc: Any,
     request: _RunChecksRequest,
-) -> tuple[bool, str | None, str]:
+) -> _GroupRunResult:
     from engineeringagent.changed_paths import collect_changed_paths
 
     from engineeringagent.checks.fitness.runtime import (
@@ -278,10 +339,15 @@ def _run_fitness_group(
         run_planned_fitness_checks,
     )
 
-    changed_paths = collect_changed_paths(
-        project_root,
-        base=request.base,
-        head=request.head,
+    collect_changed_paths_fn = request.collect_changed_paths_fn or collect_changed_paths
+    changed_paths = cast(
+        ChangedPathsResult,
+        _call_collect_changed_paths(
+            collect_changed_paths_fn,
+            project_root,
+            base=request.base,
+            head=request.head,
+        ),
     )
 
     run_request = RunPlannedFitnessChecksRequest(
@@ -291,14 +357,14 @@ def _run_fitness_group(
         changed_paths=changed_paths,
     )
     ok, failed_id, output = run_planned_fitness_checks(run_request)
-    return ok, failed_id, output
+    return _GroupRunResult(ok=ok, failed_check_id=failed_id, output=output)
 
 
 def _run_reviewers_group(
     project_root: Path,
     doc: Any,
     request: _RunChecksRequest,
-) -> tuple[bool, str | None, str]:
+) -> _GroupRunResult:
     from engineeringagent.changed_paths import collect_changed_paths
     from engineeringagent.opencode.client import start_agent
     from engineeringagent.specs import load_yaml
@@ -309,36 +375,48 @@ def _run_reviewers_group(
     )
 
     if request.feature_path is None:
-        return False, None, "reviewers config error: feature_path is required"
+        return _GroupRunResult(
+            ok=False,
+            failed_check_id=None,
+            output="reviewers config error: feature_path is required",
+        )
     if not request.feature_path.exists():
-        return (
-            False,
-            None,
-            f"reviewers config error: feature spec not found: {request.feature_path}",
+        return _GroupRunResult(
+            ok=False,
+            failed_check_id=None,
+            output=(
+                "reviewers config error: feature spec not found: "
+                f"{request.feature_path}"
+            ),
         )
 
     try:
         feature_payload = load_yaml(request.feature_path)
     except Exception as exc:  # noqa: BLE001
-        return (
-            False,
-            None,
-            f"reviewers config error: failed to load feature spec: {exc}",
+        return _GroupRunResult(
+            ok=False,
+            failed_check_id=None,
+            output=f"reviewers config error: failed to load feature spec: {exc}",
         )
     feature_id = ""
     if isinstance(feature_payload, dict):
         feature_id = str(feature_payload.get("id", "")).strip()
     if not feature_id:
-        return (
-            False,
-            None,
-            "reviewers config error: feature spec is missing required id",
+        return _GroupRunResult(
+            ok=False,
+            failed_check_id=None,
+            output="reviewers config error: feature spec is missing required id",
         )
 
-    changed_paths = collect_changed_paths(
-        project_root,
-        base=request.base,
-        head=request.head,
+    collect_changed_paths_fn = request.collect_changed_paths_fn or collect_changed_paths
+    changed_paths = cast(
+        ChangedPathsResult,
+        _call_collect_changed_paths(
+            collect_changed_paths_fn,
+            project_root,
+            base=request.base,
+            head=request.head,
+        ),
     )
     run_request = RunPlannedReviewerChecksRequest(
         project_root=project_root,
@@ -348,9 +426,15 @@ def _run_reviewers_group(
         feature_id=feature_id,
         feature_path=request.feature_path,
         start_agent_fn=request.start_agent_fn or start_agent,
+        prior_feedback=request.prior_feedback,
     )
-    ok, failed_id, output = run_planned_reviewer_checks(run_request)
-    return ok, failed_id, output
+    ok, failed_id, output, failed_payload = run_planned_reviewer_checks(run_request)
+    return _GroupRunResult(
+        ok=ok,
+        failed_check_id=failed_id,
+        output=output,
+        failed_payload=failed_payload,
+    )
 
 
 def _execute_groups(
@@ -362,23 +446,24 @@ def _execute_groups(
     outputs: list[str] = []
     for group in request.ordered_groups:
         if group == _CHECK_GROUP_VALIDATE:
-            ok, failed_id, out = _run_validate_group(project_root)
+            group_result = _run_validate_group(project_root)
         elif group == _CHECK_GROUP_COMMANDS:
-            ok, failed_id, out = _run_commands_group(project_root, doc, request)
+            group_result = _run_commands_group(project_root, doc, request)
         elif group == _CHECK_GROUP_FITNESS:
-            ok, failed_id, out = _run_fitness_group(project_root, doc, request)
+            group_result = _run_fitness_group(project_root, doc, request)
         elif group == _CHECK_GROUP_REVIEWERS:
-            ok, failed_id, out = _run_reviewers_group(project_root, doc, request)
+            group_result = _run_reviewers_group(project_root, doc, request)
         else:  # pragma: no cover
             raise RuntimeError(f"unreachable checks group: {group}")
 
-        if out:
-            outputs.append(out)
-        if not ok:
+        if group_result.output:
+            outputs.append(group_result.output)
+        if not group_result.ok:
             return ChecksRunResult(
                 ok=False,
                 failed_group=group,
-                failed_check_id=failed_id,
+                failed_check_id=group_result.failed_check_id,
+                failed_payload=group_result.failed_payload,
                 output="\n".join(outputs).strip(),
             )
 
@@ -421,6 +506,9 @@ def run_checks(
         "base",
         "head",
         "start_agent_fn",
+        "prior_feedback",
+        "collect_changed_paths",
+        "run_shell_command",
     }
     unexpected = sorted(set(kwargs) - allowed_kwargs)
     if unexpected:
@@ -435,6 +523,9 @@ def run_checks(
     base = kwargs.get("base")
     head = kwargs.get("head")
     start_agent_fn = kwargs.get("start_agent_fn")
+    prior_feedback = kwargs.get("prior_feedback")
+    collect_changed_paths_fn = kwargs.get("collect_changed_paths")
+    run_shell_command_fn = kwargs.get("run_shell_command")
 
     if _CHECK_GROUP_REVIEWERS in ordered_groups and feature_path is None:
         raise ValueError("feature_path is required when reviewers checks are selected")
@@ -448,6 +539,9 @@ def run_checks(
         base=base,
         head=head,
         start_agent_fn=start_agent_fn,
+        prior_feedback=str(prior_feedback) if prior_feedback is not None else None,
+        collect_changed_paths_fn=collect_changed_paths_fn,
+        run_shell_command_fn=run_shell_command_fn,
     )
 
     doc = None

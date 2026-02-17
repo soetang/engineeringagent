@@ -57,18 +57,11 @@ def test_run_reviewer_phase_is_not_configured_without_checks_yaml(
         verbose_output=False,
     )
     deps = ReviewerPhaseDependencies(
-        load_reviewer_config=lambda *_args, **_kwargs: {},
         collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
             paths=(),
             run_all=True,
             reason=None,
         ),
-        load_reviewers_state=lambda *_args, **_kwargs: {"version": "1", "features": {}},
-        save_reviewers_state=lambda *_args, **_kwargs: None,
-        plan_reviewers=lambda *_args, **_kwargs: [],
-        evaluate_cached_reviewer_approval=lambda *_args, **_kwargs: (False, ""),
-        run_reviewer=lambda *_args, **_kwargs: {},
-        record_reviewer_approval=lambda *_args, **_kwargs: None,
         restore_archived_feature=lambda *_args, **_kwargs: (True, None),
         start_agent=lambda *_args, **_kwargs: None,
     )
@@ -101,6 +94,16 @@ checks:
         encoding="utf-8",
     )
 
+    prompt_path = tmp_path / "harness" / "reviewers" / "prompts" / "reviewer_1.md"
+    prompt_path.parent.mkdir(parents=True, exist_ok=True)
+    prompt_path.write_text("Please review.\n$responseformat\n", encoding="utf-8")
+
+    archived_feature_path = (
+        tmp_path / "docs" / "spec" / "features_done" / "FEAT-001.yaml"
+    )
+    archived_feature_path.parent.mkdir(parents=True, exist_ok=True)
+    archived_feature_path.write_text("id: FEAT-001\n", encoding="utf-8")
+
     inputs = FeatureIterationInputs(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
@@ -110,39 +113,39 @@ checks:
         verbose_output=False,
     )
 
-    run_calls: list[str] = []
+    start_calls: list[str] = []
+
+    class _Proc:
+        def __init__(self, stdout: str) -> None:
+            self.stdout = stdout
+            self.stderr = ""
+
+    def _start_agent(execution_root: Path, prompt: str, **_kwargs: object) -> _Proc:
+        del execution_root, prompt
+        start_calls.append("called")
+        return _Proc('{"decision":"approve","summary":"ok","required_actions":[]}')
 
     deps = ReviewerPhaseDependencies(
-        load_reviewer_config=lambda *_args, **_kwargs: {},
         collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
             paths=(),
             run_all=False,
             reason=None,
         ),
-        load_reviewers_state=lambda *_args, **_kwargs: {"version": "1", "features": {}},
-        save_reviewers_state=lambda *_args, **_kwargs: None,
-        plan_reviewers=lambda *_args, **_kwargs: [],
-        evaluate_cached_reviewer_approval=lambda *_args, **_kwargs: (False, ""),
-        run_reviewer=lambda *_args, **_kwargs: (
-            run_calls.append("called")
-            or {"decision": "approve", "summary": "ok", "required_actions": []}
-        ),
-        record_reviewer_approval=lambda *_args, **_kwargs: None,
         restore_archived_feature=lambda *_args, **_kwargs: (True, None),
-        start_agent=lambda *_args, **_kwargs: None,
+        start_agent=_start_agent,
     )
 
     outcome = run_reviewer_phase(
         inputs,
         {"id": "FEAT-001"},
         archived_in_iteration=True,
-        archived_path=tmp_path / "docs" / "spec" / "features_done" / "FEAT-001.yaml",
+        archived_path=archived_feature_path,
         dependencies=deps,
     )
 
     assert outcome.result == "passed"
     assert outcome.reviewer_status == "passed"
-    assert run_calls == ["called"]
+    assert start_calls == ["called"]
     assert "[reviewer:reviewer_1]" in outcome.reviewer_output
 
 
@@ -160,6 +163,12 @@ checks:
         encoding="utf-8",
     )
 
+    archived_feature_path = (
+        tmp_path / "docs" / "spec" / "features_done" / "FEAT-001.yaml"
+    )
+    archived_feature_path.parent.mkdir(parents=True, exist_ok=True)
+    archived_feature_path.write_text("id: FEAT-001\n", encoding="utf-8")
+
     inputs = FeatureIterationInputs(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
@@ -169,33 +178,26 @@ checks:
         verbose_output=False,
     )
 
-    run_calls: list[str] = []
-
     deps = ReviewerPhaseDependencies(
-        load_reviewer_config=lambda *_args, **_kwargs: {},
         collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
             paths=(),
             run_all=False,
             reason=None,
         ),
-        load_reviewers_state=lambda *_args, **_kwargs: {"version": "1", "features": {}},
-        save_reviewers_state=lambda *_args, **_kwargs: None,
-        plan_reviewers=lambda *_args, **_kwargs: [],
-        evaluate_cached_reviewer_approval=lambda *_args, **_kwargs: (False, ""),
-        run_reviewer=lambda *_args, **_kwargs: run_calls.append("called") or {},
-        record_reviewer_approval=lambda *_args, **_kwargs: None,
         restore_archived_feature=lambda *_args, **_kwargs: (True, None),
-        start_agent=lambda *_args, **_kwargs: None,
+        start_agent=lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("start_agent should not be called")
+        ),
     )
 
     outcome = run_reviewer_phase(
         inputs,
         {"id": "FEAT-001"},
         archived_in_iteration=True,
-        archived_path=tmp_path / "docs" / "spec" / "features_done" / "FEAT-001.yaml",
+        archived_path=archived_feature_path,
         dependencies=deps,
     )
 
     assert outcome.result == "passed"
     assert outcome.reviewer_status == "not_run"
-    assert run_calls == []
+    assert outcome.reviewer_output == ""

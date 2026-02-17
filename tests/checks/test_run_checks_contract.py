@@ -39,6 +39,7 @@ def test_run_checks_group_order_is_deterministic(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from engineeringagent.checks.api import ChecksRunResult
+    from engineeringagent.checks.api import _GroupRunResult
     from engineeringagent.checks.api import run_checks as run_checks_impl
 
     _write_checks_yaml(
@@ -57,13 +58,13 @@ def test_run_checks_group_order_is_deterministic(
 
     calls: list[str] = []
 
-    def _commands(*_args: object, **_kwargs: object) -> tuple[bool, str | None, str]:
+    def _commands(*_args: object, **_kwargs: object) -> _GroupRunResult:
         calls.append("commands")
-        return True, None, "commands-out"
+        return _GroupRunResult(ok=True, failed_check_id=None, output="commands-out")
 
-    def _fitness(*_args: object, **_kwargs: object) -> tuple[bool, str | None, str]:
+    def _fitness(*_args: object, **_kwargs: object) -> _GroupRunResult:
         calls.append("fitness")
-        return True, None, "fitness-out"
+        return _GroupRunResult(ok=True, failed_check_id=None, output="fitness-out")
 
     monkeypatch.setattr(
         "engineeringagent.checks.api._run_commands_group",
@@ -83,6 +84,52 @@ def test_run_checks_group_order_is_deterministic(
     assert result.ok
     assert calls == ["commands", "fitness"]
     assert result.output == "commands-out\nfitness-out"
+
+
+def test_call_collect_changed_paths_falls_back_when_kwargs_unexpected(
+    tmp_path: Path,
+) -> None:
+    from engineeringagent.checks.api import _call_collect_changed_paths
+
+    calls: list[tuple[str, Path]] = []
+
+    def _collector(project_root: Path) -> object:
+        calls.append(("one-arg", project_root))
+        return {"ok": True}
+
+    result = _call_collect_changed_paths(
+        _collector,
+        tmp_path,
+        base="main",
+        head=None,
+    )
+    assert result == {"ok": True}
+    assert calls == [("one-arg", tmp_path)]
+
+
+def test_call_collect_changed_paths_does_not_swallow_internal_type_errors(
+    tmp_path: Path,
+) -> None:
+    from engineeringagent.checks.api import _call_collect_changed_paths
+
+    def _collector(
+        project_root: Path,
+        *,
+        base: str | None = None,
+        head: str | None = None,
+    ) -> object:
+        _ = head
+        if base is not None:
+            raise TypeError("collector internal error")
+        return {"ok": True}
+
+    with pytest.raises(TypeError, match="collector internal error"):
+        _call_collect_changed_paths(
+            _collector,
+            tmp_path,
+            base="main",
+            head=None,
+        )
 
 
 def test_run_checks_check_id_filters_to_single_check(tmp_path: Path) -> None:

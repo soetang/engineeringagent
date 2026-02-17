@@ -300,13 +300,10 @@ def test_validate_reports_yaml_parse_errors_across_validator_inputs(
     assert any("FEAT-999-bad-active.yaml: failed to parse YAML" in m for m in messages)
     assert any("FEAT-998-bad-done.yaml: failed to parse YAML" in m for m in messages)
     assert any("potential_features.yaml: failed to parse YAML" in m for m in messages)
-    assert any(
-        "harness/gates.yaml" in m and "legacy harness contract file" in m
-        for m in messages
-    )
+    assert all("harness/gates.yaml" not in m for m in messages)
 
 
-def test_validate_reports_invalid_reviewer_contract(tmp_path: Path) -> None:
+def test_validate_ignores_legacy_reviewer_contract_file(tmp_path: Path) -> None:
     reviewers_path = tmp_path / "harness" / "reviewers.yaml"
     reviewers_path.parent.mkdir(parents=True, exist_ok=True)
     reviewers_path.write_text(
@@ -328,11 +325,7 @@ def test_validate_reports_invalid_reviewer_contract(tmp_path: Path) -> None:
 
     messages = validate(project_root=tmp_path)
 
-    assert any(
-        "harness/reviewers.yaml" in message
-        and "legacy harness contract file" in message
-        for message in messages
-    )
+    assert messages == []
 
 
 def test_validate_reports_reviewer_prompt_missing_responseformat(
@@ -378,7 +371,7 @@ def test_legacy_harness_contract_issue_formatter_handles_external_paths(
         reviewers_path=legacy_root / "harness" / "reviewers.yaml",
     )
 
-    assert any("legacy harness contract file" in message for message in messages)
+    assert messages == []
 
 
 def test_validate_reports_git_ls_files_failure(

@@ -28,7 +28,6 @@ from .init_scaffold import (
 )
 from .loop import RunConfigOptions, build_loop_run, build_run_config, run_loop
 from .specs import HarnessCheckPhase
-from .validator import validate
 
 _MISSING_REMEDIATION_TEMPLATE = (
     "No remediation available: rule metadata missing from active catalog for {rule_id}."
@@ -248,7 +247,9 @@ def cmd_validate(args: _HandlerArgs) -> int:
         Process exit code where 0 means validation passed.
     """
     project_root = Path(args.project_root).resolve()
-    messages = validate(project_root=project_root, schema_only=args.schema_only)
+    from engineeringagent.checks.validate.runtime import run_validate
+
+    messages = run_validate(project_root=project_root, schema_only=args.schema_only)
     if messages:
         for msg in messages:
             print(msg)
@@ -451,81 +452,41 @@ def cmd_checks_run(args: _HandlerArgs) -> int:
     full feature loop.
     """
 
+    from engineeringagent import checks as checks_module
+    from engineeringagent.opencode.client import start_agent
+
     project_root = Path(args.project_root).resolve()
-    checks_path = project_root / "harness" / "checks.yaml"
-    if not checks_path.exists():
-        print(
-            "checks config error: missing harness/checks.yaml. "
-            "Remediation: run `engineeringagent init`."
-        )
-        return 1
-
-    try:
-        from .specs import checks_contract_issues, load_yaml
-
-        issues = checks_contract_issues(load_yaml(checks_path), checks_path)
-    except Exception as exc:  # noqa: BLE001
-        print(f"checks config error: failed to load harness/checks.yaml: {exc}")
-        return 1
-    if issues:
-        rendered = "\n".join(f"- {issue.path}: {issue.message}" for issue in issues)
-        print(f"checks config error: invalid harness/checks.yaml\n{rendered}")
-        return 1
-
-    from .changed_paths import collect_changed_paths
-    from .harness_checks_runtime import (
-        PlannedCommandChecksInputs,
-        load_checks_document,
-        run_planned_command_checks,
-        run_planned_fitness_checks,
-    )
-    from .opencode.client import run_shell_command
-
-    try:
-        doc = load_checks_document(checks_path)
-    except Exception as exc:  # noqa: BLE001
-        print(f"checks config error: failed to validate harness/checks.yaml: {exc}")
-        return 1
-
-    phase = args.phase
-    changed_paths = collect_changed_paths(
+    result = checks_module.run_checks(
         project_root,
+        phase=args.phase,
+        checks=getattr(args, "checks", None),
+        check_id=getattr(args, "check_id", None),
+        feature_path=getattr(args, "feature_path", None),
+        verbose_output=bool(getattr(args, "verbose_output", False)),
         base=getattr(args, "base", None),
         head=getattr(args, "head", None),
+        start_agent_fn=start_agent,
     )
 
-    ok, failed_id, output, timings = run_planned_command_checks(
-        PlannedCommandChecksInputs(
-            project_root,
-            doc,
-            phase,
-            changed_paths,
-            bool(getattr(args, "verbose_output", False)),
-            run_shell_command,
+    if result.output:
+        print(result.output)
+    if result.ok:
+        print("checks run: ok")
+        return 0
+
+    runtime_groups = {
+        "validate": "validate",
+        "commands": "command",
+        "fitness": "fitness",
+        "reviewers": "reviewer",
+    }
+    if result.failed_group in runtime_groups:
+        check_id = result.failed_check_id or "unknown"
+        print(
+            f"checks failed: type={runtime_groups[result.failed_group]} "
+            f"check_id={check_id}"
         )
-    )
-    _ = timings
-    if output:
-        print(output)
-    if not ok:
-        print(f"checks failed: type=command check_id={failed_id}")
-        return 1
-
-    ok, failed_id, output, timings = run_planned_fitness_checks(
-        project_root=project_root,
-        doc=doc,
-        phase=phase,
-        changed_paths=changed_paths,
-    )
-    _ = timings
-    if output:
-        print(output)
-    if not ok:
-        print(f"checks failed: type=fitness check_id={failed_id}")
-        return 1
-
-    print("checks run: ok")
-    return 0
+    return 1
 
 
 def cmd_init(args: _HandlerArgs) -> int:  # noqa: C901
@@ -830,9 +791,29 @@ def _build_typer_checks_app() -> typer.Typer:
         no_args_is_help=False,
     )
 
+    allowed_groups = ("validate", "commands", "fitness", "reviewers")
+    allowed_groups_set = set(allowed_groups)
+
     @checks_app.command("run", help="run checks declared in harness/checks.yaml")
     def _checks_run(
         ctx: typer.Context,
+        checks: list[str] | None = typer.Option(
+            None,
+            "--checks",
+            help=(
+                "repeatable checks group selection: validate|commands|fitness|reviewers"
+            ),
+        ),
+        check_id: str | None = typer.Option(
+            None,
+            "--check-id",
+            help="optional check id to run within selected groups",
+        ),
+        feature_path: str | None = typer.Option(
+            None,
+            "--feature-path",
+            help="feature spec path required when running reviewers checks",
+        ),
         phase: HarnessCheckPhase = typer.Option(
             HarnessCheckPhase.ITERATION_END,
             "--phase",
@@ -854,9 +835,42 @@ def _build_typer_checks_app() -> typer.Typer:
             help="stream full command output in terminal",
         ),
     ) -> None:
+        normalized_checks: list[str] | None = None
+        if checks:
+            normalized = [str(group or "").strip() for group in checks]
+            normalized = [group for group in normalized if group]
+
+            invalid = sorted(
+                {group for group in normalized if group not in allowed_groups_set}
+            )
+            if invalid:
+                print(
+                    "checks config error: unknown checks groups: "
+                    f"{invalid}. Supported: {list(allowed_groups)}"
+                )
+                raise typer.Exit(code=1)
+            normalized_checks = normalized
+
+        resolved_feature_path: str | None
+        if feature_path is None:
+            resolved_feature_path = None
+        else:
+            resolved_feature_path = str(feature_path).strip() or None
+
+        if normalized_checks is not None and "reviewers" in normalized_checks:
+            if resolved_feature_path is None:
+                print(
+                    "checks config error: --feature-path is required when running reviewers. "
+                    "Remediation: re-run with --feature-path <path-to-feature-yaml>."
+                )
+                raise typer.Exit(code=1)
+
         _exit_with_handler_code(
             cmd_checks_run,
             ctx=ctx,
+            checks=normalized_checks,
+            check_id=check_id,
+            feature_path=resolved_feature_path,
             phase=phase,
             base=base,
             head=head,

@@ -11,15 +11,13 @@ from typing import Any, Callable
 from pydantic import BaseModel, ConfigDict
 
 from ..changed_paths import ChangedPathsResult
+from ..checks import run_checks
+from ..checks.api import ChecksRunResult
+from ..fitness.adapters import execute_rule_definition
+from ..fitness.contracts import RuleStatus
+from ..fitness.registry import build_rule_catalog
 from ..specs import HarnessCheckPhase
-from ..harness_checks_runtime import (
-    PlannedCommandChecksInputs,
-    iter_planned_reviewer_checks,
-    load_checks_document,
-    plan_reviewer_checks,
-    run_planned_command_checks,
-    run_planned_fitness_checks_with_failures,
-)
+from ..specs import HarnessCheckFitnessDefinition, HarnessChecksDocument, load_yaml
 
 from .models import (
     CommandTiming,
@@ -29,10 +27,6 @@ from .models import (
     ReviewerPhaseOutcome,
     VerificationPhaseOutcome,
 )
-from ..reviewers import (
-    DECISION_APPROVE,
-    DECISION_REQUEST_CHANGES,
-)
 from .time_format import utc_iso_from_epoch_sec
 from ..retry_feedback.builders import (
     build_command_failure_retry_feedback,
@@ -40,30 +34,6 @@ from ..retry_feedback.builders import (
     build_reviewer_feedback_retry_feedback,
 )
 from ..feature_commit import feature_completion_commit_subject
-
-
-def _format_reviewer_feedback(summary: str, required_actions: list[str]) -> str:
-    """Compose deterministic reviewer feedback with actionable follow-ups."""
-    message = summary.strip()
-    actions = [action.strip() for action in required_actions if action.strip()]
-    if not actions:
-        return message
-    actions_block = "\n".join(f"- {action}" for action in actions)
-    return f"{message}\nrequired_actions:\n{actions_block}"
-
-
-def _normalize_feedback_context(value: Any) -> str | None:
-    if not isinstance(value, str):
-        return None
-    if not value.strip():
-        return None
-    return value.strip("\n")
-
-
-def _append_feedback_context(message: str, feedback_context: str | None) -> str:
-    if not feedback_context:
-        return message
-    return f"{message}\nfeedback_context:\n{feedback_context}"
 
 
 class GatePhaseDependencies(BaseModel):
@@ -92,14 +62,7 @@ class VerificationPhaseDependencies(BaseModel):
 class ReviewerPhaseDependencies(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    load_reviewer_config: Callable[[Path], dict[str, Any]]
     collect_changed_paths: Callable[..., Any]
-    load_reviewers_state: Callable[[Path], dict[str, Any]]
-    save_reviewers_state: Callable[[Path, dict[str, Any]], None]
-    plan_reviewers: Callable[..., list[dict[str, str]]]
-    evaluate_cached_reviewer_approval: Callable[..., tuple[bool, str]]
-    run_reviewer: Callable[..., dict[str, Any]]
-    record_reviewer_approval: Callable[..., None]
     restore_archived_feature: Callable[[Path, Path], tuple[bool, str | None]]
     start_agent: Callable[..., Any]
 
@@ -132,137 +95,166 @@ def run_gate_phase(  # noqa: C901
             hook_feedback=None,
         )
 
-    try:
-        checks_doc = load_checks_document(checks_path)
-    except Exception as exc:  # noqa: BLE001
-        output = f"failed to load harness/checks.yaml: {exc}".strip()
-        return GatePhaseOutcome(
-            result="failed",
-            failed_gate="checks_config",
-            gate_status="failed:checks_config",
-            gate_output=output,
-            command_timings=[],
-            hook_feedback=output,
+    def _extract_failed_command(check_id: str | None, output: str) -> str | None:
+        if not check_id:
+            return None
+        needle = f"[check:{check_id}] command="
+        for line in output.splitlines():
+            if line.startswith(needle):
+                return line[len(needle) :].strip() or None
+        return None
+
+    def _fitness_failed_rules(
+        *,
+        project_root: Path,
+        check_id: str | None,
+    ) -> list[dict[str, object]]:
+        if not check_id:
+            return []
+        try:
+            payload = load_yaml(project_root / "harness" / "checks.yaml")
+            doc = HarnessChecksDocument.model_validate(payload)
+        except Exception:  # noqa: BLE001
+            return []
+
+        check = doc.checks.get(check_id)
+        if not isinstance(check, HarnessCheckFitnessDefinition):
+            return []
+
+        catalog = build_rule_catalog(project_root)
+        requested_rule_ids = set(check.rule_ids or ())
+        definitions = (
+            catalog
+            if check.scope == "all"
+            else [
+                definition
+                for definition in catalog
+                if definition.metadata.rule_id in requested_rule_ids
+            ]
         )
 
-    changed_paths = dependencies.collect_changed_paths(iteration_inputs.project_root)
+        failed: list[dict[str, object]] = []
+        for definition in definitions:
+            result = execute_rule_definition(definition, project_root)
+            if result.status not in {RuleStatus.FAIL, RuleStatus.ERROR}:
+                continue
+            failed.append(
+                {
+                    "rule_id": str(result.rule_id),
+                    "remediation": str(definition.metadata.remediation),
+                    "violations": list(result.violations or ()),
+                    "details": result.details,
+                }
+            )
+        return failed
+
+    outputs: list[str] = []
     command_timings: list[CommandTiming] = []
-    command_failure_feedback: str | None = None
-    fitness_failure_feedback: str | None = None
+    hook_feedback: str | None = None
+    failed_gate: str | None = None
 
-    ok, failed, output, timings = run_planned_command_checks(
-        PlannedCommandChecksInputs(
+    def _extract_executed_command_checks(output: str) -> list[tuple[str, str]]:
+        executed: list[tuple[str, str]] = []
+        for line in output.splitlines():
+            if not line.startswith("[check:"):
+                continue
+            if "] command=" not in line:
+                continue
+            prefix, command = line.split("] command=", 1)
+            check_id = prefix.removeprefix("[check:").strip()
+            if not check_id:
+                continue
+            executed.append((check_id, command.strip()))
+        return executed
+
+    def _run_gate_groups(phase: HarnessCheckPhase) -> ChecksRunResult:
+        raw_invocations: list[tuple[str, int, int]] = []
+
+        def _timed_run_shell_command(root: Path, command: str) -> Any:
+            started_epoch_sec = int(time.time())
+            proc = dependencies.run_shell_command(root, command)
+            ended_epoch_sec = max(started_epoch_sec, int(time.time()))
+            raw_invocations.append((command, started_epoch_sec, ended_epoch_sec))
+            return proc
+
+        result = run_checks(
             iteration_inputs.project_root,
-            checks_doc,
-            HarnessCheckPhase.ITERATION_END,
-            changed_paths,
-            iteration_inputs.verbose_output,
-            dependencies.run_shell_command,
-        )
-    )
-    command_timings.extend(timings)
-
-    if not ok and failed:
-        failed_command = next(
-            (
-                timing.command
-                for timing in reversed(timings)
-                if timing.gate == failed and timing.command
-            ),
-            None,
-        )
-        command_failure_feedback = build_command_failure_retry_feedback(
-            phase="gates",
-            gate=failed,
-            command=failed_command or "unknown",
-            precommit=False,
-            message="Command check failed. Rerun the command to see full diagnostics.",
+            phase=phase,
+            checks=["commands", "fitness"],
+            verbose_output=iteration_inputs.verbose_output,
+            collect_changed_paths=dependencies.collect_changed_paths,
+            run_shell_command=_timed_run_shell_command,
         )
 
-    if ok:
-        ok, failed, fitness_output, fitness_timings, failed_rules = (
-            run_planned_fitness_checks_with_failures(
-                project_root=iteration_inputs.project_root,
-                doc=checks_doc,
-                phase=HarnessCheckPhase.ITERATION_END,
-                changed_paths=changed_paths,
-            )
-        )
-        command_timings.extend(fitness_timings)
-        output = "\n".join(part for part in (output, fitness_output) if part).strip()
-
-        if not ok and failed and failed_rules:
-            fitness_failure_feedback = build_fitness_failure_retry_feedback(
-                gate=failed,
-                command="uv run python -m engineeringagent.cli fitness run --format json",
-                failed_rules=failed_rules,
-            )
-
-    if ok and archived_in_iteration:
-        ok, failed, feature_output, feature_timings = run_planned_command_checks(
-            PlannedCommandChecksInputs(
-                iteration_inputs.project_root,
-                checks_doc,
-                HarnessCheckPhase.FEATURE_DONE,
-                changed_paths,
-                iteration_inputs.verbose_output,
-                dependencies.run_shell_command,
-            )
-        )
-        command_timings.extend(feature_timings)
-
-        if not ok and failed:
-            failed_command = next(
-                (
-                    timing.command
-                    for timing in reversed(feature_timings)
-                    if timing.gate == failed and timing.command
-                ),
-                None,
-            )
-            command_failure_feedback = build_command_failure_retry_feedback(
-                phase="gates",
-                gate=failed,
-                command=failed_command or "unknown",
-                precommit=False,
-                message=(
-                    "Command check failed. Rerun the command to see full diagnostics."
-                ),
-            )
-
-        if ok:
-            ok, failed, fitness_output, fitness_timings, failed_rules = (
-                run_planned_fitness_checks_with_failures(
-                    project_root=iteration_inputs.project_root,
-                    doc=checks_doc,
-                    phase=HarnessCheckPhase.FEATURE_DONE,
-                    changed_paths=changed_paths,
+        executed = _extract_executed_command_checks(result.output)
+        for idx, (command, started, ended) in enumerate(raw_invocations):
+            gate_id = executed[idx][0] if idx < len(executed) else None
+            command_timings.append(
+                CommandTiming(
+                    phase="gates",
+                    gate=gate_id,
+                    command=command,
+                    started_at=utc_iso_from_epoch_sec(started),
+                    ended_at=utc_iso_from_epoch_sec(ended),
+                    duration_sec=ended - started,
                 )
             )
-            command_timings.extend(fitness_timings)
-            feature_output = "\n".join(
-                part for part in (feature_output, fitness_output) if part
-            ).strip()
+        return result
 
-            if not ok and failed and failed_rules:
-                fitness_failure_feedback = build_fitness_failure_retry_feedback(
-                    gate=failed,
-                    command=(
-                        "uv run python -m engineeringagent.cli fitness run --format json"
-                    ),
-                    failed_rules=failed_rules,
-                )
-        output = "\n".join(part for part in (output, feature_output) if part).strip()
+    last_result: ChecksRunResult = _run_gate_groups(HarnessCheckPhase.ITERATION_END)
+    if last_result.output:
+        outputs.append(last_result.output)
+    if last_result.ok and archived_in_iteration:
+        last_result = _run_gate_groups(HarnessCheckPhase.FEATURE_DONE)
+        if last_result.output:
+            outputs.append(last_result.output)
+
+    ok = last_result.ok
+    if last_result.failed_group == "config":
+        failed_gate = "checks_config"
+    else:
+        failed_gate = last_result.failed_check_id
+
+    combined_output = "\n".join(part for part in outputs if part).strip()
 
     if ok:
         return GatePhaseOutcome(
             result="passed",
             failed_gate=None,
             gate_status="passed",
-            gate_output=output,
+            gate_output=combined_output,
             command_timings=command_timings,
             hook_feedback=None,
         )
+
+    failure_result: ChecksRunResult = last_result
+
+    if failure_result.failed_group == "commands":
+        command = _extract_failed_command(
+            failure_result.failed_check_id,
+            failure_result.output,
+        )
+        hook_feedback = build_command_failure_retry_feedback(
+            phase="gates",
+            gate=failure_result.failed_check_id,
+            command=command or "unknown",
+            precommit=False,
+            message="Command check failed. Rerun the command to see full diagnostics.",
+        )
+    elif failure_result.failed_group == "fitness":
+        failed_rules = _fitness_failed_rules(
+            project_root=iteration_inputs.project_root,
+            check_id=failure_result.failed_check_id,
+        )
+        if failed_rules:
+            hook_feedback = build_fitness_failure_retry_feedback(
+                gate=failure_result.failed_check_id,
+                command=(
+                    "uv run python -m engineeringagent.cli fitness run --format json"
+                ),
+                failed_rules=failed_rules,
+            )
+    hook_feedback = hook_feedback or combined_output or "checks failed"
 
     if archived_in_iteration and archived_path is not None:
         restored_ok, restore_error = dependencies.restore_archived_feature(
@@ -271,18 +263,15 @@ def run_gate_phase(  # noqa: C901
         )
         if not restored_ok:
             rollback_output = f"\narchive rollback failed: {restore_error}"
-            output = f"{output}{rollback_output}".strip()
+            combined_output = f"{combined_output}{rollback_output}".strip()
 
     return GatePhaseOutcome(
         result="failed",
-        failed_gate=failed,
-        gate_status=f"failed:{failed or 'unknown'}",
-        gate_output=output,
+        failed_gate=failed_gate,
+        gate_status=f"failed:{failed_gate or 'unknown'}",
+        gate_output=combined_output,
         command_timings=command_timings,
-        hook_feedback=command_failure_feedback
-        or fitness_failure_feedback
-        or output
-        or (f"check '{failed or 'unknown'}' failed with no captured output"),
+        hook_feedback=hook_feedback,
     )
 
 
@@ -391,173 +380,63 @@ def run_reviewer_phase(  # noqa: C901
             hook_feedback=None,
         )
 
-    try:
-        checks_doc = load_checks_document(checks_path)
-    except Exception as exc:  # noqa: BLE001
-        output = f"failed to load harness/checks.yaml: {exc}".strip()
-        return ReviewerPhaseOutcome(
-            result="failed",
-            failed_gate="checks_config",
-            reviewer_status="failed:checks_config",
-            reviewer_output=output,
-            command_timings=command_timings,
-            hook_feedback=output,
-        )
-
-    phase = HarnessCheckPhase.FEATURE_DONE
-    changed_paths = dependencies.collect_changed_paths(iteration_inputs.project_root)
-    planned = plan_reviewer_checks(
-        checks_doc,
-        phase=phase,
-        changed_paths=changed_paths,
+    feature_path = archived_path or iteration_inputs.feature_path
+    result = run_checks(
+        iteration_inputs.project_root,
+        phase=HarnessCheckPhase.FEATURE_DONE,
+        checks=["reviewers"],
+        feature_path=feature_path,
+        start_agent_fn=dependencies.start_agent,
+        prior_feedback=iteration_inputs.hook_feedback,
+        collect_changed_paths=dependencies.collect_changed_paths,
     )
 
-    if not planned:
+    reviewer_output = result.output
+    if result.ok:
+        status = "passed" if reviewer_output else "not_run"
+        decision = "approve" if status == "passed" else None
         return ReviewerPhaseOutcome(
             result="passed",
             failed_gate=None,
-            reviewer_status="not_run",
-            reviewer_output="",
+            reviewer_status=status,
+            reviewer_decision=decision,
+            failed_reviewer_id=None,
+            reviewer_output=reviewer_output,
             command_timings=command_timings,
             hook_feedback=None,
         )
 
-    feature_id = str(feature.get("id", ""))
-    state = dependencies.load_reviewers_state(iteration_inputs.project_root)
-
-    summaries: list[str] = []
-    ran_reviewer = False
-    first_non_approve_reviewer_id: str | None = None
-    first_non_approve_decision: str | None = None
-    first_non_approve_payload: dict[str, Any] | None = None
-
-    planned_by_id = {entry.check_id: entry for entry in planned}
-    for reviewer_id, reviewer_def in iter_planned_reviewer_checks(checks_doc, planned):
-        entry = planned_by_id.get(reviewer_id)
-        if entry is None:
-            continue
-        if entry.decision != "run":
-            summaries.append(f"[reviewer:{reviewer_id}] skip reason={entry.reason}")
-            continue
-
-        reviewer = reviewer_def.model_dump(mode="python")
-        on_change = None
-        if reviewer_def.when is not None:
-            on_change = reviewer_def.when.on_change
-        reviewer["trigger"] = {"on_change": on_change} if on_change else {}
-
-        reuse, reuse_reason = dependencies.evaluate_cached_reviewer_approval(
-            state,
-            feature_id=feature_id,
-            reviewer_id=reviewer_id,
-            reviewer=reviewer,
-            changed_paths=changed_paths,
-        )
-        if reuse:
-            summaries.append(
-                f"[reviewer:{reviewer_id}] decision=approve reused={reuse_reason}"
-            )
-            continue
-
-        started_epoch_sec = int(time.time())
-        decision = dependencies.run_reviewer(
-            iteration_inputs.project_root,
-            reviewer_id,
-            reviewer,
-            feature_id=feature_id,
-            feature_path=archived_path or iteration_inputs.feature_path,
-            changed_paths=changed_paths,
-            prior_feedback=iteration_inputs.hook_feedback,
-            start_agent_fn=dependencies.start_agent,
-        )
-        ended_epoch_sec = max(started_epoch_sec, int(time.time()))
-        command_timings.append(
-            CommandTiming(
-                phase="reviewers",
-                reviewer_id=reviewer_id,
-                command="run_reviewer",
-                started_at=utc_iso_from_epoch_sec(started_epoch_sec),
-                ended_at=utc_iso_from_epoch_sec(ended_epoch_sec),
-                duration_sec=ended_epoch_sec - started_epoch_sec,
-            )
-        )
-        dependencies.record_reviewer_approval(
-            state,
-            feature_id=feature_id,
-            reviewer_id=reviewer_id,
-            decision=str(decision.get("decision", "")),
+    if archived_path is not None:
+        dependencies.restore_archived_feature(
+            archived_path, iteration_inputs.feature_path
         )
 
-        raw_decision = str(decision.get("decision", DECISION_REQUEST_CHANGES))
-        decision_name = (
-            DECISION_APPROVE
-            if raw_decision == DECISION_APPROVE
-            else DECISION_REQUEST_CHANGES
-        )
-        ran_reviewer = True
-        if decision_name != DECISION_APPROVE and first_non_approve_decision is None:
-            first_non_approve_reviewer_id = reviewer_id
-            first_non_approve_decision = decision_name
-            if isinstance(decision, dict):
-                first_non_approve_payload = dict(decision)
-        summary = str(decision.get("summary", ""))
-        required_actions_raw = decision.get("required_actions", [])
-        required_actions = (
-            required_actions_raw if isinstance(required_actions_raw, list) else []
-        )
-        feedback_context = _normalize_feedback_context(reviewer.get("feedback_context"))
-        forwarded_context = (
-            feedback_context if decision_name != DECISION_APPROVE else None
-        )
-        reviewer_feedback_message = _format_reviewer_feedback(summary, required_actions)
-        _append_feedback_context(
-            reviewer_feedback_message,
-            forwarded_context,
-        )
-        summaries.append(
-            f"[reviewer:{reviewer_id}] decision={decision_name} summary={summary}"
-        )
+    payload = result.failed_payload or {
+        "decision": "request_changes",
+        "summary": "(reviewer payload missing)",
+        "required_actions": [],
+    }
+    feedback = build_reviewer_feedback_retry_feedback(
+        reviewer_id=result.failed_check_id or "unknown",
+        reviewer_phase="feature_done",
+        decision=payload,
+    )
+    decision_name_raw = payload.get("decision")
+    decision_name = (
+        decision_name_raw
+        if isinstance(decision_name_raw, str) and decision_name_raw.strip()
+        else "request_changes"
+    )
 
-    reviewer_output = "\n".join(summaries)
-
-    if first_non_approve_reviewer_id is not None:
-        if archived_path is not None:
-            dependencies.restore_archived_feature(
-                archived_path, iteration_inputs.feature_path
-            )
-        dependencies.save_reviewers_state(iteration_inputs.project_root, state)
-
-        payload = first_non_approve_payload or {
-            "decision": DECISION_REQUEST_CHANGES,
-            "summary": "(reviewer payload missing)",
-            "required_actions": [],
-        }
-        feedback = build_reviewer_feedback_retry_feedback(
-            reviewer_id=first_non_approve_reviewer_id,
-            reviewer_phase="feature_done",
-            decision=payload,
-        )
-        return ReviewerPhaseOutcome(
-            result="failed",
-            failed_gate="reviewer_request_changes",
-            reviewer_status="failed:request_changes",
-            reviewer_decision=first_non_approve_decision,
-            failed_reviewer_id=first_non_approve_reviewer_id,
-            reviewer_output=reviewer_output,
-            command_timings=command_timings,
-            hook_feedback=feedback,
-        )
-
-    dependencies.save_reviewers_state(iteration_inputs.project_root, state)
     return ReviewerPhaseOutcome(
-        result="passed",
-        failed_gate=None,
-        reviewer_status="passed",
-        reviewer_decision=DECISION_APPROVE if ran_reviewer else None,
-        failed_reviewer_id=None,
+        result="failed",
+        failed_gate="reviewer_request_changes",
+        reviewer_status="failed:request_changes",
+        reviewer_decision=decision_name,
+        failed_reviewer_id=result.failed_check_id,
         reviewer_output=reviewer_output,
         command_timings=command_timings,
-        hook_feedback=None,
+        hook_feedback=feedback,
     )
 
 

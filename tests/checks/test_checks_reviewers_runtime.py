@@ -113,9 +113,10 @@ def test_run_planned_reviewer_checks_reuses_cached_approval(tmp_path: Path) -> N
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
         start_agent_fn=_start_agent,
     )
-    ok, failed_id, output = run_planned_reviewer_checks(request)
+    ok, failed_id, output, failed_payload = run_planned_reviewer_checks(request)
     assert ok
     assert failed_id is None
+    assert failed_payload is None
     assert "[reviewer:doc_review] decision=approve reused=" in output
 
 
@@ -161,9 +162,10 @@ def test_run_planned_reviewer_checks_returns_ok_when_no_checks_planned(
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
         start_agent_fn=_start_agent,
     )
-    ok, failed_id, output = run_planned_reviewer_checks(request)
+    ok, failed_id, output, failed_payload = run_planned_reviewer_checks(request)
     assert ok
     assert failed_id is None
+    assert failed_payload is None
     assert output == ""
 
 
@@ -262,7 +264,8 @@ def test_run_planned_reviewer_checks_manual_phase_emits_skip_output(
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
         start_agent_fn=_start_agent,
     )
-    ok, failed_id, output = run_planned_reviewer_checks(request)
+    ok, failed_id, output, failed_payload = run_planned_reviewer_checks(request)
     assert ok
     assert failed_id is None
+    assert failed_payload is None
     assert "[reviewer:doc_review] skip reason=manual" in output

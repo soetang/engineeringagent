@@ -24,11 +24,6 @@ from engineeringagent.loop_runtime.phases import (
     run_gate_phase,
     run_reviewer_phase,
 )
-from engineeringagent.reviewers import (
-    evaluate_cached_reviewer_approval,
-    record_reviewer_approval,
-    run_reviewer,
-)
 from engineeringagent.specs import HarnessCheckPhase
 
 
@@ -391,6 +386,12 @@ def test_run_reviewer_phase_uses_checks_yaml_for_run_all_feature_done(
     prompt_path.parent.mkdir(parents=True, exist_ok=True)
     prompt_path.write_text("Check docs.\n$responseformat\n", encoding="utf-8")
 
+    archived_feature_path = (
+        tmp_path / "docs" / "spec" / "features_done" / "FEAT-001.yaml"
+    )
+    archived_feature_path.parent.mkdir(parents=True, exist_ok=True)
+    archived_feature_path.write_text("id: FEAT-001\n", encoding="utf-8")
+
     inputs = FeatureIterationInputs(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
@@ -410,18 +411,11 @@ def test_run_reviewer_phase_uses_checks_yaml_for_run_all_feature_done(
         )
 
     deps = ReviewerPhaseDependencies(
-        load_reviewer_config=lambda _path: {},
         collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
             paths=(),
             run_all=True,
             reason=None,
         ),
-        load_reviewers_state=lambda *_args, **_kwargs: reviewer_state,
-        save_reviewers_state=lambda *_args, **_kwargs: None,
-        plan_reviewers=lambda *_args, **_kwargs: [],
-        evaluate_cached_reviewer_approval=evaluate_cached_reviewer_approval,
-        run_reviewer=run_reviewer,
-        record_reviewer_approval=record_reviewer_approval,
         restore_archived_feature=lambda *_args, **_kwargs: (True, None),
         start_agent=_start_agent,
     )
@@ -430,7 +424,7 @@ def test_run_reviewer_phase_uses_checks_yaml_for_run_all_feature_done(
         inputs,
         {"id": "FEAT-001"},
         archived_in_iteration=True,
-        archived_path=tmp_path / "docs" / "spec" / "features_done" / "FEAT-001.yaml",
+        archived_path=archived_feature_path,
         dependencies=deps,
     )
 
@@ -461,6 +455,12 @@ def test_run_reviewer_phase_skips_on_change_reviewer_checks_when_no_match(
     prompt_path.parent.mkdir(parents=True, exist_ok=True)
     prompt_path.write_text("Check docs.\n$responseformat\n", encoding="utf-8")
 
+    archived_feature_path = (
+        tmp_path / "docs" / "spec" / "features_done" / "FEAT-001.yaml"
+    )
+    archived_feature_path.parent.mkdir(parents=True, exist_ok=True)
+    archived_feature_path.write_text("id: FEAT-001\n", encoding="utf-8")
+
     inputs = FeatureIterationInputs(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
@@ -471,18 +471,11 @@ def test_run_reviewer_phase_skips_on_change_reviewer_checks_when_no_match(
     )
 
     deps = ReviewerPhaseDependencies(
-        load_reviewer_config=lambda _path: {},
         collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
             paths=("README.md",),
             run_all=False,
             reason=None,
         ),
-        load_reviewers_state=lambda *_args, **_kwargs: {"version": "1", "features": {}},
-        save_reviewers_state=lambda *_args, **_kwargs: None,
-        plan_reviewers=lambda *_args, **_kwargs: [],
-        evaluate_cached_reviewer_approval=lambda *_args, **_kwargs: (False, ""),
-        run_reviewer=lambda *_args, **_kwargs: {"decision": "request_changes"},
-        record_reviewer_approval=lambda *_args, **_kwargs: None,
         restore_archived_feature=lambda *_args, **_kwargs: (True, None),
         start_agent=lambda *_args, **_kwargs: None,
     )
@@ -491,7 +484,7 @@ def test_run_reviewer_phase_skips_on_change_reviewer_checks_when_no_match(
         inputs,
         {"id": "FEAT-001"},
         archived_in_iteration=True,
-        archived_path=tmp_path / "docs" / "spec" / "features_done" / "FEAT-001.yaml",
+        archived_path=archived_feature_path,
         dependencies=deps,
     )
 

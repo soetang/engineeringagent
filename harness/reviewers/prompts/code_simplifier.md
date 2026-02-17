@@ -39,7 +39,14 @@ You will analyze recently modified code and apply refinements that:
    - Prioritize "fewer lines" over readability (e.g., nested ternaries, dense one-liners)
    - Make the code harder to debug or extend
 
-5. **Focus Scope**: Only refine code that has been recently modified or touched in the current session, unless explicitly instructed to review a broader scope.
+5. **Legacy**: Be especially aware to remove legacy checks/code:
+
+   - Sometime we have legacy tests and checks in the core code and in tests, for functionality that has been removed. 
+   - These checks should preferably be removed again as soon as those functions or files have been removed. 
+   - But if we discover them now please dont be afraid to remove, as they increase complexity.
+
+6. **Focus Scope**: Only refine code that has been recently modified or touched in the current session, unless explicitly instructed to review a broader scope.
+
 
 Output requirements (since you cannot edit files):
 
