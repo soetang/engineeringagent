@@ -437,6 +437,63 @@ def test_validate_enforces_purge_invariants_using_git_ls_files(tmp_path: Path) -
     assert all("progress/excluded.txt" not in message for message in messages)
 
 
+def test_validate_enforces_opencode_config_invariant_forbidden_token(
+    tmp_path: Path,
+) -> None:
+    import subprocess
+
+    def _run_git(*args: str) -> None:
+        proc = subprocess.run(
+            ["git", *args],
+            cwd=tmp_path,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert proc.returncode == 0, proc.stderr
+
+    _run_git("init")
+
+    (tmp_path / "active.txt").write_text(
+        "Repository documentation must not rely on opencode.json\n",
+        encoding="utf-8",
+    )
+    _run_git("add", "active.txt")
+
+    messages = validate(project_root=tmp_path)
+
+    assert any(
+        "active.txt" in message and "opencode config invariant" in message
+        for message in messages
+    )
+
+
+def test_validate_enforces_opencode_config_invariant_root_file(tmp_path: Path) -> None:
+    import subprocess
+
+    def _run_git(*args: str) -> None:
+        proc = subprocess.run(
+            ["git", *args],
+            cwd=tmp_path,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert proc.returncode == 0, proc.stderr
+
+    _run_git("init")
+
+    (tmp_path / "opencode.json").write_text("{}\n", encoding="utf-8")
+    _run_git("add", "opencode.json")
+
+    messages = validate(project_root=tmp_path)
+
+    assert any(
+        "opencode.json" in message and "repo-root OpenCode config" in message
+        for message in messages
+    )
+
+
 def test_validate_accepts_agents_docs_map_glob_when_it_matches(tmp_path: Path) -> None:
     docs_dir = tmp_path / "docs"
     docs_dir.mkdir(parents=True, exist_ok=True)

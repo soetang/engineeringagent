@@ -87,8 +87,70 @@ def validate(project_root: Path, schema_only: bool = False) -> list[str]:
     _append_agents_docs_map_issues(messages, project_root)
     _append_fitness_catalog_issues(messages, project_root)
     _append_purge_invariant_issues(messages, project_root)
+    _append_opencode_config_invariant_issues(messages, project_root)
 
     return messages
+
+
+def _append_opencode_config_invariant_issues(
+    messages: list[str],
+    project_root: Path,
+) -> None:
+    """Fail validation when repo-root OpenCode config becomes a dependency again.
+
+    Policy/configuration for OpenCode is intentionally shipped via
+    `.opencode/agents/engineeringagent.md` and invoked explicitly with
+    `opencode run --agent engineeringagent`.
+
+    We enforce two invariants:
+    - The repository must not track a repo-root OpenCode config file.
+    - Active tracked files outside tests/specs must not reference it.
+
+    Notes:
+    - This check is repository hygiene, not a runtime requirement: contributors may
+      still keep local untracked files.
+    """
+
+    if not (project_root / ".git").exists():
+        return
+
+    proc = git_client.ls_files(project_root)
+    if proc.returncode != 0:
+        stderr = (proc.stderr or "").strip()
+        detail = f": {stderr}" if stderr else ""
+        messages.append(f"validate: git ls-files failed{detail}")
+        return
+
+    needle = ".".join(["opencode", "json"])
+    needle_blob = needle.encode("utf-8")
+    allowed_prefixes = (
+        "tests/",
+        "docs/spec/",
+        "progress/",
+    )
+
+    for rel in (line.strip() for line in (proc.stdout or "").splitlines()):
+        if not rel:
+            continue
+
+        if rel == needle:
+            messages.append(
+                f"{rel}: repo-root OpenCode config is not supported; use .opencode/agents/engineeringagent.md"
+            )
+            continue
+
+        if rel.startswith(allowed_prefixes):
+            continue
+
+        path = project_root / rel
+        try:
+            payload = path.read_bytes()
+        except OSError:
+            continue
+        if needle_blob in payload:
+            messages.append(
+                f"{rel}: forbidden token present (opencode config invariant): {needle}"
+            )
 
 
 def _append_purge_invariant_issues(messages: list[str], project_root: Path) -> None:  # noqa: C901

@@ -30,7 +30,7 @@ uv run engineeringagent run --all --dry-run
 - Run Ruff checks (lint + docstrings): `uv run ruff check src/engineeringagent harness`
 - Run Pyright type checks: `uv run pyright src/engineeringagent tests harness`
 - Run pytest suite: `uv run pytest -q`
-- Default OpenCode loop agent policy: `.opencode/agents/engineeringagent.md` (required; scaffolded by `engineeringagent init`). `opencode.json` is optional legacy configuration.
+- OpenCode loop agent policy: `.opencode/agents/engineeringagent.md` (required; scaffolded by `engineeringagent init`).
 - CLI validate command: `uv run engineeringagent validate`
 - Loop dry-run command: `uv run engineeringagent run docs/spec/features/FEAT-004-ralph-loop-opencode-mode.yaml --dry-run`
 - Loop auto-discovery dry-run: `uv run engineeringagent run --all --dry-run`
