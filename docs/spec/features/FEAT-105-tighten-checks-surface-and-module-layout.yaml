@@ -1,0 +1,208 @@
+id: FEAT-105
+title: Tighten checks surface and refactor module layout (opencode + on_change + retry feedback)
+type: chore
+expected_commit_subject: "chore: tighten checks surface and refactor module layout"
+status: backlog
+priority: high
+objective: >
+  Reduce cross-module coupling and ambiguity by enforcing a strict supported
+  `engineeringagent.checks` surface for production code outside checks, moving
+  OpenCode permission probing into the opencode submodule, and consolidating
+  check-only utilities under checks.
+
+  Gate/reviewer failures should flow as deterministic structured objects from
+  `run_checks(...)` into the loop retry feedback prompt injection without
+  requiring production modules to import checks internals.
+
+context: >
+  FEAT-097/098/099 established `engineeringagent.checks` as the canonical home for
+  checks planning and execution with a narrow supported surface. In practice, the
+  repository has drifted:
+
+  - `engineeringagent.checks` currently re-exports many internal types and helpers,
+    encouraging non-checks modules to depend on checks internals.
+  - `src/engineeringagent/loop_runtime/phases.py` and `src/engineeringagent/prompts/renderer.py`
+    import more than the intended top-level checks surface.
+  - `src/engineeringagent/opencode_permissions.py` is OpenCode-specific but lives
+    at top-level, while `src/engineeringagent/on_change_matcher.py` is checks-only
+    but also lives at top-level.
+
+  This spec makes the desired boundaries explicit and updates code to comply.
+
+constraints:
+  - "Strict production checks surface: any module outside src/engineeringagent/checks/** may only import from engineeringagent.checks the supported names: run_checks, emit_fitness_result, emit_result_envelope (and optionally ChecksRunResult)."
+  - "No production imports from engineeringagent.checks.<submodule> outside src/engineeringagent/checks/** (enforced by harness fitness rule)."
+  - "`engineeringagent.checks.run_checks(...)` must return deterministic structured failure objects in ChecksRunResult.failed_payload for failing groups (commands/fitness/validate/reviewers/config/selection)."
+  - "Loop runtime must build retry-feedback prompt injection from ChecksRunResult.failed_payload objects (not by importing checks internals or re-running checks)."
+  - "Move OpenCode permission probe implementation under src/engineeringagent/opencode/ and move on-change matcher under src/engineeringagent/checks/."
+  - "No compatibility shims: old import paths (engineeringagent.opencode_permissions, engineeringagent.on_change_matcher, and any moved retry-feedback module path) are removed and all callsites/tests/harness scripts are updated in the same change."
+  - "Preserve determinism invariants: stable run/skip decisions, stable ordering, stable output formatting, stable JSON envelope encoding for retry feedback."
+  - "Avoid introducing import cycles (especially loop_runtime <-> prompts)."
+
+implementation_notes: |
+  Contract/API delta (explicit)
+
+  Surface: `engineeringagent.checks` public API for production code outside checks.
+  - Old behavior:
+    - `engineeringagent.checks.__init__` re-exports many internal helpers and types.
+    - Non-checks modules import retry-feedback helpers, fitness helpers, and other
+      checks internals via `from engineeringagent.checks import ...`.
+  - New behavior:
+    - `engineeringagent.checks` is a strict supported surface for non-checks production code.
+      Outside `src/engineeringagent/checks/**`, only these imports are supported:
+        - `run_checks`
+        - `emit_fitness_result`
+        - `emit_result_envelope` (alias)
+        - optionally `ChecksRunResult` (if needed by callers)
+    - All other checks internals remain importable only from within checks.
+
+  Surface: `engineeringagent.checks.run_checks(...)` failure reporting.
+  - Old behavior:
+    - Callers rely on `ChecksRunResult.output` strings and/or re-run checks or import
+      checks internals to construct retry feedback.
+  - New behavior:
+    - `ChecksRunResult.failed_payload` is populated with a deterministic object for
+      the failing group, sufficient for the loop to construct retry feedback without
+      importing checks internals.
+    - Group payloads are minimal, stable, and typed/validated within checks.
+      Example shape (normative, v1):
+        - commands: {"kind": "command_failure", "check_id": "...", "command": "..."}
+        - fitness: {"kind": "fitness_failure", "check_id": "...", "failed_rules": [{...}]}
+        - validate: {"kind": "validate_failure", "messages": ["..."]}
+        - reviewers: existing decision payload, wrapped with {"kind": "reviewer_feedback", ...}
+        - config/selection: {"kind": "config_error"|"selection_error", "message": "..."}
+
+  Surface: retry-feedback prompt injection (FEAT-092).
+  - Old behavior:
+    - Retry-feedback envelope helpers are implemented under checks and imported from
+      non-checks modules.
+  - New behavior:
+    - Retry-feedback envelope parsing/serialization and normalization live under
+      `src/engineeringagent/prompts/retry_feedback.py`.
+    - The loop builds a retry-feedback envelope from `ChecksRunResult.failed_payload`
+      objects and injects it into the next implement prompt using existing prompt
+      injection templates.
+    - No new OpenCode behavior is introduced in this spec.
+
+  Surface: module layout.
+  - Old behavior:
+    - OpenCode permission probe lives at `src/engineeringagent/opencode_permissions.py`.
+    - on-change matcher lives at `src/engineeringagent/on_change_matcher.py`.
+  - New behavior:
+    - Permission probe moves to `src/engineeringagent/opencode/permissions.py`.
+    - on-change matcher moves to `src/engineeringagent/checks/on_change_matcher.py`.
+    - No shims: update all imports in production code, tests, and harness scripts.
+
+  Fitness-function impact assessment:
+  - Updates required:
+    - `harness/fitness-functions/check_checks_import_surface.py` must enforce the strict
+      supported `engineeringagent.checks` surface (explicit allowed names, not
+      "whatever checks.__all__ exposes").
+    - Any harness scripts that import moved modules (permission probe, matcher) must be updated.
+
+acceptance:
+  - >
+    Production modules outside `src/engineeringagent/checks/**` import only the supported
+    top-level checks surface (`run_checks`, `emit_fitness_result`, `emit_result_envelope`,
+    and optionally `ChecksRunResult`).
+  - >
+    The harness fitness rule `architecture.checks-import-surface` fails on any production
+    import of `engineeringagent.checks.<submodule>` outside checks and on any disallowed
+    name imported from `engineeringagent.checks`.
+  - >
+    `engineeringagent.checks.run_checks(...)` populates `ChecksRunResult.failed_payload`
+    with deterministic, group-specific failure objects for commands, fitness, validate,
+    reviewers, config, and selection failures.
+  - >
+    `src/engineeringagent/loop_runtime/phases.py` constructs retry feedback using only
+    the `run_checks(...)` result objects (no checks internals imports and no re-running
+    checks to discover failure details).
+  - >
+    Retry feedback envelope parsing/serialization lives under
+    `src/engineeringagent/prompts/retry_feedback.py` and prompt injection remains
+    deterministic and bounded (FEAT-092 contract).
+  - >
+    OpenCode permission probe module lives under
+    `src/engineeringagent/opencode/permissions.py` and on-change matcher lives under
+    `src/engineeringagent/checks/on_change_matcher.py`, with all callsites/tests/harness
+    scripts updated (no shims).
+  - >
+    `uv run engineeringagent validate`, `uv run pytest -q`, and
+    `uv run engineeringagent gates run --profile loop_fast` pass.
+
+subtasks:
+  - id: ST-001
+    title: Define strict checks public surface and enforcement rules
+    status: backlog
+    context: >
+      Slim `engineeringagent.checks` exports for non-checks production code to the
+      supported surface and update `check_checks_import_surface.py` to enforce it.
+      Ensure rule enforcement is based on explicit allowed names.
+    verification:
+      - uv run python -m engineeringagent.cli fitness run --format json
+      - uv run pytest -q
+  - id: ST-002
+    title: Add deterministic failed_payload objects to run_checks
+    status: backlog
+    context: >
+      Extend `ChecksRunResult.failed_payload` so each failing group returns a
+      deterministic minimal object sufficient for loop retry-feedback construction.
+      Add/adjust tests to cover payload stability and required fields.
+    verification:
+      - uv run pytest -q
+  - id: ST-003
+    title: Refactor loop runtime phases to depend only on run_checks outputs
+    status: backlog
+    context: >
+      Update `src/engineeringagent/loop_runtime/phases.py` to stop importing checks
+      internals and to build retry feedback from `ChecksRunResult.failed_payload`.
+      Preserve existing loop result/status fields.
+    verification:
+      - uv run pytest -q
+  - id: ST-004
+    title: Relocate retry-feedback envelope helpers to prompts package
+    status: backlog
+    context: >
+      Move retry-feedback parsing/serialization and normalization into
+      `src/engineeringagent/prompts/retry_feedback.py` and update `prompts/renderer.py`
+      and loop callers accordingly. Preserve FEAT-092 envelope contract.
+    verification:
+      - uv run pytest -q
+  - id: ST-005
+    title: Migrate CLI validate to run_checks validate group
+    status: backlog
+    context: >
+      Replace any direct validate runner import usage with
+      `run_checks(..., checks=["validate"])` so CLI depends only on the strict checks
+      surface.
+    verification:
+      - uv run python -m engineeringagent.cli validate
+      - uv run pytest -q
+  - id: ST-006
+    title: Move OpenCode permission probe under opencode submodule (no shims)
+    status: backlog
+    context: >
+      Move `opencode_permissions` implementation into `src/engineeringagent/opencode/permissions.py`
+      and update all callsites/tests/harness scripts to the new import path.
+    verification:
+      - uv run pytest -q
+  - id: ST-007
+    title: Move on-change matcher under checks package (no shims)
+    status: backlog
+    context: >
+      Move matcher into `src/engineeringagent/checks/on_change_matcher.py` and update
+      checks submodules and tests accordingly.
+    verification:
+      - uv run pytest -q
+  - id: ST-008
+    title: End-to-end verification and gate profile pass
+    status: backlog
+    context: >
+      Run repository validation and gates to ensure no import-direction regressions,
+      rule enforcement is active, and loop execution remains stable.
+    verification:
+      - uv run engineeringagent validate
+      - uv run engineeringagent gates run --profile loop_fast
+      - uv run pytest -q
+
+updated_at: "2026-02-17T00:00:00Z"

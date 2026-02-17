@@ -35,3 +35,12 @@ checks:
       on_change: ["src/**/*.py", "tests/**/*.py"]
     approval:
       first_feature_approval: true
+
+  test_reviewer:
+    type: reviewer
+    prompt_file: "harness/reviewers/prompts/test_reviewer.md"
+    when:
+      phase: feature_done
+      on_change: ["tests/**/*.py"]
+    approval:
+      first_feature_approval: true

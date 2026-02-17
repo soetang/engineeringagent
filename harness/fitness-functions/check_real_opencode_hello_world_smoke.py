@@ -24,6 +24,7 @@ from engineeringagent.checks.fitness.config import (
 RULE_ID = "smoke.opencode-real-hello-world"
 _TEMPLATE_NAME = "real_opencode_hello_world_feature_template.yaml"
 _FEATURE_SPEC_RELATIVE_PATH = Path("docs/spec/features/FEAT-001-hello-world-smoke.yaml")
+_SPARK_AGENT_TEMPLATE_NAME = "opencode.agent.engineeringagent.spark.md.tmpl"
 
 
 def _result(
@@ -93,6 +94,26 @@ def _write_feature_spec(tmp_repo: Path) -> None:
     target = tmp_repo / _FEATURE_SPEC_RELATIVE_PATH
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(payload.rstrip("\n") + "\n", encoding="utf-8")
+
+
+def _write_spark_agent_override(tmp_repo: Path, violations: list[str]) -> None:
+    template_path = Path(__file__).with_name(_SPARK_AGENT_TEMPLATE_NAME)
+    if not template_path.exists():
+        violations.append(
+            f"missing smoke OpenCode agent template: {template_path.name}"
+        )
+        return
+
+    payload = template_path.read_text(encoding="utf-8")
+    if 'model: "openai/gpt-5.3-codex-spark"' not in payload:
+        violations.append(
+            "smoke OpenCode agent template must pin model openai/gpt-5.3-codex-spark"
+        )
+        return
+
+    agent_path = tmp_repo / ".opencode" / "agents" / "engineeringagent.md"
+    agent_path.parent.mkdir(parents=True, exist_ok=True)
+    agent_path.write_text(payload.rstrip("\n") + "\n", encoding="utf-8")
 
 
 def _iter_done_specs(tmp_repo: Path) -> Iterable[Path]:
@@ -275,6 +296,18 @@ def main() -> int:
                     _result(
                         status=RuleStatus.FAIL,
                         summary="init scaffold missing required OpenCode agents doc",
+                        violations=violations,
+                    )
+                )
+                return 0
+
+            violations_before = len(violations)
+            _write_spark_agent_override(tmp_repo, violations)
+            if len(violations) > violations_before:
+                emit_result_envelope(
+                    _result(
+                        status=RuleStatus.FAIL,
+                        summary="failed to configure fast OpenCode agent for smoke run",
                         violations=violations,
                     )
                 )

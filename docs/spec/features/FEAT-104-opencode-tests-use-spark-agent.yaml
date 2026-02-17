@@ -1,0 +1,79 @@
+id: FEAT-104
+title: Use spark OpenCode agent for opencode integration + real smoke tests
+type: test
+expected_commit_subject: 'test: use spark agent for opencode tests'
+status: backlog
+priority: medium
+objective: Ensure the slow real-model OpenCode agent is not used in test-only OpenCode
+  executions by pinning the smoke/integration agent model to the faster
+  openai/gpt-5.3-codex-spark.
+context: The repository uses a high-quality (slower) OpenCode agent for day-to-day
+  work, but the integration test path and the real OpenCode hello-world smoke rule
+  are only validating end-to-end wiring. They should use the faster spark variant
+  to reduce wall time and flakiness while keeping coverage of the orchestration.
+constraints:
+- Do not change the default repo-root .opencode/agents/engineeringagent.md behavior.
+- Only affect the pytest opencode integration fixture and the real OpenCode smoke
+  harness rule.
+- Keep agent permissions allow-all (these tests are wiring checks, not permission
+  hardening).
+implementation_notes: |
+  Approach
+
+  - Add a dedicated agent markdown template used only by tests:
+    - harness/fitness-functions/opencode.agent.engineeringagent.spark.md.tmpl
+    - Pins model: openai/gpt-5.3-codex-spark
+    - Grants allow-all permissions for smoke/integration flows
+
+  - Real OpenCode smoke harness:
+    - In harness/fitness-functions/check_real_opencode_hello_world_smoke.py, after
+      engineeringagent init creates .opencode/agents/engineeringagent.md in the temp
+      repo, overwrite it with the spark template.
+    - Fail fast with a clear message if the template is missing or does not contain
+      the pinned model string.
+
+  - Pytest OpenCode integration fixture:
+    - In tests/loop/test_loop_opencode_integration.py, write the temp repo
+      .opencode/agents/engineeringagent.md from the same spark template.
+    - Also pin opencode.json agent models to openai/gpt-5.3-codex-spark so real
+      OpenCode execution (if enabled) stays fast and consistent.
+
+  - Add a unit test that exercises the smoke helper that writes the spark agent.
+acceptance:
+- harness/fitness-functions/check_real_opencode_hello_world_smoke.py overwrites the
+  temp repo .opencode/agents/engineeringagent.md with a spark-pinned agent doc.
+- tests/loop/test_loop_opencode_integration.py uses the spark agent doc for its temp
+  repo .opencode/agents/engineeringagent.md.
+- tests/harness/test_real_opencode_smoke.py includes a test ensuring the smoke helper
+  writes a file that contains the model string openai/gpt-5.3-codex-spark.
+- uv run pytest -q passes.
+subtasks:
+- id: ST-001
+  title: Add spark agent template for tests
+  status: backlog
+  context: Add harness/fitness-functions/opencode.agent.engineeringagent.spark.md.tmpl and
+    keep it pinned to openai/gpt-5.3-codex-spark with allow-all permissions.
+  verification:
+  - 'uv run python -c "from pathlib import Path; p=Path(\"harness/fitness-functions/opencode.agent.engineeringagent.spark.md.tmpl\"); assert p.exists()"'
+- id: ST-002
+  title: Wire spark agent into real opencode smoke harness
+  status: backlog
+  context: Update harness/fitness-functions/check_real_opencode_hello_world_smoke.py
+    to overwrite the temp repo engineeringagent agent doc with the spark template
+    before running engineeringagent run.
+  verification:
+  - uv run pytest -q tests/harness/test_real_opencode_smoke.py
+- id: ST-003
+  title: Wire spark agent into pytest opencode integration fixture
+  status: backlog
+  context: Update tests/loop/test_loop_opencode_integration.py to use the spark agent
+    template and pin opencode.json model entries to openai/gpt-5.3-codex-spark.
+  verification:
+  - uv run pytest -q tests/loop/test_loop_opencode_integration.py
+- id: ST-004
+  title: Run full suite
+  status: backlog
+  context: Run the unit tests to ensure no regressions.
+  verification:
+  - uv run pytest -q
+updated_at: '2026-02-17T00:00:00Z'

@@ -19,8 +19,21 @@ def test_repo_reviewers_config_excludes_removed_onboarding_reviewer(
     assert "code_simplifier" in checks
     assert checks["code_simplifier"]["type"] == "reviewer"
 
+    assert "test_reviewer" in checks
+    assert checks["test_reviewer"]["type"] == "reviewer"
+    assert (
+        checks["test_reviewer"]["prompt_file"]
+        == "harness/reviewers/prompts/test_reviewer.md"
+    )
+    assert checks["test_reviewer"]["when"]["phase"] == "feature_done"
+    assert checks["test_reviewer"]["when"]["on_change"] == ["tests/**/*.py"]
+
 
 def test_repo_contains_only_supported_prompt_files(repo_root: Path) -> None:
     prompt_path = repo_root / "harness" / "reviewers" / "prompts" / "code_simplifier.md"
+    assert prompt_path.is_file()
+    assert "$responseformat" in prompt_path.read_text(encoding="utf-8")
+
+    prompt_path = repo_root / "harness" / "reviewers" / "prompts" / "test_reviewer.md"
     assert prompt_path.is_file()
     assert "$responseformat" in prompt_path.read_text(encoding="utf-8")

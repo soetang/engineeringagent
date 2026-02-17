@@ -50,6 +50,22 @@ def test_template_verification_commands_use_uv_run(repo_root: Path) -> None:
     assert all(command.startswith("uv run python") for command in verification)
 
 
+def test_smoke_helper_writes_spark_agent_override(
+    repo_root: Path,
+    tmp_path: Path,
+) -> None:
+    smoke = _load_smoke_module(repo_root)
+
+    violations: list[str] = []
+    smoke._write_spark_agent_override(tmp_path, violations)
+    assert violations == []
+
+    agent_path = tmp_path / ".opencode" / "agents" / "engineeringagent.md"
+    assert agent_path.exists()
+    payload = agent_path.read_text(encoding="utf-8")
+    assert 'model: "openai/gpt-5.3-codex-spark"' in payload
+
+
 def test_verification_commands_use_uv_run_in_smoke_helper(
     repo_root: Path,
     monkeypatch: pytest.MonkeyPatch,

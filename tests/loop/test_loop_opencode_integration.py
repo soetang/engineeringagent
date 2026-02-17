@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -11,7 +10,6 @@ import pytest
 import yaml
 
 import engineeringagent.loop as loop_module
-import engineeringagent.opencode.client as opencode_client
 from engineeringagent.config import resolve_harness_pytest_opencode_integration_enabled
 from engineeringagent.checks.retry_feedback.builders import (
     build_command_failure_retry_feedback,
@@ -71,6 +69,11 @@ BUILD_AGENT_ALLOW_ALL_PERMISSION = {
 }
 
 
+_SPARK_AGENT_TEMPLATE_RELATIVE_PATH = Path(
+    "harness/fitness-functions/opencode.agent.engineeringagent.spark.md.tmpl"
+)
+
+
 def _write_yaml(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
@@ -112,17 +115,17 @@ def _make_project_root(tmp_path: Path) -> tuple[Path, Path]:
         json.dumps(
             {
                 "$schema": "https://opencode.ai/config.json",
-                "model": "openai/gpt-5.1-codex-mini",
+                "model": "openai/gpt-5.3-codex-spark",
                 "default_agent": "build",
                 "agent": {
                     "build": {
                         "mode": "primary",
-                        "model": "openai/gpt-5.1-codex-mini",
+                        "model": "openai/gpt-5.3-codex-spark",
                         "permission": BUILD_AGENT_ALLOW_ALL_PERMISSION,
                     },
                     "engineeringagent": {
                         "mode": "primary",
-                        "model": "openai/gpt-5.1-codex-mini",
+                        "model": "openai/gpt-5.3-codex-spark",
                         "permission": BUILD_AGENT_ALLOW_ALL_PERMISSION,
                     },
                 },
@@ -148,15 +151,11 @@ def _make_project_root(tmp_path: Path) -> tuple[Path, Path]:
     engineeringagent_path = (
         project_root / ".opencode" / "agents" / "engineeringagent.md"
     )
-    engineeringagent_frontmatter = {
-        "description": "EngineeringAgent override for deterministic repository automation.",
-        "mode": "primary",
-        "permission": BUILD_AGENT_ALLOW_ALL_PERMISSION,
-    }
+
+    repo_root = Path(__file__).resolve().parents[2]
+    spark_template_path = repo_root / _SPARK_AGENT_TEMPLATE_RELATIVE_PATH
     engineeringagent_path.write_text(
-        "---\n"
-        + yaml.safe_dump(engineeringagent_frontmatter, sort_keys=False)
-        + "---\n",
+        spark_template_path.read_text(encoding="utf-8").rstrip("\n") + "\n",
         encoding="utf-8",
     )
 
