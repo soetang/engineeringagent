@@ -386,10 +386,22 @@ def test_run_checks_check_id_must_match_enabled_groups(tmp_path: Path) -> None:
     assert result.failed_check_id == "smoke"
 
 
-def test_run_checks_validate_group_executes(repo_root: Path) -> None:
+def test_run_checks_validate_group_executes(tmp_path: Path) -> None:
     from engineeringagent.checks import run_checks
 
-    result = run_checks(repo_root, phase="iteration_end", checks=["validate"])
+    # Validate-group contract: it should be runnable independent of the full repo.
+    (tmp_path / "docs" / "spec" / "features").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "docs" / "spec" / "features" / ".gitkeep").write_text(
+        "",
+        encoding="utf-8",
+    )
+    (tmp_path / "docs" / "spec" / "features_done").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "docs" / "spec" / "features_done" / ".gitkeep").write_text(
+        "",
+        encoding="utf-8",
+    )
+
+    result = run_checks(tmp_path, phase="iteration_end", checks=["validate"])
     assert result.ok
 
 

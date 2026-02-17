@@ -44,9 +44,12 @@ def _run_checker(
     return proc, payload
 
 
-def test_markdown_locality_rule_uses_expected_rule_id(repo_root: Path) -> None:
+def test_markdown_locality_rule_uses_expected_rule_id(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
     """Emit the stable rule id from the harness command adapter."""
-    proc, payload = _run_checker(repo_root, checker_path=_script_path(repo_root))
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
 
     assert proc.returncode == 0
     assert payload["rule_id"] == "architecture.markdown-locality-reference-coverage"

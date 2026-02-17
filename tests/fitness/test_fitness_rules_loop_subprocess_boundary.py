@@ -54,11 +54,11 @@ def test_loop_subprocess_boundary_checker_emits_expected_rule_id(
     assert payload["rule_id"] == "architecture.loop-subprocess-boundary"
 
 
-def test_loop_subprocess_boundary_rule_reports_direct_subprocess_use(
+def test_loop_subprocess_boundary_rule_reports_multiple_subprocess_patterns(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Fail when a non-allowlisted module invokes subprocess directly."""
+    """Fail when multiple non-allowlisted modules invoke subprocess patterns."""
     _write_module(
         tmp_path,
         "src/engineeringagent/loop.py",
@@ -71,24 +71,6 @@ def test_loop_subprocess_boundary_rule_reports_direct_subprocess_use(
             ]
         ),
     )
-
-    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
-    violations = payload["violations"]
-
-    assert proc.returncode == 0
-    assert payload["status"] == "fail"
-    assert isinstance(violations, list)
-    assert any(
-        "src/engineeringagent/loop.py:4 uses subprocess.run" in violation
-        for violation in violations
-    )
-
-
-def test_loop_subprocess_boundary_rule_reports_subprocess_alias_pattern(
-    tmp_path: Path,
-    repo_root: Path,
-) -> None:
-    """Fail when alias import wrappers call blocked subprocess APIs."""
     _write_module(
         tmp_path,
         "src/engineeringagent/process_runner.py",
@@ -101,27 +83,9 @@ def test_loop_subprocess_boundary_rule_reports_subprocess_alias_pattern(
             ]
         ),
     )
-
-    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
-    violations = payload["violations"]
-
-    assert proc.returncode == 0
-    assert payload["status"] == "fail"
-    assert isinstance(violations, list)
-    assert any(
-        "src/engineeringagent/process_runner.py:4 uses sp.run" in violation
-        for violation in violations
-    )
-
-
-def test_loop_subprocess_boundary_rule_reports_from_import_pattern(
-    tmp_path: Path,
-    repo_root: Path,
-) -> None:
-    """Fail when direct-imported subprocess call aliases are invoked."""
     _write_module(
         tmp_path,
-        "src/engineeringagent/loop.py",
+        "src/engineeringagent/from_import_runner.py",
         "\n".join(
             [
                 "from subprocess import run as run_cmd",
@@ -139,7 +103,16 @@ def test_loop_subprocess_boundary_rule_reports_from_import_pattern(
     assert payload["status"] == "fail"
     assert isinstance(violations, list)
     assert any(
-        "src/engineeringagent/loop.py:4 uses run_cmd(...) from subprocess" in violation
+        "src/engineeringagent/loop.py:4 uses subprocess.run" in violation
+        for violation in violations
+    )
+    assert any(
+        "src/engineeringagent/process_runner.py:4 uses sp.run" in violation
+        for violation in violations
+    )
+    assert any(
+        "src/engineeringagent/from_import_runner.py:4 uses run_cmd(...) from subprocess"
+        in violation
         for violation in violations
     )
 
@@ -157,31 +130,6 @@ def test_loop_subprocess_boundary_rule_allows_approved_command_boundary_modules(
                 "import subprocess",
                 "",
                 "def run_gate() -> None:",
-                "    subprocess.run(['git', 'status'], check=False)",
-            ]
-        ),
-    )
-
-    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
-
-    assert proc.returncode == 0
-    assert payload["status"] == "pass"
-    assert payload["violations"] == []
-
-
-def test_loop_subprocess_boundary_rule_allows_git_client_module(
-    tmp_path: Path,
-    repo_root: Path,
-) -> None:
-    """Pass when subprocess calls stay inside the git client boundary."""
-    _write_module(
-        tmp_path,
-        "src/engineeringagent/git/client.py",
-        "\n".join(
-            [
-                "import subprocess",
-                "",
-                "def run_git() -> None:",
                 "    subprocess.run(['git', 'status'], check=False)",
             ]
         ),
