@@ -1,0 +1,203 @@
+id: FEAT-097
+title: Introduce engineeringagent.checks module (canonical checks surface + contracts)
+type: feature
+expected_commit_subject: "feat: introduce engineeringagent.checks module"
+status: backlog
+priority: high
+objective: >
+  Improve separation of concerns and refactorability by introducing a single,
+  canonical `engineeringagent.checks` module that owns all functionality related
+  to planning and running checks (spec/setup validation, harness/checks.yaml
+  command+fitness+reviewers execution), with a narrow supported export surface.
+
+context: >
+  Today, "checks" functionality is split across multiple modules (validator,
+  harness_checks_runtime, reviewers, loop_runtime orchestration, fitness helpers).
+  This increases cross-cutting changes and makes it harder to do incremental,
+  low-diff refactors. We want a dedicated checks package with stable top-level
+  entrypoints, while keeping legacy modules in place during an initial migration
+  window (no deletions in this feature).
+
+  End-state direction (explicit): after migration completion, the functionality
+  currently implemented under the legacy check execution and feedback subsystems
+  will live under `src/engineeringagent/checks/**`.
+
+  Specifically, after the FEAT-097 -> FEAT-098 -> FEAT-099 migration sequence:
+  - Fitness framework code moves from `src/engineeringagent/fitness/**` to
+    `src/engineeringagent/checks/**`.
+  - Retry-feedback code moves from `src/engineeringagent/retry_feedback/**` to
+    `src/engineeringagent/checks/**`.
+  - Legacy check execution entrypoints become unused by production code:
+    `src/engineeringagent/harness_checks_runtime.py`,
+    `src/engineeringagent/validator.py`,
+    `src/engineeringagent/reviewers.py`.
+
+  The legacy paths above become unused by production code and eligible for deletion
+  (and are deleted as part of FEAT-099).
+
+  Spec sequence (explicit):
+  - FEAT-097 introduces `engineeringagent.checks` and the stable contracts.
+  - FEAT-098 migrates CLI + loop runtime callsites to `engineeringagent.checks`.
+  - FEAT-099 relocates remaining legacy subsystems under `checks/**` and deletes
+    legacy modules/packages once unused by production code.
+
+  Spec package (explicit):
+  - This larger refactor is intentionally split across multiple specs:
+    FEAT-097, FEAT-098, FEAT-099.
+  - You are here: FEAT-097.
+
+  Ordering / dependencies (explicit):
+  - FEAT-097 must land before FEAT-098.
+  - FEAT-098 must land before FEAT-099.
+
+constraints:
+  - "Spec A only: introduce the new checks package with real implementations under `src/engineeringagent/checks/**`, but do not delete legacy modules/files."
+  - "No callsite migration required in this feature: CLI and loop runtime may continue using legacy entrypoints until a later spec."
+  - "The supported `engineeringagent.checks` export surface must be intentionally small: `run_checks`, `emit_fitness_result`, and `emit_result_envelope` (alias)."
+  - "Avoid OpenCode/subagent implementation inside checks: reviewer execution must call an injected callable (or a default imported from `engineeringagent.opencode.*`), but checks must not implement OpenCode protocol logic."
+  - "Determinism is required: stable run/skip decisions, stable ordering, stable JSON envelope emission, stable failure signaling."
+  - "No new enforcement rules in this feature restricting imports to `engineeringagent.checks` (enforcement is deferred until after migration)."
+  - "No behavior changes to validation policy in this feature (do not remove legacy harness-file policing from `engineeringagent validate` yet; that is a later spec)."
+
+implementation_notes: |
+  Contract/API delta (explicit):
+
+  - Surface: supported check execution API for internal callsites (CLI + loop runtime)
+    and supported harness helper surface for fitness-rule scripts.
+
+  - Old behavior (today):
+    - Repo-owned checks execution is implemented across multiple modules:
+      - command+fitness planning/execution in `engineeringagent.harness_checks_runtime.*`
+      - reviewer execution in `engineeringagent.reviewers.*` orchestrated from
+        `engineeringagent.loop_runtime.phases.*`
+      - spec/setup validation in `engineeringagent.validator.validate`
+    - The supported fitness envelope helper for harness fitness scripts is
+      `engineeringagent.fitness.envelope.emit_result_envelope(...)`.
+
+  - New behavior (after this feature):
+    - A new canonical checks module exists at `engineeringagent.checks` with a narrow
+      supported surface:
+      - `engineeringagent.checks.run_checks(...)` is the supported orchestration API.
+      - `engineeringagent.checks.emit_fitness_result(...)` is the canonical helper for
+        emitting deterministic fitness-rule result envelopes.
+      - `engineeringagent.checks.emit_result_envelope` is a compatibility alias for
+        `emit_fitness_result`.
+    - The canonical implementation of the fitness envelope emitter moves under
+      `src/engineeringagent/checks/**`.
+      - Old import path `engineeringagent.fitness.envelope.emit_result_envelope` remains
+        supported as a shim delegating to `engineeringagent.checks.emit_fitness_result`
+        during the migration window.
+
+  Compatibility policy:
+  - Staged refactor with temporary dual surfaces.
+  - In this feature, existing modules and callsites are not removed; old entrypoints remain
+    importable and behavior-stable while the new `engineeringagent.checks` surface is added.
+  - Deletion of legacy modules and enforcement of import boundaries is deferred to later specs.
+
+  `engineeringagent.checks.run_checks` contract (v1):
+  - `run_checks(project_root, *, phase, checks=None, check_id=None, feature_path=None,
+               verbose_output=False, base=None, head=None, start_agent_fn=None) -> ChecksRunResult`
+  - Group selection:
+    - `checks` selects which check groups run: "validate" | "commands" | "fitness" | "reviewers".
+    - Deterministic group order is fixed: validate -> commands -> fitness -> reviewers.
+    - Default when `checks is None`: ["commands", "fitness"] (matches current checks-run behavior).
+  - Single-check selection:
+    - If `check_id` is provided, only that check id runs (within enabled groups), with deterministic
+      failure semantics for unknown ids.
+  - Reviewer requirements (no implicit discovery):
+    - If "reviewers" is included in `checks`, `feature_path` is required (no auto-detect).
+      `feature_path` refers to the feature spec YAML file path being reviewed (active or
+      archived). It is used to supply deterministic reviewer context (and may be used to
+      derive `feature_id` by loading the YAML).
+    - Reviewer execution must not implement OpenCode/subagent logic inside checks; it must accept an
+      injected `start_agent_fn` callable (or wire a default from `engineeringagent.opencode.*`).
+
+  Fitness envelope helper contract (v1):
+  - Canonical helper:
+    - `engineeringagent.checks.emit_fitness_result(result: FitnessRuleResult) -> None`
+    - Emits exactly one compact JSON object to stdout with deterministic encoding and includes
+      contract_version sourced from `engineeringagent.fitness.contracts.CONTRACT_VERSION`.
+  - Compatibility alias:
+    - `engineeringagent.checks.emit_result_envelope` must be an alias of `emit_fitness_result`.
+  - Shim:
+    - `engineeringagent.fitness.envelope.emit_result_envelope` remains available and delegates to
+      the checks implementation during the migration window.
+
+  Fitness-function impact assessment:
+  - no fitness-function changes required; harness fitness scripts may continue importing
+    `engineeringagent.fitness.envelope.emit_result_envelope` during the migration window.
+
+acceptance:
+  - "A new package `src/engineeringagent/checks/` exists with subpackages for validate, commands, fitness, and reviewers, and contains real implementations (not just wrappers)."
+  - "The supported export surface is available: `from engineeringagent.checks import run_checks, emit_fitness_result, emit_result_envelope`."
+  - "`emit_result_envelope` exported from `engineeringagent.checks` is a compatibility alias of `emit_fitness_result`."
+  - "The canonical fitness envelope implementation lives under `src/engineeringagent/checks/**`, and `src/engineeringagent/fitness/envelope.py` remains importable as a shim delegating to checks."
+  - "Reviewer execution under checks does not implement OpenCode/subagent logic; it calls an injected callable (or a default imported from `engineeringagent.opencode.*`)."
+  - "Deterministic behavior is preserved (stable ordering, stable JSON emission, deterministic failures), validated by tests."
+  - "`uv run python -m engineeringagent.cli validate` and `uv run pytest -q` pass."
+
+subtasks:
+  - id: ST-001
+    title: Create checks package skeleton and supported exports
+    status: backlog
+    context: >
+      Add `src/engineeringagent/checks/` with `validate/`, `commands/`, `fitness/`,
+      `reviewers/`, and define the narrow export surface in
+      `src/engineeringagent/checks/__init__.py`.
+    verification:
+      - uv run python -m engineeringagent.cli validate
+      - uv run pytest -q
+
+  - id: ST-002
+    title: Move canonical fitness envelope emitter under checks (with shim)
+    status: backlog
+    context: >
+      Implement `emit_fitness_result` under `checks/` and provide `emit_result_envelope`
+      alias. Keep `engineeringagent.fitness.envelope.emit_result_envelope` working by
+      delegating to checks. Add tests for deterministic JSON emission and
+      contract_version behavior.
+    verification:
+      - uv run pytest -q
+
+  - id: ST-003
+    title: Implement run_checks group orchestration contract
+    status: backlog
+    context: >
+      Implement `engineeringagent.checks.run_checks(...)` with `checks=[...]` group
+      selection, deterministic group order, default groups ["commands", "fitness"],
+      and optional `check_id` single-check mode. Return a deterministic structured
+      result (ChecksRunResult).
+    verification:
+      - uv run pytest -q
+
+  - id: ST-006
+    title: Implement validate group execution under checks
+    status: backlog
+    context: >
+      Port spec/setup validation execution into `checks/validate/**` so that
+      `engineeringagent.checks.run_checks(..., checks=["validate"])` is functional.
+      Preserve existing validation outputs and exit semantics.
+    verification:
+      - uv run python -m engineeringagent.cli validate
+      - uv run pytest -q
+
+  - id: ST-004
+    title: Implement commands+fitness execution under checks (parity with current behavior)
+    status: backlog
+    context: >
+      Port command/fitness planning and execution (currently in harness_checks_runtime)
+      into `checks/commands/**` and `checks/fitness/**`, preserving deterministic output
+      and failure signaling. Add parity tests against known harness/checks.yaml fixtures.
+    verification:
+      - uv run pytest -q
+
+  - id: ST-005
+    title: Implement reviewers execution under checks without OpenCode logic
+    status: backlog
+    context: >
+      Port reviewer check planning/execution glue into `checks/reviewers/**`. Ensure
+      reviewer execution calls an injected `start_agent_fn` (or wiring import from
+      `engineeringagent.opencode.*`) and requires explicit `feature_path` when reviewers
+      are selected.
+    verification:
+      - uv run pytest -q
