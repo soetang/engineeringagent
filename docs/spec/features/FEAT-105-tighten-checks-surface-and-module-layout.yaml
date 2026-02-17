@@ -34,6 +34,8 @@ constraints:
   - "No production imports from engineeringagent.checks.<submodule> outside src/engineeringagent/checks/** (enforced by harness fitness rule)."
   - "`engineeringagent.checks.run_checks(...)` must return deterministic structured failure objects in ChecksRunResult.failed_payload for failing groups (commands/fitness/validate/reviewers/config/selection)."
   - "Loop runtime must build retry-feedback prompt injection from ChecksRunResult.failed_payload objects (not by importing checks internals or re-running checks)."
+  - "Checks must not parse OpenCode JSON event streams (eg stdout JSONL from `opencode run --format json`). Any OpenCode-protocol parsing must live under src/engineeringagent/opencode/**."
+  - "The injected `start_agent_fn` interface used by checks reviewers must return structured output (not raw stdout parsing). In particular, when invoked with format=\"json\", it must provide (at minimum) session_id and the final text payload as explicit fields."
   - "Move OpenCode permission probe implementation under src/engineeringagent/opencode/ and move on-change matcher under src/engineeringagent/checks/."
   - "No compatibility shims: old import paths (engineeringagent.opencode_permissions, engineeringagent.on_change_matcher, and any moved retry-feedback module path) are removed and all callsites/tests/harness scripts are updated in the same change."
   - "Preserve determinism invariants: stable run/skip decisions, stable ordering, stable output formatting, stable JSON envelope encoding for retry feedback."
@@ -93,6 +95,18 @@ implementation_notes: |
     - on-change matcher moves to `src/engineeringagent/checks/on_change_matcher.py`.
     - No shims: update all imports in production code, tests, and harness scripts.
 
+  Surface: reviewer execution dependency injection boundary (OpenCode protocol isolation).
+  - Old behavior:
+    - `src/engineeringagent/checks/reviewers/engine.py` receives a subprocess-like object
+      from `start_agent_fn` and then parses stdout as OpenCode JSONL events (json.loads
+      per line) to extract session id and last text payload.
+  - New behavior:
+    - The OpenCode client (`src/engineeringagent/opencode/**`) owns parsing of OpenCode
+      output formats and returns a structured result object.
+    - Checks reviewers depend on the structured result contract (eg `session_id`,
+      `text_payload`) and do not implement OpenCode output parsing.
+    - The repository can change OpenCode backends/output formats without rewriting checks.
+
   Fitness-function impact assessment:
   - Updates required:
     - `harness/fitness-functions/check_checks_import_surface.py` must enforce the strict
@@ -126,6 +140,10 @@ acceptance:
     `src/engineeringagent/opencode/permissions.py` and on-change matcher lives under
     `src/engineeringagent/checks/on_change_matcher.py`, with all callsites/tests/harness
     scripts updated (no shims).
+  - >
+    `src/engineeringagent/checks/reviewers/engine.py` does not parse OpenCode JSON event
+    streams. Reviewer execution consumes a structured `start_agent_fn` result that
+    includes `session_id` and the final text payload when `format="json"` is requested.
   - >
     `uv run engineeringagent validate`, `uv run pytest -q`, and
     `uv run engineeringagent gates run --profile loop_fast` pass.
@@ -203,6 +221,21 @@ subtasks:
     verification:
       - uv run engineeringagent validate
       - uv run engineeringagent gates run --profile loop_fast
+      - uv run pytest -q
+
+  - id: ST-009
+    title: Make start_agent_fn return structured OpenCode results
+    status: backlog
+    context: >
+      Introduce an opencode-owned structured result type returned by
+      `engineeringagent.opencode.client.start_agent` (and required for injected
+      `start_agent_fn` callsites). The structured result must include stdout/stderr
+      for logging plus explicit fields for `session_id` and the final text payload
+      when OpenCode is invoked with `--format json`.
+
+      Update reviewer execution to rely on those structured fields instead of parsing
+      stdout inside checks.
+    verification:
       - uv run pytest -q
 
 updated_at: "2026-02-17T00:00:00Z"
