@@ -45,7 +45,7 @@ def test_run_gate_phase_is_not_configured_without_checks_yaml(
     assert outcome.gate_status == "not_configured"
 
 
-def test_run_reviewer_phase_is_not_configured_without_run_all(
+def test_run_reviewer_phase_is_not_configured_without_checks_yaml(
     tmp_path: Path,
 ) -> None:
     inputs = FeatureIterationInputs(
@@ -83,3 +83,119 @@ def test_run_reviewer_phase_is_not_configured_without_run_all(
 
     assert outcome.result == "passed"
     assert outcome.reviewer_status == "not_configured"
+
+
+def test_run_reviewer_phase_runs_when_checks_yaml_exists_without_run_all(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "harness").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "harness" / "checks.yaml").write_text(
+        """contract_version: '1.0'
+checks:
+  reviewer_1:
+    type: reviewer
+    prompt_file: harness/reviewers/prompts/reviewer_1.md
+    when:
+      phase: feature_done
+""",
+        encoding="utf-8",
+    )
+
+    inputs = FeatureIterationInputs(
+        project_root=tmp_path,
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        run_all=False,
+        attempt=1,
+        hook_feedback=None,
+        verbose_output=False,
+    )
+
+    run_calls: list[str] = []
+
+    deps = ReviewerPhaseDependencies(
+        load_reviewer_config=lambda *_args, **_kwargs: {},
+        collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
+            paths=(),
+            run_all=False,
+            reason=None,
+        ),
+        load_reviewers_state=lambda *_args, **_kwargs: {"version": "1", "features": {}},
+        save_reviewers_state=lambda *_args, **_kwargs: None,
+        plan_reviewers=lambda *_args, **_kwargs: [],
+        evaluate_cached_reviewer_approval=lambda *_args, **_kwargs: (False, ""),
+        run_reviewer=lambda *_args, **_kwargs: (
+            run_calls.append("called")
+            or {"decision": "approve", "summary": "ok", "required_actions": []}
+        ),
+        record_reviewer_approval=lambda *_args, **_kwargs: None,
+        restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+        start_agent=lambda *_args, **_kwargs: None,
+    )
+
+    outcome = run_reviewer_phase(
+        inputs,
+        {"id": "FEAT-001"},
+        archived_in_iteration=True,
+        archived_path=tmp_path / "docs" / "spec" / "features_done" / "FEAT-001.yaml",
+        dependencies=deps,
+    )
+
+    assert outcome.result == "passed"
+    assert outcome.reviewer_status == "passed"
+    assert run_calls == ["called"]
+    assert "[reviewer:reviewer_1]" in outcome.reviewer_output
+
+
+def test_run_reviewer_phase_is_not_run_when_checks_yaml_exists_but_no_feature_done_reviewers(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "harness").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "harness" / "checks.yaml").write_text(
+        """contract_version: '1.0'
+checks:
+  smoke:
+    type: command
+    command: echo ok
+""",
+        encoding="utf-8",
+    )
+
+    inputs = FeatureIterationInputs(
+        project_root=tmp_path,
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        run_all=False,
+        attempt=1,
+        hook_feedback=None,
+        verbose_output=False,
+    )
+
+    run_calls: list[str] = []
+
+    deps = ReviewerPhaseDependencies(
+        load_reviewer_config=lambda *_args, **_kwargs: {},
+        collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
+            paths=(),
+            run_all=False,
+            reason=None,
+        ),
+        load_reviewers_state=lambda *_args, **_kwargs: {"version": "1", "features": {}},
+        save_reviewers_state=lambda *_args, **_kwargs: None,
+        plan_reviewers=lambda *_args, **_kwargs: [],
+        evaluate_cached_reviewer_approval=lambda *_args, **_kwargs: (False, ""),
+        run_reviewer=lambda *_args, **_kwargs: run_calls.append("called") or {},
+        record_reviewer_approval=lambda *_args, **_kwargs: None,
+        restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+        start_agent=lambda *_args, **_kwargs: None,
+    )
+
+    outcome = run_reviewer_phase(
+        inputs,
+        {"id": "FEAT-001"},
+        archived_in_iteration=True,
+        archived_path=tmp_path / "docs" / "spec" / "features_done" / "FEAT-001.yaml",
+        dependencies=deps,
+    )
+
+    assert outcome.result == "passed"
+    assert outcome.reviewer_status == "not_run"
+    assert run_calls == []
