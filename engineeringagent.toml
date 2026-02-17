@@ -1,0 +1,8 @@
+[specs]
+allow-duplicate-done-base-ids-below = 100
+
+[harness.fitness]
+opencode-real-smoke = false
+
+[harness.pytest]
+opencode-integration = true

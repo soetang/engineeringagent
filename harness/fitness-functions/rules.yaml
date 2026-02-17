@@ -74,6 +74,20 @@ rules:
       - run
       - python
       - harness/fitness-functions/check_no_doc_content_tests.py
+  - rule_id: architecture.no-env-key-reads
+    name: No env-key reads
+    summary: Forbid env-key reads (os.getenv, os.environ.get, os.environ['X'], 'X' in os.environ).
+    rationale: Environment variable config is ad-hoc and hard to discover; configuration must come from engineeringagent.toml.
+    remediation: Remove env-key reads; load configuration from engineeringagent.toml (with pyproject fallback) and pass explicit values through contracts.
+    scope: src/ harness/ tests/
+    severity: error
+    side_effect_free: true
+    adapter: command
+    command:
+      - uv
+      - run
+      - python
+      - harness/fitness-functions/check_no_env_key_reads.py
   - rule_id: architecture.prompt-locality
     name: Prompt locality
     summary: Keep canonical loop prompt content and template reads localized.
@@ -280,7 +294,7 @@ rules:
     name: Real OpenCode hello-world smoke
     summary: Validate the real agent loop end-to-end in an isolated temp repository.
     rationale: Catches regressions where the OpenCode subprocess/loop stops mid-implementation.
-    remediation: Run with ENGINEERINGAGENT_REAL_OPENCODE_SMOKE=1 and resolve reported loop/setup errors.
+    remediation: Enable via engineeringagent.toml ([harness.fitness] opencode-real-smoke = true) and resolve reported loop/setup errors.
     scope: repository (temp repo)
     severity: error
     side_effect_free: true

@@ -1546,7 +1546,7 @@ def test_run_loop_styled_output_when_tty(
     assert "next=continue_same_feature" in output
 
 
-def test_run_loop_no_color_env_disables_styling(
+def test_run_loop_no_color_env_does_not_disable_styling(
     monkeypatch: pytest.MonkeyPatch,
     capsys: Any,
 ) -> None:
@@ -1563,9 +1563,10 @@ def test_run_loop_no_color_env_disables_styling(
     )
 
     output = capsys.readouterr().out
-    assert "\x1b[" not in output
+    assert "\x1b[" in output
     assert "Loop summary: result=failed" in output
-    assert "Failed gate: spec_validate" in output
+    assert "Failed gate:" in output
+    assert "spec_validate" in output
 
 
 def test_run_loop_iteration_output_uses_emoji_contract(

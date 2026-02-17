@@ -47,15 +47,16 @@ What it does (when enabled):
 
 Enable/skip behavior:
 
-- Default: PASS with summary `skipped (set ENGINEERINGAGENT_REAL_OPENCODE_SMOKE=1)`.
-- If enabled but `opencode` is not on PATH: PASS with summary `skipped (opencode not installed)`.
+- Default: PASS with summary `skipped (disabled in engineeringagent.toml)`.
+- If enabled but `opencode` is not on PATH: FAIL with remediation to install/configure opencode or disable the TOML key.
 
 Run it locally:
 
 ```bash
 uv run engineeringagent fitness run --format json
-ENGINEERINGAGENT_REAL_OPENCODE_SMOKE=1 uv run engineeringagent fitness run --format json
 ```
+
+To enable it, set `[harness.fitness] opencode-real-smoke = true` in `engineeringagent.toml`.
 
 Common failure modes:
 

@@ -23,6 +23,23 @@ FEATURE_TRANSITIONS: dict[str, set[str]] = {
 RUN_ALL_RUNNABLE_STATUSES: set[str] = {"backlog", "in_progress"}
 
 
+def _normalize_done_subtasks(feature: dict[str, Any]) -> bool:
+    if feature.get("status") != "done":
+        return False
+    subtasks = feature.get("subtasks")
+    if not isinstance(subtasks, list) or not subtasks:
+        return False
+    mutated = False
+    for subtask in subtasks:
+        if not isinstance(subtask, dict):
+            continue
+        if subtask.get("status") == "done":
+            continue
+        subtask["status"] = "done"
+        mutated = True
+    return mutated
+
+
 def set_status(entity: dict[str, Any], target: str, kind: str = "feature") -> None:
     """Transition a feature or subtask status with guardrails."""
     current = str(entity.get("status", ""))
@@ -169,6 +186,9 @@ def _load_selected_feature_with_archive_fallback(
                 False,
                 f"failed to load archived feature YAML at {archive_path}: {exc}",
             )
+
+        if _normalize_done_subtasks(archived_feature):
+            dump_yaml(archive_path, archived_feature)
 
         print(
             "Selected feature path missing after iteration; "
@@ -422,6 +442,18 @@ def _archive_completed_feature(
             None,
             f"archive destination already exists: {archive_path}",
         )
+
+    try:
+        feature = load_yaml(feature_path)
+    except Exception as exc:  # noqa: BLE001
+        return (
+            False,
+            None,
+            f"failed to load completed feature spec for archive: {exc}",
+        )
+
+    if _normalize_done_subtasks(feature):
+        dump_yaml(feature_path, feature)
 
     archive_path.parent.mkdir(parents=True, exist_ok=True)
     feature_path.rename(archive_path)

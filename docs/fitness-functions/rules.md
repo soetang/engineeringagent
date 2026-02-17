@@ -14,6 +14,7 @@ This file is generated from active manifest-declared fitness rules.
 | `architecture.loop-subprocess-boundary` | error | command | custom | `src/engineeringagent` | Enforce subprocess allowlist boundaries for command adapters/clients. |
 | `architecture.markdown-locality-reference-coverage` | error | command | custom | `repository markdown (*.md)` | Restrict markdown to approved paths and require non-doc markdown files to be referenced in-repo. |
 | `architecture.no-doc-content-tests` | error | command | custom | `tests` | Prevent pytest from asserting exact wording in README/docs markdown. |
+| `architecture.no-env-key-reads` | error | command | custom | `src/ harness/ tests/` | Forbid env-key reads (os.getenv, os.environ.get, os.environ['X'], 'X' in os.environ). |
 | `architecture.no-facade-varargs-shims` | error | command | custom | `src/engineeringagent` | Block facade varargs shims, __signature__ masking, and hidden kwargs dropping. |
 | `architecture.no-non-ignorable-ruff-suppressions` | error | command | custom | `src tests harness` | Block suppression directives for configured high-value Ruff rules. |
 | `architecture.no-stdlib-dataclasses-in-src` | error | command | custom | `src/engineeringagent` | Block stdlib dataclasses usage in production source models. |
@@ -83,6 +84,13 @@ This file is generated from active manifest-declared fitness rules.
 - Side-effect free: `true`
 - Rationale: Doc wording is intentionally flexible; tests should cover functionality instead.
 - Remediation: Delete or refactor tests that read README.md or docs/**/*.md and assert substrings.
+
+### `architecture.no-env-key-reads`
+
+- Name: No env-key reads
+- Side-effect free: `true`
+- Rationale: Environment variable config is ad-hoc and hard to discover; configuration must come from engineeringagent.toml.
+- Remediation: Remove env-key reads; load configuration from engineeringagent.toml (with pyproject fallback) and pass explicit values through contracts.
 
 ### `architecture.no-facade-varargs-shims`
 
@@ -159,5 +167,5 @@ This file is generated from active manifest-declared fitness rules.
 - Name: Real OpenCode hello-world smoke
 - Side-effect free: `true`
 - Rationale: Catches regressions where the OpenCode subprocess/loop stops mid-implementation.
-- Remediation: Run with ENGINEERINGAGENT_REAL_OPENCODE_SMOKE=1 and resolve reported loop/setup errors.
+- Remediation: Enable via engineeringagent.toml ([harness.fitness] opencode-real-smoke = true) and resolve reported loop/setup errors.
 

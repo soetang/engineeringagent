@@ -16,6 +16,13 @@ _DOCS_ROOT_KEY = "docs-root"
 _SPECS_TABLE = "specs"
 _ALLOW_DUPLICATE_DONE_BASE_IDS_BELOW_KEY = "allow-duplicate-done-base-ids-below"
 
+_HARNESS_TABLE = "harness"
+_HARNESS_FITNESS_TABLE = "fitness"
+_HARNESS_PYTEST_TABLE = "pytest"
+
+_OPENCODE_REAL_SMOKE_KEY = "opencode-real-smoke"
+_OPENCODE_INTEGRATION_KEY = "opencode-integration"
+
 
 def resolve_docs_root(project_root: Path) -> Path:
     """Resolve docs root from TOML configuration with deterministic precedence.
@@ -77,11 +84,113 @@ def resolve_allow_duplicate_done_base_ids_below(project_root: Path) -> int | Non
     return None
 
 
+def resolve_harness_fitness_opencode_real_smoke_enabled(project_root: Path) -> bool:
+    """Resolve whether the real OpenCode smoke fitness rule is enabled.
+
+    Precedence:
+    - engineeringagent.toml[harness.fitness]
+    - pyproject.toml[tool.engineeringagent.harness.fitness]
+    - default: false
+
+    Args:
+        project_root: Repository root.
+
+    Returns:
+        True if enabled, otherwise False.
+
+    Raises:
+        ValueError: If TOML cannot be parsed or the configured value is invalid.
+    """
+
+    engineeringagent_toml = project_root / "engineeringagent.toml"
+    enabled = _opencode_real_smoke_from_engineeringagent_toml(engineeringagent_toml)
+    if enabled is not None:
+        return enabled
+
+    pyproject_toml = project_root / "pyproject.toml"
+    enabled = _opencode_real_smoke_from_pyproject_toml(pyproject_toml)
+    if enabled is not None:
+        return enabled
+
+    return False
+
+
+def resolve_harness_pytest_opencode_integration_enabled(project_root: Path) -> bool:
+    """Resolve whether OpenCode integration tests are enabled.
+
+    Precedence:
+    - engineeringagent.toml[harness.pytest]
+    - pyproject.toml[tool.engineeringagent.harness.pytest]
+    - default: false
+
+    Args:
+        project_root: Repository root.
+
+    Returns:
+        True if enabled, otherwise False.
+
+    Raises:
+        ValueError: If TOML cannot be parsed or the configured value is invalid.
+    """
+
+    engineeringagent_toml = project_root / "engineeringagent.toml"
+    enabled = _opencode_integration_from_engineeringagent_toml(engineeringagent_toml)
+    if enabled is not None:
+        return enabled
+
+    pyproject_toml = project_root / "pyproject.toml"
+    enabled = _opencode_integration_from_pyproject_toml(pyproject_toml)
+    if enabled is not None:
+        return enabled
+
+    return False
+
+
 def _docs_root_from_engineeringagent_toml(path: Path) -> Path | None:
     document = _load_toml(path)
     if document is None:
         return None
     return _normalize_docs_root(document.get(_DOCS_ROOT_KEY), source_path=path)
+
+
+def _opencode_real_smoke_from_engineeringagent_toml(path: Path) -> bool | None:
+    document = _load_toml(path)
+    if document is None:
+        return None
+
+    harness_table = _maybe_table(document, _HARNESS_TABLE)
+    if harness_table is None:
+        return None
+    fitness_table = _maybe_table(harness_table, _HARNESS_FITNESS_TABLE)
+    if fitness_table is None:
+        return None
+
+    return _normalize_bool(
+        fitness_table.get(_OPENCODE_REAL_SMOKE_KEY),
+        key_name=_OPENCODE_REAL_SMOKE_KEY,
+        source_path=path,
+        source_scope=f"[{_HARNESS_TABLE}.{_HARNESS_FITNESS_TABLE}]",
+    )
+
+
+def _opencode_integration_from_engineeringagent_toml(path: Path) -> bool | None:
+    document = _load_toml(path)
+    if document is None:
+        return None
+
+    harness_table = _maybe_table(document, _HARNESS_TABLE)
+    if harness_table is None:
+        return None
+    pytest_table = _maybe_table(harness_table, _HARNESS_PYTEST_TABLE)
+    if pytest_table is None:
+        return None
+
+    return _normalize_bool(
+        pytest_table.get(_OPENCODE_INTEGRATION_KEY),
+        key_name=_OPENCODE_INTEGRATION_KEY,
+        source_path=path,
+        source_scope=f"[{_HARNESS_TABLE}.{_HARNESS_PYTEST_TABLE}]",
+    )
 
 
 def _allow_duplicate_done_base_ids_below_from_engineeringagent_toml(
@@ -122,6 +231,60 @@ def _docs_root_from_pyproject_toml(path: Path) -> Path | None:
     )
 
 
+def _opencode_real_smoke_from_pyproject_toml(path: Path) -> bool | None:
+    document = _load_toml(path)
+    if document is None:
+        return None
+
+    tool_config = _maybe_table(document, "tool")
+    if tool_config is None:
+        return None
+    engineeringagent_config = _maybe_table(tool_config, "engineeringagent")
+    if engineeringagent_config is None:
+        return None
+
+    harness_table = _maybe_table(engineeringagent_config, _HARNESS_TABLE)
+    if harness_table is None:
+        return None
+    fitness_table = _maybe_table(harness_table, _HARNESS_FITNESS_TABLE)
+    if fitness_table is None:
+        return None
+
+    return _normalize_bool(
+        fitness_table.get(_OPENCODE_REAL_SMOKE_KEY),
+        key_name=_OPENCODE_REAL_SMOKE_KEY,
+        source_path=path,
+        source_scope=f"[tool.engineeringagent.{_HARNESS_TABLE}.{_HARNESS_FITNESS_TABLE}]",
+    )
+
+
+def _opencode_integration_from_pyproject_toml(path: Path) -> bool | None:
+    document = _load_toml(path)
+    if document is None:
+        return None
+
+    tool_config = _maybe_table(document, "tool")
+    if tool_config is None:
+        return None
+    engineeringagent_config = _maybe_table(tool_config, "engineeringagent")
+    if engineeringagent_config is None:
+        return None
+
+    harness_table = _maybe_table(engineeringagent_config, _HARNESS_TABLE)
+    if harness_table is None:
+        return None
+    pytest_table = _maybe_table(harness_table, _HARNESS_PYTEST_TABLE)
+    if pytest_table is None:
+        return None
+
+    return _normalize_bool(
+        pytest_table.get(_OPENCODE_INTEGRATION_KEY),
+        key_name=_OPENCODE_INTEGRATION_KEY,
+        source_path=path,
+        source_scope=f"[tool.engineeringagent.{_HARNESS_TABLE}.{_HARNESS_PYTEST_TABLE}]",
+    )
+
+
 def _allow_duplicate_done_base_ids_below_from_pyproject_toml(path: Path) -> int | None:
     document = _load_toml(path)
     if document is None:
@@ -144,6 +307,13 @@ def _allow_duplicate_done_base_ids_below_from_pyproject_toml(path: Path) -> int 
         source_path=path,
         source_scope=f"[tool.engineeringagent.{_SPECS_TABLE}]",
     )
+
+
+def _maybe_table(parent: dict[str, Any], key: str) -> dict[str, Any] | None:
+    value = parent.get(key)
+    if not isinstance(value, dict):
+        return None
+    return value
 
 
 def _load_toml(path: Path) -> dict[str, Any] | None:
@@ -217,6 +387,24 @@ def _normalize_allow_duplicate_done_base_ids_below(
     if raw_value < 0:
         raise ValueError(
             f"invalid allow-duplicate-done-base-ids-below in {source_path} ({source_scope}): must be >= 0"
+        )
+
+    return raw_value
+
+
+def _normalize_bool(
+    raw_value: Any,
+    *,
+    key_name: str,
+    source_path: Path,
+    source_scope: str,
+) -> bool | None:
+    if raw_value is None:
+        return None
+
+    if not isinstance(raw_value, bool):
+        raise ValueError(
+            f"invalid {key_name} in {source_path} ({source_scope}): expected bool"
         )
 
     return raw_value

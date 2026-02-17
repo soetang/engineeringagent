@@ -105,13 +105,8 @@ def test_presentation_handles_tty_edge_cases() -> None:
         def isatty(self) -> bool:
             raise RuntimeError("boom")
 
-    assert (
-        tty_supports_ansi(stdout=cast(Any, _NoIsAtty()), env={"TERM": "xterm"}) is False
-    )
-    assert (
-        tty_supports_ansi(stdout=cast(Any, _FailingIsAtty()), env={"TERM": "xterm"})
-        is False
-    )
+    assert tty_supports_ansi(stdout=cast(Any, _NoIsAtty())) is False
+    assert tty_supports_ansi(stdout=cast(Any, _FailingIsAtty())) is False
 
 
 def test_presentation_formats_all_result_paths() -> None:
@@ -122,12 +117,17 @@ def test_presentation_formats_all_result_paths() -> None:
     assert "gate=unknown" in presenter.format_iteration_failed_line(None)
 
 
-def test_presentation_disables_ansi_for_dumb_terminal() -> None:
+def test_presentation_ignores_env_keys_for_ansi_decision(
+    monkeypatch: Any,
+) -> None:
     class _Tty:
         def isatty(self) -> bool:
             return True
 
-    assert tty_supports_ansi(stdout=cast(Any, _Tty()), env={"TERM": "dumb"}) is False
+    monkeypatch.setenv("NO_COLOR", "1")
+    monkeypatch.setenv("TERM", "dumb")
+
+    assert tty_supports_ansi(stdout=cast(Any, _Tty())) is True
 
 
 def test_feature_state_error_paths(tmp_path: Path, monkeypatch: Any) -> None:

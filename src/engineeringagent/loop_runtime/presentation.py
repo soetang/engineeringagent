@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import os
 import sys
-from typing import Mapping, TextIO
+from typing import TextIO
 
 from pydantic import BaseModel, ConfigDict
 
@@ -28,16 +27,10 @@ def _stdout_is_tty(stdout: TextIO) -> bool:
 def tty_supports_ansi(
     *,
     stdout: TextIO | None = None,
-    env: Mapping[str, str] | None = None,
 ) -> bool:
     """Return whether run-loop output should use ANSI styling."""
     active_stdout = stdout or sys.stdout
-    active_env = env or os.environ
     if not _stdout_is_tty(active_stdout):
-        return False
-    if "NO_COLOR" in active_env:
-        return False
-    if active_env.get("TERM", "").strip().lower() == "dumb":
         return False
     return True
 

@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
 import shutil
 import subprocess
 import tempfile
 from typing import Iterable
+
+import os
+import yaml
 
 from engineeringagent.fitness.contracts import (
     CONTRACT_VERSION,
@@ -14,11 +16,12 @@ from engineeringagent.fitness.contracts import (
     RuleStatus,
 )
 from engineeringagent.fitness.envelope import emit_result_envelope
+from engineeringagent.fitness.config import (
+    resolve_harness_fitness_opencode_real_smoke_enabled,
+)
 
 
 RULE_ID = "smoke.opencode-real-hello-world"
-
-_ENABLE_ENV = "ENGINEERINGAGENT_REAL_OPENCODE_SMOKE"
 _TEMPLATE_NAME = "real_opencode_hello_world_feature_template.yaml"
 _FEATURE_SPEC_RELATIVE_PATH = Path("docs/spec/features/FEAT-001-hello-world-smoke.yaml")
 
@@ -100,24 +103,25 @@ def _iter_done_specs(tmp_repo: Path) -> Iterable[Path]:
 
 
 def _parse_feature_statuses(spec_path: Path) -> tuple[str | None, tuple[str, ...]]:
-    top_level_status: str | None = None
+    payload = yaml.safe_load(spec_path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        return (None, ())
+
+    top_level_status = payload.get("status")
+    if not isinstance(top_level_status, str):
+        top_level_status = None
+
     subtask_statuses: list[str] = []
-    in_subtasks = False
-    for raw in spec_path.read_text(encoding="utf-8").splitlines():
-        line = raw.rstrip("\n")
-        if not line.strip() or line.lstrip().startswith("#"):
-            continue
+    subtasks = payload.get("subtasks")
+    if isinstance(subtasks, list):
+        for subtask in subtasks:
+            if not isinstance(subtask, dict):
+                continue
+            subtask_status = subtask.get("status")
+            if isinstance(subtask_status, str):
+                subtask_statuses.append(subtask_status)
 
-        if not line.startswith(" "):
-            in_subtasks = line.startswith("subtasks:")
-            if line.startswith("status:") and top_level_status is None:
-                top_level_status = line.partition(":")[2].strip().strip("'\"")
-            continue
-
-        if in_subtasks and line.startswith("    status:"):
-            subtask_statuses.append(line.partition(":")[2].strip().strip("'\""))
-
-    return top_level_status, tuple(subtask_statuses)
+    return (top_level_status, tuple(subtask_statuses))
 
 
 def _run_verification_commands(tmp_repo: Path, violations: list[str]) -> bool:
@@ -149,11 +153,27 @@ def _run_verification_commands(tmp_repo: Path, violations: list[str]) -> bool:
 
 
 def main() -> int:
-    if os.environ.get(_ENABLE_ENV) != "1":
+    repo_root = Path(__file__).resolve().parents[2]
+    try:
+        enabled = resolve_harness_fitness_opencode_real_smoke_enabled(repo_root)
+    except ValueError as exc:
+        emit_result_envelope(
+            _result(
+                status=RuleStatus.FAIL,
+                summary="invalid engineeringagent TOML configuration for smoke rule",
+                violations=[
+                    str(exc),
+                    "remediation: fix engineeringagent.toml / pyproject.toml[tool.engineeringagent] or disable [harness.fitness].opencode-real-smoke",
+                ],
+            )
+        )
+        return 0
+
+    if not enabled:
         emit_result_envelope(
             _result(
                 status=RuleStatus.PASS,
-                summary=f"skipped (set {_ENABLE_ENV}=1)",
+                summary="skipped (disabled in engineeringagent.toml)",
             )
         )
         return 0
@@ -161,8 +181,12 @@ def main() -> int:
     if shutil.which("opencode") is None:
         emit_result_envelope(
             _result(
-                status=RuleStatus.PASS,
-                summary="skipped (opencode not installed)",
+                status=RuleStatus.FAIL,
+                summary="opencode not installed (enabled in engineeringagent.toml)",
+                violations=[
+                    "opencode not found on PATH",
+                    "remediation: install/configure opencode or disable [harness.fitness].opencode-real-smoke in engineeringagent.toml",
+                ],
             )
         )
         return 0
@@ -204,7 +228,7 @@ def main() -> int:
                 "slim",
                 "--no-precommit-install",
             ]
-            init_proc = _run(init_cmd, cwd=tmp_repo, timeout_seconds=180)
+            init_proc = _run(init_cmd, cwd=repo_root, timeout_seconds=180)
             if not _require_ok(
                 init_proc, label="engineeringagent init slim", violations=violations
             ):
@@ -265,7 +289,7 @@ def main() -> int:
                 "--max-iterations",
                 "3",
             ]
-            run_proc = _run(run_cmd, cwd=tmp_repo, timeout_seconds=780)
+            run_proc = _run(run_cmd, cwd=repo_root, timeout_seconds=780)
             if run_proc.returncode != 0:
                 combined = (
                     (run_proc.stdout or "") + "\n" + (run_proc.stderr or "")
