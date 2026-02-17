@@ -1,0 +1,30 @@
+id: FEAT-001
+title: Implement hello-world interface (smoke)
+type: feature
+expected_commit_subject: 'feat: implement hello-world smoke interface'
+status: backlog
+priority: high
+objective: >
+  Implement a deterministic, stdlib-only hello-world interface used by the
+  engineeringagent real-agent smoke fitness run.
+context: >
+  This feature exists only to validate the end-to-end engineering loop in an
+  isolated temp repository. Keep the implementation minimal and deterministic.
+constraints:
+  - 'Only create hello_world/__init__.py and hello_world/__main__.py.'
+  - Do not add dependencies or packaging config; stdlib only.
+  - Do not modify harness/runtime plumbing; only implement the requested interface.
+  - 'After verification passes, update this subtask and feature to status: done.'
+acceptance:
+  - "Provide hello_world.hello(name: str) -> str returning exactly 'Hello, {name}!'"
+  - "from hello_world import hello; hello('World') == 'Hello, World!'"
+  - "python -m hello_world prints exactly 'Hello, World!' (newline allowed)"
+subtasks:
+  - id: ST-001
+    title: Implement hello_world package + CLI
+    status: backlog
+    context: >
+      Implement the hello-world interface contract exactly.
+    verification:
+      - python -c "from hello_world import hello; assert hello('World') == 'Hello, World!'"
+      - python -c "import subprocess,sys; out=subprocess.check_output([sys.executable,'-m','hello_world'], text=True); assert out.strip()=='Hello, World!'"
