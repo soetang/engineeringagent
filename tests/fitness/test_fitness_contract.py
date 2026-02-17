@@ -5,15 +5,14 @@ import json
 import pytest
 from pydantic import ValidationError
 
-from engineeringagent.fitness.contracts import (
+from engineeringagent.checks import (
     CONTRACT_VERSION,
     FitnessRuleMetadata,
     FitnessRuleResult,
     RuleSeverity,
     RuleStatus,
 )
-
-from engineeringagent.fitness.envelope import emit_result_envelope
+from engineeringagent.checks import emit_result_envelope
 
 
 def test_rule_metadata_requires_side_effect_free_true() -> None:

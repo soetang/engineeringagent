@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Iterable
 
 from pydantic import BaseModel, ConfigDict
 
@@ -134,6 +134,24 @@ def plan_reviewer_checks(
         )
 
     return planned
+
+
+def iter_planned_reviewer_checks(
+    doc: HarnessChecksDocument,
+    planned: Iterable[PlannedCheck],
+) -> Iterable[tuple[str, HarnessCheckReviewerDefinition]]:
+    """Yield reviewer check definitions referenced by planned entries.
+
+    This helper exists for unit tests and mirrors the legacy harness runtime
+    behavior (it does not filter on the planned decision).
+    """
+
+    by_id = doc.checks
+    for entry in planned:
+        check = by_id.get(entry.check_id)
+        if not isinstance(check, HarnessCheckReviewerDefinition):
+            continue
+        yield entry.check_id, check
 
 
 def run_planned_reviewer_checks(

@@ -5,17 +5,25 @@ from types import SimpleNamespace
 from typing import Any
 
 from engineeringagent.changed_paths import ChangedPathsResult
-from engineeringagent.harness_checks_runtime import (
+from engineeringagent.checks.commands.runtime import (
+    PlannedCheck as CommandPlannedCheck,
+    RunPlannedCommandChecksRequest,
     iter_planned_command_check_commands,
-    iter_planned_reviewer_checks,
-    load_checks_document,
-    PlannedCheck,
-    PlannedCommandChecksInputs,
     plan_command_checks,
-    plan_fitness_checks,
-    plan_reviewer_checks,
     run_planned_command_checks,
+)
+from engineeringagent.checks.fitness.runtime import (
+    PlannedCheck as FitnessPlannedCheck,
+    RunPlannedFitnessChecksRequest,
+    plan_fitness_checks,
     run_planned_fitness_checks,
+)
+from engineeringagent.checks.reviewers.runtime import (
+    PlannedCheck as ReviewerPlannedCheck,
+    RunPlannedReviewerChecksRequest,
+    iter_planned_reviewer_checks,
+    plan_reviewer_checks,
+    run_planned_reviewer_checks,
 )
 from engineeringagent.loop_runtime.models import FeatureIterationInputs
 from engineeringagent.loop_runtime.phases import (
@@ -24,7 +32,7 @@ from engineeringagent.loop_runtime.phases import (
     run_gate_phase,
     run_reviewer_phase,
 )
-from engineeringagent.specs import HarnessCheckPhase
+from engineeringagent.specs import HarnessCheckPhase, HarnessChecksDocument, load_yaml
 
 
 def _write_checks_yaml(tmp_path: Path, content: str) -> Path:
@@ -32,6 +40,16 @@ def _write_checks_yaml(tmp_path: Path, content: str) -> Path:
     checks_path.parent.mkdir(parents=True, exist_ok=True)
     checks_path.write_text(content, encoding="utf-8")
     return checks_path
+
+
+def _load_checks_document(checks_path: Path) -> HarnessChecksDocument:
+    payload = load_yaml(checks_path)
+    return HarnessChecksDocument.model_validate(payload)
+
+
+# Backwards-compatible alias to reduce test churn as the checks migration
+# deletes legacy runtimes.
+load_checks_document = _load_checks_document
 
 
 def _write_fitness_manifest(tmp_path: Path, content: str) -> Path:
@@ -887,7 +905,7 @@ def test_iter_planned_reviewer_checks_skips_non_reviewer_ids(tmp_path: Path) -> 
     )
     doc = load_checks_document(checks_path)
 
-    planned = [PlannedCheck(check_id="smoke", decision="run", reason="always")]
+    planned = [ReviewerPlannedCheck(check_id="smoke", decision="run", reason="always")]
     yielded = list(
         iter_planned_reviewer_checks(
             doc,
@@ -913,7 +931,7 @@ def test_iter_planned_command_check_commands_skips_non_run(tmp_path: Path) -> No
     )
     doc = load_checks_document(checks_path)
 
-    planned = [PlannedCheck(check_id="smoke", decision="skip", reason="manual")]
+    planned = [CommandPlannedCheck(check_id="smoke", decision="skip", reason="manual")]
     yielded = list(
         iter_planned_command_check_commands(
             doc,
@@ -943,7 +961,9 @@ def test_iter_planned_command_check_commands_skips_non_command_defs(
     )
     doc = load_checks_document(checks_path)
 
-    planned = [PlannedCheck(check_id="doc_review", decision="run", reason="always")]
+    planned = [
+        CommandPlannedCheck(check_id="doc_review", decision="run", reason="always")
+    ]
     yielded = list(iter_planned_command_check_commands(doc, planned))
     assert yielded == []
 
@@ -974,16 +994,14 @@ def test_run_planned_command_checks_fails_and_emits_verbose_output(
             {"returncode": 7, "stdout": "stdout\n", "stderr": "stderr\n"},
         )()
 
-    ok, failed, output, _timings = run_planned_command_checks(
-        PlannedCommandChecksInputs(
-            tmp_path,
-            doc,
-            HarnessCheckPhase.ITERATION_END,
-            ChangedPathsResult(paths=(), run_all=True, reason=None),
-            True,
-            _run,
-        )
+    request = RunPlannedCommandChecksRequest(
+        project_root=tmp_path,
+        doc=doc,
+        phase=HarnessCheckPhase.ITERATION_END,
+        changed_paths=ChangedPathsResult(paths=(), run_all=True, reason=None),
+        verbose_output=True,
     )
+    ok, failed, output = run_planned_command_checks(request, run_shell_command=_run)
 
     assert ok is False
     assert failed == "smoke"
@@ -1033,12 +1051,13 @@ def test_run_planned_fitness_checks_fails_on_missing_rule_ids(tmp_path: Path) ->
     )
 
     doc = load_checks_document(tmp_path / "harness" / "checks.yaml")
-    ok, failed, output, _timings = run_planned_fitness_checks(
+    request = RunPlannedFitnessChecksRequest(
         project_root=tmp_path,
         doc=doc,
         phase=HarnessCheckPhase.ITERATION_END,
         changed_paths=ChangedPathsResult(paths=(), run_all=True, reason=None),
     )
+    ok, failed, output = run_planned_fitness_checks(request)
 
     assert ok is False
     assert failed == "fitness_subset"
@@ -1101,12 +1120,13 @@ def test_run_planned_fitness_checks_runs_only_requested_rule_ids(
     )
 
     doc = load_checks_document(tmp_path / "harness" / "checks.yaml")
-    ok, failed, output, _timings = run_planned_fitness_checks(
+    request = RunPlannedFitnessChecksRequest(
         project_root=tmp_path,
         doc=doc,
         phase=HarnessCheckPhase.ITERATION_END,
         changed_paths=ChangedPathsResult(paths=(), run_all=True, reason=None),
     )
+    ok, failed, output = run_planned_fitness_checks(request)
 
     assert ok is True
     assert failed is None
@@ -1158,7 +1178,7 @@ def test_run_planned_fitness_checks_skips_when_decision_is_skip(
     )
     doc = load_checks_document(tmp_path / "harness" / "checks.yaml")
 
-    ok, failed, output, _timings = run_planned_fitness_checks(
+    request = RunPlannedFitnessChecksRequest(
         project_root=tmp_path,
         doc=doc,
         phase=HarnessCheckPhase.ITERATION_END,
@@ -1168,6 +1188,7 @@ def test_run_planned_fitness_checks_skips_when_decision_is_skip(
             reason=None,
         ),
     )
+    ok, failed, output = run_planned_fitness_checks(request)
 
     assert ok is True
     assert failed is None

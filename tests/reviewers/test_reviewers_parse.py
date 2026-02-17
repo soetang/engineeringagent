@@ -1,7 +1,7 @@
 import json
 
 
-from engineeringagent.reviewers import (
+from engineeringagent.checks.reviewers.engine import (
     PARSER_FAILURE_SUMMARY_PREFIX,
     parse_reviewer_decision,
 )

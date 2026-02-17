@@ -13,7 +13,9 @@ from engineeringagent.loop_runtime.phases import (
     run_verification_phase,
     VerificationPhaseDependencies,
 )
-from engineeringagent.retry_feedback.contracts import parse_retry_feedback_envelope
+from engineeringagent.checks.retry_feedback.contracts import (
+    parse_retry_feedback_envelope,
+)
 
 
 def _write_text(path: Path, content: str) -> None:

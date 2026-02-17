@@ -14,8 +14,11 @@ from engineeringagent.config import (
     resolve_allow_duplicate_done_base_ids_below,
     resolve_docs_root,
 )
-from engineeringagent.fitness import FitnessRunSummary
-from engineeringagent.fitness.contracts import CONTRACT_VERSION, FitnessRuleResult
+from engineeringagent.checks import (
+    CONTRACT_VERSION,
+    FitnessRuleResult,
+    FitnessRunSummary,
+)
 from engineeringagent.loop_runtime.run_context import LoopRun, RunConfig
 
 

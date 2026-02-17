@@ -33,9 +33,6 @@ def test_run_checks_fitness_does_not_call_legacy_runtime(
         ),
     )
 
-    def _legacy(*_args: object, **_kwargs: object) -> object:
-        raise AssertionError("legacy fitness runtime should not be called")
-
     # Avoid touching git in tmp_path.
     monkeypatch.setattr(
         "engineeringagent.changed_paths.collect_changed_paths",
@@ -44,11 +41,6 @@ def test_run_checks_fitness_does_not_call_legacy_runtime(
             run_all=True,
             reason=None,
         ),
-        raising=True,
-    )
-    monkeypatch.setattr(
-        "engineeringagent.harness_checks_runtime.run_planned_fitness_checks",
-        _legacy,
         raising=True,
     )
 

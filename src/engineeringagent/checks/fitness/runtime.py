@@ -9,9 +9,9 @@ from engineeringagent.changed_paths import (
     ChangedPathsResult,
     FALLBACK_CHANGE_DISCOVERY_REASON,
 )
-from engineeringagent.fitness.adapters import execute_rule_definition
-from engineeringagent.fitness.contracts import RuleStatus
-from engineeringagent.fitness.registry import build_rule_catalog
+from engineeringagent.checks.fitness.adapters import execute_rule_definition
+from engineeringagent.checks.fitness.contracts import RuleStatus
+from engineeringagent.checks.fitness.registry import build_rule_catalog
 from engineeringagent.on_change_matcher import path_matches_any_glob
 from engineeringagent.specs import (
     HarnessCheckFitnessDefinition,
@@ -142,6 +142,8 @@ def run_planned_fitness_checks(
     )
     combined_output_parts: list[str] = []
 
+    catalog = None
+
     for entry in planned:
         if entry.decision != "run":
             continue
@@ -151,7 +153,8 @@ def run_planned_fitness_checks(
 
         selection = "scope=all" if check.scope == "all" else "rule_ids"
 
-        catalog = build_rule_catalog(request.project_root)
+        if catalog is None:
+            catalog = build_rule_catalog(request.project_root)
         requested_rule_ids = set(check.rule_ids or ())
         if check.scope != "all":
             present = {definition.metadata.rule_id for definition in catalog}

@@ -10,7 +10,8 @@ def test_loop_and_reviewers_use_progress_subpackage(repo_root: Path) -> None:
     targets = [
         repo_root / "src" / "engineeringagent" / "loop_runtime" / "telemetry.py",
         repo_root / "src" / "engineeringagent" / "loop_runtime" / "implement.py",
-        repo_root / "src" / "engineeringagent" / "reviewers.py",
+        repo_root / "src" / "engineeringagent" / "checks" / "reviewers" / "engine.py",
+        repo_root / "src" / "engineeringagent" / "checks" / "reviewers" / "runtime.py",
     ]
 
     forbidden = [

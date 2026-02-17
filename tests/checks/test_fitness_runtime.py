@@ -74,7 +74,7 @@ def test_run_planned_fitness_checks_runs_all_rules_before_failing(
     from engineeringagent.changed_paths import ChangedPathsResult
     from engineeringagent.checks.fitness.runtime import RunPlannedFitnessChecksRequest
     from engineeringagent.checks.fitness.runtime import run_planned_fitness_checks
-    from engineeringagent.fitness.contracts import RuleStatus
+    from engineeringagent.checks import RuleStatus
     from engineeringagent.specs import HarnessCheckPhase
 
     doc = _doc(

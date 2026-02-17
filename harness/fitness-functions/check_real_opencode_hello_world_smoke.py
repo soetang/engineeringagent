@@ -9,14 +9,14 @@ from typing import Iterable
 import os
 import yaml
 
-from engineeringagent.fitness.contracts import (
+from engineeringagent.checks import (
     CONTRACT_VERSION,
     FitnessRuleResult,
     RuleSeverity,
     RuleStatus,
+    emit_result_envelope,
 )
-from engineeringagent.fitness.envelope import emit_result_envelope
-from engineeringagent.fitness.config import (
+from engineeringagent.checks.fitness.config import (
     resolve_harness_fitness_opencode_real_smoke_enabled,
 )
 

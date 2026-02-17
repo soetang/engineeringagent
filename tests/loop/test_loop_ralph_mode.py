@@ -21,7 +21,7 @@ from engineeringagent.loop import (
 )
 from engineeringagent.loop_runtime import presentation as presentation_module
 from engineeringagent.prompts import build_implementation_prompt
-from engineeringagent.retry_feedback.builders import (
+from engineeringagent.checks.retry_feedback.builders import (
     build_command_failure_retry_feedback,
 )
 

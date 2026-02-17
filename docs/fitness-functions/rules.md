@@ -6,6 +6,7 @@ This file is generated from active manifest-declared fitness rules.
 
 | Rule ID | Severity | Adapter | Source | Scope | Summary |
 | --- | --- | --- | --- | --- | --- |
+| `architecture.checks-import-surface` | error | command | custom | `src/engineeringagent` | Enforce a narrow import surface for engineeringagent.checks. |
 | `architecture.dep-directionality` | error | command | custom | `src/engineeringagent` | Enforce core module import direction boundaries. |
 | `architecture.docs-allowlist-policy` | error | command | custom | `docs_root markdown (*.md) excluding docs_root/spec/**` | Require each docs_root markdown file to be listed in exactly one policy list. |
 | `architecture.harness-root-yaml-only` | error | command | custom | `harness/ (regular files at root)` | Enforce YAML-only regular files directly under harness root. |
@@ -28,6 +29,13 @@ This file is generated from active manifest-declared fitness rules.
 | `smoke.opencode-real-hello-world` | error | command | custom | `repository (temp repo)` | Validate the real agent loop end-to-end in an isolated temp repository. |
 
 ## Rule Details
+
+### `architecture.checks-import-surface`
+
+- Name: Checks import surface
+- Side-effect free: `true`
+- Rationale: Prevents production modules from depending on checks submodule internals that are not part of the supported stable API.
+- Remediation: Replace engineeringagent.checks.<submodule> imports with allowed top-level names from engineeringagent.checks.
 
 ### `architecture.dep-directionality`
 
@@ -55,7 +63,7 @@ This file is generated from active manifest-declared fitness rules.
 - Name: Harness-to-src import allowlist
 - Side-effect free: `true`
 - Rationale: Prevents harness scripts from depending on orchestration/runtime internals that are not part of the supported authoring API.
-- Remediation: Replace forbidden imports with the supported helpers under engineeringagent.fitness.*.
+- Remediation: Replace forbidden imports with the supported helpers under engineeringagent.checks.*.
 
 ### `architecture.loop-facade-line-budget`
 

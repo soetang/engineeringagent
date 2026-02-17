@@ -5,8 +5,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from engineeringagent.fitness.contracts import CONTRACT_VERSION
-from engineeringagent.fitness.registry import build_rule_catalog
+from engineeringagent.checks import CONTRACT_VERSION, build_rule_catalog
 
 
 def _write_manifest(path: Path, rules: list[dict[str, object]]) -> None:

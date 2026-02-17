@@ -5,7 +5,7 @@ import json
 import pytest
 from pydantic import ValidationError
 
-from engineeringagent.retry_feedback.contracts import (
+from engineeringagent.checks.retry_feedback.contracts import (
     parse_retry_feedback_envelope,
     serialize_retry_feedback_envelope,
 )

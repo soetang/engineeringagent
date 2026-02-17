@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from engineeringagent.fitness.contracts import (
+from engineeringagent.checks import (
     CONTRACT_VERSION,
     FitnessRuleResult,
     RuleSeverity,
@@ -12,14 +12,24 @@ from engineeringagent.fitness.contracts import (
 
 def test_checks_supported_exports_are_importable() -> None:
     from engineeringagent.checks import (
+        FitnessRuleDefinition,
+        RuleStatus,
         emit_fitness_result,
         emit_result_envelope,
+        render_rule_catalog_markdown,
         run_checks,
+        run_rule_catalog,
+        write_rule_catalog_markdown,
     )
 
     assert callable(run_checks)
     assert callable(emit_fitness_result)
     assert emit_result_envelope is emit_fitness_result
+    assert callable(run_rule_catalog)
+    assert callable(render_rule_catalog_markdown)
+    assert callable(write_rule_catalog_markdown)
+    assert FitnessRuleDefinition is not None
+    assert RuleStatus is not None
 
 
 def test_checks_emit_fitness_result_is_deterministic_and_validates(

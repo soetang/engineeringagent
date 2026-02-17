@@ -11,6 +11,7 @@ rules:
         - src/engineeringagent/**/*.py
       exclude:
         - src/engineeringagent/fitness/adapters.py
+        - src/engineeringagent/checks/fitness/adapters.py
         - src/engineeringagent/gates.py
         - src/engineeringagent/git/client.py
         - src/engineeringagent/opencode/client.py
@@ -58,6 +59,7 @@ rules:
         - src/engineeringagent/**/*.py
       exclude:
         - src/engineeringagent/fitness/adapters.py
+        - src/engineeringagent/checks/fitness/adapters.py
         - src/engineeringagent/gates.py
         - src/engineeringagent/git/client.py
         - src/engineeringagent/opencode/client.py

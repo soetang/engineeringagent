@@ -4,12 +4,12 @@ from pathlib import Path
 
 import yaml
 
-from engineeringagent.fitness.contracts import (
+from engineeringagent.checks import (
     CONTRACT_VERSION,
     RuleSeverity,
     RuleAdapter,
 )
-from engineeringagent.fitness.registry import build_rule_catalog
+from engineeringagent.checks import build_rule_catalog
 
 
 def _write_manifest(path: Path, rules: list[dict[str, object]]) -> None:

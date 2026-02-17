@@ -13,7 +13,7 @@ import yaml
 import engineeringagent.loop as loop_module
 import engineeringagent.opencode.client as opencode_client
 from engineeringagent.config import resolve_harness_pytest_opencode_integration_enabled
-from engineeringagent.retry_feedback.builders import (
+from engineeringagent.checks.retry_feedback.builders import (
     build_command_failure_retry_feedback,
 )
 from engineeringagent.loop import (

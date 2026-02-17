@@ -8,16 +8,16 @@ from typing import Any, cast
 import pytest
 
 import engineeringagent.config as config_module
-import engineeringagent.fitness.adapters as adapters_module
+import engineeringagent.checks.fitness.adapters as adapters_module
 import engineeringagent.loop_runtime.feature_state as feature_state_module
-from engineeringagent.fitness.contracts import (
+from engineeringagent.checks import (
     CONTRACT_VERSION,
     FitnessRuleMetadata,
     RuleAdapter,
     RuleSeverity,
     RuleSource,
 )
-from engineeringagent.fitness.registry import FitnessRuleDefinition
+from engineeringagent.checks import FitnessRuleDefinition
 from engineeringagent.loop_runtime.models import FeatureIterationInputs
 from engineeringagent.changed_paths import ChangedPathsResult
 from engineeringagent.loop_runtime.phases import (

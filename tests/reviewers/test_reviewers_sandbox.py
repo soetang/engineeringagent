@@ -7,7 +7,7 @@ import yaml
 
 from engineeringagent.changed_paths import ChangedPathsResult
 from engineeringagent.opencode.client import DEFAULT_OPENCODE_AGENT
-from engineeringagent.reviewers import (
+from engineeringagent.checks.reviewers.engine import (
     PARSER_FAILURE_SUMMARY_PREFIX,
     REVIEWER_RESPONSEFORMAT_PLACEHOLDER,
     build_reviewer_sandbox,
@@ -305,7 +305,10 @@ def test_run_reviewer_returns_request_changes_when_snapshot_setup_fails(
     def _raise_copytree(*_args, **_kwargs):
         raise OSError("copy failure")
 
-    monkeypatch.setattr("engineeringagent.reviewers.shutil.copytree", _raise_copytree)
+    monkeypatch.setattr(
+        "engineeringagent.checks.reviewers.engine.shutil.copytree",
+        _raise_copytree,
+    )
 
     decision = run_reviewer(
         tmp_path,

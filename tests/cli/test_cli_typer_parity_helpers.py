@@ -8,8 +8,7 @@ import pytest
 import typer
 
 from engineeringagent import cli as cli_module
-from engineeringagent.fitness import FitnessRunSummary
-from engineeringagent.fitness.contracts import FitnessRuleResult
+from engineeringagent.checks import FitnessRuleResult, FitnessRunSummary
 
 
 def test_path_resolution_helpers_cover_manifest_and_absolute_paths(

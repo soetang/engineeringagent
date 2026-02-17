@@ -10,7 +10,7 @@ def test_harness_fitness_functions_do_not_depend_on_local_result_envelope_helper
 
     legacy_helper_path = fitness_functions_root / "result_envelope.py"
     assert not legacy_helper_path.exists(), (
-        "harness fitness functions must use engineeringagent.fitness.envelope; "
+        "harness fitness functions must use engineeringagent.checks.emit_fitness_result; "
         "legacy helper should be removed"
     )
 

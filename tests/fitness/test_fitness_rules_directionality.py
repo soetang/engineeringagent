@@ -25,7 +25,11 @@ def _write_directionality_fixture(project_root: Path) -> None:
     _write_module(project_root, "cli.py", "")
     _write_module(project_root, "loop.py", "")
     _write_module(project_root, "gates.py", "")
-    _write_module(project_root, "validator.py", "from .specs import FeatureSpec\n")
+    _write_module(
+        project_root,
+        "checks/validate/validator.py",
+        "from engineeringagent.specs import FeatureSpec\n",
+    )
     _write_module(project_root, "specs.py", "")
 
 
@@ -85,7 +89,7 @@ def test_directionality_rule_reports_blocked_loop_runtime_import(
     _write_directionality_fixture(tmp_path)
     _write_module(
         tmp_path,
-        "validator.py",
+        "checks/validate/validator.py",
         "import engineeringagent.loop_runtime.selection\n",
     )
 
@@ -97,7 +101,7 @@ def test_directionality_rule_reports_blocked_loop_runtime_import(
     assert isinstance(violations, list)
     assert any(
         (
-            "engineeringagent.validator imports blocked dependency "
+            "engineeringagent.checks.validate.validator imports blocked dependency "
             "engineeringagent.loop_runtime.selection"
         )
         in violation

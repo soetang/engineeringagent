@@ -7,7 +7,7 @@ import pytest
 from typer.testing import CliRunner
 
 from engineeringagent import cli as cli_module
-from engineeringagent.fitness import build_rule_catalog, render_rule_catalog_markdown
+from engineeringagent.checks import build_rule_catalog, render_rule_catalog_markdown
 
 REGENERATE_CATALOG_COMMAND = (
     "uv run python -m engineeringagent.cli "

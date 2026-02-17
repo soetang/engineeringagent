@@ -7,8 +7,8 @@ from typing import Any, Mapping, Sequence
 
 from pydantic import ValidationError
 
-from ..retry_feedback.builders import build_command_failure_retry_feedback
-from ..retry_feedback.contracts import (
+from ..checks import (
+    build_command_failure_retry_feedback,
     parse_retry_feedback_envelope,
     serialize_retry_feedback_envelope,
 )

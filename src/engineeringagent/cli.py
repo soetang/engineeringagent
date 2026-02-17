@@ -11,7 +11,7 @@ from typing import Literal
 
 import typer
 
-from .fitness import (
+from .checks import (
     FitnessRuleDefinition,
     RuleStatus,
     build_rule_catalog,
@@ -247,7 +247,7 @@ def cmd_validate(args: _HandlerArgs) -> int:
         Process exit code where 0 means validation passed.
     """
     project_root = Path(args.project_root).resolve()
-    from engineeringagent.checks.validate.runtime import run_validate
+    from engineeringagent.checks import run_validate
 
     messages = run_validate(project_root=project_root, schema_only=args.schema_only)
     if messages:

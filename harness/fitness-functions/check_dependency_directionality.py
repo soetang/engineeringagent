@@ -3,13 +3,13 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from engineeringagent.fitness.contracts import (
+from engineeringagent.checks import (
     CONTRACT_VERSION,
     FitnessRuleResult,
     RuleSeverity,
     RuleStatus,
+    emit_result_envelope,
 )
-from engineeringagent.fitness.envelope import emit_result_envelope
 
 
 RULE_ID = "architecture.dep-directionality"
@@ -19,9 +19,9 @@ _DISALLOWED_IMPORTS: dict[str, tuple[str, ...]] = {
         "engineeringagent.cli",
         "engineeringagent.loop",
         "engineeringagent.loop_runtime",
-        "engineeringagent.validator",
+        "engineeringagent.checks.validate.validator",
     ),
-    "engineeringagent.validator": (
+    "engineeringagent.checks.validate.validator": (
         "engineeringagent.cli",
         "engineeringagent.loop",
         "engineeringagent.loop_runtime",

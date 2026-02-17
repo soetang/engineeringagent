@@ -3,7 +3,10 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from engineeringagent.fitness.contracts import CONTRACT_VERSION, FitnessRuleResult
+from engineeringagent.checks.fitness.contracts import (
+    CONTRACT_VERSION,
+    FitnessRuleResult,
+)
 
 
 def emit_fitness_result(result: FitnessRuleResult) -> None:

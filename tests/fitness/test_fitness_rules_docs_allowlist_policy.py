@@ -8,7 +8,7 @@ from typing import cast
 
 import yaml
 
-from engineeringagent.fitness.registry import build_rule_catalog
+from engineeringagent.checks import build_rule_catalog
 
 
 def _script_path(repo_root: Path) -> Path:

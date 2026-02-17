@@ -10,7 +10,7 @@ from engineeringagent.config import (
     resolve_allow_duplicate_done_base_ids_below,
     resolve_docs_root,
 )
-from engineeringagent.fitness import build_rule_catalog
+from engineeringagent.checks.fitness.registry import build_rule_catalog
 from engineeringagent.git import client as git_client
 from engineeringagent.specs import (
     ValidationIssue,

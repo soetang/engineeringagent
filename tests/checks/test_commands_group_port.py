@@ -33,18 +33,9 @@ def test_run_checks_commands_does_not_call_legacy_runtime(
         ),
     )
 
-    def _legacy(*_args: object, **_kwargs: object) -> object:
-        raise AssertionError("legacy command runtime should not be called")
-
     def _run_shell_command(_root: Path, _command: str) -> object:
         return SimpleNamespace(returncode=0, stdout="hi\n", stderr="")
 
-    # Ensure checks commands group no longer dispatches to legacy harness runtime.
-    monkeypatch.setattr(
-        "engineeringagent.harness_checks_runtime.run_planned_command_checks",
-        _legacy,
-        raising=True,
-    )
     monkeypatch.setattr(
         "engineeringagent.opencode.client.run_shell_command",
         _run_shell_command,

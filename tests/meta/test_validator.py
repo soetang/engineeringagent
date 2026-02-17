@@ -10,8 +10,11 @@ import tomli
 import yaml
 
 from engineeringagent.specs import feature_schema_from_model
-from engineeringagent.validator import _iter_agents_docs_map_references, validate
-import engineeringagent.validator as validator_module
+from engineeringagent.checks.validate.validator import (
+    _iter_agents_docs_map_references,
+    validate,
+)
+import engineeringagent.checks.validate.validator as validator_module
 
 
 def _schema_source(repo_root: Path) -> Path:

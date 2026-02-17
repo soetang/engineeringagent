@@ -11,11 +11,13 @@ from typing import Any, Callable
 from pydantic import BaseModel, ConfigDict
 
 from ..changed_paths import ChangedPathsResult
-from ..checks import run_checks
-from ..checks.api import ChecksRunResult
-from ..fitness.adapters import execute_rule_definition
-from ..fitness.contracts import RuleStatus
-from ..fitness.registry import build_rule_catalog
+from ..checks import (
+    ChecksRunResult,
+    RuleStatus,
+    build_rule_catalog,
+    execute_rule_definition,
+    run_checks,
+)
 from ..specs import HarnessCheckPhase
 from ..specs import HarnessCheckFitnessDefinition, HarnessChecksDocument, load_yaml
 
@@ -28,7 +30,7 @@ from .models import (
     VerificationPhaseOutcome,
 )
 from .time_format import utc_iso_from_epoch_sec
-from ..retry_feedback.builders import (
+from ..checks import (
     build_command_failure_retry_feedback,
     build_fitness_failure_retry_feedback,
     build_reviewer_feedback_retry_feedback,

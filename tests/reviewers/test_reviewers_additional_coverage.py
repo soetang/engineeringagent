@@ -8,7 +8,7 @@ import pytest
 from pydantic import ValidationError
 
 from engineeringagent.changed_paths import ChangedPathsResult
-from engineeringagent.reviewers import (
+from engineeringagent.checks.reviewers.engine import (
     DECISION_REQUEST_CHANGES,
     FEATURE_DONE_PHASE,
     MATCHED_ON_CHANGE_REASON,

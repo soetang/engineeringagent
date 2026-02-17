@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 from engineeringagent.changed_paths import ChangedPathsResult
 from engineeringagent.opencode.client import DEFAULT_OPENCODE_AGENT
-from engineeringagent.reviewers import (
+from engineeringagent.checks.reviewers.engine import (
     MATCHED_ON_CHANGE_REASON,
     NO_ON_CHANGE_MATCH_REASON,
     PARSER_FAILURE_SUMMARY_PREFIX,
@@ -41,7 +41,7 @@ def test_plan_reviewers_maps_iteration_end_config_to_feature_done() -> None:
         "loop_fast",
         phase="feature_done",
         changed_paths=ChangedPathsResult(
-            paths=("src/engineeringagent/reviewers.py",),
+            paths=("src/engineeringagent/checks/reviewers/engine.py",),
             run_all=False,
             reason=None,
         ),
@@ -80,7 +80,7 @@ def test_code_simplifier_plans_only_for_code_scoped_changes() -> None:
         "loop_fast",
         phase="feature_done",
         changed_paths=ChangedPathsResult(
-            paths=("src/engineeringagent/reviewers.py",),
+            paths=("src/engineeringagent/checks/reviewers/engine.py",),
             run_all=False,
             reason=None,
         ),
@@ -174,7 +174,7 @@ def test_plan_reviewers_matches_normalized_separator_paths() -> None:
         "loop_fast",
         phase="feature_done",
         changed_paths=ChangedPathsResult(
-            paths=(r"src\engineeringagent\reviewers.py",),
+            paths=(r"src\engineeringagent\checks\reviewers\engine.py",),
             run_all=False,
             reason=None,
         ),
@@ -370,7 +370,7 @@ def test_run_reviewer_loads_harness_prompt_and_parses_decision(tmp_path) -> None
         feature_id="FEAT-050",
         feature_path=tmp_path / "docs/spec/features/FEAT-050.yaml",
         changed_paths=ChangedPathsResult(
-            paths=("src/engineeringagent/reviewers.py",),
+            paths=("src/engineeringagent/checks/reviewers/engine.py",),
             run_all=False,
             reason=None,
         ),

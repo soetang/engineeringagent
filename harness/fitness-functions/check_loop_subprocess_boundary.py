@@ -5,13 +5,13 @@ from pathlib import Path
 import re
 import subprocess
 
-from engineeringagent.fitness.contracts import (
+from engineeringagent.checks import (
     CONTRACT_VERSION,
     FitnessRuleResult,
     RuleSeverity,
     RuleStatus,
+    emit_result_envelope,
 )
-from engineeringagent.fitness.envelope import emit_result_envelope
 
 
 RULE_ID = "architecture.loop-subprocess-boundary"

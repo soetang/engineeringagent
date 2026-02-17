@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import importlib.util
 from pathlib import Path
 
 
@@ -19,23 +20,29 @@ def test_production_code_does_not_import_legacy_checks_entrypoints() -> None:
         "engineeringagent.harness_checks_runtime",
         "engineeringagent.validator",
         "engineeringagent.reviewers",
+        "engineeringagent.fitness",
+        "engineeringagent.retry_feedback",
     )
     forbidden_leaf = {
         "harness_checks_runtime",
         "validator",
         "reviewers",
+        "fitness",
+        "retry_feedback",
     }
-    excluded = {
-        src_root / "harness_checks_runtime.py",
-        src_root / "validator.py",
-        src_root / "reviewers.py",
-    }
+    excluded_files: set[Path] = set()
+    excluded_packages = {"retry_feedback"}
 
     violations: list[str] = []
 
     for path in _iter_python_files(src_root):
-        if path in excluded:
+        if path in excluded_files:
             continue
+
+        rel_to_src = path.relative_to(src_root)
+        if rel_to_src.parts and rel_to_src.parts[0] in excluded_packages:
+            continue
+
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
 
         for node in ast.walk(tree):
@@ -82,3 +89,19 @@ def test_production_code_does_not_import_legacy_checks_entrypoints() -> None:
             "remediation: migrate callers to engineeringagent.checks.run_checks(...) and checks/* runtimes",
         ]
     )
+
+
+def test_legacy_fitness_package_is_removed() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    src_root = repo_root / "src" / "engineeringagent"
+
+    assert not (src_root / "fitness").exists()
+    assert importlib.util.find_spec("engineeringagent.fitness") is None
+
+
+def test_legacy_retry_feedback_package_is_removed() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    src_root = repo_root / "src" / "engineeringagent"
+
+    assert not (src_root / "retry_feedback").exists()
+    assert importlib.util.find_spec("engineeringagent.retry_feedback") is None

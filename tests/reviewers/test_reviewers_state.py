@@ -5,7 +5,7 @@ from pathlib import Path
 
 from engineeringagent.changed_paths import ChangedPathsResult
 from engineeringagent.progress import paths as progress_paths
-from engineeringagent.reviewers import (
+from engineeringagent.checks.reviewers.engine import (
     FIRST_FEATURE_APPROVAL_INVALIDATED_REASON,
     FIRST_FEATURE_APPROVAL_INVALIDATED_RUN_ALL_REASON,
     FIRST_FEATURE_APPROVAL_NOT_CACHED_REASON,
@@ -104,7 +104,7 @@ def test_cached_first_approval_reused_when_scope_unchanged() -> None:
             "approval": {"first_feature_approval": True},
         },
         changed_paths=ChangedPathsResult(
-            paths=("src/engineeringagent/reviewers.py",),
+            paths=("src/engineeringagent/checks/reviewers/engine.py",),
             run_all=False,
             reason=None,
         ),

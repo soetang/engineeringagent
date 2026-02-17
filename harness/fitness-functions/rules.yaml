@@ -18,7 +18,7 @@ rules:
     name: Harness-to-src import allowlist
     summary: Restrict harness fitness functions to a narrow supported engineeringagent surface.
     rationale: Prevents harness scripts from depending on orchestration/runtime internals that are not part of the supported authoring API.
-    remediation: Replace forbidden imports with the supported helpers under engineeringagent.fitness.*.
+    remediation: Replace forbidden imports with the supported helpers under engineeringagent.checks.*.
     scope: harness/fitness-functions
     severity: error
     side_effect_free: true
@@ -28,6 +28,20 @@ rules:
       - run
       - python
       - harness/fitness-functions/check_harness_src_import_allowlist.py
+  - rule_id: architecture.checks-import-surface
+    name: Checks import surface
+    summary: Enforce a narrow import surface for engineeringagent.checks.
+    rationale: Prevents production modules from depending on checks submodule internals that are not part of the supported stable API.
+    remediation: Replace engineeringagent.checks.<submodule> imports with allowed top-level names from engineeringagent.checks.
+    scope: src/engineeringagent
+    severity: error
+    side_effect_free: true
+    adapter: command
+    command:
+      - uv
+      - run
+      - python
+      - harness/fitness-functions/check_checks_import_surface.py
   - rule_id: architecture.loop-subprocess-boundary
     name: Loop subprocess boundary
     summary: Enforce subprocess allowlist boundaries for command adapters/clients.
