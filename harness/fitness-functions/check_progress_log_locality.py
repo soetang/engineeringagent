@@ -17,7 +17,7 @@ RULE_ID = "architecture.progress-log-path-locality"
 _SOURCE_PACKAGE_ROOT = Path("src/engineeringagent")
 
 _APPROVED_PATH_LITERAL_FILES = {
-    _SOURCE_PACKAGE_ROOT / "progress_paths.py",
+    _SOURCE_PACKAGE_ROOT / "progress" / "paths.py",
 }
 
 _PROGRESS_PATH_LITERAL_TOKENS = (
@@ -32,8 +32,8 @@ _LOOP_LOG_SINK_HELPERS = {
 }
 
 _PATH_HELPER_REMEDIATION = (
-    "construct progress artifact paths via engineeringagent.progress_paths.* and "
-    "write loop log sinks via engineeringagent.progress_logging.*"
+    "construct progress artifact paths via engineeringagent.progress.paths.* and "
+    "write loop log sinks via engineeringagent.progress.logging.*"
 )
 
 
@@ -76,7 +76,7 @@ def _progress_path_literal_violations(
             continue
         violations.append(
             f"{relative}:{line} contains progress artifact path literal '{token}' "
-            f"outside engineeringagent.progress_paths; {_PATH_HELPER_REMEDIATION}"
+            f"outside engineeringagent.progress.paths; {_PATH_HELPER_REMEDIATION}"
         )
     return violations
 

@@ -110,7 +110,7 @@ This file is generated from active manifest-declared fitness rules.
 - Name: Progress log path locality
 - Side-effect free: `true`
 - Rationale: Prevents regressions that reintroduce inline progress/log path literals or direct file writes.
-- Remediation: Construct paths via engineeringagent.progress_paths and write loop log sinks via engineeringagent.progress_logging.
+- Remediation: Construct paths via engineeringagent.progress.paths and write loop log sinks via engineeringagent.progress.logging.
 
 ### `architecture.prompt-locality`
 

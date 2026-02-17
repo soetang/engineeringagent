@@ -8,8 +8,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Sequence
 
-import engineeringagent.progress_logging as progress_logging
-import engineeringagent.progress_paths as progress_paths
+from engineeringagent.progress import logging as progress_logging
+from engineeringagent.progress import paths as progress_paths
 
 from .models import CommandTiming, IterationTelemetryInputs, PhaseTiming
 

@@ -8,7 +8,7 @@ from inspect import Parameter
 from pathlib import Path
 
 import engineeringagent.loop as loop_module
-import engineeringagent.progress_paths as progress_paths
+from engineeringagent.progress import paths as progress_paths
 import pytest
 import yaml
 from pydantic import BaseModel, ValidationError
@@ -431,7 +431,7 @@ def test_progress_log_path_locality_rule_detects_direct_writes(
     )
     (source_root / "bad_writes.py").write_text(
         """
-import engineeringagent.progress_paths as progress_paths
+from engineeringagent.progress import paths as progress_paths
 
 
 def write_bad(root):

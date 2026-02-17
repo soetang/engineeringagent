@@ -10,7 +10,7 @@ from typing import Any, Callable, Iterator, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
-import engineeringagent.progress_paths as progress_paths
+from engineeringagent.progress import paths as progress_paths
 
 from .changed_paths import ChangedPathsResult
 from .on_change_matcher import path_matches_any_glob

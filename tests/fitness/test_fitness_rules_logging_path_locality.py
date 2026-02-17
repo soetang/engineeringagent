@@ -20,9 +20,10 @@ def _write_module(project_root: Path, relative_path: str, body: str) -> None:
 
 
 def _write_progress_paths(project_root: Path) -> None:
+    _write_module(project_root, "src/engineeringagent/progress/__init__.py", "")
     _write_module(
         project_root,
-        "src/engineeringagent/progress_paths.py",
+        "src/engineeringagent/progress/paths.py",
         "\n".join(
             [
                 "from __future__ import annotations",
@@ -113,7 +114,7 @@ def test_logging_path_locality_rule_fails_on_open_keyword_file_write(
                 "",
                 "from pathlib import Path",
                 "",
-                "from engineeringagent.progress_paths import runs_jsonl_path",
+                "from engineeringagent.progress.paths import runs_jsonl_path",
                 "",
                 "def emit() -> None:",
                 "    with open(file=runs_jsonl_path(Path('.')), mode='a', encoding='utf-8') as handle:",
@@ -150,7 +151,7 @@ def test_logging_path_locality_rule_passes_when_helpers_are_used_without_direct_
                 "",
                 "from pathlib import Path",
                 "",
-                "from engineeringagent.progress_paths import runs_jsonl_path",
+                "from engineeringagent.progress.paths import runs_jsonl_path",
                 "",
                 "def resolve() -> str:",
                 "    return str(runs_jsonl_path(Path('.')))",

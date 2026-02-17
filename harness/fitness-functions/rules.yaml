@@ -108,7 +108,7 @@ rules:
     name: Progress log path locality
     summary: Centralize loop progress artifact paths and writes behind approved helpers.
     rationale: Prevents regressions that reintroduce inline progress/log path literals or direct file writes.
-    remediation: Construct paths via engineeringagent.progress_paths and write loop log sinks via engineeringagent.progress_logging.
+    remediation: Construct paths via engineeringagent.progress.paths and write loop log sinks via engineeringagent.progress.logging.
     scope: src/engineeringagent
     severity: error
     side_effect_free: true
