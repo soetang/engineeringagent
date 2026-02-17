@@ -38,9 +38,21 @@ implementation_notes: |
       regardless of iteration_inputs.run_all.
 
   Implementation sketch:
-  - In src/engineeringagent/loop_runtime/phases.py run_reviewer_phase(...):
-    - Remove the run_all guard around loading harness/checks.yaml and planning reviewer checks.
-    - Mirror the gate phase behavior: if checks.yaml missing => not_configured; if present => plan and run.
+  Files to change (expected):
+  - src/engineeringagent/loop_runtime/phases.py
+    - Function: run_reviewer_phase(...)
+    - Change: remove the iteration_inputs.run_all guard for harness/checks.yaml-based reviewers.
+    - Add explicit checks.yaml presence handling:
+      - If harness/checks.yaml is missing: return reviewer_status=not_configured (do not fail).
+      - If harness/checks.yaml exists but is invalid: return failed:checks_config (same as today when run_all=true).
+      - If harness/checks.yaml exists but no reviewer checks are planned for phase=feature_done: return reviewer_status=not_run.
+
+  - tests/loop/test_loop_reviewers.py
+    - Update/replace: test_run_reviewer_phase_is_not_configured_without_run_all
+      - Old expectation: run_all=false => reviewer_status=not_configured.
+      - New expectation: run_all=false + checks.yaml missing => not_configured; run_all=false + checks.yaml present => use checks.yaml planning.
+    - Add test coverage that writes a minimal tmp_path/harness/checks.yaml containing a reviewer check with phase=feature_done,
+      then asserts reviewer_status is not_configured only when the file is missing.
 acceptance:
   - "Given harness/checks.yaml exists and includes reviewer checks for phase=feature_done, completing a feature via engineeringagent run <path> (without --all) does not report reviewer_status=not_configured."
   - "Given harness/checks.yaml is missing, reviewer phase returns reviewer_status=not_configured and does not fail the iteration."
