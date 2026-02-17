@@ -127,29 +127,30 @@ def _parse_feature_statuses(spec_path: Path) -> tuple[str | None, tuple[str, ...
 def _run_verification_commands(tmp_repo: Path, violations: list[str]) -> bool:
     commands: list[list[str]] = [
         [
-            shutil.which("python") or "python",
+            "uv",
+            "run",
+            "python",
             "-c",
             "from hello_world import hello; assert hello('World') == 'Hello, World!'",
         ],
         [
-            shutil.which("python") or "python",
+            "uv",
+            "run",
+            "python",
             "-c",
-            "import subprocess,sys; out=subprocess.check_output([sys.executable,'-m','hello_world'], text=True); assert out.strip()=='Hello, World!'",
+            "import subprocess; out=subprocess.check_output(['uv','run','python','-m','hello_world'], text=True); assert out.strip()=='Hello, World!'",
         ],
     ]
 
-    ok = True
     for index, argv in enumerate(commands, start=1):
         proc = _run(
             argv,
             cwd=tmp_repo,
             timeout_seconds=20,
         )
-        ok = (
-            _require_ok(proc, label=f"verification[{index}]", violations=violations)
-            and ok
-        )
-    return ok
+        if not _require_ok(proc, label=f"verification[{index}]", violations=violations):
+            return False
+    return True
 
 
 def main() -> int:
@@ -215,6 +216,30 @@ def main() -> int:
                 cwd=tmp_repo,
                 timeout_seconds=10,
             )
+
+            uv_init_proc = _run(
+                [
+                    "uv",
+                    "init",
+                    ".",
+                    "--package",
+                    "--vcs",
+                    "none",
+                    "--no-readme",
+                    "--no-pin-python",
+                ],
+                cwd=tmp_repo,
+                timeout_seconds=60,
+            )
+            if not _require_ok(uv_init_proc, label="uv init", violations=violations):
+                emit_result_envelope(
+                    _result(
+                        status=RuleStatus.FAIL,
+                        summary="failed to initialize uv project in temp repo",
+                        violations=violations,
+                    )
+                )
+                return 0
 
             init_cmd = [
                 "uv",

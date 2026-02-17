@@ -12,7 +12,8 @@ context: >
   isolated temp repository. Keep the implementation minimal and deterministic.
 constraints:
   - 'Only create hello_world/__init__.py and hello_world/__main__.py.'
-  - Do not add dependencies or packaging config; stdlib only.
+  - Do not add dependencies; stdlib only.
+  - Do not modify the uv-generated pyproject.toml; do not add build backends.
   - Do not modify harness/runtime plumbing; only implement the requested interface.
   - 'After verification passes, update this subtask and feature to status: done.'
 acceptance:
@@ -26,5 +27,5 @@ subtasks:
     context: >
       Implement the hello-world interface contract exactly.
     verification:
-      - python -c "from hello_world import hello; assert hello('World') == 'Hello, World!'"
-      - python -c "import subprocess,sys; out=subprocess.check_output([sys.executable,'-m','hello_world'], text=True); assert out.strip()=='Hello, World!'"
+      - uv run python -c "from hello_world import hello; assert hello('World') == 'Hello, World!'"
+      - uv run python -c "import subprocess; out=subprocess.check_output(['uv','run','python','-m','hello_world'], text=True); assert out.strip()=='Hello, World!'"

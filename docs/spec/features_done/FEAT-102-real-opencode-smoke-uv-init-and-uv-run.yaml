@@ -1,0 +1,104 @@
+id: FEAT-102
+title: Update real OpenCode smoke to uv init + uv run python verification
+type: test
+expected_commit_subject: 'test: update real opencode smoke to uv init'
+status: done
+priority: medium
+objective: 'Make the real OpenCode hello-world smoke fitness rule more representative
+  of a uv-based Python workflow by initializing a uv project in the temp repo root
+  and running all verification commands via `uv run python` instead of PATH Python.
+
+  '
+context: 'The real OpenCode smoke fitness rule validates the end-to-end agent loop
+  by running `engineeringagent init slim` and `engineeringagent run` inside an isolated
+  temp git repository. Today, both the feature spec verification and the harness post-run
+  verification use `python` directly from PATH. That can differ from how uv-based
+  repos actually run checks and introduces interpreter ambiguity. Initializing a uv
+  project in the temp repo root and using `uv run python` makes the smoke run closer
+  to common uv workflows.
+
+  '
+constraints:
+- All mutations must be confined to the temp repo directory; no writes outside the
+  temp directory.
+- Do not add dependencies; the hello-world interface must remain stdlib-only.
+- Do not change the smoke enable/skip gating policy (still opt-in and safe when disabled).
+- 'Initialize a uv project in the temp repo root with: uv init . --package --vcs none
+  --no-readme --no-pin-python'
+- Update verification commands to use `uv run python ...` (both in the feature spec
+  template and in the harness post-run verification).
+- Do not switch the loop runner invocation away from source-first forms (keep `uv
+  run python -m engineeringagent.cli ...` for init/run).
+- Do not require pip install / uv add / build backends in the temp repo.
+implementation_notes: "Temp repo flow (where uv init happens):\n- In harness/fitness-functions/check_real_opencode_hello_world_smoke.py,\n\
+  \  during temp repo setup:\n  1) Create temp directory.\n  2) Run `git init` in\
+  \ the temp directory.\n  3) Configure deterministic git identity (existing behavior).\n\
+  \  4) Run `uv init . --package --vcs none --no-readme --no-pin-python` with cwd=temp\n\
+  \     repo root.\n  5) Run `uv run python -m engineeringagent.cli --project-root\
+  \ <tmp> init slim --no-precommit-install`.\n  6) Write the hello-world feature spec\
+  \ template into <tmp>/docs/spec/features/...\n  7) Create baseline git commit.\n\
+  \  8) Run `uv run python -m engineeringagent.cli --project-root <tmp> run <spec>\
+  \ ...`.\n\nFiles to update:\n\n1) harness/fitness-functions/check_real_opencode_hello_world_smoke.py\n\
+  \   - Insert uv init immediately after `git init` + deterministic git identity config,\n\
+  \     and before calling `engineeringagent init slim`.\n     Command (cwd = temp\
+  \ repo root):\n     uv init . --package --vcs none --no-readme --no-pin-python\n\
+  \   - Treat a non-zero exit code as a deterministic failure with a clear violation.\n\
+  \n   - Replace any PATH-python verification execution with uv-based verification.\n\
+  \     Concretely: update the helper that runs the post-run verification commands\n\
+  \     (e.g., _run_verification_commands) so it invokes `uv run python ...`.\n  \
+  \   Recommended post-run verification commands (stdlib-only):\n     uv run python\
+  \ -c \"from hello_world import hello; assert hello('World') == 'Hello, World!'\"\
+  \n     uv run python -c \"import subprocess; out=subprocess.check_output(['uv','run','python','-m','hello_world'],\
+  \ text=True); assert out.strip()=='Hello, World!'\"\n   Notes:\n   - Keep existing\
+  \ timeouts/budgets.\n   - Do not add dependencies.\n\n2) harness/fitness-functions/real_opencode_hello_world_feature_template.yaml\n\
+  \   - Insert `uv run python` in the temp repo feature spec's `subtasks[0].verification`.\n\
+  \     Replace the existing `python -c ...` commands with the uv equivalents:\n \
+  \    - uv run python -c \"from hello_world import hello; assert hello('World') ==\
+  \ 'Hello, World!'\"\n     - uv run python -c \"import subprocess; out=subprocess.check_output(['uv','run','python','-m','hello_world'],\
+  \ text=True); assert out.strip()=='Hello, World!'\"\n   - Update any wording that\
+  \ says \"no packaging config\" to reflect that uv init creates\n     a minimal pyproject.toml\
+  \ in the temp repo, and the agent must not modify it or add deps.\n\nTests:\n- Update/add\
+  \ tests as needed to lock in the behavior change.\n  Recommended minimal coverage:\n\
+  \  - Assert the feature template contains `uv run python` verification commands.\n\
+  \  - Assert the harness script uses uv for verification command execution.\n"
+acceptance:
+- The smoke fitness rule initializes a uv project in the temp repo root via `uv init
+  . --package --vcs none --no-readme --no-pin-python` after git init.
+- The temp repo hello-world feature spec template uses `uv run python` for all verification
+  commands.
+- The harness post-run verification uses `uv run python` (no PATH python usage for
+  verification).
+- uv run python -m engineeringagent.cli validate passes.
+- uv run pytest -q passes.
+subtasks:
+- id: ST-001
+  title: Update hello-world feature template verification to uv
+  status: done
+  context: 'Update harness/fitness-functions/real_opencode_hello_world_feature_template.yaml
+    so all verification commands use `uv run python` and the template text reflects
+    that uv init creates a minimal pyproject.toml which must not be modified.
+
+    '
+  verification:
+  - uv run python -m engineeringagent.cli validate
+- id: ST-002
+  title: Run uv init in the smoke temp repo and switch post-run verification to uv
+  status: done
+  context: 'Update harness/fitness-functions/check_real_opencode_hello_world_smoke.py
+    to run `uv init . --package --vcs none --no-readme --no-pin-python` in the temp
+    repo root and to run all post-run verification commands via `uv run python`.
+
+    '
+  verification:
+  - uv run python -m engineeringagent.cli fitness run --format json
+- id: ST-003
+  title: Add/adjust tests to enforce uv-based verification behavior
+  status: done
+  context: 'Add or update tests to ensure the feature template verification commands
+    use `uv run python` and that the harness verification helper no longer invokes
+    PATH python directly.
+
+    '
+  verification:
+  - uv run pytest -q
+updated_at: '2026-02-17T18:44:16Z'

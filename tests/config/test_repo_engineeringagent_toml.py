@@ -11,6 +11,7 @@ else:  # pragma: no cover - Python < 3.11 fallback
 
 
 def test_repo_engineeringagent_toml_enables_opencode_toggles() -> None:
+    """Assert repo-level TOML defaults include expected feature toggles."""
     repo_root = Path(__file__).resolve().parents[2]
     config_path = repo_root / "engineeringagent.toml"
     assert config_path.exists(), "expected engineeringagent.toml at repo root"
@@ -21,7 +22,7 @@ def test_repo_engineeringagent_toml_enables_opencode_toggles() -> None:
 
     fitness = harness.get("fitness")
     assert isinstance(fitness, dict)
-    assert fitness.get("opencode-real-smoke") is True
+    assert fitness.get("opencode-real-smoke") is False
 
     pytest_table = harness.get("pytest")
     assert isinstance(pytest_table, dict)

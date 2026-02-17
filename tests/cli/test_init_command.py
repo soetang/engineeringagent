@@ -750,7 +750,7 @@ def test_init_renders_scaffold_from_template_files() -> None:
         "---\n"
         "description: Build agent override for deterministic repository automation.\n"
         "mode: primary\n"
-        'model: "openai/gpt-5.3-codex"\n'
+        'model: "openai/gpt-5.3-codex-spark"\n'
         "variant: 'high'\n"
         "permission:\n"
         '  "*": allow\n'
