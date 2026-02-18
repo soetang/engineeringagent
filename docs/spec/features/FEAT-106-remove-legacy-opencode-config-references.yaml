@@ -66,27 +66,7 @@ subtasks:
     title: Add a repo-wide tracked-file scan verification (python -c) and run it in this feature
     status: backlog
     verification:
-      - >
-        uv run python -c "import subprocess, sys; from pathlib import Path;
-        proc=subprocess.run(['git','ls-files'], capture_output=True, text=True, check=True);
-        allow_prefix=('docs/spec/features_done/',);
-        needles=[ '.'.join(['opencode','json']), ' '.join(['OpenCode','Json']) ];
-        bad=[];
-        root=Path('.');
-        for rel in proc.stdout.splitlines():
-            if not rel or rel.startswith(allow_prefix):
-                continue
-            p=root/rel
-            if not p.is_file():
-                continue
-            try:
-                text=p.read_text(encoding='utf-8', errors='ignore')
-            except Exception:
-                continue
-            for n in needles:
-                if n in text:
-                    bad.append((rel,n)); break
-        [print(f'{rel}: contains forbidden token ({n})') for rel,n in bad];
-        sys.exit(1 if bad else 0)"
+      - >-
+        uv run python -c "import subprocess, sys; from pathlib import Path; proc=subprocess.run(['git','ls-files'], capture_output=True, text=True, check=True); allow_prefix=('docs/spec/features_done/',); needles=['.'.join(['opencode','json']), ' '.join(['OpenCode','Json'])]; bad=[]; root=Path('.'); exec('for rel in proc.stdout.splitlines():\\n    if not rel or rel.startswith(allow_prefix):\\n        continue\\n    p=root/rel\\n    if not p.is_file():\\n        continue\\n    try:\\n        text=p.read_text(encoding=\\\'utf-8\\\', errors=\\\'ignore\\\')\\n    except Exception:\\n        continue\\n    for n in needles:\\n        if n in text:\\n            bad.append((rel,n)); break\\n'); [print(f'{rel}: contains forbidden token ({n})') for rel,n in bad]; sys.exit(1 if bad else 0)"
 
-updated_at: "2026-02-17T00:00:00Z"
+updated_at: "2026-02-18T00:00:00Z"
