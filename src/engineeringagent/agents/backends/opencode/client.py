@@ -93,7 +93,7 @@ def start_agent(
         command.extend(["--session", session])
     if format:
         command.extend(["--format", format])
-    command.extend(["--agent", agent, prompt])
+    command.extend(["--agent", agent, "--", prompt])
 
     proc = subprocess.run(
         command,

@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
+from typing import Any
 
 import pytest
 
 from engineeringagent.agents import AgentBackendError
 from engineeringagent.agents.backends.opencode import OpenCodeAgentBackend
+from engineeringagent.agents.backends.opencode import client as client_module
 
 
 class _Proc:
@@ -100,3 +103,32 @@ def test_opencode_backend_raises_on_missing_text_payload(
     backend = OpenCodeAgentBackend(format="json")
     with pytest.raises(AgentBackendError, match=r"missing final text payload"):
         backend.run(tmp_path, "p")
+
+
+def test_opencode_backend_keeps_hyphen_prompt_as_payload(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    captured: dict[str, object] = {}
+
+    def _fake_subprocess_run(
+        command: Any, **kwargs: Any
+    ) -> subprocess.CompletedProcess[str]:
+        captured["command"] = command
+        captured["kwargs"] = kwargs
+        return subprocess.CompletedProcess(command, 0, stdout="ok", stderr="")
+
+    monkeypatch.setattr(client_module.subprocess, "run", _fake_subprocess_run)
+
+    backend = OpenCodeAgentBackend()
+    result = backend.run(tmp_path, "--- reviewer payload")
+
+    assert result.text == "ok"
+    assert captured["command"] == [
+        "opencode",
+        "run",
+        "--agent",
+        "engineeringagent",
+        "--",
+        "--- reviewer payload",
+    ]

@@ -32,6 +32,7 @@ def test_start_agent_runs_opencode_with_expected_defaults(
         "run",
         "--agent",
         "engineeringagent",
+        "--",
         "Reply READY.",
     ]
     assert captured["kwargs"]["cwd"] == tmp_path
@@ -53,7 +54,51 @@ def test_start_agent_supports_agent_override(tmp_path: Path, monkeypatch: Any) -
 
     client_module.start_agent(tmp_path, "Do work", agent="review")
 
-    assert captured_command == ["opencode", "run", "--agent", "review", "Do work"]
+    assert captured_command == [
+        "opencode",
+        "run",
+        "--agent",
+        "review",
+        "--",
+        "Do work",
+    ]
+
+
+def test_start_agent_inserts_separator_before_hyphen_leading_prompt(
+    tmp_path: Path,
+    monkeypatch: Any,
+) -> None:
+    captured_command: list[str] = []
+
+    def fake_subprocess_run(
+        command: Any, **kwargs: Any
+    ) -> subprocess.CompletedProcess[str]:
+        del kwargs
+        captured_command.extend(command)
+        return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(client_module.subprocess, "run", fake_subprocess_run)
+
+    client_module.start_agent(
+        tmp_path,
+        "--- hello",
+        agent="engineeringagent",
+        format="json",
+        session="sess-7",
+    )
+
+    assert captured_command == [
+        "opencode",
+        "run",
+        "--session",
+        "sess-7",
+        "--format",
+        "json",
+        "--agent",
+        "engineeringagent",
+        "--",
+        "--- hello",
+    ]
 
 
 def test_start_agent_parses_json_format_into_structured_fields(
