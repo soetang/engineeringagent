@@ -47,7 +47,7 @@ Contract highlights:
 Example:
 
 ```json
-{"command":"uv run engineeringagent fitness run --format json","failed_rules":[{"details":null,"remediation":"...","rule_id":"architecture.docs-allowlist-policy","status":"fail","violations":["docs/references/new-doc.md:1 missing from both human_docs and agent_docs ..."]}],"gate":"fitness_validate","kind":"fitness_failure","message":"Fitness rule(s) failed. Apply remediation and rerun the command.","phase":"gates"}
+{"command":"uv run engineeringagent checks run --checks fitness --phase iteration_end","failed_rules":[{"details":null,"remediation":"...","rule_id":"architecture.docs-allowlist-policy","status":"fail","violations":["docs/references/new-doc.md:1 missing from both human_docs and agent_docs ..."]}],"gate":"fitness_validate","kind":"fitness_failure","message":"Fitness rule(s) failed. Apply remediation and rerun the command.","phase":"gates"}
 ```
 
 ### Reviewer feedback (`kind=reviewer_feedback`)

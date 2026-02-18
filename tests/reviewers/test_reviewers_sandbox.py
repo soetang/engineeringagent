@@ -191,7 +191,9 @@ def test_run_reviewer_uses_empty_folder_sandbox_when_configured(
         ).exists()
         captured["sandbox_src_exists"] = (sandbox_root / "src").exists()
         return SimpleNamespace(
-            stdout='{"decision":"approve","summary":"Looks good."}',
+            session_id="sess-123",
+            text_payload='{"decision":"approve","summary":"Looks good."}',
+            stdout="",
             stderr="",
             returncode=0,
         )
@@ -254,7 +256,9 @@ def test_run_reviewer_uses_temp_worktree_snapshot_sandbox_when_configured(
         captured["prompt"] = prompt
         captured["agent"] = agent
         return SimpleNamespace(
-            stdout='{"decision":"approve","summary":"Bootstrap succeeded."}',
+            session_id="sess-123",
+            text_payload='{"decision":"approve","summary":"Bootstrap succeeded."}',
+            stdout="",
             stderr="",
             returncode=0,
         )

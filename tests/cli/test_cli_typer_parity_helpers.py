@@ -8,7 +8,6 @@ import pytest
 import typer
 
 from engineeringagent import cli as cli_module
-from engineeringagent.checks import FitnessRuleResult, FitnessRunSummary
 
 
 def test_path_resolution_helpers_cover_manifest_and_absolute_paths(
@@ -88,111 +87,6 @@ def test_write_init_docs_root_config_skips_existing_file_without_force(
     )
 
     assert (created, skipped) == (0, 1)
-
-
-def test_fitness_text_output_paths_cover_list_and_run(
-    tmp_path: Path,
-    monkeypatch: Any,
-    capsys: Any,
-) -> None:
-    definition = SimpleNamespace(
-        metadata=SimpleNamespace(
-            rule_id="custom.rule",
-            name="Custom rule",
-            summary="custom summary",
-            scope="harness/fitness-functions",
-            severity=SimpleNamespace(value="warning"),
-            adapter=SimpleNamespace(value="command"),
-            source=SimpleNamespace(value="custom"),
-            side_effect_free=True,
-            rationale="custom rationale",
-            remediation="custom remediation",
-        )
-    )
-    monkeypatch.setattr(
-        cli_module,
-        "build_rule_catalog",
-        lambda *_args, **_kwargs: [definition],
-    )
-
-    list_code = cli_module.cmd_fitness_list(
-        SimpleNamespace(
-            project_root=str(tmp_path),
-            manifest_path=None,
-            output_format="text",
-        )
-    )
-    list_output = capsys.readouterr().out
-    assert list_code == 0
-    assert "custom.rule [warning] (command/custom) - custom summary" in list_output
-
-    empty_summary = FitnessRunSummary(results=())
-    monkeypatch.setattr(
-        cli_module, "run_rule_catalog", lambda *_args, **_kwargs: empty_summary
-    )
-
-    empty_code = cli_module.cmd_fitness_run(
-        SimpleNamespace(
-            project_root=str(tmp_path),
-            manifest_path=None,
-            jobs=1,
-            output_format="text",
-        )
-    )
-    empty_output = capsys.readouterr().out
-    assert empty_code == 0
-    assert "No active fitness rules found." in empty_output
-
-    pass_result = FitnessRuleResult.model_validate(
-        {
-            "contract_version": "1.0",
-            "rule_id": "custom.pass",
-            "status": "pass",
-            "severity": "warning",
-            "summary": "all good",
-            "violations": [],
-        }
-    )
-    nonempty_summary = FitnessRunSummary(results=(pass_result,))
-    monkeypatch.setattr(
-        cli_module,
-        "run_rule_catalog",
-        lambda *_args, **_kwargs: nonempty_summary,
-    )
-
-    nonempty_code = cli_module.cmd_fitness_run(
-        SimpleNamespace(
-            project_root=str(tmp_path),
-            manifest_path=None,
-            jobs=1,
-            output_format="text",
-        )
-    )
-    nonempty_output = capsys.readouterr().out
-    assert nonempty_code == 0
-    assert "custom.pass: pass - all good" in nonempty_output
-
-
-def test_fitness_catalog_prints_absolute_path_when_output_is_outside_project_root(
-    tmp_path: Path,
-    monkeypatch: Any,
-    capsys: Any,
-) -> None:
-    monkeypatch.setattr(cli_module, "build_rule_catalog", lambda *_args, **_kwargs: [])
-    outside_path = tmp_path.parent / "external-fitness-catalog.md"
-
-    code = cli_module.cmd_fitness_catalog(
-        SimpleNamespace(
-            project_root=str(tmp_path),
-            manifest_path=None,
-            output_format="markdown",
-            output=str(outside_path),
-        )
-    )
-    output = capsys.readouterr().out
-
-    assert code == 0
-    assert f"fitness catalog written: {outside_path}" in output
 
 
 def test_cmd_init_reports_docs_and_agents_input_errors(

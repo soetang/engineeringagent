@@ -10,7 +10,7 @@ from typing import Any, Callable
 
 from engineeringagent.loop_runtime.models import ImplementStepInputs
 from engineeringagent.opencode.client import DEFAULT_OPENCODE_AGENT
-from engineeringagent.opencode_permissions import output_has_permission_rejection
+from engineeringagent.opencode.permissions import output_has_permission_rejection
 from engineeringagent.progress import logging as progress_logging
 from engineeringagent.progress import paths as progress_paths
 from engineeringagent.prompts import (

@@ -10,14 +10,14 @@ import pytest
 import engineeringagent.config as config_module
 import engineeringagent.checks.fitness.adapters as adapters_module
 import engineeringagent.loop_runtime.feature_state as feature_state_module
-from engineeringagent.checks import (
+from engineeringagent.checks.fitness.contracts import (
     CONTRACT_VERSION,
     FitnessRuleMetadata,
     RuleAdapter,
     RuleSeverity,
     RuleSource,
 )
-from engineeringagent.checks import FitnessRuleDefinition
+from engineeringagent.checks.fitness.registry import FitnessRuleDefinition
 from engineeringagent.loop_runtime.models import FeatureIterationInputs
 from engineeringagent.changed_paths import ChangedPathsResult
 from engineeringagent.loop_runtime.phases import (

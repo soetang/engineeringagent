@@ -11,10 +11,7 @@ from .git.client import (
     status_porcelain,
 )
 from .opencode.client import run_shell_command, start_agent
-from .opencode_permissions import (
-    PERMISSION_REMEDIATION_HINT,
-    run_permission_probe,
-)
+from .opencode.permissions import PERMISSION_REMEDIATION_HINT, run_permission_probe
 from .loop_runtime.implement import (
     run_implement_step_from_inputs,
     run_opencode_permission_precheck,

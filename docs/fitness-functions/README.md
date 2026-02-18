@@ -29,7 +29,7 @@ emit_result_envelope(...)
 Regenerate the catalog after rule metadata changes:
 
 ```bash
-uv run engineeringagent fitness catalog --format markdown --output docs/fitness-functions/rules.md
+uv run engineeringagent checks catalog --format markdown --output docs/fitness-functions/rules.md
 ```
 
 ## Opt-in Real Agent Smoke Test
@@ -53,7 +53,7 @@ Enable/skip behavior:
 Run it locally:
 
 ```bash
-uv run engineeringagent fitness run --format json
+uv run engineeringagent checks run --checks fitness --phase iteration_end
 ```
 
 To enable it, set `[harness.fitness] opencode-real-smoke = true` in `engineeringagent.toml`.

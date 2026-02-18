@@ -269,22 +269,18 @@ def test_run_checks_reviewers_returns_not_implemented_result(
     calls: list[tuple[Path, str]] = []
 
     class _Proc:
-        def __init__(self, stdout: str) -> None:
-            self.stdout = stdout
+        def __init__(self, *, session_id: str, text_payload: str) -> None:
+            self.session_id = session_id
+            self.text_payload = text_payload
+            self.stdout = ""
             self.stderr = ""
 
     def _start_agent(execution_root: Path, prompt: str, **_kwargs: object) -> _Proc:
         calls.append((execution_root, prompt))
-        event = {
-            "sessionID": "s1",
-            "type": "text",
-            "part": {
-                "text": '{"decision":"approve","summary":"ok","required_actions":[]}'
-            },
-        }
-        import json
-
-        return _Proc(json.dumps(event, sort_keys=True) + "\n")
+        return _Proc(
+            session_id="s1",
+            text_payload='{"decision":"approve","summary":"ok","required_actions":[]}',
+        )
 
     result = run_checks(
         tmp_path,
@@ -329,21 +325,19 @@ def test_run_checks_reviewers_request_changes_fails_deterministically(
     )
 
     class _Proc:
-        def __init__(self, stdout: str) -> None:
-            self.stdout = stdout
+        def __init__(self, *, session_id: str, text_payload: str) -> None:
+            self.session_id = session_id
+            self.text_payload = text_payload
+            self.stdout = ""
             self.stderr = ""
 
     def _start_agent(execution_root: Path, prompt: str, **_kwargs: object) -> _Proc:
-        event = {
-            "sessionID": "s1",
-            "type": "text",
-            "part": {
-                "text": '{"decision":"request_changes","summary":"nope","required_actions":["fix"]}'
-            },
-        }
-        import json
-
-        return _Proc(json.dumps(event, sort_keys=True) + "\n")
+        del execution_root
+        del prompt
+        return _Proc(
+            session_id="s1",
+            text_payload='{"decision":"request_changes","summary":"nope","required_actions":["fix"]}',
+        )
 
     result = run_checks(
         tmp_path,

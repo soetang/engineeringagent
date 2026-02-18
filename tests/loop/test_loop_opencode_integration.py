@@ -11,9 +11,7 @@ import yaml
 
 import engineeringagent.loop as loop_module
 from engineeringagent.config import resolve_harness_pytest_opencode_integration_enabled
-from engineeringagent.checks.retry_feedback.builders import (
-    build_command_failure_retry_feedback,
-)
+from engineeringagent.prompts.retry_feedback import build_command_failure_retry_feedback
 from engineeringagent.loop import (
     RunConfigOptions,
     build_loop_run,
@@ -22,7 +20,7 @@ from engineeringagent.loop import (
 from engineeringagent.loop import (
     run_loop as _run_loop,
 )
-from engineeringagent.opencode_permissions import (
+from engineeringagent.opencode.permissions import (
     PERMISSION_REMEDIATION_HINT,
     PermissionProbeResult,
     evaluate_permission_probe,

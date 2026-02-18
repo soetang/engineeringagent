@@ -13,9 +13,7 @@ from engineeringagent.loop_runtime.phases import (
     run_verification_phase,
     VerificationPhaseDependencies,
 )
-from engineeringagent.checks.retry_feedback.contracts import (
-    parse_retry_feedback_envelope,
-)
+from engineeringagent.prompts.retry_feedback import parse_retry_feedback_envelope
 
 
 def _write_text(path: Path, content: str) -> None:
@@ -147,14 +145,17 @@ def test_run_reviewer_phase_forwards_request_changes_feedback_for_run_all(
     _write_text(archived_feature_path, "id: FEAT-001\n")
 
     class _Proc:
-        def __init__(self, stdout: str) -> None:
-            self.stdout = stdout
+        def __init__(self, *, session_id: str, text_payload: str) -> None:
+            self.session_id = session_id
+            self.text_payload = text_payload
+            self.stdout = ""
             self.stderr = ""
 
     def _start_agent(execution_root: Path, prompt: str, **_kwargs: object) -> _Proc:
         del execution_root, prompt
         return _Proc(
-            '{"decision":"request_changes","summary":"needs work","required_actions":["fix it"]}'
+            session_id="sess-123",
+            text_payload='{"decision":"request_changes","summary":"needs work","required_actions":["fix it"]}',
         )
 
     deps = ReviewerPhaseDependencies(

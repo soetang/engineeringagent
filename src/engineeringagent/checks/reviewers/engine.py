@@ -13,7 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 from engineeringagent.progress import paths as progress_paths
 
 from engineeringagent.changed_paths import ChangedPathsResult
-from engineeringagent.on_change_matcher import path_matches_any_glob
+from ..on_change_matcher import path_matches_any_glob
 from engineeringagent.opencode.client import DEFAULT_OPENCODE_AGENT
 from engineeringagent.specs import load_yaml, reviewer_contract_issues
 
@@ -62,6 +62,13 @@ REVIEWER_DECISION_PARSE_RETRY_PROMPT_TEMPLATE = "\n".join(
         "---",
     )
 )
+
+
+def _require_text_payload(proc: object) -> str | None:
+    value = getattr(proc, "text_payload", None)
+    if isinstance(value, str) and value.strip():
+        return value
+    return None
 
 
 class ReviewerDecisionEnvelope(BaseModel):
@@ -475,67 +482,24 @@ def run_reviewer(
             except FileNotFoundError:
                 return _parser_failure_decision("opencode executable missing")
 
-            stdout_raw = getattr(proc, "stdout", "") or ""
-            stderr_raw = getattr(proc, "stderr", "") or ""
+            session_id = getattr(proc, "session_id", None)
+            decision_payload = _require_text_payload(proc)
+            if decision_payload is None:
+                return _parser_failure_decision(
+                    "opencode json output missing final text payload"
+                )
 
-            session_id, decision_payload = _extract_opencode_json_text_payload(
-                stdout_raw
-            )
-            if session_id and decision_payload:
-                decision = parse_reviewer_decision(decision_payload)
-                if _is_reviewer_parser_failure(decision):
-                    decision = _retry_parse_failure_in_same_session(
-                        execution_root,
-                        run_request,
-                        session_id=session_id,
-                        decision=decision,
-                    )
-                return decision
-
-            return _parse_reviewer_decision_from_stdio(stdout_raw, stderr_raw)
+            decision = parse_reviewer_decision(decision_payload)
+            if _is_reviewer_parser_failure(decision) and isinstance(session_id, str):
+                decision = _retry_parse_failure_in_same_session(
+                    execution_root,
+                    run_request,
+                    session_id=session_id,
+                    decision=decision,
+                )
+            return decision
     except RuntimeError as exc:
         return _parser_failure_decision(str(exc))
-
-
-def _extract_opencode_json_text_payload(stdout: str) -> tuple[str | None, str | None]:  # noqa: C901
-    """Extract (session_id, last text payload) from OpenCode JSON event stream.
-
-    Returns (None, None) on any parsing/extraction failure so callers can fall back
-    to legacy stdout/stderr parsing.
-    """
-
-    raw = stdout.strip("\n")
-    if not raw.strip():
-        return None, None
-
-    session_id: str | None = None
-    candidates: list[str] = []
-    for line in raw.splitlines():
-        if not line.strip():
-            continue
-        try:
-            event = json.loads(line)
-        except json.JSONDecodeError:
-            return None, None
-        if not isinstance(event, dict):
-            continue
-        if session_id is None:
-            maybe_session = event.get("sessionID")
-            if isinstance(maybe_session, str) and maybe_session:
-                session_id = maybe_session
-
-        if event.get("type") != "text":
-            continue
-        part = event.get("part")
-        if not isinstance(part, dict):
-            continue
-        text = part.get("text")
-        if isinstance(text, str):
-            candidates.append(text)
-
-    if session_id is None or not candidates:
-        return None, None
-    return session_id, candidates[-1]
 
 
 def _is_reviewer_parser_failure(decision: dict[str, Any]) -> bool:
@@ -598,27 +562,15 @@ def _retry_parse_failure_in_same_session(
         except FileNotFoundError:
             return _parser_failure_decision("opencode executable missing")
 
-        stdout_raw = getattr(proc, "stdout", "") or ""
-        stderr_raw = getattr(proc, "stderr", "") or ""
+        decision_payload = _require_text_payload(proc)
+        if decision_payload is None:
+            return _parser_failure_decision(
+                "opencode json output missing final text payload"
+            )
 
-        _, decision_payload = _extract_opencode_json_text_payload(stdout_raw)
-        if decision_payload:
-            current = parse_reviewer_decision(decision_payload)
-            continue
-
-        current = _parse_reviewer_decision_from_stdio(stdout_raw, stderr_raw)
+        current = parse_reviewer_decision(decision_payload)
 
     return current
-
-
-def _parse_reviewer_decision_from_stdio(
-    stdout_raw: str,
-    stderr_raw: str,
-) -> dict[str, Any]:
-    parse_input = stdout_raw.strip() or stderr_raw.strip()
-    if not parse_input:
-        return _parser_failure_decision("reviewer produced empty output")
-    return parse_reviewer_decision(parse_input)
 
 
 def _coerce_reviewer_run_request(

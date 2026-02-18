@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
 import pytest
-import yaml
 from typer.testing import CliRunner
 
 from engineeringagent import cli as cli_module
@@ -14,28 +12,7 @@ from engineeringagent.config import (
     resolve_allow_duplicate_done_base_ids_below,
     resolve_docs_root,
 )
-from engineeringagent.checks import (
-    CONTRACT_VERSION,
-    FitnessRuleResult,
-    FitnessRunSummary,
-)
 from engineeringagent.loop_runtime.run_context import LoopRun, RunConfig
-
-
-def _write_manifest(tmp_path: Path, rules: list[dict[str, object]]) -> None:
-    manifest_path = tmp_path / "harness" / "fitness-functions" / "rules.yaml"
-    manifest_path.parent.mkdir(parents=True, exist_ok=True)
-    manifest_path.write_text(
-        yaml.safe_dump(
-            {
-                "contract_version": CONTRACT_VERSION,
-                "rules": rules,
-            },
-            sort_keys=False,
-            allow_unicode=False,
-        ),
-        encoding="utf-8",
-    )
 
 
 def _invoke_cli(args: list[str]) -> Any:
@@ -50,7 +27,7 @@ def test_cli_surface_inventory_commands() -> None:
     for token in (
         "validate",
         "run",
-        "fitness",
+        "checks",
         "init",
         "--project-root",
         "--version",
@@ -71,10 +48,9 @@ def test_cli_surface_inventory_option_spellings() -> None:
                 "--verbose-output",
             ],
         ),
-        (["fitness", "list", "--help"], ["--manifest-path", "--format"]),
-        (["fitness", "run", "--help"], ["--manifest-path", "--jobs", "--format"]),
+        (["checks", "run", "--help"], ["--checks", "--check-id", "--phase"]),
         (
-            ["fitness", "catalog", "--help"],
+            ["checks", "catalog", "--help"],
             ["--manifest-path", "--format", "--output"],
         ),
         (
@@ -181,41 +157,6 @@ def test_run_all_rejects_legacy_harness_contract_files(tmp_path: Path) -> None:
     assert "legacy harness contract" in result.stdout
     assert "harness/gates.yaml" in result.stdout
     assert "engineeringagent init" in result.stdout
-
-
-def test_fitness_subcommands(tmp_path: Path, capsys: Any) -> None:
-    src_dir = tmp_path / "src" / "engineeringagent"
-    src_dir.mkdir(parents=True, exist_ok=True)
-    for module_name in ["specs", "validator", "loop", "cli"]:
-        (src_dir / f"{module_name}.py").write_text("\n", encoding="utf-8")
-
-    list_code = cli_module.cmd_fitness_list(
-        SimpleNamespace(
-            project_root=str(tmp_path),
-            manifest_path=None,
-            output_format="json",
-        )
-    )
-    list_output = capsys.readouterr().out
-    list_payload = json.loads(list_output)
-
-    assert list_code == 0
-    assert list_payload == []
-
-    run_code = cli_module.cmd_fitness_run(
-        SimpleNamespace(
-            project_root=str(tmp_path),
-            manifest_path=None,
-            jobs=2,
-            output_format="json",
-        )
-    )
-    run_output = capsys.readouterr().out
-    run_payload = json.loads(run_output)
-
-    assert run_code == 0
-    assert run_payload["failed"] is False
-    assert run_payload["results"] == []
 
 
 @pytest.mark.parametrize("reported_version", ["9.9.9", "3.2.1"])
@@ -419,251 +360,42 @@ def test_validate_fails_on_agents_docs_map_errors(tmp_path: Path, capsys: Any) -
     assert "AGENTS.md:4: docs-map path does not exist: docs/missing.md" in output
 
 
-def test_fitness_run_json_includes_remediation_for_failures(
+def test_cmd_validate_delegates_to_run_checks(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
     capsys: Any,
 ) -> None:
-    src_dir = tmp_path / "src" / "engineeringagent"
-    src_dir.mkdir(parents=True, exist_ok=True)
-    for module_name in ["specs", "validator", "loop", "cli"]:
-        (src_dir / f"{module_name}.py").write_text("\n", encoding="utf-8")
+    recorded: dict[str, object] = {}
 
-    (src_dir / "bad_subprocess.py").write_text(
-        "import subprocess\nsubprocess.run(['git', 'status'], check=False)\n",
-        encoding="utf-8",
-    )
-    _write_manifest(
-        tmp_path,
-        [
-            {
-                "rule_id": "architecture.loop-subprocess-boundary",
-                "name": "Loop subprocess boundary",
-                "summary": "Enforce subprocess allowlist boundaries for command adapters/clients.",
-                "rationale": "Centralizes command execution paths for consistent control.",
-                "remediation": "Move OpenCode command execution to engineeringagent.opencode.client and Git command execution to engineeringagent.git.client.",
-                "scope": "src/engineeringagent",
-                "severity": "error",
-                "side_effect_free": True,
-                "adapter": "command",
-                "command": [
-                    "sh",
-                    "-c",
-                    'printf \'%s\\n\' \'{"contract_version":"1.0","rule_id":"architecture.loop-subprocess-boundary","status":"fail","severity":"error","summary":"failed","violations":["x"]}\'',
-                ],
-            }
-        ],
-    )
+    def _fake_run_checks(
+        project_root: str | Path,
+        *,
+        phase: str,
+        checks: list[str] | None = None,
+        schema_only: bool = False,
+        **_: object,
+    ) -> Any:
+        recorded["project_root"] = str(project_root)
+        recorded["phase"] = phase
+        recorded["checks"] = checks
+        recorded["schema_only"] = schema_only
+        return SimpleNamespace(ok=True, output="")
 
-    code = cli_module.cmd_fitness_run(
-        SimpleNamespace(
-            project_root=str(tmp_path),
-            manifest_path=None,
-            jobs=1,
-            output_format="json",
-        )
+    monkeypatch.setattr("engineeringagent.checks.run_checks", _fake_run_checks)
+
+    code = cli_module.cmd_validate(
+        SimpleNamespace(project_root=str(tmp_path), schema_only=True)
     )
     output = capsys.readouterr().out
-    payload = json.loads(output)
-
-    assert code == 1
-    assert payload["failed"] is True
-    assert payload["failed_rules"] == [
-        {
-            "rule_id": "architecture.loop-subprocess-boundary",
-            "status": "fail",
-            "remediation": "Move OpenCode command execution to engineeringagent.opencode.client and Git command execution to engineeringagent.git.client.",
-        }
-    ]
-
-
-def test_fitness_run_executes_shell_command_rule(tmp_path: Path, capsys: Any) -> None:
-    _write_manifest(
-        tmp_path,
-        [
-            {
-                "rule_id": "custom.shell-pass",
-                "name": "Shell pass",
-                "summary": "Passes from shell command adapter.",
-                "rationale": "Confirms manifest-declared command rules execute.",
-                "remediation": "Fix the shell command output contract.",
-                "scope": "harness/fitness-functions",
-                "severity": "warning",
-                "side_effect_free": True,
-                "adapter": "command",
-                "command": [
-                    "sh",
-                    "-c",
-                    'printf \'%s\\n\' \'{"contract_version":"1.0","rule_id":"custom.shell-pass","status":"pass","severity":"warning","summary":"ok","violations":[]}\'',
-                ],
-            }
-        ],
-    )
-
-    code = cli_module.cmd_fitness_run(
-        SimpleNamespace(
-            project_root=str(tmp_path),
-            manifest_path=None,
-            jobs=1,
-            output_format="json",
-        )
-    )
-    payload = json.loads(capsys.readouterr().out)
 
     assert code == 0
-    assert payload["failed"] is False
-    assert [result["rule_id"] for result in payload["results"]] == ["custom.shell-pass"]
-
-
-def test_fitness_run_json_uses_fallback_when_remediation_metadata_missing(
-    tmp_path: Path,
-    capsys: Any,
-    monkeypatch: Any,
-) -> None:
-    orphan_result = FitnessRuleResult.model_validate(
-        {
-            "contract_version": "1.0",
-            "rule_id": "custom.orphan-failure",
-            "status": "fail",
-            "severity": "warning",
-            "summary": "orphan failure",
-            "violations": ["missing metadata"],
-        }
-    )
-
-    monkeypatch.setattr(cli_module, "build_rule_catalog", lambda *_args, **_kwargs: [])
-    monkeypatch.setattr(
-        cli_module,
-        "run_rule_catalog",
-        lambda *_args, **_kwargs: FitnessRunSummary(results=(orphan_result,)),
-    )
-
-    code = cli_module.cmd_fitness_run(
-        SimpleNamespace(
-            project_root=str(tmp_path),
-            manifest_path=None,
-            jobs=1,
-            output_format="json",
-        )
-    )
-    payload = json.loads(capsys.readouterr().out)
-
-    assert code == 1
-    assert payload["failed"] is True
-    assert payload["failed_rules"] == [
-        {
-            "rule_id": "custom.orphan-failure",
-            "status": "fail",
-            "remediation": (
-                "No remediation available: rule metadata missing from active "
-                "catalog for custom.orphan-failure."
-            ),
-        }
-    ]
-
-
-def test_fitness_list_shows_declared_shell_rule_only(
-    tmp_path: Path,
-    capsys: Any,
-) -> None:
-    _write_manifest(
-        tmp_path,
-        [
-            {
-                "rule_id": "custom.shell-only",
-                "name": "Shell only",
-                "summary": "Only declared shell rule should be listed.",
-                "rationale": "Prevents undeclared implicit rules from appearing.",
-                "remediation": "Declare required rules in the manifest.",
-                "scope": "harness/fitness-functions",
-                "severity": "warning",
-                "side_effect_free": True,
-                "adapter": "command",
-                "command": [
-                    "sh",
-                    "-c",
-                    'printf \'%s\\n\' \'{"contract_version":"1.0","rule_id":"custom.shell-only","status":"pass","severity":"warning","summary":"ok","violations":[]}\'',
-                ],
-            }
-        ],
-    )
-
-    code = cli_module.cmd_fitness_list(
-        SimpleNamespace(
-            project_root=str(tmp_path),
-            manifest_path=None,
-            output_format="json",
-        )
-    )
-    payload = json.loads(capsys.readouterr().out)
-
-    assert code == 0
-    assert [entry["rule_id"] for entry in payload] == ["custom.shell-only"]
-
-
-def test_fitness_catalog_json_contract_is_deterministic(
-    tmp_path: Path,
-    capsys: Any,
-) -> None:
-    _write_manifest(
-        tmp_path,
-        [
-            {
-                "rule_id": "custom.catalog-contract",
-                "name": "Catalog contract",
-                "summary": "Ensure JSON catalog output remains stable.",
-                "rationale": "Downstream tools parse catalog payloads.",
-                "remediation": "Keep metadata contract stable.",
-                "scope": "harness/fitness-functions",
-                "severity": "warning",
-                "side_effect_free": True,
-                "adapter": "command",
-                "command": [
-                    "sh",
-                    "-c",
-                    'printf \'%s\\n\' \'{"contract_version":"1.0","rule_id":"custom.catalog-contract","status":"pass","severity":"warning","summary":"ok","violations":[]}\'',
-                ],
-            }
-        ],
-    )
-
-    code = cli_module.cmd_fitness_catalog(
-        SimpleNamespace(
-            project_root=str(tmp_path),
-            manifest_path=None,
-            output_format="json",
-            output=None,
-        )
-    )
-    output = capsys.readouterr().out
-    payload = json.loads(output)
-
-    assert code == 0
-    assert payload == [
-        {
-            "adapter": "command",
-            "name": "Catalog contract",
-            "rationale": "Downstream tools parse catalog payloads.",
-            "remediation": "Keep metadata contract stable.",
-            "rule_id": "custom.catalog-contract",
-            "scope": "harness/fitness-functions",
-            "severity": "warning",
-            "side_effect_free": True,
-            "source": "custom",
-            "summary": "Ensure JSON catalog output remains stable.",
-        }
-    ]
-    assert tuple(payload[0].keys()) == (
-        "adapter",
-        "name",
-        "rationale",
-        "remediation",
-        "rule_id",
-        "scope",
-        "severity",
-        "side_effect_free",
-        "source",
-        "summary",
-    )
+    assert "spec validation: ok" in output
+    assert recorded == {
+        "project_root": str(tmp_path),
+        "phase": "manual",
+        "checks": ["validate"],
+        "schema_only": True,
+    }
 
 
 def test_docs_root_resolver_defaults_to_docs(tmp_path: Path) -> None:

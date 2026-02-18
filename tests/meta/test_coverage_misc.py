@@ -9,7 +9,7 @@ from typing import Any
 
 import pytest
 
-from engineeringagent import on_change_matcher
+from engineeringagent.checks import on_change_matcher
 from engineeringagent.progress import logging as progress_logging
 from engineeringagent.opencode import client as opencode_client
 

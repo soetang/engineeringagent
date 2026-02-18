@@ -3,17 +3,24 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-import engineeringagent.checks as checks
-from engineeringagent.checks import (
+from engineeringagent.checks import emit_result_envelope
+from engineeringagent.checks.fitness.contracts import (
     CONTRACT_VERSION,
     FitnessRuleResult,
     RuleSeverity,
     RuleStatus,
-    emit_result_envelope,
 )
 
 
 RULE_ID = "architecture.checks-import-surface"
+
+_ALLOWED_CHECKS_IMPORT_NAMES = {
+    "ChecksRunResult",
+    "emit_fitness_result",
+    "emit_result_envelope",
+    "render_fitness_catalog",
+    "run_checks",
+}
 
 _EXCLUDED_PACKAGES = {
     "checks",
@@ -70,7 +77,6 @@ def _resolve_import_from_base(module_name: str, node: ast.ImportFrom) -> str | N
 
 
 def _collect_violations(project_root: Path) -> list[str]:
-    allowed_names = set(getattr(checks, "__all__", ()))
     violations: set[str] = set()
 
     for path in _iter_python_files(project_root):
@@ -117,7 +123,7 @@ def _collect_violations(project_root: Path) -> list[str]:
                             f"{relpath}:{node.lineno} star-import from engineeringagent.checks is not allowed"
                         )
                         continue
-                    if alias.name not in allowed_names:
+                    if alias.name not in _ALLOWED_CHECKS_IMPORT_NAMES:
                         violations.add(
                             f"{relpath}:{node.lineno} imports disallowed name {alias.name} from engineeringagent.checks"
                         )
@@ -131,7 +137,8 @@ def _collect_violations(project_root: Path) -> list[str]:
 
     if violations:
         violations.add(
-            "remediation: replace engineeringagent.checks.<submodule> imports with `from engineeringagent.checks import <allowed_name>`"
+            "remediation: outside checks/, only import from engineeringagent.checks: "
+            + ", ".join(sorted(_ALLOWED_CHECKS_IMPORT_NAMES))
         )
     return sorted(violations)
 

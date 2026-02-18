@@ -3,7 +3,7 @@ title: Tighten checks surface and refactor module layout (opencode + on_change +
   feedback)
 type: chore
 expected_commit_subject: 'chore: tighten checks surface and refactor module layout'
-status: backlog
+status: done
 priority: high
 objective: 'Reduce cross-module coupling and ambiguity by enforcing a strict supported
   `engineeringagent.checks` surface for production code outside checks, moving OpenCode
@@ -124,8 +124,9 @@ acceptance:
   all docs/tests are updated to the new `engineeringagent checks catalog` interface.
 
   '
-- 'Retry-feedback envelopes that previously embedded `engineeringagent fitness run` as a rerun command
-  instead embed `uv run engineeringagent checks run --checks fitness --phase iteration_end`.
+- 'Retry-feedback envelopes that previously embedded `engineeringagent fitness run`
+  as a rerun command instead embed `uv run engineeringagent checks run --checks fitness
+  --phase iteration_end`.
 
   '
 - 'The harness fitness rule `architecture.checks-import-surface` fails on any production
@@ -158,43 +159,36 @@ acceptance:
 
   '
 - '`uv run engineeringagent validate`, `uv run pytest -q`, and `uv run engineeringagent
-  gates run --profile loop_fast` pass.
+  checks run --phase iteration_end` pass.
 
   '
-- 'Do not move functionality away from checks unless specically mentioned here. Options are:
-  - Move check related functionality into checks even if it is not mentioned here.
-  - Refactor other modules to depend on the strict checks surface instead of moving
-    checks functionality out.
+- 'Do not move functionality away from checks unless specically mentioned here. Options
+  are: - Move check related functionality into checks even if it is not mentioned
+  here. - Refactor other modules to depend on the strict checks surface instead of
+  moving checks functionality out.
 
   '
 subtasks:
 - id: ST-000
   title: Add `engineeringagent checks catalog` and checks API wrapper
-  status: backlog
-  context: |
-    Introduce `engineeringagent checks catalog` as the CLI interface for generating the
-    fitness-rule catalog.
-
-    Add a single supported orchestration function to the strict checks surface:
-    - `engineeringagent.checks.render_fitness_catalog(project_root, *, manifest_path=None, format="markdown") -> str`
-
-    CLI contract (normative):
-    - When `--output` is omitted: print rendered catalog to stdout.
-    - When `--output` is provided: write rendered catalog plus a trailing newline and print
-      `checks catalog written: <path>` to stdout.
-    - Supported formats: `--format markdown|json`.
-
-    Determinism requirements (normative):
-    - Stable rule ordering (sorted by rule_id).
-    - JSON output uses sorted keys and stable formatting (indent=2, sort_keys=True).
-    - Markdown output is stable and does not embed absolute paths.
+  status: done
+  context: "Introduce `engineeringagent checks catalog` as the CLI interface for generating\
+    \ the\nfitness-rule catalog.\n\nAdd a single supported orchestration function\
+    \ to the strict checks surface:\n- `engineeringagent.checks.render_fitness_catalog(project_root,\
+    \ *, manifest_path=None, format=\"markdown\") -> str`\n\nCLI contract (normative):\n\
+    - When `--output` is omitted: print rendered catalog to stdout.\n- When `--output`\
+    \ is provided: write rendered catalog plus a trailing newline and print\n  `checks\
+    \ catalog written: <path>` to stdout.\n- Supported formats: `--format markdown|json`.\n\
+    \nDeterminism requirements (normative):\n- Stable rule ordering (sorted by rule_id).\n\
+    - JSON output uses sorted keys and stable formatting (indent=2, sort_keys=True).\n\
+    - Markdown output is stable and does not embed absolute paths.\n"
   verification:
   - uv run engineeringagent checks catalog --format markdown
   - uv run engineeringagent checks catalog --format json
   - uv run pytest -q
 - id: ST-010
   title: Remove `engineeringagent fitness *` CLI group (no shims)
-  status: backlog
+  status: done
   context: 'Remove `engineeringagent fitness list|run|catalog` Typer routes and handlers.
 
     Remove `src/engineeringagent/cli.py` imports of checks fitness internals.
@@ -206,7 +200,7 @@ subtasks:
   - uv run pytest -q
 - id: ST-011
   title: Migrate docs/tests/remediation strings to `engineeringagent checks catalog`
-  status: backlog
+  status: done
   context: 'Update all references to the removed `engineeringagent fitness catalog`
     command.
 
@@ -214,15 +208,15 @@ subtasks:
     regen command with `uv run engineeringagent checks catalog --format markdown --output
     docs/fitness-functions/rules.md`. - CLI tests that assert `fitness ... --help`
     routes: replace with `checks catalog --help` assertions. - Any tests/strings that
-    embed `python -m engineeringagent.cli fitness run ...`: replace with
-    `uv run engineeringagent checks run --checks fitness --phase iteration_end`.
+    embed `python -m engineeringagent.cli fitness run ...`: replace with `uv run engineeringagent
+    checks run --checks fitness --phase iteration_end`.
 
     '
   verification:
   - uv run pytest -q
 - id: ST-001
   title: Define strict checks public surface and enforcement rules
-  status: backlog
+  status: done
   context: 'Slim `engineeringagent.checks` exports for non-checks production code
     to the supported surface and update `check_checks_import_surface.py` to enforce
     it. Ensure rule enforcement is based on explicit allowed names.
@@ -233,7 +227,7 @@ subtasks:
   - uv run pytest -q
 - id: ST-002
   title: Add deterministic failed_payload objects to run_checks
-  status: backlog
+  status: done
   context: 'Extend `ChecksRunResult.failed_payload` so each failing group returns
     a deterministic minimal object sufficient for loop retry-feedback construction.
     Add/adjust tests to cover payload stability and required fields.
@@ -243,7 +237,7 @@ subtasks:
   - uv run pytest -q
 - id: ST-003
   title: Refactor loop runtime phases to depend only on run_checks outputs
-  status: backlog
+  status: done
   context: 'Update `src/engineeringagent/loop_runtime/phases.py` to stop importing
     checks internals and to build retry feedback from `ChecksRunResult.failed_payload`.
     Preserve existing loop result/status fields.
@@ -253,7 +247,7 @@ subtasks:
   - uv run pytest -q
 - id: ST-004
   title: Relocate retry-feedback envelope helpers to prompts package
-  status: backlog
+  status: done
   context: 'Move retry-feedback parsing/serialization and normalization into `src/engineeringagent/prompts/retry_feedback.py`
     and update `prompts/renderer.py` and loop callers accordingly. Preserve FEAT-092
     envelope contract.
@@ -263,7 +257,7 @@ subtasks:
   - uv run pytest -q
 - id: ST-005
   title: Migrate CLI validate to run_checks validate group
-  status: backlog
+  status: done
   context: 'Replace any direct validate runner import usage with `run_checks(...,
     checks=["validate"])` so CLI depends only on the strict checks surface.
 
@@ -273,7 +267,7 @@ subtasks:
   - uv run pytest -q
 - id: ST-006
   title: Move OpenCode permission probe under opencode submodule (no shims)
-  status: backlog
+  status: done
   context: 'Move `opencode_permissions` implementation into `src/engineeringagent/opencode/permissions.py`
     and update all callsites/tests/harness scripts to the new import path.
 
@@ -282,7 +276,7 @@ subtasks:
   - uv run pytest -q
 - id: ST-007
   title: Move on-change matcher under checks package (no shims)
-  status: backlog
+  status: done
   context: 'Move matcher into `src/engineeringagent/checks/on_change_matcher.py` and
     update checks submodules and tests accordingly.
 
@@ -291,18 +285,18 @@ subtasks:
   - uv run pytest -q
 - id: ST-008
   title: End-to-end verification and gate profile pass
-  status: backlog
-  context: 'Run repository validation and gates to ensure no import-direction regressions,
+  status: done
+  context: 'Run repository validation and checks to ensure no import-direction regressions,
     rule enforcement is active, and loop execution remains stable.
 
     '
   verification:
   - uv run engineeringagent validate
-  - uv run engineeringagent gates run --profile loop_fast
+  - uv run engineeringagent checks run --phase iteration_end
   - uv run pytest -q
 - id: ST-009
   title: Make start_agent_fn return structured OpenCode results
-  status: backlog
+  status: done
   context: 'Introduce an opencode-owned structured result type returned by `engineeringagent.opencode.client.start_agent`
     (and required for injected `start_agent_fn` callsites). The structured result
     must include stdout/stderr for logging plus explicit fields for `session_id` and
@@ -314,4 +308,26 @@ subtasks:
     '
   verification:
   - uv run pytest -q
-updated_at: '2026-02-18T05:49:41Z'
+- id: ST-012
+  title: Address reviewer warnings (boundary-tightening refactors)
+  status: done
+  context: 'Apply small behavior-preserving refactors suggested by the code_simplifier
+    reviewer to reduce repetition and keep the new checks failure payload plumbing
+    easy to maintain.
+
+    '
+  verification:
+  - uv run engineeringagent validate
+  - uv run pytest -q
+- id: ST-013
+  title: Remove brittle markdown content assertions in catalog tests
+  status: done
+  context: 'Replace markdown-text assertions with JSON-contract assertions for fitness
+    catalog generation.
+
+    Keep markdown tests limited to file writing and trailing newline.
+
+    '
+  verification:
+  - uv run pytest -q
+updated_at: '2026-02-18T09:35:55Z'

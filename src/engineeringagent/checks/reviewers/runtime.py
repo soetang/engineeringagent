@@ -9,7 +9,7 @@ from engineeringagent.changed_paths import (
     ChangedPathsResult,
     FALLBACK_CHANGE_DISCOVERY_REASON,
 )
-from engineeringagent.on_change_matcher import path_matches_any_glob
+from ..on_change_matcher import path_matches_any_glob
 
 from engineeringagent.checks.reviewers.engine import (
     DECISION_APPROVE,
@@ -240,7 +240,18 @@ def run_planned_reviewer_checks(
 
         if decision_name != DECISION_APPROVE:
             save_reviewers_state(request.project_root, state)
-            payload = decision if isinstance(decision, dict) else None
+            decision_payload = decision if isinstance(decision, dict) else None
+            reviewer_phase = (
+                "feature_done"
+                if request.phase == HarnessCheckPhase.FEATURE_DONE
+                else "iteration_end"
+            )
+            payload = {
+                "kind": "reviewer_feedback",
+                "reviewer_id": reviewer_id,
+                "reviewer_phase": reviewer_phase,
+                "decision": decision_payload,
+            }
             return False, reviewer_id, "\n".join(output_parts).strip(), payload
 
     save_reviewers_state(request.project_root, state)

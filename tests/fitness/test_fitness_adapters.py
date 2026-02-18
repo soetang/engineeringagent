@@ -3,8 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 import sys
 
-from engineeringagent.checks import execute_rule_definition
-from engineeringagent.checks import (
+from engineeringagent.checks.fitness.adapters import execute_rule_definition
+from engineeringagent.checks.fitness.contracts import (
     CONTRACT_VERSION,
     FitnessRuleMetadata,
     RuleAdapter,
@@ -12,7 +12,7 @@ from engineeringagent.checks import (
     RuleSource,
     RuleStatus,
 )
-from engineeringagent.checks import FitnessRuleDefinition
+from engineeringagent.checks.fitness.registry import FitnessRuleDefinition
 
 
 def _command_definition(command: tuple[str, ...]) -> FitnessRuleDefinition:

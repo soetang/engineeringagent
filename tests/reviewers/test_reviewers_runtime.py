@@ -349,13 +349,9 @@ def test_run_reviewer_loads_harness_prompt_and_parses_decision(tmp_path) -> None
         captured["format"] = str(format)
         captured["session"] = str(session)
         return SimpleNamespace(
-            stdout="\n".join(
-                [
-                    '{"type":"start","sessionID":"sess-123"}',
-                    '{"type":"text","part":{"text":"{\\"decision\\":\\"warning\\",\\"summary\\":\\"ignore this\\"}"}}',
-                    '{"type":"text","part":{"text":"{\\"decision\\":\\"approve\\",\\"summary\\":\\"No blocking issues.\\"}"}}',
-                ]
-            ),
+            session_id="sess-123",
+            text_payload='{"decision":"approve","summary":"No blocking issues."}',
+            stdout="",
             stderr="",
             returncode=0,
         )
@@ -417,7 +413,13 @@ def test_run_reviewer_parse_failure_returns_request_changes(tmp_path) -> None:
         del agent
         del format
         del session
-        return SimpleNamespace(stdout="this is not json", stderr="", returncode=0)
+        return SimpleNamespace(
+            session_id="sess-123",
+            text_payload="this is not json",
+            stdout="",
+            stderr="",
+            returncode=0,
+        )
 
     decision = run_reviewer(
         tmp_path,
@@ -462,22 +464,16 @@ def test_run_reviewer_retries_in_same_session_on_parse_failure(tmp_path) -> None
         )
         if len(calls) == 1:
             return SimpleNamespace(
-                stdout="\n".join(
-                    [
-                        '{"type":"start","sessionID":"sess-123"}',
-                        '{"type":"text","part":{"text":"not json"}}',
-                    ]
-                ),
+                session_id="sess-123",
+                text_payload="not json",
+                stdout="",
                 stderr="",
                 returncode=0,
             )
         return SimpleNamespace(
-            stdout="\n".join(
-                [
-                    '{"type":"start","sessionID":"sess-123"}',
-                    '{"type":"text","part":{"text":"{\\"decision\\":\\"approve\\",\\"summary\\":\\"Recovered on retry.\\"}"}}',
-                ]
-            ),
+            session_id="sess-123",
+            text_payload='{"decision":"approve","summary":"Recovered on retry."}',
+            stdout="",
             stderr="",
             returncode=0,
         )

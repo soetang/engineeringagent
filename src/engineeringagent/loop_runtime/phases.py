@@ -13,13 +13,14 @@ from pydantic import BaseModel, ConfigDict
 from ..changed_paths import ChangedPathsResult
 from ..checks import (
     ChecksRunResult,
-    RuleStatus,
-    build_rule_catalog,
-    execute_rule_definition,
     run_checks,
 )
+from ..prompts.retry_feedback import (
+    build_command_failure_retry_feedback,
+    build_fitness_failure_retry_feedback,
+    build_reviewer_feedback_retry_feedback,
+)
 from ..specs import HarnessCheckPhase
-from ..specs import HarnessCheckFitnessDefinition, HarnessChecksDocument, load_yaml
 
 from .models import (
     CommandTiming,
@@ -30,12 +31,25 @@ from .models import (
     VerificationPhaseOutcome,
 )
 from .time_format import utc_iso_from_epoch_sec
-from ..checks import (
-    build_command_failure_retry_feedback,
-    build_fitness_failure_retry_feedback,
-    build_reviewer_feedback_retry_feedback,
-)
 from ..feature_commit import feature_completion_commit_subject
+
+
+def _payload_get_str(payload: object, key: str) -> str | None:
+    if not isinstance(payload, dict):
+        return None
+    value = payload.get(key)
+    if isinstance(value, str) and value.strip():
+        return value
+    return None
+
+
+def _payload_get_list_of_dicts(payload: object, key: str) -> list[dict[str, object]]:
+    if not isinstance(payload, dict):
+        return []
+    raw = payload.get(key)
+    if not isinstance(raw, list):
+        return []
+    return [entry for entry in raw if isinstance(entry, dict)]
 
 
 class GatePhaseDependencies(BaseModel):
@@ -105,50 +119,6 @@ def run_gate_phase(  # noqa: C901
             if line.startswith(needle):
                 return line[len(needle) :].strip() or None
         return None
-
-    def _fitness_failed_rules(
-        *,
-        project_root: Path,
-        check_id: str | None,
-    ) -> list[dict[str, object]]:
-        if not check_id:
-            return []
-        try:
-            payload = load_yaml(project_root / "harness" / "checks.yaml")
-            doc = HarnessChecksDocument.model_validate(payload)
-        except Exception:  # noqa: BLE001
-            return []
-
-        check = doc.checks.get(check_id)
-        if not isinstance(check, HarnessCheckFitnessDefinition):
-            return []
-
-        catalog = build_rule_catalog(project_root)
-        requested_rule_ids = set(check.rule_ids or ())
-        definitions = (
-            catalog
-            if check.scope == "all"
-            else [
-                definition
-                for definition in catalog
-                if definition.metadata.rule_id in requested_rule_ids
-            ]
-        )
-
-        failed: list[dict[str, object]] = []
-        for definition in definitions:
-            result = execute_rule_definition(definition, project_root)
-            if result.status not in {RuleStatus.FAIL, RuleStatus.ERROR}:
-                continue
-            failed.append(
-                {
-                    "rule_id": str(result.rule_id),
-                    "remediation": str(definition.metadata.remediation),
-                    "violations": list(result.violations or ()),
-                    "details": result.details,
-                }
-            )
-        return failed
 
     outputs: list[str] = []
     command_timings: list[CommandTiming] = []
@@ -232,7 +202,9 @@ def run_gate_phase(  # noqa: C901
     failure_result: ChecksRunResult = last_result
 
     if failure_result.failed_group == "commands":
-        command = _extract_failed_command(
+        payload = failure_result.failed_payload
+        command = _payload_get_str(payload, "command")
+        command = command or _extract_failed_command(
             failure_result.failed_check_id,
             failure_result.output,
         )
@@ -244,15 +216,13 @@ def run_gate_phase(  # noqa: C901
             message="Command check failed. Rerun the command to see full diagnostics.",
         )
     elif failure_result.failed_group == "fitness":
-        failed_rules = _fitness_failed_rules(
-            project_root=iteration_inputs.project_root,
-            check_id=failure_result.failed_check_id,
-        )
+        payload = failure_result.failed_payload
+        failed_rules = _payload_get_list_of_dicts(payload, "failed_rules")
         if failed_rules:
             hook_feedback = build_fitness_failure_retry_feedback(
                 gate=failure_result.failed_check_id,
                 command=(
-                    "uv run python -m engineeringagent.cli fitness run --format json"
+                    "uv run engineeringagent checks run --checks fitness --phase iteration_end"
                 ),
                 failed_rules=failed_rules,
             )
@@ -413,17 +383,31 @@ def run_reviewer_phase(  # noqa: C901
             archived_path, iteration_inputs.feature_path
         )
 
-    payload = result.failed_payload or {
+    raw_payload = result.failed_payload
+    reviewer_id = result.failed_check_id or "unknown"
+    reviewer_phase = "feature_done"
+    decision_payload: dict[str, object] = {
         "decision": "request_changes",
         "summary": "(reviewer payload missing)",
         "required_actions": [],
     }
+    if isinstance(raw_payload, dict) and raw_payload.get("kind") == "reviewer_feedback":
+        value = raw_payload.get("reviewer_id")
+        if isinstance(value, str) and value.strip():
+            reviewer_id = value
+        phase_value = raw_payload.get("reviewer_phase")
+        if phase_value in {"iteration_end", "feature_done"}:
+            reviewer_phase = phase_value
+        decision_value = raw_payload.get("decision")
+        if isinstance(decision_value, dict):
+            decision_payload = decision_value
+
     feedback = build_reviewer_feedback_retry_feedback(
-        reviewer_id=result.failed_check_id or "unknown",
-        reviewer_phase="feature_done",
-        decision=payload,
+        reviewer_id=reviewer_id,
+        reviewer_phase=reviewer_phase,
+        decision=decision_payload,
     )
-    decision_name_raw = payload.get("decision")
+    decision_name_raw = decision_payload.get("decision")
     decision_name = (
         decision_name_raw
         if isinstance(decision_name_raw, str) and decision_name_raw.strip()

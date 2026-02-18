@@ -29,3 +29,31 @@ def test_run_checks_validate_group_delegates_to_checks_validate(
     assert not result.ok
     assert result.failed_group == "validate"
     assert "validate: boom" in result.output
+
+
+def test_run_checks_validate_group_passes_schema_only(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from engineeringagent.checks.api import run_checks
+
+    calls: list[bool] = []
+
+    def _fake_validate(project_root: Path, *, schema_only: bool = False) -> list[str]:
+        calls.append(schema_only)
+        return []
+
+    monkeypatch.setattr(
+        "engineeringagent.checks.validate.runtime.run_validate",
+        _fake_validate,
+    )
+
+    result = run_checks(
+        tmp_path,
+        phase="manual",
+        checks=["validate"],
+        schema_only=True,
+    )
+
+    assert result.ok
+    assert calls == [True]

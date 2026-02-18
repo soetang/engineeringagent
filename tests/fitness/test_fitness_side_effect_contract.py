@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from engineeringagent.checks import execute_rule_definition
-from engineeringagent.checks import (
+from engineeringagent.checks.fitness.adapters import execute_rule_definition
+from engineeringagent.checks.fitness.contracts import (
     FitnessRuleMetadata,
     RuleAdapter,
     RuleSeverity,
 )
-from engineeringagent.checks import FitnessRuleDefinition
+from engineeringagent.checks.fitness.registry import FitnessRuleDefinition
 
 
 def test_execute_rule_definition_rejects_non_side_effect_free_rules(

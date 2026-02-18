@@ -116,14 +116,19 @@ checks:
     start_calls: list[str] = []
 
     class _Proc:
-        def __init__(self, stdout: str) -> None:
-            self.stdout = stdout
+        def __init__(self, *, session_id: str, text_payload: str) -> None:
+            self.session_id = session_id
+            self.text_payload = text_payload
+            self.stdout = ""
             self.stderr = ""
 
     def _start_agent(execution_root: Path, prompt: str, **_kwargs: object) -> _Proc:
         del execution_root, prompt
         start_calls.append("called")
-        return _Proc('{"decision":"approve","summary":"ok","required_actions":[]}')
+        return _Proc(
+            session_id="sess-123",
+            text_payload='{"decision":"approve","summary":"ok","required_actions":[]}',
+        )
 
     deps = ReviewerPhaseDependencies(
         collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(

@@ -9,7 +9,7 @@ from engineeringagent.changed_paths import (
     ChangedPathsResult,
     FALLBACK_CHANGE_DISCOVERY_REASON,
 )
-from engineeringagent.on_change_matcher import path_matches_any_glob
+from ..on_change_matcher import path_matches_any_glob
 from engineeringagent.specs import (
     HarnessCheckCommandDefinition,
     HarnessCheckPhase,

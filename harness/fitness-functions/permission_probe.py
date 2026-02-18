@@ -14,7 +14,7 @@ def _bootstrap_path() -> None:
 
 def main() -> int:
     _bootstrap_path()
-    from engineeringagent.opencode_permissions import (
+    from engineeringagent.opencode.permissions import (
         PERMISSION_REMEDIATION_HINT,
         run_permission_probe,
     )

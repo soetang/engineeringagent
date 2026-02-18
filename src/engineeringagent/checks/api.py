@@ -49,6 +49,36 @@ class ChecksRunResult(BaseModel):
     output: str = ""
 
 
+def _failure_result(
+    *,
+    group: str,
+    check_id: str | None,
+    output: str,
+    payload: dict[str, Any] | None,
+) -> ChecksRunResult:
+    return ChecksRunResult(
+        ok=False,
+        failed_group=group,
+        failed_check_id=check_id,
+        failed_payload=payload,
+        output=output,
+    )
+
+
+def _command_for_check_id(doc: Any, check_id: str | None) -> str:
+    if not check_id:
+        return "<unknown>"
+
+    from engineeringagent.specs import HarnessCheckCommandDefinition
+
+    check = getattr(doc, "checks", {}).get(check_id)
+    if isinstance(check, HarnessCheckCommandDefinition):
+        command = check.command
+        if isinstance(command, str) and command.strip():
+            return command
+    return "<unknown>"
+
+
 class _RunChecksRequest(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -65,6 +95,7 @@ class _RunChecksRequest(BaseModel):
     head: str | None
     start_agent_fn: Callable[..., object] | None
     prior_feedback: str | None
+    schema_only: bool
     collect_changed_paths_fn: Callable[..., object] | None
     run_shell_command_fn: Callable[..., object] | None
 
@@ -77,6 +108,7 @@ class _RunChecksKwargs(TypedDict, total=False):
     head: str | None
     start_agent_fn: Callable[..., object] | None
     prior_feedback: str | None
+    schema_only: bool
     collect_changed_paths: Callable[..., object] | None
     run_shell_command: Callable[..., object] | None
 
@@ -242,13 +274,18 @@ def _apply_check_id_selection(
     if request.check_id is None:
         return doc, None
     if doc is None:
+        output = "unknown check_id: no harness checks document loaded"
         return (
             None,
-            ChecksRunResult(
-                ok=False,
-                failed_group="selection",
-                failed_check_id=request.check_id,
-                output="unknown check_id: no harness checks document loaded",
+            _failure_result(
+                group="selection",
+                check_id=request.check_id,
+                output=output,
+                payload={
+                    "kind": "selection_error",
+                    "message": output,
+                    "check_id": request.check_id,
+                },
             ),
         )
 
@@ -260,32 +297,41 @@ def _apply_check_id_selection(
     resolved_group = _resolve_check_group_for_id(doc, request.check_id)
     if resolved_group is None or resolved_group not in request.ordered_groups:
         enabled = [group for group in request.ordered_groups if group in harness_groups]
+        output = (
+            "unknown check_id for enabled groups: "
+            f"check_id={request.check_id} enabled_groups={enabled}"
+        )
         return (
             None,
-            ChecksRunResult(
-                ok=False,
-                failed_group="selection",
-                failed_check_id=request.check_id,
-                output=(
-                    "unknown check_id for enabled groups: "
-                    f"check_id={request.check_id} enabled_groups={enabled}"
-                ),
+            _failure_result(
+                group="selection",
+                check_id=request.check_id,
+                output=output,
+                payload={
+                    "kind": "selection_error",
+                    "message": output,
+                    "check_id": request.check_id,
+                },
             ),
         )
 
     return _filter_doc_to_check_id(doc, request.check_id), None
 
 
-def _run_validate_group(project_root: Path) -> _GroupRunResult:
+def _run_validate_group(project_root: Path, *, schema_only: bool) -> _GroupRunResult:
     from engineeringagent.checks.validate.runtime import run_validate
 
-    messages = run_validate(project_root)
+    messages = run_validate(project_root, schema_only=schema_only)
     if not messages:
         return _GroupRunResult(ok=True, failed_check_id=None, output="")
     return _GroupRunResult(
         ok=False,
         failed_check_id=None,
         output="\n".join(messages).strip(),
+        failed_payload={
+            "kind": "validate_failure",
+            "messages": list(messages),
+        },
     )
 
 
@@ -324,7 +370,21 @@ def _run_commands_group(
         run_request,
         run_shell_command=run_shell_command_fn,
     )
-    return _GroupRunResult(ok=ok, failed_check_id=failed_id, output=output)
+    failed_payload = None
+    if not ok:
+        command = _command_for_check_id(doc, failed_id)
+        failed_payload = {
+            "kind": "command_failure",
+            "check_id": failed_id,
+            "command": command,
+        }
+
+    return _GroupRunResult(
+        ok=ok,
+        failed_check_id=failed_id,
+        output=output,
+        failed_payload=failed_payload,
+    )
 
 
 def _run_fitness_group(
@@ -356,8 +416,13 @@ def _run_fitness_group(
         phase=request.phase,
         changed_paths=changed_paths,
     )
-    ok, failed_id, output = run_planned_fitness_checks(run_request)
-    return _GroupRunResult(ok=ok, failed_check_id=failed_id, output=output)
+    ok, failed_id, output, failed_payload = run_planned_fitness_checks(run_request)
+    return _GroupRunResult(
+        ok=ok,
+        failed_check_id=failed_id,
+        output=output,
+        failed_payload=failed_payload,
+    )
 
 
 def _run_reviewers_group(
@@ -446,7 +511,10 @@ def _execute_groups(
     outputs: list[str] = []
     for group in request.ordered_groups:
         if group == _CHECK_GROUP_VALIDATE:
-            group_result = _run_validate_group(project_root)
+            group_result = _run_validate_group(
+                project_root,
+                schema_only=request.schema_only,
+            )
         elif group == _CHECK_GROUP_COMMANDS:
             group_result = _run_commands_group(project_root, doc, request)
         elif group == _CHECK_GROUP_FITNESS:
@@ -507,6 +575,7 @@ def run_checks(
         "head",
         "start_agent_fn",
         "prior_feedback",
+        "schema_only",
         "collect_changed_paths",
         "run_shell_command",
     }
@@ -524,8 +593,12 @@ def run_checks(
     head = kwargs.get("head")
     start_agent_fn = kwargs.get("start_agent_fn")
     prior_feedback = kwargs.get("prior_feedback")
+    schema_only = bool(kwargs.get("schema_only", False))
     collect_changed_paths_fn = kwargs.get("collect_changed_paths")
     run_shell_command_fn = kwargs.get("run_shell_command")
+
+    if schema_only and _CHECK_GROUP_VALIDATE not in ordered_groups:
+        raise ValueError("schema_only requires the validate checks group")
 
     if _CHECK_GROUP_REVIEWERS in ordered_groups and feature_path is None:
         raise ValueError("feature_path is required when reviewers checks are selected")
@@ -540,6 +613,7 @@ def run_checks(
         head=head,
         start_agent_fn=start_agent_fn,
         prior_feedback=str(prior_feedback) if prior_feedback is not None else None,
+        schema_only=schema_only,
         collect_changed_paths_fn=collect_changed_paths_fn,
         run_shell_command_fn=run_shell_command_fn,
     )
@@ -548,11 +622,14 @@ def run_checks(
     if _requires_harness_doc(request.ordered_groups):
         doc, doc_error = _load_harness_checks_doc(root)
         if doc_error is not None:
-            return ChecksRunResult(
-                ok=False,
-                failed_group="config",
-                failed_check_id=request.check_id,
+            return _failure_result(
+                group="config",
+                check_id=request.check_id,
                 output=doc_error,
+                payload={
+                    "kind": "config_error",
+                    "message": doc_error,
+                },
             )
 
     doc, selection_result = _apply_check_id_selection(doc=doc, request=request)

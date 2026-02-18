@@ -424,7 +424,9 @@ def test_run_reviewer_phase_uses_checks_yaml_for_run_all_feature_done(
     def _start_agent(*_args: Any, **_kwargs: Any) -> Any:
         return SimpleNamespace(
             returncode=0,
-            stdout='{"decision":"approve","summary":"ok","required_actions":[]}',
+            session_id="sess-123",
+            text_payload='{"decision":"approve","summary":"ok","required_actions":[]}',
+            stdout="",
             stderr="",
         )
 
@@ -1057,11 +1059,13 @@ def test_run_planned_fitness_checks_fails_on_missing_rule_ids(tmp_path: Path) ->
         phase=HarnessCheckPhase.ITERATION_END,
         changed_paths=ChangedPathsResult(paths=(), run_all=True, reason=None),
     )
-    ok, failed, output = run_planned_fitness_checks(request)
+    ok, failed, output, failed_payload = run_planned_fitness_checks(request)
 
     assert ok is False
     assert failed == "fitness_subset"
     assert "missing_rule_ids" in output
+    assert isinstance(failed_payload, dict)
+    assert failed_payload.get("kind") == "selection_error"
 
 
 def test_run_planned_fitness_checks_runs_only_requested_rule_ids(
@@ -1126,12 +1130,13 @@ def test_run_planned_fitness_checks_runs_only_requested_rule_ids(
         phase=HarnessCheckPhase.ITERATION_END,
         changed_paths=ChangedPathsResult(paths=(), run_all=True, reason=None),
     )
-    ok, failed, output = run_planned_fitness_checks(request)
+    ok, failed, output, failed_payload = run_planned_fitness_checks(request)
 
     assert ok is True
     assert failed is None
     assert "[fitness:demo.one]" in output
     assert "[fitness:demo.two]" not in output
+    assert failed_payload is None
 
 
 def test_run_planned_fitness_checks_skips_when_decision_is_skip(
@@ -1188,8 +1193,9 @@ def test_run_planned_fitness_checks_skips_when_decision_is_skip(
             reason=None,
         ),
     )
-    ok, failed, output = run_planned_fitness_checks(request)
+    ok, failed, output, failed_payload = run_planned_fitness_checks(request)
 
     assert ok is True
     assert failed is None
     assert output == ""
+    assert failed_payload is None

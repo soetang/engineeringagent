@@ -5,7 +5,7 @@ import json
 import pytest
 from pydantic import ValidationError
 
-from engineeringagent.checks import (
+from engineeringagent.checks.fitness.contracts import (
     CONTRACT_VERSION,
     FitnessRuleMetadata,
     FitnessRuleResult,

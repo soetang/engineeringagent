@@ -6,10 +6,9 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from engineeringagent.checks import (
-    CONTRACT_VERSION,
+from engineeringagent.checks.fitness.contracts import CONTRACT_VERSION, RuleSource
+from engineeringagent.checks.fitness.registry import (
     DEFAULT_CUSTOM_RULE_MANIFEST,
-    RuleSource,
     load_custom_rule_definitions,
 )
 

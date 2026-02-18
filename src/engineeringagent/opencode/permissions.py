@@ -5,7 +5,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
-from .opencode.client import DEFAULT_OPENCODE_AGENT, start_agent
+from .client import DEFAULT_OPENCODE_AGENT, start_agent
 
 
 PROBE_COMMAND = "git status --short"
@@ -155,7 +155,7 @@ def run_permission_probe(project_root: Path) -> PermissionProbeResult:
     """
     last_result: PermissionProbeResult | None = None
 
-    for attempt in range(1, PROBE_MAX_ATTEMPTS + 1):
+    for _ in range(1, PROBE_MAX_ATTEMPTS + 1):
         try:
             proc = start_agent(
                 project_root,

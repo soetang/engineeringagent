@@ -7,7 +7,7 @@ from typing import Any, Mapping, Sequence
 
 from pydantic import ValidationError
 
-from ..checks import (
+from engineeringagent.prompts.retry_feedback import (
     build_command_failure_retry_feedback,
     parse_retry_feedback_envelope,
     serialize_retry_feedback_envelope,

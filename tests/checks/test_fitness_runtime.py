@@ -74,7 +74,7 @@ def test_run_planned_fitness_checks_runs_all_rules_before_failing(
     from engineeringagent.changed_paths import ChangedPathsResult
     from engineeringagent.checks.fitness.runtime import RunPlannedFitnessChecksRequest
     from engineeringagent.checks.fitness.runtime import run_planned_fitness_checks
-    from engineeringagent.checks import RuleStatus
+    from engineeringagent.checks.fitness.contracts import RuleStatus
     from engineeringagent.specs import HarnessCheckPhase
 
     doc = _doc(
@@ -90,8 +90,12 @@ def test_run_planned_fitness_checks_runs_all_rules_before_failing(
     )
 
     definitions = [
-        SimpleNamespace(metadata=SimpleNamespace(rule_id="rule_a")),
-        SimpleNamespace(metadata=SimpleNamespace(rule_id="rule_b")),
+        SimpleNamespace(
+            metadata=SimpleNamespace(rule_id="rule_a", remediation="fix a")
+        ),
+        SimpleNamespace(
+            metadata=SimpleNamespace(rule_id="rule_b", remediation="fix b")
+        ),
     ]
     monkeypatch.setattr(
         "engineeringagent.checks.fitness.runtime.build_rule_catalog",
@@ -106,9 +110,19 @@ def test_run_planned_fitness_checks_runs_all_rules_before_failing(
         called.append(rule_id)
         if rule_id == "rule_a":
             return SimpleNamespace(
-                rule_id=rule_id, status=RuleStatus.FAIL, summary="no"
+                rule_id=rule_id,
+                status=RuleStatus.FAIL,
+                summary="no",
+                violations=["violation"],
+                details=None,
             )
-        return SimpleNamespace(rule_id=rule_id, status=RuleStatus.PASS, summary="ok")
+        return SimpleNamespace(
+            rule_id=rule_id,
+            status=RuleStatus.PASS,
+            summary="ok",
+            violations=[],
+            details=None,
+        )
 
     monkeypatch.setattr(
         "engineeringagent.checks.fitness.runtime.execute_rule_definition",
@@ -116,7 +130,7 @@ def test_run_planned_fitness_checks_runs_all_rules_before_failing(
         raising=True,
     )
 
-    ok, failed, output = run_planned_fitness_checks(
+    ok, failed, output, failed_payload = run_planned_fitness_checks(
         RunPlannedFitnessChecksRequest(
             project_root=tmp_path,
             doc=doc,
@@ -129,6 +143,8 @@ def test_run_planned_fitness_checks_runs_all_rules_before_failing(
     assert failed == "fitness_selected"
     assert "[fitness:rule_a] status=fail" in output
     assert "[fitness:rule_b] status=pass" in output
+    assert isinstance(failed_payload, dict)
+    assert failed_payload.get("kind") == "fitness_failure"
 
 
 def test_run_planned_fitness_checks_fails_on_missing_rule_ids(
@@ -153,7 +169,9 @@ def test_run_planned_fitness_checks_fails_on_missing_rule_ids(
     )
 
     definitions = [
-        SimpleNamespace(metadata=SimpleNamespace(rule_id="rule_a")),
+        SimpleNamespace(
+            metadata=SimpleNamespace(rule_id="rule_a", remediation="fix a")
+        ),
     ]
     monkeypatch.setattr(
         "engineeringagent.checks.fitness.runtime.build_rule_catalog",
@@ -161,7 +179,7 @@ def test_run_planned_fitness_checks_fails_on_missing_rule_ids(
         raising=True,
     )
 
-    ok, failed, output = run_planned_fitness_checks(
+    ok, failed, output, failed_payload = run_planned_fitness_checks(
         RunPlannedFitnessChecksRequest(
             project_root=tmp_path,
             doc=doc,
@@ -172,3 +190,5 @@ def test_run_planned_fitness_checks_fails_on_missing_rule_ids(
     assert not ok
     assert failed == "fitness_selected"
     assert "missing_rule_ids=['rule_missing']" in output
+    assert isinstance(failed_payload, dict)
+    assert failed_payload.get("kind") == "selection_error"

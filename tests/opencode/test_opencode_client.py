@@ -25,6 +25,8 @@ def test_start_agent_runs_opencode_with_expected_defaults(
     result = client_module.start_agent(tmp_path, "Reply READY.")
 
     assert result.returncode == 0
+    assert result.stdout == "ok\n"
+    assert result.stderr == ""
     assert captured["command"] == [
         "opencode",
         "run",
@@ -52,6 +54,36 @@ def test_start_agent_supports_agent_override(tmp_path: Path, monkeypatch: Any) -
     client_module.start_agent(tmp_path, "Do work", agent="review")
 
     assert captured_command == ["opencode", "run", "--agent", "review", "Do work"]
+
+
+def test_start_agent_parses_json_format_into_structured_fields(
+    tmp_path: Path,
+    monkeypatch: Any,
+) -> None:
+    def fake_subprocess_run(
+        command: Any, **_kwargs: Any
+    ) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(
+            command,
+            0,
+            stdout="\n".join(
+                [
+                    '{"type":"start","sessionID":"sess-123"}',
+                    '{"type":"text","part":{"text":"first"}}',
+                    '{"type":"text","part":{"text":"second"}}',
+                    "",
+                ]
+            ),
+            stderr="",
+        )
+
+    monkeypatch.setattr(client_module.subprocess, "run", fake_subprocess_run)
+
+    result = client_module.start_agent(tmp_path, "hello", format="json")
+
+    assert result.returncode == 0
+    assert result.session_id == "sess-123"
+    assert result.text_payload == "second"
 
 
 def test_default_agent_constant_matches_expected_runtime_identifier() -> None:

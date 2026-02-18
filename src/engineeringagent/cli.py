@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import importlib.metadata
-import json
 import shutil
 import sys
 from collections.abc import Callable
@@ -11,14 +10,6 @@ from typing import Literal
 
 import typer
 
-from .checks import (
-    FitnessRuleDefinition,
-    RuleStatus,
-    build_rule_catalog,
-    render_rule_catalog_markdown,
-    run_rule_catalog,
-    write_rule_catalog_markdown,
-)
 from .git import client as git_client
 from .init_scaffold import (
     apply_baseline_scaffold,
@@ -28,10 +19,6 @@ from .init_scaffold import (
 )
 from .loop import RunConfigOptions, build_loop_run, build_run_config, run_loop
 from .specs import HarnessCheckPhase
-
-_MISSING_REMEDIATION_TEMPLATE = (
-    "No remediation available: rule metadata missing from active catalog for {rule_id}."
-)
 
 _HandlerArgs = SimpleNamespace
 
@@ -90,29 +77,6 @@ def _resolve_optional_path(
     if resolved.is_absolute():
         return resolved
     return project_root / resolved
-
-
-def _fitness_metadata_payload(
-    definition: FitnessRuleDefinition,
-    *,
-    include_details: bool,
-) -> dict[str, object]:
-    """Serialize rule metadata into deterministic JSON payload fields."""
-    metadata = definition.metadata
-    payload: dict[str, object] = {
-        "rule_id": metadata.rule_id,
-        "name": metadata.name,
-        "summary": metadata.summary,
-        "scope": metadata.scope,
-        "severity": metadata.severity.value,
-        "adapter": metadata.adapter.value,
-        "source": metadata.source.value,
-        "side_effect_free": metadata.side_effect_free,
-    }
-    if include_details:
-        payload["rationale"] = metadata.rationale
-        payload["remediation"] = metadata.remediation
-    return payload
 
 
 def _resolve_init_docs_dir(
@@ -247,13 +211,20 @@ def cmd_validate(args: _HandlerArgs) -> int:
         Process exit code where 0 means validation passed.
     """
     project_root = Path(args.project_root).resolve()
-    from engineeringagent.checks import run_validate
+    from engineeringagent.checks import run_checks
 
-    messages = run_validate(project_root=project_root, schema_only=args.schema_only)
-    if messages:
-        for msg in messages:
-            print(msg)
+    result = run_checks(
+        project_root,
+        phase="manual",
+        checks=["validate"],
+        schema_only=bool(getattr(args, "schema_only", False)),
+    )
+    if not result.ok:
+        if result.output:
+            for line in result.output.splitlines():
+                print(line)
         return 1
+
     print("spec validation: ok")
     return 0
 
@@ -329,115 +300,29 @@ def cmd_run(args: _HandlerArgs) -> int:
     return run_loop(loop_run)
 
 
-def cmd_fitness_list(args: _HandlerArgs) -> int:
-    """List active fitness rules from the merged registry."""
-    project_root = Path(args.project_root).resolve()
-    manifest_path = _resolve_manifest_path(args.manifest_path)
-    catalog = build_rule_catalog(project_root, manifest_path=manifest_path)
+def cmd_checks_catalog(args: _HandlerArgs) -> int:
+    """Generate the fitness-rule catalog via the checks surface."""
 
-    if args.output_format == "json":
-        payload = [
-            _fitness_metadata_payload(definition, include_details=False)
-            for definition in catalog
-        ]
-        print(json.dumps(payload, indent=2, sort_keys=True))
-        return 0
-
-    if not catalog:
-        print("No active fitness rules found.")
-        return 0
-
-    for definition in catalog:
-        metadata = definition.metadata
-        print(
-            f"{metadata.rule_id} [{metadata.severity.value}] "
-            f"({metadata.adapter.value}/{metadata.source.value}) - {metadata.summary}"
-        )
-    return 0
-
-
-def cmd_fitness_run(args: _HandlerArgs) -> int:
-    """Execute active fitness rules and return deterministic status."""
-    project_root = Path(args.project_root).resolve()
-    manifest_path = _resolve_manifest_path(args.manifest_path)
-    catalog = build_rule_catalog(project_root, manifest_path=manifest_path)
-    remediation_by_rule_id = {
-        definition.metadata.rule_id: definition.metadata.remediation
-        for definition in catalog
-    }
-    summary = run_rule_catalog(
-        project_root,
-        jobs=args.jobs,
-        manifest_path=manifest_path,
-    )
-
-    failed_rules = [
-        {
-            "rule_id": result.rule_id,
-            "status": result.status.value,
-            "remediation": _resolve_failed_rule_remediation(
-                rule_id=result.rule_id,
-                remediation_by_rule_id=remediation_by_rule_id,
-            ),
-        }
-        for result in summary.results
-        if result.status in {RuleStatus.FAIL, RuleStatus.ERROR}
-    ]
-
-    if args.output_format == "json":
-        payload = {
-            "results": [result.model_dump(mode="json") for result in summary.results],
-            "failed_rules": failed_rules,
-            "failed": summary.has_failures,
-        }
-        print(json.dumps(payload, indent=2, sort_keys=True))
-    else:
-        if not summary.results:
-            print("No active fitness rules found.")
-        for result in summary.results:
-            print(f"{result.rule_id}: {result.status.value} - {result.summary}")
-
-    if summary.has_failures:
-        return 1
-    return 0
-
-
-def _resolve_failed_rule_remediation(
-    *,
-    rule_id: str,
-    remediation_by_rule_id: dict[str, str],
-) -> str:
-    """Return deterministic remediation text for failed-rule JSON output."""
-    return remediation_by_rule_id.get(
-        rule_id,
-        _MISSING_REMEDIATION_TEMPLATE.format(rule_id=rule_id),
-    )
-
-
-def cmd_fitness_catalog(args: _HandlerArgs) -> int:
-    """Generate the fitness-rule catalog from active registry metadata."""
     project_root = Path(args.project_root).resolve()
     manifest_path = _resolve_manifest_path(args.manifest_path)
     output_path = _resolve_optional_path(path=args.output, project_root=project_root)
 
-    catalog = build_rule_catalog(project_root, manifest_path=manifest_path)
+    from engineeringagent.checks import render_fitness_catalog
 
-    if args.output_format == "json":
-        payload = [
-            _fitness_metadata_payload(definition, include_details=True)
-            for definition in catalog
-        ]
-        rendered = json.dumps(payload, indent=2, sort_keys=True)
-    else:
-        rendered = render_rule_catalog_markdown(catalog)
+    rendered = render_fitness_catalog(
+        project_root,
+        manifest_path=manifest_path,
+        format=args.output_format,
+    )
 
     if output_path is not None:
-        write_rule_catalog_markdown(output_path, rendered + "\n")
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(rendered + "\n", encoding="utf-8")
         try:
             shown_path = output_path.relative_to(project_root)
         except ValueError:
             shown_path = output_path
-        print(f"fitness catalog written: {shown_path}")
+        print(f"checks catalog written: {shown_path}")
         return 0
 
     print(rendered)
@@ -700,89 +585,6 @@ def _build_handler_args(ctx: typer.Context, **kwargs: object) -> _HandlerArgs:
     )
 
 
-def _build_typer_fitness_app() -> typer.Typer:
-    """Build the Typer fitness app with nested command routing."""
-    fitness_app = typer.Typer(
-        help="list and run fitness-function rules",
-        add_completion=False,
-        no_args_is_help=False,
-    )
-
-    @fitness_app.command("list", help="list active fitness rules")
-    def _fitness_list(
-        ctx: typer.Context,
-        manifest_path: str | None = typer.Option(
-            None,
-            "--manifest-path",
-            help="optional path to custom fitness rules manifest",
-        ),
-        output_format: Literal["text", "json"] = typer.Option(
-            "text",
-            "--format",
-        ),
-    ) -> None:
-        _exit_with_handler_code(
-            cmd_fitness_list,
-            ctx=ctx,
-            manifest_path=manifest_path,
-            output_format=output_format,
-        )
-
-    @fitness_app.command("run", help="run active fitness rules")
-    def _fitness_run(
-        ctx: typer.Context,
-        manifest_path: str | None = typer.Option(
-            None,
-            "--manifest-path",
-            help="optional path to custom fitness rules manifest",
-        ),
-        jobs: int = typer.Option(
-            1,
-            "--jobs",
-            help="number of parallel fitness-rule workers",
-        ),
-        output_format: Literal["text", "json"] = typer.Option(
-            "text",
-            "--format",
-        ),
-    ) -> None:
-        _exit_with_handler_code(
-            cmd_fitness_run,
-            ctx=ctx,
-            manifest_path=manifest_path,
-            jobs=jobs,
-            output_format=output_format,
-        )
-
-    @fitness_app.command("catalog", help="generate fitness rule catalog")
-    def _fitness_catalog(
-        ctx: typer.Context,
-        manifest_path: str | None = typer.Option(
-            None,
-            "--manifest-path",
-            help="optional path to custom fitness rules manifest",
-        ),
-        output_format: Literal["markdown", "json"] = typer.Option(
-            "markdown",
-            "--format",
-        ),
-        output: str | None = typer.Option(
-            None,
-            "--output",
-            help="write catalog output to a file",
-        ),
-    ) -> None:
-        _exit_with_handler_code(
-            cmd_fitness_catalog,
-            ctx=ctx,
-            manifest_path=manifest_path,
-            output_format=output_format,
-            output=output,
-        )
-
-    return fitness_app
-
-
 def _build_typer_checks_app() -> typer.Typer:
     """Build the Typer checks app with nested command routing."""
     checks_app = typer.Typer(
@@ -877,6 +679,32 @@ def _build_typer_checks_app() -> typer.Typer:
             verbose_output=verbose_output,
         )
 
+    @checks_app.command("catalog", help="generate fitness rule catalog")
+    def _checks_catalog(
+        ctx: typer.Context,
+        manifest_path: str | None = typer.Option(
+            None,
+            "--manifest-path",
+            help="optional path to custom fitness rules manifest",
+        ),
+        output_format: Literal["markdown", "json"] = typer.Option(
+            "markdown",
+            "--format",
+        ),
+        output: str | None = typer.Option(
+            None,
+            "--output",
+            help="write catalog output to a file",
+        ),
+    ) -> None:
+        _exit_with_handler_code(
+            cmd_checks_catalog,
+            ctx=ctx,
+            manifest_path=manifest_path,
+            output_format=output_format,
+            output=output,
+        )
+
     return checks_app
 
 
@@ -953,12 +781,6 @@ def build_typer_app() -> typer.Typer:
             allow_dirty=allow_dirty,
             verbose_output=verbose_output,
         )
-
-    app.add_typer(
-        _build_typer_fitness_app(),
-        name="fitness",
-        help="list and run fitness-function rules",
-    )
 
     app.add_typer(
         _build_typer_checks_app(),

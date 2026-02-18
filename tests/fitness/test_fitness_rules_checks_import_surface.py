@@ -72,3 +72,32 @@ def test_checker_allows_importing_allowed_top_level_names(
     )
 
     assert checker._collect_violations(tmp_path) == []
+
+
+def test_checker_flags_disallowed_top_level_imports_even_if_exported(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    checker = _load_checker_module(repo_root)
+
+    src_root = tmp_path / "src" / "engineeringagent"
+    src_root.mkdir(parents=True)
+    (src_root / "__init__.py").write_text("", encoding="utf-8")
+    (src_root / "bad.py").write_text(
+        "\n".join(
+            [
+                "from engineeringagent.checks import CONTRACT_VERSION",
+                "\n",
+                "def run() -> None:",
+                "    _ = CONTRACT_VERSION",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    violations = checker._collect_violations(tmp_path)
+    assert (
+        "src/engineeringagent/bad.py:1 imports disallowed name CONTRACT_VERSION from engineeringagent.checks"
+        in violations
+    )

@@ -95,7 +95,7 @@ def test_detects_forbidden_uvx_from_dot_in_checks_config(
             "checks": {
                 "fitness_validate": {
                     "type": "command",
-                    "command": "uvx --from . engineeringagent fitness run --format json",
+                    "command": "uvx --from . engineeringagent checks run --checks fitness --phase iteration_end",
                 }
             },
         },
@@ -139,7 +139,7 @@ def test_allows_uv_run_source_first_forms(tmp_path: Path, repo_root: Path) -> No
                 },
                 "fitness_validate": {
                     "type": "command",
-                    "command": "uv run python -m engineeringagent.cli fitness run --format json",
+                    "command": "uv run engineeringagent checks run --checks fitness --phase iteration_end",
                 },
             },
         },

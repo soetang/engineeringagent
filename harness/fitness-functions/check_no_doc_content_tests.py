@@ -4,12 +4,12 @@ import ast
 import posixpath
 from pathlib import Path
 
-from engineeringagent.checks import (
+from engineeringagent.checks import emit_result_envelope
+from engineeringagent.checks.fitness.contracts import (
     CONTRACT_VERSION,
     FitnessRuleResult,
     RuleSeverity,
     RuleStatus,
-    emit_result_envelope,
 )
 
 

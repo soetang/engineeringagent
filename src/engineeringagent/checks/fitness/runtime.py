@@ -12,7 +12,7 @@ from engineeringagent.changed_paths import (
 from engineeringagent.checks.fitness.adapters import execute_rule_definition
 from engineeringagent.checks.fitness.contracts import RuleStatus
 from engineeringagent.checks.fitness.registry import build_rule_catalog
-from engineeringagent.on_change_matcher import path_matches_any_glob
+from ..on_change_matcher import path_matches_any_glob
 from engineeringagent.specs import (
     HarnessCheckFitnessDefinition,
     HarnessCheckPhase,
@@ -133,7 +133,7 @@ def plan_fitness_checks(
 
 def run_planned_fitness_checks(
     request: RunPlannedFitnessChecksRequest,
-) -> tuple[bool, str | None, str]:
+) -> tuple[bool, str | None, str, dict[str, Any] | None]:
     """Execute planned fitness checks and return deterministic outcome."""
     planned = plan_fitness_checks(
         request.doc,
@@ -166,7 +166,16 @@ def run_planned_fitness_checks(
                         f"missing_rule_ids={missing}"
                     )
                 )
-                return False, entry.check_id, "\n".join(combined_output_parts).strip()
+                return (
+                    False,
+                    entry.check_id,
+                    "\n".join(combined_output_parts).strip(),
+                    {
+                        "kind": "selection_error",
+                        "message": f"missing fitness rule_ids: {missing}",
+                        "check_id": entry.check_id,
+                    },
+                )
 
         combined_output_parts.append(
             f"[check:{entry.check_id}] type=fitness {selection}"
@@ -183,6 +192,7 @@ def run_planned_fitness_checks(
         )
 
         has_failures = False
+        failed_rules: list[dict[str, object]] = []
         for definition in definitions:
             result = execute_rule_definition(definition, request.project_root)
             combined_output_parts.append(
@@ -193,12 +203,25 @@ def run_planned_fitness_checks(
             )
             if result.status in {RuleStatus.FAIL, RuleStatus.ERROR}:
                 has_failures = True
+                failed_rules.append(
+                    {
+                        "rule_id": str(result.rule_id),
+                        "remediation": str(definition.metadata.remediation),
+                        "violations": list(result.violations or ()),
+                        "details": result.details,
+                    }
+                )
 
         if has_failures:
             return (
                 False,
                 entry.check_id,
                 "\n".join(combined_output_parts).strip(),
+                {
+                    "kind": "fitness_failure",
+                    "check_id": entry.check_id,
+                    "failed_rules": failed_rules,
+                },
             )
 
-    return True, None, "\n".join(combined_output_parts).strip()
+    return True, None, "\n".join(combined_output_parts).strip(), None
