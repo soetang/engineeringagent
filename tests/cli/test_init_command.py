@@ -786,7 +786,6 @@ def test_init_renders_scaffold_from_template_files() -> None:
         "description: Build agent override for deterministic repository automation.\n"
         "mode: primary\n"
         'model: "${agent_model}"\n'
-        "variant: 'high'\n"
         "permission:\n"
         '  "*": allow\n'
         "  bash: allow\n"
