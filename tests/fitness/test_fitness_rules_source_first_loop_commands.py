@@ -150,12 +150,3 @@ def test_allows_uv_run_source_first_forms(tmp_path: Path, repo_root: Path) -> No
     assert proc.returncode == 0
     assert payload["status"] == "pass"
     assert payload["violations"] == []
-
-
-def test_repo_scoped_commands_are_policy_compliant(repo_root: Path) -> None:
-    """Pass when repository-scoped loop commands avoid uvx --from . self-invocation."""
-    proc, payload = _run_checker(repo_root, checker_path=_script_path(repo_root))
-
-    assert proc.returncode == 0
-    assert payload["status"] == "pass"
-    assert payload["violations"] == []

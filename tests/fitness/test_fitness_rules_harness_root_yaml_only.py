@@ -86,13 +86,3 @@ def test_passes_when_harness_root_contains_only_yaml_files(
     assert proc.returncode == 0
     assert payload["status"] == "pass"
     assert payload["violations"] == []
-
-
-def test_repository_harness_root_is_yaml_only(repo_root: Path) -> None:
-    """Pass for the current repository harness root contract."""
-
-    proc, payload = _run_checker(repo_root, checker_path=_script_path(repo_root))
-
-    assert proc.returncode == 0
-    assert payload["status"] == "pass"
-    assert payload["violations"] == []

@@ -79,17 +79,39 @@ def test_build_rule_catalog_returns_empty_when_manifest_is_missing(
     assert catalog == []
 
 
-def test_default_manifest_keeps_loop_boundary_as_error_command_rule(
-    repo_root: Path,
+def test_build_rule_catalog_parses_error_severity_and_command_tuple(
+    tmp_path: Path,
 ) -> None:
-    """Keep loop subprocess boundary wired as blocking command-adapter policy."""
-    catalog = build_rule_catalog(repo_root)
-    definition = next(
-        item
-        for item in catalog
-        if item.metadata.rule_id == "architecture.loop-subprocess-boundary"
+    """Parse error severity and preserve manifest command list ordering."""
+    manifest_path = tmp_path / "harness" / "fitness-functions" / "rules.yaml"
+    _write_manifest(
+        manifest_path,
+        [
+            {
+                "rule_id": "architecture.loop-subprocess-boundary",
+                "name": "Loop subprocess boundary",
+                "summary": "Prevent loop orchestration subprocess boundaries.",
+                "rationale": "Exercise error-severity parsing for command rules.",
+                "remediation": "Update rule declaration.",
+                "scope": "harness/fitness-functions",
+                "severity": "error",
+                "side_effect_free": True,
+                "adapter": "command",
+                "command": [
+                    "uv",
+                    "run",
+                    "python",
+                    "harness/fitness-functions/check_loop_subprocess_boundary.py",
+                ],
+            }
+        ],
     )
 
+    catalog = build_rule_catalog(tmp_path)
+    assert len(catalog) == 1
+    definition = catalog[0]
+
+    assert definition.metadata.rule_id == "architecture.loop-subprocess-boundary"
     assert definition.metadata.adapter == RuleAdapter.COMMAND
     assert definition.metadata.severity == RuleSeverity.ERROR
     assert definition.command == (

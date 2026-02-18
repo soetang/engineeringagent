@@ -8,8 +8,6 @@ from typing import cast
 
 import yaml
 
-from engineeringagent.checks.fitness.registry import build_rule_catalog
-
 
 def _script_path(repo_root: Path) -> Path:
     return (
@@ -63,25 +61,6 @@ def _write_scaffold_agents(project_root: Path, *, content: str) -> None:
     )
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
-
-
-def test_manifest_includes_scaffold_template_agents_doc_links_rule(
-    repo_root: Path,
-) -> None:
-    """Keep the scaffold-template AGENTS docs link rule declared in the default manifest."""
-    catalog = build_rule_catalog(repo_root)
-
-    definition = next(
-        item
-        for item in catalog
-        if item.metadata.rule_id == "architecture.scaffold-template-agents-doc-links"
-    )
-    assert definition.command == (
-        "uv",
-        "run",
-        "python",
-        "harness/fitness-functions/check_scaffold_template_agents_doc_links.py",
-    )
 
 
 def test_agents_link_checker_fails_when_scaffold_doc_is_missing_from_template(

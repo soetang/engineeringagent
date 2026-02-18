@@ -297,24 +297,26 @@ def test_non_ignorable_suppression_adapter_detects_file_level_and_multicode_noqa
 
 def test_execute_rule_definition_runs_loop_subprocess_boundary_adapter(
     tmp_path: Path,
-    repo_root: Path,
 ) -> None:
-    """Surface fail status from the migrated subprocess-boundary adapter."""
-    src_root = tmp_path / "src" / "engineeringagent"
-    src_root.mkdir(parents=True)
-    (src_root / "loop.py").write_text(
+    """Execute the command adapter without invoking semgrep-backed scripts."""
+    rule_script = tmp_path / "rule.py"
+    rule_script.write_text(
         "\n".join(
             [
-                "import subprocess",
-                "",
-                "def run() -> None:",
-                "    subprocess.run(['git', 'status'], check=False)",
+                "import json",
+                "import os",
+                "print(json.dumps({",
+                f"    'contract_version': '{CONTRACT_VERSION}',",
+                "    'rule_id': 'architecture.loop-subprocess-boundary',",
+                "    'status': 'fail',",
+                "    'severity': 'error',",
+                "    'summary': 'Detected subprocess invocation(s) outside allowlisted modules.',",
+                "    'violations': [f'cwd={os.getcwd()}'],",
+                "}))",
             ]
         ),
         encoding="utf-8",
     )
-
-    script = _fitness_script(repo_root, "check_loop_subprocess_boundary.py")
 
     definition = FitnessRuleDefinition(
         metadata=FitnessRuleMetadata(
@@ -335,7 +337,7 @@ def test_execute_rule_definition_runs_loop_subprocess_boundary_adapter(
         origin="custom:harness/fitness-functions/rules.yaml:rules[0]",
         command=(
             sys.executable,
-            str(script),
+            str(rule_script),
         ),
     )
 
@@ -343,10 +345,7 @@ def test_execute_rule_definition_runs_loop_subprocess_boundary_adapter(
 
     assert result.status == RuleStatus.FAIL
     assert result.severity == RuleSeverity.ERROR
-    assert any(
-        "src/engineeringagent/loop.py:4 uses subprocess.run" in violation
-        for violation in result.violations
-    )
+    assert result.violations == [f"cwd={tmp_path}"]
 
 
 def test_execute_rule_definition_runs_dependency_directionality_adapter(

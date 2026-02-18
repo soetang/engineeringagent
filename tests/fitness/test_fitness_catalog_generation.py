@@ -108,8 +108,52 @@ def test_fitness_catalog_json_generation(tmp_path: Path) -> None:
     ]
 
 
-def test_repo_fitness_catalog_json_contract(repo_root: Path) -> None:
-    payload = json.loads(render_fitness_catalog(repo_root, format="json"))
+def test_fitness_catalog_json_contract_is_sorted_and_complete(tmp_path: Path) -> None:
+    manifest_path = tmp_path / "harness" / "fitness-functions" / "rules.yaml"
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    manifest_path.write_text(
+        "\n".join(
+            [
+                'contract_version: "1.0"',
+                "rules:",
+                "  - rule_id: custom.z-last",
+                "    name: Custom z-last",
+                "    summary: Custom command rule z-last.",
+                "    rationale: Exercise contract fields.",
+                "    remediation: Update custom rules manifest.",
+                "    scope: docs",
+                "    severity: warning",
+                "    side_effect_free: true",
+                "    adapter: command",
+                "    command:",
+                "      - python",
+                "      - -c",
+                "      - print('{}')",
+                "  - rule_id: custom.a-first",
+                "    name: Custom a-first",
+                "    summary: Custom command rule a-first.",
+                "    rationale: Exercise contract fields.",
+                "    remediation: Update custom rules manifest.",
+                "    scope: docs",
+                "    severity: warning",
+                "    side_effect_free: true",
+                "    adapter: command",
+                "    command:",
+                "      - python",
+                "      - -c",
+                "      - print('{}')",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    payload = json.loads(
+        render_fitness_catalog(
+            tmp_path,
+            manifest_path=manifest_path.relative_to(tmp_path),
+            format="json",
+        )
+    )
 
     assert isinstance(payload, list)
     assert payload

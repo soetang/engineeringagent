@@ -165,12 +165,3 @@ def test_logging_path_locality_rule_passes_when_helpers_are_used_without_direct_
     assert proc.returncode == 0
     assert payload["status"] == "pass"
     assert _violations(payload) == []
-
-
-def test_logging_path_locality_rule_passes_for_repo(repo_root: Path) -> None:
-    """Enforce that the repository source tree stays compliant with the locality rule."""
-    proc, payload = _run_checker(repo_root, checker_path=_script_path(repo_root))
-
-    assert proc.returncode == 0
-    assert payload["status"] == "pass"
-    assert _violations(payload) == []

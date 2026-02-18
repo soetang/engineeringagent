@@ -8,8 +8,6 @@ from typing import cast
 
 import yaml
 
-from engineeringagent.checks.fitness.registry import build_rule_catalog
-
 
 def _script_path(repo_root: Path) -> Path:
     return (
@@ -67,23 +65,6 @@ def _write_md(
     path = project_root / relative_path
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
-
-
-def test_manifest_includes_docs_allowlist_policy_rule(repo_root: Path) -> None:
-    """Keep the docs allowlist policy rule declared in the default manifest."""
-    catalog = build_rule_catalog(repo_root)
-
-    definition = next(
-        item
-        for item in catalog
-        if item.metadata.rule_id == "architecture.docs-allowlist-policy"
-    )
-    assert definition.command == (
-        "uv",
-        "run",
-        "python",
-        "harness/fitness-functions/check_docs_allowlist_policy.py",
-    )
 
 
 def test_docs_allowlist_checker_fails_when_doc_missing_from_both_lists(

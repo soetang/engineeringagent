@@ -1,0 +1,120 @@
+id: FEAT-111
+title: Make tests/fitness hermetic and fast (no repo compliance assertions)
+type: test
+expected_commit_subject: 'test: make fitness tests hermetic and fast'
+status: done
+priority: high
+objective: 'Reduce default `uv run pytest -q` wall time by refactoring `tests/fitness/**`
+  to be hermetic (tmp fixtures only) and to stop asserting repository-wide compliance.
+  Standards enforcement remains the responsibility of fitness functions/gates, while
+  pytest focuses on verifying that the fitness-check code paths, result envelopes,
+  and diagnostics formatting behave correctly on minimal synthetic fixtures.
+
+  '
+context: "The slowest tests in the current suite are in `tests/fitness/**`, largely\
+  \ due to repeated semgrep subprocess startups (for the loop subprocess boundary\
+  \ rule) and a handful of tests that execute checkers against `repo_root` (full-repo\
+  \ scans) to assert \"passes for this repo\". That mixes two concerns:\n- pytest\
+  \ should prove code works (deterministic parsing/formatting/dispatch on small\n\
+  \  fixtures)\n- fitness functions/gates should enforce repo compliance (run against\
+  \ the real repo)\nThis feature makes all `tests/fitness/**` hermetic and removes\
+  \ repo compliance assertions from pytest, while still keeping coverage for behavior\
+  \ and contracts.\n"
+constraints:
+- Do not change production behavior of any harness fitness checker scripts (only test
+  refactors).
+- All tests under `tests/fitness/**` must operate on `tmp_path` project fixtures;
+  they must not run a checker with `project_root=repo_root` or otherwise scan the
+  real repository tree as the check target.
+- '`repo_root` may be used only to locate checker scripts/resources (e.g. `harness/fitness-functions/*.py`)
+  and must not be used as the project root for a scan.'
+- Semgrep-backed fitness checks may continue to use real semgrep in pytest, but tests
+  must consolidate scenarios so semgrep starts as few times as practical (avoid per-scenario
+  semgrep startups).
+- Remove repo compliance assertions from pytest (e.g. tests that assert a checker
+  passes when executed against `repo_root`). Repo compliance remains enforced via
+  gate profiles that execute the fitness scripts against the repository.
+- 'Fitness-function impact assessment: no fitness-function changes required; enforcement
+  remains in fitness scripts/gates outside pytest.'
+implementation_notes: "Approach\n\n1) Make `tests/fitness/**` hermetic\n\n- Replace\
+  \ any invocation patterns that scan the real repository as the checker target.\n\
+  \  Example anti-patterns include calling `_run_checker(repo_root, ...)` or equivalent.\n\
+  - Keep checker script paths pointing at the real scripts under `repo_root/harness/...`,\n\
+  \  but always execute them with `cwd=tmp_path` (a minimal synthetic project tree).\n\
+  \n2) Remove \"repo passes\" assertions\n\n- Delete or rewrite tests that assert\
+  \ rule status is PASS for the real repository.\n- Replace them with fixture-based\
+  \ tests that cover:\n  - stable rule_id emission\n  - deterministic pass/fail behavior\
+  \ on a minimal fixture\n  - deterministic diagnostics strings ordering/content\n\
+  - Ensure that gate profiles (precommit/loop_fast) continue to run the real fitness\n\
+  \  scripts against the real repo, so compliance is still enforced.\n\n3) Minimize\
+  \ semgrep startups in pytest\n\n- Consolidate `check_loop_subprocess_boundary.py`\
+  \ scenarios so the test module runs\n  semgrep at most once (or once per essential\
+  \ outcome) by writing multiple modules in\n  a single tmp fixture and asserting\
+  \ all expected violations from a single checker run.\n- Remove indirect semgrep\
+  \ invocations from generic adapter tests when redundant.\n  The command adapter\
+  \ should be tested with a fast deterministic script; semgrep-backed\n  scripts should\
+  \ be tested in their dedicated rule tests.\n"
+acceptance:
+- No test under `tests/fitness/**` executes a fitness checker against `repo_root`
+  as the scan target (all checker executions use `cwd=tmp_path` / fixture roots).
+- All repo compliance assertions (e.g. '*passes_for_repo*' tests) are removed from
+  `tests/fitness/**` and replaced with tmp fixture assertions that prove behavior/contract.
+- The semgrep-backed loop subprocess boundary tests are consolidated so they do not
+  pay semgrep startup per scenario (single consolidated FAIL scenario per module,
+  plus any minimal rule_id check if needed).
+- '`uv run pytest -q` passes.'
+- '`uv run pytest -q --durations=20` shows an ~8-12s reduction in overall wall time
+  on this repository compared to the current baseline, primarily by eliminating repeated
+  semgrep startups and repo-root scans from `tests/fitness/**`.'
+subtasks:
+- id: ST-001
+  title: Audit tests/fitness for repo-root scan targets and remove them
+  status: done
+  context: 'Identify tests in `tests/fitness/**` that pass `repo_root` as the check
+    target (directly or indirectly) and refactor them to execute against `tmp_path`
+    fixtures instead.
+
+    '
+  verification:
+  - uv run pytest -q tests/fitness
+- id: ST-002
+  title: Refactor repo-dependent catalog/manifest assertions to fixture-based checks
+  status: done
+  context: 'Replace tests that assert the real repository''s catalog/manifest contents
+    with tests that validate catalog/manifest parsing and rule registration behavior
+    using a minimal synthetic harness fixture written under `tmp_path`.
+
+    '
+  verification:
+  - uv run pytest -q tests/fitness
+- id: ST-003
+  title: Consolidate semgrep loop-subprocess-boundary scenarios to minimize startups
+  status: done
+  context: 'Update `tests/fitness/test_fitness_rules_loop_subprocess_boundary.py`
+    so multiple violation patterns are asserted from a single checker invocation (single
+    semgrep scan) on a single tmp fixture.
+
+    '
+  verification:
+  - uv run pytest -q tests/fitness/test_fitness_rules_loop_subprocess_boundary.py
+- id: ST-004
+  title: Remove semgrep-backed harness script usage from generic adapter tests
+  status: done
+  context: 'Ensure `tests/fitness/test_fitness_adapters.py` tests the command adapter
+    with a fast deterministic script and does not redundantly invoke semgrep-backed
+    checkers. Keep semgrep-backed behavior tested only in the dedicated rule test
+    module.
+
+    '
+  verification:
+  - uv run pytest -q tests/fitness/test_fitness_adapters.py
+- id: ST-005
+  title: Verify suite speed improvement with durations
+  status: done
+  context: 'Run the suite with durations and confirm that the slowest `tests/fitness/**`
+    entries are no longer dominated by repeated semgrep startups or repo-root scans.
+
+    '
+  verification:
+  - uv run pytest -q --durations=20
+updated_at: '2026-02-18T11:04:35Z'

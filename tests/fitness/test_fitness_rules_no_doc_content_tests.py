@@ -6,8 +6,6 @@ import sys
 from pathlib import Path
 from typing import cast
 
-from engineeringagent.checks.fitness.registry import build_rule_catalog
-
 
 def _script_path(repo_root: Path) -> Path:
     return repo_root / "harness" / "fitness-functions" / "check_no_doc_content_tests.py"
@@ -37,22 +35,6 @@ def _write_test_module(project_root: Path, *, relative_path: str, content: str) 
     path = project_root / relative_path
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
-
-
-def test_manifest_includes_no_doc_content_tests_rule(repo_root: Path) -> None:
-    """Ensure the rule is present in the catalog."""
-    catalog = build_rule_catalog(repo_root)
-    definition = next(
-        item
-        for item in catalog
-        if item.metadata.rule_id == "architecture.no-doc-content-tests"
-    )
-    assert definition.command == (
-        "uv",
-        "run",
-        "python",
-        "harness/fitness-functions/check_no_doc_content_tests.py",
-    )
 
 
 def test_checker_flags_wrapper_helper_calls_with_constant_doc_paths(

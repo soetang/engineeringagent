@@ -8,8 +8,6 @@ from typing import cast
 
 import yaml
 
-from engineeringagent.checks.fitness.registry import build_rule_catalog
-
 
 def _script_path(repo_root: Path) -> Path:
     return (
@@ -72,23 +70,6 @@ def _write_template_file(project_root: Path, *, name: str, content: str) -> None
     path = project_root / "src" / "engineeringagent" / "scaffold_templates" / name
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
-
-
-def test_manifest_includes_scaffold_docs_exact_sync_rule(repo_root: Path) -> None:
-    """Keep the exact-sync scaffold docs rule declared in the default manifest."""
-    catalog = build_rule_catalog(repo_root)
-
-    definition = next(
-        item
-        for item in catalog
-        if item.metadata.rule_id == "architecture.scaffold-docs-exact-sync"
-    )
-    assert definition.command == (
-        "uv",
-        "run",
-        "python",
-        "harness/fitness-functions/check_scaffold_docs_exact_sync.py",
-    )
 
 
 def test_exact_sync_checker_fails_when_docs_and_template_differ(

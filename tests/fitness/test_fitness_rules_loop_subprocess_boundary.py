@@ -37,28 +37,15 @@ def _run_checker(
     return proc, payload
 
 
-def test_loop_subprocess_boundary_checker_emits_expected_rule_id(
+def test_loop_subprocess_boundary_rule_reports_expected_violations_and_respects_allowlist(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Emit the stable rule id from the harness command adapter."""
-    _write_module(
-        tmp_path,
-        "src/engineeringagent/loop.py",
-        "def run() -> None:\n    return None\n",
-    )
+    """Report expected violations in one semgrep run.
 
-    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
-
-    assert proc.returncode == 0
-    assert payload["rule_id"] == "architecture.loop-subprocess-boundary"
-
-
-def test_loop_subprocess_boundary_rule_reports_multiple_subprocess_patterns(
-    tmp_path: Path,
-    repo_root: Path,
-) -> None:
-    """Fail when multiple non-allowlisted modules invoke subprocess patterns."""
+    This test writes multiple source modules into a single tmp fixture so the checker
+    pays semgrep startup cost once.
+    """
     _write_module(
         tmp_path,
         "src/engineeringagent/loop.py",
@@ -95,33 +82,6 @@ def test_loop_subprocess_boundary_rule_reports_multiple_subprocess_patterns(
             ]
         ),
     )
-
-    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
-    violations = payload["violations"]
-
-    assert proc.returncode == 0
-    assert payload["status"] == "fail"
-    assert isinstance(violations, list)
-    assert any(
-        "src/engineeringagent/loop.py:4 uses subprocess.run" in violation
-        for violation in violations
-    )
-    assert any(
-        "src/engineeringagent/process_runner.py:4 uses sp.run" in violation
-        for violation in violations
-    )
-    assert any(
-        "src/engineeringagent/from_import_runner.py:4 uses run_cmd(...) from subprocess"
-        in violation
-        for violation in violations
-    )
-
-
-def test_loop_subprocess_boundary_rule_allows_approved_command_boundary_modules(
-    tmp_path: Path,
-    repo_root: Path,
-) -> None:
-    """Pass when subprocess calls stay inside explicit allowlisted modules."""
     _write_module(
         tmp_path,
         "src/engineeringagent/gates.py",
@@ -136,7 +96,26 @@ def test_loop_subprocess_boundary_rule_allows_approved_command_boundary_modules(
     )
 
     proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+    violations = payload["violations"]
 
     assert proc.returncode == 0
-    assert payload["status"] == "pass"
-    assert payload["violations"] == []
+    assert payload["rule_id"] == "architecture.loop-subprocess-boundary"
+    assert payload["status"] == "fail"
+    assert isinstance(violations, list)
+    assert len(violations) == 3
+    assert violations == sorted(violations)
+    assert all(
+        "src/engineeringagent/gates.py:" not in violation for violation in violations
+    )
+
+    expected = [
+        ("src/engineeringagent/loop.py", ("subprocess.run",)),
+        ("src/engineeringagent/process_runner.py", ("sp.run",)),
+        ("src/engineeringagent/from_import_runner.py", ("from subprocess", "run_cmd")),
+    ]
+    for file_path, patterns in expected:
+        match = next((v for v in violations if file_path in v), None)
+        assert match is not None, f"Missing violation for {file_path}: {violations}"
+        assert any(p in match for p in patterns), (
+            f"Violation for {file_path} missing expected pattern {patterns}: {match}"
+        )
