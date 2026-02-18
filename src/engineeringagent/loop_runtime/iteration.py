@@ -8,7 +8,7 @@ from typing import Any, Callable, Iterable, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from engineeringagent.agents_defaults import DEFAULT_OPENCODE_AGENT
+from engineeringagent.agents import describe_action
 
 from .models import (
     CommandTiming,
@@ -169,13 +169,9 @@ def _timed_phase(
     return result
 
 
-def _default_implement_step_label() -> str:
-    return f"opencode run --agent {DEFAULT_OPENCODE_AGENT}"
-
-
 def _record_implement_timing(
     state: _PipelineState,
-    _iteration_inputs: FeatureIterationInputs,
+    iteration_inputs: FeatureIterationInputs,
     started_epoch_sec: int,
     ended_epoch_sec: int,
 ) -> None:
@@ -186,7 +182,11 @@ def _record_implement_timing(
     state.command_timings.append(
         CommandTiming(
             phase="implement",
-            command=_default_implement_step_label(),
+            command=describe_action(
+                iteration_inputs.project_root,
+                action="implement",
+                structured=False,
+            ),
             started_at=utc_iso_from_epoch_sec(started_epoch_sec),
             ended_at=utc_iso_from_epoch_sec(ended_epoch_sec),
             duration_sec=duration_sec,
@@ -694,7 +694,11 @@ def run_feature_iteration_pipeline(
         telemetry_inputs,
         git_head_resolver=dependencies.git_head_resolver,
     )
-    implement_step = _default_implement_step_label()
+    implement_step = describe_action(
+        iteration_inputs.project_root,
+        action="implement",
+        structured=False,
+    )
     archived_selection_path = (
         str(state.archived_path)
         if loaded_post_from_archive and state.archived_path is not None

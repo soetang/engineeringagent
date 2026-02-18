@@ -121,7 +121,7 @@ def test_choose_feature_with_selector_falls_back_when_opencode_missing(
 
     output = capsys.readouterr().out
     assert "Selector step: opencode run --agent engineeringagent" in output
-    assert "Selector fallback: opencode missing" in output
+    assert "Selector fallback: agent_missing" in output
     assert chosen_path == Path("docs/spec/features/FEAT-100.yaml")
     assert chosen_feature["id"] == "FEAT-100"
 
@@ -151,6 +151,31 @@ def test_choose_feature_with_selector_falls_back_on_parse_or_command_failure(
 
     output = capsys.readouterr().out
     assert "Selector step: opencode run --agent engineeringagent" in output
-    assert "Selector fallback: parse or command failure" in output
+    assert "Selector fallback: opencode_build" in output
     assert chosen_path == Path("docs/spec/features/FEAT-100.yaml")
     assert chosen_feature["id"] == "FEAT-100"
+
+
+def test_choose_feature_with_selector_logs_backend_agnostic_step_label(
+    monkeypatch: Any, capsys: Any
+) -> None:
+    pending = _pending_features()
+    monkeypatch.setattr(selection, "build_selector_prompt", lambda _: "prompt")
+    monkeypatch.setattr(
+        selection,
+        "describe_action",
+        lambda *_args, **_kwargs: "custom run selector",
+        raising=False,
+    )
+
+    def _run_agent(*_: Any, **__: Any) -> str:
+        raise FileNotFoundError("custom")
+
+    selection.choose_feature_with_selector(
+        Path("."),
+        pending,
+        run_agent_fn=_run_agent,
+    )
+
+    output = capsys.readouterr().out
+    assert "Selector step: custom run selector" in output

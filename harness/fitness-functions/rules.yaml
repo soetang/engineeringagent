@@ -71,6 +71,20 @@ rules:
       - run
       - python
       - harness/fitness-functions/check_agents_opencode_boundary.py
+  - rule_id: architecture.backend-literal-locality-budget
+    name: Backend literal locality budget
+    summary: Enforce a zero-budget backend literal locality boundary outside allowed packages.
+    rationale: Keeps backend-coupling tokens localized to backend-owned modules and checks adapters.
+    remediation: Remove backend-specific literals from core modules or move backend-specific behavior under engineeringagent.agents or engineeringagent.checks.
+    scope: src/engineeringagent excluding src/engineeringagent/agents/** and src/engineeringagent/checks/**
+    severity: error
+    side_effect_free: true
+    adapter: command
+    command:
+      - uv
+      - run
+      - python
+      - harness/fitness-functions/check_backend_literal_locality_budget.py
   - rule_id: architecture.markdown-locality-reference-coverage
     name: Markdown locality and reference coverage
     summary: Restrict markdown to approved paths and require non-doc markdown files

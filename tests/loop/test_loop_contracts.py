@@ -22,7 +22,6 @@ from engineeringagent.loop_runtime.models import (
     IterationTelemetryInputs,
 )
 from engineeringagent.loop_runtime.implement import (
-    _format_opencode_run_command,
     run_implement_step_from_inputs,
 )
 from engineeringagent.loop_runtime.run_context import (
@@ -229,9 +228,9 @@ def test_iteration_outcome_remains_exposed_on_facade() -> None:
 def test_loop_monkeypatch_seams_remain_available() -> None:
     seam_symbols = (
         "run_agent",
-        "run_permission_probe",
+        "preflight",
         "_require_clean_worktree",
-        "_run_opencode_permission_precheck",
+        "_run_backend_precheck",
         "_choose_feature_with_selector",
         "run_implement_step",
         "_run_feature_iteration",
@@ -241,7 +240,7 @@ def test_loop_monkeypatch_seams_remain_available() -> None:
         assert hasattr(loop_module, symbol)
 
 
-def test_run_implement_step_from_inputs_requires_opencode_when_available(
+def test_run_implement_step_from_inputs_requires_backend_binary_when_available(
     tmp_path: Path,
 ) -> None:
     inputs = ImplementStepInputs(
@@ -261,16 +260,29 @@ def test_run_implement_step_from_inputs_requires_opencode_when_available(
 
     assert result == (
         False,
-        "opencode_missing",
-        "[implement] opencode executable missing",
+        "agent_missing",
+        "[implement] backend executable missing",
     )
 
 
-def test_format_opencode_run_command_is_stable() -> None:
-    assert (
-        _format_opencode_run_command("engineeringagent")
-        == "opencode run --agent engineeringagent <prompt>"
+def test_run_implement_step_from_inputs_reraises_unexpected_errors(
+    tmp_path: Path,
+) -> None:
+    inputs = ImplementStepInputs(
+        project_root=tmp_path,
+        feature={"id": "FEAT-999"},
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-999.yaml",
+        hook_feedback=None,
+        verbose_output=False,
     )
+
+    with pytest.raises(RuntimeError, match="boom"):
+        run_implement_step_from_inputs(
+            inputs,
+            run_agent_fn=lambda *_args, **_kwargs: (_ for _ in ()).throw(
+                RuntimeError("boom")
+            ),
+        )
 
 
 def test_drop_completed_feature_from_snapshot_keeps_existing_paths(

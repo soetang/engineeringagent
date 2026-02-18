@@ -1,0 +1,102 @@
+id: FEAT-115
+title: Make core loop modules backend-agnostic via engineeringagent.agents helpers
+type: chore
+expected_commit_subject: 'chore: make core loop backend-agnostic'
+status: done
+priority: high
+objective: 'Remove backend-specific literals and defaults from core orchestration
+  modules so
+
+  the loop can switch agent backends without touching `loop.py` or `loop_runtime/**`.
+
+
+  The only modules allowed to mention backend-specific details are:
+
+  - `src/engineeringagent/agents/**`
+
+  - `src/engineeringagent/checks/**`
+
+  '
+context: "After FEAT-113/114, the repository has a backend registry and init writes\
+  \ the\nconfigured backend id. However, core loop runtime still hard-codes OpenCode\n\
+  step labels, gate ids, and permission/protocol detection.\n\nThis feature pushes\
+  \ those details behind small helper functions in\n`engineeringagent.agents`.\n\n\
+  Related specs and sequencing:\n\n- FEAT-112 introduces the backend-literal coupling\
+  \ budget that this feature\n  tightens to 0.\n- FEAT-113 introduces the backend\
+  \ registry and config-driven backend selection.\n- FEAT-114 removes backend-specific\
+  \ literals from init/CLI/scaffold paths.\n- FEAT-116 refactors the iteration pipeline\
+  \ into reports + observers; it overlaps\n  with this feature in `src/engineeringagent/loop_runtime/iteration.py`.\n"
+constraints:
+- 'Precondition: FEAT-112, FEAT-113, and FEAT-114 are done.'
+- 'Replace OpenCode-branded step labels in:
+
+  - `src/engineeringagent/loop_runtime/selection.py`
+
+  - `src/engineeringagent/loop_runtime/implement.py`
+
+  - `src/engineeringagent/loop_runtime/iteration.py`
+
+  with backend-agnostic labels derived from `engineeringagent.agents`.'
+- 'Remove the OpenCode-specific permission-precheck seam from `src/engineeringagent/loop.py`:
+  wire `LoopRun.services.run_permission_precheck` to a backend-selected helper in
+  `engineeringagent.agents`.'
+- 'Remove `DEFAULT_OPENCODE_AGENT` leakage outside agents: eliminate `src/engineeringagent/agents_defaults.py`
+  usage from core modules.'
+- Gate ids / failure labels may change, but must remain deterministic and tested.
+- 'Tighten the coupling budget: update `architecture.backend-literal-locality-budget`
+  baseline to 0 and ensure it passes.'
+implementation_notes: "Recommended helper API additions under `engineeringagent.agents`\
+  \ (normative)\n\n- `preflight(project_root: Path) -> bool`\n  - backend-selected\
+  \ pre-run checks (OpenCode uses permission probe; others no-op)\n- `describe_action(project_root:\
+  \ Path, *, action: str, structured: bool) -> str`\n  - returns a stable, backend-derived\
+  \ label for console/telemetry\n- `classify_backend_exception(exc: Exception) ->\
+  \ tuple[str, str]`\n  - maps backend failures into deterministic (failed_gate, message)\n\
+  \nThese helpers may be thin wrappers around backend implementations, but core loop\n\
+  code must not import backend modules or parse backend-specific output.\n"
+acceptance:
+- No backend-specific literal strings exist in `src/engineeringagent/**` outside `src/engineeringagent/agents/**`
+  and `src/engineeringagent/checks/**`.
+- The fitness rule `architecture.backend-literal-locality-budget` passes with baseline
+  set to 0.
+- Loop selection, implement, and iteration telemetry still produce deterministic output
+  and timings (updated expectations acceptable).
+- uv run pytest -q passes.
+subtasks:
+- id: ST-001
+  title: Add backend-agnostic helpers to engineeringagent.agents for loop usage
+  status: done
+  verification:
+  - uv run pytest -q tests/agents
+- id: ST-002
+  title: Refactor loop permission precheck wiring to use agents.preflight
+  status: done
+  verification:
+  - uv run pytest -q tests/loop
+- id: ST-003
+  title: Refactor selector step labeling to use agents helpers
+  status: done
+  verification:
+  - uv run pytest -q tests/loop/test_loop_selection.py
+- id: ST-004
+  title: Refactor implement step to remove backend-specific strings and gates
+  status: done
+  verification:
+  - uv run pytest -q tests/loop
+- id: ST-005
+  title: Refactor iteration telemetry implement-step labeling
+  status: done
+  verification:
+  - uv run pytest -q tests/loop/test_loop_runtime_iteration.py
+- id: ST-006
+  title: Remove or internalize DEFAULT_OPENCODE_AGENT constant usage from core
+  status: done
+  verification:
+  - uv run pytest -q
+- id: ST-007
+  title: Tighten backend-literal locality budget baseline to zero
+  status: done
+  verification:
+  - uv run python harness/fitness-functions/check_backend_literal_locality_budget.py
+  - uv run engineeringagent checks run --checks fitness --phase iteration_end
+  - uv run pytest -q
+updated_at: '2026-02-18T22:48:27Z'

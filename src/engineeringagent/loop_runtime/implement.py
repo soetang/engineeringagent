@@ -5,21 +5,19 @@ from __future__ import annotations
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable
+from typing import Callable
 
-from engineeringagent.agents import AgentBackendError
-from engineeringagent.agents.opencode_preflight import output_has_permission_rejection
+from engineeringagent.agents import (
+    AgentBackendError,
+    classify_backend_exception,
+    describe_action,
+)
 from engineeringagent.loop_runtime.models import ImplementStepInputs
-from engineeringagent.agents_defaults import DEFAULT_OPENCODE_AGENT
 from engineeringagent.progress import logging as progress_logging
 from engineeringagent.progress import paths as progress_paths
 from engineeringagent.prompts import (
     build_implementation_prompt,
 )
-
-
-def _format_opencode_run_command(agent: str) -> str:
-    return f"opencode run --agent {agent} <prompt>"
 
 
 def run_implement_step_from_inputs(
@@ -28,57 +26,70 @@ def run_implement_step_from_inputs(
     run_agent_fn: Callable[[Path, str], str],
 ) -> tuple[bool, str | None, str]:
     """Run implement logic while facade keeps public signature seams."""
-    return _run_default_opencode_implement(
+    return _run_implement(
         implement_inputs,
         run_agent_fn=run_agent_fn,
     )
 
 
-def _run_default_opencode_implement(
+def _run_implement(
     implement_inputs: ImplementStepInputs,
     *,
     run_agent_fn: Callable[[Path, str], str],
 ) -> tuple[bool, str | None, str]:
     prompt = _build_implement_prompt(implement_inputs)
-    command = _format_opencode_run_command(DEFAULT_OPENCODE_AGENT)
+    command = describe_action(
+        implement_inputs.project_root,
+        action="implement",
+        structured=False,
+    )
 
     _ensure_progress_artifacts(implement_inputs)
-    print(
-        f"Implement step: opencode run --agent {DEFAULT_OPENCODE_AGENT}",
-        flush=True,
-    )
+    print(f"Implement step: {command}", flush=True)
     try:
         output = run_agent_fn(implement_inputs.project_root, prompt)
-    except FileNotFoundError:
-        return (False, "opencode_missing", "[implement] opencode executable missing")
-    except subprocess.TimeoutExpired as exc:
-        del exc
-        command_output = (
-            f"[implement] command={command}\n"
-            "[implement] error=timeout\n"
-            "[implement] opencode timed out before producing output.\n"
-            "[implement] hint: interrupt stuck runs and investigate OpenCode credentials/config.\n"
-            "[implement] hint: for a non-mutating preview use `engineeringagent run --dry-run`.\n"
+    except (AgentBackendError, FileNotFoundError, subprocess.TimeoutExpired) as exc:
+        failed_gate, message = classify_backend_exception(exc)
+        command_output = _format_failed_implement_output(
+            command=command,
+            exc=exc,
+            message=message,
         )
-        return (False, "opencode_build", command_output)
-    except AgentBackendError as exc:
-        output = exc.output
-        command_output = (
-            f"[implement] command={command}\n"
-            f"[implement] returncode={exc.returncode if exc.returncode is not None else 1}\n"
-            f"{output}"
-        )
-        if output_has_permission_rejection(output):
-            return (False, "opencode_permission", command_output)
-        return (False, "opencode_build", command_output)
+        return (False, failed_gate, command_output)
 
     _print_agent_output(output, verbose_output=implement_inputs.verbose_output)
     command_output = (
         f"[implement] command={command}\n[implement] returncode=0\n{output}"
     )
-    if output_has_permission_rejection(output):
-        return (False, "opencode_permission", command_output)
     return (True, None, command_output)
+
+
+def _format_failed_implement_output(
+    *, command: str, exc: Exception, message: str
+) -> str:
+    if isinstance(exc, FileNotFoundError):
+        return message
+
+    if isinstance(exc, subprocess.TimeoutExpired):
+        return (
+            f"[implement] command={command}\n"
+            "[implement] error=timeout\n"
+            f"{message}.\n"
+            "[implement] hint: interrupt stuck runs and investigate backend credentials/config.\n"
+            "[implement] hint: for a non-mutating preview use `engineeringagent run --dry-run`.\n"
+        )
+
+    if isinstance(exc, AgentBackendError):
+        output = exc.output.strip()
+        details = output or message
+        returncode = exc.returncode if exc.returncode is not None else 1
+        return (
+            f"[implement] command={command}\n"
+            f"[implement] returncode={returncode}\n"
+            f"{details}"
+        )
+
+    return f"[implement] command={command}\n[implement] error={message}"
 
 
 def _build_implement_prompt(implement_inputs: ImplementStepInputs) -> str:
@@ -120,33 +131,3 @@ def _print_agent_output(output: str, *, verbose_output: bool) -> None:
         return
     if output:
         print(output, end="")
-
-
-def run_opencode_permission_precheck(
-    project_root: Path,
-    *,
-    run_permission_probe_fn: Callable[[Path], Any],
-    permission_remediation_hint: str,
-) -> bool:
-    """Run OpenCode permission precheck before entering the loop."""
-    print("Running pre-run OpenCode permission precheck.")
-    print(
-        "Hint: if OpenCode cannot proceed or appears stuck, interrupt and rerun after "
-        "fixing permissions. For a non-mutating preview, use `engineeringagent run --dry-run`."
-    )
-    print(
-        "Logs: "
-        f"{progress_paths.runs_jsonl_reference(project_root)} and "
-        f"{progress_paths.run_feature_log_template_reference(project_root)} "
-        "(written after each iteration)."
-    )
-    result = run_permission_probe_fn(project_root)
-    if result.ok:
-        print("OpenCode permission precheck passed.")
-        return True
-
-    print(f"Precondition failed: OpenCode permission precheck failed ({result.reason})")
-    if result.output:
-        print(result.output, end="" if result.output.endswith("\n") else "\n")
-    print(permission_remediation_hint)
-    return False

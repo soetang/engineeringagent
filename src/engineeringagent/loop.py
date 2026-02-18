@@ -10,12 +10,8 @@ from .git.client import (
     head_short as git_head,
     status_porcelain,
 )
-from .agents import run_agent
-from .agents.opencode_preflight import PERMISSION_REMEDIATION_HINT, run_permission_probe
-from .loop_runtime.implement import (
-    run_implement_step_from_inputs,
-    run_opencode_permission_precheck,
-)
+from .agents import preflight, run_agent
+from .loop_runtime.implement import run_implement_step_from_inputs
 from .process import run_shell_command
 from .loop_runtime.models import (
     FeatureIterationInputs,
@@ -77,14 +73,10 @@ def _print_run_all_no_work_message() -> None:
     print_summary(None, "no_work", None, None, "stop")
 
 
-def _run_opencode_permission_precheck(
+def _run_backend_precheck(
     project_root: Path,
 ) -> bool:
-    return run_opencode_permission_precheck(
-        project_root=project_root,
-        run_permission_probe_fn=run_permission_probe,
-        permission_remediation_hint=PERMISSION_REMEDIATION_HINT,
-    )
+    return preflight(project_root)
 
 
 def _choose_feature_with_selector(
@@ -524,7 +516,7 @@ def build_loop_run(config: RunConfig) -> LoopRun:
         emit_run_all_snapshot_feedback=_emit_run_all_snapshot_feedback,
         handle_dry_run=_handle_dry_run,
         enforce_worktree_precondition=_enforce_worktree_precondition,
-        run_permission_precheck=_run_opencode_permission_precheck,
+        run_permission_precheck=_run_backend_precheck,
         run_selected_feature_iterations=_run_selected_feature_iterations,
     )
     return LoopRun(config=config, services=services)

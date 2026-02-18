@@ -135,7 +135,7 @@ def _stub_opencode_start_agent(
 def _stub_permission_precheck(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         loop_module,
-        "_run_opencode_permission_precheck",
+        "_run_backend_precheck",
         lambda **_: True,
     )
 
@@ -1771,7 +1771,7 @@ def test_run_loop_archives_done_active_feature(
     )
     monkeypatch.setattr(
         loop_module,
-        "_run_opencode_permission_precheck",
+        "_run_backend_precheck",
         lambda **_: True,
     )
 
@@ -1964,7 +1964,7 @@ def test_run_loop_archived_done_without_completion_commit_fails(
     )
     monkeypatch.setattr(
         loop_module,
-        "_run_opencode_permission_precheck",
+        "_run_backend_precheck",
         lambda **_: True,
     )
 
@@ -2025,7 +2025,7 @@ def test_run_loop_all_selected_feature_moved_to_features_done_continues(
     monkeypatch.setattr(loop_module, "run_implement_step", fake_run_implement_step)
     monkeypatch.setattr(
         loop_module,
-        "_run_opencode_permission_precheck",
+        "_run_backend_precheck",
         lambda **_: True,
     )
 
@@ -2132,7 +2132,7 @@ def test_run_loop_archives_preexisting_done_target_after_pending_completes(
     monkeypatch.setattr(loop_module, "run_implement_step", fake_run_implement_step)
     monkeypatch.setattr(
         loop_module,
-        "_run_opencode_permission_precheck",
+        "_run_backend_precheck",
         lambda **_: True,
     )
     code = run_loop(
@@ -2641,7 +2641,7 @@ def test_commit_failure_feedback_still_injected_into_next_prompt(
     _patch_run_agent_with_fake(monkeypatch, fake_subprocess_run)
     monkeypatch.setattr(
         loop_module,
-        "_run_opencode_permission_precheck",
+        "_run_backend_precheck",
         lambda **_: True,
     )
 
@@ -2737,7 +2737,7 @@ def test_verification_failure_feedback_is_injected_into_next_prompt(
     _patch_run_agent_with_fake(monkeypatch, fake_subprocess_run)
     monkeypatch.setattr(
         loop_module,
-        "_run_opencode_permission_precheck",
+        "_run_backend_precheck",
         lambda **_: True,
     )
     monkeypatch.setattr(loop_module, "run_shell_command", fake_run_shell_command)
@@ -2822,7 +2822,7 @@ def test_gate_failure_feedback_includes_fitness_remediation_guidance(
     _patch_run_agent_with_fake(monkeypatch, fake_subprocess_run)
     monkeypatch.setattr(
         loop_module,
-        "_run_opencode_permission_precheck",
+        "_run_backend_precheck",
         lambda **_: True,
     )
 
@@ -2910,7 +2910,7 @@ def test_spec_validate_failure_feedback_round_trips_to_retry_prompt(
     _patch_run_agent_with_fake(monkeypatch, fake_subprocess_run)
     monkeypatch.setattr(
         loop_module,
-        "_run_opencode_permission_precheck",
+        "_run_backend_precheck",
         lambda **_: True,
     )
 
@@ -2990,7 +2990,7 @@ def test_non_validation_gate_failure_feedback_round_trips_to_retry_prompt(
     _patch_run_agent_with_fake(monkeypatch, fake_subprocess_run)
     monkeypatch.setattr(
         loop_module,
-        "_run_opencode_permission_precheck",
+        "_run_backend_precheck",
         lambda **_: True,
     )
 
@@ -3074,7 +3074,7 @@ def test_gate_failure_feedback_replaces_previous_feedback(
     _patch_run_agent_with_fake(monkeypatch, fake_subprocess_run)
     monkeypatch.setattr(
         loop_module,
-        "_run_opencode_permission_precheck",
+        "_run_backend_precheck",
         lambda **_: True,
     )
 
@@ -3190,7 +3190,7 @@ def test_verification_failure_feedback_replaces_previous_feedback(
     _patch_run_agent_with_fake(monkeypatch, fake_subprocess_run)
     monkeypatch.setattr(
         loop_module,
-        "_run_opencode_permission_precheck",
+        "_run_backend_precheck",
         lambda **_: True,
     )
     monkeypatch.setattr(loop_module, "run_shell_command", fake_run_shell_command)
@@ -3279,7 +3279,7 @@ def test_gate_failure_feedback_is_truncated_before_prompt_injection(
     _patch_run_agent_with_fake(monkeypatch, fake_subprocess_run)
     monkeypatch.setattr(
         loop_module,
-        "_run_opencode_permission_precheck",
+        "_run_backend_precheck",
         lambda **_: True,
     )
 

@@ -474,6 +474,15 @@ def test_iteration_pipeline_records_phase_timings(
         ]
     )
     monkeypatch.setattr(iteration_module.time, "time", lambda: next(times))
+    monkeypatch.setattr(
+        iteration_module,
+        "describe_action",
+        lambda _project_root, *, action, structured: (
+            "backend implement label"
+            if (action, structured) == ("implement", False)
+            else "unexpected"
+        ),
+    )
 
     captured: dict[str, Any] = {}
 
@@ -597,7 +606,7 @@ def test_iteration_pipeline_records_phase_timings(
     assert len(telemetry_inputs.command_timings) == 1
     implement_timing = telemetry_inputs.command_timings[0]
     assert implement_timing.phase == "implement"
-    assert implement_timing.command.startswith("opencode run --agent")
+    assert implement_timing.command == "backend implement label"
     assert implement_timing.started_at == "1970-01-01T00:16:43Z"
     assert implement_timing.ended_at == "1970-01-01T00:16:48Z"
     assert implement_timing.duration_sec == 5

@@ -5,8 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Callable, Sequence
 
-from engineeringagent.agents import AgentBackendError
-from engineeringagent.agents_defaults import DEFAULT_OPENCODE_AGENT
+from engineeringagent.agents import (
+    AgentBackendError,
+    classify_backend_exception,
+    describe_action,
+)
 from engineeringagent.prompts import build_selector_prompt
 from engineeringagent.specs import feature_sort_key
 
@@ -81,18 +84,14 @@ def choose_feature_with_selector(
         return pending[0]
 
     prompt = build_selector_prompt(pending)
-    print(f"Selector step: opencode run --agent {DEFAULT_OPENCODE_AGENT}")
+    step_label = describe_action(project_root, action="selector", structured=False)
+    print(f"Selector step: {step_label}")
     try:
         output = run_agent_fn(project_root, prompt)
-    except FileNotFoundError:
+    except (FileNotFoundError, AgentBackendError) as exc:
+        failed_gate, _message = classify_backend_exception(exc)
         fallback = deterministic_feature_choice_fn(pending)
-        print(f"Selector fallback: opencode missing; selected {fallback[1].get('id')}")
-        return fallback
-    except AgentBackendError:
-        fallback = deterministic_feature_choice_fn(pending)
-        print(
-            f"Selector fallback: parse or command failure; selected {fallback[1].get('id')}"
-        )
+        print(f"Selector fallback: {failed_gate}; selected {fallback[1].get('id')}")
         return fallback
 
     chosen_path = parse_selector_output_fn(output, pending)
@@ -103,7 +102,5 @@ def choose_feature_with_selector(
         return (chosen_path, chosen_feature)
 
     fallback = deterministic_feature_choice_fn(pending)
-    print(
-        f"Selector fallback: parse or command failure; selected {fallback[1].get('id')}"
-    )
+    print(f"Selector fallback: selector_parse; selected {fallback[1].get('id')}")
     return fallback

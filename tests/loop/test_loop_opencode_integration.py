@@ -204,7 +204,10 @@ def test_loop_runs_opencode_integration(
     def fake_run_agent(*_: Any, **__: Any) -> str:
         return "PERMISSION_OK\n"
 
-    monkeypatch.setattr(loop_module, "run_permission_probe", fake_run_permission_probe)
+    monkeypatch.setattr(
+        "engineeringagent.agents.helpers.run_permission_probe",
+        fake_run_permission_probe,
+    )
     monkeypatch.setattr(loop_module, "run_agent", fake_run_agent)
 
     project_root, feature_path = _make_project_root(tmp_path)
@@ -274,7 +277,10 @@ def test_loop_reports_permission_rejection_in_run_telemetry(
         precheck_calls.append(target_root)
         return PermissionProbeResult(ok=True, reason="ok", returncode=0, output="")
 
-    monkeypatch.setattr(loop_module, "run_permission_probe", fake_run_permission_probe)
+    monkeypatch.setattr(
+        "engineeringagent.agents.helpers.run_permission_probe",
+        fake_run_permission_probe,
+    )
     monkeypatch.setattr(loop_module, "run_agent", fake_run_agent)
 
     code = run_loop(
@@ -337,7 +343,10 @@ def test_run_loop_creates_progress_artifacts_before_implement_invocation(
             ),
         )
 
-    monkeypatch.setattr(loop_module, "run_permission_probe", fake_run_permission_probe)
+    monkeypatch.setattr(
+        "engineeringagent.agents.helpers.run_permission_probe",
+        fake_run_permission_probe,
+    )
     monkeypatch.setattr(loop_module, "run_agent", fake_run_agent)
 
     code = run_loop(
@@ -371,7 +380,10 @@ def test_run_loop_permission_precheck_applies_only_to_default_implement_mode(
             output="permission requested for bash command git status --short (auto-reject)",
         )
 
-    monkeypatch.setattr(loop_module, "run_permission_probe", fake_run_permission_probe)
+    monkeypatch.setattr(
+        "engineeringagent.agents.helpers.run_permission_probe",
+        fake_run_permission_probe,
+    )
 
     default_mode_code = run_loop(
         project_root=project_root,
@@ -402,7 +414,10 @@ def test_run_loop_exits_before_selection_when_permission_precheck_fails(
             output="permission requested for bash command git status --short (auto-reject)",
         )
 
-    monkeypatch.setattr(loop_module, "run_permission_probe", fake_run_permission_probe)
+    monkeypatch.setattr(
+        "engineeringagent.agents.helpers.run_permission_probe",
+        fake_run_permission_probe,
+    )
 
     code = run_loop(
         project_root=project_root,
@@ -439,7 +454,9 @@ def test_run_loop_skips_permission_precheck_in_dry_run(
         precheck_called = True
         raise AssertionError("permission precheck should be skipped")
 
-    monkeypatch.setattr(loop_module, "run_permission_probe", fail_if_prechecked)
+    monkeypatch.setattr(
+        "engineeringagent.agents.helpers.run_permission_probe", fail_if_prechecked
+    )
 
     code = run_loop(
         project_root=project_root,
@@ -473,7 +490,10 @@ def test_run_loop_permission_precheck_failure_prints_remediation_hint(
             output="",
         )
 
-    monkeypatch.setattr(loop_module, "run_permission_probe", fake_run_permission_probe)
+    monkeypatch.setattr(
+        "engineeringagent.agents.helpers.run_permission_probe",
+        fake_run_permission_probe,
+    )
 
     code = run_loop(
         project_root=project_root,
@@ -524,7 +544,10 @@ def test_run_loop_permission_precheck_pass_prints_bypass_hint_and_log_locations(
             ),
         )
 
-    monkeypatch.setattr(loop_module, "run_permission_probe", fake_run_permission_probe)
+    monkeypatch.setattr(
+        "engineeringagent.agents.helpers.run_permission_probe",
+        fake_run_permission_probe,
+    )
     monkeypatch.setattr(loop_module, "run_agent", fake_run_agent)
 
     code = run_loop(
@@ -614,7 +637,10 @@ def test_gate_failure_feedback_round_trips_to_retry_prompt_integration(
         return PermissionProbeResult(ok=True, reason="ok", returncode=0, output="")
 
     monkeypatch.setattr(loop_module, "run_agent", fake_start_agent)
-    monkeypatch.setattr(loop_module, "run_permission_probe", fake_run_permission_probe)
+    monkeypatch.setattr(
+        "engineeringagent.agents.helpers.run_permission_probe",
+        fake_run_permission_probe,
+    )
 
     code = run_loop(
         project_root=project_root,
@@ -720,7 +746,10 @@ def test_loop_archived_done_requires_same_iteration_completion_commit(
         )
         return "ok\n"
 
-    monkeypatch.setattr(loop_module, "run_permission_probe", fake_run_permission_probe)
+    monkeypatch.setattr(
+        "engineeringagent.agents.helpers.run_permission_probe",
+        fake_run_permission_probe,
+    )
     monkeypatch.setattr(loop_module, "run_agent", fake_run_agent)
 
     code = run_loop(
