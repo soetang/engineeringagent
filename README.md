@@ -87,6 +87,20 @@ uv run engineeringagent validate
 uv run engineeringagent run --all --dry-run
 ```
 
+### Verification (contributors)
+
+- Run the full `iteration_end` check set declared in `harness/checks.yaml`:
+
+  ```bash
+  uv run engineeringagent checks run --phase iteration_end
+  ```
+
+- Run pylint directly (same flags as the repo gate):
+
+  ```bash
+  uv run pylint --score=n --reports=n src/engineeringagent tests harness
+  ```
+
 ## Bootstrapping with `init`
 
 If you want to use the agent in one of your repositories, you can scaffold a baseline harness with:

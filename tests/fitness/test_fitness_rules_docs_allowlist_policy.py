@@ -124,7 +124,7 @@ def test_docs_allowlist_checker_passes_when_all_docs_are_classified(
 
     assert proc.returncode == 0
     assert result["status"] == "pass"
-    assert _violations(result) == []
+    assert not _violations(result)
 
 
 def test_docs_allowlist_checker_passes_with_empty_human_docs_flow_list(
@@ -142,4 +142,4 @@ def test_docs_allowlist_checker_passes_with_empty_human_docs_flow_list(
     proc, result = _run_checker(tmp_path, checker_path=_script_path(repo_root))
     assert proc.returncode == 0
     assert result["status"] == "pass"
-    assert _violations(result) == []
+    assert not _violations(result)

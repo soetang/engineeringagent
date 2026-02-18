@@ -8,7 +8,7 @@ from typing import Any, cast
 import pytest
 from pydantic import BaseModel, create_model
 
-import engineeringagent.agents as agents
+from engineeringagent import agents
 
 
 @dataclass(frozen=True)
@@ -17,6 +17,7 @@ class _StubBackend:
 
     @property
     def name(self) -> str:
+        """Return the backend name."""
         return self._name
 
     def run(
@@ -26,6 +27,7 @@ class _StubBackend:
         *,
         session_id: str | None = None,
     ) -> agents.AgentBackendRunResult:
+        """Return a deterministic echo result."""
         assert project_root.exists()
         assert session_id is None
         return agents.AgentBackendRunResult(text=f"echo:{prompt}")
@@ -39,6 +41,7 @@ class _SequencedBackend:
 
     @property
     def name(self) -> str:
+        """Return the backend name."""
         return "sequenced"
 
     def run(
@@ -48,6 +51,7 @@ class _SequencedBackend:
         *,
         session_id: str | None = None,
     ) -> agents.AgentBackendRunResult:
+        """Return the next queued result and record inputs."""
         assert project_root.exists()
         self.prompts.append(prompt)
         self.session_ids.append(session_id)
@@ -76,7 +80,7 @@ def test_run_agent_rejects_negative_max_validation_retries(tmp_path: Path) -> No
 def test_run_agent_structured_output_validates_and_returns_model(
     tmp_path: Path,
 ) -> None:
-    class Payload(BaseModel):
+    class _Payload(BaseModel):
         value: int
 
     backend = _SequencedBackend(
@@ -87,14 +91,14 @@ def test_run_agent_structured_output_validates_and_returns_model(
             ),
         ]
     )
-    parsed = agents.run_agent(tmp_path, "hi", backend=backend, output_type=Payload)
+    parsed = agents.run_agent(tmp_path, "hi", backend=backend, output_type=_Payload)
     assert parsed.value == 3
 
 
 def test_run_agent_structured_output_retries_in_same_session_on_invalid_json(
     tmp_path: Path,
 ) -> None:
-    class Payload(BaseModel):
+    class _Payload(BaseModel):
         ok: bool
 
     backend = _SequencedBackend(
@@ -108,7 +112,7 @@ def test_run_agent_structured_output_retries_in_same_session_on_invalid_json(
         tmp_path,
         "hi",
         backend=backend,
-        output_type=Payload,
+        output_type=_Payload,
         max_validation_retries=1,
     )
     assert parsed.ok is True
@@ -117,7 +121,7 @@ def test_run_agent_structured_output_retries_in_same_session_on_invalid_json(
 
 
 def test_run_agent_structured_output_retries_on_schema_mismatch(tmp_path: Path) -> None:
-    class Payload(BaseModel):
+    class _Payload(BaseModel):
         value: int
 
     backend = _SequencedBackend(
@@ -131,7 +135,7 @@ def test_run_agent_structured_output_retries_on_schema_mismatch(tmp_path: Path) 
         tmp_path,
         "hi",
         backend=backend,
-        output_type=Payload,
+        output_type=_Payload,
         max_validation_retries=1,
     )
     assert parsed.value == 1
@@ -141,7 +145,7 @@ def test_run_agent_structured_output_retries_on_schema_mismatch(tmp_path: Path) 
 def test_run_agent_structured_output_raises_typed_error_after_retries(
     tmp_path: Path,
 ) -> None:
-    class Payload(BaseModel):
+    class _Payload(BaseModel):
         value: int
 
     backend = _SequencedBackend(
@@ -156,7 +160,7 @@ def test_run_agent_structured_output_raises_typed_error_after_retries(
             tmp_path,
             "hi",
             backend=backend,
-            output_type=Payload,
+            output_type=_Payload,
             max_validation_retries=1,
         )
     err = excinfo.value
@@ -171,7 +175,7 @@ def test_run_agent_structured_retry_prompt_truncates_large_validation_error(
     # Generate a large number of distinct validation errors so that the
     # deterministic retry prompt must truncate the error summary.
     create_model_any = cast(Any, create_model)
-    Payload = create_model_any(
+    payload_model = create_model_any(
         "Payload",
         **{f"f{i}": (int, ...) for i in range(250)},
     )
@@ -190,7 +194,7 @@ def test_run_agent_structured_retry_prompt_truncates_large_validation_error(
         tmp_path,
         "hi",
         backend=backend,
-        output_type=Payload,
+        output_type=payload_model,
         max_validation_retries=1,
     )
     assert getattr(parsed, "f0") == 1
@@ -206,7 +210,7 @@ def test_run_agent_structured_retry_prompt_truncates_large_validation_error(
 
 
 def test_run_agent_structured_prompts_use_deterministic_wrapper(tmp_path: Path) -> None:
-    class Payload(BaseModel):
+    class _Payload(BaseModel):
         value: int
 
     backend = _SequencedBackend(
@@ -216,7 +220,7 @@ def test_run_agent_structured_prompts_use_deterministic_wrapper(tmp_path: Path) 
     )
 
     parsed = agents.run_agent(
-        tmp_path, "do the thing", backend=backend, output_type=Payload
+        tmp_path, "do the thing", backend=backend, output_type=_Payload
     )
     assert parsed.value == 1
 
@@ -231,7 +235,7 @@ def test_run_agent_structured_prompts_use_deterministic_wrapper(tmp_path: Path) 
 def test_run_agent_validation_error_truncates_last_text_when_huge(
     tmp_path: Path,
 ) -> None:
-    class Payload(BaseModel):
+    class _Payload(BaseModel):
         value: int
 
     huge = "x" * 2100
@@ -247,7 +251,7 @@ def test_run_agent_validation_error_truncates_last_text_when_huge(
             tmp_path,
             "hi",
             backend=backend,
-            output_type=Payload,
+            output_type=_Payload,
             max_validation_retries=1,
         )
     err = excinfo.value

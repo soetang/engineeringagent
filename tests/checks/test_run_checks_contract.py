@@ -6,6 +6,15 @@ import pytest
 
 from pydantic import BaseModel
 
+from engineeringagent.checks import run_checks
+from engineeringagent.checks.api import (
+    ChecksRunResult,
+    _GroupRunResult,
+    _call_collect_changed_paths,
+    run_checks as run_checks_impl,
+)
+from engineeringagent.specs import HarnessCheckPhase
+
 
 def _write_checks_yaml(tmp_path: Path, content: str) -> Path:
     checks_path = tmp_path / "harness" / "checks.yaml"
@@ -15,8 +24,6 @@ def _write_checks_yaml(tmp_path: Path, content: str) -> Path:
 
 
 def test_run_checks_defaults_to_commands_and_fitness(tmp_path: Path) -> None:
-    from engineeringagent.checks import run_checks
-
     _write_checks_yaml(
         tmp_path,
         "\n".join(
@@ -40,10 +47,6 @@ def test_run_checks_group_order_is_deterministic(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from engineeringagent.checks.api import ChecksRunResult
-    from engineeringagent.checks.api import _GroupRunResult
-    from engineeringagent.checks.api import run_checks as run_checks_impl
-
     _write_checks_yaml(
         tmp_path,
         "\n".join(
@@ -91,8 +94,6 @@ def test_run_checks_group_order_is_deterministic(
 def test_call_collect_changed_paths_falls_back_when_kwargs_unexpected(
     tmp_path: Path,
 ) -> None:
-    from engineeringagent.checks.api import _call_collect_changed_paths
-
     calls: list[tuple[str, Path]] = []
 
     def _collector(project_root: Path) -> object:
@@ -112,10 +113,8 @@ def test_call_collect_changed_paths_falls_back_when_kwargs_unexpected(
 def test_call_collect_changed_paths_does_not_swallow_internal_type_errors(
     tmp_path: Path,
 ) -> None:
-    from engineeringagent.checks.api import _call_collect_changed_paths
-
     def _collector(
-        project_root: Path,
+        _project_root: Path,
         *,
         base: str | None = None,
         head: str | None = None,
@@ -135,8 +134,6 @@ def test_call_collect_changed_paths_does_not_swallow_internal_type_errors(
 
 
 def test_run_checks_check_id_filters_to_single_check(tmp_path: Path) -> None:
-    from engineeringagent.checks import run_checks
-
     _write_checks_yaml(
         tmp_path,
         "\n".join(
@@ -166,8 +163,6 @@ def test_run_checks_check_id_filters_to_single_check(tmp_path: Path) -> None:
 
 
 def test_run_checks_unknown_check_id_is_deterministic_failure(tmp_path: Path) -> None:
-    from engineeringagent.checks import run_checks
-
     _write_checks_yaml(
         tmp_path,
         "\n".join(
@@ -194,29 +189,21 @@ def test_run_checks_unknown_check_id_is_deterministic_failure(tmp_path: Path) ->
 
 
 def test_run_checks_reviewers_requires_feature_path(tmp_path: Path) -> None:
-    from engineeringagent.checks import run_checks
-
     with pytest.raises(ValueError, match="feature_path"):
         run_checks(tmp_path, phase="iteration_end", checks=["reviewers"])
 
 
 def test_run_checks_invalid_group_is_a_value_error(tmp_path: Path) -> None:
-    from engineeringagent.checks import run_checks
-
     with pytest.raises(ValueError, match="unknown checks groups"):
         run_checks(tmp_path, phase="iteration_end", checks=["nope"])
 
 
 def test_run_checks_invalid_phase_is_a_value_error(tmp_path: Path) -> None:
-    from engineeringagent.checks import run_checks
-
     with pytest.raises(ValueError, match="unknown phase"):
         run_checks(tmp_path, phase="not-a-phase", checks=[])
 
 
 def test_run_checks_missing_checks_yaml_is_config_failure(tmp_path: Path) -> None:
-    from engineeringagent.checks import run_checks
-
     result = run_checks(tmp_path, phase="iteration_end", checks=["commands"])
     assert not result.ok
     assert result.failed_group == "config"
@@ -226,8 +213,6 @@ def test_run_checks_missing_checks_yaml_is_config_failure(tmp_path: Path) -> Non
 def test_run_checks_check_id_without_harness_doc_fails_deterministically(
     tmp_path: Path,
 ) -> None:
-    from engineeringagent.checks import run_checks
-
     result = run_checks(
         tmp_path,
         phase="iteration_end",
@@ -242,8 +227,6 @@ def test_run_checks_check_id_without_harness_doc_fails_deterministically(
 def test_run_checks_reviewers_returns_not_implemented_result(
     tmp_path: Path,
 ) -> None:
-    from engineeringagent.checks import run_checks
-
     prompt_path = tmp_path / "harness" / "reviewers" / "prompts" / "doc_review.md"
     prompt_path.parent.mkdir(parents=True, exist_ok=True)
     prompt_path.write_text("Please review. $responseformat\n", encoding="utf-8")
@@ -305,8 +288,6 @@ def test_run_checks_reviewers_returns_not_implemented_result(
 def test_run_checks_reviewers_request_changes_fails_deterministically(
     tmp_path: Path,
 ) -> None:
-    from engineeringagent.checks import run_checks
-
     prompt_path = tmp_path / "harness" / "reviewers" / "prompts" / "doc_review.md"
     prompt_path.parent.mkdir(parents=True, exist_ok=True)
     prompt_path.write_text("Please review. $responseformat\n", encoding="utf-8")
@@ -363,8 +344,6 @@ def test_run_checks_reviewers_request_changes_fails_deterministically(
 
 
 def test_run_checks_check_id_must_match_enabled_groups(tmp_path: Path) -> None:
-    from engineeringagent.checks import run_checks
-
     _write_checks_yaml(
         tmp_path,
         "\n".join(
@@ -391,8 +370,6 @@ def test_run_checks_check_id_must_match_enabled_groups(tmp_path: Path) -> None:
 
 
 def test_run_checks_validate_group_executes(tmp_path: Path) -> None:
-    from engineeringagent.checks import run_checks
-
     # Validate-group contract: it should be runnable independent of the full repo.
     (tmp_path / "docs" / "spec" / "features").mkdir(parents=True, exist_ok=True)
     (tmp_path / "docs" / "spec" / "features" / ".gitkeep").write_text(
@@ -410,9 +387,6 @@ def test_run_checks_validate_group_executes(tmp_path: Path) -> None:
 
 
 def test_run_checks_accepts_harness_phase_enum(tmp_path: Path) -> None:
-    from engineeringagent.checks import run_checks
-    from engineeringagent.specs import HarnessCheckPhase
-
     _write_checks_yaml(
         tmp_path,
         "\n".join(

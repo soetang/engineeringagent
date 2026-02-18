@@ -85,4 +85,4 @@ def test_passes_when_harness_root_contains_only_yaml_files(
 
     assert proc.returncode == 0
     assert payload["status"] == "pass"
-    assert payload["violations"] == []
+    assert not payload["violations"]

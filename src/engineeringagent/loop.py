@@ -486,6 +486,12 @@ def _run_selected_feature_iterations(
 
 
 class RunConfigOptions(NamedTuple):
+    """Scalar CLI options used to build a typed `RunConfig`.
+
+    This is intentionally a small, immutable container so the CLI can collect
+    flags/options without threading a full `RunConfig` through Typer parsing.
+    """
+
     dry_run: bool
     run_all: bool = False
     max_iterations: int = 50

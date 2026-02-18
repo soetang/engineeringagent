@@ -3,10 +3,35 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Callable, TypedDict, cast
 
-from pydantic import BaseModel, ConfigDict
+import yaml
+
+from pydantic import BaseModel, ConfigDict, ValidationError
 from typing_extensions import Unpack
 
-from engineeringagent.changed_paths import ChangedPathsResult
+from engineeringagent.changed_paths import ChangedPathsResult, collect_changed_paths
+from engineeringagent.opencode.client import run_shell_command
+from engineeringagent.checks.commands.runtime import (
+    RunPlannedCommandChecksRequest,
+    run_planned_command_checks,
+)
+from engineeringagent.checks.fitness.runtime import (
+    RunPlannedFitnessChecksRequest,
+    run_planned_fitness_checks,
+)
+from engineeringagent.checks.reviewers.runtime import (
+    RunPlannedReviewerChecksRequest,
+    run_planned_reviewer_checks,
+)
+from engineeringagent.checks.validate import runtime as validate_runtime
+from engineeringagent.specs import (
+    HarnessCheckCommandDefinition,
+    HarnessCheckFitnessDefinition,
+    HarnessCheckPhase,
+    HarnessCheckReviewerDefinition,
+    HarnessChecksDocument,
+    checks_contract_issues,
+    load_yaml,
+)
 
 
 _CHECK_GROUP_VALIDATE = "validate"
@@ -68,8 +93,6 @@ def _failure_result(
 def _command_for_check_id(doc: Any, check_id: str | None) -> str:
     if not check_id:
         return "<unknown>"
-
-    from engineeringagent.specs import HarnessCheckCommandDefinition
 
     check = getattr(doc, "checks", {}).get(check_id)
     if isinstance(check, HarnessCheckCommandDefinition):
@@ -152,8 +175,6 @@ def _coerce_project_root(project_root: str | Path) -> Path:
 
 
 def _coerce_phase(phase: Any) -> Any:
-    from engineeringagent.specs import HarnessCheckPhase
-
     if isinstance(phase, HarnessCheckPhase):
         return phase
     raw = str(phase or "").strip()
@@ -205,15 +226,9 @@ def _load_harness_checks_doc(project_root: Path) -> tuple[Any | None, str | None
         )
 
     try:
-        from engineeringagent.specs import (
-            HarnessChecksDocument,
-            checks_contract_issues,
-            load_yaml,
-        )
-
         payload = load_yaml(checks_path)
         issues = checks_contract_issues(payload, checks_path)
-    except Exception as exc:  # noqa: BLE001
+    except (OSError, ValueError, yaml.YAMLError) as exc:
         return None, f"checks config error: failed to load harness/checks.yaml: {exc}"
     if issues:
         rendered = "\n".join(f"- {issue.path}: {issue.message}" for issue in issues)
@@ -224,7 +239,7 @@ def _load_harness_checks_doc(project_root: Path) -> tuple[Any | None, str | None
 
     try:
         doc = HarnessChecksDocument.model_validate(payload)
-    except Exception as exc:  # noqa: BLE001
+    except ValidationError as exc:
         return (
             None,
             f"checks config error: failed to validate harness/checks.yaml: {exc}",
@@ -234,12 +249,6 @@ def _load_harness_checks_doc(project_root: Path) -> tuple[Any | None, str | None
 
 
 def _resolve_check_group_for_id(doc: Any, check_id: str) -> str | None:
-    from engineeringagent.specs import (
-        HarnessCheckCommandDefinition,
-        HarnessCheckFitnessDefinition,
-        HarnessCheckReviewerDefinition,
-    )
-
     check = getattr(doc, "checks", {}).get(check_id)
     if isinstance(check, HarnessCheckCommandDefinition):
         return _CHECK_GROUP_COMMANDS
@@ -319,9 +328,7 @@ def _apply_check_id_selection(
 
 
 def _run_validate_group(project_root: Path, *, schema_only: bool) -> _GroupRunResult:
-    from engineeringagent.checks.validate.runtime import run_validate
-
-    messages = run_validate(project_root, schema_only=schema_only)
+    messages = validate_runtime.run_validate(project_root, schema_only=schema_only)
     if not messages:
         return _GroupRunResult(ok=True, failed_check_id=None, output="")
     return _GroupRunResult(
@@ -340,13 +347,6 @@ def _run_commands_group(
     doc: Any,
     request: _RunChecksRequest,
 ) -> _GroupRunResult:
-    from engineeringagent.changed_paths import collect_changed_paths
-    from engineeringagent.opencode.client import run_shell_command
-
-    from engineeringagent.checks.commands.runtime import (
-        RunPlannedCommandChecksRequest,
-        run_planned_command_checks,
-    )
 
     collect_changed_paths_fn = request.collect_changed_paths_fn or collect_changed_paths
     changed_paths = cast(
@@ -392,12 +392,6 @@ def _run_fitness_group(
     doc: Any,
     request: _RunChecksRequest,
 ) -> _GroupRunResult:
-    from engineeringagent.changed_paths import collect_changed_paths
-
-    from engineeringagent.checks.fitness.runtime import (
-        RunPlannedFitnessChecksRequest,
-        run_planned_fitness_checks,
-    )
 
     collect_changed_paths_fn = request.collect_changed_paths_fn or collect_changed_paths
     changed_paths = cast(
@@ -430,13 +424,6 @@ def _run_reviewers_group(
     doc: Any,
     request: _RunChecksRequest,
 ) -> _GroupRunResult:
-    from engineeringagent.changed_paths import collect_changed_paths
-    from engineeringagent.specs import load_yaml
-
-    from engineeringagent.checks.reviewers.runtime import (
-        RunPlannedReviewerChecksRequest,
-        run_planned_reviewer_checks,
-    )
 
     if request.feature_path is None:
         return _GroupRunResult(
@@ -456,7 +443,7 @@ def _run_reviewers_group(
 
     try:
         feature_payload = load_yaml(request.feature_path)
-    except Exception as exc:  # noqa: BLE001
+    except (OSError, ValueError, yaml.YAMLError) as exc:
         return _GroupRunResult(
             ok=False,
             failed_check_id=None,

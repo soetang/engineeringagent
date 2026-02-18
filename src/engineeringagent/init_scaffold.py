@@ -183,6 +183,7 @@ def build_baseline_scaffold_manifest(
     Returns:
         Mapping of relative file paths to scaffolded file contents.
     """
+    del include_reviewers
     if profile not in _SUPPORTED_SCAFFOLD_PROFILES:
         raise ValueError(f"unsupported scaffold profile: {profile}")
 
@@ -339,6 +340,8 @@ def build_init_scaffold_manifest(
 
 
 class BaselineScaffoldOptions(NamedTuple):
+    """Options controlling `engineeringagent init` scaffold generation."""
+
     force: bool = False
     docs_dir: str = "docs"
     profile: str = "core"

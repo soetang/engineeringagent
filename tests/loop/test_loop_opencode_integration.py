@@ -46,6 +46,7 @@ def run_loop(
     allow_dirty: bool = False,
     verbose_output: bool = False,
 ) -> int:
+    """Compatibility wrapper for legacy scalar run_loop tests."""
     del opencode_prompt  # back-compat signature; intentionally unused
     del gate_profile
     config = build_run_config(
@@ -597,7 +598,7 @@ def test_gate_failure_feedback_round_trips_to_retry_prompt_integration(
         capture_output: bool = True,
         text: bool = True,
     ) -> str:
-        del project_root
+        del project_root, agent, capture_output, text
         prompts.append(prompt)
         subprocess.run(
             [sys.executable, str(set_done_script), str(feature_path)],

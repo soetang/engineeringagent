@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from types import SimpleNamespace
+from typing import Any, get_type_hints
 
 import engineeringagent.loop_runtime.presentation as presentation_module
 from engineeringagent.loop import print_summary
 import engineeringagent.loop_runtime.telemetry as telemetry_module
+import engineeringagent.loop_runtime.phases as phases_module
+import engineeringagent.loop_runtime.models as models_module
 from engineeringagent.loop_runtime.models import (
     FeatureIterationInputs,
     CommandTiming,
@@ -17,12 +20,19 @@ from engineeringagent.loop_runtime.phases import (
     VerificationPhaseDependencies,
     run_verification_phase,
 )
-from engineeringagent.loop_runtime.telemetry import write_iteration_telemetry
+from engineeringagent.loop_runtime.telemetry import (
+    _command_timing_fields_parts,
+    _format_command_timing_line,
+    _format_phase_timing_fields,
+    _format_phase_timing_line,
+    _strip_ansi,
+    _strip_feedback_context_blocks,
+    _summarize_reviewer_feedback,
+    write_iteration_telemetry,
+)
 
 
 def test_loop_runtime_models_define_timing_types_before_first_use() -> None:
-    import engineeringagent.loop_runtime.models as models_module
-
     source = Path(models_module.__file__).read_text(encoding="utf-8")
 
     phase_class_pos = source.index("class PhaseTiming")
@@ -39,7 +49,7 @@ def test_timing_format_helpers_emit_expected_lines() -> None:
         ended_at="1970-01-01T00:00:07Z",
         duration_sec=5,
     )
-    assert telemetry_module._format_phase_timing_line(phase_timing) == (
+    assert _format_phase_timing_line(phase_timing) == (
         "phase_timing phase=implement started_at=1970-01-01T00:00:02Z "
         "ended_at=1970-01-01T00:00:07Z duration_sec=5"
     )
@@ -52,7 +62,7 @@ def test_timing_format_helpers_emit_expected_lines() -> None:
         duration_sec=8,
         gate="precommit",
     )
-    assert telemetry_module._format_command_timing_line(command_timing) == (
+    assert _format_command_timing_line(command_timing) == (
         "command_timing phase=verification gate=precommit "
         "command=uv run pytest -q tests/test_loop_output.py "
         "started_at=1970-01-01T00:00:10Z ended_at=1970-01-01T00:00:18Z "
@@ -61,18 +71,16 @@ def test_timing_format_helpers_emit_expected_lines() -> None:
 
 
 def test_timing_format_helpers_use_concrete_types() -> None:
-    from typing import get_type_hints
-
-    phase_hints = get_type_hints(telemetry_module._format_phase_timing_fields)
+    phase_hints = get_type_hints(_format_phase_timing_fields)
     assert phase_hints["timing"] is PhaseTiming
 
-    phase_line_hints = get_type_hints(telemetry_module._format_phase_timing_line)
+    phase_line_hints = get_type_hints(_format_phase_timing_line)
     assert phase_line_hints["timing"] is PhaseTiming
 
-    command_parts_hints = get_type_hints(telemetry_module._command_timing_fields_parts)
+    command_parts_hints = get_type_hints(_command_timing_fields_parts)
     assert command_parts_hints["timing"] is CommandTiming
 
-    command_line_hints = get_type_hints(telemetry_module._format_command_timing_line)
+    command_line_hints = get_type_hints(_format_command_timing_line)
     assert command_line_hints["timing"] is CommandTiming
 
 
@@ -204,8 +212,6 @@ def test_progress_log_strips_ansi_only_at_write_time(
     tmp_path: Path,
     monkeypatch: Any,
 ) -> None:
-    import engineeringagent.loop_runtime.telemetry as telemetry_module
-
     implement_status = "\x1b[31mpassed\x1b[0m"
     gate_status = "\x1b[32mpassed\x1b[0m"
 
@@ -237,7 +243,7 @@ def test_progress_log_strips_ansi_only_at_write_time(
         hook_feedback="",
     )
 
-    original_strip_ansi = telemetry_module._strip_ansi
+    original_strip_ansi = _strip_ansi
     strip_inputs: list[str] = []
 
     def _tracking_strip_ansi(text: str) -> str:
@@ -265,8 +271,6 @@ def test_progress_log_strips_ansi_only_at_write_time(
 
 
 def test_progress_log_records_phase_timings(tmp_path: Path, monkeypatch: Any) -> None:
-    import engineeringagent.loop_runtime.telemetry as telemetry_module
-
     monkeypatch.setattr(telemetry_module, "now_iso", lambda: "1970-01-01T00:00:10Z")
     monkeypatch.setattr(telemetry_module.time, "time", lambda: 0.0)
 
@@ -334,11 +338,6 @@ def test_progress_log_records_verification_command_timings(
     tmp_path: Path,
     monkeypatch: Any,
 ) -> None:
-    import engineeringagent.loop_runtime.phases as phases_module
-    import engineeringagent.loop_runtime.telemetry as telemetry_module
-
-    from types import SimpleNamespace
-
     monkeypatch.setattr(telemetry_module, "now_iso", lambda: "1970-01-01T00:00:20Z")
 
     time_values = [10.0, 14.0]
@@ -420,10 +419,6 @@ def test_verification_command_timing_clamps_ended_at_when_clock_skews_backwards(
     tmp_path: Path,
     monkeypatch: Any,
 ) -> None:
-    import engineeringagent.loop_runtime.phases as phases_module
-
-    from types import SimpleNamespace
-
     time_values = [10.0, 9.0]
 
     def _fake_time() -> float:
@@ -569,7 +564,7 @@ def test_progress_log_records_reviewer_warning_status(
     feature_log = (tmp_path / "progress" / "run-feature-FEAT-059.txt").read_text(
         encoding="utf-8"
     )
-    assert ("reviewer=passed decision=warning failed_reviewer=-") in feature_log
+    assert "reviewer=passed decision=warning failed_reviewer=-" in feature_log
     assert "reviewer_output_begin" in feature_log
     assert "[reviewer:code_simplifier] decision=warning" in feature_log
     assert "reviewer_output_end" in feature_log
@@ -679,9 +674,9 @@ def test_reviewer_feedback_summary_truncates_after_stripping_context() -> None:
         + "\nfeedback_context:\n"
         + ("y" * 500)
     )
-    stripped = telemetry_module._strip_feedback_context_blocks(text)
+    stripped = _strip_feedback_context_blocks(text)
     assert "feedback_context:" not in stripped
-    summarized = telemetry_module._summarize_reviewer_feedback(text, max_chars=32)
+    summarized = _summarize_reviewer_feedback(text, max_chars=32)
     assert summarized.endswith("...[truncated]")
     assert "feedback_context:" not in summarized
 
@@ -696,7 +691,7 @@ def test_command_timing_line_includes_reviewer_id() -> None:
         ended_at="1970-01-01T00:00:13Z",
         duration_sec=3,
     )
-    line = telemetry_module._format_command_timing_line(timing)
+    line = _format_command_timing_line(timing)
     assert "reviewer_id=onboarding_review" in line
 
 

@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+# Tests load fitness scripts and call internal helpers.
+# pylint: disable=protected-access
+
 import importlib.util
 from pathlib import Path
 

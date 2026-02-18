@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import engineeringagent.loop_runtime.feature_state as feature_state_module
+from engineeringagent.loop_runtime.feature_state import (
+    _load_selected_feature_with_archive_fallback,
+)
 from engineeringagent.specs import load_yaml
 
 
@@ -32,10 +34,9 @@ def test_archive_fallback_marks_done_feature_subtasks_done(tmp_path: Path) -> No
         encoding="utf-8",
     )
 
-    feature, loaded_from_archive, error = (
-        feature_state_module._load_selected_feature_with_archive_fallback(
-            tmp_path, active_path
-        )
+    feature, loaded_from_archive, error = _load_selected_feature_with_archive_fallback(
+        tmp_path,
+        active_path,
     )
     assert error is None
     assert loaded_from_archive is True

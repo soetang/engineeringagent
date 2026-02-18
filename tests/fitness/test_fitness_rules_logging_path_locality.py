@@ -164,4 +164,4 @@ def test_logging_path_locality_rule_passes_when_helpers_are_used_without_direct_
 
     assert proc.returncode == 0
     assert payload["status"] == "pass"
-    assert _violations(payload) == []
+    assert not _violations(payload)

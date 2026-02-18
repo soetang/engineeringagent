@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import engineeringagent.loop_runtime.feature_state as feature_state_module
+from engineeringagent.loop_runtime.feature_state import _archive_completed_feature
 from engineeringagent.specs import load_yaml
 
 
@@ -31,7 +31,7 @@ def test_archive_completed_feature_marks_subtasks_done(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    ok, archived_path, message = feature_state_module._archive_completed_feature(
+    ok, archived_path, message = _archive_completed_feature(
         tmp_path,
         feature_path,
     )

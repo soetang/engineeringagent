@@ -12,7 +12,7 @@ def render_fitness_catalog(
     project_root: Path,
     *,
     manifest_path: Path | None = None,
-    format: Literal["markdown", "json"] = "markdown",
+    format: Literal["markdown", "json"] = "markdown",  # pylint: disable=redefined-builtin
 ) -> str:
     """Render the active fitness-rule catalog.
 

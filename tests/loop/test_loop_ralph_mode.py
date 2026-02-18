@@ -5,6 +5,7 @@ import subprocess
 import sys
 from contextlib import contextmanager
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, Callable, Iterator
 
 import pytest
@@ -16,6 +17,8 @@ import engineeringagent.loop as loop_module
 from engineeringagent.agents import AgentBackendError, AgentBackendFailureDetails
 from engineeringagent.loop import (
     RunConfigOptions,
+    _enforce_worktree_precondition,
+    _run_feature_iteration,
     build_loop_run,
     build_run_config,
     run_loop as _run_loop,
@@ -59,21 +62,19 @@ def run_loop(
     return _run_loop(build_loop_run(config))
 
 
-_OPENCODE_IMPLEMENT_SIDE_EFFECT: Callable[[], None] | None = None
-_OPENCODE_IMPLEMENT_FAKE_RESULT: tuple[int, str, str] | None = None
+_OPENCODE_IMPLEMENT = SimpleNamespace(side_effect=None, fake_result=None)
 
 
 @contextmanager
 def _with_opencode_implement_side_effect(
     effect: Callable[[], None],
 ) -> Iterator[None]:
-    global _OPENCODE_IMPLEMENT_SIDE_EFFECT
-    previous = _OPENCODE_IMPLEMENT_SIDE_EFFECT
-    _OPENCODE_IMPLEMENT_SIDE_EFFECT = effect
+    previous = _OPENCODE_IMPLEMENT.side_effect
+    _OPENCODE_IMPLEMENT.side_effect = effect
     try:
         yield
     finally:
-        _OPENCODE_IMPLEMENT_SIDE_EFFECT = previous
+        _OPENCODE_IMPLEMENT.side_effect = previous
 
 
 @contextmanager
@@ -83,13 +84,12 @@ def _with_opencode_implement_result(
     stdout: str = "ok\n",
     stderr: str = "",
 ) -> Iterator[None]:
-    global _OPENCODE_IMPLEMENT_FAKE_RESULT
-    previous = _OPENCODE_IMPLEMENT_FAKE_RESULT
-    _OPENCODE_IMPLEMENT_FAKE_RESULT = (returncode, stdout, stderr)
+    previous = _OPENCODE_IMPLEMENT.fake_result
+    _OPENCODE_IMPLEMENT.fake_result = (returncode, stdout, stderr)
     try:
         yield
     finally:
-        _OPENCODE_IMPLEMENT_FAKE_RESULT = previous
+        _OPENCODE_IMPLEMENT.fake_result = previous
 
 
 @pytest.fixture(autouse=True)
@@ -103,12 +103,12 @@ def _stub_opencode_start_agent(
     ) -> str:
         del project_root
         if "Read and use this feature spec from disk:" in prompt:
-            effect = _OPENCODE_IMPLEMENT_SIDE_EFFECT
+            effect = _OPENCODE_IMPLEMENT.side_effect
             if effect is not None:
                 effect()
 
         override = (
-            _OPENCODE_IMPLEMENT_FAKE_RESULT
+            _OPENCODE_IMPLEMENT.fake_result
             if "Read and use this feature spec from disk:" in prompt
             else None
         )
@@ -499,7 +499,7 @@ def test_verification_is_not_run_without_done_transition(tmp_path: Path) -> None
     ]
     project_root, feature_path = _make_project_root(tmp_path, feature_data=feature_data)
 
-    outcome = loop_module._run_feature_iteration(
+    outcome = _run_feature_iteration(
         project_root=project_root,
         feature_path=feature_path,
         run_all=False,
@@ -542,7 +542,7 @@ def test_verification_failure_for_newly_done_subtask_marks_iteration_non_pass(
         _run_python_script(script_path, feature_path)
 
     with _with_opencode_implement_side_effect(implement_effect):
-        outcome = loop_module._run_feature_iteration(
+        outcome = _run_feature_iteration(
             project_root=project_root,
             feature_path=feature_path,
             run_all=False,
@@ -592,7 +592,7 @@ def test_verification_selection_ignores_non_string_commands(
         _run_python_script(script_path, feature_path)
 
     with _with_opencode_implement_side_effect(implement_effect):
-        outcome = loop_module._run_feature_iteration(
+        outcome = _run_feature_iteration(
             project_root=project_root,
             feature_path=feature_path,
             run_all=False,
@@ -636,7 +636,7 @@ def test_verification_selection_ignores_blank_string_commands(
         _run_python_script(script_path, feature_path)
 
     with _with_opencode_implement_side_effect(implement_effect):
-        outcome = loop_module._run_feature_iteration(
+        outcome = _run_feature_iteration(
             project_root=project_root,
             feature_path=feature_path,
             run_all=False,
@@ -687,7 +687,7 @@ def test_verification_selection_normalizes_command_whitespace(
         _run_python_script(script_path, feature_path)
 
     with _with_opencode_implement_side_effect(implement_effect):
-        outcome = loop_module._run_feature_iteration(
+        outcome = _run_feature_iteration(
             project_root=project_root,
             feature_path=feature_path,
             run_all=False,
@@ -737,7 +737,7 @@ def test_verification_ignores_new_done_subtasks_without_pre_snapshot_status(
         _run_python_script(script_path, feature_path)
 
     with _with_opencode_implement_side_effect(implement_effect):
-        outcome = loop_module._run_feature_iteration(
+        outcome = _run_feature_iteration(
             project_root=project_root,
             feature_path=feature_path,
             run_all=False,
@@ -787,7 +787,7 @@ def test_verification_selection_uses_first_post_entry_for_duplicate_subtask_ids(
         _run_python_script(script_path, feature_path)
 
     with _with_opencode_implement_side_effect(implement_effect):
-        outcome = loop_module._run_feature_iteration(
+        outcome = _run_feature_iteration(
             project_root=project_root,
             feature_path=feature_path,
             run_all=False,
@@ -838,7 +838,7 @@ def test_verification_selection_uses_first_pre_status_for_duplicate_subtask_ids(
         _run_python_script(script_path, feature_path)
 
     with _with_opencode_implement_side_effect(implement_effect):
-        outcome = loop_module._run_feature_iteration(
+        outcome = _run_feature_iteration(
             project_root=project_root,
             feature_path=feature_path,
             run_all=False,
@@ -881,7 +881,7 @@ def test_verification_failure_restores_feature_archived_during_iteration(
         _run_python_script(move_to_done_script, project_root, feature_path)
 
     with _with_opencode_implement_side_effect(implement_effect):
-        outcome = loop_module._run_feature_iteration(
+        outcome = _run_feature_iteration(
             project_root=project_root,
             feature_path=feature_path,
             run_all=False,
@@ -1830,7 +1830,7 @@ def test_enforce_worktree_precondition_reads_git_status_once(
 
     monkeypatch.setattr(loop_module, "status_porcelain", fake_status_porcelain)
 
-    code = loop_module._enforce_worktree_precondition(tmp_path, allow_dirty=False)
+    code = _enforce_worktree_precondition(tmp_path, allow_dirty=False)
 
     assert code is None
     assert calls == [tmp_path]
@@ -1944,7 +1944,7 @@ def test_run_loop_archived_done_without_completion_commit_fails(
     monkeypatch: pytest.MonkeyPatch,
     capsys: Any,
 ) -> None:
-    project_root, feature_path = _make_project_root(
+    project_root, _feature_path = _make_project_root(
         tmp_path, feature_data=_base_feature()
     )
     _init_git_repo(project_root)
@@ -2635,7 +2635,8 @@ def test_commit_failure_feedback_still_injected_into_next_prompt(
 
             return subprocess.CompletedProcess(command, 0, stdout="ok\n", stderr="")
 
-        return real_run(command, **kwargs)
+        check = bool(kwargs.pop("check", False))
+        return real_run(command, check=check, **kwargs)
 
     _patch_run_agent_with_fake(monkeypatch, fake_subprocess_run)
     monkeypatch.setattr(
@@ -2707,7 +2708,8 @@ def test_verification_failure_feedback_is_injected_into_next_prompt(
                 yaml.safe_dump(feature, sort_keys=False), encoding="utf-8"
             )
             return subprocess.CompletedProcess(command, 0, stdout="ok\n", stderr="")
-        return real_run(command, **kwargs)
+        check = bool(kwargs.pop("check", False))
+        return real_run(command, check=check, **kwargs)
 
     verification_results = iter(
         [
@@ -2814,7 +2816,8 @@ def test_gate_failure_feedback_includes_fitness_remediation_guidance(
                 yaml.safe_dump(feature, sort_keys=False), encoding="utf-8"
             )
             return subprocess.CompletedProcess(command, 0, stdout="ok\n", stderr="")
-        return real_run(command, **kwargs)
+        check = bool(kwargs.pop("check", False))
+        return real_run(command, check=check, **kwargs)
 
     _patch_run_agent_with_fake(monkeypatch, fake_subprocess_run)
     monkeypatch.setattr(
@@ -2901,7 +2904,8 @@ def test_spec_validate_failure_feedback_round_trips_to_retry_prompt(
                 yaml.safe_dump(feature, sort_keys=False), encoding="utf-8"
             )
             return subprocess.CompletedProcess(command, 0, stdout="ok\n", stderr="")
-        return real_run(command, **kwargs)
+        check = bool(kwargs.pop("check", False))
+        return real_run(command, check=check, **kwargs)
 
     _patch_run_agent_with_fake(monkeypatch, fake_subprocess_run)
     monkeypatch.setattr(
@@ -2980,7 +2984,8 @@ def test_non_validation_gate_failure_feedback_round_trips_to_retry_prompt(
                 yaml.safe_dump(feature, sort_keys=False), encoding="utf-8"
             )
             return subprocess.CompletedProcess(command, 0, stdout="ok\n", stderr="")
-        return real_run(command, **kwargs)
+        check = bool(kwargs.pop("check", False))
+        return real_run(command, check=check, **kwargs)
 
     _patch_run_agent_with_fake(monkeypatch, fake_subprocess_run)
     monkeypatch.setattr(
@@ -3063,7 +3068,8 @@ def test_gate_failure_feedback_replaces_previous_feedback(
                 yaml.safe_dump(feature, sort_keys=False), encoding="utf-8"
             )
             return subprocess.CompletedProcess(command, 0, stdout="ok\n", stderr="")
-        return real_run(command, **kwargs)
+        check = bool(kwargs.pop("check", False))
+        return real_run(command, check=check, **kwargs)
 
     _patch_run_agent_with_fake(monkeypatch, fake_subprocess_run)
     monkeypatch.setattr(
@@ -3149,7 +3155,8 @@ def test_verification_failure_feedback_replaces_previous_feedback(
                 yaml.safe_dump(feature, sort_keys=False), encoding="utf-8"
             )
             return subprocess.CompletedProcess(command, 0, stdout="ok\n", stderr="")
-        return real_run(command, **kwargs)
+        check = bool(kwargs.pop("check", False))
+        return real_run(command, check=check, **kwargs)
 
     verification_results = iter(
         [
@@ -3266,7 +3273,8 @@ def test_gate_failure_feedback_is_truncated_before_prompt_injection(
                 yaml.safe_dump(feature, sort_keys=False), encoding="utf-8"
             )
             return subprocess.CompletedProcess(command, 0, stdout="ok\n", stderr="")
-        return real_run(command, **kwargs)
+        check = bool(kwargs.pop("check", False))
+        return real_run(command, check=check, **kwargs)
 
     _patch_run_agent_with_fake(monkeypatch, fake_subprocess_run)
     monkeypatch.setattr(

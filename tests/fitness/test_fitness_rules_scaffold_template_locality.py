@@ -152,4 +152,4 @@ def test_scaffold_template_locality_rule_passes_for_localized_templates(
 
     assert proc.returncode == 0
     assert result["status"] == "pass"
-    assert _violations(result) == []
+    assert not _violations(result)

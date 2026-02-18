@@ -248,6 +248,7 @@ def _progress_log_locality_violations(project_root: Path) -> list[str]:
 
 
 def main() -> int:
+    """Run the progress-log locality fitness rule."""
     violations = _progress_log_locality_violations(Path("."))
     status = RuleStatus.PASS if not violations else RuleStatus.FAIL
     summary = (

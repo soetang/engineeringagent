@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+import engineeringagent.loop_runtime.iteration as iteration_module
 from engineeringagent.loop_runtime.iteration import (
     IterationPipelineDependencies,
     run_feature_iteration_pipeline,
@@ -453,8 +454,6 @@ def test_iteration_pipeline_collects_changed_paths_once_per_iteration(
 def test_iteration_pipeline_records_phase_timings(
     tmp_path: Path, monkeypatch: Any
 ) -> None:
-    import engineeringagent.loop_runtime.iteration as iteration_module
-
     times = iter(
         [
             1000.0,  # iteration started
@@ -478,7 +477,7 @@ def test_iteration_pipeline_records_phase_timings(
 
     captured: dict[str, Any] = {}
 
-    def _capture_write_iteration_telemetry(*args: Any, **kwargs: Any) -> str:
+    def _capture_write_iteration_telemetry(*args: Any, **_kwargs: Any) -> str:
         captured["telemetry_inputs"] = args[0]
         return "progress/run-feature-FEAT-065.txt"
 
@@ -617,13 +616,11 @@ def test_iteration_pipeline_records_phase_timings(
 def test_timed_phase_clamps_ended_at_when_clock_skews_backwards(
     monkeypatch: Any,
 ) -> None:
-    import engineeringagent.loop_runtime.iteration as iteration_module
-
     times = iter([10.0, 9.0])
     monkeypatch.setattr(iteration_module.time, "time", lambda: next(times))
 
     phase_timings: list[Any] = []
-    result = iteration_module._timed_phase(  # noqa: SLF001
+    result = iteration_module._timed_phase(  # noqa: SLF001  # pylint: disable=protected-access
         phase_timings,
         "initial_load",
         lambda: "ok",

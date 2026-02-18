@@ -11,7 +11,7 @@ Use this playbook as a practical default, then apply judgment based on risk.
 | --- | --- | --- | --- |
 | Unit tests (`pytest`) | Verify behavior and logic | Functions/modules/features | Expected outputs, edge cases, regressions |
 | Fitness functions | Protect structural constraints and quality attributes over time | Architecture seams, layering, allowed patterns | Import boundaries, prompt locality, facade budgets |
-| Linting (`ruff`) | Enforce code quality and consistency | Style, complexity, docs hygiene | Complexity limits, docstring completeness |
+| Linting (`ruff`, `pylint`) | Enforce code quality and consistency | Style, static hygiene, maintainability | Complexity limits, import hygiene, docstring completeness |
 | Type checks (`pyright`) | Catch interface/type mismatches early | Cross-module contracts and API usage | Wrong argument types, missing attributes |
 | Spec/contract validation | Ensure loop/spec integrity | Feature specs and schema conformance | YAML/schema validity |
 
@@ -25,6 +25,7 @@ Use this playbook as a practical default, then apply judgment based on risk.
   - `uv run engineeringagent validate`
   - When debugging a specific class of failure:
   - Ruff: `uv run ruff check src/engineeringagent harness`
+  - Pylint: `uv run pylint --score=n --reports=n src/engineeringagent tests harness`
   - Pyright: `uv run pyright src/engineeringagent tests harness`
   - Unit tests: `uv run pytest -q`
   - Fitness functions: `uv run engineeringagent checks run --checks fitness --phase iteration_end`

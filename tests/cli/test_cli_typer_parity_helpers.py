@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+# Tests intentionally exercise private path-resolution helpers.
+# pylint: disable=protected-access
+
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, cast
@@ -184,6 +187,7 @@ def test_version_callback_exits_with_zero(
 def test_project_root_from_context_defaults_to_current_directory() -> None:
     class _FakeContext:
         def find_root(self) -> SimpleNamespace:
+            """Return a minimal Typer root context stub."""
             return SimpleNamespace(obj=None)
 
     assert cli_module._project_root_from_typer_context(cast(Any, _FakeContext())) == "."

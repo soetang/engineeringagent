@@ -76,7 +76,7 @@ def test_build_rule_catalog_returns_empty_when_manifest_is_missing(
     """Do not activate implicit rules without a manifest declaration."""
     catalog = build_rule_catalog(tmp_path)
 
-    assert catalog == []
+    assert not catalog
 
 
 def test_build_rule_catalog_parses_error_severity_and_command_tuple(

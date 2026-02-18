@@ -15,17 +15,14 @@ from engineeringagent.checks.commands.runtime import (
     run_planned_command_checks,
 )
 from engineeringagent.checks.fitness.runtime import (
-    PlannedCheck as FitnessPlannedCheck,
     RunPlannedFitnessChecksRequest,
     plan_fitness_checks,
     run_planned_fitness_checks,
 )
 from engineeringagent.checks.reviewers.runtime import (
     PlannedCheck as ReviewerPlannedCheck,
-    RunPlannedReviewerChecksRequest,
     iter_planned_reviewer_checks,
     plan_reviewer_checks,
-    run_planned_reviewer_checks,
 )
 from engineeringagent.loop_runtime.models import FeatureIterationInputs
 from engineeringagent.loop_runtime.phases import (
@@ -421,8 +418,6 @@ def test_run_reviewer_phase_uses_checks_yaml_for_run_all_feature_done(
         verbose_output=False,
     )
 
-    reviewer_state: dict[str, Any] = {"version": "1", "features": {}}
-
     def _run_agent(
         _project_root: Path,
         _prompt: str,
@@ -701,7 +696,7 @@ def test_plan_fitness_checks_skips_when_phase_mismatch(tmp_path: Path) -> None:
         phase=HarnessCheckPhase.ITERATION_END,
         changed_paths=ChangedPathsResult(paths=(), run_all=True, reason=None),
     )
-    assert planned == []
+    assert not planned
 
 
 def test_plan_fitness_checks_runs_when_run_all_change_discovery_fallback(
@@ -899,7 +894,7 @@ def test_plan_reviewer_checks_skips_non_reviewer_and_phase_mismatch(
         changed_paths=ChangedPathsResult(paths=(), run_all=True, reason=None),
     )
 
-    assert planned == []
+    assert not planned
 
 
 def test_iter_planned_reviewer_checks_skips_non_reviewer_ids(tmp_path: Path) -> None:
@@ -925,7 +920,7 @@ def test_iter_planned_reviewer_checks_skips_non_reviewer_ids(tmp_path: Path) -> 
             planned,
         )
     )
-    assert yielded == []
+    assert not yielded
 
 
 def test_iter_planned_command_check_commands_skips_non_run(tmp_path: Path) -> None:
@@ -951,7 +946,7 @@ def test_iter_planned_command_check_commands_skips_non_run(tmp_path: Path) -> No
             planned,
         )
     )
-    assert yielded == []
+    assert not yielded
 
 
 def test_iter_planned_command_check_commands_skips_non_command_defs(
@@ -978,7 +973,7 @@ def test_iter_planned_command_check_commands_skips_non_command_defs(
         CommandPlannedCheck(check_id="doc_review", decision="run", reason="always")
     ]
     yielded = list(iter_planned_command_check_commands(doc, planned))
-    assert yielded == []
+    assert not yielded
 
 
 def test_run_planned_command_checks_fails_and_emits_verbose_output(

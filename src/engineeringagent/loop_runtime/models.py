@@ -9,6 +9,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class IterationOutcome(BaseModel):
+    """Outcome of a single feature iteration run."""
+
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     completed: bool
@@ -25,6 +27,8 @@ class IterationOutcome(BaseModel):
 
 
 class InitialFeatureLoadOutcome(BaseModel):
+    """Outcome of loading the selected feature YAML (optionally from archive)."""
+
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     feature: dict[str, Any] | None
@@ -35,6 +39,8 @@ class InitialFeatureLoadOutcome(BaseModel):
 
 
 class PostImplementFeatureOutcome(BaseModel):
+    """Outcome from post-implementation bookkeeping (e.g. archive decisions)."""
+
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     feature: dict[str, Any] | None
@@ -47,6 +53,8 @@ class PostImplementFeatureOutcome(BaseModel):
 
 
 class ImplementStepInputs(BaseModel):
+    """Inputs for a single implementation step of the loop."""
+
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     project_root: Path
@@ -57,6 +65,8 @@ class ImplementStepInputs(BaseModel):
 
 
 class FeatureIterationInputs(BaseModel):
+    """Inputs for running a full feature iteration."""
+
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     project_root: Path
@@ -68,6 +78,8 @@ class FeatureIterationInputs(BaseModel):
 
 
 class PhaseTiming(BaseModel):
+    """Timing metadata for a loop phase."""
+
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     phase: str
@@ -77,6 +89,8 @@ class PhaseTiming(BaseModel):
 
 
 class CommandTiming(BaseModel):
+    """Timing metadata for a single command (or reviewer) invocation."""
+
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     phase: str
@@ -89,6 +103,8 @@ class CommandTiming(BaseModel):
 
 
 class GatePhaseOutcome(BaseModel):
+    """Outcome of running deterministic repo gates for a phase."""
+
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     result: str
@@ -100,6 +116,8 @@ class GatePhaseOutcome(BaseModel):
 
 
 class VerificationPhaseOutcome(BaseModel):
+    """Outcome of running verification commands for a phase."""
+
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     result: str
@@ -111,6 +129,8 @@ class VerificationPhaseOutcome(BaseModel):
 
 
 class ReviewerPhaseOutcome(BaseModel):
+    """Outcome of running automated reviewer checks for a phase."""
+
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     result: str
@@ -124,6 +144,8 @@ class ReviewerPhaseOutcome(BaseModel):
 
 
 class CompletionCommitOutcome(BaseModel):
+    """Outcome of creating a completion commit after a successful feature."""
+
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     completed: bool
@@ -136,6 +158,8 @@ class CompletionCommitOutcome(BaseModel):
 
 
 class IterationTelemetryInputs(BaseModel):
+    """Structured telemetry captured for a feature iteration."""
+
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     iteration_inputs: FeatureIterationInputs

@@ -60,9 +60,11 @@ def test_production_code_does_not_import_legacy_checks_entrypoints() -> None:
                 level = int(getattr(node, "level", 0) or 0)
                 lineno = int(getattr(node, "lineno", 0) or 0)
 
-                def _record(reason: str) -> None:
-                    rel = path.relative_to(repo_root).as_posix()
-                    violations.append(f"{rel}:{lineno}: {reason} (forbidden)")
+                def _record(
+                    reason: str, *, _path: Path = path, _lineno: int = lineno
+                ) -> None:
+                    rel = _path.relative_to(repo_root).as_posix()
+                    violations.append(f"{rel}:{_lineno}: {reason} (forbidden)")
 
                 if level == 0 and module is not None:
                     for forbidden in forbidden_modules:

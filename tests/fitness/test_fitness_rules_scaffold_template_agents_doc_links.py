@@ -124,4 +124,4 @@ def test_agents_link_checker_passes_when_all_scaffold_docs_are_linked(
 
     assert proc.returncode == 0
     assert result["status"] == "pass"
-    assert _violations(result) == []
+    assert not _violations(result)

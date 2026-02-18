@@ -33,10 +33,14 @@ CommitSubject = Annotated[
 
 
 class StrictContractModel(BaseModel):
+    """Pydantic base model that forbids unknown fields."""
+
     model_config = ConfigDict(extra="forbid")
 
 
 class FeatureStatus(str, Enum):
+    """Lifecycle status for a feature spec."""
+
     BACKLOG = "backlog"
     IN_PROGRESS = "in_progress"
     DONE = "done"
@@ -44,12 +48,16 @@ class FeatureStatus(str, Enum):
 
 
 class FeaturePriority(str, Enum):
+    """Priority bucket used for feature ordering."""
+
     HIGH = "high"
     MEDIUM = "medium"
     LOW = "low"
 
 
 class FeatureType(str, Enum):
+    """Category of work captured by a feature spec."""
+
     FEATURE = "feature"
     BUG = "bug"
     SPEC = "spec"
@@ -59,6 +67,8 @@ class FeatureType(str, Enum):
 
 
 class PotentialFeatureStatus(str, Enum):
+    """Lifecycle status for a potential feature entry."""
+
     IDEA = "idea"
 
 
@@ -68,6 +78,8 @@ PotentialFeatureId = Annotated[
 
 
 class PotentialFeatureSpec(StrictContractModel):
+    """One entry in the potential features backlog document."""
+
     id: PotentialFeatureId
     title: NonEmptyStr
     status: PotentialFeatureStatus
@@ -77,23 +89,30 @@ class PotentialFeatureSpec(StrictContractModel):
 
 
 class PotentialFeaturesDocument(StrictContractModel):
+    """Top-level schema for docs/spec/potential_features.yaml."""
+
     version: Annotated[int, Field(strict=True, ge=1)]
     description: StrictString | None = None
     potential_features: list[PotentialFeatureSpec] = Field(default_factory=list)
 
 
 class GateRunnerDefinition(StrictContractModel):
+    """Runner configuration for a gate profile entry."""
+
     type: Literal["command"]
     command: NonEmptyStr
 
 
 class GateDefinition(StrictContractModel):
+    """Definition for a single harness gate."""
+
     run: NonEmptyStr | None = None
     runner: GateRunnerDefinition | None = None
     on_change: Annotated[list[NonEmptyStr], Field(min_length=1)] | None = None
 
     @model_validator(mode="after")
     def enforce_runner_form(self) -> "GateDefinition":
+        """Enforce that exactly one of run or runner is set."""
         has_run = self.run is not None
         has_runner = self.runner is not None
         if has_run == has_runner:
@@ -102,36 +121,49 @@ class GateDefinition(StrictContractModel):
 
 
 class GateConfigDocument(StrictContractModel):
+    """Top-level schema for harness/checks.yaml."""
+
     contract_version: Literal["1.0"] = "1.0"
     profiles: dict[NonEmptyStr, list[NonEmptyStr]]
     gates: dict[NonEmptyStr, GateDefinition]
 
 
 class ReviewerTriggerPhase(str, Enum):
+    """Phase that triggers a reviewer check."""
+
     ITERATION_END = "iteration_end"
     FEATURE_DONE = "feature_done"
 
 
 class ReviewerSandboxMode(str, Enum):
+    """Sandbox strategy for running reviewer agents."""
+
     TEMP_WORKTREE_SNAPSHOT = "temp_worktree_snapshot"
     EMPTY_FOLDER = "empty_folder"
 
 
 class ReviewerTriggerDefinition(StrictContractModel):
+    """Selection criteria for when to run a reviewer."""
+
     phase: ReviewerTriggerPhase
     on_change: Annotated[list[NonEmptyStr], Field(min_length=1)] | None = None
 
 
 class ReviewerApprovalDefinition(StrictContractModel):
+    """Approval policy for reviewer results."""
+
     first_feature_approval: bool = True
 
 
 class ReviewerSandboxDefinition(StrictContractModel):
+    """Configuration for reviewer sandbox behavior."""
+
     mode: ReviewerSandboxMode
     assets: Annotated[list[NonEmptyStr], Field(min_length=1)] | None = None
 
     @model_validator(mode="after")
     def enforce_assets_support(self) -> "ReviewerSandboxDefinition":
+        """Validate that sandbox.assets is only used with empty_folder."""
         if self.assets is None:
             return self
         if self.mode != ReviewerSandboxMode.EMPTY_FOLDER:
@@ -142,6 +174,8 @@ class ReviewerSandboxDefinition(StrictContractModel):
 
 
 class ReviewerDefinition(StrictContractModel):
+    """Definition for one reviewer entry in harness/reviewers.yaml."""
+
     prompt_file: NonEmptyStr
     feedback_context: StrictString | None = None
     trigger: ReviewerTriggerDefinition
@@ -152,6 +186,7 @@ class ReviewerDefinition(StrictContractModel):
 
     @model_validator(mode="after")
     def enforce_prompt_file_location(self) -> "ReviewerDefinition":
+        """Ensure prompt_file points under harness/reviewers/prompts/."""
         prompt_path = Path(self.prompt_file)
         normalized_parts = [part for part in prompt_path.parts if part not in {"", "."}]
         if prompt_path.is_absolute() or any(part == ".." for part in prompt_path.parts):
@@ -170,33 +205,45 @@ class ReviewerDefinition(StrictContractModel):
 
 
 class ReviewerConfigDocument(StrictContractModel):
+    """Top-level schema for harness/reviewers.yaml."""
+
     contract_version: Literal["1.0"] = "1.0"
     profiles: dict[NonEmptyStr, list[NonEmptyStr]]
     reviewers: dict[NonEmptyStr, ReviewerDefinition]
 
 
 class HarnessCheckPhase(str, Enum):
+    """Execution phase for harness checks."""
+
     ITERATION_END = "iteration_end"
     FEATURE_DONE = "feature_done"
     MANUAL = "manual"
 
 
 class HarnessCheckWhenDefinition(StrictContractModel):
+    """Selection predicates that decide when a check runs."""
+
     phase: HarnessCheckPhase | None = None
     on_change: Annotated[list[NonEmptyStr], Field(min_length=1)] | None = None
 
 
 class HarnessCheckDefaultsDefinition(StrictContractModel):
+    """Defaults applied to checks that omit explicit fields."""
+
     when: HarnessCheckWhenDefinition | None = None
 
 
 class HarnessCheckCommandDefinition(StrictContractModel):
+    """A shell command check executed by the harness."""
+
     type: Literal["command"]
     command: NonEmptyStr
     when: HarnessCheckWhenDefinition | None = None
 
 
 class HarnessCheckFitnessDefinition(StrictContractModel):
+    """A fitness-function check executed by the harness."""
+
     type: Literal["fitness"]
     when: HarnessCheckWhenDefinition | None = None
     scope: Literal["all"] | None = None
@@ -204,6 +251,7 @@ class HarnessCheckFitnessDefinition(StrictContractModel):
 
     @model_validator(mode="after")
     def enforce_fitness_selection(self) -> "HarnessCheckFitnessDefinition":
+        """Ensure exactly one of scope or rule_ids selects fitness rules."""
         has_scope = self.scope is not None
         has_rule_ids = self.rule_ids is not None
         if has_scope == has_rule_ids:
@@ -222,6 +270,8 @@ class HarnessCheckFitnessDefinition(StrictContractModel):
 
 
 class HarnessCheckReviewerDefinition(StrictContractModel):
+    """A reviewer (LLM) check executed by the harness."""
+
     type: Literal["reviewer"]
     prompt_file: NonEmptyStr
     feedback_context: StrictString | None = None
@@ -233,6 +283,7 @@ class HarnessCheckReviewerDefinition(StrictContractModel):
 
     @model_validator(mode="after")
     def enforce_prompt_file_location(self) -> "HarnessCheckReviewerDefinition":
+        """Ensure prompt_file points under harness/reviewers/prompts/."""
         prompt_path = Path(self.prompt_file)
         normalized_parts = [part for part in prompt_path.parts if part not in {"", "."}]
         if prompt_path.is_absolute() or any(part == ".." for part in prompt_path.parts):
@@ -259,12 +310,15 @@ HarnessCheckDefinition = Annotated[
 
 
 class HarnessChecksDocument(StrictContractModel):
+    """Top-level schema for harness/checks.yaml."""
+
     contract_version: Literal["1.0"]
     defaults: HarnessCheckDefaultsDefinition | None = None
     checks: dict[NonEmptyStr, HarnessCheckDefinition]
 
     @model_validator(mode="after")
     def enforce_reviewer_phase_restrictions(self) -> "HarnessChecksDocument":
+        """Reject reviewer checks scheduled for iteration_end."""
         default_phase = _effective_default_check_phase(self.defaults)
         errors: list[InitErrorDetails] = []
         for check_id, check in self.checks.items():
@@ -290,6 +344,7 @@ class HarnessChecksDocument(StrictContractModel):
 def _effective_default_check_phase(
     defaults: HarnessCheckDefaultsDefinition | None,
 ) -> HarnessCheckPhase:
+    """Return the effective default phase for checks."""
     if defaults is None or defaults.when is None or defaults.when.phase is None:
         return HarnessCheckPhase.ITERATION_END
     return defaults.when.phase
@@ -299,12 +354,15 @@ def _effective_check_phase(
     when: HarnessCheckWhenDefinition | None,
     default_phase: HarnessCheckPhase,
 ) -> HarnessCheckPhase:
+    """Return the effective phase for a single check."""
     if when is None or when.phase is None:
         return default_phase
     return when.phase
 
 
 class SubtaskSpec(StrictContractModel):
+    """Schema for a single subtask within a feature spec."""
+
     id: SubtaskId
     title: NonEmptyStr
     status: FeatureStatus
@@ -317,6 +375,8 @@ class SubtaskSpec(StrictContractModel):
 
 
 class FeatureSpec(StrictContractModel):
+    """Top-level schema for docs/spec/features/*.yaml."""
+
     model_config = ConfigDict(extra="forbid", title="Agent Harness Feature")
 
     id: FeatureId
@@ -439,6 +499,8 @@ def _feature_status_alignment_errors(
 
 
 class ValidationIssue(StrictContractModel):
+    """One contract validation issue emitted by strict model checks."""
+
     path: str
     message: str
 
@@ -506,6 +568,7 @@ def feature_schema_from_model() -> dict[str, Any]:
 
 
 def _path_from_pydantic_loc(loc: tuple[Any, ...]) -> str:
+    """Convert a Pydantic error location tuple into a dotted path."""
     parts: list[str] = []
     for segment in loc:
         if isinstance(segment, int):
@@ -526,6 +589,7 @@ def _init_error_detail(
     loc: tuple[Any, ...],
     input_value: Any,
 ) -> InitErrorDetails:
+    """Build an InitErrorDetails mapping for ValidationError construction."""
     return cast(
         InitErrorDetails,
         {

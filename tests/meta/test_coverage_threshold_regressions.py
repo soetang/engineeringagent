@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+# Tests intentionally exercise private helper functions.
+# pylint: disable=protected-access
+
 import subprocess
 from pathlib import Path
 from types import SimpleNamespace
@@ -103,6 +106,7 @@ def test_presentation_handles_tty_edge_cases() -> None:
 
     class _FailingIsAtty:
         def isatty(self) -> bool:
+            """Simulate a broken isatty implementation."""
             raise RuntimeError("boom")
 
     assert tty_supports_ansi(stdout=cast(Any, _NoIsAtty())) is False
@@ -122,6 +126,7 @@ def test_presentation_ignores_env_keys_for_ansi_decision(
 ) -> None:
     class _Tty:
         def isatty(self) -> bool:
+            """Pretend stdout is a TTY."""
             return True
 
     monkeypatch.setenv("NO_COLOR", "1")

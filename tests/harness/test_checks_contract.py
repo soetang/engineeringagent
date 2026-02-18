@@ -18,7 +18,7 @@ def test_checks_contract_accepts_minimal_command_check() -> None:
 
     issues = checks_contract_issues(payload, Path("harness/checks.yaml"))
 
-    assert issues == []
+    assert not issues
 
 
 def test_checks_contract_rejects_unknown_fields_in_check_definition() -> None:
@@ -76,7 +76,7 @@ def test_checks_contract_accepts_reviewer_check_when_phase_feature_done() -> Non
 
     issues = checks_contract_issues(payload, Path("harness/checks.yaml"))
 
-    assert issues == []
+    assert not issues
 
 
 def test_checks_contract_rejects_reviewer_prompt_outside_prompts_dir() -> None:

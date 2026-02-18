@@ -120,7 +120,7 @@ def test_checker_allows_os_environ_copy(tmp_path: Path, repo_root: Path) -> None
 
     assert proc.returncode == 0
     assert result["status"] == "pass"
-    assert _violations(result) == []
+    assert not _violations(result)
 
 
 def test_checker_flags_from_os_import_aliases(tmp_path: Path, repo_root: Path) -> None:

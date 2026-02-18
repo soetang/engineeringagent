@@ -9,12 +9,13 @@ from engineeringagent.changed_paths import (
     ChangedPathsResult,
     FALLBACK_CHANGE_DISCOVERY_REASON,
 )
-from ..on_change_matcher import path_matches_any_glob
 from engineeringagent.specs import (
     HarnessCheckCommandDefinition,
     HarnessCheckPhase,
     HarnessChecksDocument,
 )
+
+from ..on_change_matcher import path_matches_any_glob
 
 
 ALWAYS_RUN_NO_ON_CHANGE_REASON = "always_run_no_on_change"
@@ -23,6 +24,8 @@ NO_ON_CHANGE_MATCH_REASON = "no_on_change_match"
 
 
 class PlannedCheck(BaseModel):
+    """Deterministic plan entry for a command check."""
+
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     check_id: str
@@ -31,6 +34,8 @@ class PlannedCheck(BaseModel):
 
 
 class RunPlannedCommandChecksRequest(BaseModel):
+    """Request payload for running planned command checks."""
+
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     project_root: Path

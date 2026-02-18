@@ -57,7 +57,7 @@ def test_markdown_reference_coverage_passes_with_non_self_reference(
 
     assert proc.returncode == 0
     assert result["status"] == "pass"
-    assert _violations(result) == []
+    assert not _violations(result)
 
 
 def test_markdown_reference_coverage_passes_for_reviewer_prompt_with_reference(
@@ -75,7 +75,7 @@ def test_markdown_reference_coverage_passes_for_reviewer_prompt_with_reference(
 
     assert proc.returncode == 0
     assert result["status"] == "pass"
-    assert _violations(result) == []
+    assert not _violations(result)
 
 
 def test_markdown_reference_coverage_fails_when_non_doc_markdown_is_unreferenced(
@@ -124,7 +124,7 @@ def test_markdown_reference_coverage_skips_docs_markdown(
 
     assert proc.returncode == 0
     assert result["status"] == "pass"
-    assert _violations(result) == []
+    assert not _violations(result)
 
 
 def test_markdown_reference_coverage_ignores_references_from_ignored_directories(

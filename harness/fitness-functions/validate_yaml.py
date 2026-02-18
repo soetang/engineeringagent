@@ -46,6 +46,7 @@ def _validate_yaml(path: Path) -> str | None:
 
 
 def main() -> int:
+    """Validate all YAML files under the repository root."""
     project_root = Path(__file__).resolve().parents[2]
     errors = [
         err for path in _iter_yaml_files(project_root) if (err := _validate_yaml(path))

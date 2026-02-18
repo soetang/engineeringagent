@@ -89,7 +89,7 @@ def test_init_slim_scaffold_has_no_rules_referencing_missing_scripts() -> None:
 
 
 def test_render_scaffold_template_supports_substitutions_argument() -> None:
-    rendered = init_scaffold_module._render_scaffold_template(
+    rendered = init_scaffold_module._render_scaffold_template(  # pylint: disable=protected-access
         "AGENTS.md",
         substitutions={"unused": "value"},
     )
@@ -99,7 +99,7 @@ def test_render_scaffold_template_supports_substitutions_argument() -> None:
 
 def test_build_precommit_config_rejects_unknown_profile() -> None:
     with pytest.raises(ValueError, match="unsupported scaffold profile"):
-        init_scaffold_module._build_precommit_config("unknown")
+        init_scaffold_module._build_precommit_config("unknown")  # pylint: disable=protected-access
 
 
 def test_build_baseline_scaffold_manifest_rejects_unknown_profile() -> None:

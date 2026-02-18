@@ -193,6 +193,7 @@ def _prompt_locality_violations(project_root: Path) -> list[str]:
 
 
 def main() -> int:
+    """Run the prompt locality fitness rule."""
     violations = _prompt_locality_violations(Path("."))
     status = RuleStatus.PASS if not violations else RuleStatus.FAIL
     summary = (

@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+# Tests intentionally exercise internal validator helpers.
+# pylint: disable=protected-access
+
 import json
 import shutil
+import subprocess
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -406,7 +410,7 @@ def test_validate_ignores_legacy_reviewer_contract_file(tmp_path: Path) -> None:
 
     messages = validate(project_root=tmp_path)
 
-    assert messages == []
+    assert not messages
 
 
 def test_validate_reports_reviewer_prompt_missing_responseformat(
@@ -452,7 +456,7 @@ def test_legacy_harness_contract_issue_formatter_handles_external_paths(
         reviewers_path=legacy_root / "harness" / "reviewers.yaml",
     )
 
-    assert messages == []
+    assert not messages
 
 
 def test_validate_reports_git_ls_files_failure(
@@ -472,8 +476,6 @@ def test_validate_reports_git_ls_files_failure(
 
 
 def test_validate_enforces_purge_invariants_using_git_ls_files(tmp_path: Path) -> None:
-    import subprocess
-
     def _run_git(*args: str) -> None:
         proc = subprocess.run(
             ["git", *args],
@@ -512,8 +514,6 @@ def test_validate_enforces_purge_invariants_using_git_ls_files(tmp_path: Path) -
 
 
 def test_validate_does_not_enforce_opencode_config_invariant(tmp_path: Path) -> None:
-    import subprocess
-
     def _run_git(*args: str) -> None:
         proc = subprocess.run(
             ["git", *args],
@@ -549,7 +549,7 @@ def test_validate_does_not_enforce_opencode_config_invariant(tmp_path: Path) -> 
         for message in messages
         if any(fragment in message for fragment in forbidden_fragments)
     ]
-    assert violations == []
+    assert not violations
 
 
 def test_validate_accepts_agents_docs_map_glob_when_it_matches(tmp_path: Path) -> None:
@@ -573,7 +573,7 @@ def test_validate_accepts_agents_docs_map_glob_when_it_matches(tmp_path: Path) -
         encoding="utf-8",
     )
 
-    assert validate(project_root=tmp_path) == []
+    assert not validate(project_root=tmp_path)
 
 
 def test_validate_preserves_non_legacy_done_required_field_errors(
@@ -863,7 +863,7 @@ def test_validate_allows_legacy_done_specs_missing_new_metadata(
 
     messages = validate(project_root=project_root)
 
-    assert messages == []
+    assert not messages
 
 
 def test_validate_allows_noncontiguous_done_and_multiple_in_progress_subtasks(
@@ -968,7 +968,7 @@ def test_validate_allows_noncontiguous_done_and_multiple_in_progress_subtasks(
 
     messages = validate(project_root=project_root)
 
-    assert messages == []
+    assert not messages
 
 
 def test_validate_preserves_feature_status_invariant_rules(tmp_path: Path) -> None:
@@ -1278,7 +1278,7 @@ def test_validate_accepts_command_fitness_manifest_references(tmp_path: Path) ->
 
     messages = validate(project_root=tmp_path)
 
-    assert messages == []
+    assert not messages
 
 
 def test_validate_rejects_filename_frontmatter_id_mismatch_active_and_done(
@@ -1481,7 +1481,7 @@ def test_validate_allows_duplicate_done_ids_below_threshold_when_configured(
         encoding="utf-8",
     )
 
-    assert validate(project_root=project_root) == []
+    assert not validate(project_root=project_root)
 
 
 def test_validate_reports_filename_id_token_extraction_failure(tmp_path: Path) -> None:

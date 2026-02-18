@@ -5,6 +5,8 @@ from types import SimpleNamespace
 
 import pytest
 
+from engineeringagent.checks import run_checks
+
 
 def _write_checks_yaml(tmp_path: Path, content: str) -> Path:
     checks_path = tmp_path / "harness" / "checks.yaml"
@@ -17,8 +19,6 @@ def test_run_checks_commands_does_not_call_legacy_runtime(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from engineeringagent.checks import run_checks
-
     _write_checks_yaml(
         tmp_path,
         "\n".join(

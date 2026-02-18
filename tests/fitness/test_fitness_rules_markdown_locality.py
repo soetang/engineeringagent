@@ -82,7 +82,7 @@ def test_markdown_locality_rule_passes_for_approved_markdown_locations(
 
     assert proc.returncode == 0
     assert result["status"] == "pass"
-    assert _violations(result) == []
+    assert not _violations(result)
 
 
 def test_markdown_locality_rule_fails_for_markdown_outside_approved_roots(
@@ -122,7 +122,7 @@ def test_markdown_locality_rule_ignores_generated_and_cache_directories(
 
     assert proc.returncode == 0
     assert result["status"] == "pass"
-    assert _violations(result) == []
+    assert not _violations(result)
 
 
 def test_markdown_locality_rule_ignores_tooling_and_vendor_directories(
@@ -137,4 +137,4 @@ def test_markdown_locality_rule_ignores_tooling_and_vendor_directories(
 
     assert proc.returncode == 0
     assert result["status"] == "pass"
-    assert _violations(result) == []
+    assert not _violations(result)

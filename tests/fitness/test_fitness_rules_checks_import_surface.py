@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+# Tests load fitness scripts and call internal helpers.
+# pylint: disable=protected-access
+
 import importlib.util
 from pathlib import Path
 
@@ -71,7 +74,7 @@ def test_checker_allows_importing_allowed_top_level_names(
         encoding="utf-8",
     )
 
-    assert checker._collect_violations(tmp_path) == []
+    assert not checker._collect_violations(tmp_path)
 
 
 def test_checker_flags_disallowed_top_level_imports_even_if_exported(

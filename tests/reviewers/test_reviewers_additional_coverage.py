@@ -54,8 +54,13 @@ def test_record_reviewer_approval_accepts_non_dict_existing_state() -> None:
         decision="approve",
     )
     reviewer_state = state["features"]["FEAT-1"]["reviewers"]["rev"]
-    assert isinstance(reviewer_state, dict)
-    assert reviewer_state["approved"] is True
+    if isinstance(reviewer_state, dict):
+        reviewer_state_dict: dict[str, Any] = reviewer_state
+    else:
+        raise AssertionError("expected reviewer state dict")
+
+    # Pylint inference doesn't track the mutation performed by record_reviewer_approval.
+    assert reviewer_state_dict["approved"] is True  # pylint: disable=invalid-sequence-index
 
 
 def test_record_reviewer_approval_updates_non_approve_decision() -> None:

@@ -5,22 +5,22 @@ import shutil
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from tempfile import TemporaryDirectory
+from tempfile import TemporaryDirectory, mkdtemp
 from typing import Any, Callable, Iterator, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
-from engineeringagent.progress import paths as progress_paths
-
 from engineeringagent.changed_paths import ChangedPathsResult
-from ..on_change_matcher import path_matches_any_glob
 from engineeringagent.agents import (
     AgentBackend,
     AgentBackendError,
     AgentOutputValidationError,
     run_agent,
 )
+from engineeringagent.progress import paths as progress_paths
 from engineeringagent.specs import load_yaml, reviewer_contract_issues
+
+from ..on_change_matcher import path_matches_any_glob
 
 
 FALLBACK_CHANGE_DISCOVERY_REASON = "fallback_run_all_change_discovery_failed"
@@ -97,6 +97,12 @@ REVIEWER_RESPONSEFORMAT_CONTRACT = "\n".join(
 
 
 class ReviewerSandboxHandle(BaseModel):
+    """Handle for a reviewer sandbox execution root.
+
+    Reviewers may run in a temp worktree snapshot; this model captures where the
+    reviewer executed and how to clean up any associated resources.
+    """
+
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     execution_root: Path
@@ -104,6 +110,8 @@ class ReviewerSandboxHandle(BaseModel):
 
 
 class ReviewerRunRequest(BaseModel):
+    """Inputs required to run a single reviewer deterministically."""
+
     model_config = ConfigDict(
         frozen=True,
         extra="forbid",
@@ -521,9 +529,13 @@ def _build_empty_folder_sandbox(
             f"sandbox setup failed: reviewer {reviewer_id} prompt_file is required"
         )
 
-    workspace = TemporaryDirectory(prefix=f"engineeringagent-reviewer-{reviewer_id}-")
-    execution_root = Path(workspace.name) / "workspace"
+    workspace_root = Path(mkdtemp(prefix=f"engineeringagent-reviewer-{reviewer_id}-"))
+    execution_root = workspace_root / "workspace"
     execution_root.mkdir(parents=True, exist_ok=True)
+
+    def _cleanup() -> None:
+        shutil.rmtree(workspace_root, ignore_errors=True)
+
     configured_assets: list[str] = []
     sandbox_config = reviewer_config.get("sandbox", {})
     if isinstance(sandbox_config, dict):
@@ -544,15 +556,15 @@ def _build_empty_folder_sandbox(
                 relative_path=relative_path,
             )
     except RuntimeError:
-        workspace.cleanup()
+        _cleanup()
         raise
     except OSError as exc:
-        workspace.cleanup()
+        _cleanup()
         raise RuntimeError(f"sandbox setup failed: {exc}") from exc
 
     return ReviewerSandboxHandle(
         execution_root=execution_root,
-        cleanup=workspace.cleanup,
+        cleanup=_cleanup,
     )
 
 

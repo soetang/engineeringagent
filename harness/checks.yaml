@@ -21,6 +21,12 @@ checks:
     when:
       on_change: ["src/**/*.py", "tests/**/*.py", "harness/**/*.py"]
 
+  pylint_validate:
+    type: command
+    command: "uv run pylint --score=n --reports=n src/engineeringagent tests harness"
+    when:
+      on_change: ["src/**/*.py", "tests/**/*.py", "harness/**/*.py"]
+
   pytest_validate:
     type: command
     command: "uv run pytest -q"

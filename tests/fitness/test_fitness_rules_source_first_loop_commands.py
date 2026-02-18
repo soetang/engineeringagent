@@ -149,4 +149,4 @@ def test_allows_uv_run_source_first_forms(tmp_path: Path, repo_root: Path) -> No
 
     assert proc.returncode == 0
     assert payload["status"] == "pass"
-    assert payload["violations"] == []
+    assert not payload["violations"]

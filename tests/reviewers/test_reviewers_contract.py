@@ -19,7 +19,7 @@ def test_reviewer_contract_accepts_minimal_v1_document() -> None:
 
     issues = reviewer_contract_issues(document, Path("harness/reviewers.yaml"))
 
-    assert issues == []
+    assert not issues
 
 
 def test_reviewer_contract_accepts_optional_approval_and_sandbox_fields() -> None:
@@ -46,7 +46,7 @@ def test_reviewer_contract_accepts_optional_approval_and_sandbox_fields() -> Non
 
     issues = reviewer_contract_issues(document, Path("harness/reviewers.yaml"))
 
-    assert issues == []
+    assert not issues
 
 
 def test_reviewer_contract_rejects_removed_approval_mode() -> None:
@@ -96,7 +96,7 @@ def test_reviewer_contract_accepts_feedback_context_string() -> None:
 
     issues = reviewer_contract_issues(document, Path("harness/reviewers.yaml"))
 
-    assert issues == []
+    assert not issues
 
 
 def test_reviewer_contract_accepts_temp_worktree_snapshot_sandbox_mode() -> None:
@@ -117,7 +117,7 @@ def test_reviewer_contract_accepts_temp_worktree_snapshot_sandbox_mode() -> None
 
     issues = reviewer_contract_issues(document, Path("harness/reviewers.yaml"))
 
-    assert issues == []
+    assert not issues
 
 
 def test_reviewer_contract_rejects_assets_when_mode_is_not_empty_folder() -> None:

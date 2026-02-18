@@ -4,13 +4,13 @@ from pathlib import Path
 
 import pytest
 
+from engineeringagent.checks.api import run_checks
+
 
 def test_run_checks_validate_group_delegates_to_checks_validate(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from engineeringagent.checks.api import run_checks
-
     calls: list[Path] = []
 
     def _fake_validate(project_root: Path, *, schema_only: bool = False) -> list[str]:
@@ -35,11 +35,9 @@ def test_run_checks_validate_group_passes_schema_only(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from engineeringagent.checks.api import run_checks
-
     calls: list[bool] = []
 
-    def _fake_validate(project_root: Path, *, schema_only: bool = False) -> list[str]:
+    def _fake_validate(_project_root: Path, *, schema_only: bool = False) -> list[str]:
         calls.append(schema_only)
         return []
 

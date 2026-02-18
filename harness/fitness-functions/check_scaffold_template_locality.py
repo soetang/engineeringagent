@@ -136,6 +136,7 @@ def _scaffold_template_locality_violations(project_root: Path) -> list[str]:
 
 
 def main() -> int:
+    """Run the scaffold template locality fitness rule."""
     violations = _scaffold_template_locality_violations(Path("."))
     status = RuleStatus.PASS if not violations else RuleStatus.FAIL
     summary = (

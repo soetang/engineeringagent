@@ -2,26 +2,23 @@ from __future__ import annotations
 
 from pathlib import Path
 from types import SimpleNamespace
-from typing import TYPE_CHECKING
 
 import pytest
 
-
-if TYPE_CHECKING:
-    from engineeringagent.specs import HarnessChecksDocument
+from engineeringagent.changed_paths import ChangedPathsResult
+from engineeringagent.checks.commands.runtime import (
+    RunPlannedCommandChecksRequest,
+    plan_command_checks,
+    run_planned_command_checks,
+)
+from engineeringagent.specs import HarnessCheckPhase, HarnessChecksDocument
 
 
 def _doc(payload: dict[str, object]) -> HarnessChecksDocument:
-    from engineeringagent.specs import HarnessChecksDocument
-
     return HarnessChecksDocument.model_validate(payload)
 
 
 def test_plan_command_checks_respects_on_change_and_manual_phase() -> None:
-    from engineeringagent.changed_paths import ChangedPathsResult
-    from engineeringagent.checks.commands.runtime import plan_command_checks
-    from engineeringagent.specs import HarnessCheckPhase
-
     doc = _doc(
         {
             "contract_version": "1.0",
@@ -71,11 +68,6 @@ def test_run_planned_command_checks_failure_output_and_verbose(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    from engineeringagent.changed_paths import ChangedPathsResult
-    from engineeringagent.checks.commands.runtime import RunPlannedCommandChecksRequest
-    from engineeringagent.checks.commands.runtime import run_planned_command_checks
-    from engineeringagent.specs import HarnessCheckPhase
-
     doc = _doc(
         {
             "contract_version": "1.0",

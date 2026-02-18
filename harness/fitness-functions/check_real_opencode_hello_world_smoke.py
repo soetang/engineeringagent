@@ -29,6 +29,7 @@ SPARK_AGENT_MODEL = "openai/gpt-5.3-codex-spark"
 
 
 def build_init_argv(*, tmp_repo: Path) -> list[str]:
+    """Build the init argv used by the real-agent smoke run."""
     return [
         "uv",
         "run",
@@ -173,6 +174,7 @@ def _run_verification_commands(tmp_repo: Path, violations: list[str]) -> bool:
 
 
 def main() -> int:
+    """Run a real OpenCode hello-world smoke loop when enabled."""
     repo_root = Path(__file__).resolve().parents[2]
     try:
         enabled = resolve_harness_fitness_opencode_real_smoke_enabled(repo_root)
@@ -392,7 +394,7 @@ def main() -> int:
                 )
             )
             return 0
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-exception-caught
         emit_result_envelope(
             _result(
                 status=RuleStatus.ERROR,

@@ -47,7 +47,7 @@ def test_load_custom_rule_definitions_returns_empty_when_default_missing(
     """Return no custom definitions when manifest does not exist."""
     definitions = load_custom_rule_definitions(tmp_path)
 
-    assert definitions == []
+    assert not definitions
 
 
 def test_load_custom_rule_definitions_reads_default_manifest_path(

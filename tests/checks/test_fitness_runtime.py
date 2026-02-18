@@ -2,26 +2,24 @@ from __future__ import annotations
 
 from pathlib import Path
 from types import SimpleNamespace
-from typing import TYPE_CHECKING
 
 import pytest
 
-
-if TYPE_CHECKING:
-    from engineeringagent.specs import HarnessChecksDocument
+from engineeringagent.changed_paths import ChangedPathsResult
+from engineeringagent.checks.fitness.contracts import RuleStatus
+from engineeringagent.checks.fitness.runtime import (
+    RunPlannedFitnessChecksRequest,
+    plan_fitness_checks,
+    run_planned_fitness_checks,
+)
+from engineeringagent.specs import HarnessCheckPhase, HarnessChecksDocument
 
 
 def _doc(payload: dict[str, object]) -> HarnessChecksDocument:
-    from engineeringagent.specs import HarnessChecksDocument
-
     return HarnessChecksDocument.model_validate(payload)
 
 
 def test_plan_fitness_checks_respects_on_change_and_manual_phase() -> None:
-    from engineeringagent.changed_paths import ChangedPathsResult
-    from engineeringagent.checks.fitness.runtime import plan_fitness_checks
-    from engineeringagent.specs import HarnessCheckPhase
-
     doc = _doc(
         {
             "contract_version": "1.0",
@@ -71,12 +69,6 @@ def test_run_planned_fitness_checks_runs_all_rules_before_failing(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from engineeringagent.changed_paths import ChangedPathsResult
-    from engineeringagent.checks.fitness.runtime import RunPlannedFitnessChecksRequest
-    from engineeringagent.checks.fitness.runtime import run_planned_fitness_checks
-    from engineeringagent.checks.fitness.contracts import RuleStatus
-    from engineeringagent.specs import HarnessCheckPhase
-
     doc = _doc(
         {
             "contract_version": "1.0",
@@ -151,11 +143,6 @@ def test_run_planned_fitness_checks_fails_on_missing_rule_ids(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from engineeringagent.changed_paths import ChangedPathsResult
-    from engineeringagent.checks.fitness.runtime import RunPlannedFitnessChecksRequest
-    from engineeringagent.checks.fitness.runtime import run_planned_fitness_checks
-    from engineeringagent.specs import HarnessCheckPhase
-
     doc = _doc(
         {
             "contract_version": "1.0",

@@ -95,6 +95,7 @@ def _scan_file(path: Path) -> list[str]:
 
 
 def main() -> int:
+    """Run the no-stdlib-dataclasses fitness rule."""
     files = sorted(SCOPED_ROOT.rglob("*.py"))
 
     violations: list[str] = []

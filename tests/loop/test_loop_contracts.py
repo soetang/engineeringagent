@@ -7,16 +7,23 @@ import sys
 from inspect import Parameter
 from pathlib import Path
 
-import engineeringagent.loop as loop_module
-from engineeringagent.progress import paths as progress_paths
 import pytest
 import yaml
 from pydantic import BaseModel, ValidationError
 
+import engineeringagent.loop as loop_module
+from engineeringagent.loop import (
+    _drop_completed_feature_from_snapshot,
+    _run_feature_iteration,
+)
 from engineeringagent.loop_runtime.models import (
     FeatureIterationInputs,
     ImplementStepInputs,
     IterationTelemetryInputs,
+)
+from engineeringagent.loop_runtime.implement import (
+    _format_opencode_run_command,
+    run_implement_step_from_inputs,
 )
 from engineeringagent.loop_runtime.run_context import (
     LoopRun,
@@ -24,9 +31,8 @@ from engineeringagent.loop_runtime.run_context import (
     RunServices,
     RunState,
 )
-from engineeringagent.loop_runtime.implement import run_implement_step_from_inputs
-import engineeringagent.loop_runtime.implement as implement_module
 from engineeringagent.loop_runtime.telemetry import write_iteration_telemetry
+from engineeringagent.progress import paths as progress_paths
 
 
 def test_progress_paths_contract(tmp_path: Path) -> None:
@@ -126,7 +132,7 @@ def test_run_implement_step_signature_is_explicit() -> None:
 
 
 def test_run_feature_iteration_signature_is_explicit() -> None:
-    signature = inspect.signature(loop_module._run_feature_iteration)
+    signature = inspect.signature(_run_feature_iteration)
     parameters = signature.parameters
 
     assert tuple(parameters) == (
@@ -143,7 +149,7 @@ def test_run_feature_iteration_signature_is_explicit() -> None:
         for parameter in parameters.values()
     )
     assert parameters["opencode_prompt"].default is None
-    assert not hasattr(loop_module._run_feature_iteration, "__signature__")
+    assert not hasattr(_run_feature_iteration, "__signature__")
 
 
 def test_print_summary_signature_is_explicit() -> None:
@@ -185,7 +191,9 @@ def test_loop_run_context_contract_immutability_and_extra_forbid() -> None:
     assert RunConfig.model_config.get("extra") == "forbid"
     assert RunServices.model_config.get("extra") == "forbid"
     assert RunState.model_config.get("extra") == "forbid"
-    assert "make_iteration_config" not in RunServices.model_fields
+
+    fields = dict(RunServices.model_fields)
+    assert "make_iteration_config" not in fields
     assert loop_run.state is state
 
     with pytest.raises(ValidationError):
@@ -260,7 +268,7 @@ def test_run_implement_step_from_inputs_requires_opencode_when_available(
 
 def test_format_opencode_run_command_is_stable() -> None:
     assert (
-        implement_module._format_opencode_run_command("engineeringagent")
+        _format_opencode_run_command("engineeringagent")
         == "opencode run --agent engineeringagent <prompt>"
     )
 
@@ -273,10 +281,7 @@ def test_drop_completed_feature_from_snapshot_keeps_existing_paths(
     feature_path.write_text("id: FEAT-001\n", encoding="utf-8")
 
     resolved = [feature_path]
-    assert (
-        loop_module._drop_completed_feature_from_snapshot(resolved, feature_path)
-        is resolved
-    )
+    assert _drop_completed_feature_from_snapshot(resolved, feature_path) is resolved
 
 
 def test_loop_facade_line_budget_rule_configuration() -> None:

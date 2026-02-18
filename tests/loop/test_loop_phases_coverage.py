@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any
 
 from pydantic import BaseModel
 from engineeringagent.changed_paths import ChangedPathsResult

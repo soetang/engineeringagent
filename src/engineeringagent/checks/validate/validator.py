@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import json
 import re
 from collections.abc import Callable
 from pathlib import Path
+
+import yaml
 
 from pydantic import BaseModel, ConfigDict
 
@@ -363,7 +366,7 @@ def _append_schema_sync_issues(messages: list[str], schema_path: Path) -> None:
 
     try:
         current_schema = load_schema(schema_path)
-    except Exception as exc:  # noqa: BLE001
+    except (OSError, json.JSONDecodeError, ValueError) as exc:
         messages.append(f"{schema_path}: failed to parse JSON schema: {exc}")
         return
 
@@ -546,7 +549,7 @@ def _load_yaml_or_record_error(
 ) -> dict[str, object] | None:
     try:
         return load_yaml(file_path)
-    except Exception as exc:  # noqa: BLE001
+    except (OSError, ValueError, yaml.YAMLError) as exc:
         messages.append(f"{file_path}: failed to parse YAML: {exc}")
         return None
 

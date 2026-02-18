@@ -9,6 +9,7 @@ from types import SimpleNamespace
 from typing import Literal
 
 import typer
+import yaml
 
 from .git import client as git_client
 from .init_scaffold import (
@@ -19,7 +20,9 @@ from .init_scaffold import (
     build_scaffold_agents_markdown,
 )
 from .loop import RunConfigOptions, build_loop_run, build_run_config, run_loop
-from .specs import HarnessCheckPhase
+from . import checks as checks_module
+from .checks import render_fitness_catalog
+from .specs import HarnessCheckPhase, checks_contract_issues, load_yaml
 
 _HandlerArgs = SimpleNamespace
 
@@ -34,7 +37,7 @@ def _stdout_is_tty() -> bool:
         return False
     try:
         return bool(isatty())
-    except Exception:
+    except (OSError, ValueError):
         return False
 
 
@@ -212,9 +215,7 @@ def cmd_validate(args: _HandlerArgs) -> int:
         Process exit code where 0 means validation passed.
     """
     project_root = Path(args.project_root).resolve()
-    from engineeringagent.checks import run_checks
-
-    result = run_checks(
+    result = checks_module.run_checks(
         project_root,
         phase="manual",
         checks=["validate"],
@@ -275,10 +276,8 @@ def cmd_run(args: _HandlerArgs) -> int:
             )
             return 1
         try:
-            from .specs import checks_contract_issues, load_yaml
-
             issues = checks_contract_issues(load_yaml(checks_path), checks_path)
-        except Exception as exc:  # noqa: BLE001
+        except (OSError, ValueError, yaml.YAMLError) as exc:
             print(f"run config error: failed to load harness/checks.yaml: {exc}")
             return 1
         if issues:
@@ -308,8 +307,6 @@ def cmd_checks_catalog(args: _HandlerArgs) -> int:
     manifest_path = _resolve_manifest_path(args.manifest_path)
     output_path = _resolve_optional_path(path=args.output, project_root=project_root)
 
-    from engineeringagent.checks import render_fitness_catalog
-
     rendered = render_fitness_catalog(
         project_root,
         manifest_path=manifest_path,
@@ -337,8 +334,6 @@ def cmd_checks_run(args: _HandlerArgs) -> int:
     want deterministic execution of repo-owned verification without running the
     full feature loop.
     """
-
-    from engineeringagent import checks as checks_module
 
     project_root = Path(args.project_root).resolve()
     result = checks_module.run_checks(
@@ -536,7 +531,7 @@ def _install_precommit_hooks_best_effort(
 
         try:
             result = git_client.precommit_install(project_root, hook_type=hook_type)
-        except Exception as exc:
+        except OSError as exc:
             print(
                 "init warning: pre-commit hook install failed "
                 f"(error={exc.__class__.__name__}). To retry: {retry_command}"

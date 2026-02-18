@@ -150,4 +150,4 @@ def test_retry_feedback_no_truncation_rule_passes_without_slicing(
 
     assert proc.returncode == 0
     assert result["status"] == "pass"
-    assert _violations(result) == []
+    assert not _violations(result)

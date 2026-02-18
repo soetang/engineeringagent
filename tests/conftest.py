@@ -20,6 +20,7 @@ def _uses_explicit_test_selection(args: tuple[str, ...]) -> bool:
 
 
 def pytest_configure(config) -> None:  # type: ignore[no-untyped-def]
+    """Relax coverage thresholds when tests are explicitly targeted."""
     if not _uses_explicit_test_selection(config.invocation_params.args):
         return
 

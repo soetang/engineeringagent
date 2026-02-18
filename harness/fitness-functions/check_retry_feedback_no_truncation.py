@@ -99,6 +99,7 @@ def _retry_feedback_injection_violations(
 
 
 def main() -> int:
+    """Run the retry-feedback no-truncation fitness rule."""
     tree, violations = _parse_module(Path("."), _RETRY_RENDERER_PATH)
     if tree is not None:
         violations.extend(

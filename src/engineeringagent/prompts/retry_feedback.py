@@ -33,15 +33,21 @@ MAX_REQUIRED_ACTIONS = 20
 
 
 class RetryFeedbackModel(BaseModel):
+    """Base model for retry-feedback envelopes emitted by the loop runtime."""
+
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
 class RerunInstructions(RetryFeedbackModel):
+    """Instructions for how a contributor should rerun a failing command."""
+
     cwd: Literal["repo_root"]
     instructions: NonEmptyStr
 
 
 class CommandFailureRetryFeedbackEnvelope(RetryFeedbackModel):
+    """Envelope describing a failing command check during loop execution."""
+
     kind: Literal["command_failure"]
     phase: CommandFailurePhase
     message: NonEmptyStr
@@ -53,6 +59,8 @@ class CommandFailureRetryFeedbackEnvelope(RetryFeedbackModel):
 
 
 class FailedFitnessRule(RetryFeedbackModel):
+    """Serialized representation of a failed fitness rule."""
+
     rule_id: RuleId
     status: Literal["fail"]
     remediation: NonEmptyStr
@@ -63,6 +71,8 @@ class FailedFitnessRule(RetryFeedbackModel):
 
 
 class FitnessFailureRetryFeedbackEnvelope(RetryFeedbackModel):
+    """Envelope describing one or more failing fitness rules."""
+
     kind: Literal["fitness_failure"]
     phase: Literal["gates"]
     message: NonEmptyStr
@@ -76,6 +86,8 @@ class FitnessFailureRetryFeedbackEnvelope(RetryFeedbackModel):
 
 
 class ReviewerDecisionPayload(RetryFeedbackModel):
+    """Reviewer decision payload embedded in retry feedback."""
+
     decision: ReviewerDecisionName
     summary: NonEmptyStr
     required_actions: Annotated[
@@ -86,6 +98,8 @@ class ReviewerDecisionPayload(RetryFeedbackModel):
 
 
 class ReviewerFeedbackRetryEnvelope(RetryFeedbackModel):
+    """Envelope capturing reviewer feedback for a failed iteration."""
+
     kind: Literal["reviewer_feedback"]
     phase: Literal["reviewers"]
     message: NonEmptyStr

@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Sequence
 
+import yaml
+
 from engineeringagent.config import resolve_docs_root
 from engineeringagent.loop_runtime.models import (
     InitialFeatureLoadOutcome,
@@ -180,7 +182,7 @@ def _load_selected_feature_with_archive_fallback(
 
         try:
             archived_feature = load_yaml(archive_path)
-        except Exception as exc:  # noqa: BLE001
+        except (OSError, ValueError, yaml.YAMLError) as exc:
             return (
                 None,
                 False,
@@ -445,7 +447,7 @@ def _archive_completed_feature(
 
     try:
         feature = load_yaml(feature_path)
-    except Exception as exc:  # noqa: BLE001
+    except (OSError, ValueError, yaml.YAMLError) as exc:
         return (
             False,
             None,

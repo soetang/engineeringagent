@@ -36,6 +36,8 @@ ANSI_ESCAPE_PATTERN = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 
 
 class PermissionProbeResult(BaseModel):
+    """Structured evaluation result for the OpenCode permission probe."""
+
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     ok: bool

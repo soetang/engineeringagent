@@ -53,6 +53,8 @@ def _payload_get_list_of_dicts(payload: object, key: str) -> list[dict[str, obje
 
 
 class GatePhaseDependencies(BaseModel):
+    """Injectable dependencies for the gate phase."""
+
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     restore_archived_feature: Callable[[Path, Path], tuple[bool, str | None]]
@@ -61,6 +63,8 @@ class GatePhaseDependencies(BaseModel):
 
 
 class CompletionPhaseDependencies(BaseModel):
+    """Injectable dependencies for the completion-commit phase."""
+
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     commit_feature_completion: Callable[
@@ -70,12 +74,16 @@ class CompletionPhaseDependencies(BaseModel):
 
 
 class VerificationPhaseDependencies(BaseModel):
+    """Injectable dependencies for the verification phase."""
+
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     run_shell_command: Callable[[Path, str], Any]
 
 
 class ReviewerPhaseDependencies(BaseModel):
+    """Injectable dependencies for the reviewer phase."""
+
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     collect_changed_paths: Callable[..., Any]

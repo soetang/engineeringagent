@@ -4,11 +4,16 @@ import json
 from pathlib import Path
 
 from engineeringagent.changed_paths import ChangedPathsResult
+from engineeringagent.checks.reviewers.runtime import (
+    RunPlannedReviewerChecksRequest,
+    plan_reviewer_checks,
+    run_planned_reviewer_checks,
+)
+from engineeringagent.progress.paths import reviewers_state_path
+from engineeringagent.specs import HarnessCheckPhase, HarnessChecksDocument, load_yaml
 
 
 def _load_checks_document(checks_path: Path):
-    from engineeringagent.specs import HarnessChecksDocument, load_yaml
-
     payload = load_yaml(checks_path)
     return HarnessChecksDocument.model_validate(payload)
 
@@ -21,9 +26,6 @@ def _write_checks_yaml(tmp_path: Path, content: str) -> Path:
 
 
 def test_plan_reviewer_checks_manual_phase_marks_skip(tmp_path: Path) -> None:
-    from engineeringagent.checks.reviewers.runtime import plan_reviewer_checks
-    from engineeringagent.specs import HarnessCheckPhase
-
     checks_path = _write_checks_yaml(
         tmp_path,
         "\n".join(
@@ -54,13 +56,6 @@ def test_plan_reviewer_checks_manual_phase_marks_skip(tmp_path: Path) -> None:
 
 
 def test_run_planned_reviewer_checks_reuses_cached_approval(tmp_path: Path) -> None:
-    from engineeringagent.checks.reviewers.runtime import (
-        RunPlannedReviewerChecksRequest,
-        run_planned_reviewer_checks,
-    )
-    from engineeringagent.progress.paths import reviewers_state_path
-    from engineeringagent.specs import HarnessCheckPhase
-
     checks_path = _write_checks_yaml(
         tmp_path,
         "\n".join(
@@ -128,12 +123,6 @@ def test_run_planned_reviewer_checks_reuses_cached_approval(tmp_path: Path) -> N
 def test_run_planned_reviewer_checks_returns_ok_when_no_checks_planned(
     tmp_path: Path,
 ) -> None:
-    from engineeringagent.checks.reviewers.runtime import (
-        RunPlannedReviewerChecksRequest,
-        run_planned_reviewer_checks,
-    )
-    from engineeringagent.specs import HarnessCheckPhase
-
     checks_path = _write_checks_yaml(
         tmp_path,
         "\n".join(
@@ -176,9 +165,6 @@ def test_run_planned_reviewer_checks_returns_ok_when_no_checks_planned(
 def test_plan_reviewer_checks_on_change_and_run_all_are_deterministic(
     tmp_path: Path,
 ) -> None:
-    from engineeringagent.checks.reviewers.runtime import plan_reviewer_checks
-    from engineeringagent.specs import HarnessCheckPhase
-
     checks_path = _write_checks_yaml(
         tmp_path,
         "\n".join(
@@ -230,12 +216,6 @@ def test_plan_reviewer_checks_on_change_and_run_all_are_deterministic(
 def test_run_planned_reviewer_checks_manual_phase_emits_skip_output(
     tmp_path: Path,
 ) -> None:
-    from engineeringagent.checks.reviewers.runtime import (
-        RunPlannedReviewerChecksRequest,
-        run_planned_reviewer_checks,
-    )
-    from engineeringagent.specs import HarnessCheckPhase
-
     checks_path = _write_checks_yaml(
         tmp_path,
         "\n".join(

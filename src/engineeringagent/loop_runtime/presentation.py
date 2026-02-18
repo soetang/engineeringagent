@@ -20,7 +20,7 @@ def _stdout_is_tty(stdout: TextIO) -> bool:
         return False
     try:
         return bool(isatty())
-    except Exception:
+    except (OSError, ValueError, RuntimeError):
         return False
 
 
@@ -44,9 +44,11 @@ class RunOutputPresenter(BaseModel):
 
     @classmethod
     def for_current_terminal(cls) -> "RunOutputPresenter":
+        """Build a presenter configured for the current stdout."""
         return cls(use_ansi=tty_supports_ansi())
 
     def format_summary_suffix(self, result: str) -> str:
+        """Return the short trailing status marker for a result string."""
         if not self.use_ansi:
             return ""
         if result == "passed":
@@ -56,16 +58,19 @@ class RunOutputPresenter(BaseModel):
         return f" {ANSI_YELLOW}{ANSI_BOLD}[{result}]{ANSI_RESET}"
 
     def format_failed_gate_line(self, failed_gate: str) -> str:
+        """Return a single-line failure message for a gate id."""
         if not self.use_ansi:
             return f"Failed gate: {failed_gate}"
         return f"{ANSI_RED}{ANSI_BOLD}Failed gate:{ANSI_RESET} {failed_gate}"
 
     def format_iteration_passed_line(self) -> str:
+        """Return a single-line iteration success message."""
         if not self.use_ansi:
             return "✅ Passed"
         return f"✅ {ANSI_GREEN}{ANSI_BOLD}Passed{ANSI_RESET}"
 
     def format_iteration_failed_line(self, failed_gate: str | None) -> str:
+        """Return a single-line iteration failure message."""
         gate_value = failed_gate or "unknown"
         if not self.use_ansi:
             return f"❌ Failed: gate={gate_value}"

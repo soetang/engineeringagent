@@ -241,6 +241,7 @@ def _doc_content_test_violations(project_root: Path) -> list[str]:
 
 
 def main() -> int:
+    """Run the no-doc-content-tests fitness rule."""
     violations = _doc_content_test_violations(Path("."))
     status = RuleStatus.PASS if not violations else RuleStatus.FAIL
     summary = (

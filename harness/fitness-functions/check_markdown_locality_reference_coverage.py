@@ -157,6 +157,7 @@ def _markdown_locality_reference_coverage_violations(project_root: Path) -> list
 
 
 def main() -> int:
+    """Run the markdown locality and reference coverage fitness rule."""
     violations = _markdown_locality_reference_coverage_violations(Path("."))
     status = RuleStatus.PASS if not violations else RuleStatus.FAIL
     summary = (

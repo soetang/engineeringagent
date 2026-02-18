@@ -41,6 +41,7 @@ def _run_validator(
         cwd=cwd,
         capture_output=True,
         text=True,
+        check=False,
     )
 
 

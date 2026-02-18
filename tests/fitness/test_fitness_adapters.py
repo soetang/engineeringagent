@@ -235,7 +235,7 @@ def test_non_ignorable_suppression_adapter_honors_explicit_scan_roots(
     result = execute_rule_definition(definition, project_root=tmp_path)
 
     assert result.status == RuleStatus.PASS
-    assert result.violations == []
+    assert not result.violations
 
 
 def test_non_ignorable_suppression_adapter_detects_file_level_and_multicode_noqa(

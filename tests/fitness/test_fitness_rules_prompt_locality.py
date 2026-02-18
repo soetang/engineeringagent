@@ -206,7 +206,7 @@ def test_prompt_locality_rule_passes_for_localized_templates_and_prompts(
 
     assert proc.returncode == 0
     assert result["status"] == "pass"
-    assert _violations(result) == []
+    assert not _violations(result)
 
 
 def test_prompt_locality_rule_reports_sorted_path_line_diagnostics(

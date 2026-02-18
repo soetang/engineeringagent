@@ -126,7 +126,7 @@ def test_exact_sync_checker_passes_when_docs_and_template_match(
 
     assert proc.returncode == 0
     assert result["status"] == "pass"
-    assert _violations(result) == []
+    assert not _violations(result)
 
 
 def test_exact_sync_checker_fails_when_configured_docs_file_is_missing(

@@ -12,12 +12,13 @@ from engineeringagent.changed_paths import (
 from engineeringagent.checks.fitness.adapters import execute_rule_definition
 from engineeringagent.checks.fitness.contracts import RuleStatus
 from engineeringagent.checks.fitness.registry import build_rule_catalog
-from ..on_change_matcher import path_matches_any_glob
 from engineeringagent.specs import (
     HarnessCheckFitnessDefinition,
     HarnessCheckPhase,
     HarnessChecksDocument,
 )
+
+from ..on_change_matcher import path_matches_any_glob
 
 
 ALWAYS_RUN_NO_ON_CHANGE_REASON = "always_run_no_on_change"
@@ -26,6 +27,8 @@ NO_ON_CHANGE_MATCH_REASON = "no_on_change_match"
 
 
 class PlannedCheck(BaseModel):
+    """A deterministic run/skip decision for a single fitness check."""
+
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     check_id: str
@@ -34,6 +37,8 @@ class PlannedCheck(BaseModel):
 
 
 class RunPlannedFitnessChecksRequest(BaseModel):
+    """Inputs required to plan and execute fitness checks."""
+
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     project_root: Path

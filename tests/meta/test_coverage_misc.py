@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+# Tests intentionally validate internal helpers.
+# pylint: disable=protected-access
+
 import logging
 import subprocess
 import importlib.util

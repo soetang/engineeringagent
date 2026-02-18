@@ -9,7 +9,6 @@ from engineeringagent.changed_paths import (
     ChangedPathsResult,
     FALLBACK_CHANGE_DISCOVERY_REASON,
 )
-from ..on_change_matcher import path_matches_any_glob
 
 from engineeringagent.checks.reviewers.engine import (
     DECISION_APPROVE,
@@ -26,6 +25,8 @@ from engineeringagent.specs import (
     HarnessChecksDocument,
 )
 
+from ..on_change_matcher import path_matches_any_glob
+
 
 ALWAYS_RUN_NO_ON_CHANGE_REASON = "always_run_no_on_change"
 MATCHED_ON_CHANGE_REASON = "matched_on_change"
@@ -33,6 +34,8 @@ NO_ON_CHANGE_MATCH_REASON = "no_on_change_match"
 
 
 class PlannedCheck(BaseModel):
+    """Deterministic plan entry for a reviewer check."""
+
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     check_id: str
@@ -41,6 +44,8 @@ class PlannedCheck(BaseModel):
 
 
 class RunPlannedReviewerChecksRequest(BaseModel):
+    """Request payload for running planned reviewer checks."""
+
     model_config = ConfigDict(
         frozen=True,
         extra="forbid",

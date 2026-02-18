@@ -17,6 +17,7 @@ MAX_LINE_BUDGET = 650
 
 
 def main() -> int:
+    """Run the loop facade line-budget fitness rule."""
     loop_path = Path("src/engineeringagent/loop.py")
     lines = len(loop_path.read_text(encoding="utf-8").splitlines())
 

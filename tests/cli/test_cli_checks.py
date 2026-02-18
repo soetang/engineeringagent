@@ -6,6 +6,7 @@ import pytest
 from typer.testing import CliRunner
 
 from engineeringagent import cli as cli_module
+from engineeringagent.checks.api import ChecksRunResult
 
 
 def test_cli_checks_run_requires_checks_yaml(tmp_path: Path) -> None:
@@ -179,8 +180,6 @@ def test_cli_checks_run_delegates_to_checks_surface(
         encoding="utf-8",
     )
 
-    from engineeringagent.checks.api import ChecksRunResult
-
     calls: list[tuple[Path, object, list[str] | None, dict[str, object]]] = []
 
     def _fake_run_checks(
@@ -254,8 +253,6 @@ def test_cli_checks_run_normalizes_feature_path_before_delegating(
         ),
         encoding="utf-8",
     )
-
-    from engineeringagent.checks.api import ChecksRunResult
 
     calls: list[dict[str, object]] = []
 

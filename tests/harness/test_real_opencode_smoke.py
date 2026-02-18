@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+# Tests load the smoke script module and exercise internal helpers.
+# pylint: disable=protected-access
+
 import importlib.util
 import subprocess
 from pathlib import Path

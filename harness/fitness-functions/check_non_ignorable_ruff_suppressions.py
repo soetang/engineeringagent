@@ -121,6 +121,7 @@ def _scan_file(path: Path, blocked_rule_ids: set[str]) -> list[str]:
 
 
 def main() -> int:
+    """Run the non-ignorable Ruff suppression scan fitness rule."""
     args = _parse_args()
     blocked_rule_ids = {rule_id.upper() for rule_id in args.blocked_rule_ids}
     scan_roots = (

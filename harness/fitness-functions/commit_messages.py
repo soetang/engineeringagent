@@ -91,6 +91,7 @@ def commit_subjects_from_range(project_root: Path, commit_range: str) -> list[st
         cwd=project_root,
         capture_output=True,
         text=True,
+        check=False,
     )
     if proc.returncode != 0:
         output = ((proc.stdout or "") + (proc.stderr or "")).strip()

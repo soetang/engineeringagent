@@ -8,6 +8,8 @@ from typing import Any, Callable, Iterable, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from engineeringagent.opencode.client import DEFAULT_OPENCODE_AGENT
+
 from .models import (
     CommandTiming,
     CompletionCommitOutcome,
@@ -31,6 +33,8 @@ from .time_format import utc_iso_from_epoch_sec
 
 
 class IterationPipelineDependencies(BaseModel):
+    """Injectable dependencies for the iteration pipeline."""
+
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     evaluate_initial_feature_load: Callable[[Path, Path], InitialFeatureLoadOutcome]
@@ -166,14 +170,12 @@ def _timed_phase(
 
 
 def _default_implement_step_label() -> str:
-    from engineeringagent.opencode.client import DEFAULT_OPENCODE_AGENT
-
     return f"opencode run --agent {DEFAULT_OPENCODE_AGENT}"
 
 
 def _record_implement_timing(
     state: _PipelineState,
-    iteration_inputs: FeatureIterationInputs,
+    _iteration_inputs: FeatureIterationInputs,
     started_epoch_sec: int,
     ended_epoch_sec: int,
 ) -> None:

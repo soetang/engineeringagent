@@ -11,6 +11,7 @@ from typer.testing import CliRunner
 
 from engineeringagent import cli as cli_module
 from engineeringagent.init_scaffold import (
+    _spec_validate_gate,
     build_baseline_scaffold_manifest,
     build_scaffold_agents_markdown,
 )
@@ -131,8 +132,6 @@ def test_init_pack_arg_never_prompts_even_on_tty(
 
 def test_spec_validate_gate_helper_builds_expected_patterns() -> None:
     """Verify init scaffold shares a single spec_validate gate shape."""
-
-    from engineeringagent.init_scaffold import _spec_validate_gate
 
     assert _spec_validate_gate("docs") == {
         "run": "engineeringagent validate",
@@ -396,7 +395,7 @@ def test_init_writes_precommit_and_empty_gate_profiles(
         )
     )
     assert fitness_manifest["contract_version"] == "1.0"
-    assert fitness_manifest["rules"] == []
+    assert not fitness_manifest["rules"]
 
 
 def test_init_attempts_precommit_install_when_git_repo_and_precommit_available(
@@ -874,7 +873,7 @@ def test_init_scaffolds_scaffold_policy_with_resolved_docs_root(tmp_path: Path) 
     payload = yaml.safe_load(policy_path.read_text(encoding="utf-8"))
     assert payload["contract_version"] == "1.0"
     assert payload["docs_root"] == "docs"
-    assert payload["human_docs"] == []
+    assert not payload["human_docs"]
     assert payload["agent_docs"] == [
         "docs/references/docs-architecture-llms.md",
         "docs/references/spec-writing-llms.md",

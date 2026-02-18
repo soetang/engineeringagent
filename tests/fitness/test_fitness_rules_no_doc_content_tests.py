@@ -131,4 +131,4 @@ def test_checker_allows_generated_rules_markdown_sync_reads(
     proc, result = _run_checker(tmp_path, checker_path=_script_path(repo_root))
     assert proc.returncode == 0
     assert result["status"] == "pass"
-    assert _violations(result) == []
+    assert not _violations(result)

@@ -12,7 +12,7 @@ def test_commit_subject_policy_is_harness_owned(repo_root: Path) -> None:
         repo_root / "harness" / "fitness-functions" / "validate_commit_messages.py"
     )
     text = validator.read_text(encoding="utf-8")
-    assert "from commit_messages import" in text
+    assert "commit_messages.py" in text
     assert "engineeringagent.commit_messages" not in text
 
     legacy_module = repo_root / "src" / "engineeringagent" / "commit_messages.py"

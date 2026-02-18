@@ -68,7 +68,9 @@ def test_opencode_backend_raises_on_nonzero_exit(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    def _fake_start_agent(project_root: Path, prompt: str, **kwargs: object) -> _Proc:
+    def _fake_start_agent(
+        _project_root: Path, _prompt: str, **_kwargs: object
+    ) -> _Proc:
         return _Proc(returncode=1, stderr="boom")
 
     monkeypatch.setattr(
@@ -85,7 +87,9 @@ def test_opencode_backend_raises_on_missing_text_payload(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    def _fake_start_agent(project_root: Path, prompt: str, **kwargs: object) -> _Proc:
+    def _fake_start_agent(
+        _project_root: Path, _prompt: str, **_kwargs: object
+    ) -> _Proc:
         return _Proc(returncode=0, text_payload=None)
 
     monkeypatch.setattr(

@@ -18,6 +18,7 @@ def status_porcelain(project_root: Path) -> subprocess.CompletedProcess[str]:
         cwd=project_root,
         capture_output=True,
         text=True,
+        check=False,
     )
 
 
@@ -35,6 +36,7 @@ def head_short(project_root: Path) -> subprocess.CompletedProcess[str]:
         cwd=project_root,
         capture_output=True,
         text=True,
+        check=False,
     )
 
 
@@ -71,6 +73,7 @@ def add_all(project_root: Path) -> subprocess.CompletedProcess[str]:
         cwd=project_root,
         capture_output=True,
         text=True,
+        check=False,
     )
 
 
@@ -98,6 +101,7 @@ def commit(project_root: Path, message: str) -> subprocess.CompletedProcess[str]
         cwd=project_root,
         capture_output=True,
         text=True,
+        check=False,
     )
 
 

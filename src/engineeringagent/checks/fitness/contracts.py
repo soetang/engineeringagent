@@ -22,31 +22,43 @@ RuleId = Annotated[
 
 
 class FitnessModel(BaseModel):
+    """Base model for fitness-rule contract entities."""
+
     model_config = ConfigDict(extra="forbid")
 
 
 class RuleSeverity(str, Enum):
+    """Fitness-rule severity levels."""
+
     ERROR = "error"
     WARNING = "warning"
 
 
 class RuleStatus(str, Enum):
+    """Normalized status for a single fitness rule evaluation."""
+
     PASS = "pass"
     FAIL = "fail"
     ERROR = "error"
 
 
 class RuleAdapter(str, Enum):
+    """Execution adapter for a fitness rule."""
+
     PYTHON = "python"
     COMMAND = "command"
 
 
 class RuleSource(str, Enum):
+    """Origin of a fitness rule definition."""
+
     BUILTIN = "builtin"
     CUSTOM = "custom"
 
 
 class FitnessRuleMetadata(FitnessModel):
+    """Metadata required to describe a fitness rule."""
+
     rule_id: RuleId
     name: NonEmptyStr
     summary: NonEmptyStr
@@ -60,6 +72,8 @@ class FitnessRuleMetadata(FitnessModel):
 
 
 class FitnessRuleResult(FitnessModel):
+    """Single rule execution result emitted by fitness checks."""
+
     contract_version: Annotated[str, Field(strict=True, pattern=r"^1\.0$")]
     rule_id: RuleId
     status: RuleStatus
@@ -70,6 +84,8 @@ class FitnessRuleResult(FitnessModel):
 
 
 class CustomRuleManifestEntry(FitnessModel):
+    """Manifest entry describing a custom command-backed fitness rule."""
+
     rule_id: RuleId
     name: NonEmptyStr
     summary: NonEmptyStr
@@ -85,6 +101,8 @@ class CustomRuleManifestEntry(FitnessModel):
 
 
 class CustomRuleManifest(FitnessModel):
+    """Custom fitness-rule manifest loaded from YAML."""
+
     contract_version: Annotated[str, Field(strict=True, pattern=r"^1\.0$")]
     rules: list[CustomRuleManifestEntry] = Field(default_factory=list)
 

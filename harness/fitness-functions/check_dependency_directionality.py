@@ -87,6 +87,7 @@ def _directionality_violations(project_root: Path) -> list[str]:
 
 
 def main() -> int:
+    """Run the dependency directionality fitness rule."""
     violations = _directionality_violations(Path("."))
     status = RuleStatus.PASS if not violations else RuleStatus.FAIL
     summary = (

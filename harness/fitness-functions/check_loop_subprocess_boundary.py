@@ -180,6 +180,7 @@ def _direct_call_name(code_line: str) -> str:
 
 
 def main() -> int:
+    """Run the subprocess boundary fitness rule."""
     violations: list[str] = []
     status = RuleStatus.PASS
     summary = "Subprocess boundary allowlist constraints satisfied."
@@ -192,7 +193,7 @@ def main() -> int:
                 "Detected "
                 f"{len(violations)} subprocess invocation(s) outside allowlisted modules."
             )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-exception-caught
         status = RuleStatus.ERROR
         summary = f"Semgrep subprocess-boundary scan failed: {exc}"
 

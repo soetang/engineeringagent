@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from engineeringagent.agents.api import (
+from engineeringagent.agents.contracts import (
     AgentBackendError,
     AgentBackendFailureDetails,
     AgentBackendRunResult,
@@ -23,13 +23,14 @@ class OpenCodeAgentBackend:
         self,
         *,
         agent: str = DEFAULT_OPENCODE_AGENT,
-        format: str | None = None,
+        format: str | None = None,  # pylint: disable=redefined-builtin
     ) -> None:
         self._agent = agent
         self._format = format
 
     @property
     def name(self) -> str:
+        """Backend identifier used in error messages and telemetry."""
         return "opencode"
 
     def run(
@@ -39,6 +40,7 @@ class OpenCodeAgentBackend:
         *,
         session_id: str | None = None,
     ) -> AgentBackendRunResult:
+        """Run the OpenCode agent and return a backend-normalized result."""
         proc = start_agent(
             project_root,
             prompt,

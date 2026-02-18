@@ -2,14 +2,32 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 from pathlib import Path
+from types import ModuleType
 
-from commit_messages import (
-    commit_subjects_from_range,
-    subject_from_commit_message_file,
-    validate_commit_subject,
-    validate_commit_subjects,
-)
+
+def _load_commit_messages_module() -> ModuleType:
+    """Load sibling commit_messages.py via file path.
+
+    This script lives in a non-package directory (harness/fitness-functions), so
+    importing by module name is not reliable under all tooling (e.g. pylint).
+    """
+
+    module_path = Path(__file__).resolve().parent / "commit_messages.py"
+    spec = importlib.util.spec_from_file_location("commit_messages", module_path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"unable to load commit_messages from {module_path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+_commit_messages = _load_commit_messages_module()
+commit_subjects_from_range = _commit_messages.commit_subjects_from_range
+subject_from_commit_message_file = _commit_messages.subject_from_commit_message_file
+validate_commit_subject = _commit_messages.validate_commit_subject
+validate_commit_subjects = _commit_messages.validate_commit_subjects
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -72,6 +90,7 @@ def _run_commit_range_mode(project_root: Path, commit_range: str) -> int:
 
 
 def main() -> int:
+    """Run commit message validation and exit with a shell-friendly code."""
     parser = build_parser()
     args = parser.parse_args()
 

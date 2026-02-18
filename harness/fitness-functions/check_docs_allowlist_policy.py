@@ -198,6 +198,7 @@ def _check_docs_allowlist_policy(project_root: Path) -> list[str]:
 
 
 def main() -> int:
+    """Run the docs allowlist policy fitness rule."""
     violations = _check_docs_allowlist_policy(Path("."))
     status = RuleStatus.PASS if not violations else RuleStatus.FAIL
     summary = (

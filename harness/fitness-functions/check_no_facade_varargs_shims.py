@@ -221,6 +221,7 @@ def _collect_violations(project_root: Path) -> list[str]:
 
 
 def main() -> int:
+    """Run the no-facade-varargs-shims fitness rule."""
     violations = _collect_violations(Path("."))
     status = RuleStatus.PASS if not violations else RuleStatus.FAIL
     summary = (

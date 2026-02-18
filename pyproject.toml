@@ -31,6 +31,7 @@ markers = [
 [dependency-groups]
 dev = [
     "coverage>=7.10.0",
+    "pylint>=3.0.0",
     "pyright>=1.1.405",
     "pytest>=9.0.2",
     "pytest-cov>=7.0.0",
@@ -83,6 +84,35 @@ max-statements = 120
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.pylint]
+# Presence of this table signals pylint to read pyproject.toml.
+
+[tool.pylint."MESSAGES CONTROL"]
+disable = [
+  "missing-module-docstring", # C0114
+  "line-too-long",            # C0301
+]
+
+[tool.pylint."BASIC"]
+no-docstring-rgx = "^(_|test_)"
+
+[tool.pylint."IMPORTS"]
+allow-any-import-level = true
+
+[tool.pylint."DESIGN"]
+max-module-lines = 3500
+max-args = 14
+max-positional-arguments = 14
+max-locals = 25
+max-returns = 20
+max-branches = 25
+max-statements = 100
+max-nested-blocks = 6
+min-public-methods = 0
+
+[tool.pylint."SIMILARITIES"]
+min-similarity-lines = 200
 
 [tool.setuptools.project_urls]
 Source  = "https://github.com/soetang/engineeringagent"

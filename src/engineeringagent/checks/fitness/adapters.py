@@ -24,7 +24,7 @@ def execute_rule_definition(
     try:
         payload = _adapter_payload(definition, project_root)
         return _normalize_result(definition, payload)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # pylint: disable=broad-exception-caught
         return _error_result(
             definition,
             f"Adapter execution failed: {exc}",

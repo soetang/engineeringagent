@@ -75,7 +75,7 @@ def start_agent(
     prompt: str,
     *,
     agent: str = DEFAULT_OPENCODE_AGENT,
-    format: str | None = None,
+    format: str | None = None,  # pylint: disable=redefined-builtin
     session: str | None = None,
     capture_output: bool = True,
     text: bool = True,
@@ -106,6 +106,7 @@ def start_agent(
         cwd=project_root,
         capture_output=capture_output,
         text=text,
+        check=False,
     )
 
     stdout = proc.stdout or ""
@@ -151,4 +152,5 @@ def run_shell_command(
         cwd=project_root,
         capture_output=capture_output,
         text=text,
+        check=False,
     )
