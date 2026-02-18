@@ -6,11 +6,11 @@ from typing import Any, TypeVar, overload
 
 from pydantic import TypeAdapter, ValidationError
 
-from engineeringagent.agents.backends.opencode import OpenCodeAgentBackend
 from engineeringagent.agents.contracts import (
     AgentBackend,
     AgentOutputValidationError,
 )
+from engineeringagent.agents.registry import get_backend_factory, resolve_backend_id
 
 
 _MAX_VALIDATION_ERROR_CHARS = 500
@@ -154,7 +154,9 @@ def run_agent(
         raise ValueError("max_validation_retries must be >= 0")
 
     if backend is None:
-        backend = OpenCodeAgentBackend(format=None if output_type is str else "json")
+        backend_id = resolve_backend_id(project_root)
+        create_backend = get_backend_factory(backend_id)
+        backend = create_backend(output_type is not str)
 
     assert backend is not None
 

@@ -20,6 +20,9 @@ _HARNESS_TABLE = "harness"
 _HARNESS_FITNESS_TABLE = "fitness"
 _HARNESS_PYTEST_TABLE = "pytest"
 
+_AGENTS_TABLE = "agents"
+_BACKEND_KEY = "backend"
+
 _OPENCODE_REAL_SMOKE_KEY = "opencode-real-smoke"
 _OPENCODE_INTEGRATION_KEY = "opencode-integration"
 
@@ -115,6 +118,37 @@ def resolve_harness_fitness_opencode_real_smoke_enabled(project_root: Path) -> b
     return False
 
 
+def resolve_agents_backend_id(project_root: Path) -> str | None:
+    """Resolve configured default agent backend id.
+
+    Precedence:
+    - engineeringagent.toml[agents]
+    - pyproject.toml[tool.engineeringagent.agents]
+    - default: unset (None)
+
+    Args:
+        project_root: Repository root.
+
+    Returns:
+        Backend id string when configured, otherwise None.
+
+    Raises:
+        ValueError: If TOML cannot be parsed or the configured value is invalid.
+    """
+
+    engineeringagent_toml = project_root / "engineeringagent.toml"
+    backend_id = _agents_backend_id_from_engineeringagent_toml(engineeringagent_toml)
+    if backend_id is not None:
+        return backend_id
+
+    pyproject_toml = project_root / "pyproject.toml"
+    backend_id = _agents_backend_id_from_pyproject_toml(pyproject_toml)
+    if backend_id is not None:
+        return backend_id
+
+    return None
+
+
 def resolve_harness_pytest_opencode_integration_enabled(project_root: Path) -> bool:
     """Resolve whether OpenCode integration tests are enabled.
 
@@ -190,6 +224,22 @@ def _opencode_integration_from_engineeringagent_toml(path: Path) -> bool | None:
         key_name=_OPENCODE_INTEGRATION_KEY,
         source_path=path,
         source_scope=f"[{_HARNESS_TABLE}.{_HARNESS_PYTEST_TABLE}]",
+    )
+
+
+def _agents_backend_id_from_engineeringagent_toml(path: Path) -> str | None:
+    document = _load_toml(path)
+    if document is None:
+        return None
+
+    agents_table = _maybe_table(document, _AGENTS_TABLE)
+    if agents_table is None:
+        return None
+
+    return _normalize_backend_id(
+        agents_table.get(_BACKEND_KEY),
+        source_path=path,
+        source_scope=f"[{_AGENTS_TABLE}]",
     )
 
 
@@ -282,6 +332,29 @@ def _opencode_integration_from_pyproject_toml(path: Path) -> bool | None:
         key_name=_OPENCODE_INTEGRATION_KEY,
         source_path=path,
         source_scope=f"[tool.engineeringagent.{_HARNESS_TABLE}.{_HARNESS_PYTEST_TABLE}]",
+    )
+
+
+def _agents_backend_id_from_pyproject_toml(path: Path) -> str | None:
+    document = _load_toml(path)
+    if document is None:
+        return None
+
+    tool_config = _maybe_table(document, "tool")
+    if tool_config is None:
+        return None
+    engineeringagent_config = _maybe_table(tool_config, "engineeringagent")
+    if engineeringagent_config is None:
+        return None
+
+    agents_table = _maybe_table(engineeringagent_config, _AGENTS_TABLE)
+    if agents_table is None:
+        return None
+
+    return _normalize_backend_id(
+        agents_table.get(_BACKEND_KEY),
+        source_path=path,
+        source_scope=f"[tool.engineeringagent.{_AGENTS_TABLE}]",
     )
 
 
@@ -408,3 +481,26 @@ def _normalize_bool(
         )
 
     return raw_value
+
+
+def _normalize_backend_id(
+    raw_value: Any,
+    *,
+    source_path: Path,
+    source_scope: str,
+) -> str | None:
+    if raw_value is None:
+        return None
+
+    if not isinstance(raw_value, str):
+        raise ValueError(
+            f"invalid {_BACKEND_KEY} in {source_path} ({source_scope}): expected string"
+        )
+
+    backend_id = raw_value.strip()
+    if not backend_id:
+        raise ValueError(
+            f"invalid {_BACKEND_KEY} in {source_path} ({source_scope}): cannot be empty"
+        )
+
+    return backend_id

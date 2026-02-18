@@ -64,11 +64,138 @@ def test_agents_module_exports_run_agent() -> None:
     assert callable(agents.run_agent)
 
 
+def test_agents_module_exports_list_backends() -> None:
+    assert callable(agents.list_backends)
+
+
+def test_agents_module_exports_resolve_backend_id() -> None:
+    assert callable(agents.resolve_backend_id)
+
+
+def test_list_backends_returns_stable_sorted_tuple() -> None:
+    backend_ids = agents.list_backends()
+    assert isinstance(backend_ids, tuple)
+    assert backend_ids == tuple(sorted(backend_ids))
+    assert "opencode" in backend_ids
+
+
+def test_resolve_backend_id_defaults_to_opencode_when_unset(tmp_path: Path) -> None:
+    assert agents.resolve_backend_id(tmp_path) == "opencode"
+
+
+def test_resolve_backend_id_prefers_engineeringagent_toml_over_pyproject(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "engineeringagent.toml").write_text(
+        '[agents]\nbackend = "opencode"\n',
+        encoding="utf-8",
+    )
+    (tmp_path / "pyproject.toml").write_text(
+        '[tool.engineeringagent.agents]\nbackend = "missing"\n',
+        encoding="utf-8",
+    )
+
+    assert agents.resolve_backend_id(tmp_path) == "opencode"
+
+
 def test_run_agent_returns_text_for_str_output_type(tmp_path: Path) -> None:
     backend = _StubBackend()
     assert (
         agents.run_agent(tmp_path, "hi", backend=backend, output_type=str) == "echo:hi"
     )
+
+
+def test_run_agent_uses_configured_backend_by_default(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    @dataclass(frozen=True)
+    class _ConfiguredBackend:
+        @property
+        def name(self) -> str:
+            """Return backend name used in validation errors."""
+            return "configured"
+
+        def run(
+            self,
+            project_root: Path,
+            prompt: str,
+            *,
+            session_id: str | None = None,
+        ) -> agents.AgentBackendRunResult:
+            """Return a deterministic backend-specific response."""
+            assert project_root.exists()
+            assert session_id is None
+            return agents.AgentBackendRunResult(text=f"configured:{prompt}")
+
+    def _create_configured_backend(structured_output: bool) -> agents.AgentBackend:
+        assert structured_output is False
+        return _ConfiguredBackend()
+
+    (tmp_path / "engineeringagent.toml").write_text(
+        '[agents]\nbackend = "configured"\n',
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        "engineeringagent.agents.registry._BACKEND_FACTORIES",
+        {"configured": _create_configured_backend},
+    )
+
+    assert agents.run_agent(tmp_path, "hi") == "configured:hi"
+
+
+def test_run_agent_uses_pyproject_configured_backend_by_default(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    @dataclass(frozen=True)
+    class _ConfiguredBackend:
+        @property
+        def name(self) -> str:
+            """Return backend name used in validation errors."""
+            return "configured"
+
+        def run(
+            self,
+            project_root: Path,
+            prompt: str,
+            *,
+            session_id: str | None = None,
+        ) -> agents.AgentBackendRunResult:
+            """Return a deterministic backend-specific response."""
+            assert project_root.exists()
+            assert session_id is None
+            return agents.AgentBackendRunResult(text=f"configured:{prompt}")
+
+    def _create_configured_backend(structured_output: bool) -> agents.AgentBackend:
+        assert structured_output is False
+        return _ConfiguredBackend()
+
+    (tmp_path / "pyproject.toml").write_text(
+        '[tool.engineeringagent.agents]\nbackend = "configured"\n',
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        "engineeringagent.agents.registry._BACKEND_FACTORIES",
+        {"configured": _create_configured_backend},
+    )
+
+    assert agents.run_agent(tmp_path, "hi") == "configured:hi"
+
+
+def test_run_agent_raises_for_unknown_configured_backend(tmp_path: Path) -> None:
+    (tmp_path / "engineeringagent.toml").write_text(
+        '[agents]\nbackend = "missing"\n',
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match=r"missing") as excinfo:
+        agents.run_agent(tmp_path, "hi")
+
+    message = str(excinfo.value)
+    assert "available backends" in message
+    assert "missing" in message
+    assert "opencode" in message
 
 
 def test_run_agent_rejects_negative_max_validation_retries(tmp_path: Path) -> None:

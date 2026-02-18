@@ -14,6 +14,7 @@ from engineeringagent.agents.contracts import (
     AgentBackendRunResult,
     AgentOutputValidationError,
 )
+from engineeringagent.agents.registry import list_backends, resolve_backend_id
 
 __all__ = [
     "AgentBackend",
@@ -21,5 +22,7 @@ __all__ = [
     "AgentBackendFailureDetails",
     "AgentBackendRunResult",
     "AgentOutputValidationError",
+    "list_backends",
+    "resolve_backend_id",
     "run_agent",
 ]
