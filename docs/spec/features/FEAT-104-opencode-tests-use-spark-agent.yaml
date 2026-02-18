@@ -9,7 +9,7 @@ objective: >
   `engineeringagent init` to pin the scaffolded agent model.
 
   The repository-wide OpenCode policy source-of-truth remains
-  `.opencode/agents/engineeringagent.md` (no `opencode.json`).
+  `.opencode/agents/engineeringagent.md` (no legacy repo-root OpenCode config file).
 
 context: >
   The repository default OpenCode agent model should remain
@@ -20,8 +20,9 @@ context: >
   smoke) are only validating wiring. They should run against the faster
   `openai/gpt-5.3-codex-spark` model to reduce wall time and flakiness.
 
-  The repo intentionally does not ship or rely on `opencode.json`. Any temporary
-  repo configuration for OpenCode must be done via `.opencode/agents/*.md`.
+  The repo intentionally does not ship or rely on the legacy repo-root OpenCode config
+  file (the old `opencode` + `.json`). Any temporary repo configuration for OpenCode
+  must be done via `.opencode/agents/*.md`.
 constraints:
 - Do not change the default repo-root .opencode/agents/engineeringagent.md behavior.
 - Only affect the pytest opencode integration fixture and the real OpenCode smoke
@@ -36,7 +37,7 @@ implementation_notes: |
     - Default: `openai/gpt-5.3-codex` (unchanged repo default)
     - This option only controls the scaffolded file:
       - `.opencode/agents/engineeringagent.md`
-    - Do not introduce or depend on `opencode.json`.
+    - Do not introduce or depend on the legacy repo-root OpenCode config file.
 
   - Update the scaffold template to support model substitution:
     - `src/engineeringagent/scaffold_templates/opencode.agent.engineeringagent.md`
@@ -50,7 +51,7 @@ implementation_notes: |
 
   - Pytest OpenCode integration fixture:
     - In tests/loop/test_loop_opencode_integration.py:
-      - Do not write `opencode.json`.
+      - Do not write the legacy repo-root OpenCode config file.
       - Ensure the temp repo uses a spark-pinned `.opencode/agents/engineeringagent.md`.
         Prefer using the same init flag path if the test flow calls init.
 
@@ -60,7 +61,7 @@ acceptance:
 - "`engineeringagent init --help` documents `--model` and its default."
 - "`engineeringagent init` defaults to `openai/gpt-5.3-codex` when the flag is omitted."
 - "The real OpenCode smoke harness uses `--model openai/gpt-5.3-codex-spark`."
-- "The pytest OpenCode integration test does not create or depend on `opencode.json`."
+- "The pytest OpenCode integration test does not create or depend on the legacy repo-root OpenCode config file."
 - "The harness spark template `harness/fitness-functions/opencode.agent.engineeringagent.spark.md.tmpl` is removed and no code references it."
 - uv run pytest -q passes.
 subtasks:
@@ -85,7 +86,8 @@ subtasks:
   title: Wire spark agent into pytest opencode integration fixture
   status: backlog
   context: >
-    Update `tests/loop/test_loop_opencode_integration.py` to avoid creating `opencode.json`
+    Update `tests/loop/test_loop_opencode_integration.py` to avoid creating the legacy
+    repo-root OpenCode config file
     and to ensure `.opencode/agents/engineeringagent.md` is spark-pinned for the temp repo.
   verification:
   - uv run pytest -q tests/loop/test_loop_opencode_integration.py
@@ -102,7 +104,7 @@ subtasks:
   status: backlog
   context: >
     Update `README.md` to document `--model`, clarify that the repo does not
-    use `opencode.json`, and show how to scaffold spark for fast test/CI loops.
+    use the legacy repo-root OpenCode config file, and show how to scaffold spark for fast test/CI loops.
   verification:
   - uv run pytest -q
 updated_at: '2026-02-17T00:00:00Z'

@@ -63,12 +63,6 @@ def run_loop(
     return _run_loop(build_loop_run(config))
 
 
-BUILD_AGENT_ALLOW_ALL_PERMISSION = {
-    "*": "allow",
-    "bash": "allow",
-}
-
-
 _SPARK_AGENT_TEMPLATE_RELATIVE_PATH = Path(
     "harness/fitness-functions/opencode.agent.engineeringagent.spark.md.tmpl"
 )
@@ -111,46 +105,11 @@ def _make_project_root(tmp_path: Path) -> tuple[Path, Path]:
             "updated_at": "2026-02-12T00:00:00Z",
         },
     )
-    (project_root / "opencode.json").write_text(
-        json.dumps(
-            {
-                "$schema": "https://opencode.ai/config.json",
-                "model": "openai/gpt-5.3-codex-spark",
-                "default_agent": "build",
-                "agent": {
-                    "build": {
-                        "mode": "primary",
-                        "model": "openai/gpt-5.3-codex-spark",
-                        "permission": BUILD_AGENT_ALLOW_ALL_PERMISSION,
-                    },
-                    "engineeringagent": {
-                        "mode": "primary",
-                        "model": "openai/gpt-5.3-codex-spark",
-                        "permission": BUILD_AGENT_ALLOW_ALL_PERMISSION,
-                    },
-                },
-            },
-            ensure_ascii=True,
-            indent=2,
-        )
-        + "\n",
-        encoding="utf-8",
-    )
-    build_agent_path = project_root / ".opencode" / "agents" / "build.md"
-    build_agent_path.parent.mkdir(parents=True, exist_ok=True)
-    build_frontmatter = {
-        "description": "Build agent override for deterministic repository automation.",
-        "mode": "primary",
-        "permission": BUILD_AGENT_ALLOW_ALL_PERMISSION,
-    }
-    build_agent_path.write_text(
-        "---\n" + yaml.safe_dump(build_frontmatter, sort_keys=False) + "---\n",
-        encoding="utf-8",
-    )
 
     engineeringagent_path = (
         project_root / ".opencode" / "agents" / "engineeringagent.md"
     )
+    engineeringagent_path.parent.mkdir(parents=True, exist_ok=True)
 
     repo_root = Path(__file__).resolve().parents[2]
     spark_template_path = repo_root / _SPARK_AGENT_TEMPLATE_RELATIVE_PATH
@@ -160,6 +119,16 @@ def _make_project_root(tmp_path: Path) -> tuple[Path, Path]:
     )
 
     return project_root, feature_path
+
+
+def test_opencode_integration_scaffold_writes_only_engineeringagent_agent_config(
+    tmp_path: Path,
+) -> None:
+    project_root, _feature_path = _make_project_root(tmp_path)
+    assert (project_root / ".opencode" / "agents" / "engineeringagent.md").exists()
+    assert not (project_root / ".opencode" / "agents" / "build.md").exists()
+    legacy_repo_root_config = ".".join(["opencode", "json"])
+    assert not (project_root / legacy_repo_root_config).exists()
 
 
 def _run_git(project_root: Path, *args: str) -> subprocess.CompletedProcess[str]:
@@ -266,7 +235,7 @@ def test_loop_reports_permission_rejection_in_run_telemetry(
     project_root, feature_path = _make_project_root(tmp_path)
     _init_git_repo(project_root)
     build_agent_path = project_root / ".opencode" / "agents" / "build.md"
-    original_build_agent = build_agent_path.read_text(encoding="utf-8")
+    assert not build_agent_path.exists()
 
     precheck_calls: list[Path] = []
     started_agents: list[str] = []
@@ -317,7 +286,7 @@ def test_loop_reports_permission_rejection_in_run_telemetry(
     assert run["log_path"]
     assert precheck_calls == [project_root]
     assert started_agents == ["engineeringagent"]
-    assert build_agent_path.read_text(encoding="utf-8") == original_build_agent
+    assert not build_agent_path.exists()
 
     feature_log_path = project_root / str(run["log_path"])
     assert feature_log_path.exists()
@@ -487,7 +456,7 @@ def test_run_loop_permission_precheck_failure_prints_remediation_hint(
     project_root, feature_path = _make_project_root(tmp_path)
     _init_git_repo(project_root)
     build_agent_path = project_root / ".opencode" / "agents" / "build.md"
-    original_build_agent = build_agent_path.read_text(encoding="utf-8")
+    assert not build_agent_path.exists()
 
     def fake_run_permission_probe(_: Path) -> PermissionProbeResult:
         return PermissionProbeResult(
@@ -518,7 +487,7 @@ def test_run_loop_permission_precheck_failure_prints_remediation_hint(
     assert ".opencode/agents/build.md" not in output
     assert "--implement-command" not in output
     assert "engineeringagent run --dry-run" in output
-    assert build_agent_path.read_text(encoding="utf-8") == original_build_agent
+    assert not build_agent_path.exists()
 
 
 def test_run_loop_permission_precheck_pass_prints_bypass_hint_and_log_locations(

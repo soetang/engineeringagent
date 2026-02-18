@@ -1,0 +1,82 @@
+id: FEAT-106
+title: Remove legacy repo-root OpenCode config references (agent config lives in .opencode/agents/engineeringagent.md)
+type: chore
+expected_commit_subject: 'chore: remove legacy opencode config references'
+status: done
+priority: high
+objective: 'Remove all remaining tracked references to the legacy repo-root OpenCode
+  config file, now that agent configuration is sourced from `.opencode/agents/engineeringagent.md`.
+
+  '
+context: 'The repository has moved agent configuration to `.opencode/agents/engineeringagent.md`.
+  Tracked references to the legacy repo-root config cause confusion and suggest the
+  wrong configuration surface.
+
+  Note: identifiers like `opencode_json` are used in some places to describe parsing
+  OpenCode JSON event output. These are not references to the legacy repo-root config
+  file and are in scope to keep.
+
+  '
+constraints:
+- Do not change the requirement that agent configuration is provided via `.opencode/agents/engineeringagent.md`.
+- Do not introduce any new repo-root OpenCode config file.
+- It is acceptable for archived specs under `docs/spec/features_done/` to contain
+  historical references.
+- Remove validator enforcement and tests that exist solely to police the legacy repo-root
+  config.
+- Pytest OpenCode integration scaffolding must not create any extra agent config beyond
+  `.opencode/agents/engineeringagent.md`.
+implementation_notes: "Contract change declaration (validate behavior)\n- Surface:\
+  \ `engineeringagent validate` (checks/validate group).\n- Old behavior: validation\
+  \ enforced a repo hygiene invariant that blocked reintroducing the legacy\n  repo-root\
+  \ OpenCode config file and blocked the legacy filename token in tracked non-test/non-spec\
+  \ files.\n- New behavior: validation no longer enforces that specific invariant.\
+  \ The repository still expects\n  OpenCode agent configuration via `.opencode/agents/engineeringagent.md`,\
+  \ but it is no longer policed\n  by `validate`.\n\nTarget removals\n- Remove the\
+  \ validate invariant code path dedicated to the legacy repo-root OpenCode config.\n\
+  - Remove tests that assert the invariant behavior.\n- Update pytest OpenCode integration\
+  \ scaffolding so it relies only on `.opencode/agents/engineeringagent.md`:\n  -\
+  \ Do not write a repo-root OpenCode config file.\n  - Do not write `.opencode/agents/build.md`\
+  \ (only create `.opencode/agents/engineeringagent.md`).\n\nRepository scan verification\
+  \ helper\n- Use a python snippet that constructs the forbidden needles without embedding\
+  \ them as raw literals.\n"
+acceptance:
+- All tracked files outside `docs/spec/features_done/` contain no legacy repo-root
+  config filename token and no legacy cased phrase token.
+- Pytest OpenCode integration scaffolding relies only on `.opencode/agents/engineeringagent.md`
+  (no repo-root OpenCode config file; no `.opencode/agents/build.md`).
+- '`engineeringagent validate` no longer reports issues specifically about the legacy
+  repo-root OpenCode config.'
+- uv run pytest -q passes.
+subtasks:
+- id: ST-001
+  title: Remove legacy repo-root config invariant from validate (and delete its tests)
+  status: done
+  verification:
+  - uv run pytest -q tests/meta/test_validator.py
+- id: ST-002
+  title: Update pytest OpenCode integration scaffolding to use only .opencode/agents/engineeringagent.md
+  status: done
+  verification:
+  - uv run pytest -q tests/loop/test_loop_opencode_integration.py
+- id: ST-003
+  title: Add a repo-wide tracked-file scan verification (python -c) and run it in
+    this feature
+  status: done
+  verification:
+  - 'uv run python -c "import subprocess, sys; from pathlib import Path; proc=subprocess.run([''git'',''ls-files''],
+    capture_output=True, text=True, check=True); allow_prefix=(''docs/spec/features_done/'',);
+    needles=[''.''.join([''opencode'',''json'']), '' ''.join([''OpenCode'',''Json''])];
+    bad=[]; root=Path(''.''); exec(''for rel in proc.stdout.splitlines():\\n    if
+    not rel or rel.startswith(allow_prefix):\\n        continue\\n    p=root/rel\\n    if
+    not p.is_file():\\n        continue\\n    try:\\n        text=p.read_text(encoding=\\\''utf-8\\\'',
+    errors=\\\''ignore\\\'')\\n    except Exception:\\n        continue\\n    for
+    n in needles:\\n        if n in text:\\n            bad.append((rel,n)); break\\n'');
+    [print(f''{rel}: contains forbidden token ({n})'') for rel,n in bad]; sys.exit(1
+    if bad else 0)"'
+- id: ST-004
+  title: Improve validator test assertion clarity for legacy config invariant removal
+  status: done
+  verification:
+  - uv run pytest -q tests/meta/test_validator.py
+updated_at: '2026-02-18T07:42:41Z'

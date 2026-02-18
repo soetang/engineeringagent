@@ -1,0 +1,62 @@
+id: FEAT-107
+title: Validate rejects multiline spec verification commands
+type: chore
+expected_commit_subject: "chore: validate blocks multiline verification commands"
+status: backlog
+priority: medium
+objective: >
+  Prevent loop crashes by ensuring spec verification commands are single-line
+  strings.
+
+  The retry-feedback v1 envelope contract requires `command` to match `^[^\r\n]+$`.
+  When a spec includes a multiline verification command (common with YAML `>` blocks
+  and indented Python snippets), the loop may surface that command in retry feedback
+  and crash during envelope validation.
+context: >
+  We hit a real loop crash where a feature spec contained a multiline
+  `subtasks[].verification[]` entry. During the loop verification phase failure
+  handling, the retry-feedback builder attempted to populate
+  `CommandFailureRetryFeedbackEnvelope.command` with the multiline command string.
+  This violates the contract (single-line command) and raised a Pydantic
+  ValidationError, aborting the run.
+
+  `engineeringagent validate` should catch this earlier with an actionable error
+  message pointing to the exact spec path.
+constraints:
+  - Only scan active feature specs under docs/spec/features/.
+  - Do not scan or fail on archived specs under docs/spec/features_done/.
+  - Only validate spec subtasks[].verification[] entries (do not extend to harness gates/checks configs in this feature).
+  - Error messages must be deterministic and include the file path plus the Pydantic-like field path (example path subtasks[0].verification[1]).
+implementation_notes: |
+  Add a validation rule to the validate check that inspects each loaded active
+  feature spec for multiline verification commands.
+
+  Suggested behavior:
+  - For each active feature spec YAML file:
+    - For each `subtasks[i].verification[j]` value that is a string:
+      - If it contains `\n` or `\r`, emit a validation error.
+  - Remediation hint: rewrite the command as a single line (for example, use a
+    one-liner wrapper such as `bash -lc ...` or embed newlines via escaped sequences
+    in a single string).
+
+  Suggested location:
+  - `src/engineeringagent/checks/validate/validator.py` (active feature issues path)
+acceptance:
+  - "uv run engineeringagent validate fails when an active feature spec contains a multiline subtasks[].verification[] entry."
+  - "The validate error message points to the exact spec and field path (example: ...yaml:subtasks[0].verification[0])."
+  - "uv run engineeringagent validate does not fail solely due to multiline verification commands in docs/spec/features_done/."
+  - "A unit test covers the multiline-verification case and asserts the reported message is stable."
+  - "uv run pytest -q passes."
+subtasks:
+  - id: ST-001
+    title: Add validate rule for multiline verification commands
+    status: backlog
+    verification:
+      - uv run engineeringagent validate
+  - id: ST-002
+    title: Add validator unit test for multiline verification commands
+    status: backlog
+    verification:
+      - uv run pytest -q tests/meta/test_validator.py
+      - uv run pytest -q
+updated_at: "2026-02-18T00:00:00Z"

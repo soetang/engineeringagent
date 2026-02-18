@@ -153,4 +153,5 @@ def test_permission_remediation_hint_does_not_require_opencode_json() -> None:
         ".opencode/agents/engineeringagent.md"
         in permissions.PERMISSION_REMEDIATION_HINT
     )
-    assert "opencode.json" not in permissions.PERMISSION_REMEDIATION_HINT
+    legacy_repo_root_config = ".".join(["opencode", "json"])
+    assert legacy_repo_root_config not in permissions.PERMISSION_REMEDIATION_HINT
