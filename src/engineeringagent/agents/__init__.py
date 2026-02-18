@@ -14,7 +14,12 @@ from engineeringagent.agents.contracts import (
     AgentBackendRunResult,
     AgentOutputValidationError,
 )
-from engineeringagent.agents.registry import list_backends, resolve_backend_id
+from engineeringagent.agents.registry import (
+    build_backend_scaffold_manifest,
+    default_backend_id,
+    list_backends,
+    resolve_backend_id,
+)
 
 __all__ = [
     "AgentBackend",
@@ -22,6 +27,8 @@ __all__ = [
     "AgentBackendFailureDetails",
     "AgentBackendRunResult",
     "AgentOutputValidationError",
+    "build_backend_scaffold_manifest",
+    "default_backend_id",
     "list_backends",
     "resolve_backend_id",
     "run_agent",

@@ -8,6 +8,7 @@ from string import Template
 
 import yaml
 
+from .agents import build_backend_scaffold_manifest, default_backend_id
 from .specs import feature_schema_from_model
 
 
@@ -16,8 +17,7 @@ _SCAFFOLD_TEMPLATE_PACKAGE = "engineeringagent.scaffold_templates"
 
 _SUPPORTED_INIT_PACKS = {"slim", "standard"}
 
-
-DEFAULT_OPENCODE_AGENT_MODEL = "openai/gpt-5.3-codex"
+DEFAULT_AGENT_MODEL = "openai/gpt-5.3-codex"
 
 
 def _build_checks_yaml() -> str:
@@ -76,12 +76,11 @@ def _render_scaffold_template(
     name: str, substitutions: dict[str, str] | None = None
 ) -> str:
     """Render a scaffold template file with deterministic substitutions."""
-    template_text = (
-        files(_SCAFFOLD_TEMPLATE_PACKAGE).joinpath(name).read_text(encoding="utf-8")
+    return _render_template(
+        package_name=_SCAFFOLD_TEMPLATE_PACKAGE,
+        template_name=name,
+        substitutions=substitutions,
     )
-    if substitutions is None:
-        return template_text
-    return Template(template_text).substitute(substitutions)
 
 
 def _build_precommit_config(profile: str) -> str:
@@ -119,20 +118,19 @@ def _build_reference_docs_manifest() -> dict[str, str]:
     }
 
 
-def _build_opencode_scaffold_manifest(*, agent_model: str) -> dict[str, str]:
-    """Build baseline `.opencode/` scaffold files.
-
-    Template sources (for deterministic reference coverage):
-    - src/engineeringagent/scaffold_templates/opencode.agent.engineeringagent.md
-    - src/engineeringagent/scaffold_templates/opencode.gitignore
-    """
-    return {
-        ".opencode/agents/engineeringagent.md": _render_scaffold_template(
-            "opencode.agent.engineeringagent.md",
-            substitutions={"agent_model": agent_model},
-        ),
-        ".opencode/.gitignore": _render_scaffold_template("opencode.gitignore"),
-    }
+def _render_template(
+    *,
+    package_name: str,
+    template_name: str,
+    substitutions: dict[str, str] | None = None,
+) -> str:
+    """Render a template from package resources with substitutions."""
+    template_text = (
+        files(package_name).joinpath(template_name).read_text(encoding="utf-8")
+    )
+    if substitutions is None:
+        return template_text
+    return Template(template_text).substitute(substitutions)
 
 
 def build_agents_merge_followup_spec(backup_agents_name: str) -> str:
@@ -169,7 +167,8 @@ def build_baseline_scaffold_manifest(
     docs_dir: str = "docs",
     profile: str = "core",
     include_reviewers: bool = False,
-    opencode_agent_model: str = DEFAULT_OPENCODE_AGENT_MODEL,
+    backend_id: str | None = None,
+    agent_model: str = DEFAULT_AGENT_MODEL,
 ) -> dict[str, str]:
     """Build the baseline scaffold manifest for a docs root.
 
@@ -177,8 +176,8 @@ def build_baseline_scaffold_manifest(
         docs_dir: Docs root directory where spec files should be scaffolded.
         profile: Scaffold profile that determines language/tool defaults.
         include_reviewers: Backward-compatible no-op; init does not seed reviewers.
-        opencode_agent_model: OpenCode agent model id to scaffold into
-            `.opencode/agents/engineeringagent.md`.
+        backend_id: Optional backend id for backend-contributed scaffold assets.
+        agent_model: Agent model id passed to backend-contributed scaffold assets.
 
     Returns:
         Mapping of relative file paths to scaffolded file contents.
@@ -186,6 +185,7 @@ def build_baseline_scaffold_manifest(
     del include_reviewers
     if profile not in _SUPPORTED_SCAFFOLD_PROFILES:
         raise ValueError(f"unsupported scaffold profile: {profile}")
+    resolved_backend_id = backend_id or default_backend_id()
 
     docs_dir_normalized = docs_dir.strip("/")
     is_python_uv = profile == "python_uv"
@@ -197,7 +197,10 @@ def build_baseline_scaffold_manifest(
 
     manifest = {
         ".pre-commit-config.yaml": _build_precommit_config(profile=profile),
-        **_build_opencode_scaffold_manifest(agent_model=opencode_agent_model),
+        **build_backend_scaffold_manifest(
+            backend_id=resolved_backend_id,
+            agent_model=agent_model,
+        ),
         f"{docs_dir_normalized}/spec/features/.gitkeep": "",
         f"{docs_dir_normalized}/spec/features_done/.gitkeep": "",
         f"{docs_dir_normalized}/spec/potential_features.yaml": yaml.safe_dump(
@@ -269,11 +272,8 @@ def _demo_fail_rule_script() -> str:
 
 def build_init_scaffold_manifest(
     *,
-    docs_dir: str = "docs",
-    profile: str = "core",
-    pack: str = "slim",
-    include_reviewers: bool = False,
-    opencode_agent_model: str = DEFAULT_OPENCODE_AGENT_MODEL,
+    pack: str | None = None,
+    options: BaselineScaffoldOptions | None = None,
 ) -> dict[str, str]:
     """Build init scaffold manifest for the selected pack.
 
@@ -281,17 +281,23 @@ def build_init_scaffold_manifest(
     - slim: safe default that runs spec validation
     - standard: scaffolds an always-failing demo fitness rule for `run --all`
     """
-    if pack not in _SUPPORTED_INIT_PACKS:
-        raise ValueError(f"unsupported init pack: {pack}")
+    resolved_options = options or BaselineScaffoldOptions()
+    if pack is not None:
+        resolved_options = resolved_options._replace(pack=pack)
+
+    selected_pack = resolved_options.pack
+    if selected_pack not in _SUPPORTED_INIT_PACKS:
+        raise ValueError(f"unsupported init pack: {selected_pack}")
 
     manifest = build_baseline_scaffold_manifest(
-        docs_dir=docs_dir,
-        profile=profile,
-        include_reviewers=include_reviewers,
-        opencode_agent_model=opencode_agent_model,
+        docs_dir=resolved_options.docs_dir,
+        profile=resolved_options.profile,
+        include_reviewers=resolved_options.include_reviewers,
+        backend_id=resolved_options.backend_id,
+        agent_model=resolved_options.agent_model,
     )
 
-    if pack != "standard":
+    if selected_pack != "standard":
         return manifest
 
     demo_script_path = "harness/fitness-functions/demo_always_fail.py"
@@ -347,7 +353,8 @@ class BaselineScaffoldOptions(NamedTuple):
     profile: str = "core"
     pack: str = "slim"
     include_reviewers: bool = False
-    opencode_agent_model: str = DEFAULT_OPENCODE_AGENT_MODEL
+    backend_id: str | None = None
+    agent_model: str = DEFAULT_AGENT_MODEL
 
 
 def apply_baseline_scaffold(
@@ -368,11 +375,7 @@ def apply_baseline_scaffold(
     skipped = 0
 
     manifest = build_init_scaffold_manifest(
-        docs_dir=options.docs_dir,
-        profile=options.profile,
-        pack=options.pack,
-        include_reviewers=options.include_reviewers,
-        opencode_agent_model=options.opencode_agent_model,
+        options=options,
     )
 
     for relative_path, content in manifest.items():

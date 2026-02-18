@@ -72,6 +72,10 @@ def test_agents_module_exports_resolve_backend_id() -> None:
     assert callable(agents.resolve_backend_id)
 
 
+def test_agents_module_exports_build_backend_scaffold_manifest() -> None:
+    assert callable(agents.build_backend_scaffold_manifest)
+
+
 def test_list_backends_returns_stable_sorted_tuple() -> None:
     backend_ids = agents.list_backends()
     assert isinstance(backend_ids, tuple)
@@ -81,6 +85,44 @@ def test_list_backends_returns_stable_sorted_tuple() -> None:
 
 def test_resolve_backend_id_defaults_to_opencode_when_unset(tmp_path: Path) -> None:
     assert agents.resolve_backend_id(tmp_path) == "opencode"
+
+
+def test_build_backend_scaffold_manifest_for_opencode() -> None:
+    manifest = agents.build_backend_scaffold_manifest(
+        backend_id="opencode",
+        agent_model="openai/gpt-5.3-codex-spark",
+    )
+
+    assert sorted(manifest) == [
+        ".opencode/.gitignore",
+        ".opencode/agents/engineeringagent.md",
+    ]
+    assert manifest[".opencode/.gitignore"]
+    assert manifest[".opencode/.gitignore"].endswith("\n")
+    assert manifest[".opencode/agents/engineeringagent.md"]
+
+
+def test_build_backend_scaffold_manifest_raises_for_unknown_backend() -> None:
+    with pytest.raises(ValueError, match=r"unknown agent backend id") as excinfo:
+        agents.build_backend_scaffold_manifest(
+            backend_id="missing",
+            agent_model="openai/gpt-5.3-codex",
+        )
+
+    message = str(excinfo.value)
+    assert "available backends" in message
+    assert "opencode" in message
+
+
+def test_default_backend_id_raises_when_default_not_registered(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "engineeringagent.agents.registry._DEFAULT_BACKEND_ID", "missing"
+    )
+
+    with pytest.raises(ValueError, match=r"default agent backend id is not registered"):
+        agents.default_backend_id()
 
 
 def test_resolve_backend_id_prefers_engineeringagent_toml_over_pyproject(

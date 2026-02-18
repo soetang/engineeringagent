@@ -17,14 +17,9 @@ _SPECS_TABLE = "specs"
 _ALLOW_DUPLICATE_DONE_BASE_IDS_BELOW_KEY = "allow-duplicate-done-base-ids-below"
 
 _HARNESS_TABLE = "harness"
-_HARNESS_FITNESS_TABLE = "fitness"
-_HARNESS_PYTEST_TABLE = "pytest"
 
 _AGENTS_TABLE = "agents"
 _BACKEND_KEY = "backend"
-
-_OPENCODE_REAL_SMOKE_KEY = "opencode-real-smoke"
-_OPENCODE_INTEGRATION_KEY = "opencode-integration"
 
 
 def resolve_docs_root(project_root: Path) -> Path:
@@ -87,35 +82,52 @@ def resolve_allow_duplicate_done_base_ids_below(project_root: Path) -> int | Non
     return None
 
 
-def resolve_harness_fitness_opencode_real_smoke_enabled(project_root: Path) -> bool:
-    """Resolve whether the real OpenCode smoke fitness rule is enabled.
+def resolve_harness_bool_setting(
+    project_root: Path,
+    *,
+    table: str,
+    key: str,
+    default: bool = False,
+) -> bool:
+    """Resolve a bool setting under the harness table.
 
     Precedence:
-    - engineeringagent.toml[harness.fitness]
-    - pyproject.toml[tool.engineeringagent.harness.fitness]
-    - default: false
+    - engineeringagent.toml[harness.<table>]
+    - pyproject.toml[tool.engineeringagent.harness.<table>]
+    - default
 
     Args:
         project_root: Repository root.
+        table: Harness sub-table name under ``harness``.
+        key: Bool setting key under the selected harness table.
+        default: Fallback value when the setting is unset.
 
     Returns:
-        True if enabled, otherwise False.
+        Resolved bool value.
 
     Raises:
         ValueError: If TOML cannot be parsed or the configured value is invalid.
     """
 
     engineeringagent_toml = project_root / "engineeringagent.toml"
-    enabled = _opencode_real_smoke_from_engineeringagent_toml(engineeringagent_toml)
+    enabled = _harness_bool_from_engineeringagent_toml(
+        engineeringagent_toml,
+        table=table,
+        key=key,
+    )
     if enabled is not None:
         return enabled
 
     pyproject_toml = project_root / "pyproject.toml"
-    enabled = _opencode_real_smoke_from_pyproject_toml(pyproject_toml)
+    enabled = _harness_bool_from_pyproject_toml(
+        pyproject_toml,
+        table=table,
+        key=key,
+    )
     if enabled is not None:
         return enabled
 
-    return False
+    return default
 
 
 def resolve_agents_backend_id(project_root: Path) -> str | None:
@@ -149,37 +161,6 @@ def resolve_agents_backend_id(project_root: Path) -> str | None:
     return None
 
 
-def resolve_harness_pytest_opencode_integration_enabled(project_root: Path) -> bool:
-    """Resolve whether OpenCode integration tests are enabled.
-
-    Precedence:
-    - engineeringagent.toml[harness.pytest]
-    - pyproject.toml[tool.engineeringagent.harness.pytest]
-    - default: false
-
-    Args:
-        project_root: Repository root.
-
-    Returns:
-        True if enabled, otherwise False.
-
-    Raises:
-        ValueError: If TOML cannot be parsed or the configured value is invalid.
-    """
-
-    engineeringagent_toml = project_root / "engineeringagent.toml"
-    enabled = _opencode_integration_from_engineeringagent_toml(engineeringagent_toml)
-    if enabled is not None:
-        return enabled
-
-    pyproject_toml = project_root / "pyproject.toml"
-    enabled = _opencode_integration_from_pyproject_toml(pyproject_toml)
-    if enabled is not None:
-        return enabled
-
-    return False
-
-
 def _docs_root_from_engineeringagent_toml(path: Path) -> Path | None:
     document = _load_toml(path)
     if document is None:
@@ -187,7 +168,12 @@ def _docs_root_from_engineeringagent_toml(path: Path) -> Path | None:
     return _normalize_docs_root(document.get(_DOCS_ROOT_KEY), source_path=path)
 
 
-def _opencode_real_smoke_from_engineeringagent_toml(path: Path) -> bool | None:
+def _harness_bool_from_engineeringagent_toml(
+    path: Path,
+    *,
+    table: str,
+    key: str,
+) -> bool | None:
     document = _load_toml(path)
     if document is None:
         return None
@@ -195,35 +181,15 @@ def _opencode_real_smoke_from_engineeringagent_toml(path: Path) -> bool | None:
     harness_table = _maybe_table(document, _HARNESS_TABLE)
     if harness_table is None:
         return None
-    fitness_table = _maybe_table(harness_table, _HARNESS_FITNESS_TABLE)
-    if fitness_table is None:
+    setting_table = _maybe_table(harness_table, table)
+    if setting_table is None:
         return None
 
     return _normalize_bool(
-        fitness_table.get(_OPENCODE_REAL_SMOKE_KEY),
-        key_name=_OPENCODE_REAL_SMOKE_KEY,
+        setting_table.get(key),
+        key_name=key,
         source_path=path,
-        source_scope=f"[{_HARNESS_TABLE}.{_HARNESS_FITNESS_TABLE}]",
-    )
-
-
-def _opencode_integration_from_engineeringagent_toml(path: Path) -> bool | None:
-    document = _load_toml(path)
-    if document is None:
-        return None
-
-    harness_table = _maybe_table(document, _HARNESS_TABLE)
-    if harness_table is None:
-        return None
-    pytest_table = _maybe_table(harness_table, _HARNESS_PYTEST_TABLE)
-    if pytest_table is None:
-        return None
-
-    return _normalize_bool(
-        pytest_table.get(_OPENCODE_INTEGRATION_KEY),
-        key_name=_OPENCODE_INTEGRATION_KEY,
-        source_path=path,
-        source_scope=f"[{_HARNESS_TABLE}.{_HARNESS_PYTEST_TABLE}]",
+        source_scope=f"[{_HARNESS_TABLE}.{table}]",
     )
 
 
@@ -281,7 +247,12 @@ def _docs_root_from_pyproject_toml(path: Path) -> Path | None:
     )
 
 
-def _opencode_real_smoke_from_pyproject_toml(path: Path) -> bool | None:
+def _harness_bool_from_pyproject_toml(
+    path: Path,
+    *,
+    table: str,
+    key: str,
+) -> bool | None:
     document = _load_toml(path)
     if document is None:
         return None
@@ -296,42 +267,15 @@ def _opencode_real_smoke_from_pyproject_toml(path: Path) -> bool | None:
     harness_table = _maybe_table(engineeringagent_config, _HARNESS_TABLE)
     if harness_table is None:
         return None
-    fitness_table = _maybe_table(harness_table, _HARNESS_FITNESS_TABLE)
-    if fitness_table is None:
+    setting_table = _maybe_table(harness_table, table)
+    if setting_table is None:
         return None
 
     return _normalize_bool(
-        fitness_table.get(_OPENCODE_REAL_SMOKE_KEY),
-        key_name=_OPENCODE_REAL_SMOKE_KEY,
+        setting_table.get(key),
+        key_name=key,
         source_path=path,
-        source_scope=f"[tool.engineeringagent.{_HARNESS_TABLE}.{_HARNESS_FITNESS_TABLE}]",
-    )
-
-
-def _opencode_integration_from_pyproject_toml(path: Path) -> bool | None:
-    document = _load_toml(path)
-    if document is None:
-        return None
-
-    tool_config = _maybe_table(document, "tool")
-    if tool_config is None:
-        return None
-    engineeringagent_config = _maybe_table(tool_config, "engineeringagent")
-    if engineeringagent_config is None:
-        return None
-
-    harness_table = _maybe_table(engineeringagent_config, _HARNESS_TABLE)
-    if harness_table is None:
-        return None
-    pytest_table = _maybe_table(harness_table, _HARNESS_PYTEST_TABLE)
-    if pytest_table is None:
-        return None
-
-    return _normalize_bool(
-        pytest_table.get(_OPENCODE_INTEGRATION_KEY),
-        key_name=_OPENCODE_INTEGRATION_KEY,
-        source_path=path,
-        source_scope=f"[tool.engineeringagent.{_HARNESS_TABLE}.{_HARNESS_PYTEST_TABLE}]",
+        source_scope=f"[tool.engineeringagent.{_HARNESS_TABLE}.{table}]",
     )
 
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 import yaml
 import pytest
 from typer.testing import CliRunner
@@ -110,3 +111,13 @@ def test_build_baseline_scaffold_manifest_rejects_unknown_profile() -> None:
 def test_build_init_scaffold_manifest_rejects_unknown_pack() -> None:
     with pytest.raises(ValueError, match="unsupported init pack"):
         build_init_scaffold_manifest(pack="unknown")
+
+
+def test_init_surface_modules_avoid_backend_specific_literals() -> None:
+    """Keep init/CLI modules free of backend-specific literal strings."""
+
+    cli_source = inspect.getsource(cli_module).lower()
+    scaffold_source = inspect.getsource(init_scaffold_module).lower()
+
+    assert "opencode" not in cli_source
+    assert "opencode" not in scaffold_source

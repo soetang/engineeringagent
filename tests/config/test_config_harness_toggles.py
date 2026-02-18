@@ -4,8 +4,12 @@ from pathlib import Path
 
 import pytest
 
-from engineeringagent.config import (
+import engineeringagent.config as config_module
+import engineeringagent.checks.fitness.config as fitness_config_module
+from engineeringagent.checks.fitness.config import (
     resolve_harness_fitness_opencode_real_smoke_enabled,
+)
+from engineeringagent.checks.pytest.config import (
     resolve_harness_pytest_opencode_integration_enabled,
 )
 
@@ -62,3 +66,21 @@ def test_harness_toggles_reject_invalid_values(tmp_path: Path, payload: str) -> 
     with pytest.raises(ValueError, match="harness"):
         resolve_harness_fitness_opencode_real_smoke_enabled(tmp_path)
         resolve_harness_pytest_opencode_integration_enabled(tmp_path)
+
+
+def test_config_module_does_not_export_backend_specific_harness_resolvers() -> None:
+    assert not hasattr(
+        config_module,
+        "resolve_harness_fitness_opencode_real_smoke_enabled",
+    )
+    assert not hasattr(
+        config_module,
+        "resolve_harness_pytest_opencode_integration_enabled",
+    )
+
+
+def test_fitness_config_only_exports_fitness_resolver() -> None:
+    assert not hasattr(
+        fitness_config_module,
+        "resolve_harness_pytest_opencode_integration_enabled",
+    )

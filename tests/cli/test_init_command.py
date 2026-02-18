@@ -9,6 +9,7 @@ import pytest
 import yaml
 from typer.testing import CliRunner
 
+from engineeringagent.agents import build_backend_scaffold_manifest
 from engineeringagent import cli as cli_module
 from engineeringagent.init_scaffold import (
     _spec_validate_gate,
@@ -48,12 +49,14 @@ def test_init_rejects_include_reviewers_flag() -> None:
 
 
 def test_init_help_documents_model_option() -> None:
-    """Verify init help documents --model and its default."""
+    """Verify init help keeps --model docs backend-agnostic."""
     result = _invoke_cli(["init", "--help"])
 
     assert result.exit_code == 0
     assert "--model" in result.stdout
     assert "openai/gpt-5.3-codex" in result.stdout
+    assert "OpenCode" not in result.stdout
+    assert ".opencode/" not in result.stdout
 
 
 def test_init_model_flag_controls_scaffolded_opencode_agent(
@@ -130,6 +133,215 @@ def test_init_pack_arg_never_prompts_even_on_tty(
     assert "pack=slim" in result.stdout
 
 
+def test_init_backend_option_skips_prompt_even_on_tty(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify explicit --backend disables interactive backend prompt."""
+    monkeypatch.setattr(cli_module, "_stdout_is_tty", lambda: True)
+    monkeypatch.setattr(
+        cli_module,
+        "list_backends",
+        lambda: ("opencode", "mock-b"),
+    )
+    monkeypatch.setattr(cli_module, "default_backend_id", lambda: "opencode")
+    monkeypatch.setattr(
+        "builtins.input",
+        lambda _prompt: pytest.fail("init prompted unexpectedly"),
+    )
+
+    result = _invoke_cli(
+        [
+            "--project-root",
+            str(tmp_path),
+            "init",
+            "slim",
+            "--backend",
+            "opencode",
+            "--no-precommit-install",
+        ]
+    )
+
+    assert result.exit_code == 0
+
+
+def test_init_prompts_for_backend_when_omitted_and_tty(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify init prompts for backend selection when omitted in a TTY."""
+    monkeypatch.setattr(cli_module, "_stdout_is_tty", lambda: True)
+    monkeypatch.setattr(
+        cli_module,
+        "list_backends",
+        lambda: ("zeta", "opencode", "alpha"),
+    )
+    monkeypatch.setattr(cli_module, "default_backend_id", lambda: "opencode")
+
+    prompts: list[str] = []
+
+    def _fake_input(prompt: str) -> str:
+        prompts.append(prompt)
+        return "opencode"
+
+    monkeypatch.setattr("builtins.input", _fake_input)
+
+    result = _invoke_cli(
+        ["--project-root", str(tmp_path), "init", "slim", "--no-precommit-install"]
+    )
+
+    assert result.exit_code == 0
+    assert prompts == [
+        "init backend: choose [alpha/opencode/zeta] (default opencode): "
+    ]
+
+
+def test_init_backend_prompt_invalid_input_returns_deterministic_error(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify invalid backend prompt input exits with deterministic error text."""
+    monkeypatch.setattr(cli_module, "_stdout_is_tty", lambda: True)
+    monkeypatch.setattr(
+        cli_module,
+        "list_backends",
+        lambda: ("zeta", "opencode", "alpha"),
+    )
+    monkeypatch.setattr(cli_module, "default_backend_id", lambda: "opencode")
+    monkeypatch.setattr("builtins.input", lambda _prompt: "invalid")
+
+    result = _invoke_cli(
+        ["--project-root", str(tmp_path), "init", "slim", "--no-precommit-install"]
+    )
+
+    assert result.exit_code == 1
+    assert (
+        "init input error: backend must be one of: alpha, opencode, zeta"
+        in result.stdout
+    )
+
+
+def test_init_backend_prompt_uses_default_on_eof(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify backend prompt falls back to default when stdin is closed (EOF)."""
+    monkeypatch.setattr(cli_module, "_stdout_is_tty", lambda: True)
+    monkeypatch.setattr(
+        cli_module,
+        "list_backends",
+        lambda: ("opencode", "mock-b"),
+    )
+    monkeypatch.setattr(cli_module, "default_backend_id", lambda: "opencode")
+
+    def _raise_eof(_prompt: str) -> str:
+        raise EOFError
+
+    monkeypatch.setattr("builtins.input", _raise_eof)
+
+    result = _invoke_cli(
+        ["--project-root", str(tmp_path), "init", "slim", "--no-precommit-install"]
+    )
+
+    assert result.exit_code == 0
+    toml_text = (tmp_path / "engineeringagent.toml").read_text(encoding="utf-8")
+    assert '[agents]\nbackend = "opencode"\n' in toml_text
+
+
+def test_init_backend_uses_existing_config_without_prompt_unless_force(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify existing backend config skips prompt unless --force is used."""
+    monkeypatch.setattr(cli_module, "_stdout_is_tty", lambda: True)
+    monkeypatch.setattr(
+        cli_module,
+        "list_backends",
+        lambda: ("opencode", "mock-b"),
+    )
+    monkeypatch.setattr(cli_module, "default_backend_id", lambda: "opencode")
+
+    no_force_root = tmp_path / "no_force"
+    no_force_root.mkdir()
+    (no_force_root / "engineeringagent.toml").write_text(
+        '[agents]\nbackend = "opencode"\n',
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        "builtins.input",
+        lambda _prompt: pytest.fail("init prompted unexpectedly"),
+    )
+
+    no_force = _invoke_cli(
+        [
+            "--project-root",
+            str(no_force_root),
+            "init",
+            "slim",
+            "--no-precommit-install",
+        ]
+    )
+    assert no_force.exit_code == 0
+    assert (no_force_root / "engineeringagent.toml").read_text(encoding="utf-8") == (
+        '[agents]\nbackend = "opencode"\n'
+    )
+    assert (no_force_root / ".opencode" / "agents" / "engineeringagent.md").exists()
+
+    force_root = tmp_path / "force"
+    force_root.mkdir()
+    (force_root / "engineeringagent.toml").write_text(
+        '[agents]\nbackend = "mock-b"\n',
+        encoding="utf-8",
+    )
+
+    prompts: list[str] = []
+
+    def _force_input(prompt: str) -> str:
+        prompts.append(prompt)
+        return ""
+
+    monkeypatch.setattr("builtins.input", _force_input)
+    forced = _invoke_cli(
+        [
+            "--project-root",
+            str(force_root),
+            "init",
+            "slim",
+            "--force",
+            "--no-precommit-install",
+        ]
+    )
+    assert forced.exit_code == 0
+    assert prompts == ["init backend: choose [mock-b/opencode] (default opencode): "]
+    assert (force_root / "engineeringagent.toml").read_text(encoding="utf-8") == (
+        '[agents]\nbackend = "opencode"\n'
+    )
+    assert (force_root / ".opencode" / "agents" / "engineeringagent.md").exists()
+
+
+def test_init_backend_selects_single_backend_without_prompt(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify init auto-selects when only one backend is registered."""
+    monkeypatch.setattr(cli_module, "_stdout_is_tty", lambda: True)
+    monkeypatch.setattr(cli_module, "list_backends", lambda: ("opencode",))
+    monkeypatch.setattr(cli_module, "default_backend_id", lambda: "opencode")
+    monkeypatch.setattr(
+        "builtins.input",
+        lambda _prompt: pytest.fail("init prompted unexpectedly"),
+    )
+
+    result = _invoke_cli(
+        ["--project-root", str(tmp_path), "init", "slim", "--no-precommit-install"]
+    )
+
+    assert result.exit_code == 0
+    toml_text = (tmp_path / "engineeringagent.toml").read_text(encoding="utf-8")
+    assert '[agents]\nbackend = "opencode"\n' in toml_text
+
+
 def test_spec_validate_gate_helper_builds_expected_patterns() -> None:
     """Verify init scaffold shares a single spec_validate gate shape."""
 
@@ -203,8 +415,105 @@ def test_init_separate_docs_writes_engineeringagent_toml_docs_root(
     assert result.exit_code == 0
     assert "docs_dir=docs.engineeringagent" in result.stdout
     assert (tmp_path / "engineeringagent.toml").read_text(encoding="utf-8") == (
-        'docs-root = "docs.engineeringagent"\n'
+        'docs-root = "docs.engineeringagent"\n\n[agents]\nbackend = "opencode"\n'
     )
+
+
+def test_init_writes_backend_to_engineeringagent_toml_when_missing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify init persists selected backend when config file is missing."""
+    monkeypatch.setattr(cli_module, "list_backends", lambda: ("opencode", "mock-b"))
+    monkeypatch.setattr(cli_module, "default_backend_id", lambda: "opencode")
+    monkeypatch.setattr(cli_module, "_stdout_is_tty", lambda: False)
+
+    result = _invoke_cli(
+        ["--project-root", str(tmp_path), "init", "slim", "--no-precommit-install"]
+    )
+
+    assert result.exit_code == 0
+    assert (tmp_path / "engineeringagent.toml").read_text(encoding="utf-8") == (
+        '[agents]\nbackend = "opencode"\n'
+    )
+
+
+def test_init_explicit_non_default_backend_persists_to_engineeringagent_toml(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify explicit non-default --backend persists on a fresh init run."""
+    monkeypatch.setattr(cli_module, "list_backends", lambda: ("opencode", "mock-b"))
+    monkeypatch.setattr(cli_module, "default_backend_id", lambda: "mock-b")
+    monkeypatch.setattr(cli_module, "_stdout_is_tty", lambda: False)
+
+    result = _invoke_cli(
+        [
+            "--project-root",
+            str(tmp_path),
+            "init",
+            "slim",
+            "--backend",
+            "opencode",
+            "--no-precommit-install",
+        ]
+    )
+
+    assert result.exit_code == 0
+    assert (tmp_path / "engineeringagent.toml").read_text(encoding="utf-8") == (
+        '[agents]\nbackend = "opencode"\n'
+    )
+    assert (tmp_path / ".opencode" / "agents" / "engineeringagent.md").exists()
+
+
+def test_init_appends_backend_to_existing_engineeringagent_toml(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify init appends [agents].backend when config exists without it."""
+    monkeypatch.setattr(cli_module, "list_backends", lambda: ("opencode", "mock-b"))
+    monkeypatch.setattr(cli_module, "default_backend_id", lambda: "opencode")
+    monkeypatch.setattr(cli_module, "_stdout_is_tty", lambda: False)
+
+    config_path = tmp_path / "engineeringagent.toml"
+    config_path.write_text('docs-root = "docs.engineeringagent"\n', encoding="utf-8")
+
+    result = _invoke_cli(
+        ["--project-root", str(tmp_path), "init", "slim", "--no-precommit-install"]
+    )
+
+    assert result.exit_code == 0
+    assert config_path.read_text(encoding="utf-8") == (
+        'docs-root = "docs.engineeringagent"\n\n[agents]\nbackend = "opencode"\n'
+    )
+
+
+def test_init_preserves_existing_backend_without_force(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify init does not overwrite existing backend unless --force is used."""
+    monkeypatch.setattr(cli_module, "list_backends", lambda: ("opencode", "mock-b"))
+    monkeypatch.setattr(cli_module, "default_backend_id", lambda: "opencode")
+    monkeypatch.setattr(cli_module, "_stdout_is_tty", lambda: False)
+
+    config_path = tmp_path / "engineeringagent.toml"
+    config_path.write_text('[agents]\nbackend = "mock-b"\n', encoding="utf-8")
+
+    result = _invoke_cli(
+        [
+            "--project-root",
+            str(tmp_path),
+            "init",
+            "slim",
+            "--backend",
+            "opencode",
+            "--no-precommit-install",
+        ]
+    )
+
+    assert result.exit_code == 0
+    assert config_path.read_text(encoding="utf-8") == '[agents]\nbackend = "mock-b"\n'
 
 
 def test_validate_and_run_all_use_separate_docs_root(
@@ -769,6 +1078,9 @@ def test_python_uv_commit_msg_validator_builds_pattern_from_allowed_types(
 def test_init_renders_scaffold_from_template_files() -> None:
     """Verify scaffold content is rendered from file-based template assets."""
     template_dir = files("engineeringagent.scaffold_templates")
+    backend_template_dir = files(
+        "engineeringagent.agents.backends.opencode.scaffold_templates"
+    )
     manifest = build_baseline_scaffold_manifest(profile="core")
 
     assert manifest[".pre-commit-config.yaml"] == template_dir.joinpath(
@@ -778,37 +1090,51 @@ def test_init_renders_scaffold_from_template_files() -> None:
         encoding="utf-8"
     )
 
-    assert template_dir.joinpath("opencode.agent.engineeringagent.md").read_text(
-        encoding="utf-8"
-    ) == (
-        "---\n"
-        "description: Build agent override for deterministic repository automation.\n"
-        "mode: primary\n"
-        'model: "${agent_model}"\n'
-        "permission:\n"
-        '  "*": allow\n'
-        "  bash: allow\n"
-        "---\n"
-    )
+    backend_template_files = {
+        entry.name for entry in backend_template_dir.iterdir() if entry.is_file()
+    }
+    assert "agent.engineeringagent.template" in backend_template_files
+    assert "gitignore" in backend_template_files
 
-    assert (
-        template_dir.joinpath("opencode.gitignore").read_text(encoding="utf-8")
-        == "node_modules\npackage.json\nbun.lock\n.gitignore\n"
-    )
+    assert ".opencode/agents/engineeringagent.md" in manifest
+    assert ".opencode/.gitignore" in manifest
+    assert manifest[".opencode/.gitignore"] == backend_template_dir.joinpath(
+        "gitignore"
+    ).read_text(encoding="utf-8")
 
 
 def test_build_baseline_scaffold_manifest_includes_opencode_policy_files() -> None:
     """Verify init manifest includes deterministic OpenCode agent policy outputs."""
     manifest = build_baseline_scaffold_manifest(profile="core")
 
-    rendered_agent = manifest[".opencode/agents/engineeringagent.md"]
-    assert "openai/gpt-5.3-codex" in rendered_agent
-    assert "${agent_model}" not in rendered_agent
+    assert ".opencode/agents/engineeringagent.md" in manifest
+    assert manifest[".opencode/agents/engineeringagent.md"]
 
-    template_dir = files("engineeringagent.scaffold_templates")
-    assert manifest[".opencode/.gitignore"] == template_dir.joinpath(
-        "opencode.gitignore"
+    backend_template_dir = files(
+        "engineeringagent.agents.backends.opencode.scaffold_templates"
+    )
+    assert manifest[".opencode/.gitignore"] == backend_template_dir.joinpath(
+        "gitignore"
     ).read_text(encoding="utf-8")
+
+
+def test_build_baseline_scaffold_manifest_composes_backend_manifest() -> None:
+    """Verify baseline scaffold includes real backend manifest entries."""
+
+    expected_backend_manifest = build_backend_scaffold_manifest(
+        backend_id="opencode",
+        agent_model="openai/gpt-5.3-codex-spark",
+    )
+
+    manifest = build_baseline_scaffold_manifest(
+        profile="core",
+        backend_id="opencode",
+        agent_model="openai/gpt-5.3-codex-spark",
+    )
+
+    for path, content in expected_backend_manifest.items():
+        assert manifest[path] == content
+    assert ".pre-commit-config.yaml" in manifest
 
 
 def test_init_template_rendering_is_deterministic() -> None:

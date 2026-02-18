@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.metadata
+import re
 import shutil
 import sys
 from collections.abc import Callable
@@ -11,11 +12,13 @@ from typing import Literal
 import typer
 import yaml
 
+from .agents import default_backend_id, list_backends
+from .config import resolve_agents_backend_id
 from .git import client as git_client
 from .init_scaffold import (
     apply_baseline_scaffold,
     BaselineScaffoldOptions,
-    DEFAULT_OPENCODE_AGENT_MODEL,
+    DEFAULT_AGENT_MODEL,
     build_agents_merge_followup_spec,
     build_scaffold_agents_markdown,
 )
@@ -60,6 +63,56 @@ def _resolve_init_pack(pack: str | None) -> tuple[str | None, str | None]:
         None,
         "init input error: pack must be 'slim' or 'standard'",
     )
+
+
+def _backend_choice_error(backend_ids: tuple[str, ...]) -> str:
+    """Return deterministic backend input error text."""
+    return f"init input error: backend must be one of: {', '.join(backend_ids)}"
+
+
+def _resolve_init_backend(  # noqa: C901
+    *,
+    project_root: Path,
+    backend: str | None,
+    force: bool,
+) -> tuple[str | None, str | None]:
+    """Resolve init backend choice from CLI args/config/prompt defaults."""
+    available_backends = tuple(sorted(list_backends()))
+    if not available_backends:
+        return None, "init backend error: no registered backends"
+
+    if backend is not None:
+        if backend in available_backends:
+            return backend, None
+        return None, _backend_choice_error(available_backends)
+
+    if not force:
+        configured_backend = resolve_agents_backend_id(project_root)
+        if configured_backend is not None:
+            if configured_backend in available_backends:
+                return configured_backend, None
+            return None, _backend_choice_error(available_backends)
+
+    if len(available_backends) == 1:
+        return available_backends[0], None
+
+    default_backend = default_backend_id()
+    if not _stdout_is_tty():
+        return default_backend, None
+
+    prompt = (
+        f"init backend: choose [{'/'.join(available_backends)}] "
+        f"(default {default_backend}): "
+    )
+    try:
+        selected = input(prompt).strip()
+    except EOFError:
+        selected = ""
+    if selected == "":
+        return default_backend, None
+    if selected in available_backends:
+        return selected, None
+    return None, _backend_choice_error(available_backends)
 
 
 def _resolve_manifest_path(manifest_path: str | None) -> Path | None:
@@ -202,6 +255,101 @@ def _write_init_docs_root_config(
         return (0, 1)
 
     config_path.write_text(config_content, encoding="utf-8")
+    return (1, 0)
+
+
+_TOML_TABLE_HEADER_RE = re.compile(r"^\s*\[([^\]]+)\]\s*$")
+_TOML_AGENTS_BACKEND_RE = re.compile(r"^\s*backend\s*=")
+
+
+def _ensure_trailing_newline(value: str) -> str:
+    """Return text with exactly one trailing newline."""
+    return value.rstrip("\n") + "\n"
+
+
+def _upsert_agents_backend_toml(  # noqa: C901
+    *,
+    content: str,
+    backend_id: str,
+    force: bool,
+) -> tuple[str, bool]:
+    """Insert or update `[agents] backend` in TOML content.
+
+    Returns:
+        Tuple of (new_content, changed).
+    """
+    lines = _ensure_trailing_newline(content).splitlines()
+    table_ranges: dict[str, tuple[int, int]] = {}
+    table_order: list[tuple[str, int]] = []
+
+    for index, line in enumerate(lines):
+        match = _TOML_TABLE_HEADER_RE.match(line)
+        if match is None:
+            continue
+        table_order.append((match.group(1).strip(), index))
+
+    for table_index, (table_name, start) in enumerate(table_order):
+        if table_index + 1 < len(table_order):
+            end = table_order[table_index + 1][1]
+        else:
+            end = len(lines)
+        table_ranges[table_name] = (start, end)
+
+    agents_range = table_ranges.get("agents")
+    if agents_range is None:
+        rendered = _ensure_trailing_newline(content).rstrip("\n")
+        if rendered:
+            rendered += "\n\n"
+        rendered += f'[agents]\nbackend = "{backend_id}"\n'
+        return rendered, True
+
+    agents_start, agents_end = agents_range
+    backend_line_index: int | None = None
+    for index in range(agents_start + 1, agents_end):
+        if _TOML_AGENTS_BACKEND_RE.match(lines[index]):
+            backend_line_index = index
+            break
+
+    if backend_line_index is not None:
+        current_line = lines[backend_line_index].strip()
+        desired_line = f'backend = "{backend_id}"'
+        if current_line == desired_line:
+            return _ensure_trailing_newline("\n".join(lines)), False
+        if not force:
+            return _ensure_trailing_newline("\n".join(lines)), False
+        lines[backend_line_index] = desired_line
+        return _ensure_trailing_newline("\n".join(lines)), True
+
+    insertion_index = agents_end
+    while (
+        insertion_index > agents_start + 1 and lines[insertion_index - 1].strip() == ""
+    ):
+        insertion_index -= 1
+    lines.insert(insertion_index, f'backend = "{backend_id}"')
+    return _ensure_trailing_newline("\n".join(lines)), True
+
+
+def _write_init_backend_config(
+    project_root: Path,
+    *,
+    backend_id: str,
+    force: bool,
+) -> tuple[int, int]:
+    """Persist `[agents] backend = "..."` in engineeringagent.toml."""
+    config_path = project_root / "engineeringagent.toml"
+    current_content = ""
+    if config_path.exists():
+        current_content = config_path.read_text(encoding="utf-8")
+
+    rendered, changed = _upsert_agents_backend_toml(
+        content=current_content,
+        backend_id=backend_id,
+        force=force,
+    )
+    if not changed:
+        return (0, 1)
+
+    config_path.write_text(rendered, encoding="utf-8")
     return (1, 0)
 
 
@@ -384,6 +532,15 @@ def cmd_init(args: _HandlerArgs) -> int:  # noqa: C901
         print(error)
         return 1
 
+    selected_backend, error = _resolve_init_backend(
+        project_root=project_root,
+        backend=getattr(args, "backend", None),
+        force=bool(args.force),
+    )
+    if error is not None or selected_backend is None:
+        print(error)
+        return 1
+
     docs_dir, error = _resolve_init_docs_dir(
         project_root=project_root,
         docs_mode=args.docs_mode,
@@ -417,7 +574,8 @@ def cmd_init(args: _HandlerArgs) -> int:  # noqa: C901
             docs_dir=docs_dir,
             profile=args.scaffold_profile,
             pack=pack,
-            opencode_agent_model=getattr(args, "model", DEFAULT_OPENCODE_AGENT_MODEL),
+            backend_id=selected_backend,
+            agent_model=getattr(args, "model", DEFAULT_AGENT_MODEL),
         ),
     )
 
@@ -432,6 +590,14 @@ def cmd_init(args: _HandlerArgs) -> int:  # noqa: C901
     )
     created += config_created
     skipped += config_skipped
+
+    backend_created, backend_skipped = _write_init_backend_config(
+        project_root,
+        backend_id=selected_backend,
+        force=bool(args.force),
+    )
+    created += backend_created
+    skipped += backend_skipped
 
     if resolved_agents_mode == "overwrite":
         agents_path = project_root / "AGENTS.md"
@@ -793,12 +959,15 @@ def build_typer_app() -> typer.Typer:
             None,
             help="optional init pack (slim|standard); omit to prompt on TTY",
         ),
+        backend: str | None = typer.Option(
+            None,
+            "--backend",
+            help="agent backend id to persist for repo automation",
+        ),
         model: str = typer.Option(
-            DEFAULT_OPENCODE_AGENT_MODEL,
+            DEFAULT_AGENT_MODEL,
             "--model",
-            help=(
-                "OpenCode model id for the scaffolded .opencode/agents/engineeringagent.md"
-            ),
+            help="agent model id for backend-contributed scaffold assets",
             show_default=True,
         ),
         force: bool = typer.Option(
@@ -834,6 +1003,7 @@ def build_typer_app() -> typer.Typer:
             cmd_init,
             ctx=ctx,
             pack=pack,
+            backend=backend,
             model=model,
             force=force,
             scaffold_profile=scaffold_profile,

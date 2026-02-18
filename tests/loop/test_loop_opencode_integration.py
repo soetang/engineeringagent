@@ -11,7 +11,9 @@ import yaml
 
 import engineeringagent.loop as loop_module
 from engineeringagent.agents import AgentBackendError, AgentBackendFailureDetails
-from engineeringagent.config import resolve_harness_pytest_opencode_integration_enabled
+from engineeringagent.checks.pytest.config import (
+    resolve_harness_pytest_opencode_integration_enabled,
+)
 from engineeringagent.prompts.retry_feedback import build_command_failure_retry_feedback
 from engineeringagent.loop import (
     RunConfigOptions,
