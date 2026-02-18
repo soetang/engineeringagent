@@ -14,6 +14,7 @@ from .git import client as git_client
 from .init_scaffold import (
     apply_baseline_scaffold,
     BaselineScaffoldOptions,
+    DEFAULT_OPENCODE_AGENT_MODEL,
     build_agents_merge_followup_spec,
     build_scaffold_agents_markdown,
 )
@@ -419,10 +420,11 @@ def cmd_init(args: _HandlerArgs) -> int:  # noqa: C901
     created, skipped = apply_baseline_scaffold(
         project_root=project_root,
         options=BaselineScaffoldOptions(
-            args.force,
-            docs_dir,
-            args.scaffold_profile,
-            pack,
+            force=bool(args.force),
+            docs_dir=docs_dir,
+            profile=args.scaffold_profile,
+            pack=pack,
+            opencode_agent_model=getattr(args, "model", DEFAULT_OPENCODE_AGENT_MODEL),
         ),
     )
 
@@ -798,6 +800,14 @@ def build_typer_app() -> typer.Typer:
             None,
             help="optional init pack (slim|standard); omit to prompt on TTY",
         ),
+        model: str = typer.Option(
+            DEFAULT_OPENCODE_AGENT_MODEL,
+            "--model",
+            help=(
+                "OpenCode model id for the scaffolded .opencode/agents/engineeringagent.md"
+            ),
+            show_default=True,
+        ),
         force: bool = typer.Option(
             False,
             "--force",
@@ -831,6 +841,7 @@ def build_typer_app() -> typer.Typer:
             cmd_init,
             ctx=ctx,
             pack=pack,
+            model=model,
             force=force,
             scaffold_profile=scaffold_profile,
             docs_mode=docs_mode,

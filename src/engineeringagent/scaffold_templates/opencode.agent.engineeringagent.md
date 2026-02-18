@@ -1,7 +1,7 @@
 ---
 description: Build agent override for deterministic repository automation.
 mode: primary
-model: "openai/gpt-5.3-codex-spark"
+model: "${agent_model}"
 variant: 'high'
 permission:
   "*": allow

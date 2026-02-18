@@ -130,6 +130,25 @@ Use `python_uv` as a profile when you want the scaffolded `.pre-commit-config.ya
 uvx engineeringagent init slim --scaffold-profile python_uv
 ```
 
+### Pinning the scaffolded OpenCode model (optional)
+
+`engineeringagent init` scaffolds the OpenCode agent prompt at `.opencode/agents/engineeringagent.md`.
+If you want to pin which model OpenCode uses for that agent, pass `--model`:
+
+```bash
+uvx engineeringagent init slim --model openai/gpt-5.3-codex
+```
+
+If you are only validating wiring in CI (for example, smoke tests that run OpenCode once), using a
+faster model can reduce wall time:
+
+```bash
+uvx engineeringagent init slim --model openai/gpt-5.3-codex-spark
+```
+
+This repository does not use the legacy repo-root OpenCode config file (the old `opencode` JSON).
+Any temporary OpenCode configuration should be done via `.opencode/agents/*.md`.
+
 ## What this gives you
 
 - Deterministic progress: one spec file at a time.

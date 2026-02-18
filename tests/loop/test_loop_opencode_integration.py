@@ -61,9 +61,20 @@ def run_loop(
     return _run_loop(build_loop_run(config))
 
 
-_SPARK_AGENT_TEMPLATE_RELATIVE_PATH = Path(
-    "harness/fitness-functions/opencode.agent.engineeringagent.spark.md.tmpl"
-)
+_SPARK_AGENT_MODEL = "openai/gpt-5.3-codex-spark"
+
+
+def _build_test_agent_config(*, repo_root: Path, model: str) -> str:
+    """Return an agent config identical to repo policy but with a pinned model."""
+    policy_path = repo_root / ".opencode" / "agents" / "engineeringagent.md"
+    policy_lines = policy_path.read_text(encoding="utf-8").splitlines()
+    rendered: list[str] = []
+    for line in policy_lines:
+        if line.lstrip().startswith("model:"):
+            rendered.append(f'model: "{model}"')
+        else:
+            rendered.append(line)
+    return "\n".join(rendered).rstrip("\n") + "\n"
 
 
 def _write_yaml(path: Path, payload: dict[str, Any]) -> None:
@@ -110,9 +121,8 @@ def _make_project_root(tmp_path: Path) -> tuple[Path, Path]:
     engineeringagent_path.parent.mkdir(parents=True, exist_ok=True)
 
     repo_root = Path(__file__).resolve().parents[2]
-    spark_template_path = repo_root / _SPARK_AGENT_TEMPLATE_RELATIVE_PATH
     engineeringagent_path.write_text(
-        spark_template_path.read_text(encoding="utf-8").rstrip("\n") + "\n",
+        _build_test_agent_config(repo_root=repo_root, model=_SPARK_AGENT_MODEL),
         encoding="utf-8",
     )
 
@@ -123,10 +133,18 @@ def test_opencode_integration_scaffold_writes_only_engineeringagent_agent_config
     tmp_path: Path,
 ) -> None:
     project_root, _feature_path = _make_project_root(tmp_path)
-    assert (project_root / ".opencode" / "agents" / "engineeringagent.md").exists()
+    agent_path = project_root / ".opencode" / "agents" / "engineeringagent.md"
+    assert agent_path.exists()
     assert not (project_root / ".opencode" / "agents" / "build.md").exists()
     legacy_repo_root_config = ".".join(["opencode", "json"])
     assert not (project_root / legacy_repo_root_config).exists()
+
+    payload = agent_path.read_text(encoding="utf-8")
+    model_lines = [
+        line for line in payload.splitlines() if line.lstrip().startswith("model:")
+    ]
+    assert len(model_lines) == 1
+    assert _SPARK_AGENT_MODEL in model_lines[0]
 
 
 def _run_git(project_root: Path, *args: str) -> subprocess.CompletedProcess[str]:

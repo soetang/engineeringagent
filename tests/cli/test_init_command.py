@@ -46,6 +46,41 @@ def test_init_rejects_include_reviewers_flag() -> None:
     assert "No such option: --include-reviewers" in result.stderr
 
 
+def test_init_help_documents_model_option() -> None:
+    """Verify init help documents --model and its default."""
+    result = _invoke_cli(["init", "--help"])
+
+    assert result.exit_code == 0
+    assert "--model" in result.stdout
+    assert "openai/gpt-5.3-codex" in result.stdout
+
+
+def test_init_model_flag_controls_scaffolded_opencode_agent(
+    tmp_path: Path,
+) -> None:
+    """Verify --model pins the scaffolded OpenCode agent model."""
+    result = _invoke_cli(
+        [
+            "--project-root",
+            str(tmp_path),
+            "init",
+            "--no-precommit-install",
+            "--model",
+            "openai/gpt-5.3-codex-spark",
+        ]
+    )
+
+    assert result.exit_code == 0
+    agent_path = tmp_path / ".opencode" / "agents" / "engineeringagent.md"
+    assert agent_path.exists()
+    payload = agent_path.read_text(encoding="utf-8")
+    model_lines = [
+        line for line in payload.splitlines() if line.lstrip().startswith("model:")
+    ]
+    assert len(model_lines) == 1
+    assert "openai/gpt-5.3-codex-spark" in model_lines[0]
+
+
 def test_init_defaults_to_slim_pack_without_prompting_in_non_tty(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -750,7 +785,7 @@ def test_init_renders_scaffold_from_template_files() -> None:
         "---\n"
         "description: Build agent override for deterministic repository automation.\n"
         "mode: primary\n"
-        'model: "openai/gpt-5.3-codex-spark"\n'
+        'model: "${agent_model}"\n'
         "variant: 'high'\n"
         "permission:\n"
         '  "*": allow\n'
@@ -766,12 +801,13 @@ def test_init_renders_scaffold_from_template_files() -> None:
 
 def test_build_baseline_scaffold_manifest_includes_opencode_policy_files() -> None:
     """Verify init manifest includes deterministic OpenCode agent policy outputs."""
-    template_dir = files("engineeringagent.scaffold_templates")
     manifest = build_baseline_scaffold_manifest(profile="core")
 
-    assert manifest[".opencode/agents/engineeringagent.md"] == template_dir.joinpath(
-        "opencode.agent.engineeringagent.md"
-    ).read_text(encoding="utf-8")
+    rendered_agent = manifest[".opencode/agents/engineeringagent.md"]
+    assert "openai/gpt-5.3-codex" in rendered_agent
+    assert "${agent_model}" not in rendered_agent
+
+    template_dir = files("engineeringagent.scaffold_templates")
     assert manifest[".opencode/.gitignore"] == template_dir.joinpath(
         "opencode.gitignore"
     ).read_text(encoding="utf-8")

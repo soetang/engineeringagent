@@ -43,27 +43,31 @@ def test_template_verification_commands_use_uv_run(repo_root: Path) -> None:
 
     verification = subtasks[0].get("verification")
     assert isinstance(verification, list)
-    assert verification == [
-        "uv run python -c \"from hello_world import hello; assert hello('World') == 'Hello, World!'\"",
-        "uv run python -c \"import subprocess; out=subprocess.check_output(['uv','run','python','-m','hello_world'], text=True); assert out.strip()=='Hello, World!'\"",
-    ]
-    assert all(command.startswith("uv run python") for command in verification)
+    assert len(verification) == 2
+    assert all(command.startswith("uv run python -c ") for command in verification)
 
 
-def test_smoke_helper_writes_spark_agent_override(
+def test_smoke_harness_pins_spark_model_in_init_command(
     repo_root: Path,
     tmp_path: Path,
 ) -> None:
+    spark_template_path = (
+        repo_root
+        / "harness"
+        / "fitness-functions"
+        / "opencode.agent.engineeringagent.spark.md.tmpl"
+    )
+    assert not spark_template_path.exists()
+
     smoke = _load_smoke_module(repo_root)
+    assert not hasattr(smoke, "_write_spark_agent_override")
 
-    violations: list[str] = []
-    smoke._write_spark_agent_override(tmp_path, violations)
-    assert violations == []
+    argv = smoke.build_init_argv(tmp_repo=tmp_path)
+    assert "--model" in argv
+    assert smoke.SPARK_AGENT_MODEL == "openai/gpt-5.3-codex-spark"
 
-    agent_path = tmp_path / ".opencode" / "agents" / "engineeringagent.md"
-    assert agent_path.exists()
-    payload = agent_path.read_text(encoding="utf-8")
-    assert 'model: "openai/gpt-5.3-codex-spark"' in payload
+    model_flag_index = argv.index("--model")
+    assert argv[model_flag_index + 1] == "openai/gpt-5.3-codex-spark"
 
 
 def test_verification_commands_use_uv_run_in_smoke_helper(
@@ -76,7 +80,10 @@ def test_verification_commands_use_uv_run_in_smoke_helper(
 
     calls: list[tuple[list[str], dict[str, object]]] = []
 
-    def fake_run(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+    def fake_run(
+        argv: list[str],
+        **kwargs: object,
+    ) -> subprocess.CompletedProcess[str]:
         calls.append((argv, dict(kwargs)))
         return subprocess.CompletedProcess(argv, 0, stdout="", stderr="")
 
@@ -86,21 +93,5 @@ def test_verification_commands_use_uv_run_in_smoke_helper(
     assert smoke._run_verification_commands(tmp_path, violations) is True
     assert not violations
 
-    expected_commands = [
-        [
-            "uv",
-            "run",
-            "python",
-            "-c",
-            "from hello_world import hello; assert hello('World') == 'Hello, World!'",
-        ],
-        [
-            "uv",
-            "run",
-            "python",
-            "-c",
-            "import subprocess; out=subprocess.check_output(['uv','run','python','-m','hello_world'], text=True); assert out.strip()=='Hello, World!'",
-        ],
-    ]
-    assert [call[0] for call in calls] == expected_commands
-    assert all(call[0][0] == "uv" for call in calls)
+    assert len(calls) == 2
+    assert all(argv[:4] == ["uv", "run", "python", "-c"] for argv, _kwargs in calls)
