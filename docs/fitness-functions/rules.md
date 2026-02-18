@@ -77,7 +77,7 @@ This file is generated from active manifest-declared fitness rules.
 - Name: Loop subprocess boundary
 - Side-effect free: `true`
 - Rationale: Centralizes command execution paths for consistent control.
-- Remediation: Move OpenCode command execution to engineeringagent.opencode.client and Git command execution to engineeringagent.git.client.
+- Remediation: Move OpenCode command execution to engineeringagent.agents.backends.opencode.client and Git command execution to engineeringagent.git.client.
 
 ### `architecture.markdown-locality-reference-coverage`
 
@@ -176,4 +176,3 @@ This file is generated from active manifest-declared fitness rules.
 - Side-effect free: `true`
 - Rationale: Catches regressions where the OpenCode subprocess/loop stops mid-implementation.
 - Remediation: Enable via engineeringagent.toml ([harness.fitness] opencode-real-smoke = true) and resolve reported loop/setup errors.
-

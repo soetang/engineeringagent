@@ -37,7 +37,7 @@ def test_run_checks_commands_does_not_call_legacy_runtime(
         return SimpleNamespace(returncode=0, stdout="hi\n", stderr="")
 
     monkeypatch.setattr(
-        "engineeringagent.opencode.client.run_shell_command",
+        "engineeringagent.process.run_shell_command",
         _run_shell_command,
         raising=True,
     )

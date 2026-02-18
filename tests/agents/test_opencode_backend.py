@@ -41,7 +41,7 @@ def test_opencode_backend_happy_path(
         )
 
     monkeypatch.setattr(
-        "engineeringagent.agents.backends.opencode.start_agent",
+        "engineeringagent.agents.backends.opencode.backend.start_agent",
         _fake_start_agent,
     )
 
@@ -74,7 +74,7 @@ def test_opencode_backend_raises_on_nonzero_exit(
         return _Proc(returncode=1, stderr="boom")
 
     monkeypatch.setattr(
-        "engineeringagent.agents.backends.opencode.start_agent",
+        "engineeringagent.agents.backends.opencode.backend.start_agent",
         _fake_start_agent,
     )
 
@@ -93,7 +93,7 @@ def test_opencode_backend_raises_on_missing_text_payload(
         return _Proc(returncode=0, text_payload=None)
 
     monkeypatch.setattr(
-        "engineeringagent.agents.backends.opencode.start_agent",
+        "engineeringagent.agents.backends.opencode.backend.start_agent",
         _fake_start_agent,
     )
 

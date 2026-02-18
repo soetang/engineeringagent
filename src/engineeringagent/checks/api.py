@@ -9,7 +9,6 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 from typing_extensions import Unpack
 
 from engineeringagent.changed_paths import ChangedPathsResult, collect_changed_paths
-from engineeringagent.opencode.client import run_shell_command
 from engineeringagent.checks.commands.runtime import (
     RunPlannedCommandChecksRequest,
     run_planned_command_checks,
@@ -32,6 +31,8 @@ from engineeringagent.specs import (
     checks_contract_issues,
     load_yaml,
 )
+
+from engineeringagent.process import run_shell_command
 
 
 _CHECK_GROUP_VALIDATE = "validate"

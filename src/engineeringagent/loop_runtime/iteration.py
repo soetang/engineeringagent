@@ -8,7 +8,7 @@ from typing import Any, Callable, Iterable, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from engineeringagent.opencode.client import DEFAULT_OPENCODE_AGENT
+from engineeringagent.agents_defaults import DEFAULT_OPENCODE_AGENT
 
 from .models import (
     CommandTiming,

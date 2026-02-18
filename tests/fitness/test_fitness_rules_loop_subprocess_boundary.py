@@ -95,6 +95,21 @@ def test_loop_subprocess_boundary_rule_reports_expected_violations_and_respects_
         ),
     )
 
+    # OpenCode backend command execution is intentionally centralized behind a client
+    # adapter module that is allowlisted by the subprocess boundary rule.
+    _write_module(
+        tmp_path,
+        "src/engineeringagent/agents/backends/opencode/client.py",
+        "\n".join(
+            [
+                "import subprocess",
+                "",
+                "def run_agent() -> None:",
+                "    subprocess.run(['opencode', '--version'], check=False)",
+            ]
+        ),
+    )
+
     proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
     violations = payload["violations"]
 

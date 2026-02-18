@@ -46,7 +46,7 @@ rules:
     name: Loop subprocess boundary
     summary: Enforce subprocess allowlist boundaries for command adapters/clients.
     rationale: Centralizes command execution paths for consistent control.
-    remediation: Move OpenCode command execution to engineeringagent.opencode.client
+    remediation: Move OpenCode command execution to engineeringagent.agents.backends.opencode.client
       and Git command execution to engineeringagent.git.client.
     scope: src/engineeringagent
     severity: error
@@ -57,6 +57,20 @@ rules:
       - run
       - python
       - harness/fitness-functions/check_loop_subprocess_boundary.py
+  - rule_id: architecture.agents-opencode-boundary
+    name: Agents/OpenCode boundary
+    summary: Forbid direct OpenCode backend usage outside the agents boundary.
+    rationale: Keeps OpenCode backend an internal implementation detail behind run_agent.
+    remediation: Replace direct OpenCode backend usage with engineeringagent.agents.run_agent.
+    scope: src/engineeringagent
+    severity: error
+    side_effect_free: true
+    adapter: command
+    command:
+      - uv
+      - run
+      - python
+      - harness/fitness-functions/check_agents_opencode_boundary.py
   - rule_id: architecture.markdown-locality-reference-coverage
     name: Markdown locality and reference coverage
     summary: Restrict markdown to approved paths and require non-doc markdown files

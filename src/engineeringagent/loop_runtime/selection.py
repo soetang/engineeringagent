@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Callable, Sequence
 
 from engineeringagent.agents import AgentBackendError
-from engineeringagent.opencode.client import DEFAULT_OPENCODE_AGENT
+from engineeringagent.agents_defaults import DEFAULT_OPENCODE_AGENT
 from engineeringagent.prompts import build_selector_prompt
 from engineeringagent.specs import feature_sort_key
 

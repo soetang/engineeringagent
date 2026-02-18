@@ -7,7 +7,8 @@ from engineeringagent.agents.contracts import (
     AgentBackendFailureDetails,
     AgentBackendRunResult,
 )
-from engineeringagent.opencode.client import DEFAULT_OPENCODE_AGENT, start_agent
+
+from .client import DEFAULT_OPENCODE_AGENT, start_agent
 
 
 class OpenCodeAgentBackend:

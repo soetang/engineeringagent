@@ -11,12 +11,12 @@ from .git.client import (
     status_porcelain,
 )
 from .agents import run_agent
-from .opencode.client import run_shell_command
-from .opencode.permissions import PERMISSION_REMEDIATION_HINT, run_permission_probe
+from .agents.opencode_preflight import PERMISSION_REMEDIATION_HINT, run_permission_probe
 from .loop_runtime.implement import (
     run_implement_step_from_inputs,
     run_opencode_permission_precheck,
 )
+from .process import run_shell_command
 from .loop_runtime.models import (
     FeatureIterationInputs,
     ImplementStepInputs,

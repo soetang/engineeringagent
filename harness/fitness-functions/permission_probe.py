@@ -15,7 +15,7 @@ def _bootstrap_path() -> None:
 def main() -> int:
     """Run OpenCode permission probe and print remediation hints on failure."""
     _bootstrap_path()
-    from engineeringagent.opencode.permissions import (  # pylint: disable=import-outside-toplevel
+    from engineeringagent.agents.backends.opencode.permissions import (  # pylint: disable=import-outside-toplevel
         PERMISSION_REMEDIATION_HINT,
         run_permission_probe,
     )

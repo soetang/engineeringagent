@@ -21,7 +21,7 @@ from engineeringagent.loop import (
 from engineeringagent.loop import (
     run_loop as _run_loop,
 )
-from engineeringagent.opencode.permissions import (
+from engineeringagent.agents.backends.opencode.permissions import (
     PERMISSION_REMEDIATION_HINT,
     PermissionProbeResult,
     evaluate_permission_probe,

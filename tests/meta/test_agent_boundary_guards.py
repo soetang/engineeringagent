@@ -37,7 +37,7 @@ def _format_violations(violations: list[_Violation]) -> str:
 
 
 def test_no_start_agent_imports_or_refs_outside_boundary() -> None:
-    allowed_dirs = (_SRC_ROOT / "agents", _SRC_ROOT / "opencode")
+    allowed_dirs = (_SRC_ROOT / "agents" / "backends" / "opencode",)
     violations: list[_Violation] = []
 
     for path in _iter_python_files(_SRC_ROOT):
@@ -48,7 +48,11 @@ def test_no_start_agent_imports_or_refs_outside_boundary() -> None:
         for node in ast.walk(tree):
             if isinstance(node, ast.ImportFrom):
                 module = node.module or ""
-                if module.endswith("opencode.client") or module.endswith("opencode"):
+                if (
+                    module.endswith("opencode.client")
+                    or module.endswith("opencode.backend")
+                    or module.endswith("opencode")
+                ):
                     for alias in node.names:
                         if alias.name == "start_agent":
                             violations.append(

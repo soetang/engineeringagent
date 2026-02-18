@@ -5,7 +5,9 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
-from .client import DEFAULT_OPENCODE_AGENT, start_agent
+from engineeringagent.agents_defaults import DEFAULT_OPENCODE_AGENT
+
+from .client import start_agent
 
 
 PROBE_COMMAND = "git status --short"
@@ -130,7 +132,9 @@ def evaluate_permission_probe(
     if returncode != 0:
         return PermissionProbeResult(
             ok=False,
-            reason=f"opencode exited with status {returncode} without explicit decision token",
+            reason=(
+                f"opencode exited with status {returncode} without explicit decision token"
+            ),
             returncode=returncode,
             output=output,
         )

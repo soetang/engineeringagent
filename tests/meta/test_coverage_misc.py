@@ -14,7 +14,7 @@ import pytest
 
 from engineeringagent.checks import on_change_matcher
 from engineeringagent.progress import logging as progress_logging
-from engineeringagent.opencode import client as opencode_client
+from engineeringagent.agents.backends.opencode import client as opencode_client
 
 
 def _load_harness_commit_messages(repo_root: Path) -> ModuleType:

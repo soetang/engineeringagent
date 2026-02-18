@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from engineeringagent.opencode import permissions
+from engineeringagent.agents.backends.opencode import permissions
 
 
 def test_evaluate_permission_probe_reports_nonzero_exit() -> None:

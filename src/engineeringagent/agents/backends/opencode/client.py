@@ -6,8 +6,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
-
-DEFAULT_OPENCODE_AGENT = "engineeringagent"
+from engineeringagent.agents_defaults import DEFAULT_OPENCODE_AGENT
 
 
 class OpenCodeAgentRunResult(BaseModel):
@@ -77,8 +76,6 @@ def start_agent(
     agent: str = DEFAULT_OPENCODE_AGENT,
     format: str | None = None,  # pylint: disable=redefined-builtin
     session: str | None = None,
-    capture_output: bool = True,
-    text: bool = True,
 ) -> OpenCodeAgentRunResult:
     """Run an OpenCode agent.
 
@@ -88,9 +85,6 @@ def start_agent(
         agent: Agent name for ``opencode run --agent``.
         format: Optional OpenCode output format (e.g. "json").
         session: Optional OpenCode session identifier for same-session followups.
-        capture_output: Whether to capture stdout/stderr.
-        text: Whether command streams are decoded as text.
-
     Returns:
         Completed process from the OpenCode invocation.
     """
@@ -104,8 +98,8 @@ def start_agent(
     proc = subprocess.run(
         command,
         cwd=project_root,
-        capture_output=capture_output,
-        text=text,
+        capture_output=True,
+        text=True,
         check=False,
     )
 
@@ -125,32 +119,4 @@ def start_agent(
         stderr=stderr,
         session_id=session_id,
         text_payload=text_payload,
-    )
-
-
-def run_shell_command(
-    project_root: Path,
-    command: str,
-    *,
-    capture_output: bool = True,
-    text: bool = True,
-) -> subprocess.CompletedProcess[str]:
-    """Run a shell command from loop orchestration.
-
-    Args:
-        project_root: Repository root used as command working directory.
-        command: Shell command string to execute.
-        capture_output: Whether to capture stdout/stderr.
-        text: Whether command streams are decoded as text.
-
-    Returns:
-        Completed process from the shell command invocation.
-    """
-    return subprocess.run(
-        command,
-        shell=True,
-        cwd=project_root,
-        capture_output=capture_output,
-        text=text,
-        check=False,
     )
