@@ -124,6 +124,10 @@ acceptance:
   all docs/tests are updated to the new `engineeringagent checks catalog` interface.
 
   '
+- 'Retry-feedback envelopes that previously embedded `engineeringagent fitness run` as a rerun command
+  instead embed `uv run engineeringagent checks run --checks fitness --phase iteration_end`.
+
+  '
 - 'The harness fitness rule `architecture.checks-import-surface` fails on any production
   import of `engineeringagent.checks.<submodule>` outside checks and on any disallowed
   name imported from `engineeringagent.checks`.
@@ -157,27 +161,33 @@ acceptance:
   gates run --profile loop_fast` pass.
 
   '
-- Do not move functionality away from checks unless specically mentioned here. Options are:
+- 'Do not move functionality away from checks unless specically mentioned here. Options are:
   - Move check related functionality into checks even if it is not mentioned here.
   - Refactor other modules to depend on the strict checks surface instead of moving
     checks functionality out.
+
+  '
 subtasks:
 - id: ST-000
   title: Add `engineeringagent checks catalog` and checks API wrapper
   status: backlog
-  context: 'Introduce `engineeringagent checks catalog` as the CLI interface for generating
-    the fitness-rule catalog.
+  context: |
+    Introduce `engineeringagent checks catalog` as the CLI interface for generating the
+    fitness-rule catalog.
 
-    Add a single supported orchestration function to the strict checks surface: -
-    `engineeringagent.checks.render_fitness_catalog(project_root, *, manifest_path=None,
-    format="markdown") -> str`
+    Add a single supported orchestration function to the strict checks surface:
+    - `engineeringagent.checks.render_fitness_catalog(project_root, *, manifest_path=None, format="markdown") -> str`
 
-    Requirements: - Deterministic ordering (stable rule ordering). - JSON output is
-    stable (sorted keys and deterministic serialization). - CLI does not import checks
-    fitness internals; it only calls `render_fitness_catalog(...)` and routes output
-    (stdout vs --output).
+    CLI contract (normative):
+    - When `--output` is omitted: print rendered catalog to stdout.
+    - When `--output` is provided: write rendered catalog plus a trailing newline and print
+      `checks catalog written: <path>` to stdout.
+    - Supported formats: `--format markdown|json`.
 
-    '
+    Determinism requirements (normative):
+    - Stable rule ordering (sorted by rule_id).
+    - JSON output uses sorted keys and stable formatting (indent=2, sort_keys=True).
+    - Markdown output is stable and does not embed absolute paths.
   verification:
   - uv run engineeringagent checks catalog --format markdown
   - uv run engineeringagent checks catalog --format json
@@ -204,8 +214,8 @@ subtasks:
     regen command with `uv run engineeringagent checks catalog --format markdown --output
     docs/fitness-functions/rules.md`. - CLI tests that assert `fitness ... --help`
     routes: replace with `checks catalog --help` assertions. - Any tests/strings that
-    embed `python -m engineeringagent.cli fitness run ...`: replace with the new intended
-    rerun command once failed_payload-driven retry feedback is implemented.
+    embed `python -m engineeringagent.cli fitness run ...`: replace with
+    `uv run engineeringagent checks run --checks fitness --phase iteration_end`.
 
     '
   verification:
@@ -259,7 +269,7 @@ subtasks:
 
     '
   verification:
-  - uv run python -m engineeringagent.cli validate
+  - uv run engineeringagent validate
   - uv run pytest -q
 - id: ST-006
   title: Move OpenCode permission probe under opencode submodule (no shims)
