@@ -220,7 +220,7 @@ def test_iteration_outcome_remains_exposed_on_facade() -> None:
 
 def test_loop_monkeypatch_seams_remain_available() -> None:
     seam_symbols = (
-        "start_agent",
+        "run_agent",
         "run_permission_probe",
         "_require_clean_worktree",
         "_run_opencode_permission_precheck",
@@ -246,7 +246,7 @@ def test_run_implement_step_from_inputs_requires_opencode_when_available(
 
     result = run_implement_step_from_inputs(
         inputs,
-        start_agent_fn=lambda *_args, **_kwargs: (_ for _ in ()).throw(
+        run_agent_fn=lambda *_args, **_kwargs: (_ for _ in ()).throw(
             FileNotFoundError()
         ),
     )

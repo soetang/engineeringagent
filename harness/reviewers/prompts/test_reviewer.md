@@ -9,7 +9,6 @@ Determine scope (must follow):
   - If none found, review the diff tests without spec linkage and state that spec linkage was unavailable.
 - Determine changed files using git (do not guess):
   - Use `git status --porcelain`.
-  - Use `git diff --name-only` and `git diff` (and staged equivalents if needed).
 - Only review:
   - changed tests under `tests/**` relevant to the current spec
   - plus any production code changes that exist solely to enable testing seams

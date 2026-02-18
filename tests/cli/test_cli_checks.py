@@ -229,7 +229,8 @@ def test_cli_checks_run_delegates_to_checks_surface(
     assert kwargs.get("base") == "main"
     assert kwargs.get("head") == "HEAD"
     assert kwargs.get("verbose_output") is True
-    assert callable(kwargs.get("start_agent_fn"))
+    assert "start_agent_fn" not in kwargs
+    assert "run_agent_fn" not in kwargs
 
 
 def test_cli_checks_run_normalizes_feature_path_before_delegating(

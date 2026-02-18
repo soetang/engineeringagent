@@ -104,9 +104,9 @@ def test_run_planned_reviewer_checks_reuses_cached_approval(tmp_path: Path) -> N
 
     changed_paths = ChangedPathsResult(paths=(), run_all=False, reason=None)
 
-    def _start_agent(*_args: object, **_kwargs: object) -> object:
+    def _run_agent(*_args: object, **_kwargs: object) -> object:
         raise AssertionError(
-            "start_agent_fn should not be called when approval is reused"
+            "run_agent_fn should not be called when approval is reused"
         )
 
     request = RunPlannedReviewerChecksRequest(
@@ -116,7 +116,7 @@ def test_run_planned_reviewer_checks_reuses_cached_approval(tmp_path: Path) -> N
         changed_paths=changed_paths,
         feature_id="FEAT-001",
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
-        start_agent_fn=_start_agent,
+        run_agent_fn=_run_agent,
     )
     ok, failed_id, output, failed_payload = run_planned_reviewer_checks(request)
     assert ok
@@ -152,9 +152,9 @@ def test_run_planned_reviewer_checks_returns_ok_when_no_checks_planned(
     doc = _load_checks_document(checks_path)
     changed_paths = ChangedPathsResult(paths=(), run_all=False, reason=None)
 
-    def _start_agent(*_args: object, **_kwargs: object) -> object:
+    def _run_agent(*_args: object, **_kwargs: object) -> object:
         raise AssertionError(
-            "start_agent_fn should not be called when nothing is planned"
+            "run_agent_fn should not be called when nothing is planned"
         )
 
     request = RunPlannedReviewerChecksRequest(
@@ -164,7 +164,7 @@ def test_run_planned_reviewer_checks_returns_ok_when_no_checks_planned(
         changed_paths=changed_paths,
         feature_id="FEAT-001",
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
-        start_agent_fn=_start_agent,
+        run_agent_fn=_run_agent,
     )
     ok, failed_id, output, failed_payload = run_planned_reviewer_checks(request)
     assert ok
@@ -254,8 +254,8 @@ def test_run_planned_reviewer_checks_manual_phase_emits_skip_output(
     doc = _load_checks_document(checks_path)
     changed_paths = ChangedPathsResult(paths=(), run_all=False, reason=None)
 
-    def _start_agent(*_args: object, **_kwargs: object) -> object:
-        raise AssertionError("start_agent_fn should not be called for manual skips")
+    def _run_agent(*_args: object, **_kwargs: object) -> object:
+        raise AssertionError("run_agent_fn should not be called for manual skips")
 
     request = RunPlannedReviewerChecksRequest(
         project_root=tmp_path,
@@ -264,7 +264,7 @@ def test_run_planned_reviewer_checks_manual_phase_emits_skip_output(
         changed_paths=changed_paths,
         feature_id="FEAT-001",
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
-        start_agent_fn=_start_agent,
+        run_agent_fn=_run_agent,
     )
     ok, failed_id, output, failed_payload = run_planned_reviewer_checks(request)
     assert ok

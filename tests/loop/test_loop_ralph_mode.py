@@ -13,6 +13,7 @@ from typer.testing import CliRunner
 
 from engineeringagent import cli as cli_module
 import engineeringagent.loop as loop_module
+from engineeringagent.agents import AgentBackendError, AgentBackendFailureDetails
 from engineeringagent.loop import (
     RunConfigOptions,
     build_loop_run,
@@ -95,18 +96,17 @@ def _with_opencode_implement_result(
 def _stub_opencode_start_agent(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def fake_start_agent(
+    def fake_run_agent(
         project_root: Path,
         prompt: str,
-        **kwargs: Any,
-    ) -> subprocess.CompletedProcess[str]:
+        **_kwargs: Any,
+    ) -> str:
         del project_root
         if "Read and use this feature spec from disk:" in prompt:
             effect = _OPENCODE_IMPLEMENT_SIDE_EFFECT
             if effect is not None:
                 effect()
 
-        agent = kwargs.get("agent", "engineeringagent")
         override = (
             _OPENCODE_IMPLEMENT_FAKE_RESULT
             if "Read and use this feature spec from disk:" in prompt
@@ -116,14 +116,19 @@ def _stub_opencode_start_agent(
             override = (0, "ok\n", "")
 
         returncode, stdout, stderr = override
-        return subprocess.CompletedProcess(
-            ["opencode", "run", "--agent", str(agent), prompt],
-            returncode,
-            stdout=stdout,
-            stderr=stderr,
-        )
+        if returncode != 0:
+            raise AgentBackendError(
+                backend="opencode",
+                message="opencode run failed",
+                process=AgentBackendFailureDetails(
+                    returncode=returncode,
+                    stdout=stdout,
+                    stderr=stderr,
+                ),
+            )
+        return stdout + stderr
 
-    monkeypatch.setattr(loop_module, "start_agent", fake_start_agent)
+    monkeypatch.setattr(loop_module, "run_agent", fake_run_agent)
 
 
 @pytest.fixture(autouse=True)
@@ -245,22 +250,27 @@ def test_run_python_script_executes_with_path_args(tmp_path: Path) -> None:
     assert output_path.read_text(encoding="utf-8") == "ok\n"
 
 
-def _patch_start_agent_with_fake(
+def _patch_run_agent_with_fake(
     monkeypatch: pytest.MonkeyPatch,
     fake_subprocess_run: Any,
 ) -> None:
-    def fake_start_agent(
-        project_root: Path,
-        prompt: str,
-        *,
-        agent: str = "build",
-        capture_output: bool = True,
-        text: bool = True,
-    ) -> subprocess.CompletedProcess[str]:
-        del project_root, capture_output, text
-        return fake_subprocess_run(["opencode", "run", "--agent", agent, prompt])
+    def fake_run_agent(project_root: Path, prompt: str, **_kwargs: Any) -> str:
+        del project_root
+        proc = fake_subprocess_run(["opencode", "run", "--agent", "build", prompt])
+        output = (proc.stdout or "") + (proc.stderr or "")
+        if proc.returncode != 0:
+            raise AgentBackendError(
+                backend="opencode",
+                message="opencode run failed",
+                process=AgentBackendFailureDetails(
+                    returncode=int(proc.returncode),
+                    stdout=proc.stdout,
+                    stderr=proc.stderr,
+                ),
+            )
+        return output
 
-    monkeypatch.setattr(loop_module, "start_agent", fake_start_agent)
+    monkeypatch.setattr(loop_module, "run_agent", fake_run_agent)
 
 
 def _init_git_repo(project_root: Path) -> None:
@@ -2627,7 +2637,7 @@ def test_commit_failure_feedback_still_injected_into_next_prompt(
 
         return real_run(command, **kwargs)
 
-    _patch_start_agent_with_fake(monkeypatch, fake_subprocess_run)
+    _patch_run_agent_with_fake(monkeypatch, fake_subprocess_run)
     monkeypatch.setattr(
         loop_module,
         "_run_opencode_permission_precheck",
@@ -2722,7 +2732,7 @@ def test_verification_failure_feedback_is_injected_into_next_prompt(
         del project_root, command
         return next(verification_results)
 
-    _patch_start_agent_with_fake(monkeypatch, fake_subprocess_run)
+    _patch_run_agent_with_fake(monkeypatch, fake_subprocess_run)
     monkeypatch.setattr(
         loop_module,
         "_run_opencode_permission_precheck",
@@ -2806,7 +2816,7 @@ def test_gate_failure_feedback_includes_fitness_remediation_guidance(
             return subprocess.CompletedProcess(command, 0, stdout="ok\n", stderr="")
         return real_run(command, **kwargs)
 
-    _patch_start_agent_with_fake(monkeypatch, fake_subprocess_run)
+    _patch_run_agent_with_fake(monkeypatch, fake_subprocess_run)
     monkeypatch.setattr(
         loop_module,
         "_run_opencode_permission_precheck",
@@ -2893,7 +2903,7 @@ def test_spec_validate_failure_feedback_round_trips_to_retry_prompt(
             return subprocess.CompletedProcess(command, 0, stdout="ok\n", stderr="")
         return real_run(command, **kwargs)
 
-    _patch_start_agent_with_fake(monkeypatch, fake_subprocess_run)
+    _patch_run_agent_with_fake(monkeypatch, fake_subprocess_run)
     monkeypatch.setattr(
         loop_module,
         "_run_opencode_permission_precheck",
@@ -2972,7 +2982,7 @@ def test_non_validation_gate_failure_feedback_round_trips_to_retry_prompt(
             return subprocess.CompletedProcess(command, 0, stdout="ok\n", stderr="")
         return real_run(command, **kwargs)
 
-    _patch_start_agent_with_fake(monkeypatch, fake_subprocess_run)
+    _patch_run_agent_with_fake(monkeypatch, fake_subprocess_run)
     monkeypatch.setattr(
         loop_module,
         "_run_opencode_permission_precheck",
@@ -3055,7 +3065,7 @@ def test_gate_failure_feedback_replaces_previous_feedback(
             return subprocess.CompletedProcess(command, 0, stdout="ok\n", stderr="")
         return real_run(command, **kwargs)
 
-    _patch_start_agent_with_fake(monkeypatch, fake_subprocess_run)
+    _patch_run_agent_with_fake(monkeypatch, fake_subprocess_run)
     monkeypatch.setattr(
         loop_module,
         "_run_opencode_permission_precheck",
@@ -3170,7 +3180,7 @@ def test_verification_failure_feedback_replaces_previous_feedback(
         del project_root, command
         return next(verification_results)
 
-    _patch_start_agent_with_fake(monkeypatch, fake_subprocess_run)
+    _patch_run_agent_with_fake(monkeypatch, fake_subprocess_run)
     monkeypatch.setattr(
         loop_module,
         "_run_opencode_permission_precheck",
@@ -3258,7 +3268,7 @@ def test_gate_failure_feedback_is_truncated_before_prompt_injection(
             return subprocess.CompletedProcess(command, 0, stdout="ok\n", stderr="")
         return real_run(command, **kwargs)
 
-    _patch_start_agent_with_fake(monkeypatch, fake_subprocess_run)
+    _patch_run_agent_with_fake(monkeypatch, fake_subprocess_run)
     monkeypatch.setattr(
         loop_module,
         "_run_opencode_permission_precheck",

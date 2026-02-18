@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Callable, Sequence
 
+from engineeringagent.agents import AgentBackendError
 from engineeringagent.opencode.client import DEFAULT_OPENCODE_AGENT
 from engineeringagent.prompts import build_selector_prompt
 from engineeringagent.specs import feature_sort_key
@@ -65,7 +66,7 @@ def choose_feature_with_selector(
     project_root: Path,
     pending: Sequence[tuple[Path, dict[str, Any]]],
     *,
-    start_agent_fn: Callable[..., Any],
+    run_agent_fn: Callable[[Path, str], str],
     parse_selector_output_fn: Callable[
         [str, Sequence[tuple[Path, dict[str, Any]]]],
         Path | None,
@@ -82,20 +83,24 @@ def choose_feature_with_selector(
     prompt = build_selector_prompt(pending)
     print(f"Selector step: opencode run --agent {DEFAULT_OPENCODE_AGENT}")
     try:
-        proc = start_agent_fn(project_root, prompt)
+        output = run_agent_fn(project_root, prompt)
     except FileNotFoundError:
         fallback = deterministic_feature_choice_fn(pending)
         print(f"Selector fallback: opencode missing; selected {fallback[1].get('id')}")
         return fallback
+    except AgentBackendError:
+        fallback = deterministic_feature_choice_fn(pending)
+        print(
+            f"Selector fallback: parse or command failure; selected {fallback[1].get('id')}"
+        )
+        return fallback
 
-    output = (proc.stdout or "") + (proc.stderr or "")
-    if proc.returncode == 0:
-        chosen_path = parse_selector_output_fn(output, pending)
-        if chosen_path is not None:
-            chosen_feature = next(
-                feature for path, feature in pending if path == chosen_path
-            )
-            return (chosen_path, chosen_feature)
+    chosen_path = parse_selector_output_fn(output, pending)
+    if chosen_path is not None:
+        chosen_feature = next(
+            feature for path, feature in pending if path == chosen_path
+        )
+        return (chosen_path, chosen_feature)
 
     fallback = deterministic_feature_choice_fn(pending)
     print(

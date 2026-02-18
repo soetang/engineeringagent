@@ -80,7 +80,7 @@ class ReviewerPhaseDependencies(BaseModel):
 
     collect_changed_paths: Callable[..., Any]
     restore_archived_feature: Callable[[Path, Path], tuple[bool, str | None]]
-    start_agent: Callable[..., Any]
+    run_agent_fn: Callable[..., Any] | None = None
 
 
 def run_gate_phase(  # noqa: C901
@@ -358,7 +358,7 @@ def run_reviewer_phase(  # noqa: C901
         phase=HarnessCheckPhase.FEATURE_DONE,
         checks=["reviewers"],
         feature_path=feature_path,
-        start_agent_fn=dependencies.start_agent,
+        run_agent_fn=dependencies.run_agent_fn,
         prior_feedback=iteration_inputs.hook_feedback,
         collect_changed_paths=dependencies.collect_changed_paths,
     )

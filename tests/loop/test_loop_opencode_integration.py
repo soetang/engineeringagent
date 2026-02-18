@@ -10,6 +10,7 @@ import pytest
 import yaml
 
 import engineeringagent.loop as loop_module
+from engineeringagent.agents import AgentBackendError, AgentBackendFailureDetails
 from engineeringagent.config import resolve_harness_pytest_opencode_integration_enabled
 from engineeringagent.prompts.retry_feedback import build_command_failure_retry_feedback
 from engineeringagent.loop import (
@@ -197,16 +198,11 @@ def test_loop_runs_opencode_integration(
     def fake_run_permission_probe(_: Path) -> PermissionProbeResult:
         return PermissionProbeResult(ok=True, reason="ok", returncode=0, output="")
 
-    def fake_start_agent(*_: Any, **__: Any) -> subprocess.CompletedProcess[str]:
-        return subprocess.CompletedProcess(
-            ["opencode", "run", "--agent", "engineeringagent", "<prompt>"],
-            0,
-            stdout="PERMISSION_OK\n",
-            stderr="",
-        )
+    def fake_run_agent(*_: Any, **__: Any) -> str:
+        return "PERMISSION_OK\n"
 
     monkeypatch.setattr(loop_module, "run_permission_probe", fake_run_permission_probe)
-    monkeypatch.setattr(loop_module, "start_agent", fake_start_agent)
+    monkeypatch.setattr(loop_module, "run_agent", fake_run_agent)
 
     project_root, feature_path = _make_project_root(tmp_path)
     _init_git_repo(project_root)
@@ -254,23 +250,21 @@ def test_loop_reports_permission_rejection_in_run_telemetry(
     assert not build_agent_path.exists()
 
     precheck_calls: list[Path] = []
-    started_agents: list[str] = []
 
-    def fake_start_agent(
-        project_root: Path,
-        prompt: str,
-        *,
-        agent: str = "engineeringagent",
-        capture_output: bool = True,
-        text: bool = True,
-    ) -> subprocess.CompletedProcess[str]:
-        del project_root, prompt, capture_output, text
-        started_agents.append(agent)
-        return subprocess.CompletedProcess(
-            ["opencode", "run", "--agent", agent, "<prompt>"],
-            1,
-            stdout="",
-            stderr="permission requested for bash command git status --short (auto-reject)",
+    def fake_run_agent(project_root: Path, prompt: str) -> str:
+        del project_root
+        del prompt
+        raise AgentBackendError(
+            backend="opencode",
+            message="opencode run failed",
+            process=AgentBackendFailureDetails(
+                returncode=1,
+                stdout="",
+                stderr=(
+                    "permission requested for bash command git status --short "
+                    "(auto-reject)"
+                ),
+            ),
         )
 
     def fake_run_permission_probe(target_root: Path) -> PermissionProbeResult:
@@ -278,7 +272,7 @@ def test_loop_reports_permission_rejection_in_run_telemetry(
         return PermissionProbeResult(ok=True, reason="ok", returncode=0, output="")
 
     monkeypatch.setattr(loop_module, "run_permission_probe", fake_run_permission_probe)
-    monkeypatch.setattr(loop_module, "start_agent", fake_start_agent)
+    monkeypatch.setattr(loop_module, "run_agent", fake_run_agent)
 
     code = run_loop(
         project_root=project_root,
@@ -301,7 +295,6 @@ def test_loop_reports_permission_rejection_in_run_telemetry(
     assert run["next_action"] == "retry_same_feature"
     assert run["log_path"]
     assert precheck_calls == [project_root]
-    assert started_agents == ["engineeringagent"]
     assert not build_agent_path.exists()
 
     feature_log_path = project_root / str(run["log_path"])
@@ -325,29 +318,24 @@ def test_run_loop_creates_progress_artifacts_before_implement_invocation(
         "saw_implement": False,
     }
 
-    def fake_start_agent(
-        project_root: Path,
-        prompt: str,
-        *,
-        agent: str = "engineeringagent",
-        capture_output: bool = True,
-        text: bool = True,
-    ) -> subprocess.CompletedProcess[str]:
-        del capture_output, text
-
+    def fake_run_agent(project_root: Path, prompt: str) -> str:
+        del prompt
         observed["saw_implement"] = True
         assert (project_root / "progress").exists()
         assert (project_root / "progress" / "runs.jsonl").exists()
         assert (project_root / "progress" / "run-feature-FEAT-901.txt").exists()
-        return subprocess.CompletedProcess(
-            ["opencode", "run", "--agent", agent, "<prompt>"],
-            1,
-            stdout="",
-            stderr="opencode failed",
+        raise AgentBackendError(
+            backend="opencode",
+            message="opencode run failed",
+            process=AgentBackendFailureDetails(
+                returncode=1,
+                stdout="",
+                stderr="opencode failed",
+            ),
         )
 
     monkeypatch.setattr(loop_module, "run_permission_probe", fake_run_permission_probe)
-    monkeypatch.setattr(loop_module, "start_agent", fake_start_agent)
+    monkeypatch.setattr(loop_module, "run_agent", fake_run_agent)
 
     code = run_loop(
         project_root=project_root,
@@ -522,16 +510,19 @@ def test_run_loop_permission_precheck_pass_prints_bypass_hint_and_log_locations(
             output="PERMISSION_OK\n",
         )
 
-    def fake_start_agent(*_: Any, **__: Any) -> subprocess.CompletedProcess[str]:
-        return subprocess.CompletedProcess(
-            ["opencode", "run", "--agent", "engineeringagent", "<prompt>"],
-            1,
-            stdout="",
-            stderr="opencode failed",
+    def fake_run_agent(*_: Any, **__: Any) -> str:
+        raise AgentBackendError(
+            backend="opencode",
+            message="opencode run failed",
+            process=AgentBackendFailureDetails(
+                returncode=1,
+                stdout="",
+                stderr="opencode failed",
+            ),
         )
 
     monkeypatch.setattr(loop_module, "run_permission_probe", fake_run_permission_probe)
-    monkeypatch.setattr(loop_module, "start_agent", fake_start_agent)
+    monkeypatch.setattr(loop_module, "run_agent", fake_run_agent)
 
     code = run_loop(
         project_root=project_root,
@@ -605,8 +596,8 @@ def test_gate_failure_feedback_round_trips_to_retry_prompt_integration(
         agent: str = "build",
         capture_output: bool = True,
         text: bool = True,
-    ) -> subprocess.CompletedProcess[str]:
-        del project_root, capture_output, text
+    ) -> str:
+        del project_root
         prompts.append(prompt)
         subprocess.run(
             [sys.executable, str(set_done_script), str(feature_path)],
@@ -614,17 +605,12 @@ def test_gate_failure_feedback_round_trips_to_retry_prompt_integration(
             capture_output=True,
             text=True,
         )
-        return subprocess.CompletedProcess(
-            ["opencode", "run", "--agent", agent, prompt],
-            0,
-            stdout="ok\n",
-            stderr="",
-        )
+        return "ok\n"
 
     def fake_run_permission_probe(_: Path) -> PermissionProbeResult:
         return PermissionProbeResult(ok=True, reason="ok", returncode=0, output="")
 
-    monkeypatch.setattr(loop_module, "start_agent", fake_start_agent)
+    monkeypatch.setattr(loop_module, "run_agent", fake_start_agent)
     monkeypatch.setattr(loop_module, "run_permission_probe", fake_run_permission_probe)
 
     code = run_loop(
@@ -719,40 +705,20 @@ def test_loop_archived_done_requires_same_iteration_completion_commit(
     def fake_run_permission_probe(_: Path) -> PermissionProbeResult:
         return PermissionProbeResult(ok=True, reason="ok", returncode=0, output="")
 
-    def fake_start_agent(
-        project_root: Path,
-        prompt: str,
-        *,
-        agent: str = "build",
-        capture_output: bool = True,
-        text: bool = True,
-    ) -> subprocess.CompletedProcess[str]:
-        del agent, capture_output, text
-
+    def fake_run_agent(project_root: Path, prompt: str) -> str:
         if "Choose the next feature spec to execute" in prompt:
-            return subprocess.CompletedProcess(
-                ["opencode", "run", "--agent", "engineeringagent", "<prompt>"],
-                0,
-                stdout=str(feature_path),
-                stderr="",
-            )
+            return str(feature_path)
 
-        del prompt
         subprocess.run(
             [sys.executable, str(script_path), str(project_root)],
             check=True,
             capture_output=True,
             text=True,
         )
-        return subprocess.CompletedProcess(
-            ["opencode", "run", "--agent", "engineeringagent", "<prompt>"],
-            0,
-            stdout="ok\n",
-            stderr="",
-        )
+        return "ok\n"
 
     monkeypatch.setattr(loop_module, "run_permission_probe", fake_run_permission_probe)
-    monkeypatch.setattr(loop_module, "start_agent", fake_start_agent)
+    monkeypatch.setattr(loop_module, "run_agent", fake_run_agent)
 
     code = run_loop(
         project_root=project_root,

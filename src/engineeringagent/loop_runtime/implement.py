@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import sys
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
+from engineeringagent.agents import AgentBackendError
 from engineeringagent.loop_runtime.models import ImplementStepInputs
 from engineeringagent.opencode.client import DEFAULT_OPENCODE_AGENT
 from engineeringagent.opencode.permissions import output_has_permission_rejection
@@ -25,19 +25,19 @@ def _format_opencode_run_command(agent: str) -> str:
 def run_implement_step_from_inputs(
     implement_inputs: ImplementStepInputs,
     *,
-    start_agent_fn: Callable[..., Any],
+    run_agent_fn: Callable[[Path, str], str],
 ) -> tuple[bool, str | None, str]:
     """Run implement logic while facade keeps public signature seams."""
     return _run_default_opencode_implement(
         implement_inputs,
-        start_agent_fn=start_agent_fn,
+        run_agent_fn=run_agent_fn,
     )
 
 
 def _run_default_opencode_implement(
     implement_inputs: ImplementStepInputs,
     *,
-    start_agent_fn: Callable[..., Any],
+    run_agent_fn: Callable[[Path, str], str],
 ) -> tuple[bool, str | None, str]:
     prompt = _build_implement_prompt(implement_inputs)
     command = _format_opencode_run_command(DEFAULT_OPENCODE_AGENT)
@@ -48,7 +48,7 @@ def _run_default_opencode_implement(
         flush=True,
     )
     try:
-        proc = start_agent_fn(implement_inputs.project_root, prompt)
+        output = run_agent_fn(implement_inputs.project_root, prompt)
     except FileNotFoundError:
         return (False, "opencode_missing", "[implement] opencode executable missing")
     except subprocess.TimeoutExpired as exc:
@@ -61,18 +61,23 @@ def _run_default_opencode_implement(
             "[implement] hint: for a non-mutating preview use `engineeringagent run --dry-run`.\n"
         )
         return (False, "opencode_build", command_output)
+    except AgentBackendError as exc:
+        output = exc.output
+        command_output = (
+            f"[implement] command={command}\n"
+            f"[implement] returncode={exc.returncode if exc.returncode is not None else 1}\n"
+            f"{output}"
+        )
+        if output_has_permission_rejection(output):
+            return (False, "opencode_permission", command_output)
+        return (False, "opencode_build", command_output)
 
-    _print_process_output(proc, verbose_output=implement_inputs.verbose_output)
-    output = (proc.stdout or "") + (proc.stderr or "")
+    _print_agent_output(output, verbose_output=implement_inputs.verbose_output)
     command_output = (
-        f"[implement] command={command}\n"
-        f"[implement] returncode={proc.returncode}\n"
-        f"{output}"
+        f"[implement] command={command}\n[implement] returncode=0\n{output}"
     )
     if output_has_permission_rejection(output):
         return (False, "opencode_permission", command_output)
-    if proc.returncode != 0:
-        return (False, "opencode_build", command_output)
     return (True, None, command_output)
 
 
@@ -110,13 +115,11 @@ def _ensure_progress_artifacts(implement_inputs: ImplementStepInputs) -> None:
     )
 
 
-def _print_process_output(proc: Any, *, verbose_output: bool) -> None:
+def _print_agent_output(output: str, *, verbose_output: bool) -> None:
     if not verbose_output:
         return
-    if proc.stdout:
-        print(proc.stdout, end="")
-    if proc.stderr:
-        print(proc.stderr, end="", file=sys.stderr)
+    if output:
+        print(output, end="")
 
 
 def run_opencode_permission_precheck(

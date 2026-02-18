@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Any
 
 import pytest
 from pydantic import ValidationError
 
+from engineeringagent.agents import AgentBackendError
 from engineeringagent.changed_paths import ChangedPathsResult
 from engineeringagent.checks.reviewers.engine import (
     DECISION_REQUEST_CHANGES,
@@ -194,12 +194,15 @@ def test_evaluate_cached_reviewer_approval_invalidates_when_unscoped_changes_pre
 def test_run_reviewer_returns_parser_failure_for_missing_prompt_file(
     tmp_path: Path,
 ) -> None:
+    def run_agent_fn(*_a: Any, **_k: Any) -> Any:
+        raise AssertionError("run_agent_fn should not be called")
+
     request = {
         "feature_id": "FEAT-1",
         "feature_path": tmp_path,
         "changed_paths": ChangedPathsResult(paths=(), run_all=False, reason=None),
         "prior_feedback": None,
-        "start_agent_fn": lambda *_a, **_k: SimpleNamespace(stdout="", stderr=""),
+        "run_agent_fn": run_agent_fn,
     }
     decision = run_reviewer(tmp_path, "rev", {"prompt_file": ""}, **request)
     assert decision["decision"] == DECISION_REQUEST_CHANGES
@@ -209,12 +212,15 @@ def test_run_reviewer_returns_parser_failure_for_missing_prompt_file(
 def test_run_reviewer_returns_parser_failure_when_prompt_file_missing_on_disk(
     tmp_path: Path,
 ) -> None:
+    def run_agent_fn(*_a: Any, **_k: Any) -> Any:
+        raise AssertionError("run_agent_fn should not be called")
+
     request = {
         "feature_id": "FEAT-1",
         "feature_path": tmp_path,
         "changed_paths": ChangedPathsResult(paths=(), run_all=False, reason=None),
         "prior_feedback": None,
-        "start_agent_fn": lambda *_a, **_k: SimpleNamespace(stdout="", stderr=""),
+        "run_agent_fn": run_agent_fn,
     }
     decision = run_reviewer(tmp_path, "rev", {"prompt_file": "missing.txt"}, **request)
     assert decision["decision"] == DECISION_REQUEST_CHANGES
@@ -227,7 +233,7 @@ def test_run_reviewer_returns_parser_failure_when_opencode_is_missing(
     prompt_path = tmp_path / "prompt.txt"
     prompt_path.write_text("Do the thing. $responseformat\n", encoding="utf-8")
 
-    def fake_start_agent(*_args: Any, **_kwargs: Any) -> Any:
+    def fake_run_agent(*_args: Any, **_kwargs: Any) -> Any:
         raise FileNotFoundError("opencode")
 
     request = {
@@ -235,8 +241,31 @@ def test_run_reviewer_returns_parser_failure_when_opencode_is_missing(
         "feature_path": tmp_path,
         "changed_paths": ChangedPathsResult(paths=(), run_all=False, reason=None),
         "prior_feedback": None,
-        "start_agent_fn": fake_start_agent,
+        "run_agent_fn": fake_run_agent,
     }
     decision = run_reviewer(tmp_path, "rev", {"prompt_file": "prompt.txt"}, **request)
     assert decision["decision"] == DECISION_REQUEST_CHANGES
     assert "opencode executable missing" in decision["summary"]
+
+
+def test_run_reviewer_returns_parser_failure_when_agent_backend_errors(
+    tmp_path: Path,
+) -> None:
+    prompt_path = tmp_path / "prompt.txt"
+    prompt_path.write_text("Do the thing. $responseformat\n", encoding="utf-8")
+
+    def fake_run_agent(*_args: Any, **_kwargs: Any) -> Any:
+        raise AgentBackendError(backend="fake", message="run failed")
+
+    request = {
+        "feature_id": "FEAT-1",
+        "feature_path": tmp_path,
+        "changed_paths": ChangedPathsResult(paths=(), run_all=False, reason=None),
+        "prior_feedback": None,
+        "run_agent_fn": fake_run_agent,
+    }
+
+    decision = run_reviewer(tmp_path, "rev", {"prompt_file": "prompt.txt"}, **request)
+    assert decision["decision"] == DECISION_REQUEST_CHANGES
+    assert decision["summary"].startswith(f"{PARSER_FAILURE_SUMMARY_PREFIX}:")
+    assert "fake: run failed" in decision["summary"]

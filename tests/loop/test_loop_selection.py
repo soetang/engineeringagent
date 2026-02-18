@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Any
 
+from engineeringagent.agents import AgentBackendError, AgentBackendFailureDetails
 from engineeringagent.loop_runtime import selection
 
 
@@ -78,7 +78,7 @@ def test_choose_feature_with_selector_returns_single_pending_without_selector_ca
     chosen_path, chosen_feature = selection.choose_feature_with_selector(
         Path("."),
         pending,
-        start_agent_fn=_should_not_run,
+        run_agent_fn=_should_not_run,
     )
 
     assert chosen_path == pending[0][0]
@@ -91,17 +91,13 @@ def test_choose_feature_with_selector_uses_selector_output_when_parse_succeeds(
     pending = _pending_features()
     monkeypatch.setattr(selection, "build_selector_prompt", lambda _: "prompt")
 
-    def _start_agent(*_: Any, **__: Any) -> Any:
-        return SimpleNamespace(
-            returncode=0,
-            stdout="FEAT-150",  # token parsed via feature id
-            stderr="",
-        )
+    def _run_agent(*_: Any, **__: Any) -> str:
+        return "FEAT-150"  # token parsed via feature id
 
     chosen_path, chosen_feature = selection.choose_feature_with_selector(
         Path("."),
         pending,
-        start_agent_fn=_start_agent,
+        run_agent_fn=_run_agent,
     )
 
     assert chosen_path == Path("docs/spec/features/FEAT-150.yaml")
@@ -114,13 +110,13 @@ def test_choose_feature_with_selector_falls_back_when_opencode_missing(
     pending = _pending_features()
     monkeypatch.setattr(selection, "build_selector_prompt", lambda _: "prompt")
 
-    def _start_agent(*_: Any, **__: Any) -> Any:
+    def _run_agent(*_: Any, **__: Any) -> str:
         raise FileNotFoundError("opencode")
 
     chosen_path, chosen_feature = selection.choose_feature_with_selector(
         Path("."),
         pending,
-        start_agent_fn=_start_agent,
+        run_agent_fn=_run_agent,
     )
 
     output = capsys.readouterr().out
@@ -136,13 +132,21 @@ def test_choose_feature_with_selector_falls_back_on_parse_or_command_failure(
     pending = _pending_features()
     monkeypatch.setattr(selection, "build_selector_prompt", lambda _: "prompt")
 
-    def _start_agent(*_: Any, **__: Any) -> Any:
-        return SimpleNamespace(returncode=2, stdout="", stderr="boom")
+    def _run_agent(*_: Any, **__: Any) -> str:
+        raise AgentBackendError(
+            backend="opencode",
+            message="opencode run failed",
+            process=AgentBackendFailureDetails(
+                returncode=2,
+                stdout="",
+                stderr="boom",
+            ),
+        )
 
     chosen_path, chosen_feature = selection.choose_feature_with_selector(
         Path("."),
         pending,
-        start_agent_fn=_start_agent,
+        run_agent_fn=_run_agent,
     )
 
     output = capsys.readouterr().out

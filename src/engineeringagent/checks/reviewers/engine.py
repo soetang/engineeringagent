@@ -14,7 +14,12 @@ from engineeringagent.progress import paths as progress_paths
 
 from engineeringagent.changed_paths import ChangedPathsResult
 from ..on_change_matcher import path_matches_any_glob
-from engineeringagent.opencode.client import DEFAULT_OPENCODE_AGENT
+from engineeringagent.agents import (
+    AgentBackend,
+    AgentBackendError,
+    AgentOutputValidationError,
+    run_agent,
+)
 from engineeringagent.specs import load_yaml, reviewer_contract_issues
 
 
@@ -48,28 +53,6 @@ REVIEWER_RESPONSEFORMAT_MISSING_MESSAGE = (
 
 REVIEWER_DECISION_PARSE_MAX_RETRIES = 2
 
-REVIEWER_DECISION_PARSE_RETRY_PROMPT_TEMPLATE = "\n".join(
-    (
-        "---",
-        "Your previous output did not validate as a reviewer decision JSON object.",
-        "",
-        "Validation error:",
-        "{{VALIDATION_ERROR}}",
-        "",
-        "Return exactly one strict JSON object and no other text.",
-        "It MUST validate against the JSON Schema provided in the reviewer instructions.",
-        "No Markdown. No code fences. No surrounding commentary.",
-        "---",
-    )
-)
-
-
-def _require_text_payload(proc: object) -> str | None:
-    value = getattr(proc, "text_payload", None)
-    if isinstance(value, str) and value.strip():
-        return value
-    return None
-
 
 class ReviewerDecisionEnvelope(BaseModel):
     """Schema-validated reviewer decision envelope.
@@ -95,25 +78,11 @@ class ReviewerDecisionEnvelope(BaseModel):
         return stripped
 
 
-REVIEWER_DECISION_JSON_SCHEMA = json.dumps(
-    ReviewerDecisionEnvelope.model_json_schema(),
-    indent=2,
-    sort_keys=True,
-    ensure_ascii=True,
-)
-
 REVIEWER_RESPONSEFORMAT_CONTRACT = "\n".join(
     (
         "---",
         "Return exactly one strict JSON object and no other text.",
         "No Markdown. No code fences. No surrounding commentary.",
-        "",
-        "The JSON object MUST validate against the JSON Schema below.",
-        "The schema is derived from the reviewer decision envelope model and is emitted with sorted",
-        "keys for deterministic prompts.",
-        "",
-        "JSON Schema:",
-        REVIEWER_DECISION_JSON_SCHEMA,
         "",
         "Notes:",
         '- `decision` must be one of: "approve", "request_changes", "warning".',
@@ -135,13 +104,18 @@ class ReviewerSandboxHandle(BaseModel):
 
 
 class ReviewerRunRequest(BaseModel):
-    model_config = ConfigDict(frozen=True, extra="forbid")
+    model_config = ConfigDict(
+        frozen=True,
+        extra="forbid",
+        arbitrary_types_allowed=True,
+    )
 
     feature_id: str
     feature_path: Path
     changed_paths: ChangedPathsResult
     prior_feedback: str | None
-    start_agent_fn: Callable[..., Any]
+    run_agent_fn: Callable[..., Any] | None = None
+    agent_backend: AgentBackend | None = None
 
 
 def _now_iso() -> str:
@@ -472,105 +446,30 @@ def run_reviewer(
             except ValueError as exc:
                 return _parser_failure_decision(str(exc))
 
+            agent_runner = run_request.run_agent_fn or run_agent
+
             try:
-                proc = run_request.start_agent_fn(
+                envelope = agent_runner(
                     execution_root,
                     composed_prompt,
-                    agent=DEFAULT_OPENCODE_AGENT,
-                    format="json",
+                    output_type=ReviewerDecisionEnvelope,
+                    backend=run_request.agent_backend,
+                    max_validation_retries=REVIEWER_DECISION_PARSE_MAX_RETRIES,
                 )
             except FileNotFoundError:
                 return _parser_failure_decision("opencode executable missing")
+            except AgentBackendError as exc:
+                return _parser_failure_decision(str(exc))
+            except AgentOutputValidationError as exc:
+                return _parser_failure_decision(exc.error_summary)
 
-            session_id = getattr(proc, "session_id", None)
-            decision_payload = _require_text_payload(proc)
-            if decision_payload is None:
-                return _parser_failure_decision(
-                    "opencode json output missing final text payload"
-                )
-
-            decision = parse_reviewer_decision(decision_payload)
-            if _is_reviewer_parser_failure(decision) and isinstance(session_id, str):
-                decision = _retry_parse_failure_in_same_session(
-                    execution_root,
-                    run_request,
-                    session_id=session_id,
-                    decision=decision,
-                )
-            return decision
+            if isinstance(envelope, ReviewerDecisionEnvelope):
+                return envelope.model_dump(exclude_none=True)
+            return ReviewerDecisionEnvelope.model_validate(envelope).model_dump(
+                exclude_none=True
+            )
     except RuntimeError as exc:
         return _parser_failure_decision(str(exc))
-
-
-def _is_reviewer_parser_failure(decision: dict[str, Any]) -> bool:
-    """Return True when decision represents deterministic parse/schema failure."""
-    if decision.get("decision") != DECISION_REQUEST_CHANGES:
-        return False
-    summary = decision.get("summary")
-    if not isinstance(summary, str):
-        return False
-    return summary.startswith(f"{PARSER_FAILURE_SUMMARY_PREFIX}:")
-
-
-def _extract_reviewer_parser_failure_reason(decision: dict[str, Any]) -> str:
-    summary = decision.get("summary")
-    if not isinstance(summary, str):
-        return "output does not match reviewer decision schema"
-    prefix = f"{PARSER_FAILURE_SUMMARY_PREFIX}:"
-    if summary.startswith(prefix):
-        return (
-            summary[len(prefix) :].strip()
-            or "output does not match reviewer decision schema"
-        )
-    return summary.strip() or "output does not match reviewer decision schema"
-
-
-def _render_reviewer_parse_retry_prompt(*, validation_error: str) -> str:
-    return REVIEWER_DECISION_PARSE_RETRY_PROMPT_TEMPLATE.replace(
-        "{{VALIDATION_ERROR}}",
-        validation_error.strip() or "output does not match reviewer decision schema",
-    )
-
-
-def _retry_parse_failure_in_same_session(
-    execution_root: Path,
-    request: ReviewerRunRequest,
-    *,
-    session_id: str,
-    decision: dict[str, Any],
-) -> dict[str, Any]:
-    """Retry parse/schema failures up to a bounded count in the same OpenCode session."""
-
-    current = decision
-    for _attempt in range(REVIEWER_DECISION_PARSE_MAX_RETRIES):
-        if not _is_reviewer_parser_failure(current):
-            return current
-
-        validation_error = _extract_reviewer_parser_failure_reason(current)
-        followup_prompt = _render_reviewer_parse_retry_prompt(
-            validation_error=validation_error
-        )
-
-        try:
-            proc = request.start_agent_fn(
-                execution_root,
-                followup_prompt,
-                agent=DEFAULT_OPENCODE_AGENT,
-                format="json",
-                session=session_id,
-            )
-        except FileNotFoundError:
-            return _parser_failure_decision("opencode executable missing")
-
-        decision_payload = _require_text_payload(proc)
-        if decision_payload is None:
-            return _parser_failure_decision(
-                "opencode json output missing final text payload"
-            )
-
-        current = parse_reviewer_decision(decision_payload)
-
-    return current
 
 
 def _coerce_reviewer_run_request(

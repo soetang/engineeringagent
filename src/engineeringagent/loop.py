@@ -10,7 +10,8 @@ from .git.client import (
     head_short as git_head,
     status_porcelain,
 )
-from .opencode.client import run_shell_command, start_agent
+from .agents import run_agent
+from .opencode.client import run_shell_command
 from .opencode.permissions import PERMISSION_REMEDIATION_HINT, run_permission_probe
 from .loop_runtime.implement import (
     run_implement_step_from_inputs,
@@ -93,7 +94,7 @@ def _choose_feature_with_selector(
     return choose_feature_with_selector(
         project_root,
         pending,
-        start_agent_fn=start_agent,
+        run_agent_fn=run_agent,
     )
 
 
@@ -129,7 +130,7 @@ def run_implement_step(
     )
     return run_implement_step_from_inputs(
         implement_inputs,
-        start_agent_fn=start_agent,
+        run_agent_fn=run_agent,
     )
 
 
@@ -329,7 +330,6 @@ def _run_feature_iteration_with_inputs(
             reviewer_phase_dependencies=ReviewerPhaseDependencies(
                 collect_changed_paths=collect_changed_paths,
                 restore_archived_feature=_restore_archived_feature,
-                start_agent=start_agent,
             ),
             run_completion_commit_phase=run_completion_commit_phase,
             completion_phase_dependencies=CompletionPhaseDependencies(

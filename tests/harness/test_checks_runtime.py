@@ -4,6 +4,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
+from pydantic import BaseModel
+
 from engineeringagent.changed_paths import ChangedPathsResult
 from engineeringagent.checks.commands.runtime import (
     PlannedCheck as CommandPlannedCheck,
@@ -421,13 +423,22 @@ def test_run_reviewer_phase_uses_checks_yaml_for_run_all_feature_done(
 
     reviewer_state: dict[str, Any] = {"version": "1", "features": {}}
 
-    def _start_agent(*_args: Any, **_kwargs: Any) -> Any:
-        return SimpleNamespace(
-            returncode=0,
-            session_id="sess-123",
-            text_payload='{"decision":"approve","summary":"ok","required_actions":[]}',
-            stdout="",
-            stderr="",
+    def _run_agent(
+        _project_root: Path,
+        _prompt: str,
+        *,
+        output_type: type[BaseModel],
+        backend: object = None,
+        max_validation_retries: int = 2,
+    ) -> BaseModel:
+        del backend
+        del max_validation_retries
+        return output_type.model_validate(
+            {
+                "decision": "approve",
+                "summary": "ok",
+                "required_actions": [],
+            }
         )
 
     deps = ReviewerPhaseDependencies(
@@ -437,7 +448,7 @@ def test_run_reviewer_phase_uses_checks_yaml_for_run_all_feature_done(
             reason=None,
         ),
         restore_archived_feature=lambda *_args, **_kwargs: (True, None),
-        start_agent=_start_agent,
+        run_agent_fn=_run_agent,
     )
 
     outcome = run_reviewer_phase(
@@ -497,7 +508,7 @@ def test_run_reviewer_phase_skips_on_change_reviewer_checks_when_no_match(
             reason=None,
         ),
         restore_archived_feature=lambda *_args, **_kwargs: (True, None),
-        start_agent=lambda *_args, **_kwargs: None,
+        run_agent_fn=lambda *_args, **_kwargs: None,
     )
 
     outcome = run_reviewer_phase(

@@ -339,7 +339,6 @@ def cmd_checks_run(args: _HandlerArgs) -> int:
     """
 
     from engineeringagent import checks as checks_module
-    from engineeringagent.opencode.client import start_agent
 
     project_root = Path(args.project_root).resolve()
     result = checks_module.run_checks(
@@ -351,7 +350,6 @@ def cmd_checks_run(args: _HandlerArgs) -> int:
         verbose_output=bool(getattr(args, "verbose_output", False)),
         base=getattr(args, "base", None),
         head=getattr(args, "head", None),
-        start_agent_fn=start_agent,
     )
 
     if result.output:

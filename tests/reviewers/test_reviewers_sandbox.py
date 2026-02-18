@@ -6,10 +6,10 @@ from types import SimpleNamespace
 import yaml
 
 from engineeringagent.changed_paths import ChangedPathsResult
-from engineeringagent.opencode.client import DEFAULT_OPENCODE_AGENT
 from engineeringagent.checks.reviewers.engine import (
     PARSER_FAILURE_SUMMARY_PREFIX,
     REVIEWER_RESPONSEFORMAT_PLACEHOLDER,
+    ReviewerDecisionEnvelope,
     build_reviewer_sandbox,
     run_reviewer,
 )
@@ -176,12 +176,14 @@ def test_run_reviewer_uses_empty_folder_sandbox_when_configured(
 
     captured: dict[str, str | bool] = {}
 
-    def _start_agent(
-        project_root, prompt, *, agent=DEFAULT_OPENCODE_AGENT, format=None
+    def _run_agent(
+        project_root, prompt, *, output_type, backend=None, max_validation_retries=2
     ):
+        del max_validation_retries
         sandbox_root = Path(project_root)
         captured["project_root"] = str(sandbox_root)
-        captured["agent"] = agent
+        captured["output_type"] = str(output_type)
+        captured["backend"] = str(backend)
         captured["prompt"] = prompt
         captured["sandbox_readme_before"] = (sandbox_root / "README.md").read_text(
             encoding="utf-8"
@@ -190,12 +192,10 @@ def test_run_reviewer_uses_empty_folder_sandbox_when_configured(
             sandbox_root / "harness" / "reviewers" / "prompts" / "onboarding_review.md"
         ).exists()
         captured["sandbox_src_exists"] = (sandbox_root / "src").exists()
-        return SimpleNamespace(
-            session_id="sess-123",
-            text_payload='{"decision":"approve","summary":"Looks good."}',
-            stdout="",
-            stderr="",
-            returncode=0,
+        return ReviewerDecisionEnvelope(
+            decision="approve",
+            summary="Looks good.",
+            required_actions=[],
         )
 
     decision = run_reviewer(
@@ -217,11 +217,10 @@ def test_run_reviewer_uses_empty_folder_sandbox_when_configured(
             reason=None,
         ),
         prior_feedback=None,
-        start_agent_fn=_start_agent,
+        run_agent_fn=_run_agent,
     )
 
     assert decision["decision"] == "approve"
-    assert captured["agent"] == DEFAULT_OPENCODE_AGENT
     assert captured["project_root"] != str(tmp_path)
     assert captured["sandbox_readme_before"] == "Original README\n"
     assert captured["sandbox_prompt_exists"] is True
@@ -249,18 +248,18 @@ def test_run_reviewer_uses_temp_worktree_snapshot_sandbox_when_configured(
 
     captured: dict[str, str] = {}
 
-    def _start_agent(
-        project_root, prompt, *, agent=DEFAULT_OPENCODE_AGENT, format=None
+    def _run_agent(
+        project_root, prompt, *, output_type, backend=None, max_validation_retries=2
     ):
+        del max_validation_retries
         captured["project_root"] = str(project_root)
         captured["prompt"] = prompt
-        captured["agent"] = agent
-        return SimpleNamespace(
-            session_id="sess-123",
-            text_payload='{"decision":"approve","summary":"Bootstrap succeeded."}',
-            stdout="",
-            stderr="",
-            returncode=0,
+        captured["output_type"] = str(output_type)
+        captured["backend"] = str(backend)
+        return ReviewerDecisionEnvelope(
+            decision="approve",
+            summary="Bootstrap succeeded.",
+            required_actions=[],
         )
 
     decision = run_reviewer(
@@ -282,11 +281,10 @@ def test_run_reviewer_uses_temp_worktree_snapshot_sandbox_when_configured(
             reason=None,
         ),
         prior_feedback=None,
-        start_agent_fn=_start_agent,
+        run_agent_fn=_run_agent,
     )
 
     assert decision["decision"] == "approve"
-    assert captured["agent"] == DEFAULT_OPENCODE_AGENT
     assert captured["project_root"] != str(tmp_path)
     assert "$responseformat" not in captured["prompt"]
     assert RESPONSEFORMAT_PROMPT_SENTENCE in captured["prompt"]
@@ -333,7 +331,7 @@ def test_run_reviewer_returns_request_changes_when_snapshot_setup_fails(
             reason=None,
         ),
         prior_feedback=None,
-        start_agent_fn=lambda *_args, **_kwargs: None,
+        run_agent_fn=lambda *_args, **_kwargs: None,
     )
 
     assert decision["decision"] == "request_changes"

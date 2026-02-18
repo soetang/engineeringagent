@@ -53,7 +53,7 @@ class RunPlannedReviewerChecksRequest(BaseModel):
     changed_paths: ChangedPathsResult
     feature_id: str
     feature_path: Path
-    start_agent_fn: Callable[..., Any]
+    run_agent_fn: Callable[..., Any] | None = None
     prior_feedback: str | None = None
 
 
@@ -209,7 +209,7 @@ def run_planned_reviewer_checks(
             feature_path=request.feature_path,
             changed_paths=request.changed_paths,
             prior_feedback=request.prior_feedback,
-            start_agent_fn=request.start_agent_fn,
+            run_agent_fn=request.run_agent_fn,
         )
         if isinstance(decision, dict):
             record_reviewer_approval(

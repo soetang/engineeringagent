@@ -93,7 +93,7 @@ class _RunChecksRequest(BaseModel):
     verbose_output: bool
     base: str | None
     head: str | None
-    start_agent_fn: Callable[..., object] | None
+    run_agent_fn: Callable[..., object] | None
     prior_feedback: str | None
     schema_only: bool
     collect_changed_paths_fn: Callable[..., object] | None
@@ -106,7 +106,7 @@ class _RunChecksKwargs(TypedDict, total=False):
     verbose_output: bool
     base: str | None
     head: str | None
-    start_agent_fn: Callable[..., object] | None
+    run_agent_fn: Callable[..., object] | None
     prior_feedback: str | None
     schema_only: bool
     collect_changed_paths: Callable[..., object] | None
@@ -431,7 +431,6 @@ def _run_reviewers_group(
     request: _RunChecksRequest,
 ) -> _GroupRunResult:
     from engineeringagent.changed_paths import collect_changed_paths
-    from engineeringagent.opencode.client import start_agent
     from engineeringagent.specs import load_yaml
 
     from engineeringagent.checks.reviewers.runtime import (
@@ -490,7 +489,7 @@ def _run_reviewers_group(
         changed_paths=changed_paths,
         feature_id=feature_id,
         feature_path=request.feature_path,
-        start_agent_fn=request.start_agent_fn or start_agent,
+        run_agent_fn=request.run_agent_fn,
         prior_feedback=request.prior_feedback,
     )
     ok, failed_id, output, failed_payload = run_planned_reviewer_checks(run_request)
@@ -559,7 +558,7 @@ def run_checks(
             - verbose_output: Whether to stream verbose command output.
             - base: Optional base revision for diff-based checks.
             - head: Optional head revision for diff-based checks.
-            - start_agent_fn: Optional injected callable to execute reviewers.
+            - run_agent_fn: Optional injected callable to execute reviewers.
 
     Returns:
         Structured result indicating overall success/failure.
@@ -573,7 +572,7 @@ def run_checks(
         "verbose_output",
         "base",
         "head",
-        "start_agent_fn",
+        "run_agent_fn",
         "prior_feedback",
         "schema_only",
         "collect_changed_paths",
@@ -591,7 +590,7 @@ def run_checks(
     verbose_output = bool(kwargs.get("verbose_output", False))
     base = kwargs.get("base")
     head = kwargs.get("head")
-    start_agent_fn = kwargs.get("start_agent_fn")
+    run_agent_fn = kwargs.get("run_agent_fn")
     prior_feedback = kwargs.get("prior_feedback")
     schema_only = bool(kwargs.get("schema_only", False))
     collect_changed_paths_fn = kwargs.get("collect_changed_paths")
@@ -611,7 +610,7 @@ def run_checks(
         verbose_output=verbose_output,
         base=base,
         head=head,
-        start_agent_fn=start_agent_fn,
+        run_agent_fn=run_agent_fn,
         prior_feedback=str(prior_feedback) if prior_feedback is not None else None,
         schema_only=schema_only,
         collect_changed_paths_fn=collect_changed_paths_fn,

@@ -4,15 +4,16 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from engineeringagent.changed_paths import ChangedPathsResult
-from engineeringagent.opencode.client import DEFAULT_OPENCODE_AGENT
 from engineeringagent.checks.reviewers.engine import (
     MATCHED_ON_CHANGE_REASON,
     NO_ON_CHANGE_MATCH_REASON,
     PARSER_FAILURE_SUMMARY_PREFIX,
     PHASE_MISMATCH_REASON,
+    ReviewerDecisionEnvelope,
     plan_reviewers,
     run_reviewer,
 )
+from engineeringagent.agents import AgentOutputValidationError
 
 
 def test_plan_reviewers_maps_iteration_end_config_to_feature_done() -> None:
@@ -329,31 +330,25 @@ def test_run_reviewer_loads_harness_prompt_and_parses_decision(tmp_path) -> None
     prompt_path = tmp_path / "harness" / "reviewers" / "prompts" / "code_simplifier.md"
     prompt_path.parent.mkdir(parents=True)
     prompt_path.write_text(
-        "$responseformat\n\nFocus on code readability.",
+        "$responseformat\n\nTEST_SENTINEL_PROMPT_INCLUDED\n",
         encoding="utf-8",
     )
 
     captured: dict[str, str] = {}
+    captured_max_validation_retries: list[int] = []
 
-    def _start_agent(
-        project_root,
-        prompt,
-        *,
-        agent=DEFAULT_OPENCODE_AGENT,
-        format: str | None = None,
-        session: str | None = None,
+    def _run_agent(
+        project_root, prompt, *, output_type, backend=None, max_validation_retries=2
     ):
         captured["project_root"] = str(project_root)
         captured["prompt"] = prompt
-        captured["agent"] = agent
-        captured["format"] = str(format)
-        captured["session"] = str(session)
-        return SimpleNamespace(
-            session_id="sess-123",
-            text_payload='{"decision":"approve","summary":"No blocking issues."}',
-            stdout="",
-            stderr="",
-            returncode=0,
+        captured["output_type"] = str(output_type)
+        captured["backend"] = str(backend)
+        captured_max_validation_retries.append(max_validation_retries)
+        return ReviewerDecisionEnvelope(
+            decision="approve",
+            summary="No blocking issues.",
+            required_actions=[],
         )
 
     decision = run_reviewer(
@@ -371,7 +366,7 @@ def test_run_reviewer_loads_harness_prompt_and_parses_decision(tmp_path) -> None
             reason=None,
         ),
         prior_feedback="tighten error handling",
-        start_agent_fn=_start_agent,
+        run_agent_fn=_run_agent,
     )
 
     assert decision == {
@@ -380,21 +375,13 @@ def test_run_reviewer_loads_harness_prompt_and_parses_decision(tmp_path) -> None
         "required_actions": [],
     }
     assert captured["project_root"] == str(tmp_path)
-    assert captured["agent"] == DEFAULT_OPENCODE_AGENT
-    assert captured["format"] == "json"
-    assert captured["session"] == "None"
     assert "$responseformat" not in captured["prompt"]
     assert (
         "Return exactly one strict JSON object and no other text." in captured["prompt"]
     )
-    assert (
-        "The JSON object MUST validate against the JSON Schema below."
-        in captured["prompt"]
-    )
-    assert "JSON Schema:" in captured["prompt"]
-    assert '"additionalProperties": false' in captured["prompt"]
-    assert "Focus on code readability." in captured["prompt"]
-    assert "Feature ID: FEAT-050" in captured["prompt"]
+    assert "JSON Schema:" not in captured["prompt"]
+    assert "TEST_SENTINEL_PROMPT_INCLUDED" in captured["prompt"]
+    assert captured_max_validation_retries == [2]
 
 
 def test_run_reviewer_parse_failure_returns_request_changes(tmp_path) -> None:
@@ -402,23 +389,13 @@ def test_run_reviewer_parse_failure_returns_request_changes(tmp_path) -> None:
     prompt_path.parent.mkdir(parents=True)
     prompt_path.write_text("$responseformat\n\nReturn JSON only.", encoding="utf-8")
 
-    def _start_agent(
-        _project_root,
-        _prompt,
-        *,
-        agent=DEFAULT_OPENCODE_AGENT,
-        format: str | None = None,
-        session: str | None = None,
-    ):
-        del agent
-        del format
-        del session
-        return SimpleNamespace(
-            session_id="sess-123",
-            text_payload="this is not json",
-            stdout="",
-            stderr="",
-            returncode=0,
+    def _run_agent(*_args, **_kwargs):
+        raise AgentOutputValidationError(
+            backend="fake",
+            attempts=3,
+            last_text="this is not json",
+            error_summary="json parse error: Expecting value",
+            backend_metadata=None,
         )
 
     decision = run_reviewer(
@@ -432,50 +409,33 @@ def test_run_reviewer_parse_failure_returns_request_changes(tmp_path) -> None:
         feature_path=tmp_path / "docs/spec/features/FEAT-050.yaml",
         changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
         prior_feedback=None,
-        start_agent_fn=_start_agent,
+        run_agent_fn=_run_agent,
     )
 
     assert decision["decision"] == "request_changes"
     assert decision["summary"].startswith(PARSER_FAILURE_SUMMARY_PREFIX)
 
 
-def test_run_reviewer_retries_in_same_session_on_parse_failure(tmp_path) -> None:
+def test_run_reviewer_passes_max_validation_retries_to_canonical_runner(
+    tmp_path,
+) -> None:
     prompt_path = tmp_path / "harness" / "reviewers" / "prompts" / "code_simplifier.md"
     prompt_path.parent.mkdir(parents=True)
     prompt_path.write_text("$responseformat\n\nReturn JSON only.", encoding="utf-8")
 
-    calls: list[dict[str, str]] = []
+    captured: dict[str, str] = {}
+    captured_max_validation_retries: list[int] = []
 
-    def _start_agent(
-        _project_root,
-        prompt,
-        *,
-        agent=DEFAULT_OPENCODE_AGENT,
-        format: str | None = None,
-        session: str | None = None,
+    def _run_agent(
+        _project_root, _prompt, *, output_type, backend=None, max_validation_retries=2
     ):
-        calls.append(
-            {
-                "agent": agent,
-                "format": str(format),
-                "session": str(session),
-                "prompt": prompt,
-            }
-        )
-        if len(calls) == 1:
-            return SimpleNamespace(
-                session_id="sess-123",
-                text_payload="not json",
-                stdout="",
-                stderr="",
-                returncode=0,
-            )
-        return SimpleNamespace(
-            session_id="sess-123",
-            text_payload='{"decision":"approve","summary":"Recovered on retry."}',
-            stdout="",
-            stderr="",
-            returncode=0,
+        captured["output_type"] = str(output_type)
+        captured["backend"] = str(backend)
+        captured_max_validation_retries.append(max_validation_retries)
+        return ReviewerDecisionEnvelope(
+            decision="approve",
+            summary="Recovered on retry.",
+            required_actions=[],
         )
 
     decision = run_reviewer(
@@ -489,7 +449,7 @@ def test_run_reviewer_retries_in_same_session_on_parse_failure(tmp_path) -> None
         feature_path=tmp_path / "docs/spec/features/FEAT-070.yaml",
         changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
         prior_feedback=None,
-        start_agent_fn=_start_agent,
+        run_agent_fn=_run_agent,
     )
 
     assert decision == {
@@ -497,13 +457,7 @@ def test_run_reviewer_retries_in_same_session_on_parse_failure(tmp_path) -> None
         "summary": "Recovered on retry.",
         "required_actions": [],
     }
-    assert len(calls) == 2
-    assert calls[0]["format"] == "json"
-    assert calls[0]["session"] == "None"
-    assert calls[1]["format"] == "json"
-    assert calls[1]["session"] == "sess-123"
-    assert "Validation error:" in calls[1]["prompt"]
-    assert "Your previous output did not validate" in calls[1]["prompt"]
+    assert captured_max_validation_retries == [2]
 
 
 def test_run_reviewer_requires_responseformat_placeholder(tmp_path) -> None:
@@ -511,15 +465,8 @@ def test_run_reviewer_requires_responseformat_placeholder(tmp_path) -> None:
     prompt_path.parent.mkdir(parents=True)
     prompt_path.write_text("Focus on code readability.", encoding="utf-8")
 
-    def _start_agent(
-        _project_root,
-        _prompt,
-        *,
-        agent=DEFAULT_OPENCODE_AGENT,
-        format: str | None = None,
-        session: str | None = None,
-    ):
-        raise AssertionError(f"start_agent_fn should not run; received agent={agent}")
+    def _run_agent(*_args, **_kwargs):
+        raise AssertionError("run_agent_fn should not run when $responseformat missing")
 
     decision = run_reviewer(
         tmp_path,
@@ -532,7 +479,7 @@ def test_run_reviewer_requires_responseformat_placeholder(tmp_path) -> None:
         feature_path=tmp_path / "docs/spec/features/FEAT-050.yaml",
         changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
         prior_feedback=None,
-        start_agent_fn=_start_agent,
+        run_agent_fn=_run_agent,
     )
 
     assert decision["decision"] == "request_changes"

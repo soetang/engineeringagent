@@ -3,6 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from pydantic import BaseModel
+
 from engineeringagent.changed_paths import ChangedPathsResult
 from engineeringagent.loop_runtime.models import FeatureIterationInputs
 from engineeringagent.loop_runtime.phases import (
@@ -63,7 +65,7 @@ def test_run_reviewer_phase_is_not_configured_without_checks_yaml(
             reason=None,
         ),
         restore_archived_feature=lambda *_args, **_kwargs: (True, None),
-        start_agent=lambda *_args, **_kwargs: None,
+        run_agent_fn=lambda *_args, **_kwargs: None,
     )
 
     outcome = run_reviewer_phase(
@@ -115,19 +117,23 @@ checks:
 
     start_calls: list[str] = []
 
-    class _Proc:
-        def __init__(self, *, session_id: str, text_payload: str) -> None:
-            self.session_id = session_id
-            self.text_payload = text_payload
-            self.stdout = ""
-            self.stderr = ""
-
-    def _start_agent(execution_root: Path, prompt: str, **_kwargs: object) -> _Proc:
-        del execution_root, prompt
+    def _run_agent(
+        _execution_root: Path,
+        _prompt: str,
+        *,
+        output_type: type[BaseModel],
+        backend: object = None,
+        max_validation_retries: int = 2,
+    ) -> BaseModel:
+        del backend
+        del max_validation_retries
         start_calls.append("called")
-        return _Proc(
-            session_id="sess-123",
-            text_payload='{"decision":"approve","summary":"ok","required_actions":[]}',
+        return output_type.model_validate(
+            {
+                "decision": "approve",
+                "summary": "ok",
+                "required_actions": [],
+            }
         )
 
     deps = ReviewerPhaseDependencies(
@@ -137,7 +143,7 @@ checks:
             reason=None,
         ),
         restore_archived_feature=lambda *_args, **_kwargs: (True, None),
-        start_agent=_start_agent,
+        run_agent_fn=_run_agent,
     )
 
     outcome = run_reviewer_phase(
@@ -190,7 +196,7 @@ checks:
             reason=None,
         ),
         restore_archived_feature=lambda *_args, **_kwargs: (True, None),
-        start_agent=lambda *_args, **_kwargs: (_ for _ in ()).throw(
+        run_agent_fn=lambda *_args, **_kwargs: (_ for _ in ()).throw(
             AssertionError("start_agent should not be called")
         ),
     )

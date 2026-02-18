@@ -129,7 +129,7 @@ def test_iteration_pipeline_carries_passed_reviewer_feedback_to_continue(
             reviewer_phase_dependencies=ReviewerPhaseDependencies(
                 collect_changed_paths=lambda *_args, **_kwargs: None,
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
-                start_agent=lambda *_args, **_kwargs: None,
+                run_agent_fn=lambda *_args, **_kwargs: None,
             ),
             run_completion_commit_phase=(
                 lambda *_args, **_kwargs: CompletionCommitOutcome(
@@ -291,7 +291,7 @@ def test_iteration_pipeline_archives_before_running_done_transition_verification
             reviewer_phase_dependencies=ReviewerPhaseDependencies(
                 collect_changed_paths=lambda *_args, **_kwargs: None,
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
-                start_agent=lambda *_args, **_kwargs: None,
+                run_agent_fn=lambda *_args, **_kwargs: None,
             ),
             run_completion_commit_phase=(
                 lambda *_args, **_kwargs: CompletionCommitOutcome(
@@ -424,7 +424,7 @@ def test_iteration_pipeline_collects_changed_paths_once_per_iteration(
             reviewer_phase_dependencies=ReviewerPhaseDependencies(
                 collect_changed_paths=_collect_changed_paths,
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
-                start_agent=lambda *_args, **_kwargs: None,
+                run_agent_fn=lambda *_args, **_kwargs: None,
             ),
             run_completion_commit_phase=(
                 lambda *_args, **_kwargs: CompletionCommitOutcome(
@@ -562,7 +562,7 @@ def test_iteration_pipeline_records_phase_timings(
             reviewer_phase_dependencies=ReviewerPhaseDependencies(
                 collect_changed_paths=lambda *_args, **_kwargs: None,
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
-                start_agent=lambda *_args, **_kwargs: None,
+                run_agent_fn=lambda *_args, **_kwargs: None,
             ),
             run_completion_commit_phase=(
                 lambda *_args, **_kwargs: CompletionCommitOutcome(

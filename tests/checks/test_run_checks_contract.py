@@ -4,6 +4,8 @@ from pathlib import Path
 
 import pytest
 
+from pydantic import BaseModel
+
 
 def _write_checks_yaml(tmp_path: Path, content: str) -> Path:
     checks_path = tmp_path / "harness" / "checks.yaml"
@@ -268,18 +270,23 @@ def test_run_checks_reviewers_returns_not_implemented_result(
 
     calls: list[tuple[Path, str]] = []
 
-    class _Proc:
-        def __init__(self, *, session_id: str, text_payload: str) -> None:
-            self.session_id = session_id
-            self.text_payload = text_payload
-            self.stdout = ""
-            self.stderr = ""
-
-    def _start_agent(execution_root: Path, prompt: str, **_kwargs: object) -> _Proc:
+    def _run_agent(
+        execution_root: Path,
+        prompt: str,
+        *,
+        output_type: type[BaseModel],
+        backend: object = None,
+        max_validation_retries: int = 2,
+    ) -> BaseModel:
+        del backend
+        del max_validation_retries
         calls.append((execution_root, prompt))
-        return _Proc(
-            session_id="s1",
-            text_payload='{"decision":"approve","summary":"ok","required_actions":[]}',
+        return output_type.model_validate(
+            {
+                "decision": "approve",
+                "summary": "ok",
+                "required_actions": [],
+            }
         )
 
     result = run_checks(
@@ -287,7 +294,7 @@ def test_run_checks_reviewers_returns_not_implemented_result(
         phase="feature_done",
         checks=["reviewers"],
         feature_path=feature_path,
-        start_agent_fn=_start_agent,
+        run_agent_fn=_run_agent,
     )
     assert result.ok
     assert result.failed_group is None
@@ -324,19 +331,22 @@ def test_run_checks_reviewers_request_changes_fails_deterministically(
         ),
     )
 
-    class _Proc:
-        def __init__(self, *, session_id: str, text_payload: str) -> None:
-            self.session_id = session_id
-            self.text_payload = text_payload
-            self.stdout = ""
-            self.stderr = ""
-
-    def _start_agent(execution_root: Path, prompt: str, **_kwargs: object) -> _Proc:
-        del execution_root
-        del prompt
-        return _Proc(
-            session_id="s1",
-            text_payload='{"decision":"request_changes","summary":"nope","required_actions":["fix"]}',
+    def _run_agent(
+        _execution_root: Path,
+        _prompt: str,
+        *,
+        output_type: type[BaseModel],
+        backend: object = None,
+        max_validation_retries: int = 2,
+    ) -> BaseModel:
+        del backend
+        del max_validation_retries
+        return output_type.model_validate(
+            {
+                "decision": "request_changes",
+                "summary": "nope",
+                "required_actions": ["fix"],
+            }
         )
 
     result = run_checks(
@@ -344,7 +354,7 @@ def test_run_checks_reviewers_request_changes_fails_deterministically(
         phase="feature_done",
         checks=["reviewers"],
         feature_path=feature_path,
-        start_agent_fn=_start_agent,
+        run_agent_fn=_run_agent,
     )
     assert not result.ok
     assert result.failed_group == "reviewers"

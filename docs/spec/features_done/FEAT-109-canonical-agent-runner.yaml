@@ -1,0 +1,174 @@
+id: FEAT-109
+title: Canonical agent runner with typed output + internal retries
+type: feature
+expected_commit_subject: 'feat: add canonical run_agent with typed output and retries'
+status: done
+priority: high
+objective: 'Introduce a single canonical agent boundary API (`engineeringagent.agents.run_agent`)
+  that returns either plain text or Pydantic-validated structured outputs, with bounded
+  internal same-session retries on JSON parse/validation failures. Ensure all production
+  callsites stop calling OpenCode directly and do not implement schema prompting,
+  JSON parsing, retry loops, or session plumbing, enabling future backend swaps away
+  from OpenCode.
+
+  '
+context: "Today, OpenCode invocation is wrapped by `engineeringagent.opencode.client.start_agent`,\
+  \ which exposes OpenCode-specific details such as `format=\"json\"`, JSONL event\
+  \ stream parsing, and session reuse. Several higher layers still have to know how\
+  \ to request JSON output and implement retries when parsing/validation fails.\n\
+  We want a Pydantic-AI-like usage pattern: - Caller provides a prompt and an output\
+  \ type (`str` or a Pydantic schema). - The boundary validates and retries as needed.\
+  \ - Backend-specific structured-output mechanisms (native tools/json-schema vs prompted)\n\
+  \  are hidden inside `run_agent`.\n- Higher layers can be decoupled from OpenCode\
+  \ and later routed to alternative backends.\nOut of scope (explicit): long-lived\
+  \ multi-turn sessions across separate `run_agent` calls. `run_agent` may reuse backend\
+  \ sessions internally for parse/validation retries, but session ids must not become\
+  \ part of the caller-facing contract in this feature.\nNon-goal (explicit): moving/renaming\
+  \ `src/engineeringagent/opencode/**`. The OpenCode module remains in place; a follow-up\
+  \ feature may relocate it once the boundary is stable.\n"
+constraints:
+- 'Add a canonical API: `engineeringagent.agents.run_agent(project_root, prompt, *,
+  output_type=..., backend=..., max_validation_retries=...)`.'
+- 'The public contract of `run_agent` returns only the final output value: `str` or
+  validated `T` (no result wrapper required for callers).'
+- 'No caller-facing session support: session ids must not be accepted/returned by
+  `run_agent` in this feature (internal retry-only use is allowed).'
+- 'Boundary cleanup required: production code must not import or call `engineeringagent.opencode.client.start_agent`
+  outside `engineeringagent/opencode/**` and `engineeringagent/agents/**`.'
+- 'Callers of `run_agent` must not be required to: pass backend formatting flags (e.g.
+  `format="json"`), inject JSON schema into prompts, parse JSON, or implement retry
+  loops.'
+- 'Structured output contract: when `output_type` is provided and is not `str`, `run_agent`
+  must validate output using Pydantic (e.g. `TypeAdapter`) and retry on JSON parse
+  or validation failure with deterministic follow-up prompts.'
+- 'Retry policy: bounded same-session retries for backends that support sessions;
+  OpenCode must reuse its session internally for validation retries.'
+- Backend strategy selection must happen inside `run_agent`, not in callsites. Schema
+  injection mode (prompted/native/tools) must not be a caller responsibility.
+- 'Determinism: retry prompts must be template-driven, bounded, and must not include
+  absolute paths. Validation error text included in retry prompts must be truncated
+  to a stable limit.'
+- 'Compatibility policy: this feature may refactor internal reviewer/loop/checks wiring,
+  but external CLI behavior must remain stable (no new CLI required).'
+- 'Fitness-function impact assessment: no fitness-function changes required, because
+  enforcement will be covered by pytest guards and callsite refactors.'
+implementation_notes: "Contract change declaration (required)\n\nSurface: internal\
+  \ agent invocation interface used by checks reviewers and loop runtime.\n\nOld behavior:\n\
+  - Callers invoke OpenCode via `engineeringagent.opencode.client.start_agent(...)`\
+  \ and\n  may pass `format=\"json\"` to get structured fields.\n- Callers parse and\
+  \ validate structured outputs themselves and may implement ad-hoc\n  retry loops\
+  \ using an OpenCode session id.\n\nNew behavior:\n- Callers invoke `engineeringagent.agents.run_agent(...)`\
+  \ and specify only:\n  - prompt (string)\n  - output_type (`str` or schema type)\n\
+  - `run_agent` returns only the final output value (text or structured `T`).\n- `run_agent`\
+  \ owns:\n  - choosing a backend and backend-specific structured-output request strategy\n\
+  \  - schema injection (when needed) and prompt shaping\n  - JSON parsing and Pydantic\
+  \ validation\n  - bounded internal retries with deterministic follow-up prompts\n\
+  \  - internal session reuse when supported (OpenCode: reuse session for validation\
+  \ retries)\n- Callers never pass OpenCode-specific flags like `format=\"json\"`\
+  \ and never receive\n  session ids as part of the primary API.\n\nProposed module\
+  \ layout (normative intent; exact filenames may vary)\n- `src/engineeringagent/agents/api.py`\n\
+  \  - defines:\n    - AgentBackend protocol/interface\n    - `run_agent(...)` public\
+  \ API\n    - typed exceptions for output validation failure\n- `src/engineeringagent/agents/backends/opencode.py`\n\
+  \  - implements AgentBackend using `engineeringagent.opencode.client.start_agent`\
+  \ as the\n    subprocess runner; session reuse is internal to the backend/runner\n\
+  - `src/engineeringagent/opencode/client.py`\n  - remains low-level OpenCode subprocess\
+  \ wrapper; it should not grow schema prompting\n    or Pydantic validation responsibilities\
+  \ beyond extracting session_id/text payload\n\nOutput type support\n- `output_type`\
+  \ supports:\n  - `str` (plain text)\n  - Pydantic model classes and other TypeAdapter-supported\
+  \ types (TypedDict/list/dict/etc)\n- Implementation uses `pydantic.TypeAdapter(output_type)`\
+  \ for schema generation + validation.\n\nStructured output strategy\n- `run_agent`\
+  \ selects the backend's preferred structured-output mechanism:\n  - For OpenCode\
+  \ (current reality): use prompted JSON schema injection:\n    - inject JSON schema\
+  \ into a wrapper prompt\n    - require \"output ONLY valid JSON\" (no markdown/code\
+  \ fences)\n    - parse model output with `json.loads`\n    - validate with TypeAdapter\n\
+  \    - on failure, retry in the same OpenCode session with a follow-up prompt including\n\
+  \      a bounded validation error summary\n  - For future backends: use native JSON\
+  \ schema response formats or tool calling as\n    preferred by that backend without\
+  \ changing callsites (strategy remains internal)\n\nFailure surface\n- If structured\
+  \ output still fails after retries, `run_agent` raises a typed exception\n  (e.g.\
+  \ `AgentOutputValidationError`) that includes:\n  - backend name\n  - attempts made\n\
+  \  - last raw text payload (bounded/truncated)\n  - JSON parse error or Pydantic\
+  \ validation errors (bounded)\n  - optional backend metadata (may include session\
+  \ id for debugging/logging, but not\n    required by callers)\n"
+acceptance:
+- 'A canonical agent API exists: `engineeringagent.agents.run_agent(...)` and is the
+  supported way for production code to request structured agent outputs.'
+- The public contract of `run_agent` returns only `str` or validated `T` (no result
+  wrapper required).
+- When structured output is requested, schema prompting + JSON parsing + Pydantic
+  validation + bounded internal retries occur inside `run_agent` (not at callsites).
+- OpenCode validation retries reuse the same OpenCode session internally when available;
+  session ids are not accepted/returned by callsites.
+- No production module outside `engineeringagent/opencode/**` and `engineeringagent/agents/**`
+  imports or references `engineeringagent.opencode.client.start_agent`.
+- No production module outside `engineeringagent/agents/**` references OpenCode-specific
+  structured-output flags (e.g. `format="json"`).
+- '`uv run pytest -q` passes.'
+subtasks:
+- id: ST-001
+  title: Define canonical agent interface and typed exceptions
+  status: done
+  context: 'Create `engineeringagent.agents` module with: - public `run_agent` API
+    returning only the output value - AgentBackend interface - exceptions for structured
+    output failures Ensure typing supports `str` and TypeAdapter-supported schemas.
+
+    '
+  verification:
+  - uv run python -c "import engineeringagent.agents as a; assert hasattr(a, 'run_agent');
+    print('ok')"
+  - uv run pytest -q
+- id: ST-002
+  title: Implement OpenCode backend and prompted-JSON strategy with internal retries
+  status: done
+  context: 'Implement AgentBackend for OpenCode using `engineeringagent.opencode.client.start_agent`
+    as the subprocess runner and session provider. Add prompted JSON schema injection,
+    parsing, validation, and internal bounded same-session retries into `run_agent`.
+
+    '
+  verification:
+  - uv run pytest -q
+- id: ST-003
+  title: Add unit tests for structured output validation and retry behavior
+  status: done
+  context: 'Add tests that stub/mock the backend to simulate: - invalid JSON then
+    valid JSON (internal same-session retry) - valid JSON but schema mismatch then
+    corrected output - retry exhaustion => typed exception with bounded details Ensure
+    determinism of retry prompt templates and truncation behavior.
+
+    '
+  verification:
+  - uv run pytest -q
+- id: ST-004
+  title: Migrate all production callsites to use run_agent (remove start_agent usage)
+  status: done
+  context: "Refactor production code to depend on the canonical agent runner contract.\
+    \ This includes checks/loop/cli wiring and reviewers.\nGoals: - No imports of\
+    \ `engineeringagent.opencode.client.start_agent` outside\n  `engineeringagent/opencode/**`\
+    \ and `engineeringagent/agents/**`.\n- No direct references to `format=\\\"json\\\
+    \"` outside `engineeringagent/agents/**`.\n"
+  verification:
+  - uv run pytest -q
+- id: ST-005
+  title: Add pytest guard preventing bypass of the agent boundary
+  status: done
+  context: "Add deterministic regression tests preventing: - importing `engineeringagent.opencode.client.start_agent`\
+    \ outside allowed modules - passing OpenCode-specific structured-output flags\
+    \ (e.g. `format=\\\"json\\\"`) outside\n  `engineeringagent/agents/**`\n"
+  verification:
+  - uv run pytest -q
+- id: ST-006
+  title: Map agent backend failures to deterministic reviewer decisions
+  status: done
+  context: Ensure reviewer execution wraps backend crashes (`AgentBackendError`) and
+    returns a deterministic request_changes decision envelope instead of raising.
+  verification:
+  - uv run pytest -q
+- id: ST-007
+  title: Address reviewer feedback on test brittleness
+  status: done
+  context: Remove brittle prompt-content and internal call count assertions; ensure
+    test doubles treat numeric retry counts as ints and avoid introspection asserts
+    that are not part of the public contract.
+  verification:
+  - uv run pytest -q
+updated_at: '2026-02-18T12:34:25Z'
