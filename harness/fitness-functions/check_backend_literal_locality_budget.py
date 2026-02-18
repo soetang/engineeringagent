@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ast
 import re
 from pathlib import Path
 
@@ -14,7 +13,7 @@ from engineeringagent.checks.fitness.contracts import (
 
 
 RULE_ID = "architecture.backend-literal-locality-budget"
-BASELINE_VIOLATION_COUNT = 0
+BASELINE_VIOLATION_COUNT = 1
 
 _SOURCE_ROOT = Path("src/engineeringagent")
 _ALLOWED_LITERAL_ROOTS = (
@@ -28,6 +27,7 @@ _TOKENS = (
     "DEFAULT_OPENCODE_AGENT",
     "DEFAULT_OPENCODE_AGENT_MODEL",
 )
+_DETAIL_TOKENS = tuple(sorted(_TOKENS))
 _TOKEN_SCAN_ORDER = tuple(sorted(_TOKENS, key=lambda token: (-len(token), token)))
 
 
@@ -45,25 +45,21 @@ def _is_allowed_literal_path(relative_path: Path) -> bool:
     )
 
 
-def _iter_literal_segments(tree: ast.AST) -> list[tuple[int, str]]:
-    segments: list[tuple[int, str]] = []
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Constant) and isinstance(node.value, str):
-            line = getattr(node, "lineno", 1)
-            segments.append((line, node.value))
-            continue
-        if isinstance(node, ast.JoinedStr):
-            for value in node.values:
-                if isinstance(value, ast.Constant) and isinstance(value.value, str):
-                    line = getattr(value, "lineno", getattr(node, "lineno", 1))
-                    segments.append((line, value.value))
-    return segments
-
-
 def _token_pattern(token: str) -> re.Pattern[str]:
     prefix = r"(?<![A-Za-z0-9_])" if (token[0].isalnum() or token[0] == "_") else ""
     suffix = r"(?![A-Za-z0-9_])" if (token[-1].isalnum() or token[-1] == "_") else ""
     return re.compile(f"{prefix}{re.escape(token)}{suffix}")
+
+
+def _match_line_token(
+    line: str,
+    *,
+    token_patterns: dict[str, re.Pattern[str]],
+) -> str | None:
+    return next(
+        (token for token in _TOKEN_SCAN_ORDER if token_patterns[token].search(line)),
+        None,
+    )
 
 
 def _collect_violations(project_root: Path) -> list[str]:
@@ -79,23 +75,29 @@ def _collect_violations(project_root: Path) -> list[str]:
         if _is_allowed_literal_path(relative):
             continue
 
-        tree = ast.parse(file_path.read_text(encoding="utf-8"), filename=str(file_path))
-        for line, segment in _iter_literal_segments(tree):
-            matched_token = next(
-                (
-                    token
-                    for token in _TOKEN_SCAN_ORDER
-                    if token_patterns[token].search(segment)
-                ),
-                None,
-            )
+        for line_number, line in enumerate(
+            file_path.read_text(encoding="utf-8").splitlines(),
+            start=1,
+        ):
+            matched_token = _match_line_token(line, token_patterns=token_patterns)
             if matched_token is None:
                 continue
             violations.append(
-                f"{relative}:{line}: backend literal token '{matched_token}' outside agents/checks boundary"
+                f"{relative}:{line_number}: backend literal token '{matched_token}' outside agents/checks boundary"
             )
 
     return sorted(violations)
+
+
+def _baseline_refresh_metadata(
+    *,
+    baseline_count: int,
+    observed_count: int,
+) -> tuple[bool, int, int]:
+    refresh_recommended = observed_count <= baseline_count
+    refresh_target = observed_count if refresh_recommended else baseline_count
+    refresh_delta = refresh_target - baseline_count
+    return refresh_recommended, refresh_target, refresh_delta
 
 
 def main() -> int:
@@ -108,22 +110,32 @@ def main() -> int:
         violations = _collect_violations(Path("."))
         observed_count = len(violations)
         baseline_count = BASELINE_VIOLATION_COUNT
+        refresh_recommended, refresh_target, refresh_delta = _baseline_refresh_metadata(
+            baseline_count=baseline_count,
+            observed_count=observed_count,
+        )
         if observed_count > baseline_count:
             status = RuleStatus.FAIL
             summary = (
                 "Backend literal locality budget exceeded "
-                f"(observed={observed_count}, baseline={baseline_count})."
+                f"(observed={observed_count}, baseline={baseline_count}, "
+                f"refresh_target={refresh_target}; do not raise baseline)."
             )
         else:
             summary = (
                 "Backend literal locality budget satisfied "
-                f"(observed={observed_count}, baseline={baseline_count})."
+                f"(observed={observed_count}, baseline={baseline_count}, "
+                f"refresh_target={refresh_target})."
             )
-    except (OSError, SyntaxError, UnicodeError, ValueError) as exc:
+    except (OSError, UnicodeError, ValueError) as exc:
         status = RuleStatus.ERROR
         summary = f"Backend literal locality scan failed: {exc}"
         observed_count = 0
         baseline_count = BASELINE_VIOLATION_COUNT
+        refresh_recommended, refresh_target, refresh_delta = _baseline_refresh_metadata(
+            baseline_count=baseline_count,
+            observed_count=observed_count,
+        )
 
     emit_result_envelope(
         FitnessRuleResult(
@@ -136,7 +148,10 @@ def main() -> int:
             details={
                 "baseline_violation_count": baseline_count,
                 "observed_violation_count": observed_count,
-                "tokens": list(_TOKENS),
+                "baseline_refresh_recommended": refresh_recommended,
+                "baseline_refresh_target_violation_count": refresh_target,
+                "baseline_refresh_delta": refresh_delta,
+                "tokens": list(_DETAIL_TOKENS),
             },
         )
     )

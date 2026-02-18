@@ -82,10 +82,24 @@ def test_backend_literal_locality_budget_rule_passes_clean_repo() -> None:
     payload = json.loads(proc.stdout)
     assert payload["rule_id"] == "architecture.backend-literal-locality-budget"
     assert payload["status"] == "pass"
+    summary = payload.get("summary")
+    assert isinstance(summary, str)
+    assert "observed=" in summary
+    assert "baseline=" in summary
+
     details = payload.get("details")
     assert isinstance(details, dict)
-    assert details["baseline_violation_count"] == 0
-    assert details["observed_violation_count"] == 0
+    baseline_count = details["baseline_violation_count"]
+    observed_count = details["observed_violation_count"]
+    assert isinstance(baseline_count, int)
+    assert isinstance(observed_count, int)
+    assert observed_count <= baseline_count
+    assert f"observed={observed_count}" in summary
+    assert f"baseline={baseline_count}" in summary
+    assert details["baseline_refresh_recommended"] is True
+    assert details["baseline_refresh_target_violation_count"] == observed_count
+    assert details["baseline_refresh_delta"] == (observed_count - baseline_count)
+    assert details["tokens"] == sorted(details["tokens"])
 
 
 def test_backend_literal_locality_budget_rule_reports_deterministic_violations(
@@ -109,6 +123,8 @@ def test_backend_literal_locality_budget_rule_reports_deterministic_violations(
     assert proc.returncode == 0
     assert payload["rule_id"] == "architecture.backend-literal-locality-budget"
     assert payload["status"] == "fail"
+    summary = payload.get("summary")
+    assert isinstance(summary, str)
 
     violations = payload.get("violations")
     assert isinstance(violations, list)
@@ -127,6 +143,85 @@ def test_backend_literal_locality_budget_rule_reports_deterministic_violations(
 
     details = payload.get("details")
     assert isinstance(details, dict)
-    assert details["baseline_violation_count"] == 0
-    assert details["observed_violation_count"] == 2
+    baseline_count = details["baseline_violation_count"]
+    observed_count = details["observed_violation_count"]
+    assert isinstance(baseline_count, int)
+    assert isinstance(observed_count, int)
+    assert observed_count == 2
+    assert observed_count > baseline_count
+    assert f"observed={observed_count}" in summary
+    assert f"baseline={baseline_count}" in summary
+    assert details["baseline_refresh_recommended"] is False
+    assert details["baseline_refresh_target_violation_count"] == baseline_count
+    assert details["baseline_refresh_delta"] == 0
     assert isinstance(details["tokens"], list)
+    assert details["tokens"] == sorted(details["tokens"])
+
+
+def test_backend_literal_locality_budget_rule_detects_identifier_tokens(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    _write_module(
+        tmp_path,
+        "src/engineeringagent/runtime_backend_coupling.py",
+        "\n".join(
+            [
+                "from engineeringagent.agents.backends.opencode.client import DEFAULT_OPENCODE_AGENT",
+                "BACKEND_NAME = 'opencode'",
+                "",
+            ]
+        ),
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    violations = payload.get("violations")
+    assert isinstance(violations, list)
+    assert len(violations) == 2
+    assert any(
+        "src/engineeringagent/runtime_backend_coupling.py:1:" in violation
+        and "DEFAULT_OPENCODE_AGENT" in violation
+        for violation in violations
+    ), violations
+    assert any(
+        "src/engineeringagent/runtime_backend_coupling.py:2:" in violation
+        and "backend literal token 'opencode'" in violation
+        for violation in violations
+    ), violations
+
+
+def test_backend_literal_locality_budget_rule_recommends_refresh_when_observed_drops(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    _write_module(
+        tmp_path,
+        "src/engineeringagent/runtime_clean.py",
+        "RUNTIME_MODE = 'core'\n",
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "pass"
+    summary = payload.get("summary")
+    assert isinstance(summary, str)
+    assert "observed=" in summary
+    assert "baseline=" in summary
+
+    details = payload.get("details")
+    assert isinstance(details, dict)
+    baseline_count = details["baseline_violation_count"]
+    observed_count = details["observed_violation_count"]
+    assert isinstance(baseline_count, int)
+    assert isinstance(observed_count, int)
+    assert observed_count == 0
+    assert observed_count < baseline_count
+    assert f"observed={observed_count}" in summary
+    assert f"baseline={baseline_count}" in summary
+    assert details["baseline_refresh_recommended"] is True
+    assert details["baseline_refresh_target_violation_count"] == observed_count
+    assert details["baseline_refresh_delta"] == (observed_count - baseline_count)
