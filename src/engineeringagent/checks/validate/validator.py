@@ -386,6 +386,8 @@ def _append_active_feature_issues(
         if feature is None:
             continue
 
+        _append_multiline_verification_command_issues(messages, feature, file_path)
+
         if schema_only or contract_issues:
             continue
         _append_done_archival_policy_issue(
@@ -394,6 +396,35 @@ def _append_active_feature_issues(
             file_path,
             archival_context,
         )
+
+
+def _append_multiline_verification_command_issues(
+    messages: list[str],
+    feature: dict[str, object],
+    file_path: Path,
+) -> None:
+    subtasks = feature.get("subtasks")
+    if not isinstance(subtasks, list):
+        return
+
+    for subtask_index, subtask in enumerate(subtasks):
+        if not isinstance(subtask, dict):
+            continue
+        verification = subtask.get("verification")
+        if not isinstance(verification, list):
+            continue
+
+        for verify_index, command in enumerate(verification):
+            if not isinstance(command, str):
+                continue
+            if "\n" not in command and "\r" not in command:
+                continue
+
+            field_path = f"subtasks[{subtask_index}].verification[{verify_index}]"
+            messages.append(
+                f"{file_path}:{field_path}: verification commands must be single-line strings (no \\n or \\r); "
+                "remediation: rewrite the command as a one-liner (e.g. wrap with `bash -lc ...`)"
+            )
 
 
 def _append_done_feature_issues(messages: list[str], done_files: list[Path]) -> None:

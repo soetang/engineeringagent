@@ -117,6 +117,84 @@ def test_validate_reports_enum_unknown_and_type_errors(tmp_path: Path) -> None:
     )
 
 
+def test_validate_rejects_multiline_verification_commands(tmp_path: Path) -> None:
+    project_root = tmp_path
+    features_dir = project_root / "docs" / "spec" / "features"
+    features_dir.mkdir(parents=True, exist_ok=True)
+
+    feature_path = features_dir / "FEAT-920-multiline-verification.yaml"
+    feature_path.write_text(
+        yaml.safe_dump(
+            {
+                "id": "FEAT-920",
+                "title": "Multiline verification command",
+                "type": "chore",
+                "expected_commit_subject": "chore: reject multiline verification",
+                "status": "backlog",
+                "priority": "high",
+                "objective": "Ensure validator rejects multiline verification commands.",
+                "acceptance": ["validate reports multiline verification commands."],
+                "subtasks": [
+                    {
+                        "id": "ST-001",
+                        "title": "Stub",
+                        "status": "backlog",
+                        "verification": ["echo one\necho two"],
+                    }
+                ],
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    messages = validate(project_root=project_root)
+
+    assert len(messages) == 1
+    assert messages[0].startswith(f"{feature_path}:subtasks[0].verification[0]:")
+    assert "verification commands must be single-line strings" in messages[0]
+    assert "no \\n or \\r" in messages[0]
+
+
+def test_validate_allows_multiline_verification_commands_in_done_specs(
+    tmp_path: Path,
+) -> None:
+    project_root = tmp_path
+    features_done_dir = project_root / "docs" / "spec" / "features_done"
+    features_done_dir.mkdir(parents=True, exist_ok=True)
+
+    done_path = features_done_dir / "FEAT-921-multiline-verification-done.yaml"
+    done_path.write_text(
+        yaml.safe_dump(
+            {
+                "id": "FEAT-921",
+                "title": "Multiline verification command done spec",
+                "status": "done",
+                "priority": "high",
+                "objective": "Ensure validator does not block archived specs.",
+                "acceptance": ["Archived specs remain readable."],
+                "subtasks": [
+                    {
+                        "id": "ST-001",
+                        "title": "Already complete",
+                        "status": "done",
+                        "verification": ["echo one\necho two"],
+                    }
+                ],
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    messages = validate(project_root=project_root)
+
+    assert all(
+        "verification commands must be single-line strings" not in message
+        for message in messages
+    )
+
+
 def test_validate_missing_required_fields_with_pydantic(tmp_path: Path) -> None:
     project_root = tmp_path
     features_dir = project_root / "docs" / "spec" / "features"
