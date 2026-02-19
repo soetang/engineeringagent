@@ -50,3 +50,17 @@ checks:
       on_change: ["tests/**/*.py"]
     approval:
       first_feature_approval: true
+
+  intent_integrity_reviewer:
+    type: reviewer
+    prompt_file: "harness/reviewers/prompts/intent_integrity_reviewer.md"
+    feedback_context: "Intent reviewer focuses on objective/acceptance outcomes and anti-gaming risk. Prefer implementation fixes for immediate gaps, and tighten fitness rules only when policy holes cause repeatable evasions."
+    when:
+      phase: feature_done
+      on_change:
+        - "src/**/*.py"
+        - "tests/**/*.py"
+        - "harness/**/*.py"
+        - "docs/spec/features/*.yaml"
+    approval:
+      first_feature_approval: true
