@@ -1,4 +1,4 @@
-# uv Workflow Reference (LLM-Oriented)
+# uv Workflow Reference
 
 ## Purpose
 

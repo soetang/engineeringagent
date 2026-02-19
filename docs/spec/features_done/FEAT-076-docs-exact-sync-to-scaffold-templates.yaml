@@ -26,7 +26,7 @@ context: 'We want it to be obvious and enforced which docs are supposed to ship 
   - the scaffold template file used by init
 
 
-  Example requirement: `docs/references/spec-writing-llms.md` should be exact-sync.
+  Example requirement: `docs/references/spec-writing.md` should be exact-sync.
 
   Non-example: `AGENTS.md` should not be in exact-sync.
 
@@ -38,13 +38,13 @@ constraints:
 - Add a fitness rule that reads `harness/scaffold_policy.yaml`, compares each docs/template
   pair byte-for-byte, fails on any mismatch, and emits deterministic sorted violations
   including both paths.
-- Ensure `docs/references/spec-writing-llms.md` is included in exact-sync and has
+- Ensure `docs/references/spec-writing.md` is included in exact-sync and has
   a corresponding template file.
 - Update init scaffold manifest and templates to actually scaffold the spec-writing
   reference doc.
 - Ensure the scaffold template `src/engineeringagent/scaffold_templates/AGENTS.md`
-  explicitly links each scaffolded docs reference file (e.g. `docs/references/docs-architecture-llms.md`,
-  `docs/references/workflow-llms.md`, `docs/references/spec-writing-llms.md`) and
+  explicitly links each scaffolded docs reference file (e.g. `docs/references/docs-architecture.md`,
+  `docs/references/workflow.md`, `docs/references/spec-writing.md`) and
   includes 1-2 sentences describing when to consult each file.
 - Add a fitness rule in this repository that fails if scaffolded reference docs are
   not linked from `src/engineeringagent/scaffold_templates/AGENTS.md`.
@@ -65,7 +65,7 @@ implementation_notes: 'Fitness-function impact: this feature adds a new custom f
 acceptance:
 - '`harness/scaffold_policy.yaml` contains an explicit exact-sync list.'
 - A new fitness rule fails if any configured docs/template pair differs.
-- '`docs/references/spec-writing-llms.md` is exact-sync with its scaffold template.'
+- '`docs/references/spec-writing.md` is exact-sync with its scaffold template.'
 - '`engineeringagent init` scaffolds the spec-writing reference doc (in addition to
   existing tool-generic references).'
 - '`src/engineeringagent/scaffold_templates/AGENTS.md` contains a short per-file description
@@ -80,10 +80,10 @@ subtasks:
 - id: ST-001
   title: Add spec-writing scaffold template and wire init to scaffold it
   status: done
-  context: 'Add `src/engineeringagent/scaffold_templates/reference.spec-writing-llms.md`
+  context: 'Add `src/engineeringagent/scaffold_templates/reference.spec-writing.md`
     and
 
-    update init to scaffold it to `${docs_root}/references/spec-writing-llms.md`.
+    update init to scaffold it to `${docs_root}/references/spec-writing.md`.
 
     '
   verification:

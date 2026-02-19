@@ -13,7 +13,7 @@ Keep this file concise. Add durable references and rules, not task logs.
 ## 2) Operating Principles
 
 - Humans steer, agents execute.
-- Keep audience split explicit: `README.md` for human onboarding, `AGENTS.md` plus `docs/references/*-llms.md` for agent execution guidance.
+- Keep audience split explicit: `README.md` for package users, `AGENTS.md` plus `docs/references/*.md` for package contributors.
 - Treat API/contract changes as critical documentation work: specs and agent docs must explicitly capture old behavior, new behavior, compatibility policy, and migration scope.
 - One feature focus per cycle.
 - Interview before drafting a new feature spec.
@@ -25,7 +25,7 @@ Keep this file concise. Add durable references and rules, not task logs.
 
 1. [`AGENTS.md`](AGENTS.md) (this map)
 1. [`README.md`](README.md) (human workflow and local setup)
-1. Relevant docs under [`docs/`](docs/) ([`docs/references/spec-writing-llms.md`](docs/references/spec-writing-llms.md) before authoring specs; [`docs/references/docs-architecture-llms.md`](docs/references/docs-architecture-llms.md) before restructuring docs)
+1. Relevant docs under [`docs/`](docs/) ([`docs/references/spec-writing.md`](docs/references/spec-writing.md) before authoring specs; [`docs/references/docs-architecture.md`](docs/references/docs-architecture.md) before restructuring docs)
 1. [`harness/checks.yaml`](harness/checks.yaml) (active checks and phases)
 1. [`harness/fitness-functions/rules.yaml`](harness/fitness-functions/rules.yaml) (fitness rule manifest)
 1. [`docs/spec/features/`](docs/spec/features/) (active feature specs and subtasks)
@@ -46,12 +46,14 @@ Keep this file concise. Add durable references and rules, not task logs.
 - `docs/fitness-functions/architecture.md`
 - `docs/fitness-functions/rules.md`
 - `docs/principles/harness-engineering-principles.md`
-- `docs/references/docs-architecture-llms.md`
-- `docs/references/workflow-llms.md`
-- `docs/references/python-uv-ruff-llms.md`
-- `docs/references/reviewer-agents-llms.md`
-- `docs/references/spec-writing-llms.md`
-- `docs/references/uv-llms.md`
+- `docs/references/docs-architecture.md`
+- `docs/references/quality-check-playbook.md`
+- `docs/references/reviewer-authoring-guide.md`
+- `docs/references/workflow.md`
+- `docs/references/python-uv-ruff.md`
+- `docs/references/reviewer-agents.md`
+- `docs/references/spec-writing.md`
+- `docs/references/uv-workflow.md`
 - `docs/spec/features/`
 - `docs/spec/features_done/*.yaml`
 - `docs/spec/potential_features.yaml`

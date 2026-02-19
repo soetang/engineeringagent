@@ -166,7 +166,7 @@ subtasks:
   context: Document non-ignorable suppression policy and recommended refactor patterns,
     then validate with full precommit gate profile.
   notes:
-  - Updated `docs/references/python-uv-ruff-llms.md` to document non-ignorable Ruff
+  - Updated `docs/references/python-uv-ruff.md` to document non-ignorable Ruff
     suppression policy (`D103`, `PLR0913`), disallowed suppression directive examples,
     and refactor-first `PLR0913` remediation guidance (`NamedTuple`/`pydantic` grouping).
   - Ran ST-006 verification commands; markdown formatting check passed and precommit
@@ -179,6 +179,6 @@ subtasks:
   - Re-ran ST-006 verification commands; markdown formatting check and `precommit`
     gate profile now pass end-to-end.
   verification:
-  - uv run mdformat --check README.md AGENTS.md docs/references/docs-architecture-llms.md
+  - uv run mdformat --check README.md AGENTS.md docs/references/docs-architecture.md
   - uvx --from . engineeringagent gates run --profile precommit
 updated_at: '2026-02-14T10:07:56Z'

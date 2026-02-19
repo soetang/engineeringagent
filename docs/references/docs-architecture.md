@@ -1,21 +1,21 @@
-# Documentation Architecture for LLMs
+# Documentation Architecture Reference
 
-This guide defines who each documentation surface is for, what belongs in it, and how agents should author updates.
+This guide defines who each documentation surface is for, what belongs in it, and how contributors should author updates.
 
 ## Audience Split
 
-- Human-readable docs are for repository users who need fast context and a clear path to first success.
-- Agent-only docs are for coding agents that need deterministic rules, constraints, and execution contracts.
-- Do not mix audiences in one document unless the file is explicitly marked as a bridge.
+- User docs are for operators adopting `engineeringagent` in their repositories.
+- Contributor docs are for people maintaining the `engineeringagent` package itself.
+- Keep audience and ownership explicit so scaffolding and policy checks stay deterministic.
 
-## Human-Readable Documentation Principles
+## User Documentation Principles
 
 - Lead with user outcome before mechanics.
 - Keep onboarding concise and approachable.
 - Link to deeper references instead of embedding every operational detail.
 - Use presentation choices that improve readability for people.
 
-## Agent-Only Documentation Principles
+## Contributor Documentation Principles
 
 - Keep content text-first, explicit, and deterministic.
 - Prefer normative rules, ordered checklists, and validation commands.
@@ -33,16 +33,16 @@ This guide defines who each documentation surface is for, what belongs in it, an
 
 ## Ownership and Placement
 
-- `README.md` is the primary human entrypoint.
-- `AGENTS.md` is the primary agent routing map.
-- `docs/references/*-llms.md` contains agent-focused operating references.
+- `README.md` is the primary user entrypoint.
+- `AGENTS.md` is the primary contributor routing map.
+- `docs/references/*.md` contains operational references for users and contributors.
 - Specs under `docs/spec/features/*.yaml` define loop-scoped execution work.
 
 ## Authoring Expectations for Agents
 
-- When updating human docs, optimize for clarity and first-run success.
-- When updating agent docs, optimize for unambiguous execution and verification.
+- When updating user docs, optimize for clarity and first-run success.
+- When updating contributor docs, optimize for unambiguous execution and verification.
 - If behavior contracts change, include explicit delta statements and verification evidence in the same documentation update.
 - Keep changes minimal and scoped to the active feature subtask.
-- Add or update links in `AGENTS.md` when new agent references are introduced.
-- Keep `init` bootstrap guidance explicit in human docs: default `core` profile, optional `python_uv` via `--scaffold-profile`.
+- Add or update links in `AGENTS.md` when new operational references are introduced.
+- Keep `init` bootstrap guidance explicit in user docs: default `core` profile, optional `python_uv` via `--scaffold-profile`.

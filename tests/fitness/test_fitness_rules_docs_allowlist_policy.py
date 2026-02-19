@@ -39,8 +39,8 @@ def _write_policy(
     project_root: Path,
     *,
     docs_root: str,
-    human_docs: list[str],
-    agent_docs: list[str],
+    user_docs: list[str],
+    contributor_docs: list[str],
 ) -> None:
     path = project_root / "harness" / "scaffold_policy.yaml"
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -49,8 +49,8 @@ def _write_policy(
             {
                 "contract_version": "1.0",
                 "docs_root": docs_root,
-                "human_docs": human_docs,
-                "agent_docs": agent_docs,
+                "user_docs": user_docs,
+                "contributor_docs": contributor_docs,
             },
             sort_keys=False,
             allow_unicode=False,
@@ -72,7 +72,7 @@ def test_docs_allowlist_checker_fails_when_doc_missing_from_both_lists(
     repo_root: Path,
 ) -> None:
     _write_md(tmp_path, relative_path="docs/guide.md")
-    _write_policy(tmp_path, docs_root="docs", human_docs=[], agent_docs=[])
+    _write_policy(tmp_path, docs_root="docs", user_docs=[], contributor_docs=[])
 
     proc, result = _run_checker(tmp_path, checker_path=_script_path(repo_root))
     violations = _violations(result)
@@ -81,7 +81,11 @@ def test_docs_allowlist_checker_fails_when_doc_missing_from_both_lists(
     assert result["rule_id"] == "architecture.docs-allowlist-policy"
     assert result["status"] == "fail"
     assert violations == sorted(violations)
-    assert any("docs/guide.md" in violation for violation in violations)
+    missing_message = next(
+        violation for violation in violations if "docs/guide.md" in violation
+    )
+    assert "missing from both user_docs and contributor_docs" in missing_message
+    assert "user_docs or contributor_docs" in missing_message
 
 
 def test_docs_allowlist_checker_fails_when_doc_in_both_lists(
@@ -92,8 +96,8 @@ def test_docs_allowlist_checker_fails_when_doc_in_both_lists(
     _write_policy(
         tmp_path,
         docs_root="docs",
-        human_docs=["docs/guide.md"],
-        agent_docs=["docs/guide.md"],
+        user_docs=["docs/guide.md"],
+        contributor_docs=["docs/guide.md"],
     )
 
     proc, result = _run_checker(tmp_path, checker_path=_script_path(repo_root))
@@ -102,7 +106,7 @@ def test_docs_allowlist_checker_fails_when_doc_in_both_lists(
     assert proc.returncode == 0
     assert result["status"] == "fail"
     assert any(
-        "both human_docs and agent_docs" in violation for violation in violations
+        "both user_docs and contributor_docs" in violation for violation in violations
     )
 
 
@@ -116,8 +120,8 @@ def test_docs_allowlist_checker_passes_when_all_docs_are_classified(
     _write_policy(
         tmp_path,
         docs_root="docs",
-        human_docs=["docs/guide.md"],
-        agent_docs=["docs/agents.md"],
+        user_docs=["docs/guide.md"],
+        contributor_docs=["docs/agents.md"],
     )
 
     proc, result = _run_checker(tmp_path, checker_path=_script_path(repo_root))
@@ -127,7 +131,7 @@ def test_docs_allowlist_checker_passes_when_all_docs_are_classified(
     assert not _violations(result)
 
 
-def test_docs_allowlist_checker_passes_with_empty_human_docs_flow_list(
+def test_docs_allowlist_checker_passes_with_empty_contributor_docs_flow_list(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
@@ -135,8 +139,8 @@ def test_docs_allowlist_checker_passes_with_empty_human_docs_flow_list(
     _write_policy(
         tmp_path,
         docs_root="docs",
-        human_docs=[],
-        agent_docs=["docs/references/agent.md"],
+        user_docs=["docs/references/agent.md"],
+        contributor_docs=[],
     )
 
     proc, result = _run_checker(tmp_path, checker_path=_script_path(repo_root))

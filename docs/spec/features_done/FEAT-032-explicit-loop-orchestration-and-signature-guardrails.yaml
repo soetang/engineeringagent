@@ -59,7 +59,7 @@ implementation_notes: 'Keep `run_loop` and `_run_feature_iteration` readable as 
   state names (for example selected_feature_path, archived_feature_path, iteration_outcome)
   over short or overloaded names.
 
-  Add a short agent-facing guidance section for `PLR0913` remediation in `docs/references/python-uv-ruff-llms.md`,
+  Add a short agent-facing guidance section for `PLR0913` remediation in `docs/references/python-uv-ruff.md`,
   and keep `AGENTS.md` concise by linking to that reference instead of duplicating
   long rules.
 
@@ -76,7 +76,7 @@ acceptance:
   into existing lint gate paths.
 - Any retained `PLR0913` exception is minimal, boundary-local, and documented with
   an inline rationale.
-- Agent guidance for resolving wide signatures is documented in `docs/references/python-uv-ruff-llms.md`
+- Agent guidance for resolving wide signatures is documented in `docs/references/python-uv-ruff.md`
   with generally applicable patterns (phase extraction, context objects/dataclasses,
   keyword-only controls, typed result objects, narrow exceptions).
 - Guidance content includes explicit sections for core intent, preferred refactor
@@ -136,7 +136,7 @@ subtasks:
   status: done
   context: "Document general best-practice options for resolving wide signatures and\
     \ improving variable naming clarity so future refactors converge on reusable patterns\
-    \ instead of ad-hoc suppressions.\nGuidance draft to include in `docs/references/python-uv-ruff-llms.md`\
+    \ instead of ad-hoc suppressions.\nGuidance draft to include in `docs/references/python-uv-ruff.md`\
     \ (verbatim or equivalent):\nCore intent: - Keep orchestration control flow explicit\
     \ in `run_loop` and `_run_feature_iteration`. - Move non-control-flow logic (I/O\
     \ details, lifecycle helpers, prompt/log formatting,\n  command wrappers) into\
@@ -152,7 +152,7 @@ subtasks:
     \ scoped with inline rationale.\nVerification: - `uv run ruff check src/engineeringagent\
     \ --select PLR0913` - Run targeted loop tests for touched paths.\nAGENTS pointer\
     \ draft to include in `AGENTS.md`: - For PLR0913 remediation and self-documenting\
-    \ naming guidance, follow\n  `docs/references/python-uv-ruff-llms.md`.\n"
+    \ naming guidance, follow\n  `docs/references/python-uv-ruff.md`.\n"
   verification:
   - uv run pytest -q tests/test_validator.py
   - uvx --from . engineeringagent validate

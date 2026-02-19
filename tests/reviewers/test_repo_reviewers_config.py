@@ -43,9 +43,11 @@ def test_reviewer_docs_do_not_reference_deprecated_responseformat_token(
     repo_root: Path,
 ) -> None:
     paths = [
-        repo_root / "docs" / "principles" / "reviewer-authoring-guide.md",
-        repo_root / "docs" / "references" / "reviewer-agents-llms.md",
+        repo_root / "docs" / "references" / "reviewer-authoring-guide.md",
+        repo_root / "docs" / "references" / "reviewer-agents.md",
     ]
     for path in paths:
         body = path.read_text(encoding="utf-8")
-        assert "$responseformat" not in body, f"{path} must not mention deprecated token"
+        assert "$responseformat" not in body, (
+            f"{path} must not mention deprecated token"
+        )

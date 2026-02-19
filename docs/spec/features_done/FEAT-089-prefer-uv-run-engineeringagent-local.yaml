@@ -78,14 +78,14 @@ subtasks:
   status: done
   context: "Update repo docs that describe contributor/local verification commands.\n\
     \nExpected touch points include:\n- `AGENTS.md` verification quick reference\n\
-    - `docs/references/uv-llms.md`\n- `docs/principles/quality-check-playbook.md`\n\
-    - `docs/references/docs-architecture-llms.md` and its scaffold template\n  `src/engineeringagent/scaffold_templates/reference.docs-architecture-llms.md`\n\
+    - `docs/references/uv-workflow.md`\n- `docs/principles/quality-check-playbook.md`\n\
+    - `docs/references/docs-architecture.md` and its scaffold template\n  `src/engineeringagent/scaffold_templates/reference.docs-architecture.md`\n\
     - Any other agent-only references that embed the old form.\n"
   verification:
   - uv run pytest -q tests/meta/test_docs_prefer_uv_run_engineeringagent.py
   - uv run pytest -q tests/fitness/test_fitness_rules_scaffold_docs_exact_sync.py
   notes:
-  - Normalize Markdown list indentation in `docs/references/uv-llms.md`.
+  - Normalize Markdown list indentation in `docs/references/uv-workflow.md`.
 - id: ST-003
   title: Update fitness rule remediation strings and any policy text that references
     the old form

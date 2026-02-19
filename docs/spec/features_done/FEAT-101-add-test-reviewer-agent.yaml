@@ -10,7 +10,7 @@ objective: 'Improve test quality and long-term maintainability by adding a dedic
   assertions.
 
   '
-context: 'We already support reviewer checks (see docs/references/reviewer-agents-llms.md)
+context: 'We already support reviewer checks (see docs/references/reviewer-agents.md)
   and ship a default code_simplifier reviewer prompt. However, a recurring source
   of regressions and maintenance cost is tests that over-mock internal seams and tests
   that assert brittle markdown contents (e.g., substring checks). We want a test-focused

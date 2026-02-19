@@ -30,7 +30,7 @@ constraints:
   fallback behavior remains deterministic and documented.
 - 'Type-to-prefix mapping is explicit: feature->feat, bug->fix, spec->spec, docs->docs,
   chore->chore, test->test.'
-- AGENTS.md must link `docs/references/spec-writing-llms.md` and explicitly state
+- AGENTS.md must link `docs/references/spec-writing.md` and explicitly state
   agents must follow that guide when authoring/updating specs.
 - Spec-writing guide must include a clear checklist for spec creation, including committing
   with the correct expected commit subject.
@@ -139,8 +139,8 @@ subtasks:
     '
   verification:
   - python3 -c "from pathlib import Path; t=Path('AGENTS.md').read_text(encoding='utf-8').lower();
-    assert 'docs/references/spec-writing-llms.md' in t and 'must follow' in t; print('ok')"
-  - 'python3 -c "from pathlib import Path; t=Path(''docs/references/spec-writing-llms.md'').read_text(encoding=''utf-8'').lower();
+    assert 'docs/references/spec-writing.md' in t and 'must follow' in t; print('ok')"
+  - 'python3 -c "from pathlib import Path; t=Path(''docs/references/spec-writing.md'').read_text(encoding=''utf-8'').lower();
     assert ''checklist'' in t and ''commit'' in t and ''type: summary'' in t; print(''ok'')"'
 - id: ST-008
   title: Run targeted regression checks for validator loop and gate wiring

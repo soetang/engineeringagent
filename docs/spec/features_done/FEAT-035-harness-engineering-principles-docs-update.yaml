@@ -58,7 +58,7 @@ implementation_notes: 'Add a concise principles section in `README.md` that link
   Keep tone pragmatic and operator-focused. For agent alignment, only add short references
   in
 
-  `AGENTS.md` and/or `docs/references/docs-architecture-llms.md` if needed so agents
+  `AGENTS.md` and/or `docs/references/docs-architecture.md` if needed so agents
   can route
 
   users to the new human principles doc without mixing audiences.
@@ -103,12 +103,12 @@ subtasks:
 - id: ST-003
   title: Apply light agent-doc alignment for discoverability
   status: done
-  context: 'Add minimal references in `AGENTS.md` and/or `docs/references/docs-architecture-llms.md`
+  context: 'Add minimal references in `AGENTS.md` and/or `docs/references/docs-architecture.md`
     so agents can route users to the new human principles doc without blending audiences.
 
     '
   verification:
-  - python3 -c "from pathlib import Path; paths=['AGENTS.md','docs/references/docs-architecture-llms.md'];
+  - python3 -c "from pathlib import Path; paths=['AGENTS.md','docs/references/docs-architecture.md'];
     assert any('docs/principles/harness-engineering-principles.md' in Path(p).read_text(encoding='utf-8')
     for p in paths); print('ok')"
 - id: ST-004
@@ -119,7 +119,7 @@ subtasks:
 
     '
   verification:
-  - uv run mdformat --check README.md AGENTS.md docs/references/docs-architecture-llms.md
+  - uv run mdformat --check README.md AGENTS.md docs/references/docs-architecture.md
     docs/principles/harness-engineering-principles.md
   - uvx --from . engineeringagent validate
 updated_at: '2026-02-13T14:31:51Z'

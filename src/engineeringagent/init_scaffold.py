@@ -19,6 +19,24 @@ _SUPPORTED_INIT_PACKS = {"slim", "standard"}
 
 DEFAULT_AGENT_MODEL = "openai/gpt-5.3-codex"
 
+_SCAFFOLDED_USER_DOC_TEMPLATES: tuple[tuple[str, str], ...] = (
+    ("docs/references/docs-architecture.md", "reference.docs-architecture.md"),
+    ("docs/references/workflow.md", "reference.workflow.md"),
+    ("docs/references/spec-writing.md", "reference.spec-writing.md"),
+    (
+        "docs/references/quality-check-playbook.md",
+        "reference.quality-check-playbook.md",
+    ),
+    (
+        "docs/references/reviewer-authoring-guide.md",
+        "reference.reviewer-authoring-guide.md",
+    ),
+    (
+        "docs/principles/harness-engineering-principles.md",
+        "principle.harness-engineering-principles.md",
+    ),
+)
+
 
 def _build_checks_yaml() -> str:
     """Build a minimal harness/checks.yaml scaffold.
@@ -39,7 +57,13 @@ def _build_checks_yaml() -> str:
     )
 
 
-def _build_scaffold_policy_yaml(*, docs_root: str, agent_docs: list[str]) -> str:
+def _build_scaffold_policy_yaml(
+    *,
+    docs_root: str,
+    user_docs: list[str],
+    scaffold_docs: list[str],
+    exact_sync: list[dict[str, str]],
+) -> str:
     """Build a minimal scaffold policy file.
 
     Notes:
@@ -51,8 +75,10 @@ def _build_scaffold_policy_yaml(*, docs_root: str, agent_docs: list[str]) -> str
         {
             "contract_version": "1.0",
             "docs_root": docs_root,
-            "human_docs": [],
-            "agent_docs": agent_docs,
+            "contributor_docs": [],
+            "user_docs": user_docs,
+            "scaffold_docs": scaffold_docs,
+            "exact_sync": exact_sync,
         },
         sort_keys=False,
         allow_unicode=False,
@@ -99,22 +125,15 @@ def build_scaffold_agents_markdown() -> str:
     return _render_scaffold_template("AGENTS.md")
 
 
-def _build_reference_docs_manifest() -> dict[str, str]:
-    """Build tool-generic agent docs references.
+def _build_user_docs_manifest() -> dict[str, str]:
+    """Build scaffolded user-facing documentation files.
 
     Note: These are kept under the default `docs/` directory even when feature specs
     are configured to live under a separate docs root.
     """
     return {
-        "docs/references/docs-architecture-llms.md": _render_scaffold_template(
-            "reference.docs-architecture-llms.md"
-        ),
-        "docs/references/workflow-llms.md": _render_scaffold_template(
-            "reference.workflow-llms.md"
-        ),
-        "docs/references/spec-writing-llms.md": _render_scaffold_template(
-            "reference.spec-writing-llms.md"
-        ),
+        docs_path: _render_scaffold_template(template_name)
+        for docs_path, template_name in _SCAFFOLDED_USER_DOC_TEMPLATES
     }
 
 
@@ -190,10 +209,17 @@ def build_baseline_scaffold_manifest(
     docs_dir_normalized = docs_dir.strip("/")
     is_python_uv = profile == "python_uv"
 
-    reference_docs_manifest = _build_reference_docs_manifest()
-    policy_agent_docs: list[str] = []
+    user_docs_manifest = _build_user_docs_manifest()
+    policy_user_docs: list[str] = []
+    policy_scaffold_docs: list[str] = []
+    policy_exact_sync: list[dict[str, str]] = []
     if docs_dir_normalized == "docs":
-        policy_agent_docs = sorted(reference_docs_manifest.keys())
+        policy_user_docs = sorted(user_docs_manifest.keys())
+        policy_scaffold_docs = list(user_docs_manifest.keys())
+        policy_exact_sync = [
+            {"docs_path": docs_path, "template_name": template_name}
+            for docs_path, template_name in _SCAFFOLDED_USER_DOC_TEMPLATES
+        ]
 
     manifest = {
         ".pre-commit-config.yaml": _build_precommit_config(profile=profile),
@@ -231,10 +257,12 @@ def build_baseline_scaffold_manifest(
         ),
         "harness/scaffold_policy.yaml": _build_scaffold_policy_yaml(
             docs_root=docs_dir_normalized,
-            agent_docs=policy_agent_docs,
+            user_docs=policy_user_docs,
+            scaffold_docs=policy_scaffold_docs,
+            exact_sync=policy_exact_sync,
         ),
         "AGENTS.md": build_scaffold_agents_markdown(),
-        **reference_docs_manifest,
+        **user_docs_manifest,
     }
 
     if is_python_uv:

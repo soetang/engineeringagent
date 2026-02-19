@@ -105,7 +105,7 @@ subtasks:
 - id: ST-005
   title: Align uv-llms reference with scaffolded precommit gates
   status: done
-  context: "Update docs/references/uv-llms.md so precommit profile descriptions\n\
+  context: "Update docs/references/uv-workflow.md so precommit profile descriptions\n\
     \ match init slim outputs (core: spec gate only; python_uv: spec + ruff; no pyright).\n\
     \ "
   verification:

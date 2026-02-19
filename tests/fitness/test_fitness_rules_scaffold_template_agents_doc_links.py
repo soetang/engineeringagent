@@ -69,17 +69,17 @@ def test_agents_link_checker_fails_when_scaffold_doc_is_missing_from_template(
 ) -> None:
     """Fail with deterministic diagnostics when scaffold docs are not linked."""
     expected = [
-        "docs/references/docs-architecture-llms.md",
-        "docs/references/workflow-llms.md",
-        "docs/references/spec-writing-llms.md",
+        "docs/references/docs-architecture.md",
+        "docs/references/workflow.md",
+        "docs/references/spec-writing.md",
     ]
     _write_policy(tmp_path, scaffold_docs=expected)
     _write_scaffold_agents(
         tmp_path,
         content=(
             "# AGENTS\n\n"
-            "- `docs/references/docs-architecture-llms.md`: ok\n"
-            "- `docs/references/workflow-llms.md`: ok\n"
+            "- `docs/references/docs-architecture.md`: ok\n"
+            "- `docs/references/workflow.md`: ok\n"
         ),
     )
 
@@ -91,7 +91,7 @@ def test_agents_link_checker_fails_when_scaffold_doc_is_missing_from_template(
     assert result["status"] == "fail"
     assert violations == sorted(violations)
     assert any(
-        "docs/references/spec-writing-llms.md" in violation for violation in violations
+        "docs/references/spec-writing.md" in violation for violation in violations
     )
     assert any(
         "src/engineeringagent/scaffold_templates/AGENTS.md" in violation
@@ -105,18 +105,18 @@ def test_agents_link_checker_passes_when_all_scaffold_docs_are_linked(
 ) -> None:
     """Pass when every scaffolded doc is linked with a description."""
     expected = [
-        "docs/references/docs-architecture-llms.md",
-        "docs/references/workflow-llms.md",
-        "docs/references/spec-writing-llms.md",
+        "docs/references/docs-architecture.md",
+        "docs/references/workflow.md",
+        "docs/references/spec-writing.md",
     ]
     _write_policy(tmp_path, scaffold_docs=expected)
     _write_scaffold_agents(
         tmp_path,
         content=(
             "# AGENTS\n\n"
-            "- `docs/references/docs-architecture-llms.md`: When working on docs layout.\n"
-            "- `docs/references/workflow-llms.md`: Before running loop work.\n"
-            "- `docs/references/spec-writing-llms.md`: When drafting feature specs.\n"
+            "- `docs/references/docs-architecture.md`: When working on docs layout.\n"
+            "- `docs/references/workflow.md`: Before running loop work.\n"
+            "- `docs/references/spec-writing.md`: When drafting feature specs.\n"
         ),
     )
 

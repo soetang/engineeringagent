@@ -1,6 +1,6 @@
-# Engineering Workflow for LLMs
+# Engineering Workflow Reference
 
-This reference describes the expected loop workflow for agent execution.
+This reference describes the expected loop workflow for contributor execution.
 
 ## Core Loop
 
@@ -12,8 +12,8 @@ This reference describes the expected loop workflow for agent execution.
 
 ## Verification Baseline
 
-- Primary verification flow: `engineeringagent run --all` (consumes `harness/checks.yaml`).
-- Optional spec-only validation: `engineeringagent validate`.
+- Primary verification flow: `uv run engineeringagent run --all` (consumes `harness/checks.yaml`).
+- Optional spec-only validation: `uv run engineeringagent validate`.
 
 ## Loop outcome taxonomy
 

@@ -11,7 +11,7 @@ Keep this file concise. Add durable references and rules, not task logs.
 ## Operating Principles
 
 - Humans steer, agents execute.
-- Keep audience split explicit: `README.md` for human onboarding, `AGENTS.md` plus `docs/references/*-llms.md` for agent execution guidance.
+- Keep audience split explicit: `README.md` for package users, `AGENTS.md` plus `docs/references/*.md` for package contributors.
 - One feature focus per cycle.
 - Keep each loop incremental, verifiable, and recoverable.
 
@@ -25,9 +25,12 @@ Keep this file concise. Add durable references and rules, not task logs.
 
 ## Documentation Layout Reference
 
-- `docs/references/docs-architecture-llms.md`: Use when adding or restructuring docs; keeps human vs agent doc placement deterministic.
-- `docs/references/workflow-llms.md`: Use before running loop work; defines the expected execution and verification loop.
-- `docs/references/spec-writing-llms.md`: Use when drafting feature specs; defines the feature schema expectations and the expected red-green-refactor loop.
+- `docs/references/docs-architecture.md`: Use when adding or restructuring docs; defines user vs contributor documentation boundaries.
+- `docs/references/workflow.md`: Use before running loop work; defines the expected execution and verification loop.
+- `docs/references/spec-writing.md`: Use when drafting feature specs; defines feature schema expectations and the expected red-green-refactor loop.
+- `docs/references/quality-check-playbook.md`: Use when selecting checks and deciding where to enforce behavior.
+- `docs/references/reviewer-authoring-guide.md`: Use when adding or updating repository reviewer checks and prompts.
+- `docs/principles/harness-engineering-principles.md`: Use for conceptual rationale behind short-loop execution design.
 
 Note: Some repos use a separate docs root for specs (configured via `engineeringagent.toml`). These reference docs remain under `docs/references/`.
 

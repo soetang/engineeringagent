@@ -159,7 +159,7 @@ subtasks:
 - id: ST-004
   title: Update reviewer authoring/reference docs for clean-room mode and assets
   status: done
-  context: 'Update `docs/references/reviewer-agents-llms.md` and `docs/principles/reviewer-authoring-guide.md`
+  context: 'Update `docs/references/reviewer-agents.md` and `docs/principles/reviewer-authoring-guide.md`
 
     to document the `clean_room_readme_cli` sandbox mode and the `sandbox.assets`
     include mechanism.
@@ -208,5 +208,5 @@ subtasks:
 
     '
   verification:
-  - uv run mdformat --check README.md AGENTS.md docs/references/docs-architecture-llms.md
+  - uv run mdformat --check README.md AGENTS.md docs/references/docs-architecture.md
 updated_at: '2026-02-15T14:20:36Z'

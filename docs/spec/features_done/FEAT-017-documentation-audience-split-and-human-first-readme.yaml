@@ -32,9 +32,9 @@ constraints:
   plus a small curated external link set.
 - README.md may use expressive human-friendly presentation (for example emoji or ASCII
   art) when it improves readability.
-- AGENTS.md must link docs/references/docs-architecture-llms.md and state when to
+- AGENTS.md must link docs/references/docs-architecture.md and state when to
   use human-readable docs versus agent-only docs.
-- docs/references/docs-architecture-llms.md is agent-focused and text-first (no decorative
+- docs/references/docs-architecture.md is agent-focused and text-first (no decorative
   formatting requirements).
 - README.md must link to deeper CLI details rather than carrying every operational
   detail inline.
@@ -54,9 +54,9 @@ acceptance:
   loop`) as the main onboarding flow.
 - README.md explicitly instructs users to use agents/specs to implement harnesses.
 - README.md links to a deeper CLI details document for operational command coverage.
-- AGENTS.md links docs/references/docs-architecture-llms.md and explicitly documents
+- AGENTS.md links docs/references/docs-architecture.md and explicitly documents
   human-vs-agent documentation intent.
-- docs/references/docs-architecture-llms.md defines documentation principles, audience
+- docs/references/docs-architecture.md defines documentation principles, audience
   split, and authoring expectations for agent-focused docs.
 - Repository quality checks include `mdformat --check` through gate/profile wiring.
 - Documentation updates preserve existing spec validation behavior (`engineeringagent
@@ -65,26 +65,26 @@ subtasks:
 - id: ST-001
   title: Define agent-focused docs architecture reference
   status: done
-  context: 'Create docs/references/docs-architecture-llms.md describing doc audience
+  context: 'Create docs/references/docs-architecture.md describing doc audience
     boundaries, principles for human-readable docs, principles for agent-only docs,
     and maintenance expectations.
 
     '
   verification:
-  - python3 -c "from pathlib import Path; p=Path('docs/references/docs-architecture-llms.md');
+  - python3 -c "from pathlib import Path; p=Path('docs/references/docs-architecture.md');
     t=p.read_text(encoding='utf-8'); lower=t.lower(); assert 'human' in lower and
     'agent' in lower and 'principle' in lower; print('ok')"
 - id: ST-002
   title: Link AGENTS to docs architecture and audience policy
   status: done
-  context: 'Update AGENTS.md so agents discover docs/references/docs-architecture-llms.md
+  context: 'Update AGENTS.md so agents discover docs/references/docs-architecture.md
     and follow explicit guidance on choosing human-facing versus agent-facing documentation
     artifacts.
 
     '
   verification:
   - python3 -c "from pathlib import Path; t=Path('AGENTS.md').read_text(encoding='utf-8');
-    lower=t.lower(); assert 'docs/references/docs-architecture-llms.md' in t; assert
+    lower=t.lower(); assert 'docs/references/docs-architecture.md' in t; assert
     'human' in lower and 'agent' in lower; print('ok')"
 - id: ST-003
   title: Rewrite README as purpose-driven human-first quick start
@@ -108,7 +108,7 @@ subtasks:
     '
   verification:
   - python3 -c "from pathlib import Path; t=Path('README.md').read_text(encoding='utf-8');
-    assert 'https://openai.com/index/harness-engineering/' in t; assert 'docs/references/uv-llms.md'
+    assert 'https://openai.com/index/harness-engineering/' in t; assert 'docs/references/uv-workflow.md'
     in t or 'cli' in t.lower(); print('ok')"
 - id: ST-005
   title: Add mdformat check to project quality gates
@@ -118,7 +118,7 @@ subtasks:
 
     '
   verification:
-  - uv run mdformat --check README.md AGENTS.md docs/references/docs-architecture-llms.md
+  - uv run mdformat --check README.md AGENTS.md docs/references/docs-architecture.md
   - python3 -c "from pathlib import Path; import yaml; data=yaml.safe_load(Path('harness/gates.yaml').read_text(encoding='utf-8'));
     assert 'mdformat_validate' in data.get('gates', {}); assert 'mdformat_validate'
     in data.get('profiles', {}).get('precommit', []); print('ok')"

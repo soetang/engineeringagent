@@ -66,8 +66,8 @@ This file is generated from active manifest-declared fitness rules.
 
 - Name: Docs allowlist policy
 - Side-effect free: `true`
-- Rationale: Keeps docs additions explicit and reviewable by classifying each file as human-facing or agent-facing.
-- Remediation: Add every docs markdown file to exactly one of human_docs or agent_docs in harness/scaffold_policy.yaml.
+- Rationale: Keeps docs additions explicit and reviewable by classifying each file as user-facing or contributor-facing.
+- Remediation: Add every docs markdown file to exactly one of user_docs or contributor_docs in harness/scaffold_policy.yaml.
 
 ### `architecture.fitness-catalog-docs-sync`
 

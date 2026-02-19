@@ -703,8 +703,7 @@ def test_generated_agents_keeps_major_principles() -> None:
     assert "Humans steer, agents execute." in scaffold_agents
     assert "One feature focus per cycle." in scaffold_agents
     assert (
-        "Keep audience split explicit: `README.md` for human onboarding"
-        in scaffold_agents
+        "Keep audience split explicit: `README.md` for package users" in scaffold_agents
     )
 
 
@@ -1193,22 +1192,19 @@ def test_init_scaffolds_tool_generic_docs_only(tmp_path: Path) -> None:
     result = _invoke_cli(["--project-root", str(tmp_path), "init"])
 
     assert result.exit_code == 0
+    assert (tmp_path / "docs" / "references" / "docs-architecture.md").exists()
+    assert (tmp_path / "docs" / "references" / "workflow.md").exists()
+    assert (tmp_path / "docs" / "references" / "quality-check-playbook.md").exists()
+    assert (tmp_path / "docs" / "references" / "reviewer-authoring-guide.md").exists()
+    assert (
+        tmp_path / "docs" / "principles" / "harness-engineering-principles.md"
+    ).exists()
 
-    docs_architecture = (
-        tmp_path / "docs" / "references" / "docs-architecture-llms.md"
-    ).read_text(encoding="utf-8")
-    workflow_reference = (
-        tmp_path / "docs" / "references" / "workflow-llms.md"
-    ).read_text(encoding="utf-8")
-
-    assert "Audience Split" in docs_architecture
-    assert "README.md" in docs_architecture
-    assert "AGENTS.md" in docs_architecture
-    assert "engineeringagent validate" in workflow_reference
-    assert "engineeringagent run --all" in workflow_reference
-
-    assert not (tmp_path / "docs" / "principles").exists()
     assert not (tmp_path / "docs" / "fitness-functions").exists()
+    assert not (tmp_path / "docs" / "references" / "python-uv-ruff.md").exists()
+    assert not (tmp_path / "docs" / "references" / "retry-feedback.md").exists()
+    assert not (tmp_path / "docs" / "references" / "reviewer-agents.md").exists()
+    assert not (tmp_path / "docs" / "references" / "uv-workflow.md").exists()
 
 
 def test_init_scaffolds_spec_writing_reference_doc(tmp_path: Path) -> None:
@@ -1216,12 +1212,7 @@ def test_init_scaffolds_spec_writing_reference_doc(tmp_path: Path) -> None:
     result = _invoke_cli(["--project-root", str(tmp_path), "init"])
 
     assert result.exit_code == 0
-
-    spec_writing_reference = (
-        tmp_path / "docs" / "references" / "spec-writing-llms.md"
-    ).read_text(encoding="utf-8")
-    assert "Spec Writing Guide" in spec_writing_reference
-    assert "Mandatory Interview Flow" in spec_writing_reference
+    assert (tmp_path / "docs" / "references" / "spec-writing.md").exists()
 
 
 def test_init_scaffolds_scaffold_policy_with_resolved_docs_root(tmp_path: Path) -> None:
@@ -1236,11 +1227,48 @@ def test_init_scaffolds_scaffold_policy_with_resolved_docs_root(tmp_path: Path) 
     payload = yaml.safe_load(policy_path.read_text(encoding="utf-8"))
     assert payload["contract_version"] == "1.0"
     assert payload["docs_root"] == "docs"
-    assert not payload["human_docs"]
-    assert payload["agent_docs"] == [
-        "docs/references/docs-architecture-llms.md",
-        "docs/references/spec-writing-llms.md",
-        "docs/references/workflow-llms.md",
+    assert not payload["contributor_docs"]
+    assert payload["user_docs"] == [
+        "docs/principles/harness-engineering-principles.md",
+        "docs/references/docs-architecture.md",
+        "docs/references/quality-check-playbook.md",
+        "docs/references/reviewer-authoring-guide.md",
+        "docs/references/spec-writing.md",
+        "docs/references/workflow.md",
+    ]
+    assert payload["scaffold_docs"] == [
+        "docs/references/docs-architecture.md",
+        "docs/references/workflow.md",
+        "docs/references/spec-writing.md",
+        "docs/references/quality-check-playbook.md",
+        "docs/references/reviewer-authoring-guide.md",
+        "docs/principles/harness-engineering-principles.md",
+    ]
+    assert payload["exact_sync"] == [
+        {
+            "docs_path": "docs/references/docs-architecture.md",
+            "template_name": "reference.docs-architecture.md",
+        },
+        {
+            "docs_path": "docs/references/workflow.md",
+            "template_name": "reference.workflow.md",
+        },
+        {
+            "docs_path": "docs/references/spec-writing.md",
+            "template_name": "reference.spec-writing.md",
+        },
+        {
+            "docs_path": "docs/references/quality-check-playbook.md",
+            "template_name": "reference.quality-check-playbook.md",
+        },
+        {
+            "docs_path": "docs/references/reviewer-authoring-guide.md",
+            "template_name": "reference.reviewer-authoring-guide.md",
+        },
+        {
+            "docs_path": "docs/principles/harness-engineering-principles.md",
+            "template_name": "principle.harness-engineering-principles.md",
+        },
     ]
 
 
@@ -1266,5 +1294,5 @@ def test_init_separate_docs_updates_scaffold_policy_docs_root(tmp_path: Path) ->
     policy_path = tmp_path / "harness" / "scaffold_policy.yaml"
     payload = yaml.safe_load(policy_path.read_text(encoding="utf-8"))
     assert payload["docs_root"] == "docs.engineeringagent"
-    assert isinstance(payload["human_docs"], list)
-    assert isinstance(payload["agent_docs"], list)
+    assert isinstance(payload["contributor_docs"], list)
+    assert isinstance(payload["user_docs"], list)

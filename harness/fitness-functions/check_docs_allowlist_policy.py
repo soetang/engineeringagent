@@ -17,7 +17,7 @@ _POLICY_PATH = Path("harness/scaffold_policy.yaml")
 
 _REMEDIATION = (
     "Add every markdown file under docs_root (excluding docs_root/spec/) to exactly one of "
-    "human_docs or agent_docs in harness/scaffold_policy.yaml."
+    "user_docs or contributor_docs in harness/scaffold_policy.yaml."
 )
 
 
@@ -50,7 +50,9 @@ def _parse_policy_minimal(policy_text: str) -> dict[str, object]:
         if not stripped_line or raw_line.lstrip().startswith("#"):
             continue
 
-        if list_key in {"human_docs", "agent_docs"} and stripped_line.startswith("-"):
+        if list_key in {"user_docs", "contributor_docs"} and stripped_line.startswith(
+            "-"
+        ):
             item = stripped_line[1:].strip()
             if item:
                 item = _strip_quotes(item)
@@ -78,13 +80,13 @@ def _parse_policy_minimal(policy_text: str) -> dict[str, object]:
             continue
 
         if rest == "":
-            if key in {"human_docs", "agent_docs"}:
+            if key in {"user_docs", "contributor_docs"}:
                 result.setdefault(key, [])
                 list_key = key
             continue
 
-        # Accept flow-style empty lists written by PyYAML (e.g. `human_docs: []`).
-        if key in {"human_docs", "agent_docs"} and "".join(rest.split()) == "[]":
+        # Accept flow-style empty lists written by PyYAML (e.g. `user_docs: []`).
+        if key in {"user_docs", "contributor_docs"} and "".join(rest.split()) == "[]":
             result[key] = []
             continue
 
@@ -126,17 +128,17 @@ def _validate_policy(
 ) -> tuple[Path, set[str], set[str], list[str]]:
     violations: list[str] = []
     docs_root = Path("docs")
-    human_docs: set[str] = set()
-    agent_docs: set[str] = set()
+    user_docs: set[str] = set()
+    contributor_docs: set[str] = set()
 
     full_path = project_root / policy_path
     if not full_path.exists():
         violations.append(f"{policy_path}:1 missing scaffold policy; {_REMEDIATION}")
-        return docs_root, human_docs, agent_docs, sorted(violations)
+        return docs_root, user_docs, contributor_docs, sorted(violations)
 
     policy_payload = _parse_policy_minimal(full_path.read_text(encoding="utf-8"))
 
-    for key in ("contract_version", "docs_root", "human_docs", "agent_docs"):
+    for key in ("contract_version", "docs_root", "user_docs", "contributor_docs"):
         if key not in policy_payload:
             violations.append(
                 f"{policy_path}:1 missing required key {key}; {_REMEDIATION}"
@@ -146,31 +148,31 @@ def _validate_policy(
     if isinstance(docs_root_raw, str) and docs_root_raw.strip():
         docs_root = Path(docs_root_raw)
 
-    human_raw = policy_payload.get("human_docs")
-    if isinstance(human_raw, list):
-        for item in human_raw:
+    user_raw = policy_payload.get("user_docs")
+    if isinstance(user_raw, list):
+        for item in user_raw:
             if isinstance(item, str) and item.strip():
-                human_docs.add(
+                user_docs.add(
                     _resolve_docs_allowlist_entry(
                         docs_root=docs_root, entry=item
                     ).as_posix()
                 )
 
-    agent_raw = policy_payload.get("agent_docs")
-    if isinstance(agent_raw, list):
-        for item in agent_raw:
+    contributor_raw = policy_payload.get("contributor_docs")
+    if isinstance(contributor_raw, list):
+        for item in contributor_raw:
             if isinstance(item, str) and item.strip():
-                agent_docs.add(
+                contributor_docs.add(
                     _resolve_docs_allowlist_entry(
                         docs_root=docs_root, entry=item
                     ).as_posix()
                 )
 
-    return docs_root, human_docs, agent_docs, sorted(violations)
+    return docs_root, user_docs, contributor_docs, sorted(violations)
 
 
 def _check_docs_allowlist_policy(project_root: Path) -> list[str]:
-    docs_root, human_docs, agent_docs, violations = _validate_policy(
+    docs_root, user_docs, contributor_docs, violations = _validate_policy(
         project_root=project_root,
         policy_path=_POLICY_PATH,
     )
@@ -179,18 +181,18 @@ def _check_docs_allowlist_policy(project_root: Path) -> list[str]:
         project_root=project_root, docs_root=docs_root
     )
 
-    overlap = sorted(human_docs.intersection(agent_docs))
+    overlap = sorted(user_docs.intersection(contributor_docs))
     for path in overlap:
         violations.append(
-            f"{path}:1 appears in both human_docs and agent_docs (policy={_POLICY_PATH}); "
+            f"{path}:1 appears in both user_docs and contributor_docs (policy={_POLICY_PATH}); "
             f"{_REMEDIATION}"
         )
 
-    covered = human_docs.union(agent_docs)
+    covered = user_docs.union(contributor_docs)
     missing = sorted(discovered.difference(covered))
     for path in missing:
         violations.append(
-            f"{path}:1 missing from both human_docs and agent_docs (policy={_POLICY_PATH}); "
+            f"{path}:1 missing from both user_docs and contributor_docs (policy={_POLICY_PATH}); "
             f"{_REMEDIATION}"
         )
 
@@ -202,7 +204,7 @@ def main() -> int:
     violations = _check_docs_allowlist_policy(Path("."))
     status = RuleStatus.PASS if not violations else RuleStatus.FAIL
     summary = (
-        "All docs markdown files are explicitly classified as human_docs or agent_docs."
+        "All docs markdown files are explicitly classified as user_docs or contributor_docs."
         if status == RuleStatus.PASS
         else f"Detected {len(violations)} docs allowlist policy violation(s)."
     )

@@ -86,14 +86,14 @@ subtasks:
 
     '
   verification:
-  - python3 -c "from pathlib import Path; files=['README.md','docs/references/uv-llms.md','AGENTS.md'];
+  - python3 -c "from pathlib import Path; files=['README.md','docs/references/uv-workflow.md','AGENTS.md'];
     bad=[f for f in files if 'scripts/' in Path(f).read_text(encoding='utf-8')]; assert
     not bad, bad; print('ok')"
   - python3 -c "from pathlib import Path; t=Path('README.md').read_text(encoding='utf-8').lower();
     assert 'lint' in t and 'test' in t and 'spec' in t; print('ok')"
   attempts: 1
   notes:
-  - Updated `README.md`, `docs/references/uv-llms.md`, and `AGENTS.md` to use canonical
+  - Updated `README.md`, `docs/references/uv-workflow.md`, and `AGENTS.md` to use canonical
     `uvx --from . engineeringagent ...` command entrypoints with no `scripts/` paths.
   - Added an explicit README validation section that separates lint, test, and spec
     validation commands.

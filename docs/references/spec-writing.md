@@ -1,8 +1,8 @@
-# Spec Writing Guide (LLM-Oriented)
+# Spec Writing Guide
 
 ## Purpose
 
-- Define how agents create new feature specs for this repository.
+- Define how contributors create new feature specs for this repository.
 - Ensure every new spec starts with a short user interview before drafting YAML.
 
 ## Hard Rule

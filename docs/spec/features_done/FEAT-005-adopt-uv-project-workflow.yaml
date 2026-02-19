@@ -53,7 +53,7 @@ subtasks:
       to the uv document in its documentation map.
     verification:
       - "uv run python scripts/validate_specs.py"
-      - "python3 -c \"from pathlib import Path; p=Path('docs/references/uv-llms.md'); assert p.exists(); t=Path('AGENTS.md').read_text(encoding='utf-8'); assert 'docs/references/uv-llms.md' in t; print('ok')\""
+      - "python3 -c \"from pathlib import Path; p=Path('docs/references/uv-workflow.md'); assert p.exists(); t=Path('AGENTS.md').read_text(encoding='utf-8'); assert 'docs/references/uv-workflow.md' in t; print('ok')\""
       - "uvx --from . agent-harness --help"
     attempts: 1
     notes: []

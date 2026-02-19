@@ -1,4 +1,4 @@
-# Python + uv + Ruff + Pyright Reference (LLM-Oriented)
+# Python + uv + Ruff + Pyright Reference
 
 ## Purpose
 

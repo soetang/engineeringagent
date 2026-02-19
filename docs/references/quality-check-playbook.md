@@ -1,6 +1,6 @@
 # Quality Check Playbook
 
-This guide explains when to use each quality check in this repository and how to design checks that are useful for both humans and agents.
+This guide explains when to use each quality check in this repository and how to design checks that stay deterministic over time.
 
 The boundaries are not always perfectly clear: some checks overlap, and a single change can require multiple layers of verification.
 Use this playbook as a practical default, then apply judgment based on risk.
@@ -20,10 +20,10 @@ Use this playbook as a practical default, then apply judgment based on risk.
 - During normal implementation loops:
   - `engineeringagent run --all` (consumes `harness/checks.yaml`)
 - Before commit or merge:
-  - run the relevant direct tools (`uv run ruff ...`, `uv run pyright ...`, `uv run pytest ...`)
+  - Run the relevant direct tools (`uv run ruff ...`, `uv run pyright ...`, `uv run pytest ...`)
 - When editing feature specs or schema-related files:
   - `uv run engineeringagent validate`
-  - When debugging a specific class of failure:
+- When debugging a specific class of failure:
   - Ruff: `uv run ruff check src/engineeringagent harness`
   - Pylint: `uv run pylint --score=n --reports=n src/engineeringagent tests harness`
   - Pyright: `uv run pyright src/engineeringagent tests harness`

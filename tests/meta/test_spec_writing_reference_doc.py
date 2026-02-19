@@ -17,13 +17,13 @@ def _verification_commands(document: dict) -> list[str]:
 def test_spec_writing_reference_is_exact_sync_with_scaffold_template(
     repo_root: Path,
 ) -> None:
-    canonical_path = repo_root / "docs" / "references" / "spec-writing-llms.md"
+    canonical_path = repo_root / "docs" / "references" / "spec-writing.md"
     template_path = (
         repo_root
         / "src"
         / "engineeringagent"
         / "scaffold_templates"
-        / "reference.spec-writing-llms.md"
+        / "reference.spec-writing.md"
     )
     assert canonical_path.read_bytes() == template_path.read_bytes()
 

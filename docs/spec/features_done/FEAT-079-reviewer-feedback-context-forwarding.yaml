@@ -72,7 +72,7 @@ acceptance:
 - When a reviewer returns `warning` or `request_changes`, forwarded feedback includes
   the configured `feedback_context`.
 - When a reviewer returns `approve`, behavior is unchanged (no follow-up is triggered).
-- Docs references (`docs/references/reviewer-agents-llms.md` and reviewer authoring
+- Docs references (`docs/references/reviewer-agents.md` and reviewer authoring
   guide) document `feedback_context`.
 - This repository's `harness/reviewers.yaml` sets `feedback_context` for `readme_process`
   to describe clean-room scope and interpretation guidance.

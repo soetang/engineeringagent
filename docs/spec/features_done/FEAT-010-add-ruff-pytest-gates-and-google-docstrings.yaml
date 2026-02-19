@@ -77,17 +77,17 @@ subtasks:
     and docstring expectations, then link it from AGENTS.md so it is discoverable
     in the default read order.
   verification:
-  - python3 -c "from pathlib import Path; guide=Path('docs/references/python-uv-ruff-llms.md');
+  - python3 -c "from pathlib import Path; guide=Path('docs/references/python-uv-ruff.md');
     agents=Path('AGENTS.md'); assert guide.exists(); gt=guide.read_text(encoding='utf-8').lower();
     at=agents.read_text(encoding='utf-8').lower(); assert 'uv' in gt and 'ruff' in
-    gt and 'pytest' in gt; assert 'python-uv-ruff-llms.md' in at; print('ok')"
+    gt and 'pytest' in gt; assert 'python-uv-ruff.md' in at; print('ok')"
 - id: ST-005
   title: Update README and uv workflow docs for new checks
   status: done
-  context: Update README.md and docs/references/uv-llms.md to reflect Ruff + pytest
+  context: Update README.md and docs/references/uv-workflow.md to reflect Ruff + pytest
     checks and command usage within precommit and daily workflow docs.
   verification:
-  - python3 -c "from pathlib import Path; files=['README.md','docs/references/uv-llms.md'];
+  - python3 -c "from pathlib import Path; files=['README.md','docs/references/uv-workflow.md'];
     text='\n'.join(Path(f).read_text(encoding='utf-8').lower() for f in files); assert
     'ruff' in text and 'pytest' in text and 'precommit' in text; print('ok')"
 - id: ST-006

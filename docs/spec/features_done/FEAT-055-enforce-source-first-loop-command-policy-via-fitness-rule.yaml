@@ -110,7 +110,7 @@ subtasks:
     violations.
   verification:
   - uv run pytest -q tests/test_validator.py::test_agents_docs_map_extraction_scoped_to_docs_layout_section
-  - uv run mdformat --check README.md AGENTS.md docs/references/docs-architecture-llms.md
+  - uv run mdformat --check README.md AGENTS.md docs/references/docs-architecture.md
 - id: ST-006
   title: Run focused regression suite for policy stability
   status: done

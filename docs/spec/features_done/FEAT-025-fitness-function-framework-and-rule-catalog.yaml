@@ -164,7 +164,7 @@ subtasks:
   - uv run python -m engineeringagent.cli fitness catalog --format markdown --output
     docs/fitness-functions/rules.md
   - uv run pytest -q tests/test_fitness_catalog_generation.py
-  - uv run mdformat --check README.md AGENTS.md docs/references/docs-architecture-llms.md
+  - uv run mdformat --check README.md AGENTS.md docs/references/docs-architecture.md
 - id: ST-007
   title: Run full validation and regression suite for feature readiness
   status: done

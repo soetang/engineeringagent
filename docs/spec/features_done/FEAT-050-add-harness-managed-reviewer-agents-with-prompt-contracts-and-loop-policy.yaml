@@ -89,7 +89,7 @@ implementation_notes: "Introduce a dedicated reviewer contract and runtime path 
   \ `engineeringagent reviewers init|list|plan|run`).\n\n- Extend init scaffold to\
   \ optionally include baseline reviewer contract and\n  example prompt files under\
   \ harness.\n\nDocumentation layer:\n- Add an agent reference doc (for example\n\
-  \  `docs/references/reviewer-agents-llms.md`) covering contract, trigger\n  semantics,\
+  \  `docs/references/reviewer-agents.md`) covering contract, trigger\n  semantics,\
   \ approval policy, sandbox behavior, decision contract, and\n  troubleshooting.\n\
   \n- Include full JSON decision-envelope examples in docs for all v1 decisions\n\
   \  (`approve`, `request_changes`, `warning`) so behavior is unambiguous:\n\n  -\

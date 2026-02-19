@@ -95,7 +95,7 @@ acceptance:
 - New human-facing reviewer authoring doc exists under `docs/principles/` and explains
   how to create reviewers, use `$responseformat`, and migrate existing prompts.
 - '`README.md` reviewer section links to the new human reviewer authoring doc.'
-- '`docs/references/spec-writing-llms.md` includes explicit guidance to assess fitness-function
+- '`docs/references/spec-writing.md` includes explicit guidance to assess fitness-function
   impact for each new spec and record either required changes or a justified no-change
   decision.'
 - Regression tests cover runtime injection/failure, validator placeholder enforcement,

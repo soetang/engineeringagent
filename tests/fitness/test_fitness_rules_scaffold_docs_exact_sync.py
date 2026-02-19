@@ -49,7 +49,7 @@ def _write_policy(project_root: Path, *, docs_path: str) -> None:
                 "exact_sync": [
                     {
                         "docs_path": docs_path,
-                        "template_name": "reference.spec-writing-llms.md",
+                        "template_name": "reference.spec-writing.md",
                     }
                 ],
             },
@@ -77,15 +77,15 @@ def test_exact_sync_checker_fails_when_docs_and_template_differ(
     repo_root: Path,
 ) -> None:
     """Fail with deterministic diagnostics when configured pairs drift."""
-    _write_policy(tmp_path, docs_path="references/spec-writing-llms.md")
+    _write_policy(tmp_path, docs_path="references/spec-writing.md")
     _write_docs_file(
         tmp_path,
-        relative_path="docs/references/spec-writing-llms.md",
+        relative_path="docs/references/spec-writing.md",
         content="canonical\n",
     )
     _write_template_file(
         tmp_path,
-        name="reference.spec-writing-llms.md",
+        name="reference.spec-writing.md",
         content="template\n",
     )
 
@@ -97,8 +97,8 @@ def test_exact_sync_checker_fails_when_docs_and_template_differ(
     assert result["status"] == "fail"
     assert violations == sorted(violations)
     assert any(
-        "docs/references/spec-writing-llms.md" in violation
-        and "src/engineeringagent/scaffold_templates/reference.spec-writing-llms.md"
+        "docs/references/spec-writing.md" in violation
+        and "src/engineeringagent/scaffold_templates/reference.spec-writing.md"
         in violation
         for violation in violations
     )
@@ -110,15 +110,15 @@ def test_exact_sync_checker_passes_when_docs_and_template_match(
 ) -> None:
     """Pass when configured docs and templates are byte-for-byte identical."""
     content = "same bytes\n"
-    _write_policy(tmp_path, docs_path="references/spec-writing-llms.md")
+    _write_policy(tmp_path, docs_path="references/spec-writing.md")
     _write_docs_file(
         tmp_path,
-        relative_path="docs/references/spec-writing-llms.md",
+        relative_path="docs/references/spec-writing.md",
         content=content,
     )
     _write_template_file(
         tmp_path,
-        name="reference.spec-writing-llms.md",
+        name="reference.spec-writing.md",
         content=content,
     )
 
@@ -134,10 +134,10 @@ def test_exact_sync_checker_fails_when_configured_docs_file_is_missing(
     repo_root: Path,
 ) -> None:
     """Fail when the policy points at missing docs/template paths."""
-    _write_policy(tmp_path, docs_path="references/spec-writing-llms.md")
+    _write_policy(tmp_path, docs_path="references/spec-writing.md")
     _write_template_file(
         tmp_path,
-        name="reference.spec-writing-llms.md",
+        name="reference.spec-writing.md",
         content="ok\n",
     )
 

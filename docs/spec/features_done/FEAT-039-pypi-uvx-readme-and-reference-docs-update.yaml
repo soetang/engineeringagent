@@ -58,7 +58,7 @@ subtasks:
   context: Update relevant files in `docs/references/` so command examples and wording
     consistently distinguish PyPI/uvx package usage from local contributor workflows.
   verification:
-  - python3 -c "from pathlib import Path; p=Path('docs/references/uv-llms.md'); t=p.read_text(encoding='utf-8');
+  - python3 -c "from pathlib import Path; p=Path('docs/references/uv-workflow.md'); t=p.read_text(encoding='utf-8');
     assert 'uvx engineeringagent' in t; assert '--from .' in t; print('ok')"
 - id: ST-004
   title: Run docs formatting and spec validation checks
@@ -66,6 +66,6 @@ subtasks:
   context: Validate formatting and spec integrity for the documentation update using
     the requested lightweight verification level.
   verification:
-  - uv run mdformat --check README.md docs/references/uv-llms.md
+  - uv run mdformat --check README.md docs/references/uv-workflow.md
   - uvx --from . engineeringagent validate
 updated_at: '2026-02-14T09:33:11Z'

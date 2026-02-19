@@ -209,8 +209,8 @@ rules:
   - rule_id: architecture.docs-allowlist-policy
     name: Docs allowlist policy
     summary: Require each docs_root markdown file to be listed in exactly one policy list.
-    rationale: Keeps docs additions explicit and reviewable by classifying each file as human-facing or agent-facing.
-    remediation: Add every docs markdown file to exactly one of human_docs or agent_docs in harness/scaffold_policy.yaml.
+    rationale: Keeps docs additions explicit and reviewable by classifying each file as user-facing or contributor-facing.
+    remediation: Add every docs markdown file to exactly one of user_docs or contributor_docs in harness/scaffold_policy.yaml.
     scope: docs_root markdown (*.md) excluding docs_root/spec/**
     severity: error
     side_effect_free: true

@@ -186,14 +186,14 @@ Any temporary OpenCode configuration should be done via `.opencode/agents/*.md`.
 
 - `README.md`: first-run, for you the developer.
 - [Harness Engineering Principles](docs/principles/harness-engineering-principles.md): deeper for you the developer.
-- `AGENTS.md` and `docs/references/*-llms.md`: agent execution rules and deterministic procedures.
+- `AGENTS.md` and `docs/references/*.md`: agent execution rules and deterministic procedures.
 
 ## Reviewer agents (optional)
 
 - Reviewer agents are a harness-managed complement to deterministic checks.
 - Reviewer checks are declared in `harness/checks.yaml` and reference prompts under `harness/reviewers/prompts/`.
-- For setup and migration guidance, see [Reviewer authoring guide](docs/principles/reviewer-authoring-guide.md).
-- For full contract, policy semantics, decision-envelope examples, and troubleshooting, see [Reviewer agents reference](docs/references/reviewer-agents-llms.md).
+- For setup and migration guidance, see [Reviewer authoring guide](docs/references/reviewer-authoring-guide.md).
+- For full contract, policy semantics, decision-envelope examples, and troubleshooting, see [Reviewer agents reference](docs/references/reviewer-agents.md).
 
 ## Core files to know
 
@@ -211,9 +211,9 @@ Any temporary OpenCode configuration should be done via `.opencode/agents/*.md`.
 
 ## Go deeper
 
-- [CLI workflow details](docs/references/uv-llms.md)
+- [CLI workflow details](docs/references/uv-workflow.md)
 - Agent execution map (scaffolded by init): see `AGENTS.md` (repo root)
-- [Docs architecture for agents](docs/references/docs-architecture-llms.md)
+- [Docs architecture for agents](docs/references/docs-architecture.md)
 
 ## Curated external context
 

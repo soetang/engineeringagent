@@ -1,28 +1,37 @@
 contract_version: "1.0"
 docs_root: docs
-human_docs:
+contributor_docs:
   - docs/fitness-functions/README.md
   - docs/fitness-functions/architecture.md
   - docs/fitness-functions/rules.md
+user_docs:
   - docs/principles/harness-engineering-principles.md
-  - docs/principles/quality-check-playbook.md
-  - docs/principles/reviewer-authoring-guide.md
-agent_docs:
-  - docs/references/docs-architecture-llms.md
-  - docs/references/python-uv-ruff-llms.md
-  - docs/references/retry-feedback-llms.md
-  - docs/references/reviewer-agents-llms.md
-  - docs/references/spec-writing-llms.md
-  - docs/references/uv-llms.md
-  - docs/references/workflow-llms.md
+  - docs/references/docs-architecture.md
+  - docs/references/python-uv-ruff.md
+  - docs/references/quality-check-playbook.md
+  - docs/references/retry-feedback.md
+  - docs/references/reviewer-authoring-guide.md
+  - docs/references/reviewer-agents.md
+  - docs/references/spec-writing.md
+  - docs/references/uv-workflow.md
+  - docs/references/workflow.md
 scaffold_docs:
-  - docs/references/docs-architecture-llms.md
-  - docs/references/workflow-llms.md
-  - docs/references/spec-writing-llms.md
+  - docs/references/docs-architecture.md
+  - docs/references/workflow.md
+  - docs/references/spec-writing.md
+  - docs/references/quality-check-playbook.md
+  - docs/references/reviewer-authoring-guide.md
+  - docs/principles/harness-engineering-principles.md
 exact_sync:
-  - docs_path: docs/references/docs-architecture-llms.md
-    template_name: reference.docs-architecture-llms.md
-  - docs_path: docs/references/workflow-llms.md
-    template_name: reference.workflow-llms.md
-  - docs_path: docs/references/spec-writing-llms.md
-    template_name: reference.spec-writing-llms.md
+  - docs_path: docs/references/docs-architecture.md
+    template_name: reference.docs-architecture.md
+  - docs_path: docs/references/workflow.md
+    template_name: reference.workflow.md
+  - docs_path: docs/references/spec-writing.md
+    template_name: reference.spec-writing.md
+  - docs_path: docs/references/quality-check-playbook.md
+    template_name: reference.quality-check-playbook.md
+  - docs_path: docs/references/reviewer-authoring-guide.md
+    template_name: reference.reviewer-authoring-guide.md
+  - docs_path: docs/principles/harness-engineering-principles.md
+    template_name: principle.harness-engineering-principles.md

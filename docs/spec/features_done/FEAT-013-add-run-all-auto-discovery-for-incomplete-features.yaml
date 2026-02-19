@@ -104,7 +104,7 @@ subtasks:
   verification:
   - python3 -c "from pathlib import Path; t=Path('README.md').read_text(encoding='utf-8').lower();
     assert '--all' in t and 'snapshot' in t and 'blocked' in t; print('ok')"
-  - python3 -c "from pathlib import Path; t=Path('docs/references/uv-llms.md').read_text(encoding='utf-8').lower();
+  - python3 -c "from pathlib import Path; t=Path('docs/references/uv-workflow.md').read_text(encoding='utf-8').lower();
     assert '--all' in t and 'run' in t; print('ok')"
 - id: ST-006
   title: Run targeted regression suite for new run mode

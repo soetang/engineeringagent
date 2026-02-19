@@ -102,7 +102,7 @@ subtasks:
 - id: ST-005
   title: Align uv-llms docs with --skip-implement behavior
   status: done
-  context: Update docs/references/uv-llms.md examples and guidance to match gates-only
+  context: Update docs/references/uv-workflow.md examples and guidance to match gates-only
     runtime behavior (no silent looping/retries when gates pass).
   verification:
   - uv run pytest -q tests/test_reviewer_reference_docs.py
@@ -139,5 +139,5 @@ subtasks:
   notes:
   - 'Fixes reported failure: "Error: File README.md is not formatted."'
   verification:
-  - uv run mdformat --check README.md AGENTS.md docs/references/docs-architecture-llms.md
+  - uv run mdformat --check README.md AGENTS.md docs/references/docs-architecture.md
 updated_at: '2026-02-15T21:53:41Z'

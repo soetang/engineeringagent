@@ -131,7 +131,7 @@ subtasks:
 
     with `engineeringagent gates run` and/or `engineeringagent run --dry-run`.
 
-    Known active files (non-archived) include `README.md` and `docs/references/uv-llms.md`.
+    Known active files (non-archived) include `README.md` and `docs/references/uv-workflow.md`.
 
     '
   verification:

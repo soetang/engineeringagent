@@ -134,7 +134,7 @@ def test_evaluate_cached_reviewer_approval_invalidates_when_on_change_matches() 
         reviewer_id="doc_review",
         reviewer={"trigger": {"on_change": ["docs/**/*.md"]}},
         changed_paths=ChangedPathsResult(
-            paths=("docs/references/workflow-llms.md",),
+            paths=("docs/references/workflow.md",),
             run_all=False,
             reason=None,
         ),

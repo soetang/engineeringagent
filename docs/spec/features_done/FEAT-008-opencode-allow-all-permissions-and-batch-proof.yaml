@@ -56,7 +56,7 @@ subtasks:
     attempts: 1
     notes:
       - "Wired opencode_permission_probe into harness/gates.yaml loop_fast profile."
-      - "Updated README and docs/references/uv-llms.md with required troubleshooting evidence commands."
+      - "Updated README and docs/references/uv-workflow.md with required troubleshooting evidence commands."
   - id: ST-004
     title: Add integration coverage for permission-failure signals
     status: done
