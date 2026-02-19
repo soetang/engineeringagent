@@ -40,11 +40,6 @@ def test_run_gate_phase_fails_fast_when_checks_yaml_missing_for_run_all(
             run_all=True,
             reason=None,
         ),
-        run_shell_command=lambda *_args, **_kwargs: SimpleNamespace(
-            returncode=0,
-            stdout="",
-            stderr="",
-        ),
     )
 
     outcome = run_gate_phase(
@@ -92,7 +87,6 @@ def test_run_gate_phase_reports_load_error_when_checks_document_raises(
             run_all=True,
             reason=None,
         ),
-        run_shell_command=lambda *_args, **_kwargs: None,
     )
 
     outcome = run_gate_phase(
@@ -206,7 +200,7 @@ def test_run_gate_phase_emits_command_failure_retry_feedback_contract(
                 "checks:",
                 "  smoke:",
                 "    type: command",
-                "    command: echo boom",
+                "    command: python -c 'raise SystemExit(1)'",
                 "",
             ]
         )
@@ -228,11 +222,6 @@ def test_run_gate_phase_emits_command_failure_retry_feedback_contract(
             run_all=True,
             reason=None,
         ),
-        run_shell_command=lambda _root, command: SimpleNamespace(
-            returncode=2,
-            stdout="",
-            stderr=f"expected failure for command={command}",
-        ),
     )
 
     outcome = run_gate_phase(
@@ -251,7 +240,7 @@ def test_run_gate_phase_emits_command_failure_retry_feedback_contract(
     assert envelope.kind == "command_failure"
     assert envelope.phase == "gates"
     assert envelope.gate == "smoke"
-    assert envelope.command == "echo boom"
+    assert envelope.command == "python -c 'raise SystemExit(1)'"
     assert envelope.precommit is False
     assert envelope.rerun.cwd == "repo_root"
 
@@ -366,11 +355,6 @@ def test_run_gate_phase_emits_fitness_failure_retry_feedback_contract(
             paths=(),
             run_all=True,
             reason=None,
-        ),
-        run_shell_command=lambda *_args, **_kwargs: SimpleNamespace(
-            returncode=0,
-            stdout="",
-            stderr="",
         ),
     )
 

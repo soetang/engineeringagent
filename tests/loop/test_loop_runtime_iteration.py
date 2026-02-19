@@ -102,7 +102,6 @@ def test_iteration_pipeline_carries_passed_reviewer_feedback_to_continue(
                     run_all=True,
                     reason=None,
                 ),
-                run_shell_command=lambda *_args, **_kwargs: None,
             ),
             run_verification_phase=(
                 lambda *_args, **_kwargs: VerificationPhaseOutcome(
@@ -272,7 +271,6 @@ def test_iteration_pipeline_archives_before_running_done_transition_verification
                     run_all=True,
                     reason=None,
                 ),
-                run_shell_command=lambda *_args, **_kwargs: None,
             ),
             run_verification_phase=_run_verification_phase,
             verification_phase_dependencies=VerificationPhaseDependencies(
@@ -407,7 +405,6 @@ def test_iteration_pipeline_collects_changed_paths_once_per_iteration(
             gate_phase_dependencies=GatePhaseDependencies(
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
                 collect_changed_paths=_collect_changed_paths,
-                run_shell_command=lambda *_args, **_kwargs: None,
             ),
             run_verification_phase=(
                 lambda *_args, **_kwargs: VerificationPhaseOutcome(
@@ -542,7 +539,6 @@ def test_iteration_pipeline_records_phase_timings(
                     run_all=True,
                     reason=None,
                 ),
-                run_shell_command=lambda *_args, **_kwargs: None,
             ),
             run_verification_phase=(
                 lambda *_args, **_kwargs: VerificationPhaseOutcome(

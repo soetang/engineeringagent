@@ -1,16 +1,21 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
+from typing import Any, cast
 
 import pytest
 
 from pydantic import BaseModel
 
+from engineeringagent.changed_paths import ChangedPathsResult
 from engineeringagent.checks import run_checks
 from engineeringagent.checks.api import (
     ChecksRunResult,
     _GroupRunResult,
+    _RunChecksRequest,
     _call_collect_changed_paths,
+    _resolve_changed_paths,
     run_checks as run_checks_impl,
 )
 from engineeringagent.specs import HarnessCheckPhase
@@ -131,6 +136,47 @@ def test_call_collect_changed_paths_does_not_swallow_internal_type_errors(
             base="main",
             head=None,
         )
+
+
+def test_resolve_changed_paths_uses_request_collector_with_base_head(
+    tmp_path: Path,
+) -> None:
+    calls: list[tuple[Path, str | None, str | None]] = []
+
+    def _collector(
+        project_root: Path,
+        *,
+        base: str | None = None,
+        head: str | None = None,
+    ) -> object:
+        calls.append((project_root, base, head))
+        return ChangedPathsResult(
+            paths=("src/example.py",),
+            run_all=False,
+            reason=None,
+        )
+
+    request = _RunChecksRequest(
+        phase=HarnessCheckPhase.ITERATION_END,
+        ordered_groups=("commands",),
+        check_id=None,
+        feature_path=None,
+        verbose_output=False,
+        base="main",
+        head="feature",
+        run_agent_fn=None,
+        prior_feedback=None,
+        schema_only=False,
+        collect_changed_paths_fn=_collector,
+    )
+
+    result = _resolve_changed_paths(tmp_path, request)
+    assert result == ChangedPathsResult(
+        paths=("src/example.py",),
+        run_all=False,
+        reason=None,
+    )
+    assert calls == [(tmp_path, "main", "feature")]
 
 
 def test_run_checks_check_id_filters_to_single_check(tmp_path: Path) -> None:
@@ -406,3 +452,56 @@ def test_run_checks_accepts_harness_phase_enum(tmp_path: Path) -> None:
         phase=HarnessCheckPhase.ITERATION_END,
     )
     assert result.ok
+
+
+def test_run_checks_rejects_run_shell_command_kwarg(tmp_path: Path) -> None:
+    untyped_run_checks = cast(Any, run_checks)
+    with pytest.raises(
+        TypeError, match="unexpected keyword argument 'run_shell_command'"
+    ):
+        untyped_run_checks(
+            tmp_path,
+            phase="iteration_end",
+            run_shell_command=lambda _root, _command: SimpleNamespace(returncode=0),
+        )
+
+
+def test_run_checks_exposes_structured_command_invocations(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _write_checks_yaml(
+        tmp_path,
+        "\n".join(
+            [
+                'contract_version: "1.0"',
+                "checks:",
+                "  smoke:",
+                "    type: command",
+                "    command: echo hi",
+                "",
+            ]
+        ),
+    )
+
+    def _run_shell_command(_root: Path, _command: str) -> object:
+        return SimpleNamespace(returncode=0, stdout="hi\n", stderr="")
+
+    monkeypatch.setattr(
+        "engineeringagent.checks.api.run_shell_command",
+        _run_shell_command,
+        raising=True,
+    )
+
+    result = run_checks(
+        tmp_path,
+        phase="iteration_end",
+        checks=["commands"],
+    )
+    assert result.ok
+    assert len(result.command_invocations) == 1
+    invocation = result.command_invocations[0]
+    assert invocation.check_id == "smoke"
+    assert invocation.command == "echo hi"
+    assert invocation.returncode == 0
+    assert invocation.duration_ms >= 0

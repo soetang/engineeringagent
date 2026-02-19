@@ -83,7 +83,7 @@ def test_run_planned_command_checks_failure_output_and_verbose(
     def _run_shell_command(_root: Path, _command: str) -> object:
         return SimpleNamespace(returncode=2, stdout="out\n", stderr="err\n")
 
-    ok, failed, output = run_planned_command_checks(
+    result = run_planned_command_checks(
         RunPlannedCommandChecksRequest(
             project_root=tmp_path,
             doc=doc,
@@ -93,12 +93,64 @@ def test_run_planned_command_checks_failure_output_and_verbose(
         ),
         run_shell_command=_run_shell_command,
     )
-    assert not ok
-    assert failed == "smoke"
-    assert "[check:smoke] command=do the thing" in output
-    assert "[check:smoke] returncode=2" in output
-    assert "out" in output
-    assert "err" in output
+    assert not result.ok
+    assert result.failed_check_id == "smoke"
+    assert "[check:smoke] command=do the thing" in result.output
+    assert "[check:smoke] returncode=2" in result.output
+    assert "out" in result.output
+    assert "err" in result.output
+    assert len(result.command_invocations) == 1
+    invocation = result.command_invocations[0]
+    assert invocation.check_id == "smoke"
+    assert invocation.command == "do the thing"
+    assert invocation.returncode == 2
+    assert invocation.duration_ms >= 0
+    assert invocation.finished_monotonic_ns >= invocation.started_monotonic_ns
 
     captured = capsys.readouterr()
     assert captured.out == "out\nerr\n"
+
+
+def test_run_planned_command_checks_snapshots_returncode_once(tmp_path: Path) -> None:
+    doc = _doc(
+        {
+            "contract_version": "1.0",
+            "checks": {
+                "smoke": {
+                    "type": "command",
+                    "command": "do the thing",
+                }
+            },
+        }
+    )
+
+    class _FlakyProc:
+        def __init__(self) -> None:
+            self._returncode_reads = 0
+            self.stdout = ""
+            self.stderr = ""
+
+        @property
+        def returncode(self) -> int:
+            self._returncode_reads += 1
+            if self._returncode_reads == 1:
+                return 0
+            return 7
+
+    def _run_shell_command(_root: Path, _command: str) -> object:
+        return _FlakyProc()
+
+    result = run_planned_command_checks(
+        RunPlannedCommandChecksRequest(
+            project_root=tmp_path,
+            doc=doc,
+            phase=HarnessCheckPhase.ITERATION_END,
+            changed_paths=ChangedPathsResult(paths=(), run_all=True, reason=None),
+            verbose_output=False,
+        ),
+        run_shell_command=_run_shell_command,
+    )
+
+    assert result.ok
+    assert result.failed_check_id is None
+    assert "[check:smoke] returncode=0" in result.output

@@ -52,6 +52,25 @@ def _payload_get_list_of_dicts(payload: object, key: str) -> list[dict[str, obje
     return [entry for entry in raw if isinstance(entry, dict)]
 
 
+def _append_gate_command_timings(
+    invocations: tuple[Any, ...],
+    command_timings: list[CommandTiming],
+) -> None:
+    for invocation in invocations:
+        started = invocation.started_epoch_sec
+        ended = invocation.ended_epoch_sec
+        command_timings.append(
+            CommandTiming(
+                phase="gates",
+                gate=invocation.check_id,
+                command=invocation.command,
+                started_at=utc_iso_from_epoch_sec(started),
+                ended_at=utc_iso_from_epoch_sec(ended),
+                duration_sec=ended - started,
+            )
+        )
+
+
 class GatePhaseDependencies(BaseModel):
     """Injectable dependencies for the gate phase."""
 
@@ -59,7 +78,6 @@ class GatePhaseDependencies(BaseModel):
 
     restore_archived_feature: Callable[[Path, Path], tuple[bool, str | None]]
     collect_changed_paths: Callable[[Path], ChangedPathsResult]
-    run_shell_command: Callable[[Path, str], Any]
 
 
 class CompletionPhaseDependencies(BaseModel):
@@ -119,66 +137,30 @@ def run_gate_phase(  # noqa: C901
             hook_feedback=None,
         )
 
-    def _extract_failed_command(check_id: str | None, output: str) -> str | None:
-        if not check_id:
-            return None
-        needle = f"[check:{check_id}] command="
-        for line in output.splitlines():
-            if line.startswith(needle):
-                return line[len(needle) :].strip() or None
-        return None
-
     outputs: list[str] = []
     command_timings: list[CommandTiming] = []
     hook_feedback: str | None = None
     failed_gate: str | None = None
 
-    def _extract_executed_command_checks(output: str) -> list[tuple[str, str]]:
-        executed: list[tuple[str, str]] = []
-        for line in output.splitlines():
-            if not line.startswith("[check:"):
-                continue
-            if "] command=" not in line:
-                continue
-            prefix, command = line.split("] command=", 1)
-            check_id = prefix.removeprefix("[check:").strip()
-            if not check_id:
-                continue
-            executed.append((check_id, command.strip()))
-        return executed
+    def _command_for_failed_check(result: ChecksRunResult) -> str | None:
+        if not result.failed_check_id:
+            return None
+        for invocation in reversed(result.command_invocations):
+            if invocation.check_id == result.failed_check_id:
+                command = invocation.command.strip()
+                return command or None
+        return None
 
     def _run_gate_groups(phase: HarnessCheckPhase) -> ChecksRunResult:
-        raw_invocations: list[tuple[str, int, int]] = []
-
-        def _timed_run_shell_command(root: Path, command: str) -> Any:
-            started_epoch_sec = int(time.time())
-            proc = dependencies.run_shell_command(root, command)
-            ended_epoch_sec = max(started_epoch_sec, int(time.time()))
-            raw_invocations.append((command, started_epoch_sec, ended_epoch_sec))
-            return proc
-
         result = run_checks(
             iteration_inputs.project_root,
             phase=phase,
             checks=["commands", "fitness"],
             verbose_output=iteration_inputs.verbose_output,
             collect_changed_paths=dependencies.collect_changed_paths,
-            run_shell_command=_timed_run_shell_command,
         )
 
-        executed = _extract_executed_command_checks(result.output)
-        for idx, (command, started, ended) in enumerate(raw_invocations):
-            gate_id = executed[idx][0] if idx < len(executed) else None
-            command_timings.append(
-                CommandTiming(
-                    phase="gates",
-                    gate=gate_id,
-                    command=command,
-                    started_at=utc_iso_from_epoch_sec(started),
-                    ended_at=utc_iso_from_epoch_sec(ended),
-                    duration_sec=ended - started,
-                )
-            )
+        _append_gate_command_timings(result.command_invocations, command_timings)
         return result
 
     last_result: ChecksRunResult = _run_gate_groups(HarnessCheckPhase.ITERATION_END)
@@ -212,10 +194,7 @@ def run_gate_phase(  # noqa: C901
     if failure_result.failed_group == "commands":
         payload = failure_result.failed_payload
         command = _payload_get_str(payload, "command")
-        command = command or _extract_failed_command(
-            failure_result.failed_check_id,
-            failure_result.output,
-        )
+        command = command or _command_for_failed_check(failure_result)
         hook_feedback = build_command_failure_retry_feedback(
             phase="gates",
             gate=failure_result.failed_check_id,

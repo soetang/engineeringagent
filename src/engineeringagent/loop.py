@@ -312,7 +312,6 @@ def _run_feature_iteration_with_inputs(
             gate_phase_dependencies=GatePhaseDependencies(
                 restore_archived_feature=_restore_archived_feature,
                 collect_changed_paths=collect_changed_paths,
-                run_shell_command=run_shell_command,
             ),
             run_verification_phase=run_verification_phase,
             verification_phase_dependencies=VerificationPhaseDependencies(

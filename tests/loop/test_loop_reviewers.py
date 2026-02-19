@@ -32,7 +32,6 @@ def test_run_gate_phase_is_not_configured_without_checks_yaml(
             run_all=True,
             reason=None,
         ),
-        run_shell_command=lambda *_args, **_kwargs: None,
     )
 
     outcome = run_gate_phase(

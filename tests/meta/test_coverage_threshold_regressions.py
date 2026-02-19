@@ -316,7 +316,7 @@ def test_gate_and_verification_phase_error_paths(tmp_path: Path, capsys: Any) ->
                 "checks:",
                 "  failing:",
                 "    type: command",
-                "    command: echo fail",
+                "    command: python -c 'raise SystemExit(1)'",
                 "",
             ]
         ),
@@ -338,11 +338,6 @@ def test_gate_and_verification_phase_error_paths(tmp_path: Path, capsys: Any) ->
             paths=(),
             run_all=True,
             reason=None,
-        ),
-        run_shell_command=lambda *_args, **_kwargs: SimpleNamespace(
-            returncode=1,
-            stdout="failed\n",
-            stderr="",
         ),
     )
     gate_outcome = run_gate_phase(

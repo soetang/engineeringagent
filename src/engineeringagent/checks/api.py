@@ -10,6 +10,7 @@ from typing_extensions import Unpack
 
 from engineeringagent.changed_paths import ChangedPathsResult, collect_changed_paths
 from engineeringagent.checks.commands.runtime import (
+    CommandInvocationRecord,
     RunPlannedCommandChecksRequest,
     run_planned_command_checks,
 )
@@ -56,6 +57,11 @@ _DEFAULT_GROUPS = (
     _CHECK_GROUP_COMMANDS,
     _CHECK_GROUP_FITNESS,
 )
+_HARNESS_GROUPS = {
+    _CHECK_GROUP_COMMANDS,
+    _CHECK_GROUP_FITNESS,
+    _CHECK_GROUP_REVIEWERS,
+}
 
 
 class ChecksRunResult(BaseModel):
@@ -73,6 +79,7 @@ class ChecksRunResult(BaseModel):
     failed_check_id: str | None = None
     failed_payload: dict[str, Any] | None = None
     output: str = ""
+    command_invocations: tuple[CommandInvocationRecord, ...] = ()
 
 
 def _failure_result(
@@ -121,7 +128,6 @@ class _RunChecksRequest(BaseModel):
     prior_feedback: str | None
     schema_only: bool
     collect_changed_paths_fn: Callable[..., object] | None
-    run_shell_command_fn: Callable[..., object] | None
 
 
 class _RunChecksKwargs(TypedDict, total=False):
@@ -134,7 +140,6 @@ class _RunChecksKwargs(TypedDict, total=False):
     prior_feedback: str | None
     schema_only: bool
     collect_changed_paths: Callable[..., object] | None
-    run_shell_command: Callable[..., object] | None
 
 
 class _GroupRunResult(BaseModel):
@@ -144,6 +149,7 @@ class _GroupRunResult(BaseModel):
     failed_check_id: str | None
     output: str
     failed_payload: dict[str, Any] | None = None
+    command_invocations: tuple[CommandInvocationRecord, ...] = ()
 
 
 def _normalize_groups(checks: list[str] | None) -> tuple[str, ...]:
@@ -249,6 +255,22 @@ def _load_harness_checks_doc(project_root: Path) -> tuple[Any | None, str | None
     return doc, None
 
 
+def _resolve_changed_paths(
+    project_root: Path,
+    request: _RunChecksRequest,
+) -> ChangedPathsResult:
+    collect_changed_paths_fn = request.collect_changed_paths_fn or collect_changed_paths
+    return cast(
+        ChangedPathsResult,
+        _call_collect_changed_paths(
+            collect_changed_paths_fn,
+            project_root,
+            base=request.base,
+            head=request.head,
+        ),
+    )
+
+
 def _resolve_check_group_for_id(doc: Any, check_id: str) -> str | None:
     check = getattr(doc, "checks", {}).get(check_id)
     if isinstance(check, HarnessCheckCommandDefinition):
@@ -268,12 +290,7 @@ def _filter_doc_to_check_id(doc: Any, check_id: str) -> Any:
 
 
 def _requires_harness_doc(ordered_groups: tuple[str, ...]) -> bool:
-    harness_groups = {
-        _CHECK_GROUP_COMMANDS,
-        _CHECK_GROUP_FITNESS,
-        _CHECK_GROUP_REVIEWERS,
-    }
-    return any(group in harness_groups for group in ordered_groups)
+    return any(group in _HARNESS_GROUPS for group in ordered_groups)
 
 
 def _apply_check_id_selection(
@@ -299,14 +316,11 @@ def _apply_check_id_selection(
             ),
         )
 
-    harness_groups = {
-        _CHECK_GROUP_COMMANDS,
-        _CHECK_GROUP_FITNESS,
-        _CHECK_GROUP_REVIEWERS,
-    }
     resolved_group = _resolve_check_group_for_id(doc, request.check_id)
     if resolved_group is None or resolved_group not in request.ordered_groups:
-        enabled = [group for group in request.ordered_groups if group in harness_groups]
+        enabled = [
+            group for group in request.ordered_groups if group in _HARNESS_GROUPS
+        ]
         output = (
             "unknown check_id for enabled groups: "
             f"check_id={request.check_id} enabled_groups={enabled}"
@@ -348,17 +362,7 @@ def _run_commands_group(
     doc: Any,
     request: _RunChecksRequest,
 ) -> _GroupRunResult:
-
-    collect_changed_paths_fn = request.collect_changed_paths_fn or collect_changed_paths
-    changed_paths = cast(
-        ChangedPathsResult,
-        _call_collect_changed_paths(
-            collect_changed_paths_fn,
-            project_root,
-            base=request.base,
-            head=request.head,
-        ),
-    )
+    changed_paths = _resolve_changed_paths(project_root, request)
     run_request = RunPlannedCommandChecksRequest(
         project_root=project_root,
         doc=doc,
@@ -366,25 +370,25 @@ def _run_commands_group(
         changed_paths=changed_paths,
         verbose_output=request.verbose_output,
     )
-    run_shell_command_fn = request.run_shell_command_fn or run_shell_command
-    ok, failed_id, output = run_planned_command_checks(
+    run_result = run_planned_command_checks(
         run_request,
-        run_shell_command=run_shell_command_fn,
+        run_shell_command=run_shell_command,
     )
     failed_payload = None
-    if not ok:
-        command = _command_for_check_id(doc, failed_id)
+    if not run_result.ok:
+        command = _command_for_check_id(doc, run_result.failed_check_id)
         failed_payload = {
             "kind": "command_failure",
-            "check_id": failed_id,
+            "check_id": run_result.failed_check_id,
             "command": command,
         }
 
     return _GroupRunResult(
-        ok=ok,
-        failed_check_id=failed_id,
-        output=output,
+        ok=run_result.ok,
+        failed_check_id=run_result.failed_check_id,
+        output=run_result.output,
         failed_payload=failed_payload,
+        command_invocations=run_result.command_invocations,
     )
 
 
@@ -393,17 +397,7 @@ def _run_fitness_group(
     doc: Any,
     request: _RunChecksRequest,
 ) -> _GroupRunResult:
-
-    collect_changed_paths_fn = request.collect_changed_paths_fn or collect_changed_paths
-    changed_paths = cast(
-        ChangedPathsResult,
-        _call_collect_changed_paths(
-            collect_changed_paths_fn,
-            project_root,
-            base=request.base,
-            head=request.head,
-        ),
-    )
+    changed_paths = _resolve_changed_paths(project_root, request)
 
     run_request = RunPlannedFitnessChecksRequest(
         project_root=project_root,
@@ -425,7 +419,6 @@ def _run_reviewers_group(
     doc: Any,
     request: _RunChecksRequest,
 ) -> _GroupRunResult:
-
     if request.feature_path is None:
         return _GroupRunResult(
             ok=False,
@@ -460,16 +453,7 @@ def _run_reviewers_group(
             output="reviewers config error: feature spec is missing required id",
         )
 
-    collect_changed_paths_fn = request.collect_changed_paths_fn or collect_changed_paths
-    changed_paths = cast(
-        ChangedPathsResult,
-        _call_collect_changed_paths(
-            collect_changed_paths_fn,
-            project_root,
-            base=request.base,
-            head=request.head,
-        ),
-    )
+    changed_paths = _resolve_changed_paths(project_root, request)
     run_request = RunPlannedReviewerChecksRequest(
         project_root=project_root,
         doc=doc,
@@ -496,6 +480,7 @@ def _execute_groups(
     request: _RunChecksRequest,
 ) -> ChecksRunResult:
     outputs: list[str] = []
+    command_invocations: list[CommandInvocationRecord] = []
     for group in request.ordered_groups:
         if group == _CHECK_GROUP_VALIDATE:
             group_result = _run_validate_group(
@@ -513,6 +498,7 @@ def _execute_groups(
 
         if group_result.output:
             outputs.append(group_result.output)
+        command_invocations.extend(group_result.command_invocations)
         if not group_result.ok:
             return ChecksRunResult(
                 ok=False,
@@ -520,9 +506,14 @@ def _execute_groups(
                 failed_check_id=group_result.failed_check_id,
                 failed_payload=group_result.failed_payload,
                 output="\n".join(outputs).strip(),
+                command_invocations=tuple(command_invocations),
             )
 
-    return ChecksRunResult(ok=True, output="\n".join(outputs).strip())
+    return ChecksRunResult(
+        ok=True,
+        output="\n".join(outputs).strip(),
+        command_invocations=tuple(command_invocations),
+    )
 
 
 def run_checks(
@@ -564,7 +555,6 @@ def run_checks(
         "prior_feedback",
         "schema_only",
         "collect_changed_paths",
-        "run_shell_command",
     }
     unexpected = sorted(set(kwargs) - allowed_kwargs)
     if unexpected:
@@ -582,7 +572,6 @@ def run_checks(
     prior_feedback = kwargs.get("prior_feedback")
     schema_only = bool(kwargs.get("schema_only", False))
     collect_changed_paths_fn = kwargs.get("collect_changed_paths")
-    run_shell_command_fn = kwargs.get("run_shell_command")
 
     if schema_only and _CHECK_GROUP_VALIDATE not in ordered_groups:
         raise ValueError("schema_only requires the validate checks group")
@@ -602,7 +591,6 @@ def run_checks(
         prior_feedback=str(prior_feedback) if prior_feedback is not None else None,
         schema_only=schema_only,
         collect_changed_paths_fn=collect_changed_paths_fn,
-        run_shell_command_fn=run_shell_command_fn,
     )
 
     doc = None

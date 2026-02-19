@@ -7,7 +7,9 @@ from typing import Any
 from pydantic import BaseModel
 
 from engineeringagent.changed_paths import ChangedPathsResult
+from engineeringagent.checks import ChecksRunResult
 from engineeringagent.checks.commands.runtime import (
+    CommandInvocationRecord,
     PlannedCheck as CommandPlannedCheck,
     RunPlannedCommandChecksRequest,
     iter_planned_command_check_commands,
@@ -91,13 +93,6 @@ def test_run_gate_phase_uses_checks_yaml_for_run_all_iteration_end(
             run_all=True,
             reason=None,
         ),
-        run_shell_command=lambda _root, command: __import__("subprocess").run(
-            command,
-            shell=True,
-            cwd=_root,
-            capture_output=True,
-            text=True,
-        ),
     )
 
     outcome = run_gate_phase(
@@ -147,11 +142,6 @@ def test_run_gate_phase_skips_on_change_command_checks_when_no_match(
             run_all=False,
             reason=None,
         ),
-        run_shell_command=lambda _root, command: SimpleNamespace(
-            returncode=1,
-            stdout="unexpected",
-            stderr="",
-        ),
     )
 
     outcome = run_gate_phase(
@@ -196,11 +186,82 @@ def test_run_gate_phase_runs_feature_done_checks_only_when_archived(
         verbose_output=False,
     )
 
-    calls: list[str] = []
+    deps = GatePhaseDependencies(
+        restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+        collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
+            paths=(),
+            run_all=True,
+            reason=None,
+        ),
+    )
 
-    def _run(_root: Path, command: str) -> Any:
-        calls.append(command)
-        return SimpleNamespace(returncode=0, stdout="", stderr="")
+    iteration_outcome = run_gate_phase(
+        inputs,
+        archived_in_iteration=False,
+        archived_path=None,
+        dependencies=deps,
+    )
+    assert "[check:iter] command=echo iter" in iteration_outcome.gate_output
+    assert "[check:done] command=echo done" not in iteration_outcome.gate_output
+
+    feature_done_outcome = run_gate_phase(
+        inputs,
+        archived_in_iteration=True,
+        archived_path=tmp_path / "docs" / "spec" / "features_done" / "FEAT-001.yaml",
+        dependencies=deps,
+    )
+    assert "[check:iter] command=echo iter" in feature_done_outcome.gate_output
+    assert "[check:done] command=echo done" in feature_done_outcome.gate_output
+
+
+def test_run_gate_phase_uses_structured_invocations_for_gate_timings(
+    tmp_path: Path,
+    monkeypatch: Any,
+) -> None:
+    _write_checks_yaml(
+        tmp_path,
+        "\n".join(
+            [
+                'contract_version: "1.0"',
+                "checks:",
+                "  smoke:",
+                "    type: command",
+                "    command: echo smoke",
+                "",
+            ]
+        ),
+    )
+
+    inputs = FeatureIterationInputs(
+        project_root=tmp_path,
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        run_all=True,
+        attempt=1,
+        hook_feedback=None,
+        verbose_output=False,
+    )
+
+    def _fake_run_checks(*_args: Any, **_kwargs: Any) -> ChecksRunResult:
+        return ChecksRunResult(
+            ok=True,
+            output="command ran without legacy check prefix",
+            command_invocations=(
+                CommandInvocationRecord(
+                    check_id="smoke",
+                    command="echo smoke",
+                    returncode=0,
+                    started_epoch_sec=10,
+                    ended_epoch_sec=13,
+                    started_monotonic_ns=100,
+                    finished_monotonic_ns=200,
+                    duration_ms=3.0,
+                ),
+            ),
+        )
+
+    monkeypatch.setattr(
+        "engineeringagent.loop_runtime.phases.run_checks", _fake_run_checks
+    )
 
     deps = GatePhaseDependencies(
         restore_archived_feature=lambda *_args, **_kwargs: (True, None),
@@ -209,25 +270,22 @@ def test_run_gate_phase_runs_feature_done_checks_only_when_archived(
             run_all=True,
             reason=None,
         ),
-        run_shell_command=_run,
     )
 
-    run_gate_phase(
+    outcome = run_gate_phase(
         inputs,
         archived_in_iteration=False,
         archived_path=None,
         dependencies=deps,
     )
-    assert calls == ["echo iter"]
 
-    calls.clear()
-    run_gate_phase(
-        inputs,
-        archived_in_iteration=True,
-        archived_path=tmp_path / "docs" / "spec" / "features_done" / "FEAT-001.yaml",
-        dependencies=deps,
-    )
-    assert calls == ["echo iter", "echo done"]
+    assert outcome.result == "passed"
+    assert len(outcome.command_timings) == 1
+    assert outcome.command_timings[0].gate == "smoke"
+    assert outcome.command_timings[0].command == "echo smoke"
+    assert outcome.command_timings[0].started_at == "1970-01-01T00:00:10Z"
+    assert outcome.command_timings[0].ended_at == "1970-01-01T00:00:13Z"
+    assert outcome.command_timings[0].duration_sec == 3
 
 
 def test_run_gate_phase_runs_fitness_checks_scope_all(
@@ -286,11 +344,6 @@ def test_run_gate_phase_runs_fitness_checks_scope_all(
             paths=(),
             run_all=True,
             reason=None,
-        ),
-        run_shell_command=lambda *_args, **_kwargs: SimpleNamespace(
-            returncode=1,
-            stdout="unexpected",
-            stderr="",
         ),
     )
 
@@ -362,11 +415,6 @@ def test_run_gate_phase_fails_when_fitness_check_fails(
             paths=(),
             run_all=True,
             reason=None,
-        ),
-        run_shell_command=lambda *_args, **_kwargs: SimpleNamespace(
-            returncode=0,
-            stdout="",
-            stderr="",
         ),
     )
 
@@ -1009,11 +1057,11 @@ def test_run_planned_command_checks_fails_and_emits_verbose_output(
         changed_paths=ChangedPathsResult(paths=(), run_all=True, reason=None),
         verbose_output=True,
     )
-    ok, failed, output = run_planned_command_checks(request, run_shell_command=_run)
+    result = run_planned_command_checks(request, run_shell_command=_run)
 
-    assert ok is False
-    assert failed == "smoke"
-    assert "[check:smoke] returncode=7" in output
+    assert result.ok is False
+    assert result.failed_check_id == "smoke"
+    assert "[check:smoke] returncode=7" in result.output
     captured = capsys.readouterr().out
     assert "stdout" in captured
     assert "stderr" in captured
