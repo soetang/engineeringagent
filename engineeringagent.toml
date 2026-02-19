@@ -8,7 +8,4 @@ opencode-real-smoke = false
 opencode-integration = true
 
 [agents]
-backend = "codex"
-
-[agents.codex]
-profile = "engineeringagent"
+backend = "opencode"
