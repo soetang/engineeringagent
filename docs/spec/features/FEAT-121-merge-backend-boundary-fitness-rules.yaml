@@ -1,0 +1,62 @@
+id: FEAT-121
+title: Merge backend boundary fitness rules and make backend literals policy-driven
+type: feature
+expected_commit_subject: 'feat: merge backend boundary fitness rules'
+status: backlog
+priority: high
+objective: "Remove overlapping backend-boundary enforcement by consolidating backend import boundary checks into one canonical rule, and make backend literal-locality enforcement backend-policy-driven so codex and future backends are enforced without hardcoded tokens."
+context: "The repository currently enforces backend boundaries with overlapping rules: `architecture.agents-opencode-boundary`, `architecture.agents-backends-boundary`, and `architecture.backend-literal-locality-budget`. For OpenCode imports outside `agents`, this creates duplicate failures and noisy remediation. Literal-locality enforcement is also OpenCode-specific despite backend-generic intent in rule metadata.\n\nThis feature consolidates structural boundary enforcement around `architecture.agents-backends-boundary`, externalizes backend token policy to config, and updates docs/tests to match the merged architecture contract."
+constraints:
+- "Precondition: FEAT-120 (manifest-native fitness `config_file`) is complete and available for policy-backed rule configuration."
+- Keep `architecture.agents-backends-boundary` as the canonical structural import-boundary rule id.
+- Retire `architecture.agents-opencode-boundary` from active manifest/catalog once equivalent or better coverage is represented in merged policy-backed checks.
+- Preserve high-signal OpenCode migration protections only if still needed; if retained, isolate them as migration-specific checks with explicit scope and deterministic sunset criteria.
+- Convert backend literal-locality token enforcement to policy-driven configuration under `harness/fitness-functions/policies/` with support for multiple backends (at least opencode and codex).
+- Avoid duplicate reporting for the same backend-boundary fault class; one structural boundary violation should map to one boundary rule failure.
+- Keep severity for boundary violations as `error`.
+- "Fitness-function impact assessment: this feature intentionally changes active fitness rule inventory and contracts; update manifest, scripts, generated catalog docs, and targeted fitness tests in the same change."
+implementation_notes: "Contract change declaration (required)\n\nSurface: fitness rule inventory (`harness/fitness-functions/rules.yaml`), backend-boundary checker behavior, backend literal-locality checker behavior, generated fitness catalog docs, and tests that assert rule inventory/contracts.\n\nOld behavior:\n- `architecture.agents-opencode-boundary` and `architecture.agents-backends-boundary` both enforce overlapping import boundaries for OpenCode backend imports outside agents.\n- `architecture.backend-literal-locality-budget` is described as backend-generic but token matching is OpenCode-only.\n- Adding a new backend requires code edits for literal tokens instead of policy updates.\n\nNew behavior:\n- `architecture.agents-backends-boundary` is the single structural backend import-boundary rule.\n- OpenCode-specific boundary rule is removed from active manifest and generated catalog.\n- Backend literal-locality rule loads backend tokens from policy config and enforces across configured backends (opencode, codex, future entries).\n- Catalog/docs clearly reflect the merged rule inventory and policy-backed backend literal enforcement.\n\nCompatibility policy:\n- Immediate internal policy migration with deterministic rule-id continuity for the canonical boundary rule (`architecture.agents-backends-boundary`).\n- Removal of `architecture.agents-opencode-boundary` is intentional; docs/tests must be updated atomically.\n\nMigration plan:\n- Introduce/expand backend policy YAML with literal tokens per backend id.\n- Update checker scripts to read policy config and produce deterministic findings.\n- Remove deprecated rule manifest entry/script/tests tied to merged rule.\n- Regenerate `docs/fitness-functions/rules.md` after manifest changes.\n\nOut of scope:\n- Reworking unrelated subprocess or reviewer fitness rules.\n- Changing runtime backend selection behavior outside fitness enforcement."
+acceptance:
+- "`harness/fitness-functions/rules.yaml` contains `architecture.agents-backends-boundary` and no longer contains `architecture.agents-opencode-boundary`."
+- Generated catalog output (`docs/fitness-functions/rules.md`) no longer lists `architecture.agents-opencode-boundary` and documents the consolidated boundary contract.
+- Backend literal-locality enforcement reads tokens from policy configuration and includes codex token coverage in addition to opencode.
+- A codex literal/token violation outside allowed roots fails `architecture.backend-literal-locality-budget` deterministically.
+- A direct backend import outside `src/engineeringagent/agents/**` fails under `architecture.agents-backends-boundary` with one structural boundary diagnostic class.
+- Focused test suite coverage exists for merged rule inventory, policy loading, and codex/opencode literal detection behavior.
+- "`uv run pytest -q tests/fitness` passes."
+- "`uv run engineeringagent checks catalog --format markdown --output docs/fitness-functions/rules.md` runs cleanly."
+- "`uv run engineeringagent validate` passes."
+subtasks:
+- id: ST-001
+  title: Define backend policy schema/content for literal-locality enforcement
+  status: backlog
+  context: "Add policy configuration under `harness/fitness-functions/policies/` for backend token sets keyed by backend id; seed with opencode and codex entries."
+  verification:
+  - uv run pytest -q tests/fitness/test_fitness_rules_backend_literal_locality_budget.py
+- id: ST-002
+  title: Refactor backend literal-locality checker to load policy config
+  status: backlog
+  context: "Replace hardcoded OpenCode token tuple with policy-backed token loading and deterministic validation/error handling."
+  verification:
+  - uv run pytest -q tests/fitness/test_fitness_rules_backend_literal_locality_budget.py tests/fitness/test_fitness_adapters.py
+- id: ST-003
+  title: Consolidate backend boundary rule inventory on agents-backends-boundary
+  status: backlog
+  context: "Remove `architecture.agents-opencode-boundary` from manifest and retire/replace overlapping script/tests while preserving required boundary coverage under `architecture.agents-backends-boundary`."
+  verification:
+  - uv run pytest -q tests/fitness/test_fitness_rules_agents_backends_boundary.py tests/fitness/test_fitness_manifest.py tests/fitness/test_fitness_catalog_generation.py
+- id: ST-004
+  title: Update docs/catalog and remediation text for merged boundary policy
+  status: backlog
+  context: "Regenerate fitness catalog docs and align remediation/rationale wording with consolidated boundary contract and policy-driven literal checks."
+  verification:
+  - uv run engineeringagent checks catalog --format markdown --output docs/fitness-functions/rules.md
+  - uv run pytest -q tests/cli/test_cli_checks_catalog.py tests/fitness/test_fitness_catalog_generation.py
+- id: ST-005
+  title: Run full fitness/spec validation gates for merged policy change
+  status: backlog
+  context: "Run targeted and full validation to ensure rule-inventory changes are stable and no stale rule-id references remain."
+  verification:
+  - uv run pytest -q tests/fitness
+  - uv run engineeringagent validate
+updated_at: '2026-02-19T00:00:00Z'
