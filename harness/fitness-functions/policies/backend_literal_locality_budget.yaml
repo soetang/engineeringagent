@@ -1,0 +1,16 @@
+rule_id: architecture.backend-literal-locality-budget
+allowed_literal_roots:
+  - src/engineeringagent/agents
+  - src/engineeringagent/checks
+backends:
+  codex:
+    tokens:
+      - DEFAULT_CODEX_AGENT
+      - DEFAULT_CODEX_AGENT_MODEL
+  opencode:
+    tokens:
+      - .opencode
+      - DEFAULT_OPENCODE_AGENT
+      - DEFAULT_OPENCODE_AGENT_MODEL
+      - OpenCode
+      - opencode

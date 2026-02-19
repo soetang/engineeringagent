@@ -47,14 +47,23 @@ def test_agents_backends_boundary_fitness_rule_registered() -> None:
     rules = manifest.get("rules")
     assert isinstance(rules, list)
 
-    matching: list[dict[str, object]] = []
-    for rule in rules:
-        if not isinstance(rule, dict):
-            continue
-        if rule.get("rule_id") == "architecture.agents-backends-boundary":
-            matching.append(rule)
+    matching = [
+        rule
+        for rule in rules
+        if isinstance(rule, dict)
+        and rule.get("rule_id") == "architecture.agents-backends-boundary"
+    ]
 
     assert len(matching) == 1
+
+    deprecated_matches = [
+        rule
+        for rule in rules
+        if isinstance(rule, dict)
+        and rule.get("rule_id") == "architecture.agents-opencode-boundary"
+    ]
+
+    assert deprecated_matches == []
 
     command = matching[0].get("command")
     assert isinstance(command, list)

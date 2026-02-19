@@ -7,8 +7,7 @@ This file is generated from active manifest-declared fitness rules.
 | Rule ID | Severity | Adapter | Source | Scope | Config File | Summary |
 | --- | --- | --- | --- | --- | --- | --- |
 | `architecture.agents-backends-boundary` | error | command | custom | `src/engineeringagent` | - | Forbid direct backend package usage outside the agents boundary. |
-| `architecture.agents-opencode-boundary` | error | command | custom | `src/engineeringagent` | - | Forbid direct OpenCode backend usage outside the agents boundary. |
-| `architecture.backend-literal-locality-budget` | error | command | custom | `src/engineeringagent excluding src/engineeringagent/agents/** and src/engineeringagent/checks/**` | - | Enforce a zero-budget backend literal locality boundary outside allowed packages. |
+| `architecture.backend-literal-locality-budget` | error | command | custom | `src/engineeringagent excluding src/engineeringagent/agents/** and src/engineeringagent/checks/**` | `harness/fitness-functions/policies/backend_literal_locality_budget.yaml` | Enforce a zero-budget backend literal locality boundary outside allowed packages. |
 | `architecture.checks-import-surface` | error | command | custom | `src/engineeringagent` | - | Enforce a narrow import surface for engineeringagent.checks. |
 | `architecture.dep-directionality` | error | command | custom | `src/engineeringagent` | - | Enforce core module import direction boundaries. |
 | `architecture.docs-allowlist-policy` | error | command | custom | `docs_root markdown (*.md) excluding docs_root/spec/**` | - | Require each docs_root markdown file to be listed in exactly one policy list. |
@@ -41,16 +40,10 @@ This file is generated from active manifest-declared fitness rules.
 - Rationale: Keeps backend implementations an internal detail behind engineeringagent.agents.run_agent.
 - Remediation: Replace direct engineeringagent.agents.backends imports with engineeringagent.agents.run_agent.
 
-### `architecture.agents-opencode-boundary`
-
-- Name: Agents/OpenCode boundary
-- Side-effect free: `true`
-- Rationale: Keeps OpenCode backend an internal implementation detail behind run_agent.
-- Remediation: Replace direct OpenCode backend usage with engineeringagent.agents.run_agent.
-
 ### `architecture.backend-literal-locality-budget`
 
 - Name: Backend literal locality budget
+- Config file: `harness/fitness-functions/policies/backend_literal_locality_budget.yaml`
 - Side-effect free: `true`
 - Rationale: Keeps backend-coupling tokens localized to backend-owned modules and checks adapters.
 - Remediation: Remove backend-specific literals from core modules or move backend-specific behavior under engineeringagent.agents or engineeringagent.checks.

@@ -58,20 +58,6 @@ rules:
       - python
       - harness/fitness-functions/check_loop_subprocess_boundary.py
     config_file: policies/loop_subprocess_boundary_semgrep_policy.yaml
-  - rule_id: architecture.agents-opencode-boundary
-    name: Agents/OpenCode boundary
-    summary: Forbid direct OpenCode backend usage outside the agents boundary.
-    rationale: Keeps OpenCode backend an internal implementation detail behind run_agent.
-    remediation: Replace direct OpenCode backend usage with engineeringagent.agents.run_agent.
-    scope: src/engineeringagent
-    severity: error
-    side_effect_free: true
-    adapter: command
-    command:
-      - uv
-      - run
-      - python
-      - harness/fitness-functions/check_agents_opencode_boundary.py
   - rule_id: architecture.agents-backends-boundary
     name: Agents/backends boundary
     summary: Forbid direct backend package usage outside the agents boundary.
@@ -95,6 +81,7 @@ rules:
     severity: error
     side_effect_free: true
     adapter: command
+    config_file: policies/backend_literal_locality_budget.yaml
     command:
       - uv
       - run

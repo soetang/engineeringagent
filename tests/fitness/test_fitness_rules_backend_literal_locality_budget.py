@@ -27,9 +27,10 @@ def _run_checker(
     project_root: Path,
     *,
     checker_path: Path,
+    extra_argv: tuple[str, ...] = (),
 ) -> tuple[subprocess.CompletedProcess[str], dict[str, object]]:
     proc = subprocess.run(
-        [sys.executable, str(checker_path)],
+        [sys.executable, str(checker_path), *extra_argv],
         cwd=project_root,
         capture_output=True,
         text=True,
@@ -47,12 +48,12 @@ def test_backend_literal_locality_budget_rule_registered() -> None:
     rules = manifest.get("rules")
     assert isinstance(rules, list)
 
-    matching: list[dict[str, object]] = []
-    for rule in rules:
-        if not isinstance(rule, dict):
-            continue
-        if rule.get("rule_id") == "architecture.backend-literal-locality-budget":
-            matching.append(rule)
+    matching = [
+        rule
+        for rule in rules
+        if isinstance(rule, dict)
+        and rule.get("rule_id") == "architecture.backend-literal-locality-budget"
+    ]
 
     assert len(matching) == 1
 
@@ -62,9 +63,48 @@ def test_backend_literal_locality_budget_rule_registered() -> None:
         "harness/fitness-functions/check_backend_literal_locality_budget.py" in command
     )
 
+    assert (
+        matching[0].get("config_file")
+        == "policies/backend_literal_locality_budget.yaml"
+    )
+
     assert Path(
         "harness/fitness-functions/check_backend_literal_locality_budget.py"
     ).exists()
+
+
+def test_backend_literal_locality_budget_policy_defines_backend_tokens() -> None:
+    policy_path = Path(
+        "harness/fitness-functions/policies/backend_literal_locality_budget.yaml"
+    )
+    policy = yaml.safe_load(policy_path.read_text(encoding="utf-8"))
+    assert isinstance(policy, dict)
+
+    assert policy.get("rule_id") == "architecture.backend-literal-locality-budget"
+
+    allowed_roots = policy.get("allowed_literal_roots")
+    assert isinstance(allowed_roots, list)
+    assert allowed_roots == [
+        "src/engineeringagent/agents",
+        "src/engineeringagent/checks",
+    ]
+
+    backends = policy.get("backends")
+    assert isinstance(backends, dict)
+    assert set(backends) >= {"opencode", "codex"}
+
+    for backend_id in ("opencode", "codex"):
+        backend = backends.get(backend_id)
+        assert isinstance(backend, dict)
+        tokens = backend.get("tokens")
+        assert isinstance(tokens, list)
+        assert tokens
+        assert tokens == sorted(set(tokens))
+
+    assert "OpenCode" in backends["opencode"]["tokens"]
+    assert "opencode" in backends["opencode"]["tokens"]
+    assert "DEFAULT_CODEX_AGENT" in backends["codex"]["tokens"]
+    assert "DEFAULT_CODEX_AGENT_MODEL" in backends["codex"]["tokens"]
 
 
 def test_backend_literal_locality_budget_rule_passes_clean_repo() -> None:
@@ -191,6 +231,66 @@ def test_backend_literal_locality_budget_rule_detects_identifier_tokens(
         and "backend literal token 'opencode'" in violation
         for violation in violations
     ), violations
+
+
+def test_backend_literal_locality_budget_rule_detects_codex_tokens(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    _write_module(
+        tmp_path,
+        "src/engineeringagent/runtime_backend_coupling.py",
+        "BACKEND_MODEL = DEFAULT_CODEX_AGENT_MODEL\n",
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    violations = payload.get("violations")
+    assert isinstance(violations, list)
+    assert len(violations) == 1
+    assert (
+        "src/engineeringagent/runtime_backend_coupling.py:1:" in violations[0]
+        and "backend literal token 'DEFAULT_CODEX_AGENT_MODEL'" in violations[0]
+    )
+
+
+def test_backend_literal_locality_budget_policy_errors_are_deterministic(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    _write_module(
+        tmp_path,
+        "src/engineeringagent/runtime_backend_coupling.py",
+        "BACKEND_NAME = 'core'\n",
+    )
+    policy_path = tmp_path / "policy.yaml"
+    policy_path.write_text(
+        "rule_id: architecture.other-rule\n"
+        "allowed_literal_roots:\n"
+        "  - src/engineeringagent/agents\n"
+        "backends:\n"
+        "  opencode:\n"
+        "    tokens:\n"
+        "      - opencode\n",
+        encoding="utf-8",
+    )
+
+    proc, payload = _run_checker(
+        tmp_path,
+        checker_path=_script_path(repo_root),
+        extra_argv=("--config-file", str(policy_path)),
+    )
+
+    assert proc.returncode == 0
+    assert payload["rule_id"] == "architecture.backend-literal-locality-budget"
+    assert payload["status"] == "error"
+    summary = payload.get("summary")
+    assert isinstance(summary, str)
+    assert summary.startswith("Invalid backend literal locality policy configuration:")
+    assert "rule_id must match architecture.backend-literal-locality-budget" in summary
+    assert payload["violations"] == []
 
 
 def test_backend_literal_locality_budget_rule_recommends_refresh_when_observed_drops(
