@@ -50,7 +50,7 @@ You will analyze recently modified code and apply refinements that:
 
 Output requirements (since you cannot edit files):
 
-$responseformat
+Return strict JSON only.
 
 - Provide concrete, minimal change suggestions with file references and small before/after snippets (or patch-style diffs)
 - Keep suggestions scoped to touched code unless asked otherwise

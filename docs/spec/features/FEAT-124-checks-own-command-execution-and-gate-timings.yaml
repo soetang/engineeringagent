@@ -1,0 +1,113 @@
+id: FEAT-124
+title: Make checks own command execution and expose structured gate timing metadata
+type: feature
+expected_commit_subject: 'feat: make checks own command execution and gate timings'
+status: backlog
+priority: high
+objective: |
+  Remove loop-owned shell-runner wiring for command checks and make checks the sole
+  owner of command-check execution.
+
+  Replace gate timing correlation based on textual output parsing with structured
+  command invocation metadata returned from `engineeringagent.checks.run_checks(...)`.
+context: |
+  Gate execution currently injects `run_shell_command` from loop runtime into
+  checks and wraps that callable for timing. Loop then re-correlates command timing
+  to check ids by parsing command output lines.
+
+  This creates an inverted ownership boundary: checks executes commands, but loop
+  still provides part of the execution mechanism and depends on text output shape
+  to recover structured facts.
+
+  We want checks to own command execution and return structured command invocation
+  facts directly so loop can consume deterministic metadata without output parsing.
+constraints:
+- "Breaking change allowed: do not preserve compatibility for `run_checks(..., run_shell_command=...)`."
+- "Scope is gate/check command execution only; reviewer wiring remains unchanged in this feature."
+- "Checks command execution must be owned by checks runtime with default execution path through `engineeringagent.process.run_shell_command`."
+- "Loop gate phase must not parse `[check:<id>] command=...` lines to recover command/check correlation for timings."
+- "Keep deterministic checks failure semantics (`ok`, `failed_group`, `failed_check_id`, `failed_payload`) intact."
+- "Preserve per-feature progress-log timing behavior: gate command timing lines still include gate ids when command checks run."
+- "Fitness-function impact assessment: no fitness-function changes required."
+implementation_notes: |
+  Contract change declaration (required)
+
+  Surface: `engineeringagent.checks.run_checks(...)` supported kwargs and
+  `ChecksRunResult` structured result contract.
+
+  Old behavior:
+  - `run_checks(...)` supports `run_shell_command` override, and loop runtime passes
+    one during gate execution.
+  - Loop gate timing correlation depends on parsing command output lines to map
+    invocations back to check ids.
+
+  New behavior:
+  - `run_checks(...)` no longer accepts `run_shell_command` as a supported kwarg.
+  - Command checks execute via checks-owned runtime wiring (defaulting to
+    `engineeringagent.process.run_shell_command`).
+  - `ChecksRunResult` includes structured command invocation records for executed
+    command checks (at minimum: check identity + command identity + timing fields)
+    so loop can consume metadata directly.
+  - Loop gate phase derives gate command timings from structured checks result data,
+    not output-text parsing.
+
+  Compatibility policy:
+  - Immediate break for callers passing `run_shell_command` into `run_checks(...)`.
+  - No compatibility shim.
+
+  Migration plan:
+  - Remove `run_shell_command` from checks API supported kwargs and internal
+    plumbing.
+  - Add typed command invocation metadata to checks runtime outputs.
+  - Remove gate-phase text-correlation helpers and wire timing construction from
+    structured checks result metadata.
+  - Update tests that relied on `run_checks(..., run_shell_command=...)` to use
+    supported seams (e.g., monkeypatch default process runner or test lower-level
+    command runtime helpers directly).
+
+  Verification evidence:
+  - Targeted checks and loop gate-timing tests.
+  - Full test suite + `engineeringagent validate`.
+acceptance:
+- "`engineeringagent.checks.run_checks(...)` rejects `run_shell_command` kwargs with deterministic unexpected-keyword failure behavior."
+- "Command checks still execute successfully through checks-owned runtime wiring without loop-supplied shell-runner dependency."
+- "`ChecksRunResult` exposes structured command invocation timing metadata for executed command checks, including check identity and command identity."
+- "`src/engineeringagent/loop_runtime/phases.py` no longer parses command output lines to correlate gate command timings."
+- "Gate command timing records in progress logs continue to include gate ids for executed command checks."
+- "Reviewer path behavior remains unchanged in this feature."
+- "uv run pytest -q tests/checks/test_run_checks_contract.py tests/checks/test_commands_group_port.py tests/checks/test_commands_runtime.py tests/harness/test_checks_runtime.py tests/loop/test_loop_output.py tests/loop/test_loop_ralph_mode.py passes."
+- "uv run pytest -q passes."
+- "uv run engineeringagent validate passes."
+subtasks:
+- id: ST-001
+  title: Add structured command invocation records to checks results
+  status: backlog
+  context: "Add typed command invocation metadata in checks command runtime and thread it through command-group execution into `ChecksRunResult`."
+  verification:
+  - uv run pytest -q tests/checks/test_run_checks_contract.py tests/checks/test_commands_runtime.py
+- id: ST-002
+  title: Remove run_shell_command override from run_checks API
+  status: backlog
+  context: "Delete `run_shell_command` from supported `run_checks` kwargs and remove related checks API plumbing."
+  verification:
+  - uv run pytest -q tests/checks/test_run_checks_contract.py tests/checks/test_commands_group_port.py
+- id: ST-003
+  title: Refactor gate timing correlation to structured checks data
+  status: backlog
+  context: "Update loop gate-phase wiring/dependencies so command timings are derived from structured checks result metadata instead of parsed output lines."
+  verification:
+  - uv run pytest -q tests/harness/test_checks_runtime.py tests/loop/test_loop_output.py tests/loop/test_loop_ralph_mode.py
+- id: ST-004
+  title: Update boundary/regression tests for the API break
+  status: backlog
+  context: "Adjust tests that used `run_checks(..., run_shell_command=...)` and add regressions for checks-owned execution boundary."
+  verification:
+  - uv run pytest -q tests/checks tests/loop/test_loop_phases_coverage.py
+- id: ST-005
+  title: Run full repository verification after breaking change
+  status: backlog
+  context: "Run full validation/test suite to confirm stable behavior after checks API break."
+  verification:
+  - uv run pytest -q
+  - uv run engineeringagent validate
+updated_at: '2026-02-19T00:00:00Z'

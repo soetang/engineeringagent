@@ -329,7 +329,7 @@ def test_run_reviewer_loads_harness_prompt_and_parses_decision(tmp_path) -> None
     prompt_path = tmp_path / "harness" / "reviewers" / "prompts" / "code_simplifier.md"
     prompt_path.parent.mkdir(parents=True)
     prompt_path.write_text(
-        "$responseformat\n\nTEST_SENTINEL_PROMPT_INCLUDED\n",
+        "Return strict JSON only.\n\nTEST_SENTINEL_PROMPT_INCLUDED\n",
         encoding="utf-8",
     )
 
@@ -371,19 +371,60 @@ def test_run_reviewer_loads_harness_prompt_and_parses_decision(tmp_path) -> None
         "required_actions": [],
     }
     assert captured["project_root"] == str(tmp_path)
-    assert "$responseformat" not in captured["prompt"]
-    assert (
-        "Return exactly one strict JSON object and no other text." in captured["prompt"]
-    )
+    assert "Return strict JSON only." in captured["prompt"]
     assert "JSON Schema:" not in captured["prompt"]
     assert "TEST_SENTINEL_PROMPT_INCLUDED" in captured["prompt"]
     assert captured_max_validation_retries == [2]
 
 
+def test_run_reviewer_does_not_inject_deprecated_responseformat_contract(
+    tmp_path,
+) -> None:
+    prompt_path = tmp_path / "harness" / "reviewers" / "prompts" / "code_simplifier.md"
+    prompt_path.parent.mkdir(parents=True)
+    prompt_path.write_text(
+        "$responseformat\n\nTEST_SENTINEL_PROMPT_INCLUDED\n",
+        encoding="utf-8",
+    )
+
+    captured: dict[str, str] = {}
+
+    def _run_agent(_project_root, prompt, *, output_type, max_validation_retries=2):
+        captured["prompt"] = prompt
+        captured["output_type"] = str(output_type)
+        captured["max_validation_retries"] = str(max_validation_retries)
+        return ReviewerDecisionEnvelope(
+            decision="approve",
+            summary="No blocking issues.",
+            required_actions=[],
+        )
+
+    decision = run_reviewer(
+        tmp_path,
+        "code_simplifier",
+        {
+            "prompt_file": "harness/reviewers/prompts/code_simplifier.md",
+            "trigger": {"phase": "iteration_end"},
+        },
+        feature_id="FEAT-050",
+        feature_path=tmp_path / "docs/spec/features/FEAT-050.yaml",
+        changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
+        prior_feedback=None,
+        run_agent_fn=_run_agent,
+    )
+
+    assert decision["decision"] == "approve"
+    assert "$responseformat" in captured["prompt"]
+    assert (
+        "Return exactly one strict JSON object and no other text."
+        not in captured["prompt"]
+    )
+
+
 def test_run_reviewer_parse_failure_returns_request_changes(tmp_path) -> None:
     prompt_path = tmp_path / "harness" / "reviewers" / "prompts" / "code_simplifier.md"
     prompt_path.parent.mkdir(parents=True)
-    prompt_path.write_text("$responseformat\n\nReturn JSON only.", encoding="utf-8")
+    prompt_path.write_text("Return JSON only.", encoding="utf-8")
 
     def _run_agent(*_args, **_kwargs):
         raise AgentOutputValidationError(
@@ -417,7 +458,7 @@ def test_run_reviewer_passes_max_validation_retries_to_canonical_runner(
 ) -> None:
     prompt_path = tmp_path / "harness" / "reviewers" / "prompts" / "code_simplifier.md"
     prompt_path.parent.mkdir(parents=True)
-    prompt_path.write_text("$responseformat\n\nReturn JSON only.", encoding="utf-8")
+    prompt_path.write_text("Return JSON only.", encoding="utf-8")
 
     captured: dict[str, str] = {}
     captured_max_validation_retries: list[int] = []
@@ -453,13 +494,22 @@ def test_run_reviewer_passes_max_validation_retries_to_canonical_runner(
     assert captured_max_validation_retries == [2]
 
 
-def test_run_reviewer_requires_responseformat_placeholder(tmp_path) -> None:
+def test_run_reviewer_does_not_require_responseformat_placeholder(tmp_path) -> None:
     prompt_path = tmp_path / "harness" / "reviewers" / "prompts" / "code_simplifier.md"
     prompt_path.parent.mkdir(parents=True)
     prompt_path.write_text("Focus on code readability.", encoding="utf-8")
 
-    def _run_agent(*_args, **_kwargs):
-        raise AssertionError("run_agent_fn should not run when $responseformat missing")
+    captured: dict[str, str] = {}
+
+    def _run_agent(_project_root, prompt, *, output_type, max_validation_retries=2):
+        captured["output_type"] = str(output_type)
+        captured["prompt"] = prompt
+        captured["max_validation_retries"] = str(max_validation_retries)
+        return ReviewerDecisionEnvelope(
+            decision="approve",
+            summary="Prompt without deprecated token is accepted.",
+            required_actions=[],
+        )
 
     decision = run_reviewer(
         tmp_path,
@@ -475,18 +525,18 @@ def test_run_reviewer_requires_responseformat_placeholder(tmp_path) -> None:
         run_agent_fn=_run_agent,
     )
 
-    assert decision["decision"] == "request_changes"
-    assert decision["summary"] == (
-        f"{PARSER_FAILURE_SUMMARY_PREFIX}: "
-        "reviewer prompt must include the $responseformat placeholder"
-    )
+    assert decision == {
+        "decision": "approve",
+        "summary": "Prompt without deprecated token is accepted.",
+        "required_actions": [],
+    }
+    assert "Focus on code readability." in captured["prompt"]
 
 
-def test_repository_code_simplifier_prompt_uses_responseformat_contract(
+def test_repository_code_simplifier_prompt_excludes_deprecated_responseformat_token(
     repo_root: Path,
 ) -> None:
     prompt_path = repo_root / "harness" / "reviewers" / "prompts" / "code_simplifier.md"
     prompt_text = prompt_path.read_text(encoding="utf-8")
 
-    assert "$responseformat" in prompt_text
-    assert "Return exactly one strict JSON object and no other text" not in prompt_text
+    assert "$responseformat" not in prompt_text

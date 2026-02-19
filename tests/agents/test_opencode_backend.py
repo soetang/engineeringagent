@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from pydantic import BaseModel
 
 from engineeringagent.agents import AgentBackendError
 from engineeringagent.agents.backends.opencode import OpenCodeAgentBackend
@@ -132,3 +133,72 @@ def test_opencode_backend_keeps_hyphen_prompt_as_payload(
         "--",
         "--- reviewer payload",
     ]
+
+
+def test_opencode_backend_run_structured_retries_with_same_session(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    class _Payload(BaseModel):
+        value: int
+
+    calls: list[dict[str, object]] = []
+    responses = [
+        _Proc(returncode=0, text_payload="not json", session_id="s1"),
+        _Proc(returncode=0, text_payload='{"value":2}', session_id="s1"),
+    ]
+
+    def _fake_start_agent(project_root: Path, prompt: str, **kwargs: object) -> _Proc:
+        assert project_root == tmp_path
+        calls.append(
+            {
+                "prompt": prompt,
+                "session": kwargs.get("session"),
+                "format": kwargs.get("format"),
+            }
+        )
+        if not responses:
+            raise RuntimeError("no more fake responses")
+        return responses.pop(0)
+
+    monkeypatch.setattr(
+        "engineeringagent.agents.backends.opencode.backend.start_agent",
+        _fake_start_agent,
+    )
+
+    backend = OpenCodeAgentBackend(format="json")
+    payload = backend.run_structured(
+        tmp_path,
+        "return json",
+        output_type=_Payload,
+        max_validation_retries=1,
+    )
+
+    assert payload.value == 2
+    assert calls[0]["session"] is None
+    assert calls[1]["session"] == "s1"
+
+
+def test_opencode_backend_run_structured_rejects_negative_retry_budget(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    class _Payload(BaseModel):
+        value: int
+
+    def _fail_if_called(*_args: object, **_kwargs: object) -> _Proc:
+        raise AssertionError("start_agent should not be called")
+
+    monkeypatch.setattr(
+        "engineeringagent.agents.backends.opencode.backend.start_agent",
+        _fail_if_called,
+    )
+
+    backend = OpenCodeAgentBackend(format="json")
+    with pytest.raises(ValueError, match=r"max_validation_retries must be >= 0"):
+        backend.run_structured(
+            tmp_path,
+            "return json",
+            output_type=_Payload,
+            max_validation_retries=-1,
+        )

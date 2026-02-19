@@ -45,10 +45,6 @@ BLOCKING_RETRY_COUNT_KEY = "blocking_request_changes_count"
 BLOCKING_RETRY_UPDATED_AT_KEY = "blocking_retry_updated_at"
 SANDBOX_MODE_TEMP_WORKTREE_SNAPSHOT = "temp_worktree_snapshot"
 SANDBOX_MODE_EMPTY_FOLDER = "empty_folder"
-REVIEWER_RESPONSEFORMAT_PLACEHOLDER = "$responseformat"
-REVIEWER_RESPONSEFORMAT_MISSING_MESSAGE = (
-    "reviewer prompt must include the $responseformat placeholder"
-)
 
 REVIEWER_DECISION_PARSE_MAX_RETRIES = 2
 
@@ -75,24 +71,6 @@ class ReviewerDecisionEnvelope(BaseModel):
         if not stripped:
             raise ValueError("summary must be a non-empty string")
         return stripped
-
-
-REVIEWER_RESPONSEFORMAT_CONTRACT = "\n".join(
-    (
-        "---",
-        "Return exactly one strict JSON object and no other text.",
-        "No Markdown. No code fences. No surrounding commentary.",
-        "",
-        "Notes:",
-        '- `decision` must be one of: "approve", "request_changes", "warning".',
-        "- `summary` must be a non-empty string.",
-        "- If present, `required_actions` must be a list of strings.",
-        "",
-        "Example output:",
-        '{"decision":"approve","summary":"Looks good.","required_actions":[]}',
-        "---",
-    )
-)
 
 
 class ReviewerSandboxHandle(BaseModel):
@@ -711,12 +689,6 @@ def _compose_reviewer_prompt(
 ) -> str:
     """Compose deterministic reviewer context and repository-local prompt text."""
     reviewer_instructions = reviewer_prompt.strip()
-    if REVIEWER_RESPONSEFORMAT_PLACEHOLDER not in reviewer_instructions:
-        raise ValueError(REVIEWER_RESPONSEFORMAT_MISSING_MESSAGE)
-    reviewer_instructions = reviewer_instructions.replace(
-        REVIEWER_RESPONSEFORMAT_PLACEHOLDER,
-        REVIEWER_RESPONSEFORMAT_CONTRACT,
-    )
 
     changed = "\n".join(f"- {path}" for path in request.changed_paths.paths)
     if not changed:

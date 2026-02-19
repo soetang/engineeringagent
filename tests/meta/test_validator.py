@@ -413,7 +413,7 @@ def test_validate_ignores_legacy_reviewer_contract_file(tmp_path: Path) -> None:
     assert not messages
 
 
-def test_validate_reports_reviewer_prompt_missing_responseformat(
+def test_validate_reports_reviewer_prompt_with_deprecated_responseformat(
     tmp_path: Path,
 ) -> None:
     prompts_dir = tmp_path / "harness" / "reviewers" / "prompts"
@@ -430,11 +430,11 @@ def test_validate_reports_reviewer_prompt_missing_responseformat(
     messages = validate(project_root=tmp_path)
 
     assert any(
-        "harness/reviewers/prompts/missing-token.md" in message
-        and "must include `$responseformat`" in message
+        "harness/reviewers/prompts/has-token.md" in message
+        and "must not include deprecated `$responseformat`" in message
         for message in messages
     )
-    assert all("has-token.md" not in message for message in messages)
+    assert all("missing-token.md" not in message for message in messages)
 
 
 def test_legacy_harness_contract_issue_formatter_handles_external_paths(

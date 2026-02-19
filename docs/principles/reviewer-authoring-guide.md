@@ -28,26 +28,22 @@ You can scaffold a baseline config and prompt set with:
 uvx engineeringagent reviewers init
 ```
 
-## 2) Author the prompt with the required response-format token
+## 2) Author the prompt without response-format boilerplate
 
 Create prompt markdown files under `harness/reviewers/prompts/`.
 
-Every reviewer prompt must include a literal `$responseformat` placeholder.
-That token is the only supported insertion point for the canonical response-format contract.
-
-The canonical contract includes a machine-readable JSON Schema for the reviewer decision envelope.
-At runtime, reviewer execution prefers OpenCode JSON event output and performs bounded same-session retries
-when the returned decision object does not validate.
+Reviewer prompts should contain only review intent and scope guidance.
+Do not include response-format placeholders or custom JSON envelope instructions.
 
 Important contract rules:
 
-- Do include `$responseformat` in each prompt file.
-- Do not duplicate or customize JSON envelope instructions in prompt prose.
-- Do not rely on fallback behavior; prompts missing `$responseformat` fail validation/runtime contract checks.
+- Do keep prompts focused on review intent, evidence expectations, and scope.
+- Do not duplicate or customize the decision envelope contract in prompt prose.
+- Do rely on backend-owned structured output via `run_agent(..., output_type=ReviewerDecisionEnvelope)`.
 
 ## 3) Keep reviewer instructions focused on review intent
 
-After `$responseformat`, keep the rest of the prompt specific to what the reviewer should evaluate:
+Keep prompt text specific to what the reviewer should evaluate:
 
 - scope boundaries (which files or concerns to focus on)
 - quality criteria (readability, correctness, docs/process, etc.)
@@ -60,7 +56,7 @@ The decision envelope stays canonical (`decision`, `summary`, optional `required
 When migrating older reviewer prompts:
 
 1. Remove bespoke output-format prose (for example, hand-written JSON field instructions).
-2. Insert `$responseformat` where response-contract instructions should appear.
+2. Remove any legacy response-format placeholder text.
 3. Keep reviewer-specific evaluation guidance that is not format boilerplate.
 4. Run validation to catch contract issues.
 
@@ -73,6 +69,6 @@ uvx engineeringagent reviewers list
 
 ## 5) Troubleshooting
 
-- If validation reports a prompt missing `$responseformat`, update that prompt file directly under `harness/reviewers/prompts/`.
+- If validation reports deprecated response-format placeholder usage, remove it from the prompt file.
 - If reviewer output is malformed, the runtime parser emits a deterministic `request_changes` envelope.
 - For full contract details and policy examples, see `docs/references/reviewer-agents-llms.md`.

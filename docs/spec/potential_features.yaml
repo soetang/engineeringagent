@@ -153,3 +153,39 @@ potential_features:
       - "tomli is only installed when needed (python_version < 3.11) or requires-python is raised to >=3.11"
       - "Dependency constraints are updated with a clear rationale (remove/adjust tomli <2.1.0 cap)"
       - "Targeted tests cover ignore matching and TOML parsing across supported Python versions"
+
+  - id: POT-016
+    title: Move reviewer changed-path snapshot ownership into checks runtime
+    status: idea
+    context: >
+      Reviewer checks currently receive changed-path discovery via loop-injected
+      `collect_changed_paths` callables so one iteration can reuse a memoized
+      snapshot across phases. Explore moving that ownership into checks contracts
+      by passing a resolved snapshot object (or explicit change context) instead
+      of a loop-owned collector function.
+    value:
+      - "Clarifies loop vs checks ownership boundaries"
+      - "Reduces callable injection seams in reviewer orchestration"
+      - "Makes same-iteration determinism explicit in checks contracts"
+    acceptance_hint:
+      - "Reviewer checks consume explicit change-context data instead of a collector callable"
+      - "Same-iteration gate/reviewer changed-path consistency remains deterministic"
+      - "Loop runtime no longer injects collect_changed_paths into reviewer checks wiring"
+
+  - id: POT-017
+    title: Introduce explicit reviewer runner port to simplify agent boundary
+    status: idea
+    context: >
+      Reviewer execution currently injects `run_agent_fn` into checks at runtime.
+      Explore introducing a dedicated reviewer-runner port/adapter contract so
+      checks depend on a typed reviewer execution interface rather than generic
+      callable injection. This can reduce cross-module coupling and make backend
+      swaps easier to reason about.
+    value:
+      - "Makes reviewer execution dependency explicit and typed"
+      - "Reduces hidden coupling between loop runtime and reviewer internals"
+      - "Improves testability by standardizing reviewer runner behavior"
+    acceptance_hint:
+      - "Checks reviewers depend on a typed reviewer runner interface"
+      - "Loop wiring uses adapter construction instead of raw run_agent_fn injection"
+      - "Structured reviewer decision handling remains behaviorally equivalent"

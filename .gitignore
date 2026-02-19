@@ -13,3 +13,5 @@ progress/run-feature-*.txt
 .coverage.*
 progress/reviewers-state.json
 
+.semgrep/semgrep.log
+.semgrep/settings.yml

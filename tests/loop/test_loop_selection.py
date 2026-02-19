@@ -105,16 +105,20 @@ def test_choose_feature_with_selector_uses_selector_output_when_parse_succeeds(
 
 
 def test_choose_feature_with_selector_falls_back_when_opencode_missing(
-    monkeypatch: Any, capsys: Any
+    tmp_path: Path, monkeypatch: Any, capsys: Any
 ) -> None:
     pending = _pending_features()
+    (tmp_path / "engineeringagent.toml").write_text(
+        '[agents]\nbackend = "opencode"\n',
+        encoding="utf-8",
+    )
     monkeypatch.setattr(selection, "build_selector_prompt", lambda _: "prompt")
 
     def _run_agent(*_: Any, **__: Any) -> str:
         raise FileNotFoundError("opencode")
 
     chosen_path, chosen_feature = selection.choose_feature_with_selector(
-        Path("."),
+        tmp_path,
         pending,
         run_agent_fn=_run_agent,
     )
@@ -127,9 +131,13 @@ def test_choose_feature_with_selector_falls_back_when_opencode_missing(
 
 
 def test_choose_feature_with_selector_falls_back_on_parse_or_command_failure(
-    monkeypatch: Any, capsys: Any
+    tmp_path: Path, monkeypatch: Any, capsys: Any
 ) -> None:
     pending = _pending_features()
+    (tmp_path / "engineeringagent.toml").write_text(
+        '[agents]\nbackend = "opencode"\n',
+        encoding="utf-8",
+    )
     monkeypatch.setattr(selection, "build_selector_prompt", lambda _: "prompt")
 
     def _run_agent(*_: Any, **__: Any) -> str:
@@ -144,7 +152,7 @@ def test_choose_feature_with_selector_falls_back_on_parse_or_command_failure(
         )
 
     chosen_path, chosen_feature = selection.choose_feature_with_selector(
-        Path("."),
+        tmp_path,
         pending,
         run_agent_fn=_run_agent,
     )
@@ -179,3 +187,39 @@ def test_choose_feature_with_selector_logs_backend_agnostic_step_label(
 
     output = capsys.readouterr().out
     assert "Selector step: custom run selector" in output
+
+
+def test_choose_feature_with_selector_uses_configured_codex_backend(
+    tmp_path: Path,
+    monkeypatch: Any,
+    capsys: Any,
+) -> None:
+    pending = _pending_features()
+    (tmp_path / "engineeringagent.toml").write_text(
+        '[agents]\nbackend = "codex"\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(selection, "build_selector_prompt", lambda _: "prompt")
+
+    def _run_agent(*_: Any, **__: Any) -> str:
+        raise AgentBackendError(
+            backend="codex",
+            message="codex run failed",
+            process=AgentBackendFailureDetails(
+                returncode=1,
+                stdout="",
+                stderr="boom",
+            ),
+        )
+
+    chosen_path, chosen_feature = selection.choose_feature_with_selector(
+        tmp_path,
+        pending,
+        run_agent_fn=_run_agent,
+    )
+
+    output = capsys.readouterr().out
+    assert "Selector step: codex run selector" in output
+    assert "Selector fallback: codex_build" in output
+    assert chosen_path == Path("docs/spec/features/FEAT-100.yaml")
+    assert chosen_feature["id"] == "FEAT-100"

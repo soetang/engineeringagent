@@ -32,6 +32,21 @@ def test_evaluate_permission_probe_reports_explicit_denial_token() -> None:
     assert "explicit denial token" in result.reason
 
 
+def test_evaluate_permission_probe_rejects_mixed_tokens() -> None:
+    output = f"{permissions.PROBE_TOKEN}\n{permissions.PROBE_DENIED_TOKEN}\n"
+    result = permissions.evaluate_permission_probe(returncode=0, output=output)
+
+    assert result.ok is False
+    assert "expected exactly one decision token" in result.reason
+
+
+def test_evaluate_permission_probe_reports_nonzero_without_decision_token() -> None:
+    result = permissions.evaluate_permission_probe(returncode=7, output="no decision")
+
+    assert result.ok is False
+    assert "without explicit decision token" in result.reason
+
+
 def test_output_has_permission_rejection_matches_explicit_rejection_line() -> None:
     output = "permission requested for bash command git status --short (auto-reject)"
 

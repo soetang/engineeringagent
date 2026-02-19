@@ -20,6 +20,9 @@ _HARNESS_TABLE = "harness"
 
 _AGENTS_TABLE = "agents"
 _BACKEND_KEY = "backend"
+_CODEX_TABLE = "codex"
+_CODEX_PROFILE_KEY = "profile"
+_CODEX_MODEL_KEY = "model"
 
 
 def resolve_docs_root(project_root: Path) -> Path:
@@ -161,6 +164,54 @@ def resolve_agents_backend_id(project_root: Path) -> str | None:
     return None
 
 
+def resolve_agents_codex_profile(project_root: Path) -> str | None:
+    """Resolve configured Codex backend profile.
+
+    Precedence:
+    - engineeringagent.toml[agents.codex]
+    - pyproject.toml[tool.engineeringagent.agents.codex]
+    - default: unset (None)
+    """
+
+    engineeringagent_toml = project_root / "engineeringagent.toml"
+    profile = _agents_codex_option_from_engineeringagent_toml(
+        engineeringagent_toml,
+        key=_CODEX_PROFILE_KEY,
+    )
+    if profile is not None:
+        return profile
+
+    pyproject_toml = project_root / "pyproject.toml"
+    return _agents_codex_option_from_pyproject_toml(
+        pyproject_toml,
+        key=_CODEX_PROFILE_KEY,
+    )
+
+
+def resolve_agents_codex_model(project_root: Path) -> str | None:
+    """Resolve configured Codex backend model.
+
+    Precedence:
+    - engineeringagent.toml[agents.codex]
+    - pyproject.toml[tool.engineeringagent.agents.codex]
+    - default: unset (None)
+    """
+
+    engineeringagent_toml = project_root / "engineeringagent.toml"
+    model = _agents_codex_option_from_engineeringagent_toml(
+        engineeringagent_toml,
+        key=_CODEX_MODEL_KEY,
+    )
+    if model is not None:
+        return model
+
+    pyproject_toml = project_root / "pyproject.toml"
+    return _agents_codex_option_from_pyproject_toml(
+        pyproject_toml,
+        key=_CODEX_MODEL_KEY,
+    )
+
+
 def _docs_root_from_engineeringagent_toml(path: Path) -> Path | None:
     document = _load_toml(path)
     if document is None:
@@ -206,6 +257,30 @@ def _agents_backend_id_from_engineeringagent_toml(path: Path) -> str | None:
         agents_table.get(_BACKEND_KEY),
         source_path=path,
         source_scope=f"[{_AGENTS_TABLE}]",
+    )
+
+
+def _agents_codex_option_from_engineeringagent_toml(
+    path: Path,
+    *,
+    key: str,
+) -> str | None:
+    document = _load_toml(path)
+    if document is None:
+        return None
+
+    agents_table = _maybe_table(document, _AGENTS_TABLE)
+    if agents_table is None:
+        return None
+    codex_table = _maybe_table(agents_table, _CODEX_TABLE)
+    if codex_table is None:
+        return None
+
+    return _normalize_nonempty_string(
+        codex_table.get(key),
+        key_name=key,
+        source_path=path,
+        source_scope=f"[{_AGENTS_TABLE}.{_CODEX_TABLE}]",
     )
 
 
@@ -299,6 +374,36 @@ def _agents_backend_id_from_pyproject_toml(path: Path) -> str | None:
         agents_table.get(_BACKEND_KEY),
         source_path=path,
         source_scope=f"[tool.engineeringagent.{_AGENTS_TABLE}]",
+    )
+
+
+def _agents_codex_option_from_pyproject_toml(
+    path: Path,
+    *,
+    key: str,
+) -> str | None:
+    document = _load_toml(path)
+    if document is None:
+        return None
+
+    tool_config = _maybe_table(document, "tool")
+    if tool_config is None:
+        return None
+    engineeringagent_config = _maybe_table(tool_config, "engineeringagent")
+    if engineeringagent_config is None:
+        return None
+    agents_table = _maybe_table(engineeringagent_config, _AGENTS_TABLE)
+    if agents_table is None:
+        return None
+    codex_table = _maybe_table(agents_table, _CODEX_TABLE)
+    if codex_table is None:
+        return None
+
+    return _normalize_nonempty_string(
+        codex_table.get(key),
+        key_name=key,
+        source_path=path,
+        source_scope=f"[tool.engineeringagent.{_AGENTS_TABLE}.{_CODEX_TABLE}]",
     )
 
 
@@ -448,3 +553,27 @@ def _normalize_backend_id(
         )
 
     return backend_id
+
+
+def _normalize_nonempty_string(
+    raw_value: Any,
+    *,
+    key_name: str,
+    source_path: Path,
+    source_scope: str,
+) -> str | None:
+    if raw_value is None:
+        return None
+
+    if not isinstance(raw_value, str):
+        raise ValueError(
+            f"invalid {key_name} in {source_path} ({source_scope}): expected string"
+        )
+
+    normalized = raw_value.strip()
+    if not normalized:
+        raise ValueError(
+            f"invalid {key_name} in {source_path} ({source_scope}): cannot be empty"
+        )
+
+    return normalized

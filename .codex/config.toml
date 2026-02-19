@@ -1,0 +1,5 @@
+[profiles.engineeringagent]
+model = "gpt-5.3-codex"
+sandbox_mode = "workspace-write"
+approval_policy = "never"
+web_search = 'cached'

@@ -50,6 +50,7 @@ When in doubt, prefer implementation fixes for immediate feature outcomes, and u
 - Recommend design patterns only when they make intent alignment and maintainability cleaner.
 - Do not force patterns. Prefer the simplest design that achieves the goal clearly.
 - Optional reference for shared vocabulary: https://refactoring.guru/design-patterns/python
+- If we state we use design patterns, make sure it aligns with actual way to do the pattern and is not just wording.
 
 5) Decoupling and separation of concerns (high priority)
 - Explicitly evaluate whether boundaries are clean between:
@@ -79,4 +80,4 @@ Decision policy:
 - Do not emit `warning`.
 
 Output requirements:
-$responseformat
+Return strict JSON only.

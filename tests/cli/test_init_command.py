@@ -108,6 +108,7 @@ def test_init_prompts_for_pack_when_omitted_and_tty(
 ) -> None:
     """Verify init prompts for pack selection when omitted in a TTY."""
     monkeypatch.setattr(cli_module, "_stdout_is_tty", lambda: True)
+    monkeypatch.setattr(cli_module, "list_backends", lambda: ("opencode",))
     monkeypatch.setattr("builtins.input", lambda _prompt: "standard")
 
     result = _invoke_cli(["--project-root", str(tmp_path), "init"])
@@ -122,6 +123,7 @@ def test_init_pack_arg_never_prompts_even_on_tty(
 ) -> None:
     """Verify providing the pack positional disables the interactive prompt."""
     monkeypatch.setattr(cli_module, "_stdout_is_tty", lambda: True)
+    monkeypatch.setattr(cli_module, "list_backends", lambda: ("opencode",))
     monkeypatch.setattr(
         "builtins.input",
         lambda _prompt: pytest.fail("init prompted unexpectedly"),
@@ -464,6 +466,41 @@ def test_init_explicit_non_default_backend_persists_to_engineeringagent_toml(
         '[agents]\nbackend = "opencode"\n'
     )
     assert (tmp_path / ".opencode" / "agents" / "engineeringagent.md").exists()
+
+
+def test_init_with_codex_backend_scaffolds_codex_profile_config(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify codex backend selection scaffolds .codex/config.toml."""
+    monkeypatch.setattr(cli_module, "list_backends", lambda: ("codex", "opencode"))
+    monkeypatch.setattr(cli_module, "default_backend_id", lambda: "opencode")
+    monkeypatch.setattr(cli_module, "_stdout_is_tty", lambda: False)
+
+    result = _invoke_cli(
+        [
+            "--project-root",
+            str(tmp_path),
+            "init",
+            "slim",
+            "--backend",
+            "codex",
+            "--no-precommit-install",
+        ]
+    )
+
+    assert result.exit_code == 0
+    assert (tmp_path / "engineeringagent.toml").read_text(encoding="utf-8") == (
+        '[agents]\nbackend = "codex"\n'
+    )
+
+    codex_config = tmp_path / ".codex" / "config.toml"
+    assert codex_config.exists()
+    codex_config_text = codex_config.read_text(encoding="utf-8")
+    assert "[profiles.engineeringagent]" in codex_config_text
+    assert 'model = "gpt-5.3-codex"' in codex_config_text
+    assert 'approval_policy = "never"' in codex_config_text
+    assert not (tmp_path / ".opencode").exists()
 
 
 def test_init_appends_backend_to_existing_engineeringagent_toml(

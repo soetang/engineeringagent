@@ -2,18 +2,18 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal, overload
 
 from pydantic import TypeAdapter, ValidationError
 
 from engineeringagent.agents.contracts import (
-    AgentBackendError,
-    AgentBackendFailureDetails,
+    AgentBackend,
     AgentBackendRunResult,
     AgentOutputValidationError,
+    StructuredOutputAgentBackend,
 )
+from engineeringagent.agents.registry import get_backend_factory, resolve_backend_id
 
-from .client import DEFAULT_OPENCODE_AGENT, start_agent
 
 _MAX_VALIDATION_ERROR_CHARS = 500
 _MAX_LAST_TEXT_CHARS = 2000
@@ -28,6 +28,7 @@ def _truncate_stable(value: str, *, limit: int) -> str:
 
 
 def _format_validation_error(exc: ValidationError) -> str:
+    """Return a deterministic one-line validation error summary."""
     parts: list[str] = []
     for error in exc.errors():
         loc = error.get("loc")
@@ -90,27 +91,16 @@ def _render_retry_structured_prompt(*, error_summary: str, schema_json: str) -> 
     )
 
 
-class OpenCodeAgentBackend:
-    """Agent backend adapter for OpenCode.
+class PromptRetryStructuredStrategy(StructuredOutputAgentBackend):
+    """Structured-output adapter for plain text backends."""
 
-    Text and structured execution are both backend-owned. Structured mode uses
-    deterministic prompt/retry handling and same-session followups through the
-    OpenCode JSON protocol.
-    """
-
-    def __init__(
-        self,
-        *,
-        agent: str = DEFAULT_OPENCODE_AGENT,
-        format: str | None = None,  # pylint: disable=redefined-builtin
-    ) -> None:
-        self._agent = agent
-        self._format = format
+    def __init__(self, backend: AgentBackend) -> None:
+        self._backend = backend
 
     @property
     def name(self) -> str:
-        """Backend identifier used in error messages and telemetry."""
-        return "opencode"
+        """Expose the wrapped backend name for typed errors."""
+        return self._backend.name
 
     def run(
         self,
@@ -119,51 +109,8 @@ class OpenCodeAgentBackend:
         *,
         session_id: str | None = None,
     ) -> AgentBackendRunResult:
-        """Run the OpenCode agent and return a backend-normalized result."""
-        proc = start_agent(
-            project_root,
-            prompt,
-            agent=self._agent,
-            format=self._format,
-            session=session_id,
-        )
-
-        if proc.returncode != 0:
-            raise AgentBackendError(
-                backend=self.name,
-                message="opencode run failed",
-                process=AgentBackendFailureDetails(
-                    returncode=proc.returncode,
-                    stdout=proc.stdout,
-                    stderr=proc.stderr,
-                    command_args=list(proc.args),
-                ),
-            )
-
-        if self._format == "json":
-            text_payload = proc.text_payload
-            if not isinstance(text_payload, str) or not text_payload.strip():
-                raise AgentBackendError(
-                    backend=self.name,
-                    message="opencode json output missing final text payload",
-                    process=AgentBackendFailureDetails(
-                        returncode=proc.returncode,
-                        stdout=proc.stdout,
-                        stderr=proc.stderr,
-                        command_args=list(proc.args),
-                    ),
-                    backend_metadata={"session_id": proc.session_id}
-                    if proc.session_id
-                    else None,
-                )
-
-            return AgentBackendRunResult(
-                text=text_payload,
-                session_id=proc.session_id,
-            )
-
-        output = (proc.stdout or "") + (proc.stderr or "")
-        return AgentBackendRunResult(text=output)
+        """Delegate plain-text execution to the wrapped backend."""
+        return self._backend.run(project_root, prompt, session_id=session_id)
 
     def run_structured(
         self,
@@ -173,10 +120,6 @@ class OpenCodeAgentBackend:
         output_type: Any,
         max_validation_retries: int,
     ) -> Any:
-        """Run structured output with backend-owned prompt/retry policy."""
-        if max_validation_retries < 0:
-            raise ValueError("max_validation_retries must be >= 0")
-
         adapter: TypeAdapter[Any] = TypeAdapter(output_type)
         schema_json = json.dumps(
             adapter.json_schema(),
@@ -189,17 +132,22 @@ class OpenCodeAgentBackend:
         last_text: str | None = None
         last_error_summary = ""
 
-        attempt_prompt = _render_initial_structured_prompt(
+        initial_prompt = _render_initial_structured_prompt(
             task_prompt=prompt,
             schema_json=schema_json,
         )
+
+        attempt_prompt = initial_prompt
         attempts_allowed = 1 + max_validation_retries
         for attempt in range(attempts_allowed):
-            run_result = self.run(project_root, attempt_prompt, session_id=session_id)
+            run_result = self._backend.run(
+                project_root,
+                attempt_prompt,
+                session_id=session_id,
+            )
             session_id = run_result.session_id or session_id
             text = (run_result.text or "").strip()
             last_text = text
-
             if not text:
                 last_error_summary = "output is empty"
             else:
@@ -213,7 +161,6 @@ class OpenCodeAgentBackend:
 
             if attempt >= attempts_allowed - 1:
                 break
-
             attempt_prompt = _render_retry_structured_prompt(
                 error_summary=last_error_summary,
                 schema_json=schema_json,
@@ -225,9 +172,42 @@ class OpenCodeAgentBackend:
             last_text=_truncate_stable(last_text or "", limit=_MAX_LAST_TEXT_CHARS)
             or None,
             error_summary=_truncate_stable(
-                last_error_summary,
-                limit=_MAX_VALIDATION_ERROR_CHARS,
+                last_error_summary, limit=_MAX_VALIDATION_ERROR_CHARS
             )
             or "output does not match schema",
             backend_metadata={"session_id": session_id} if session_id else None,
         )
+
+
+@overload
+def resolve_agent_strategy(
+    project_root: Path,
+    *,
+    structured_output: Literal[False],
+) -> AgentBackend: ...
+
+
+@overload
+def resolve_agent_strategy(
+    project_root: Path,
+    *,
+    structured_output: Literal[True],
+) -> StructuredOutputAgentBackend: ...
+
+
+def resolve_agent_strategy(
+    project_root: Path,
+    *,
+    structured_output: bool,
+) -> AgentBackend | StructuredOutputAgentBackend:
+    """Resolve and construct the configured agent backend strategy."""
+    backend_id = resolve_backend_id(project_root)
+    create_backend = get_backend_factory(backend_id)
+    backend = create_backend(structured_output)
+
+    if structured_output:
+        if isinstance(backend, StructuredOutputAgentBackend):
+            return backend
+        return PromptRetryStructuredStrategy(backend)
+
+    return backend

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import errno
 from pathlib import Path
+import shutil
 from typing import Any, Sequence
 
 import yaml
@@ -23,6 +25,16 @@ FEATURE_TRANSITIONS: dict[str, set[str]] = {
 }
 
 RUN_ALL_RUNNABLE_STATUSES: set[str] = {"backlog", "in_progress"}
+
+
+def _move_path(source: Path, destination: Path) -> None:
+    """Move a path while handling cross-device boundaries."""
+    try:
+        source.rename(destination)
+    except OSError as exc:
+        if exc.errno != errno.EXDEV:
+            raise
+        shutil.move(str(source), str(destination))
 
 
 def _normalize_done_subtasks(feature: dict[str, Any]) -> bool:
@@ -458,7 +470,10 @@ def _archive_completed_feature(
         dump_yaml(feature_path, feature)
 
     archive_path.parent.mkdir(parents=True, exist_ok=True)
-    feature_path.rename(archive_path)
+    try:
+        _move_path(feature_path, archive_path)
+    except OSError as exc:
+        return (False, None, f"failed to archive completed feature spec: {exc}")
     return (True, archive_path, "")
 
 
@@ -473,5 +488,8 @@ def _restore_archived_feature(
             "cannot restore archived feature path because source already exists",
         )
     original_feature_path.parent.mkdir(parents=True, exist_ok=True)
-    archived_path.rename(original_feature_path)
+    try:
+        _move_path(archived_path, original_feature_path)
+    except OSError as exc:
+        return (False, f"failed to restore archived feature spec: {exc}")
     return (True, "")

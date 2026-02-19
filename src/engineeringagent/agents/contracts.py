@@ -55,6 +55,22 @@ class AgentBackend(Protocol):
         raise NotImplementedError
 
 
+@runtime_checkable
+class StructuredOutputAgentBackend(Protocol):
+    """Optional capability for backend-owned structured output execution."""
+
+    def run_structured(
+        self,
+        project_root: Path,
+        prompt: str,
+        *,
+        output_type: Any,
+        max_validation_retries: int,
+    ) -> Any:
+        """Execute one structured-output request and return validated payload."""
+        raise NotImplementedError
+
+
 class AgentOutputValidationError(Exception):
     """Raised when structured agent output cannot be validated after retries."""
 

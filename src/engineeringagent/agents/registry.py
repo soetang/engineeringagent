@@ -3,6 +3,10 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
+from engineeringagent.agents.backends.codex import CodexAgentBackend
+from engineeringagent.agents.backends.codex.scaffold import (
+    build_codex_scaffold_manifest,
+)
 from engineeringagent.agents.backends.opencode import OpenCodeAgentBackend
 from engineeringagent.agents.backends.opencode.scaffold import (
     build_opencode_scaffold_manifest,
@@ -19,11 +23,18 @@ def _create_opencode_backend(structured_output: bool) -> AgentBackend:
     return OpenCodeAgentBackend(format="json" if structured_output else None)
 
 
+def _create_codex_backend(structured_output: bool) -> AgentBackend:
+    del structured_output
+    return CodexAgentBackend()
+
+
 _BACKEND_FACTORIES: dict[str, BackendFactory] = {
+    "codex": _create_codex_backend,
     "opencode": _create_opencode_backend,
 }
 
 _BACKEND_SCAFFOLD_MANIFEST_FACTORIES: dict[str, BackendScaffoldManifestFactory] = {
+    "codex": build_codex_scaffold_manifest,
     "opencode": build_opencode_scaffold_manifest,
 }
 

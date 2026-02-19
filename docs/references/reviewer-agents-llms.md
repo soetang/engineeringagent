@@ -78,9 +78,12 @@ Plain-English behavior:
 
 ## Decision envelope contract
 
-- The `$responseformat` placeholder expands to a contract that includes the reviewer decision envelope JSON Schema.
-- Reviewer execution prefers OpenCode JSON event output via `opencode run --format json`.
-- If the decision payload fails JSON parsing or schema validation, the runner retries up to 2 times in the same OpenCode session.
+- Reviewer execution requests structured output by calling
+  `run_agent(..., output_type=ReviewerDecisionEnvelope)`.
+- Backend strategies own schema transport and retry policy. Reviewer runtime does not
+  inject backend-specific response-format text into prompts.
+- If the decision payload fails JSON parsing or schema validation, runtime returns a
+  deterministic parser-failure `request_changes` envelope.
 
 Reviewer output must be JSON object with required fields:
 

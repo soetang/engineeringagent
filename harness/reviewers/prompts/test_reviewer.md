@@ -67,6 +67,4 @@ Review output style:
 - When requesting changes, tie required actions back to the current spec acceptance/constraints/subtasks where possible.
 
 Output requirements:
-$responseformat
-
 Return strict JSON only.

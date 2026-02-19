@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -45,6 +46,12 @@ def _loop_subprocess_boundary_violations(project_root: Path) -> list[str]:
 
 
 def _run_semgrep(project_root: Path) -> dict[str, object]:
+    semgrep_state_dir = project_root / ".semgrep"
+    semgrep_state_dir.mkdir(parents=True, exist_ok=True)
+    env = dict(os.environ)
+    env.setdefault("SEMGREP_LOG_FILE", str(semgrep_state_dir / "semgrep.log"))
+    env.setdefault("SEMGREP_SETTINGS_FILE", str(semgrep_state_dir / "settings.yml"))
+
     command = [
         "semgrep",
         "scan",
@@ -64,6 +71,7 @@ def _run_semgrep(project_root: Path) -> dict[str, object]:
         capture_output=True,
         text=True,
         check=False,
+        env=env,
     )
 
     if proc.returncode not in {0, 1}:

@@ -5,20 +5,15 @@ from pathlib import Path
 from engineeringagent.changed_paths import ChangedPathsResult
 from engineeringagent.checks.reviewers.engine import (
     PARSER_FAILURE_SUMMARY_PREFIX,
-    REVIEWER_RESPONSEFORMAT_PLACEHOLDER,
     ReviewerDecisionEnvelope,
     build_reviewer_sandbox,
     run_reviewer,
 )
 
 
-RESPONSEFORMAT_PROMPT_SENTENCE = (
+DEPRECATED_RESPONSEFORMAT_PROMPT_SENTENCE = (
     "Return exactly one strict JSON object and no other text."
 )
-
-
-def _responseformat_prompt(body: str) -> str:
-    return f"{REVIEWER_RESPONSEFORMAT_PLACEHOLDER}\n\n{body}"
 
 
 def test_empty_folder_sandbox_copies_only_prompt_and_configured_assets_only(
@@ -159,7 +154,7 @@ def test_run_reviewer_uses_empty_folder_sandbox_when_configured(
     )
     prompt_path.parent.mkdir(parents=True)
     prompt_path.write_text(
-        _responseformat_prompt("Review included onboarding assets."),
+        "Review included onboarding assets.",
         encoding="utf-8",
     )
 
@@ -220,7 +215,7 @@ def test_run_reviewer_uses_empty_folder_sandbox_when_configured(
     assert captured["sandbox_prompt_exists"] is True
     assert captured["sandbox_src_exists"] is False
     assert "$responseformat" not in str(captured["prompt"])
-    assert RESPONSEFORMAT_PROMPT_SENTENCE in str(captured["prompt"])
+    assert DEPRECATED_RESPONSEFORMAT_PROMPT_SENTENCE not in str(captured["prompt"])
     assert readme_path.read_text(encoding="utf-8") == "Original README\n"
 
 
@@ -232,10 +227,8 @@ def test_run_reviewer_uses_temp_worktree_snapshot_sandbox_when_configured(
     )
     prompt_path.parent.mkdir(parents=True)
     prompt_path.write_text(
-        _responseformat_prompt(
-            "Read README.md and run the documented bootstrap flow.\n"
-            "Create a new temporary directory and run the documented setup there.\n"
-        ),
+        "Read README.md and run the documented bootstrap flow.\n"
+        "Create a new temporary directory and run the documented setup there.\n",
         encoding="utf-8",
     )
     (tmp_path / "README.md").write_text("# Getting started\n", encoding="utf-8")
@@ -278,7 +271,7 @@ def test_run_reviewer_uses_temp_worktree_snapshot_sandbox_when_configured(
     assert decision["decision"] == "approve"
     assert captured["project_root"] != str(tmp_path)
     assert "$responseformat" not in captured["prompt"]
-    assert RESPONSEFORMAT_PROMPT_SENTENCE in captured["prompt"]
+    assert DEPRECATED_RESPONSEFORMAT_PROMPT_SENTENCE not in captured["prompt"]
     assert (
         "Create a new temporary directory and run the documented setup there."
         in captured["prompt"]

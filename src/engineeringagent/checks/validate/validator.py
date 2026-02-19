@@ -487,10 +487,10 @@ def _append_reviewer_prompt_issues(
             messages.append(f"{prompt_path}: failed to read reviewer prompt: {exc}")
             continue
 
-        if REVIEWER_RESPONSEFORMAT_PLACEHOLDER in prompt_text:
+        if REVIEWER_RESPONSEFORMAT_PLACEHOLDER not in prompt_text:
             continue
         messages.append(
-            f"{prompt_path}: reviewer prompt must include `{REVIEWER_RESPONSEFORMAT_PLACEHOLDER}`"
+            f"{prompt_path}: reviewer prompt must not include deprecated `{REVIEWER_RESPONSEFORMAT_PLACEHOLDER}`"
         )
 
 
