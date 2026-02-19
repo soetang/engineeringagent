@@ -514,7 +514,7 @@ wheels = [
 
 [[package]]
 name = "engineeringagent"
-version = "0.2.0"
+version = "0.3.0"
 source = { editable = "." }
 dependencies = [
     { name = "pathspec" },
@@ -526,6 +526,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "build" },
     { name = "coverage" },
     { name = "pylint" },
     { name = "pyright" },
@@ -534,6 +535,7 @@ dev = [
     { name = "pytest-xdist" },
     { name = "ruff" },
     { name = "semgrep" },
+    { name = "twine" },
 ]
 pypi = [
     { name = "build" },
@@ -552,6 +554,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "build", specifier = ">=1.4.0" },
     { name = "coverage", specifier = ">=7.10.0" },
     { name = "pylint", specifier = ">=3.0.0" },
     { name = "pyright", specifier = ">=1.1.405" },
@@ -560,6 +563,7 @@ dev = [
     { name = "pytest-xdist", specifier = ">=3.8.0" },
     { name = "ruff", specifier = ">=0.15.0" },
     { name = "semgrep", specifier = ">=1.95.0" },
+    { name = "twine", specifier = ">=6.2.0" },
 ]
 pypi = [
     { name = "build", specifier = ">=1.4.0" },
