@@ -1,0 +1,108 @@
+id: FEAT-123
+title: Remove legacy progress shim modules and promote progress package imports
+type: chore
+expected_commit_subject: 'chore: remove legacy progress shim modules'
+status: done
+priority: low
+objective: 'Complete the progress-helper transition by removing legacy top-level shim
+  modules
+
+  and making `engineeringagent.progress` the only supported import surface.
+
+  This is an intentional breaking change.
+
+  '
+context: 'FEAT-082 introduced `engineeringagent.progress.paths` and
+
+  `engineeringagent.progress.logging` and kept:
+
+  - `src/engineeringagent/progress_paths.py`
+
+  - `src/engineeringagent/progress_logging.py`
+
+  as compatibility shims.
+
+
+  Core runtime modules already import from the subpackage, but legacy shims still
+
+  exist and tests still assert they are importable. We now want to remove those
+
+  shims and enforce the new boundary.
+
+  '
+constraints:
+- 'Remove both shim modules: `src/engineeringagent/progress_paths.py` and `src/engineeringagent/progress_logging.py`.'
+- 'Breaking-change policy: old import paths (`engineeringagent.progress_paths`, `engineeringagent.progress_logging`,
+  and `from engineeringagent import progress_paths/progress_logging`) must fail immediately;
+  do not add compatibility aliases.'
+- Add convenience re-exports in `src/engineeringagent/progress/__init__.py` so canonical
+  helpers can be imported from `engineeringagent.progress`.
+- 'Scope boundary from interview: dependency/import migration in production code is
+  limited to `src/engineeringagent/**` (tests/docs updated only as needed to codify
+  the new contract).'
+- Preserve existing progress path and write behavior (`progress/runs.jsonl`, `progress/run-feature-<FEATURE_ID>.txt`,
+  reviewers state path semantics) with no runtime behavior changes beyond import-surface
+  break.
+- 'Fitness-function impact assessment: no fitness-function changes required.'
+implementation_notes: "Contract change declaration (required)\n\nSurface: Python import\
+  \ contract for progress helper modules.\n\nOld behavior:\n- `engineeringagent.progress_paths`\
+  \ and `engineeringagent.progress_logging` are\n  importable shim modules.\n- `from\
+  \ engineeringagent import progress_paths, progress_logging` works.\n\nNew behavior:\n\
+  - Shim modules are removed from `src/engineeringagent`.\n- Legacy imports fail with\
+  \ `ModuleNotFoundError`/`ImportError`.\n- Canonical imports are:\n  - `engineeringagent.progress.paths`\n\
+  \  - `engineeringagent.progress.logging`\n  - convenience imports via `engineeringagent.progress`\
+  \ re-exports\n\nCompatibility policy:\n- Immediate internal/external break (no deprecation\
+  \ window).\n\nMigration plan:\n- Update all imports under `src/engineeringagent/**`\
+  \ to canonical progress\n  package paths (or package re-exports).\n- Update tests\
+  \ to assert legacy module removal and canonical import stability.\n- Keep progress\
+  \ locality and write-path behavior unchanged.\n\nVerification evidence:\n- Targeted\
+  \ meta/progress import tests.\n- Full test suite and `engineeringagent validate`.\n"
+acceptance:
+- '`src/engineeringagent/progress_paths.py` and `src/engineeringagent/progress_logging.py`
+  are deleted.'
+- '`src/engineeringagent/progress/__init__.py` exports the agreed canonical helper
+  symbols for package-level convenience imports.'
+- No production module under `src/engineeringagent/**` imports `engineeringagent.progress_paths`
+  or `engineeringagent.progress_logging`.
+- Meta tests assert legacy shim modules are absent and canonical `engineeringagent.progress.*`
+  imports remain valid.
+- Existing progress artifact behavior remains unchanged in loop/reviewer flows.
+- uv run pytest -q tests/meta tests/loop/test_loop_contracts.py tests/reviewers/test_reviewers_state.py
+  passes.
+- uv run pytest -q passes.
+- uv run engineeringagent validate passes.
+subtasks:
+- id: ST-001
+  title: Remove legacy progress shim modules
+  status: done
+  context: Delete the two top-level shim files and any remaining production references
+    under `src/engineeringagent/**`.
+  verification:
+  - uv run pytest -q tests/meta/test_progress_import_paths.py
+- id: ST-002
+  title: Add progress package convenience re-exports (only if they are currently used
+    in production code - else delete them)
+  status: done
+  context: Update `engineeringagent.progress.__init__` to expose commonly used paths/logging
+    helpers while keeping canonical submodules intact.
+  verification:
+  - uv run pytest -q tests/meta
+- id: ST-003
+  title: Update contract tests for hard-fail legacy imports
+  status: done
+  context: Replace shim-importability assertions with explicit checks that legacy
+    modules are absent and canonical imports work.
+  notes:
+  - Replaced token-based scanning with AST import-statement validation across production
+    Python modules under `src/engineeringagent/**`.
+  verification:
+  - uv run pytest -q tests/meta/test_legacy_shim_imports.py tests/meta/test_progress_import_paths.py
+- id: ST-004
+  title: Run full validation for breaking import-surface change
+  status: done
+  context: Validate no regressions in loop/reviewer progress behavior and spec/runtime
+    contracts.
+  verification:
+  - uv run pytest -q
+  - uv run engineeringagent validate
+updated_at: '2026-02-19T23:41:53Z'
