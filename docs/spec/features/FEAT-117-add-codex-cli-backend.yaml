@@ -30,6 +30,8 @@ constraints:
 - >-
   Preconditions:
   - FEAT-113 must be complete (registry/config backend selection).
+  - FEAT-119 must be complete (run_agent has no backend override parameter and backend
+    resolution stays inside engineeringagent.agents).
   - FEAT-114 must be complete before init/scaffold tasks in this feature.
   - FEAT-115 must be complete before validating full loop-level backend switching.
 - |-
@@ -42,6 +44,14 @@ constraints:
 - >-
   Authentication assumption: users are already logged into Codex CLI. Do not add
   login bootstrap flows (`codex login`) to init or runtime.
+- >-
+  Do not implement backend failover or fallback (for example: switching from codex
+  to opencode after a codex failure). Backend selection is a configuration decision
+  and must remain stable for the duration of a single run.
+- >-
+  Repository safety: until ST-015, do not change this repository's configured
+  default backend to codex. ST-015 is the only subtask allowed to modify
+  `engineeringagent.toml` `[agents] backend` for this repo.
 - >-
   Add a new backend package:
   - `src/engineeringagent/agents/backends/codex/__init__.py`
@@ -69,6 +79,16 @@ constraints:
   - on parse/validation failure after Codex schema mode, raise
     `AgentOutputValidationError` without retry loop
   - preserve existing retry behavior for non-native-schema backends
+- >-
+  Codex structured-output payload capture contract:
+  - In both text and structured modes, codex backend must use
+    `--output-last-message <path>` and treat the file contents as the sole
+    canonical output payload.
+  - Stdout/stderr (including `--json` event streams) must be treated as
+    non-canonical progress/debug output and must not be parsed to obtain the final
+    payload.
+  - In structured mode, the output-last-message file is expected to contain a
+    single strict JSON value compatible with the provided `--output-schema`.
 - >-
   Register `codex` in the backend registry and ensure list/resolve behavior is
   deterministic and sorted.
@@ -114,12 +134,12 @@ constraints:
     `src/engineeringagent/agents/**`)
 - >-
   Reviewer `$responseformat` deprecation contract:
-  - prompts must no longer require `$responseformat` to pass validation/runtime
-  - codex reviewer path must not depend on `$responseformat` injection
-  - for non-native-schema backends (opencode), prepend reviewer response-format
-    instructions at runtime before reviewer prompt content
-  - retain backward compatibility: if `$responseformat` is present in prompt files,
-    treat it as optional legacy token and do not fail
+  - `$responseformat` is forbidden in reviewer prompt files (no legacy support).
+  - `engineeringagent validate` must fail deterministically when `$responseformat`
+    appears in any configured reviewer prompt file.
+  - Reviewer execution must not require `$responseformat` at runtime.
+  - Reviewer output formatting is enforced via backend/strategy-owned structured
+    output schema handling, not reviewer prompt token injection.
 implementation_notes: |
   Backend error mapping
 
@@ -138,6 +158,15 @@ implementation_notes: |
   - For structured mode, write schema JSON to a temp file and pass
     `--output-schema <temp_schema_path>`.
 
+  Observed codex schema-mode behavior (hello-world validation)
+
+  - In codex-cli 0.104.0, `codex exec --output-schema <schema.json>` produced a
+    strict JSON object in the output-last-message file.
+  - Schema constraints like `enum` and `additionalProperties: false` were honored
+    even when the prompt requested invalid values or extra keys.
+  - The codex CLI may print additional non-JSON progress/telemetry to stdout; this
+    reinforces treating output-last-message as canonical.
+
   Session semantics
 
   - Codex backend can ignore `session_id` for v1 and return `session_id=None`.
@@ -155,8 +184,8 @@ implementation_notes: |
   - Introduce a runtime/strategy resolver in `engineeringagent.agents` that reads
     backend configuration and returns the selected execution strategy.
   - Keep `run_agent` as a stable facade API, but move selection logic out of it.
-  - Existing `backend=...` argument may remain as an explicit override for tests
-    and controlled call sites, but default-path selection must be strategy-owned.
+  - `run_agent` does not accept a backend override parameter. Tests must inject a
+    backend selection via repo config (`[agents] backend`) and registry mapping.
 
   Structured output ownership by backend
 
@@ -170,24 +199,19 @@ implementation_notes: |
 
   Reviewer response-format deprecation
 
-  - Remove hard requirement that reviewer prompt files contain `$responseformat`.
-  - In reviewer runtime, make response-format contract injection backend-aware:
-    - codex (native schema): do not require or inject reviewer `$responseformat`
-      contract text
-    - opencode (non-native schema): prepend reviewer response-format instructions
-      to composed prompt
-  - Keep legacy prompts compatible: when `$responseformat` exists, allow/strip it
-    without turning it into a validation/runtime failure.
-  - Update reviewer authoring docs to state `$responseformat` is deprecated.
+  - Remove reviewer prompt reliance on `$responseformat`.
+  - Remove any reviewer runtime injection/substitution behavior for `$responseformat`.
+  - Forbid `$responseformat` in repo reviewer prompt files and fail validation if present.
+  - Update reviewer authoring docs to state `$responseformat` is not supported.
 acceptance:
 - >-
   engineeringagent.agents.list_backends() includes codex and remains sorted.
 - >-
-  run_agent(..., backend=codex_backend, output_type=str) executes via codex exec
-  command wiring and returns final text payload.
+  With `[agents] backend = "codex"` configured, `run_agent(..., output_type=str)`
+  executes via codex exec command wiring and returns final text payload.
 - >-
-  run_agent(..., backend=codex_backend, output_type=<model>) uses output-schema
-  mode and performs a single backend invocation.
+  With `[agents] backend = "codex"` configured, `run_agent(..., output_type=<model>)`
+  uses output-schema mode and performs a single backend invocation.
 - >-
   Codex command args include a workspace-write-equivalent sandbox policy for both
   text and structured modes.
@@ -210,6 +234,9 @@ acceptance:
 - Structured codex path raises `AgentOutputValidationError` without retry when
   returned payload still fails local parse/validation.
 - >-
+  Codex structured-output mode parses the output-last-message file as the final
+  payload (not stdout) and validates it as strict JSON.
+- >-
   OpenCode structured-output path remains functional after migration to
   backend-owned policy, with deterministic retry behavior covered by tests.
 - Missing codex executable maps to deterministic `AgentBackendError` with backend
@@ -219,14 +246,8 @@ acceptance:
 - No login/bootstrap flow is added for Codex authentication.
 - subprocess boundary fitness remains green after allowlist updates.
 - >-
-  Reviewer prompts without `$responseformat` pass validate/runtime checks and run
-  correctly under codex backend.
-- >-
-  Reviewer prompts still run under opencode backend with response-format contract
-  prepended at runtime.
-- >-
-  Legacy reviewer prompts containing `$responseformat` remain supported during
-  migration (no validation/runtime failure solely due to token presence/absence).
+  Reviewer prompt files do not contain `$responseformat`, and `engineeringagent validate`
+  fails deterministically if any configured reviewer prompt contains the token.
 - >-
   Repository migration complete: this repository default backend is codex via
   engineeringagent.toml [agents] backend, and default-path agent tests no longer
@@ -406,34 +427,31 @@ subtasks:
   - uv run pytest -q
 
 - id: ST-016
-  title: Deprecate reviewer $responseformat placeholder requirement
+  title: Remove and forbid reviewer $responseformat token
   status: backlog
   context: |
-    Update reviewer validation/runtime contracts so `$responseformat` is optional
-    and no longer required.
+    Update reviewer validation/runtime contracts so `$responseformat` is not supported.
 
     Required outcomes:
-    - remove strict validator failure for missing `$responseformat` in reviewer
-      prompt files
-    - remove runtime failure path that blocks reviewer execution when
-      `$responseformat` is absent
-    - keep backward compatibility for prompts that still include the token
+    - remove any runtime substitution/injection behavior for `$responseformat`
+    - remove any requirement that reviewer prompts contain `$responseformat`
+    - fail validation deterministically when `$responseformat` appears in any
+      configured reviewer prompt file
+    - migrate in-repo reviewer prompts to remove the token
   verification:
   - uv run pytest -q tests/reviewers tests/meta/test_validator.py
 
 - id: ST-017
-  title: Make reviewer response-format injection backend-aware
+  title: Remove reviewer response-format injection and rely on structured output
   status: backlog
   context: |
-    Make reviewer output-contract injection conditional on backend capability:
-    - codex/native-schema path: rely on backend schema enforcement and do not
-      prepend reviewer response-format contract text
-    - opencode/non-native path: prepend reviewer response-format contract text
+    Remove any reviewer-specific output-contract injection text/logic.
 
-    Reviewers are the first migration target only; implementation must not
-    introduce reviewer-only structured-output logic into run_agent.
+    Reviewer structured output formatting must be enforced by the generic
+    structured-output mechanism (backend strategy schema handling), not by
+    reviewer prompt token injection.
 
-    Update reviewer prompt docs and prompt-file tests to reflect deprecation.
+    Update reviewer prompt docs and tests accordingly.
   verification:
   - uv run pytest -q tests/reviewers tests/harness/test_checks_runtime.py
   - uv run pytest -q tests/meta/test_validator.py tests/reviewers/test_repo_reviewers_config.py
@@ -466,3 +484,33 @@ subtasks:
       generic structured-output API.
   verification:
   - uv run pytest -q tests/agents/test_agents_api.py tests/reviewers
+
+- id: ST-020
+  title: Add structured JSON output format regression tests for reviewer envelopes
+  status: backlog
+  context: |
+    Add tests that pin the expected JSON output characteristics for reviewer
+    structured responses:
+    - output is a single strict JSON object (no code fences, no surrounding text)
+    - schema validation failures surface as `AgentOutputValidationError` with
+      bounded details
+
+    Ensure tests cover at least one failure-mode payload (for example: code fences)
+    and one success payload.
+  verification:
+  - uv run pytest -q tests/reviewers tests/agents/test_agents_api.py
+
+- id: ST-021
+  title: Add codex output-schema integration unit tests (mocked subprocess)
+  status: backlog
+  context: |
+    Add tests for the codex backend client/strategy that prove:
+    - structured mode always uses `--output-schema` + `--output-last-message`
+    - the backend reads output-last-message (not stdout) as canonical
+    - schema constraints (enum/additionalProperties) are enforced end-to-end by
+      validating the parsed JSON against the requested schema type
+
+    These tests must not require a real codex binary on the host; mock subprocess
+    execution and write a synthetic output-last-message file.
+  verification:
+  - uv run pytest -q tests/agents/test_codex_backend.py
