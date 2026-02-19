@@ -142,3 +142,19 @@ def test_markdown_reference_coverage_ignores_references_from_ignored_directories
     assert violations == [
         "README.md:1 markdown file outside docs/ has no in-repo non-self reference; add at least one deterministic path reference from another repository file."
     ]
+
+
+def test_markdown_reference_coverage_exempts_backend_scaffold_markdown(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    _write_file(
+        tmp_path,
+        "src/engineeringagent/agents/backends/opencode/scaffold_templates/agent.engineeringagent.md",
+    )
+
+    proc, result = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert result["status"] == "pass"
+    assert not _violations(result)

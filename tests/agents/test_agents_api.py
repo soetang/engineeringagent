@@ -60,6 +60,23 @@ class _SequencedBackend:
         return self._results.pop(0)
 
 
+def _configure_backend(
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    backend_id: str,
+    backend_factory: Any,
+) -> None:
+    (tmp_path / "engineeringagent.toml").write_text(
+        f'[agents]\nbackend = "{backend_id}"\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "engineeringagent.agents.registry._BACKEND_FACTORIES",
+        {backend_id: backend_factory},
+    )
+
+
 def test_agents_module_exports_run_agent() -> None:
     assert callable(agents.run_agent)
 
@@ -140,11 +157,17 @@ def test_resolve_backend_id_prefers_engineeringagent_toml_over_pyproject(
     assert agents.resolve_backend_id(tmp_path) == "opencode"
 
 
-def test_run_agent_returns_text_for_str_output_type(tmp_path: Path) -> None:
+def test_run_agent_returns_text_for_str_output_type(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     backend = _StubBackend()
-    assert (
-        agents.run_agent(tmp_path, "hi", backend=backend, output_type=str) == "echo:hi"
+    _configure_backend(
+        tmp_path=tmp_path,
+        monkeypatch=monkeypatch,
+        backend_id="stub",
+        backend_factory=lambda structured_output: backend,
     )
+    assert agents.run_agent(tmp_path, "hi", output_type=str) == "echo:hi"
 
 
 def test_run_agent_uses_configured_backend_by_default(
@@ -240,14 +263,19 @@ def test_run_agent_raises_for_unknown_configured_backend(tmp_path: Path) -> None
     assert "opencode" in message
 
 
+def test_run_agent_rejects_backend_override_argument(tmp_path: Path) -> None:
+    with pytest.raises(TypeError, match=r"backend"):
+        agents.run_agent(tmp_path, "hi", backend=object())  # type: ignore[call-arg]
+
+
 def test_run_agent_rejects_negative_max_validation_retries(tmp_path: Path) -> None:
-    backend = _StubBackend()
     with pytest.raises(ValueError, match=r"max_validation_retries must be >= 0"):
-        agents.run_agent(tmp_path, "hi", backend=backend, max_validation_retries=-1)
+        agents.run_agent(tmp_path, "hi", max_validation_retries=-1)
 
 
 def test_run_agent_structured_output_validates_and_returns_model(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     class _Payload(BaseModel):
         value: int
@@ -260,12 +288,19 @@ def test_run_agent_structured_output_validates_and_returns_model(
             ),
         ]
     )
-    parsed = agents.run_agent(tmp_path, "hi", backend=backend, output_type=_Payload)
+    _configure_backend(
+        tmp_path=tmp_path,
+        monkeypatch=monkeypatch,
+        backend_id="sequenced",
+        backend_factory=lambda structured_output: backend,
+    )
+    parsed = agents.run_agent(tmp_path, "hi", output_type=_Payload)
     assert parsed.value == 3
 
 
 def test_run_agent_structured_output_retries_in_same_session_on_invalid_json(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     class _Payload(BaseModel):
         ok: bool
@@ -277,19 +312,25 @@ def test_run_agent_structured_output_retries_in_same_session_on_invalid_json(
         ]
     )
 
+    _configure_backend(
+        tmp_path=tmp_path,
+        monkeypatch=monkeypatch,
+        backend_id="sequenced",
+        backend_factory=lambda structured_output: backend,
+    )
+
     parsed = agents.run_agent(
-        tmp_path,
-        "hi",
-        backend=backend,
-        output_type=_Payload,
-        max_validation_retries=1,
+        tmp_path, "hi", output_type=_Payload, max_validation_retries=1
     )
     assert parsed.ok is True
     assert backend.session_ids == [None, "s1"]
     assert str(tmp_path) not in backend.prompts[1]
 
 
-def test_run_agent_structured_output_retries_on_schema_mismatch(tmp_path: Path) -> None:
+def test_run_agent_structured_output_retries_on_schema_mismatch(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     class _Payload(BaseModel):
         value: int
 
@@ -300,12 +341,15 @@ def test_run_agent_structured_output_retries_on_schema_mismatch(tmp_path: Path) 
         ]
     )
 
+    _configure_backend(
+        tmp_path=tmp_path,
+        monkeypatch=monkeypatch,
+        backend_id="sequenced",
+        backend_factory=lambda structured_output: backend,
+    )
+
     parsed = agents.run_agent(
-        tmp_path,
-        "hi",
-        backend=backend,
-        output_type=_Payload,
-        max_validation_retries=1,
+        tmp_path, "hi", output_type=_Payload, max_validation_retries=1
     )
     assert parsed.value == 1
     assert backend.session_ids == [None, "s1"]
@@ -313,6 +357,7 @@ def test_run_agent_structured_output_retries_on_schema_mismatch(tmp_path: Path) 
 
 def test_run_agent_structured_output_raises_typed_error_after_retries(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     class _Payload(BaseModel):
         value: int
@@ -324,14 +369,15 @@ def test_run_agent_structured_output_raises_typed_error_after_retries(
         ]
     )
 
+    _configure_backend(
+        tmp_path=tmp_path,
+        monkeypatch=monkeypatch,
+        backend_id="sequenced",
+        backend_factory=lambda structured_output: backend,
+    )
+
     with pytest.raises(agents.AgentOutputValidationError) as excinfo:
-        agents.run_agent(
-            tmp_path,
-            "hi",
-            backend=backend,
-            output_type=_Payload,
-            max_validation_retries=1,
-        )
+        agents.run_agent(tmp_path, "hi", output_type=_Payload, max_validation_retries=1)
     err = excinfo.value
     assert err.backend == "sequenced"
     assert err.attempts == 2
@@ -340,6 +386,7 @@ def test_run_agent_structured_output_raises_typed_error_after_retries(
 
 def test_run_agent_structured_retry_prompt_truncates_large_validation_error(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     # Generate a large number of distinct validation errors so that the
     # deterministic retry prompt must truncate the error summary.
@@ -359,12 +406,15 @@ def test_run_agent_structured_retry_prompt_truncates_large_validation_error(
         ]
     )
 
+    _configure_backend(
+        tmp_path=tmp_path,
+        monkeypatch=monkeypatch,
+        backend_id="sequenced",
+        backend_factory=lambda structured_output: backend,
+    )
+
     parsed = agents.run_agent(
-        tmp_path,
-        "hi",
-        backend=backend,
-        output_type=payload_model,
-        max_validation_retries=1,
+        tmp_path, "hi", output_type=payload_model, max_validation_retries=1
     )
     assert getattr(parsed, "f0") == 1
 
@@ -378,7 +428,10 @@ def test_run_agent_structured_retry_prompt_truncates_large_validation_error(
     assert error_line.endswith("...")
 
 
-def test_run_agent_structured_prompts_use_deterministic_wrapper(tmp_path: Path) -> None:
+def test_run_agent_structured_prompts_use_deterministic_wrapper(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     class _Payload(BaseModel):
         value: int
 
@@ -388,9 +441,14 @@ def test_run_agent_structured_prompts_use_deterministic_wrapper(tmp_path: Path) 
         ]
     )
 
-    parsed = agents.run_agent(
-        tmp_path, "do the thing", backend=backend, output_type=_Payload
+    _configure_backend(
+        tmp_path=tmp_path,
+        monkeypatch=monkeypatch,
+        backend_id="sequenced",
+        backend_factory=lambda structured_output: backend,
     )
+
+    parsed = agents.run_agent(tmp_path, "do the thing", output_type=_Payload)
     assert parsed.value == 1
 
     initial = backend.prompts[0]
@@ -403,6 +461,7 @@ def test_run_agent_structured_prompts_use_deterministic_wrapper(tmp_path: Path) 
 
 def test_run_agent_validation_error_truncates_last_text_when_huge(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     class _Payload(BaseModel):
         value: int
@@ -415,14 +474,15 @@ def test_run_agent_validation_error_truncates_last_text_when_huge(
         ]
     )
 
+    _configure_backend(
+        tmp_path=tmp_path,
+        monkeypatch=monkeypatch,
+        backend_id="sequenced",
+        backend_factory=lambda structured_output: backend,
+    )
+
     with pytest.raises(agents.AgentOutputValidationError) as excinfo:
-        agents.run_agent(
-            tmp_path,
-            "hi",
-            backend=backend,
-            output_type=_Payload,
-            max_validation_retries=1,
-        )
+        agents.run_agent(tmp_path, "hi", output_type=_Payload, max_validation_retries=1)
     err = excinfo.value
     assert err.last_text is not None
     assert len(err.last_text) <= 2000

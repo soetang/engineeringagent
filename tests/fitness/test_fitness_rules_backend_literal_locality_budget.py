@@ -219,7 +219,7 @@ def test_backend_literal_locality_budget_rule_recommends_refresh_when_observed_d
     assert isinstance(baseline_count, int)
     assert isinstance(observed_count, int)
     assert observed_count == 0
-    assert observed_count < baseline_count
+    assert observed_count == baseline_count
     assert f"observed={observed_count}" in summary
     assert f"baseline={baseline_count}" in summary
     assert details["baseline_refresh_recommended"] is True

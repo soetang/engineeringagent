@@ -19,6 +19,7 @@ _MARKDOWN_ALLOWED_ROOTS = (
     Path("src/engineeringagent/prompts"),
     Path("src/engineeringagent/scaffold_templates"),
 )
+_BACKEND_SCAFFOLD_ROOT = Path("src/engineeringagent/agents/backends")
 _MARKDOWN_ALLOWED_ROOT_FILES = (
     Path("README.md"),
     Path("AGENTS.md"),
@@ -49,7 +50,8 @@ _MARKDOWN_IGNORE_DIRECTORIES = {
 }
 _MARKDOWN_LOCALITY_REMEDIATION = (
     "move markdown files under docs/, harness/reviewers/prompts/, "
-    "src/engineeringagent/prompts/, or src/engineeringagent/scaffold_templates/; "
+    "src/engineeringagent/prompts/, src/engineeringagent/scaffold_templates/, "
+    "or src/engineeringagent/agents/backends/*/scaffold_templates/; "
     "only repository-root README.md and AGENTS.md are exempt from locality "
     "restrictions."
 )
@@ -72,10 +74,25 @@ def _iter_markdown_files(project_root: Path) -> list[Path]:
 def _is_allowed_markdown_locality(relative_path: Path) -> bool:
     if relative_path in _MARKDOWN_ALLOWED_ROOT_FILES:
         return True
+    if _is_backend_scaffold_template_markdown(relative_path):
+        return True
     return any(
         relative_path == allowed_root or allowed_root in relative_path.parents
         for allowed_root in _MARKDOWN_ALLOWED_ROOTS
     )
+
+
+def _is_backend_scaffold_template_markdown(relative_path: Path) -> bool:
+    if relative_path.suffix != ".md":
+        return False
+    parts = relative_path.parts
+    if parts[:4] != _BACKEND_SCAFFOLD_ROOT.parts:
+        return False
+    if len(parts) < 7:
+        return False
+    if parts[5] != "scaffold_templates":
+        return False
+    return len(parts) > 6
 
 
 def _is_outside_docs(relative_path: Path) -> bool:
@@ -144,6 +161,8 @@ def _markdown_locality_reference_coverage_violations(project_root: Path) -> list
     references_by_markdown = _collect_markdown_references(project_root, markdown_paths)
     for relative_path in markdown_paths:
         if not _is_outside_docs(relative_path):
+            continue
+        if _is_backend_scaffold_template_markdown(relative_path):
             continue
         if references_by_markdown.get(relative_path):
             continue

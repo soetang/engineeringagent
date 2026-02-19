@@ -7,7 +7,6 @@ from typing import Any, TypeVar, overload
 from pydantic import TypeAdapter, ValidationError
 
 from engineeringagent.agents.contracts import (
-    AgentBackend,
     AgentOutputValidationError,
 )
 from engineeringagent.agents.registry import get_backend_factory, resolve_backend_id
@@ -99,7 +98,6 @@ def run_agent(
     prompt: str,
     *,
     output_type: type[str] = str,
-    backend: AgentBackend | None = None,
     max_validation_retries: int = 2,
 ) -> str: ...
 
@@ -110,7 +108,6 @@ def run_agent(
     prompt: str,
     *,
     output_type: type[T],
-    backend: AgentBackend | None = None,
     max_validation_retries: int = 2,
 ) -> T: ...
 
@@ -121,7 +118,6 @@ def run_agent(
     prompt: str,
     *,
     output_type: Any,
-    backend: AgentBackend | None = None,
     max_validation_retries: int = 2,
 ) -> Any: ...
 
@@ -131,7 +127,6 @@ def run_agent(
     prompt: str,
     *,
     output_type: Any = str,
-    backend: AgentBackend | None = None,
     max_validation_retries: int = 2,
 ) -> Any:
     """Run an agent and return either text or validated structured output.
@@ -142,8 +137,6 @@ def run_agent(
         project_root: Repository root used as agent execution working directory.
         prompt: Prompt passed to the backend agent.
         output_type: `str` for plain text, or a TypeAdapter-supported schema type.
-        backend: Optional backend implementation. When omitted, the default
-            production backend is selected internally.
         max_validation_retries: Maximum same-session retries for parse/validation
             failures when structured output is requested.
 
@@ -153,12 +146,9 @@ def run_agent(
     if max_validation_retries < 0:
         raise ValueError("max_validation_retries must be >= 0")
 
-    if backend is None:
-        backend_id = resolve_backend_id(project_root)
-        create_backend = get_backend_factory(backend_id)
-        backend = create_backend(output_type is not str)
-
-    assert backend is not None
+    backend_id = resolve_backend_id(project_root)
+    create_backend = get_backend_factory(backend_id)
+    backend = create_backend(output_type is not str)
 
     if output_type is str:
         return backend.run(project_root, prompt).text

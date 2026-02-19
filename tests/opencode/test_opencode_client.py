@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import importlib
 import subprocess
 from pathlib import Path
 from typing import Any
+
+import pytest
 
 from engineeringagent.agents.backends.opencode import client as client_module
 
@@ -133,3 +136,8 @@ def test_start_agent_parses_json_format_into_structured_fields(
 
 def test_default_agent_constant_matches_expected_runtime_identifier() -> None:
     assert client_module.DEFAULT_OPENCODE_AGENT == "engineeringagent"
+
+
+def test_legacy_agents_defaults_module_is_removed() -> None:
+    with pytest.raises(ModuleNotFoundError):
+        importlib.import_module("engineeringagent.agents_defaults")

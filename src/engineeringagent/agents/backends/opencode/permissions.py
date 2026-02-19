@@ -5,9 +5,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.agents_defaults import DEFAULT_OPENCODE_AGENT
-
-from .client import start_agent
+from .client import DEFAULT_OPENCODE_AGENT, start_agent
 
 
 PROBE_COMMAND = "git status --short"

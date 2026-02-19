@@ -6,7 +6,8 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.agents_defaults import DEFAULT_OPENCODE_AGENT
+
+DEFAULT_OPENCODE_AGENT = "engineeringagent"
 
 
 class OpenCodeAgentRunResult(BaseModel):

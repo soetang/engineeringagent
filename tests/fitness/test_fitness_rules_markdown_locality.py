@@ -138,3 +138,20 @@ def test_markdown_locality_rule_ignores_tooling_and_vendor_directories(
     assert proc.returncode == 0
     assert result["status"] == "pass"
     assert not _violations(result)
+
+
+def test_markdown_locality_rule_allows_backend_scaffold_markdown(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Allow backend-owned scaffold markdown templates under agents backends."""
+    _write_markdown(
+        tmp_path,
+        "src/engineeringagent/agents/backends/opencode/scaffold_templates/agent.engineeringagent.md",
+    )
+
+    proc, result = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert result["status"] == "pass"
+    assert not _violations(result)

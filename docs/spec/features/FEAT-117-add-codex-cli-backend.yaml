@@ -8,8 +8,9 @@ objective: |
   Implement a new `codex` agent backend that runs via `codex exec` and supports
   structured output using Codex CLI schema enforcement.
 
-  The backend must be selectable through the existing agents backend registry and
-  configuration path, and it must support backend-owned repository scaffolding via
+  The backend must be resolved internally through the existing agents backend registry
+  and configuration path (no backend object override at `run_agent` callsites), and
+  it must support backend-owned repository scaffolding via
   `.codex/config.toml` using Codex profiles.
 context: |
   We already have an OpenCode backend under `src/engineeringagent/agents/backends/opencode/**`.
@@ -48,6 +49,10 @@ constraints:
   Do not implement backend failover or fallback (for example: switching from codex
   to opencode after a codex failure). Backend selection is a configuration decision
   and must remain stable for the duration of a single run.
+- >-
+  Backend selection and backend construction are internal to
+  `engineeringagent.agents`; callers (including reviewers) must not provide backend
+  objects or backend override parameters to `run_agent`.
 - >-
   Repository safety: until ST-015, do not change this repository's configured
   default backend to codex. ST-015 is the only subtask allowed to modify

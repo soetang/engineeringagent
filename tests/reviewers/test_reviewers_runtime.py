@@ -336,13 +336,10 @@ def test_run_reviewer_loads_harness_prompt_and_parses_decision(tmp_path) -> None
     captured: dict[str, str] = {}
     captured_max_validation_retries: list[int] = []
 
-    def _run_agent(
-        project_root, prompt, *, output_type, backend=None, max_validation_retries=2
-    ):
+    def _run_agent(project_root, prompt, *, output_type, max_validation_retries=2):
         captured["project_root"] = str(project_root)
         captured["prompt"] = prompt
         captured["output_type"] = str(output_type)
-        captured["backend"] = str(backend)
         captured_max_validation_retries.append(max_validation_retries)
         return ReviewerDecisionEnvelope(
             decision="approve",
@@ -425,11 +422,8 @@ def test_run_reviewer_passes_max_validation_retries_to_canonical_runner(
     captured: dict[str, str] = {}
     captured_max_validation_retries: list[int] = []
 
-    def _run_agent(
-        _project_root, _prompt, *, output_type, backend=None, max_validation_retries=2
-    ):
+    def _run_agent(_project_root, _prompt, *, output_type, max_validation_retries=2):
         captured["output_type"] = str(output_type)
-        captured["backend"] = str(backend)
         captured_max_validation_retries.append(max_validation_retries)
         return ReviewerDecisionEnvelope(
             decision="approve",

@@ -173,14 +173,11 @@ def test_run_reviewer_uses_empty_folder_sandbox_when_configured(
 
     captured: dict[str, str | bool] = {}
 
-    def _run_agent(
-        project_root, prompt, *, output_type, backend=None, max_validation_retries=2
-    ):
+    def _run_agent(project_root, prompt, *, output_type, max_validation_retries=2):
         del max_validation_retries
         sandbox_root = Path(project_root)
         captured["project_root"] = str(sandbox_root)
         captured["output_type"] = str(output_type)
-        captured["backend"] = str(backend)
         captured["prompt"] = prompt
         captured["sandbox_readme_before"] = (sandbox_root / "README.md").read_text(
             encoding="utf-8"
@@ -245,14 +242,11 @@ def test_run_reviewer_uses_temp_worktree_snapshot_sandbox_when_configured(
 
     captured: dict[str, str] = {}
 
-    def _run_agent(
-        project_root, prompt, *, output_type, backend=None, max_validation_retries=2
-    ):
+    def _run_agent(project_root, prompt, *, output_type, max_validation_retries=2):
         del max_validation_retries
         captured["project_root"] = str(project_root)
         captured["prompt"] = prompt
         captured["output_type"] = str(output_type)
-        captured["backend"] = str(backend)
         return ReviewerDecisionEnvelope(
             decision="approve",
             summary="Bootstrap succeeded.",

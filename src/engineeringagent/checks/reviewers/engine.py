@@ -12,7 +12,6 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 
 from engineeringagent.changed_paths import ChangedPathsResult
 from engineeringagent.agents import (
-    AgentBackend,
     AgentBackendError,
     AgentOutputValidationError,
     run_agent,
@@ -123,7 +122,6 @@ class ReviewerRunRequest(BaseModel):
     changed_paths: ChangedPathsResult
     prior_feedback: str | None
     run_agent_fn: Callable[..., Any] | None = None
-    agent_backend: AgentBackend | None = None
 
 
 def _now_iso() -> str:
@@ -461,7 +459,6 @@ def run_reviewer(
                     execution_root,
                     composed_prompt,
                     output_type=ReviewerDecisionEnvelope,
-                    backend=run_request.agent_backend,
                     max_validation_retries=REVIEWER_DECISION_PARSE_MAX_RETRIES,
                 )
             except FileNotFoundError:

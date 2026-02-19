@@ -13,7 +13,7 @@ from engineeringagent.checks.fitness.contracts import (
 
 
 RULE_ID = "architecture.backend-literal-locality-budget"
-BASELINE_VIOLATION_COUNT = 1
+BASELINE_VIOLATION_COUNT = 0
 
 _SOURCE_ROOT = Path("src/engineeringagent")
 _ALLOWED_LITERAL_ROOTS = (

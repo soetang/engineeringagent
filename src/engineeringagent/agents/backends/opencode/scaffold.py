@@ -27,7 +27,7 @@ def build_opencode_scaffold_manifest(agent_model: str) -> dict[str, str]:
     """Build OpenCode-owned scaffold files for init output."""
     return {
         ".opencode/agents/engineeringagent.md": _render_template(
-            "agent.engineeringagent.template",
+            "agent.engineeringagent.md",
             substitutions={"agent_model": agent_model},
         ),
         ".opencode/.gitignore": _render_template("gitignore"),

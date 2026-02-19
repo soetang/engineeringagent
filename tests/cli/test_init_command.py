@@ -1093,7 +1093,7 @@ def test_init_renders_scaffold_from_template_files() -> None:
     backend_template_files = {
         entry.name for entry in backend_template_dir.iterdir() if entry.is_file()
     }
-    assert "agent.engineeringagent.template" in backend_template_files
+    assert "agent.engineeringagent.md" in backend_template_files
     assert "gitignore" in backend_template_files
 
     assert ".opencode/agents/engineeringagent.md" in manifest
