@@ -3,3 +3,4 @@ model = "${agent_model}"
 sandbox_mode = "workspace-write"
 approval_policy = "never"
 web_search = 'cached'
+network_access = true
