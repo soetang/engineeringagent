@@ -51,6 +51,15 @@ def test_harness_toggles_read_pyproject_tool_engineeringagent(tmp_path: Path) ->
     assert resolve_harness_pytest_opencode_integration_enabled(tmp_path) is True
 
 
+def test_harness_toggle_defaults_when_setting_key_is_missing(tmp_path: Path) -> None:
+    (tmp_path / "engineeringagent.toml").write_text(
+        "[harness.fitness]\n",
+        encoding="utf-8",
+    )
+
+    assert resolve_harness_fitness_opencode_real_smoke_enabled(tmp_path) is False
+
+
 @pytest.mark.parametrize(
     "payload",
     [

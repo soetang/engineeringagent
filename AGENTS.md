@@ -18,18 +18,19 @@ Keep this file concise. Add durable references and rules, not task logs.
 - One feature focus per cycle.
 - Interview before drafting a new feature spec.
 - Keep each loop incremental, verifiable, and recoverable.
-- Encode behavior in gates and validators, not prose alone.
+- Encode behavior in checks and validators, not prose alone.
 - For in-repo loop execution, use source-first workspace commands (`uv run ...`), not `uvx --from . engineeringagent ...`.
 
 ## 3) System of Record (Read in this order)
 
-1. `AGENTS.md` (this map)
-1. `README.md` (human workflow and local setup)
-1. Relevant docs under `docs/` (`docs/references/spec-writing-llms.md` before authoring specs; `docs/references/docs-architecture-llms.md` before restructuring docs)
-1. `harness/gates.yaml` (active gate profiles and commands)
-1. `docs/spec/features/` (active feature specs and subtasks)
-1. `docs/spec/schemas/feature.schema.json` (spec contract)
-1. `src/engineeringagent/` (implementation)
+1. [`AGENTS.md`](AGENTS.md) (this map)
+1. [`README.md`](README.md) (human workflow and local setup)
+1. Relevant docs under [`docs/`](docs/) ([`docs/references/spec-writing-llms.md`](docs/references/spec-writing-llms.md) before authoring specs; [`docs/references/docs-architecture-llms.md`](docs/references/docs-architecture-llms.md) before restructuring docs)
+1. [`harness/checks.yaml`](harness/checks.yaml) (active checks and phases)
+1. [`harness/fitness-functions/rules.yaml`](harness/fitness-functions/rules.yaml) (fitness rule manifest)
+1. [`docs/spec/features/`](docs/spec/features/) (active feature specs and subtasks)
+1. [`docs/spec/schemas/feature.schema.json`](docs/spec/schemas/feature.schema.json) (spec contract)
+1. [`src/engineeringagent/`](src/engineeringagent/) (implementation)
 
 ## 4) Repository Zones
 
@@ -70,9 +71,8 @@ Keep this file concise. Add durable references and rules, not task logs.
 
 - Validate specs: `uv run engineeringagent validate`
 - Inspect init profile options: `uv run engineeringagent init --help`
-- List gate profiles: `uv run engineeringagent gates list`
-- Run precommit gates: `uv run engineeringagent gates run --profile precommit`
-- Run loop-fast gates: `uv run engineeringagent gates run --profile loop_fast`
+- Run iteration-end checks: `uv run engineeringagent checks run --phase iteration_end`
+- Run feature-done checks: `uv run engineeringagent checks run --phase feature_done`
 
 ## 8) Repo Extensions (Fill In)
 

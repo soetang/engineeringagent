@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Literal
 
-from .fitness.catalog import render_rule_catalog_markdown
+from .fitness.catalog import format_config_file, render_rule_catalog_markdown
 from .fitness.registry import FitnessRuleDefinition, build_rule_catalog
 
 
@@ -27,18 +27,28 @@ def render_fitness_catalog(
 
     catalog = build_rule_catalog(project_root, manifest_path=manifest_path)
     if format == "json":
-        payload = [_fitness_catalog_entry(definition) for definition in catalog]
+        payload = [
+            _fitness_catalog_entry(definition, project_root=project_root)
+            for definition in catalog
+        ]
         return json.dumps(payload, indent=2, sort_keys=True)
 
-    return render_rule_catalog_markdown(catalog)
+    return render_rule_catalog_markdown(catalog, project_root=project_root)
 
 
-def _fitness_catalog_entry(definition: FitnessRuleDefinition) -> dict[str, object]:
+def _fitness_catalog_entry(
+    definition: FitnessRuleDefinition,
+    *,
+    project_root: Path,
+) -> dict[str, object]:
     """Serialize rule metadata as deterministic JSON payload."""
 
     metadata = definition.metadata
     return {
         "adapter": metadata.adapter.value,
+        "config_file": format_config_file(
+            definition.config_file, project_root=project_root
+        ),
         "name": metadata.name,
         "rationale": metadata.rationale,
         "remediation": metadata.remediation,

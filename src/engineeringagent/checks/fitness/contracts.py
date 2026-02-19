@@ -96,6 +96,7 @@ class CustomRuleManifestEntry(FitnessModel):
     side_effect_free: Literal[True]
     adapter: Literal[RuleAdapter.COMMAND]
     command: Annotated[list[NonEmptyStr], Field(min_length=1)]
+    config_file: NonEmptyStr | None = None
     timeout_seconds: Annotated[int, Field(strict=True, ge=1)] | None = None
     env: dict[NonEmptyStr, str] | None = None
 

@@ -6,6 +6,7 @@ from typing import Callable, Sequence
 from pydantic import BaseModel, ConfigDict
 
 from .contracts import (
+    CustomRuleManifest,
     CustomRuleManifestEntry,
     FitnessRuleMetadata,
     FitnessRuleResult,
@@ -28,6 +29,7 @@ class FitnessRuleDefinition(BaseModel):
         None
     )
     command: tuple[str, ...] | None = None
+    config_file: Path | None = None
     timeout_seconds: int | None = None
     env: dict[str, str] | None = None
 
@@ -52,18 +54,10 @@ def load_custom_rule_definitions(
         Command-backed rule definitions, or an empty list when the
         manifest file does not exist.
     """
-    resolved_manifest = manifest_path or custom_manifest_path(project_root)
-    if not resolved_manifest.is_absolute():
-        resolved_manifest = project_root / resolved_manifest
-
-    if not resolved_manifest.exists():
-        return []
-
-    manifest = load_custom_rule_manifest(resolved_manifest)
-    return [
-        _definition_from_custom_entry(entry, resolved_manifest, index)
-        for index, entry in enumerate(manifest.rules)
-    ]
+    return _active_definitions(
+        project_root=project_root,
+        manifest_path=manifest_path,
+    )
 
 
 def build_rule_catalog(
@@ -77,17 +71,10 @@ def build_rule_catalog(
     Catalog output is sorted by `rule_id` for deterministic listing and gate
     consumption.
     """
-    resolved_manifest = manifest_path or custom_manifest_path(project_root)
-    if not resolved_manifest.is_absolute():
-        resolved_manifest = project_root / resolved_manifest
-    if not resolved_manifest.exists():
-        return []
-
-    manifest = load_custom_rule_manifest(resolved_manifest)
-    active_definitions = [
-        _definition_from_custom_entry(entry, resolved_manifest, index)
-        for index, entry in enumerate(manifest.rules)
-    ]
+    active_definitions = _active_definitions(
+        project_root=project_root,
+        manifest_path=manifest_path,
+    )
 
     _raise_on_duplicate_rule_ids(active_definitions)
     return sorted(
@@ -95,9 +82,36 @@ def build_rule_catalog(
     )
 
 
+def _active_definitions(
+    *,
+    project_root: Path,
+    manifest_path: Path | None = None,
+) -> list[FitnessRuleDefinition]:
+    manifest = _load_manifest(project_root, manifest_path=manifest_path)
+    if manifest is None:
+        return []
+
+    resolved_manifest, custom_manifest = manifest
+    resolved_project_root = project_root.resolve()
+    resolved_manifest_dir = resolved_manifest.resolve().parent
+    return [
+        _definition_from_custom_entry(
+            entry,
+            manifest_path=resolved_manifest,
+            resolved_project_root=resolved_project_root,
+            resolved_manifest_dir=resolved_manifest_dir,
+            index=index,
+        )
+        for index, entry in enumerate(custom_manifest.rules)
+    ]
+
+
 def _definition_from_custom_entry(
     entry: CustomRuleManifestEntry,
+    *,
     manifest_path: Path,
+    resolved_project_root: Path,
+    resolved_manifest_dir: Path,
     index: int,
 ) -> FitnessRuleDefinition:
     metadata = FitnessRuleMetadata(
@@ -116,9 +130,51 @@ def _definition_from_custom_entry(
         metadata=metadata,
         origin=f"custom:{manifest_path}:rules[{index}]",
         command=tuple(entry.command),
+        config_file=_resolve_config_file_path(
+            entry.config_file,
+            resolved_project_root=resolved_project_root,
+            resolved_manifest_dir=resolved_manifest_dir,
+            manifest_path=manifest_path,
+        ),
         timeout_seconds=entry.timeout_seconds,
         env=dict(entry.env) if entry.env is not None else None,
     )
+
+
+def _load_manifest(
+    project_root: Path,
+    *,
+    manifest_path: Path | None = None,
+) -> tuple[Path, CustomRuleManifest] | None:
+    resolved_manifest = manifest_path or custom_manifest_path(project_root)
+    if not resolved_manifest.is_absolute():
+        resolved_manifest = project_root / resolved_manifest
+    if not resolved_manifest.exists():
+        return None
+
+    return resolved_manifest, load_custom_rule_manifest(resolved_manifest)
+
+
+def _resolve_config_file_path(
+    config_file: str | None,
+    *,
+    resolved_project_root: Path,
+    resolved_manifest_dir: Path,
+    manifest_path: Path,
+) -> Path | None:
+    if config_file is None:
+        return None
+
+    resolved_config_path = (resolved_manifest_dir / config_file).resolve()
+    try:
+        resolved_config_path.relative_to(resolved_project_root)
+    except ValueError as exc:
+        raise ValueError(
+            "config_file must resolve within project root: "
+            f"{config_file} (manifest: {manifest_path})"
+        ) from exc
+
+    return resolved_config_path
 
 
 def _raise_on_duplicate_rule_ids(definitions: Sequence[FitnessRuleDefinition]) -> None:

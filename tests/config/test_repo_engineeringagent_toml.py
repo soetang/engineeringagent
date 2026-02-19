@@ -31,11 +31,11 @@ def test_repo_engineeringagent_toml_enables_opencode_toggles() -> None:
     assert pytest_table.get("opencode-integration") is True
 
 
-def test_repo_engineeringagent_toml_sets_codex_as_default_agent_backend() -> None:
-    """Assert repository-level backend selection defaults to codex."""
+def test_repo_engineeringagent_toml_sets_opencode_as_default_agent_backend() -> None:
+    """Assert repository-level backend selection defaults to opencode."""
     repo_root = Path(__file__).resolve().parents[2]
 
-    assert resolve_agents_backend_id(repo_root) == "codex"
+    assert resolve_agents_backend_id(repo_root) == "opencode"
 
 
 def test_repo_includes_codex_profile_config_for_default_backend() -> None:

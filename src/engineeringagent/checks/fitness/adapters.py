@@ -45,6 +45,9 @@ def _run_command_adapter(
     command = definition.command
     if not command:
         raise ValueError("command adapter requires a non-empty command")
+    command_argv = list(command)
+    if definition.config_file is not None:
+        command_argv.extend(("--config-file", str(definition.config_file)))
 
     env = os.environ.copy()
     if definition.env:
@@ -52,7 +55,7 @@ def _run_command_adapter(
 
     try:
         proc = subprocess.run(
-            list(command),
+            command_argv,
             cwd=project_root,
             capture_output=True,
             text=True,
@@ -62,7 +65,7 @@ def _run_command_adapter(
         )
     except subprocess.TimeoutExpired as exc:
         raise ValueError(
-            f"command timed out after {definition.timeout_seconds} second(s): {command}"
+            f"command timed out after {definition.timeout_seconds} second(s): {command_argv}"
         ) from exc
 
     if proc.returncode != 0:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import json
 import os
 from pathlib import Path
@@ -17,7 +18,11 @@ from engineeringagent.checks.fitness.contracts import (
 
 RULE_ID = "architecture.loop-subprocess-boundary"
 _SOURCE_PACKAGE_ROOT = Path("src/engineeringagent")
-_SEMGREP_RULE_CONFIG = Path(__file__).with_name("loop_subprocess_boundary_semgrep.yaml")
+_DEFAULT_SEMGREP_POLICY = (
+    Path(__file__).resolve().parent
+    / "policies"
+    / "loop_subprocess_boundary_semgrep_policy.yaml"
+)
 _MODULE_RULE_ID = "architecture.loop-subprocess-boundary.module-subprocess-calls"
 _ATTRIBUTE_CALL_RE = re.compile(
     r"\b(?P<module>[A-Za-z_][A-Za-z0-9_]*)\s*\.\s*"
@@ -26,12 +31,29 @@ _ATTRIBUTE_CALL_RE = re.compile(
 _DIRECT_CALL_RE = re.compile(r"\b(?P<call>[A-Za-z_][A-Za-z0-9_]*)\s*\(")
 
 
-def _loop_subprocess_boundary_violations(project_root: Path) -> list[str]:
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config-file", default=str(_DEFAULT_SEMGREP_POLICY))
+    return parser.parse_args()
+
+
+def _resolve_config_file(path_value: str) -> Path:
+    config_file = Path(path_value)
+    if not config_file.is_file():
+        raise ValueError(f"semgrep policy config not found: {config_file}")
+    return config_file
+
+
+def _loop_subprocess_boundary_violations(
+    project_root: Path,
+    *,
+    semgrep_config: Path,
+) -> list[str]:
     source_root = project_root / _SOURCE_PACKAGE_ROOT
     if not source_root.exists():
         return [f"missing source package root: {_SOURCE_PACKAGE_ROOT}"]
 
-    findings = _run_semgrep(project_root)
+    findings = _run_semgrep(project_root, semgrep_config=semgrep_config)
     results = findings.get("results")
     if not isinstance(results, list):
         raise ValueError("semgrep output missing 'results' list")
@@ -45,7 +67,7 @@ def _loop_subprocess_boundary_violations(project_root: Path) -> list[str]:
     return sorted(violations)
 
 
-def _run_semgrep(project_root: Path) -> dict[str, object]:
+def _run_semgrep(project_root: Path, *, semgrep_config: Path) -> dict[str, object]:
     semgrep_state_dir = project_root / ".semgrep"
     semgrep_state_dir.mkdir(parents=True, exist_ok=True)
     env = dict(os.environ)
@@ -56,7 +78,7 @@ def _run_semgrep(project_root: Path) -> dict[str, object]:
         "semgrep",
         "scan",
         "--config",
-        str(_SEMGREP_RULE_CONFIG),
+        str(semgrep_config),
         "--json",
         "--quiet",
         "--metrics=off",
@@ -189,12 +211,17 @@ def _direct_call_name(code_line: str) -> str:
 
 def main() -> int:
     """Run the subprocess boundary fitness rule."""
+    args = _parse_args()
     violations: list[str] = []
     status = RuleStatus.PASS
     summary = "Subprocess boundary allowlist constraints satisfied."
 
     try:
-        violations = _loop_subprocess_boundary_violations(Path("."))
+        semgrep_config = _resolve_config_file(args.config_file)
+        violations = _loop_subprocess_boundary_violations(
+            Path("."),
+            semgrep_config=semgrep_config,
+        )
         status = RuleStatus.PASS if not violations else RuleStatus.FAIL
         if status == RuleStatus.FAIL:
             summary = (

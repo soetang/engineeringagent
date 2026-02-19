@@ -5,6 +5,9 @@ import io
 import re
 import tokenize
 from pathlib import Path
+from typing import Any
+
+import yaml
 
 from engineeringagent.checks import emit_result_envelope
 from engineeringagent.checks.fitness.contracts import (
@@ -28,14 +31,20 @@ RUFF_FILE_NOQA_RE = re.compile(
 )
 
 
+class _RuntimePolicyError(ValueError):
+    def __init__(self, *, rule_id: str, message: str) -> None:
+        super().__init__(message)
+        self.rule_id = rule_id
+
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--rule-id", default=DEFAULT_RULE_ID)
+    parser.add_argument("--rule-id", default=None)
     parser.add_argument(
         "--blocked-rule-id",
         dest="blocked_rule_ids",
         action="append",
-        required=True,
+        default=None,
     )
     parser.add_argument(
         "--scan-root",
@@ -43,7 +52,101 @@ def _parse_args() -> argparse.Namespace:
         action="append",
         default=None,
     )
+    parser.add_argument(
+        "--config-file",
+        dest="config_file",
+        default=None,
+    )
     return parser.parse_args()
+
+
+def _load_policy_config(config_file: str | None) -> dict[str, Any]:
+    if config_file is None:
+        return {}
+
+    policy_path = Path(config_file)
+    try:
+        payload = yaml.safe_load(policy_path.read_text(encoding="utf-8"))
+    except OSError as exc:
+        raise ValueError(f"unable to read config file {policy_path}: {exc}") from exc
+    except yaml.YAMLError as exc:
+        raise ValueError(f"unable to parse config file {policy_path}: {exc}") from exc
+
+    if payload is None:
+        return {}
+    if not isinstance(payload, dict):
+        raise ValueError(f"config file must contain a YAML mapping: {policy_path}")
+    return payload
+
+
+def _config_string(policy: dict[str, Any], key: str) -> str | None:
+    value = policy.get(key)
+    if value is None:
+        return None
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"config key '{key}' must be a non-empty string")
+    return value.strip()
+
+
+def _config_string_list(policy: dict[str, Any], key: str) -> tuple[str, ...] | None:
+    value = policy.get(key)
+    if value is None:
+        return None
+    if not isinstance(value, list):
+        raise ValueError(f"config key '{key}' must be a list of non-empty strings")
+
+    parsed: list[str] = []
+    for item in value:
+        if not isinstance(item, str) or not item.strip():
+            raise ValueError(f"config key '{key}' must be a list of non-empty strings")
+        parsed.append(item.strip())
+
+    return tuple(parsed)
+
+
+def _resolve_runtime_config(
+    args: argparse.Namespace,
+    *,
+    policy: dict[str, Any],
+) -> tuple[set[str], tuple[str, ...]]:
+    blocked_values = (
+        tuple(args.blocked_rule_ids)
+        if args.blocked_rule_ids is not None
+        else _config_string_list(policy, "blocked_rule_ids")
+    )
+    if not blocked_values:
+        raise ValueError(
+            "missing blocked rule IDs: use --blocked-rule-id or provide "
+            "'blocked_rule_ids' in config file"
+        )
+
+    scan_roots = (
+        tuple(args.scan_roots)
+        if args.scan_roots is not None
+        else _config_string_list(policy, "scan_roots") or DEFAULT_SCAN_ROOTS
+    )
+
+    blocked_rule_ids = {blocked_id.upper() for blocked_id in blocked_values}
+    return blocked_rule_ids, scan_roots
+
+
+def _resolve_runtime_policy(
+    args: argparse.Namespace,
+) -> tuple[str, set[str], tuple[str, ...]]:
+    fallback_rule_id = args.rule_id or DEFAULT_RULE_ID
+    try:
+        policy = _load_policy_config(args.config_file)
+    except ValueError as exc:
+        raise _RuntimePolicyError(rule_id=fallback_rule_id, message=str(exc)) from exc
+
+    rule_id = fallback_rule_id
+    try:
+        rule_id = args.rule_id or _config_string(policy, "rule_id") or DEFAULT_RULE_ID
+        blocked_rule_ids, scan_roots = _resolve_runtime_config(args, policy=policy)
+    except ValueError as exc:
+        raise _RuntimePolicyError(rule_id=rule_id, message=str(exc)) from exc
+
+    return rule_id, blocked_rule_ids, scan_roots
 
 
 def _parse_codes(match: re.Match[str]) -> set[str] | None:
@@ -123,10 +226,20 @@ def _scan_file(path: Path, blocked_rule_ids: set[str]) -> list[str]:
 def main() -> int:
     """Run the non-ignorable Ruff suppression scan fitness rule."""
     args = _parse_args()
-    blocked_rule_ids = {rule_id.upper() for rule_id in args.blocked_rule_ids}
-    scan_roots = (
-        tuple(args.scan_roots) if args.scan_roots is not None else DEFAULT_SCAN_ROOTS
-    )
+    try:
+        rule_id, blocked_rule_ids, scan_roots = _resolve_runtime_policy(args)
+    except _RuntimePolicyError as exc:
+        emit_result_envelope(
+            FitnessRuleResult(
+                contract_version=CONTRACT_VERSION,
+                rule_id=exc.rule_id,
+                status=RuleStatus.ERROR,
+                severity=RuleSeverity.ERROR,
+                summary=f"Invalid Ruff suppression policy configuration: {exc}",
+                violations=[],
+            )
+        )
+        return 0
 
     files = _iter_python_files(scan_roots)
     violations: list[str] = []
@@ -149,7 +262,7 @@ def main() -> int:
     emit_result_envelope(
         FitnessRuleResult(
             contract_version=CONTRACT_VERSION,
-            rule_id=args.rule_id,
+            rule_id=rule_id,
             status=status,
             severity=RuleSeverity.ERROR,
             summary=summary,

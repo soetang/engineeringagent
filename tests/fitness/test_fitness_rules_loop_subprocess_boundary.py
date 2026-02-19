@@ -15,6 +15,16 @@ def _script_path(repo_root: Path) -> Path:
     )
 
 
+def _policy_path(repo_root: Path) -> Path:
+    return (
+        repo_root
+        / "harness"
+        / "fitness-functions"
+        / "policies"
+        / "loop_subprocess_boundary_semgrep_policy.yaml"
+    )
+
+
 def _write_module(project_root: Path, relative_path: str, body: str) -> None:
     path = project_root / relative_path
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -25,9 +35,14 @@ def _run_checker(
     project_root: Path,
     *,
     checker_path: Path,
+    config_file: Path | None = None,
 ) -> tuple[subprocess.CompletedProcess[str], dict[str, object]]:
+    command = [sys.executable, str(checker_path)]
+    if config_file is not None:
+        command.extend(["--config-file", str(config_file)])
+
     proc = subprocess.run(
-        [sys.executable, str(checker_path)],
+        command,
         cwd=project_root,
         capture_output=True,
         text=True,
@@ -122,7 +137,11 @@ def test_loop_subprocess_boundary_rule_reports_expected_violations_and_respects_
         ),
     )
 
-    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+    proc, payload = _run_checker(
+        tmp_path,
+        checker_path=_script_path(repo_root),
+        config_file=_policy_path(repo_root),
+    )
     violations = payload["violations"]
 
     assert proc.returncode == 0
@@ -146,3 +165,23 @@ def test_loop_subprocess_boundary_rule_reports_expected_violations_and_respects_
         assert any(p in match for p in patterns), (
             f"Violation for {file_path} missing expected pattern {patterns}: {match}"
         )
+
+
+def test_loop_subprocess_boundary_rule_errors_when_config_file_is_missing(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    missing_policy = tmp_path / "missing-loop-subprocess-policy.yaml"
+    proc, payload = _run_checker(
+        tmp_path,
+        checker_path=_script_path(repo_root),
+        config_file=missing_policy,
+    )
+
+    assert proc.returncode == 0
+    assert payload["rule_id"] == "architecture.loop-subprocess-boundary"
+    assert payload["status"] == "error"
+    assert payload["violations"] == []
+    summary = payload["summary"]
+    assert isinstance(summary, str)
+    assert "Semgrep subprocess-boundary scan failed:" in summary

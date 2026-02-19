@@ -1,0 +1,8 @@
+rule_id: architecture.no-non-ignorable-ruff-suppressions
+blocked_rule_ids:
+  - D103
+  - PLR0913
+scan_roots:
+  - src
+  - tests
+  - harness

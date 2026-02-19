@@ -113,3 +113,48 @@ def test_load_custom_rule_definitions_rejects_builtin_references(
     message = str(excinfo.value)
     assert "builtin manifest references are no longer supported" in message
     assert "rules[0].builtin" in message
+
+
+def test_load_custom_rule_definitions_resolves_config_file_relative_to_manifest(
+    tmp_path: Path,
+) -> None:
+    """Resolve config_file values from the manifest directory."""
+    manifest_path = tmp_path / "nested" / "custom-rules.yaml"
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    manifest_path.write_text(
+        yaml.safe_dump(
+            {
+                "contract_version": CONTRACT_VERSION,
+                "rules": [
+                    {
+                        "rule_id": "custom.docs-links",
+                        "name": "Docs links check",
+                        "summary": "Validate markdown links resolve.",
+                        "rationale": "Broken links hide docs regressions.",
+                        "remediation": "Update stale links.",
+                        "scope": "docs",
+                        "severity": "warning",
+                        "side_effect_free": True,
+                        "adapter": "command",
+                        "command": [
+                            "uv",
+                            "run",
+                            "python",
+                            "scripts/check_docs.py",
+                        ],
+                        "config_file": "policies/docs-links.yaml",
+                    }
+                ],
+            },
+            sort_keys=False,
+            allow_unicode=False,
+        ),
+        encoding="utf-8",
+    )
+
+    definitions = load_custom_rule_definitions(tmp_path, manifest_path=manifest_path)
+
+    assert len(definitions) == 1
+    assert definitions[0].config_file == (
+        manifest_path.parent / "policies" / "docs-links.yaml"
+    ).resolve()

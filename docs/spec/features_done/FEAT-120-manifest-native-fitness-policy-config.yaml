@@ -1,0 +1,319 @@
+id: FEAT-120
+title: Add manifest-native fitness policy config and catalog discoverability
+type: feature
+expected_commit_subject: 'feat: add manifest-native fitness policy config support'
+status: done
+priority: high
+objective: Make fitness-rule policy configuration declarative and discoverable by
+  adding manifest-native config-file support for command rules, surfacing policy-file
+  paths in generated checks catalog output, and migrating long inline rule arguments
+  into repository-owned policy YAML files.
+context: 'Current command-backed fitness rules keep policy in two places: code defaults
+  and long command arg lists inside `harness/fitness-functions/rules.yaml`. This is
+  hard to review and drifts as backend/policy surfaces evolve. We also have semgrep
+  rule YAML adjacent to scripts with naming that does not clearly signal policy ownership.
+
+
+  This feature introduces a first-class `config_file` field in the fitness manifest
+  contract and makes generated catalog output point to each configured policy file
+  so operators can jump directly to rule configuration.'
+constraints:
+- 'Additive contract only: existing manifest entries without `config_file` remain
+  valid and behaviorally unchanged.'
+- '`config_file` paths are repository-local and resolved deterministically relative
+  to the manifest location.'
+- Command-adapter rules with `config_file` must receive that path through a stable
+  adapter contract (`--config-file <path>`), not ad hoc per-rule wiring.
+- Generated catalog outputs must include policy-file location for discoverability
+  in both markdown and json formats.
+- Move long inline policy args for `architecture.no-non-ignorable-ruff-suppressions`
+  into a YAML policy file under `harness/fitness-functions/policies/`.
+- Rename subprocess semgrep rule asset to policy-oriented naming and keep loop subprocess
+  behavior unchanged.
+- Keep rule IDs stable in this feature; no boundary-rule merge/removal in this cycle.
+- 'Fitness-function impact assessment: this feature intentionally changes fitness
+  contracts/docs and must update affected tests for manifest schema, registry, adapters,
+  and catalog generation.'
+implementation_notes: 'Contract change declaration (required)
+
+
+  Surface: custom fitness manifest schema (`harness/fitness-functions/rules.yaml`),
+  rule-definition runtime model, command adapter invocation contract, and checks catalog
+  output contract.
+
+
+  Old behavior:
+
+  - Manifest entries define only command/env/timeout and cannot declare a separate
+  policy file.
+
+  - Rule-specific policy often lives in long inline command args.
+
+  - Catalog output does not expose where policy configuration lives.
+
+  - Loop subprocess semgrep YAML filename does not explicitly communicate policy ownership.
+
+
+  New behavior:
+
+  - Manifest entries may set optional `config_file`.
+
+  - Command adapter appends `--config-file <resolved-path>` when `config_file` is
+  present.
+
+  - Catalog markdown/json output includes `config_file` (when present) so operators
+  can locate policy directly.
+
+  - Ruff suppression rule loads blocked IDs/scan roots/rule_id from policy YAML.
+
+  - Loop subprocess checker accepts `--config-file` and reads semgrep policy from
+  a renamed policy file path.
+
+
+  Compatibility policy:
+
+  - Backward compatible additive contract for manifest entries: existing entries remain
+  valid.
+
+  - Rule scripts should continue accepting existing explicit CLI args; config-file
+  mode is additive and preferred.
+
+
+  Migration plan:
+
+  - Add policy files under `harness/fitness-functions/policies/`.
+
+  - Update manifest entries to set `config_file` and remove equivalent inline args
+  where migrated.
+
+  - Rename semgrep YAML to policy-oriented filename and update checker references/tests/docs.
+
+
+  Out of scope for FEAT-120:
+
+  - Merging/removing overlapping backend-boundary rules (`architecture.agents-opencode-boundary`
+  vs `architecture.agents-backends-boundary`).
+
+  - General backend-literal policy refactor beyond introducing config-file plumbing.'
+acceptance:
+- '`engineeringagent.checks.fitness.contracts.CustomRuleManifestEntry` accepts optional
+  `config_file` and rejects invalid types/empty values.'
+- '`engineeringagent.checks.fitness.registry` carries `config_file` into rule definitions
+  with deterministic path resolution.'
+- Command adapter appends `--config-file <path>` only for rules that define `config_file`.
+- '`architecture.no-non-ignorable-ruff-suppressions` policy is defined in YAML under
+  `harness/fitness-functions/policies/` and no longer encoded as long inline arg chains
+  in manifest.'
+- Loop subprocess semgrep policy file is renamed to policy-oriented naming and checker
+  behavior remains equivalent.
+- '`engineeringagent checks catalog --format markdown` shows a per-rule config-file
+  path when configured.'
+- '`engineeringagent checks catalog --format json` includes `config_file` field in
+  each rule payload (nullable or present-by-contract as implemented).'
+- Existing manifest entries without `config_file` still run and pass unchanged.
+- '`uv run pytest -q tests/fitness tests/cli/test_cli_checks_catalog.py tests/checks/test_fitness_runtime.py`
+  passes.'
+- '`uv run engineeringagent validate` passes.'
+subtasks:
+- id: ST-001
+  title: Extend manifest and runtime contracts with optional config_file
+  status: done
+  context: Add `config_file` support in fitness manifest schema/models and registry
+    rule definitions with deterministic resolution semantics.
+  verification:
+  - uv run pytest -q tests/fitness/test_fitness_manifest_contract.py tests/fitness/test_fitness_manifest.py
+    tests/fitness/test_fitness_registry.py
+- id: ST-002
+  title: Add command-adapter config-file injection contract
+  status: done
+  context: Update command adapter execution to pass `--config-file <path>` when the
+    rule definition includes `config_file`, without affecting rules that omit it.
+  verification:
+  - uv run pytest -q tests/fitness/test_fitness_adapters.py
+- id: ST-003
+  title: Surface config-file metadata in catalog markdown and json output
+  status: done
+  context: Update catalog serializers/renderers so generated outputs include each
+    rule's config-file path for discoverability and operator navigation.
+  verification:
+  - uv run pytest -q tests/fitness/test_fitness_catalog_generation.py tests/cli/test_cli_checks_catalog.py
+- id: ST-004
+  title: Migrate Ruff suppression rule to YAML policy config
+  status: done
+  context: Add `harness/fitness-functions/policies/no_non_ignorable_ruff_suppressions.yaml`,
+    teach checker to load it via `--config-file`, and simplify manifest command entry.
+  verification:
+  - uv run pytest -q tests/fitness/test_fitness_adapters.py
+  - uv run python harness/fitness-functions/check_non_ignorable_ruff_suppressions.py
+    --config-file harness/fitness-functions/policies/no_non_ignorable_ruff_suppressions.yaml
+- id: ST-005
+  title: Rename subprocess semgrep YAML to policy-oriented file name
+  status: done
+  context: Rename loop subprocess semgrep asset into the policy directory with policy
+    naming, and wire checker loading through `--config-file` while preserving findings.
+  verification:
+  - uv run pytest -q tests/fitness/test_fitness_rules_loop_subprocess_boundary.py
+  - uv run python harness/fitness-functions/check_loop_subprocess_boundary.py --config-file
+    harness/fitness-functions/policies/loop_subprocess_boundary_semgrep_policy.yaml
+- id: ST-006
+  title: Regenerate docs and validate repository contracts
+  status: done
+  context: Regenerate fitness catalog docs and confirm full spec/fitness/check contracts
+    remain valid after config-file migration.
+  verification:
+  - uv run engineeringagent checks catalog --format markdown --output docs/fitness-functions/rules.md
+  - uv run engineeringagent validate
+- id: ST-007
+  title: Apply reviewer feedback for Ruff policy error-path consistency
+  status: done
+  context: Preserve policy-validation errors when config-defined rule_id is used and
+    clean up touched test fixture formatting for maintainability.
+  verification:
+  - uv run pytest -q tests/fitness/test_fitness_adapters.py -k "missing_blocked_ids_error
+    or surfaces_yaml_parse_errors"
+  - uv run pytest -q tests/fitness/test_fitness_manifest.py
+  - uv run engineeringagent validate
+- id: ST-008
+  title: Archive FEAT-120 after final reviewer sign-off
+  status: done
+  context: Move completed spec to docs/spec/features_done once reviewer feedback cycle
+    is fully closed.
+  verification:
+  - uv run engineeringagent validate
+- id: ST-009
+  title: Apply reviewer feedback for manifest/runtime helper deduplication
+  status: done
+  context: Extract shared manifest materialization flow, centralize Ruff runtime policy
+    resolution precedence, and reuse CLI-definition test fixtures for maintainability.
+  verification:
+  - uv run pytest -q tests/fitness/test_fitness_registry.py tests/fitness/test_fitness_adapters.py
+  - uv run engineeringagent validate
+- id: ST-010
+  title: Apply reviewer warning simplifications from feature-done pass
+  status: done
+  context: Remove one-use registry materialization indirection and centralize repeated
+    non-ignorable Ruff policy fixture setup in adapters tests.
+  verification:
+  - uv run pytest -q tests/fitness/test_fitness_registry.py tests/fitness/test_fitness_adapters.py
+  - uv run engineeringagent validate
+- id: ST-011
+  title: Apply reviewer feedback for behavior-focused policy and catalog tests
+  status: done
+  context: Remove private-internal call-count assertions from Ruff policy tests and
+    keep markdown catalog tests as smoke checks while preserving config_file contract
+    coverage in JSON catalog assertions.
+  verification:
+  - uv run pytest -q tests/fitness/test_fitness_adapters.py tests/fitness/test_fitness_catalog_generation.py
+    tests/cli/test_cli_checks_catalog.py
+  - uv run engineeringagent validate
+- id: ST-012
+  title: Apply reviewer warning simplifications for registry path resolution and policy
+    fixture writing
+  status: done
+  context: Pre-resolve manifest/project paths once per manifest load and simplify
+    Ruff policy test fixture generation via yaml.safe_dump.
+  verification:
+  - uv run pytest -q tests/fitness/test_fitness_registry.py tests/fitness/test_fitness_adapters.py
+  - uv run engineeringagent validate
+- id: ST-013
+  title: Apply reviewer warning simplifications for Ruff policy flow and catalog fixture
+    deduplication
+  status: done
+  context: Make fallback-versus-resolved Ruff policy rule_id error handling explicit
+    and extract a shared shell-contract manifest writer in catalog generation tests.
+  verification:
+  - uv run pytest -q tests/fitness/test_fitness_catalog_generation.py tests/cli/test_cli_checks_catalog.py
+    tests/fitness/test_fitness_adapters.py -k "non_ignorable_suppression_adapter_surfaces_yaml_parse_errors
+    or non_ignorable_suppression_adapter_surfaces_missing_blocked_ids_error or fitness_catalog"
+  - uv run engineeringagent validate
+- id: ST-014
+  title: Apply reviewer feedback for explicit markdown catalog invariants
+  status: done
+  context: Replace weakened markdown smoke assertions with explicit deterministic
+    catalog invariants and restore no-trailing-newline contract coverage at the renderer
+    layer.
+  verification:
+  - uv run pytest -q tests/fitness/test_fitness_catalog_generation.py tests/cli/test_cli_checks_catalog.py
+  - uv run engineeringagent validate
+- id: ST-015
+  title: Improve markdown catalog discoverability with config-file summary column
+  status: done
+  context: Add config-file visibility to the Active Rules markdown summary table so
+    operators can locate policy files without scanning per-rule detail blocks.
+  verification:
+  - uv run pytest -q tests/fitness/test_fitness_catalog_generation.py
+  - uv run engineeringagent validate
+- id: ST-016
+  title: Fix pylint gate failures from shared test helper scaffolding
+  status: done
+  context: Resolve trailing-newline and missing-docstring violations introduced with
+    test helper package files so reviewer gate reruns pass deterministically.
+  verification:
+  - uv run pylint --score=n --reports=n src/engineeringagent tests harness
+- id: ST-017
+  title: Resolve pytest gate regression in repository backend-default assertions
+  status: done
+  context: Align repository backend-default test expectations with the current opencode
+    config baseline and add focused config fallback coverage so the global pytest+coverage
+    gate clears deterministically.
+  verification:
+  - uv run pytest -q
+- id: ST-018
+  title: Apply reviewer warning simplification for Ruff policy loader flow
+  status: done
+  context: Inline config-file ValueError handling into runtime-policy resolution and
+    remove the one-use loader wrapper while preserving rule_id error attribution.
+  verification:
+  - uv run pytest -q tests/fitness/test_fitness_adapters.py -k "missing_blocked_ids_error
+    or surfaces_yaml_parse_errors"
+  - uv run engineeringagent validate
+- id: ST-019
+  title: Apply reviewer feedback to reduce markdown assertion brittleness
+  status: done
+  context: Keep markdown assertions limited to discoverability invariants and CLI
+    write smoke behavior while relying on JSON catalog tests for field-level contract
+    guarantees.
+  verification:
+  - uv run pytest -q tests/fitness/test_fitness_catalog_generation.py tests/cli/test_cli_checks_catalog.py
+  - uv run engineeringagent validate
+- id: ST-020
+  title: Close reviewer loop and archive FEAT-120
+  status: done
+  context: Request reviewer re-check after ST-019 and archive the spec under features_done
+    once sign-off is received.
+  verification:
+  - uv run engineeringagent validate
+- id: ST-021
+  title: Apply reviewer feedback to narrow markdown catalog assertions
+  status: done
+  context: Trim markdown assertions in catalog-generation tests to the minimal FEAT-120
+    discoverability signal (configured policy path surfaced), while JSON assertions
+    retain field-level contract coverage.
+  verification:
+  - uv run pytest -q tests/fitness/test_fitness_catalog_generation.py tests/cli/test_cli_checks_catalog.py
+  - uv run engineeringagent validate
+- id: ST-022
+  title: Request reviewer re-check for markdown assertion scope change
+  status: done
+  context: Run reviewer pass focused on FEAT-120 test scope after narrowing markdown
+    assertions to discoverability-only coverage.
+  verification:
+  - uv run engineeringagent validate
+- id: ST-023
+  title: Apply reviewer feedback for generated catalog drift guard and regeneration
+  status: done
+  context: Regenerate docs/fitness-functions/rules.md from the current catalog renderer,
+    and add a deterministic fitness rule that fails when committed markdown drifts
+    from `engineeringagent checks catalog --format markdown` output.
+  verification:
+  - uv run pytest -q tests/fitness/test_fitness_rules_catalog_docs_sync.py
+  - uv run engineeringagent checks catalog --format markdown --output docs/fitness-functions/rules.md
+  - uv run engineeringagent validate
+- id: ST-024
+  title: Request reviewer re-check for catalog-doc drift guard closure
+  status: done
+  context: Request feature-done reviewer re-check after adding the deterministic catalog-doc
+    sync fitness rule and regenerating docs/fitness-functions/rules.md.
+  verification:
+  - uv run engineeringagent validate
+updated_at: '2026-02-19T20:13:53Z'

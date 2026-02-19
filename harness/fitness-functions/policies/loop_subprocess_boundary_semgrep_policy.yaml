@@ -10,7 +10,6 @@ rules:
       include:
         - src/engineeringagent/**/*.py
       exclude:
-        - src/engineeringagent/fitness/adapters.py
         - src/engineeringagent/checks/fitness/adapters.py
         - src/engineeringagent/gates.py
         - src/engineeringagent/git/client.py
@@ -60,7 +59,6 @@ rules:
       include:
         - src/engineeringagent/**/*.py
       exclude:
-        - src/engineeringagent/fitness/adapters.py
         - src/engineeringagent/checks/fitness/adapters.py
         - src/engineeringagent/gates.py
         - src/engineeringagent/git/client.py

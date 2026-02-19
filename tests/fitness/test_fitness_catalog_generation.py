@@ -6,33 +6,12 @@ from typer.testing import CliRunner
 
 from engineeringagent import cli as cli_module
 from engineeringagent.checks import render_fitness_catalog
+from engineeringagent.checks.fitness.catalog import format_config_file
+from tests.helpers.fitness_manifest import write_shell_contract_manifest
 
 
 def test_fitness_catalog_markdown_generation(tmp_path: Path) -> None:
-    manifest_path = tmp_path / "harness" / "fitness-functions" / "rules.yaml"
-    manifest_path.parent.mkdir(parents=True, exist_ok=True)
-    manifest_path.write_text(
-        "\n".join(
-            [
-                'contract_version: "1.0"',
-                "rules:",
-                "  - rule_id: custom.shell-contract",
-                "    name: Custom shell contract",
-                "    summary: Verify custom command envelope format.",
-                "    rationale: Keeps custom adapters interoperable.",
-                "    remediation: Update custom command output to the contract.",
-                "    scope: harness/fitness-functions",
-                "    severity: warning",
-                "    side_effect_free: true",
-                "    adapter: command",
-                "    command:",
-                "      - python",
-                "      - -c",
-                '      - print(\'{"contract_version":"1.0","rule_id":"custom.shell-contract","status":"pass","severity":"warning","summary":"ok","violations":[]}\')',
-            ]
-        ),
-        encoding="utf-8",
-    )
+    write_shell_contract_manifest(tmp_path)
 
     output_path = tmp_path / "docs" / "fitness-functions" / "rules.md"
     runner = CliRunner(mix_stderr=False)
@@ -55,34 +34,11 @@ def test_fitness_catalog_markdown_generation(tmp_path: Path) -> None:
     assert output_path.exists()
 
     markdown = output_path.read_text(encoding="utf-8")
-    assert markdown.endswith("\n")
+    assert "harness/fitness-functions/policies/custom_shell_contract.yaml" in markdown
 
 
 def test_fitness_catalog_json_generation(tmp_path: Path) -> None:
-    manifest_path = tmp_path / "harness" / "fitness-functions" / "rules.yaml"
-    manifest_path.parent.mkdir(parents=True, exist_ok=True)
-    manifest_path.write_text(
-        "\n".join(
-            [
-                'contract_version: "1.0"',
-                "rules:",
-                "  - rule_id: custom.shell-contract",
-                "    name: Custom shell contract",
-                "    summary: Verify custom command envelope format.",
-                "    rationale: Keeps custom adapters interoperable.",
-                "    remediation: Update custom command output to the contract.",
-                "    scope: harness/fitness-functions",
-                "    severity: warning",
-                "    side_effect_free: true",
-                "    adapter: command",
-                "    command:",
-                "      - python",
-                "      - -c",
-                '      - print(\'{"contract_version":"1.0","rule_id":"custom.shell-contract","status":"pass","severity":"warning","summary":"ok","violations":[]}\')',
-            ]
-        ),
-        encoding="utf-8",
-    )
+    manifest_path = write_shell_contract_manifest(tmp_path)
 
     payload = json.loads(
         render_fitness_catalog(
@@ -95,6 +51,7 @@ def test_fitness_catalog_json_generation(tmp_path: Path) -> None:
     assert payload == [
         {
             "adapter": "command",
+            "config_file": "harness/fitness-functions/policies/custom_shell_contract.yaml",
             "name": "Custom shell contract",
             "rationale": "Keeps custom adapters interoperable.",
             "remediation": "Update custom command output to the contract.",
@@ -163,6 +120,7 @@ def test_fitness_catalog_json_contract_is_sorted_and_complete(tmp_path: Path) ->
 
     required_keys = {
         "adapter",
+        "config_file",
         "name",
         "rationale",
         "remediation",
@@ -175,3 +133,20 @@ def test_fitness_catalog_json_contract_is_sorted_and_complete(tmp_path: Path) ->
     }
     for entry in payload:
         assert set(entry.keys()) == required_keys
+
+
+def test_format_config_file_returns_project_relative_path(tmp_path: Path) -> None:
+    config_path = (
+        tmp_path
+        / "harness"
+        / "fitness-functions"
+        / "policies"
+        / "custom_shell_contract.yaml"
+    )
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text("rule_id: custom.shell-contract\n", encoding="utf-8")
+
+    assert (
+        format_config_file(config_path, project_root=tmp_path)
+        == "harness/fitness-functions/policies/custom_shell_contract.yaml"
+    )

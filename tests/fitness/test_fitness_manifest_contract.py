@@ -111,3 +111,90 @@ def test_custom_manifest_rejects_builtin_rule_references() -> None:
         )
 
     assert "builtin manifest references are no longer supported" in str(excinfo.value)
+
+
+def test_custom_manifest_accepts_optional_config_file() -> None:
+    """Accept optional config_file metadata for command-adapter entries."""
+    manifest = CustomRuleManifest.model_validate(
+        {
+            "contract_version": CONTRACT_VERSION,
+            "rules": [
+                {
+                    "rule_id": "custom.docs-links",
+                    "name": "Docs links check",
+                    "summary": "Validate all markdown links resolve.",
+                    "rationale": "Broken links reduce docs reliability.",
+                    "remediation": "Update or remove stale links.",
+                    "scope": "docs",
+                    "severity": "warning",
+                    "side_effect_free": True,
+                    "adapter": "command",
+                    "command": ["uv", "run", "python", "scripts/check_docs_links.py"],
+                    "config_file": "policies/docs_links.yaml",
+                }
+            ],
+        }
+    )
+
+    assert manifest.rules[0].config_file == "policies/docs_links.yaml"
+
+
+@pytest.mark.parametrize("value", [123, ["policy.yaml"], {"path": "policy.yaml"}])
+def test_custom_manifest_rejects_invalid_config_file_types(value: object) -> None:
+    """Reject non-string config_file values."""
+    with pytest.raises(ValidationError):
+        CustomRuleManifest.model_validate(
+            {
+                "contract_version": CONTRACT_VERSION,
+                "rules": [
+                    {
+                        "rule_id": "custom.docs-links",
+                        "name": "Docs links check",
+                        "summary": "Validate all markdown links resolve.",
+                        "rationale": "Broken links reduce docs reliability.",
+                        "remediation": "Update or remove stale links.",
+                        "scope": "docs",
+                        "severity": "warning",
+                        "side_effect_free": True,
+                        "adapter": "command",
+                        "command": [
+                            "uv",
+                            "run",
+                            "python",
+                            "scripts/check_docs_links.py",
+                        ],
+                        "config_file": value,
+                    }
+                ],
+            }
+        )
+
+
+def test_custom_manifest_rejects_empty_config_file() -> None:
+    """Reject empty config_file strings."""
+    with pytest.raises(ValidationError):
+        CustomRuleManifest.model_validate(
+            {
+                "contract_version": CONTRACT_VERSION,
+                "rules": [
+                    {
+                        "rule_id": "custom.docs-links",
+                        "name": "Docs links check",
+                        "summary": "Validate all markdown links resolve.",
+                        "rationale": "Broken links reduce docs reliability.",
+                        "remediation": "Update or remove stale links.",
+                        "scope": "docs",
+                        "severity": "warning",
+                        "side_effect_free": True,
+                        "adapter": "command",
+                        "command": [
+                            "uv",
+                            "run",
+                            "python",
+                            "scripts/check_docs_links.py",
+                        ],
+                        "config_file": "",
+                    }
+                ],
+            }
+        )

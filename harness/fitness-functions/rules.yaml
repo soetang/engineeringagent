@@ -57,6 +57,7 @@ rules:
       - run
       - python
       - harness/fitness-functions/check_loop_subprocess_boundary.py
+    config_file: policies/loop_subprocess_boundary_semgrep_policy.yaml
   - rule_id: architecture.agents-opencode-boundary
     name: Agents/OpenCode boundary
     summary: Forbid direct OpenCode backend usage outside the agents boundary.
@@ -232,6 +233,20 @@ rules:
       - run
       - python
       - harness/fitness-functions/check_docs_allowlist_policy.py
+  - rule_id: architecture.fitness-catalog-docs-sync
+    name: Fitness catalog docs sync
+    summary: Enforce byte-for-byte sync between docs catalog markdown and generated catalog output.
+    rationale: Prevents stale generated fitness catalog docs from drifting from the current manifest and renderer contract.
+    remediation: Regenerate docs/fitness-functions/rules.md via uv run engineeringagent checks catalog --format markdown --output docs/fitness-functions/rules.md.
+    scope: docs/fitness-functions/rules.md
+    severity: error
+    side_effect_free: true
+    adapter: command
+    command:
+      - uv
+      - run
+      - python
+      - harness/fitness-functions/check_fitness_catalog_docs_sync.py
   - rule_id: architecture.scaffold-template-agents-doc-links
     name: Scaffold template AGENTS doc links
     summary: Require scaffolded reference docs to be linked from scaffold AGENTS.md.
@@ -334,18 +349,7 @@ rules:
       - run
       - python
       - harness/fitness-functions/check_non_ignorable_ruff_suppressions.py
-      - --rule-id
-      - architecture.no-non-ignorable-ruff-suppressions
-      - --blocked-rule-id
-      - D103
-      - --blocked-rule-id
-      - PLR0913
-      - --scan-root
-      - src
-      - --scan-root
-      - tests
-      - --scan-root
-      - harness
+    config_file: policies/no_non_ignorable_ruff_suppressions.yaml
   - rule_id: smoke.opencode-real-hello-world
     name: Real OpenCode hello-world smoke
     summary: Validate the real agent loop end-to-end in an isolated temp repository.

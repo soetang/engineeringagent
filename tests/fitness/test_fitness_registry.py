@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 import yaml
 
 from engineeringagent.checks.fitness.contracts import (
@@ -120,3 +121,75 @@ def test_build_rule_catalog_parses_error_severity_and_command_tuple(
         "python",
         "harness/fitness-functions/check_loop_subprocess_boundary.py",
     )
+
+
+def test_build_rule_catalog_resolves_manifest_config_file_to_absolute_path(
+    tmp_path: Path,
+) -> None:
+    """Resolve config_file entries against the manifest directory."""
+    manifest_path = tmp_path / "harness" / "fitness-functions" / "rules.yaml"
+    _write_manifest(
+        manifest_path,
+        [
+            {
+                "rule_id": "architecture.loop-subprocess-boundary",
+                "name": "Loop subprocess boundary",
+                "summary": "Enforce subprocess allowlist boundaries.",
+                "rationale": "Exercise config-file resolution for command rules.",
+                "remediation": "Update rule declaration.",
+                "scope": "src/engineeringagent",
+                "severity": "error",
+                "side_effect_free": True,
+                "adapter": "command",
+                "command": [
+                    "uv",
+                    "run",
+                    "python",
+                    "harness/fitness-functions/check_loop_subprocess_boundary.py",
+                ],
+                "config_file": "policies/loop_subprocess_boundary.yaml",
+            }
+        ],
+    )
+
+    catalog = build_rule_catalog(tmp_path)
+
+    assert len(catalog) == 1
+    assert catalog[0].config_file == (
+        manifest_path.parent / "policies" / "loop_subprocess_boundary.yaml"
+    ).resolve()
+
+
+def test_build_rule_catalog_rejects_config_file_outside_project_root(
+    tmp_path: Path,
+) -> None:
+    """Reject config_file paths that escape the repository root."""
+    manifest_path = tmp_path / "harness" / "fitness-functions" / "rules.yaml"
+    _write_manifest(
+        manifest_path,
+        [
+            {
+                "rule_id": "architecture.loop-subprocess-boundary",
+                "name": "Loop subprocess boundary",
+                "summary": "Enforce subprocess allowlist boundaries.",
+                "rationale": "Exercise repository-local config-file policy.",
+                "remediation": "Update rule declaration.",
+                "scope": "src/engineeringagent",
+                "severity": "error",
+                "side_effect_free": True,
+                "adapter": "command",
+                "command": [
+                    "uv",
+                    "run",
+                    "python",
+                    "harness/fitness-functions/check_loop_subprocess_boundary.py",
+                ],
+                "config_file": "../../../outside.yaml",
+            }
+        ],
+    )
+
+    with pytest.raises(ValueError) as excinfo:
+        build_rule_catalog(tmp_path)
+
+    assert "config_file must resolve within project root" in str(excinfo.value)

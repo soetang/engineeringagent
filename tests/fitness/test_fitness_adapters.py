@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-from pathlib import Path
 import sys
+from pathlib import Path
+
+import yaml
 
 from engineeringagent.checks.fitness.adapters import execute_rule_definition
 from engineeringagent.checks.fitness.contracts import (
@@ -70,6 +72,69 @@ def _fitness_script(repo_root: Path, filename: str) -> Path:
     return repo_root / "harness" / "fitness-functions" / filename
 
 
+def _non_ignorable_metadata(rule_id: str) -> FitnessRuleMetadata:
+    return FitnessRuleMetadata(
+        rule_id=rule_id,
+        name="No non-ignorable Ruff suppressions",
+        summary="Block configured Ruff suppressions.",
+        rationale="High-value lint suppressions must be refactor-first.",
+        remediation="Remove suppression directives and refactor.",
+        scope="src tests harness",
+        severity=RuleSeverity.ERROR,
+        adapter=RuleAdapter.COMMAND,
+        source=RuleSource.CUSTOM,
+        side_effect_free=True,
+    )
+
+
+def _non_ignorable_definition(
+    script: Path,
+    *,
+    rule_id: str,
+    config_file: Path,
+) -> FitnessRuleDefinition:
+    return FitnessRuleDefinition(
+        metadata=_non_ignorable_metadata(rule_id),
+        origin="custom:harness/fitness-functions/rules.yaml:rules[0]",
+        command=(sys.executable, str(script)),
+        config_file=config_file,
+    )
+
+
+def _non_ignorable_cli_definition(script: Path, *argv: str) -> FitnessRuleDefinition:
+    rule_id = "custom.no-non-ignorable-ruff-suppressions"
+    return FitnessRuleDefinition(
+        metadata=_non_ignorable_metadata(rule_id),
+        origin="custom:harness/fitness-functions/rules.yaml:rules[0]",
+        command=(sys.executable, str(script), "--rule-id", rule_id, *argv),
+    )
+
+
+def _write_non_ignorable_policy(
+    tmp_path: Path,
+    *,
+    rule_id: str | None = None,
+    blocked_rule_ids: tuple[str, ...] | None = None,
+    scan_roots: tuple[str, ...] | None = None,
+) -> Path:
+    policy_file = tmp_path / "policies" / "no_non_ignorable_ruff_suppressions.yaml"
+    policy_file.parent.mkdir(parents=True, exist_ok=True)
+
+    payload: dict[str, object] = {}
+    if rule_id is not None:
+        payload["rule_id"] = rule_id
+    if blocked_rule_ids is not None:
+        payload["blocked_rule_ids"] = list(blocked_rule_ids)
+    if scan_roots is not None:
+        payload["scan_roots"] = list(scan_roots)
+
+    policy_file.write_text(
+        yaml.safe_dump(payload, sort_keys=False, allow_unicode=False),
+        encoding="utf-8",
+    )
+    return policy_file
+
+
 def test_execute_rule_definition_runs_command_adapter_with_json_envelope(
     tmp_path: Path,
 ) -> None:
@@ -99,6 +164,81 @@ def test_execute_rule_definition_runs_command_adapter_with_json_envelope(
 
     assert result.status == RuleStatus.PASS
     assert result.rule_id == "custom.adapter-pass"
+
+
+def test_execute_rule_definition_appends_config_file_for_command_adapter(
+    tmp_path: Path,
+) -> None:
+    """Append --config-file to command adapters when a rule definition sets one."""
+    config_file = tmp_path / "policy.yaml"
+    config_file.write_text("policy: test\n", encoding="utf-8")
+
+    rule_script = tmp_path / "rule_with_config.py"
+    rule_script.write_text(
+        "\n".join(
+            [
+                "import argparse",
+                "import json",
+                "parser = argparse.ArgumentParser()",
+                "parser.add_argument('--config-file', required=True)",
+                "args = parser.parse_args()",
+                "print(json.dumps({",
+                f"    'contract_version': '{CONTRACT_VERSION}',",
+                "    'rule_id': 'custom.adapter-pass',",
+                "    'status': 'pass',",
+                "    'severity': 'warning',",
+                "    'summary': 'Config file received.',",
+                "    'violations': [],",
+                "    'details': {'config_file': args.config_file},",
+                "}))",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    definition = _command_definition((sys.executable, str(rule_script))).model_copy(
+        update={"config_file": config_file}
+    )
+    result = execute_rule_definition(definition, project_root=tmp_path)
+
+    assert result.status == RuleStatus.PASS
+    assert result.details == {"config_file": str(config_file)}
+
+
+def test_execute_rule_definition_omits_config_file_when_not_configured(
+    tmp_path: Path,
+) -> None:
+    """Do not append --config-file for command adapters without config_file."""
+    rule_script = tmp_path / "rule_without_config.py"
+    rule_script.write_text(
+        "\n".join(
+            [
+                "import argparse",
+                "import json",
+                "parser = argparse.ArgumentParser()",
+                "parser.add_argument('--config-file')",
+                "args = parser.parse_args()",
+                "if args.config_file is not None:",
+                "    raise SystemExit('unexpected --config-file argument')",
+                "print(json.dumps({",
+                f"    'contract_version': '{CONTRACT_VERSION}',",
+                "    'rule_id': 'custom.adapter-pass',",
+                "    'status': 'pass',",
+                "    'severity': 'warning',",
+                "    'summary': 'No config file argument received.',",
+                "    'violations': [],",
+                "}))",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    result = execute_rule_definition(
+        _command_definition((sys.executable, str(rule_script))),
+        project_root=tmp_path,
+    )
+
+    assert result.status == RuleStatus.PASS
 
 
 def test_execute_rule_definition_runs_python_adapter_callable(tmp_path: Path) -> None:
@@ -142,7 +282,7 @@ def test_execute_rule_definition_runs_non_ignorable_suppression_adapter(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Surface fail status from the Ruff suppression adapter envelope."""
+    """Load Ruff suppression policy from --config-file and surface fail status."""
     scan_root = tmp_path / "src"
     scan_root.mkdir(parents=True)
     target = scan_root / "module.py"
@@ -150,33 +290,19 @@ def test_execute_rule_definition_runs_non_ignorable_suppression_adapter(
         "def run(a, b, c, d, e, f):  # noqa: PLR0913\n    return a + b\n",
         encoding="utf-8",
     )
+    policy_file = _write_non_ignorable_policy(
+        tmp_path,
+        rule_id="custom.no-non-ignorable-ruff-suppressions",
+        blocked_rule_ids=("PLR0913",),
+        scan_roots=("src",),
+    )
 
     script = _fitness_script(repo_root, "check_non_ignorable_ruff_suppressions.py")
 
-    definition = FitnessRuleDefinition(
-        metadata=FitnessRuleMetadata(
-            rule_id="custom.no-non-ignorable-ruff-suppressions",
-            name="No non-ignorable Ruff suppressions",
-            summary="Block configured Ruff suppressions.",
-            rationale="High-value lint suppressions must be refactor-first.",
-            remediation="Remove suppression directives and refactor.",
-            scope="src tests harness",
-            severity=RuleSeverity.ERROR,
-            adapter=RuleAdapter.COMMAND,
-            source=RuleSource.CUSTOM,
-            side_effect_free=True,
-        ),
-        origin="custom:harness/fitness-functions/rules.yaml:rules[0]",
-        command=(
-            sys.executable,
-            str(script),
-            "--rule-id",
-            "custom.no-non-ignorable-ruff-suppressions",
-            "--blocked-rule-id",
-            "PLR0913",
-            "--scan-root",
-            "src",
-        ),
+    definition = _non_ignorable_definition(
+        script,
+        rule_id="custom.no-non-ignorable-ruff-suppressions",
+        config_file=policy_file,
     )
 
     result = execute_rule_definition(definition, project_root=tmp_path)
@@ -184,6 +310,61 @@ def test_execute_rule_definition_runs_non_ignorable_suppression_adapter(
     assert result.status == RuleStatus.FAIL
     assert result.severity == RuleSeverity.ERROR
     assert result.violations
+
+
+def test_non_ignorable_suppression_adapter_surfaces_yaml_parse_errors(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Return structured policy-configuration errors for malformed YAML."""
+    policy_file = tmp_path / "policies" / "no_non_ignorable_ruff_suppressions.yaml"
+    policy_file.parent.mkdir(parents=True, exist_ok=True)
+    policy_file.write_text("rule_id: bad: yaml\n", encoding="utf-8")
+
+    script = _fitness_script(repo_root, "check_non_ignorable_ruff_suppressions.py")
+
+    definition = _non_ignorable_definition(
+        script,
+        rule_id="architecture.no-non-ignorable-ruff-suppressions",
+        config_file=policy_file,
+    )
+
+    result = execute_rule_definition(definition, project_root=tmp_path)
+
+    assert result.status == RuleStatus.ERROR
+    assert result.summary.startswith(
+        "Invalid Ruff suppression policy configuration: unable to parse config file"
+    )
+    assert result.violations == []
+
+
+def test_non_ignorable_suppression_adapter_surfaces_missing_blocked_ids_error(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Keep config validation errors visible when policy defines a custom rule_id."""
+    policy_file = _write_non_ignorable_policy(
+        tmp_path,
+        rule_id="custom.no-non-ignorable-ruff-suppressions",
+        scan_roots=("src",),
+    )
+
+    script = _fitness_script(repo_root, "check_non_ignorable_ruff_suppressions.py")
+
+    definition = _non_ignorable_definition(
+        script,
+        rule_id="custom.no-non-ignorable-ruff-suppressions",
+        config_file=policy_file,
+    )
+
+    result = execute_rule_definition(definition, project_root=tmp_path)
+
+    assert result.rule_id == "custom.no-non-ignorable-ruff-suppressions"
+    assert result.status == RuleStatus.ERROR
+    assert result.summary.startswith(
+        "Invalid Ruff suppression policy configuration: missing blocked rule IDs"
+    )
+    assert result.violations == []
 
 
 def test_non_ignorable_suppression_adapter_honors_explicit_scan_roots(
@@ -206,30 +387,12 @@ def test_non_ignorable_suppression_adapter_honors_explicit_scan_roots(
 
     script = _fitness_script(repo_root, "check_non_ignorable_ruff_suppressions.py")
 
-    definition = FitnessRuleDefinition(
-        metadata=FitnessRuleMetadata(
-            rule_id="custom.no-non-ignorable-ruff-suppressions",
-            name="No non-ignorable Ruff suppressions",
-            summary="Block configured Ruff suppressions.",
-            rationale="High-value lint suppressions must be refactor-first.",
-            remediation="Remove suppression directives and refactor.",
-            scope="src tests harness",
-            severity=RuleSeverity.ERROR,
-            adapter=RuleAdapter.COMMAND,
-            source=RuleSource.CUSTOM,
-            side_effect_free=True,
-        ),
-        origin="custom:harness/fitness-functions/rules.yaml:rules[0]",
-        command=(
-            sys.executable,
-            str(script),
-            "--rule-id",
-            "custom.no-non-ignorable-ruff-suppressions",
-            "--blocked-rule-id",
-            "PLR0913",
-            "--scan-root",
-            "src",
-        ),
+    definition = _non_ignorable_cli_definition(
+        script,
+        "--blocked-rule-id",
+        "PLR0913",
+        "--scan-root",
+        "src",
     )
 
     result = execute_rule_definition(definition, project_root=tmp_path)
@@ -256,32 +419,14 @@ def test_non_ignorable_suppression_adapter_detects_file_level_and_multicode_noqa
 
     script = _fitness_script(repo_root, "check_non_ignorable_ruff_suppressions.py")
 
-    definition = FitnessRuleDefinition(
-        metadata=FitnessRuleMetadata(
-            rule_id="custom.no-non-ignorable-ruff-suppressions",
-            name="No non-ignorable Ruff suppressions",
-            summary="Block configured Ruff suppressions.",
-            rationale="High-value lint suppressions must be refactor-first.",
-            remediation="Remove suppression directives and refactor.",
-            scope="src tests harness",
-            severity=RuleSeverity.ERROR,
-            adapter=RuleAdapter.COMMAND,
-            source=RuleSource.CUSTOM,
-            side_effect_free=True,
-        ),
-        origin="custom:harness/fitness-functions/rules.yaml:rules[0]",
-        command=(
-            sys.executable,
-            str(script),
-            "--rule-id",
-            "custom.no-non-ignorable-ruff-suppressions",
-            "--blocked-rule-id",
-            "D103",
-            "--blocked-rule-id",
-            "PLR0913",
-            "--scan-root",
-            "src",
-        ),
+    definition = _non_ignorable_cli_definition(
+        script,
+        "--blocked-rule-id",
+        "D103",
+        "--blocked-rule-id",
+        "PLR0913",
+        "--scan-root",
+        "src",
     )
 
     result = execute_rule_definition(definition, project_root=tmp_path)

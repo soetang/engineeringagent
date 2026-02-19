@@ -40,6 +40,25 @@ def test_agents_backend_reads_pyproject_tool_engineeringagent(tmp_path: Path) ->
     assert resolve_agents_backend_id(tmp_path) == "backend.from.pyproject"
 
 
+def test_agents_backend_returns_unset_when_agents_table_has_no_backend_key(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "engineeringagent.toml").write_text("[agents]\n", encoding="utf-8")
+
+    assert resolve_agents_backend_id(tmp_path) is None
+
+
+def test_agents_backend_returns_unset_when_pyproject_agents_table_has_no_backend_key(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "pyproject.toml").write_text(
+        "[tool.engineeringagent.agents]\n",
+        encoding="utf-8",
+    )
+
+    assert resolve_agents_backend_id(tmp_path) is None
+
+
 @pytest.mark.parametrize(
     "payload",
     [
