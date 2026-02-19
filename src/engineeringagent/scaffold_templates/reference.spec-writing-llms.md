@@ -25,6 +25,7 @@
 - Constraints: safety, compatibility, or workflow constraints.
 - Verification expectations: required commands or checks.
 - Contract impact: which interfaces/behaviors change, whether compatibility is required, and whether migration is one-time or phased.
+- Fitness-rule risk: whether the proposed behavior may violate active rules in `docs/fitness-functions/rules.md`.
 
 ## Question Quality Bar
 
@@ -40,7 +41,10 @@
 - Keep verification commands concrete and executable.
 - Preserve repository language and conventions used in existing FEAT files.
 - Require an explicit fitness-function impact assessment for every new spec.
-  - If fitness functions must change, name the affected rules/scripts and expected updates.
+  - Evaluate the planned behavior against active rules in `docs/fitness-functions/rules.md` and call out likely violations.
+  - If violations are likely, evaluate whether the current rule is still the right rule (current architecture intent, safety value, and false-positive risk).
+  - Choose and document one path explicitly: adjust implementation to satisfy the rule, or adjust the rule with clear rationale and expected guardrails.
+  - If a rule change is needed, document why the rule should change and name affected rule IDs/scripts/docs plus expected verification updates.
   - If no fitness updates are needed, record the exact statement "no fitness-function changes required" with a brief justification.
 - For contract/API changes, encode explicit deltas in spec text (typically `constraints`, `implementation_notes`, and `acceptance`) including:
   - changed surfaces (schema/model, CLI/runtime behavior, prompt contract, docs),
@@ -86,11 +90,13 @@ Notes:
 - Constraints:
 - Done looks like:
 - Verification signals:
+- Fitness-rule risk:
 
 ## Definition of Ready for Spec Drafting
 
 - User interview completed.
 - Scope summary confirmed by user.
+- Fitness-rule risk assessed, rule validity considered, and a path chosen (implementation adjustment vs rule adjustment).
 - Open questions resolved or explicitly deferred.
 
 ## Contract Change Declaration (Required When Applicable)
