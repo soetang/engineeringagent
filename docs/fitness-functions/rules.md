@@ -14,6 +14,7 @@ This file is generated from active manifest-declared fitness rules.
 | `architecture.fitness-catalog-docs-sync` | error | command | custom | `docs/fitness-functions/rules.md` | - | Enforce byte-for-byte sync between docs catalog markdown and generated catalog output. |
 | `architecture.harness-root-yaml-only` | error | command | custom | `harness/ (regular files at root)` | - | Enforce YAML-only regular files directly under harness root. |
 | `architecture.harness-src-import-allowlist` | error | command | custom | `harness/fitness-functions` | - | Restrict harness fitness functions to a narrow supported engineeringagent surface. |
+| `architecture.iteration-pipeline-observer-decoupling` | error | command | custom | `src/engineeringagent/loop_runtime/iteration.py` | - | Keep iteration pipeline free of telemetry and console side effects. |
 | `architecture.loop-facade-line-budget` | error | command | custom | `src/engineeringagent/loop.py` | - | Enforce a permanent line budget cap for the loop facade. |
 | `architecture.loop-subprocess-boundary` | error | command | custom | `src/engineeringagent` | `harness/fitness-functions/policies/loop_subprocess_boundary_semgrep_policy.yaml` | Enforce subprocess allowlist boundaries for command adapters/clients. |
 | `architecture.markdown-locality-reference-coverage` | error | command | custom | `repository markdown (*.md)` | - | Restrict markdown to approved paths and require non-doc markdown files to be referenced in-repo. |
@@ -89,6 +90,13 @@ This file is generated from active manifest-declared fitness rules.
 - Side-effect free: `true`
 - Rationale: Prevents harness scripts from depending on orchestration/runtime internals that are not part of the supported authoring API.
 - Remediation: Replace forbidden imports with the supported helpers under engineeringagent.checks.*.
+
+### `architecture.iteration-pipeline-observer-decoupling`
+
+- Name: Iteration pipeline observer decoupling
+- Side-effect free: `true`
+- Rationale: Preserves the report-plus-observer split so orchestration remains testable and side effects stay localized.
+- Remediation: Move telemetry and console output calls out of loop_runtime.iteration and into loop-wired observers that consume IterationReport.
 
 ### `architecture.loop-facade-line-budget`
 

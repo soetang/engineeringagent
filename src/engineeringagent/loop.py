@@ -17,6 +17,8 @@ from .loop_runtime.models import (
     FeatureIterationInputs,
     ImplementStepInputs,
     IterationOutcome,
+    IterationReport,
+    PostImplementFeatureOutcome,
 )
 from .loop_runtime.iteration import (
     IterationPipelineDependencies,
@@ -53,6 +55,12 @@ from .loop_runtime.controller import (
     run_loop_controller,
 )
 from .loop_runtime.run_context import LoopRun, RunConfig, RunServices
+from .loop_runtime.observers import (
+    DefaultObserverDependencies,
+    IterationReportObserver,
+    build_default_iteration_report_observers,
+    publish_iteration_report,
+)
 from .loop_runtime.telemetry import write_iteration_telemetry
 from .loop_runtime.presentation import RunOutputPresenter
 from .feature_commit import feature_completion_commit_subject
@@ -274,39 +282,48 @@ def _run_feature_iteration(
 def _run_feature_iteration_with_inputs(
     iteration_inputs: FeatureIterationInputs,
 ) -> IterationOutcome:
-    return run_feature_iteration_pipeline(
+    def _ready_for_active_iteration_adapter(
+        result: str,
+        feature: dict[str, Any] | None,
+        loaded_from_archive: bool,
+    ) -> bool:
+        return _ready_for_active_iteration(
+            result=result,
+            feature=feature,
+            loaded_from_archive=loaded_from_archive,
+        )
+
+    def _refresh_feature_after_implement_adapter(
+        project_root: Path,
+        feature_path: Path,
+        selected_started_active: bool,
+    ) -> PostImplementFeatureOutcome:
+        return _refresh_feature_after_implement(
+            project_root,
+            feature_path,
+            selected_started_active=selected_started_active,
+        )
+
+    def _should_archive_selected_feature_adapter(
+        result: str,
+        selected_feature: dict[str, Any] | None,
+        loaded_from_archive: bool,
+    ) -> bool:
+        return _should_archive_selected_feature(
+            result=result,
+            selected_feature=selected_feature,
+            loaded_from_archive=loaded_from_archive,
+        )
+
+    report = run_feature_iteration_pipeline(
         iteration_inputs,
         IterationPipelineDependencies(
             evaluate_initial_feature_load=_evaluate_initial_feature_load,
-            ready_for_active_iteration=(
-                lambda result, feature, loaded_from_archive: (
-                    _ready_for_active_iteration(
-                        result=result,
-                        feature=feature,
-                        loaded_from_archive=loaded_from_archive,
-                    )
-                )
-            ),
+            ready_for_active_iteration=_ready_for_active_iteration_adapter,
             touch_active_feature_for_iteration=_touch_active_feature_for_iteration,
             run_implement_step=run_implement_step,
-            refresh_feature_after_implement=(
-                lambda project_root, feature_path, selected_started_active: (
-                    _refresh_feature_after_implement(
-                        project_root,
-                        feature_path,
-                        selected_started_active=selected_started_active,
-                    )
-                )
-            ),
-            should_archive_selected_feature=(
-                lambda result, selected_feature, loaded_from_archive: (
-                    _should_archive_selected_feature(
-                        result=result,
-                        selected_feature=selected_feature,
-                        loaded_from_archive=loaded_from_archive,
-                    )
-                )
-            ),
+            refresh_feature_after_implement=_refresh_feature_after_implement_adapter,
+            should_archive_selected_feature=_should_archive_selected_feature_adapter,
             archive_completed_feature=_archive_completed_feature,
             run_gate_phase=run_gate_phase,
             gate_phase_dependencies=GatePhaseDependencies(
@@ -327,11 +344,39 @@ def _run_feature_iteration_with_inputs(
                 commit_feature_completion=_commit_feature_completion,
                 restore_archived_feature=_restore_archived_feature,
             ),
-            write_iteration_telemetry=write_iteration_telemetry,
-            git_head_resolver=git_head_short,
-            print_summary=print_summary,
         ),
     )
+    return _publish_iteration_report(report)
+
+
+def _default_iteration_report_observers() -> tuple[IterationReportObserver, ...]:
+    return build_default_iteration_report_observers(
+        DefaultObserverDependencies(
+            write_iteration_telemetry=(
+                lambda telemetry_inputs, git_head_resolver: write_iteration_telemetry(
+                    telemetry_inputs,
+                    git_head_resolver=git_head_resolver,
+                )
+            ),
+            git_head_resolver=git_head_short,
+            print_summary=print_summary,
+            print_line=print,
+        )
+    )
+
+
+def _publish_iteration_report(
+    report: IterationReport,
+    *,
+    observers: Sequence[IterationReportObserver] | None = None,
+) -> IterationOutcome:
+    active_observers = (
+        tuple(observers)
+        if observers is not None
+        else _default_iteration_report_observers()
+    )
+    published_report = publish_iteration_report(report, active_observers)
+    return IterationOutcome.from_report(published_report)
 
 
 def _resolve_run_targets(

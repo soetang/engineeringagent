@@ -497,6 +497,142 @@ def test_iteration_outcome_includes_verification_status() -> None:
     assert outcome.failed_reviewer_id is None
 
 
+def test_iteration_outcome_from_report_maps_report_fields(tmp_path: Path) -> None:
+    iteration_inputs = FeatureIterationInputs(
+        project_root=tmp_path,
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-116.yaml",
+        attempt=4,
+        hook_feedback="retry feedback",
+        verbose_output=False,
+    )
+    telemetry_inputs = IterationTelemetryInputs(
+        iteration_inputs=iteration_inputs,
+        started=0.0,
+        feature_id="FEAT-116",
+        result="failed",
+        failed_gate="spec_validate",
+        next_action="retry_same_feature",
+        implement_status="passed",
+        gate_status="not_run",
+        verification_status="failed:uv run pytest -q",
+        verification_failed_command="uv run pytest -q",
+        reviewer_status="failed:request_changes",
+        reviewer_decision="request_changes",
+        failed_reviewer_id="security-reviewer",
+        implement_output="",
+        gate_output="",
+        verification_output="E       assert 1 == 2",
+        reviewer_output="[reviewer:security-reviewer] decision=request_changes",
+        hook_feedback="retry feedback",
+    )
+    report = loop_module.IterationReport(
+        completed=False,
+        result="failed",
+        failed_gate="spec_validate",
+        next_action="retry_same_feature",
+        hook_feedback="retry feedback",
+        feature_id="FEAT-116",
+        attempt=4,
+        selected_feature_path=str(iteration_inputs.feature_path),
+        implement_step="engineeringagent implement",
+        verification_status="failed:uv run pytest -q",
+        verification_failed_command="uv run pytest -q",
+        reviewer_status="failed:request_changes",
+        reviewer_decision="request_changes",
+        failed_reviewer_id="security-reviewer",
+        telemetry_inputs=telemetry_inputs,
+        log_path="progress/run-feature-FEAT-116.txt",
+    )
+
+    outcome = loop_module.IterationOutcome.from_report(report)
+
+    assert outcome.completed is False
+    assert outcome.result == "failed"
+    assert outcome.failed_gate == "spec_validate"
+    assert outcome.next_action == "retry_same_feature"
+    assert outcome.hook_feedback == "retry feedback"
+    assert outcome.log_path == "progress/run-feature-FEAT-116.txt"
+    assert outcome.verification_status == "failed:uv run pytest -q"
+    assert outcome.verification_failed_command == "uv run pytest -q"
+    assert outcome.reviewer_status == "failed:request_changes"
+    assert outcome.reviewer_decision == "request_changes"
+    assert outcome.failed_reviewer_id == "security-reviewer"
+
+
+def test_publish_iteration_report_accepts_injected_observers(tmp_path: Path) -> None:
+    iteration_inputs = FeatureIterationInputs(
+        project_root=tmp_path,
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-116.yaml",
+        attempt=4,
+        hook_feedback=None,
+        verbose_output=False,
+    )
+    telemetry_inputs = IterationTelemetryInputs(
+        iteration_inputs=iteration_inputs,
+        started=0.0,
+        feature_id="FEAT-116",
+        result="failed",
+        failed_gate="spec_validate",
+        next_action="retry_same_feature",
+        implement_status="passed",
+        gate_status="not_run",
+        verification_status="not_run",
+        verification_failed_command=None,
+        reviewer_status="not_run",
+        reviewer_decision=None,
+        failed_reviewer_id=None,
+        implement_output="",
+        gate_output="",
+        verification_output="",
+        reviewer_output="",
+        hook_feedback="retry feedback",
+    )
+    report = loop_module.IterationReport(
+        completed=False,
+        result="failed",
+        failed_gate="spec_validate",
+        next_action="retry_same_feature",
+        hook_feedback="retry feedback",
+        feature_id="FEAT-116",
+        attempt=4,
+        selected_feature_path=str(iteration_inputs.feature_path),
+        implement_step="engineeringagent implement",
+        verification_status="not_run",
+        verification_failed_command=None,
+        reviewer_status="not_run",
+        reviewer_decision=None,
+        failed_reviewer_id=None,
+        telemetry_inputs=telemetry_inputs,
+    )
+
+    observed: list[str] = []
+
+    def _first(
+        input_report: loop_module.IterationReport,
+    ) -> loop_module.IterationReport:
+        observed.append("first")
+        return input_report.model_copy(
+            update={"log_path": "progress/run-feature-FEAT-116.txt"}
+        )
+
+    def _second(
+        input_report: loop_module.IterationReport,
+    ) -> loop_module.IterationReport:
+        observed.append("second")
+        assert input_report.log_path == "progress/run-feature-FEAT-116.txt"
+        return input_report
+
+    outcome = loop_module._publish_iteration_report(
+        report,
+        observers=(_first, _second),
+    )
+
+    assert observed == ["first", "second"]
+    assert outcome.log_path == "progress/run-feature-FEAT-116.txt"
+    assert outcome.result == "failed"
+    assert outcome.failed_gate == "spec_validate"
+
+
 def test_retry_feedback_contract_accepts_verification_failure(tmp_path: Path) -> None:
     iteration_inputs = FeatureIterationInputs(
         project_root=tmp_path,

@@ -25,6 +25,24 @@ class IterationOutcome(BaseModel):
     reviewer_decision: str | None = None
     failed_reviewer_id: str | None = None
 
+    @classmethod
+    def from_report(cls, report: IterationReport) -> "IterationOutcome":
+        """Build an outcome view from an iteration report."""
+
+        return cls(
+            completed=report.completed,
+            result=report.result,
+            failed_gate=report.failed_gate,
+            next_action=report.next_action,
+            hook_feedback=report.hook_feedback,
+            log_path=report.log_path,
+            verification_status=report.verification_status,
+            verification_failed_command=report.verification_failed_command,
+            reviewer_status=report.reviewer_status,
+            reviewer_decision=report.reviewer_decision,
+            failed_reviewer_id=report.failed_reviewer_id,
+        )
+
 
 class InitialFeatureLoadOutcome(BaseModel):
     """Outcome of loading the selected feature YAML (optionally from archive)."""
@@ -184,3 +202,27 @@ class IterationTelemetryInputs(BaseModel):
     reviewer_feedback_forwarded: str | None = None
     hook_feedback: str | None
     completion_output: str = ""
+
+
+class IterationReport(BaseModel):
+    """Typed iteration report consumed by post-pipeline observers."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    completed: bool
+    result: str
+    failed_gate: str | None
+    next_action: str
+    hook_feedback: str | None
+    feature_id: str
+    attempt: int
+    selected_feature_path: str
+    implement_step: str
+    archived_selection_path: str | None = None
+    verification_status: str = "not_run"
+    verification_failed_command: str | None = None
+    reviewer_status: str = "not_run"
+    reviewer_decision: str | None = None
+    failed_reviewer_id: str | None = None
+    telemetry_inputs: IterationTelemetryInputs
+    log_path: str | None = None

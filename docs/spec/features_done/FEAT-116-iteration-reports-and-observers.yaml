@@ -1,0 +1,124 @@
+id: FEAT-116
+title: Iteration reports and observers for telemetry and console output
+type: chore
+expected_commit_subject: 'chore: add iteration reports and observers'
+status: done
+priority: medium
+objective: 'Increase maintainability of the core loop by splitting iteration orchestration
+
+  from side effects.
+
+
+  The iteration pipeline should produce a single typed report object, and separate
+
+  observers should be responsible for writing telemetry and rendering console
+
+  output.
+
+  '
+context: "`src/engineeringagent/loop_runtime/iteration.py` currently performs orchestration\n\
+  and also directly calls the telemetry sink and console presenter.\n\nThis makes\
+  \ the pipeline harder to test and reason about, and increases coupling\nbetween\
+  \ phases, output formatting, and persistence.\n\nRelated specs and sequencing:\n\
+  \n- FEAT-115 refactors loop runtime labeling and backend coupling in iteration.\n\
+  \  This feature touches many of the same files, so implement FEAT-116 after FEAT-115\n\
+  \  to reduce merge conflict and rework.\n"
+constraints:
+- 'Precondition: FEAT-115 is done (backend-agnostic loop runtime), because this refactor
+  overlaps in `src/engineeringagent/loop_runtime/iteration.py` and should not be interleaved
+  with backend-coupling changes.'
+- Introduce a typed `IterationReport` (Pydantic model) that captures everything needed
+  for writing iteration telemetry and printing the run summary.
+- Refactor `run_feature_iteration_pipeline` to return the report (directly or via
+  a new result wrapper type) and remove direct calls to telemetry/printing from inside
+  the pipeline.
+- 'Introduce observers that consume `IterationReport`.
+
+  Minimum set:
+
+  - telemetry observer (writes progress artifacts)
+
+  - console observer (prints summary)'
+- "Preserve existing `progress/runs.jsonl` schema.\nIn this spec, \"schema\" means:\n\
+  - One JSON object is appended per iteration.\n- The object contains (at minimum)\
+  \ the existing field set and names:\n  ts, feature_id, subtask_id, result, failed_gate,\
+  \ verification_status,\n  verification_failed_command, reviewer_status, reviewer_decision,\n\
+  \  failed_reviewer_id, duration_sec, attempt, commit, next_action, log_path,\n \
+  \ reviewer_feedback_present, reviewer_feedback_summary.\n- Field types and semantics\
+  \ remain unchanged.\n- No field removals/renames are allowed in this spec (additions\
+  \ require a\n  separate spec)."
+- 'Fitness-function impact assessment: add fitness rule `architecture.iteration-pipeline-observer-decoupling`
+  to prevent telemetry/console side effects from creeping back into the iteration
+  pipeline (budget baseline should be tightened to 0 as part of this feature).'
+- 'Recommended sequencing: implement FEAT-116 after FEAT-115.'
+implementation_notes: "Design (normative)\n\npipeline -> report -> publish -> observers\
+  \ -> sinks\n\n- `run_feature_iteration_pipeline(...)` returns an `IterationReport`\
+  \ and performs\n  no telemetry writes or terminal output (no `dependencies.write_iteration_telemetry(...)`,\n\
+  \  no `dependencies.print_summary(...)`, no `print(...)`).\n- Loop wiring (outside\
+  \ the pipeline) is the publisher/Subject: it publishes the\n  report to a deterministic\
+  \ list of subscribers (observers).\n- Minimum observers:\n  - telemetry observer:\
+  \ persists `progress/runs.jsonl` + per-feature progress log\n  - console observer:\
+  \ prints run summary (and detailed-log pointer on failure)\n\nTouchpoints (expected\
+  \ edits)\n\n- `src/engineeringagent/loop_runtime/models.py` (add `IterationReport`)\n\
+  - `src/engineeringagent/loop_runtime/iteration.py` (build/return report; remove\
+  \ telemetry/printing)\n- `src/engineeringagent/loop_runtime/telemetry.py` (unchanged\
+  \ schema; called by telemetry observer)\n- `src/engineeringagent/loop.py` (wire\
+  \ publisher + observers; keep output ordering)\n- `tests/loop/test_loop_runtime_iteration.py`\
+  \ (update for report/observer wiring)\n- `tests/loop/test_loop_output.py` (update\
+  \ for any output/progress expectations)\n\nStreaming events (optional)\n\n- It is\
+  \ acceptable to publish phase-level events as the pipeline runs, but do not\n  expand\
+  \ scope into a plugin system. Returning a final report is sufficient.\n\nFitness\
+  \ rule (normative)\n\n- Add a fitness rule `architecture.iteration-pipeline-observer-decoupling`.\n\
+  - Intent: keep the iteration pipeline free of telemetry/console side effects so\n\
+  \  the report+observer split stays enforceable over time.\n- Pass condition: the\
+  \ iteration pipeline module does not directly write progress\n  artifacts or render\
+  \ terminal output; those side effects only happen in\n  observer(s) wired by loop\
+  \ orchestration.\n- Fail condition: any telemetry/console sink is invoked from inside\
+  \ the pipeline\n  (including direct `print(...)` in the pipeline module).\n- Implementation\
+  \ approach: a deterministic, side-effect-free static check over\n  production source\
+  \ that flags banned call sites inside the pipeline and points\n  remediation at\
+  \ moving those calls into observers.\n"
+acceptance:
+- run_feature_iteration_pipeline no longer writes telemetry or prints output.
+- Telemetry and console output still occur via observers in loop orchestration.
+- Existing tests for loop output and telemetry continue to pass.
+- 'Existing progress artifact timing remains: progress artifacts exist before the
+  first implement invocation (covered by existing loop tests).'
+- Fitness rule architecture.iteration-pipeline-observer-decoupling passes with baseline
+  tightened to 0.
+- uv run pytest -q passes.
+subtasks:
+- id: ST-001
+  title: Define IterationReport model
+  status: done
+  verification:
+  - uv run pytest -q tests/loop/test_loop_runtime_iteration.py
+- id: ST-002
+  title: Refactor iteration pipeline to return report instead of side effects
+  status: done
+  verification:
+  - uv run pytest -q tests/loop
+- id: ST-003
+  title: Implement observers for telemetry and console output
+  status: done
+  verification:
+  - uv run pytest -q tests/loop
+- id: ST-004
+  title: Update loop wiring to use observers
+  status: done
+  verification:
+  - uv run pytest -q
+- id: ST-005
+  title: Add fitness rule to prevent iteration pipeline side effects
+  status: done
+  context: 'Add fitness rule `architecture.iteration-pipeline-observer-decoupling`.
+
+    It should fail if the iteration pipeline performs telemetry writes or terminal
+
+    output, and pass only when those side effects are routed through observers.
+
+    '
+  verification:
+  - uv run engineeringagent checks run --checks fitness --phase iteration_end
+  - uv run pytest -q
+updated_at: '2026-02-19T23:14:47Z'

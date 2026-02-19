@@ -16,7 +16,7 @@ from .models import (
     FeatureIterationInputs,
     GatePhaseOutcome,
     InitialFeatureLoadOutcome,
-    IterationOutcome,
+    IterationReport,
     IterationTelemetryInputs,
     PhaseTiming,
     PostImplementFeatureOutcome,
@@ -89,27 +89,6 @@ class IterationPipelineDependencies(BaseModel):
         CompletionCommitOutcome,
     ]
     completion_phase_dependencies: CompletionPhaseDependencies
-    write_iteration_telemetry: Callable[..., str]
-    git_head_resolver: Callable[[Path], str | None]
-    print_summary: Callable[
-        [
-            str | None,
-            str,
-            str | None,
-            int | None,
-            str,
-            str | None,
-            str | None,
-            str | None,
-            str | None,
-            str | None,
-            str | None,
-            str | None,
-            str | None,
-            str | None,
-        ],
-        None,
-    ]
 
 
 class _PipelineState(BaseModel):
@@ -251,11 +230,13 @@ def _iter_unique_subtasks_by_id(
 
 def _iter_subtasks(feature: dict[str, Any] | None) -> Iterable[dict[str, Any]]:
     if feature is None:
-        return ()
+        return
     subtasks = feature.get("subtasks")
     if not isinstance(subtasks, list) or not subtasks:
-        return ()
-    return (subtask for subtask in subtasks if isinstance(subtask, dict))
+        return
+    for subtask in subtasks:
+        if isinstance(subtask, dict):
+            yield subtask
 
 
 def _iter_verification_commands(verification: list[Any]) -> Iterable[str]:
@@ -534,7 +515,7 @@ def _derive_next_action(*, result: str, completion_commit_succeeded: bool) -> st
 def run_feature_iteration_pipeline(
     iteration_inputs: FeatureIterationInputs,
     dependencies: IterationPipelineDependencies,
-) -> IterationOutcome:
+) -> IterationReport:
     """Execute one feature iteration while preserving facade seam behavior."""
     changed_paths_cached: Any | None = None
     changed_paths_captured = False
@@ -690,10 +671,6 @@ def run_feature_iteration_pipeline(
         hook_feedback=state.next_hook_feedback,
         completion_output=state.completion_output,
     )
-    feature_progress_log_reference = dependencies.write_iteration_telemetry(
-        telemetry_inputs,
-        git_head_resolver=dependencies.git_head_resolver,
-    )
     implement_step = describe_action(
         iteration_inputs.project_root,
         action="implement",
@@ -704,34 +681,21 @@ def run_feature_iteration_pipeline(
         if loaded_post_from_archive and state.archived_path is not None
         else None
     )
-    dependencies.print_summary(
-        feature_id,
-        state.result,
-        state.failed_gate,
-        iteration_inputs.attempt,
-        state.next_action,
-        str(iteration_inputs.feature_path),
-        implement_step,
-        feature_progress_log_reference if state.result != "passed" else None,
-        archived_selection_path,
-        state.verification_status,
-        state.verification_failed_command,
-        state.reviewer_status,
-        state.reviewer_decision,
-        state.failed_reviewer_id,
-    )
-    if state.result != "passed":
-        print(f"Detailed log: {feature_progress_log_reference}")
-    return IterationOutcome(
+    return IterationReport(
         completed=state.completed,
         result=state.result,
         failed_gate=state.failed_gate,
         next_action=state.next_action,
         hook_feedback=state.next_hook_feedback,
-        log_path=feature_progress_log_reference,
+        feature_id=feature_id,
+        attempt=iteration_inputs.attempt,
+        selected_feature_path=str(iteration_inputs.feature_path),
+        implement_step=implement_step,
+        archived_selection_path=archived_selection_path,
         verification_status=state.verification_status,
         verification_failed_command=state.verification_failed_command,
         reviewer_status=state.reviewer_status,
         reviewer_decision=state.reviewer_decision,
         failed_reviewer_id=state.failed_reviewer_id,
+        telemetry_inputs=telemetry_inputs,
     )

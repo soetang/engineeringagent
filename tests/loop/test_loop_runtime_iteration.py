@@ -15,6 +15,8 @@ from engineeringagent.loop_runtime.models import (
     FeatureIterationInputs,
     GatePhaseOutcome,
     InitialFeatureLoadOutcome,
+    IterationReport,
+    IterationTelemetryInputs,
     PostImplementFeatureOutcome,
     ReviewerPhaseOutcome,
     VerificationPhaseOutcome,
@@ -27,6 +29,57 @@ from engineeringagent.loop_runtime.phases import (
     VerificationPhaseDependencies,
 )
 from engineeringagent.changed_paths import ChangedPathsResult
+
+
+def test_iteration_report_model_captures_pipeline_observer_contract(
+    tmp_path: Path,
+) -> None:
+    iteration_inputs = FeatureIterationInputs(
+        project_root=tmp_path,
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-116.yaml",
+        attempt=3,
+        hook_feedback=None,
+        verbose_output=False,
+    )
+    telemetry_inputs = IterationTelemetryInputs(
+        iteration_inputs=iteration_inputs,
+        started=1000.0,
+        feature_id="FEAT-116",
+        result="passed",
+        failed_gate=None,
+        next_action="continue_same_feature",
+        implement_status="passed",
+        gate_status="passed",
+        verification_status="passed",
+        verification_failed_command=None,
+        implement_output="",
+        gate_output="",
+        verification_output="",
+        hook_feedback=None,
+    )
+
+    report = IterationReport(
+        completed=False,
+        result="passed",
+        failed_gate=None,
+        next_action="continue_same_feature",
+        hook_feedback=None,
+        feature_id="FEAT-116",
+        attempt=3,
+        selected_feature_path=str(iteration_inputs.feature_path),
+        implement_step="engineeringagent implement",
+        archived_selection_path=None,
+        verification_status="passed",
+        verification_failed_command=None,
+        reviewer_status="not_run",
+        reviewer_decision=None,
+        failed_reviewer_id=None,
+        telemetry_inputs=telemetry_inputs,
+    )
+
+    assert report.telemetry_inputs.feature_id == "FEAT-116"
+    assert report.log_path is None
+    assert report.reviewer_status == "not_run"
 
 
 def test_iteration_pipeline_carries_passed_reviewer_feedback_to_continue(
@@ -58,7 +111,7 @@ def test_iteration_pipeline_carries_passed_reviewer_feedback_to_continue(
         verbose_output=False,
     )
 
-    outcome = run_feature_iteration_pipeline(
+    report = run_feature_iteration_pipeline(
         iteration_inputs,
         IterationPipelineDependencies(
             evaluate_initial_feature_load=(
@@ -145,16 +198,13 @@ def test_iteration_pipeline_carries_passed_reviewer_feedback_to_continue(
                 commit_feature_completion=lambda *_args, **_kwargs: (True, None, ""),
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
             ),
-            write_iteration_telemetry=lambda *_args, **_kwargs: "progress/runs.jsonl",
-            git_head_resolver=lambda _root: None,
-            print_summary=lambda *_args, **_kwargs: None,
         ),
     )
 
-    assert outcome.result == "passed"
-    assert outcome.completed is False
-    assert outcome.next_action == "continue_same_feature"
-    assert outcome.hook_feedback == reviewer_feedback
+    assert report.result == "passed"
+    assert report.completed is False
+    assert report.next_action == "continue_same_feature"
+    assert report.hook_feedback == reviewer_feedback
 
 
 def test_iteration_pipeline_archives_before_running_done_transition_verification(
@@ -203,7 +253,7 @@ def test_iteration_pipeline_archives_before_running_done_transition_verification
             hook_feedback=None,
         )
 
-    outcome = run_feature_iteration_pipeline(
+    report = run_feature_iteration_pipeline(
         iteration_inputs,
         IterationPipelineDependencies(
             evaluate_initial_feature_load=(
@@ -306,13 +356,10 @@ def test_iteration_pipeline_archives_before_running_done_transition_verification
                 commit_feature_completion=lambda *_args, **_kwargs: (True, None, ""),
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
             ),
-            write_iteration_telemetry=lambda *_args, **_kwargs: "progress/runs.jsonl",
-            git_head_resolver=lambda _root: None,
-            print_summary=lambda *_args, **_kwargs: None,
         ),
     )
 
-    assert outcome.result == "passed"
+    assert report.result == "passed"
 
 
 def test_iteration_pipeline_collects_changed_paths_once_per_iteration(
@@ -365,7 +412,7 @@ def test_iteration_pipeline_collects_changed_paths_once_per_iteration(
             hook_feedback=None,
         )
 
-    outcome = run_feature_iteration_pipeline(
+    report = run_feature_iteration_pipeline(
         iteration_inputs,
         IterationPipelineDependencies(
             evaluate_initial_feature_load=(
@@ -438,13 +485,10 @@ def test_iteration_pipeline_collects_changed_paths_once_per_iteration(
                 commit_feature_completion=lambda *_args, **_kwargs: (True, None, ""),
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
             ),
-            write_iteration_telemetry=lambda *_args, **_kwargs: "progress/runs.jsonl",
-            git_head_resolver=lambda _root: None,
-            print_summary=lambda *_args, **_kwargs: None,
         ),
     )
 
-    assert outcome.result == "passed"
+    assert report.result == "passed"
     assert calls["count"] == 1
 
 
@@ -481,12 +525,6 @@ def test_iteration_pipeline_records_phase_timings(
         ),
     )
 
-    captured: dict[str, Any] = {}
-
-    def _capture_write_iteration_telemetry(*args: Any, **_kwargs: Any) -> str:
-        captured["telemetry_inputs"] = args[0]
-        return "progress/run-feature-FEAT-065.txt"
-
     iteration_inputs = FeatureIterationInputs(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-065.yaml",
@@ -495,7 +533,7 @@ def test_iteration_pipeline_records_phase_timings(
         verbose_output=False,
     )
 
-    run_feature_iteration_pipeline(
+    report = run_feature_iteration_pipeline(
         iteration_inputs,
         IterationPipelineDependencies(
             evaluate_initial_feature_load=(
@@ -582,13 +620,10 @@ def test_iteration_pipeline_records_phase_timings(
                 commit_feature_completion=lambda *_args, **_kwargs: (True, None, ""),
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
             ),
-            write_iteration_telemetry=_capture_write_iteration_telemetry,
-            git_head_resolver=lambda _root: None,
-            print_summary=lambda *_args, **_kwargs: None,
         ),
     )
 
-    telemetry_inputs = captured["telemetry_inputs"]
+    telemetry_inputs = report.telemetry_inputs
     phases = [timing.phase for timing in telemetry_inputs.phase_timings]
     assert phases == [
         "initial_load",
