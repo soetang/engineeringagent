@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from typing import Sequence
 
 import pathspec
 
@@ -21,7 +22,7 @@ def _compile_spec(patterns: tuple[str, ...]) -> pathspec.PathSpec:
     return pathspec.PathSpec.from_lines("gitignore", _normalize_patterns(patterns))
 
 
-def path_matches_any_glob(path: str, patterns: list[str]) -> bool:
+def path_matches_any_glob(path: str, patterns: Sequence[str]) -> bool:
     """Return whether a repository-relative path matches any configured glob."""
     if not patterns:
         return False

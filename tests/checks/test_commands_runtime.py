@@ -11,6 +11,8 @@ from engineeringagent.checks.commands.runtime import (
     plan_command_checks,
     run_planned_command_checks,
 )
+from engineeringagent.checks.fitness.runtime import plan_fitness_checks
+from engineeringagent.checks.reviewers.runtime import plan_reviewer_checks
 from engineeringagent.specs import HarnessCheckPhase, HarnessChecksDocument
 
 
@@ -168,3 +170,88 @@ def test_run_planned_command_checks_snapshots_returncode_once(
     assert result.ok
     assert result.failed_check_id is None
     assert "[check:smoke] returncode=0" in result.output
+
+
+@pytest.mark.parametrize(
+    ("phase", "when", "changed_paths", "expected"),
+    [
+        (
+            HarnessCheckPhase.FEATURE_DONE,
+            {"phase": "feature_done"},
+            ChangedPathsResult(paths=("README.md",), run_all=False, reason=None),
+            ("run", "always_run_no_on_change"),
+        ),
+        (
+            HarnessCheckPhase.FEATURE_DONE,
+            {"phase": "feature_done", "on_change": ["src/**"]},
+            ChangedPathsResult(paths=("src/app.py",), run_all=False, reason=None),
+            ("run", "matched_on_change"),
+        ),
+        (
+            HarnessCheckPhase.FEATURE_DONE,
+            {"phase": "feature_done", "on_change": ["src/**"]},
+            ChangedPathsResult(paths=("README.md",), run_all=False, reason=None),
+            ("skip", "no_on_change_match"),
+        ),
+        (
+            HarnessCheckPhase.FEATURE_DONE,
+            {"phase": "feature_done", "on_change": ["src/**"]},
+            ChangedPathsResult(paths=(), run_all=True, reason="fallback"),
+            ("run", "fallback"),
+        ),
+        (
+            HarnessCheckPhase.MANUAL,
+            {"phase": "manual"},
+            ChangedPathsResult(paths=("src/app.py",), run_all=False, reason=None),
+            ("skip", "manual"),
+        ),
+    ],
+)
+def test_planning_policy_parity_across_check_types(
+    phase: HarnessCheckPhase,
+    when: dict[str, object],
+    changed_paths: ChangedPathsResult,
+    expected: tuple[str, str],
+) -> None:
+    doc = _doc(
+        {
+            "contract_version": "1.0",
+            "checks": {
+                "cmd": {
+                    "type": "command",
+                    "command": "echo ok",
+                    "when": when,
+                },
+                "fit": {
+                    "type": "fitness",
+                    "scope": "all",
+                    "when": when,
+                },
+                "rev": {
+                    "type": "reviewer",
+                    "prompt_file": "harness/reviewers/prompts/doc_review.md",
+                    "when": when,
+                },
+            },
+        }
+    )
+
+    command_entry = plan_command_checks(
+        doc,
+        phase=phase,
+        changed_paths=changed_paths,
+    )[0]
+    fitness_entry = plan_fitness_checks(
+        doc,
+        phase=phase,
+        changed_paths=changed_paths,
+    )[0]
+    reviewer_entry = plan_reviewer_checks(
+        doc,
+        phase=phase,
+        changed_paths=changed_paths,
+    )[0]
+
+    assert (command_entry.decision, command_entry.reason) == expected
+    assert (fitness_entry.decision, fitness_entry.reason) == expected
+    assert (reviewer_entry.decision, reviewer_entry.reason) == expected

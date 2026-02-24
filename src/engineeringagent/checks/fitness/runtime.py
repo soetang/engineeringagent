@@ -5,10 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.changed_paths import (
-    ChangedPathsResult,
-    FALLBACK_CHANGE_DISCOVERY_REASON,
-)
+from engineeringagent.changed_paths import ChangedPathsResult
 from engineeringagent.checks.fitness.adapters import execute_rule_definition
 from engineeringagent.checks.fitness.contracts import RuleStatus
 from engineeringagent.checks.fitness.registry import build_rule_catalog
@@ -17,13 +14,17 @@ from engineeringagent.specs import (
     HarnessCheckPhase,
     HarnessChecksDocument,
 )
+from ..planning_policy import (
+    ALWAYS_RUN_NO_ON_CHANGE_REASON as _ALWAYS_RUN_NO_ON_CHANGE_REASON,
+    MATCHED_ON_CHANGE_REASON as _MATCHED_ON_CHANGE_REASON,
+    NO_ON_CHANGE_MATCH_REASON as _NO_ON_CHANGE_MATCH_REASON,
+    plan_check_when_decision,
+)
 
-from ..on_change_matcher import path_matches_any_glob
 
-
-ALWAYS_RUN_NO_ON_CHANGE_REASON = "always_run_no_on_change"
-MATCHED_ON_CHANGE_REASON = "matched_on_change"
-NO_ON_CHANGE_MATCH_REASON = "no_on_change_match"
+ALWAYS_RUN_NO_ON_CHANGE_REASON = _ALWAYS_RUN_NO_ON_CHANGE_REASON
+MATCHED_ON_CHANGE_REASON = _MATCHED_ON_CHANGE_REASON
+NO_ON_CHANGE_MATCH_REASON = _NO_ON_CHANGE_MATCH_REASON
 
 
 class PlannedCheck(BaseModel):
@@ -47,24 +48,6 @@ class RunPlannedFitnessChecksRequest(BaseModel):
     changed_paths: ChangedPathsResult
 
 
-def _effective_default_phase(doc: HarnessChecksDocument) -> HarnessCheckPhase:
-    defaults = doc.defaults
-    if defaults is None or defaults.when is None or defaults.when.phase is None:
-        return HarnessCheckPhase.ITERATION_END
-    return defaults.when.phase
-
-
-def _effective_check_phase(
-    *,
-    doc: HarnessChecksDocument,
-    check_when: Any,
-) -> HarnessCheckPhase:
-    default_phase = _effective_default_phase(doc)
-    if check_when is None or getattr(check_when, "phase", None) is None:
-        return default_phase
-    return check_when.phase
-
-
 def plan_fitness_checks(
     doc: HarnessChecksDocument,
     *,
@@ -73,64 +56,21 @@ def plan_fitness_checks(
 ) -> list[PlannedCheck]:
     """Plan deterministic run/skip decisions for fitness checks."""
     planned: list[PlannedCheck] = []
-    fallback_reason = changed_paths.reason or FALLBACK_CHANGE_DISCOVERY_REASON
 
     for check_id, check in doc.checks.items():
         if not isinstance(check, HarnessCheckFitnessDefinition):
             continue
-        if _effective_check_phase(doc=doc, check_when=check.when) != phase:
+        decision = plan_check_when_decision(
+            doc=doc,
+            phase=phase,
+            check_when=check.when,
+            changed_paths=changed_paths,
+        )
+        if decision is None:
             continue
-
-        on_change = None
-        if check.when is not None:
-            on_change = check.when.on_change
-
-        if phase == HarnessCheckPhase.MANUAL:
-            planned.append(
-                PlannedCheck(
-                    check_id=check_id,
-                    decision="skip",
-                    reason="manual",
-                )
-            )
-            continue
-
-        if on_change is None:
-            planned.append(
-                PlannedCheck(
-                    check_id=check_id,
-                    decision="run",
-                    reason=ALWAYS_RUN_NO_ON_CHANGE_REASON,
-                )
-            )
-            continue
-
-        if changed_paths.run_all:
-            planned.append(
-                PlannedCheck(
-                    check_id=check_id,
-                    decision="run",
-                    reason=fallback_reason,
-                )
-            )
-            continue
-
-        if any(path_matches_any_glob(path, on_change) for path in changed_paths.paths):
-            planned.append(
-                PlannedCheck(
-                    check_id=check_id,
-                    decision="run",
-                    reason=MATCHED_ON_CHANGE_REASON,
-                )
-            )
-            continue
-
+        decision_value, reason = decision
         planned.append(
-            PlannedCheck(
-                check_id=check_id,
-                decision="skip",
-                reason=NO_ON_CHANGE_MATCH_REASON,
-            )
+            PlannedCheck(check_id=check_id, decision=decision_value, reason=reason)
         )
 
     return planned
