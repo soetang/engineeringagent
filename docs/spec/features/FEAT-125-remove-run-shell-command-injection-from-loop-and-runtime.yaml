@@ -18,8 +18,8 @@ context: >
 constraints:
   - Immediate breaking cleanup is allowed; no compatibility shim is required.
   - Type stability is not required; dependency models/arguments can be deleted directly.
-  - `src/engineeringagent/loop_runtime/*` must not reference `run_shell_command` as a dependency field or passed argument.
-  - `run_planned_command_checks(...)` must not accept `run_shell_command` as an argument.
+  - '`src/engineeringagent/loop_runtime/*` must not reference `run_shell_command` as a dependency field or passed argument.'
+  - '`run_planned_command_checks(...)` must not accept `run_shell_command` as an argument.'
   - Preserve existing behavior/output semantics (pass/fail decisions, retry feedback shape, structured invocation metadata, verbose output behavior).
   - Include explicit fitness-function impact assessment in this spec.
 implementation_notes: |
@@ -56,17 +56,14 @@ implementation_notes: |
   - Rationale: this is an ownership/refactor change that reduces callable-injection surface
     and does not introduce new subprocess patterns beyond existing approved command-runtime behavior.
 acceptance:
-  - `src/engineeringagent/loop.py` does not import or pass `run_shell_command`.
-  - `src/engineeringagent/loop_runtime/phases.py` and `src/engineeringagent/loop_runtime/iteration.py` do not model or thread `run_shell_command` dependencies.
-  - `run_planned_command_checks(...)` no longer accepts a `run_shell_command` parameter.
+  - '`src/engineeringagent/loop.py` does not import or pass `run_shell_command`.'
+  - '`src/engineeringagent/loop_runtime/phases.py` and `src/engineeringagent/loop_runtime/iteration.py` do not model or thread `run_shell_command` dependencies.'
+  - '`run_planned_command_checks(...)` no longer accepts a `run_shell_command` parameter.'
   - Checks API/runtime still emit deterministic command outputs and structured `command_invocations` metadata.
   - Verification phase behavior remains equivalent for success/failure handling and retry feedback envelopes.
-  - Targeted regression command passes:
-    `uv run pytest -q tests/loop/test_loop_runtime_iteration.py tests/loop/test_loop_output.py tests/loop/test_loop_phases_coverage.py tests/loop/test_loop_ralph_mode.py tests/checks/test_commands_runtime.py tests/checks/test_commands_group_port.py tests/checks/test_run_checks_contract.py tests/harness/test_checks_runtime.py`
-  - Repository-wide verification passes:
-    `uv run pytest -q`
-  - Spec validation passes:
-    `uv run engineeringagent validate`
+  - 'Targeted regression command passes: `uv run pytest -q tests/loop/test_loop_runtime_iteration.py tests/loop/test_loop_output.py tests/loop/test_loop_phases_coverage.py tests/loop/test_loop_ralph_mode.py tests/checks/test_commands_runtime.py tests/checks/test_commands_group_port.py tests/checks/test_run_checks_contract.py tests/harness/test_checks_runtime.py`'
+  - 'Repository-wide verification passes: `uv run pytest -q`'
+  - 'Spec validation passes: `uv run engineeringagent validate`'
 subtasks:
   - id: ST-001
     title: Remove loop verification runner dependency model and wiring
