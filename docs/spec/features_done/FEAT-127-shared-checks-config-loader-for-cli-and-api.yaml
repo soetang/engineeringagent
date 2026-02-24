@@ -2,11 +2,11 @@ id: FEAT-127
 title: Extract shared harness checks config loader helper for CLI and checks API
 type: chore
 expected_commit_subject: 'chore: add FEAT-127 shared checks config loader helper'
-status: backlog
+status: done
 priority: high
 objective: 'Deduplicate `harness/checks.yaml` load+contract-validation plumbing by
-  introducing a shared checks config loader/helper used by both `checks.api` and
-  `cli run --all` preflight.
+  introducing a shared checks config loader/helper used by both `checks.api` and `cli
+  run --all` preflight.
 
   '
 context: '`src/engineeringagent/checks/api.py` and `src/engineeringagent/cli.py` currently
@@ -29,89 +29,74 @@ constraints:
   the shared loader helper.
 - Keep `engineeringagent.checks.run_checks(...)` public API/signature unchanged.
 - Do not centralize subprocess/agent execution behavior as part of this feature.
-- 'no fitness-function changes required; this is internal config-loader deduplication
-  with unchanged architecture boundaries.'
-implementation_notes: |
-  Contract change declaration (internal-only)
-
-  Surface:
-  - Internal checks-config loading helpers used by:
-    - `src/engineeringagent/checks/api.py`
-    - `src/engineeringagent/cli.py` (`run --all` preflight)
-
-  Old behavior:
-  - Each surface resolves `harness/checks.yaml`, parses YAML, runs contract checks,
-    and renders errors independently.
-  - The two paths duplicate policy and error-shaping logic.
-
-  New behavior:
-  - One shared checks-config loader/helper owns path resolution + parse + contract/model
-    validation result shaping.
-  - CLI and checks API call the shared helper and render/propagate returned outcomes.
-  - Behavior remains semantically equivalent (same success/failure decisions and remediation
-    intent), while exact wording may be normalized.
-
-  Compatibility policy:
-  - No intentional user-facing API contract changes.
-  - Semantic parity only for human-readable error text; exact byte-level message parity
-    is not required.
-
-  Migration plan:
-  - Introduce shared helper under `src/engineeringagent/checks/`.
-  - Migrate checks API loader path first.
-  - Migrate CLI `run --all` checks-config preflight to the shared helper.
-  - Add/adjust focused regressions for missing/invalid config outcomes in both surfaces.
-
-  Verification evidence:
-  - Targeted checks API + CLI tests covering missing/invalid checks config.
-  - Spec validation command.
+- update `architecture.checks-import-surface` allowlist to include `load_harness_checks_document`
+  on the supported top-level checks surface.
+implementation_notes: "Contract change declaration (internal-only)\n\nSurface:\n-\
+  \ Internal checks-config loading helpers used by:\n  - `src/engineeringagent/checks/api.py`\n\
+  \  - `src/engineeringagent/cli.py` (`run --all` preflight)\n\nOld behavior:\n- Each\
+  \ surface resolves `harness/checks.yaml`, parses YAML, runs contract checks,\n \
+  \ and renders errors independently.\n- The two paths duplicate policy and error-shaping\
+  \ logic.\n\nNew behavior:\n- One shared checks-config loader/helper owns path resolution\
+  \ + parse + contract/model\n  validation result shaping.\n- CLI and checks API call\
+  \ the shared helper and render/propagate returned outcomes.\n- Behavior remains\
+  \ semantically equivalent (same success/failure decisions and remediation\n  intent),\
+  \ while exact wording may be normalized.\n\nCompatibility policy:\n- No intentional\
+  \ user-facing API contract changes.\n- Semantic parity only for human-readable error\
+  \ text; exact byte-level message parity\n  is not required.\n\nMigration plan:\n\
+  - Introduce shared helper under `src/engineeringagent/checks/`.\n- Migrate checks\
+  \ API loader path first.\n- Migrate CLI `run --all` checks-config preflight to the\
+  \ shared helper.\n- Add/adjust focused regressions for missing/invalid config outcomes\
+  \ in both surfaces.\n\nVerification evidence:\n- Targeted checks API + CLI tests\
+  \ covering missing/invalid checks config.\n- Spec validation command.\n"
 acceptance:
 - A shared checks-config loader/helper exists and is used by both checks API and CLI
   run preflight code paths.
-- Duplicate load/contract-validation blocks for `harness/checks.yaml` are removed from
-  `src/engineeringagent/checks/api.py` and `src/engineeringagent/cli.py`.
+- Duplicate load/contract-validation blocks for `harness/checks.yaml` are removed
+  from `src/engineeringagent/checks/api.py` and `src/engineeringagent/cli.py`.
 - '`checks run` with missing/invalid `harness/checks.yaml` still fails deterministically
   with actionable config error output.'
-- '`run --all --dry-run` with missing/invalid `harness/checks.yaml` still fails
-  deterministically with actionable run config error output.'
+- '`run --all --dry-run` with missing/invalid `harness/checks.yaml` still fails deterministically
+  with actionable run config error output.'
 - '`run --all` legacy harness-file rejection remains intact and unaffected by the
   shared loader helper.'
-- '`uv run pytest -q tests/checks/test_run_checks_contract.py tests/cli/test_cli.py tests/cli/test_cli_checks.py`
-  passes.'
+- '`uv run pytest -q tests/checks/test_run_checks_contract.py tests/cli/test_cli.py
+  tests/cli/test_cli_checks.py` passes.'
 - '`uv run engineeringagent validate` passes.'
 subtasks:
 - id: ST-001
   title: Add shared checks config loader/helper module
-  status: backlog
-  context: Create a shared loader that resolves `harness/checks.yaml` and returns deterministic
-    success/error outcomes for parse, contract, and model-validation paths.
+  status: done
+  context: Create a shared loader that resolves `harness/checks.yaml` and returns
+    deterministic success/error outcomes for parse, contract, and model-validation
+    paths.
   verification:
   - uv run pytest -q tests/checks/test_run_checks_contract.py
 - id: ST-002
   title: Migrate checks API to shared loader helper
-  status: backlog
-  context: Replace `_load_harness_checks_doc(...)` plumbing with the shared helper while
-    preserving checks API group failure semantics.
+  status: done
+  context: Replace `_load_harness_checks_doc(...)` plumbing with the shared helper
+    while preserving checks API group failure semantics.
   verification:
   - uv run pytest -q tests/checks/test_run_checks_contract.py tests/cli/test_cli_checks.py
 - id: ST-003
   title: Migrate CLI run-all checks-config preflight to shared helper
-  status: backlog
+  status: done
   context: Replace duplicated checks-config load/contract-validation logic in `cmd_run`
     with the shared helper and keep legacy-file checks separate.
   verification:
   - uv run pytest -q tests/cli/test_cli.py
 - id: ST-004
   title: Add/adjust parity regressions for loader outcomes
-  status: backlog
+  status: done
   context: Lock missing/invalid checks-config outcomes across both call sites to prevent
     future drift.
   verification:
-  - uv run pytest -q tests/checks/test_run_checks_contract.py tests/cli/test_cli.py tests/cli/test_cli_checks.py
+  - uv run pytest -q tests/checks/test_run_checks_contract.py tests/cli/test_cli.py
+    tests/cli/test_cli_checks.py
 - id: ST-005
   title: Run final validation for feature integration
-  status: backlog
+  status: done
   context: Confirm spec and targeted runtime behavior remain stable after dedupe refactor.
   verification:
   - uv run engineeringagent validate
-updated_at: '2026-02-24T12:20:00Z'
+updated_at: '2026-02-24T15:00:08Z'

@@ -106,7 +106,7 @@ def validate(project_root: Path, schema_only: bool = False) -> list[str]:
     _append_done_feature_issues(messages, done_files)
     _append_potential_features_issues(messages, potential_features_path)
     _append_reviewer_prompt_issues(messages, reviewer_prompts_dir)
-    _append_agents_docs_map_issues(messages, project_root)
+    _append_agents_docs_map_issues(messages, project_root, docs_root)
     _append_fitness_catalog_issues(messages, project_root)
     _append_purge_invariant_issues(messages, project_root)
 
@@ -498,7 +498,11 @@ def _iter_reviewer_prompt_files(reviewer_prompts_dir: Path) -> list[Path]:
     return sorted(reviewer_prompts_dir.glob("*.md"), key=lambda path: path.as_posix())
 
 
-def _append_agents_docs_map_issues(messages: list[str], project_root: Path) -> None:
+def _append_agents_docs_map_issues(
+    messages: list[str],
+    project_root: Path,
+    docs_root: Path,
+) -> None:
     docs_map_section_line = _agents_docs_map_section_line(project_root)
     docs_map_references = _iter_agents_docs_map_references(project_root)
     if docs_map_section_line is not None and not docs_map_references:
@@ -507,18 +511,57 @@ def _append_agents_docs_map_issues(messages: list[str], project_root: Path) -> N
         )
 
     for line_number, reference in docs_map_references:
+        candidate_references = _docs_map_reference_candidates(
+            reference,
+            project_root=project_root,
+            docs_root=docs_root,
+        )
         if _is_glob_reference(reference):
-            if any(project_root.glob(reference)):
+            if any(
+                any(project_root.glob(candidate_reference))
+                for candidate_reference in candidate_references
+            ):
                 continue
             messages.append(
                 f"AGENTS.md:{line_number}: docs-map glob matches no paths: {reference}"
             )
             continue
 
-        if not (project_root / reference).exists():
+        if not any(
+            (project_root / candidate_reference).exists()
+            for candidate_reference in candidate_references
+        ):
             messages.append(
                 f"AGENTS.md:{line_number}: docs-map path does not exist: {reference}"
             )
+
+
+def _docs_map_reference_candidates(
+    reference: str,
+    *,
+    project_root: Path,
+    docs_root: Path,
+) -> tuple[str, ...]:
+    candidates = [reference]
+    if not reference.startswith("docs/"):
+        return tuple(candidates)
+
+    default_docs_root = project_root / "docs"
+    if docs_root == default_docs_root:
+        return tuple(candidates)
+
+    try:
+        docs_root_relative = docs_root.relative_to(project_root).as_posix()
+    except ValueError:
+        return tuple(candidates)
+
+    suffix = reference.removeprefix("docs/")
+    mapped_reference = (
+        f"{docs_root_relative}/{suffix}" if suffix else docs_root_relative
+    )
+    if mapped_reference not in candidates:
+        candidates.append(mapped_reference)
+    return tuple(candidates)
 
 
 def _append_fitness_catalog_issues(messages: list[str], project_root: Path) -> None:

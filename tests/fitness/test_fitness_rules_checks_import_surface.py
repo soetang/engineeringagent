@@ -77,6 +77,31 @@ def test_checker_allows_importing_allowed_top_level_names(
     assert not checker._collect_violations(tmp_path)
 
 
+def test_checker_allows_importing_shared_loader_from_top_level_checks(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    checker = _load_checker_module(repo_root)
+
+    src_root = tmp_path / "src" / "engineeringagent"
+    src_root.mkdir(parents=True)
+    (src_root / "__init__.py").write_text("", encoding="utf-8")
+    (src_root / "ok_loader.py").write_text(
+        "\n".join(
+            [
+                "from engineeringagent.checks import load_harness_checks_document",
+                "\n",
+                "def run() -> None:",
+                "    _ = load_harness_checks_document",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    assert not checker._collect_violations(tmp_path)
+
+
 def test_checker_flags_disallowed_top_level_imports_even_if_exported(
     tmp_path: Path,
     repo_root: Path,

@@ -42,6 +42,10 @@ _SCAFFOLDED_USER_DOC_TEMPLATES: tuple[tuple[str, str], ...] = (
         "docs/principles/harness-engineering-principles.md",
         "principle.harness-engineering-principles.md",
     ),
+    (
+        "docs/architecture/Architecture.md",
+        "architecture.Architecture.md",
+    ),
 )
 
 

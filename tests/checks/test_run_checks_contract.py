@@ -18,6 +18,7 @@ from engineeringagent.checks.api import (
     _resolve_changed_paths,
     run_checks as run_checks_impl,
 )
+from engineeringagent.checks.config_loader import load_harness_checks_document
 from engineeringagent.specs import HarnessCheckPhase
 
 
@@ -254,6 +255,88 @@ def test_run_checks_missing_checks_yaml_is_config_failure(tmp_path: Path) -> Non
     assert not result.ok
     assert result.failed_group == "config"
     assert "missing harness/checks.yaml" in result.output
+
+
+def test_shared_loader_missing_file_returns_actionable_error(tmp_path: Path) -> None:
+    doc, error = load_harness_checks_document(
+        tmp_path,
+        error_prefix="checks config error",
+    )
+
+    assert doc is None
+    assert error is not None
+    assert error.startswith("checks config error:")
+    assert "missing harness/checks.yaml" in error
+    assert "Remediation: run `engineeringagent init`." in error
+
+
+def test_shared_loader_includes_missing_context_when_provided(tmp_path: Path) -> None:
+    doc, error = load_harness_checks_document(
+        tmp_path,
+        error_prefix="run config error",
+        missing_context=" (required for --all)",
+    )
+
+    assert doc is None
+    assert error is not None
+    assert error.startswith("run config error:")
+    assert "missing harness/checks.yaml" in error
+    assert "(required for --all)" in error
+    assert "Remediation: run `engineeringagent init`." in error
+
+
+def test_shared_loader_failed_load_is_deterministic(tmp_path: Path) -> None:
+    _write_checks_yaml(tmp_path, "- list\n")
+
+    doc, error = load_harness_checks_document(
+        tmp_path,
+        error_prefix="checks config error",
+    )
+
+    assert doc is None
+    assert error is not None
+    assert error.startswith("checks config error: failed to load harness/checks.yaml:")
+
+
+def test_shared_loader_contract_issues_are_rendered_deterministically(
+    tmp_path: Path,
+) -> None:
+    _write_checks_yaml(tmp_path, "checks: {}\n")
+
+    doc, error = load_harness_checks_document(
+        tmp_path,
+        error_prefix="checks config error",
+    )
+
+    assert doc is None
+    assert error is not None
+    assert "checks config error: invalid harness/checks.yaml" in error
+    assert "harness/checks.yaml:contract_version" in error
+
+
+def test_shared_loader_returns_document_on_valid_config(tmp_path: Path) -> None:
+    _write_checks_yaml(
+        tmp_path,
+        "\n".join(
+            [
+                'contract_version: "1.0"',
+                "checks:",
+                "  smoke:",
+                "    type: command",
+                '    command: "echo ok"',
+                "",
+            ]
+        ),
+    )
+
+    doc, error = load_harness_checks_document(
+        tmp_path,
+        error_prefix="checks config error",
+    )
+
+    assert error is None
+    assert doc is not None
+    assert "smoke" in doc.checks
 
 
 def test_run_checks_check_id_without_harness_doc_fails_deterministically(

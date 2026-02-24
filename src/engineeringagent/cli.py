@@ -10,8 +10,6 @@ from types import SimpleNamespace
 from typing import Literal
 
 import typer
-import yaml
-
 from .agents import default_backend_id, list_backends
 from .config import resolve_agents_backend_id
 from .git import client as git_client
@@ -24,8 +22,7 @@ from .init_scaffold import (
 )
 from .loop import RunConfigOptions, build_loop_run, build_run_config, run_loop
 from . import checks as checks_module
-from .checks import render_fitness_catalog
-from .specs import HarnessCheckPhase, checks_contract_issues, load_yaml
+from .specs import HarnessCheckPhase
 
 _HandlerArgs = SimpleNamespace
 
@@ -397,7 +394,6 @@ def cmd_run(args: _HandlerArgs) -> int:
 
     project_root = Path(args.project_root).resolve()
 
-    checks_path = project_root / "harness" / "checks.yaml"
     if args.run_all:
         legacy_paths = (
             project_root / "harness" / "gates.yaml",
@@ -417,20 +413,13 @@ def cmd_run(args: _HandlerArgs) -> int:
                 "Remediation: run `engineeringagent init`."
             )
             return 1
-        if not checks_path.exists():
-            print(
-                "run config error: missing harness/checks.yaml (required for --all). "
-                "Remediation: run `engineeringagent init`."
-            )
-            return 1
-        try:
-            issues = checks_contract_issues(load_yaml(checks_path), checks_path)
-        except (OSError, ValueError, yaml.YAMLError) as exc:
-            print(f"run config error: failed to load harness/checks.yaml: {exc}")
-            return 1
-        if issues:
-            rendered = "\n".join(f"- {issue.path}: {issue.message}" for issue in issues)
-            print(f"run config error: invalid harness/checks.yaml\n{rendered}")
+        _, checks_error = checks_module.load_harness_checks_document(
+            project_root,
+            error_prefix="run config error",
+            missing_context=" (required for --all)",
+        )
+        if checks_error is not None:
+            print(checks_error)
             return 1
 
     config = build_run_config(
@@ -455,7 +444,7 @@ def cmd_checks_catalog(args: _HandlerArgs) -> int:
     manifest_path = _resolve_manifest_path(args.manifest_path)
     output_path = _resolve_optional_path(path=args.output, project_root=project_root)
 
-    rendered = render_fitness_catalog(
+    rendered = checks_module.render_fitness_catalog(
         project_root,
         manifest_path=manifest_path,
         format=args.output_format,

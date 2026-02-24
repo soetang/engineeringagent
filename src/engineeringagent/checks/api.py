@@ -5,7 +5,7 @@ from typing import Any, Callable, TypedDict, cast
 
 import yaml
 
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict
 from typing_extensions import Unpack
 
 from engineeringagent.changed_paths import ChangedPathsResult, collect_changed_paths
@@ -18,6 +18,7 @@ from engineeringagent.checks.fitness.runtime import (
     RunPlannedFitnessChecksRequest,
     run_planned_fitness_checks,
 )
+from engineeringagent.checks.config_loader import load_harness_checks_document
 from engineeringagent.checks.reviewers.runtime import (
     RunPlannedReviewerChecksRequest,
     run_planned_reviewer_checks,
@@ -28,8 +29,6 @@ from engineeringagent.specs import (
     HarnessCheckFitnessDefinition,
     HarnessCheckPhase,
     HarnessCheckReviewerDefinition,
-    HarnessChecksDocument,
-    checks_contract_issues,
     load_yaml,
 )
 
@@ -219,38 +218,6 @@ def _call_collect_changed_paths(
         if "unexpected keyword argument" not in str(exc):
             raise
         return fn(project_root)
-
-
-def _load_harness_checks_doc(project_root: Path) -> tuple[Any | None, str | None]:
-    checks_path = project_root / "harness" / "checks.yaml"
-    if not checks_path.exists():
-        return (
-            None,
-            "checks config error: missing harness/checks.yaml. "
-            "Remediation: run `engineeringagent init`.",
-        )
-
-    try:
-        payload = load_yaml(checks_path)
-        issues = checks_contract_issues(payload, checks_path)
-    except (OSError, ValueError, yaml.YAMLError) as exc:
-        return None, f"checks config error: failed to load harness/checks.yaml: {exc}"
-    if issues:
-        rendered = "\n".join(f"- {issue.path}: {issue.message}" for issue in issues)
-        return (
-            None,
-            f"checks config error: invalid harness/checks.yaml\n{rendered}",
-        )
-
-    try:
-        doc = HarnessChecksDocument.model_validate(payload)
-    except ValidationError as exc:
-        return (
-            None,
-            f"checks config error: failed to validate harness/checks.yaml: {exc}",
-        )
-
-    return doc, None
 
 
 def _resolve_changed_paths(
@@ -590,7 +557,10 @@ def run_checks(
 
     doc = None
     if _requires_harness_doc(request.ordered_groups):
-        doc, doc_error = _load_harness_checks_doc(root)
+        doc, doc_error = load_harness_checks_document(
+            root,
+            error_prefix="checks config error",
+        )
         if doc_error is not None:
             return _failure_result(
                 group="config",

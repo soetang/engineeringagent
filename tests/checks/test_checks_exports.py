@@ -7,6 +7,7 @@ from engineeringagent.checks import (
     ChecksRunResult,
     emit_fitness_result,
     emit_result_envelope,
+    load_harness_checks_document,
     render_fitness_catalog,
     run_checks,
 )
@@ -22,12 +23,14 @@ def test_checks_supported_exports_are_importable() -> None:
     assert callable(run_checks)
     assert callable(emit_fitness_result)
     assert emit_result_envelope is emit_fitness_result
+    assert callable(load_harness_checks_document)
     assert callable(render_fitness_catalog)
     assert ChecksRunResult is not None
     assert set(checks.__all__) == {
         "ChecksRunResult",
         "emit_fitness_result",
         "emit_result_envelope",
+        "load_harness_checks_document",
         "render_fitness_catalog",
         "run_checks",
     }

@@ -3,9 +3,10 @@
 1. Tests the package with: `uv run pytest -q`
 1. Run ruff checks `uv run ruff check`
 1. Fomat code `uv run ruff format`
-1. Run harness `uv run engineeringagent checks run`
+1. Run full harness `uv run engineeringagent checks run`
 1. Validate specs `uv run engineeringagent validate`
 1. pyright `uv run pyright src/engineeringagent tests harness`
+1. when running python code: `uv run python xxx`
 
 
 ## Docstring Policy
@@ -27,5 +28,3 @@ extend-select = [
   "PLR0915",# too-many-statements
 ]
 ```
-
-
