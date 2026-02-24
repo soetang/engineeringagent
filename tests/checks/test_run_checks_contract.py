@@ -488,7 +488,7 @@ def test_run_checks_exposes_structured_command_invocations(
         return SimpleNamespace(returncode=0, stdout="hi\n", stderr="")
 
     monkeypatch.setattr(
-        "engineeringagent.checks.api.run_shell_command",
+        "engineeringagent.checks.commands.runtime.run_shell_command",
         _run_shell_command,
         raising=True,
     )

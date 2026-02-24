@@ -26,7 +26,6 @@ from engineeringagent.loop_runtime.phases import (
     CompletionPhaseDependencies,
     GatePhaseDependencies,
     ReviewerPhaseDependencies,
-    VerificationPhaseDependencies,
 )
 from engineeringagent.changed_paths import ChangedPathsResult
 
@@ -165,9 +164,6 @@ def test_iteration_pipeline_carries_passed_reviewer_feedback_to_continue(
                     hook_feedback=None,
                 )
             ),
-            verification_phase_dependencies=VerificationPhaseDependencies(
-                run_shell_command=lambda *_args, **_kwargs: None,
-            ),
             run_reviewer_phase=(
                 lambda *_args, **_kwargs: ReviewerPhaseOutcome(
                     result="passed",
@@ -235,7 +231,6 @@ def test_iteration_pipeline_archives_before_running_done_transition_verification
     def _run_verification_phase(
         _iteration_inputs: FeatureIterationInputs,
         _verification_commands: list[str],
-        _dependencies: VerificationPhaseDependencies,
     ) -> VerificationPhaseOutcome:
         if not archived_before_verification:
             return VerificationPhaseOutcome(
@@ -323,9 +318,6 @@ def test_iteration_pipeline_archives_before_running_done_transition_verification
                 ),
             ),
             run_verification_phase=_run_verification_phase,
-            verification_phase_dependencies=VerificationPhaseDependencies(
-                run_shell_command=lambda *_args, **_kwargs: None,
-            ),
             run_reviewer_phase=(
                 lambda *_args, **_kwargs: ReviewerPhaseOutcome(
                     result="passed",
@@ -462,9 +454,6 @@ def test_iteration_pipeline_collects_changed_paths_once_per_iteration(
                     hook_feedback=None,
                 )
             ),
-            verification_phase_dependencies=VerificationPhaseDependencies(
-                run_shell_command=lambda *_args, **_kwargs: None,
-            ),
             run_reviewer_phase=_run_reviewer_phase,
             reviewer_phase_dependencies=ReviewerPhaseDependencies(
                 collect_changed_paths=_collect_changed_paths,
@@ -586,9 +575,6 @@ def test_iteration_pipeline_records_phase_timings(
                     verification_output="",
                     hook_feedback=None,
                 )
-            ),
-            verification_phase_dependencies=VerificationPhaseDependencies(
-                run_shell_command=lambda *_args, **_kwargs: None,
             ),
             run_reviewer_phase=(
                 lambda *_args, **_kwargs: ReviewerPhaseOutcome(

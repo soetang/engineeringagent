@@ -12,7 +12,6 @@ from .git.client import (
 )
 from .agents import preflight, run_agent
 from .loop_runtime.implement import run_implement_step_from_inputs
-from .process import run_shell_command
 from .loop_runtime.models import (
     FeatureIterationInputs,
     ImplementStepInputs,
@@ -28,7 +27,6 @@ from .loop_runtime.phases import (
     CompletionPhaseDependencies,
     GatePhaseDependencies,
     ReviewerPhaseDependencies,
-    VerificationPhaseDependencies,
     run_completion_commit_phase,
     run_gate_phase,
     run_reviewer_phase,
@@ -331,9 +329,6 @@ def _run_feature_iteration_with_inputs(
                 collect_changed_paths=collect_changed_paths,
             ),
             run_verification_phase=run_verification_phase,
-            verification_phase_dependencies=VerificationPhaseDependencies(
-                run_shell_command=run_shell_command,
-            ),
             run_reviewer_phase=run_reviewer_phase,
             reviewer_phase_dependencies=ReviewerPhaseDependencies(
                 collect_changed_paths=collect_changed_paths,

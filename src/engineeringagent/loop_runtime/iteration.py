@@ -27,7 +27,6 @@ from .phases import (
     CompletionPhaseDependencies,
     GatePhaseDependencies,
     ReviewerPhaseDependencies,
-    VerificationPhaseDependencies,
 )
 from .time_format import utc_iso_from_epoch_sec
 
@@ -63,10 +62,9 @@ class IterationPipelineDependencies(BaseModel):
     ]
     gate_phase_dependencies: GatePhaseDependencies
     run_verification_phase: Callable[
-        [FeatureIterationInputs, list[str], VerificationPhaseDependencies],
+        [FeatureIterationInputs, list[str]],
         VerificationPhaseOutcome,
     ]
-    verification_phase_dependencies: VerificationPhaseDependencies
     run_reviewer_phase: Callable[
         [
             FeatureIterationInputs,
@@ -311,7 +309,6 @@ def _run_verification_phase_if_passed(
     verification_phase = dependencies.run_verification_phase(
         iteration_inputs,
         state.verification_commands,
-        dependencies.verification_phase_dependencies,
     )
     state.command_timings.extend(verification_phase.command_timings)
     state.verification_output = verification_phase.verification_output

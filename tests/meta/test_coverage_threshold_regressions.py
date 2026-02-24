@@ -26,7 +26,6 @@ from engineeringagent.changed_paths import ChangedPathsResult
 from engineeringagent.loop_runtime.phases import (
     CompletionPhaseDependencies,
     GatePhaseDependencies,
-    VerificationPhaseDependencies,
     run_completion_commit_phase,
     run_gate_phase,
     run_verification_phase,
@@ -306,7 +305,11 @@ def test_feature_state_error_paths(tmp_path: Path, monkeypatch: Any) -> None:
     assert "source already exists" in message
 
 
-def test_gate_and_verification_phase_error_paths(tmp_path: Path, capsys: Any) -> None:
+def test_gate_and_verification_phase_error_paths(
+    tmp_path: Path,
+    capsys: Any,
+    monkeypatch: Any,
+) -> None:
     checks_path = tmp_path / "harness" / "checks.yaml"
     checks_path.parent.mkdir(parents=True, exist_ok=True)
     checks_path.write_text(
@@ -350,14 +353,15 @@ def test_gate_and_verification_phase_error_paths(tmp_path: Path, capsys: Any) ->
     assert "archive rollback failed: rollback-failed" in gate_outcome.gate_output
 
     commands = ["cmd-ok"]
-    verification_deps = VerificationPhaseDependencies(
-        run_shell_command=lambda *_args: SimpleNamespace(
+    monkeypatch.setattr(
+        "engineeringagent.loop_runtime.phases.run_shell_command",
+        lambda *_args: SimpleNamespace(
             returncode=0,
             stdout="ok-out\n",
             stderr="warn-err\n",
-        )
+        ),
     )
-    verification_outcome = run_verification_phase(inputs, commands, verification_deps)
+    verification_outcome = run_verification_phase(inputs, commands)
     assert verification_outcome.result == "passed"
     captured = capsys.readouterr()
     assert "ok-out" in captured.out

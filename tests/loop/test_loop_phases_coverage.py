@@ -12,7 +12,6 @@ from engineeringagent.loop_runtime.phases import (
     run_gate_phase,
     run_reviewer_phase,
     run_verification_phase,
-    VerificationPhaseDependencies,
 )
 from engineeringagent.prompts.retry_feedback import parse_retry_feedback_envelope
 
@@ -247,6 +246,7 @@ def test_run_gate_phase_emits_command_failure_retry_feedback_contract(
 
 def test_run_verification_phase_emits_command_failure_retry_feedback_contract(
     tmp_path: Path,
+    monkeypatch,
 ) -> None:
     inputs = FeatureIterationInputs(
         project_root=tmp_path,
@@ -257,8 +257,9 @@ def test_run_verification_phase_emits_command_failure_retry_feedback_contract(
         verbose_output=False,
     )
 
-    deps = VerificationPhaseDependencies(
-        run_shell_command=lambda _root, command: SimpleNamespace(
+    monkeypatch.setattr(
+        "engineeringagent.loop_runtime.phases.run_shell_command",
+        lambda _root, command: SimpleNamespace(
             returncode=1,
             stdout="",
             stderr=f"verification failure for command={command}",
@@ -268,7 +269,6 @@ def test_run_verification_phase_emits_command_failure_retry_feedback_contract(
     outcome = run_verification_phase(
         inputs,
         verification_commands=["python -c 'raise SystemExit(1)'"],
-        dependencies=deps,
     )
 
     assert outcome.result == "failed"

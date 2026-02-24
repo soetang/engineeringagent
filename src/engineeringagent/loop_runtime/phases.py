@@ -20,6 +20,7 @@ from ..prompts.retry_feedback import (
     build_fitness_failure_retry_feedback,
     build_reviewer_feedback_retry_feedback,
 )
+from ..process import run_shell_command
 from ..specs import HarnessCheckPhase
 
 from .models import (
@@ -89,14 +90,6 @@ class CompletionPhaseDependencies(BaseModel):
         [Path, dict[str, Any]], tuple[bool, str | None, str]
     ]
     restore_archived_feature: Callable[[Path, Path], tuple[bool, str | None]]
-
-
-class VerificationPhaseDependencies(BaseModel):
-    """Injectable dependencies for the verification phase."""
-
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-    run_shell_command: Callable[[Path, str], Any]
 
 
 class ReviewerPhaseDependencies(BaseModel):
@@ -237,7 +230,6 @@ def run_gate_phase(  # noqa: C901
 def run_verification_phase(
     iteration_inputs: FeatureIterationInputs,
     verification_commands: list[str],
-    dependencies: VerificationPhaseDependencies,
 ) -> VerificationPhaseOutcome:
     """Run selected-subtask verification commands for the current iteration."""
     if not verification_commands:
@@ -255,7 +247,7 @@ def run_verification_phase(
     for command in verification_commands:
         print(f"Verification step: {command}")
         started_epoch_sec = int(time.time())
-        proc = dependencies.run_shell_command(iteration_inputs.project_root, command)
+        proc = run_shell_command(iteration_inputs.project_root, command)
         ended_epoch_sec = max(started_epoch_sec, int(time.time()))
         if iteration_inputs.verbose_output:
             if proc.stdout:

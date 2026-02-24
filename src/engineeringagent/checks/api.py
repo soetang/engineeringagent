@@ -33,8 +33,6 @@ from engineeringagent.specs import (
     load_yaml,
 )
 
-from engineeringagent.process import run_shell_command
-
 
 _CHECK_GROUP_VALIDATE = "validate"
 _CHECK_GROUP_COMMANDS = "commands"
@@ -370,10 +368,7 @@ def _run_commands_group(
         changed_paths=changed_paths,
         verbose_output=request.verbose_output,
     )
-    run_result = run_planned_command_checks(
-        run_request,
-        run_shell_command=run_shell_command,
-    )
+    run_result = run_planned_command_checks(run_request)
     failed_payload = None
     if not run_result.ok:
         command = _command_for_check_id(doc, run_result.failed_check_id)

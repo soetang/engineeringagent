@@ -916,8 +916,7 @@ def test_ralph_prompt_includes_feature_file_path(tmp_path: Path) -> None:
         "Read and use this feature spec from disk",
         "most important open subtask",
         "most important open subtask first",
-        "red-green-refactor TDD loop",
-        "red -> green -> refactor",
+        "Update progress in the same feature YAML",
         "only after it transitions to done in this iteration",
     )
     for phrase in expected_prompt_phrases:
@@ -2740,7 +2739,10 @@ def test_verification_failure_feedback_is_injected_into_next_prompt(
         "_run_backend_precheck",
         lambda **_: True,
     )
-    monkeypatch.setattr(loop_module, "run_shell_command", fake_run_shell_command)
+    monkeypatch.setattr(
+        "engineeringagent.loop_runtime.phases.run_shell_command",
+        fake_run_shell_command,
+    )
 
     code = run_loop(
         project_root=project_root,
@@ -3193,7 +3195,10 @@ def test_verification_failure_feedback_replaces_previous_feedback(
         "_run_backend_precheck",
         lambda **_: True,
     )
-    monkeypatch.setattr(loop_module, "run_shell_command", fake_run_shell_command)
+    monkeypatch.setattr(
+        "engineeringagent.loop_runtime.phases.run_shell_command",
+        fake_run_shell_command,
+    )
 
     code = run_loop(
         project_root=project_root,

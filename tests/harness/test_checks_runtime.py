@@ -1027,6 +1027,7 @@ def test_iter_planned_command_check_commands_skips_non_command_defs(
 def test_run_planned_command_checks_fails_and_emits_verbose_output(
     tmp_path: Path,
     capsys: Any,
+    monkeypatch: Any,
 ) -> None:
     checks_path = _write_checks_yaml(
         tmp_path,
@@ -1057,7 +1058,12 @@ def test_run_planned_command_checks_fails_and_emits_verbose_output(
         changed_paths=ChangedPathsResult(paths=(), run_all=True, reason=None),
         verbose_output=True,
     )
-    result = run_planned_command_checks(request, run_shell_command=_run)
+    monkeypatch.setattr(
+        "engineeringagent.checks.commands.runtime.run_shell_command",
+        _run,
+        raising=True,
+    )
+    result = run_planned_command_checks(request)
 
     assert result.ok is False
     assert result.failed_check_id == "smoke"

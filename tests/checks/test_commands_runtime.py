@@ -67,6 +67,7 @@ def test_plan_command_checks_respects_on_change_and_manual_phase() -> None:
 def test_run_planned_command_checks_failure_output_and_verbose(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     doc = _doc(
         {
@@ -83,6 +84,12 @@ def test_run_planned_command_checks_failure_output_and_verbose(
     def _run_shell_command(_root: Path, _command: str) -> object:
         return SimpleNamespace(returncode=2, stdout="out\n", stderr="err\n")
 
+    monkeypatch.setattr(
+        "engineeringagent.checks.commands.runtime.run_shell_command",
+        _run_shell_command,
+        raising=True,
+    )
+
     result = run_planned_command_checks(
         RunPlannedCommandChecksRequest(
             project_root=tmp_path,
@@ -90,8 +97,7 @@ def test_run_planned_command_checks_failure_output_and_verbose(
             phase=HarnessCheckPhase.ITERATION_END,
             changed_paths=ChangedPathsResult(paths=(), run_all=True, reason=None),
             verbose_output=True,
-        ),
-        run_shell_command=_run_shell_command,
+        )
     )
     assert not result.ok
     assert result.failed_check_id == "smoke"
@@ -111,7 +117,10 @@ def test_run_planned_command_checks_failure_output_and_verbose(
     assert captured.out == "out\nerr\n"
 
 
-def test_run_planned_command_checks_snapshots_returncode_once(tmp_path: Path) -> None:
+def test_run_planned_command_checks_snapshots_returncode_once(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     doc = _doc(
         {
             "contract_version": "1.0",
@@ -140,6 +149,12 @@ def test_run_planned_command_checks_snapshots_returncode_once(tmp_path: Path) ->
     def _run_shell_command(_root: Path, _command: str) -> object:
         return _FlakyProc()
 
+    monkeypatch.setattr(
+        "engineeringagent.checks.commands.runtime.run_shell_command",
+        _run_shell_command,
+        raising=True,
+    )
+
     result = run_planned_command_checks(
         RunPlannedCommandChecksRequest(
             project_root=tmp_path,
@@ -147,8 +162,7 @@ def test_run_planned_command_checks_snapshots_returncode_once(tmp_path: Path) ->
             phase=HarnessCheckPhase.ITERATION_END,
             changed_paths=ChangedPathsResult(paths=(), run_all=True, reason=None),
             verbose_output=False,
-        ),
-        run_shell_command=_run_shell_command,
+        )
     )
 
     assert result.ok

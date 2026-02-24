@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import time
 from time import monotonic_ns
-from typing import Any, Callable, Iterable
+from typing import Any, Iterable
 
 from pydantic import BaseModel, ConfigDict
 
@@ -16,6 +16,7 @@ from engineeringagent.specs import (
     HarnessCheckPhase,
     HarnessChecksDocument,
 )
+from engineeringagent.process import run_shell_command
 
 from ..on_change_matcher import path_matches_any_glob
 
@@ -170,8 +171,6 @@ def iter_planned_command_check_commands(
 
 def run_planned_command_checks(
     request: RunPlannedCommandChecksRequest,
-    *,
-    run_shell_command: Callable[[Path, str], Any],
 ) -> RunPlannedCommandChecksResult:
     """Execute planned command checks and return deterministic outcome."""
     planned = plan_command_checks(

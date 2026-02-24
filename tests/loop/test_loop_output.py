@@ -17,7 +17,6 @@ from engineeringagent.loop_runtime.models import (
     PhaseTiming,
 )
 from engineeringagent.loop_runtime.phases import (
-    VerificationPhaseDependencies,
     run_verification_phase,
 )
 from engineeringagent.loop_runtime.telemetry import (
@@ -357,16 +356,18 @@ def test_progress_log_records_verification_command_timings(
         verbose_output=False,
     )
     command = "uv run pytest -q tests/test_loop_output.py"
+    monkeypatch.setattr(
+        phases_module,
+        "run_shell_command",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            returncode=0,
+            stdout="ok\n",
+            stderr="",
+        ),
+    )
     verification_outcome = run_verification_phase(
         iteration_inputs,
         [command],
-        VerificationPhaseDependencies(
-            run_shell_command=lambda *_args, **_kwargs: SimpleNamespace(
-                returncode=0,
-                stdout="ok\n",
-                stderr="",
-            )
-        ),
     )
 
     assert len(verification_outcome.command_timings) == 1
@@ -436,16 +437,18 @@ def test_verification_command_timing_clamps_ended_at_when_clock_skews_backwards(
         verbose_output=False,
     )
     command = "uv run pytest -q tests/test_loop_output.py"
+    monkeypatch.setattr(
+        phases_module,
+        "run_shell_command",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            returncode=0,
+            stdout="ok\n",
+            stderr="",
+        ),
+    )
     verification_outcome = run_verification_phase(
         iteration_inputs,
         [command],
-        VerificationPhaseDependencies(
-            run_shell_command=lambda *_args, **_kwargs: SimpleNamespace(
-                returncode=0,
-                stdout="ok\n",
-                stderr="",
-            )
-        ),
     )
 
     assert len(verification_outcome.command_timings) == 1
