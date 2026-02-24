@@ -60,11 +60,14 @@ def _write_scaffold_templates(project_root: Path) -> None:
     (template_root / "precommit.python_uv.yaml").write_text(
         "repos:\n", encoding="utf-8"
     )
-    (template_root / "reference.docs-architecture.md").write_text(
-        "Audience Split", encoding="utf-8"
-    )
     (template_root / "reference.workflow.md").write_text(
         "Loop workflow", encoding="utf-8"
+    )
+    (template_root / "reference.contributor-commands.md").write_text(
+        "Development practices", encoding="utf-8"
+    )
+    (template_root / "reference.documentation-practices.md").write_text(
+        "Documentation Architecture Reference", encoding="utf-8"
     )
 
 

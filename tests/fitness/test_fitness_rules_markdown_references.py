@@ -94,7 +94,7 @@ def test_markdown_reference_coverage_fails_when_non_doc_markdown_is_unreferenced
     ]
 
 
-def test_markdown_reference_coverage_requires_non_self_reference(
+def test_markdown_reference_coverage_exempts_scaffold_templates(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
@@ -105,13 +105,23 @@ def test_markdown_reference_coverage_requires_non_self_reference(
     )
 
     proc, result = _run_checker(tmp_path, checker_path=_script_path(repo_root))
-    violations = _violations(result)
 
     assert proc.returncode == 0
-    assert result["status"] == "fail"
-    assert violations == [
-        "src/engineeringagent/scaffold_templates/AGENTS.md:1 markdown file outside docs/ has no in-repo non-self reference; add at least one deterministic path reference from another repository file."
-    ]
+    assert result["status"] == "pass"
+    assert not _violations(result)
+
+
+def test_markdown_reference_coverage_exempts_prompt_templates(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    _write_file(tmp_path, "src/engineeringagent/prompts/templates/loop_selector.md")
+
+    proc, result = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert result["status"] == "pass"
+    assert not _violations(result)
 
 
 def test_markdown_reference_coverage_skips_docs_markdown(

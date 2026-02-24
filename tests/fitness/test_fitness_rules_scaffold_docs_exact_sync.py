@@ -38,7 +38,11 @@ def _run_checker(
     return proc, payload
 
 
-def _write_policy(project_root: Path, *, docs_path: str) -> None:
+def _write_policy(
+    project_root: Path,
+    *,
+    exact_sync: list[dict[str, str]],
+) -> None:
     path = project_root / "harness" / "scaffold_policy.yaml"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
@@ -46,12 +50,7 @@ def _write_policy(project_root: Path, *, docs_path: str) -> None:
             {
                 "contract_version": "1.0",
                 "docs_root": "docs",
-                "exact_sync": [
-                    {
-                        "docs_path": docs_path,
-                        "template_name": "reference.spec-writing.md",
-                    }
-                ],
+                "exact_sync": exact_sync,
             },
             sort_keys=False,
             allow_unicode=False,
@@ -77,15 +76,23 @@ def test_exact_sync_checker_fails_when_docs_and_template_differ(
     repo_root: Path,
 ) -> None:
     """Fail with deterministic diagnostics when configured pairs drift."""
-    _write_policy(tmp_path, docs_path="references/spec-writing.md")
+    _write_policy(
+        tmp_path,
+        exact_sync=[
+            {
+                "docs_path": "references/a.md",
+                "template_name": "reference.a.md",
+            }
+        ],
+    )
     _write_docs_file(
         tmp_path,
-        relative_path="docs/references/spec-writing.md",
+        relative_path="docs/references/a.md",
         content="canonical\n",
     )
     _write_template_file(
         tmp_path,
-        name="reference.spec-writing.md",
+        name="reference.a.md",
         content="template\n",
     )
 
@@ -97,9 +104,8 @@ def test_exact_sync_checker_fails_when_docs_and_template_differ(
     assert result["status"] == "fail"
     assert violations == sorted(violations)
     assert any(
-        "docs/references/spec-writing.md" in violation
-        and "src/engineeringagent/scaffold_templates/reference.spec-writing.md"
-        in violation
+        "docs/references/a.md" in violation
+        and "src/engineeringagent/scaffold_templates/reference.a.md" in violation
         for violation in violations
     )
 
@@ -110,15 +116,23 @@ def test_exact_sync_checker_passes_when_docs_and_template_match(
 ) -> None:
     """Pass when configured docs and templates are byte-for-byte identical."""
     content = "same bytes\n"
-    _write_policy(tmp_path, docs_path="references/spec-writing.md")
+    _write_policy(
+        tmp_path,
+        exact_sync=[
+            {
+                "docs_path": "references/a.md",
+                "template_name": "reference.a.md",
+            }
+        ],
+    )
     _write_docs_file(
         tmp_path,
-        relative_path="docs/references/spec-writing.md",
+        relative_path="docs/references/a.md",
         content=content,
     )
     _write_template_file(
         tmp_path,
-        name="reference.spec-writing.md",
+        name="reference.a.md",
         content=content,
     )
 
@@ -129,15 +143,33 @@ def test_exact_sync_checker_passes_when_docs_and_template_match(
     assert not _violations(result)
 
 
-def test_exact_sync_checker_fails_when_configured_docs_file_is_missing(
+def test_exact_sync_checker_fails_when_configured_paths_are_missing(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
     """Fail when the policy points at missing docs/template paths."""
-    _write_policy(tmp_path, docs_path="references/spec-writing.md")
+    _write_policy(
+        tmp_path,
+        exact_sync=[
+            {
+                "docs_path": "references/a.md",
+                "template_name": "reference.a.md",
+            },
+            {
+                "docs_path": "guides/b.md",
+                "template_name": "reference.b.md",
+            },
+        ],
+    )
+
+    _write_docs_file(
+        tmp_path,
+        relative_path="docs/guides/b.md",
+        content="exists\n",
+    )
     _write_template_file(
         tmp_path,
-        name="reference.spec-writing.md",
+        name="reference.a.md",
         content="ok\n",
     )
 
@@ -146,4 +178,8 @@ def test_exact_sync_checker_fails_when_configured_docs_file_is_missing(
 
     assert proc.returncode == 0
     assert result["status"] == "fail"
+    assert violations == sorted(violations)
+    assert len(violations) == 2
+    assert any("docs/references/a.md:1" in violation for violation in violations)
+    assert any("docs/guides/b.md:1" in violation for violation in violations)
     assert any("missing" in violation for violation in violations)

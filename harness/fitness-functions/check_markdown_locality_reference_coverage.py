@@ -20,6 +20,8 @@ _MARKDOWN_ALLOWED_ROOTS = (
     Path("src/engineeringagent/scaffold_templates"),
 )
 _BACKEND_SCAFFOLD_ROOT = Path("src/engineeringagent/agents/backends")
+_PROMPT_TEMPLATE_ROOT = Path("src/engineeringagent/prompts/templates")
+_SCAFFOLD_TEMPLATE_ROOT = Path("src/engineeringagent/scaffold_templates")
 _MARKDOWN_ALLOWED_ROOT_FILES = (
     Path("README.md"),
     Path("AGENTS.md"),
@@ -95,6 +97,22 @@ def _is_backend_scaffold_template_markdown(relative_path: Path) -> bool:
     return len(parts) > 6
 
 
+def _is_reference_coverage_exempt(relative_path: Path) -> bool:
+    if _is_backend_scaffold_template_markdown(relative_path):
+        return True
+    if (
+        relative_path == _PROMPT_TEMPLATE_ROOT
+        or _PROMPT_TEMPLATE_ROOT in relative_path.parents
+    ):
+        return True
+    if (
+        relative_path == _SCAFFOLD_TEMPLATE_ROOT
+        or _SCAFFOLD_TEMPLATE_ROOT in relative_path.parents
+    ):
+        return True
+    return False
+
+
 def _is_outside_docs(relative_path: Path) -> bool:
     return relative_path != Path("docs") and Path("docs") not in relative_path.parents
 
@@ -162,7 +180,7 @@ def _markdown_locality_reference_coverage_violations(project_root: Path) -> list
     for relative_path in markdown_paths:
         if not _is_outside_docs(relative_path):
             continue
-        if _is_backend_scaffold_template_markdown(relative_path):
+        if _is_reference_coverage_exempt(relative_path):
             continue
         if references_by_markdown.get(relative_path):
             continue

@@ -35,7 +35,7 @@
 
 ## Drafting Rules After Interview
 
-- Follow `docs/spec/schemas/feature.schema.json` exactly.
+- Follow [schema](`docs/spec/schemas/feature.schema.json`) exactly.
 - Use one feature file with nested subtasks.
 - Keep acceptance criteria outcome-based and testable.
 - Keep verification commands concrete and executable.

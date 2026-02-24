@@ -7,12 +7,7 @@ from engineeringagent.agents.backends.opencode import client as client_module
 def test_extract_json_session_and_last_text_payload_ignores_blank_and_nondict_events() -> (
     None
 ):
-    stdout = (
-        "\n"
-        "[]\n"
-        "\n"
-        '{"sessionID":"s1","type":"text","part":{"text":"hello"}}\n'
-    )
+    stdout = '\n[]\n\n{"sessionID":"s1","type":"text","part":{"text":"hello"}}\n'
 
     session_id, payload = client_module._extract_json_session_and_last_text_payload(
         stdout

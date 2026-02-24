@@ -17,7 +17,7 @@ This file is generated from active manifest-declared fitness rules.
 | `architecture.iteration-pipeline-observer-decoupling` | error | command | custom | `src/engineeringagent/loop_runtime/iteration.py` | - | Keep iteration pipeline free of telemetry and console side effects. |
 | `architecture.loop-facade-line-budget` | error | command | custom | `src/engineeringagent/loop.py` | - | Enforce a permanent line budget cap for the loop facade. |
 | `architecture.loop-subprocess-boundary` | error | command | custom | `src/engineeringagent` | `harness/fitness-functions/policies/loop_subprocess_boundary_semgrep_policy.yaml` | Enforce subprocess allowlist boundaries for command adapters/clients. |
-| `architecture.markdown-locality-reference-coverage` | error | command | custom | `repository markdown (*.md)` | - | Restrict markdown to approved paths and require non-doc markdown files to be referenced in-repo. |
+| `architecture.markdown-locality-reference-coverage` | error | command | custom | `repository markdown (*.md)` | - | Restrict markdown to approved paths and require non-doc markdown files to be referenced in-repo (excluding prompt/scaffold template asset roots). |
 | `architecture.no-doc-content-tests` | error | command | custom | `tests` | - | Prevent pytest from asserting exact wording in README/docs markdown. |
 | `architecture.no-env-key-reads` | error | command | custom | `src/ harness/ tests/` | - | Forbid env-key reads (os.getenv, os.environ.get, os.environ['X'], 'X' in os.environ). |
 | `architecture.no-facade-varargs-shims` | error | command | custom | `src/engineeringagent` | - | Block facade varargs shims, __signature__ masking, and hidden kwargs dropping. |
@@ -117,8 +117,8 @@ This file is generated from active manifest-declared fitness rules.
 
 - Name: Markdown locality and reference coverage
 - Side-effect free: `true`
-- Rationale: Prevents markdown sprawl and orphaned non-doc markdown assets across repository zones.
-- Remediation: Move markdown under approved roots and add at least one deterministic in-repo reference for each markdown file outside docs/.
+- Rationale: Prevents markdown sprawl and orphaned non-doc markdown assets across repository zones while allowing internal template assets to remain self-contained.
+- Remediation: Move markdown under approved roots and add at least one deterministic in-repo reference for each eligible markdown file outside docs/ (excluding src/engineeringagent/prompts/templates/, src/engineeringagent/scaffold_templates/, and backend scaffold templates).
 
 ### `architecture.no-doc-content-tests`
 

@@ -155,9 +155,12 @@ def test_build_rule_catalog_resolves_manifest_config_file_to_absolute_path(
     catalog = build_rule_catalog(tmp_path)
 
     assert len(catalog) == 1
-    assert catalog[0].config_file == (
-        manifest_path.parent / "policies" / "loop_subprocess_boundary.yaml"
-    ).resolve()
+    assert (
+        catalog[0].config_file
+        == (
+            manifest_path.parent / "policies" / "loop_subprocess_boundary.yaml"
+        ).resolve()
+    )
 
 
 def test_build_rule_catalog_rejects_config_file_outside_project_root(

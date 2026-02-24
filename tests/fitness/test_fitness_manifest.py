@@ -155,6 +155,7 @@ def test_load_custom_rule_definitions_resolves_config_file_relative_to_manifest(
     definitions = load_custom_rule_definitions(tmp_path, manifest_path=manifest_path)
 
     assert len(definitions) == 1
-    assert definitions[0].config_file == (
-        manifest_path.parent / "policies" / "docs-links.yaml"
-    ).resolve()
+    assert (
+        definitions[0].config_file
+        == (manifest_path.parent / "policies" / "docs-links.yaml").resolve()
+    )

@@ -14,6 +14,7 @@ Use this playbook as a practical default, then apply judgment based on risk.
 | Linting (`ruff`, `pylint`) | Enforce code quality and consistency | Style, static hygiene, maintainability | Complexity limits, import hygiene, docstring completeness |
 | Type checks (`pyright`) | Catch interface/type mismatches early | Cross-module contracts and API usage | Wrong argument types, missing attributes |
 | Spec/contract validation | Ensure loop/spec integrity | Feature specs and schema conformance | YAML/schema validity |
+| Agent reviewers | Reviews the code changes with an agent for automatic feedback | All that cannot be covered by deterministic rules see: [ Reviewers guide](`docs/references/reviewer-authoring-guide.md`) | Test reviewer, Code simplifier | 
 
 ## When to Run What
 

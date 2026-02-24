@@ -1,8 +1,13 @@
 # Engineering Workflow Reference
 
-This reference describes the expected loop workflow for contributor execution.
+This reference describes the expected workflow for implementing a feature with engineeringagent.
+
+## Create one or more specs:
+- Create a spec see [docs/references/spec-writing.md](Spec Writing)
 
 ## Core Loop
+
+Run the loop with: `uv run engineeringagent run --all`
 
 1. Select one eligible feature and one eligible subtask.
 1. Implement one incremental, deterministic unit.
@@ -12,7 +17,7 @@ This reference describes the expected loop workflow for contributor execution.
 
 ## Verification Baseline
 
-- Primary verification flow: `uv run engineeringagent run --all` (consumes `harness/checks.yaml`).
+- Primary verification flow: `uv run engineeringagent checks run` (consumes `harness/checks.yaml`).
 - Optional spec-only validation: `uv run engineeringagent validate`.
 
 ## Loop outcome taxonomy
@@ -23,9 +28,3 @@ The run loop records a deterministic `next_action` in terminal output and in `pr
 - `retry_same_feature`: iteration result is `failed` (fix and try again).
 - `select_next_feature`: completion commit succeeded and the loop should move to the next eligible feature.
 - `stop`: dry-run or no-work terminal states.
-
-## Scope Boundaries
-
-- Keep implementation edits in code and configuration, not in run logs.
-- Keep repository-specific architecture decisions in repo docs, not generic references.
-- Keep docs concise and link to references instead of duplicating large guidance blocks.

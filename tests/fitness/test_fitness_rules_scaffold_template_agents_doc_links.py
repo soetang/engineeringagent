@@ -69,17 +69,15 @@ def test_agents_link_checker_fails_when_scaffold_doc_is_missing_from_template(
 ) -> None:
     """Fail with deterministic diagnostics when scaffold docs are not linked."""
     expected = [
-        "docs/references/docs-architecture.md",
-        "docs/references/workflow.md",
-        "docs/references/spec-writing.md",
+        "docs/references/a.md",
+        "docs/guides/b.md",
+        "docs/howto/c.md",
     ]
     _write_policy(tmp_path, scaffold_docs=expected)
     _write_scaffold_agents(
         tmp_path,
         content=(
-            "# AGENTS\n\n"
-            "- `docs/references/docs-architecture.md`: ok\n"
-            "- `docs/references/workflow.md`: ok\n"
+            "# AGENTS\n\n- `docs/references/a.md`: ok\n- `docs/guides/b.md`: ok\n"
         ),
     )
 
@@ -90,13 +88,31 @@ def test_agents_link_checker_fails_when_scaffold_doc_is_missing_from_template(
     assert result["rule_id"] == "architecture.scaffold-template-agents-doc-links"
     assert result["status"] == "fail"
     assert violations == sorted(violations)
-    assert any(
-        "docs/references/spec-writing.md" in violation for violation in violations
-    )
+    assert any("docs/howto/c.md" in violation for violation in violations)
     assert any(
         "src/engineeringagent/scaffold_templates/AGENTS.md" in violation
         for violation in violations
     )
+
+
+def test_agents_link_checker_fails_when_doc_link_has_no_description(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Fail when a required link exists but lacks a per-file description."""
+    expected = ["docs/references/a.md"]
+    _write_policy(tmp_path, scaffold_docs=expected)
+    _write_scaffold_agents(
+        tmp_path,
+        content="# AGENTS\n\n- `docs/references/a.md`\n",
+    )
+
+    proc, result = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+    violations = _violations(result)
+
+    assert proc.returncode == 0
+    assert result["status"] == "fail"
+    assert any("missing per-file description" in violation for violation in violations)
 
 
 def test_agents_link_checker_passes_when_all_scaffold_docs_are_linked(
@@ -105,18 +121,18 @@ def test_agents_link_checker_passes_when_all_scaffold_docs_are_linked(
 ) -> None:
     """Pass when every scaffolded doc is linked with a description."""
     expected = [
-        "docs/references/docs-architecture.md",
-        "docs/references/workflow.md",
-        "docs/references/spec-writing.md",
+        "docs/references/a.md",
+        "docs/guides/b.md",
+        "docs/howto/c.md",
     ]
     _write_policy(tmp_path, scaffold_docs=expected)
     _write_scaffold_agents(
         tmp_path,
         content=(
             "# AGENTS\n\n"
-            "- `docs/references/docs-architecture.md`: When working on docs layout.\n"
-            "- `docs/references/workflow.md`: Before running loop work.\n"
-            "- `docs/references/spec-writing.md`: When drafting feature specs.\n"
+            "- `docs/references/a.md`: Reference details for feature setup.\n"
+            "- `docs/guides/b.md`: Step-by-step guide for contributors.\n"
+            "- `docs/howto/c.md`: Troubleshooting and common fixes.\n"
         ),
     )
 

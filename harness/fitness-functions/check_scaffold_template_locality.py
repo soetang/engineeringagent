@@ -20,8 +20,9 @@ _REQUIRED_SCAFFOLD_TEMPLATES = (
     "AGENTS.md",
     "precommit.core.yaml",
     "precommit.python_uv.yaml",
-    "reference.docs-architecture.md",
     "reference.workflow.md",
+    "reference.contributor-commands.md",
+    "reference.documentation-practices.md",
 )
 _SCAFFOLD_TEMPLATE_ALLOWED_ROOT = _SOURCE_PACKAGE_ROOT / "scaffold_templates"
 _SCAFFOLD_TEMPLATE_CANARY_TOKENS = (

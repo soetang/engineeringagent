@@ -25,11 +25,12 @@ Keep this file concise. Add durable references and rules, not task logs.
 
 ## Documentation Layout Reference
 
-- `docs/references/docs-architecture.md`: Use when adding or restructuring docs; defines user vs contributor documentation boundaries.
 - `docs/references/workflow.md`: Use before running loop work; defines the expected execution and verification loop.
 - `docs/references/spec-writing.md`: Use when drafting feature specs; defines feature schema expectations and the expected red-green-refactor loop.
 - `docs/references/quality-check-playbook.md`: Use when selecting checks and deciding where to enforce behavior.
 - `docs/references/reviewer-authoring-guide.md`: Use when adding or updating repository reviewer checks and prompts.
+- `docs/references/contributor-commands.md`: Use for canonical contributor command references while iterating on this repository.
+- `docs/references/documentation-practices.md`: Use when adding or restructuring docs; defines user vs contributor documentation boundaries.
 - `docs/principles/harness-engineering-principles.md`: Use for conceptual rationale behind short-loop execution design.
 
 Note: Some repos use a separate docs root for specs (configured via `engineeringagent.toml`). These reference docs remain under `docs/references/`.

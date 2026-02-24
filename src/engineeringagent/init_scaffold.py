@@ -20,7 +20,6 @@ _SUPPORTED_INIT_PACKS = {"slim", "standard"}
 DEFAULT_AGENT_MODEL = "openai/gpt-5.3-codex"
 
 _SCAFFOLDED_USER_DOC_TEMPLATES: tuple[tuple[str, str], ...] = (
-    ("docs/references/docs-architecture.md", "reference.docs-architecture.md"),
     ("docs/references/workflow.md", "reference.workflow.md"),
     ("docs/references/spec-writing.md", "reference.spec-writing.md"),
     (
@@ -30,6 +29,14 @@ _SCAFFOLDED_USER_DOC_TEMPLATES: tuple[tuple[str, str], ...] = (
     (
         "docs/references/reviewer-authoring-guide.md",
         "reference.reviewer-authoring-guide.md",
+    ),
+    (
+        "docs/references/contributor-commands.md",
+        "reference.contributor-commands.md",
+    ),
+    (
+        "docs/references/documentation-practices.md",
+        "reference.documentation-practices.md",
     ),
     (
         "docs/principles/harness-engineering-principles.md",

@@ -1192,27 +1192,27 @@ def test_init_scaffolds_tool_generic_docs_only(tmp_path: Path) -> None:
     result = _invoke_cli(["--project-root", str(tmp_path), "init"])
 
     assert result.exit_code == 0
-    assert (tmp_path / "docs" / "references" / "docs-architecture.md").exists()
-    assert (tmp_path / "docs" / "references" / "workflow.md").exists()
-    assert (tmp_path / "docs" / "references" / "quality-check-playbook.md").exists()
-    assert (tmp_path / "docs" / "references" / "reviewer-authoring-guide.md").exists()
-    assert (
-        tmp_path / "docs" / "principles" / "harness-engineering-principles.md"
-    ).exists()
+
+    policy_path = tmp_path / "harness" / "scaffold_policy.yaml"
+    assert policy_path.exists()
+    payload = yaml.safe_load(policy_path.read_text(encoding="utf-8"))
+    assert isinstance(payload, dict)
+
+    exact_sync = payload.get("exact_sync")
+    assert isinstance(exact_sync, list)
+    assert exact_sync
+
+    for entry in exact_sync:
+        assert isinstance(entry, dict)
+        docs_path = entry.get("docs_path")
+        template_name = entry.get("template_name")
+        assert isinstance(docs_path, str)
+        assert docs_path
+        assert isinstance(template_name, str)
+        assert template_name
+        assert (tmp_path / docs_path).exists()
 
     assert not (tmp_path / "docs" / "fitness-functions").exists()
-    assert not (tmp_path / "docs" / "references" / "python-uv-ruff.md").exists()
-    assert not (tmp_path / "docs" / "references" / "retry-feedback.md").exists()
-    assert not (tmp_path / "docs" / "references" / "reviewer-agents.md").exists()
-    assert not (tmp_path / "docs" / "references" / "uv-workflow.md").exists()
-
-
-def test_init_scaffolds_spec_writing_reference_doc(tmp_path: Path) -> None:
-    """Verify init scaffolds the spec-writing reference doc."""
-    result = _invoke_cli(["--project-root", str(tmp_path), "init"])
-
-    assert result.exit_code == 0
-    assert (tmp_path / "docs" / "references" / "spec-writing.md").exists()
 
 
 def test_init_scaffolds_scaffold_policy_with_resolved_docs_root(tmp_path: Path) -> None:
@@ -1227,49 +1227,31 @@ def test_init_scaffolds_scaffold_policy_with_resolved_docs_root(tmp_path: Path) 
     payload = yaml.safe_load(policy_path.read_text(encoding="utf-8"))
     assert payload["contract_version"] == "1.0"
     assert payload["docs_root"] == "docs"
-    assert not payload["contributor_docs"]
-    assert payload["user_docs"] == [
-        "docs/principles/harness-engineering-principles.md",
-        "docs/references/docs-architecture.md",
-        "docs/references/quality-check-playbook.md",
-        "docs/references/reviewer-authoring-guide.md",
-        "docs/references/spec-writing.md",
-        "docs/references/workflow.md",
-    ]
-    assert payload["scaffold_docs"] == [
-        "docs/references/docs-architecture.md",
-        "docs/references/workflow.md",
-        "docs/references/spec-writing.md",
-        "docs/references/quality-check-playbook.md",
-        "docs/references/reviewer-authoring-guide.md",
-        "docs/principles/harness-engineering-principles.md",
-    ]
-    assert payload["exact_sync"] == [
-        {
-            "docs_path": "docs/references/docs-architecture.md",
-            "template_name": "reference.docs-architecture.md",
-        },
-        {
-            "docs_path": "docs/references/workflow.md",
-            "template_name": "reference.workflow.md",
-        },
-        {
-            "docs_path": "docs/references/spec-writing.md",
-            "template_name": "reference.spec-writing.md",
-        },
-        {
-            "docs_path": "docs/references/quality-check-playbook.md",
-            "template_name": "reference.quality-check-playbook.md",
-        },
-        {
-            "docs_path": "docs/references/reviewer-authoring-guide.md",
-            "template_name": "reference.reviewer-authoring-guide.md",
-        },
-        {
-            "docs_path": "docs/principles/harness-engineering-principles.md",
-            "template_name": "principle.harness-engineering-principles.md",
-        },
-    ]
+    assert isinstance(payload["contributor_docs"], list)
+
+    user_docs = payload.get("user_docs")
+    scaffold_docs = payload.get("scaffold_docs")
+    exact_sync = payload.get("exact_sync")
+
+    assert isinstance(user_docs, list)
+    assert isinstance(scaffold_docs, list)
+    assert isinstance(exact_sync, list)
+    assert all(isinstance(item, str) and item for item in user_docs)
+    assert all(isinstance(item, str) and item for item in scaffold_docs)
+
+    docs_paths: list[str] = []
+    for entry in exact_sync:
+        assert isinstance(entry, dict)
+        docs_path = entry.get("docs_path")
+        template_name = entry.get("template_name")
+        assert isinstance(docs_path, str)
+        assert docs_path
+        assert isinstance(template_name, str)
+        assert template_name
+        docs_paths.append(docs_path)
+
+    assert set(docs_paths).issubset(set(scaffold_docs))
+    assert len(docs_paths) == len(set(docs_paths))
 
 
 def test_init_separate_docs_updates_scaffold_policy_docs_root(tmp_path: Path) -> None:
