@@ -11,6 +11,7 @@ Below is a list of files describing relevant parts of the approach. You should o
 1. [User workflow](docs/references/workflow.md) - Description of workflow for users of engineering agent.
 1. [Dokumentation practices](docs/references/documentation-practices.md) - How to write documentation for this repo.
 1. [Quality checks](docs/references/quality-check-playbook.md) - How to run quality checks as a user.
+1. [Architecture map](docs/architecture/Architecture.md) - Entry point for target-state architecture documents.
 
 ## Verification Quick Reference
 

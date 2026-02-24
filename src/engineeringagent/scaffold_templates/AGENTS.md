@@ -32,6 +32,7 @@ Keep this file concise. Add durable references and rules, not task logs.
 - `docs/references/contributor-commands.md`: Use for canonical contributor command references while iterating on this repository.
 - `docs/references/documentation-practices.md`: Use when adding or restructuring docs; defines user vs contributor documentation boundaries.
 - `docs/principles/harness-engineering-principles.md`: Use for conceptual rationale behind short-loop execution design.
+- `docs/architecture/Architecture.md`: Use as the entry point for target-state architecture documents.
 
 Note: Some repos use a separate docs root for specs (configured via `engineeringagent.toml`). These reference docs remain under `docs/references/`.
 
@@ -49,5 +50,5 @@ Note: Some repos use a separate docs root for specs (configured via `engineering
 
 ## Repo Extensions (Fill In)
 
-- Add repository-specific architecture references under `docs/references/`.
+- Add repository-specific architecture references under `docs/architecture/`.
 - Add stack-specific setup/run commands in `README.md`, not in this file.
