@@ -32,7 +32,8 @@ constraints:
   - Do not introduce new pydantic models just to represent checks strategy contracts (context/decision/execution records); keep those contracts lightweight.
   - Keep reviewer runner callable seam unchanged in this feature (do not include POT-017 typed reviewer-runner port work).
   - FEAT-129 may modify behavior or internal module boundaries established while implementing FEAT-128 if required to reach the architecture target.
-  - no fitness-function changes required; this is a boundary realignment within existing architecture intent.
+  - Add boundary fitness coverage that blocks loop/checks recoupling and enforces checks-owned prompt feedback shaping.
+  - Fitness-function changes are in scope for this feature where needed to enforce the new loop/checks architectural boundary.
 implementation_notes: |
   Contract change declaration (required)
 
@@ -73,6 +74,15 @@ implementation_notes: |
   - Adapt existing command/fitness/reviewer/validate paths as strategy implementations.
   - Remove loop group-specific retry feedback construction; consume checks `prompt_feedback` directly.
   - Treat FEAT-128 as supporting context only; FEAT-129 may change FEAT-128-produced internals where needed.
+  - Add/update fitness rules to protect the new boundary:
+    - architecture.loop-checks-result-boundary
+      - Scope: `src/engineeringagent/loop_runtime/**` and related loop entry modules.
+      - Intent: loop must not branch on check type/group-specific semantics and must not parse check-specific payload contracts.
+      - Typical disallowed signals: failed_group branching and check-type-specific payload mapping in loop code.
+    - architecture.checks-own-prompt-feedback-rendering
+      - Scope: loop runtime and prompt feedback wiring.
+      - Intent: check-specific prompt feedback shaping stays in checks runtime/strategies; loop forwards `prompt_feedback` as-is.
+      - Typical disallowed signals: loop-owned calls to command/fitness/reviewer-specific retry feedback builders.
 
   Verification evidence:
   - checks contract/runtime tests for deterministic decisions, dry-run, and first-failure stop behavior.
@@ -89,7 +99,10 @@ acceptance:
   - Checks CLI supports dry-run mode and prints explainable deterministic decision trace output.
   - FEAT-127 shared loader seam is used to avoid re-duplicating checks config load/validation logic.
   - FEAT-129 references FEAT-128 and permits FEAT-128 implementation deltas when required by the architecture contract.
+  - Fitness rule `architecture.loop-checks-result-boundary` exists and fails when loop runtime reintroduces check-type/group-specific branching for checks failure handling.
+  - Fitness rule `architecture.checks-own-prompt-feedback-rendering` exists and fails when loop/prompt modules reintroduce check-specific retry feedback shaping outside checks runtime.
   - '`uv run pytest -q tests/checks/test_run_checks_contract.py tests/checks/test_commands_group_port.py tests/checks/test_fitness_group_port.py tests/checks/test_checks_reviewers_runtime.py tests/loop/test_loop_phases_coverage.py tests/loop/test_loop_runtime_iteration.py tests/cli/test_cli_checks.py tests/cli/test_cli.py` passes.'
+  - '`uv run python -m engineeringagent.cli fitness run --format json` passes with new boundary rules enabled.'
   - '`uv run engineeringagent validate` passes.'
 subtasks:
   - id: ST-001
@@ -162,4 +175,22 @@ subtasks:
       Validate integration and document remaining FEAT-128 scope as residual cleanup only.
     verification:
       - uv run engineeringagent validate
-updated_at: '2026-02-24T00:00:00Z'
+
+  - id: ST-009
+    title: Add loop-checks boundary fitness rule
+    status: backlog
+    context: >
+      Add `architecture.loop-checks-result-boundary` to fail when loop runtime branches
+      on check type/group semantics or parses checks-internal payload contracts.
+    verification:
+      - uv run python -m engineeringagent.cli fitness run --format json
+
+  - id: ST-010
+    title: Add checks-owned prompt feedback boundary fitness rule
+    status: backlog
+    context: >
+      Add `architecture.checks-own-prompt-feedback-rendering` to fail when loop/prompt
+      code performs check-type-specific retry feedback shaping outside checks strategies.
+    verification:
+      - uv run python -m engineeringagent.cli fitness run --format json
+updated_at: '2026-02-24T16:30:00Z'

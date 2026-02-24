@@ -1,0 +1,120 @@
+id: FEAT-131
+title: Autodetect scaffolded user docs from templates and exclude architecture entry doc
+type: spec
+expected_commit_subject: 'spec: add FEAT-131 scaffold docs autodetection contract'
+status: backlog
+priority: high
+objective: >
+  Replace hardcoded init scaffold docs/template filename pairs with deterministic,
+  template-driven discovery for scaffolded user docs, while ensuring
+  `docs/architecture/Architecture.md` is not scaffolded.
+context: >
+  Today `src/engineeringagent/init_scaffold.py` uses a hardcoded tuple of docs/template
+  pairs to decide what user docs are scaffolded and what entries are emitted into
+  `harness/scaffold_policy.yaml` (`user_docs`, `scaffold_docs`, `exact_sync`).
+
+  This creates drift risk and made it easy to accidentally include architecture docs
+  in scaffold output even though architecture docs are contributor-facing and should
+  not be seeded into adopter repos by default.
+
+  We want init behavior to derive scaffolded user docs from templates automatically,
+  with deterministic output, and to explicitly stop scaffolding
+  `docs/architecture/Architecture.md`.
+constraints:
+  - Remove hardcoded per-file scaffold docs/template pair definitions from init scaffold logic.
+  - Auto-discover scaffolded user docs from template assets under `src/engineeringagent/scaffold_templates/`.
+  - Discovery must be deterministic and stable across runs (sorted/stable ordering).
+  - Supported scaffolded user-doc template categories are `reference.*.md` and `principle.*.md`.
+  - Non-user-doc template assets (for example `AGENTS.md`, `precommit.*`, `fitness.*`, `reviewer.prompt.*`, `architecture.*`) must not be scaffolded as user docs.
+  - '`docs/architecture/Architecture.md` must not be scaffolded and must not appear in generated scaffold-policy `user_docs`, `scaffold_docs`, or `exact_sync`.'
+  - Update scaffold template `src/engineeringagent/scaffold_templates/AGENTS.md` so it does not link `docs/architecture/Architecture.md`.
+  - Keep current `--docs-mode separate` behavior unchanged in this feature (no docs-root policy contract redesign).
+  - Generated scaffold policy must remain coherent with existing fitness rules that validate exact sync and AGENTS link coverage.
+implementation_notes: |
+  Contract change declaration (required)
+
+  Surface:
+  - `engineeringagent init` scaffold manifest generation for user docs.
+  - Generated `harness/scaffold_policy.yaml` fields: `user_docs`, `scaffold_docs`, `exact_sync`.
+  - Scaffold template `src/engineeringagent/scaffold_templates/AGENTS.md` docs-map links.
+
+  Old behavior:
+  - Init relies on a hardcoded tuple of explicit docs/template filename pairs.
+  - The hardcoded tuple includes `docs/architecture/Architecture.md`.
+
+  New behavior:
+  - Init derives scaffolded user docs from template discovery (category-driven), not a hardcoded per-file pair list.
+  - Architecture entry doc is excluded from scaffolded user docs and scaffold policy generated lists.
+  - Scaffold AGENTS template links only docs that are actually scaffolded in init output.
+
+  Compatibility policy:
+  - Breaking change is acceptable for scaffold output shape.
+  - No dual-support layer is required for the old hardcoded tuple path.
+
+  Migration plan:
+  - Introduce a small deterministic discovery helper in init scaffold module.
+  - Route user docs manifest + policy exact-sync generation through discovery output.
+  - Remove architecture docs link from scaffold AGENTS template.
+  - Add/adjust tests to lock behavior (autodetection, architecture exclusion, deterministic output).
+
+  Fitness-function impact assessment:
+  - no fitness-function changes required: existing scaffold-doc sync/link checks already consume scaffold policy and continue to enforce consistency when init emits policy from autodetected templates.
+
+  Verification evidence:
+  - Init scaffold tests prove discovery and architecture exclusion.
+  - Policy/exact-sync and AGENTS-link checks remain green.
+  - Spec validation and repository tests pass.
+acceptance:
+  - Init scaffold logic no longer hardcodes individual user docs/template filename pairs.
+  - '`engineeringagent init` scaffolds user docs discovered from template assets for supported user-doc categories.'
+  - '`docs/architecture/Architecture.md` is not scaffolded by init.'
+  - Generated `harness/scaffold_policy.yaml` excludes architecture doc from `user_docs`, `scaffold_docs`, and `exact_sync`.
+  - Scaffold template `AGENTS.md` does not reference `docs/architecture/Architecture.md`.
+  - Output is deterministic across repeated manifest generation calls.
+  - '`uv run pytest -q tests/cli/test_init_scaffold.py tests/cli/test_init_command.py tests/meta/test_spec_writing_reference_doc.py tests/fitness/test_fitness_rules_scaffold_docs_exact_sync.py tests/fitness/test_fitness_rules_scaffold_template_agents_doc_links.py` passes.'
+  - '`uv run engineeringagent validate` passes.'
+subtasks:
+  - id: ST-001
+    title: Add deterministic template discovery for scaffolded user docs
+    status: backlog
+    context: >
+      Implement category-driven autodetection for scaffolded user docs from
+      `src/engineeringagent/scaffold_templates` and remove hardcoded per-file pair dependence.
+    verification:
+      - uv run pytest -q tests/cli/test_init_scaffold.py
+
+  - id: ST-002
+    title: Rewire init manifest and scaffold-policy generation to discovery output
+    status: backlog
+    context: >
+      Use discovered docs/template mappings for user docs manifest and policy
+      (`user_docs`, `scaffold_docs`, `exact_sync`) while keeping docs-mode-separate behavior unchanged.
+    verification:
+      - uv run pytest -q tests/cli/test_init_command.py
+
+  - id: ST-003
+    title: Exclude architecture doc from scaffold outputs and remove scaffold AGENTS link
+    status: backlog
+    context: >
+      Ensure `docs/architecture/Architecture.md` is excluded from scaffolded user docs and
+      remove its link from scaffold template AGENTS docs-map section.
+    verification:
+      - uv run pytest -q tests/cli/test_init_command.py tests/meta/test_spec_writing_reference_doc.py
+
+  - id: ST-004
+    title: Lock regressions for policy-driven exact sync and AGENTS link consistency
+    status: backlog
+    context: >
+      Confirm existing policy-driven fitness-related checks remain valid after autodetection change.
+    verification:
+      - uv run pytest -q tests/fitness/test_fitness_rules_scaffold_docs_exact_sync.py tests/fitness/test_fitness_rules_scaffold_template_agents_doc_links.py
+
+  - id: ST-005
+    title: Run final validation sweep
+    status: backlog
+    context: >
+      Validate end-to-end spec and init scaffold behavior after all updates.
+    verification:
+      - uv run engineeringagent validate
+      - uv run pytest -q
+updated_at: '2026-02-24T20:00:00Z'
