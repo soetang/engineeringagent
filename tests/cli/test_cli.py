@@ -258,6 +258,56 @@ def test_main_run_command_uses_typer_handler(monkeypatch: Any) -> None:
     }
 
 
+def test_main_checks_run_command_uses_typer_handler(monkeypatch: Any) -> None:
+    recorded: dict[str, object] = {}
+
+    def _fake_cmd_checks_run(args: Any) -> int:
+        recorded["project_root"] = args.project_root
+        recorded["checks"] = args.checks
+        recorded["check_id"] = args.check_id
+        recorded["feature_path"] = args.feature_path
+        recorded["phase"] = args.phase
+        recorded["base"] = args.base
+        recorded["head"] = args.head
+        recorded["verbose_output"] = args.verbose_output
+        return 0
+
+    monkeypatch.setattr(cli_module, "cmd_checks_run", _fake_cmd_checks_run)
+
+    with pytest.raises(SystemExit) as exc_info:
+        cli_module.main(
+            [
+                "--project-root",
+                "repo",
+                "checks",
+                "run",
+                "--checks",
+                "commands",
+                "--check-id",
+                "smoke",
+                "--phase",
+                "feature_done",
+                "--base",
+                "main",
+                "--head",
+                "HEAD",
+                "--verbose-output",
+            ]
+        )
+
+    assert exc_info.value.code == 0
+    assert recorded == {
+        "project_root": "repo",
+        "checks": ["commands"],
+        "check_id": "smoke",
+        "feature_path": None,
+        "phase": cli_module.HarnessCheckPhase.FEATURE_DONE,
+        "base": "main",
+        "head": "HEAD",
+        "verbose_output": True,
+    }
+
+
 def test_cmd_run_builds_looprun_context_for_loop_entrypoint(
     tmp_path: Path,
     monkeypatch: Any,

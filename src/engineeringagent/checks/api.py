@@ -1,64 +1,42 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Callable, TypedDict, cast
-
-import yaml
+from typing import Any, cast
 
 from pydantic import BaseModel, ConfigDict
 from typing_extensions import Unpack
 
-from engineeringagent.changed_paths import ChangedPathsResult, collect_changed_paths
 from engineeringagent.checks.commands.runtime import (
     CommandInvocationRecord,
-    RunPlannedCommandChecksRequest,
-    run_planned_command_checks,
 )
-from engineeringagent.checks.fitness.runtime import (
-    RunPlannedFitnessChecksRequest,
-    run_planned_fitness_checks,
+from engineeringagent.checks.config_selection import (
+    load_selected_harness_checks_document,
 )
-from engineeringagent.checks.config_loader import load_harness_checks_document
-from engineeringagent.checks.reviewers.runtime import (
-    RunPlannedReviewerChecksRequest,
-    run_planned_reviewer_checks,
+from engineeringagent.checks.group_execution import (
+    GroupRunResult as _GroupRunResult,
+    GroupRunners as _GroupRunners,
+    call_collect_changed_paths as _call_collect_changed_paths,
+    execute_groups as _execute_groups_internal,
+    resolve_changed_paths as _resolve_changed_paths,
+    run_commands_group as _run_commands_group,
+    run_fitness_group as _run_fitness_group,
+    run_reviewers_group as _run_reviewers_group,
+    run_validate_group as _run_validate_group,
 )
-from engineeringagent.checks.validate import runtime as validate_runtime
-from engineeringagent.specs import (
-    HarnessCheckCommandDefinition,
-    HarnessCheckFitnessDefinition,
-    HarnessCheckPhase,
-    HarnessCheckReviewerDefinition,
-    load_yaml,
+from engineeringagent.checks.request_normalization import (
+    RunChecksKwargs as _RunChecksKwargs,
+    RunChecksRequest as _RunChecksRequest,
+    build_run_checks_request,
 )
 
-
-_CHECK_GROUP_VALIDATE = "validate"
-_CHECK_GROUP_COMMANDS = "commands"
-_CHECK_GROUP_FITNESS = "fitness"
-_CHECK_GROUP_REVIEWERS = "reviewers"
-
-_ALLOWED_GROUPS = {
-    _CHECK_GROUP_VALIDATE,
-    _CHECK_GROUP_COMMANDS,
-    _CHECK_GROUP_FITNESS,
-    _CHECK_GROUP_REVIEWERS,
-}
-_GROUP_ORDER = (
-    _CHECK_GROUP_VALIDATE,
-    _CHECK_GROUP_COMMANDS,
-    _CHECK_GROUP_FITNESS,
-    _CHECK_GROUP_REVIEWERS,
-)
-_DEFAULT_GROUPS = (
-    _CHECK_GROUP_COMMANDS,
-    _CHECK_GROUP_FITNESS,
-)
-_HARNESS_GROUPS = {
-    _CHECK_GROUP_COMMANDS,
-    _CHECK_GROUP_FITNESS,
-    _CHECK_GROUP_REVIEWERS,
-}
+__all__ = [
+    "ChecksRunResult",
+    "run_checks",
+    "_GroupRunResult",
+    "_RunChecksRequest",
+    "_call_collect_changed_paths",
+    "_resolve_changed_paths",
+]
 
 
 class ChecksRunResult(BaseModel):
@@ -95,386 +73,30 @@ def _failure_result(
     )
 
 
-def _command_for_check_id(doc: Any, check_id: str | None) -> str:
-    if not check_id:
-        return "<unknown>"
-
-    check = getattr(doc, "checks", {}).get(check_id)
-    if isinstance(check, HarnessCheckCommandDefinition):
-        command = check.command
-        if isinstance(command, str) and command.strip():
-            return command
-    return "<unknown>"
-
-
-class _RunChecksRequest(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-        frozen=True,
-        arbitrary_types_allowed=True,
-    )
-
-    phase: Any
-    ordered_groups: tuple[str, ...]
-    check_id: str | None
-    feature_path: Path | None
-    verbose_output: bool
-    base: str | None
-    head: str | None
-    run_agent_fn: Callable[..., object] | None
-    prior_feedback: str | None
-    schema_only: bool
-    collect_changed_paths_fn: Callable[..., object] | None
-
-
-class _RunChecksKwargs(TypedDict, total=False):
-    check_id: str | None
-    feature_path: str | Path | None
-    verbose_output: bool
-    base: str | None
-    head: str | None
-    run_agent_fn: Callable[..., object] | None
-    prior_feedback: str | None
-    schema_only: bool
-    collect_changed_paths: Callable[..., object] | None
-
-
-class _GroupRunResult(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    ok: bool
-    failed_check_id: str | None
-    output: str
-    failed_payload: dict[str, Any] | None = None
-    command_invocations: tuple[CommandInvocationRecord, ...] = ()
-
-
-def _normalize_groups(checks: list[str] | None) -> tuple[str, ...]:
-    requested = list(checks) if checks is not None else list(_DEFAULT_GROUPS)
-    normalized: list[str] = []
-    for group in requested:
-        value = str(group or "").strip()
-        if value:
-            normalized.append(value)
-
-    invalid = sorted({group for group in normalized if group not in _ALLOWED_GROUPS})
-    if invalid:
-        raise ValueError(
-            f"unknown checks groups: {invalid}. Supported: {sorted(_ALLOWED_GROUPS)}"
-        )
-
-    deduped: list[str] = []
-    seen: set[str] = set()
-    for group in normalized:
-        if group in seen:
-            continue
-        seen.add(group)
-        deduped.append(group)
-
-    return tuple(group for group in _GROUP_ORDER if group in deduped)
-
-
-def _coerce_project_root(project_root: str | Path) -> Path:
-    return Path(project_root).resolve()
-
-
-def _coerce_phase(phase: Any) -> Any:
-    if isinstance(phase, HarnessCheckPhase):
-        return phase
-    raw = str(phase or "").strip()
-    try:
-        return HarnessCheckPhase(raw)
-    except ValueError as exc:
-        raise ValueError(
-            "unknown phase; expected one of: iteration_end|feature_done|manual"
-        ) from exc
-
-
-def _call_collect_changed_paths(
-    fn: Callable[..., object],
-    project_root: Path,
-    *,
-    base: str | None,
-    head: str | None,
-) -> object:
-    """Call collect_changed_paths with optional base/head.
-
-    The loop runtime wires a memoized collector that only accepts a single
-    positional argument; checks must tolerate that narrower callable.
-    """
-
-    kwargs: dict[str, str] = {}
-    if base is not None:
-        kwargs["base"] = base
-    if head is not None:
-        kwargs["head"] = head
-    if not kwargs:
-        return fn(project_root)
-    try:
-        return fn(project_root, **kwargs)
-    except TypeError as exc:
-        # Only fallback for the known compatibility case where callers inject
-        # base/head but the collector only accepts a single positional argument.
-        if "unexpected keyword argument" not in str(exc):
-            raise
-        return fn(project_root)
-
-
-def _resolve_changed_paths(
-    project_root: Path,
-    request: _RunChecksRequest,
-) -> ChangedPathsResult:
-    collect_changed_paths_fn = request.collect_changed_paths_fn or collect_changed_paths
-    return cast(
-        ChangedPathsResult,
-        _call_collect_changed_paths(
-            collect_changed_paths_fn,
-            project_root,
-            base=request.base,
-            head=request.head,
-        ),
-    )
-
-
-def _resolve_check_group_for_id(doc: Any, check_id: str) -> str | None:
-    check = getattr(doc, "checks", {}).get(check_id)
-    if isinstance(check, HarnessCheckCommandDefinition):
-        return _CHECK_GROUP_COMMANDS
-    if isinstance(check, HarnessCheckFitnessDefinition):
-        return _CHECK_GROUP_FITNESS
-    if isinstance(check, HarnessCheckReviewerDefinition):
-        return _CHECK_GROUP_REVIEWERS
-    return None
-
-
-def _filter_doc_to_check_id(doc: Any, check_id: str) -> Any:
-    check = getattr(doc, "checks", {}).get(check_id)
-    if check is None:
-        return doc
-    return doc.model_copy(update={"checks": {check_id: check}})
-
-
-def _requires_harness_doc(ordered_groups: tuple[str, ...]) -> bool:
-    return any(group in _HARNESS_GROUPS for group in ordered_groups)
-
-
-def _apply_check_id_selection(
-    *,
-    doc: Any | None,
-    request: _RunChecksRequest,
-) -> tuple[Any | None, ChecksRunResult | None]:
-    if request.check_id is None:
-        return doc, None
-    if doc is None:
-        output = "unknown check_id: no harness checks document loaded"
-        return (
-            None,
-            _failure_result(
-                group="selection",
-                check_id=request.check_id,
-                output=output,
-                payload={
-                    "kind": "selection_error",
-                    "message": output,
-                    "check_id": request.check_id,
-                },
-            ),
-        )
-
-    resolved_group = _resolve_check_group_for_id(doc, request.check_id)
-    if resolved_group is None or resolved_group not in request.ordered_groups:
-        enabled = [
-            group for group in request.ordered_groups if group in _HARNESS_GROUPS
-        ]
-        output = (
-            "unknown check_id for enabled groups: "
-            f"check_id={request.check_id} enabled_groups={enabled}"
-        )
-        return (
-            None,
-            _failure_result(
-                group="selection",
-                check_id=request.check_id,
-                output=output,
-                payload={
-                    "kind": "selection_error",
-                    "message": output,
-                    "check_id": request.check_id,
-                },
-            ),
-        )
-
-    return _filter_doc_to_check_id(doc, request.check_id), None
-
-
-def _run_validate_group(project_root: Path, *, schema_only: bool) -> _GroupRunResult:
-    messages = validate_runtime.run_validate(project_root, schema_only=schema_only)
-    if not messages:
-        return _GroupRunResult(ok=True, failed_check_id=None, output="")
-    return _GroupRunResult(
-        ok=False,
-        failed_check_id=None,
-        output="\n".join(messages).strip(),
-        failed_payload={
-            "kind": "validate_failure",
-            "messages": list(messages),
-        },
-    )
-
-
-def _run_commands_group(
-    project_root: Path,
-    doc: Any,
-    request: _RunChecksRequest,
-) -> _GroupRunResult:
-    changed_paths = _resolve_changed_paths(project_root, request)
-    run_request = RunPlannedCommandChecksRequest(
-        project_root=project_root,
-        doc=doc,
-        phase=request.phase,
-        changed_paths=changed_paths,
-        verbose_output=request.verbose_output,
-    )
-    run_result = run_planned_command_checks(run_request)
-    failed_payload = None
-    if not run_result.ok:
-        command = _command_for_check_id(doc, run_result.failed_check_id)
-        failed_payload = {
-            "kind": "command_failure",
-            "check_id": run_result.failed_check_id,
-            "command": command,
-        }
-
-    return _GroupRunResult(
-        ok=run_result.ok,
-        failed_check_id=run_result.failed_check_id,
-        output=run_result.output,
-        failed_payload=failed_payload,
-        command_invocations=run_result.command_invocations,
-    )
-
-
-def _run_fitness_group(
-    project_root: Path,
-    doc: Any,
-    request: _RunChecksRequest,
-) -> _GroupRunResult:
-    changed_paths = _resolve_changed_paths(project_root, request)
-
-    run_request = RunPlannedFitnessChecksRequest(
-        project_root=project_root,
-        doc=doc,
-        phase=request.phase,
-        changed_paths=changed_paths,
-    )
-    ok, failed_id, output, failed_payload = run_planned_fitness_checks(run_request)
-    return _GroupRunResult(
-        ok=ok,
-        failed_check_id=failed_id,
-        output=output,
-        failed_payload=failed_payload,
-    )
-
-
-def _run_reviewers_group(
-    project_root: Path,
-    doc: Any,
-    request: _RunChecksRequest,
-) -> _GroupRunResult:
-    if request.feature_path is None:
-        return _GroupRunResult(
-            ok=False,
-            failed_check_id=None,
-            output="reviewers config error: feature_path is required",
-        )
-    if not request.feature_path.exists():
-        return _GroupRunResult(
-            ok=False,
-            failed_check_id=None,
-            output=(
-                "reviewers config error: feature spec not found: "
-                f"{request.feature_path}"
-            ),
-        )
-
-    try:
-        feature_payload = load_yaml(request.feature_path)
-    except (OSError, ValueError, yaml.YAMLError) as exc:
-        return _GroupRunResult(
-            ok=False,
-            failed_check_id=None,
-            output=f"reviewers config error: failed to load feature spec: {exc}",
-        )
-    feature_id = ""
-    if isinstance(feature_payload, dict):
-        feature_id = str(feature_payload.get("id", "")).strip()
-    if not feature_id:
-        return _GroupRunResult(
-            ok=False,
-            failed_check_id=None,
-            output="reviewers config error: feature spec is missing required id",
-        )
-
-    changed_paths = _resolve_changed_paths(project_root, request)
-    run_request = RunPlannedReviewerChecksRequest(
-        project_root=project_root,
-        doc=doc,
-        phase=request.phase,
-        changed_paths=changed_paths,
-        feature_id=feature_id,
-        feature_path=request.feature_path,
-        run_agent_fn=request.run_agent_fn,
-        prior_feedback=request.prior_feedback,
-    )
-    ok, failed_id, output, failed_payload = run_planned_reviewer_checks(run_request)
-    return _GroupRunResult(
-        ok=ok,
-        failed_check_id=failed_id,
-        output=output,
-        failed_payload=failed_payload,
-    )
-
-
 def _execute_groups(
     *,
     project_root: Path,
     doc: Any | None,
     request: _RunChecksRequest,
 ) -> ChecksRunResult:
-    outputs: list[str] = []
-    command_invocations: list[CommandInvocationRecord] = []
-    for group in request.ordered_groups:
-        if group == _CHECK_GROUP_VALIDATE:
-            group_result = _run_validate_group(
-                project_root,
-                schema_only=request.schema_only,
-            )
-        elif group == _CHECK_GROUP_COMMANDS:
-            group_result = _run_commands_group(project_root, doc, request)
-        elif group == _CHECK_GROUP_FITNESS:
-            group_result = _run_fitness_group(project_root, doc, request)
-        elif group == _CHECK_GROUP_REVIEWERS:
-            group_result = _run_reviewers_group(project_root, doc, request)
-        else:  # pragma: no cover
-            raise RuntimeError(f"unreachable checks group: {group}")
-
-        if group_result.output:
-            outputs.append(group_result.output)
-        command_invocations.extend(group_result.command_invocations)
-        if not group_result.ok:
-            return ChecksRunResult(
-                ok=False,
-                failed_group=group,
-                failed_check_id=group_result.failed_check_id,
-                failed_payload=group_result.failed_payload,
-                output="\n".join(outputs).strip(),
-                command_invocations=tuple(command_invocations),
-            )
-
+    aggregate = _execute_groups_internal(
+        project_root=project_root,
+        doc=doc,
+        request=request,
+        runners=_GroupRunners(
+            run_validate_group=_run_validate_group,
+            run_commands_group=_run_commands_group,
+            run_fitness_group=_run_fitness_group,
+            run_reviewers_group=_run_reviewers_group,
+        ),
+    )
     return ChecksRunResult(
-        ok=True,
-        output="\n".join(outputs).strip(),
-        command_invocations=tuple(command_invocations),
+        ok=aggregate.ok,
+        failed_group=aggregate.failed_group,
+        failed_check_id=aggregate.failed_check_id,
+        failed_payload=aggregate.failed_payload,
+        output=aggregate.output,
+        command_invocations=aggregate.command_invocations,
     )
 
 
@@ -504,76 +126,23 @@ def run_checks(
     Returns:
         Structured result indicating overall success/failure.
     """
-    root = _coerce_project_root(project_root)
-    ordered_groups = _normalize_groups(checks)
-
-    allowed_kwargs = {
-        "check_id",
-        "feature_path",
-        "verbose_output",
-        "base",
-        "head",
-        "run_agent_fn",
-        "prior_feedback",
-        "schema_only",
-        "collect_changed_paths",
-    }
-    unexpected = sorted(set(kwargs) - allowed_kwargs)
-    if unexpected:
-        # Mirror Python's typical error shape for unexpected keyword args.
-        raise TypeError(
-            f"run_checks() got an unexpected keyword argument '{unexpected[0]}'"
-        )
-
-    check_id = kwargs.get("check_id")
-    feature_path = kwargs.get("feature_path")
-    verbose_output = bool(kwargs.get("verbose_output", False))
-    base = kwargs.get("base")
-    head = kwargs.get("head")
-    run_agent_fn = kwargs.get("run_agent_fn")
-    prior_feedback = kwargs.get("prior_feedback")
-    schema_only = bool(kwargs.get("schema_only", False))
-    collect_changed_paths_fn = kwargs.get("collect_changed_paths")
-
-    if schema_only and _CHECK_GROUP_VALIDATE not in ordered_groups:
-        raise ValueError("schema_only requires the validate checks group")
-
-    if _CHECK_GROUP_REVIEWERS in ordered_groups and feature_path is None:
-        raise ValueError("feature_path is required when reviewers checks are selected")
-
-    request = _RunChecksRequest(
-        phase=_coerce_phase(phase),
-        ordered_groups=ordered_groups,
-        check_id=check_id,
-        feature_path=Path(feature_path).resolve() if feature_path is not None else None,
-        verbose_output=verbose_output,
-        base=base,
-        head=head,
-        run_agent_fn=run_agent_fn,
-        prior_feedback=str(prior_feedback) if prior_feedback is not None else None,
-        schema_only=schema_only,
-        collect_changed_paths_fn=collect_changed_paths_fn,
+    root, request = build_run_checks_request(
+        project_root,
+        phase=phase,
+        checks=checks,
+        kwargs=cast(_RunChecksKwargs, kwargs),
     )
 
-    doc = None
-    if _requires_harness_doc(request.ordered_groups):
-        doc, doc_error = load_harness_checks_document(
-            root,
-            error_prefix="checks config error",
+    doc, config_or_selection_error = load_selected_harness_checks_document(
+        root,
+        request=request,
+    )
+    if config_or_selection_error is not None:
+        return _failure_result(
+            group=config_or_selection_error.group,
+            check_id=config_or_selection_error.check_id,
+            output=config_or_selection_error.output,
+            payload=config_or_selection_error.payload,
         )
-        if doc_error is not None:
-            return _failure_result(
-                group="config",
-                check_id=request.check_id,
-                output=doc_error,
-                payload={
-                    "kind": "config_error",
-                    "message": doc_error,
-                },
-            )
-
-    doc, selection_result = _apply_check_id_selection(doc=doc, request=request)
-    if selection_result is not None:
-        return selection_result
 
     return _execute_groups(project_root=root, doc=doc, request=request)

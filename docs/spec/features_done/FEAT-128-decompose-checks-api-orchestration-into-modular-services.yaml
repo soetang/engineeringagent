@@ -2,7 +2,7 @@ id: FEAT-128
 title: Decompose checks API orchestration into modular internal services
 type: chore
 expected_commit_subject: 'chore: add FEAT-128 checks api orchestration modularization'
-status: backlog
+status: done
 priority: high
 objective: 'Refactor `engineeringagent.checks.api` into smaller internal modules so
   checks orchestration has clear boundaries (request normalization, config loading,
@@ -35,41 +35,25 @@ constraints:
   top-level checks surface remains unchanged).
 - Broad cleanup is allowed inside checks internals when it improves clarity and stays
   behavior-preserving.
-- 'no fitness-function changes required; this feature reorganizes checks internals
-  without changing fitness policy intent or cross-boundary contracts.'
-implementation_notes: |
-  Contract change declaration (internal-only)
-
-  Surface:
-  - Internal orchestration implementation behind `engineeringagent.checks.run_checks(...)`.
-  - Internal helper/function locations in `src/engineeringagent/checks/`.
-
-  Old behavior:
-  - `checks/api.py` directly owns request parsing, harness checks-doc loading, selection,
-    group dispatch, and aggregate result shaping.
-  - Multiple concerns are mixed in one module and one control-flow path.
-
-  New behavior:
-  - `checks/api.py` remains the public entrypoint/facade.
-  - Internal orchestration responsibilities are split into dedicated internal modules
-    (normalization/request, config+selection, group execution, aggregation).
-  - Group runtimes remain responsible for their own execution behavior.
-  - Overall run outcomes remain semantically equivalent.
-
-  Compatibility policy:
-  - No intentional external API changes.
-  - Existing CLI behavior through checks API remains semantically stable.
-
-  Migration plan:
-  - Extract request coercion/normalization first.
-  - Extract checks-config + check-id selection path.
-  - Extract group dispatch/execution orchestration.
-  - Keep `run_checks(...)` as a thin façade to the new internals.
-  - Add/adjust regression tests after each extraction slice.
-
-  Verification evidence:
-  - Targeted checks contract/runtime and CLI checks tests.
-  - Spec validation command.
+- no fitness-function changes required; this feature reorganizes checks internals
+  without changing fitness policy intent or cross-boundary contracts.
+implementation_notes: "Contract change declaration (internal-only)\n\nSurface:\n-\
+  \ Internal orchestration implementation behind `engineeringagent.checks.run_checks(...)`.\n\
+  - Internal helper/function locations in `src/engineeringagent/checks/`.\n\nOld behavior:\n\
+  - `checks/api.py` directly owns request parsing, harness checks-doc loading, selection,\n\
+  \  group dispatch, and aggregate result shaping.\n- Multiple concerns are mixed\
+  \ in one module and one control-flow path.\n\nNew behavior:\n- `checks/api.py` remains\
+  \ the public entrypoint/facade.\n- Internal orchestration responsibilities are split\
+  \ into dedicated internal modules\n  (normalization/request, config+selection, group\
+  \ execution, aggregation).\n- Group runtimes remain responsible for their own execution\
+  \ behavior.\n- Overall run outcomes remain semantically equivalent.\n\nCompatibility\
+  \ policy:\n- No intentional external API changes.\n- Existing CLI behavior through\
+  \ checks API remains semantically stable.\n\nMigration plan:\n- Extract request\
+  \ coercion/normalization first.\n- Extract checks-config + check-id selection path.\n\
+  - Extract group dispatch/execution orchestration.\n- Keep `run_checks(...)` as a\
+  \ thin fa\xE7ade to the new internals.\n- Add/adjust regression tests after each\
+  \ extraction slice.\n\nVerification evidence:\n- Targeted checks contract/runtime\
+  \ and CLI checks tests.\n- Spec validation command.\n"
 acceptance:
 - '`run_checks(...)` remains the public checks entrypoint and returns the same structured
   result contract.'
@@ -89,21 +73,22 @@ acceptance:
 subtasks:
 - id: ST-001
   title: Extract checks request normalization from api module
-  status: backlog
+  status: done
   context: Move phase/group/kwargs normalization and request construction into a dedicated
     internal module with focused tests.
   verification:
-  - uv run pytest -q tests/checks/test_run_checks_contract.py -k "phase or groups or unexpected"
+  - uv run pytest -q tests/checks/test_run_checks_contract.py -k "phase or groups
+    or unexpected"
 - id: ST-002
   title: Extract shared checks config and check-id selection orchestration
-  status: backlog
+  status: done
   context: Move checks-doc load + check-id selection flow behind one internal orchestration
     boundary consumed by the API facade.
   verification:
   - uv run pytest -q tests/checks/test_run_checks_contract.py tests/cli/test_cli_checks.py
 - id: ST-003
   title: Extract group dispatch and aggregation orchestration
-  status: backlog
+  status: done
   context: Move validate/commands/fitness/reviewers group dispatch and final aggregation
     into dedicated internal helpers or modules while preserving group-order behavior.
   verification:
@@ -111,22 +96,22 @@ subtasks:
     tests/checks/test_fitness_group_port.py
 - id: ST-004
   title: Apply broader internal checks cleanup for readability
-  status: backlog
+  status: done
   context: Remove obsolete duplicate helpers and simplify call graph in checks internals
     without changing externally visible behavior.
   verification:
   - uv run pytest -q tests/checks/test_run_checks_contract.py tests/checks/test_checks_reviewers_runtime.py
 - id: ST-005
   title: Re-lock CLI checks command parity through shared API surface
-  status: backlog
-  context: Ensure CLI checks flows still map to equivalent run_checks outcomes and actionable
-    messages after orchestration split.
+  status: done
+  context: Ensure CLI checks flows still map to equivalent run_checks outcomes and
+    actionable messages after orchestration split.
   verification:
   - uv run pytest -q tests/cli/test_cli_checks.py tests/cli/test_cli.py
 - id: ST-006
   title: Run final validation for FEAT-128 integration
-  status: backlog
+  status: done
   context: Confirm the modularization integrates cleanly with repository spec contracts.
   verification:
   - uv run engineeringagent validate
-updated_at: '2026-02-24T12:35:00Z'
+updated_at: '2026-02-24T15:21:21Z'
