@@ -1,0 +1,103 @@
+id: FEAT-138
+title: Remove analysis-identified dead symbols while preserving CLI checks and spec contracts
+type: spec
+expected_commit_subject: 'spec: add FEAT-138 dead-code cleanup with contract preservation'
+status: backlog
+priority: high
+objective: >-
+  Remove only the specific confirmed/likely-dead symbols identified in the
+  FEAT-138 dead-code analysis, without changing behavior for users of the CLI,
+  checks/spec-definition contracts, or harness workflow, and keep regression
+  evidence strong with full validation and test execution.
+context: >-
+  Dead-code analysis found a specific set of definition-only helpers/constants and
+  test artifacts that appear unused in this repository. The cleanup should reduce
+  maintenance overhead, but the repo must keep the same observable behavior for
+  CLI users, checks execution, spec validation, and harness fitness orchestration.
+
+  This feature is not a generic repo-wide dead-code sweep. It is limited to the
+  exact symbols listed in subtasks ST-001 through ST-003, plus behavior-regression
+  verification in ST-004 and ST-005.
+
+  The cleanup includes removing tests that exist only to cover symbols being
+  deleted, while preserving or strengthening tests that verify user-facing/runtime
+  behavior.
+constraints:
+- Preserve user-facing CLI behavior and output semantics for existing commands.
+- Preserve checks runtime behavior and the stable checks import surface.
+- Preserve spec-definition and validation behavior, including existing schema/contract expectations.
+- Preserve harness fitness workflow behavior and rule execution semantics.
+- Remove only symbols verified as dead/likely-dead with no effect on CLI/checks/spec/harness behavior.
+- Remove tests that only cover deleted dead symbols; keep and update behavior-oriented tests.
+- Allow per-symbol rollback during implementation when newly discovered runtime/test usage appears.
+- Do not introduce compatibility shims for removed dead code unless needed to keep user-facing behavior unchanged.
+- Keep changes narrowly scoped to dead-code removal and related test cleanup.
+- 'Out of scope: additional dead-code hunting beyond the explicit FEAT-138 symbol list.'
+implementation_notes: "Contract change declaration\n\nSurface:\n- Internal helper/constants and test-only dead artifacts in checks/validator/specs/facade-signatures and selected tests.\n- No intended changes to user-facing CLI contracts, checks public behavior, or spec-definition workflows.\n\nOld behavior:\n- Repo contains dead/likely-dead internal symbols and a few dead test artifacts.\n- Runtime behavior for CLI/checks/spec/harness is stable and covered by tests.\n\nNew behavior:\n- Dead/likely-dead internal symbols are removed.\n- Tests that only covered removed dead symbols are removed or rewritten to assert live behavior.\n- Observable behavior for CLI/checks/spec/harness remains unchanged.\n\nCompatibility policy:\n- Preserve functionality for in-repo user-facing surfaces (CLI/checks/spec-definition/harness).\n- External import compatibility for unused internal symbols is not a requirement for this feature.\n\nMigration plan:\n- Remove confirmed-dead helpers/imports first, then likely-dead constants with behavior checks after each step.\n- Run targeted regressions for touched areas, then full validation and full test suite.\n- If newly discovered usage appears for a symbol, rollback that symbol removal in the same change and defer with explicit follow-up notes.\n- If any user-facing behavior regression appears, revert that symbol removal and keep it for follow-up.\n\nFitness-function impact assessment:\n- Likely touched rules: `architecture.checks-import-surface`, `architecture.no-facade-varargs-shims`, and catalog/spec validation related coverage guards.\n- no fitness-function changes required. The implementation stays within current policy and preserves existing behavior contracts."
+acceptance:
+- Confirmed-dead symbols are removed from source and dead test artifacts are removed from tests.
+- Likely-dead facade signature constants are removed only if CLI/checks/spec/harness behavior remains unchanged.
+- '`engineeringagent checks catalog` behavior and output expectations remain unchanged.'
+- Checks API/import-surface expectations remain green under existing fitness rules.
+- Spec validation behavior remains unchanged for existing valid/invalid fixture coverage.
+- Test cleanup removes only dead-symbol coverage; behavior-oriented tests continue to validate user-facing contracts.
+- If implementation discovers active usage for any target symbol, that symbol is restored and documented as deferred.
+- Cleanup scope is limited to the explicit ST-001/ST-002/ST-003 symbol list unless the spec is amended.
+- '`uv run engineeringagent validate` passes.'
+- Full test suite passes with `uv run pytest`.
+subtasks:
+- id: ST-001
+  title: Remove confirmed-dead source helpers with explicit symbol list
+  status: backlog
+  context: >-
+    Remove exactly these symbols unless new usage is found:
+    `engineeringagent.checks.fitness.catalog.write_rule_catalog_markdown`
+    in `src/engineeringagent/checks/fitness/catalog.py`,
+    `engineeringagent.checks.validate.validator._append_gate_config_issues`
+    and `engineeringagent.checks.validate.validator._append_reviewer_config_issues`
+    in `src/engineeringagent/checks/validate/validator.py`, and
+    `engineeringagent.specs.find_subtask` in `src/engineeringagent/specs.py`.
+    Preserve behavior and rollback any symbol if usage is discovered.
+  verification:
+  - uv run pytest -q tests/checks/test_run_checks_contract.py tests/meta/test_validator.py tests/fitness/test_fitness_catalog_generation.py
+- id: ST-002
+  title: Remove likely-dead facade signature constants with rollback guard
+  status: backlog
+  context: >-
+    Remove exactly these constants if behavior stays unchanged:
+    `engineeringagent.loop_runtime.facade_signatures.RUN_IMPLEMENT_STEP_SIGNATURE`
+    and `engineeringagent.loop_runtime.facade_signatures.RUN_FEATURE_ITERATION_SIGNATURE`
+    in `src/engineeringagent/loop_runtime/facade_signatures.py`.
+    If usage/regression is found, restore and defer.
+  verification:
+  - uv run pytest -q tests/loop/test_facade_signatures.py tests/loop/test_loop_contracts.py tests/fitness/test_fitness_no_facade_varargs_shims.py
+- id: ST-003
+  title: Remove dead test-only artifacts with explicit symbol list
+  status: backlog
+  context: >-
+    Remove exactly these dead test artifacts:
+    import `resolve_agents_backend_id` from
+    `tests/config/test_repo_engineeringagent_toml.py`,
+    import `SimpleNamespace` from `tests/harness/test_checks_runtime.py`, and
+    helper `_read_repo_text` from `tests/meta/test_validator.py`.
+    Keep behavior-oriented assertions unchanged.
+  verification:
+  - uv run pytest -q tests/config/test_repo_engineeringagent_toml.py tests/harness/test_checks_runtime.py tests/meta/test_validator.py
+- id: ST-004
+  title: Re-verify CLI and checks/spec-definition behavior parity
+  status: backlog
+  context: >-
+    Run focused regressions that assert unchanged CLI output, checks execution
+    semantics, and spec-validation contracts after cleanup.
+  verification:
+  - uv run pytest -q tests/cli/test_cli_checks_catalog.py tests/checks/test_checks_exports.py tests/checks/test_run_checks_contract.py tests/meta/test_validator.py
+- id: ST-005
+  title: Run full validation and full suite for final regression proof
+  status: backlog
+  context: >-
+    Execute repository-wide validation and tests to confirm no behavior regressions
+    for user-facing surfaces and harness workflow.
+  verification:
+  - uv run engineeringagent validate
+  - uv run pytest
+updated_at: '2026-02-25T12:00:00Z'
