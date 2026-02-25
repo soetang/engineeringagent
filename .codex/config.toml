@@ -1,6 +1,6 @@
 [profiles.engineeringagent]
 model = "gpt-5.3-codex"
-sandbox_mode = "workspace-write"
+sandbox_mode = "danger-full-access"
 approval_policy = "never"
 web_search = 'cached'
 network_access = true

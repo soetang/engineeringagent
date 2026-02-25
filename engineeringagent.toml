@@ -8,4 +8,4 @@ opencode-real-smoke = false
 opencode-integration = true
 
 [agents]
-backend = "opencode"
+backend = "codex"
