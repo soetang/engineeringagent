@@ -14,7 +14,7 @@ from engineeringagent.loop_runtime.models import (
     InitialFeatureLoadOutcome,
     PostImplementFeatureOutcome,
 )
-from engineeringagent.loop_runtime.telemetry import now_iso
+from engineeringagent.progress import handoff as progress_handoff
 from engineeringagent.specs import dump_yaml, load_yaml
 
 FEATURE_TRANSITIONS: dict[str, set[str]] = {
@@ -436,7 +436,7 @@ def _touch_active_feature_for_iteration(
 ) -> None:
     if feature.get("status") == "backlog":
         set_status(feature, "in_progress")
-    feature["updated_at"] = now_iso()
+    feature["updated_at"] = progress_handoff.now_iso()
     dump_yaml(feature_path, feature)
 
 

@@ -22,7 +22,7 @@ Run the loop with: `uv run engineeringagent run --all`
 
 ## Loop outcome taxonomy
 
-The run loop records a deterministic `next_action` in terminal output and in `progress/runs.jsonl`.
+The run loop records a deterministic `next_action` in terminal output and in `progress/runs/runs.jsonl`.
 
 - `continue_same_feature`: iteration result is `passed`, but the feature is not completed yet (keep working).
 - `retry_same_feature`: iteration result is `failed` (fix and try again).

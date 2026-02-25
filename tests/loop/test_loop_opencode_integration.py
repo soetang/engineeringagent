@@ -223,7 +223,7 @@ def test_loop_runs_opencode_integration(
 
     assert code in {0, 1}
 
-    runs_path = project_root / "progress" / "runs.jsonl"
+    runs_path = project_root / "progress" / "runs" / "runs.jsonl"
     run = json.loads(runs_path.read_text(encoding="utf-8").splitlines()[0])
     assert run["feature_id"] == "FEAT-901"
     assert run["result"] == "passed"
@@ -292,7 +292,7 @@ def test_loop_reports_permission_rejection_in_run_telemetry(
     )
 
     assert code == 1
-    runs_path = project_root / "progress" / "runs.jsonl"
+    runs_path = project_root / "progress" / "runs" / "runs.jsonl"
     runs = runs_path.read_text(encoding="utf-8").splitlines()
     assert len(runs) == 1
     run = json.loads(runs[0])
@@ -330,8 +330,10 @@ def test_run_loop_creates_progress_artifacts_before_implement_invocation(
         del prompt
         observed["saw_implement"] = True
         assert (project_root / "progress").exists()
-        assert (project_root / "progress" / "runs.jsonl").exists()
-        assert (project_root / "progress" / "run-feature-FEAT-901.txt").exists()
+        assert (project_root / "progress" / "runs" / "runs.jsonl").exists()
+        assert (
+            project_root / "progress" / "features" / "FEAT-901" / "run.txt"
+        ).exists()
         raise AgentBackendError(
             backend="opencode",
             message="opencode run failed",
@@ -430,7 +432,7 @@ def test_run_loop_exits_before_selection_when_permission_precheck_fails(
     output = capsys.readouterr().out
 
     assert code == 1
-    assert not (project_root / "progress" / "runs.jsonl").exists()
+    assert not (project_root / "progress" / "runs" / "runs.jsonl").exists()
     assert "Precondition failed: OpenCode permission precheck failed" in output
     assert "git status --short" in output
     assert PERMISSION_REMEDIATION_HINT in output
@@ -468,7 +470,7 @@ def test_run_loop_skips_permission_precheck_in_dry_run(
 
     assert code == 0
     assert precheck_called is False
-    assert not (project_root / "progress" / "runs.jsonl").exists()
+    assert not (project_root / "progress" / "runs" / "runs.jsonl").exists()
 
 
 def test_run_loop_permission_precheck_failure_prints_remediation_hint(
@@ -565,8 +567,8 @@ def test_run_loop_permission_precheck_pass_prints_bypass_hint_and_log_locations(
     assert "default implement mode" not in output
     assert "--implement-command" not in output
     assert "engineeringagent run --dry-run" in output
-    assert "progress/runs.jsonl" in output
-    assert "progress/run-feature-" in output
+    assert "progress/runs/runs.jsonl" in output
+    assert "progress/features/<FEATURE_ID>/run.txt" in output
 
 
 def test_gate_failure_feedback_round_trips_to_retry_prompt_integration(
@@ -891,7 +893,7 @@ def test_loop_archived_done_requires_same_iteration_completion_commit(
     assert code == 0
     runs = [
         json.loads(line)
-        for line in (project_root / "progress" / "runs.jsonl")
+        for line in (project_root / "progress" / "runs" / "runs.jsonl")
         .read_text(encoding="utf-8")
         .splitlines()
     ]

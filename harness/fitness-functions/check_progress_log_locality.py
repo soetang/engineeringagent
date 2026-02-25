@@ -21,14 +21,20 @@ _APPROVED_PATH_LITERAL_FILES = {
 }
 
 _PROGRESS_PATH_LITERAL_TOKENS = (
-    "runs.jsonl",
+    "progress/runs/runs.jsonl",
+    "progress/runs.jsonl",
+    "progress/reviewers/state.json",
     "reviewers-state.json",
+    "/run.txt",
+    "/handoff.md",
+    "progress/features/",
     "run-feature-",
 )
 
 _LOOP_LOG_SINK_HELPERS = {
     "runs_jsonl_path",
     "run_feature_log_path",
+    "handoff_markdown_path",
 }
 
 _PATH_HELPER_REMEDIATION = (
@@ -132,7 +138,7 @@ def _expr_targets_loop_log_sink(expr: ast.AST, *, sink_names: set[str]) -> bool:
             return True
 
     for value in _string_literals_from_node(expr):
-        if "runs.jsonl" in value or "run-feature-" in value:
+        if _matches_progress_path_literal(value):
             return True
     return False
 

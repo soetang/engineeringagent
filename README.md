@@ -60,7 +60,7 @@ Primary flow: `feature spec -> run loop`.
 
 1. Before the first non-dry `engineeringagent run`, either commit the scaffold/spec changes or pass `--allow-dirty`.
 
-   Running non-dry mutates your feature YAML and writes progress logs (for example `progress/runs.jsonl` and `progress/run-feature-<FEATURE_ID>.txt`).
+   Running non-dry mutates your feature YAML and writes progress artifacts (for example `progress/runs/runs.jsonl`, `progress/features/<FEATURE_ID>/run.txt`, and `progress/features/<FEATURE_ID>/handoff.md`).
    Running non-dry will create a commit and may include untracked files; check `git status` and commit/review any `init` scaffold output (and ignore junk like `__pycache__/`) before the first non-dry run.
 
    After a feature is complete, move completed specs from `docs/spec/features/` to `docs/spec/features_done/` (the loop will usually do this automatically when marking a feature `done`, but move it manually if it did not).
@@ -171,7 +171,7 @@ Any temporary OpenCode configuration should be done via `.opencode/agents/*.md`.
 
 ## Run output tips
 
-- Default output is concise; full implement/check output stays in `progress/run-feature-<FEATURE_ID>.txt`.
+- Default output is concise; full implement/check output stays in `progress/features/<FEATURE_ID>/run.txt`.
 - Use `--verbose-output` if you want full implement/check output in the terminal.
 
 ## OpenCode default agent contract
@@ -199,7 +199,7 @@ Any temporary OpenCode configuration should be done via `.opencode/agents/*.md`.
 - `docs/spec/features/`: active feature specs (`backlog`, `in_progress`, `blocked`)
 - `docs/spec/features_done/`: archived completed specs (`done`)
 - `harness/checks.yaml`: repo-owned verification contract
-- `progress/runs.jsonl`: append-only loop execution history
+- `progress/runs/runs.jsonl`: append-only loop execution history
 
 ## Contributing
 

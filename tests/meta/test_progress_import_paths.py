@@ -78,8 +78,10 @@ def test_progress_package_reexports_common_helpers() -> None:
     from engineeringagent.progress import (
         append_jsonl_record,
         append_text_block,
+        handoff_markdown_path,
         progress_dir,
         reviewers_state_path,
+        run_feature_log_path,
         runs_jsonl_path,
     )
 
@@ -87,4 +89,6 @@ def test_progress_package_reexports_common_helpers() -> None:
     assert callable(append_text_block)
     assert callable(progress_dir)
     assert callable(reviewers_state_path)
+    assert callable(run_feature_log_path)
+    assert callable(handoff_markdown_path)
     assert callable(runs_jsonl_path)

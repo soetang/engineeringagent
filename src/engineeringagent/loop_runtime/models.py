@@ -3,9 +3,19 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from engineeringagent.progress.handoff import ImplementProgressEnvelope
+
+ImplementStepResult: TypeAlias = tuple[
+    bool,
+    str | None,
+    str,
+    ImplementProgressEnvelope,
+    bool,
+]
 
 
 class IterationOutcome(BaseModel):
@@ -196,6 +206,8 @@ class IterationTelemetryInputs(BaseModel):
     reviewer_decision: str | None = None
     failed_reviewer_id: str | None = None
     implement_output: str
+    implement_handoff_envelope: ImplementProgressEnvelope | None = None
+    implement_handoff_used_fallback: bool = False
     gate_output: str
     verification_output: str
     reviewer_output: str = ""

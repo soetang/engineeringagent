@@ -1,0 +1,457 @@
+id: FEAT-130
+title: Add per-feature markdown handoff pipeline and progress artifact layout
+type: spec
+expected_commit_subject: 'spec: add FEAT-130 progress handoff markdown pipeline'
+status: done
+priority: high
+objective: 'Implement a deterministic handoff system where each iteration produces
+  a concise, append-only Markdown handoff entry per feature, while preserving machine-readable
+  progress telemetry and restructuring progress artifacts under feature-scoped folders.
+
+  '
+context: 'The current loop writes machine telemetry to `progress/runs.jsonl` and per-feature
+  logs to `progress/run-feature-<FEATURE_ID>.txt`, but there is no durable, human-oriented
+  handoff stream for the next developer iteration.
+
+  We want a structured, inspectable handoff artifact that does not get committed,
+  does not live forever by default policy, and is controlled by loop-owned append
+  logic instead of ad-hoc agent file edits.
+
+  User direction for this feature: - handoff artifact must be Markdown, - handoff
+  append should be done by loop logic from a structured `output_type` envelope, -
+  progress artifacts should be reorganized into dedicated folders, - cleanup/retention
+  should be manual (operator-driven), not automatic TTL pruning, - path migration
+  can be an immediate break (no dual-support window).
+
+  '
+constraints:
+- Handoff artifact format is Markdown at `progress/features/<feature_id>/handoff.md`.
+- Keep machine telemetry format stable and machine-friendly (`runs.jsonl`, `run.txt`),
+  not Markdown.
+- Agent must not write handoff files directly; loop/runtime owns append behavior.
+- Implementation prompt must reference the feature handoff path and instruct the agent
+  to read existing `handoff.md` context before doing new work.
+- 'Implementation prompt must explicitly tell the agent: write the hand-off so that
+  the next developer can easily continue the work.'
+- Implement step must request structured output via `run_agent(..., output_type=ImplementProgressEnvelope)`;
+  handoff extraction is schema validation, not delimiter parsing.
+- Handoff envelope must use a lean contract with required fields `summary`, `completed_work`,
+  `verification`, `remaining_work`, and optional `blockers`.
+- Missing or malformed structured handoff output must not fail the iteration; append
+  deterministic fallback content instead.
+- 'Path migration is immediate break: remove reliance on legacy paths (`progress/runs.jsonl`,
+  `progress/run-feature-*.txt`).'
+- Keep progress artifacts out of git via `.gitignore` updates for new directories.
+- Retention is manual only in this feature; do not add automatic TTL cleanup.
+- Centralize all progress path construction in `engineeringagent.progress.paths` and
+  writes in `engineeringagent.progress.logging`/handoff helpers.
+- Keep loop/check behavior deterministic and append-only for handoff entries.
+implementation_notes: "Contract change declaration (required)\n\nSurface:\n- Progress\
+  \ artifact path layout in `engineeringagent.progress.paths`.\n- Loop telemetry outputs\
+  \ and log references (`runs.jsonl`, per-feature run logs).\n- Implement prompt +\
+  \ structured output contract for iteration-end handoff payload.\n- New handoff append\
+  \ behavior and manual progress CLI helpers.\n- Repo docs and tests that reference\
+  \ progress artifact paths.\n\nOld behavior:\n- Telemetry JSONL path is `progress/runs.jsonl`.\n\
+  - Per-feature machine log path is `progress/run-feature-<FEATURE_ID>.txt`.\n- No\
+  \ canonical Markdown handoff file exists.\n- Agent output has no enforced final\
+  \ handoff block consumed by loop append logic.\n\nNew behavior:\n- Telemetry JSONL\
+  \ path becomes `progress/runs/runs.jsonl`.\n- Per-feature machine log path becomes\
+  \ `progress/features/<feature_id>/run.txt`.\n- Per-feature handoff Markdown path\
+  \ becomes `progress/features/<feature_id>/handoff.md`.\n- Prompt includes the handoff\
+  \ file path so the agent can read prior iteration context before implementation.\n\
+  - Prompt explicitly says: write the hand-off so that the next developer can easily\
+  \ continue the work.\n- Implement step requests `output_type=ImplementProgressEnvelope`\
+  \ with a lean required schema:\n  `summary`, `completed_work`, `verification`, `remaining_work`\
+  \ (+ optional `blockers`).\n- ImplementProgressEnvelope shape (exact contract):\n\
+  \  ```json\n  {\n    \"summary\": \"string\",\n    \"completed_work\": [\"string\"\
+  ],\n    \"verification\": [\"string\"],\n    \"remaining_work\": [\"string\"],\n\
+  \    \"blockers\": [\"string\"]\n  }\n  ```\n- Required fields: `summary`, `completed_work`,\
+  \ `verification`, `remaining_work`.\n- Optional field: `blockers` (default to empty\
+  \ list when omitted).\n- All list fields are lists of non-empty strings.\n- Loop\
+  \ validates the structured handoff envelope and appends one Markdown entry per iteration.\n\
+  - If structured output validation fails, loop appends deterministic fallback handoff\
+  \ entry (append-only continuity).\n- Add manual CLI surfaces for operator-driven\
+  \ handoff append/prune workflows.\n\nPrompt contract wording (exact required phrases)\n\
+  \n- Prompt must include this sentence exactly:\n  `Before doing new work, read prior\
+  \ handoff context from progress/features/$feature_id/handoff.md when the file exists.`\n\
+  - Prompt must include this sentence exactly:\n  `Write the hand-off so that the\
+  \ next developer can easily continue the work.`\n- Prompt must include this sentence\
+  \ exactly:\n  `Do not write the handoff file directly; loop/runtime owns handoff\
+  \ file appends.`\n\nCompatibility policy:\n- Immediate break for legacy progress\
+  \ file paths and references.\n- No temporary dual-write or read-shim compatibility\
+  \ layer.\n\nMigration plan:\n- Refactor path helpers first and migrate all call\
+  \ sites to centralized helpers.\n- Introduce handoff parser/renderer helper and\
+  \ wire into loop telemetry observer flow.\n- Update prompt template contract and\
+  \ prompt regression tests.\n- Add manual progress CLI commands for append/prune\
+  \ operations.\n- Update docs, gitignore, and all affected tests/fixtures for new\
+  \ path layout.\n- Update progress-log locality fitness implementation as needed\
+  \ for new approved literals/helpers.\n\nFitness-function impact assessment:\n- Existing\
+  \ rule `architecture.progress-log-path-locality` will need implementation updates\n\
+  \  to recognize the new canonical path literals/helpers and continue enforcing locality.\n\
+  - No new fitness policy intent is required; update existing rule/scripts/docs alignment.\n\
+  \nVerification evidence:\n- Loop output/telemetry tests proving new paths and append-only\
+  \ behavior.\n- Prompt tests proving handoff path and \"next developer can easily\
+  \ continue\" instructions are present.\n- Handoff envelope validation/renderer tests\
+  \ proving valid parse + fallback path determinism.\n- CLI tests for manual `progress`\
+  \ helper commands.\n- Spec validation and iteration-end checks pass.\n"
+acceptance:
+- 'Progress artifacts use the new layout: `progress/runs/runs.jsonl`, `progress/features/<feature_id>/run.txt`,
+  `progress/features/<feature_id>/handoff.md`, and `progress/reviewers/state.json`.'
+- Loop/runtime writes one append-only Markdown handoff entry per iteration from structured
+  implement output using `run_agent(..., output_type=ImplementProgressEnvelope)`.
+- 'Handoff envelope contract is lean and deterministic: required `summary`, `completed_work`,
+  `verification`, `remaining_work`; optional `blockers`.'
+- '`ImplementProgressEnvelope` uses only string/list-of-string fields with required
+  fields present and list items non-empty.'
+- Prompt contract references `progress/features/<feature_id>/handoff.md`, directs
+  the agent to read prior handoff entries when present, and explicitly says to write
+  the hand-off so that the next developer can easily continue the work.
+- Prompt contract contains the exact wording lines defined in implementation notes
+  for handoff read guidance, handoff writing intent, and loop-owned append ownership.
+- Missing/malformed structured handoff output results in deterministic fallback entry
+  append, without hard-failing the iteration solely for handoff parse issues.
+- Agent direct file writes for handoff are not required by prompt contract; loop remains
+  the handoff writer.
+- '`.gitignore` excludes the new `progress/` directory layout so progress artifacts
+  remain untracked.'
+- Manual CLI helper(s) exist for progress handoff append and feature-scope cleanup
+  (no automatic TTL behavior).
+- Existing progress-path references in docs and test fixtures are migrated to new
+  paths.
+- '`architecture.progress-log-path-locality` implementation remains enforced and aligned
+  with new canonical paths/helpers.'
+- '`uv run pytest -q tests/loop/test_loop_output.py tests/loop/test_loop_ralph_mode.py
+  tests/reviewers/test_reviewers_state.py tests/reviewers/test_reviewers_state_cache.py
+  tests/meta/test_progress_import_paths.py tests/cli/test_cli.py tests/cli/test_cli_checks.py`
+  passes.'
+- '`uv run engineeringagent checks run --checks fitness --phase iteration_end` passes.'
+- '`uv run engineeringagent validate` passes.'
+subtasks:
+- id: ST-001
+  title: Refactor progress path topology helpers to feature-scoped layout
+  status: done
+  context: 'Implement canonical path helpers for runs, feature directories, run log,
+    handoff markdown, and reviewer state under the new folder structure.
+
+    '
+  verification:
+  - uv run pytest -q tests/reviewers/test_reviewers_state.py tests/meta/test_progress_import_paths.py
+- id: ST-002
+  title: Migrate runtime progress writes and references to new paths
+  status: done
+  context: 'Update implement/telemetry/helpers call sites to use only centralized
+    new path helpers and ensure references emitted in output payloads are correct.
+
+    '
+  verification:
+  - uv run pytest -q tests/loop/test_loop_output.py tests/loop/test_loop_ralph_mode.py
+    -k "progress or log_path"
+- id: ST-003
+  title: Add structured handoff contract to implementation prompt
+  status: done
+  context: 'Update prompt template and prompt coverage tests so implement prompt references
+    the feature handoff markdown file for prior-context reading and explicitly says
+    to write the hand-off so that the next developer can easily continue the work;
+    keep wording deterministic for tests.
+
+    '
+  verification:
+  - uv run pytest -q tests/loop/test_loop_ralph_mode.py -k "prompt"
+- id: ST-004
+  title: Add structured handoff envelope model and markdown append renderer helpers
+  status: done
+  context: 'Introduce progress handoff helper module and typed envelope model for
+    `ImplementProgressEnvelope`, then append normalized Markdown entries with deterministic
+    fallback when structured validation fails.
+
+    '
+  verification:
+  - uv run pytest -q tests/loop/test_loop_output.py -k "handoff"
+- id: ST-005
+  title: Wire handoff append into loop observer/telemetry publish flow
+  status: done
+  context: 'Integrate handoff append once per iteration in loop-owned runtime flow,
+    preserving deterministic ordering and append-only semantics.
+
+    '
+  verification:
+  - uv run pytest -q tests/loop/test_loop_output.py tests/loop/test_loop_ralph_mode.py
+    -k "handoff or progress"
+- id: ST-006
+  title: Add manual progress CLI helper commands for append and feature cleanup
+  status: done
+  context: 'Add CLI subcommands for operator-driven handoff append from stdin and
+    feature-scoped manual cleanup; keep retention policy manual-only.
+
+    '
+  verification:
+  - uv run pytest -q tests/cli/test_cli.py tests/cli/test_cli_checks.py -k "progress"
+- id: ST-007
+  title: Update gitignore and docs for new progress artifact layout
+  status: done
+  context: 'Migrate documentation and ignore rules to reference and protect the new
+    progress directory hierarchy and handoff markdown artifact.
+
+    '
+  verification:
+  - uv run engineeringagent validate
+- id: ST-008
+  title: Update progress locality fitness implementation for new canonical paths
+  status: done
+  context: 'Keep `architecture.progress-log-path-locality` effective by updating approved
+    literals/helper names and any rule logic that depends on old path tokens.
+
+    '
+  verification:
+  - uv run engineeringagent checks run --checks fitness --phase iteration_end
+- id: ST-009
+  title: Run final integration and contract validation sweep
+  status: done
+  context: 'Re-run targeted tests plus full spec/fitness validation to confirm path
+    migration, prompt contract, and handoff append behavior are stable.
+
+    '
+  verification:
+  - uv run pytest -q tests/loop/test_loop_output.py tests/loop/test_loop_ralph_mode.py
+    tests/reviewers/test_reviewers_state.py tests/reviewers/test_reviewers_state_cache.py
+    tests/meta/test_progress_import_paths.py tests/cli/test_cli.py tests/cli/test_cli_checks.py
+  - uv run engineeringagent checks run --checks fitness --phase iteration_end
+  - uv run engineeringagent validate
+- id: ST-010
+  title: Simplify implement-step result typing and output coercion
+  status: done
+  context: 'Address reviewer simplification feedback by consolidating implement-step
+    result tuple typing into a named alias, normalizing return shape at the implement
+    boundary, simplifying string-output coercion control flow, and removing the now-unneeded
+    feature-id argument from fixed run-log filename helper.
+
+    '
+  verification:
+  - uv run engineeringagent validate
+- id: ST-011
+  title: Re-run final FEAT-130 integration sweep and archive spec
+  status: done
+  context: 'After incremental cleanup iterations, run the full FEAT-130 verification
+    sweep and archive this feature spec under docs/spec/features_done when complete.
+
+    '
+  verification:
+  - uv run pytest -q tests/loop/test_loop_output.py tests/loop/test_loop_ralph_mode.py
+    tests/reviewers/test_reviewers_state.py tests/reviewers/test_reviewers_state_cache.py
+    tests/meta/test_progress_import_paths.py tests/cli/test_cli.py tests/cli/test_cli_checks.py
+  - uv run engineeringagent checks run --checks fitness --phase iteration_end
+  - uv run engineeringagent validate
+- id: ST-012
+  title: Apply post-review cleanup for legacy ignore entries and handoff template
+    casing
+  status: done
+  context: 'Address follow-up reviewer feedback by removing stale immediate-break
+    legacy `.gitignore` entries and normalizing handoff template placeholder casing
+    to `<FEATURE_ID>` for consistency.
+
+    '
+  verification:
+  - uv run engineeringagent validate
+- id: ST-013
+  title: Archive FEAT-130 spec under features_done
+  status: done
+  context: 'After final confirmation, move this completed spec file to `docs/spec/features_done/`
+    to satisfy completed-spec archival policy.
+
+    '
+  verification:
+  - uv run engineeringagent validate
+- id: ST-014
+  title: Apply reviewer simplification feedback for CLI feature-id handling and implement
+    output_type capability detection
+  status: done
+  context: 'Address reviewer follow-up by deduplicating progress CLI feature-id input
+    validation, replacing brittle exception-message matching in implement output_type
+    fallback logic with explicit signature inspection, and correcting prompt-template
+    wording for feedback/handoff phrasing consistency.
+
+    '
+  verification:
+  - uv run engineeringagent validate
+- id: ST-015
+  title: Fix prompt contract wording regression for hand-off phrase
+  status: done
+  context: 'Address retry feedback from `pytest_validate` by restoring the exact prompt
+    contract sentence: "Write the hand-off so that the next developer can easily continue
+    the work." in the implementation prompt template.
+
+    '
+  verification:
+  - uv run pytest -q tests/loop/test_loop_ralph_mode.py -k "prompt_includes_feature_file_path"
+  - uv run engineeringagent validate
+- id: ST-016
+  title: Reduce FEAT-130 handoff tests to stable behavior assertions
+  status: done
+  context: 'Address reviewer feedback by removing markdown prose/section coupling
+    from FEAT-130 handoff tests and keeping assertions focused on append occurrence,
+    fallback state signaling, and feature-scoped artifact creation.
+
+    '
+  verification:
+  - uv run pytest -q tests/cli/test_cli.py tests/loop/test_loop_output.py tests/loop/test_loop_ralph_mode.py
+    -k "handoff"
+  - uv run engineeringagent validate
+- id: ST-017
+  title: Run final FEAT-130 completion sweep and archive spec
+  status: done
+  context: 'After retry-feedback fixes land, run the full FEAT-130 acceptance verification
+    set and archive the spec under docs/spec/features_done when complete.
+
+    '
+  verification:
+  - uv run pytest -q tests/loop/test_loop_output.py tests/loop/test_loop_ralph_mode.py
+    tests/reviewers/test_reviewers_state.py tests/reviewers/test_reviewers_state_cache.py
+    tests/meta/test_progress_import_paths.py tests/cli/test_cli.py tests/cli/test_cli_checks.py
+  - uv run engineeringagent checks run --checks fitness --phase iteration_end
+  - uv run engineeringagent validate
+- id: ST-018
+  title: Apply code-simplifier readability cleanup in FEAT-130 touched modules
+  status: done
+  context: 'Address reviewer follow-up simplification feedback by reducing duplication
+    in implement output coercion and markdown handoff section rendering while preserving
+    deterministic FEAT-130 behavior.
+
+    '
+  verification:
+  - uv run engineeringagent validate
+- id: ST-019
+  title: Re-run FEAT-130 completion sweep and archive spec when remaining feedback
+    closes
+  status: done
+  context: 'Keep one final completion step open so full acceptance verification and
+    features_done archival happen only after all reviewer feedback cycles are fully
+    settled.
+
+    '
+  verification:
+  - uv run pytest -q tests/loop/test_loop_output.py tests/loop/test_loop_ralph_mode.py
+    tests/reviewers/test_reviewers_state.py tests/reviewers/test_reviewers_state_cache.py
+    tests/meta/test_progress_import_paths.py tests/cli/test_cli.py tests/cli/test_cli_checks.py
+  - uv run engineeringagent checks run --checks fitness --phase iteration_end
+  - uv run engineeringagent validate
+- id: ST-020
+  title: Address follow-up code-simplifier feedback on timestamp/helper readability
+  status: done
+  context: 'Apply the remaining readability simplifications requested by reviewer
+    feedback: reuse shared UTC timestamp helper in implement-step progress logging
+    and flatten progress handoff append stdin JSON parsing with a helper.
+
+    '
+  verification:
+  - uv run engineeringagent validate
+- id: ST-021
+  title: Re-run FEAT-130 completion sweep and archive spec after latest cleanup
+  status: done
+  context: 'Keep final completion/archive work explicitly open after ST-020 so the
+    repo-level completion sweep and docs/spec/features_done archival happen in a dedicated
+    final iteration.
+
+    '
+  verification:
+  - uv run pytest -q tests/loop/test_loop_output.py tests/loop/test_loop_ralph_mode.py
+    tests/reviewers/test_reviewers_state.py tests/reviewers/test_reviewers_state_cache.py
+    tests/meta/test_progress_import_paths.py tests/cli/test_cli.py tests/cli/test_cli_checks.py
+  - uv run engineeringagent checks run --checks fitness --phase iteration_end
+  - uv run engineeringagent validate
+- id: ST-022
+  title: Apply follow-up code-simplifier dedupe cleanup in telemetry and implement
+    success output
+  status: done
+  context: 'Address latest reviewer feedback by removing duplicate timestamp formatter
+    in loop telemetry payload writes and extracting repeated implement success command-output
+    formatting into a shared helper.
+
+    '
+  verification:
+  - uv run engineeringagent validate
+- id: ST-023
+  title: Restore telemetry now_iso shim for deterministic test monkeypatching
+  status: done
+  context: 'Address retry feedback from `pytest_validate` by restoring a module-level
+    `now_iso()` shim in loop telemetry and using it for run payload timestamps so
+    timing tests can monkeypatch deterministic timestamps without reaching into progress
+    helpers.
+
+    '
+  verification:
+  - uv run pytest -q
+  - uv run engineeringagent validate
+- id: ST-024
+  title: Refocus FEAT-130 retry tests on public handoff behavior
+  status: done
+  context: 'Address follow-up `test_reviewer` feedback by removing monkeypatched helper-call
+    interception in handoff telemetry tests and dropping direct private-helper assertions
+    so coverage stays behavior-oriented and resilient.
+
+    '
+  verification:
+  - uv run pytest -q tests/loop/test_loop_output.py tests/loop/test_loop_contracts.py
+    -k "handoff or implement_step"
+  - uv run engineeringagent validate
+- id: ST-025
+  title: Remove remaining brittle markdown-shape assertions from FEAT-130 handoff
+    tests
+  status: done
+  context: 'Address `test_reviewer` retry feedback by dropping handoff markdown heading/content
+    assertions from loop output tests and keeping coverage focused on path creation
+    and append-growth behavior.
+
+    '
+  verification:
+  - uv run pytest -q tests/loop/test_loop_output.py -k "handoff"
+  - uv run engineeringagent validate
+- id: ST-026
+  title: Re-run completion sweep and archive FEAT-130 spec after retry feedback settles
+  status: done
+  context: 'Keep one final closeout task open so full acceptance verification and
+    docs/spec/features_done archival occur only after the latest retry-fix iteration
+    is reviewed.
+
+    '
+  verification:
+  - uv run pytest -q tests/loop/test_loop_output.py tests/loop/test_loop_ralph_mode.py
+    tests/reviewers/test_reviewers_state.py tests/reviewers/test_reviewers_state_cache.py
+    tests/meta/test_progress_import_paths.py tests/cli/test_cli.py tests/cli/test_cli_checks.py
+  - uv run engineeringagent checks run --checks fitness --phase iteration_end
+  - uv run engineeringagent validate
+- id: ST-027
+  title: Apply final reviewer readability cleanups in implement imports and prune
+    output
+  status: done
+  context: 'Address remaining code_simplifier retry feedback by unifying implement-step
+    handoff imports through the `progress_handoff` namespace and reusing a single
+    computed feature-prune relative path in CLI output branches.
+
+    '
+  verification:
+  - uv run engineeringagent validate
+- id: ST-028
+  title: Re-run FEAT-130 completion sweep and archive spec after ST-027
+  status: done
+  context: 'Keep feature closeout explicit after this retry-feedback cleanup so completion
+    sweep plus docs/spec/features_done archival occur in a dedicated follow-up iteration.
+
+    '
+  verification:
+  - uv run pytest -q tests/loop/test_loop_output.py tests/loop/test_loop_ralph_mode.py
+    tests/reviewers/test_reviewers_state.py tests/reviewers/test_reviewers_state_cache.py
+    tests/meta/test_progress_import_paths.py tests/cli/test_cli.py tests/cli/test_cli_checks.py
+  - uv run engineeringagent checks run --checks fitness --phase iteration_end
+  - uv run engineeringagent validate
+- id: ST-029
+  title: Apply follow-up code-simplifier dedupe cleanup in progress path references
+    and implement artifact setup
+  status: done
+  context: 'Address latest code_simplifier retry feedback by introducing a shared
+    repo-relative path formatter for progress reference helpers and removing redundant
+    progress root directory creation in implement artifact setup while preserving behavior.
+
+    '
+  verification:
+  - uv run engineeringagent validate
+updated_at: '2026-02-25T07:53:07Z'

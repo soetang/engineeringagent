@@ -14,6 +14,7 @@ from engineeringagent.loop_runtime.models import (
     CompletionCommitOutcome,
     FeatureIterationInputs,
     GatePhaseOutcome,
+    ImplementStepResult,
     InitialFeatureLoadOutcome,
     IterationReport,
     IterationTelemetryInputs,
@@ -28,6 +29,11 @@ from engineeringagent.loop_runtime.phases import (
     ReviewerPhaseDependencies,
 )
 from engineeringagent.changed_paths import ChangedPathsResult
+from engineeringagent.progress.handoff import fallback_implement_progress_envelope
+
+
+def _passing_implement_result(output: str = "") -> ImplementStepResult:
+    return (True, None, output, fallback_implement_progress_envelope(), True)
 
 
 def test_iteration_report_model_captures_pipeline_observer_contract(
@@ -124,7 +130,7 @@ def test_iteration_pipeline_carries_passed_reviewer_feedback_to_continue(
             ),
             ready_for_active_iteration=lambda *_args, **_kwargs: True,
             touch_active_feature_for_iteration=lambda *_args, **_kwargs: None,
-            run_implement_step=lambda *_args, **_kwargs: (True, None, ""),
+            run_implement_step=lambda *_args, **_kwargs: _passing_implement_result(),
             refresh_feature_after_implement=(
                 lambda _root, _path, _started: PostImplementFeatureOutcome(
                     feature={"id": "FEAT-065", "status": "in_progress"},
@@ -274,7 +280,7 @@ def test_iteration_pipeline_archives_before_running_done_transition_verification
             ),
             ready_for_active_iteration=lambda *_args, **_kwargs: True,
             touch_active_feature_for_iteration=lambda *_args, **_kwargs: None,
-            run_implement_step=lambda *_args, **_kwargs: (True, None, ""),
+            run_implement_step=lambda *_args, **_kwargs: _passing_implement_result(),
             refresh_feature_after_implement=(
                 lambda _root, _path, _started: PostImplementFeatureOutcome(
                     feature={
@@ -422,7 +428,7 @@ def test_iteration_pipeline_collects_changed_paths_once_per_iteration(
             ),
             ready_for_active_iteration=lambda *_args, **_kwargs: True,
             touch_active_feature_for_iteration=lambda *_args, **_kwargs: None,
-            run_implement_step=lambda *_args, **_kwargs: (True, None, ""),
+            run_implement_step=lambda *_args, **_kwargs: _passing_implement_result(),
             refresh_feature_after_implement=(
                 lambda _root, _path, _started: PostImplementFeatureOutcome(
                     feature={
@@ -536,7 +542,7 @@ def test_iteration_pipeline_records_phase_timings(
             ),
             ready_for_active_iteration=lambda *_args, **_kwargs: True,
             touch_active_feature_for_iteration=lambda *_args, **_kwargs: None,
-            run_implement_step=lambda *_args, **_kwargs: (True, None, ""),
+            run_implement_step=lambda *_args, **_kwargs: _passing_implement_result(),
             refresh_feature_after_implement=(
                 lambda _root, _path, _started: PostImplementFeatureOutcome(
                     feature={"id": "FEAT-065", "status": "in_progress"},

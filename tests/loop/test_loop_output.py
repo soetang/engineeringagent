@@ -29,6 +29,11 @@ from engineeringagent.loop_runtime.telemetry import (
     _summarize_reviewer_feedback,
     write_iteration_telemetry,
 )
+from engineeringagent.progress.handoff import (
+    ImplementProgressEnvelope,
+    append_handoff_markdown_entry,
+    parse_implement_progress_envelope,
+)
 
 
 def test_loop_runtime_models_define_timing_types_before_first_use() -> None:
@@ -39,6 +44,165 @@ def test_loop_runtime_models_define_timing_types_before_first_use() -> None:
 
     command_class_pos = source.index("class CommandTiming")
     assert "CommandTiming" not in source[:command_class_pos]
+
+
+def test_handoff_envelope_parser_accepts_valid_payload() -> None:
+    envelope, used_fallback = parse_implement_progress_envelope(
+        {
+            "summary": "  Added markdown handoff rendering. ",
+            "completed_work": [" Added parser helper "],
+            "verification": [
+                "uv run pytest -q tests/loop/test_loop_output.py -k handoff"
+            ],
+            "remaining_work": ["Wire observer append call"],
+            "blockers": ["None"],
+        }
+    )
+
+    assert used_fallback is False
+    assert envelope == ImplementProgressEnvelope(
+        summary="Added markdown handoff rendering.",
+        completed_work=["Added parser helper"],
+        verification=["uv run pytest -q tests/loop/test_loop_output.py -k handoff"],
+        remaining_work=["Wire observer append call"],
+        blockers=["None"],
+    )
+
+
+def test_handoff_envelope_parser_falls_back_for_invalid_payload() -> None:
+    envelope, used_fallback = parse_implement_progress_envelope(
+        {
+            "summary": "",
+            "completed_work": [],
+            "verification": [],
+            "remaining_work": [],
+        }
+    )
+
+    assert used_fallback is True
+    assert envelope.summary.startswith("Structured handoff output unavailable")
+    assert envelope.completed_work == []
+    assert envelope.verification == []
+    assert envelope.remaining_work == [
+        "Review latest progress logs and continue the highest-priority open subtask."
+    ]
+    assert envelope.blockers == []
+
+
+def test_handoff_markdown_append_creates_file_and_appends_entries(
+    tmp_path: Path,
+) -> None:
+    handoff_path = tmp_path / "progress" / "features" / "FEAT-130" / "handoff.md"
+    append_handoff_markdown_entry(
+        handoff_path=handoff_path,
+        entry_lines=["## Iteration 4 - 2026-02-25T07:00:00Z", "", "Summary: first"],
+    )
+    first_size = handoff_path.stat().st_size
+
+    append_handoff_markdown_entry(
+        handoff_path=handoff_path,
+        entry_lines=["## Iteration 5 - 2026-02-25T07:01:00Z", "", "Summary: second"],
+    )
+    second_size = handoff_path.stat().st_size
+
+    assert handoff_path.exists()
+    assert first_size > 0
+    assert second_size > first_size
+
+
+def test_write_iteration_telemetry_appends_handoff_entry_from_envelope(
+    tmp_path: Path,
+) -> None:
+    iteration_inputs = FeatureIterationInputs(
+        project_root=tmp_path,
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-130.yaml",
+        attempt=5,
+        hook_feedback=None,
+        verbose_output=False,
+    )
+    telemetry_inputs = IterationTelemetryInputs(
+        iteration_inputs=iteration_inputs,
+        started=0.0,
+        feature_id="FEAT-130",
+        result="passed",
+        failed_gate=None,
+        next_action="continue_same_feature",
+        implement_status="passed",
+        gate_status="passed",
+        verification_status="not_run",
+        verification_failed_command=None,
+        reviewer_status="not_run",
+        reviewer_decision=None,
+        failed_reviewer_id=None,
+        implement_output="",
+        implement_handoff_envelope=ImplementProgressEnvelope(
+            summary="Added handoff append wiring to telemetry flow.",
+            completed_work=["Wired markdown append call after JSONL write"],
+            verification=["uv run pytest -q tests/loop/test_loop_output.py -k handoff"],
+            remaining_work=["Add integration coverage for loop observer chain"],
+            blockers=[],
+        ),
+        implement_handoff_used_fallback=False,
+        gate_output="",
+        verification_output="",
+        reviewer_output="",
+        hook_feedback=None,
+    )
+
+    write_iteration_telemetry(
+        telemetry_inputs,
+        git_head_resolver=lambda _: "abc1234",
+    )
+
+    handoff_path = tmp_path / "progress" / "features" / "FEAT-130" / "handoff.md"
+    assert handoff_path.exists()
+    assert handoff_path.stat().st_size > 0
+
+
+def test_write_iteration_telemetry_appends_fallback_handoff_when_missing(
+    tmp_path: Path,
+) -> None:
+    handoff_path = tmp_path / "progress" / "features" / "FEAT-130" / "handoff.md"
+    handoff_path.parent.mkdir(parents=True, exist_ok=True)
+    handoff_path.write_text("seed-entry\n", encoding="utf-8")
+    baseline_stat = handoff_path.stat()
+
+    iteration_inputs = FeatureIterationInputs(
+        project_root=tmp_path,
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-130.yaml",
+        attempt=6,
+        hook_feedback=None,
+        verbose_output=False,
+    )
+    telemetry_inputs = IterationTelemetryInputs(
+        iteration_inputs=iteration_inputs,
+        started=0.0,
+        feature_id="FEAT-130",
+        result="passed",
+        failed_gate=None,
+        next_action="continue_same_feature",
+        implement_status="passed",
+        gate_status="passed",
+        verification_status="not_run",
+        verification_failed_command=None,
+        reviewer_status="not_run",
+        reviewer_decision=None,
+        failed_reviewer_id=None,
+        implement_output="",
+        gate_output="",
+        verification_output="",
+        reviewer_output="",
+        hook_feedback=None,
+    )
+
+    write_iteration_telemetry(
+        telemetry_inputs,
+        git_head_resolver=lambda _: "abc1234",
+    )
+
+    assert handoff_path.exists()
+    assert handoff_path.stat().st_size > baseline_stat.st_size
+    assert handoff_path.stat().st_mtime_ns >= baseline_stat.st_mtime_ns
 
 
 def test_timing_format_helpers_emit_expected_lines() -> None:
@@ -121,7 +285,9 @@ def test_progress_log_records_verification_status(tmp_path: Path) -> None:
         git_head_resolver=lambda _: "abc1234",
     )
 
-    run = json.loads((tmp_path / "progress" / "runs.jsonl").read_text(encoding="utf-8"))
+    run = json.loads(
+        (tmp_path / "progress" / "runs" / "runs.jsonl").read_text(encoding="utf-8")
+    )
     assert run["verification_status"] == f"failed:{verification_command}"
     assert run["verification_failed_command"] == verification_command
     assert run["reviewer_status"] == "failed:request_changes"
@@ -130,9 +296,9 @@ def test_progress_log_records_verification_status(tmp_path: Path) -> None:
     assert run["reviewer_feedback_present"] is False
     assert run["reviewer_feedback_summary"] == ""
 
-    feature_log = (tmp_path / "progress" / "run-feature-FEAT-040.txt").read_text(
-        encoding="utf-8"
-    )
+    feature_log = (
+        tmp_path / "progress" / "features" / "FEAT-040" / "run.txt"
+    ).read_text(encoding="utf-8")
     first_line = feature_log.splitlines()[0]
     assert first_line.startswith("ts=")
     assert "=== ITERATION" in first_line
@@ -203,8 +369,8 @@ def test_progress_log_writes_do_not_use_path_open(
     finally:
         monkeypatch.setattr(Path, "open", original_open)
 
-    assert (tmp_path / "progress" / "runs.jsonl").exists()
-    assert (tmp_path / "progress" / "run-feature-FEAT-040.txt").exists()
+    assert (tmp_path / "progress" / "runs" / "runs.jsonl").exists()
+    assert (tmp_path / "progress" / "features" / "FEAT-040" / "run.txt").exists()
 
 
 def test_progress_log_strips_ansi_only_at_write_time(
@@ -263,9 +429,9 @@ def test_progress_log_strips_ansi_only_at_write_time(
     assert implement_line in strip_inputs
     assert gates_line in strip_inputs
 
-    feature_log = (tmp_path / "progress" / "run-feature-FEAT-040.txt").read_text(
-        encoding="utf-8"
-    )
+    feature_log = (
+        tmp_path / "progress" / "features" / "FEAT-040" / "run.txt"
+    ).read_text(encoding="utf-8")
     assert "\x1b[" not in feature_log
 
 
@@ -320,9 +486,9 @@ def test_progress_log_records_phase_timings(tmp_path: Path, monkeypatch: Any) ->
         git_head_resolver=lambda _: "abc1234",
     )
 
-    feature_log = (tmp_path / "progress" / "run-feature-FEAT-040.txt").read_text(
-        encoding="utf-8"
-    )
+    feature_log = (
+        tmp_path / "progress" / "features" / "FEAT-040" / "run.txt"
+    ).read_text(encoding="utf-8")
     assert (
         "phase_timing phase=initial_load started_at=1970-01-01T00:00:00Z "
         "ended_at=1970-01-01T00:00:02Z duration_sec=2"
@@ -406,9 +572,9 @@ def test_progress_log_records_verification_command_timings(
         git_head_resolver=lambda _: "abc1234",
     )
 
-    feature_log = (tmp_path / "progress" / "run-feature-FEAT-040.txt").read_text(
-        encoding="utf-8"
-    )
+    feature_log = (
+        tmp_path / "progress" / "features" / "FEAT-040" / "run.txt"
+    ).read_text(encoding="utf-8")
     assert (
         "command_timing phase=verification command=uv run pytest -q "
         "tests/test_loop_output.py started_at=1970-01-01T00:00:10Z "
@@ -509,9 +675,9 @@ def test_progress_log_records_slowest_summary(tmp_path: Path) -> None:
         git_head_resolver=lambda _: "abc1234",
     )
 
-    feature_log = (tmp_path / "progress" / "run-feature-FEAT-040.txt").read_text(
-        encoding="utf-8"
-    )
+    feature_log = (
+        tmp_path / "progress" / "features" / "FEAT-040" / "run.txt"
+    ).read_text(encoding="utf-8")
     assert (
         "slowest=command phase=verification command=uv run pytest -q "
         "tests/test_loop_output.py started_at=1970-01-01T00:00:10Z "
@@ -557,16 +723,18 @@ def test_progress_log_records_reviewer_warning_status(
         git_head_resolver=lambda _: "def5678",
     )
 
-    run = json.loads((tmp_path / "progress" / "runs.jsonl").read_text(encoding="utf-8"))
+    run = json.loads(
+        (tmp_path / "progress" / "runs" / "runs.jsonl").read_text(encoding="utf-8")
+    )
     assert run["reviewer_status"] == "passed"
     assert run["reviewer_decision"] == "warning"
     assert run["failed_reviewer_id"] is None
     assert run["reviewer_feedback_present"] is True
     assert "simplify nested branching" in run["reviewer_feedback_summary"]
 
-    feature_log = (tmp_path / "progress" / "run-feature-FEAT-059.txt").read_text(
-        encoding="utf-8"
-    )
+    feature_log = (
+        tmp_path / "progress" / "features" / "FEAT-059" / "run.txt"
+    ).read_text(encoding="utf-8")
     assert "reviewer=passed decision=warning failed_reviewer=-" in feature_log
     assert "reviewer_output_begin" in feature_log
     assert "[reviewer:code_simplifier] decision=warning" in feature_log
@@ -620,7 +788,9 @@ def test_run_telemetry_summary_strips_feedback_context_block(tmp_path: Path) -> 
         git_head_resolver=lambda _: "abc1234",
     )
 
-    run = json.loads((tmp_path / "progress" / "runs.jsonl").read_text(encoding="utf-8"))
+    run = json.loads(
+        (tmp_path / "progress" / "runs" / "runs.jsonl").read_text(encoding="utf-8")
+    )
     assert run["reviewer_feedback_present"] is True
     assert "requested changes" in run["reviewer_feedback_summary"]
     assert "Add missing usage section" in run["reviewer_feedback_summary"]
@@ -665,7 +835,9 @@ def test_reviewer_feedback_forwarded_field_takes_precedence(tmp_path: Path) -> N
         git_head_resolver=lambda _: "abc1234",
     )
 
-    run = json.loads((tmp_path / "progress" / "runs.jsonl").read_text(encoding="utf-8"))
+    run = json.loads(
+        (tmp_path / "progress" / "runs" / "runs.jsonl").read_text(encoding="utf-8")
+    )
     assert run["reviewer_feedback_present"] is True
     assert "onboarding_review" in run["reviewer_feedback_summary"]
 
@@ -715,7 +887,7 @@ def test_non_verbose_terminal_output_shows_verification_summary(
         next_action="retry_same_feature",
         selected_path="docs/spec/features/FEAT-040-per-iteration-verification-feedback-and-failure-signaling.yaml",
         implement_step="default opencode implement step",
-        log_path="progress/run-feature-FEAT-040.txt",
+        log_path="progress/features/FEAT-040/run.txt",
         verification_status=f"failed:{verification_command}",
         verification_failed_command=verification_command,
         reviewer_status="failed:request_changes",

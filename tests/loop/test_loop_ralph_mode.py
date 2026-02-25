@@ -23,7 +23,9 @@ from engineeringagent.loop import (
     build_run_config,
     run_loop as _run_loop,
 )
+from engineeringagent.loop_runtime.models import ImplementStepResult
 from engineeringagent.loop_runtime import presentation as presentation_module
+from engineeringagent.progress.handoff import fallback_implement_progress_envelope
 from engineeringagent.prompts import build_implementation_prompt
 
 
@@ -62,6 +64,10 @@ def run_loop(
 
 
 _OPENCODE_IMPLEMENT = SimpleNamespace(side_effect=None, fake_result=None)
+
+
+def _passing_implement_result(output: str = "") -> ImplementStepResult:
+    return (True, None, output, fallback_implement_progress_envelope(), True)
 
 
 @contextmanager
@@ -203,7 +209,7 @@ def _make_project_root(
 
 
 def _read_runs(project_root: Path) -> list[dict[str, Any]]:
-    runs_path = project_root / "progress" / "runs.jsonl"
+    runs_path = project_root / "progress" / "runs" / "runs.jsonl"
     return [
         json.loads(line) for line in runs_path.read_text(encoding="utf-8").splitlines()
     ]
@@ -913,6 +919,9 @@ def test_ralph_prompt_includes_feature_file_path(tmp_path: Path) -> None:
     expected_prompt_phrases = (
         str(feature_path),
         "Read and use this feature spec from disk",
+        "Before doing new work, read prior handoff context from progress/features/FEAT-900/handoff.md when the file exists.",
+        "Write the hand-off so that the next developer can easily continue the work.",
+        "Do not write the handoff file directly; loop/runtime owns handoff file appends.",
         "most important open subtask",
         "most important open subtask first",
         "Update progress in the same feature YAML",
@@ -939,7 +948,7 @@ def test_cli_run_dry_run_path_first(tmp_path: Path) -> None:
 
     assert result.exit_code == 0
     assert "result=dry_run" in result.stdout
-    assert not (project_root / "progress" / "runs.jsonl").exists()
+    assert not (project_root / "progress" / "runs" / "runs.jsonl").exists()
 
 
 def test_cli_run_all_dry_run(tmp_path: Path) -> None:
@@ -1277,7 +1286,9 @@ def test_run_loop_commit_ignores_runs_jsonl_when_gitignored(tmp_path: Path) -> N
     script_path = _write_set_done_script(
         tmp_path.parent / f"{tmp_path.name}-set-done.py"
     )
-    (project_root / ".gitignore").write_text("progress/runs.jsonl\n", encoding="utf-8")
+    (project_root / ".gitignore").write_text(
+        "progress/runs/runs.jsonl\n", encoding="utf-8"
+    )
     _init_git_repo(project_root)
 
     def implement_effect() -> None:
@@ -1294,9 +1305,9 @@ def test_run_loop_commit_ignores_runs_jsonl_when_gitignored(tmp_path: Path) -> N
         )
 
     assert code == 0
-    assert (project_root / "progress" / "runs.jsonl").exists()
+    assert (project_root / "progress" / "runs" / "runs.jsonl").exists()
     status = _run_git(project_root, "status", "--short").stdout
-    assert "progress/runs.jsonl" not in status
+    assert "progress/runs/runs.jsonl" not in status
 
 
 def test_run_loop_writes_per_feature_progress_log(
@@ -1329,13 +1340,17 @@ def test_run_loop_writes_per_feature_progress_log(
         )
 
     assert code == 0
-    feature_log_path = project_root / "progress" / "run-feature-FEAT-900.txt"
+    feature_log_path = project_root / "progress" / "features" / "FEAT-900" / "run.txt"
     assert feature_log_path.exists()
     log_text = feature_log_path.read_text(encoding="utf-8")
     assert "attempt=1" in log_text
     assert "feature_id=FEAT-900" in log_text
     assert "result=passed" in log_text
     assert "\x1b[" not in log_text
+
+    handoff_path = project_root / "progress" / "features" / "FEAT-900" / "handoff.md"
+    assert handoff_path.exists()
+    assert handoff_path.stat().st_size > 0
 
 
 def test_run_loop_progress_logs_are_gitignored(tmp_path: Path) -> None:
@@ -1346,7 +1361,7 @@ def test_run_loop_progress_logs_are_gitignored(tmp_path: Path) -> None:
         tmp_path.parent / f"{tmp_path.name}-set-done-progress-log-ignore.py"
     )
     (project_root / ".gitignore").write_text(
-        "progress/runs.jsonl\nprogress/run-feature-*.txt\n",
+        "progress/runs/runs.jsonl\nprogress/features/*/run.txt\n",
         encoding="utf-8",
     )
     _init_git_repo(project_root)
@@ -1365,10 +1380,10 @@ def test_run_loop_progress_logs_are_gitignored(tmp_path: Path) -> None:
         )
 
     assert code == 0
-    assert (project_root / "progress" / "run-feature-FEAT-900.txt").exists()
+    assert (project_root / "progress" / "features" / "FEAT-900" / "run.txt").exists()
     status = _run_git(project_root, "status", "--short").stdout
-    assert "progress/runs.jsonl" not in status
-    assert "progress/run-feature-FEAT-900.txt" not in status
+    assert "progress/runs/runs.jsonl" not in status
+    assert "progress/features/FEAT-900/run.txt" not in status
 
 
 def test_run_loop_concise_mode_hides_raw_implement_and_gate_output(
@@ -1433,7 +1448,7 @@ def test_run_loop_concise_mode_hides_raw_implement_and_gate_output(
     assert implement_stdout_token not in output
     assert gate_stdout_token not in output
 
-    feature_log_path = project_root / "progress" / "run-feature-FEAT-900.txt"
+    feature_log_path = project_root / "progress" / "features" / "FEAT-900" / "run.txt"
     log_text = feature_log_path.read_text(encoding="utf-8")
     assert implement_stdout_token in log_text
     assert implement_stderr_token in log_text
@@ -1600,7 +1615,7 @@ def test_run_loop_iteration_output_uses_emoji_contract(
         next_action="retry_same_feature",
         selected_path="docs/spec/features/FEAT-900.yaml",
         implement_step="opencode run --agent engineeringagent",
-        log_path="progress/run-feature-FEAT-900.txt",
+        log_path="progress/features/FEAT-900/run.txt",
     )
     loop_module.print_summary(
         feature_id="FEAT-900",
@@ -1621,7 +1636,7 @@ def test_run_loop_iteration_output_uses_emoji_contract(
     assert "➡️ Next: continue_same_feature" in output
     assert "🔁 Iteration 2 · FEAT-900" in output
     assert "❌ Failed: gate=spec_validate" in output
-    assert "📄 Log: progress/run-feature-FEAT-900.txt" in output
+    assert "📄 Log: progress/features/FEAT-900/run.txt" in output
     assert "➡️ Next: retry_same_feature" in output
     assert "♻️ Selected archived counterpart:" in output
     assert "➡️ Next: select_next_feature" in output
@@ -1694,8 +1709,8 @@ def test_run_loop_telemetry_includes_log_path(
     assert code == 0
     runs = _read_runs(project_root)
     assert runs
-    assert runs[-1]["log_path"] == "progress/run-feature-FEAT-900.txt"
-    assert "\x1b[" not in (project_root / "progress" / "runs.jsonl").read_text(
+    assert runs[-1]["log_path"] == "progress/features/FEAT-900/run.txt"
+    assert "\x1b[" not in (project_root / "progress" / "runs" / "runs.jsonl").read_text(
         encoding="utf-8"
     )
 
@@ -1723,7 +1738,7 @@ def test_run_loop_failure_prints_detailed_log_pointer(
     output = capsys.readouterr().out
     assert code == 1
     assert "result=failed" in output
-    assert "Detailed log: progress/run-feature-FEAT-900.txt" in output
+    assert "Detailed log: progress/features/FEAT-900/run.txt" in output
 
 
 def test_run_loop_requires_clean_worktree_by_default(
@@ -1765,7 +1780,7 @@ def test_run_loop_archives_done_active_feature(
     monkeypatch.setattr(
         loop_module,
         "run_implement_step",
-        lambda *_args, **_kwargs: (True, None, ""),
+        lambda *_args, **_kwargs: _passing_implement_result(),
     )
     monkeypatch.setattr(
         loop_module,
@@ -2011,14 +2026,14 @@ def test_run_loop_all_selected_feature_moved_to_features_done_continues(
         feature_path: Path,
         hook_feedback: str | None,
         verbose_output: bool,
-    ) -> tuple[bool, str | None, str]:
+    ) -> ImplementStepResult:
         del hook_feedback, verbose_output
         if str(feature.get("id", "")) == "FEAT-900":
             _move_feature_to_done(project_root, feature_path)
-            return (True, None, "")
+            return _passing_implement_result()
         feature["status"] = "done"
         _write_yaml(feature_path, feature)
-        return (True, None, "")
+        return _passing_implement_result()
 
     monkeypatch.setattr(loop_module, "run_implement_step", fake_run_implement_step)
     monkeypatch.setattr(
@@ -2120,12 +2135,12 @@ def test_run_loop_archives_preexisting_done_target_after_pending_completes(
         feature_path: Path,
         hook_feedback: str | None,
         verbose_output: bool,
-    ) -> tuple[bool, str | None, str]:
+    ) -> ImplementStepResult:
         del project_root, hook_feedback, verbose_output
         if str(feature.get("id", "")) == "FEAT-900":
             feature["status"] = "done"
             _write_yaml(feature_path, feature)
-        return (True, None, "")
+        return _passing_implement_result()
 
     monkeypatch.setattr(loop_module, "run_implement_step", fake_run_implement_step)
     monkeypatch.setattr(

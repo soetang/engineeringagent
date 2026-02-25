@@ -22,6 +22,8 @@ from .init_scaffold import (
     build_scaffold_agents_markdown,
 )
 from .loop import RunConfigOptions, build_loop_run, build_run_config, run_loop
+from .progress import handoff as progress_handoff
+from .progress import paths as progress_paths
 from . import checks as checks_module
 from .specs import HarnessCheckPhase
 
@@ -708,12 +710,83 @@ def cmd_init(args: _HandlerArgs) -> int:  # noqa: C901
     return 0
 
 
+def cmd_progress_handoff_append(args: _HandlerArgs) -> int:
+    """Append one feature handoff markdown entry from JSON stdin payload."""
+
+    project_root = Path(args.project_root).resolve()
+    feature_id = _require_feature_id(args)
+    if feature_id is None:
+        return 1
+
+    payload = _read_json_stdin_payload()
+
+    envelope, used_fallback = progress_handoff.parse_implement_progress_envelope(
+        payload
+    )
+    entry_lines = progress_handoff.render_handoff_markdown_entry(
+        attempt=int(args.attempt),
+        envelope=envelope,
+        timestamp=getattr(args, "timestamp", None),
+        used_fallback=used_fallback,
+    )
+    handoff_path = progress_paths.handoff_markdown_path(project_root, feature_id)
+    progress_handoff.append_handoff_markdown_entry(
+        handoff_path=handoff_path,
+        entry_lines=entry_lines,
+    )
+    print(
+        "progress handoff append: "
+        f"path={progress_paths.handoff_markdown_reference(project_root, feature_id)} "
+        f"fallback={str(used_fallback).lower()}"
+    )
+    return 0
+
+
+def _read_json_stdin_payload() -> object:
+    """Return parsed JSON payload from stdin or empty object on failure."""
+    raw_stdin = sys.stdin.read().strip()
+    if not raw_stdin:
+        return {}
+    try:
+        return json.loads(raw_stdin)
+    except json.JSONDecodeError:
+        return {}
+
+
+def cmd_progress_feature_prune(args: _HandlerArgs) -> int:
+    """Delete the feature-scoped progress directory for manual cleanup."""
+
+    project_root = Path(args.project_root).resolve()
+    feature_id = _require_feature_id(args)
+    if feature_id is None:
+        return 1
+
+    target_dir = progress_paths.feature_dir_path(project_root, feature_id)
+    target_ref = target_dir.relative_to(project_root)
+    if not target_dir.exists():
+        print(f"progress feature prune: no-op path={target_ref}")
+        return 0
+
+    shutil.rmtree(target_dir)
+    print(f"progress feature prune: removed path={target_ref}")
+    return 0
+
+
 def _precommit_remediation_commands(*, scaffold_profile: str) -> list[str]:
     """Return deterministic remediation commands for hook installation."""
     commands = ["pre-commit install"]
     if scaffold_profile == "python_uv":
         commands.append("pre-commit install --hook-type commit-msg")
     return commands
+
+
+def _require_feature_id(args: _HandlerArgs) -> str | None:
+    """Return normalized feature id or emit deterministic CLI input error."""
+    feature_id = str(args.feature_id).strip()
+    if feature_id != "":
+        return feature_id
+    print("progress input error: --feature-id must be non-empty")
+    return None
 
 
 def _install_precommit_hooks_best_effort(
@@ -981,6 +1054,63 @@ def _build_typer_fitness_app() -> typer.Typer:
     return fitness_app
 
 
+def _build_typer_progress_app() -> typer.Typer:
+    """Build manual progress helper commands."""
+
+    progress_app = typer.Typer(
+        help="manual progress artifact helpers",
+        add_completion=False,
+        no_args_is_help=False,
+    )
+    handoff_reference = progress_paths.handoff_markdown_template_reference(Path("."))
+
+    @progress_app.command(
+        "handoff-append",
+        help="append one feature handoff markdown entry from JSON stdin",
+    )
+    def _progress_handoff_append(
+        ctx: typer.Context,
+        feature_id: str = typer.Option(
+            ...,
+            "--feature-id",
+            help=f"feature id used for {handoff_reference}",
+        ),
+        attempt: int = typer.Option(
+            ..., "--attempt", min=1, help="iteration attempt number for heading"
+        ),
+        timestamp: str | None = typer.Option(
+            None,
+            "--timestamp",
+            help="optional ISO-8601 timestamp override (defaults to current UTC)",
+        ),
+    ) -> None:
+        _exit_with_handler_code(
+            cmd_progress_handoff_append,
+            ctx=ctx,
+            feature_id=feature_id,
+            attempt=attempt,
+            timestamp=timestamp,
+        )
+
+    @progress_app.command(
+        "feature-prune",
+        help="delete one feature-scoped progress directory",
+    )
+    def _progress_feature_prune(
+        ctx: typer.Context,
+        feature_id: str = typer.Option(
+            ..., "--feature-id", help="feature id under progress/features"
+        ),
+    ) -> None:
+        _exit_with_handler_code(
+            cmd_progress_feature_prune,
+            ctx=ctx,
+            feature_id=feature_id,
+        )
+
+    return progress_app
+
+
 def build_typer_app() -> typer.Typer:
     """Build the Typer root app with top-level command wiring."""
     app = typer.Typer(
@@ -1064,6 +1194,11 @@ def build_typer_app() -> typer.Typer:
         _build_typer_fitness_app(),
         name="fitness",
         help="run fitness checks",
+    )
+    app.add_typer(
+        _build_typer_progress_app(),
+        name="progress",
+        help="manual progress artifact helpers",
     )
 
     @app.command(

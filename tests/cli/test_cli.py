@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -29,6 +30,7 @@ def test_cli_surface_inventory_commands() -> None:
         "run",
         "checks",
         "fitness",
+        "progress",
         "init",
         "--project-root",
         "--version",
@@ -57,6 +59,14 @@ def test_cli_surface_inventory_option_spellings() -> None:
         (
             ["fitness", "run", "--help"],
             ["--format", "--phase", "--check-id", "--dry-run"],
+        ),
+        (
+            ["progress", "handoff-append", "--help"],
+            ["--feature-id", "--attempt", "--timestamp"],
+        ),
+        (
+            ["progress", "feature-prune", "--help"],
+            ["--feature-id"],
         ),
         (
             ["init", "--help"],
@@ -397,6 +407,89 @@ def test_cmd_run_builds_looprun_context_for_loop_entrypoint(
         allow_dirty=True,
         verbose_output=True,
     )
+
+
+def test_progress_handoff_append_reads_json_stdin_and_appends_markdown(
+    tmp_path: Path,
+) -> None:
+    payload = {
+        "summary": "Iteration completed.",
+        "completed_work": ["Implemented CLI append command"],
+        "verification": ["uv run pytest -q tests/cli/test_cli.py -k progress"],
+        "remaining_work": ["Add docs updates"],
+    }
+
+    runner = CliRunner(mix_stderr=False)
+    result = runner.invoke(
+        cli_module.build_typer_app(),
+        [
+            "--project-root",
+            str(tmp_path),
+            "progress",
+            "handoff-append",
+            "--feature-id",
+            "FEAT-130",
+            "--attempt",
+            "6",
+            "--timestamp",
+            "2026-02-25T07:00:00Z",
+        ],
+        input=json.dumps(payload),
+    )
+
+    assert result.exit_code == 0
+    assert "fallback=false" in result.stdout
+    handoff_path = tmp_path / "progress" / "features" / "FEAT-130" / "handoff.md"
+    assert handoff_path.exists()
+
+
+def test_progress_handoff_append_uses_fallback_for_invalid_json(
+    tmp_path: Path,
+) -> None:
+    runner = CliRunner(mix_stderr=False)
+    result = runner.invoke(
+        cli_module.build_typer_app(),
+        [
+            "--project-root",
+            str(tmp_path),
+            "progress",
+            "handoff-append",
+            "--feature-id",
+            "FEAT-130",
+            "--attempt",
+            "6",
+        ],
+        input="{bad-json",
+    )
+
+    assert result.exit_code == 0
+    assert "fallback=true" in result.stdout
+    assert (tmp_path / "progress" / "features" / "FEAT-130" / "handoff.md").exists()
+
+
+def test_progress_feature_prune_removes_feature_progress_directory(
+    tmp_path: Path,
+) -> None:
+    feature_dir = tmp_path / "progress" / "features" / "FEAT-130"
+    feature_dir.mkdir(parents=True, exist_ok=True)
+    (feature_dir / "run.txt").write_text("log\n", encoding="utf-8")
+
+    runner = CliRunner(mix_stderr=False)
+    result = runner.invoke(
+        cli_module.build_typer_app(),
+        [
+            "--project-root",
+            str(tmp_path),
+            "progress",
+            "feature-prune",
+            "--feature-id",
+            "FEAT-130",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "removed path=progress/features/FEAT-130" in result.stdout
+    assert not feature_dir.exists()
 
 
 def test_main_init_command_uses_typer_handler(monkeypatch: Any) -> None:

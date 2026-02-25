@@ -25,7 +25,7 @@ def test_load_reviewers_state_returns_default_when_missing(tmp_path: Path) -> No
 
 
 def test_load_reviewers_state_returns_default_on_invalid_json(tmp_path: Path) -> None:
-    state_path = tmp_path / "progress" / "reviewers-state.json"
+    state_path = tmp_path / "progress" / "reviewers" / "state.json"
     state_path.parent.mkdir(parents=True, exist_ok=True)
     state_path.write_text("not-json\n", encoding="utf-8")
 
@@ -41,7 +41,7 @@ def test_save_reviewers_state_round_trips_json(tmp_path: Path) -> None:
     }
     save_reviewers_state(tmp_path, payload)
 
-    state_path = tmp_path / "progress" / "reviewers-state.json"
+    state_path = tmp_path / "progress" / "reviewers" / "state.json"
     loaded = json.loads(state_path.read_text(encoding="utf-8"))
     assert loaded["version"] == "1"
     assert loaded["features"]["FEAT-001"]["reviewers"]["doc_review"]["approved"] is True

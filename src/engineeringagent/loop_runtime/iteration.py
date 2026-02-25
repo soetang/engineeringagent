@@ -9,12 +9,16 @@ from typing import Any, Callable, Iterable, TypeVar
 from pydantic import BaseModel, ConfigDict, Field
 
 from engineeringagent.agents import describe_action
+from engineeringagent.progress.handoff import (
+    ImplementProgressEnvelope,
+)
 
 from .models import (
     CommandTiming,
     CompletionCommitOutcome,
     FeatureIterationInputs,
     GatePhaseOutcome,
+    ImplementStepResult,
     InitialFeatureLoadOutcome,
     IterationReport,
     IterationTelemetryInputs,
@@ -47,7 +51,7 @@ class IterationPipelineDependencies(BaseModel):
             str | None,
             bool,
         ],
-        tuple[bool, str | None, str],
+        ImplementStepResult,
     ]
     refresh_feature_after_implement: Callable[
         [Path, Path, bool], PostImplementFeatureOutcome
@@ -105,6 +109,8 @@ class _PipelineState(BaseModel):
     reviewer_decision: str | None = None
     failed_reviewer_id: str | None = None
     implement_output: str = ""
+    implement_handoff_envelope: ImplementProgressEnvelope | None = None
+    implement_handoff_used_fallback: bool = False
     gate_output: str = ""
     verification_output: str = ""
     reviewer_output: str = ""
@@ -278,7 +284,13 @@ def _run_implement_phase_if_ready(
         feature, iteration_inputs.feature_path
     )
     state.implement_status = "passed"
-    ok, implement_failed_gate, state.implement_output = dependencies.run_implement_step(
+    (
+        ok,
+        implement_failed_gate,
+        state.implement_output,
+        state.implement_handoff_envelope,
+        state.implement_handoff_used_fallback,
+    ) = dependencies.run_implement_step(
         iteration_inputs.project_root,
         feature,
         iteration_inputs.feature_path,
@@ -661,6 +673,8 @@ def run_feature_iteration_pipeline(
         reviewer_decision=state.reviewer_decision,
         failed_reviewer_id=state.failed_reviewer_id,
         implement_output=state.implement_output,
+        implement_handoff_envelope=state.implement_handoff_envelope,
+        implement_handoff_used_fallback=state.implement_handoff_used_fallback,
         gate_output=state.gate_output,
         verification_output=state.verification_output,
         reviewer_output=state.reviewer_output,

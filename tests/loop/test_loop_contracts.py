@@ -21,6 +21,7 @@ from engineeringagent.loop_runtime.models import (
     ImplementStepInputs,
     IterationTelemetryInputs,
 )
+from engineeringagent.agents.contracts import AgentOutputValidationError
 from engineeringagent.loop_runtime.implement import (
     run_implement_step_from_inputs,
 )
@@ -31,24 +32,37 @@ from engineeringagent.loop_runtime.run_context import (
     RunState,
 )
 from engineeringagent.loop_runtime.telemetry import write_iteration_telemetry
+from engineeringagent.progress.handoff import ImplementProgressEnvelope
 from engineeringagent.progress import paths as progress_paths
 
 
 def test_progress_paths_contract(tmp_path: Path) -> None:
     assert progress_paths.runs_jsonl_path(tmp_path) == (
-        tmp_path / "progress" / "runs.jsonl"
+        tmp_path / "progress" / "runs" / "runs.jsonl"
     )
     assert progress_paths.run_feature_log_path(tmp_path, "FEAT-040") == (
-        tmp_path / "progress" / "run-feature-FEAT-040.txt"
+        tmp_path / "progress" / "features" / "FEAT-040" / "run.txt"
     )
     assert progress_paths.run_feature_log_reference(tmp_path, "FEAT-040") == (
-        "progress/run-feature-FEAT-040.txt"
+        "progress/features/FEAT-040/run.txt"
     )
     assert progress_paths.run_feature_log_reference(tmp_path, "FEAT 040/../../") == (
-        "progress/run-feature-FEAT_040.txt"
+        "progress/features/FEAT_040/run.txt"
     )
     assert progress_paths.run_feature_log_reference(tmp_path, "!!!") == (
-        "progress/run-feature-unknown-feature.txt"
+        "progress/features/unknown-feature/run.txt"
+    )
+
+
+def test_handoff_paths_contract(tmp_path: Path) -> None:
+    assert progress_paths.handoff_markdown_path(tmp_path, "FEAT-040") == (
+        tmp_path / "progress" / "features" / "FEAT-040" / "handoff.md"
+    )
+    assert progress_paths.handoff_markdown_reference(tmp_path, "FEAT-040") == (
+        "progress/features/FEAT-040/handoff.md"
+    )
+    assert progress_paths.handoff_markdown_template_reference(tmp_path) == (
+        "progress/features/<FEATURE_ID>/handoff.md"
     )
 
 
@@ -63,17 +77,49 @@ def test_progress_path_references_fall_back_when_not_repo_relative(
         lambda _project_root: external_progress_root,
     )
 
-    runs_path = external_progress_root / progress_paths.RUNS_JSONL_FILENAME
+    runs_path = (
+        external_progress_root
+        / progress_paths.PROGRESS_RUNS_DIRNAME
+        / progress_paths.RUNS_JSONL_FILENAME
+    )
     assert progress_paths.runs_jsonl_reference(tmp_path) == str(runs_path)
 
-    log_path = external_progress_root / progress_paths.run_feature_log_filename(
-        "FEAT-1"
+    log_path = (
+        external_progress_root
+        / progress_paths.PROGRESS_FEATURES_DIRNAME
+        / "FEAT-1"
+        / progress_paths.run_feature_log_filename()
     )
     assert progress_paths.run_feature_log_reference(tmp_path, "FEAT-1") == str(log_path)
 
-    template_path = external_progress_root / "run-feature-<FEATURE_ID>.txt"
+    template_path = (
+        external_progress_root
+        / progress_paths.PROGRESS_FEATURES_DIRNAME
+        / "<FEATURE_ID>"
+        / progress_paths.FEATURE_RUN_LOG_FILENAME
+    )
     assert progress_paths.run_feature_log_template_reference(tmp_path) == str(
         template_path
+    )
+
+    handoff_path = (
+        external_progress_root
+        / progress_paths.PROGRESS_FEATURES_DIRNAME
+        / "FEAT-1"
+        / progress_paths.FEATURE_HANDOFF_FILENAME
+    )
+    assert progress_paths.handoff_markdown_reference(tmp_path, "FEAT-1") == str(
+        handoff_path
+    )
+
+    handoff_template_path = (
+        external_progress_root
+        / progress_paths.PROGRESS_FEATURES_DIRNAME
+        / "<FEATURE_ID>"
+        / progress_paths.FEATURE_HANDOFF_FILENAME
+    )
+    assert progress_paths.handoff_markdown_template_reference(tmp_path) == str(
+        handoff_template_path
     )
 
 
@@ -258,11 +304,13 @@ def test_run_implement_step_from_inputs_requires_backend_binary_when_available(
         ),
     )
 
-    assert result == (
-        False,
-        "agent_missing",
-        "[implement] backend executable missing",
-    )
+    assert len(result) == 5
+    ok, failed_gate, command_output, envelope, used_fallback = result
+    assert ok is False
+    assert failed_gate == "agent_missing"
+    assert command_output == "[implement] backend executable missing"
+    assert isinstance(envelope, ImplementProgressEnvelope)
+    assert used_fallback is True
 
 
 def test_run_implement_step_from_inputs_reraises_unexpected_errors(
@@ -283,6 +331,114 @@ def test_run_implement_step_from_inputs_reraises_unexpected_errors(
                 RuntimeError("boom")
             ),
         )
+
+
+def test_run_implement_step_from_inputs_supports_legacy_run_agent_signature(
+    tmp_path: Path,
+) -> None:
+    inputs = ImplementStepInputs(
+        project_root=tmp_path,
+        feature={"id": "FEAT-999"},
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-999.yaml",
+        hook_feedback=None,
+        verbose_output=False,
+    )
+
+    def _legacy_run_agent(_project_root: Path, _prompt: str) -> str:
+        return (
+            '{"summary":"ok","completed_work":["done"],'
+            '"verification":["uv run pytest -q"],"remaining_work":["none"]}'
+        )
+
+    result = run_implement_step_from_inputs(inputs, run_agent_fn=_legacy_run_agent)
+
+    assert len(result) == 5
+    ok, failed_gate, command_output, envelope, used_fallback = result
+    assert ok is True
+    assert failed_gate is None
+    assert isinstance(command_output, str)
+    assert isinstance(envelope, ImplementProgressEnvelope)
+    assert envelope.summary == "ok"
+    assert used_fallback is False
+
+
+def test_run_implement_step_from_inputs_reraises_non_signature_type_error(
+    tmp_path: Path,
+) -> None:
+    inputs = ImplementStepInputs(
+        project_root=tmp_path,
+        feature={"id": "FEAT-999"},
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-999.yaml",
+        hook_feedback=None,
+        verbose_output=False,
+    )
+
+    def _run_agent_type_error(*_args: object, **_kwargs: object) -> str:
+        raise TypeError("boom")
+
+    with pytest.raises(TypeError, match="boom"):
+        run_implement_step_from_inputs(inputs, run_agent_fn=_run_agent_type_error)
+
+
+def test_run_implement_step_from_inputs_uses_fallback_on_validation_error(
+    tmp_path: Path,
+) -> None:
+    inputs = ImplementStepInputs(
+        project_root=tmp_path,
+        feature={"id": "FEAT-999"},
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-999.yaml",
+        hook_feedback=None,
+        verbose_output=False,
+    )
+
+    def _run_agent_validation_error(*_args: object, **_kwargs: object) -> str:
+        raise AgentOutputValidationError(
+            backend="opencode",
+            attempts=2,
+            last_text="raw output",
+            error_summary="missing field",
+        )
+
+    result = run_implement_step_from_inputs(
+        inputs,
+        run_agent_fn=_run_agent_validation_error,
+    )
+
+    assert len(result) == 5
+    ok, failed_gate, command_output, envelope, used_fallback = result
+    assert ok is True
+    assert failed_gate is None
+    assert "structured_output=invalid" in command_output
+    assert isinstance(envelope, ImplementProgressEnvelope)
+    assert used_fallback is True
+
+
+def test_run_implement_step_from_inputs_accepts_structured_envelope_output(
+    tmp_path: Path,
+) -> None:
+    inputs = ImplementStepInputs(
+        project_root=tmp_path,
+        feature={"id": "FEAT-999"},
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-999.yaml",
+        hook_feedback=None,
+        verbose_output=False,
+    )
+
+    def _run_agent_structured(
+        *_args: object, **_kwargs: object
+    ) -> ImplementProgressEnvelope:
+        return ImplementProgressEnvelope(
+            summary="done",
+            completed_work=["a"],
+            verification=["b"],
+            remaining_work=["c"],
+        )
+
+    result = run_implement_step_from_inputs(inputs, run_agent_fn=_run_agent_structured)
+
+    assert len(result) == 5
+    assert result[0] is True
+    assert result[4] is False
 
 
 def test_drop_completed_feature_from_snapshot_keeps_existing_paths(
@@ -667,16 +823,18 @@ def test_retry_feedback_contract_accepts_verification_failure(tmp_path: Path) ->
         git_head_resolver=lambda _: None,
     )
 
-    run = json.loads((tmp_path / "progress" / "runs.jsonl").read_text(encoding="utf-8"))
+    run = json.loads(
+        (tmp_path / "progress" / "runs" / "runs.jsonl").read_text(encoding="utf-8")
+    )
     assert run["verification_status"] == "failed:uv run pytest -q"
     assert run["verification_failed_command"] == "uv run pytest -q"
     assert run["reviewer_status"] == "failed:request_changes"
     assert run["reviewer_decision"] == "request_changes"
     assert run["failed_reviewer_id"] == "security-reviewer"
 
-    feature_log = (tmp_path / "progress" / "run-feature-FEAT-040.txt").read_text(
-        encoding="utf-8"
-    )
+    feature_log = (
+        tmp_path / "progress" / "features" / "FEAT-040" / "run.txt"
+    ).read_text(encoding="utf-8")
     assert (
         "verification=failed:uv run pytest -q failed_command=uv run pytest -q"
         in feature_log

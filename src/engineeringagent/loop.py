@@ -14,6 +14,7 @@ from .agents import preflight, run_agent
 from .loop_runtime.implement import run_implement_step_from_inputs
 from .loop_runtime.models import (
     FeatureIterationInputs,
+    ImplementStepResult,
     ImplementStepInputs,
     IterationOutcome,
     IterationReport,
@@ -117,7 +118,7 @@ def run_implement_step(
     feature_path: Path,
     hook_feedback: str | None,
     verbose_output: bool,
-) -> tuple[bool, str | None, str]:
+) -> ImplementStepResult:
     """Run the implement phase for one loop iteration."""
     implement_inputs = ImplementStepInputs(
         project_root=project_root,

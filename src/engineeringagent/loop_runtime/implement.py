@@ -3,16 +3,19 @@
 from __future__ import annotations
 
 import subprocess
-from datetime import datetime, timezone
-from pathlib import Path
-from typing import Callable
+import json
+import inspect
+from typing import Any, Callable
 
 from engineeringagent.agents import (
     AgentBackendError,
+    AgentOutputValidationError,
     classify_backend_exception,
     describe_action,
 )
 from engineeringagent.loop_runtime.models import ImplementStepInputs
+from engineeringagent.loop_runtime.models import ImplementStepResult
+from engineeringagent.progress import handoff as progress_handoff
 from engineeringagent.progress import logging as progress_logging
 from engineeringagent.progress import paths as progress_paths
 from engineeringagent.prompts import (
@@ -23,8 +26,8 @@ from engineeringagent.prompts import (
 def run_implement_step_from_inputs(
     implement_inputs: ImplementStepInputs,
     *,
-    run_agent_fn: Callable[[Path, str], str],
-) -> tuple[bool, str | None, str]:
+    run_agent_fn: Callable[..., Any],
+) -> ImplementStepResult:
     """Run implement logic while facade keeps public signature seams."""
     return _run_implement(
         implement_inputs,
@@ -35,8 +38,8 @@ def run_implement_step_from_inputs(
 def _run_implement(
     implement_inputs: ImplementStepInputs,
     *,
-    run_agent_fn: Callable[[Path, str], str],
-) -> tuple[bool, str | None, str]:
+    run_agent_fn: Callable[..., Any],
+) -> ImplementStepResult:
     prompt = _build_implement_prompt(implement_inputs)
     command = describe_action(
         implement_inputs.project_root,
@@ -47,7 +50,17 @@ def _run_implement(
     _ensure_progress_artifacts(implement_inputs)
     print(f"Implement step: {command}", flush=True)
     try:
-        output = run_agent_fn(implement_inputs.project_root, prompt)
+        raw_output = _run_agent_with_structured_output(
+            run_agent_fn,
+            implement_inputs=implement_inputs,
+            prompt=prompt,
+        )
+    except AgentOutputValidationError as exc:
+        fallback_envelope = progress_handoff.fallback_implement_progress_envelope()
+        output = _format_structured_output_validation_failure(exc)
+        _print_agent_output(output, verbose_output=implement_inputs.verbose_output)
+        command_output = _format_success_implement_output(command, output)
+        return (True, None, command_output, fallback_envelope, True)
     except (AgentBackendError, FileNotFoundError, subprocess.TimeoutExpired) as exc:
         failed_gate, message = classify_backend_exception(exc)
         command_output = _format_failed_implement_output(
@@ -55,13 +68,89 @@ def _run_implement(
             exc=exc,
             message=message,
         )
-        return (False, failed_gate, command_output)
+        return (
+            False,
+            failed_gate,
+            command_output,
+            progress_handoff.fallback_implement_progress_envelope(),
+            True,
+        )
 
+    envelope, used_fallback, output = _coerce_implement_output(raw_output)
     _print_agent_output(output, verbose_output=implement_inputs.verbose_output)
-    command_output = (
-        f"[implement] command={command}\n[implement] returncode=0\n{output}"
+    command_output = _format_success_implement_output(command, output)
+    return (True, None, command_output, envelope, used_fallback)
+
+
+def _run_agent_with_structured_output(
+    run_agent_fn: Callable[..., Any],
+    *,
+    implement_inputs: ImplementStepInputs,
+    prompt: str,
+) -> Any:
+    if _supports_output_type_argument(run_agent_fn):
+        return run_agent_fn(
+            implement_inputs.project_root,
+            prompt,
+            output_type=progress_handoff.ImplementProgressEnvelope,
+        )
+    return run_agent_fn(implement_inputs.project_root, prompt)
+
+
+def _supports_output_type_argument(run_agent_fn: Callable[..., Any]) -> bool:
+    """Return True when run_agent_fn can accept output_type kwarg."""
+    try:
+        signature = inspect.signature(run_agent_fn)
+    except (TypeError, ValueError):
+        return False
+
+    for parameter in signature.parameters.values():
+        if parameter.kind is inspect.Parameter.VAR_KEYWORD:
+            return True
+        if parameter.name == "output_type":
+            return True
+    return False
+
+
+def _coerce_implement_output(
+    raw_output: object,
+) -> tuple[progress_handoff.ImplementProgressEnvelope, bool, str]:
+    if isinstance(raw_output, progress_handoff.ImplementProgressEnvelope):
+        output = json.dumps(
+            raw_output.model_dump(exclude_none=True),
+            sort_keys=True,
+            ensure_ascii=True,
+        )
+        return raw_output, False, output
+
+    payload: object = raw_output
+    output = str(raw_output)
+    if isinstance(raw_output, str):
+        output = raw_output
+        stripped = raw_output.strip()
+        if stripped:
+            try:
+                payload = json.loads(stripped)
+            except json.JSONDecodeError:
+                payload = raw_output
+
+    envelope, used_fallback = progress_handoff.parse_implement_progress_envelope(
+        payload
     )
-    return (True, None, command_output)
+    return envelope, used_fallback, output
+
+
+def _format_structured_output_validation_failure(
+    exc: AgentOutputValidationError,
+) -> str:
+    lines = [
+        "[implement] structured_output=invalid",
+        "[implement] fallback_handoff_envelope=used",
+        f"[implement] validation_error={exc.error_summary}",
+    ]
+    if exc.last_text:
+        lines.append(f"[implement] last_output={exc.last_text}")
+    return "\n".join(lines)
 
 
 def _format_failed_implement_output(
@@ -92,6 +181,10 @@ def _format_failed_implement_output(
     return f"[implement] command={command}\n[implement] error={message}"
 
 
+def _format_success_implement_output(command: str, output: str) -> str:
+    return f"[implement] command={command}\n[implement] returncode=0\n{output}"
+
+
 def _build_implement_prompt(implement_inputs: ImplementStepInputs) -> str:
     return build_implementation_prompt(
         feature=implement_inputs.feature,
@@ -106,15 +199,10 @@ def _ensure_progress_artifacts(implement_inputs: ImplementStepInputs) -> None:
     if not isinstance(feature_id, str) or not feature_id.strip():
         feature_id = "unknown-feature"
 
-    progress_paths.progress_dir(project_root).mkdir(parents=True, exist_ok=True)
+    progress_paths.runs_dir(project_root).mkdir(parents=True, exist_ok=True)
     progress_paths.runs_jsonl_path(project_root).touch(exist_ok=True)
 
-    timestamp = (
-        datetime.now(timezone.utc)
-        .replace(microsecond=0)
-        .isoformat()
-        .replace("+00:00", "Z")
-    )
+    timestamp = progress_handoff.now_iso()
     progress_logging.append_text_block(
         log_path=progress_paths.run_feature_log_path(project_root, feature_id),
         lines=[

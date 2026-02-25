@@ -20,7 +20,7 @@ from engineeringagent.checks.reviewers.engine import (
 
 def test_reviewers_state_path_helper(tmp_path: Path) -> None:
     assert progress_paths.reviewers_state_path(tmp_path) == (
-        tmp_path / "progress" / "reviewers-state.json"
+        tmp_path / "progress" / "reviewers" / "state.json"
     )
 
 
@@ -38,7 +38,7 @@ def test_reviewers_state_round_trip_under_progress_directory(tmp_path) -> None:
     loaded = load_reviewers_state(tmp_path)
 
     assert loaded["features"]["FEAT-050"]["reviewers"]["code_simplifier"]["approved"]
-    state_path = tmp_path / "progress" / "reviewers-state.json"
+    state_path = tmp_path / "progress" / "reviewers" / "state.json"
     payload = json.loads(state_path.read_text(encoding="utf-8"))
     assert payload["version"] == "1"
 

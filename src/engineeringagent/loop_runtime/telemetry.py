@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import re
 import time
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Sequence
 
+from engineeringagent.progress import handoff as progress_handoff
 from engineeringagent.progress import logging as progress_logging
 from engineeringagent.progress import paths as progress_paths
 
@@ -22,16 +22,6 @@ FEEDBACK_CONTEXT_BLOCK_RE = re.compile(
 
 def _strip_feedback_context_blocks(text: str) -> str:
     return FEEDBACK_CONTEXT_BLOCK_RE.sub("", text)
-
-
-def now_iso() -> str:
-    """Return current UTC timestamp in compact ISO-8601 format."""
-    return (
-        datetime.now(timezone.utc)
-        .replace(microsecond=0)
-        .isoformat()
-        .replace("+00:00", "Z")
-    )
 
 
 def append_run(log_path: Path, payload: dict[str, Any]) -> None:
@@ -95,6 +85,11 @@ def _reviewer_feedback_metadata(
     if forwarded is None:
         return None, False, ""
     return forwarded, True, _summarize_reviewer_feedback(forwarded)
+
+
+def now_iso() -> str:
+    """Return the current UTC timestamp in ISO-8601 format."""
+    return progress_handoff.now_iso()
 
 
 def _format_phase_timing_fields(timing: PhaseTiming) -> str:
@@ -287,4 +282,35 @@ def write_iteration_telemetry(  # noqa: C901
         [_strip_ansi(line) for line in feature_progress_log_lines],
     )
     append_run(runs_log, run_payload)
+    _append_feature_handoff_markdown(
+        telemetry_inputs=telemetry_inputs,
+        feature_id=feature_id,
+        timestamp=str(run_payload["ts"]),
+        project_root=project_root,
+    )
     return feature_progress_log_reference
+
+
+def _append_feature_handoff_markdown(
+    *,
+    telemetry_inputs: IterationTelemetryInputs,
+    feature_id: str,
+    timestamp: str,
+    project_root: Path,
+) -> None:
+    envelope = telemetry_inputs.implement_handoff_envelope
+    used_fallback = telemetry_inputs.implement_handoff_used_fallback
+    if envelope is None:
+        envelope = progress_handoff.fallback_implement_progress_envelope()
+        used_fallback = True
+
+    entry_lines = progress_handoff.render_handoff_markdown_entry(
+        attempt=telemetry_inputs.iteration_inputs.attempt,
+        envelope=envelope,
+        timestamp=timestamp,
+        used_fallback=used_fallback,
+    )
+    progress_handoff.append_handoff_markdown_entry(
+        handoff_path=progress_paths.handoff_markdown_path(project_root, feature_id),
+        entry_lines=entry_lines,
+    )
