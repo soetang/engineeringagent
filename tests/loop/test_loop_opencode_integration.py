@@ -795,7 +795,7 @@ def test_gate_failure_feedback_replaces_previous_feedback_integration(
     assert "retry_feedback_parse_error" not in prompts[2]
 
 
-def test_loop_archived_done_requires_same_iteration_completion_commit(
+def test_loop_archived_done_stops_run_all_when_selected_path_disappears(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -890,26 +890,25 @@ def test_loop_archived_done_requires_same_iteration_completion_commit(
         max_iterations=4,
     )
 
-    assert code == 0
+    assert code == 1
     runs = [
         json.loads(line)
         for line in (project_root / "progress" / "runs" / "runs.jsonl")
         .read_text(encoding="utf-8")
         .splitlines()
     ]
-    assert [run["feature_id"] for run in runs[:2]] == ["FEAT-901", "FEAT-902"]
-    assert all(run["result"] == "passed" for run in runs[:2])
+    assert len(runs) == 1
+    assert runs[0]["feature_id"] == "FEAT-901"
+    assert runs[0]["result"] == "failed"
+    assert runs[0]["failed_gate"] == "feature_missing"
+    assert runs[0]["next_action"] == "retry_same_feature"
 
     archived_selected = (
         project_root / "docs" / "spec" / "features_done" / feature_path.name
     )
     assert not feature_path.exists()
     assert archived_selected.exists()
-    archived_follow_on = (
-        project_root / "docs" / "spec" / "features_done" / second_feature_path.name
-    )
-    assert not second_feature_path.exists()
-    assert archived_follow_on.exists()
+    assert second_feature_path.exists()
 
     ending_head = _run_git(project_root, "rev-parse", "HEAD").stdout.strip()
-    assert ending_head != starting_head
+    assert ending_head == starting_head

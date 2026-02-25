@@ -55,12 +55,11 @@ class IterationOutcome(BaseModel):
 
 
 class InitialFeatureLoadOutcome(BaseModel):
-    """Outcome of loading the selected feature YAML (optionally from archive)."""
+    """Outcome of loading the selected feature YAML."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     feature: dict[str, Any] | None
-    loaded_from_archive: bool
     result: str
     failed_gate: str | None
     hook_feedback: str | None
@@ -72,7 +71,6 @@ class PostImplementFeatureOutcome(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     feature: dict[str, Any] | None
-    loaded_from_archive: bool
     archived_in_iteration: bool
     archived_path: Path | None
     result: str

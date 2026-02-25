@@ -177,79 +177,45 @@ def test_feature_state_error_paths(tmp_path: Path, monkeypatch: Any) -> None:
         feature_state_module._resolve_archive_path(tmp_path, bad_yaml)
 
     missing_outside = tmp_path / "missing.yaml"
-    loaded, from_archive, error = (
-        feature_state_module._load_selected_feature_with_archive_fallback(
-            tmp_path,
-            missing_outside,
-        )
-    )
+    loaded, error = feature_state_module._load_selected_feature(missing_outside)
     assert loaded is None
-    assert from_archive is False
-    assert "cannot be archive-resolved" in str(error)
+    assert "disappeared during loop iteration" in str(error)
 
     active_feature_path = features_dir / "FEAT-002.yaml"
     done_dir = tmp_path / "docs" / "spec" / "features_done"
     done_dir.mkdir(parents=True)
-    (done_dir / active_feature_path.name).write_text("[", encoding="utf-8")
-    loaded, from_archive, error = (
-        feature_state_module._load_selected_feature_with_archive_fallback(
-            tmp_path,
-            active_feature_path,
-        )
-    )
+    active_feature_path.write_text("[", encoding="utf-8")
+    loaded, error = feature_state_module._load_selected_feature(active_feature_path)
     assert loaded is None
-    assert from_archive is False
-    assert "failed to load archived feature YAML" in str(error)
+    assert "failed to load selected feature YAML" in str(error)
 
-    assert (
-        "missing-message"
-        in feature_state_module._archived_feature_mismatch_feedback(
-            None,
-            active_feature_path,
-            missing_message="missing-message",
-            done_message="done-message",
-        )
-    )
-    assert (
-        "archived status is not done"
-        in feature_state_module._archived_feature_mismatch_feedback(
-            {"status": "blocked"},
-            active_feature_path,
-            missing_message="missing-message",
-            done_message="done-message",
-        )
-    )
+    active_feature_path.write_text("id: FEAT-002\nstatus: done\n", encoding="utf-8")
+    loaded, error = feature_state_module._load_selected_feature(active_feature_path)
+    assert loaded is not None
+    assert error is None
 
     monkeypatch.setattr(
         feature_state_module,
-        "_load_selected_feature_with_archive_fallback",
-        lambda *_args, **_kwargs: ({"status": "done"}, True, None),
-    )
-    monkeypatch.setattr(
-        feature_state_module,
-        "_resolve_archive_path",
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(ValueError("cannot resolve")),
+        "_load_selected_feature",
+        lambda *_args, **_kwargs: (None, "load-failed"),
     )
     post_outcome = feature_state_module._refresh_feature_after_implement(
-        tmp_path,
         active_feature_path,
-        selected_started_active=True,
-    )
-    assert post_outcome.result == "failed"
-    assert post_outcome.failed_gate == "feature_archive"
-
-    monkeypatch.setattr(
-        feature_state_module,
-        "_load_selected_feature_with_archive_fallback",
-        lambda *_args, **_kwargs: ({"status": "blocked"}, True, None),
-    )
-    post_outcome = feature_state_module._refresh_feature_after_implement(
-        tmp_path,
-        active_feature_path,
-        selected_started_active=True,
     )
     assert post_outcome.result == "failed"
     assert post_outcome.failed_gate == "feature_missing"
+    assert post_outcome.hook_feedback == "load-failed"
+
+    monkeypatch.setattr(
+        feature_state_module,
+        "_load_selected_feature",
+        lambda *_args, **_kwargs: ({"status": "blocked"}, None),
+    )
+    post_outcome = feature_state_module._refresh_feature_after_implement(
+        active_feature_path,
+    )
+    assert post_outcome.result == "passed"
+    assert post_outcome.failed_gate is None
 
     monkeypatch.setattr(
         feature_state_module,

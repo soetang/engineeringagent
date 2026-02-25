@@ -40,8 +40,8 @@ class IterationPipelineDependencies(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    evaluate_initial_feature_load: Callable[[Path, Path], InitialFeatureLoadOutcome]
-    ready_for_active_iteration: Callable[[str, dict[str, Any] | None, bool], bool]
+    evaluate_initial_feature_load: Callable[[Path], InitialFeatureLoadOutcome]
+    ready_for_active_iteration: Callable[[str, dict[str, Any] | None], bool]
     touch_active_feature_for_iteration: Callable[[dict[str, Any], Path], None]
     run_implement_step: Callable[
         [
@@ -53,10 +53,8 @@ class IterationPipelineDependencies(BaseModel):
         ],
         ImplementStepResult,
     ]
-    refresh_feature_after_implement: Callable[
-        [Path, Path, bool], PostImplementFeatureOutcome
-    ]
-    should_archive_selected_feature: Callable[[str, dict[str, Any] | None, bool], bool]
+    refresh_feature_after_implement: Callable[[Path], PostImplementFeatureOutcome]
+    should_archive_selected_feature: Callable[[str, dict[str, Any] | None], bool]
     archive_completed_feature: Callable[
         [Path, Path], tuple[bool, Path | None, str | None]
     ]
@@ -270,12 +268,10 @@ def _run_implement_phase_if_ready(
     iteration_inputs: FeatureIterationInputs,
     dependencies: IterationPipelineDependencies,
     feature: dict[str, Any] | None,
-    loaded_from_archive: bool,
 ) -> None:
     if not dependencies.ready_for_active_iteration(
         state.result,
         feature,
-        loaded_from_archive,
     ):
         return
 
@@ -368,20 +364,16 @@ def _refresh_feature_after_implement_if_ready(
     iteration_inputs: FeatureIterationInputs,
     dependencies: IterationPipelineDependencies,
     feature: dict[str, Any] | None,
-    loaded_from_archive: bool,
-) -> tuple[dict[str, Any] | None, bool]:
+) -> dict[str, Any] | None:
     if not dependencies.ready_for_active_iteration(
         state.result,
         feature,
-        loaded_from_archive,
     ):
-        return feature, loaded_from_archive
+        return feature
 
     assert feature is not None
     post_refresh = dependencies.refresh_feature_after_implement(
-        iteration_inputs.project_root,
         iteration_inputs.feature_path,
-        state.selected_started_active,
     )
     state.archived_in_iteration = post_refresh.archived_in_iteration
     state.archived_path = post_refresh.archived_path
@@ -389,14 +381,14 @@ def _refresh_feature_after_implement_if_ready(
         state.result = post_refresh.result
         state.failed_gate = post_refresh.failed_gate
         state.next_hook_feedback = post_refresh.hook_feedback
-        return post_refresh.feature, post_refresh.loaded_from_archive
+        return post_refresh.feature
 
-    if post_refresh.feature is not None and not post_refresh.loaded_from_archive:
+    if post_refresh.feature is not None:
         dependencies.touch_active_feature_for_iteration(
             post_refresh.feature,
             iteration_inputs.feature_path,
         )
-    return post_refresh.feature, post_refresh.loaded_from_archive
+    return post_refresh.feature
 
 
 def _archive_selected_feature_if_needed(
@@ -404,12 +396,10 @@ def _archive_selected_feature_if_needed(
     iteration_inputs: FeatureIterationInputs,
     dependencies: IterationPipelineDependencies,
     post_feature: dict[str, Any] | None,
-    loaded_post_from_archive: bool,
 ) -> None:
     should_archive = dependencies.should_archive_selected_feature(
         state.result,
         post_feature,
-        loaded_post_from_archive,
     )
     if not should_archive:
         return
@@ -556,7 +546,6 @@ def run_feature_iteration_pipeline(
 
     def _run_initial_load_phase() -> InitialFeatureLoadOutcome:
         initial_load = dependencies.evaluate_initial_feature_load(
-            iteration_inputs.project_root,
             iteration_inputs.feature_path,
         )
         _apply_initial_load_result(
@@ -569,7 +558,6 @@ def run_feature_iteration_pipeline(
 
     initial_load = _timed_phase(phase_timings, "initial_load", _run_initial_load_phase)
     feature = initial_load.feature
-    loaded_from_archive = initial_load.loaded_from_archive
     feature_id = str(feature.get("id", "")) if feature else ""
 
     def _implement_timing_hook(started_epoch_sec: int, ended_epoch_sec: int) -> None:
@@ -588,16 +576,14 @@ def run_feature_iteration_pipeline(
             iteration_inputs,
             dependencies,
             feature,
-            loaded_from_archive,
         ),
         timing_hook=_implement_timing_hook,
     )
-    post_feature, loaded_post_from_archive = _refresh_feature_after_implement_if_ready(
+    post_feature = _refresh_feature_after_implement_if_ready(
         state,
         iteration_inputs,
         dependencies,
         feature,
-        loaded_from_archive,
     )
 
     _timed_phase(
@@ -608,7 +594,6 @@ def run_feature_iteration_pipeline(
             iteration_inputs,
             dependencies,
             post_feature,
-            loaded_post_from_archive,
         ),
     )
     _timed_phase(
@@ -691,11 +676,6 @@ def run_feature_iteration_pipeline(
         action="implement",
         structured=False,
     )
-    archived_selection_path = (
-        str(state.archived_path)
-        if loaded_post_from_archive and state.archived_path is not None
-        else None
-    )
     return IterationReport(
         completed=state.completed,
         result=state.result,
@@ -706,7 +686,7 @@ def run_feature_iteration_pipeline(
         attempt=iteration_inputs.attempt,
         selected_feature_path=str(iteration_inputs.feature_path),
         implement_step=implement_step,
-        archived_selection_path=archived_selection_path,
+        archived_selection_path=None,
         verification_status=state.verification_status,
         verification_failed_command=state.verification_failed_command,
         reviewer_status=state.reviewer_status,
