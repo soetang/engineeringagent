@@ -11,15 +11,11 @@ from engineeringagent.changed_paths import ChangedPathsResult
 from engineeringagent.checks.reviewers.engine import (
     DECISION_REQUEST_CHANGES,
     FEATURE_DONE_PHASE,
-    MATCHED_ON_CHANGE_REASON,
-    NO_ON_CHANGE_MATCH_REASON,
     PARSER_FAILURE_SUMMARY_PREFIX,
     ReviewerDecisionEnvelope,
     evaluate_cached_reviewer_approval,
     increment_blocking_reviewer_retry_count,
     invalidate_reviewer_approval,
-    load_reviewer_config,
-    plan_reviewers,
     record_reviewer_approval,
     run_reviewer,
 )
@@ -106,70 +102,6 @@ def test_invalidate_reviewer_approval_is_defensive() -> None:
         feature_id="f",
         reviewer_id="r",
     )
-
-
-def test_load_reviewer_config_returns_default_when_missing(tmp_path: Path) -> None:
-    config = load_reviewer_config(tmp_path / "missing.yaml")
-
-    assert config["contract_version"] == "1.0"
-    assert config["profiles"] == {}
-    assert config["reviewers"] == {}
-
-
-def test_plan_reviewers_unknown_profile_raises() -> None:
-    with pytest.raises(ValueError, match="unknown profile"):
-        plan_reviewers(
-            {"contract_version": "1.0", "profiles": {}, "reviewers": {}},
-            "missing",
-            phase=FEATURE_DONE_PHASE,
-            changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
-        )
-
-
-def test_plan_reviewers_covers_run_and_skip_reasons() -> None:
-    config = {
-        "contract_version": "1.0",
-        "profiles": {"default": ["phase_mismatch", "always", "match", "skip"]},
-        "reviewers": {
-            "phase_mismatch": {"trigger": {"phase": "some_other_phase"}},
-            "always": {"trigger": {"phase": FEATURE_DONE_PHASE}},
-            "match": {
-                "trigger": {"phase": FEATURE_DONE_PHASE, "on_change": ["src/**"]}
-            },
-            "skip": {
-                "trigger": {"phase": FEATURE_DONE_PHASE, "on_change": ["docs/**"]}
-            },
-        },
-    }
-
-    # Non-run_all path exercises phase mismatch, always-run, match, and skip.
-    changed = ChangedPathsResult(paths=("src/app.py",), run_all=False, reason=None)
-    decisions = plan_reviewers(
-        config,
-        "default",
-        phase=FEATURE_DONE_PHASE,
-        changed_paths=changed,
-    )
-    assert [item["reviewer"] for item in decisions] == [
-        "phase_mismatch",
-        "always",
-        "match",
-        "skip",
-    ]
-    assert decisions[1]["reason"] != MATCHED_ON_CHANGE_REASON
-    assert decisions[2]["reason"] == MATCHED_ON_CHANGE_REASON
-    assert decisions[3]["reason"] == NO_ON_CHANGE_MATCH_REASON
-
-    # Run-all path forces deterministic fallback reason.
-    run_all = ChangedPathsResult(paths=(), run_all=True, reason="forced")
-    decisions = plan_reviewers(
-        config,
-        "default",
-        phase=FEATURE_DONE_PHASE,
-        changed_paths=run_all,
-    )
-    assert decisions[1]["decision"] == "run"
-    assert decisions[1]["reason"] == "forced"
 
 
 def test_evaluate_cached_reviewer_approval_invalidates_when_unscoped_changes_present() -> (

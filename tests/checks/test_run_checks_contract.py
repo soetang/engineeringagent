@@ -6,7 +6,7 @@ from typing import Any, cast
 
 import pytest
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from engineeringagent.changed_paths import ChangedPathsResult
 from engineeringagent.checks import run_checks
@@ -21,8 +21,10 @@ from engineeringagent.checks.api import (
 from engineeringagent.prompt_feedback import normalize_prompt_feedback
 from engineeringagent.checks.config_loader import load_harness_checks_document
 from engineeringagent.checks.strategy_contracts import (
+    CheckDecision,
     CheckExecutionRecord,
     build_strategy_registry,
+    strategy_run_decisions,
 )
 from engineeringagent.specs import HarnessCheckPhase
 
@@ -137,6 +139,35 @@ def test_call_collect_changed_paths_falls_back_when_kwargs_unexpected(
     )
     assert result == {"ok": True}
     assert calls == [("one-arg", tmp_path)]
+
+
+def test_call_collect_changed_paths_falls_back_when_signature_introspection_fails(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[Path] = []
+
+    def _collector(project_root: Path) -> object:
+        calls.append(project_root)
+        return {"ok": True}
+
+    def _raise_signature_error(_fn: object) -> object:
+        raise TypeError("signature unavailable")
+
+    monkeypatch.setattr(
+        "engineeringagent.checks.api.inspect.signature",
+        _raise_signature_error,
+        raising=True,
+    )
+
+    result = _call_collect_changed_paths(
+        _collector,
+        tmp_path,
+        base="main",
+        head="feature",
+    )
+    assert result == {"ok": True}
+    assert calls == [tmp_path]
 
 
 def test_call_collect_changed_paths_does_not_swallow_internal_type_errors(
@@ -267,6 +298,36 @@ def test_build_strategy_registry_rejects_invalid_check_type() -> None:
 def test_build_strategy_registry_rejects_duplicate_registration() -> None:
     with pytest.raises(ValueError, match="duplicate"):
         build_strategy_registry([_StubStrategy("command"), _StubStrategy("command")])
+
+
+def test_strategy_run_decisions_filters_run_entries_in_order() -> None:
+    decisions: tuple[CheckDecision, ...] = (
+        CheckDecision(
+            check_id="cmd_a",
+            check_type="command",
+            phase="iteration_end",
+            decision="run",
+            reason="always",
+        ),
+        CheckDecision(
+            check_id="fit_a",
+            check_type="fitness",
+            phase="iteration_end",
+            decision="run",
+            reason="always",
+        ),
+        CheckDecision(
+            check_id="cmd_b",
+            check_type="command",
+            phase="iteration_end",
+            decision="skip",
+            reason="no_change_match",
+        ),
+    )
+
+    result = strategy_run_decisions(decisions)
+    assert [entry["check_id"] for entry in result] == ["cmd_a", "fit_a"]
+    assert [entry["decision"] for entry in result] == ["run", "run"]
 
 
 def test_run_checks_schema_only_requires_validate_group(tmp_path: Path) -> None:
@@ -433,6 +494,57 @@ def test_shared_loader_returns_document_on_valid_config(tmp_path: Path) -> None:
     assert error is None
     assert doc is not None
     assert "smoke" in doc.checks
+
+
+def test_shared_loader_model_validation_error_is_deterministic(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _write_checks_yaml(
+        tmp_path,
+        "\n".join(
+            [
+                'contract_version: "1.0"',
+                "checks:",
+                "  smoke:",
+                "    type: command",
+                '    command: "echo ok"',
+                "",
+            ]
+        ),
+    )
+
+    class _ValidationProbe(BaseModel):
+        value: int
+
+    validation_error: ValidationError | None = None
+    try:
+        _ValidationProbe.model_validate({"value": "invalid"})
+    except ValidationError as exc:
+        validation_error = exc
+    assert validation_error is not None
+
+    def _raise_validation_error(_payload: object) -> object:
+        raise validation_error
+
+    monkeypatch.setattr(
+        "engineeringagent.checks.config_loader.checks_contract_issues",
+        lambda *_args, **_kwargs: [],
+        raising=True,
+    )
+    monkeypatch.setattr(
+        "engineeringagent.checks.config_loader.HarnessChecksDocument.model_validate",
+        _raise_validation_error,
+        raising=True,
+    )
+
+    doc, error = load_harness_checks_document(
+        tmp_path,
+        error_prefix="checks config error",
+    )
+    assert doc is None
+    assert error is not None
+    assert "checks config error: failed to validate harness/checks.yaml:" in error
 
 
 def test_run_checks_check_id_without_harness_doc_fails_deterministically(

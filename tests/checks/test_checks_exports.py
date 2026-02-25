@@ -50,6 +50,22 @@ def test_checks_group_helpers_use_deterministic_contract() -> None:
     )
 
 
+@pytest.mark.parametrize(
+    "legacy_name",
+    [
+        "load_reviewer_config",
+        "parse_reviewer_decision",
+        "plan_reviewers",
+        "run_planned_command_checks",
+        "run_planned_fitness_checks",
+        "run_planned_reviewer_checks",
+    ],
+)
+def test_checks_does_not_export_removed_legacy_runtime_helpers(legacy_name: str) -> None:
+    assert legacy_name not in checks.__all__
+    assert not hasattr(checks, legacy_name)
+
+
 def test_checks_emit_fitness_result_is_deterministic_and_validates(
     capsys: pytest.CaptureFixture[str],
 ) -> None:

@@ -6,6 +6,9 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 
+import pytest
+from engineeringagent import checks
+
 
 def _load_checker_module(repo_root: Path):
     checker_path = (
@@ -128,6 +131,11 @@ def test_checker_allows_importing_checks_group_helpers_from_top_level_checks(
     assert not checker._collect_violations(tmp_path)
 
 
+def test_checker_allowed_top_level_names_match_checks_exports(repo_root: Path) -> None:
+    checker = _load_checker_module(repo_root)
+    assert checker._ALLOWED_CHECKS_IMPORT_NAMES == set(checks.__all__)
+
+
 def test_checker_flags_disallowed_top_level_imports_even_if_exported(
     tmp_path: Path,
     repo_root: Path,
@@ -153,5 +161,46 @@ def test_checker_flags_disallowed_top_level_imports_even_if_exported(
     violations = checker._collect_violations(tmp_path)
     assert (
         "src/engineeringagent/bad.py:1 imports disallowed name CONTRACT_VERSION from engineeringagent.checks"
+        in violations
+    )
+
+
+@pytest.mark.parametrize(
+    "legacy_name",
+    [
+        "load_reviewer_config",
+        "parse_reviewer_decision",
+        "plan_reviewers",
+        "run_planned_command_checks",
+        "run_planned_fitness_checks",
+        "run_planned_reviewer_checks",
+    ],
+)
+def test_checker_flags_removed_legacy_runtime_helper_imports(
+    tmp_path: Path,
+    repo_root: Path,
+    legacy_name: str,
+) -> None:
+    checker = _load_checker_module(repo_root)
+
+    src_root = tmp_path / "src" / "engineeringagent"
+    src_root.mkdir(parents=True)
+    (src_root / "__init__.py").write_text("", encoding="utf-8")
+    (src_root / "bad_legacy.py").write_text(
+        "\n".join(
+            [
+                f"from engineeringagent.checks import {legacy_name}",
+                "\n",
+                "def run() -> None:",
+                f"    _ = {legacy_name}",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    violations = checker._collect_violations(tmp_path)
+    assert (
+        f"src/engineeringagent/bad_legacy.py:1 imports disallowed name {legacy_name} from engineeringagent.checks"
         in violations
     )

@@ -26,7 +26,6 @@ from engineeringagent.specs import (
 from engineeringagent.checks.strategy_contracts import (
     CheckDecision,
     CheckDecisionAction,
-    map_strategy_decisions,
 )
 
 from ..planning_policy import (
@@ -91,56 +90,9 @@ def plan_reviewer_checks(
     )
 
 
-def iter_planned_reviewer_checks(
-    doc: HarnessChecksDocument,
-    planned: Iterable[PlannedCheck],
-) -> Iterable[tuple[str, HarnessCheckReviewerDefinition]]:
-    """Yield reviewer check definitions referenced by planned entries.
-
-    This helper exists for unit tests and mirrors the legacy harness runtime
-    behavior (it does not filter on the planned decision).
-    """
-
-    by_id = doc.checks
-    for entry in planned:
-        check = by_id.get(entry.check_id)
-        if not isinstance(check, HarnessCheckReviewerDefinition):
-            continue
-        yield entry.check_id, check
-
-
-def planned_reviewer_checks_from_decisions(
-    decisions: Iterable[CheckDecision],
-) -> tuple[PlannedCheck, ...]:
-    """Convert reviewer strategy decisions into runtime ``PlannedCheck`` entries."""
-
-    return map_strategy_decisions(
-        decisions,
-        check_type="reviewer",
-        mapper=lambda decision: PlannedCheck(
-            check_id=decision["check_id"],
-            decision=cast(CheckDecisionAction, decision["decision"]),
-            reason=decision["reason"],
-        ),
-    )
-
-
-def run_planned_reviewer_checks(
-    request: RunPlannedReviewerChecksRequest,
-) -> tuple[bool, str | None, str, dict[str, Any] | None]:
-    """Execute computed reviewer plan and return deterministic outcome."""
-
-    planned = plan_reviewer_checks(
-        request.doc,
-        phase=request.phase,
-        changed_paths=request.changed_paths,
-    )
-    return run_planned_reviewer_checks_from_plan(request, planned)
-
-
 def run_planned_reviewer_checks_from_plan(
     request: RunPlannedReviewerChecksRequest,
-    planned: Iterable[PlannedCheck],
+    planned: Iterable[CheckDecision],
 ) -> tuple[bool, str | None, str, dict[str, Any] | None]:
     """Execute reviewer checks from an existing deterministic plan."""
 
@@ -152,17 +104,12 @@ def run_planned_reviewer_checks_from_plan(
     output_parts: list[str] = []
 
     for entry in planned_entries:
-        reviewer_def = request.doc.checks.get(entry.check_id)
+        check_id = str(entry["check_id"])
+        reviewer_def = request.doc.checks.get(check_id)
         if not isinstance(reviewer_def, HarnessCheckReviewerDefinition):
             continue
 
-        if entry.decision != "run":
-            output_parts.append(
-                f"[reviewer:{entry.check_id}] skip reason={entry.reason}"
-            )
-            continue
-
-        reviewer_id = entry.check_id
+        reviewer_id = check_id
         reviewer = reviewer_def.model_dump(mode="python")
         on_change = (
             reviewer_def.when.on_change if reviewer_def.when is not None else None

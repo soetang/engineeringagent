@@ -18,7 +18,6 @@ from engineeringagent.checks.fitness.runtime import plan_fitness_checks
 from engineeringagent.checks.reviewers.runtime import (
     RunPlannedReviewerChecksRequest,
     plan_reviewer_checks,
-    planned_reviewer_checks_from_decisions,
     run_planned_reviewer_checks_from_plan,
 )
 from engineeringagent.checks.validate import runtime as validate_runtime
@@ -26,7 +25,6 @@ from engineeringagent.process import run_shell_command
 from engineeringagent.specs import (
     HarnessCheckCommandDefinition,
     HarnessCheckFitnessDefinition,
-    HarnessCheckReviewerDefinition,
     HarnessChecksDocument,
     load_yaml,
 )
@@ -37,8 +35,8 @@ from .strategy_contracts import (
     CheckDecision,
     CheckExecutionRecord,
     CheckStrategy,
+    make_check_decision,
     plan_doc_strategy_decisions,
-    plan_single_strategy_decision,
     strategy_run_decisions,
 )
 
@@ -81,10 +79,7 @@ class CommandCheckStrategy(CheckStrategy):
         decisions: tuple[CheckDecision, ...],
     ) -> tuple[CheckExecutionRecord, ...]:
         records: list[CheckExecutionRecord] = []
-        for decision in strategy_run_decisions(
-            decisions,
-            check_type=self.check_type,
-        ):
+        for decision in strategy_run_decisions(decisions):
             check_id = decision["check_id"]
             check = self._doc.checks.get(check_id)
             if not isinstance(check, HarnessCheckCommandDefinition):
@@ -201,7 +196,6 @@ class FitnessCheckStrategy(CheckStrategy):
 
         for decision in strategy_run_decisions(
             decisions,
-            check_type=self.check_type,
         ):
             record, catalog = self._execute_decision(
                 context=context,
@@ -379,12 +373,14 @@ class ValidateCheckStrategy(CheckStrategy):
         *,
         context: CheckContext,
     ) -> tuple[CheckDecision, ...]:
-        return plan_single_strategy_decision(
-            context=context,
-            check_id="validate",
-            check_type=self.check_type,
-            decision="run",
-            reason=ALWAYS_RUN_NO_ON_CHANGE_REASON,
+        return (
+            make_check_decision(
+                check_id="validate",
+                check_type=self.check_type,
+                phase=context.phase,
+                decision="run",
+                reason=ALWAYS_RUN_NO_ON_CHANGE_REASON,
+            ),
         )
 
     def execute(
@@ -393,7 +389,7 @@ class ValidateCheckStrategy(CheckStrategy):
         context: CheckContext,
         decisions: tuple[CheckDecision, ...],
     ) -> tuple[CheckExecutionRecord, ...]:
-        if not strategy_run_decisions(decisions, check_type=self.check_type):
+        if not strategy_run_decisions(decisions):
             return ()
         messages = validate_runtime.run_validate(
             context.project_root,
@@ -456,17 +452,8 @@ class ReviewerCheckStrategy(CheckStrategy):
         context: CheckContext,
         decisions: tuple[CheckDecision, ...],
     ) -> tuple[CheckExecutionRecord, ...]:
-        planned = planned_reviewer_checks_from_decisions(decisions)
-        run_planned = tuple(entry for entry in planned if entry.decision == "run")
+        run_planned = strategy_run_decisions(decisions)
         if not run_planned:
-            return ()
-
-        if not any(
-            isinstance(
-                self._doc.checks.get(entry.check_id), HarnessCheckReviewerDefinition
-            )
-            for entry in run_planned
-        ):
             return ()
 
         feature_path = context.feature_path
@@ -496,11 +483,11 @@ class ReviewerCheckStrategy(CheckStrategy):
                 run_agent_fn=context.run_agent_fn,
                 prior_feedback=context.prior_feedback,
             ),
-            planned,
+            run_planned,
         )
         return (
             CheckExecutionRecord(
-                check_id=failed_id or self._first_reviewer_check_id(decisions),
+                check_id=failed_id or run_planned[0]["check_id"],
                 check_type=self.check_type,
                 ok=ok,
                 output=output,
@@ -533,16 +520,6 @@ class ReviewerCheckStrategy(CheckStrategy):
                 if isinstance(action, str) and action.strip():
                     lines.append(f"  - {action.strip()}")
         return "\n".join(lines)
-
-    def _first_reviewer_check_id(self, decisions: tuple[CheckDecision, ...]) -> str:
-        for decision in strategy_run_decisions(
-            decisions,
-            check_type=self.check_type,
-        ):
-            check = self._doc.checks.get(decision["check_id"])
-            if isinstance(check, HarnessCheckReviewerDefinition):
-                return decision["check_id"]
-        return "reviewer"
 
     def _config_error_record(self, message: str) -> CheckExecutionRecord:
         return CheckExecutionRecord(

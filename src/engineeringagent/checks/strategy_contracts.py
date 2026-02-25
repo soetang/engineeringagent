@@ -3,13 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import (
     Any,
-    Callable,
     Iterable,
     Mapping,
     NamedTuple,
     Protocol,
     Sequence,
-    TypeVar,
 )
 from typing_extensions import Literal, TypedDict
 
@@ -17,7 +15,6 @@ from engineeringagent.changed_paths import ChangedPathsResult
 from engineeringagent.specs import HarnessCheckPhase, HarnessChecksDocument
 
 CheckDecisionAction = Literal["run", "skip"]
-_MappedDecisionT = TypeVar("_MappedDecisionT")
 
 
 class CheckContext(NamedTuple):
@@ -114,21 +111,6 @@ def map_planned_checks_to_decisions(
     )
 
 
-def plan_strategy_decisions(
-    *,
-    context: CheckContext,
-    check_type: str,
-    entries: Iterable[PlannedCheckRecord],
-) -> tuple[CheckDecision, ...]:
-    """Map planner records to strategy-owned check decisions."""
-
-    return map_planned_checks_to_decisions(
-        entries=entries,
-        check_type=check_type,
-        phase=context.phase,
-    )
-
-
 def plan_doc_strategy_decisions(
     *,
     context: CheckContext,
@@ -138,74 +120,25 @@ def plan_doc_strategy_decisions(
 ) -> tuple[CheckDecision, ...]:
     """Plan deterministic strategy decisions via a doc-backed planner."""
 
-    return plan_strategy_decisions(
-        context=context,
+    return map_planned_checks_to_decisions(
         entries=planner(
             doc,
             phase=context.phase,
             changed_paths=context.changed_paths,
         ),
         check_type=check_type,
-    )
-
-
-def plan_single_strategy_decision(
-    *,
-    context: CheckContext,
-    check_id: str,
-    check_type: str,
-    decision: CheckDecisionAction,
-    reason: str,
-) -> tuple[CheckDecision, ...]:
-    """Build one strategy decision via the shared mapping path."""
-
-    class _SinglePlannedCheckRecord(NamedTuple):
-        check_id: str
-        decision: CheckDecisionAction
-        reason: str
-
-    return map_planned_checks_to_decisions(
-        entries=(
-            _SinglePlannedCheckRecord(
-                check_id=check_id,
-                decision=decision,
-                reason=reason,
-            ),
-        ),
-        check_type=check_type,
         phase=context.phase,
-    )
-
-
-def map_strategy_decisions(
-    decisions: Iterable[CheckDecision],
-    *,
-    check_type: str,
-    mapper: Callable[[CheckDecision], _MappedDecisionT],
-) -> tuple[_MappedDecisionT, ...]:
-    """Map one strategy's decisions into another deterministic representation."""
-
-    return tuple(
-        mapper(decision)
-        for decision in decisions
-        if decision["check_type"] == check_type
     )
 
 
 def strategy_run_decisions(
     decisions: Iterable[CheckDecision],
-    *,
-    check_type: str,
 ) -> tuple[CheckDecision, ...]:
-    """Return deterministic run decisions for one strategy type."""
+    """Return deterministic run decisions in input order."""
 
     return tuple(
         decision
-        for decision in map_strategy_decisions(
-            decisions,
-            check_type=check_type,
-            mapper=lambda decision: decision,
-        )
+        for decision in decisions
         if decision["decision"] == "run"
     )
 

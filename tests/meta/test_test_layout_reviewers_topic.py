@@ -16,7 +16,6 @@ import pytest
             "tests/test_reviewers_contract.py",
             "tests/reviewers/test_reviewers_contract.py",
         ),
-        ("tests/test_reviewers_parse.py", "tests/reviewers/test_reviewers_parse.py"),
         (
             "tests/test_reviewers_runtime.py",
             "tests/reviewers/test_reviewers_runtime.py",

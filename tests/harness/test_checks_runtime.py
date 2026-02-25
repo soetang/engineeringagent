@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Any
 
 from pydantic import BaseModel
@@ -11,19 +10,13 @@ from engineeringagent.checks import ChecksRunResult
 from engineeringagent.checks.commands.runtime import (
     CommandInvocationRecord,
     PlannedCheck as CommandPlannedCheck,
-    RunPlannedCommandChecksRequest,
     iter_planned_command_check_commands,
     plan_command_checks,
-    run_planned_command_checks,
 )
 from engineeringagent.checks.fitness.runtime import (
-    RunPlannedFitnessChecksRequest,
     plan_fitness_checks,
-    run_planned_fitness_checks,
 )
 from engineeringagent.checks.reviewers.runtime import (
-    PlannedCheck as ReviewerPlannedCheck,
-    iter_planned_reviewer_checks,
     plan_reviewer_checks,
 )
 from engineeringagent.loop_runtime.models import FeatureIterationInputs
@@ -949,32 +942,6 @@ def test_plan_reviewer_checks_skips_non_reviewer_and_phase_mismatch(
     assert not planned
 
 
-def test_iter_planned_reviewer_checks_skips_non_reviewer_ids(tmp_path: Path) -> None:
-    checks_path = _write_checks_yaml(
-        tmp_path,
-        "\n".join(
-            [
-                'contract_version: "1.0"',
-                "checks:",
-                "  smoke:",
-                "    type: command",
-                "    command: echo hi",
-                "",
-            ]
-        ),
-    )
-    doc = load_checks_document(checks_path)
-
-    planned = [ReviewerPlannedCheck(check_id="smoke", decision="run", reason="always")]
-    yielded = list(
-        iter_planned_reviewer_checks(
-            doc,
-            planned,
-        )
-    )
-    assert not yielded
-
-
 def test_iter_planned_command_check_commands_skips_non_run(tmp_path: Path) -> None:
     checks_path = _write_checks_yaml(
         tmp_path,
@@ -999,6 +966,29 @@ def test_iter_planned_command_check_commands_skips_non_run(tmp_path: Path) -> No
         )
     )
     assert not yielded
+
+
+def test_iter_planned_command_check_commands_yields_run_command(
+    tmp_path: Path,
+) -> None:
+    checks_path = _write_checks_yaml(
+        tmp_path,
+        "\n".join(
+            [
+                'contract_version: "1.0"',
+                "checks:",
+                "  smoke:",
+                "    type: command",
+                "    command: echo hi",
+                "",
+            ]
+        ),
+    )
+    doc = load_checks_document(checks_path)
+
+    planned = [CommandPlannedCheck(check_id="smoke", decision="run", reason="always")]
+    yielded = list(iter_planned_command_check_commands(doc, planned))
+    assert yielded == [("smoke", "echo hi")]
 
 
 def test_iter_planned_command_check_commands_skips_non_command_defs(
@@ -1026,240 +1016,3 @@ def test_iter_planned_command_check_commands_skips_non_command_defs(
     ]
     yielded = list(iter_planned_command_check_commands(doc, planned))
     assert not yielded
-
-
-def test_run_planned_command_checks_fails_and_emits_verbose_output(
-    tmp_path: Path,
-    capsys: Any,
-    monkeypatch: Any,
-) -> None:
-    checks_path = _write_checks_yaml(
-        tmp_path,
-        "\n".join(
-            [
-                'contract_version: "1.0"',
-                "checks:",
-                "  smoke:",
-                "    type: command",
-                "    command: echo hi",
-                "",
-            ]
-        ),
-    )
-    doc = load_checks_document(checks_path)
-
-    def _run(_root: Path, _command: str) -> Any:
-        return type(
-            "Proc",
-            (),
-            {"returncode": 7, "stdout": "stdout\n", "stderr": "stderr\n"},
-        )()
-
-    request = RunPlannedCommandChecksRequest(
-        project_root=tmp_path,
-        doc=doc,
-        phase=HarnessCheckPhase.ITERATION_END,
-        changed_paths=ChangedPathsResult(paths=(), run_all=True, reason=None),
-        verbose_output=True,
-    )
-    monkeypatch.setattr(
-        "engineeringagent.checks.commands.runtime.run_shell_command",
-        _run,
-        raising=True,
-    )
-    result = run_planned_command_checks(request)
-
-    assert result.ok is False
-    assert result.failed_check_id == "smoke"
-    assert "[check:smoke] returncode=7" in result.output
-    captured = capsys.readouterr().out
-    assert "stdout" in captured
-    assert "stderr" in captured
-
-
-def test_run_planned_fitness_checks_fails_on_missing_rule_ids(tmp_path: Path) -> None:
-    _write_checks_yaml(
-        tmp_path,
-        "\n".join(
-            [
-                'contract_version: "1.0"',
-                "checks:",
-                "  fitness_subset:",
-                "    type: fitness",
-                "    rule_ids: ['demo.present', 'demo.missing']",
-                "",
-            ]
-        ),
-    )
-    _write_fitness_manifest(
-        tmp_path,
-        "\n".join(
-            [
-                'contract_version: "1.0"',
-                "rules:",
-                "  - rule_id: demo.present",
-                "    name: Demo",
-                "    summary: Demo pass",
-                "    rationale: Demo rationale",
-                "    remediation: Demo remediation",
-                "    scope: repo",
-                "    severity: warning",
-                "    side_effect_free: true",
-                "    adapter: command",
-                "    command:",
-                "      - python",
-                "      - -c",
-                "      - >-",
-                '        import json; print(json.dumps({"contract_version": "1.0", "rule_id": "demo.present", "status": "pass", "severity": "warning", "summary": "ok", "violations": []}))',
-                "",
-            ]
-        ),
-    )
-
-    doc = load_checks_document(tmp_path / "harness" / "checks.yaml")
-    request = RunPlannedFitnessChecksRequest(
-        project_root=tmp_path,
-        doc=doc,
-        phase=HarnessCheckPhase.ITERATION_END,
-        changed_paths=ChangedPathsResult(paths=(), run_all=True, reason=None),
-    )
-    ok, failed, output, failed_payload = run_planned_fitness_checks(request)
-
-    assert ok is False
-    assert failed == "fitness_subset"
-    assert "missing_rule_ids" in output
-    assert isinstance(failed_payload, dict)
-    assert failed_payload.get("kind") == "selection_error"
-
-
-def test_run_planned_fitness_checks_runs_only_requested_rule_ids(
-    tmp_path: Path,
-) -> None:
-    _write_checks_yaml(
-        tmp_path,
-        "\n".join(
-            [
-                'contract_version: "1.0"',
-                "checks:",
-                "  fitness_subset:",
-                "    type: fitness",
-                "    rule_ids: ['demo.one']",
-                "",
-            ]
-        ),
-    )
-    _write_fitness_manifest(
-        tmp_path,
-        "\n".join(
-            [
-                'contract_version: "1.0"',
-                "rules:",
-                "  - rule_id: demo.one",
-                "    name: Demo",
-                "    summary: Demo pass",
-                "    rationale: Demo rationale",
-                "    remediation: Demo remediation",
-                "    scope: repo",
-                "    severity: warning",
-                "    side_effect_free: true",
-                "    adapter: command",
-                "    command:",
-                "      - python",
-                "      - -c",
-                "      - >-",
-                '        import json; print(json.dumps({"contract_version": "1.0", "rule_id": "demo.one", "status": "pass", "severity": "warning", "summary": "ok", "violations": []}))',
-                "  - rule_id: demo.two",
-                "    name: Demo",
-                "    summary: Demo pass",
-                "    rationale: Demo rationale",
-                "    remediation: Demo remediation",
-                "    scope: repo",
-                "    severity: warning",
-                "    side_effect_free: true",
-                "    adapter: command",
-                "    command:",
-                "      - python",
-                "      - -c",
-                "      - >-",
-                '        import json; print(json.dumps({"contract_version": "1.0", "rule_id": "demo.two", "status": "pass", "severity": "warning", "summary": "ok", "violations": []}))',
-                "",
-            ]
-        ),
-    )
-
-    doc = load_checks_document(tmp_path / "harness" / "checks.yaml")
-    request = RunPlannedFitnessChecksRequest(
-        project_root=tmp_path,
-        doc=doc,
-        phase=HarnessCheckPhase.ITERATION_END,
-        changed_paths=ChangedPathsResult(paths=(), run_all=True, reason=None),
-    )
-    ok, failed, output, failed_payload = run_planned_fitness_checks(request)
-
-    assert ok is True
-    assert failed is None
-    assert "[fitness:demo.one]" in output
-    assert "[fitness:demo.two]" not in output
-    assert failed_payload is None
-
-
-def test_run_planned_fitness_checks_skips_when_decision_is_skip(
-    tmp_path: Path,
-) -> None:
-    _write_checks_yaml(
-        tmp_path,
-        "\n".join(
-            [
-                'contract_version: "1.0"',
-                "checks:",
-                "  fitness_on_change:",
-                "    type: fitness",
-                "    scope: all",
-                "    when:",
-                "      on_change: ['src/**/*.py']",
-                "",
-            ]
-        ),
-    )
-    _write_fitness_manifest(
-        tmp_path,
-        "\n".join(
-            [
-                'contract_version: "1.0"',
-                "rules:",
-                "  - rule_id: demo.pass",
-                "    name: Demo",
-                "    summary: Demo pass",
-                "    rationale: Demo rationale",
-                "    remediation: Demo remediation",
-                "    scope: repo",
-                "    severity: warning",
-                "    side_effect_free: true",
-                "    adapter: command",
-                "    command:",
-                "      - python",
-                "      - -c",
-                "      - >-",
-                '        import json; print(json.dumps({"contract_version": "1.0", "rule_id": "demo.pass", "status": "pass", "severity": "warning", "summary": "ok", "violations": []}))',
-                "",
-            ]
-        ),
-    )
-    doc = load_checks_document(tmp_path / "harness" / "checks.yaml")
-
-    request = RunPlannedFitnessChecksRequest(
-        project_root=tmp_path,
-        doc=doc,
-        phase=HarnessCheckPhase.ITERATION_END,
-        changed_paths=ChangedPathsResult(
-            paths=("README.md",),
-            run_all=False,
-            reason=None,
-        ),
-    )
-    ok, failed, output, failed_payload = run_planned_fitness_checks(request)
-
-    assert ok is True
-    assert failed is None
-    assert output == ""
-    assert failed_payload is None

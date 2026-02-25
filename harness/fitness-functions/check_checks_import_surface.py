@@ -3,6 +3,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
+from engineeringagent import checks
 from engineeringagent.checks import emit_result_envelope
 from engineeringagent.checks.fitness.contracts import (
     CONTRACT_VERSION,
@@ -14,16 +15,7 @@ from engineeringagent.checks.fitness.contracts import (
 
 RULE_ID = "architecture.checks-import-surface"
 
-_ALLOWED_CHECKS_IMPORT_NAMES = {
-    "ChecksRunResult",
-    "emit_fitness_result",
-    "emit_result_envelope",
-    "list_check_groups",
-    "load_harness_checks_document",
-    "normalize_check_groups",
-    "render_fitness_catalog",
-    "run_checks",
-}
+_ALLOWED_CHECKS_IMPORT_NAMES = set(checks.__all__)
 
 _EXCLUDED_PACKAGES = {
     "checks",

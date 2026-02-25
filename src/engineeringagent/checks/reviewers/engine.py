@@ -8,7 +8,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory, mkdtemp
 from typing import Any, Callable, Iterator, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from engineeringagent.changed_paths import ChangedPathsResult
 from engineeringagent.agents import (
@@ -17,7 +17,6 @@ from engineeringagent.agents import (
     run_agent,
 )
 from engineeringagent.progress import paths as progress_paths
-from engineeringagent.specs import load_yaml, reviewer_contract_issues
 
 from ..on_change_matcher import path_matches_any_glob
 
@@ -278,125 +277,6 @@ def evaluate_cached_reviewer_approval(
     return True, FIRST_FEATURE_APPROVAL_REUSED_REASON
 
 
-def load_reviewer_config(path: Path) -> dict[str, Any]:
-    """Load reviewer configuration from disk.
-
-    Args:
-        path: Path to the reviewers YAML file.
-
-    Returns:
-        Parsed reviewer configuration mapping.
-
-    Raises:
-        ValueError: If the YAML is not a valid reviewer contract.
-    """
-    if not path.exists():
-        return {"contract_version": "1.0", "profiles": {}, "reviewers": {}}
-
-    data = load_yaml(path)
-    contract_issues = reviewer_contract_issues(data, path)
-    if contract_issues:
-        formatted = "; ".join(
-            f"{issue.path}: {issue.message}" for issue in contract_issues
-        )
-        raise ValueError(f"invalid reviewers config: {formatted}")
-    config = dict(data)
-    config.setdefault("contract_version", "1.0")
-    return config
-
-
-def plan_reviewers(
-    config: dict[str, Any],
-    profile: str,
-    *,
-    phase: str,
-    changed_paths: ChangedPathsResult,
-) -> list[dict[str, str]]:
-    """Plan deterministic reviewer run/skip decisions for one profile and phase.
-
-    Args:
-        config: Parsed reviewer configuration mapping.
-        profile: Profile name to evaluate.
-        phase: Requested execution phase (`feature_done` in loop runtime).
-        changed_paths: Resolved changed-path input and fallback metadata.
-
-    Returns:
-        Ordered list of reviewer decision envelopes.
-
-    Raises:
-        ValueError: If profile is unknown.
-    """
-    profiles = config.get("profiles", {})
-    reviewers = config.get("reviewers", {})
-    if profile not in profiles:
-        raise ValueError(f"unknown profile: {profile}")
-
-    fallback_reason = changed_paths.reason or FALLBACK_CHANGE_DISCOVERY_REASON
-    decisions: list[dict[str, str]] = []
-    for reviewer_id in profiles[profile]:
-        reviewer = reviewers.get(reviewer_id, {})
-        trigger = reviewer.get("trigger", {})
-        trigger_phase = _resolve_reviewer_trigger_phase(trigger.get("phase"))
-        if trigger_phase != phase:
-            decisions.append(
-                {
-                    "reviewer": reviewer_id,
-                    "decision": "skip",
-                    "reason": PHASE_MISMATCH_REASON,
-                }
-            )
-            continue
-
-        on_change = trigger.get("on_change")
-        if changed_paths.run_all:
-            decisions.append(
-                {
-                    "reviewer": reviewer_id,
-                    "decision": "run",
-                    "reason": fallback_reason,
-                }
-            )
-            continue
-
-        if on_change is None:
-            decisions.append(
-                {
-                    "reviewer": reviewer_id,
-                    "decision": "run",
-                    "reason": ALWAYS_RUN_NO_ON_CHANGE_REASON,
-                }
-            )
-            continue
-
-        if any(path_matches_any_glob(path, on_change) for path in changed_paths.paths):
-            decisions.append(
-                {
-                    "reviewer": reviewer_id,
-                    "decision": "run",
-                    "reason": MATCHED_ON_CHANGE_REASON,
-                }
-            )
-            continue
-
-        decisions.append(
-            {
-                "reviewer": reviewer_id,
-                "decision": "skip",
-                "reason": NO_ON_CHANGE_MATCH_REASON,
-            }
-        )
-
-    return decisions
-
-
-def _resolve_reviewer_trigger_phase(phase: Any) -> str:
-    """Normalize legacy trigger phases to the feature_done execution contract."""
-    normalized_phase = str(phase or "").strip()
-    if normalized_phase == ITERATION_END_PHASE:
-        return FEATURE_DONE_PHASE
-    return normalized_phase
-
-
 def run_reviewer(
     project_root: Path,
     reviewer_id: str,
@@ -592,83 +472,6 @@ def _copy_sandbox_asset(
         return
 
     shutil.copy2(source_path, target_path)
-
-
-def parse_reviewer_decision(output: str) -> dict[str, Any]:  # noqa: C901
-    """Parse strict reviewer decision JSON; return request_changes on failures."""
-    raw = output.strip()
-    if not raw:
-        return _parser_failure_decision("reviewer produced empty output")
-
-    try:
-        payload = json.loads(raw)
-    except json.JSONDecodeError:
-        payload = _extract_reviewer_decision_payload(raw)
-        if payload is None:
-            return _parser_failure_decision("output is not valid JSON")
-
-    if not isinstance(payload, dict):
-        return _parser_failure_decision("output must be a JSON object")
-
-    try:
-        envelope = ReviewerDecisionEnvelope.model_validate(payload)
-    except ValidationError as exc:
-        return _parser_failure_decision(_format_reviewer_decision_validation_error(exc))
-
-    return envelope.model_dump(exclude_none=True)
-
-
-def _format_reviewer_decision_validation_error(exc: ValidationError) -> str:
-    """Return a deterministic one-line validation error summary."""
-    parts: list[str] = []
-    for error in exc.errors():
-        loc = error.get("loc")
-        if isinstance(loc, (tuple, list)):
-            loc_text = ".".join(str(item) for item in loc) or "root"
-        else:
-            loc_text = "root"
-        message = str(error.get("msg") or "validation error").strip()
-        parts.append(f"{loc_text}: {message}")
-
-    # Preserve order while de-duplicating.
-    seen: set[str] = set()
-    unique: list[str] = []
-    for part in parts:
-        if part in seen:
-            continue
-        unique.append(part)
-        seen.add(part)
-
-    if not unique:
-        return "output does not match reviewer decision schema"
-    return "; ".join(unique)
-
-
-def _extract_reviewer_decision_payload(raw: str) -> dict[str, Any] | None:
-    """Best-effort extraction for wrapped/annotated reviewer outputs.
-
-    Reviewers are instructed to emit exactly one JSON object. In practice, some
-    runners may wrap the final answer in code fences or add lightweight prefixes.
-    To keep the reviewer loop deterministic and resilient, attempt to locate the
-    last JSON object embedded in the output and treat it as the decision payload.
-    """
-
-    decoder = json.JSONDecoder()
-    last_payload: dict[str, Any] | None = None
-    pos = raw.find("{")
-    while pos != -1:
-        try:
-            candidate, end = decoder.raw_decode(raw[pos:])
-        except json.JSONDecodeError:
-            pos = raw.find("{", pos + 1)
-            continue
-
-        if isinstance(candidate, dict):
-            last_payload = candidate
-        # Skip past the decoded JSON object to avoid re-scanning nested braces.
-        pos = raw.find("{", pos + max(end, 1))
-
-    return last_payload
 
 
 def _parser_failure_decision(reason: str) -> dict[str, Any]:
