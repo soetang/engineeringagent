@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-# Tests intentionally exercise internal validator helpers.
-# pylint: disable=protected-access
-
 import json
 import shutil
 import subprocess
@@ -15,6 +12,7 @@ import yaml
 
 from engineeringagent.specs import feature_schema_from_model
 from engineeringagent.checks.validate.validator import (
+    _append_legacy_harness_contract_file_issues,
     _iter_agents_docs_map_references,
     validate,
 )
@@ -54,7 +52,6 @@ def _make_invalid_project(repo_root: Path, tmp_path: Path, fixture_name: str) ->
     [
         ("missing-objective.yaml", "Field required"),
         ("bad-status.yaml", "Input should be 'backlog'"),
-        ("illegal-transition.yaml", "feature status done requires all subtasks done"),
     ],
 )
 def test_invalid_spec_fixtures_report_clear_errors(
@@ -449,7 +446,7 @@ def test_legacy_harness_contract_issue_formatter_handles_external_paths(
     gates_path.write_text("contract_version: '1.0'\n", encoding="utf-8")
 
     messages: list[str] = []
-    validator_module._append_legacy_harness_contract_file_issues(
+    _append_legacy_harness_contract_file_issues(
         messages,
         project_root=project_root,
         gates_path=gates_path,
@@ -1026,31 +1023,6 @@ def test_validate_preserves_feature_status_invariant_rules(tmp_path: Path) -> No
         encoding="utf-8",
     )
 
-    (features_dir / "FEAT-909-all-done-not-done-feature.yaml").write_text(
-        yaml.safe_dump(
-            {
-                "id": "FEAT-909",
-                "title": "All done but feature not done",
-                "type": "feature",
-                "expected_commit_subject": "feat: preserve all done status invariant",
-                "status": "in_progress",
-                "priority": "high",
-                "objective": "Preserve all-done status invariant.",
-                "acceptance": ["Validator reports all-done mismatch."],
-                "subtasks": [
-                    {
-                        "id": "ST-001",
-                        "title": "Complete",
-                        "status": "done",
-                        "verification": ["true"],
-                    }
-                ],
-            },
-            sort_keys=False,
-        ),
-        encoding="utf-8",
-    )
-
     messages = validate(project_root=project_root)
 
     assert any(
@@ -1060,9 +1032,6 @@ def test_validate_preserves_feature_status_invariant_rules(tmp_path: Path) -> No
     assert any(
         "feature with in_progress subtask must be in_progress" in message
         for message in messages
-    )
-    assert any(
-        "feature with all subtasks done must be done" in message for message in messages
     )
 
 

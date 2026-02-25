@@ -4,9 +4,12 @@ import json
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 import engineeringagent.loop_runtime.iteration as iteration_module
 from engineeringagent.loop_runtime.iteration import (
     IterationPipelineDependencies,
+    _timed_phase,
     run_feature_iteration_pipeline,
 )
 from engineeringagent.loop_runtime.controller import run_loop_controller
@@ -356,6 +359,153 @@ def test_iteration_pipeline_archives_before_running_done_transition_verification
     assert report.result == "passed"
 
 
+@pytest.mark.parametrize(
+    ("verification_status", "failed_command", "pre_subtask", "post_subtask"),
+    [
+        pytest.param(
+            "failed:uv run pytest -q tests/loop",
+            "uv run pytest -q tests/loop",
+            {
+                "id": "ST-001",
+                "status": "in_progress",
+                "verification": ["uv run pytest -q tests/loop"],
+            },
+            {
+                "id": "ST-001",
+                "status": "done",
+                "verification": ["uv run pytest -q tests/loop"],
+            },
+            id="with-failed-command",
+        ),
+        pytest.param(
+            "failed:unknown",
+            None,
+            {"id": "ST-001", "status": "in_progress"},
+            {"id": "ST-001", "status": "done"},
+            id="without-failed-command",
+        ),
+    ],
+)
+def test_iteration_pipeline_runs_gate_phase_after_verification_failure_cases(
+    tmp_path: Path,
+    verification_status: str,
+    failed_command: str | None,
+    pre_subtask: dict[str, Any],
+    post_subtask: dict[str, Any],
+) -> None:
+    iteration_inputs = FeatureIterationInputs(
+        project_root=tmp_path,
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-137.yaml",
+        attempt=1,
+        hook_feedback=None,
+        verbose_output=False,
+    )
+
+    gate_phase_called = False
+
+    def _run_gate_phase(
+        *_args: Any, **_kwargs: Any
+    ) -> GatePhaseOutcome:
+        nonlocal gate_phase_called
+        gate_phase_called = True
+        return GatePhaseOutcome(
+            result="passed",
+            failed_gate=None,
+            gate_status="passed",
+            gate_output="",
+            hook_feedback=None,
+        )
+
+    report = run_feature_iteration_pipeline(
+        iteration_inputs,
+        IterationPipelineDependencies(
+            evaluate_initial_feature_load=(
+                lambda _path: InitialFeatureLoadOutcome(
+                    feature={
+                        "id": "FEAT-137",
+                        "status": "in_progress",
+                        "subtasks": [pre_subtask],
+                    },
+                    result="passed",
+                    failed_gate=None,
+                    hook_feedback=None,
+                )
+            ),
+            ready_for_active_iteration=lambda *_args, **_kwargs: True,
+            touch_active_feature_for_iteration=lambda *_args, **_kwargs: None,
+            run_implement_step=lambda *_args, **_kwargs: _passing_implement_result(),
+            refresh_feature_after_implement=(
+                lambda _feature_path: PostImplementFeatureOutcome(
+                    feature={
+                        "id": "FEAT-137",
+                        "status": "in_progress",
+                        "subtasks": [post_subtask],
+                    },
+                    archived_in_iteration=False,
+                    archived_path=None,
+                    result="passed",
+                    failed_gate=None,
+                    hook_feedback=None,
+                )
+            ),
+            should_archive_selected_feature=lambda *_args, **_kwargs: False,
+            archive_completed_feature=lambda *_args, **_kwargs: (True, None, None),
+            run_gate_phase=_run_gate_phase,
+            gate_phase_dependencies=GatePhaseDependencies(
+                restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+                collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
+                    paths=(),
+                    run_all=True,
+                    reason=None,
+                ),
+            ),
+            run_verification_phase=(
+                lambda *_args, **_kwargs: VerificationPhaseOutcome(
+                    result="failed",
+                    verification_status=verification_status,
+                    verification_failed_command=failed_command,
+                    verification_output="verification failed",
+                    hook_feedback="verification failed",
+                )
+            ),
+            run_reviewer_phase=(
+                lambda *_args, **_kwargs: ReviewerPhaseOutcome(
+                    result="passed",
+                    failed_gate=None,
+                    reviewer_status="passed",
+                    reviewer_decision="approve",
+                    failed_reviewer_id=None,
+                    reviewer_output="",
+                    hook_feedback=None,
+                )
+            ),
+            reviewer_phase_dependencies=ReviewerPhaseDependencies(
+                collect_changed_paths=lambda *_args, **_kwargs: None,
+                restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+                run_agent_fn=lambda *_args, **_kwargs: None,
+            ),
+            run_completion_commit_phase=(
+                lambda *_args, **_kwargs: CompletionCommitOutcome(
+                    completed=False,
+                    completion_commit_succeeded=False,
+                    result="failed",
+                    failed_gate=None,
+                    next_action="retry_same_feature",
+                    hook_feedback="verification failed",
+                )
+            ),
+            completion_phase_dependencies=CompletionPhaseDependencies(
+                commit_feature_completion=lambda *_args, **_kwargs: (True, None, ""),
+                restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+            ),
+        ),
+    )
+
+    assert gate_phase_called is True
+    assert report.result == "failed"
+    assert report.verification_status == verification_status
+
+
 def test_iteration_pipeline_collects_changed_paths_once_per_iteration(
     tmp_path: Path,
 ) -> None:
@@ -644,7 +794,7 @@ def test_timed_phase_clamps_ended_at_when_clock_skews_backwards(
     monkeypatch.setattr(iteration_module.time, "time", lambda: next(times))
 
     phase_timings: list[Any] = []
-    result = iteration_module._timed_phase(  # noqa: SLF001  # pylint: disable=protected-access
+    result = _timed_phase(
         phase_timings,
         "initial_load",
         lambda: "ok",

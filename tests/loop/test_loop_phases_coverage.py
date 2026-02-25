@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from types import SimpleNamespace
+from typing import cast
 
 from engineeringagent.changed_paths import ChangedPathsResult
 from engineeringagent.checks import ChecksRunResult
@@ -141,17 +142,19 @@ def test_run_reviewer_phase_forwards_request_changes_feedback_for_run_all(
 
     sentinel_feedback = "REVIEWER_FEEDBACK_SENTINEL"
     raw_output = "REVIEWER_RAW_OUTPUT_SHOULD_NOT_BE_FORWARDED"
+    recorded_phases: list[object] = []
 
-    monkeypatch.setattr(
-        "engineeringagent.loop_runtime.phases.run_checks",
-        lambda *_args, **_kwargs: ChecksRunResult(
+    def _run_checks(_project_root: Path, **kwargs: object) -> ChecksRunResult:
+        recorded_phases.append(kwargs.get("phase"))
+        return ChecksRunResult(
             ok=False,
             dry_run=False,
             failed_check_id="doc_review",
             output=raw_output,
             prompt_feedback=sentinel_feedback,
-        ),
-    )
+        )
+
+    monkeypatch.setattr("engineeringagent.loop_runtime.phases.run_checks", _run_checks)
 
     deps = ReviewerPhaseDependencies(
         collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
@@ -176,6 +179,7 @@ def test_run_reviewer_phase_forwards_request_changes_feedback_for_run_all(
     assert outcome.reviewer_status == "failed:doc_review"
     assert outcome.hook_feedback == sentinel_feedback
     assert raw_output not in outcome.hook_feedback
+    assert recorded_phases == ["feature_done"]
 
 
 def test_run_gate_phase_emits_command_failure_retry_feedback_contract(
@@ -298,6 +302,144 @@ def test_run_gate_phase_uses_generic_feedback_when_prompt_feedback_missing(
     assert outcome.result == "failed"
     assert outcome.hook_feedback == "checks failed"
     assert raw_output not in outcome.hook_feedback
+
+
+def test_run_gate_phase_includes_validate_group_for_iteration_end_only(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    _write_text(
+        tmp_path / "harness" / "checks.yaml",
+        "\n".join(
+            [
+                'contract_version: "1.0"',
+                "checks:",
+                "  smoke:",
+                "    type: command",
+                '    command: "echo ok"',
+                "",
+            ]
+        )
+        + "\n",
+    )
+
+    inputs = FeatureIterationInputs(
+        project_root=tmp_path,
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        run_all=True,
+        attempt=1,
+        hook_feedback=None,
+        verbose_output=False,
+    )
+    deps = GatePhaseDependencies(
+        restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+        collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
+            paths=(),
+            run_all=True,
+            reason=None,
+        ),
+    )
+
+    recorded_calls: list[tuple[object, list[str] | None]] = []
+
+    def _run_checks(_project_root: Path, **kwargs: object) -> ChecksRunResult:
+        checks = cast(list[str] | None, kwargs.get("checks"))
+        recorded_calls.append((kwargs.get("phase"), checks))
+        return ChecksRunResult(ok=True, dry_run=False)
+
+    monkeypatch.setattr("engineeringagent.loop_runtime.phases.run_checks", _run_checks)
+
+    outcome = run_gate_phase(
+        inputs,
+        archived_in_iteration=True,
+        archived_path=tmp_path / "docs" / "spec" / "features_done" / "FEAT-001.yaml",
+        dependencies=deps,
+    )
+
+    assert outcome.result == "passed"
+    assert recorded_calls == [
+        ("iteration_end", ["validate", "commands", "fitness"]),
+        ("feature_done", ["commands", "fitness"]),
+    ]
+
+
+def test_run_gate_phase_iteration_end_validate_enforces_status_alignment(
+    tmp_path: Path,
+) -> None:
+    command_marker = tmp_path / "command-ran.txt"
+    _write_text(
+        tmp_path / "harness" / "checks.yaml",
+        "\n".join(
+            [
+                'contract_version: "1.0"',
+                "checks:",
+                "  smoke:",
+                "    type: command",
+                "    command: >-",
+                "      python -c \"from pathlib import Path; Path(",
+                f"      r'{command_marker.as_posix()}').write_text('ran', encoding='utf-8')\"",
+                "",
+            ]
+        )
+        + "\n",
+    )
+    _write_text(
+        tmp_path / "docs" / "spec" / "features" / "FEAT-001-invalid-status.yaml",
+        "\n".join(
+            [
+                "id: FEAT-001",
+                "title: Done but open subtask",
+                "type: feature",
+                "expected_commit_subject: 'feat: enforce status invariants'",
+                "status: done",
+                "priority: high",
+                "objective: Keep status alignment strict.",
+                "acceptance:",
+                "  - Validate catches status mismatch.",
+                "subtasks:",
+                "  - id: ST-001",
+                "    title: Open work",
+                "    status: backlog",
+                "    verification:",
+                "      - 'true'",
+                "",
+            ]
+        ),
+    )
+
+    inputs = FeatureIterationInputs(
+        project_root=tmp_path,
+        feature_path=tmp_path
+        / "docs"
+        / "spec"
+        / "features"
+        / "FEAT-001-invalid-status.yaml",
+        run_all=True,
+        attempt=1,
+        hook_feedback=None,
+        verbose_output=False,
+    )
+    deps = GatePhaseDependencies(
+        restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+        collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
+            paths=(),
+            run_all=True,
+            reason=None,
+        ),
+    )
+
+    outcome = run_gate_phase(
+        inputs,
+        archived_in_iteration=False,
+        archived_path=None,
+        dependencies=deps,
+    )
+
+    assert outcome.result == "failed"
+    assert outcome.failed_gate == "validate"
+    assert outcome.gate_status == "failed:validate"
+    assert "feature status done requires all subtasks done" in outcome.gate_output
+    assert not command_marker.exists()
 
 
 def test_run_verification_phase_emits_command_failure_retry_feedback_contract(

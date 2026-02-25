@@ -458,10 +458,11 @@ def _feature_status_alignment_errors(
     done_count: int,
 ) -> list[InitErrorDetails]:
     errors: list[InitErrorDetails] = []
-    all_done = subtask_count > 0 and done_count == subtask_count
+    has_subtasks = subtask_count > 0
+    all_done = has_subtasks and done_count == subtask_count
     any_in_progress = in_progress_count > 0
 
-    if feature_status == FeatureStatus.DONE and not all_done:
+    if feature_status == FeatureStatus.DONE and has_subtasks and not all_done:
         errors.append(
             _init_error_detail(
                 error=PydanticCustomError(
@@ -478,17 +479,6 @@ def _feature_status_alignment_errors(
                 error=PydanticCustomError(
                     "value_error",
                     "feature with in_progress subtask must be in_progress",
-                ),
-                loc=("status",),
-                input_value=feature_status,
-            )
-        )
-
-    if all_done and feature_status != FeatureStatus.DONE:
-        errors.append(
-            _init_error_detail(
-                error=PydanticCustomError(
-                    "value_error", "feature with all subtasks done must be done"
                 ),
                 loc=("status",),
                 input_value=feature_status,

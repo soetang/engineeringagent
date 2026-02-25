@@ -33,6 +33,51 @@ from .models import (
 from .time_format import utc_iso_from_epoch_sec
 from ..feature_commit import feature_completion_commit_subject
 
+_LOOP_TRIGGERED_CHECK_PHASES: tuple[HarnessCheckPhase, ...] = (
+    HarnessCheckPhase.ITERATION_END,
+    HarnessCheckPhase.FEATURE_DONE,
+)
+_GATE_CHECK_GROUPS_BY_PHASE: dict[HarnessCheckPhase, tuple[str, ...]] = {
+    HarnessCheckPhase.ITERATION_END: ("validate", "commands", "fitness"),
+    HarnessCheckPhase.FEATURE_DONE: ("commands", "fitness"),
+}
+
+
+class LoopTriggeredChecksRequest(BaseModel):
+    """Structured request for loop-triggered checks execution."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    project_root: Path
+    phase: HarnessCheckPhase
+    checks: list[str] | None = None
+    collect_changed_paths: Callable[..., Any] | None = None
+    feature_path: Path | None = None
+    run_agent_fn: Callable[..., Any] | None = None
+    prior_feedback: str | None = None
+    verbose_output: bool = False
+
+
+def _run_loop_triggered_checks(request: LoopTriggeredChecksRequest) -> ChecksRunResult:
+    """Run checks from loop runtime with strict phase constraints."""
+    if request.phase not in _LOOP_TRIGGERED_CHECK_PHASES:
+        allowed = "|".join(item.value for item in _LOOP_TRIGGERED_CHECK_PHASES)
+        raise ValueError(
+            "unsupported loop-triggered checks phase: "
+            f"{request.phase} ({allowed})"
+        )
+
+    return run_checks(
+        request.project_root,
+        phase=request.phase,
+        checks=request.checks,
+        feature_path=request.feature_path,
+        run_agent_fn=request.run_agent_fn,
+        prior_feedback=request.prior_feedback,
+        verbose_output=request.verbose_output,
+        collect_changed_paths=request.collect_changed_paths,
+    )
+
 
 def _append_gate_command_timings(
     invocations: tuple[Any, ...],
@@ -95,77 +140,80 @@ class ReviewerPhaseDependencies(BaseModel):
     run_agent_fn: Callable[..., Any] | None = None
 
 
-def run_gate_phase(  # noqa: C901
-    iteration_inputs: FeatureIterationInputs,
-    archived_in_iteration: bool,
-    archived_path: Path | None,
-    dependencies: GatePhaseDependencies,
-) -> GatePhaseOutcome:
-    """Run post-implement gates and perform archive rollback on failure."""
-    checks_path = iteration_inputs.project_root / "harness" / "checks.yaml"
-    if not checks_path.exists():
-        if iteration_inputs.run_all:
-            output = "missing harness/checks.yaml (required for --all)"
-            return GatePhaseOutcome(
-                result="failed",
-                failed_gate="checks_config",
-                gate_status="failed:checks_config",
-                gate_output=output,
-                command_timings=[],
-                hook_feedback=output,
-            )
-        return GatePhaseOutcome(
-            result="passed",
-            failed_gate=None,
-            gate_status="not_configured",
-            gate_output="",
-            command_timings=[],
-            hook_feedback=None,
-        )
+class GateFailureDetails(BaseModel):
+    """Input payload for constructing a gate failure outcome."""
 
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    archived_in_iteration: bool
+    archived_path: Path | None
+    failure_result: ChecksRunResult
+    combined_output: str
+    command_timings: list[CommandTiming]
+
+
+def _gate_not_configured_outcome(run_all: bool) -> GatePhaseOutcome:
+    if run_all:
+        output = "missing harness/checks.yaml (required for --all)"
+        return GatePhaseOutcome(
+            result="failed",
+            failed_gate="checks_config",
+            gate_status="failed:checks_config",
+            gate_output=output,
+            command_timings=[],
+            hook_feedback=output,
+        )
+    return GatePhaseOutcome(
+        result="passed",
+        failed_gate=None,
+        gate_status="not_configured",
+        gate_output="",
+        command_timings=[],
+        hook_feedback=None,
+    )
+
+
+def _run_gate_phase_checks(
+    iteration_inputs: FeatureIterationInputs,
+    dependencies: GatePhaseDependencies,
+    *,
+    archived_in_iteration: bool,
+) -> tuple[ChecksRunResult, list[str], list[CommandTiming]]:
     outputs: list[str] = []
     command_timings: list[CommandTiming] = []
 
     def _run_gate_groups(phase: HarnessCheckPhase) -> ChecksRunResult:
-        result = run_checks(
-            iteration_inputs.project_root,
-            phase=phase,
-            checks=["commands", "fitness"],
-            verbose_output=iteration_inputs.verbose_output,
-            collect_changed_paths=dependencies.collect_changed_paths,
+        result = _run_loop_triggered_checks(
+            LoopTriggeredChecksRequest(
+                project_root=iteration_inputs.project_root,
+                phase=phase,
+                checks=list(_GATE_CHECK_GROUPS_BY_PHASE[phase]),
+                collect_changed_paths=dependencies.collect_changed_paths,
+                verbose_output=iteration_inputs.verbose_output,
+            )
         )
-
         _append_gate_command_timings(result.command_invocations, command_timings)
+        if result.output:
+            outputs.append(result.output)
         return result
 
-    last_result: ChecksRunResult = _run_gate_groups(HarnessCheckPhase.ITERATION_END)
-    if last_result.output:
-        outputs.append(last_result.output)
+    last_result = _run_gate_groups(HarnessCheckPhase.ITERATION_END)
     if last_result.ok and archived_in_iteration:
         last_result = _run_gate_groups(HarnessCheckPhase.FEATURE_DONE)
-        if last_result.output:
-            outputs.append(last_result.output)
 
-    ok = last_result.ok
+    return last_result, outputs, command_timings
 
-    combined_output = "\n".join(part for part in outputs if part).strip()
 
-    if ok:
-        return GatePhaseOutcome(
-            result="passed",
-            failed_gate=None,
-            gate_status="passed",
-            gate_output=combined_output,
-            command_timings=command_timings,
-            hook_feedback=None,
-        )
-
-    failure_result: ChecksRunResult = last_result
-    failed_gate = _checks_failure_gate_id(failure_result, default="checks_config")
-
-    if archived_in_iteration and archived_path is not None:
+def _gate_failure_outcome(
+    iteration_inputs: FeatureIterationInputs,
+    dependencies: GatePhaseDependencies,
+    details: GateFailureDetails,
+) -> GatePhaseOutcome:
+    failed_gate = _checks_failure_gate_id(details.failure_result, default="checks_config")
+    combined_output = details.combined_output
+    if details.archived_in_iteration and details.archived_path is not None:
         restored_ok, restore_error = dependencies.restore_archived_feature(
-            archived_path,
+            details.archived_path,
             iteration_inputs.feature_path,
         )
         if not restored_ok:
@@ -177,8 +225,48 @@ def run_gate_phase(  # noqa: C901
         failed_gate=failed_gate,
         gate_status=f"failed:{failed_gate or 'unknown'}",
         gate_output=combined_output,
-        command_timings=command_timings,
-        hook_feedback=_checks_failure_feedback(failure_result),
+        command_timings=details.command_timings,
+        hook_feedback=_checks_failure_feedback(details.failure_result),
+    )
+
+
+def run_gate_phase(
+    iteration_inputs: FeatureIterationInputs,
+    archived_in_iteration: bool,
+    archived_path: Path | None,
+    dependencies: GatePhaseDependencies,
+) -> GatePhaseOutcome:
+    """Run post-implement gates and perform archive rollback on failure."""
+    checks_path = iteration_inputs.project_root / "harness" / "checks.yaml"
+    if not checks_path.exists():
+        return _gate_not_configured_outcome(iteration_inputs.run_all)
+
+    last_result, outputs, command_timings = _run_gate_phase_checks(
+        iteration_inputs,
+        dependencies,
+        archived_in_iteration=archived_in_iteration,
+    )
+    combined_output = "\n".join(part for part in outputs if part).strip()
+    if last_result.ok:
+        return GatePhaseOutcome(
+            result="passed",
+            failed_gate=None,
+            gate_status="passed",
+            gate_output=combined_output,
+            command_timings=command_timings,
+            hook_feedback=None,
+        )
+
+    return _gate_failure_outcome(
+        iteration_inputs,
+        dependencies,
+        GateFailureDetails(
+            archived_in_iteration=archived_in_iteration,
+            archived_path=archived_path,
+            failure_result=last_result,
+            combined_output=combined_output,
+            command_timings=command_timings,
+        ),
     )
 
 
@@ -256,7 +344,70 @@ def run_verification_phase(
     )
 
 
-def run_reviewer_phase(  # noqa: C901
+def _reviewer_not_run_outcome() -> ReviewerPhaseOutcome:
+    return ReviewerPhaseOutcome(
+        result="passed",
+        failed_gate=None,
+        reviewer_status="not_run",
+        reviewer_output="",
+        command_timings=[],
+        hook_feedback=None,
+    )
+
+
+def _reviewer_not_configured_outcome() -> ReviewerPhaseOutcome:
+    return ReviewerPhaseOutcome(
+        result="passed",
+        failed_gate=None,
+        reviewer_status="not_configured",
+        reviewer_output="",
+        command_timings=[],
+        hook_feedback=None,
+    )
+
+
+def _reviewer_success_outcome(result: ChecksRunResult) -> ReviewerPhaseOutcome:
+    status = "passed" if result.output else "not_run"
+    decision = "approve" if status == "passed" else None
+    return ReviewerPhaseOutcome(
+        result="passed",
+        failed_gate=None,
+        reviewer_status=status,
+        reviewer_decision=decision,
+        failed_reviewer_id=None,
+        reviewer_output=result.output,
+        command_timings=[],
+        hook_feedback=None,
+    )
+
+
+def _reviewer_failure_outcome(
+    iteration_inputs: FeatureIterationInputs,
+    dependencies: ReviewerPhaseDependencies,
+    *,
+    archived_path: Path | None,
+    result: ChecksRunResult,
+) -> ReviewerPhaseOutcome:
+    if archived_path is not None:
+        dependencies.restore_archived_feature(
+            archived_path,
+            iteration_inputs.feature_path,
+        )
+
+    failed_gate = _checks_failure_gate_id(result, default="reviewer")
+    return ReviewerPhaseOutcome(
+        result="failed",
+        failed_gate=failed_gate,
+        reviewer_status=f"failed:{failed_gate}",
+        reviewer_decision="request_changes",
+        failed_reviewer_id=result.failed_check_id,
+        reviewer_output=result.output,
+        command_timings=[],
+        hook_feedback=_checks_failure_feedback(result),
+    )
+
+
+def run_reviewer_phase(
     iteration_inputs: FeatureIterationInputs,
     feature: dict[str, Any] | None,
     archived_in_iteration: bool,
@@ -264,72 +415,33 @@ def run_reviewer_phase(  # noqa: C901
     dependencies: ReviewerPhaseDependencies,
 ) -> ReviewerPhaseOutcome:
     """Run reviewer policy after deterministic gates and before completion commit."""
-    command_timings: list[CommandTiming] = []
     if feature is None or not archived_in_iteration:
-        return ReviewerPhaseOutcome(
-            result="passed",
-            failed_gate=None,
-            reviewer_status="not_run",
-            reviewer_output="",
-            command_timings=command_timings,
-            hook_feedback=None,
-        )
+        return _reviewer_not_run_outcome()
 
     checks_path = iteration_inputs.project_root / "harness" / "checks.yaml"
     if not checks_path.exists():
-        return ReviewerPhaseOutcome(
-            result="passed",
-            failed_gate=None,
-            reviewer_status="not_configured",
-            reviewer_output="",
-            command_timings=command_timings,
-            hook_feedback=None,
-        )
+        return _reviewer_not_configured_outcome()
 
     feature_path = archived_path or iteration_inputs.feature_path
-    result = run_checks(
-        iteration_inputs.project_root,
-        phase=HarnessCheckPhase.FEATURE_DONE,
-        checks=["reviewers"],
-        feature_path=feature_path,
-        run_agent_fn=dependencies.run_agent_fn,
-        prior_feedback=iteration_inputs.hook_feedback,
-        collect_changed_paths=dependencies.collect_changed_paths,
+    result = _run_loop_triggered_checks(
+        LoopTriggeredChecksRequest(
+            project_root=iteration_inputs.project_root,
+            phase=HarnessCheckPhase.FEATURE_DONE,
+            checks=["reviewers"],
+            feature_path=feature_path,
+            run_agent_fn=dependencies.run_agent_fn,
+            prior_feedback=iteration_inputs.hook_feedback,
+            collect_changed_paths=dependencies.collect_changed_paths,
+        )
     )
 
-    reviewer_output = result.output
-
     if result.ok:
-        status = "passed" if reviewer_output else "not_run"
-        decision = "approve" if status == "passed" else None
-        return ReviewerPhaseOutcome(
-            result="passed",
-            failed_gate=None,
-            reviewer_status=status,
-            reviewer_decision=decision,
-            failed_reviewer_id=None,
-            reviewer_output=reviewer_output,
-            command_timings=command_timings,
-            hook_feedback=None,
-        )
-
-    if archived_path is not None:
-        dependencies.restore_archived_feature(
-            archived_path, iteration_inputs.feature_path
-        )
-
-    failed_gate = _checks_failure_gate_id(result, default="reviewer")
-    feedback = _checks_failure_feedback(result)
-
-    return ReviewerPhaseOutcome(
-        result="failed",
-        failed_gate=failed_gate,
-        reviewer_status=f"failed:{failed_gate}",
-        reviewer_decision="request_changes",
-        failed_reviewer_id=result.failed_check_id,
-        reviewer_output=reviewer_output,
-        command_timings=command_timings,
-        hook_feedback=feedback,
+        return _reviewer_success_outcome(result)
+    return _reviewer_failure_outcome(
+        iteration_inputs,
+        dependencies,
+        archived_path=archived_path,
+        result=result,
     )
 
 

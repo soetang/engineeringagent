@@ -303,6 +303,9 @@ def _write_set_done_script(script_path: Path) -> Path:
                 "feature_path = Path(sys.argv[1])",
                 "feature = yaml.safe_load(feature_path.read_text(encoding='utf-8'))",
                 "feature['status'] = 'done'",
+                "for subtask in feature.get('subtasks', []):",
+                "    if isinstance(subtask, dict):",
+                "        subtask['status'] = 'done'",
                 "feature_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding='utf-8')",
             ]
         )
@@ -414,11 +417,15 @@ def _write_set_done_and_create_feature_script(script_path: Path) -> Path:
                 "created_feature_path = Path(sys.argv[2])",
                 "feature = yaml.safe_load(feature_path.read_text(encoding='utf-8'))",
                 "feature['status'] = 'done'",
+                "for subtask in feature.get('subtasks', []):",
+                "    if isinstance(subtask, dict):",
+                "        subtask['status'] = 'done'",
                 "feature_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding='utf-8')",
                 "created_feature = {",
                 "    'id': 'FEAT-999',",
                 "    'title': 'Created after startup snapshot',",
                 "    'type': 'feature',",
+                "    'expected_commit_subject': 'feat: create feature after startup snapshot',",
                 "    'status': 'backlog',",
                 "    'priority': 'high',",
                 "    'objective': 'Ensure run --all startup snapshot remains stable.',",
@@ -604,7 +611,8 @@ def test_verification_selection_ignores_non_string_commands(
             verbose_output=False,
         )
 
-    assert outcome.result == "passed"
+    assert outcome.result == "failed"
+    assert outcome.failed_gate == "validate"
     assert outcome.verification_status == "passed"
     assert outcome.verification_failed_command is None
     assert (project_root / verification_marker).exists()
@@ -729,7 +737,7 @@ def test_verification_ignores_new_done_subtasks_without_pre_snapshot_status(
     project_root, feature_path = _make_project_root(tmp_path, feature_data=feature_data)
     script_path = _write_add_done_subtask_script(
         tmp_path.parent / f"{tmp_path.name}-add-done-subtask.py",
-        "ST-NEW",
+        "ST-002",
         verification_command,
     )
 
@@ -795,7 +803,8 @@ def test_verification_selection_uses_first_post_entry_for_duplicate_subtask_ids(
             verbose_output=False,
         )
 
-    assert outcome.result == "passed"
+    assert outcome.result == "failed"
+    assert outcome.failed_gate == "validate"
     assert outcome.verification_status == "passed"
     assert (project_root / primary_marker).exists()
     assert not (project_root / duplicate_marker).exists()
@@ -845,7 +854,8 @@ def test_verification_selection_uses_first_pre_status_for_duplicate_subtask_ids(
             verbose_output=False,
         )
 
-    assert outcome.result == "passed"
+    assert outcome.result == "failed"
+    assert outcome.failed_gate == "validate"
     assert outcome.verification_status == "passed"
     assert (project_root / verification_marker).exists()
 
@@ -2114,7 +2124,7 @@ def test_run_loop_missing_selected_feature_without_archive_fails_cleanly(
     assert runs[-1]["failed_gate"] == "feature_missing"
 
 
-def test_run_loop_archives_preexisting_done_target_after_pending_completes(
+def test_run_loop_fails_when_preexisting_done_active_feature_trips_validate(
     tmp_path: Path,
     monkeypatch: Any,
 ) -> None:
@@ -2165,11 +2175,13 @@ def test_run_loop_archives_preexisting_done_target_after_pending_completes(
         project_root / "docs" / "spec" / "features_done" / preexisting_done_path.name
     )
 
-    assert code == 0
-    assert archived_selected_path.exists()
-    assert not feature_path.exists()
-    assert not preexisting_done_path.exists()
-    assert archived_preexisting_done_path.exists()
+    assert code == 1
+    assert not archived_selected_path.exists()
+    assert feature_path.exists()
+    assert preexisting_done_path.exists()
+    assert not archived_preexisting_done_path.exists()
+    runs = _read_runs(project_root)
+    assert runs[-1]["failed_gate"] == "validate"
 
 
 def test_run_loop_archives_done_feature_before_gate_execution(tmp_path: Path) -> None:
@@ -2691,7 +2703,6 @@ def test_verification_failure_feedback_is_injected_into_next_prompt(
             "id": "ST-001",
             "title": "Inject verification failures into retry prompt",
             "status": "backlog",
-            "order": 1,
             "context": "Ensure failed verification output appears in next prompt.",
             "verification": [verification_command],
         }
@@ -3154,7 +3165,6 @@ def test_verification_failure_feedback_replaces_previous_feedback(
             "id": "ST-001",
             "title": "Replace verification feedback between retries",
             "status": "backlog",
-            "order": 1,
             "context": "Ensure latest verification output replaces stale feedback.",
             "verification": [verification_command],
         },
@@ -3162,7 +3172,6 @@ def test_verification_failure_feedback_replaces_previous_feedback(
             "id": "ST-002",
             "title": "Trigger second verification failure",
             "status": "backlog",
-            "order": 2,
             "context": "Ensure second retry carries newer verification feedback.",
             "verification": [verification_command],
         },

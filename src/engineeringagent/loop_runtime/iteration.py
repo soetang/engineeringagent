@@ -102,6 +102,7 @@ class _PipelineState(BaseModel):
     implement_status: str = "not_run"
     gate_status: str = "not_run"
     verification_status: str = "not_run"
+    verification_failed: bool = False
     verification_failed_command: str | None = None
     reviewer_status: str = "not_run"
     reviewer_decision: str | None = None
@@ -326,6 +327,7 @@ def _run_verification_phase_if_passed(
     state.verification_failed_command = verification_phase.verification_failed_command
     if verification_phase.result != "failed":
         return
+    state.verification_failed = True
     state.result = "failed"
     state.next_hook_feedback = verification_phase.hook_feedback
     _rollback_archived_feature_after_verification_failure(
@@ -424,7 +426,8 @@ def _run_gate_phase_if_passed(
     dependencies: IterationPipelineDependencies,
     gate_phase_dependencies: GatePhaseDependencies,
 ) -> None:
-    if state.result != "passed":
+    should_run_gate = state.result == "passed" or state.verification_failed
+    if not should_run_gate:
         return
 
     gate_phase = dependencies.run_gate_phase(
@@ -436,7 +439,10 @@ def _run_gate_phase_if_passed(
     state.gate_output = gate_phase.gate_output
     state.gate_status = gate_phase.gate_status
     state.command_timings.extend(gate_phase.command_timings)
-    if gate_phase.result != "failed":
+    gate_failed = gate_phase.result == "failed"
+    if not gate_failed or state.verification_failed:
+        # Verification failure remains the primary retry cause for this iteration.
+        # Gate checks still execute for deterministic feedback/telemetry.
         return
     state.result = gate_phase.result
     state.failed_gate = gate_phase.failed_gate

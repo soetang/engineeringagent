@@ -178,6 +178,9 @@ def _write_set_done_script(script_path: Path) -> Path:
                 "feature_path = Path(sys.argv[1])",
                 "feature = yaml.safe_load(feature_path.read_text(encoding='utf-8'))",
                 "feature['status'] = 'done'",
+                "for subtask in feature.get('subtasks', []):",
+                "    if isinstance(subtask, dict):",
+                "        subtask['status'] = 'done'",
                 "feature_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding='utf-8')",
             ]
         )
