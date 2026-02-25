@@ -19,5 +19,5 @@ Identify the most important open subtask first from the YAML. Implement the most
 
 Make minimal deterministic code/documentation edits, and keep CLI behavior unchanged unless the spec explicitly requires it.
 
-Update progress in the same feature YAML by setting relevant subtask/feature status fields and `updated_at`. Validate with: `uv run engineeringagent validate`.
+Update progress in the same feature YAML by setting relevant subtask/feature status fields and `updated_at`. Validate with: `uv run engineeringagent validate --schema-only`.
 Run the chosen subtask's listed verification command(s) only after it transitions to done in this iteration, then report concise outcomes covering: what changed, which verification passed/failed, and what remains.
