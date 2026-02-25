@@ -278,6 +278,34 @@ rules:
       - run
       - python
       - harness/fitness-functions/check_loop_facade_line_budget.py
+  - rule_id: architecture.loop-checks-result-boundary
+    name: Loop/checks result boundary
+    summary: Fail when loop runtime branches on checks type/group semantics or parses checks-internal payloads.
+    rationale: Keeps loop orchestration decoupled from checks internals so check-type-specific behavior stays in checks strategies.
+    remediation: Consume only checks run result fields ok/output/prompt_feedback in loop runtime and remove checks-internal decision/payload parsing.
+    scope: src/engineeringagent/loop_runtime/** and src/engineeringagent/loop.py
+    severity: error
+    side_effect_free: true
+    adapter: command
+    command:
+      - uv
+      - run
+      - python
+      - harness/fitness-functions/check_loop_checks_result_boundary.py
+  - rule_id: architecture.checks-own-prompt-feedback-rendering
+    name: Checks-owned prompt feedback rendering
+    summary: Fail when loop/prompt code performs checks-specific retry feedback shaping outside checks strategies.
+    rationale: Keeps checks failure feedback rendering owned by checks strategies so loop and prompt wiring only forward prompt_feedback.
+    remediation: Remove loop/prompt checks-specific retry-feedback builders and pass run_checks(...).prompt_feedback through unchanged.
+    scope: src/engineeringagent/loop_runtime/**, src/engineeringagent/loop.py, and src/engineeringagent/prompts/renderer.py
+    severity: error
+    side_effect_free: true
+    adapter: command
+    command:
+      - uv
+      - run
+      - python
+      - harness/fitness-functions/check_checks_own_prompt_feedback_rendering.py
   - rule_id: architecture.no-facade-varargs-shims
     name: No facade varargs shims
     summary: Block facade varargs shims, __signature__ masking, and hidden kwargs dropping.

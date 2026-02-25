@@ -28,6 +28,7 @@ def test_cli_surface_inventory_commands() -> None:
         "validate",
         "run",
         "checks",
+        "fitness",
         "init",
         "--project-root",
         "--version",
@@ -52,6 +53,10 @@ def test_cli_surface_inventory_option_spellings() -> None:
         (
             ["checks", "catalog", "--help"],
             ["--manifest-path", "--format", "--output"],
+        ),
+        (
+            ["fitness", "run", "--help"],
+            ["--format", "--phase", "--check-id", "--dry-run"],
         ),
         (
             ["init", "--help"],
@@ -305,6 +310,54 @@ def test_main_checks_run_command_uses_typer_handler(monkeypatch: Any) -> None:
         "base": "main",
         "head": "HEAD",
         "verbose_output": True,
+    }
+
+
+def test_main_fitness_run_command_uses_typer_handler(monkeypatch: Any) -> None:
+    recorded: dict[str, object] = {}
+
+    def _fake_cmd_fitness_run(args: Any) -> int:
+        recorded["project_root"] = args.project_root
+        recorded["output_format"] = args.output_format
+        recorded["phase"] = args.phase
+        recorded["check_id"] = args.check_id
+        recorded["base"] = args.base
+        recorded["head"] = args.head
+        recorded["dry_run"] = args.dry_run
+        return 0
+
+    monkeypatch.setattr(cli_module, "cmd_fitness_run", _fake_cmd_fitness_run)
+
+    with pytest.raises(SystemExit) as exc_info:
+        cli_module.main(
+            [
+                "--project-root",
+                "repo",
+                "fitness",
+                "run",
+                "--format",
+                "json",
+                "--phase",
+                "feature_done",
+                "--check-id",
+                "boundary",
+                "--base",
+                "main",
+                "--head",
+                "HEAD",
+                "--dry-run",
+            ]
+        )
+
+    assert exc_info.value.code == 0
+    assert recorded == {
+        "project_root": "repo",
+        "output_format": "json",
+        "phase": cli_module.HarnessCheckPhase.FEATURE_DONE,
+        "check_id": "boundary",
+        "base": "main",
+        "head": "HEAD",
+        "dry_run": True,
     }
 
 

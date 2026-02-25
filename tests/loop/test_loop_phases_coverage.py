@@ -3,8 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 
-from pydantic import BaseModel
 from engineeringagent.changed_paths import ChangedPathsResult
+from engineeringagent.checks import ChecksRunResult
 from engineeringagent.loop_runtime.models import FeatureIterationInputs
 from engineeringagent.loop_runtime.phases import (
     GatePhaseDependencies,
@@ -102,6 +102,7 @@ def test_run_gate_phase_reports_load_error_when_checks_document_raises(
 
 def test_run_reviewer_phase_forwards_request_changes_feedback_for_run_all(
     tmp_path: Path,
+    monkeypatch,
 ) -> None:
     _write_text(
         tmp_path / "harness" / "checks.yaml",
@@ -138,23 +139,19 @@ def test_run_reviewer_phase_forwards_request_changes_feedback_for_run_all(
     )
     _write_text(archived_feature_path, "id: FEAT-001\n")
 
-    def _run_agent(
-        _execution_root: Path,
-        _prompt: str,
-        *,
-        output_type: type[BaseModel],
-        backend: object = None,
-        max_validation_retries: int = 2,
-    ) -> BaseModel:
-        del backend
-        del max_validation_retries
-        return output_type.model_validate(
-            {
-                "decision": "request_changes",
-                "summary": "needs work",
-                "required_actions": ["fix it"],
-            }
-        )
+    sentinel_feedback = "REVIEWER_FEEDBACK_SENTINEL"
+    raw_output = "REVIEWER_RAW_OUTPUT_SHOULD_NOT_BE_FORWARDED"
+
+    monkeypatch.setattr(
+        "engineeringagent.loop_runtime.phases.run_checks",
+        lambda *_args, **_kwargs: ChecksRunResult(
+            ok=False,
+            dry_run=False,
+            failed_check_id="doc_review",
+            output=raw_output,
+            prompt_feedback=sentinel_feedback,
+        ),
+    )
 
     deps = ReviewerPhaseDependencies(
         collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
@@ -163,7 +160,7 @@ def test_run_reviewer_phase_forwards_request_changes_feedback_for_run_all(
             reason="fallback_run_all_change_discovery_failed",
         ),
         restore_archived_feature=lambda *_args, **_kwargs: (True, None),
-        run_agent_fn=_run_agent,
+        run_agent_fn=None,
     )
 
     outcome = run_reviewer_phase(
@@ -175,21 +172,15 @@ def test_run_reviewer_phase_forwards_request_changes_feedback_for_run_all(
     )
 
     assert outcome.result == "failed"
-    assert outcome.failed_gate == "reviewer_request_changes"
-    assert outcome.reviewer_status == "failed:request_changes"
-    assert outcome.hook_feedback
-
-    envelope = parse_retry_feedback_envelope(outcome.hook_feedback)
-    assert envelope.kind == "reviewer_feedback"
-    assert envelope.phase == "reviewers"
-    assert envelope.reviewer_id == "doc_review"
-    assert envelope.reviewer_phase == "feature_done"
-    assert envelope.decision.summary == "needs work"
-    assert envelope.decision.required_actions == ["fix it"]
+    assert outcome.failed_gate == "doc_review"
+    assert outcome.reviewer_status == "failed:doc_review"
+    assert outcome.hook_feedback == sentinel_feedback
+    assert raw_output not in outcome.hook_feedback
 
 
 def test_run_gate_phase_emits_command_failure_retry_feedback_contract(
     tmp_path: Path,
+    monkeypatch,
 ) -> None:
     _write_text(
         tmp_path / "harness" / "checks.yaml",
@@ -223,6 +214,19 @@ def test_run_gate_phase_emits_command_failure_retry_feedback_contract(
         ),
     )
 
+    sentinel_feedback = "GATE_FEEDBACK_SENTINEL"
+    raw_output = "GATE_RAW_OUTPUT_SHOULD_NOT_BE_FORWARDED"
+    monkeypatch.setattr(
+        "engineeringagent.loop_runtime.phases.run_checks",
+        lambda *_args, **_kwargs: ChecksRunResult(
+            ok=False,
+            dry_run=False,
+            failed_check_id="smoke",
+            output=raw_output,
+            prompt_feedback=sentinel_feedback,
+        ),
+    )
+
     outcome = run_gate_phase(
         inputs,
         archived_in_iteration=False,
@@ -232,16 +236,68 @@ def test_run_gate_phase_emits_command_failure_retry_feedback_contract(
 
     assert outcome.result == "failed"
     assert outcome.failed_gate == "smoke"
-    assert outcome.hook_feedback
-    assert "expected failure" not in outcome.hook_feedback
+    assert outcome.hook_feedback == sentinel_feedback
+    assert raw_output not in outcome.hook_feedback
 
-    envelope = parse_retry_feedback_envelope(outcome.hook_feedback)
-    assert envelope.kind == "command_failure"
-    assert envelope.phase == "gates"
-    assert envelope.gate == "smoke"
-    assert envelope.command == "python -c 'raise SystemExit(1)'"
-    assert envelope.precommit is False
-    assert envelope.rerun.cwd == "repo_root"
+
+def test_run_gate_phase_uses_generic_feedback_when_prompt_feedback_missing(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    _write_text(
+        tmp_path / "harness" / "checks.yaml",
+        "\n".join(
+            [
+                'contract_version: "1.0"',
+                "checks:",
+                "  smoke:",
+                "    type: command",
+                "    command: python -c 'raise SystemExit(1)'",
+                "",
+            ]
+        )
+        + "\n",
+    )
+
+    inputs = FeatureIterationInputs(
+        project_root=tmp_path,
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        run_all=True,
+        attempt=1,
+        hook_feedback=None,
+        verbose_output=False,
+    )
+    deps = GatePhaseDependencies(
+        restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+        collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
+            paths=(),
+            run_all=True,
+            reason=None,
+        ),
+    )
+
+    raw_output = "RAW_OUTPUT_SHOULD_NOT_BE_FORWARDED"
+    monkeypatch.setattr(
+        "engineeringagent.loop_runtime.phases.run_checks",
+        lambda *_args, **_kwargs: ChecksRunResult(
+            ok=False,
+            dry_run=False,
+            failed_check_id="smoke",
+            output=raw_output,
+            prompt_feedback="\n  ",
+        ),
+    )
+
+    outcome = run_gate_phase(
+        inputs,
+        archived_in_iteration=False,
+        archived_path=None,
+        dependencies=deps,
+    )
+
+    assert outcome.result == "failed"
+    assert outcome.hook_feedback == "checks failed"
+    assert raw_output not in outcome.hook_feedback
 
 
 def test_run_verification_phase_emits_command_failure_retry_feedback_contract(
@@ -287,6 +343,8 @@ def test_run_verification_phase_emits_command_failure_retry_feedback_contract(
 def test_run_gate_phase_emits_fitness_failure_retry_feedback_contract(
     tmp_path: Path,
 ) -> None:
+    remediation = "FITNESS_REMEDIATION_SENTINEL"
+    raw_output_token = "FITNESS_RAW_OUTPUT_SENTINEL"
     _write_text(
         tmp_path / "harness" / "checks.yaml",
         "\n".join(
@@ -325,7 +383,7 @@ def test_run_gate_phase_emits_fitness_failure_retry_feedback_contract(
                 "    name: Demo",
                 "    summary: Demo fail",
                 "    rationale: Demo rationale",
-                "    remediation: Fix failing rule.",
+                f"    remediation: {remediation}",
                 "    scope: repo",
                 "    severity: warning",
                 "    side_effect_free: true",
@@ -334,7 +392,7 @@ def test_run_gate_phase_emits_fitness_failure_retry_feedback_contract(
                 "      - python",
                 "      - -c",
                 "      - >-",
-                '        import json; print(json.dumps({"contract_version": "1.0", "rule_id": "demo.fail", "status": "fail", "severity": "warning", "summary": "nope", "violations": ["path/to/file.txt:1 broken"]}))',
+                f'        import json; print(json.dumps({{"contract_version": "1.0", "rule_id": "demo.fail", "status": "fail", "severity": "warning", "summary": "{raw_output_token}", "violations": ["path/to/file.txt:1 broken"]}}))',
                 "",
             ]
         )
@@ -367,13 +425,10 @@ def test_run_gate_phase_emits_fitness_failure_retry_feedback_contract(
 
     assert outcome.result == "failed"
     assert outcome.failed_gate == "fitness_validate"
-    assert outcome.hook_feedback
-
-    envelope = parse_retry_feedback_envelope(outcome.hook_feedback)
-    assert envelope.kind == "fitness_failure"
-    assert envelope.phase == "gates"
-    assert envelope.gate == "fitness_validate"
-    assert envelope.failed_rules
-    assert [rule.rule_id for rule in envelope.failed_rules] == ["demo.fail"]
-    assert envelope.failed_rules[0].remediation == "Fix failing rule."
-    assert "broken" in envelope.failed_rules[0].violations[0]
+    hook_feedback = outcome.hook_feedback
+    assert hook_feedback is not None
+    assert "fitness_validate" in hook_feedback
+    assert "demo.fail" in hook_feedback
+    assert remediation in hook_feedback
+    assert raw_output_token not in hook_feedback
+    assert "retry_feedback_parse_error" not in hook_feedback

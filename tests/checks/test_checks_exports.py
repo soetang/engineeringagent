@@ -7,7 +7,9 @@ from engineeringagent.checks import (
     ChecksRunResult,
     emit_fitness_result,
     emit_result_envelope,
+    list_check_groups,
     load_harness_checks_document,
+    normalize_check_groups,
     render_fitness_catalog,
     run_checks,
 )
@@ -23,17 +25,29 @@ def test_checks_supported_exports_are_importable() -> None:
     assert callable(run_checks)
     assert callable(emit_fitness_result)
     assert emit_result_envelope is emit_fitness_result
+    assert callable(list_check_groups)
     assert callable(load_harness_checks_document)
+    assert callable(normalize_check_groups)
     assert callable(render_fitness_catalog)
     assert ChecksRunResult is not None
     assert set(checks.__all__) == {
         "ChecksRunResult",
         "emit_fitness_result",
         "emit_result_envelope",
+        "list_check_groups",
         "load_harness_checks_document",
+        "normalize_check_groups",
         "render_fitness_catalog",
         "run_checks",
     }
+
+
+def test_checks_group_helpers_use_deterministic_contract() -> None:
+    assert list_check_groups() == ("validate", "commands", "fitness", "reviewers")
+    assert normalize_check_groups(["fitness", "commands", "fitness"]) == (
+        "commands",
+        "fitness",
+    )
 
 
 def test_checks_emit_fitness_result_is_deterministic_and_validates(

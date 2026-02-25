@@ -45,7 +45,7 @@ class RunChecksRequest(BaseModel):
         arbitrary_types_allowed=True,
     )
 
-    phase: Any
+    phase: HarnessCheckPhase
     ordered_groups: tuple[str, ...]
     check_id: str | None
     feature_path: Path | None
@@ -55,6 +55,7 @@ class RunChecksRequest(BaseModel):
     run_agent_fn: Callable[..., object] | None
     prior_feedback: str | None
     schema_only: bool
+    dry_run: bool
     collect_changed_paths_fn: Callable[..., object] | None
 
 
@@ -69,7 +70,24 @@ class RunChecksKwargs(TypedDict, total=False):
     run_agent_fn: Callable[..., object] | None
     prior_feedback: str | None
     schema_only: bool
+    dry_run: bool
     collect_changed_paths: Callable[..., object] | None
+
+
+RUN_CHECKS_ALLOWED_KWARGS = frozenset(
+    {
+        "check_id",
+        "feature_path",
+        "verbose_output",
+        "base",
+        "head",
+        "run_agent_fn",
+        "prior_feedback",
+        "schema_only",
+        "dry_run",
+        "collect_changed_paths",
+    }
+)
 
 
 def normalize_groups(checks: list[str] | None) -> tuple[str, ...]:
@@ -127,18 +145,7 @@ def build_run_checks_request(
     root = coerce_project_root(project_root)
     ordered_groups = normalize_groups(checks)
 
-    allowed_kwargs = {
-        "check_id",
-        "feature_path",
-        "verbose_output",
-        "base",
-        "head",
-        "run_agent_fn",
-        "prior_feedback",
-        "schema_only",
-        "collect_changed_paths",
-    }
-    unexpected = sorted(set(kwargs) - allowed_kwargs)
+    unexpected = sorted(set(kwargs) - RUN_CHECKS_ALLOWED_KWARGS)
     if unexpected:
         raise TypeError(
             f"run_checks() got an unexpected keyword argument '{unexpected[0]}'"
@@ -152,6 +159,7 @@ def build_run_checks_request(
     run_agent_fn = kwargs.get("run_agent_fn")
     prior_feedback = kwargs.get("prior_feedback")
     schema_only = bool(kwargs.get("schema_only", False))
+    dry_run = bool(kwargs.get("dry_run", False))
     collect_changed_paths_fn = kwargs.get("collect_changed_paths")
 
     if schema_only and CHECK_GROUP_VALIDATE not in ordered_groups:
@@ -171,6 +179,7 @@ def build_run_checks_request(
         run_agent_fn=run_agent_fn,
         prior_feedback=str(prior_feedback) if prior_feedback is not None else None,
         schema_only=schema_only,
+        dry_run=dry_run,
         collect_changed_paths_fn=collect_changed_paths_fn,
     )
     return root, request

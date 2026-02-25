@@ -152,7 +152,11 @@ def test_run_gate_phase_skips_on_change_command_checks_when_no_match(
     )
 
     assert outcome.result == "passed"
-    assert outcome.gate_output == ""
+    assert (
+        "[decision:ruff] type=command phase=iteration_end decision=skip"
+        in outcome.gate_output
+    )
+    assert "reason=no_on_change_match" in outcome.gate_output
 
 
 def test_run_gate_phase_runs_feature_done_checks_only_when_archived(

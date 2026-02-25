@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Callable, Sequence
+from typing import Any, Callable, TypeVar, Sequence
 
 from engineeringagent.changed_paths import (
     ChangedPathsResult,
@@ -18,6 +18,9 @@ ALWAYS_RUN_NO_ON_CHANGE_REASON = "always_run_no_on_change"
 MATCHED_ON_CHANGE_REASON = "matched_on_change"
 NO_ON_CHANGE_MATCH_REASON = "no_on_change_match"
 MANUAL_SKIP_REASON = "manual"
+
+
+_PlannedCheckT = TypeVar("_PlannedCheckT")
 
 
 def effective_default_phase(doc: HarnessChecksDocument) -> HarnessCheckPhase:
@@ -81,3 +84,31 @@ def plan_check_when_decision(
         changed_paths=changed_paths,
         path_matcher=path_matcher,
     )
+
+
+def plan_checks_for_definition_type(
+    doc: HarnessChecksDocument,
+    *,
+    phase: HarnessCheckPhase,
+    changed_paths: ChangedPathsResult,
+    definition_type: type[Any],
+    make_record: Callable[[str, str, str], _PlannedCheckT],
+) -> list[_PlannedCheckT]:
+    """Plan deterministic checks for one definition type using shared policy."""
+
+    planned: list[_PlannedCheckT] = []
+    for check_id, check in doc.checks.items():
+        if not isinstance(check, definition_type):
+            continue
+        decision = plan_check_when_decision(
+            doc=doc,
+            phase=phase,
+            check_when=getattr(check, "when", None),
+            changed_paths=changed_paths,
+        )
+        if decision is None:
+            continue
+        decision_value, reason = decision
+        planned.append(make_record(check_id, decision_value, reason))
+
+    return planned

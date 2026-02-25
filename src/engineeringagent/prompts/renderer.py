@@ -7,8 +7,8 @@ from typing import Any, Mapping, Sequence
 
 from pydantic import ValidationError
 
+from engineeringagent.prompt_feedback import normalize_prompt_feedback
 from engineeringagent.prompts.retry_feedback import (
-    build_command_failure_retry_feedback,
     parse_retry_feedback_envelope,
     serialize_retry_feedback_envelope,
 )
@@ -42,25 +42,18 @@ def build_selector_prompt(pending: Sequence[tuple[Path, Mapping[str, Any]]]) -> 
 
 
 def _normalize_retry_feedback(hook_feedback: str) -> str:
-    """Normalize serialized retry feedback for deterministic prompt injection.
+    """Normalize retry feedback for prompt injection.
 
-    The retry-feedback block is contract-driven. We validate the incoming payload
-    and re-serialize it with sorted keys and compact separators.
+    Legacy runtime phases still emit serialized v1 envelopes. Checks strategies now
+    own prompt feedback rendering and can return plain markdown text. Accept both:
+    canonicalize envelopes when present and otherwise forward plain text as-is.
     """
 
     try:
         envelope = parse_retry_feedback_envelope(hook_feedback)
     except ValidationError:
-        return build_command_failure_retry_feedback(
-            phase="gates",
-            gate="retry_feedback_parse_error",
-            command="<unknown>",
-            precommit=False,
-            message=(
-                "Retry feedback payload was not a valid v1 envelope. "
-                "Re-run the failing command(s) to reproduce the issue."
-            ),
-        )
+        normalized = normalize_prompt_feedback(hook_feedback)
+        return normalized or ""
 
     return serialize_retry_feedback_envelope(envelope)
 
@@ -78,9 +71,13 @@ def inject_retry_feedback(prompt: str, hook_feedback: str | None) -> str:
     if not hook_feedback:
         return prompt
 
+    normalized_feedback = _normalize_retry_feedback(hook_feedback)
+    if not normalized_feedback:
+        return prompt
+
     retry_feedback_template = _load_template("loop_retry_feedback.md")
     return prompt + retry_feedback_template.substitute(
-        feedback=_normalize_retry_feedback(hook_feedback),
+        feedback=normalized_feedback,
     )
 
 

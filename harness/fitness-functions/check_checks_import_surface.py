@@ -18,7 +18,9 @@ _ALLOWED_CHECKS_IMPORT_NAMES = {
     "ChecksRunResult",
     "emit_fitness_result",
     "emit_result_envelope",
+    "list_check_groups",
     "load_harness_checks_document",
+    "normalize_check_groups",
     "render_fitness_catalog",
     "run_checks",
 }

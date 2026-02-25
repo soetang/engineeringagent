@@ -27,7 +27,7 @@ def test_run_checks_validate_group_delegates_to_checks_validate(
 
     assert calls == [tmp_path.resolve()]
     assert not result.ok
-    assert result.failed_group == "validate"
+    assert result.failed_check_id == "validate"
     assert "validate: boom" in result.output
 
 

@@ -131,6 +131,21 @@ def test_retry_feedback_injection_does_not_truncate_contract_json() -> None:
     assert "...[truncated]" not in injected
 
 
+def test_retry_feedback_injection_accepts_plain_markdown_feedback() -> None:
+    feedback = "Retry guidance from checks runtime"
+
+    injected = inject_retry_feedback("BASE\n", feedback)
+
+    assert feedback in injected
+    assert "retry_feedback_parse_error" not in injected
+
+
+def test_retry_feedback_injection_ignores_blank_plain_feedback() -> None:
+    injected = inject_retry_feedback("BASE\n", "   \n\t")
+
+    assert injected == "BASE\n"
+
+
 def test_build_reviewer_feedback_retry_feedback_emits_warning_envelope() -> None:
     serialized = build_reviewer_feedback_retry_feedback(
         reviewer_id="code_simplifier",

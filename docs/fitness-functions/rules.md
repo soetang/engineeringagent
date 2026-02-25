@@ -9,12 +9,14 @@ This file is generated from active manifest-declared fitness rules.
 | `architecture.agents-backends-boundary` | error | command | custom | `src/engineeringagent` | - | Forbid direct backend package usage outside the agents boundary. |
 | `architecture.backend-literal-locality-budget` | error | command | custom | `src/engineeringagent excluding src/engineeringagent/agents/** and src/engineeringagent/checks/**` | `harness/fitness-functions/policies/backend_literal_locality_budget.yaml` | Enforce a zero-budget backend literal locality boundary outside allowed packages. |
 | `architecture.checks-import-surface` | error | command | custom | `src/engineeringagent` | - | Enforce a narrow import surface for engineeringagent.checks. |
+| `architecture.checks-own-prompt-feedback-rendering` | error | command | custom | `src/engineeringagent/loop_runtime/**, src/engineeringagent/loop.py, and src/engineeringagent/prompts/renderer.py` | - | Fail when loop/prompt code performs checks-specific retry feedback shaping outside checks strategies. |
 | `architecture.dep-directionality` | error | command | custom | `src/engineeringagent` | - | Enforce core module import direction boundaries. |
 | `architecture.docs-allowlist-policy` | error | command | custom | `docs_root markdown (*.md) excluding docs_root/spec/**` | - | Require each docs_root markdown file to be listed in exactly one policy list. |
 | `architecture.fitness-catalog-docs-sync` | error | command | custom | `docs/fitness-functions/rules.md` | - | Enforce byte-for-byte sync between docs catalog markdown and generated catalog output. |
 | `architecture.harness-root-yaml-only` | error | command | custom | `harness/ (regular files at root)` | - | Enforce YAML-only regular files directly under harness root. |
 | `architecture.harness-src-import-allowlist` | error | command | custom | `harness/fitness-functions` | - | Restrict harness fitness functions to a narrow supported engineeringagent surface. |
 | `architecture.iteration-pipeline-observer-decoupling` | error | command | custom | `src/engineeringagent/loop_runtime/iteration.py` | - | Keep iteration pipeline free of telemetry and console side effects. |
+| `architecture.loop-checks-result-boundary` | error | command | custom | `src/engineeringagent/loop_runtime/** and src/engineeringagent/loop.py` | - | Fail when loop runtime branches on checks type/group semantics or parses checks-internal payloads. |
 | `architecture.loop-facade-line-budget` | error | command | custom | `src/engineeringagent/loop.py` | - | Enforce a permanent line budget cap for the loop facade. |
 | `architecture.loop-subprocess-boundary` | error | command | custom | `src/engineeringagent` | `harness/fitness-functions/policies/loop_subprocess_boundary_semgrep_policy.yaml` | Enforce subprocess allowlist boundaries for command adapters/clients. |
 | `architecture.markdown-locality-reference-coverage` | error | command | custom | `repository markdown (*.md)` | - | Restrict markdown to approved paths and require non-doc markdown files to be referenced in-repo (excluding prompt/scaffold template asset roots). |
@@ -55,6 +57,13 @@ This file is generated from active manifest-declared fitness rules.
 - Side-effect free: `true`
 - Rationale: Prevents production modules from depending on checks submodule internals that are not part of the supported stable API.
 - Remediation: Replace engineeringagent.checks.<submodule> imports with allowed top-level names from engineeringagent.checks.
+
+### `architecture.checks-own-prompt-feedback-rendering`
+
+- Name: Checks-owned prompt feedback rendering
+- Side-effect free: `true`
+- Rationale: Keeps checks failure feedback rendering owned by checks strategies so loop and prompt wiring only forward prompt_feedback.
+- Remediation: Remove loop/prompt checks-specific retry-feedback builders and pass run_checks(...).prompt_feedback through unchanged.
 
 ### `architecture.dep-directionality`
 
@@ -97,6 +106,13 @@ This file is generated from active manifest-declared fitness rules.
 - Side-effect free: `true`
 - Rationale: Preserves the report-plus-observer split so orchestration remains testable and side effects stay localized.
 - Remediation: Move telemetry and console output calls out of loop_runtime.iteration and into loop-wired observers that consume IterationReport.
+
+### `architecture.loop-checks-result-boundary`
+
+- Name: Loop/checks result boundary
+- Side-effect free: `true`
+- Rationale: Keeps loop orchestration decoupled from checks internals so check-type-specific behavior stays in checks strategies.
+- Remediation: Consume only checks run result fields ok/output/prompt_feedback in loop runtime and remove checks-internal decision/payload parsing.
 
 ### `architecture.loop-facade-line-budget`
 

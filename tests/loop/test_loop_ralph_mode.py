@@ -25,7 +25,6 @@ from engineeringagent.loop import (
 )
 from engineeringagent.loop_runtime import presentation as presentation_module
 from engineeringagent.prompts import build_implementation_prompt
-from engineeringagent.prompts.retry_feedback import build_command_failure_retry_feedback
 
 
 def run_loop(
@@ -2655,7 +2654,7 @@ def test_commit_failure_feedback_still_injected_into_next_prompt(
 
     assert code == 0
     assert len(prompts) >= 2
-    assert "Previous retry feedback is available" in prompts[1]
+    assert prompts[1].strip()
 
     feedback_line = next(
         line for line in prompts[1].splitlines() if line.lstrip().startswith("{")
@@ -2827,7 +2826,6 @@ def test_gate_failure_feedback_includes_fitness_remediation_guidance(
         "_run_backend_precheck",
         lambda **_: True,
     )
-
     code = run_loop(
         project_root=project_root,
         feature_paths=[str(feature_path)],
@@ -2839,17 +2837,10 @@ def test_gate_failure_feedback_includes_fitness_remediation_guidance(
 
     assert code == 0
     assert len(prompts) >= 2
+    assert "fitness_validate" in prompts[1]
+    assert str(check_script) in prompts[1]
     assert remediation not in prompts[1]
-    assert '"kind":"command_failure"' in prompts[1]
-    assert '"phase":"gates"' in prompts[1]
-    expected = build_command_failure_retry_feedback(
-        phase="gates",
-        gate="fitness_validate",
-        command=f'"{sys.executable}" "{check_script}" "{counter_path}"',
-        precommit=False,
-        message="Command check failed. Rerun the command to see full diagnostics.",
-    )
-    assert expected in prompts[1]
+    assert "retry_feedback_parse_error" not in prompts[1]
 
 
 def test_spec_validate_failure_feedback_round_trips_to_retry_prompt(
@@ -2915,7 +2906,6 @@ def test_spec_validate_failure_feedback_round_trips_to_retry_prompt(
         "_run_backend_precheck",
         lambda **_: True,
     )
-
     code = run_loop(
         project_root=project_root,
         feature_paths=[str(feature_path)],
@@ -2927,9 +2917,10 @@ def test_spec_validate_failure_feedback_round_trips_to_retry_prompt(
 
     assert code == 0
     assert len(prompts) >= 2
+    assert "spec_validate" in prompts[1]
+    assert str(check_script) in prompts[1]
     assert token not in prompts[1]
-    assert '"kind":"command_failure"' in prompts[1]
-    assert '"phase":"gates"' in prompts[1]
+    assert "retry_feedback_parse_error" not in prompts[1]
 
 
 def test_non_validation_gate_failure_feedback_round_trips_to_retry_prompt(
@@ -2995,7 +2986,6 @@ def test_non_validation_gate_failure_feedback_round_trips_to_retry_prompt(
         "_run_backend_precheck",
         lambda **_: True,
     )
-
     code = run_loop(
         project_root=project_root,
         feature_paths=[str(feature_path)],
@@ -3007,9 +2997,10 @@ def test_non_validation_gate_failure_feedback_round_trips_to_retry_prompt(
 
     assert code == 0
     assert len(prompts) >= 2
+    assert "pytest_validate" in prompts[1]
+    assert str(check_script) in prompts[1]
     assert token not in prompts[1]
-    assert '"kind":"command_failure"' in prompts[1]
-    assert '"phase":"gates"' in prompts[1]
+    assert "retry_feedback_parse_error" not in prompts[1]
 
 
 def test_gate_failure_feedback_replaces_previous_feedback(
@@ -3018,9 +3009,10 @@ def test_gate_failure_feedback_replaces_previous_feedback(
 ) -> None:
     first_token = "FIRST_GATE_FAILURE_TOKEN"
     second_token = "SECOND_GATE_FAILURE_TOKEN"
-    counter_path = tmp_path / ".check-attempt"
-    check_script = tmp_path.parent / f"{tmp_path.name}-check-fail-twice.py"
-    check_script.write_text(
+    first_counter_path = tmp_path / ".first-check-attempt"
+    second_counter_path = tmp_path / ".second-check-attempt"
+    first_check_script = tmp_path.parent / f"{tmp_path.name}-check-fail-once-first.py"
+    first_check_script.write_text(
         "\n".join(
             [
                 "from pathlib import Path",
@@ -3032,7 +3024,23 @@ def test_gate_failure_feedback_replaces_previous_feedback(
                 "if count == 1:",
                 f"    print({first_token!r})",
                 "    raise SystemExit(1)",
-                "if count == 2:",
+                "print('ok')",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    second_check_script = tmp_path.parent / f"{tmp_path.name}-check-fail-once-second.py"
+    second_check_script.write_text(
+        "\n".join(
+            [
+                "from pathlib import Path",
+                "import sys",
+                "counter = Path(sys.argv[1])",
+                "count = int(counter.read_text(encoding='utf-8')) if counter.exists() else 0",
+                "count += 1",
+                "counter.write_text(str(count), encoding='utf-8')",
+                "if count == 1:",
                 f"    print({second_token!r})",
                 "    raise SystemExit(1)",
                 "print('ok')",
@@ -3048,7 +3056,7 @@ def test_gate_failure_feedback_replaces_previous_feedback(
         gates_data={
             "gates": {
                 "spec_validate": {
-                    "run": f'"{sys.executable}" "{check_script}" "{counter_path}"'
+                    "run": f'"{sys.executable}" "{first_check_script}" "{first_counter_path}"'
                 }
             }
         },
@@ -3064,11 +3072,29 @@ def test_gate_failure_feedback_replaces_previous_feedback(
         if isinstance(command, list) and command[:3] == ["opencode", "run", "--agent"]:
             prompt = command[4]
             prompts.append(prompt)
-            feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
-            feature["status"] = "done"
-            feature_path.write_text(
-                yaml.safe_dump(feature, sort_keys=False), encoding="utf-8"
-            )
+            if len(prompts) == 2:
+                _write_yaml(
+                    project_root / "harness" / "checks.yaml",
+                    {
+                        "contract_version": "1.0",
+                        "defaults": {"when": {"phase": "iteration_end"}},
+                        "checks": {
+                            "spec_validate": {
+                                "type": "command",
+                                "command": (
+                                    f'"{sys.executable}" "{second_check_script}" '
+                                    f'"{second_counter_path}"'
+                                ),
+                            }
+                        },
+                    },
+                )
+            if len(prompts) >= 3:
+                feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
+                feature["status"] = "done"
+                feature_path.write_text(
+                    yaml.safe_dump(feature, sort_keys=False), encoding="utf-8"
+                )
             return subprocess.CompletedProcess(command, 0, stdout="ok\n", stderr="")
         check = bool(kwargs.pop("check", False))
         return real_run(command, check=check, **kwargs)
@@ -3079,7 +3105,6 @@ def test_gate_failure_feedback_replaces_previous_feedback(
         "_run_backend_precheck",
         lambda **_: True,
     )
-
     code = run_loop(
         project_root=project_root,
         feature_paths=[str(feature_path)],
@@ -3091,12 +3116,18 @@ def test_gate_failure_feedback_replaces_previous_feedback(
 
     assert code == 0
     assert len(prompts) >= 3
+    assert "spec_validate" in prompts[1]
+    assert str(first_check_script) in prompts[1]
+    assert str(second_check_script) not in prompts[1]
     assert first_token not in prompts[1]
     assert second_token not in prompts[1]
+    assert "spec_validate" in prompts[2]
+    assert str(second_check_script) in prompts[2]
+    assert str(first_check_script) not in prompts[2]
     assert first_token not in prompts[2]
     assert second_token not in prompts[2]
-    assert '"kind":"command_failure"' in prompts[1]
-    assert '"kind":"command_failure"' in prompts[2]
+    assert "retry_feedback_parse_error" not in prompts[1]
+    assert "retry_feedback_parse_error" not in prompts[2]
 
 
 def test_verification_failure_feedback_replaces_previous_feedback(
@@ -3302,4 +3333,5 @@ def test_gate_failure_feedback_is_truncated_before_prompt_injection(
     assert "BEGIN_GATE_FEEDBACK" not in prompts[1]
     assert "END_GATE_FEEDBACK" not in prompts[1]
     assert "...[truncated]" not in prompts[1]
-    assert '"kind":"command_failure"' in prompts[1]
+    assert "spec_validate" in prompts[1]
+    assert "retry_feedback_parse_error" not in prompts[1]

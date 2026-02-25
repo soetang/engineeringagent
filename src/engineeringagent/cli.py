@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.metadata
+import json
 import re
 import shutil
 import sys
@@ -28,6 +29,16 @@ _HandlerArgs = SimpleNamespace
 
 _INIT_PACK_DEFAULT = "slim"
 _INIT_PACK_CHOICES: tuple[str, ...] = ("slim", "standard")
+
+
+def _normalize_cli_checks_groups(checks: list[str] | None) -> list[str] | None:
+    """Normalize and validate optional checks-group selections."""
+    if not checks:
+        return None
+    try:
+        return list(checks_module.normalize_check_groups(checks))
+    except ValueError as exc:
+        raise ValueError(f"checks config error: {exc}") from exc
 
 
 def _stdout_is_tty() -> bool:
@@ -464,6 +475,41 @@ def cmd_checks_catalog(args: _HandlerArgs) -> int:
     return 0
 
 
+def _emit_run_result(
+    result: checks_module.ChecksRunResult,
+    *,
+    noun: str,
+    success_label: str,
+    fail_label: str | None = None,
+) -> int:
+    if result.output:
+        print(result.output)
+    if result.ok:
+        status_label = "dry-run" if result.dry_run else "run"
+        print(f"{noun} {status_label}: {success_label}")
+        return 0
+    if fail_label is not None:
+        print(f"{noun} run: {fail_label}")
+    return 1
+
+
+def _resolve_failed_check_type(
+    result: checks_module.ChecksRunResult,
+) -> str | None:
+    """Resolve failed check type without relying on group metadata."""
+    failed_check_id = result.failed_check_id
+
+    if failed_check_id is not None:
+        for execution in result.executions:
+            if execution.check_id == failed_check_id:
+                return execution.check_type
+        for decision in result.decisions:
+            if decision["check_id"] == failed_check_id:
+                return str(decision["check_type"]).strip() or None
+
+    return None
+
+
 def cmd_checks_run(args: _HandlerArgs) -> int:
     """Execute repo-owned checks declared in harness/checks.yaml.
 
@@ -482,27 +528,56 @@ def cmd_checks_run(args: _HandlerArgs) -> int:
         verbose_output=bool(getattr(args, "verbose_output", False)),
         base=getattr(args, "base", None),
         head=getattr(args, "head", None),
+        dry_run=bool(getattr(args, "dry_run", False)),
     )
 
-    if result.output:
-        print(result.output)
-    if result.ok:
-        print("checks run: ok")
-        return 0
-
-    runtime_groups = {
-        "validate": "validate",
-        "commands": "command",
-        "fitness": "fitness",
-        "reviewers": "reviewer",
-    }
-    if result.failed_group in runtime_groups:
+    failed_runtime_message: str | None = None
+    failed_check_type = _resolve_failed_check_type(result)
+    if not result.ok and failed_check_type is not None:
         check_id = result.failed_check_id or "unknown"
-        print(
-            f"checks failed: type={runtime_groups[result.failed_group]} "
-            f"check_id={check_id}"
+        failed_runtime_message = (
+            f"checks failed: type={failed_check_type} check_id={check_id}"
         )
-    return 1
+
+    exit_code = _emit_run_result(result, noun="checks", success_label="ok")
+    if failed_runtime_message is not None:
+        print(failed_runtime_message)
+    return exit_code
+
+
+def cmd_fitness_run(args: _HandlerArgs) -> int:
+    """Run fitness checks via a compatibility command surface."""
+
+    project_root = Path(args.project_root).resolve()
+    result = checks_module.run_checks(
+        project_root,
+        phase=args.phase,
+        checks=["fitness"],
+        check_id=getattr(args, "check_id", None),
+        base=getattr(args, "base", None),
+        head=getattr(args, "head", None),
+        dry_run=bool(getattr(args, "dry_run", False)),
+    )
+
+    output_format = getattr(args, "output_format", "text")
+    if output_format == "json":
+        payload = {
+            "ok": result.ok,
+            "dry_run": result.dry_run,
+            "failed_check_id": result.failed_check_id,
+            "failed_payload": result.failed_payload,
+            "output": result.output,
+            "prompt_feedback": result.prompt_feedback,
+        }
+        print(json.dumps(payload, sort_keys=True))
+        return 0 if result.ok else 1
+
+    return _emit_run_result(
+        result,
+        noun="fitness",
+        success_label="ok",
+        fail_label="failed",
+    )
 
 
 def cmd_init(args: _HandlerArgs) -> int:  # noqa: C901
@@ -737,14 +812,12 @@ def _build_handler_args(ctx: typer.Context, **kwargs: object) -> _HandlerArgs:
 
 def _build_typer_checks_app() -> typer.Typer:
     """Build the Typer checks app with nested command routing."""
+    check_groups_help = "|".join(checks_module.list_check_groups())
     checks_app = typer.Typer(
         help="run repo-owned checks from harness/checks.yaml",
         add_completion=False,
         no_args_is_help=False,
     )
-
-    allowed_groups = ("validate", "commands", "fitness", "reviewers")
-    allowed_groups_set = set(allowed_groups)
 
     @checks_app.command("run", help="run checks declared in harness/checks.yaml")
     def _checks_run(
@@ -752,9 +825,7 @@ def _build_typer_checks_app() -> typer.Typer:
         checks: list[str] | None = typer.Option(
             None,
             "--checks",
-            help=(
-                "repeatable checks group selection: validate|commands|fitness|reviewers"
-            ),
+            help=f"repeatable checks group selection: {check_groups_help}",
         ),
         check_id: str | None = typer.Option(
             None,
@@ -786,22 +857,17 @@ def _build_typer_checks_app() -> typer.Typer:
             "--verbose-output",
             help="stream full command output in terminal",
         ),
+        dry_run: bool = typer.Option(
+            False,
+            "--dry-run",
+            help="plan checks only (no command or reviewer execution)",
+        ),
     ) -> None:
-        normalized_checks: list[str] | None = None
-        if checks:
-            normalized = [str(group or "").strip() for group in checks]
-            normalized = [group for group in normalized if group]
-
-            invalid = sorted(
-                {group for group in normalized if group not in allowed_groups_set}
-            )
-            if invalid:
-                print(
-                    "checks config error: unknown checks groups: "
-                    f"{invalid}. Supported: {list(allowed_groups)}"
-                )
-                raise typer.Exit(code=1)
-            normalized_checks = normalized
+        try:
+            normalized_checks = _normalize_cli_checks_groups(checks)
+        except ValueError as exc:
+            print(str(exc))
+            raise typer.Exit(code=1) from exc
 
         resolved_feature_path: str | None
         if feature_path is None:
@@ -827,6 +893,7 @@ def _build_typer_checks_app() -> typer.Typer:
             base=base,
             head=head,
             verbose_output=verbose_output,
+            dry_run=dry_run,
         )
 
     @checks_app.command("catalog", help="generate fitness rule catalog")
@@ -856,6 +923,62 @@ def _build_typer_checks_app() -> typer.Typer:
         )
 
     return checks_app
+
+
+def _build_typer_fitness_app() -> typer.Typer:
+    """Build a compatibility fitness app."""
+
+    fitness_app = typer.Typer(
+        help="run fitness checks",
+        add_completion=False,
+        no_args_is_help=False,
+    )
+
+    @fitness_app.command("run", help="run configured fitness checks")
+    def _fitness_run(
+        ctx: typer.Context,
+        output_format: Literal["json", "text"] = typer.Option(
+            "text",
+            "--format",
+        ),
+        phase: HarnessCheckPhase = typer.Option(
+            HarnessCheckPhase.ITERATION_END,
+            "--phase",
+            help="check execution phase to run (iteration_end|feature_done|manual)",
+        ),
+        check_id: str | None = typer.Option(
+            None,
+            "--check-id",
+            help="optional fitness check id to run",
+        ),
+        base: str | None = typer.Option(
+            None,
+            "--base",
+            help="optional base revision for on_change diff",
+        ),
+        head: str | None = typer.Option(
+            None,
+            "--head",
+            help="optional head revision for on_change diff",
+        ),
+        dry_run: bool = typer.Option(
+            False,
+            "--dry-run",
+            help="plan checks only (no command execution)",
+        ),
+    ) -> None:
+        _exit_with_handler_code(
+            cmd_fitness_run,
+            ctx=ctx,
+            output_format=output_format,
+            phase=phase,
+            check_id=check_id,
+            base=base,
+            head=head,
+            dry_run=dry_run,
+        )
+
+    return fitness_app
 
 
 def build_typer_app() -> typer.Typer:
@@ -936,6 +1059,11 @@ def build_typer_app() -> typer.Typer:
         _build_typer_checks_app(),
         name="checks",
         help="run repo-owned checks from harness/checks.yaml",
+    )
+    app.add_typer(
+        _build_typer_fitness_app(),
+        name="fitness",
+        help="run fitness checks",
     )
 
     @app.command(

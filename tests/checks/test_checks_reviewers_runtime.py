@@ -3,10 +3,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from engineeringagent.changed_paths import ChangedPathsResult
 from engineeringagent.checks.reviewers.runtime import (
     RunPlannedReviewerChecksRequest,
     plan_reviewer_checks,
+    planned_reviewer_checks_from_decisions,
     run_planned_reviewer_checks,
 )
 from engineeringagent.progress.paths import reviewers_state_path
@@ -53,6 +56,41 @@ def test_plan_reviewer_checks_manual_phase_marks_skip(tmp_path: Path) -> None:
     assert planned[0].check_id == "doc_review"
     assert planned[0].decision == "skip"
     assert planned[0].reason == "manual"
+
+
+def test_planned_reviewer_checks_from_decisions_filters_reviewer_type() -> None:
+    planned = planned_reviewer_checks_from_decisions(
+        (
+            {
+                "check_id": "command_lint",
+                "check_type": "command",
+                "phase": "iteration_end",
+                "decision": "run",
+                "reason": "matched_on_change",
+            },
+            {
+                "check_id": "review_doc",
+                "check_type": "reviewer",
+                "phase": "feature_done",
+                "decision": "skip",
+                "reason": "manual",
+            },
+            {
+                "check_id": "review_code",
+                "check_type": "reviewer",
+                "phase": "feature_done",
+                "decision": "run",
+                "reason": "always_run_no_on_change",
+            },
+        )
+    )
+
+    assert tuple(entry.check_id for entry in planned) == ("review_doc", "review_code")
+    assert tuple(entry.decision for entry in planned) == ("skip", "run")
+    assert tuple(entry.reason for entry in planned) == (
+        "manual",
+        "always_run_no_on_change",
+    )
 
 
 def test_run_planned_reviewer_checks_reuses_cached_approval(tmp_path: Path) -> None:
@@ -251,3 +289,51 @@ def test_run_planned_reviewer_checks_manual_phase_emits_skip_output(
     assert failed_id is None
     assert failed_payload is None
     assert "[reviewer:doc_review] skip reason=manual" in output
+
+
+def test_run_planned_reviewer_checks_handles_non_dict_reviewer_payload(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    checks_path = _write_checks_yaml(
+        tmp_path,
+        "\n".join(
+            [
+                'contract_version: "1.0"',
+                "checks:",
+                "  doc_review:",
+                "    type: reviewer",
+                "    prompt_file: harness/reviewers/prompts/doc_review.md",
+                "    when:",
+                "      phase: feature_done",
+                "",
+            ]
+        ),
+    )
+    doc = _load_checks_document(checks_path)
+
+    monkeypatch.setattr(
+        "engineeringagent.checks.reviewers.runtime.run_reviewer",
+        lambda *_args, **_kwargs: "invalid-payload",
+        raising=True,
+    )
+
+    request = RunPlannedReviewerChecksRequest(
+        project_root=tmp_path,
+        doc=doc,
+        phase=HarnessCheckPhase.FEATURE_DONE,
+        changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
+        feature_id="FEAT-001",
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+    )
+    ok, failed_id, output, failed_payload = run_planned_reviewer_checks(request)
+
+    assert not ok
+    assert failed_id == "doc_review"
+    assert "summary=(reviewer payload missing)" in output
+    assert failed_payload == {
+        "kind": "reviewer_feedback",
+        "reviewer_id": "doc_review",
+        "reviewer_phase": "feature_done",
+        "decision": None,
+    }

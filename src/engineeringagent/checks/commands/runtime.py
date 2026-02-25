@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import time
 from time import monotonic_ns
-from typing import Iterable
+from typing import Iterable, cast
 
 from pydantic import BaseModel, ConfigDict
 
@@ -14,12 +14,13 @@ from engineeringagent.specs import (
     HarnessChecksDocument,
 )
 from engineeringagent.process import run_shell_command
+from engineeringagent.checks.strategy_contracts import CheckDecisionAction
 
 from ..planning_policy import (
     ALWAYS_RUN_NO_ON_CHANGE_REASON as _ALWAYS_RUN_NO_ON_CHANGE_REASON,
     MATCHED_ON_CHANGE_REASON as _MATCHED_ON_CHANGE_REASON,
     NO_ON_CHANGE_MATCH_REASON as _NO_ON_CHANGE_MATCH_REASON,
-    plan_check_when_decision,
+    plan_checks_for_definition_type,
 )
 
 
@@ -34,7 +35,7 @@ class PlannedCheck(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     check_id: str
-    decision: str
+    decision: CheckDecisionAction
     reason: str
 
 
@@ -83,24 +84,17 @@ def plan_command_checks(
     changed_paths: ChangedPathsResult,
 ) -> list[PlannedCheck]:
     """Plan deterministic run/skip decisions for command checks."""
-    planned: list[PlannedCheck] = []
-    for check_id, check in doc.checks.items():
-        if not isinstance(check, HarnessCheckCommandDefinition):
-            continue
-        decision = plan_check_when_decision(
-            doc=doc,
-            phase=phase,
-            check_when=check.when,
-            changed_paths=changed_paths,
-        )
-        if decision is None:
-            continue
-        decision_value, reason = decision
-        planned.append(
-            PlannedCheck(check_id=check_id, decision=decision_value, reason=reason)
-        )
-
-    return planned
+    return plan_checks_for_definition_type(
+        doc,
+        phase=phase,
+        changed_paths=changed_paths,
+        definition_type=HarnessCheckCommandDefinition,
+        make_record=lambda check_id, decision, reason: PlannedCheck(
+            check_id=check_id,
+            decision=cast(CheckDecisionAction, decision),
+            reason=reason,
+        ),
+    )
 
 
 def iter_planned_command_check_commands(

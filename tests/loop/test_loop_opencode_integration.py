@@ -14,7 +14,6 @@ from engineeringagent.agents import AgentBackendError, AgentBackendFailureDetail
 from engineeringagent.checks.pytest.config import (
     resolve_harness_pytest_opencode_integration_enabled,
 )
-from engineeringagent.prompts.retry_feedback import build_command_failure_retry_feedback
 from engineeringagent.loop import (
     RunConfigOptions,
     build_loop_run,
@@ -641,7 +640,6 @@ def test_gate_failure_feedback_round_trips_to_retry_prompt_integration(
         "engineeringagent.agents.helpers.run_permission_probe",
         fake_run_permission_probe,
     )
-
     code = run_loop(
         project_root=project_root,
         feature_paths=[str(feature_path)],
@@ -654,17 +652,145 @@ def test_gate_failure_feedback_round_trips_to_retry_prompt_integration(
 
     assert code == 0
     assert len(prompts) >= 2
+    assert "spec_validate" in prompts[1]
+    assert str(gate_script) in prompts[1]
     assert "SPEC_VALIDATE_INTEGRATION_TOKEN" not in prompts[1]
-    assert '"kind":"command_failure"' in prompts[1]
-    assert '"phase":"gates"' in prompts[1]
-    expected = build_command_failure_retry_feedback(
-        phase="gates",
-        gate="spec_validate",
-        command=f'"{sys.executable}" "{gate_script}"',
-        precommit=False,
-        message="Command check failed. Rerun the command to see full diagnostics.",
+    assert "retry_feedback_parse_error" not in prompts[1]
+
+
+def test_gate_failure_feedback_replaces_previous_feedback_integration(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project_root, feature_path = _make_project_root(tmp_path)
+    _init_git_repo(project_root)
+
+    first_counter_path = project_root / ".first-spec-validate-attempt"
+    second_counter_path = project_root / ".second-spec-validate-attempt"
+    first_gate_script = tmp_path.parent / f"{tmp_path.name}-gate-fail-once-first.py"
+    first_gate_script.write_text(
+        "\n".join(
+            [
+                "from pathlib import Path",
+                f"counter_path = Path({str(first_counter_path)!r})",
+                "count = int(counter_path.read_text(encoding='utf-8')) if counter_path.exists() else 0",
+                "count += 1",
+                "counter_path.write_text(str(count), encoding='utf-8')",
+                "if count == 1:",
+                "    print('OPENCODE_FIRST_GATE_OUTPUT_TOKEN')",
+                "    raise SystemExit(1)",
+                "print('ok')",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
     )
-    assert expected in prompts[1]
+    second_gate_script = tmp_path.parent / f"{tmp_path.name}-gate-fail-once-second.py"
+    second_gate_script.write_text(
+        "\n".join(
+            [
+                "from pathlib import Path",
+                f"counter_path = Path({str(second_counter_path)!r})",
+                "count = int(counter_path.read_text(encoding='utf-8')) if counter_path.exists() else 0",
+                "count += 1",
+                "counter_path.write_text(str(count), encoding='utf-8')",
+                "if count == 1:",
+                "    print('OPENCODE_SECOND_GATE_OUTPUT_TOKEN')",
+                "    raise SystemExit(1)",
+                "print('ok')",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    _write_yaml(
+        project_root / "harness" / "checks.yaml",
+        {
+            "contract_version": "1.0",
+            "defaults": {"when": {"phase": "iteration_end"}},
+            "checks": {
+                "spec_validate": {
+                    "type": "command",
+                    "command": f'"{sys.executable}" "{first_gate_script}"',
+                }
+            },
+        },
+    )
+
+    prompts: list[str] = []
+    set_done_script = _write_set_done_script(
+        tmp_path.parent / f"{tmp_path.name}-set-done-opencode-feedback-replace.py"
+    )
+
+    def fake_start_agent(
+        project_root: Path,
+        prompt: str,
+        *,
+        agent: str = "build",
+        capture_output: bool = True,
+        text: bool = True,
+    ) -> str:
+        del project_root, agent, capture_output, text
+        prompts.append(prompt)
+        if len(prompts) == 2:
+            _write_yaml(
+                tmp_path / "harness" / "checks.yaml",
+                {
+                    "contract_version": "1.0",
+                    "defaults": {"when": {"phase": "iteration_end"}},
+                    "checks": {
+                        "spec_validate": {
+                            "type": "command",
+                            "command": f'"{sys.executable}" "{second_gate_script}"',
+                        }
+                    },
+                },
+            )
+        if len(prompts) >= 3:
+            subprocess.run(
+                [sys.executable, str(set_done_script), str(feature_path)],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+        return "ok\n"
+
+    def fake_run_permission_probe(_: Path) -> PermissionProbeResult:
+        return PermissionProbeResult(ok=True, reason="ok", returncode=0, output="")
+
+    monkeypatch.setattr(loop_module, "run_agent", fake_start_agent)
+    monkeypatch.setattr(
+        "engineeringagent.agents.helpers.run_permission_probe",
+        fake_run_permission_probe,
+    )
+
+    first_output = "OPENCODE_FIRST_GATE_OUTPUT_TOKEN"
+    second_output = "OPENCODE_SECOND_GATE_OUTPUT_TOKEN"
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        gate_profile="loop_fast",
+        opencode_prompt=None,
+        dry_run=False,
+        allow_dirty=True,
+        max_iterations=8,
+    )
+
+    assert code == 0
+    assert len(prompts) >= 3
+    assert "spec_validate" in prompts[1]
+    assert str(first_gate_script) in prompts[1]
+    assert str(second_gate_script) not in prompts[1]
+    assert first_output not in prompts[1]
+    assert second_output not in prompts[1]
+    assert "spec_validate" in prompts[2]
+    assert str(second_gate_script) in prompts[2]
+    assert str(first_gate_script) not in prompts[2]
+    assert first_output not in prompts[2]
+    assert second_output not in prompts[2]
+    assert "retry_feedback_parse_error" not in prompts[1]
+    assert "retry_feedback_parse_error" not in prompts[2]
 
 
 def test_loop_archived_done_requires_same_iteration_completion_commit(

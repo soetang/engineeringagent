@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Callable, Iterable
+from typing import Any, Callable, Iterable, cast
 
 from pydantic import BaseModel, ConfigDict
 
@@ -23,12 +23,17 @@ from engineeringagent.specs import (
     HarnessCheckReviewerDefinition,
     HarnessChecksDocument,
 )
+from engineeringagent.checks.strategy_contracts import (
+    CheckDecision,
+    CheckDecisionAction,
+    map_strategy_decisions,
+)
 
 from ..planning_policy import (
     ALWAYS_RUN_NO_ON_CHANGE_REASON as _ALWAYS_RUN_NO_ON_CHANGE_REASON,
     MATCHED_ON_CHANGE_REASON as _MATCHED_ON_CHANGE_REASON,
     NO_ON_CHANGE_MATCH_REASON as _NO_ON_CHANGE_MATCH_REASON,
-    plan_check_when_decision,
+    plan_checks_for_definition_type,
 )
 
 
@@ -43,7 +48,7 @@ class PlannedCheck(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     check_id: str
-    decision: str
+    decision: CheckDecisionAction
     reason: str
 
 
@@ -73,25 +78,17 @@ def plan_reviewer_checks(
     changed_paths: ChangedPathsResult,
 ) -> list[PlannedCheck]:
     """Plan deterministic run/skip decisions for reviewer checks."""
-
-    planned: list[PlannedCheck] = []
-    for check_id, check in doc.checks.items():
-        if not isinstance(check, HarnessCheckReviewerDefinition):
-            continue
-        decision = plan_check_when_decision(
-            doc=doc,
-            phase=phase,
-            check_when=check.when,
-            changed_paths=changed_paths,
-        )
-        if decision is None:
-            continue
-        decision_value, reason = decision
-        planned.append(
-            PlannedCheck(check_id=check_id, decision=decision_value, reason=reason)
-        )
-
-    return planned
+    return plan_checks_for_definition_type(
+        doc,
+        phase=phase,
+        changed_paths=changed_paths,
+        definition_type=HarnessCheckReviewerDefinition,
+        make_record=lambda check_id, decision, reason: PlannedCheck(
+            check_id=check_id,
+            decision=cast(CheckDecisionAction, decision),
+            reason=reason,
+        ),
+    )
 
 
 def iter_planned_reviewer_checks(
@@ -112,23 +109,49 @@ def iter_planned_reviewer_checks(
         yield entry.check_id, check
 
 
+def planned_reviewer_checks_from_decisions(
+    decisions: Iterable[CheckDecision],
+) -> tuple[PlannedCheck, ...]:
+    """Convert reviewer strategy decisions into runtime ``PlannedCheck`` entries."""
+
+    return map_strategy_decisions(
+        decisions,
+        check_type="reviewer",
+        mapper=lambda decision: PlannedCheck(
+            check_id=decision["check_id"],
+            decision=cast(CheckDecisionAction, decision["decision"]),
+            reason=decision["reason"],
+        ),
+    )
+
+
 def run_planned_reviewer_checks(
     request: RunPlannedReviewerChecksRequest,
 ) -> tuple[bool, str | None, str, dict[str, Any] | None]:
-    """Execute planned reviewer checks and return deterministic outcome."""
+    """Execute computed reviewer plan and return deterministic outcome."""
 
     planned = plan_reviewer_checks(
         request.doc,
         phase=request.phase,
         changed_paths=request.changed_paths,
     )
-    if not planned:
+    return run_planned_reviewer_checks_from_plan(request, planned)
+
+
+def run_planned_reviewer_checks_from_plan(
+    request: RunPlannedReviewerChecksRequest,
+    planned: Iterable[PlannedCheck],
+) -> tuple[bool, str | None, str, dict[str, Any] | None]:
+    """Execute reviewer checks from an existing deterministic plan."""
+
+    planned_entries = tuple(planned)
+    if not planned_entries:
         return True, None, "", None
 
     state = load_reviewers_state(request.project_root)
     output_parts: list[str] = []
 
-    for entry in planned:
+    for entry in planned_entries:
         reviewer_def = request.doc.checks.get(entry.check_id)
         if not isinstance(reviewer_def, HarnessCheckReviewerDefinition):
             continue
@@ -141,9 +164,9 @@ def run_planned_reviewer_checks(
 
         reviewer_id = entry.check_id
         reviewer = reviewer_def.model_dump(mode="python")
-        on_change = None
-        if reviewer_def.when is not None:
-            on_change = reviewer_def.when.on_change
+        on_change = (
+            reviewer_def.when.on_change if reviewer_def.when is not None else None
+        )
         reviewer["trigger"] = {"on_change": on_change} if on_change else {}
 
         reuse, reuse_reason = evaluate_cached_reviewer_approval(
@@ -169,48 +192,51 @@ def run_planned_reviewer_checks(
             prior_feedback=request.prior_feedback,
             run_agent_fn=request.run_agent_fn,
         )
-        if isinstance(decision, dict):
+        decision_name, summary, decision_payload = _normalize_reviewer_decision(
+            decision
+        )
+        if decision_payload is not None:
             record_reviewer_approval(
                 state,
                 feature_id=request.feature_id,
                 reviewer_id=reviewer_id,
-                decision=str(decision.get("decision", "")),
+                decision=str(decision_payload.get("decision", "")),
             )
 
-        raw_decision = (
-            str(decision.get("decision", DECISION_REQUEST_CHANGES))
-            if isinstance(decision, dict)
-            else DECISION_REQUEST_CHANGES
-        )
-        decision_name = (
-            DECISION_APPROVE
-            if raw_decision == DECISION_APPROVE
-            else DECISION_REQUEST_CHANGES
-        )
-        summary = (
-            str(decision.get("summary", ""))
-            if isinstance(decision, dict)
-            else "(reviewer payload missing)"
-        )
         output_parts.append(
             f"[reviewer:{reviewer_id}] decision={decision_name} summary={summary}"
         )
 
         if decision_name != DECISION_APPROVE:
             save_reviewers_state(request.project_root, state)
-            decision_payload = decision if isinstance(decision, dict) else None
-            reviewer_phase = (
-                "feature_done"
-                if request.phase == HarnessCheckPhase.FEATURE_DONE
-                else "iteration_end"
-            )
             payload = {
                 "kind": "reviewer_feedback",
                 "reviewer_id": reviewer_id,
-                "reviewer_phase": reviewer_phase,
+                "reviewer_phase": _reviewer_phase_for_payload(request.phase),
                 "decision": decision_payload,
             }
             return False, reviewer_id, "\n".join(output_parts).strip(), payload
 
     save_reviewers_state(request.project_root, state)
     return True, None, "\n".join(output_parts).strip(), None
+
+
+def _normalize_reviewer_decision(
+    decision: Any,
+) -> tuple[str, str, dict[str, Any] | None]:
+    if not isinstance(decision, dict):
+        return DECISION_REQUEST_CHANGES, "(reviewer payload missing)", None
+
+    raw_decision = str(decision.get("decision", DECISION_REQUEST_CHANGES))
+    decision_name = (
+        DECISION_APPROVE
+        if raw_decision == DECISION_APPROVE
+        else DECISION_REQUEST_CHANGES
+    )
+    return decision_name, str(decision.get("summary", "")), decision
+
+
+def _reviewer_phase_for_payload(phase: HarnessCheckPhase) -> str:
+    if phase == HarnessCheckPhase.FEATURE_DONE:
+        return "feature_done"
+    return "iteration_end"

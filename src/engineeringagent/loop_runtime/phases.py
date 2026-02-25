@@ -15,10 +15,9 @@ from ..checks import (
     ChecksRunResult,
     run_checks,
 )
+from ..prompt_feedback import resolve_checks_retry_prompt_feedback
 from ..prompts.retry_feedback import (
     build_command_failure_retry_feedback,
-    build_fitness_failure_retry_feedback,
-    build_reviewer_feedback_retry_feedback,
 )
 from ..process import run_shell_command
 from ..specs import HarnessCheckPhase
@@ -33,24 +32,6 @@ from .models import (
 )
 from .time_format import utc_iso_from_epoch_sec
 from ..feature_commit import feature_completion_commit_subject
-
-
-def _payload_get_str(payload: object, key: str) -> str | None:
-    if not isinstance(payload, dict):
-        return None
-    value = payload.get(key)
-    if isinstance(value, str) and value.strip():
-        return value
-    return None
-
-
-def _payload_get_list_of_dicts(payload: object, key: str) -> list[dict[str, object]]:
-    if not isinstance(payload, dict):
-        return []
-    raw = payload.get(key)
-    if not isinstance(raw, list):
-        return []
-    return [entry for entry in raw if isinstance(entry, dict)]
 
 
 def _append_gate_command_timings(
@@ -70,6 +51,18 @@ def _append_gate_command_timings(
                 duration_sec=ended - started,
             )
         )
+
+
+def _checks_failure_gate_id(result: ChecksRunResult, *, default: str) -> str:
+    """Return a deterministic failed-gate identifier from checks results."""
+
+    return result.failed_check_id or default
+
+
+def _checks_failure_feedback(result: ChecksRunResult) -> str | None:
+    """Return normalized retry feedback for failed checks results."""
+
+    return resolve_checks_retry_prompt_feedback(result.prompt_feedback)
 
 
 class GatePhaseDependencies(BaseModel):
@@ -132,17 +125,6 @@ def run_gate_phase(  # noqa: C901
 
     outputs: list[str] = []
     command_timings: list[CommandTiming] = []
-    hook_feedback: str | None = None
-    failed_gate: str | None = None
-
-    def _command_for_failed_check(result: ChecksRunResult) -> str | None:
-        if not result.failed_check_id:
-            return None
-        for invocation in reversed(result.command_invocations):
-            if invocation.check_id == result.failed_check_id:
-                command = invocation.command.strip()
-                return command or None
-        return None
 
     def _run_gate_groups(phase: HarnessCheckPhase) -> ChecksRunResult:
         result = run_checks(
@@ -165,10 +147,6 @@ def run_gate_phase(  # noqa: C901
             outputs.append(last_result.output)
 
     ok = last_result.ok
-    if last_result.failed_group == "config":
-        failed_gate = "checks_config"
-    else:
-        failed_gate = last_result.failed_check_id
 
     combined_output = "\n".join(part for part in outputs if part).strip()
 
@@ -183,30 +161,7 @@ def run_gate_phase(  # noqa: C901
         )
 
     failure_result: ChecksRunResult = last_result
-
-    if failure_result.failed_group == "commands":
-        payload = failure_result.failed_payload
-        command = _payload_get_str(payload, "command")
-        command = command or _command_for_failed_check(failure_result)
-        hook_feedback = build_command_failure_retry_feedback(
-            phase="gates",
-            gate=failure_result.failed_check_id,
-            command=command or "unknown",
-            precommit=False,
-            message="Command check failed. Rerun the command to see full diagnostics.",
-        )
-    elif failure_result.failed_group == "fitness":
-        payload = failure_result.failed_payload
-        failed_rules = _payload_get_list_of_dicts(payload, "failed_rules")
-        if failed_rules:
-            hook_feedback = build_fitness_failure_retry_feedback(
-                gate=failure_result.failed_check_id,
-                command=(
-                    "uv run engineeringagent checks run --checks fitness --phase iteration_end"
-                ),
-                failed_rules=failed_rules,
-            )
-    hook_feedback = hook_feedback or combined_output or "checks failed"
+    failed_gate = _checks_failure_gate_id(failure_result, default="checks_config")
 
     if archived_in_iteration and archived_path is not None:
         restored_ok, restore_error = dependencies.restore_archived_feature(
@@ -223,7 +178,7 @@ def run_gate_phase(  # noqa: C901
         gate_status=f"failed:{failed_gate or 'unknown'}",
         gate_output=combined_output,
         command_timings=command_timings,
-        hook_feedback=hook_feedback,
+        hook_feedback=_checks_failure_feedback(failure_result),
     )
 
 
@@ -343,6 +298,7 @@ def run_reviewer_phase(  # noqa: C901
     )
 
     reviewer_output = result.output
+
     if result.ok:
         status = "passed" if reviewer_output else "not_run"
         decision = "approve" if status == "passed" else None
@@ -362,42 +318,14 @@ def run_reviewer_phase(  # noqa: C901
             archived_path, iteration_inputs.feature_path
         )
 
-    raw_payload = result.failed_payload
-    reviewer_id = result.failed_check_id or "unknown"
-    reviewer_phase = "feature_done"
-    decision_payload: dict[str, object] = {
-        "decision": "request_changes",
-        "summary": "(reviewer payload missing)",
-        "required_actions": [],
-    }
-    if isinstance(raw_payload, dict) and raw_payload.get("kind") == "reviewer_feedback":
-        value = raw_payload.get("reviewer_id")
-        if isinstance(value, str) and value.strip():
-            reviewer_id = value
-        phase_value = raw_payload.get("reviewer_phase")
-        if phase_value in {"iteration_end", "feature_done"}:
-            reviewer_phase = phase_value
-        decision_value = raw_payload.get("decision")
-        if isinstance(decision_value, dict):
-            decision_payload = decision_value
-
-    feedback = build_reviewer_feedback_retry_feedback(
-        reviewer_id=reviewer_id,
-        reviewer_phase=reviewer_phase,
-        decision=decision_payload,
-    )
-    decision_name_raw = decision_payload.get("decision")
-    decision_name = (
-        decision_name_raw
-        if isinstance(decision_name_raw, str) and decision_name_raw.strip()
-        else "request_changes"
-    )
+    failed_gate = _checks_failure_gate_id(result, default="reviewer")
+    feedback = _checks_failure_feedback(result)
 
     return ReviewerPhaseOutcome(
         result="failed",
-        failed_gate="reviewer_request_changes",
-        reviewer_status="failed:request_changes",
-        reviewer_decision=decision_name,
+        failed_gate=failed_gate,
+        reviewer_status=f"failed:{failed_gate}",
+        reviewer_decision="request_changes",
         failed_reviewer_id=result.failed_check_id,
         reviewer_output=reviewer_output,
         command_timings=command_timings,
