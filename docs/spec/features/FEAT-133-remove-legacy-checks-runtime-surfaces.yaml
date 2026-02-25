@@ -1,0 +1,115 @@
+id: FEAT-133
+title: Remove legacy checks runtime compatibility surfaces and keep one orchestration path
+type: spec
+expected_commit_subject: 'spec: add FEAT-133 remove legacy checks runtime surfaces'
+status: backlog
+priority: high
+objective: >-
+  Remove duplicated and compatibility-only checks runtime paths so checks execution
+  and failure shaping flow through one canonical strategy orchestration path.
+context: >-
+  Checks currently carries multiple overlapping execution surfaces (strategy-based
+  orchestration and compatibility wrappers/runtime executors), plus reviewer legacy
+  planner/parser functions that are no longer part of the target architecture.
+constraints:
+  - Remove legacy surfaces immediately with no compatibility shims.
+  - Preserve `engineeringagent.checks.run_checks(...)` as the single supported
+    checks entrypoint for non-checks callers.
+  - Remove reviewer legacy planning/parsing surfaces in
+    `checks/reviewers/engine.py` (`load_reviewer_config`, `plan_reviewers`,
+    `parse_reviewer_decision`) in this feature, not a follow-up.
+  - When a legacy path is removed, remove tests that only verify that removed path
+    in the same change.
+  - Remove compatibility wrappers/executors that duplicate strategy behavior in
+    checks runtime modules.
+  - Keep checks decision/execution determinism and first-failure behavior unchanged
+    unless an explicit contract delta is documented.
+  - Do not change loop-trigger policy for checks phases in this feature; sequencing
+    and unconditional iteration-end behavior are owned by FEAT-137.
+  - Do not change agent implementation-prompt validation command behavior in this
+    feature; prompt-level validation command policy is owned by FEAT-136.
+  - Verification baseline for this feature is targeted tests plus
+    `uv run engineeringagent validate`.
+  - no fitness-function changes required; existing boundary rules already enforce
+    checks ownership and loop/checks separation for this scope.
+implementation_notes: |
+  Contract change declaration
+
+  Surface:
+  - Internal checks runtime helper APIs in `src/engineeringagent/checks/**`.
+  - Reviewer legacy helper surfaces in `src/engineeringagent/checks/reviewers/engine.py`.
+
+  Old behavior:
+  - Multiple overlapping execution/planning surfaces exist for command/fitness/reviewer checks.
+  - Reviewer legacy config/planning/parser helpers remain available alongside checks strategy flow.
+
+  New behavior:
+  - One canonical checks orchestration path remains (run_checks + strategies).
+  - Compatibility-only runtime wrappers and reviewer legacy helper surfaces are removed.
+
+  Compatibility policy:
+  - Immediate break for removed internal/legacy helper surfaces.
+  - No temporary dual-path compatibility support.
+
+  Migration plan:
+  - Remove duplicated wrappers/executors and update call sites/tests in the same change.
+  - Remove reviewer legacy helpers and update reviewer tests to strategy/runtime contracts.
+  - Keep checks API contract tests as the source of truth.
+
+  Verification evidence:
+  - Targeted checks/reviewer/runtime tests + `uv run engineeringagent validate`.
+acceptance:
+  - Compatibility wrappers/executors duplicating strategy behavior are removed from
+    checks runtime modules.
+  - Reviewer legacy helper surfaces (`load_reviewer_config`, `plan_reviewers`,
+    `parse_reviewer_decision`) are removed.
+  - Legacy-path tests are removed or rewritten to cover the remaining canonical path;
+    no tests remain that assert deleted compatibility behavior.
+  - The `engineeringagent.checks.run_checks(...)` entrypoint remains the only supported
+    checks integration surface for non-checks modules.
+  - Checks failure/output behavior stays deterministic and first-failure semantics
+    are preserved.
+  - 'Verification command passes: `uv run pytest -q tests/checks tests/reviewers
+    tests/harness/test_checks_runtime.py`.'
+  - 'Verification command passes: `uv run engineeringagent validate`.'
+subtasks:
+  - id: ST-001
+    title: Remove duplicated command and fitness runtime execution compatibility paths
+    status: backlog
+    context: >-
+      Delete compatibility-only runtime executors/wrappers that duplicate strategy-owned
+      command and fitness execution, and migrate tests to the canonical path.
+    verification:
+      - uv run pytest -q tests/checks/test_commands_runtime.py tests/checks/test_fitness_runtime.py tests/checks/test_run_checks_contract.py
+  - id: ST-002
+    title: Remove reviewer legacy planning and parsing helper surfaces
+    status: backlog
+    context: >-
+      Remove `load_reviewer_config`, `plan_reviewers`, and `parse_reviewer_decision`
+      from reviewer engine and align tests to current strategy/runtime contracts.
+    verification:
+      - uv run pytest -q tests/reviewers tests/checks/test_checks_reviewers_runtime.py
+  - id: ST-003
+    title: Collapse duplicated checks planning-to-execution mapping helpers
+    status: backlog
+    context: >-
+      Consolidate repeated planner/decision/execution shaping helpers into one checks-owned
+      implementation to reduce drift.
+    verification:
+      - uv run pytest -q tests/checks/test_run_checks_contract.py tests/harness/test_checks_runtime.py
+  - id: ST-004
+    title: Update checks exports and integration tests for removed legacy surfaces
+    status: backlog
+    context: >-
+      Ensure top-level checks surface remains explicit and tests assert removed legacy
+      helpers are no longer part of supported imports/contracts. Delete tests that
+      only covered removed legacy paths.
+    verification:
+      - uv run pytest -q tests/checks/test_checks_exports.py tests/fitness/test_fitness_rules_checks_import_surface.py
+  - id: ST-005
+    title: Run final targeted regression suite and validate specs
+    status: backlog
+    context: Confirm no behavior drift after legacy removals and simplification.
+    verification:
+      - uv run pytest -q tests/checks tests/reviewers tests/harness/test_checks_runtime.py
+      - uv run engineeringagent validate

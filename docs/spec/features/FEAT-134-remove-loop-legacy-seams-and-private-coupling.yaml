@@ -1,0 +1,112 @@
+id: FEAT-134
+title: Remove loop legacy seams and private coupling to runtime internals
+type: chore
+expected_commit_subject: 'chore: add FEAT-134 remove loop legacy seams'
+status: backlog
+priority: high
+objective: >-
+  Remove remaining loop compatibility seams and private module coupling so loop
+  orchestration depends only on explicit runtime contracts.
+context: >-
+  Loop architecture improved with LoopRun context, but legacy compatibility seams
+  and private-internal imports still increase maintenance cost and blur module boundaries.
+constraints:
+  - Remove legacy loop seams immediately with no compatibility carryover.
+  - Preserve documented CLI behavior for `engineeringagent run` while cleaning Python/internal
+    loop surfaces.
+  - Remove `loop_runtime/facade_signatures.py` and associated compatibility-only tests/allowlist
+    references in this feature.
+  - When a legacy loop/runtime path is removed, remove tests that only verify that
+    removed path in the same change.
+  - Remove loop compatibility artifacts such as `_require_clean_worktree` alias and
+    the unused back-compat `opencode_prompt` parameter on feature-iteration entrypoints.
+  - Stop private symbol coupling from `loop.py` to runtime internals (for example,
+    underscore-prefixed imports from `loop_runtime/feature_state.py`) by exposing
+    explicit public service functions.
+  - Do not change done-spec archival ownership or schema-only implement-prompt validation
+    policy in this feature; those behavior deltas are owned by FEAT-136.
+  - Do not change unconditional iteration-end checks sequencing or loop-trigger phase
+    policy in this feature; those behavior deltas are owned by FEAT-137.
+  - Verification baseline for this feature is targeted tests plus
+    `uv run engineeringagent validate`.
+  - no fitness-function changes required; existing no-facade and loop/checks boundary
+    rules already cover this scope.
+implementation_notes: |
+  Contract change declaration
+
+  Surface:
+  - Internal Python loop runtime APIs in `src/engineeringagent/loop.py` and
+    `src/engineeringagent/loop_runtime/**`.
+
+  Old behavior:
+  - Loop keeps compatibility-oriented seams and aliases that are not required by
+    the target architecture.
+  - `loop.py` reaches into private runtime helpers instead of depending on explicit
+    module-owned public seams.
+
+  New behavior:
+  - Legacy compatibility seams are removed.
+  - Loop depends on explicit runtime service boundaries only.
+
+  Compatibility policy:
+  - Immediate break for removed internal Python compatibility surfaces.
+  - No temporary compatibility wrappers.
+
+  Migration plan:
+  - Remove legacy shim modules/aliases/unused parameters and update tests in the same change.
+  - Introduce explicit public helper exports where loop previously imported private symbols.
+  - Keep CLI behavior stable while simplifying internal contracts.
+
+  Verification evidence:
+  - Targeted loop/runtime/CLI tests + `uv run engineeringagent validate`.
+acceptance:
+  - Compatibility-only loop shim module `loop_runtime/facade_signatures.py` is removed.
+  - Legacy alias `_require_clean_worktree` and unused compatibility parameter
+    `opencode_prompt` are removed from loop entry contracts.
+  - Tests that only asserted removed compatibility seams are deleted or rewritten
+    to assert the remaining explicit LoopRun/runtime contracts.
+  - The `loop.py` module no longer imports private underscore-prefixed runtime helpers.
+  - Loop runtime behavior and iteration outcomes remain stable for existing CLI flows.
+  - 'Verification command passes: `uv run pytest -q tests/loop tests/cli/test_cli.py`.'
+  - 'Verification command passes: `uv run engineeringagent validate`.'
+subtasks:
+  - id: ST-001
+    title: Remove facade-signature compatibility module and dependent tests/seams
+    status: backlog
+    context: >-
+      Delete `loop_runtime/facade_signatures.py`, remove references that only protect
+      shim behavior, delete shim-only tests, and align remaining tests with explicit
+      LoopRun contracts.
+    verification:
+      - uv run pytest -q tests/loop/test_loop_contracts.py tests/loop/test_loop_runtime_iteration.py
+  - id: ST-002
+    title: Remove loop alias and unused compatibility parameters
+    status: backlog
+    context: >-
+      Remove `_require_clean_worktree` alias and remove unused compatibility parameters
+      from loop feature-iteration entrypoints.
+    verification:
+      - uv run pytest -q tests/loop/test_loop_contracts.py tests/loop/test_loop_ralph_mode.py
+  - id: ST-003
+    title: Replace private runtime imports with explicit public service seams
+    status: backlog
+    context: >-
+      Export explicit helper/service functions from runtime modules and migrate loop
+      imports to those public seams.
+    verification:
+      - uv run pytest -q tests/loop/test_loop_runtime_iteration.py tests/loop/test_loop_phases_coverage.py
+  - id: ST-004
+    title: Remove dead compatibility code paths and simplify wiring
+    status: backlog
+    context: >-
+      Delete dead compatibility-only branches introduced for seam preservation and
+      keep only architecture-aligned runtime wiring.
+    verification:
+      - uv run pytest -q tests/loop tests/harness/test_checks_runtime.py
+  - id: ST-005
+    title: Run final targeted regression suite and validate specs
+    status: backlog
+    context: Confirm loop cleanup keeps behavior while removing legacy seams.
+    verification:
+      - uv run pytest -q tests/loop tests/cli/test_cli.py
+      - uv run engineeringagent validate

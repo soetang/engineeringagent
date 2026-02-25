@@ -1,0 +1,122 @@
+id: FEAT-135
+title: Modularize CLI command handling and centralize config write boundaries
+type: chore
+expected_commit_subject: 'chore: add FEAT-135 modularize cli and config boundaries'
+status: backlog
+priority: medium
+objective: >-
+  Improve separation of concerns by splitting CLI wiring from command logic, moving
+  config mutation into a dedicated config boundary, and removing duplicated utility
+  helpers.
+context: >-
+  `src/engineeringagent/cli.py` currently contains Typer wiring, command orchestration,
+  file/config mutation, and output helper logic in one large module. This increases
+  coupling and slows safe iteration across CLI and config behavior.
+constraints:
+  - Remove legacy/compatibility code touched by this work immediately; no temporary
+    compatibility shims.
+  - When removing legacy CLI/config helper paths, remove tests that only verify those
+    removed paths in the same change.
+  - Preserve command names, command options, and core command semantics unless an
+    explicit contract delta is documented.
+  - Move TOML config mutation/writing behavior out of CLI and into a dedicated config
+    domain module/surface.
+  - Keep behavior-preserving refactors as the default and allow only minor CLI UX/output
+    cleanup that does not change workflow semantics.
+  - Deduplicate shared terminal/path/output helper logic instead of keeping duplicated
+    local implementations.
+  - Do not change loop-triggered checks phase policy/default sequencing in this feature;
+    that behavior is owned by FEAT-137.
+  - Do not change implement-prompt validation command policy in this feature; that
+    behavior is owned by FEAT-136.
+  - Verification baseline for this feature is targeted tests plus
+    `uv run engineeringagent validate`.
+  - no fitness-function changes required; this feature reorganizes module boundaries
+    without changing existing architectural policy intent.
+implementation_notes: |
+  Contract change declaration
+
+  Surface:
+  - Internal CLI module layout and handler/service boundaries.
+  - Internal config mutation APIs for `engineeringagent.toml` writes.
+
+  Old behavior:
+  - CLI command registration, orchestration, config mutation, and output helper logic
+    are heavily co-located in `cli.py`.
+  - Config reading and writing responsibilities are split across unrelated modules.
+
+  New behavior:
+  - CLI wiring and command execution logic are separated into focused modules.
+  - Config write/mutation behavior is centralized under a dedicated config boundary.
+  - Shared utility helpers are deduplicated and reused.
+
+  Compatibility policy:
+  - Internal API/module path changes may break direct internal imports.
+  - No compatibility shim layer for moved internal helper functions.
+
+  Migration plan:
+  - Extract `init` and checks-related command orchestration into handler/service modules.
+  - Introduce shared config mutation helpers and migrate CLI call sites.
+  - Split Typer app wiring from command implementation logic.
+  - Apply minor UX cleanup only where output/help text clarity improves without semantic changes.
+
+  Verification evidence:
+  - Targeted CLI/config tests + `uv run engineeringagent validate`.
+acceptance:
+  - CLI module structure separates Typer app wiring from command orchestration handlers.
+  - Config mutation/write logic for `engineeringagent.toml` is centralized outside `cli.py`.
+  - Duplicated helper logic (TTY detection, repo-relative path/output writing helpers)
+    is deduplicated through shared utilities.
+  - Existing CLI command behavior remains stable, with only minor text/UX cleanup.
+  - Tests tied only to deleted legacy helpers are removed; remaining tests cover the
+    new module boundaries and supported command behavior.
+  - 'Verification command passes: `uv run pytest -q tests/cli`.'
+  - 'Verification command passes: `uv run engineeringagent validate`.'
+subtasks:
+  - id: ST-001
+    title: Extract init command orchestration into a dedicated service module
+    status: backlog
+    context: >-
+      Move non-CLI I/O business logic from `cmd_init` into a typed service boundary
+      while preserving command semantics.
+    verification:
+      - uv run pytest -q tests/cli/test_cli.py
+  - id: ST-002
+    title: Centralize engineeringagent.toml mutation and writing helpers
+    status: backlog
+    context: >-
+      Move config write/upsert responsibilities out of CLI and unify with config-domain
+      precedence/normalization behavior.
+    verification:
+      - uv run pytest -q tests/cli/test_cli.py tests/cli/test_cli_checks.py
+  - id: ST-003
+    title: Split Typer app wiring from command handlers
+    status: backlog
+    context: >-
+      Separate command registration/app bootstrap from command implementation functions
+      to simplify navigation and reduce module coupling.
+    verification:
+      - uv run pytest -q tests/cli
+  - id: ST-004
+    title: Deduplicate shared terminal and path/output helper utilities
+    status: backlog
+    context: >-
+      Replace duplicated helper implementations in CLI/runtime modules with shared
+      utility functions and consistent behavior.
+    verification:
+      - uv run pytest -q tests/cli tests/loop/test_loop_output.py
+  - id: ST-005
+    title: Apply minor CLI UX cleanup while preserving behavior
+    status: backlog
+    context: >-
+      Improve readability of selected command output/help wording where it does not
+      alter workflow semantics.
+    verification:
+      - uv run pytest -q tests/cli/test_cli.py
+  - id: ST-006
+    title: Run final targeted regression suite and validate specs
+    status: backlog
+    context: Confirm modularization is complete and behavior remains stable.
+    verification:
+      - uv run pytest -q tests/cli
+      - uv run engineeringagent validate

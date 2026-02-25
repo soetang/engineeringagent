@@ -1,0 +1,78 @@
+id: FEAT-137
+title: Always run iteration-end checks and simplify loop-triggered check phases
+type: spec
+expected_commit_subject: 'spec: add FEAT-137 unconditional iteration-end checks policy'
+status: backlog
+priority: high
+objective: >-
+  Reduce unnecessary retry loops by always running iteration-end checks even when
+  subtask verification fails or no subtask transitions to done, while simplifying
+  loop-triggered check orchestration to two phases: `iteration_end` and `feature_done`.
+context: >-
+  Current loop behavior can skip checks/finess functions in some iteration paths,
+  especially when verification/transition heuristics short-circuit execution. This
+  causes changes made during non-transition iterations (for example after reviewer
+  feedback) to bypass deterministic validation and pushes failures into later retries.
+
+  We want deterministic per-iteration quality evaluation: run baseline checks every
+  iteration, and run completion checks at feature completion, without coupling checks
+  execution to subtask-transition progress state.
+constraints:
+- Keep loop-triggered check phases limited to `iteration_end` and `feature_done`.
+- '`manual` phase remains supported for explicit CLI/manual check runs and is not part of automatic loop triggering.'
+- Run `iteration_end` checks every iteration regardless of subtask verification success/failure and regardless of done-transition detection.
+- Include validate coverage in loop iteration-end checks so runtime owns deterministic policy enforcement each iteration.
+- Preserve deterministic checks ordering and first-failing-check semantics inside checks orchestration.
+- Keep loop/checks boundary thin; do not reintroduce loop branching on checks-internal payload types.
+- 'Apply a breaking simplification: remove legacy transition-based skip paths and fail-fast shortcuts that prevent iteration-end checks from running.'
+- Reviewer-memory persistence improvements are explicitly out of scope for this feature.
+implementation_notes: "Contract change declaration\n\nSurface:\n- Iteration sequencing in `src/engineeringagent/loop_runtime/iteration.py`.\n- Gate/reviewer phase adapters in `src/engineeringagent/loop_runtime/phases.py`.\n- Checks invocation requests via `engineeringagent.checks.run_checks(...)` (phase and selected check groups).\n\nOld behavior:\n- Some iterations skip checks execution due to verification/transition gating.\n- Loop can fail fast before running iteration-end checks, delaying useful feedback to later retries.\n\nNew behavior:\n- Loop always executes iteration-end checks every iteration.\n- Loop still records verification status, but verification failure no longer suppresses iteration-end checks execution.\n- Loop-triggered checks phases are only `iteration_end` and `feature_done`.\n- Iteration-end includes validate + command + fitness check coverage under runtime-owned orchestration.\n\nCompatibility policy:\n- Breaking loop sequencing changes are required to reduce retries and remove skipped-check paths.\n- Legacy transition-based skip branches and fail-fast shortcuts that bypass iteration-end checks are removed, not preserved.\n- `manual` phase behavior remains compatible for CLI-driven checks.\n\nMigration plan:\n- Refactor iteration pipeline sequencing to run checks even after verification failures.\n- Update phase/gating logic to remove transition-dependent checks skips.\n- Update tests for new status/feedback expectations when both verification and checks execute in one iteration.\n\nFitness-function impact assessment:\n- Likely affected rules: `architecture.loop-checks-result-boundary`, `architecture.checks-own-prompt-feedback-rendering`, `architecture.iteration-pipeline-observer-decoupling`.\n- Decision: no fitness-function changes required; enforce behavior via loop/checks tests under current rules."
+acceptance:
+- Iteration-end checks run on every loop iteration, including iterations where subtask verification fails.
+- Iteration-end checks run on iterations with no subtask done-transition.
+- Loop-triggered check-phase usage is restricted to `iteration_end` and `feature_done`.
+- '`manual` phase remains CLI/manual-only and is not auto-triggered by the loop.'
+- Loop iteration-end checks include validate plus existing deterministic command/fitness checks.
+- Checks ordering and first-failure semantics remain deterministic.
+- Loop remains checks-type agnostic and consumes checks results through the stable checks boundary.
+- Legacy transition-based checks-skip logic and fail-fast bypass paths are deleted from loop orchestration.
+- Targeted loop/checks regressions and spec validation pass.
+subtasks:
+- id: ST-001
+  title: Remove transition-dependent checks skipping in iteration pipeline
+  status: backlog
+  context: Refactor iteration sequencing so checks invocation does not depend on subtask transition-to-done heuristics.
+  verification:
+  - uv run pytest -q tests/loop/test_loop_runtime_iteration.py
+- id: ST-002
+  title: Run iteration-end checks even when verification fails
+  status: backlog
+  context: Change fail-fast behavior so verification failure is recorded but does not block iteration-end checks execution in the same iteration.
+  verification:
+  - uv run pytest -q tests/loop/test_loop_phases_coverage.py tests/loop/test_loop_runtime_iteration.py
+- id: ST-003
+  title: Ensure loop iteration-end checks include validate coverage
+  status: backlog
+  context: Update loop check invocation to include validate under iteration-end runtime checks policy.
+  verification:
+  - uv run pytest -q tests/checks/test_run_checks_contract.py tests/loop/test_loop_phases_coverage.py
+- id: ST-004
+  title: Lock loop-triggered check phases to iteration-end and feature-done
+  status: backlog
+  context: Keep automatic loop triggering constrained to `iteration_end` and `feature_done`, while preserving manual-only checks execution via CLI.
+  verification:
+  - uv run pytest -q tests/checks/test_run_checks_contract.py tests/cli/test_cli_checks.py
+- id: ST-005
+  title: Run focused regression and validation suite for FEAT-137
+  status: backlog
+  context: Execute focused tests that assert unconditional iteration-end checks behavior and run full spec validation.
+  verification:
+  - uv run engineeringagent validate
+  - uv run pytest -q tests/loop/test_loop_runtime_iteration.py tests/loop/test_loop_phases_coverage.py tests/checks/test_run_checks_contract.py
+- id: ST-006
+  title: Delete legacy iteration checks-skip and fail-fast bypass branches
+  status: backlog
+  context: Remove transition-gated checks-skip branches and pre-check fail-fast shortcuts that suppress iteration-end checks execution.
+  verification:
+  - uv run pytest -q tests/loop/test_loop_runtime_iteration.py tests/loop/test_loop_phases_coverage.py -k "verification or gate"
+updated_at: '2026-02-25T00:40:00Z'
