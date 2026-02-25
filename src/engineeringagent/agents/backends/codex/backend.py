@@ -11,6 +11,7 @@ from engineeringagent.agents.contracts import (
     AgentBackendFailureDetails,
     AgentBackendRunResult,
     AgentOutputValidationError,
+    AgentRunRequest,
 )
 from engineeringagent.config import (
     resolve_agents_codex_model,
@@ -99,6 +100,18 @@ class CodexAgentBackend:
         )
 
         return AgentBackendRunResult(text=proc.output_last_message)
+
+    def run_request(self, request: AgentRunRequest) -> Any:
+        """Execute one normalized request through backend-owned behavior."""
+        if request.output_type is str:
+            return self.run(request.project_root, request.prompt).text
+
+        return self.run_structured(
+            request.project_root,
+            request.prompt,
+            output_type=request.output_type,
+            max_validation_retries=request.max_validation_retries,
+        )
 
     def run_structured(
         self,

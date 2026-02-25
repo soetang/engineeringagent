@@ -11,6 +11,7 @@ from engineeringagent.agents.contracts import (
     AgentBackendFailureDetails,
     AgentBackendRunResult,
     AgentOutputValidationError,
+    AgentRunRequest,
 )
 
 from .client import DEFAULT_OPENCODE_AGENT, start_agent
@@ -120,6 +121,9 @@ class OpenCodeAgentBackend:
         session_id: str | None = None,
     ) -> AgentBackendRunResult:
         """Run the OpenCode agent and return a backend-normalized result."""
+        if self._format == "json":
+            return self._run_json(project_root, prompt, session_id=session_id)
+
         proc = start_agent(
             project_root,
             prompt,
@@ -140,30 +144,68 @@ class OpenCodeAgentBackend:
                 ),
             )
 
-        if self._format == "json":
-            text_payload = proc.text_payload
-            if not isinstance(text_payload, str) or not text_payload.strip():
-                raise AgentBackendError(
-                    backend=self.name,
-                    message="opencode json output missing final text payload",
-                    process=AgentBackendFailureDetails(
-                        returncode=proc.returncode,
-                        stdout=proc.stdout,
-                        stderr=proc.stderr,
-                        command_args=list(proc.args),
-                    ),
-                    backend_metadata={"session_id": proc.session_id}
-                    if proc.session_id
-                    else None,
-                )
-
-            return AgentBackendRunResult(
-                text=text_payload,
-                session_id=proc.session_id,
-            )
-
         output = (proc.stdout or "") + (proc.stderr or "")
         return AgentBackendRunResult(text=output)
+
+    def run_request(self, request: AgentRunRequest) -> Any:
+        """Execute one normalized request through backend-owned behavior."""
+        if request.output_type is str:
+            return self.run(request.project_root, request.prompt).text
+
+        return self.run_structured(
+            request.project_root,
+            request.prompt,
+            output_type=request.output_type,
+            max_validation_retries=request.max_validation_retries,
+        )
+
+    def _run_json(
+        self,
+        project_root: Path,
+        prompt: str,
+        *,
+        session_id: str | None,
+    ) -> AgentBackendRunResult:
+        proc = start_agent(
+            project_root,
+            prompt,
+            agent=self._agent,
+            format="json",
+            session=session_id,
+        )
+
+        if proc.returncode != 0:
+            raise AgentBackendError(
+                backend=self.name,
+                message="opencode run failed",
+                process=AgentBackendFailureDetails(
+                    returncode=proc.returncode,
+                    stdout=proc.stdout,
+                    stderr=proc.stderr,
+                    command_args=list(proc.args),
+                ),
+            )
+
+        text_payload = proc.text_payload
+        if not isinstance(text_payload, str) or not text_payload.strip():
+            raise AgentBackendError(
+                backend=self.name,
+                message="opencode json output missing final text payload",
+                process=AgentBackendFailureDetails(
+                    returncode=proc.returncode,
+                    stdout=proc.stdout,
+                    stderr=proc.stderr,
+                    command_args=list(proc.args),
+                ),
+                backend_metadata={"session_id": proc.session_id}
+                if proc.session_id
+                else None,
+            )
+
+        return AgentBackendRunResult(
+            text=text_payload,
+            session_id=proc.session_id,
+        )
 
     def run_structured(
         self,
@@ -195,7 +237,11 @@ class OpenCodeAgentBackend:
         )
         attempts_allowed = 1 + max_validation_retries
         for attempt in range(attempts_allowed):
-            run_result = self.run(project_root, attempt_prompt, session_id=session_id)
+            run_result = self._run_json(
+                project_root,
+                attempt_prompt,
+                session_id=session_id,
+            )
             session_id = run_result.session_id or session_id
             text = (run_result.text or "").strip()
             last_text = text

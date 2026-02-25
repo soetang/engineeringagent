@@ -13,7 +13,6 @@ from engineeringagent.agents.contracts import (
     AgentBackendFailureDetails,
     AgentBackendRunResult,
     AgentOutputValidationError,
-    StructuredOutputAgentBackend,
 )
 from engineeringagent.agents.helpers import (
     classify_backend_exception,
@@ -33,7 +32,6 @@ __all__ = [
     "AgentBackendFailureDetails",
     "AgentBackendRunResult",
     "AgentOutputValidationError",
-    "StructuredOutputAgentBackend",
     "build_backend_scaffold_manifest",
     "classify_backend_exception",
     "describe_action",

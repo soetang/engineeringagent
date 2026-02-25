@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from engineeringagent.agents import AgentBackendError
 from engineeringagent.agents.backends.opencode import OpenCodeAgentBackend
 from engineeringagent.agents.backends.opencode import client as client_module
+from engineeringagent.agents.contracts import AgentRunRequest
 
 
 class _Proc:
@@ -202,3 +203,73 @@ def test_opencode_backend_run_structured_rejects_negative_retry_budget(
             output_type=_Payload,
             max_validation_retries=-1,
         )
+
+
+def test_opencode_backend_run_request_text_mode(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    calls: list[dict[str, object]] = []
+
+    def _fake_start_agent(_project_root: Path, _prompt: str, **kwargs: object) -> _Proc:
+        calls.append(kwargs)
+        return _Proc(returncode=0, stdout="plain")
+
+    monkeypatch.setattr(
+        "engineeringagent.agents.backends.opencode.backend.start_agent",
+        _fake_start_agent,
+    )
+
+    backend = OpenCodeAgentBackend(agent="a1")
+    request = AgentRunRequest(project_root=tmp_path, prompt="say hi", output_type=str)
+
+    assert backend.run_request(request) == "plain"
+    assert calls == [{"agent": "a1", "format": None, "session": None}]
+
+
+def test_opencode_backend_run_request_structured_mode_uses_backend_json_path(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    class _Payload(BaseModel):
+        ok: bool
+
+    calls: list[dict[str, object]] = []
+    responses = [
+        _Proc(returncode=0, text_payload="not json", session_id="s1"),
+        _Proc(returncode=0, text_payload='{"ok": true}', session_id="s1"),
+    ]
+
+    def _fake_start_agent(project_root: Path, prompt: str, **kwargs: object) -> _Proc:
+        assert project_root == tmp_path
+        calls.append(
+            {
+                "prompt": prompt,
+                "session": kwargs.get("session"),
+                "format": kwargs.get("format"),
+            }
+        )
+        if not responses:
+            raise RuntimeError("no more fake responses")
+        return responses.pop(0)
+
+    monkeypatch.setattr(
+        "engineeringagent.agents.backends.opencode.backend.start_agent",
+        _fake_start_agent,
+    )
+
+    backend = OpenCodeAgentBackend()
+
+    request = AgentRunRequest(
+        project_root=tmp_path,
+        prompt="return envelope",
+        output_type=_Payload,
+        max_validation_retries=1,
+    )
+
+    parsed = backend.run_request(request)
+    assert parsed.ok is True
+    assert len(calls) == 2
+    assert calls[0]["format"] == "json"
+    assert calls[0]["session"] is None
+    assert calls[1]["session"] == "s1"

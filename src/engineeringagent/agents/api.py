@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, TypeVar, overload
-from engineeringagent.agents.runtime import resolve_agent_strategy
+
+from engineeringagent.agents.contracts import AgentRunRequest
+from engineeringagent.agents.runtime import run_agent_request
 
 T = TypeVar("T")
 
@@ -58,23 +60,10 @@ def run_agent(
     Returns:
         The final output value: a `str` or validated structured output.
     """
-    if max_validation_retries < 0:
-        raise ValueError("max_validation_retries must be >= 0")
-
-    if output_type is str:
-        backend = resolve_agent_strategy(
-            project_root,
-            structured_output=False,
-        )
-        return backend.run(project_root, prompt).text
-
-    backend = resolve_agent_strategy(
-        project_root,
-        structured_output=True,
-    )
-    return backend.run_structured(
-        project_root,
-        prompt,
+    request = AgentRunRequest(
+        project_root=project_root,
+        prompt=prompt,
         output_type=output_type,
         max_validation_retries=max_validation_retries,
     )
+    return run_agent_request(request)

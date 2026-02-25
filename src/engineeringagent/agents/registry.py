@@ -11,20 +11,19 @@ from engineeringagent.agents.backends.opencode import OpenCodeAgentBackend
 from engineeringagent.agents.backends.opencode.scaffold import (
     build_opencode_scaffold_manifest,
 )
-from engineeringagent.agents.contracts import AgentBackend
+from engineeringagent.agents.contracts import RequestRunAgentBackend
 from engineeringagent.config import resolve_agents_backend_id
 
-BackendFactory = Callable[[bool], AgentBackend]
+BackendFactory = Callable[[], RequestRunAgentBackend]
 BackendScaffoldManifestFactory = Callable[[str], dict[str, str]]
 _DEFAULT_BACKEND_ID = "opencode"
 
 
-def _create_opencode_backend(structured_output: bool) -> AgentBackend:
-    return OpenCodeAgentBackend(format="json" if structured_output else None)
+def _create_opencode_backend() -> RequestRunAgentBackend:
+    return OpenCodeAgentBackend()
 
 
-def _create_codex_backend(structured_output: bool) -> AgentBackend:
-    del structured_output
+def _create_codex_backend() -> RequestRunAgentBackend:
     return CodexAgentBackend()
 
 

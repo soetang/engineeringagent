@@ -12,29 +12,33 @@ Define a backend architecture where all agent invocations go through one run pat
 
 ## Core Outcome
 
-There is one canonical invocation flow for agents. Structured-output behavior is a mode of the same flow, not a separate backend surface.
+There is one canonical invocation flow for agents. Structured output is selected via
+`output_type`, while backend-specific structured execution behavior remains owned by
+the backend implementation.
 
 ## Public API
 
-`run_agent(project_root, prompt, *, output_schema=None, ...) -> AgentRunResult`
+`run_agent(project_root, prompt, *, output_type=str, ...) -> str | ParsedObject`
 
 Behavior:
 
-- `output_schema is None`: text response mode.
-- `output_schema is set`: structured-output mode using the same backend selection and run path.
+- `output_type is str`: text response mode.
+- `output_type is not str`: structured-output mode using the same backend selection and run boundary.
+- Return semantics stay stable: text mode returns `str`; structured mode returns the
+  parsed validated object.
 - Same error taxonomy and telemetry fields in both modes.
 
 ## Architectural Rule: Single Run Path
 
-Do not create separate backend interfaces/functions/methods for structured output.
+Do not create separate public API entrypoints for structured output.
 
 Specifically:
 
-- No separate backend strategy tree for structured output.
 - No separate top-level `run_structured_agent(...)` API.
 - No backend-specific duplication of text-vs-structured dispatch logic in loop/runtime call sites.
 
-Structured output is handled by shared run-agent orchestration around the same backend invocation mechanism.
+Structured output is handled through the same `run_agent(...)` orchestration boundary,
+with backend strategy details encapsulated behind the agents package.
 
 ## Contracts
 
@@ -45,6 +49,8 @@ Owns backend discovery and deterministic backend selection from configuration.
 ### AgentBackend
 
 Single backend contract for raw invocation. Backends return raw text plus metadata.
+Backends may additionally implement structured execution capabilities while staying
+behind the same `run_agent(...)` boundary.
 
 ### AgentRunRequest
 
@@ -53,29 +59,28 @@ One request model containing:
 - `project_root`
 - `prompt`
 - `backend_id` (resolved, optional override)
-- `output_schema` (optional)
+- `output_type` (`str` for text, schema type for structured)
 - retry/session options
 
 ### AgentRunResult
 
-One result model for both modes:
+Public return values are mode-specific:
 
-- `text` (raw backend text)
-- `parsed` (optional validated structured object)
-- `session_id` (optional)
-- `backend`
-- execution metadata
+- text mode: `str`
+- structured mode: parsed object matching `output_type`
 
 ## Structured Output in the Same Flow
 
-When `output_schema` is provided, `run_agent` performs:
+When `output_type` is not `str`, `run_agent` performs:
 
 1. Same backend resolution as text mode.
 2. Same backend invocation method.
-3. Shared validation/retry wrapper around returned text.
-4. Parsed object stored in `parsed` when validation succeeds.
+3. Backend-owned structured strategy (including schema transport and retry policy).
+4. Parsed object returned when validation succeeds.
 
-This keeps backend implementations focused on producing output, while schema-conformance policy lives in one place.
+This keeps the call boundary unified while allowing backend-specific structured
+behavior differences (for example, prompt-retry vs native schema mode) to remain
+localized under backend implementations.
 
 ## Loop Boundary
 
@@ -101,5 +106,5 @@ No extra structured-output interface implementation is required.
 - One canonical run-agent call path.
 - Deterministic backend selection.
 - Shared error taxonomy across text and structured modes.
-- Shared retry and validation policy for structured mode.
+- Backend-owned structured retry/validation policy.
 - Backend concerns remain isolated from loop orchestration.

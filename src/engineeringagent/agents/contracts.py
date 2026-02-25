@@ -20,6 +20,31 @@ class AgentBackendRunResult(BaseModel):
     session_id: str | None = None
 
 
+class AgentRunRequest(BaseModel):
+    """Normalized run-agent request shared by text and structured execution."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    project_root: Path
+    prompt: str
+    output_type: Any = str
+    max_validation_retries: int = 2
+
+
+@runtime_checkable
+class RequestRunAgentBackend(Protocol):
+    """Single-path backend contract keyed by `AgentRunRequest`."""
+
+    @property
+    def name(self) -> str:
+        """Return backend identifier used in typed errors."""
+        raise NotImplementedError
+
+    def run_request(self, request: AgentRunRequest) -> Any:
+        """Execute one normalized request and return text or parsed payload."""
+        raise NotImplementedError
+
+
 class AgentBackendFailureDetails(BaseModel):
     """Optional process details for backend failures.
 
@@ -52,22 +77,6 @@ class AgentBackend(Protocol):
         session_id: str | None = None,
     ) -> AgentBackendRunResult:
         """Execute the backend and return raw text plus optional session id."""
-        raise NotImplementedError
-
-
-@runtime_checkable
-class StructuredOutputAgentBackend(Protocol):
-    """Optional capability for backend-owned structured output execution."""
-
-    def run_structured(
-        self,
-        project_root: Path,
-        prompt: str,
-        *,
-        output_type: Any,
-        max_validation_retries: int,
-    ) -> Any:
-        """Execute one structured-output request and return validated payload."""
         raise NotImplementedError
 
 

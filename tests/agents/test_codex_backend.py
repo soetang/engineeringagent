@@ -13,6 +13,7 @@ from engineeringagent.agents import AgentBackendError, AgentOutputValidationErro
 from engineeringagent.agents.backends.codex import CodexAgentBackend
 from engineeringagent.agents.backends.codex import backend as backend_module
 from engineeringagent.agents.backends.codex import client as client_module
+from engineeringagent.agents.contracts import AgentRunRequest
 
 
 def _complete_with_output(
@@ -379,6 +380,84 @@ def test_codex_backend_happy_path(
     assert config.model == "m1"
     assert config.sandbox == "workspace-write"
     assert config.output_schema is None
+
+
+def test_codex_backend_run_request_text_returns_text_output(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    captured: dict[str, Any] = {}
+
+    def _fake_run_codex_exec(
+        project_root: Path,
+        prompt: str,
+        **kwargs: Any,
+    ) -> client_module.CodexExecResult:
+        captured["project_root"] = project_root
+        captured["prompt"] = prompt
+        captured["config"] = kwargs["config"]
+        return client_module.CodexExecResult(
+            args=["codex", "exec", prompt],
+            returncode=0,
+            stdout="progress",
+            stderr="",
+            output_last_message="plain text",
+        )
+
+    monkeypatch.setattr(backend_module, "run_codex_exec", _fake_run_codex_exec)
+
+    backend = CodexAgentBackend(profile="p1", model="m1")
+    result = backend.run_request(
+        AgentRunRequest(project_root=tmp_path, prompt="say hello", output_type=str)
+    )
+
+    assert result == "plain text"
+    assert captured["project_root"] == tmp_path
+    assert captured["prompt"] == "say hello"
+    assert captured["config"].output_schema is None
+
+
+def test_codex_backend_run_request_structured_returns_parsed_payload(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    class _Payload(BaseModel):
+        ok: bool
+
+    captured: dict[str, Any] = {}
+
+    def _fake_run_codex_exec(
+        project_root: Path,
+        prompt: str,
+        **kwargs: Any,
+    ) -> client_module.CodexExecResult:
+        captured["project_root"] = project_root
+        captured["prompt"] = prompt
+        captured["config"] = kwargs["config"]
+        return client_module.CodexExecResult(
+            args=["codex", "exec", prompt],
+            returncode=0,
+            stdout="progress",
+            stderr="",
+            output_last_message='{"ok": true}',
+        )
+
+    monkeypatch.setattr(backend_module, "run_codex_exec", _fake_run_codex_exec)
+
+    backend = CodexAgentBackend(profile="p1", model="m1")
+    payload = backend.run_request(
+        AgentRunRequest(
+            project_root=tmp_path,
+            prompt="return json",
+            output_type=_Payload,
+            max_validation_retries=9,
+        )
+    )
+
+    assert payload.ok is True
+    assert captured["project_root"] == tmp_path
+    assert captured["prompt"] == "return json"
+    assert captured["config"].output_schema is not None
 
 
 def test_codex_backend_reads_profile_model_from_repo_config(
