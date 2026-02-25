@@ -13,5 +13,7 @@ progress/runs.jsonl
 .coverage
 .coverage.*
 progress/reviewers/state.json
+progress/reviewers-state.json
+progress/run-feature-*.txt
 .semgrep/semgrep.log
 .semgrep/settings.yml
