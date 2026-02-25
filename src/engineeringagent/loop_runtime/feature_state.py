@@ -493,3 +493,98 @@ def _restore_archived_feature(
     except OSError as exc:
         return (False, f"failed to restore archived feature spec: {exc}")
     return (True, "")
+
+
+def resolve_feature_paths(
+    project_root: Path, feature_paths: Sequence[str | Path]
+) -> list[Path]:
+    """Public service seam for resolving explicit feature spec paths."""
+    return _resolve_feature_paths(project_root, feature_paths)
+
+
+def discover_active_feature_paths(project_root: Path) -> list[Path]:
+    """Public service seam for discovering runnable active feature specs."""
+    return _discover_active_feature_paths(project_root)
+
+
+def pending_features(
+    feature_paths: Sequence[Path],
+) -> list[tuple[Path, dict[str, Any]]]:
+    """Public service seam returning non-done features for loop selection."""
+    return _pending_features(feature_paths)
+
+
+def done_features_pending_archive(
+    feature_paths: Sequence[Path],
+) -> list[tuple[Path, dict[str, Any]]]:
+    """Public service seam returning done features that can still be archived."""
+    return _done_features_pending_archive(feature_paths)
+
+
+def evaluate_initial_feature_load(
+    project_root: Path,
+    feature_path: Path,
+) -> InitialFeatureLoadOutcome:
+    """Public service seam for loading selected feature state."""
+    return _evaluate_initial_feature_load(project_root, feature_path)
+
+
+def refresh_feature_after_implement(
+    project_root: Path,
+    feature_path: Path,
+    selected_started_active: bool,
+) -> PostImplementFeatureOutcome:
+    """Public service seam for reloading feature state after implement."""
+    return _refresh_feature_after_implement(
+        project_root,
+        feature_path,
+        selected_started_active=selected_started_active,
+    )
+
+
+def ready_for_active_iteration(
+    result: str,
+    feature: dict[str, Any] | None,
+    loaded_from_archive: bool,
+) -> bool:
+    """Public service seam for checking active-iteration eligibility."""
+    return _ready_for_active_iteration(
+        result=result,
+        feature=feature,
+        loaded_from_archive=loaded_from_archive,
+    )
+
+
+def should_archive_selected_feature(
+    result: str,
+    selected_feature: dict[str, Any] | None,
+    loaded_from_archive: bool,
+) -> bool:
+    """Public service seam for deciding whether a selected feature should archive."""
+    return _should_archive_selected_feature(
+        result=result,
+        selected_feature=selected_feature,
+        loaded_from_archive=loaded_from_archive,
+    )
+
+
+def touch_active_feature_for_iteration(
+    feature: dict[str, Any],
+    feature_path: Path,
+) -> None:
+    """Public service seam for status/timestamp updates before iteration work."""
+    _touch_active_feature_for_iteration(feature, feature_path)
+
+
+def archive_completed_feature(
+    project_root: Path, feature_path: Path
+) -> tuple[bool, Path | None, str]:
+    """Public service seam for archiving a completed feature spec."""
+    return _archive_completed_feature(project_root, feature_path)
+
+
+def restore_archived_feature(
+    archived_path: Path, original_feature_path: Path
+) -> tuple[bool, str]:
+    """Public service seam for restoring archived spec on gate/reviewer failures."""
+    return _restore_archived_feature(archived_path, original_feature_path)

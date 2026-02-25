@@ -187,13 +187,11 @@ def test_run_feature_iteration_signature_is_explicit() -> None:
         "attempt",
         "hook_feedback",
         "verbose_output",
-        "opencode_prompt",
     )
     assert all(
         parameter.kind not in {Parameter.VAR_POSITIONAL, Parameter.VAR_KEYWORD}
         for parameter in parameters.values()
     )
-    assert parameters["opencode_prompt"].default is None
     assert not hasattr(_run_feature_iteration, "__signature__")
 
 
@@ -275,7 +273,6 @@ def test_loop_monkeypatch_seams_remain_available() -> None:
     seam_symbols = (
         "run_agent",
         "preflight",
-        "_require_clean_worktree",
         "_run_backend_precheck",
         "_choose_feature_with_selector",
         "run_implement_step",

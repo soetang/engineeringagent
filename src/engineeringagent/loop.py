@@ -18,7 +18,6 @@ from .loop_runtime.models import (
     ImplementStepInputs,
     IterationOutcome,
     IterationReport,
-    PostImplementFeatureOutcome,
 )
 from .loop_runtime.iteration import (
     IterationPipelineDependencies,
@@ -38,17 +37,17 @@ from .loop_runtime.selection import (
     deterministic_feature_choice,
 )
 from .loop_runtime.feature_state import (
-    _archive_completed_feature,
-    _done_features_pending_archive,
-    _discover_active_feature_paths,
-    _evaluate_initial_feature_load,
-    _pending_features,
-    _ready_for_active_iteration,
-    _refresh_feature_after_implement,
-    _resolve_feature_paths,
-    _restore_archived_feature,
-    _should_archive_selected_feature,
-    _touch_active_feature_for_iteration,
+    archive_completed_feature,
+    discover_active_feature_paths,
+    done_features_pending_archive,
+    evaluate_initial_feature_load,
+    pending_features,
+    ready_for_active_iteration,
+    refresh_feature_after_implement,
+    resolve_feature_paths,
+    restore_archived_feature,
+    should_archive_selected_feature,
+    touch_active_feature_for_iteration,
 )
 from .loop_runtime.controller import (
     run_loop_controller,
@@ -228,11 +227,11 @@ def _drop_completed_feature_from_snapshot(
 def _runnable_feature_candidates(
     resolved_paths: list[Path],
 ) -> list[tuple[Path, dict[str, Any]]]:
-    pending = _pending_features(resolved_paths)
+    pending = pending_features(resolved_paths)
     if pending:
         return pending
 
-    done_pending_archive = _done_features_pending_archive(resolved_paths)
+    done_pending_archive = done_features_pending_archive(resolved_paths)
     if done_pending_archive:
         return done_pending_archive
 
@@ -264,9 +263,7 @@ def _run_feature_iteration(
     attempt: int,
     hook_feedback: str | None,
     verbose_output: bool,
-    opencode_prompt: str | None = None,
 ) -> IterationOutcome:
-    del opencode_prompt  # back-compat signature; intentionally unused
     iteration_inputs = FeatureIterationInputs(
         project_root=project_root,
         feature_path=feature_path,
@@ -281,64 +278,31 @@ def _run_feature_iteration(
 def _run_feature_iteration_with_inputs(
     iteration_inputs: FeatureIterationInputs,
 ) -> IterationOutcome:
-    def _ready_for_active_iteration_adapter(
-        result: str,
-        feature: dict[str, Any] | None,
-        loaded_from_archive: bool,
-    ) -> bool:
-        return _ready_for_active_iteration(
-            result=result,
-            feature=feature,
-            loaded_from_archive=loaded_from_archive,
-        )
-
-    def _refresh_feature_after_implement_adapter(
-        project_root: Path,
-        feature_path: Path,
-        selected_started_active: bool,
-    ) -> PostImplementFeatureOutcome:
-        return _refresh_feature_after_implement(
-            project_root,
-            feature_path,
-            selected_started_active=selected_started_active,
-        )
-
-    def _should_archive_selected_feature_adapter(
-        result: str,
-        selected_feature: dict[str, Any] | None,
-        loaded_from_archive: bool,
-    ) -> bool:
-        return _should_archive_selected_feature(
-            result=result,
-            selected_feature=selected_feature,
-            loaded_from_archive=loaded_from_archive,
-        )
-
     report = run_feature_iteration_pipeline(
         iteration_inputs,
         IterationPipelineDependencies(
-            evaluate_initial_feature_load=_evaluate_initial_feature_load,
-            ready_for_active_iteration=_ready_for_active_iteration_adapter,
-            touch_active_feature_for_iteration=_touch_active_feature_for_iteration,
+            evaluate_initial_feature_load=evaluate_initial_feature_load,
+            ready_for_active_iteration=ready_for_active_iteration,
+            touch_active_feature_for_iteration=touch_active_feature_for_iteration,
             run_implement_step=run_implement_step,
-            refresh_feature_after_implement=_refresh_feature_after_implement_adapter,
-            should_archive_selected_feature=_should_archive_selected_feature_adapter,
-            archive_completed_feature=_archive_completed_feature,
+            refresh_feature_after_implement=refresh_feature_after_implement,
+            should_archive_selected_feature=should_archive_selected_feature,
+            archive_completed_feature=archive_completed_feature,
             run_gate_phase=run_gate_phase,
             gate_phase_dependencies=GatePhaseDependencies(
-                restore_archived_feature=_restore_archived_feature,
+                restore_archived_feature=restore_archived_feature,
                 collect_changed_paths=collect_changed_paths,
             ),
             run_verification_phase=run_verification_phase,
             run_reviewer_phase=run_reviewer_phase,
             reviewer_phase_dependencies=ReviewerPhaseDependencies(
                 collect_changed_paths=collect_changed_paths,
-                restore_archived_feature=_restore_archived_feature,
+                restore_archived_feature=restore_archived_feature,
             ),
             run_completion_commit_phase=run_completion_commit_phase,
             completion_phase_dependencies=CompletionPhaseDependencies(
                 commit_feature_completion=_commit_feature_completion,
-                restore_archived_feature=_restore_archived_feature,
+                restore_archived_feature=restore_archived_feature,
             ),
         ),
     )
@@ -381,8 +345,8 @@ def _resolve_run_targets(
     run_all: bool,
 ) -> list[Path]:
     if run_all:
-        return _discover_active_feature_paths(project_root)
-    return _resolve_feature_paths(project_root, feature_paths)
+        return discover_active_feature_paths(project_root)
+    return resolve_feature_paths(project_root, feature_paths)
 
 
 def _emit_run_all_snapshot_feedback(
@@ -405,7 +369,7 @@ def _handle_dry_run(
     if not dry_run:
         return None
 
-    pending = _pending_features(resolved_paths)
+    pending = pending_features(resolved_paths)
     if not pending:
         if run_all:
             _print_run_all_no_work_message()
@@ -452,11 +416,6 @@ def _enforce_worktree_precondition(
         "changes by explicit user opt-in."
     )
     return None
-
-
-_require_clean_worktree = (
-    _enforce_worktree_precondition  # Back-compat monkeypatch seam.
-)
 
 
 def _run_selected_feature_iterations(

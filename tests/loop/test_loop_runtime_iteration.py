@@ -132,7 +132,7 @@ def test_iteration_pipeline_carries_passed_reviewer_feedback_to_continue(
             touch_active_feature_for_iteration=lambda *_args, **_kwargs: None,
             run_implement_step=lambda *_args, **_kwargs: _passing_implement_result(),
             refresh_feature_after_implement=(
-                lambda _root, _path, _started: PostImplementFeatureOutcome(
+                lambda _project_root, _feature_path, _selected_started_active: PostImplementFeatureOutcome(
                     feature={"id": "FEAT-065", "status": "in_progress"},
                     loaded_from_archive=False,
                     archived_in_iteration=False,
@@ -282,7 +282,7 @@ def test_iteration_pipeline_archives_before_running_done_transition_verification
             touch_active_feature_for_iteration=lambda *_args, **_kwargs: None,
             run_implement_step=lambda *_args, **_kwargs: _passing_implement_result(),
             refresh_feature_after_implement=(
-                lambda _root, _path, _started: PostImplementFeatureOutcome(
+                lambda _project_root, _feature_path, _selected_started_active: PostImplementFeatureOutcome(
                     feature={
                         "id": "FEAT-078",
                         "status": "done",
@@ -430,7 +430,7 @@ def test_iteration_pipeline_collects_changed_paths_once_per_iteration(
             touch_active_feature_for_iteration=lambda *_args, **_kwargs: None,
             run_implement_step=lambda *_args, **_kwargs: _passing_implement_result(),
             refresh_feature_after_implement=(
-                lambda _root, _path, _started: PostImplementFeatureOutcome(
+                lambda _project_root, _feature_path, _selected_started_active: PostImplementFeatureOutcome(
                     feature={
                         "id": "FEAT-999",
                         "status": "in_progress",
@@ -544,7 +544,7 @@ def test_iteration_pipeline_records_phase_timings(
             touch_active_feature_for_iteration=lambda *_args, **_kwargs: None,
             run_implement_step=lambda *_args, **_kwargs: _passing_implement_result(),
             refresh_feature_after_implement=(
-                lambda _root, _path, _started: PostImplementFeatureOutcome(
+                lambda _project_root, _feature_path, _selected_started_active: PostImplementFeatureOutcome(
                     feature={"id": "FEAT-065", "status": "in_progress"},
                     loaded_from_archive=False,
                     archived_in_iteration=False,

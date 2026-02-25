@@ -273,7 +273,9 @@ def _run_implement_phase_if_ready(
     loaded_from_archive: bool,
 ) -> None:
     if not dependencies.ready_for_active_iteration(
-        state.result, feature, loaded_from_archive
+        state.result,
+        feature,
+        loaded_from_archive,
     ):
         return
 
@@ -369,7 +371,9 @@ def _refresh_feature_after_implement_if_ready(
     loaded_from_archive: bool,
 ) -> tuple[dict[str, Any] | None, bool]:
     if not dependencies.ready_for_active_iteration(
-        state.result, feature, loaded_from_archive
+        state.result,
+        feature,
+        loaded_from_archive,
     ):
         return feature, loaded_from_archive
 
@@ -525,7 +529,7 @@ def run_feature_iteration_pipeline(
     iteration_inputs: FeatureIterationInputs,
     dependencies: IterationPipelineDependencies,
 ) -> IterationReport:
-    """Execute one feature iteration while preserving facade seam behavior."""
+    """Execute one feature iteration through explicit runtime dependencies."""
     changed_paths_cached: Any | None = None
     changed_paths_captured = False
 
