@@ -14,39 +14,14 @@ from .specs import feature_schema_from_model
 
 _SUPPORTED_SCAFFOLD_PROFILES = {"core", "python_uv"}
 _SCAFFOLD_TEMPLATE_PACKAGE = "engineeringagent.scaffold_templates"
+_SCAFFOLDED_USER_DOC_TEMPLATE_CATEGORIES: tuple[tuple[str, str], ...] = (
+    ("principle", "principles"),
+    ("reference", "references"),
+)
 
 _SUPPORTED_INIT_PACKS = {"slim", "standard"}
 
 DEFAULT_AGENT_MODEL = "openai/gpt-5.3-codex"
-
-_SCAFFOLDED_USER_DOC_TEMPLATES: tuple[tuple[str, str], ...] = (
-    ("docs/references/workflow.md", "reference.workflow.md"),
-    ("docs/references/spec-writing.md", "reference.spec-writing.md"),
-    (
-        "docs/references/quality-check-playbook.md",
-        "reference.quality-check-playbook.md",
-    ),
-    (
-        "docs/references/reviewer-authoring-guide.md",
-        "reference.reviewer-authoring-guide.md",
-    ),
-    (
-        "docs/references/contributor-commands.md",
-        "reference.contributor-commands.md",
-    ),
-    (
-        "docs/references/documentation-practices.md",
-        "reference.documentation-practices.md",
-    ),
-    (
-        "docs/principles/harness-engineering-principles.md",
-        "principle.harness-engineering-principles.md",
-    ),
-    (
-        "docs/architecture/Architecture.md",
-        "architecture.Architecture.md",
-    ),
-)
 
 
 def _build_checks_yaml() -> str:
@@ -136,7 +111,9 @@ def build_scaffold_agents_markdown() -> str:
     return _render_scaffold_template("AGENTS.md")
 
 
-def _build_user_docs_manifest() -> dict[str, str]:
+def _build_user_docs_manifest(
+    scaffolded_user_doc_templates: tuple[tuple[str, str], ...],
+) -> dict[str, str]:
     """Build scaffolded user-facing documentation files.
 
     Note: These are kept under the default `docs/` directory even when feature specs
@@ -144,8 +121,32 @@ def _build_user_docs_manifest() -> dict[str, str]:
     """
     return {
         docs_path: _render_scaffold_template(template_name)
-        for docs_path, template_name in _SCAFFOLDED_USER_DOC_TEMPLATES
+        for docs_path, template_name in scaffolded_user_doc_templates
     }
+
+
+def _discover_scaffolded_user_doc_templates() -> tuple[tuple[str, str], ...]:
+    """Discover scaffolded user docs from category-prefixed markdown templates."""
+    category_roots = dict(_SCAFFOLDED_USER_DOC_TEMPLATE_CATEGORIES)
+    template_root = files(_SCAFFOLD_TEMPLATE_PACKAGE)
+    discovered: list[tuple[str, str]] = []
+
+    for template_entry in sorted(template_root.iterdir(), key=lambda entry: entry.name):
+        if not template_entry.is_file():
+            continue
+
+        template_name = template_entry.name
+        if not template_name.endswith(".md"):
+            continue
+
+        category, _, relative_name = template_name.partition(".")
+        docs_subdir = category_roots.get(category)
+        if docs_subdir is None:
+            continue
+
+        discovered.append((f"docs/{docs_subdir}/{relative_name}", template_name))
+
+    return tuple(discovered)
 
 
 def _render_template(
@@ -220,7 +221,8 @@ def build_baseline_scaffold_manifest(
     docs_dir_normalized = docs_dir.strip("/")
     is_python_uv = profile == "python_uv"
 
-    user_docs_manifest = _build_user_docs_manifest()
+    scaffolded_user_doc_templates = _discover_scaffolded_user_doc_templates()
+    user_docs_manifest = _build_user_docs_manifest(scaffolded_user_doc_templates)
     policy_user_docs: list[str] = []
     policy_scaffold_docs: list[str] = []
     policy_exact_sync: list[dict[str, str]] = []
@@ -229,7 +231,7 @@ def build_baseline_scaffold_manifest(
         policy_scaffold_docs = list(user_docs_manifest.keys())
         policy_exact_sync = [
             {"docs_path": docs_path, "template_name": template_name}
-            for docs_path, template_name in _SCAFFOLDED_USER_DOC_TEMPLATES
+            for docs_path, template_name in scaffolded_user_doc_templates
         ]
 
     manifest = {

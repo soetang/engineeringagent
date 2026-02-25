@@ -48,6 +48,7 @@ _MARKDOWN_IGNORE_DIRECTORIES = {
     "dist",
     "node_modules",
     "output",
+    "progress",
     "tmp",
 }
 _MARKDOWN_LOCALITY_REMEDIATION = (

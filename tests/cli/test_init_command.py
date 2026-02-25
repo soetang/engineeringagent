@@ -1254,6 +1254,49 @@ def test_init_scaffolds_scaffold_policy_with_resolved_docs_root(tmp_path: Path) 
     assert len(docs_paths) == len(set(docs_paths))
 
 
+def test_build_baseline_manifest_policy_tracks_scaffolded_user_docs() -> None:
+    """Verify scaffold policy tracks user-doc templates via observable scaffold outputs."""
+    template_root = files("engineeringagent.scaffold_templates")
+    category_roots = {"principle": "principles", "reference": "references"}
+    expected_pairs: list[tuple[str, str]] = []
+
+    for entry in template_root.iterdir():
+        if not entry.is_file():
+            continue
+        template_name = entry.name
+        if not template_name.endswith(".md"):
+            continue
+        category, _, relative_name = template_name.partition(".")
+        docs_subdir = category_roots.get(category)
+        if docs_subdir is None:
+            continue
+        expected_pairs.append((f"docs/{docs_subdir}/{relative_name}", template_name))
+
+    manifest = build_baseline_scaffold_manifest(docs_dir="docs", profile="core")
+    policy = yaml.safe_load(manifest["harness/scaffold_policy.yaml"])
+
+    expected_docs = {docs_path for docs_path, _ in expected_pairs}
+    expected_exact_sync = {
+        (docs_path, template_name) for docs_path, template_name in expected_pairs
+    }
+    observed_exact_sync = {
+        (entry["docs_path"], entry["template_name"]) for entry in policy["exact_sync"]
+    }
+
+    assert expected_docs
+    assert set(policy["user_docs"]) == expected_docs
+    assert set(policy["scaffold_docs"]) == expected_docs
+    assert observed_exact_sync == expected_exact_sync
+    assert len(policy["exact_sync"]) == len(observed_exact_sync)
+    assert all(docs_path in manifest for docs_path in expected_docs)
+    assert "docs/architecture/Architecture.md" not in policy["user_docs"]
+    assert "docs/architecture/Architecture.md" not in policy["scaffold_docs"]
+    assert all(
+        entry["docs_path"] != "docs/architecture/Architecture.md"
+        for entry in policy["exact_sync"]
+    )
+
+
 def test_init_separate_docs_updates_scaffold_policy_docs_root(tmp_path: Path) -> None:
     """Verify init separate docs mode sets scaffold policy docs_root to selected dir."""
     (tmp_path / "docs").mkdir(parents=True)
