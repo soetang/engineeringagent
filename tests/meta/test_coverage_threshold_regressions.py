@@ -200,6 +200,7 @@ def test_feature_state_error_paths(tmp_path: Path, monkeypatch: Any) -> None:
         lambda *_args, **_kwargs: (None, "load-failed"),
     )
     post_outcome = feature_state_module._refresh_feature_after_implement(
+        tmp_path,
         active_feature_path,
     )
     assert post_outcome.result == "failed"
@@ -212,6 +213,7 @@ def test_feature_state_error_paths(tmp_path: Path, monkeypatch: Any) -> None:
         lambda *_args, **_kwargs: ({"status": "blocked"}, None),
     )
     post_outcome = feature_state_module._refresh_feature_after_implement(
+        tmp_path,
         active_feature_path,
     )
     assert post_outcome.result == "passed"
@@ -269,6 +271,109 @@ def test_feature_state_error_paths(tmp_path: Path, monkeypatch: Any) -> None:
     ok, message = feature_state_module._restore_archived_feature(archived, original)
     assert ok is False
     assert "source already exists" in message
+
+
+def _setup_archived_selected_counterpart(
+    tmp_path: Path,
+    *,
+    feature_file_name: str,
+    archived_lines: list[str],
+) -> tuple[Path, Path]:
+    features_dir = tmp_path / "docs" / "spec" / "features"
+    features_dir.mkdir(parents=True)
+    archived_dir = tmp_path / "docs" / "spec" / "features_done"
+    archived_dir.mkdir(parents=True)
+
+    active_feature_path = features_dir / feature_file_name
+    archived_feature_path = archived_dir / feature_file_name
+    archived_feature_path.write_text(
+        "\n".join([*archived_lines, ""]),
+        encoding="utf-8",
+    )
+    return active_feature_path, archived_feature_path
+
+
+def test_post_implement_refresh_recovers_selected_archived_done_feature(
+    tmp_path: Path,
+) -> None:
+    active_feature_path, archived_feature_path = _setup_archived_selected_counterpart(
+        tmp_path,
+        feature_file_name="FEAT-200.yaml",
+        archived_lines=[
+            "id: FEAT-200",
+            "status: done",
+            "subtasks:",
+            "  - id: ST-001",
+            "    status: backlog",
+        ],
+    )
+
+    post_outcome = feature_state_module._refresh_feature_after_implement(
+        tmp_path,
+        active_feature_path,
+    )
+
+    assert post_outcome.result == "passed"
+    assert post_outcome.failed_gate is None
+    assert post_outcome.archived_in_iteration is True
+    assert post_outcome.archived_path == archived_feature_path
+    assert post_outcome.feature is not None
+    assert post_outcome.feature.get("status") == "done"
+
+
+def test_post_implement_refresh_rejects_non_done_archived_counterpart(
+    tmp_path: Path,
+) -> None:
+    active_feature_path, _archived_feature_path = _setup_archived_selected_counterpart(
+        tmp_path,
+        feature_file_name="FEAT-201.yaml",
+        archived_lines=[
+            "id: FEAT-201",
+            "status: in_progress",
+        ],
+    )
+
+    post_outcome = feature_state_module._refresh_feature_after_implement(
+        tmp_path,
+        active_feature_path,
+    )
+
+    assert post_outcome.result == "failed"
+    assert post_outcome.failed_gate == "feature_missing"
+    assert post_outcome.archived_in_iteration is False
+    assert post_outcome.archived_path is None
+
+
+def test_post_implement_refresh_does_not_fallback_to_non_matching_archived_feature(
+    tmp_path: Path,
+) -> None:
+    features_dir = tmp_path / "docs" / "spec" / "features"
+    features_dir.mkdir(parents=True)
+    archived_dir = tmp_path / "docs" / "spec" / "features_done"
+    archived_dir.mkdir(parents=True)
+
+    active_feature_path = features_dir / "FEAT-202.yaml"
+    unrelated_archived_path = archived_dir / "FEAT-999.yaml"
+    unrelated_archived_path.write_text(
+        "\n".join(
+            [
+                "id: FEAT-999",
+                "status: done",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    post_outcome = feature_state_module._refresh_feature_after_implement(
+        tmp_path,
+        active_feature_path,
+    )
+
+    assert post_outcome.result == "failed"
+    assert post_outcome.failed_gate == "feature_missing"
+    assert post_outcome.archived_in_iteration is False
+    assert post_outcome.archived_path is None
 
 
 def test_gate_and_verification_phase_error_paths(

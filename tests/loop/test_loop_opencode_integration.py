@@ -798,7 +798,7 @@ def test_gate_failure_feedback_replaces_previous_feedback_integration(
     assert "retry_feedback_parse_error" not in prompts[2]
 
 
-def test_loop_archived_done_stops_run_all_when_selected_path_disappears(
+def test_loop_archived_done_continues_run_all_when_selected_path_disappears(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -815,10 +815,11 @@ def test_loop_archived_done_stops_run_all_when_selected_path_disappears(
             "id": "FEAT-902",
             "title": "Follow-on feature",
             "type": "feature",
+            "expected_commit_subject": "feat: complete follow-on feature",
             "status": "backlog",
             "priority": "high",
-            "objective": "Should not run when selected feature fails.",
-            "acceptance": ["Loop must stop before selecting next feature."],
+            "objective": "Should run after selected feature archival recovery.",
+            "acceptance": ["Loop continues to next selected feature."],
             "updated_at": "2026-02-12T00:00:00Z",
         },
     )
@@ -893,25 +894,31 @@ def test_loop_archived_done_stops_run_all_when_selected_path_disappears(
         max_iterations=4,
     )
 
-    assert code == 1
+    assert code == 0
     runs = [
         json.loads(line)
         for line in (project_root / "progress" / "runs" / "runs.jsonl")
         .read_text(encoding="utf-8")
         .splitlines()
     ]
-    assert len(runs) == 1
+    assert len(runs) == 2
     assert runs[0]["feature_id"] == "FEAT-901"
-    assert runs[0]["result"] == "failed"
-    assert runs[0]["failed_gate"] == "feature_missing"
-    assert runs[0]["next_action"] == "retry_same_feature"
+    assert runs[0]["result"] == "passed"
+    assert runs[0]["failed_gate"] is None
+    assert runs[0]["next_action"] == "select_next_feature"
+    assert runs[1]["feature_id"] == "FEAT-902"
+    assert runs[1]["result"] == "passed"
 
     archived_selected = (
         project_root / "docs" / "spec" / "features_done" / feature_path.name
     )
+    archived_follow_on = (
+        project_root / "docs" / "spec" / "features_done" / second_feature_path.name
+    )
     assert not feature_path.exists()
     assert archived_selected.exists()
-    assert second_feature_path.exists()
+    assert not second_feature_path.exists()
+    assert archived_follow_on.exists()
 
     ending_head = _run_git(project_root, "rev-parse", "HEAD").stdout.strip()
-    assert ending_head == starting_head
+    assert ending_head != starting_head

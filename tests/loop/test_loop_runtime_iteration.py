@@ -134,7 +134,7 @@ def test_iteration_pipeline_carries_passed_reviewer_feedback_to_continue(
             touch_active_feature_for_iteration=lambda *_args, **_kwargs: None,
             run_implement_step=lambda *_args, **_kwargs: _passing_implement_result(),
             refresh_feature_after_implement=(
-                lambda _feature_path: PostImplementFeatureOutcome(
+                lambda _project_root, _feature_path: PostImplementFeatureOutcome(
                     feature={"id": "FEAT-065", "status": "in_progress"},
                     archived_in_iteration=False,
                     archived_path=None,
@@ -282,7 +282,7 @@ def test_iteration_pipeline_archives_before_running_done_transition_verification
             touch_active_feature_for_iteration=lambda *_args, **_kwargs: None,
             run_implement_step=lambda *_args, **_kwargs: _passing_implement_result(),
             refresh_feature_after_implement=(
-                lambda _feature_path: PostImplementFeatureOutcome(
+                lambda _project_root, _feature_path: PostImplementFeatureOutcome(
                     feature={
                         "id": "FEAT-078",
                         "status": "done",
@@ -403,9 +403,7 @@ def test_iteration_pipeline_runs_gate_phase_after_verification_failure_cases(
 
     gate_phase_called = False
 
-    def _run_gate_phase(
-        *_args: Any, **_kwargs: Any
-    ) -> GatePhaseOutcome:
+    def _run_gate_phase(*_args: Any, **_kwargs: Any) -> GatePhaseOutcome:
         nonlocal gate_phase_called
         gate_phase_called = True
         return GatePhaseOutcome(
@@ -435,7 +433,7 @@ def test_iteration_pipeline_runs_gate_phase_after_verification_failure_cases(
             touch_active_feature_for_iteration=lambda *_args, **_kwargs: None,
             run_implement_step=lambda *_args, **_kwargs: _passing_implement_result(),
             refresh_feature_after_implement=(
-                lambda _feature_path: PostImplementFeatureOutcome(
+                lambda _project_root, _feature_path: PostImplementFeatureOutcome(
                     feature={
                         "id": "FEAT-137",
                         "status": "in_progress",
@@ -575,7 +573,7 @@ def test_iteration_pipeline_collects_changed_paths_once_per_iteration(
             touch_active_feature_for_iteration=lambda *_args, **_kwargs: None,
             run_implement_step=lambda *_args, **_kwargs: _passing_implement_result(),
             refresh_feature_after_implement=(
-                lambda _feature_path: PostImplementFeatureOutcome(
+                lambda _project_root, _feature_path: PostImplementFeatureOutcome(
                     feature={
                         "id": "FEAT-999",
                         "status": "in_progress",
@@ -687,7 +685,7 @@ def test_iteration_pipeline_records_phase_timings(
             touch_active_feature_for_iteration=lambda *_args, **_kwargs: None,
             run_implement_step=lambda *_args, **_kwargs: _passing_implement_result(),
             refresh_feature_after_implement=(
-                lambda _feature_path: PostImplementFeatureOutcome(
+                lambda _project_root, _feature_path: PostImplementFeatureOutcome(
                     feature={"id": "FEAT-065", "status": "in_progress"},
                     archived_in_iteration=False,
                     archived_path=None,

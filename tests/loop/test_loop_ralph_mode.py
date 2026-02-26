@@ -932,7 +932,9 @@ def test_ralph_prompt_includes_feature_file_path(tmp_path: Path) -> None:
         assert phrase in prompt
 
 
-def test_ralph_prompt_contract_uses_schema_only_validate_command(tmp_path: Path) -> None:
+def test_ralph_prompt_contract_uses_schema_only_validate_command(
+    tmp_path: Path,
+) -> None:
     _, feature_path = _make_project_root(tmp_path, feature_data=_base_feature())
     feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
 
@@ -1924,7 +1926,7 @@ def test_run_loop_moves_completed_feature_to_features_done(tmp_path: Path) -> No
     assert archived_path.exists()
 
 
-def test_run_loop_selected_feature_moved_to_features_done_fails_cleanly(
+def test_run_loop_selected_feature_moved_to_features_done_completes_cleanly(
     tmp_path: Path,
     capsys: Any,
 ) -> None:
@@ -1951,18 +1953,15 @@ def test_run_loop_selected_feature_moved_to_features_done_fails_cleanly(
 
     archived_path = project_root / "docs" / "spec" / "features_done" / feature_path.name
     output = capsys.readouterr().out
-    assert code == 1
+    assert code == 0
     assert not feature_path.exists()
     assert archived_path.exists()
-    assert "selected feature path is missing and not recoverable" in output
-    assert "selected feature path disappeared during loop iteration" in output
-    assert "Loop summary: result=failed" in output
-    assert "next=retry_same_feature" in output
+    assert "selected feature path is missing and not recoverable" not in output
     runs = _read_runs(project_root)
     assert runs
-    assert runs[-1]["result"] == "failed"
-    assert runs[-1]["failed_gate"] == "feature_missing"
-    assert runs[-1]["next_action"] == "retry_same_feature"
+    assert runs[-1]["result"] == "passed"
+    assert runs[-1]["failed_gate"] is None
+    assert runs[-1]["next_action"] == "select_next_feature"
 
 
 def test_run_loop_archived_done_without_completion_commit_fails(
@@ -2018,7 +2017,7 @@ def test_run_loop_archived_done_without_completion_commit_fails(
     assert all(run["next_action"] != "select_next_feature" for run in runs)
 
 
-def test_run_loop_all_selected_feature_moved_to_features_done_stops_before_next(
+def test_run_loop_all_selected_feature_moved_to_features_done_continues_to_next(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: Any,
@@ -2073,16 +2072,18 @@ def test_run_loop_all_selected_feature_moved_to_features_done_stops_before_next(
         project_root / "docs" / "spec" / "features_done" / second_feature_path.name
     )
     output = capsys.readouterr().out
-    assert code == 1
+    assert code == 0
     assert not first_feature_path.exists()
-    assert second_feature_path.exists()
+    assert not second_feature_path.exists()
     assert archived_first.exists()
-    assert not archived_second.exists()
-    assert "selected feature path is missing and not recoverable" in output
-    assert "selected feature path disappeared during loop iteration" in output
-    run_feature_ids = [run["feature_id"] for run in _read_runs(project_root)]
+    assert archived_second.exists()
+    assert "selected feature path is missing and not recoverable" not in output
+    runs = _read_runs(project_root)
+    run_feature_ids = [run["feature_id"] for run in runs]
     assert "FEAT-900" in run_feature_ids
-    assert "FEAT-901" not in run_feature_ids
+    assert "FEAT-901" in run_feature_ids
+    first_run = next(run for run in runs if run["feature_id"] == "FEAT-900")
+    assert first_run["failed_gate"] is None
 
 
 def test_run_loop_missing_selected_feature_without_archive_fails_cleanly(

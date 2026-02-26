@@ -27,10 +27,6 @@ def _invalid_spec_fixtures_dir(repo_root: Path) -> Path:
     return repo_root / "tests" / "fixtures" / "specs" / "invalid"
 
 
-def _read_repo_text(repo_root: Path, relative_path: str) -> str:
-    return (repo_root / relative_path).read_text(encoding="utf-8")
-
-
 def _make_invalid_project(repo_root: Path, tmp_path: Path, fixture_name: str) -> Path:
     project_root = tmp_path
     features_dir = project_root / "docs" / "spec" / "features"

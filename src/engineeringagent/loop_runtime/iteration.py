@@ -53,7 +53,7 @@ class IterationPipelineDependencies(BaseModel):
         ],
         ImplementStepResult,
     ]
-    refresh_feature_after_implement: Callable[[Path], PostImplementFeatureOutcome]
+    refresh_feature_after_implement: Callable[[Path, Path], PostImplementFeatureOutcome]
     should_archive_selected_feature: Callable[[str, dict[str, Any] | None], bool]
     archive_completed_feature: Callable[
         [Path, Path], tuple[bool, Path | None, str | None]
@@ -375,6 +375,7 @@ def _refresh_feature_after_implement_if_ready(
 
     assert feature is not None
     post_refresh = dependencies.refresh_feature_after_implement(
+        iteration_inputs.project_root,
         iteration_inputs.feature_path,
     )
     state.archived_in_iteration = post_refresh.archived_in_iteration
@@ -385,7 +386,7 @@ def _refresh_feature_after_implement_if_ready(
         state.next_hook_feedback = post_refresh.hook_feedback
         return post_refresh.feature
 
-    if post_refresh.feature is not None:
+    if post_refresh.feature is not None and not post_refresh.archived_in_iteration:
         dependencies.touch_active_feature_for_iteration(
             post_refresh.feature,
             iteration_inputs.feature_path,
@@ -399,6 +400,9 @@ def _archive_selected_feature_if_needed(
     dependencies: IterationPipelineDependencies,
     post_feature: dict[str, Any] | None,
 ) -> None:
+    if state.archived_in_iteration:
+        return
+
     should_archive = dependencies.should_archive_selected_feature(
         state.result,
         post_feature,

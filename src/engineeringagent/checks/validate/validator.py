@@ -19,12 +19,10 @@ from engineeringagent.specs import (
     ValidationIssue,
     feature_contract_issues,
     feature_schema_from_model,
-    gate_contract_issues,
     iter_feature_files,
     load_schema,
     load_yaml,
     potential_features_contract_issues,
-    reviewer_contract_issues,
 )
 
 
@@ -447,14 +445,6 @@ def _append_potential_features_issues(
         potential_features_path,
         potential_features_contract_issues,
     )
-
-
-def _append_gate_config_issues(messages: list[str], gates_path: Path) -> None:
-    _append_yaml_contract_issues(messages, gates_path, gate_contract_issues)
-
-
-def _append_reviewer_config_issues(messages: list[str], reviewers_path: Path) -> None:
-    _append_yaml_contract_issues(messages, reviewers_path, reviewer_contract_issues)
 
 
 def _append_legacy_harness_contract_file_issues(

@@ -690,20 +690,3 @@ def feature_sort_key(feature: dict[str, Any]) -> tuple[int, str]:
     """
     priority = feature.get("priority", "medium")
     return (PRIORITY_ORDER.get(priority, 1), str(feature.get("id", "")))
-
-
-def find_subtask(feature: dict[str, Any], status: str) -> dict[str, Any] | None:
-    """Return the first matching subtask with a target status.
-
-    Args:
-        feature: Feature mapping containing subtasks.
-        status: Desired subtask status to match.
-
-    Returns:
-        First matching subtask by document order, or None when absent.
-    """
-    subtasks = feature.get("subtasks", [])
-    matches = [s for s in subtasks if s.get("status") == status]
-    if not matches:
-        return None
-    return matches[0]

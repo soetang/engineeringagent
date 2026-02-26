@@ -74,12 +74,6 @@ def render_rule_catalog_markdown(
     return _join_markdown_lines(lines)
 
 
-def write_rule_catalog_markdown(output_path: Path, markdown: str) -> None:
-    """Write markdown catalog output to disk."""
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(markdown, encoding="utf-8")
-
-
 def _escape_table_cell(value: str) -> str:
     return value.replace("|", "\\|").strip()
 

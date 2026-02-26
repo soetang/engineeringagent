@@ -177,6 +177,32 @@ def _load_selected_feature(
         return (None, f"failed to load selected feature YAML: {exc}")
 
 
+def _load_archived_selected_feature_after_implement(
+    project_root: Path,
+    feature_path: Path,
+) -> tuple[dict[str, Any] | None, Path | None]:
+    try:
+        archive_path = _resolve_archive_path(project_root, feature_path)
+    except ValueError:
+        return (None, None)
+
+    if not archive_path.exists():
+        return (None, None)
+
+    try:
+        archived_feature = load_yaml(archive_path)
+    except (OSError, ValueError, yaml.YAMLError):
+        return (None, None)
+
+    if archived_feature.get("status") != "done":
+        return (None, None)
+
+    if _normalize_done_subtasks(archived_feature):
+        dump_yaml(archive_path, archived_feature)
+
+    return (archived_feature, archive_path)
+
+
 def _post_implement_failed(
     *,
     feature: dict[str, Any] | None,
@@ -244,25 +270,34 @@ def _evaluate_initial_feature_load(
 
 
 def _refresh_feature_after_implement(
+    project_root: Path,
     feature_path: Path,
 ) -> PostImplementFeatureOutcome:
     post_feature, post_load_error = _load_selected_feature(feature_path)
 
-    def _failed(failed_gate: str, hook_feedback: str) -> PostImplementFeatureOutcome:
-        return _post_implement_failed(
+    if post_load_error is None:
+        return _post_implement_passed(
             feature=post_feature,
-            failed_gate=failed_gate,
-            hook_feedback=hook_feedback,
         )
 
-    if post_load_error:
-        return _failed(
-            failed_gate="feature_missing",
-            hook_feedback=post_load_error,
+    if not feature_path.exists():
+        archived_feature, archived_path = (
+            _load_archived_selected_feature_after_implement(
+                project_root,
+                feature_path,
+            )
         )
+        if archived_feature is not None and archived_path is not None:
+            return _post_implement_passed(
+                feature=archived_feature,
+                archived_in_iteration=True,
+                archived_path=archived_path,
+            )
 
-    return _post_implement_passed(
+    return _post_implement_failed(
         feature=post_feature,
+        failed_gate="feature_missing",
+        hook_feedback=post_load_error,
     )
 
 
@@ -385,10 +420,11 @@ def evaluate_initial_feature_load(
 
 
 def refresh_feature_after_implement(
+    project_root: Path,
     feature_path: Path,
 ) -> PostImplementFeatureOutcome:
     """Public service seam for reloading feature state after implement."""
-    return _refresh_feature_after_implement(feature_path)
+    return _refresh_feature_after_implement(project_root, feature_path)
 
 
 def ready_for_active_iteration(
