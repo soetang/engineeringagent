@@ -159,13 +159,13 @@ def _write_yaml(path: Path, payload: dict[str, Any]) -> None:
 def _base_feature(status: str = "backlog") -> dict[str, Any]:
     return {
         "id": "FEAT-900",
-        "title": "Ralph mode smoke test",
+        "title": "Feature iteration smoke test",
         "type": "feature",
-        "expected_commit_subject": "feat: complete FEAT-900 ralph mode smoke test",
+        "expected_commit_subject": "feat: complete FEAT-900 feature iteration smoke test",
         "status": status,
         "priority": "high",
-        "objective": "Verify feature-level loop mode does not require subtask selection.",
-        "acceptance": ["Ralph mode runs as a feature-level unit."],
+        "objective": "Verify feature iteration does not require subtask selection.",
+        "acceptance": ["Feature iteration runs as a feature-level unit."],
         "updated_at": "2026-02-12T00:00:00Z",
     }
 

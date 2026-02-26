@@ -14,7 +14,10 @@ import pytest
             "tests/loop/test_loop_opencode_integration.py",
         ),
         ("tests/test_loop_output.py", "tests/loop/test_loop_output.py"),
-        ("tests/test_loop_ralph_mode.py", "tests/loop/test_loop_ralph_mode.py"),
+        (
+            "tests/test_loop_feature_iteration.py",
+            "tests/loop/test_loop_feature_iteration.py",
+        ),
         ("tests/test_loop_reviewers.py", "tests/loop/test_loop_reviewers.py"),
         (
             "tests/test_loop_runtime_iteration.py",
