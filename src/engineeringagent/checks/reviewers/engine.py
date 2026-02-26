@@ -30,7 +30,6 @@ FEATURE_DONE_PHASE = "feature_done"
 ITERATION_END_PHASE = "iteration_end"
 DECISION_APPROVE = "approve"
 DECISION_REQUEST_CHANGES = "request_changes"
-DECISION_WARNING = "warning"
 PARSER_FAILURE_SUMMARY_PREFIX = "reviewer_output_parse_failure"
 FIRST_FEATURE_APPROVAL_REUSED_REASON = "first_feature_approval_reused"
 FIRST_FEATURE_APPROVAL_NOT_CACHED_REASON = "first_feature_approval_not_cached"
@@ -58,7 +57,7 @@ class ReviewerDecisionEnvelope(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    decision: Literal["approve", "request_changes", "warning"]
+    decision: Literal["approve", "request_changes"]
     summary: str
     required_actions: list[str] = Field(default_factory=list)
     scope_notes: str | None = None

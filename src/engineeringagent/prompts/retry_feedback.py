@@ -11,7 +11,7 @@ CONTRACT_VERSION = "1.0"
 
 CommandFailurePhase: TypeAlias = Literal["gates", "verification", "completion_commit"]
 ReviewerPhase: TypeAlias = Literal["iteration_end", "feature_done"]
-ReviewerDecisionName: TypeAlias = Literal["approve", "request_changes", "warning"]
+ReviewerDecisionName: TypeAlias = Literal["approve", "request_changes"]
 
 NonEmptyStr = Annotated[str, Field(strict=True, min_length=1)]
 SingleLineStr = Annotated[str, Field(strict=True, min_length=1, pattern=r"^[^\r\n]+$")]
@@ -251,8 +251,6 @@ def build_reviewer_feedback_retry_feedback(
     decision_name: ReviewerDecisionName
     if decision_name_raw == "approve":
         decision_name = "approve"
-    elif decision_name_raw == "warning":
-        decision_name = "warning"
     else:
         decision_name = "request_changes"
     summary_raw = decision.get("summary")
@@ -280,8 +278,8 @@ def build_reviewer_feedback_retry_feedback(
 
     header = message
     if not header:
-        if decision_name == "warning":
-            header = "Reviewer provided warning feedback. Address any required actions before completing."
+        if decision_name == "approve":
+            header = "Reviewer approved the changes."
         else:
             header = (
                 "Reviewer requested changes. Apply required actions before completing."

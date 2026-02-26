@@ -16,6 +16,7 @@ from engineeringagent.checks.fitness.contracts import RuleStatus
 from engineeringagent.checks.fitness.registry import build_rule_catalog
 from engineeringagent.checks.fitness.runtime import plan_fitness_checks
 from engineeringagent.checks.reviewers.runtime import (
+    FALLBACK_REMEDIATION_GUIDANCE,
     RunPlannedReviewerChecksRequest,
     plan_reviewer_checks,
     run_planned_reviewer_checks_from_plan,
@@ -482,6 +483,7 @@ class ReviewerCheckStrategy(CheckStrategy):
                 feature_path=feature_path,
                 run_agent_fn=context.run_agent_fn,
                 prior_feedback=context.prior_feedback,
+                verbose_output=context.verbose_output,
             ),
             run_planned,
         )
@@ -514,11 +516,21 @@ class ReviewerCheckStrategy(CheckStrategy):
         )
         if isinstance(summary, str) and summary.strip():
             lines.append(f"- summary: {summary.strip()}")
-        if isinstance(required_actions, list) and required_actions:
+        normalized_actions = (
+            [
+                action.strip()
+                for action in required_actions
+                if isinstance(action, str) and action.strip()
+            ]
+            if isinstance(required_actions, list)
+            else []
+        )
+        if normalized_actions:
             lines.append("- required_actions:")
-            for action in required_actions:
-                if isinstance(action, str) and action.strip():
-                    lines.append(f"  - {action.strip()}")
+            for action in normalized_actions:
+                lines.append(f"  - {action}")
+        else:
+            lines.append(f"- remediation: {FALLBACK_REMEDIATION_GUIDANCE}")
         return "\n".join(lines)
 
     def _config_error_record(self, message: str) -> CheckExecutionRecord:

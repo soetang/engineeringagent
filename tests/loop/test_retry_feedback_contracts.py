@@ -146,12 +146,13 @@ def test_retry_feedback_injection_ignores_blank_plain_feedback() -> None:
     assert injected == "BASE\n"
 
 
-def test_build_reviewer_feedback_retry_feedback_emits_warning_envelope() -> None:
+def test_build_reviewer_feedback_retry_feedback_normalizes_unknown_decision_to_request_changes(
+) -> None:
     serialized = build_reviewer_feedback_retry_feedback(
         reviewer_id="code_simplifier",
         reviewer_phase="feature_done",
         decision={
-            "decision": "warning",
+            "decision": "not_a_real_decision",
             "summary": "Minor nits.",
             "required_actions": [],
         },
@@ -161,8 +162,8 @@ def test_build_reviewer_feedback_retry_feedback_emits_warning_envelope() -> None
     assert envelope.kind == "reviewer_feedback"
     assert envelope.phase == "reviewers"
     assert envelope.reviewer_phase == "feature_done"
-    assert envelope.decision.decision == "warning"
-    assert envelope.message.startswith("Reviewer provided warning feedback")
+    assert envelope.decision.decision == "request_changes"
+    assert envelope.message.startswith("Reviewer requested changes")
 
 
 def test_build_reviewer_feedback_retry_feedback_normalizes_unknown_decision() -> None:
@@ -196,6 +197,7 @@ def test_build_reviewer_feedback_retry_feedback_accepts_approve_decision() -> No
     envelope = parse_retry_feedback_envelope(serialized)
     assert envelope.kind == "reviewer_feedback"
     assert envelope.decision.decision == "approve"
+    assert envelope.message.startswith("Reviewer approved the changes")
 
 
 def test_build_command_failure_retry_feedback_uses_custom_message() -> None:

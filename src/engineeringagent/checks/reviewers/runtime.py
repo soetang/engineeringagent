@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any, Callable, Iterable, cast
 
@@ -40,6 +41,11 @@ ALWAYS_RUN_NO_ON_CHANGE_REASON = _ALWAYS_RUN_NO_ON_CHANGE_REASON
 MATCHED_ON_CHANGE_REASON = _MATCHED_ON_CHANGE_REASON
 NO_ON_CHANGE_MATCH_REASON = _NO_ON_CHANGE_MATCH_REASON
 
+FALLBACK_REMEDIATION_GUIDANCE = (
+    "reviewer did not provide required_actions; use summary and scope_notes to plan "
+    "next edits and rerun checks."
+)
+
 
 class PlannedCheck(BaseModel):
     """Deterministic plan entry for a reviewer check."""
@@ -68,6 +74,7 @@ class RunPlannedReviewerChecksRequest(BaseModel):
     feature_path: Path
     run_agent_fn: Callable[..., Any] | None = None
     prior_feedback: str | None = None
+    verbose_output: bool = False
 
 
 def plan_reviewer_checks(
@@ -153,8 +160,17 @@ def run_planned_reviewer_checks_from_plan(
         output_parts.append(
             f"[reviewer:{reviewer_id}] decision={decision_name} summary={summary}"
         )
+        if request.verbose_output and decision_payload is not None:
+            output_parts.append(
+                f"[reviewer:{reviewer_id}] payload="
+                f"{_serialize_reviewer_payload(decision_payload)}"
+            )
 
         if decision_name != DECISION_APPROVE:
+            if _is_missing_required_actions(decision_payload):
+                output_parts.append(
+                    f"[reviewer:{reviewer_id}] remediation={FALLBACK_REMEDIATION_GUIDANCE}"
+                )
             save_reviewers_state(request.project_root, state)
             payload = {
                 "kind": "reviewer_feedback",
@@ -180,10 +196,27 @@ def _normalize_reviewer_decision(
         if raw_decision == DECISION_APPROVE
         else DECISION_REQUEST_CHANGES
     )
-    return decision_name, str(decision.get("summary", "")), decision
+    normalized_payload = {
+        **decision,
+        "decision": decision_name,
+    }
+    return decision_name, str(decision.get("summary", "")), normalized_payload
 
 
 def _reviewer_phase_for_payload(phase: HarnessCheckPhase) -> str:
     if phase == HarnessCheckPhase.FEATURE_DONE:
         return "feature_done"
     return "iteration_end"
+
+
+def _serialize_reviewer_payload(payload: dict[str, Any]) -> str:
+    return json.dumps(payload, ensure_ascii=True, separators=(",", ":"), sort_keys=True)
+
+
+def _is_missing_required_actions(payload: dict[str, Any] | None) -> bool:
+    if not isinstance(payload, dict):
+        return True
+    required_actions = payload.get("required_actions")
+    if not isinstance(required_actions, list):
+        return True
+    return not any(isinstance(action, str) and action.strip() for action in required_actions)

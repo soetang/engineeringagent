@@ -19,6 +19,7 @@ from engineeringagent.checks.api import (
     run_checks as run_checks_impl,
 )
 from engineeringagent.prompt_feedback import normalize_prompt_feedback
+from engineeringagent.checks.reviewers.runtime import FALLBACK_REMEDIATION_GUIDANCE
 from engineeringagent.checks.config_loader import load_harness_checks_document
 from engineeringagent.checks.strategy_contracts import (
     CheckDecision,
@@ -678,6 +679,190 @@ def test_run_checks_reviewers_request_changes_fails_deterministically(
     assert result.failed_check_id == "doc_review"
     assert [decision["check_id"] for decision in result.decisions] == ["doc_review"]
     assert [record.check_id for record in result.executions] == ["doc_review"]
+
+
+def test_run_checks_reviewers_verbose_output_surfaces_full_payload(
+    tmp_path: Path,
+) -> None:
+    prompt_path = tmp_path / "harness" / "reviewers" / "prompts" / "doc_review.md"
+    prompt_path.parent.mkdir(parents=True, exist_ok=True)
+    prompt_path.write_text("Please review. $responseformat\n", encoding="utf-8")
+
+    feature_path = tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml"
+    feature_path.parent.mkdir(parents=True, exist_ok=True)
+    feature_path.write_text("id: FEAT-001\n", encoding="utf-8")
+
+    _write_checks_yaml(
+        tmp_path,
+        "\n".join(
+            [
+                'contract_version: "1.0"',
+                "checks:",
+                "  doc_review:",
+                "    type: reviewer",
+                "    prompt_file: harness/reviewers/prompts/doc_review.md",
+                "    when:",
+                "      phase: feature_done",
+                "",
+            ]
+        ),
+    )
+
+    def _run_agent(
+        _execution_root: Path,
+        _prompt: str,
+        *,
+        output_type: type[BaseModel],
+        backend: object = None,
+        max_validation_retries: int = 2,
+    ) -> BaseModel:
+        del backend
+        del max_validation_retries
+        return output_type.model_validate(
+            {
+                "decision": "request_changes",
+                "summary": "needs follow-up",
+                "required_actions": ["fix"],
+                "scope_notes": "tests only",
+            }
+        )
+
+    result = run_checks(
+        tmp_path,
+        phase="feature_done",
+        checks=["reviewers"],
+        feature_path=feature_path,
+        verbose_output=True,
+        run_agent_fn=_run_agent,
+    )
+    assert not result.ok
+    assert (
+        '[reviewer:doc_review] payload={"decision":"request_changes",'
+        '"required_actions":["fix"],"scope_notes":"tests only",'
+        '"summary":"needs follow-up"}'
+    ) in result.output
+
+
+def test_run_checks_reviewers_adds_fallback_remediation_when_actions_missing(
+    tmp_path: Path,
+) -> None:
+    prompt_path = tmp_path / "harness" / "reviewers" / "prompts" / "doc_review.md"
+    prompt_path.parent.mkdir(parents=True, exist_ok=True)
+    prompt_path.write_text("Please review. $responseformat\n", encoding="utf-8")
+
+    feature_path = tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml"
+    feature_path.parent.mkdir(parents=True, exist_ok=True)
+    feature_path.write_text("id: FEAT-001\n", encoding="utf-8")
+
+    _write_checks_yaml(
+        tmp_path,
+        "\n".join(
+            [
+                'contract_version: "1.0"',
+                "checks:",
+                "  doc_review:",
+                "    type: reviewer",
+                "    prompt_file: harness/reviewers/prompts/doc_review.md",
+                "    when:",
+                "      phase: feature_done",
+                "",
+            ]
+        ),
+    )
+
+    def _run_agent(
+        _execution_root: Path,
+        _prompt: str,
+        *,
+        output_type: type[BaseModel],
+        backend: object = None,
+        max_validation_retries: int = 2,
+    ) -> BaseModel:
+        del backend
+        del max_validation_retries
+        return output_type.model_validate(
+            {
+                "decision": "request_changes",
+                "summary": "needs follow-up",
+                "required_actions": [],
+                "scope_notes": "tests only",
+            }
+        )
+
+    result = run_checks(
+        tmp_path,
+        phase="feature_done",
+        checks=["reviewers"],
+        feature_path=feature_path,
+        run_agent_fn=_run_agent,
+    )
+    assert not result.ok
+    assert (
+        f"[reviewer:doc_review] remediation={FALLBACK_REMEDIATION_GUIDANCE}"
+        in result.output
+    )
+    assert result.prompt_feedback is not None
+
+
+def test_run_checks_reviewers_treats_blank_actions_as_missing_for_prompt_feedback(
+    tmp_path: Path,
+) -> None:
+    prompt_path = tmp_path / "harness" / "reviewers" / "prompts" / "doc_review.md"
+    prompt_path.parent.mkdir(parents=True, exist_ok=True)
+    prompt_path.write_text("Please review. $responseformat\n", encoding="utf-8")
+
+    feature_path = tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml"
+    feature_path.parent.mkdir(parents=True, exist_ok=True)
+    feature_path.write_text("id: FEAT-001\n", encoding="utf-8")
+
+    _write_checks_yaml(
+        tmp_path,
+        "\n".join(
+            [
+                'contract_version: "1.0"',
+                "checks:",
+                "  doc_review:",
+                "    type: reviewer",
+                "    prompt_file: harness/reviewers/prompts/doc_review.md",
+                "    when:",
+                "      phase: feature_done",
+                "",
+            ]
+        ),
+    )
+
+    def _run_agent(
+        _execution_root: Path,
+        _prompt: str,
+        *,
+        output_type: type[BaseModel],
+        backend: object = None,
+        max_validation_retries: int = 2,
+    ) -> BaseModel:
+        del backend
+        del max_validation_retries
+        return output_type.model_validate(
+            {
+                "decision": "request_changes",
+                "summary": "needs follow-up",
+                "required_actions": [" ", "\t", ""],
+                "scope_notes": "tests only",
+            }
+        )
+
+    result = run_checks(
+        tmp_path,
+        phase="feature_done",
+        checks=["reviewers"],
+        feature_path=feature_path,
+        run_agent_fn=_run_agent,
+    )
+    assert not result.ok
+    assert (
+        f"[reviewer:doc_review] remediation={FALLBACK_REMEDIATION_GUIDANCE}"
+        in result.output
+    )
+    assert result.prompt_feedback is not None
 
 
 def test_run_checks_check_id_must_match_enabled_groups(tmp_path: Path) -> None:

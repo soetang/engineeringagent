@@ -32,6 +32,17 @@ def test_reviewer_decision_envelope_requires_non_empty_summary() -> None:
         )
 
 
+def test_reviewer_decision_envelope_rejects_warning_decision() -> None:
+    with pytest.raises(ValidationError):
+        ReviewerDecisionEnvelope.model_validate(
+            {
+                "decision": "warning",
+                "summary": "not allowed",
+                "required_actions": [],
+            }
+        )
+
+
 def test_record_reviewer_approval_accepts_non_dict_existing_state() -> None:
     state: dict[str, Any] = {
         "features": {

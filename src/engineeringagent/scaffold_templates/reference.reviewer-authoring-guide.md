@@ -45,6 +45,7 @@ Keep prompt text specific to what the reviewer should evaluate:
 - required evidence or failure-reporting expectations
 
 The decision envelope remains canonical (`decision`, `summary`, optional `required_actions`, `scope_notes`).
+`decision` is a strict two-state value: `approve` or `request_changes`.
 
 ## 4) Migrate existing prompts
 
@@ -66,4 +67,5 @@ uv run engineeringagent checks run --phase feature_done
 
 - If validation reports deprecated response-format placeholder usage, remove it from the prompt file.
 - If reviewer output is malformed, runtime emits a deterministic `request_changes` envelope.
-- For full contract details and policy examples, see `docs/references/reviewer-agents.md`.
+- Use `uv run engineeringagent checks run --phase feature_done --verbose-output` to inspect the full normalized reviewer decision payload in terminal output.
+- For non-approve outcomes without reviewer-provided `required_actions`, checks output includes deterministic fallback remediation guidance so terminal workflows stay actionable.

@@ -7,6 +7,7 @@ import pytest
 
 from engineeringagent.changed_paths import ChangedPathsResult
 from engineeringagent.checks.reviewers.runtime import (
+    FALLBACK_REMEDIATION_GUIDANCE,
     PlannedCheck,
     RunPlannedReviewerChecksRequest,
     plan_reviewer_checks,
@@ -351,4 +352,207 @@ def test_run_planned_reviewer_checks_handles_non_dict_reviewer_payload(
         "reviewer_id": "doc_review",
         "reviewer_phase": "feature_done",
         "decision": None,
+    }
+
+
+def test_run_planned_reviewer_checks_normalizes_unknown_decision_to_request_changes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    checks_path = _write_checks_yaml(
+        tmp_path,
+        "\n".join(
+            [
+                'contract_version: "1.0"',
+                "checks:",
+                "  doc_review:",
+                "    type: reviewer",
+                "    prompt_file: harness/reviewers/prompts/doc_review.md",
+                "    when:",
+                "      phase: feature_done",
+                "",
+            ]
+        ),
+    )
+    doc = _load_checks_document(checks_path)
+
+    monkeypatch.setattr(
+        "engineeringagent.checks.reviewers.runtime.run_reviewer",
+        lambda *_args, **_kwargs: {
+            "decision": "not_a_real_decision",
+            "summary": "needs follow-up",
+            "required_actions": ["add tests"],
+        },
+        raising=True,
+    )
+
+    request = RunPlannedReviewerChecksRequest(
+        project_root=tmp_path,
+        doc=doc,
+        phase=HarnessCheckPhase.FEATURE_DONE,
+        changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
+        feature_id="FEAT-001",
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+    )
+    planned = plan_reviewer_checks(
+        request.doc,
+        phase=request.phase,
+        changed_paths=request.changed_paths,
+    )
+    ok, failed_id, output, failed_payload = run_planned_reviewer_checks_from_plan(
+        request,
+        _planned_run_decisions(planned=planned, phase=request.phase),
+    )
+
+    assert not ok
+    assert failed_id == "doc_review"
+    assert "decision=request_changes" in output
+    assert failed_payload == {
+        "kind": "reviewer_feedback",
+        "reviewer_id": "doc_review",
+        "reviewer_phase": "feature_done",
+        "decision": {
+            "decision": "request_changes",
+            "summary": "needs follow-up",
+            "required_actions": ["add tests"],
+        },
+    }
+
+
+def test_run_planned_reviewer_checks_verbose_output_surfaces_full_payload(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    checks_path = _write_checks_yaml(
+        tmp_path,
+        "\n".join(
+            [
+                'contract_version: "1.0"',
+                "checks:",
+                "  doc_review:",
+                "    type: reviewer",
+                "    prompt_file: harness/reviewers/prompts/doc_review.md",
+                "    when:",
+                "      phase: feature_done",
+                "",
+            ]
+        ),
+    )
+    doc = _load_checks_document(checks_path)
+
+    monkeypatch.setattr(
+        "engineeringagent.checks.reviewers.runtime.run_reviewer",
+        lambda *_args, **_kwargs: {
+            "decision": "request_changes",
+            "summary": "needs follow-up",
+            "required_actions": ["add tests"],
+            "scope_notes": "limit to touched files",
+        },
+        raising=True,
+    )
+
+    request = RunPlannedReviewerChecksRequest(
+        project_root=tmp_path,
+        doc=doc,
+        phase=HarnessCheckPhase.FEATURE_DONE,
+        changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
+        feature_id="FEAT-001",
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        verbose_output=True,
+    )
+    planned = plan_reviewer_checks(
+        request.doc,
+        phase=request.phase,
+        changed_paths=request.changed_paths,
+    )
+    ok, failed_id, output, failed_payload = run_planned_reviewer_checks_from_plan(
+        request,
+        _planned_run_decisions(planned=planned, phase=request.phase),
+    )
+
+    assert not ok
+    assert failed_id == "doc_review"
+    assert (
+        '[reviewer:doc_review] payload={"decision":"request_changes",'
+        '"required_actions":["add tests"],"scope_notes":"limit to touched files",'
+        '"summary":"needs follow-up"}'
+    ) in output
+    assert failed_payload == {
+        "kind": "reviewer_feedback",
+        "reviewer_id": "doc_review",
+        "reviewer_phase": "feature_done",
+        "decision": {
+            "decision": "request_changes",
+            "summary": "needs follow-up",
+            "required_actions": ["add tests"],
+            "scope_notes": "limit to touched files",
+        },
+    }
+
+
+def test_run_planned_reviewer_checks_adds_fallback_remediation_when_actions_missing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    checks_path = _write_checks_yaml(
+        tmp_path,
+        "\n".join(
+            [
+                'contract_version: "1.0"',
+                "checks:",
+                "  doc_review:",
+                "    type: reviewer",
+                "    prompt_file: harness/reviewers/prompts/doc_review.md",
+                "    when:",
+                "      phase: feature_done",
+                "",
+            ]
+        ),
+    )
+    doc = _load_checks_document(checks_path)
+
+    monkeypatch.setattr(
+        "engineeringagent.checks.reviewers.runtime.run_reviewer",
+        lambda *_args, **_kwargs: {
+            "decision": "request_changes",
+            "summary": "needs follow-up",
+            "required_actions": [],
+            "scope_notes": "tests only",
+        },
+        raising=True,
+    )
+
+    request = RunPlannedReviewerChecksRequest(
+        project_root=tmp_path,
+        doc=doc,
+        phase=HarnessCheckPhase.FEATURE_DONE,
+        changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
+        feature_id="FEAT-001",
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+    )
+    planned = plan_reviewer_checks(
+        request.doc,
+        phase=request.phase,
+        changed_paths=request.changed_paths,
+    )
+    ok, failed_id, output, failed_payload = run_planned_reviewer_checks_from_plan(
+        request,
+        _planned_run_decisions(planned=planned, phase=request.phase),
+    )
+
+    assert not ok
+    assert failed_id == "doc_review"
+    assert (
+        f"[reviewer:doc_review] remediation={FALLBACK_REMEDIATION_GUIDANCE}" in output
+    )
+    assert failed_payload == {
+        "kind": "reviewer_feedback",
+        "reviewer_id": "doc_review",
+        "reviewer_phase": "feature_done",
+        "decision": {
+            "decision": "request_changes",
+            "summary": "needs follow-up",
+            "required_actions": [],
+            "scope_notes": "tests only",
+        },
     }

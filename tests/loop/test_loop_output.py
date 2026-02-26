@@ -693,7 +693,7 @@ def test_progress_log_records_slowest_summary(tmp_path: Path) -> None:
     ) in feature_log
 
 
-def test_progress_log_records_reviewer_warning_status(
+def test_progress_log_records_reviewer_approve_status(
     tmp_path: Path,
 ) -> None:
     iteration_inputs = FeatureIterationInputs(
@@ -715,14 +715,14 @@ def test_progress_log_records_reviewer_warning_status(
         verification_status="passed",
         verification_failed_command=None,
         reviewer_status="passed",
-        reviewer_decision="warning",
+        reviewer_decision="approve",
         failed_reviewer_id=None,
         implement_output="",
         gate_output="",
         verification_output="",
-        reviewer_output="[reviewer:code_simplifier] decision=warning",
+        reviewer_output="[reviewer:code_simplifier] decision=approve",
         hook_feedback=(
-            "reviewer 'code_simplifier' feedback (decision=warning): simplify nested branching."
+            "reviewer 'code_simplifier' feedback (decision=approve): simplify nested branching."
         ),
     )
 
@@ -735,7 +735,7 @@ def test_progress_log_records_reviewer_warning_status(
         (tmp_path / "progress" / "runs" / "runs.jsonl").read_text(encoding="utf-8")
     )
     assert run["reviewer_status"] == "passed"
-    assert run["reviewer_decision"] == "warning"
+    assert run["reviewer_decision"] == "approve"
     assert run["failed_reviewer_id"] is None
     assert run["reviewer_feedback_present"] is True
     assert "simplify nested branching" in run["reviewer_feedback_summary"]
@@ -743,9 +743,9 @@ def test_progress_log_records_reviewer_warning_status(
     feature_log = (
         tmp_path / "progress" / "features" / "FEAT-059" / "run.txt"
     ).read_text(encoding="utf-8")
-    assert "reviewer=passed decision=warning failed_reviewer=-" in feature_log
+    assert "reviewer=passed decision=approve failed_reviewer=-" in feature_log
     assert "reviewer_output_begin" in feature_log
-    assert "[reviewer:code_simplifier] decision=warning" in feature_log
+    assert "[reviewer:code_simplifier] decision=approve" in feature_log
     assert "reviewer_output_end" in feature_log
     assert "reviewer_feedback_forwarded_begin" in feature_log
     assert "reviewer 'code_simplifier' feedback" in feature_log
