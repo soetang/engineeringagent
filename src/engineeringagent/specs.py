@@ -173,6 +173,24 @@ class ReviewerSandboxDefinition(StrictContractModel):
         return self
 
 
+def _validate_prompt_file_location(prompt_file: str) -> None:
+    """Ensure prompt_file points under harness/reviewers/prompts/."""
+    prompt_path = Path(prompt_file)
+    normalized_parts = [part for part in prompt_path.parts if part not in {"", "."}]
+    if prompt_path.is_absolute() or any(part == ".." for part in prompt_path.parts):
+        raise ValueError(
+            "prompt_file must be a repo-relative path under harness/reviewers/prompts/"
+        )
+    if normalized_parts[:3] != ["harness", "reviewers", "prompts"]:
+        raise ValueError(
+            "prompt_file must be a repo-relative path under harness/reviewers/prompts/"
+        )
+    if len(normalized_parts) <= 3:
+        raise ValueError(
+            "prompt_file must reference a file under harness/reviewers/prompts/"
+        )
+
+
 class ReviewerDefinition(StrictContractModel):
     """Definition for one reviewer entry in harness/reviewers.yaml."""
 
@@ -187,20 +205,7 @@ class ReviewerDefinition(StrictContractModel):
     @model_validator(mode="after")
     def enforce_prompt_file_location(self) -> "ReviewerDefinition":
         """Ensure prompt_file points under harness/reviewers/prompts/."""
-        prompt_path = Path(self.prompt_file)
-        normalized_parts = [part for part in prompt_path.parts if part not in {"", "."}]
-        if prompt_path.is_absolute() or any(part == ".." for part in prompt_path.parts):
-            raise ValueError(
-                "prompt_file must be a repo-relative path under harness/reviewers/prompts/"
-            )
-        if normalized_parts[:3] != ["harness", "reviewers", "prompts"]:
-            raise ValueError(
-                "prompt_file must be a repo-relative path under harness/reviewers/prompts/"
-            )
-        if len(normalized_parts) <= 3:
-            raise ValueError(
-                "prompt_file must reference a file under harness/reviewers/prompts/"
-            )
+        _validate_prompt_file_location(self.prompt_file)
         return self
 
 
@@ -284,20 +289,7 @@ class HarnessCheckReviewerDefinition(StrictContractModel):
     @model_validator(mode="after")
     def enforce_prompt_file_location(self) -> "HarnessCheckReviewerDefinition":
         """Ensure prompt_file points under harness/reviewers/prompts/."""
-        prompt_path = Path(self.prompt_file)
-        normalized_parts = [part for part in prompt_path.parts if part not in {"", "."}]
-        if prompt_path.is_absolute() or any(part == ".." for part in prompt_path.parts):
-            raise ValueError(
-                "prompt_file must be a repo-relative path under harness/reviewers/prompts/"
-            )
-        if normalized_parts[:3] != ["harness", "reviewers", "prompts"]:
-            raise ValueError(
-                "prompt_file must be a repo-relative path under harness/reviewers/prompts/"
-            )
-        if len(normalized_parts) <= 3:
-            raise ValueError(
-                "prompt_file must reference a file under harness/reviewers/prompts/"
-            )
+        _validate_prompt_file_location(self.prompt_file)
         return self
 
 

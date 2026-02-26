@@ -3,21 +3,6 @@ description: >
   Parking lot for future ideas that are intentionally not part of active loop specs.
   Items here do not get picked by the loop runner.
 potential_features:
-  - id: POT-004
-    title: Refactor run loop into a clearer orchestration flow with tool adapters
-    status: idea
-    context: >
-      Improve loop legibility by extracting tool interaction concerns (opencode, git,
-      shell commands, gates execution) into a dedicated subpackage. Keep loop orchestration
-      code easy to scan so control flow and stop conditions are obvious.
-    value:
-      - "Improves maintainability and onboarding speed"
-      - "Lowers risk when modifying loop behavior"
-      - "Makes architecture rules around side effects easier to enforce"
-    acceptance_hint:
-      - "Loop orchestration is readable as a high-level state flow"
-      - "Direct subprocess/tool calls are moved behind explicit adapters"
-      - "Existing loop behavior is preserved by targeted regression coverage"
   - id: POT-008
     title: Add run telemetry reporting command with invariants checks
     status: idea
@@ -46,36 +31,6 @@ potential_features:
       - "Feature logs are emitted without ANSI control artifacts"
       - "Structured sidecar format is documented and stable"
       - "Loop references both human and structured log paths consistently"
-  - id: POT-010
-    title: Expand init scaffolding to be language-agnostic and harness-extensible
-    status: idea
-    context: >
-      Improve init so generated guidance is not Python-specific by default, while still
-      teaching canonical CLI usage for validation, gates, and run loop. Include clear
-      extension points for custom harness commands per language stack.
-    value:
-      - "Makes adoption easier across polyglot repositories"
-      - "Separates core workflow from language-specific tooling"
-      - "Improves first-run success for new teams"
-    acceptance_hint:
-      - "Init can scaffold language-agnostic baseline docs"
-      - "Docs include clear instructions for adding custom gate/harness commands"
-      - "Existing Python-centric workflow remains available as an optional profile"
-  - id: POT-011
-    title: Define multi-agent review and refactor negotiation workflow
-    status: idea
-    context: >
-      Introduce explicit workflow design for review/refactor agents, including how
-      disagreements are resolved, when escalation to a human is required, and how loop
-      retries consume review feedback.
-    value:
-      - "Improves consistency of autonomous review loops"
-      - "Reduces ambiguous agent-to-agent interactions"
-      - "Makes human escalation intentional and auditable"
-    acceptance_hint:
-      - "Role definitions exist for implementer, reviewer, and refactor agents"
-      - "Negotiation protocol defines acceptance, rejection, and escalation paths"
-      - "Loop integration points for review feedback are documented"
   - id: POT-012
     title: Automate per-run branch creation and GitHub pull request workflow
     status: idea
