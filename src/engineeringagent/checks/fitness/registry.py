@@ -39,6 +39,28 @@ def custom_manifest_path(project_root: Path) -> Path:
     return project_root / DEFAULT_CUSTOM_RULE_MANIFEST
 
 
+def build_rule_catalog(
+    project_root: Path,
+    *,
+    manifest_path: Path | None = None,
+) -> list[FitnessRuleDefinition]:
+    """Build the active declaration-driven fitness-rule catalog.
+
+    Catalog entries are sourced only from command-adapter manifest declarations.
+    Catalog output is sorted by `rule_id` for deterministic listing and gate
+    consumption.
+    """
+    active_definitions = load_custom_rule_definitions(
+        project_root,
+        manifest_path=manifest_path,
+    )
+
+    _raise_on_duplicate_rule_ids(active_definitions)
+    return sorted(
+        active_definitions, key=lambda definition: definition.metadata.rule_id
+    )
+
+
 def load_custom_rule_definitions(
     project_root: Path,
     *,
@@ -54,39 +76,6 @@ def load_custom_rule_definitions(
         Command-backed rule definitions, or an empty list when the
         manifest file does not exist.
     """
-    return _active_definitions(
-        project_root=project_root,
-        manifest_path=manifest_path,
-    )
-
-
-def build_rule_catalog(
-    project_root: Path,
-    *,
-    manifest_path: Path | None = None,
-) -> list[FitnessRuleDefinition]:
-    """Build the active declaration-driven fitness-rule catalog.
-
-    Catalog entries are sourced only from command-adapter manifest declarations.
-    Catalog output is sorted by `rule_id` for deterministic listing and gate
-    consumption.
-    """
-    active_definitions = _active_definitions(
-        project_root=project_root,
-        manifest_path=manifest_path,
-    )
-
-    _raise_on_duplicate_rule_ids(active_definitions)
-    return sorted(
-        active_definitions, key=lambda definition: definition.metadata.rule_id
-    )
-
-
-def _active_definitions(
-    *,
-    project_root: Path,
-    manifest_path: Path | None = None,
-) -> list[FitnessRuleDefinition]:
     manifest = _load_manifest(project_root, manifest_path=manifest_path)
     if manifest is None:
         return []

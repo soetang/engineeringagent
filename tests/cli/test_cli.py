@@ -381,7 +381,7 @@ def test_cmd_run_builds_looprun_context_for_loop_entrypoint(
         captured["loop_run"] = loop_run
         return 7
 
-    monkeypatch.setattr(cli_module, "run_loop", _fake_run_loop)
+    monkeypatch.setattr(cli_module, "run_loop_controller", _fake_run_loop)
 
     exit_code = cli_module.cmd_run(
         SimpleNamespace(

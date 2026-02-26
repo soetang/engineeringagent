@@ -21,7 +21,12 @@ from .init_scaffold import (
     build_agents_merge_followup_spec,
     build_scaffold_agents_markdown,
 )
-from .loop import RunConfigOptions, build_loop_run, build_run_config, run_loop
+from .loop import (
+    RunConfigOptions,
+    build_loop_run,
+    build_run_config,
+    run_loop_controller,
+)
 from .progress import handoff as progress_handoff
 from .progress import paths as progress_paths
 from . import checks as checks_module
@@ -38,7 +43,7 @@ def _normalize_cli_checks_groups(checks: list[str] | None) -> list[str] | None:
     if not checks:
         return None
     try:
-        return list(checks_module.normalize_check_groups(checks))
+        return list(checks_module.normalize_groups(checks))
     except ValueError as exc:
         raise ValueError(f"checks config error: {exc}") from exc
 
@@ -447,7 +452,7 @@ def cmd_run(args: _HandlerArgs) -> int:
         ),
     )
     loop_run = build_loop_run(config)
-    return run_loop(loop_run)
+    return run_loop_controller(loop_run)
 
 
 def cmd_checks_catalog(args: _HandlerArgs) -> int:

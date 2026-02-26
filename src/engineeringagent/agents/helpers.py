@@ -14,13 +14,9 @@ from engineeringagent.agents.registry import resolve_backend_id
 from engineeringagent.progress import paths as progress_paths
 
 
-def _resolved_backend(project_root: Path) -> str:
-    return resolve_backend_id(project_root)
-
-
 def preflight(project_root: Path) -> bool:
     """Run backend-selected preflight checks before loop execution."""
-    backend_id = _resolved_backend(project_root)
+    backend_id = resolve_backend_id(project_root)
     if backend_id == "opencode":
         print("Running pre-run OpenCode permission precheck.")
         print(
@@ -54,7 +50,7 @@ def describe_action(project_root: Path, *, action: str, structured: bool) -> str
     if not normalized_action:
         raise ValueError("action must be a non-empty string")
 
-    backend_id = _resolved_backend(project_root)
+    backend_id = resolve_backend_id(project_root)
     if backend_id == "opencode":
         command = f"opencode run --agent {DEFAULT_OPENCODE_AGENT}"
         if structured:

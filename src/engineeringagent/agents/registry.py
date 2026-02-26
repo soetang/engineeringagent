@@ -17,19 +17,9 @@ from engineeringagent.config import resolve_agents_backend_id
 BackendFactory = Callable[[], RequestRunAgentBackend]
 BackendScaffoldManifestFactory = Callable[[str], dict[str, str]]
 _DEFAULT_BACKEND_ID = "opencode"
-
-
-def _create_opencode_backend() -> RequestRunAgentBackend:
-    return OpenCodeAgentBackend()
-
-
-def _create_codex_backend() -> RequestRunAgentBackend:
-    return CodexAgentBackend()
-
-
 _BACKEND_FACTORIES: dict[str, BackendFactory] = {
-    "codex": _create_codex_backend,
-    "opencode": _create_opencode_backend,
+    "codex": CodexAgentBackend,
+    "opencode": OpenCodeAgentBackend,
 }
 
 _BACKEND_SCAFFOLD_MANIFEST_FACTORIES: dict[str, BackendScaffoldManifestFactory] = {

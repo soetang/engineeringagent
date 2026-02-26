@@ -16,6 +16,7 @@ from engineeringagent.loop import (
     _drop_completed_feature_from_snapshot,
     _run_feature_iteration,
 )
+from engineeringagent.loop_runtime.controller import run_loop_controller
 from engineeringagent.loop_runtime.models import (
     FeatureIterationInputs,
     ImplementStepInputs,
@@ -143,7 +144,7 @@ def _stub_run_services() -> RunServices:
 
 
 def test_loop_entrypoint_signature_uses_looprun_context() -> None:
-    signature = inspect.signature(loop_module.run_loop)
+    signature = inspect.signature(run_loop_controller)
     parameters = signature.parameters
 
     assert tuple(parameters) == ("loop_run",)
@@ -273,7 +274,6 @@ def test_loop_monkeypatch_seams_remain_available() -> None:
     seam_symbols = (
         "run_agent",
         "preflight",
-        "_run_backend_precheck",
         "_choose_feature_with_selector",
         "run_implement_step",
         "_run_feature_iteration",

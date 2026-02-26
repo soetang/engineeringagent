@@ -436,7 +436,11 @@ def test_progress_log_strips_ansi_only_at_write_time(
 
 
 def test_progress_log_records_phase_timings(tmp_path: Path, monkeypatch: Any) -> None:
-    monkeypatch.setattr(telemetry_module, "now_iso", lambda: "1970-01-01T00:00:10Z")
+    monkeypatch.setattr(
+        telemetry_module.progress_handoff,
+        "now_iso",
+        lambda: "1970-01-01T00:00:10Z",
+    )
     monkeypatch.setattr(telemetry_module.time, "time", lambda: 0.0)
 
     iteration_inputs = FeatureIterationInputs(
@@ -503,7 +507,11 @@ def test_progress_log_records_verification_command_timings(
     tmp_path: Path,
     monkeypatch: Any,
 ) -> None:
-    monkeypatch.setattr(telemetry_module, "now_iso", lambda: "1970-01-01T00:00:20Z")
+    monkeypatch.setattr(
+        telemetry_module.progress_handoff,
+        "now_iso",
+        lambda: "1970-01-01T00:00:20Z",
+    )
 
     time_values = [10.0, 14.0]
 

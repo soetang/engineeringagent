@@ -117,11 +117,11 @@ def test_checker_allows_importing_checks_group_helpers_from_top_level_checks(
     (src_root / "ok_groups.py").write_text(
         "\n".join(
             [
-                "from engineeringagent.checks import list_check_groups, normalize_check_groups",
+                "from engineeringagent.checks import list_check_groups, normalize_groups",
                 "\n",
                 "def run() -> None:",
                 "    _ = list_check_groups",
-                "    _ = normalize_check_groups",
+                "    _ = normalize_groups",
                 "",
             ]
         ),

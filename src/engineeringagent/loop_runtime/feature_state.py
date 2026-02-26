@@ -65,9 +65,10 @@ def set_status(entity: dict[str, Any], target: str, kind: str = "feature") -> No
     entity["status"] = target
 
 
-def _resolve_feature_paths(
+def resolve_feature_paths(
     project_root: Path, feature_paths: Sequence[str | Path]
 ) -> list[Path]:
+    """Resolve and validate user-supplied feature spec paths."""
     if not feature_paths:
         raise ValueError("at least one feature spec path is required")
 
@@ -102,7 +103,8 @@ def _resolve_feature_paths(
     return resolved
 
 
-def _discover_active_feature_paths(project_root: Path) -> list[Path]:
+def discover_active_feature_paths(project_root: Path) -> list[Path]:
+    """Discover runnable feature specs from docs/spec/features."""
     features_dir, _ = _resolve_spec_directories(project_root)
     resolved: list[Path] = []
     for feature_path in sorted(features_dir.glob("*.yaml")):
@@ -119,9 +121,10 @@ def _discover_active_feature_paths(project_root: Path) -> list[Path]:
     return resolved
 
 
-def _pending_features(
+def pending_features(
     feature_paths: Sequence[Path],
 ) -> list[tuple[Path, dict[str, Any]]]:
+    """Load non-done feature specs from an explicit path list."""
     pending: list[tuple[Path, dict[str, Any]]] = []
     for feature_path in feature_paths:
         feature = load_yaml(feature_path)
@@ -131,9 +134,10 @@ def _pending_features(
     return pending
 
 
-def _done_features_pending_archive(
+def done_features_pending_archive(
     feature_paths: Sequence[Path],
 ) -> list[tuple[Path, dict[str, Any]]]:
+    """Load done feature specs that are candidates for archive flow."""
     done_features: list[tuple[Path, dict[str, Any]]] = []
     for feature_path in feature_paths:
         feature = load_yaml(feature_path)
@@ -235,33 +239,19 @@ def _post_implement_passed(
     )
 
 
-def _initial_feature_load_outcome(
-    *,
-    feature: dict[str, Any] | None,
-    result: str,
-    failed_gate: str | None,
-    hook_feedback: str | None,
-) -> InitialFeatureLoadOutcome:
-    return InitialFeatureLoadOutcome(
-        feature=feature,
-        result=result,
-        failed_gate=failed_gate,
-        hook_feedback=hook_feedback,
-    )
-
-
-def _evaluate_initial_feature_load(
+def evaluate_initial_feature_load(
     feature_path: Path,
 ) -> InitialFeatureLoadOutcome:
+    """Load the selected feature and map file/load errors to gate feedback."""
     feature, load_error = _load_selected_feature(feature_path)
     if load_error:
-        return _initial_feature_load_outcome(
+        return InitialFeatureLoadOutcome(
             feature=feature,
             result="failed",
             failed_gate="feature_missing",
             hook_feedback=load_error,
         )
-    return _initial_feature_load_outcome(
+    return InitialFeatureLoadOutcome(
         feature=feature,
         result="passed",
         failed_gate=None,
@@ -269,10 +259,11 @@ def _evaluate_initial_feature_load(
     )
 
 
-def _refresh_feature_after_implement(
+def refresh_feature_after_implement(
     project_root: Path,
     feature_path: Path,
 ) -> PostImplementFeatureOutcome:
+    """Reload selected feature after implement; fallback to done archive path."""
     post_feature, post_load_error = _load_selected_feature(feature_path)
 
     if post_load_error is None:
@@ -301,39 +292,10 @@ def _refresh_feature_after_implement(
     )
 
 
-def _ready_for_active_iteration(
-    *,
-    result: str,
-    feature: dict[str, Any] | None,
-) -> bool:
-    return result == "passed" and feature is not None
-
-
-def _should_archive_selected_feature(
-    *,
-    result: str,
-    selected_feature: dict[str, Any] | None,
-) -> bool:
-    return (
-        result == "passed"
-        and selected_feature is not None
-        and selected_feature.get("status") == "done"
-    )
-
-
-def _touch_active_feature_for_iteration(
-    feature: dict[str, Any],
-    feature_path: Path,
-) -> None:
-    if feature.get("status") == "backlog":
-        set_status(feature, "in_progress")
-    feature["updated_at"] = progress_handoff.now_iso()
-    dump_yaml(feature_path, feature)
-
-
-def _archive_completed_feature(
+def archive_completed_feature(
     project_root: Path, feature_path: Path
 ) -> tuple[bool, Path | None, str]:
+    """Move a done feature spec to docs/spec/features_done safely."""
     try:
         archive_path = _resolve_archive_path(project_root, feature_path)
     except ValueError as exc:
@@ -368,9 +330,10 @@ def _archive_completed_feature(
     return (True, archive_path, "")
 
 
-def _restore_archived_feature(
+def restore_archived_feature(
     archived_path: Path, original_feature_path: Path
 ) -> tuple[bool, str]:
+    """Restore an archived feature spec to its original active location."""
     if not archived_path.exists():
         return (True, "")
     if original_feature_path.exists():
@@ -386,66 +349,23 @@ def _restore_archived_feature(
     return (True, "")
 
 
-def resolve_feature_paths(
-    project_root: Path, feature_paths: Sequence[str | Path]
-) -> list[Path]:
-    """Public service seam for resolving explicit feature spec paths."""
-    return _resolve_feature_paths(project_root, feature_paths)
-
-
-def discover_active_feature_paths(project_root: Path) -> list[Path]:
-    """Public service seam for discovering runnable active feature specs."""
-    return _discover_active_feature_paths(project_root)
-
-
-def pending_features(
-    feature_paths: Sequence[Path],
-) -> list[tuple[Path, dict[str, Any]]]:
-    """Public service seam returning non-done features for loop selection."""
-    return _pending_features(feature_paths)
-
-
-def done_features_pending_archive(
-    feature_paths: Sequence[Path],
-) -> list[tuple[Path, dict[str, Any]]]:
-    """Public service seam returning done features that can still be archived."""
-    return _done_features_pending_archive(feature_paths)
-
-
-def evaluate_initial_feature_load(
-    feature_path: Path,
-) -> InitialFeatureLoadOutcome:
-    """Public service seam for loading selected feature state."""
-    return _evaluate_initial_feature_load(feature_path)
-
-
-def refresh_feature_after_implement(
-    project_root: Path,
-    feature_path: Path,
-) -> PostImplementFeatureOutcome:
-    """Public service seam for reloading feature state after implement."""
-    return _refresh_feature_after_implement(project_root, feature_path)
-
-
 def ready_for_active_iteration(
     result: str,
     feature: dict[str, Any] | None,
 ) -> bool:
-    """Public service seam for checking active-iteration eligibility."""
-    return _ready_for_active_iteration(
-        result=result,
-        feature=feature,
-    )
+    """Check active-iteration eligibility."""
+    return result == "passed" and feature is not None
 
 
 def should_archive_selected_feature(
     result: str,
     selected_feature: dict[str, Any] | None,
 ) -> bool:
-    """Public service seam for deciding whether a selected feature should archive."""
-    return _should_archive_selected_feature(
-        result=result,
-        selected_feature=selected_feature,
+    """Decide whether the selected feature should be archived."""
+    return (
+        result == "passed"
+        and selected_feature is not None
+        and selected_feature.get("status") == "done"
     )
 
 
@@ -453,19 +373,8 @@ def touch_active_feature_for_iteration(
     feature: dict[str, Any],
     feature_path: Path,
 ) -> None:
-    """Public service seam for status/timestamp updates before iteration work."""
-    _touch_active_feature_for_iteration(feature, feature_path)
-
-
-def archive_completed_feature(
-    project_root: Path, feature_path: Path
-) -> tuple[bool, Path | None, str]:
-    """Public service seam for archiving a completed feature spec."""
-    return _archive_completed_feature(project_root, feature_path)
-
-
-def restore_archived_feature(
-    archived_path: Path, original_feature_path: Path
-) -> tuple[bool, str]:
-    """Public service seam for restoring archived spec on gate/reviewer failures."""
-    return _restore_archived_feature(archived_path, original_feature_path)
+    """Apply status/timestamp updates before iteration work."""
+    if feature.get("status") == "backlog":
+        set_status(feature, "in_progress")
+    feature["updated_at"] = progress_handoff.now_iso()
+    dump_yaml(feature_path, feature)

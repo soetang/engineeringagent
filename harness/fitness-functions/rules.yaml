@@ -320,6 +320,21 @@ rules:
       - run
       - python
       - harness/fitness-functions/check_no_facade_varargs_shims.py
+  - rule_id: architecture.no-pure-wrapper-functions
+    name: No pure wrapper functions
+    summary: Block pure pass-through wrappers and keep wrapper exceptions explicit.
+    rationale: Keeps architecture boundaries direct by default and prevents seam-only indirection.
+    remediation: Remove pass-through wrappers, call canonical functions directly, and only add explicit allowlist exceptions with rationale when unavoidable.
+    scope: src/engineeringagent and harness/fitness-functions
+    severity: error
+    side_effect_free: true
+    adapter: command
+    config_file: policies/no_pure_wrapper_functions.yaml
+    command:
+      - uv
+      - run
+      - python
+      - harness/fitness-functions/check_no_pure_wrapper_functions.py
   - rule_id: architecture.source-first-loop-command-policy
     name: Source-first loop command policy
     summary: Enforce source-first workspace execution for loop command surfaces.

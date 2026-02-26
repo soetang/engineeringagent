@@ -87,11 +87,6 @@ def _reviewer_feedback_metadata(
     return forwarded, True, _summarize_reviewer_feedback(forwarded)
 
 
-def now_iso() -> str:
-    """Return the current UTC timestamp in ISO-8601 format."""
-    return progress_handoff.now_iso()
-
-
 def _format_phase_timing_fields(timing: PhaseTiming) -> str:
     return (
         f"phase={timing.phase} "
@@ -166,7 +161,7 @@ def write_iteration_telemetry(  # noqa: C901
     )
 
     run_payload: dict[str, Any] = {
-        "ts": now_iso(),
+        "ts": progress_handoff.now_iso(),
         "feature_id": telemetry_inputs.feature_id,
         "subtask_id": None,
         "result": telemetry_inputs.result,

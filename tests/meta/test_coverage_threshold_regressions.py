@@ -142,26 +142,26 @@ def test_feature_state_error_paths(tmp_path: Path, monkeypatch: Any) -> None:
         feature_state_module.set_status({"status": "done"}, "in_progress")
 
     with pytest.raises(ValueError, match="at least one feature"):
-        feature_state_module._resolve_feature_paths(tmp_path, [])
+        feature_state_module.resolve_feature_paths(tmp_path, [])
 
     txt_path = tmp_path / "feature.txt"
     txt_path.write_text("id: FEAT-001\n", encoding="utf-8")
     with pytest.raises(ValueError, match="must end with .yaml"):
-        feature_state_module._resolve_feature_paths(tmp_path, [txt_path])
+        feature_state_module.resolve_feature_paths(tmp_path, [txt_path])
 
     directory_path = tmp_path / "feature.yaml"
     directory_path.mkdir()
     with pytest.raises(ValueError, match="is not a file"):
-        feature_state_module._resolve_feature_paths(tmp_path, [directory_path])
+        feature_state_module.resolve_feature_paths(tmp_path, [directory_path])
 
     bad_yaml = tmp_path / "bad.yaml"
     bad_yaml.write_text("[", encoding="utf-8")
     with pytest.raises(ValueError, match="failed to load feature YAML"):
-        feature_state_module._resolve_feature_paths(tmp_path, [bad_yaml])
+        feature_state_module.resolve_feature_paths(tmp_path, [bad_yaml])
 
     good_yaml = tmp_path / "good.yaml"
     good_yaml.write_text("id: FEAT-001\nstatus: backlog\n", encoding="utf-8")
-    resolved = feature_state_module._resolve_feature_paths(
+    resolved = feature_state_module.resolve_feature_paths(
         tmp_path,
         [Path("good.yaml"), good_yaml],
     )
@@ -171,7 +171,7 @@ def test_feature_state_error_paths(tmp_path: Path, monkeypatch: Any) -> None:
     features_dir.mkdir(parents=True)
     (features_dir / "broken.yaml").write_text("[", encoding="utf-8")
     with pytest.raises(ValueError, match="failed to load feature YAML"):
-        feature_state_module._discover_active_feature_paths(tmp_path)
+        feature_state_module.discover_active_feature_paths(tmp_path)
 
     with pytest.raises(ValueError, match="must be under docs/spec/features"):
         feature_state_module._resolve_archive_path(tmp_path, bad_yaml)
@@ -199,7 +199,7 @@ def test_feature_state_error_paths(tmp_path: Path, monkeypatch: Any) -> None:
         "_load_selected_feature",
         lambda *_args, **_kwargs: (None, "load-failed"),
     )
-    post_outcome = feature_state_module._refresh_feature_after_implement(
+    post_outcome = feature_state_module.refresh_feature_after_implement(
         tmp_path,
         active_feature_path,
     )
@@ -212,7 +212,7 @@ def test_feature_state_error_paths(tmp_path: Path, monkeypatch: Any) -> None:
         "_load_selected_feature",
         lambda *_args, **_kwargs: ({"status": "blocked"}, None),
     )
-    post_outcome = feature_state_module._refresh_feature_after_implement(
+    post_outcome = feature_state_module.refresh_feature_after_implement(
         tmp_path,
         active_feature_path,
     )
@@ -224,7 +224,7 @@ def test_feature_state_error_paths(tmp_path: Path, monkeypatch: Any) -> None:
         "_resolve_archive_path",
         lambda *_args, **_kwargs: (_ for _ in ()).throw(ValueError("bad archive")),
     )
-    ok, archived_path, message = feature_state_module._archive_completed_feature(
+    ok, archived_path, message = feature_state_module.archive_completed_feature(
         tmp_path,
         active_feature_path,
     )
@@ -240,7 +240,7 @@ def test_feature_state_error_paths(tmp_path: Path, monkeypatch: Any) -> None:
         "_resolve_archive_path",
         lambda *_args, **_kwargs: existing_archive,
     )
-    ok, archived_path, message = feature_state_module._archive_completed_feature(
+    ok, archived_path, message = feature_state_module.archive_completed_feature(
         tmp_path,
         missing_feature,
     )
@@ -250,7 +250,7 @@ def test_feature_state_error_paths(tmp_path: Path, monkeypatch: Any) -> None:
 
     source_feature = features_dir / "FEAT-010.yaml"
     source_feature.write_text("id: FEAT-010\n", encoding="utf-8")
-    ok, archived_path, message = feature_state_module._archive_completed_feature(
+    ok, archived_path, message = feature_state_module.archive_completed_feature(
         tmp_path,
         source_feature,
     )
@@ -258,7 +258,7 @@ def test_feature_state_error_paths(tmp_path: Path, monkeypatch: Any) -> None:
     assert archived_path is None
     assert "already exists" in message
 
-    ok, message = feature_state_module._restore_archived_feature(
+    ok, message = feature_state_module.restore_archived_feature(
         tmp_path / "not-there.yaml",
         features_dir / "target.yaml",
     )
@@ -268,7 +268,7 @@ def test_feature_state_error_paths(tmp_path: Path, monkeypatch: Any) -> None:
     original = features_dir / "restore.yaml"
     archived.write_text("id: FEAT-011\n", encoding="utf-8")
     original.write_text("id: FEAT-011\n", encoding="utf-8")
-    ok, message = feature_state_module._restore_archived_feature(archived, original)
+    ok, message = feature_state_module.restore_archived_feature(archived, original)
     assert ok is False
     assert "source already exists" in message
 
@@ -308,7 +308,7 @@ def test_post_implement_refresh_recovers_selected_archived_done_feature(
         ],
     )
 
-    post_outcome = feature_state_module._refresh_feature_after_implement(
+    post_outcome = feature_state_module.refresh_feature_after_implement(
         tmp_path,
         active_feature_path,
     )
@@ -333,7 +333,7 @@ def test_post_implement_refresh_rejects_non_done_archived_counterpart(
         ],
     )
 
-    post_outcome = feature_state_module._refresh_feature_after_implement(
+    post_outcome = feature_state_module.refresh_feature_after_implement(
         tmp_path,
         active_feature_path,
     )
@@ -365,7 +365,7 @@ def test_post_implement_refresh_does_not_fallback_to_non_matching_archived_featu
         encoding="utf-8",
     )
 
-    post_outcome = feature_state_module._refresh_feature_after_implement(
+    post_outcome = feature_state_module.refresh_feature_after_implement(
         tmp_path,
         active_feature_path,
     )

@@ -6,8 +6,8 @@ from pathlib import Path
 import pytest
 
 from engineeringagent.loop_runtime.feature_state import (
-    _archive_completed_feature,
-    _restore_archived_feature,
+    archive_completed_feature,
+    restore_archived_feature,
 )
 from engineeringagent.specs import load_yaml
 
@@ -41,7 +41,7 @@ def test_archive_completed_feature_marks_subtasks_done(tmp_path: Path) -> None:
     feature_path = tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml"
     _write_done_feature(feature_path)
 
-    ok, archived_path, message = _archive_completed_feature(
+    ok, archived_path, message = archive_completed_feature(
         tmp_path,
         feature_path,
     )
@@ -73,7 +73,7 @@ def test_archive_completed_feature_falls_back_on_exdev(
 
     monkeypatch.setattr(Path, "rename", _raise_exdev_for_archive)
 
-    ok, archived_path, message = _archive_completed_feature(tmp_path, feature_path)
+    ok, archived_path, message = archive_completed_feature(tmp_path, feature_path)
 
     assert ok is True
     assert message == ""
@@ -101,7 +101,7 @@ def test_restore_archived_feature_falls_back_on_exdev(
 
     monkeypatch.setattr(Path, "rename", _raise_exdev_for_restore)
 
-    ok, message = _restore_archived_feature(archived_path, original_path)
+    ok, message = restore_archived_feature(archived_path, original_path)
 
     assert ok is True
     assert message == ""

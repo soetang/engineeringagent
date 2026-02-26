@@ -11,6 +11,7 @@ from .git.client import (
     status_porcelain,
 )
 from .agents import preflight, run_agent
+from .loop_runtime.controller import run_loop_controller
 from .loop_runtime.implement import run_implement_step_from_inputs
 from .loop_runtime.models import (
     FeatureIterationInputs,
@@ -49,9 +50,6 @@ from .loop_runtime.feature_state import (
     should_archive_selected_feature,
     touch_active_feature_for_iteration,
 )
-from .loop_runtime.controller import (
-    run_loop_controller,
-)
 from .loop_runtime.run_context import LoopRun, RunConfig, RunServices
 from .loop_runtime.observers import (
     DefaultObserverDependencies,
@@ -62,6 +60,8 @@ from .loop_runtime.observers import (
 from .loop_runtime.telemetry import write_iteration_telemetry
 from .loop_runtime.presentation import RunOutputPresenter
 from .feature_commit import feature_completion_commit_subject
+
+__all__ = ["run_loop_controller"]
 
 
 def _print_run_all_snapshot_banner(resolved_paths: Sequence[Path]) -> None:
@@ -77,12 +77,6 @@ def _print_run_all_no_work_message() -> None:
         "(statuses: backlog, in_progress)."
     )
     print_summary(None, "no_work", None, None, "stop")
-
-
-def _run_backend_precheck(
-    project_root: Path,
-) -> bool:
-    return preflight(project_root)
 
 
 def _choose_feature_with_selector(
@@ -515,12 +509,7 @@ def build_loop_run(config: RunConfig) -> LoopRun:
         emit_run_all_snapshot_feedback=_emit_run_all_snapshot_feedback,
         handle_dry_run=_handle_dry_run,
         enforce_worktree_precondition=_enforce_worktree_precondition,
-        run_permission_precheck=_run_backend_precheck,
+        run_permission_precheck=preflight,
         run_selected_feature_iterations=_run_selected_feature_iterations,
     )
     return LoopRun(config=config, services=services)
-
-
-def run_loop(loop_run: LoopRun) -> int:
-    """Execute feature loops from a typed loop context."""
-    return run_loop_controller(loop_run)

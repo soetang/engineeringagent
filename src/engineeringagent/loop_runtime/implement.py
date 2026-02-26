@@ -28,18 +28,7 @@ def run_implement_step_from_inputs(
     *,
     run_agent_fn: Callable[..., Any],
 ) -> ImplementStepResult:
-    """Run implement logic while facade keeps public signature seams."""
-    return _run_implement(
-        implement_inputs,
-        run_agent_fn=run_agent_fn,
-    )
-
-
-def _run_implement(
-    implement_inputs: ImplementStepInputs,
-    *,
-    run_agent_fn: Callable[..., Any],
-) -> ImplementStepResult:
+    """Run the implement phase and coerce structured progress output."""
     prompt = _build_implement_prompt(implement_inputs)
     command = describe_action(
         implement_inputs.project_root,

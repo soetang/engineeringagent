@@ -24,6 +24,7 @@ This file is generated from active manifest-declared fitness rules.
 | `architecture.no-env-key-reads` | error | command | custom | `src/ harness/ tests/` | - | Forbid env-key reads (os.getenv, os.environ.get, os.environ['X'], 'X' in os.environ). |
 | `architecture.no-facade-varargs-shims` | error | command | custom | `src/engineeringagent` | - | Block facade varargs shims, __signature__ masking, and hidden kwargs dropping. |
 | `architecture.no-non-ignorable-ruff-suppressions` | error | command | custom | `src tests harness` | `harness/fitness-functions/policies/no_non_ignorable_ruff_suppressions.yaml` | Block suppression directives for configured high-value Ruff rules. |
+| `architecture.no-pure-wrapper-functions` | error | command | custom | `src/engineeringagent and harness/fitness-functions` | `harness/fitness-functions/policies/no_pure_wrapper_functions.yaml` | Block pure pass-through wrappers and keep wrapper exceptions explicit. |
 | `architecture.no-stdlib-dataclasses-in-src` | error | command | custom | `src/engineeringagent` | - | Block stdlib dataclasses usage in production source models. |
 | `architecture.progress-log-path-locality` | error | command | custom | `src/engineeringagent` | - | Centralize loop progress artifact paths and writes behind approved helpers. |
 | `architecture.prompt-locality` | error | command | custom | `src/engineeringagent` | - | Keep canonical loop prompt content and template reads localized. |
@@ -164,6 +165,14 @@ This file is generated from active manifest-declared fitness rules.
 - Side-effect free: `true`
 - Rationale: Keep lint policy enforceable by requiring refactor-first remediation.
 - Remediation: Remove inline/file-level ignore directives and refactor; for PLR0913, group related arguments into a NamedTuple or pydantic model.
+
+### `architecture.no-pure-wrapper-functions`
+
+- Name: No pure wrapper functions
+- Config file: `harness/fitness-functions/policies/no_pure_wrapper_functions.yaml`
+- Side-effect free: `true`
+- Rationale: Keeps architecture boundaries direct by default and prevents seam-only indirection.
+- Remediation: Remove pass-through wrappers, call canonical functions directly, and only add explicit allowlist exceptions with rationale when unavoidable.
 
 ### `architecture.no-stdlib-dataclasses-in-src`
 
