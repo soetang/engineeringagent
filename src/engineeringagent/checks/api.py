@@ -365,7 +365,7 @@ def _build_check_context(
         phase=request.phase,
         changed_paths=_resolve_changed_paths(project_root, request),
         feature_path=request.feature_path,
-        prior_feedback=request.prior_feedback,
+        feedback=request.feedback,
         run_agent_fn=request.run_agent_fn,
         verbose_output=request.verbose_output,
     )
@@ -443,7 +443,7 @@ def run_checks(
             - base: Optional base revision for diff-based checks.
             - head: Optional head revision for diff-based checks.
             - run_agent_fn: Optional injected callable to execute reviewers.
-            - prior_feedback: Optional retry feedback supplied to reviewer checks.
+            - feedback: Optional feedback supplied to reviewer checks.
             - schema_only: Validate-only mode for schema checks.
             - dry_run: Plan checks without executing commands or reviewers.
             - collect_changed_paths: Optional changed-paths collector override.

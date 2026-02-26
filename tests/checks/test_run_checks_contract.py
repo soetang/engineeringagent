@@ -241,7 +241,7 @@ def test_resolve_changed_paths_uses_request_collector_with_base_head(
         base="main",
         head="feature",
         run_agent_fn=None,
-        prior_feedback=None,
+        feedback=None,
         schema_only=False,
         dry_run=False,
         collect_changed_paths_fn=_collector,

@@ -9,9 +9,10 @@ This file is generated from active manifest-declared fitness rules.
 | `architecture.agents-backends-boundary` | error | command | custom | `src/engineeringagent` | - | Forbid direct backend package usage outside the agents boundary. |
 | `architecture.backend-literal-locality-budget` | error | command | custom | `src/engineeringagent excluding src/engineeringagent/agents/** and src/engineeringagent/checks/**` | `harness/fitness-functions/policies/backend_literal_locality_budget.yaml` | Enforce a zero-budget backend literal locality boundary outside allowed packages. |
 | `architecture.checks-import-surface` | error | command | custom | `src/engineeringagent` | - | Enforce a narrow import surface for engineeringagent.checks. |
-| `architecture.checks-own-prompt-feedback-rendering` | error | command | custom | `src/engineeringagent/loop_runtime/**, src/engineeringagent/loop.py, and src/engineeringagent/prompts/renderer.py` | - | Fail when loop/prompt code performs checks-specific retry feedback shaping outside checks strategies. |
+| `architecture.checks-own-prompt-feedback-rendering` | error | command | custom | `src/engineeringagent/loop_runtime/**, src/engineeringagent/loop.py, and src/engineeringagent/prompts/renderer.py` | - | Fail when loop/prompt code performs checks-specific feedback shaping outside checks strategies. |
 | `architecture.dep-directionality` | error | command | custom | `src/engineeringagent` | - | Enforce core module import direction boundaries. |
 | `architecture.docs-allowlist-policy` | error | command | custom | `docs_root markdown (*.md) excluding docs_root/spec/**` | - | Require each docs_root markdown file to be listed in exactly one policy list. |
+| `architecture.feedback-no-truncation` | error | command | custom | `src/engineeringagent/prompts/renderer.py` | - | Block truncation-by-slicing in feedback prompt injection. |
 | `architecture.fitness-catalog-docs-sync` | error | command | custom | `docs/fitness-functions/rules.md` | - | Enforce byte-for-byte sync between docs catalog markdown and generated catalog output. |
 | `architecture.harness-root-yaml-only` | error | command | custom | `harness/ (regular files at root)` | - | Enforce YAML-only regular files directly under harness root. |
 | `architecture.harness-src-import-allowlist` | error | command | custom | `harness/fitness-functions` | - | Restrict harness fitness functions to a narrow supported engineeringagent surface. |
@@ -28,7 +29,6 @@ This file is generated from active manifest-declared fitness rules.
 | `architecture.no-stdlib-dataclasses-in-src` | error | command | custom | `src/engineeringagent` | - | Block stdlib dataclasses usage in production source models. |
 | `architecture.progress-log-path-locality` | error | command | custom | `src/engineeringagent` | - | Centralize loop progress artifact paths and writes behind approved helpers. |
 | `architecture.prompt-locality` | error | command | custom | `src/engineeringagent` | - | Keep canonical loop prompt content and template reads localized. |
-| `architecture.retry-feedback-no-truncation` | error | command | custom | `src/engineeringagent/prompts/renderer.py` | - | Block truncation-by-slicing in retry feedback prompt injection. |
 | `architecture.scaffold-docs-exact-sync` | error | command | custom | `docs and src/engineeringagent/scaffold_templates` | - | Enforce byte-for-byte sync between selected docs and scaffold templates. |
 | `architecture.scaffold-template-agents-doc-links` | error | command | custom | `src/engineeringagent/scaffold_templates/AGENTS.md` | - | Require scaffolded reference docs to be linked from scaffold AGENTS.md. |
 | `architecture.scaffold-template-locality` | error | command | custom | `src/engineeringagent` | - | Keep scaffold template payloads in scaffold_templates assets. |
@@ -64,7 +64,7 @@ This file is generated from active manifest-declared fitness rules.
 - Name: Checks-owned prompt feedback rendering
 - Side-effect free: `true`
 - Rationale: Keeps checks failure feedback rendering owned by checks strategies so loop and prompt wiring only forward prompt_feedback.
-- Remediation: Remove loop/prompt checks-specific retry-feedback builders and pass run_checks(...).prompt_feedback through unchanged.
+- Remediation: Remove loop/prompt checks-specific feedback builders and pass run_checks(...).prompt_feedback through unchanged.
 
 ### `architecture.dep-directionality`
 
@@ -79,6 +79,13 @@ This file is generated from active manifest-declared fitness rules.
 - Side-effect free: `true`
 - Rationale: Keeps docs additions explicit and reviewable by classifying each file as user-facing or contributor-facing.
 - Remediation: Add every docs markdown file to exactly one of user_docs or contributor_docs in harness/scaffold_policy.yaml.
+
+### `architecture.feedback-no-truncation`
+
+- Name: Feedback no truncation
+- Side-effect free: `true`
+- Rationale: Prevents prompt retries from losing the most relevant failure details.
+- Remediation: Remove truncation-by-slicing from feedback injection; bound feedback by contract caps and canonical re-serialization.
 
 ### `architecture.fitness-catalog-docs-sync`
 
@@ -194,13 +201,6 @@ This file is generated from active manifest-declared fitness rules.
 - Side-effect free: `true`
 - Rationale: Prevents prompt drift and duplicate canonical wording across modules.
 - Remediation: Move canonical prompt text and template reads to engineeringagent.prompts templates/renderer modules.
-
-### `architecture.retry-feedback-no-truncation`
-
-- Name: Retry feedback no truncation
-- Side-effect free: `true`
-- Rationale: Prevents prompt retries from losing the most relevant failure details.
-- Remediation: Remove truncation-by-slicing from retry feedback injection; bound retry feedback by contract caps and canonical re-serialization.
 
 ### `architecture.scaffold-docs-exact-sync`
 

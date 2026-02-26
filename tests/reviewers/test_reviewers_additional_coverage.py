@@ -149,7 +149,7 @@ def test_run_reviewer_returns_parser_failure_for_missing_prompt_file(
         "feature_id": "FEAT-1",
         "feature_path": tmp_path,
         "changed_paths": ChangedPathsResult(paths=(), run_all=False, reason=None),
-        "prior_feedback": None,
+        "feedback": None,
         "run_agent_fn": run_agent_fn,
     }
     decision = run_reviewer(tmp_path, "rev", {"prompt_file": ""}, **request)
@@ -167,7 +167,7 @@ def test_run_reviewer_returns_parser_failure_when_prompt_file_missing_on_disk(
         "feature_id": "FEAT-1",
         "feature_path": tmp_path,
         "changed_paths": ChangedPathsResult(paths=(), run_all=False, reason=None),
-        "prior_feedback": None,
+        "feedback": None,
         "run_agent_fn": run_agent_fn,
     }
     decision = run_reviewer(tmp_path, "rev", {"prompt_file": "missing.txt"}, **request)
@@ -188,7 +188,7 @@ def test_run_reviewer_returns_parser_failure_when_opencode_is_missing(
         "feature_id": "FEAT-1",
         "feature_path": tmp_path,
         "changed_paths": ChangedPathsResult(paths=(), run_all=False, reason=None),
-        "prior_feedback": None,
+        "feedback": None,
         "run_agent_fn": fake_run_agent,
     }
     decision = run_reviewer(tmp_path, "rev", {"prompt_file": "prompt.txt"}, **request)
@@ -209,7 +209,7 @@ def test_run_reviewer_returns_parser_failure_when_agent_backend_errors(
         "feature_id": "FEAT-1",
         "feature_path": tmp_path,
         "changed_paths": ChangedPathsResult(paths=(), run_all=False, reason=None),
-        "prior_feedback": None,
+        "feedback": None,
         "run_agent_fn": fake_run_agent,
     }
 

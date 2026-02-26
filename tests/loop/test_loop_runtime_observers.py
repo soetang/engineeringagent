@@ -25,7 +25,7 @@ def _build_iteration_report(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-116.yaml",
         attempt=2,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
     telemetry_inputs = IterationTelemetryInputs(
@@ -48,14 +48,14 @@ def _build_iteration_report(
         gate_output="",
         verification_output="",
         reviewer_output="",
-        hook_feedback=None,
+        feedback=None,
     )
     return IterationReport(
         completed=False,
         result=result,
         failed_gate=telemetry_inputs.failed_gate,
         next_action=telemetry_inputs.next_action,
-        hook_feedback=None,
+        feedback=None,
         feature_id="FEAT-116",
         attempt=2,
         selected_feature_path=str(iteration_inputs.feature_path),

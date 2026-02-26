@@ -41,7 +41,7 @@ Optional fields:
 
 - `feature_path`
 - `feature_id`
-- `prior_feedback`
+- `feedback`
 - `run_agent_fn`
 - `verbose_output`
 

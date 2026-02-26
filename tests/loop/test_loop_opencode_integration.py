@@ -658,7 +658,6 @@ def test_gate_failure_feedback_round_trips_to_retry_prompt_integration(
     assert "spec_validate" in prompts[1]
     assert str(gate_script) in prompts[1]
     assert "SPEC_VALIDATE_INTEGRATION_TOKEN" not in prompts[1]
-    assert "retry_feedback_parse_error" not in prompts[1]
 
 
 def test_gate_failure_feedback_replaces_previous_feedback_integration(
@@ -792,8 +791,6 @@ def test_gate_failure_feedback_replaces_previous_feedback_integration(
     assert str(first_gate_script) not in prompts[2]
     assert first_output not in prompts[2]
     assert second_output not in prompts[2]
-    assert "retry_feedback_parse_error" not in prompts[1]
-    assert "retry_feedback_parse_error" not in prompts[2]
 
 
 def test_loop_archived_done_continues_run_all_when_selected_path_disappears(

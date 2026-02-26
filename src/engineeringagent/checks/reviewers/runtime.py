@@ -73,7 +73,7 @@ class RunPlannedReviewerChecksRequest(BaseModel):
     feature_id: str
     feature_path: Path
     run_agent_fn: Callable[..., Any] | None = None
-    prior_feedback: str | None = None
+    feedback: str | None = None
     verbose_output: bool = False
 
 
@@ -143,7 +143,7 @@ def run_planned_reviewer_checks_from_plan(
             feature_id=request.feature_id,
             feature_path=request.feature_path,
             changed_paths=request.changed_paths,
-            prior_feedback=request.prior_feedback,
+            feedback=request.feedback,
             run_agent_fn=request.run_agent_fn,
         )
         decision_name, summary, decision_payload = _normalize_reviewer_decision(

@@ -98,7 +98,7 @@ class _PipelineState(BaseModel):
     result: str = "passed"
     completed: bool = False
     next_action: str = "retry_same_feature"
-    next_hook_feedback: str | None = None
+    next_feedback: str | None = None
     implement_status: str = "not_run"
     gate_status: str = "not_run"
     verification_status: str = "not_run"
@@ -255,13 +255,13 @@ def _apply_initial_load_result(
     state: _PipelineState,
     initial_result: str,
     failed_gate: str | None,
-    hook_feedback: str | None,
+    feedback: str | None,
 ) -> None:
     if initial_result != "failed":
         return
     state.result = initial_result
     state.failed_gate = failed_gate
-    state.next_hook_feedback = hook_feedback
+    state.next_feedback = feedback
 
 
 def _run_implement_phase_if_ready(
@@ -293,7 +293,7 @@ def _run_implement_phase_if_ready(
         iteration_inputs.project_root,
         feature,
         iteration_inputs.feature_path,
-        iteration_inputs.hook_feedback,
+        iteration_inputs.feedback,
         iteration_inputs.verbose_output,
     )
     if ok:
@@ -329,7 +329,7 @@ def _run_verification_phase_if_passed(
         return
     state.verification_failed = True
     state.result = "failed"
-    state.next_hook_feedback = verification_phase.hook_feedback
+    state.next_feedback = verification_phase.feedback
     _rollback_archived_feature_after_verification_failure(
         state,
         iteration_inputs,
@@ -358,7 +358,7 @@ def _rollback_archived_feature_after_verification_failure(
 
     rollback_output = f"\narchive rollback failed: {restore_error}"
     state.verification_output = f"{state.verification_output}{rollback_output}".strip()
-    state.next_hook_feedback = state.verification_output
+    state.next_feedback = state.verification_output
 
 
 def _refresh_feature_after_implement_if_ready(
@@ -383,7 +383,7 @@ def _refresh_feature_after_implement_if_ready(
     if post_refresh.result == "failed":
         state.result = post_refresh.result
         state.failed_gate = post_refresh.failed_gate
-        state.next_hook_feedback = post_refresh.hook_feedback
+        state.next_feedback = post_refresh.feedback
         return post_refresh.feature
 
     if post_refresh.feature is not None and not post_refresh.archived_in_iteration:
@@ -421,7 +421,7 @@ def _archive_selected_feature_if_needed(
         return
     state.result = "failed"
     state.failed_gate = "feature_archive"
-    state.next_hook_feedback = archive_error
+    state.next_feedback = archive_error
 
 
 def _run_gate_phase_if_passed(
@@ -450,7 +450,7 @@ def _run_gate_phase_if_passed(
         return
     state.result = gate_phase.result
     state.failed_gate = gate_phase.failed_gate
-    state.next_hook_feedback = gate_phase.hook_feedback
+    state.next_feedback = gate_phase.feedback
 
 
 def _run_reviewer_phase_if_passed(
@@ -475,16 +475,17 @@ def _run_reviewer_phase_if_passed(
     state.failed_reviewer_id = reviewer_phase.failed_reviewer_id
     state.reviewer_output = reviewer_phase.reviewer_output
     state.command_timings.extend(reviewer_phase.command_timings)
-    if reviewer_phase.hook_feedback:
-        state.reviewer_feedback_forwarded = reviewer_phase.hook_feedback
+    feedback = reviewer_phase.feedback
+    if feedback:
+        state.reviewer_feedback_forwarded = feedback
     if reviewer_phase.result != "failed":
-        if reviewer_phase.hook_feedback:
-            state.next_hook_feedback = reviewer_phase.hook_feedback
+        if feedback:
+            state.next_feedback = feedback
         return
 
     state.result = reviewer_phase.result
     state.failed_gate = reviewer_phase.failed_gate
-    state.next_hook_feedback = reviewer_phase.hook_feedback
+    state.next_feedback = feedback
 
 
 def _run_completion_phase_if_needed(
@@ -505,7 +506,7 @@ def _run_completion_phase_if_needed(
     )
     state.result = completion_phase.result
     state.failed_gate = completion_phase.failed_gate
-    state.next_hook_feedback = completion_phase.hook_feedback
+    state.next_feedback = completion_phase.feedback
     state.completed = completion_phase.completed
     state.completion_commit_succeeded = completion_phase.completion_commit_succeeded
     state.completion_output = completion_phase.completion_output
@@ -562,7 +563,7 @@ def run_feature_iteration_pipeline(
             state,
             initial_load.result,
             initial_load.failed_gate,
-            initial_load.hook_feedback,
+            initial_load.feedback,
         )
         return initial_load
 
@@ -678,7 +679,7 @@ def run_feature_iteration_pipeline(
         verification_output=state.verification_output,
         reviewer_output=state.reviewer_output,
         reviewer_feedback_forwarded=state.reviewer_feedback_forwarded,
-        hook_feedback=state.next_hook_feedback,
+        feedback=state.next_feedback,
         completion_output=state.completion_output,
     )
     implement_step = describe_action(
@@ -691,7 +692,7 @@ def run_feature_iteration_pipeline(
         result=state.result,
         failed_gate=state.failed_gate,
         next_action=state.next_action,
-        hook_feedback=state.next_hook_feedback,
+        feedback=state.next_feedback,
         feature_id=feature_id,
         attempt=iteration_inputs.attempt,
         selected_feature_path=str(iteration_inputs.feature_path),

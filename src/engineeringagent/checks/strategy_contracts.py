@@ -24,7 +24,7 @@ class CheckContext(NamedTuple):
     phase: HarnessCheckPhase
     changed_paths: ChangedPathsResult
     feature_path: Path | None = None
-    prior_feedback: str | None = None
+    feedback: str | None = None
     run_agent_fn: Any | None = None
     verbose_output: bool = False
 

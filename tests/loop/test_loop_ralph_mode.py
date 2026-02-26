@@ -517,7 +517,7 @@ def test_verification_is_not_run_without_done_transition(tmp_path: Path) -> None
         feature_path=feature_path,
         run_all=False,
         attempt=1,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
 
@@ -559,7 +559,7 @@ def test_verification_failure_for_newly_done_subtask_marks_iteration_non_pass(
             feature_path=feature_path,
             run_all=False,
             attempt=1,
-            hook_feedback=None,
+            feedback=None,
             verbose_output=False,
         )
 
@@ -608,7 +608,7 @@ def test_verification_selection_ignores_non_string_commands(
             feature_path=feature_path,
             run_all=False,
             attempt=1,
-            hook_feedback=None,
+            feedback=None,
             verbose_output=False,
         )
 
@@ -652,7 +652,7 @@ def test_verification_selection_ignores_blank_string_commands(
             feature_path=feature_path,
             run_all=False,
             attempt=1,
-            hook_feedback=None,
+            feedback=None,
             verbose_output=False,
         )
 
@@ -702,7 +702,7 @@ def test_verification_selection_normalizes_command_whitespace(
             feature_path=feature_path,
             run_all=False,
             attempt=1,
-            hook_feedback=None,
+            feedback=None,
             verbose_output=False,
         )
 
@@ -751,7 +751,7 @@ def test_verification_ignores_new_done_subtasks_without_pre_snapshot_status(
             feature_path=feature_path,
             run_all=False,
             attempt=1,
-            hook_feedback=None,
+            feedback=None,
             verbose_output=False,
         )
 
@@ -800,7 +800,7 @@ def test_verification_selection_uses_first_post_entry_for_duplicate_subtask_ids(
             feature_path=feature_path,
             run_all=False,
             attempt=1,
-            hook_feedback=None,
+            feedback=None,
             verbose_output=False,
         )
 
@@ -851,7 +851,7 @@ def test_verification_selection_uses_first_pre_status_for_duplicate_subtask_ids(
             feature_path=feature_path,
             run_all=False,
             attempt=1,
-            hook_feedback=None,
+            feedback=None,
             verbose_output=False,
         )
 
@@ -894,7 +894,7 @@ def test_verification_failure_restores_feature_archived_during_iteration(
             feature_path=feature_path,
             run_all=False,
             attempt=1,
-            hook_feedback=None,
+            feedback=None,
             verbose_output=False,
         )
 
@@ -915,7 +915,7 @@ def test_ralph_prompt_includes_feature_file_path(tmp_path: Path) -> None:
     prompt = build_implementation_prompt(
         feature=feature,
         feature_path=feature_path,
-        hook_feedback=None,
+        feedback=None,
     )
 
     expected_prompt_phrases = (
@@ -942,7 +942,7 @@ def test_ralph_prompt_contract_uses_schema_only_validate_command(
     prompt = build_implementation_prompt(
         feature=feature,
         feature_path=feature_path,
-        hook_feedback=None,
+        feedback=None,
     )
 
     assert "Validate with: `uv run engineeringagent validate --schema-only`." in prompt
@@ -2038,10 +2038,10 @@ def test_run_loop_all_selected_feature_moved_to_features_done_continues_to_next(
         project_root: Path,
         feature: dict[str, Any],
         feature_path: Path,
-        hook_feedback: str | None,
+        feedback: str | None,
         verbose_output: bool,
     ) -> ImplementStepResult:
-        del hook_feedback, verbose_output
+        del feedback, verbose_output
         if str(feature.get("id", "")) == "FEAT-900":
             _move_feature_to_done(project_root, feature_path)
             return _passing_implement_result()
@@ -2146,10 +2146,10 @@ def test_run_loop_fails_when_preexisting_done_active_feature_trips_validate(
         project_root: Path,
         feature: dict[str, Any],
         feature_path: Path,
-        hook_feedback: str | None,
+        feedback: str | None,
         verbose_output: bool,
     ) -> ImplementStepResult:
-        del project_root, hook_feedback, verbose_output
+        del project_root, feedback, verbose_output
         if str(feature.get("id", "")) == "FEAT-900":
             feature["status"] = "done"
             _write_yaml(feature_path, feature)
@@ -2866,7 +2866,6 @@ def test_gate_failure_feedback_includes_fitness_remediation_guidance(
     assert "fitness_validate" in prompts[1]
     assert str(check_script) in prompts[1]
     assert remediation not in prompts[1]
-    assert "retry_feedback_parse_error" not in prompts[1]
 
 
 def test_spec_validate_failure_feedback_round_trips_to_retry_prompt(
@@ -2946,7 +2945,6 @@ def test_spec_validate_failure_feedback_round_trips_to_retry_prompt(
     assert "spec_validate" in prompts[1]
     assert str(check_script) in prompts[1]
     assert token not in prompts[1]
-    assert "retry_feedback_parse_error" not in prompts[1]
 
 
 def test_non_validation_gate_failure_feedback_round_trips_to_retry_prompt(
@@ -3026,7 +3024,6 @@ def test_non_validation_gate_failure_feedback_round_trips_to_retry_prompt(
     assert "pytest_validate" in prompts[1]
     assert str(check_script) in prompts[1]
     assert token not in prompts[1]
-    assert "retry_feedback_parse_error" not in prompts[1]
 
 
 def test_gate_failure_feedback_replaces_previous_feedback(
@@ -3152,8 +3149,6 @@ def test_gate_failure_feedback_replaces_previous_feedback(
     assert str(first_check_script) not in prompts[2]
     assert first_token not in prompts[2]
     assert second_token not in prompts[2]
-    assert "retry_feedback_parse_error" not in prompts[1]
-    assert "retry_feedback_parse_error" not in prompts[2]
 
 
 def test_verification_failure_feedback_replaces_previous_feedback(
@@ -3358,4 +3353,3 @@ def test_gate_failure_feedback_is_truncated_before_prompt_injection(
     assert "END_GATE_FEEDBACK" not in prompts[1]
     assert "...[truncated]" not in prompts[1]
     assert "spec_validate" in prompts[1]
-    assert "retry_feedback_parse_error" not in prompts[1]

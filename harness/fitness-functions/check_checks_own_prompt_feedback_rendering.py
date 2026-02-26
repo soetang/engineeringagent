@@ -19,17 +19,17 @@ from engineeringagent.checks.fitness.scope_traversal import (
 RULE_ID = "architecture.checks-own-prompt-feedback-rendering"
 
 _BANNED_CHECKS_BUILDER_CALLS = {
-    "build_command_failure_retry_feedback",
-    "build_fitness_failure_retry_feedback",
-    "build_reviewer_feedback_retry_feedback",
+    "build_command_failure_feedback",
+    "build_fitness_failure_feedback",
+    "build_reviewer_feedback",
 }
 _BANNED_PROMPT_SYMBOLS = {
-    "build_fitness_failure_retry_feedback",
-    "build_reviewer_feedback_retry_feedback",
+    "build_fitness_failure_feedback",
+    "build_reviewer_feedback",
 }
 
 _REMEDIATION = (
-    "move checks-specific retry-feedback shaping into checks strategies and forward "
+    "move checks-specific feedback shaping into checks strategies and forward "
     "run_checks(...).prompt_feedback as-is from loop/prompt wiring"
 )
 
@@ -61,7 +61,7 @@ def _loop_checks_feedback_violations(relative: Path, tree: ast.AST) -> list[str]
         trigger_symbols={"run_checks"},
         forbidden_symbols=_BANNED_CHECKS_BUILDER_CALLS,
         message_builder=lambda lineno, symbol: (
-            f"{relative}:{lineno} calls checks-specific retry-feedback builder "
+            f"{relative}:{lineno} calls checks-specific feedback builder "
             f"'{symbol}' inside run_checks flow; {_REMEDIATION}"
         ),
     )

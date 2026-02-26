@@ -12,7 +12,7 @@ def _script_path(repo_root: Path) -> Path:
         repo_root
         / "harness"
         / "fitness-functions"
-        / "check_retry_feedback_no_truncation.py"
+        / "check_feedback_no_truncation.py"
     )
 
 
@@ -42,33 +42,33 @@ def _run_checker(
     return proc, payload
 
 
-def test_retry_feedback_no_truncation_checker_emits_expected_rule_id(
+def test_feedback_no_truncation_checker_emits_expected_rule_id(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
     _write_module(
         tmp_path,
         "src/engineeringagent/prompts/renderer.py",
-        "def inject_retry_feedback(prompt: str, hook_feedback: str | None) -> str:\n"
+        "def inject_feedback(prompt: str, feedback: str | None) -> str:\n"
         "    return prompt\n",
     )
 
     proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
 
     assert proc.returncode == 0
-    assert payload["rule_id"] == "architecture.retry-feedback-no-truncation"
+    assert payload["rule_id"] == "architecture.feedback-no-truncation"
 
 
-def test_retry_feedback_no_truncation_rule_fails_on_hook_feedback_slice(
+def test_feedback_no_truncation_rule_fails_on_feedback_slice(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
     _write_module(
         tmp_path,
         "src/engineeringagent/prompts/renderer.py",
-        "def inject_retry_feedback(prompt: str, hook_feedback: str | None) -> str:\n"
-        "    if hook_feedback:\n"
-        "        return prompt + hook_feedback[:8000]\n"
+        "def inject_feedback(prompt: str, feedback: str | None) -> str:\n"
+        "    if feedback:\n"
+        "        return prompt + feedback[:8000]\n"
         "    return prompt\n",
     )
 
@@ -77,23 +77,23 @@ def test_retry_feedback_no_truncation_rule_fails_on_hook_feedback_slice(
 
     assert proc.returncode == 0
     assert result["status"] == "fail"
-    assert any("slices hook_feedback" in violation for violation in violations)
+    assert any("slices feedback" in violation for violation in violations)
 
 
-def test_retry_feedback_no_truncation_rule_fails_on_normalized_feedback_slice(
+def test_feedback_no_truncation_rule_fails_on_normalized_feedback_slice(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
     _write_module(
         tmp_path,
         "src/engineeringagent/prompts/renderer.py",
-        "def _normalize_retry_feedback(hook_feedback: str) -> str:\n"
-        "    return hook_feedback\n"
+        "def _normalize_feedback(feedback: str) -> str:\n"
+        "    return feedback\n"
         "\n"
-        "def inject_retry_feedback(prompt: str, hook_feedback: str | None) -> str:\n"
-        "    if not hook_feedback:\n"
+        "def inject_feedback(prompt: str, feedback: str | None) -> str:\n"
+        "    if not feedback:\n"
         "        return prompt\n"
-        "    return prompt + _normalize_retry_feedback(hook_feedback)[:8000]\n",
+        "    return prompt + _normalize_feedback(feedback)[:8000]\n",
     )
 
     proc, result = _run_checker(tmp_path, checker_path=_script_path(repo_root))
@@ -102,11 +102,11 @@ def test_retry_feedback_no_truncation_rule_fails_on_normalized_feedback_slice(
     assert proc.returncode == 0
     assert result["status"] == "fail"
     assert any(
-        "slices normalized retry feedback" in violation for violation in violations
+        "slices normalized feedback" in violation for violation in violations
     )
 
 
-def test_retry_feedback_no_truncation_rule_fails_on_truncate_helper_call(
+def test_feedback_no_truncation_rule_fails_on_truncate_helper_call(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
@@ -116,9 +116,9 @@ def test_retry_feedback_no_truncation_rule_fails_on_truncate_helper_call(
         "def _truncate_feedback(value: str) -> str:\n"
         "    return value[:8000]\n"
         "\n"
-        "def inject_retry_feedback(prompt: str, hook_feedback: str | None) -> str:\n"
-        "    if hook_feedback:\n"
-        "        return prompt + _truncate_feedback(hook_feedback)\n"
+        "def inject_feedback(prompt: str, feedback: str | None) -> str:\n"
+        "    if feedback:\n"
+        "        return prompt + _truncate_feedback(feedback)\n"
         "    return prompt\n",
     )
 
@@ -130,20 +130,20 @@ def test_retry_feedback_no_truncation_rule_fails_on_truncate_helper_call(
     assert any("calls _truncate_feedback" in violation for violation in violations)
 
 
-def test_retry_feedback_no_truncation_rule_passes_without_slicing(
+def test_feedback_no_truncation_rule_passes_without_slicing(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
     _write_module(
         tmp_path,
         "src/engineeringagent/prompts/renderer.py",
-        "def _normalize_retry_feedback(hook_feedback: str) -> str:\n"
-        "    return hook_feedback\n"
+        "def _normalize_feedback(feedback: str) -> str:\n"
+        "    return feedback\n"
         "\n"
-        "def inject_retry_feedback(prompt: str, hook_feedback: str | None) -> str:\n"
-        "    if not hook_feedback:\n"
+        "def inject_feedback(prompt: str, feedback: str | None) -> str:\n"
+        "    if not feedback:\n"
         "        return prompt\n"
-        "    return prompt + _normalize_retry_feedback(hook_feedback)\n",
+        "    return prompt + _normalize_feedback(feedback)\n",
     )
 
     proc, result = _run_checker(tmp_path, checker_path=_script_path(repo_root))

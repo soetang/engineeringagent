@@ -96,7 +96,7 @@ class ReviewerRunRequest(BaseModel):
     feature_id: str
     feature_path: Path
     changed_paths: ChangedPathsResult
-    prior_feedback: str | None
+    feedback: str | None
     run_agent_fn: Callable[..., Any] | None = None
 
 
@@ -495,7 +495,7 @@ def _compose_reviewer_prompt(
     changed = "\n".join(f"- {path}" for path in request.changed_paths.paths)
     if not changed:
         changed = "- (none)"
-    feedback = request.prior_feedback.strip() if request.prior_feedback else "(none)"
+    feedback = request.feedback.strip() if request.feedback else "(none)"
     return (
         "You are a reviewer agent.\n\n"
         f"Reviewer: {reviewer_id}\n"

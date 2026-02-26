@@ -5,17 +5,17 @@ import json
 import pytest
 from pydantic import ValidationError
 
-from engineeringagent.prompts.retry_feedback import (
-    build_command_failure_retry_feedback,
-    build_fitness_failure_retry_feedback,
-    build_reviewer_feedback_retry_feedback,
-    parse_retry_feedback_envelope,
-    serialize_retry_feedback_envelope,
+from engineeringagent.prompts.feedback_envelope import (
+    build_command_failure_feedback,
+    build_fitness_failure_feedback,
+    build_reviewer_feedback,
+    parse_feedback_envelope,
+    serialize_feedback_envelope,
 )
-from engineeringagent.prompts.renderer import inject_retry_feedback
+from engineeringagent.prompts.renderer import inject_feedback
 
 
-def test_retry_feedback_contract_accepts_command_failure_envelope() -> None:
+def test_feedback_contract_accepts_command_failure_envelope() -> None:
     payload = {
         "kind": "command_failure",
         "phase": "gates",
@@ -29,7 +29,7 @@ def test_retry_feedback_contract_accepts_command_failure_envelope() -> None:
         "message": "Command check failed. Rerun the command to see full diagnostics.",
     }
 
-    envelope = parse_retry_feedback_envelope(payload)
+    envelope = parse_feedback_envelope(payload)
 
     assert envelope.kind == "command_failure"
     assert envelope.phase == "gates"
@@ -37,7 +37,7 @@ def test_retry_feedback_contract_accepts_command_failure_envelope() -> None:
     assert envelope.rerun.cwd == "repo_root"
 
 
-def test_retry_feedback_contract_rejects_unknown_fields() -> None:
+def test_feedback_contract_rejects_unknown_fields() -> None:
     payload = {
         "kind": "command_failure",
         "phase": "verification",
@@ -51,10 +51,10 @@ def test_retry_feedback_contract_rejects_unknown_fields() -> None:
     }
 
     with pytest.raises(ValidationError):
-        parse_retry_feedback_envelope(payload)
+        parse_feedback_envelope(payload)
 
 
-def test_retry_feedback_serialization_is_sorted_and_compact() -> None:
+def test_feedback_serialization_is_sorted_and_compact() -> None:
     payload = {
         "kind": "reviewer_feedback",
         "phase": "reviewers",
@@ -69,17 +69,17 @@ def test_retry_feedback_serialization_is_sorted_and_compact() -> None:
         "message": "Reviewer requested changes. Apply required actions before completing.",
     }
 
-    envelope = parse_retry_feedback_envelope(payload)
+    envelope = parse_feedback_envelope(payload)
 
-    serialized = serialize_retry_feedback_envelope(envelope)
+    serialized = serialize_feedback_envelope(envelope)
     assert "\n" not in serialized
-    assert serialized == serialize_retry_feedback_envelope(envelope)
+    assert serialized == serialize_feedback_envelope(envelope)
 
     roundtrip = json.loads(serialized)
     assert roundtrip == payload
 
 
-def test_retry_feedback_contract_enforces_failed_rules_cap() -> None:
+def test_feedback_contract_enforces_failed_rules_cap() -> None:
     payload = {
         "kind": "fitness_failure",
         "phase": "gates",
@@ -99,10 +99,10 @@ def test_retry_feedback_contract_enforces_failed_rules_cap() -> None:
     }
 
     with pytest.raises(ValidationError):
-        parse_retry_feedback_envelope(payload)
+        parse_feedback_envelope(payload)
 
 
-def test_retry_feedback_injection_does_not_truncate_contract_json() -> None:
+def test_feedback_injection_does_not_truncate_contract_json() -> None:
     payload = {
         "kind": "fitness_failure",
         "phase": "gates",
@@ -121,34 +121,33 @@ def test_retry_feedback_injection_does_not_truncate_contract_json() -> None:
         "message": "Fitness rule(s) failed.",
     }
 
-    envelope = parse_retry_feedback_envelope(payload)
-    serialized = serialize_retry_feedback_envelope(envelope)
+    envelope = parse_feedback_envelope(payload)
+    serialized = serialize_feedback_envelope(envelope)
     assert len(serialized) > 8_000
 
-    injected = inject_retry_feedback("BASE\n", serialized)
+    injected = inject_feedback("BASE\n", serialized)
 
     assert "-TAIL-MARKER" in injected
     assert "...[truncated]" not in injected
 
 
-def test_retry_feedback_injection_accepts_plain_markdown_feedback() -> None:
+def test_feedback_injection_accepts_plain_markdown_feedback() -> None:
     feedback = "Retry guidance from checks runtime"
 
-    injected = inject_retry_feedback("BASE\n", feedback)
+    injected = inject_feedback("BASE\n", feedback)
 
     assert feedback in injected
-    assert "retry_feedback_parse_error" not in injected
 
 
-def test_retry_feedback_injection_ignores_blank_plain_feedback() -> None:
-    injected = inject_retry_feedback("BASE\n", "   \n\t")
+def test_feedback_injection_ignores_blank_plain_feedback() -> None:
+    injected = inject_feedback("BASE\n", "   \n\t")
 
     assert injected == "BASE\n"
 
 
-def test_build_reviewer_feedback_retry_feedback_normalizes_unknown_decision_to_request_changes(
+def test_build_reviewer_feedback_normalizes_unknown_decision_to_request_changes(
 ) -> None:
-    serialized = build_reviewer_feedback_retry_feedback(
+    serialized = build_reviewer_feedback(
         reviewer_id="code_simplifier",
         reviewer_phase="feature_done",
         decision={
@@ -158,7 +157,7 @@ def test_build_reviewer_feedback_retry_feedback_normalizes_unknown_decision_to_r
         },
     )
 
-    envelope = parse_retry_feedback_envelope(serialized)
+    envelope = parse_feedback_envelope(serialized)
     assert envelope.kind == "reviewer_feedback"
     assert envelope.phase == "reviewers"
     assert envelope.reviewer_phase == "feature_done"
@@ -166,8 +165,8 @@ def test_build_reviewer_feedback_retry_feedback_normalizes_unknown_decision_to_r
     assert envelope.message.startswith("Reviewer requested changes")
 
 
-def test_build_reviewer_feedback_retry_feedback_normalizes_unknown_decision() -> None:
-    serialized = build_reviewer_feedback_retry_feedback(
+def test_build_reviewer_feedback_normalizes_unknown_decision() -> None:
+    serialized = build_reviewer_feedback(
         reviewer_id="code_simplifier",
         reviewer_phase="iteration_end",
         decision={
@@ -177,14 +176,14 @@ def test_build_reviewer_feedback_retry_feedback_normalizes_unknown_decision() ->
         },
     )
 
-    envelope = parse_retry_feedback_envelope(serialized)
+    envelope = parse_feedback_envelope(serialized)
     assert envelope.kind == "reviewer_feedback"
     assert envelope.decision.decision == "request_changes"
     assert envelope.message.startswith("Reviewer requested changes")
 
 
-def test_build_reviewer_feedback_retry_feedback_accepts_approve_decision() -> None:
-    serialized = build_reviewer_feedback_retry_feedback(
+def test_build_reviewer_feedback_accepts_approve_decision() -> None:
+    serialized = build_reviewer_feedback(
         reviewer_id="code_simplifier",
         reviewer_phase="feature_done",
         decision={
@@ -194,14 +193,14 @@ def test_build_reviewer_feedback_retry_feedback_accepts_approve_decision() -> No
         },
     )
 
-    envelope = parse_retry_feedback_envelope(serialized)
+    envelope = parse_feedback_envelope(serialized)
     assert envelope.kind == "reviewer_feedback"
     assert envelope.decision.decision == "approve"
     assert envelope.message.startswith("Reviewer approved the changes")
 
 
-def test_build_command_failure_retry_feedback_uses_custom_message() -> None:
-    serialized = build_command_failure_retry_feedback(
+def test_build_command_failure_feedback_uses_custom_message() -> None:
+    serialized = build_command_failure_feedback(
         phase="gates",
         gate="ruff",
         command="uv run ruff check .",
@@ -209,7 +208,7 @@ def test_build_command_failure_retry_feedback_uses_custom_message() -> None:
         message="Custom header.",
     )
 
-    envelope = parse_retry_feedback_envelope(serialized)
+    envelope = parse_feedback_envelope(serialized)
     assert envelope.kind == "command_failure"
     assert envelope.phase == "gates"
     assert envelope.message == "Custom header."
@@ -217,8 +216,8 @@ def test_build_command_failure_retry_feedback_uses_custom_message() -> None:
     assert envelope.precommit is True
 
 
-def test_build_fitness_failure_retry_feedback_normalizes_rules_and_details() -> None:
-    serialized = build_fitness_failure_retry_feedback(
+def test_build_fitness_failure_feedback_normalizes_rules_and_details() -> None:
+    serialized = build_fitness_failure_feedback(
         gate="fitness_validate",
         command="uv run engineeringagent checks run --checks fitness --phase iteration_end",
         failed_rules=[
@@ -235,13 +234,13 @@ def test_build_fitness_failure_retry_feedback_normalizes_rules_and_details() -> 
         ],
     )
 
-    envelope = parse_retry_feedback_envelope(serialized)
+    envelope = parse_feedback_envelope(serialized)
     assert envelope.kind == "fitness_failure"
     assert [rule.rule_id for rule in envelope.failed_rules] == ["architecture.demo"]
     assert envelope.failed_rules[0].details == {"extra": "info"}
 
 
-def test_build_fitness_failure_retry_feedback_caps_rules_and_violations() -> None:
+def test_build_fitness_failure_feedback_caps_rules_and_violations() -> None:
     failed_rules: list[dict[str, object]] = []
     for idx in range(30):
         violations = [f"path/to/file.md:{line} broken" for line in range(100)]
@@ -255,20 +254,20 @@ def test_build_fitness_failure_retry_feedback_caps_rules_and_violations() -> Non
             }
         )
 
-    serialized = build_fitness_failure_retry_feedback(
+    serialized = build_fitness_failure_feedback(
         gate="fitness_validate",
         command="uv run engineeringagent checks run --checks fitness --phase iteration_end",
         failed_rules=failed_rules,
     )
 
-    envelope = parse_retry_feedback_envelope(serialized)
+    envelope = parse_feedback_envelope(serialized)
     assert envelope.kind == "fitness_failure"
     assert len(envelope.failed_rules) == 25
     assert len(envelope.failed_rules[0].violations) == 50
 
 
-def test_build_reviewer_feedback_retry_feedback_caps_required_actions() -> None:
-    serialized = build_reviewer_feedback_retry_feedback(
+def test_build_reviewer_feedback_caps_required_actions() -> None:
+    serialized = build_reviewer_feedback(
         reviewer_id="code_simplifier",
         reviewer_phase="feature_done",
         decision={
@@ -278,28 +277,28 @@ def test_build_reviewer_feedback_retry_feedback_caps_required_actions() -> None:
         },
     )
 
-    envelope = parse_retry_feedback_envelope(serialized)
+    envelope = parse_feedback_envelope(serialized)
     assert envelope.kind == "reviewer_feedback"
     assert 1 <= len(envelope.decision.required_actions) <= 20
     assert envelope.decision.required_actions[0] == "action-0"
 
 
-def test_build_reviewer_feedback_retry_feedback_honors_message_and_scope_notes() -> (
+def test_build_reviewer_feedback_honors_message_and_scope_notes() -> (
     None
 ):
-    serialized = build_reviewer_feedback_retry_feedback(
+    serialized = build_reviewer_feedback(
         reviewer_id="code_simplifier",
         reviewer_phase="feature_done",
         decision={
             "decision": "request_changes",
             "summary": "Do it.",
             "required_actions": [],
-            "scope_notes": "Reviewed only retry feedback.",
+            "scope_notes": "Reviewed only feedback.",
         },
         message="Custom reviewer header.",
     )
 
-    envelope = parse_retry_feedback_envelope(serialized)
+    envelope = parse_feedback_envelope(serialized)
     assert envelope.kind == "reviewer_feedback"
     assert envelope.message == "Custom reviewer header."
-    assert envelope.decision.scope_notes == "Reviewed only retry feedback."
+    assert envelope.decision.scope_notes == "Reviewed only feedback."

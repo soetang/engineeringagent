@@ -42,26 +42,24 @@ class RunState(BaseModel):
 
     total_iterations: int = 0
     resolved_feature_paths: tuple[Path, ...] = Field(default_factory=tuple)
-    retry_feedback_by_path: tuple[tuple[Path, str], ...] = Field(default_factory=tuple)
+    feedback_by_path: tuple[tuple[Path, str], ...] = Field(default_factory=tuple)
 
     def feedback_for(self, feature_path: Path) -> str | None:
-        """Return retry feedback associated with one feature path."""
-        return dict(self.retry_feedback_by_path).get(feature_path)
+        """Return feedback associated with one feature path."""
+        return dict(self.feedback_by_path).get(feature_path)
 
-    def with_retry_feedback(
+    def with_feedback(
         self,
         feature_path: Path,
-        hook_feedback: str | None,
+        feedback: str | None,
     ) -> RunState:
-        """Return a copied state with one retry feedback update."""
-        feedback_by_path = dict(self.retry_feedback_by_path)
-        if hook_feedback is None:
+        """Return a copied state with one feedback update."""
+        feedback_by_path = dict(self.feedback_by_path)
+        if feedback is None:
             feedback_by_path.pop(feature_path, None)
         else:
-            feedback_by_path[feature_path] = hook_feedback
-        return self.model_copy(
-            update={"retry_feedback_by_path": tuple(feedback_by_path.items())}
-        )
+            feedback_by_path[feature_path] = feedback
+        return self.model_copy(update={"feedback_by_path": tuple(feedback_by_path.items())})
 
     def with_resolved_feature_paths(
         self,

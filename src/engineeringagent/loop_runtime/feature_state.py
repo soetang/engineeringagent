@@ -211,7 +211,7 @@ def _post_implement_failed(
     *,
     feature: dict[str, Any] | None,
     failed_gate: str,
-    hook_feedback: str,
+    feedback: str,
 ) -> PostImplementFeatureOutcome:
     return PostImplementFeatureOutcome(
         feature=feature,
@@ -219,7 +219,7 @@ def _post_implement_failed(
         archived_path=None,
         result="failed",
         failed_gate=failed_gate,
-        hook_feedback=hook_feedback,
+        feedback=feedback,
     )
 
 
@@ -235,7 +235,7 @@ def _post_implement_passed(
         archived_path=archived_path,
         result="passed",
         failed_gate=None,
-        hook_feedback=None,
+        feedback=None,
     )
 
 
@@ -249,13 +249,13 @@ def evaluate_initial_feature_load(
             feature=feature,
             result="failed",
             failed_gate="feature_missing",
-            hook_feedback=load_error,
+            feedback=load_error,
         )
     return InitialFeatureLoadOutcome(
         feature=feature,
         result="passed",
         failed_gate=None,
-        hook_feedback=None,
+        feedback=None,
     )
 
 
@@ -288,7 +288,7 @@ def refresh_feature_after_implement(
     return _post_implement_failed(
         feature=post_feature,
         failed_gate="feature_missing",
-        hook_feedback=post_load_error,
+        feedback=post_load_error,
     )
 
 

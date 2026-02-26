@@ -15,9 +15,9 @@ from ..checks import (
     ChecksRunResult,
     run_checks,
 )
-from ..prompt_feedback import resolve_checks_retry_prompt_feedback
-from ..prompts.retry_feedback import (
-    build_command_failure_retry_feedback,
+from ..prompt_feedback import resolve_checks_prompt_feedback
+from ..prompts.feedback_envelope import (
+    build_command_failure_feedback,
 )
 from ..process import run_shell_command
 from ..specs import HarnessCheckPhase
@@ -54,7 +54,7 @@ class LoopTriggeredChecksRequest(BaseModel):
     collect_changed_paths: Callable[..., Any] | None = None
     feature_path: Path | None = None
     run_agent_fn: Callable[..., Any] | None = None
-    prior_feedback: str | None = None
+    feedback: str | None = None
     verbose_output: bool = False
 
 
@@ -73,7 +73,7 @@ def _run_loop_triggered_checks(request: LoopTriggeredChecksRequest) -> ChecksRun
         checks=request.checks,
         feature_path=request.feature_path,
         run_agent_fn=request.run_agent_fn,
-        prior_feedback=request.prior_feedback,
+        feedback=request.feedback,
         verbose_output=request.verbose_output,
         collect_changed_paths=request.collect_changed_paths,
     )
@@ -105,9 +105,9 @@ def _checks_failure_gate_id(result: ChecksRunResult, *, default: str) -> str:
 
 
 def _checks_failure_feedback(result: ChecksRunResult) -> str | None:
-    """Return normalized retry feedback for failed checks results."""
+    """Return normalized feedback for failed checks results."""
 
-    return resolve_checks_retry_prompt_feedback(result.prompt_feedback)
+    return resolve_checks_prompt_feedback(result.prompt_feedback)
 
 
 class GatePhaseDependencies(BaseModel):
@@ -161,7 +161,7 @@ def _gate_not_configured_outcome(run_all: bool) -> GatePhaseOutcome:
             gate_status="failed:checks_config",
             gate_output=output,
             command_timings=[],
-            hook_feedback=output,
+            feedback=output,
         )
     return GatePhaseOutcome(
         result="passed",
@@ -169,7 +169,7 @@ def _gate_not_configured_outcome(run_all: bool) -> GatePhaseOutcome:
         gate_status="not_configured",
         gate_output="",
         command_timings=[],
-        hook_feedback=None,
+        feedback=None,
     )
 
 
@@ -226,7 +226,7 @@ def _gate_failure_outcome(
         gate_status=f"failed:{failed_gate or 'unknown'}",
         gate_output=combined_output,
         command_timings=details.command_timings,
-        hook_feedback=_checks_failure_feedback(details.failure_result),
+        feedback=_checks_failure_feedback(details.failure_result),
     )
 
 
@@ -254,7 +254,7 @@ def run_gate_phase(
             gate_status="passed",
             gate_output=combined_output,
             command_timings=command_timings,
-            hook_feedback=None,
+            feedback=None,
         )
 
     return _gate_failure_outcome(
@@ -282,7 +282,7 @@ def run_verification_phase(
             verification_failed_command=None,
             verification_output="",
             command_timings=[],
-            hook_feedback=None,
+            feedback=None,
         )
 
     command_outputs: list[str] = []
@@ -316,7 +316,7 @@ def run_verification_phase(
 
         if proc.returncode != 0:
             verification_output = "\n".join(command_outputs)
-            hook_feedback = build_command_failure_retry_feedback(
+            feedback = build_command_failure_feedback(
                 phase="verification",
                 gate=None,
                 command=command,
@@ -331,7 +331,7 @@ def run_verification_phase(
                 verification_failed_command=command,
                 verification_output=verification_output,
                 command_timings=command_timings,
-                hook_feedback=hook_feedback,
+                feedback=feedback,
             )
 
     return VerificationPhaseOutcome(
@@ -340,7 +340,7 @@ def run_verification_phase(
         verification_failed_command=None,
         verification_output="\n".join(command_outputs),
         command_timings=command_timings,
-        hook_feedback=None,
+        feedback=None,
     )
 
 
@@ -351,7 +351,7 @@ def _reviewer_not_run_outcome() -> ReviewerPhaseOutcome:
         reviewer_status="not_run",
         reviewer_output="",
         command_timings=[],
-        hook_feedback=None,
+        feedback=None,
     )
 
 
@@ -362,7 +362,7 @@ def _reviewer_not_configured_outcome() -> ReviewerPhaseOutcome:
         reviewer_status="not_configured",
         reviewer_output="",
         command_timings=[],
-        hook_feedback=None,
+        feedback=None,
     )
 
 
@@ -377,7 +377,7 @@ def _reviewer_success_outcome(result: ChecksRunResult) -> ReviewerPhaseOutcome:
         failed_reviewer_id=None,
         reviewer_output=result.output,
         command_timings=[],
-        hook_feedback=None,
+        feedback=None,
     )
 
 
@@ -403,7 +403,7 @@ def _reviewer_failure_outcome(
         failed_reviewer_id=result.failed_check_id,
         reviewer_output=result.output,
         command_timings=[],
-        hook_feedback=_checks_failure_feedback(result),
+        feedback=_checks_failure_feedback(result),
     )
 
 
@@ -430,7 +430,7 @@ def run_reviewer_phase(
             checks=["reviewers"],
             feature_path=feature_path,
             run_agent_fn=dependencies.run_agent_fn,
-            prior_feedback=iteration_inputs.hook_feedback,
+            feedback=iteration_inputs.feedback,
             collect_changed_paths=dependencies.collect_changed_paths,
         )
     )
@@ -460,7 +460,7 @@ def run_completion_commit_phase(
             result="passed",
             failed_gate=None,
             next_action="retry_same_feature",
-            hook_feedback=None,
+            feedback=None,
         )
 
     if post_feature is None:
@@ -470,7 +470,7 @@ def run_completion_commit_phase(
             result="failed",
             failed_gate="feature_archive",
             next_action="retry_same_feature",
-            hook_feedback="archived feature payload missing before completion commit",
+            feedback="archived feature payload missing before completion commit",
         )
 
     commit_ok, commit_failed_gate, commit_output = (
@@ -486,7 +486,7 @@ def run_completion_commit_phase(
             result="passed",
             failed_gate=None,
             next_action="select_next_feature",
-            hook_feedback=None,
+            feedback=None,
         )
 
     rollback_output = ""
@@ -510,7 +510,7 @@ def run_completion_commit_phase(
             f"commit -m {shlex.quote(commit_subject)}"
         )
 
-    hook_feedback = build_command_failure_retry_feedback(
+    feedback = build_command_failure_feedback(
         phase="completion_commit",
         gate=commit_failed_gate,
         command=completion_command,
@@ -526,6 +526,6 @@ def run_completion_commit_phase(
         result="failed",
         failed_gate=commit_failed_gate,
         next_action="retry_same_feature",
-        hook_feedback=hook_feedback,
+        feedback=feedback,
         completion_output=completion_output,
     )

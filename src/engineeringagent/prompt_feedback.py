@@ -44,7 +44,7 @@ def normalize_checks_contract_prompt_feedback(value: str | None) -> str | None:
     return normalize_checks_prompt_feedback(value, fallback_on_empty=False)
 
 
-def resolve_checks_retry_prompt_feedback(value: str | None) -> str | None:
-    """Normalize checks retry feedback, falling back to deterministic text."""
+def resolve_checks_prompt_feedback(value: str | None) -> str | None:
+    """Normalize checks feedback, falling back to deterministic text."""
 
     return normalize_checks_prompt_feedback(value, fallback_on_empty=True)

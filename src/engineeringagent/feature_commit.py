@@ -18,7 +18,7 @@ def feature_completion_commit_subject(feature: Mapping[str, Any]) -> str:
     """Return the completion commit subject for a feature.
 
     This function is shared between the loop controller and runtime phases so that
-    retry-feedback envelopes can reference the exact failing commit command.
+    feedback envelopes can reference the exact failing commit command.
 
     Args:
         feature: Feature mapping loaded from YAML.

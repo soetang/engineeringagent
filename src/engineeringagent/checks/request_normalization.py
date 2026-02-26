@@ -53,7 +53,7 @@ class RunChecksRequest(BaseModel):
     base: str | None
     head: str | None
     run_agent_fn: Callable[..., object] | None
-    prior_feedback: str | None
+    feedback: str | None
     schema_only: bool
     dry_run: bool
     collect_changed_paths_fn: Callable[..., object] | None
@@ -68,7 +68,7 @@ class RunChecksKwargs(TypedDict, total=False):
     base: str | None
     head: str | None
     run_agent_fn: Callable[..., object] | None
-    prior_feedback: str | None
+    feedback: str | None
     schema_only: bool
     dry_run: bool
     collect_changed_paths: Callable[..., object] | None
@@ -82,7 +82,7 @@ RUN_CHECKS_ALLOWED_KWARGS = frozenset(
         "base",
         "head",
         "run_agent_fn",
-        "prior_feedback",
+        "feedback",
         "schema_only",
         "dry_run",
         "collect_changed_paths",
@@ -157,7 +157,7 @@ def build_run_checks_request(
     base = kwargs.get("base")
     head = kwargs.get("head")
     run_agent_fn = kwargs.get("run_agent_fn")
-    prior_feedback = kwargs.get("prior_feedback")
+    feedback = kwargs.get("feedback")
     schema_only = bool(kwargs.get("schema_only", False))
     dry_run = bool(kwargs.get("dry_run", False))
     collect_changed_paths_fn = kwargs.get("collect_changed_paths")
@@ -177,7 +177,7 @@ def build_run_checks_request(
         base=base,
         head=head,
         run_agent_fn=run_agent_fn,
-        prior_feedback=str(prior_feedback) if prior_feedback is not None else None,
+        feedback=str(feedback) if feedback is not None else None,
         schema_only=schema_only,
         dry_run=dry_run,
         collect_changed_paths_fn=collect_changed_paths_fn,

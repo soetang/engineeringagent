@@ -102,10 +102,10 @@ def test_checks_owned_prompt_feedback_rule_passes_for_prompt_feedback_forwarding
             [
                 "from __future__ import annotations",
                 "",
-                "def inject_retry_feedback(prompt: str, hook_feedback: str | None) -> str:",
-                "    if hook_feedback is None:",
+                "def inject_feedback(prompt: str, feedback: str | None) -> str:",
+                "    if feedback is None:",
                 "        return prompt",
-                "    return prompt + hook_feedback",
+                "    return prompt + feedback",
             ]
         )
         + "\n",
@@ -129,17 +129,16 @@ def test_checks_owned_prompt_feedback_rule_fails_for_checks_specific_shaping(
             [
                 "from __future__ import annotations",
                 "from engineeringagent.checks import run_checks",
-                "from engineeringagent.prompts.retry_feedback import build_fitness_failure_retry_feedback",
+                "from engineeringagent.prompts.feedback_envelope import build_fitness_failure_feedback",
                 "",
                 "def run_gate_phase(project_root):",
                 "    result = run_checks(project_root, phase='iteration_end')",
                 "    if result.ok:",
                 "        return result.output",
-                "    return build_fitness_failure_retry_feedback(",
-                "        phase='gates',",
-                "        check_id='fitness',",
-                "        rule_id='architecture.example',",
-                "        message='nope',",
+                "    return build_fitness_failure_feedback(",
+                "        gate='fitness',",
+                "        command='uv run pytest -q',",
+                "        failed_rules=(),",
                 "    )",
             ]
         )
@@ -147,14 +146,14 @@ def test_checks_owned_prompt_feedback_rule_fails_for_checks_specific_shaping(
         renderer_body="\n".join(
             [
                 "from __future__ import annotations",
-                "from engineeringagent.prompts.retry_feedback import build_reviewer_feedback_retry_feedback",
+                "from engineeringagent.prompts.feedback_envelope import build_reviewer_feedback",
                 "",
-                "def inject_retry_feedback(prompt: str, hook_feedback: str | None) -> str:",
-                "    if hook_feedback:",
-                "        return build_reviewer_feedback_retry_feedback(",
-                "            check_id='reviewer.main',",
-                "            reviewer_output=hook_feedback,",
-                "            recommendations=(),",
+                "def inject_feedback(prompt: str, feedback: str | None) -> str:",
+                "    if feedback:",
+                "        return build_reviewer_feedback(",
+                "            reviewer_id='reviewer.main',",
+                "            reviewer_phase='iteration_end',",
+                "            decision={'decision': 'request_changes', 'summary': feedback},",
                 "        )",
                 "    return prompt",
             ]
@@ -168,9 +167,8 @@ def test_checks_owned_prompt_feedback_rule_fails_for_checks_specific_shaping(
     assert payload["status"] == "fail"
     violations = _violations(payload)
     assert any(
-        "build_fitness_failure_retry_feedback" in violation for violation in violations
+        "build_fitness_failure_feedback" in violation for violation in violations
     )
     assert any(
-        "build_reviewer_feedback_retry_feedback" in violation
-        for violation in violations
+        "build_reviewer_feedback" in violation for violation in violations
     )

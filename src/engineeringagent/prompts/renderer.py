@@ -8,9 +8,9 @@ from typing import Any, Mapping, Sequence
 from pydantic import ValidationError
 
 from engineeringagent.prompt_feedback import normalize_prompt_feedback
-from engineeringagent.prompts.retry_feedback import (
-    parse_retry_feedback_envelope,
-    serialize_retry_feedback_envelope,
+from engineeringagent.prompts.feedback_envelope import (
+    parse_feedback_envelope,
+    serialize_feedback_envelope,
 )
 
 _TEMPLATE_PACKAGE = "engineeringagent.prompts.templates"
@@ -41,42 +41,42 @@ def build_selector_prompt(pending: Sequence[tuple[Path, Mapping[str, Any]]]) -> 
     return selector_template.substitute(choices="\n".join(choices))
 
 
-def _normalize_retry_feedback(hook_feedback: str) -> str:
-    """Normalize retry feedback for prompt injection.
+def _normalize_feedback(feedback: str) -> str:
+    """Normalize feedback for prompt injection.
 
     Legacy runtime phases still emit serialized v1 envelopes. Checks strategies now
-    own prompt feedback rendering and can return plain markdown text. Accept both:
+    own feedback rendering and can return plain markdown text. Accept both:
     canonicalize envelopes when present and otherwise forward plain text as-is.
     """
 
     try:
-        envelope = parse_retry_feedback_envelope(hook_feedback)
+        envelope = parse_feedback_envelope(feedback)
     except ValidationError:
-        normalized = normalize_prompt_feedback(hook_feedback)
+        normalized = normalize_prompt_feedback(feedback)
         return normalized or ""
 
-    return serialize_retry_feedback_envelope(envelope)
+    return serialize_feedback_envelope(envelope)
 
 
-def inject_retry_feedback(prompt: str, hook_feedback: str | None) -> str:
-    """Append canonical retry feedback block to a prompt.
+def inject_feedback(prompt: str, feedback: str | None) -> str:
+    """Append canonical feedback block to a prompt.
 
     Args:
         prompt: Base prompt text.
-        hook_feedback: Optional previous-failure feedback for retries.
+        feedback: Optional previous-failure feedback.
 
     Returns:
-        Prompt with canonical retry section appended when feedback exists.
+        Prompt with canonical feedback section appended when feedback exists.
     """
-    if not hook_feedback:
+    if not feedback:
         return prompt
 
-    normalized_feedback = _normalize_retry_feedback(hook_feedback)
+    normalized_feedback = _normalize_feedback(feedback)
     if not normalized_feedback:
         return prompt
 
-    retry_feedback_template = _load_template("loop_retry_feedback.md")
-    return prompt + retry_feedback_template.substitute(
+    feedback_template = _load_template("loop_feedback.md")
+    return prompt + feedback_template.substitute(
         feedback=normalized_feedback,
     )
 
@@ -85,14 +85,14 @@ def build_implementation_prompt(
     *,
     feature: Mapping[str, Any],
     feature_path: Path,
-    hook_feedback: str | None,
+    feedback: str | None,
 ) -> str:
     """Render default implementation prompt from template text.
 
     Args:
         feature: Loaded feature mapping.
         feature_path: Absolute path to feature YAML.
-        hook_feedback: Optional previous-failure feedback for retries.
+        feedback: Optional previous-failure feedback.
 
     Returns:
         Rendered implementation prompt text.
@@ -106,4 +106,4 @@ def build_implementation_prompt(
         context=str(feature.get("context", "")),
     )
 
-    return inject_retry_feedback(prompt, hook_feedback)
+    return inject_feedback(prompt, feedback)

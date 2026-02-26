@@ -49,7 +49,7 @@ def _write_prompt_templates(project_root: Path) -> None:
     (template_root / "loop_implementation.md").write_text(
         "implementation", encoding="utf-8"
     )
-    (template_root / "loop_retry_feedback.md").write_text("retry", encoding="utf-8")
+    (template_root / "loop_feedback.md").write_text("feedback", encoding="utf-8")
 
 
 def _write_scaffold_templates(project_root: Path) -> None:

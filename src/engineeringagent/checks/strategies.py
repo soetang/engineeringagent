@@ -482,7 +482,7 @@ class ReviewerCheckStrategy(CheckStrategy):
                 feature_id=feature_id,
                 feature_path=feature_path,
                 run_agent_fn=context.run_agent_fn,
-                prior_feedback=context.prior_feedback,
+                feedback=context.feedback,
                 verbose_output=context.verbose_output,
             ),
             run_planned,

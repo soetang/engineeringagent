@@ -22,7 +22,7 @@ def test_run_gate_phase_is_not_configured_without_checks_yaml(
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
         run_all=False,
         attempt=1,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
     deps = GatePhaseDependencies(
@@ -53,7 +53,7 @@ def test_run_reviewer_phase_is_not_configured_without_checks_yaml(
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
         run_all=False,
         attempt=1,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
     deps = ReviewerPhaseDependencies(
@@ -109,7 +109,7 @@ checks:
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
         run_all=False,
         attempt=1,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
 
@@ -183,7 +183,7 @@ checks:
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
         run_all=False,
         attempt=1,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
 

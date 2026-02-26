@@ -109,7 +109,7 @@ def run_implement_step(
     project_root: Path,
     feature: dict[str, Any],
     feature_path: Path,
-    hook_feedback: str | None,
+    feedback: str | None,
     verbose_output: bool,
 ) -> ImplementStepResult:
     """Run the implement phase for one loop iteration."""
@@ -117,7 +117,7 @@ def run_implement_step(
         project_root=project_root,
         feature=feature,
         feature_path=feature_path,
-        hook_feedback=hook_feedback,
+        feedback=feedback,
         verbose_output=verbose_output,
     )
     return run_implement_step_from_inputs(
@@ -243,8 +243,8 @@ def _terminal_iteration_failure_exit_code(outcome: IterationOutcome) -> int | No
         print("Stopping loop: selected feature path is missing and not recoverable.")
         if outcome.log_path:
             print(f"Detailed log: {outcome.log_path}")
-        if outcome.hook_feedback:
-            print(f"Detail: {outcome.hook_feedback}")
+        if outcome.feedback:
+            print(f"Detail: {outcome.feedback}")
         return 1
 
     return None
@@ -255,7 +255,7 @@ def _run_feature_iteration(
     feature_path: Path,
     run_all: bool,
     attempt: int,
-    hook_feedback: str | None,
+    feedback: str | None,
     verbose_output: bool,
 ) -> IterationOutcome:
     iteration_inputs = FeatureIterationInputs(
@@ -263,7 +263,7 @@ def _run_feature_iteration(
         feature_path=feature_path,
         run_all=run_all,
         attempt=attempt,
-        hook_feedback=hook_feedback,
+        feedback=feedback,
         verbose_output=verbose_output,
     )
     return _run_feature_iteration_with_inputs(iteration_inputs)
@@ -447,13 +447,13 @@ def _run_selected_feature_iterations(
                 feature_path=selected_feature_path,
                 run_all=config.run_all,
                 attempt=state.total_iterations,
-                hook_feedback=state.feedback_for(selected_feature_path),
+                feedback=state.feedback_for(selected_feature_path),
                 verbose_output=config.verbose_output,
             )
 
-            state = state.with_retry_feedback(
+            state = state.with_feedback(
                 selected_feature_path,
-                outcome.hook_feedback,
+                outcome.feedback,
             )
 
             if outcome.completed:

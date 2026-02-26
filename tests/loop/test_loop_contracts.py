@@ -167,7 +167,7 @@ def test_run_implement_step_signature_is_explicit() -> None:
         "project_root",
         "feature",
         "feature_path",
-        "hook_feedback",
+        "feedback",
         "verbose_output",
     )
     assert all(
@@ -186,7 +186,7 @@ def test_run_feature_iteration_signature_is_explicit() -> None:
         "feature_path",
         "run_all",
         "attempt",
-        "hook_feedback",
+        "feedback",
         "verbose_output",
     )
     assert all(
@@ -290,7 +290,7 @@ def test_run_implement_step_from_inputs_requires_backend_binary_when_available(
         project_root=tmp_path,
         feature={"id": "FEAT-999"},
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-999.yaml",
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
 
@@ -317,7 +317,7 @@ def test_run_implement_step_from_inputs_reraises_unexpected_errors(
         project_root=tmp_path,
         feature={"id": "FEAT-999"},
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-999.yaml",
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
 
@@ -337,7 +337,7 @@ def test_run_implement_step_from_inputs_supports_legacy_run_agent_signature(
         project_root=tmp_path,
         feature={"id": "FEAT-999"},
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-999.yaml",
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
 
@@ -366,7 +366,7 @@ def test_run_implement_step_from_inputs_reraises_non_signature_type_error(
         project_root=tmp_path,
         feature={"id": "FEAT-999"},
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-999.yaml",
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
 
@@ -384,7 +384,7 @@ def test_run_implement_step_from_inputs_uses_fallback_on_validation_error(
         project_root=tmp_path,
         feature={"id": "FEAT-999"},
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-999.yaml",
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
 
@@ -417,7 +417,7 @@ def test_run_implement_step_from_inputs_accepts_structured_envelope_output(
         project_root=tmp_path,
         feature={"id": "FEAT-999"},
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-999.yaml",
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
 
@@ -639,7 +639,7 @@ def test_iteration_outcome_includes_verification_status() -> None:
         result="failed",
         failed_gate="spec_validate",
         next_action="retry_same_feature",
-        hook_feedback="verification failed",
+        feedback="verification failed",
         log_path="progress/run-feature-FEAT-040.txt",
     )
 
@@ -655,7 +655,7 @@ def test_iteration_outcome_from_report_maps_report_fields(tmp_path: Path) -> Non
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-116.yaml",
         attempt=4,
-        hook_feedback="retry feedback",
+        feedback="feedback",
         verbose_output=False,
     )
     telemetry_inputs = IterationTelemetryInputs(
@@ -676,14 +676,14 @@ def test_iteration_outcome_from_report_maps_report_fields(tmp_path: Path) -> Non
         gate_output="",
         verification_output="E       assert 1 == 2",
         reviewer_output="[reviewer:security-reviewer] decision=request_changes",
-        hook_feedback="retry feedback",
+        feedback="feedback",
     )
     report = loop_module.IterationReport(
         completed=False,
         result="failed",
         failed_gate="spec_validate",
         next_action="retry_same_feature",
-        hook_feedback="retry feedback",
+        feedback="feedback",
         feature_id="FEAT-116",
         attempt=4,
         selected_feature_path=str(iteration_inputs.feature_path),
@@ -703,7 +703,7 @@ def test_iteration_outcome_from_report_maps_report_fields(tmp_path: Path) -> Non
     assert outcome.result == "failed"
     assert outcome.failed_gate == "spec_validate"
     assert outcome.next_action == "retry_same_feature"
-    assert outcome.hook_feedback == "retry feedback"
+    assert outcome.feedback == "feedback"
     assert outcome.log_path == "progress/run-feature-FEAT-116.txt"
     assert outcome.verification_status == "failed:uv run pytest -q"
     assert outcome.verification_failed_command == "uv run pytest -q"
@@ -717,7 +717,7 @@ def test_publish_iteration_report_accepts_injected_observers(tmp_path: Path) -> 
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-116.yaml",
         attempt=4,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
     telemetry_inputs = IterationTelemetryInputs(
@@ -738,14 +738,14 @@ def test_publish_iteration_report_accepts_injected_observers(tmp_path: Path) -> 
         gate_output="",
         verification_output="",
         reviewer_output="",
-        hook_feedback="retry feedback",
+        feedback="feedback",
     )
     report = loop_module.IterationReport(
         completed=False,
         result="failed",
         failed_gate="spec_validate",
         next_action="retry_same_feature",
-        hook_feedback="retry feedback",
+        feedback="feedback",
         feature_id="FEAT-116",
         attempt=4,
         selected_feature_path=str(iteration_inputs.feature_path),
@@ -786,12 +786,12 @@ def test_publish_iteration_report_accepts_injected_observers(tmp_path: Path) -> 
     assert outcome.failed_gate == "spec_validate"
 
 
-def test_retry_feedback_contract_accepts_verification_failure(tmp_path: Path) -> None:
+def test_feedback_contract_accepts_verification_failure(tmp_path: Path) -> None:
     iteration_inputs = FeatureIterationInputs(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-040.yaml",
         attempt=1,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
     telemetry_inputs = IterationTelemetryInputs(
@@ -812,7 +812,7 @@ def test_retry_feedback_contract_accepts_verification_failure(tmp_path: Path) ->
         gate_output="",
         verification_output="E       assert 1 == 2",
         reviewer_output="[reviewer:security-reviewer] decision=request_changes",
-        hook_feedback="[verification] uv run pytest -q\nE       assert 1 == 2",
+        feedback="[verification] uv run pytest -q\nE       assert 1 == 2",
     )
 
     write_iteration_telemetry(

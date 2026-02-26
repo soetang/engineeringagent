@@ -157,7 +157,7 @@ def test_ast_symbol_and_node_helpers_collect_deterministic_violations() -> None:
                 "",
                 "def a():",
                 "    run_checks()",
-                "    build_fitness_failure_retry_feedback()",
+                "    build_fitness_failure_feedback()",
                 "",
                 "async def b():",
                 "    helper()",
@@ -188,11 +188,11 @@ def test_ast_symbol_and_node_helpers_collect_deterministic_violations() -> None:
 
     locations = collect_symbol_call_locations(
         tree,
-        {"run_checks", "build_fitness_failure_retry_feedback"},
+        {"run_checks", "build_fitness_failure_feedback"},
     )
     assert locations == [
         (4, "run_checks"),
-        (5, "build_fitness_failure_retry_feedback"),
+        (5, "build_fitness_failure_feedback"),
     ]
     assert tree_calls_any_symbol(tree, {"run_checks"})
     assert not tree_calls_any_symbol(tree, {"missing"})
@@ -207,7 +207,7 @@ def test_ast_symbol_and_node_helpers_collect_deterministic_violations() -> None:
     function_violations = collect_function_symbol_call_violations(
         tree,
         trigger_symbols={"run_checks"},
-        forbidden_symbols={"build_fitness_failure_retry_feedback", "helper"},
+        forbidden_symbols={"build_fitness_failure_feedback", "helper"},
         message_builder=lambda lineno, symbol: f"{lineno}:{symbol}",
     )
-    assert function_violations == ["5:build_fitness_failure_retry_feedback"]
+    assert function_violations == ["5:build_fitness_failure_feedback"]

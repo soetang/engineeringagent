@@ -32,20 +32,20 @@ MAX_RULE_VIOLATIONS = 50
 MAX_REQUIRED_ACTIONS = 20
 
 
-class RetryFeedbackModel(BaseModel):
-    """Base model for retry-feedback envelopes emitted by the loop runtime."""
+class FeedbackModel(BaseModel):
+    """Base model for feedback envelopes emitted by the loop runtime."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
-class RerunInstructions(RetryFeedbackModel):
+class RerunInstructions(FeedbackModel):
     """Instructions for how a contributor should rerun a failing command."""
 
     cwd: Literal["repo_root"]
     instructions: NonEmptyStr
 
 
-class CommandFailureRetryFeedbackEnvelope(RetryFeedbackModel):
+class CommandFailureFeedbackEnvelope(FeedbackModel):
     """Envelope describing a failing command check during loop execution."""
 
     kind: Literal["command_failure"]
@@ -58,7 +58,7 @@ class CommandFailureRetryFeedbackEnvelope(RetryFeedbackModel):
     rerun: RerunInstructions
 
 
-class FailedFitnessRule(RetryFeedbackModel):
+class FailedFitnessRule(FeedbackModel):
     """Serialized representation of a failed fitness rule."""
 
     rule_id: RuleId
@@ -70,7 +70,7 @@ class FailedFitnessRule(RetryFeedbackModel):
     details: dict[str, Any] | None = None
 
 
-class FitnessFailureRetryFeedbackEnvelope(RetryFeedbackModel):
+class FitnessFailureFeedbackEnvelope(FeedbackModel):
     """Envelope describing one or more failing fitness rules."""
 
     kind: Literal["fitness_failure"]
@@ -85,8 +85,8 @@ class FitnessFailureRetryFeedbackEnvelope(RetryFeedbackModel):
     ]
 
 
-class ReviewerDecisionPayload(RetryFeedbackModel):
-    """Reviewer decision payload embedded in retry feedback."""
+class ReviewerDecisionPayload(FeedbackModel):
+    """Reviewer decision payload embedded in feedback."""
 
     decision: ReviewerDecisionName
     summary: NonEmptyStr
@@ -97,7 +97,7 @@ class ReviewerDecisionPayload(RetryFeedbackModel):
     scope_notes: NonEmptyStr | None = None
 
 
-class ReviewerFeedbackRetryEnvelope(RetryFeedbackModel):
+class ReviewerFeedbackEnvelope(FeedbackModel):
     """Envelope capturing reviewer feedback for a failed iteration."""
 
     kind: Literal["reviewer_feedback"]
@@ -109,39 +109,39 @@ class ReviewerFeedbackRetryEnvelope(RetryFeedbackModel):
     decision: ReviewerDecisionPayload
 
 
-RetryFeedbackEnvelope: TypeAlias = (
-    CommandFailureRetryFeedbackEnvelope
-    | FitnessFailureRetryFeedbackEnvelope
-    | ReviewerFeedbackRetryEnvelope
+FeedbackEnvelope: TypeAlias = (
+    CommandFailureFeedbackEnvelope
+    | FitnessFailureFeedbackEnvelope
+    | ReviewerFeedbackEnvelope
 )
 
 
-RetryFeedbackEnvelopeDiscriminated: TypeAlias = Annotated[
-    RetryFeedbackEnvelope,
+FeedbackEnvelopeDiscriminated: TypeAlias = Annotated[
+    FeedbackEnvelope,
     Field(discriminator="kind"),
 ]
 
 
-_RETRY_FEEDBACK_ENVELOPE_ADAPTER = TypeAdapter(RetryFeedbackEnvelopeDiscriminated)
+_FEEDBACK_ENVELOPE_ADAPTER = TypeAdapter(FeedbackEnvelopeDiscriminated)
 
 
-def parse_retry_feedback_envelope(payload: object) -> RetryFeedbackEnvelope:
-    """Parse and validate a v1 retry-feedback envelope.
+def parse_feedback_envelope(payload: object) -> FeedbackEnvelope:
+    """Parse and validate a v1 feedback envelope.
 
     Args:
         payload: A decoded JSON object or a Python mapping.
 
     Returns:
-        Validated retry-feedback envelope.
+        Validated feedback envelope.
     """
     if isinstance(payload, str):
-        return _RETRY_FEEDBACK_ENVELOPE_ADAPTER.validate_json(payload)
+        return _FEEDBACK_ENVELOPE_ADAPTER.validate_json(payload)
 
-    return _RETRY_FEEDBACK_ENVELOPE_ADAPTER.validate_python(payload)
+    return _FEEDBACK_ENVELOPE_ADAPTER.validate_python(payload)
 
 
-def serialize_retry_feedback_envelope(envelope: RetryFeedbackEnvelope) -> str:
-    """Serialize a retry-feedback envelope as strict deterministic JSON.
+def serialize_feedback_envelope(envelope: FeedbackEnvelope) -> str:
+    """Serialize a feedback envelope as strict deterministic JSON.
 
     The output is intended for prompt injection:
     - one JSON object
@@ -164,7 +164,7 @@ _RERUN_INSTRUCTIONS = RerunInstructions(
 )
 
 
-def build_command_failure_retry_feedback(
+def build_command_failure_feedback(
     *,
     phase: CommandFailurePhase,
     command: str,
@@ -172,11 +172,11 @@ def build_command_failure_retry_feedback(
     precommit: bool = False,
     message: str | None = None,
 ) -> str:
-    """Build a serialized command_failure retry-feedback envelope."""
+    """Build a serialized command_failure feedback envelope."""
     header = (
         message or "Command check failed. Rerun the command to see full diagnostics."
     )
-    envelope = CommandFailureRetryFeedbackEnvelope(
+    envelope = CommandFailureFeedbackEnvelope(
         kind="command_failure",
         phase=phase,
         gate=gate,
@@ -185,17 +185,17 @@ def build_command_failure_retry_feedback(
         rerun=_RERUN_INSTRUCTIONS,
         message=header,
     )
-    return serialize_retry_feedback_envelope(envelope)
+    return serialize_feedback_envelope(envelope)
 
 
-def build_fitness_failure_retry_feedback(
+def build_fitness_failure_feedback(
     *,
     gate: str | None,
     command: str,
     failed_rules: Iterable[Mapping[str, object]],
     message: str | None = None,
 ) -> str:
-    """Build a serialized fitness_failure retry-feedback envelope."""
+    """Build a serialized fitness_failure feedback envelope."""
     header = (
         message or "Fitness rule(s) failed. Apply remediation and rerun the command."
     )
@@ -227,7 +227,7 @@ def build_fitness_failure_retry_feedback(
             )
         )
 
-    envelope = FitnessFailureRetryFeedbackEnvelope(
+    envelope = FitnessFailureFeedbackEnvelope(
         kind="fitness_failure",
         phase="gates",
         gate=gate,
@@ -235,17 +235,17 @@ def build_fitness_failure_retry_feedback(
         failed_rules=normalized_rules,
         message=header,
     )
-    return serialize_retry_feedback_envelope(envelope)
+    return serialize_feedback_envelope(envelope)
 
 
-def build_reviewer_feedback_retry_feedback(
+def build_reviewer_feedback(
     *,
     reviewer_id: str,
     reviewer_phase: ReviewerPhase,
     decision: Mapping[str, object],
     message: str | None = None,
 ) -> str:
-    """Build a serialized reviewer_feedback retry-feedback envelope."""
+    """Build a serialized reviewer_feedback envelope."""
 
     decision_name_raw = decision.get("decision")
     decision_name: ReviewerDecisionName
@@ -285,7 +285,7 @@ def build_reviewer_feedback_retry_feedback(
                 "Reviewer requested changes. Apply required actions before completing."
             )
 
-    envelope = ReviewerFeedbackRetryEnvelope(
+    envelope = ReviewerFeedbackEnvelope(
         kind="reviewer_feedback",
         phase="reviewers",
         reviewer_id=reviewer_id,
@@ -298,4 +298,4 @@ def build_reviewer_feedback_retry_feedback(
         ),
         message=header,
     )
-    return serialize_retry_feedback_envelope(envelope)
+    return serialize_feedback_envelope(envelope)

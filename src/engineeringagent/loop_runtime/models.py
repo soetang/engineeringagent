@@ -27,7 +27,7 @@ class IterationOutcome(BaseModel):
     result: str
     failed_gate: str | None
     next_action: str
-    hook_feedback: str | None
+    feedback: str | None
     log_path: str | None
     verification_status: str = "not_run"
     verification_failed_command: str | None = None
@@ -44,7 +44,7 @@ class IterationOutcome(BaseModel):
             result=report.result,
             failed_gate=report.failed_gate,
             next_action=report.next_action,
-            hook_feedback=report.hook_feedback,
+            feedback=report.feedback,
             log_path=report.log_path,
             verification_status=report.verification_status,
             verification_failed_command=report.verification_failed_command,
@@ -62,7 +62,7 @@ class InitialFeatureLoadOutcome(BaseModel):
     feature: dict[str, Any] | None
     result: str
     failed_gate: str | None
-    hook_feedback: str | None
+    feedback: str | None
 
 
 class PostImplementFeatureOutcome(BaseModel):
@@ -75,7 +75,7 @@ class PostImplementFeatureOutcome(BaseModel):
     archived_path: Path | None
     result: str
     failed_gate: str | None
-    hook_feedback: str | None
+    feedback: str | None
 
 
 class ImplementStepInputs(BaseModel):
@@ -86,7 +86,7 @@ class ImplementStepInputs(BaseModel):
     project_root: Path
     feature: dict[str, Any]
     feature_path: Path
-    hook_feedback: str | None
+    feedback: str | None
     verbose_output: bool
 
 
@@ -99,7 +99,7 @@ class FeatureIterationInputs(BaseModel):
     feature_path: Path
     run_all: bool = False
     attempt: int
-    hook_feedback: str | None
+    feedback: str | None
     verbose_output: bool
 
 
@@ -138,7 +138,7 @@ class GatePhaseOutcome(BaseModel):
     gate_status: str
     gate_output: str
     command_timings: list[CommandTiming] = Field(default_factory=list)
-    hook_feedback: str | None
+    feedback: str | None
 
 
 class VerificationPhaseOutcome(BaseModel):
@@ -151,7 +151,7 @@ class VerificationPhaseOutcome(BaseModel):
     verification_failed_command: str | None
     verification_output: str
     command_timings: list[CommandTiming] = Field(default_factory=list)
-    hook_feedback: str | None
+    feedback: str | None
 
 
 class ReviewerPhaseOutcome(BaseModel):
@@ -166,7 +166,7 @@ class ReviewerPhaseOutcome(BaseModel):
     failed_reviewer_id: str | None = None
     reviewer_output: str
     command_timings: list[CommandTiming] = Field(default_factory=list)
-    hook_feedback: str | None
+    feedback: str | None
 
 
 class CompletionCommitOutcome(BaseModel):
@@ -179,7 +179,7 @@ class CompletionCommitOutcome(BaseModel):
     result: str
     failed_gate: str | None
     next_action: str
-    hook_feedback: str | None
+    feedback: str | None
     completion_output: str = ""
 
 
@@ -210,7 +210,7 @@ class IterationTelemetryInputs(BaseModel):
     verification_output: str
     reviewer_output: str = ""
     reviewer_feedback_forwarded: str | None = None
-    hook_feedback: str | None
+    feedback: str | None
     completion_output: str = ""
 
 
@@ -223,7 +223,7 @@ class IterationReport(BaseModel):
     result: str
     failed_gate: str | None
     next_action: str
-    hook_feedback: str | None
+    feedback: str | None
     feature_id: str
     attempt: int
     selected_feature_path: str

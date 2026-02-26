@@ -205,7 +205,7 @@ def test_run_reviewer_uses_empty_folder_sandbox_when_configured(
             run_all=False,
             reason=None,
         ),
-        prior_feedback=None,
+        feedback=None,
         run_agent_fn=_run_agent,
     )
 
@@ -264,7 +264,7 @@ def test_run_reviewer_uses_temp_worktree_snapshot_sandbox_when_configured(
             run_all=False,
             reason=None,
         ),
-        prior_feedback=None,
+        feedback=None,
         run_agent_fn=_run_agent,
     )
 
@@ -314,7 +314,7 @@ def test_run_reviewer_returns_request_changes_when_snapshot_setup_fails(
             run_all=False,
             reason=None,
         ),
-        prior_feedback=None,
+        feedback=None,
         run_agent_fn=lambda *_args, **_kwargs: None,
     )
 

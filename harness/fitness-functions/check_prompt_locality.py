@@ -20,7 +20,7 @@ _PROMPT_TEMPLATE_ROOT = _SOURCE_PACKAGE_ROOT / "prompts" / "templates"
 _REQUIRED_PROMPT_TEMPLATES = (
     "loop_selector.md",
     "loop_implementation.md",
-    "loop_retry_feedback.md",
+    "loop_feedback.md",
 )
 _PROMPT_ALLOWED_ROOT = _SOURCE_PACKAGE_ROOT / "prompts"
 _CANONICAL_PROMPT_BUILDERS = {
@@ -31,7 +31,7 @@ _PROMPT_CANARY_TOKENS = (
     ("choose", "the", "next", "feature", "spec"),
     ("exactly", "one", "feature", "path"),
     ("read", "and", "use", "this", "feature", "spec", "from", "disk"),
-    ("previous", "retry", "feedback", "is", "available"),
+    ("previous", "feedback", "is", "available"),
 )
 _PROMPT_LOCALITY_REMEDIATION = (
     "move canonical prompt text and template reads into "

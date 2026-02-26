@@ -14,7 +14,7 @@ from engineeringagent.loop_runtime.phases import (
     run_reviewer_phase,
     run_verification_phase,
 )
-from engineeringagent.prompts.retry_feedback import parse_retry_feedback_envelope
+from engineeringagent.prompts.feedback_envelope import parse_feedback_envelope
 
 
 def _write_text(path: Path, content: str) -> None:
@@ -30,7 +30,7 @@ def test_run_gate_phase_fails_fast_when_checks_yaml_missing_for_run_all(
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
         run_all=True,
         attempt=1,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
     deps = GatePhaseDependencies(
@@ -77,7 +77,7 @@ def test_run_gate_phase_reports_load_error_when_checks_document_raises(
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
         run_all=True,
         attempt=1,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
     deps = GatePhaseDependencies(
@@ -131,7 +131,7 @@ def test_run_reviewer_phase_forwards_request_changes_feedback_for_run_all(
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
         run_all=True,
         attempt=1,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
 
@@ -177,12 +177,12 @@ def test_run_reviewer_phase_forwards_request_changes_feedback_for_run_all(
     assert outcome.result == "failed"
     assert outcome.failed_gate == "doc_review"
     assert outcome.reviewer_status == "failed:doc_review"
-    assert outcome.hook_feedback == sentinel_feedback
-    assert raw_output not in outcome.hook_feedback
+    assert outcome.feedback == sentinel_feedback
+    assert raw_output not in outcome.feedback
     assert recorded_phases == ["feature_done"]
 
 
-def test_run_gate_phase_emits_command_failure_retry_feedback_contract(
+def test_run_gate_phase_emits_command_failure_feedback_contract(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
@@ -206,7 +206,7 @@ def test_run_gate_phase_emits_command_failure_retry_feedback_contract(
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
         run_all=True,
         attempt=1,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
     deps = GatePhaseDependencies(
@@ -240,8 +240,8 @@ def test_run_gate_phase_emits_command_failure_retry_feedback_contract(
 
     assert outcome.result == "failed"
     assert outcome.failed_gate == "smoke"
-    assert outcome.hook_feedback == sentinel_feedback
-    assert raw_output not in outcome.hook_feedback
+    assert outcome.feedback == sentinel_feedback
+    assert raw_output not in outcome.feedback
 
 
 def test_run_gate_phase_uses_generic_feedback_when_prompt_feedback_missing(
@@ -268,7 +268,7 @@ def test_run_gate_phase_uses_generic_feedback_when_prompt_feedback_missing(
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
         run_all=True,
         attempt=1,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
     deps = GatePhaseDependencies(
@@ -300,8 +300,8 @@ def test_run_gate_phase_uses_generic_feedback_when_prompt_feedback_missing(
     )
 
     assert outcome.result == "failed"
-    assert outcome.hook_feedback == "checks failed"
-    assert raw_output not in outcome.hook_feedback
+    assert outcome.feedback == "checks failed"
+    assert raw_output not in outcome.feedback
 
 
 def test_run_gate_phase_includes_validate_group_for_iteration_end_only(
@@ -328,7 +328,7 @@ def test_run_gate_phase_includes_validate_group_for_iteration_end_only(
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
         run_all=True,
         attempt=1,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
     deps = GatePhaseDependencies(
@@ -416,7 +416,7 @@ def test_run_gate_phase_iteration_end_validate_enforces_status_alignment(
         / "FEAT-001-invalid-status.yaml",
         run_all=True,
         attempt=1,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
     deps = GatePhaseDependencies(
@@ -442,7 +442,7 @@ def test_run_gate_phase_iteration_end_validate_enforces_status_alignment(
     assert not command_marker.exists()
 
 
-def test_run_verification_phase_emits_command_failure_retry_feedback_contract(
+def test_run_verification_phase_emits_command_failure_feedback_contract(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
@@ -451,7 +451,7 @@ def test_run_verification_phase_emits_command_failure_retry_feedback_contract(
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
         run_all=False,
         attempt=1,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
 
@@ -471,10 +471,10 @@ def test_run_verification_phase_emits_command_failure_retry_feedback_contract(
 
     assert outcome.result == "failed"
     assert outcome.verification_failed_command
-    assert outcome.hook_feedback
-    assert "verification failure" not in outcome.hook_feedback
+    assert outcome.feedback
+    assert "verification failure" not in outcome.feedback
 
-    envelope = parse_retry_feedback_envelope(outcome.hook_feedback)
+    envelope = parse_feedback_envelope(outcome.feedback)
     assert envelope.kind == "command_failure"
     assert envelope.phase == "verification"
     assert envelope.gate is None
@@ -482,7 +482,7 @@ def test_run_verification_phase_emits_command_failure_retry_feedback_contract(
     assert envelope.rerun.cwd == "repo_root"
 
 
-def test_run_gate_phase_emits_fitness_failure_retry_feedback_contract(
+def test_run_gate_phase_emits_fitness_failure_feedback_contract(
     tmp_path: Path,
 ) -> None:
     remediation = "FITNESS_REMEDIATION_SENTINEL"
@@ -546,7 +546,7 @@ def test_run_gate_phase_emits_fitness_failure_retry_feedback_contract(
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
         run_all=True,
         attempt=1,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
     deps = GatePhaseDependencies(
@@ -567,10 +567,9 @@ def test_run_gate_phase_emits_fitness_failure_retry_feedback_contract(
 
     assert outcome.result == "failed"
     assert outcome.failed_gate == "fitness_validate"
-    hook_feedback = outcome.hook_feedback
-    assert hook_feedback is not None
-    assert "fitness_validate" in hook_feedback
-    assert "demo.fail" in hook_feedback
-    assert remediation in hook_feedback
-    assert raw_output_token not in hook_feedback
-    assert "retry_feedback_parse_error" not in hook_feedback
+    feedback = outcome.feedback
+    assert feedback is not None
+    assert "fitness_validate" in feedback
+    assert "demo.fail" in feedback
+    assert remediation in feedback
+    assert raw_output_token not in feedback

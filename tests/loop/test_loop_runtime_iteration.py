@@ -46,7 +46,7 @@ def test_iteration_report_model_captures_pipeline_observer_contract(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-116.yaml",
         attempt=3,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
     telemetry_inputs = IterationTelemetryInputs(
@@ -63,7 +63,7 @@ def test_iteration_report_model_captures_pipeline_observer_contract(
         implement_output="",
         gate_output="",
         verification_output="",
-        hook_feedback=None,
+        feedback=None,
     )
 
     report = IterationReport(
@@ -71,7 +71,7 @@ def test_iteration_report_model_captures_pipeline_observer_contract(
         result="passed",
         failed_gate=None,
         next_action="continue_same_feature",
-        hook_feedback=None,
+        feedback=None,
         feature_id="FEAT-116",
         attempt=3,
         selected_feature_path=str(iteration_inputs.feature_path),
@@ -115,7 +115,7 @@ def test_iteration_pipeline_carries_passed_reviewer_feedback_to_continue(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-065.yaml",
         attempt=1,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
 
@@ -127,7 +127,7 @@ def test_iteration_pipeline_carries_passed_reviewer_feedback_to_continue(
                     feature={"id": "FEAT-065", "status": "in_progress"},
                     result="passed",
                     failed_gate=None,
-                    hook_feedback=None,
+                    feedback=None,
                 )
             ),
             ready_for_active_iteration=lambda *_args, **_kwargs: True,
@@ -140,7 +140,7 @@ def test_iteration_pipeline_carries_passed_reviewer_feedback_to_continue(
                     archived_path=None,
                     result="passed",
                     failed_gate=None,
-                    hook_feedback=None,
+                    feedback=None,
                 )
             ),
             should_archive_selected_feature=lambda *_args, **_kwargs: False,
@@ -151,7 +151,7 @@ def test_iteration_pipeline_carries_passed_reviewer_feedback_to_continue(
                     failed_gate=None,
                     gate_status="passed",
                     gate_output="",
-                    hook_feedback=None,
+                    feedback=None,
                 )
             ),
             gate_phase_dependencies=GatePhaseDependencies(
@@ -168,7 +168,7 @@ def test_iteration_pipeline_carries_passed_reviewer_feedback_to_continue(
                     verification_status="not_run",
                     verification_failed_command=None,
                     verification_output="",
-                    hook_feedback=None,
+                    feedback=None,
                 )
             ),
             run_reviewer_phase=(
@@ -179,7 +179,7 @@ def test_iteration_pipeline_carries_passed_reviewer_feedback_to_continue(
                     reviewer_decision="approve",
                     failed_reviewer_id=None,
                     reviewer_output="[reviewer:code_reviewer] decision=approve",
-                    hook_feedback=reviewer_feedback,
+                    feedback=reviewer_feedback,
                 )
             ),
             reviewer_phase_dependencies=ReviewerPhaseDependencies(
@@ -194,7 +194,7 @@ def test_iteration_pipeline_carries_passed_reviewer_feedback_to_continue(
                     result="passed",
                     failed_gate=None,
                     next_action="retry_same_feature",
-                    hook_feedback=None,
+                    feedback=None,
                 )
             ),
             completion_phase_dependencies=CompletionPhaseDependencies(
@@ -207,7 +207,7 @@ def test_iteration_pipeline_carries_passed_reviewer_feedback_to_continue(
     assert report.result == "passed"
     assert report.completed is False
     assert report.next_action == "continue_same_feature"
-    assert report.hook_feedback == reviewer_feedback
+    assert report.feedback == reviewer_feedback
 
 
 def test_iteration_pipeline_archives_before_running_done_transition_verification(
@@ -217,7 +217,7 @@ def test_iteration_pipeline_archives_before_running_done_transition_verification
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-078.yaml",
         attempt=1,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
 
@@ -245,14 +245,14 @@ def test_iteration_pipeline_archives_before_running_done_transition_verification
                 verification_status="failed:uv run python -m engineeringagent.cli validate",
                 verification_failed_command="uv run python -m engineeringagent.cli validate",
                 verification_output="done feature still active",
-                hook_feedback="done feature still active",
+                feedback="done feature still active",
             )
         return VerificationPhaseOutcome(
             result="passed",
             verification_status="passed",
             verification_failed_command=None,
             verification_output="",
-            hook_feedback=None,
+            feedback=None,
         )
 
     report = run_feature_iteration_pipeline(
@@ -275,7 +275,7 @@ def test_iteration_pipeline_archives_before_running_done_transition_verification
                     },
                     result="passed",
                     failed_gate=None,
-                    hook_feedback=None,
+                    feedback=None,
                 )
             ),
             ready_for_active_iteration=lambda *_args, **_kwargs: True,
@@ -300,7 +300,7 @@ def test_iteration_pipeline_archives_before_running_done_transition_verification
                     archived_path=None,
                     result="passed",
                     failed_gate=None,
-                    hook_feedback=None,
+                    feedback=None,
                 )
             ),
             should_archive_selected_feature=lambda *_args, **_kwargs: True,
@@ -311,7 +311,7 @@ def test_iteration_pipeline_archives_before_running_done_transition_verification
                     failed_gate=None,
                     gate_status="passed",
                     gate_output="",
-                    hook_feedback=None,
+                    feedback=None,
                 )
             ),
             gate_phase_dependencies=GatePhaseDependencies(
@@ -331,7 +331,7 @@ def test_iteration_pipeline_archives_before_running_done_transition_verification
                     reviewer_decision="approve",
                     failed_reviewer_id=None,
                     reviewer_output="",
-                    hook_feedback=None,
+                    feedback=None,
                 )
             ),
             reviewer_phase_dependencies=ReviewerPhaseDependencies(
@@ -346,7 +346,7 @@ def test_iteration_pipeline_archives_before_running_done_transition_verification
                     result="passed",
                     failed_gate=None,
                     next_action="select_next_feature",
-                    hook_feedback=None,
+                    feedback=None,
                 )
             ),
             completion_phase_dependencies=CompletionPhaseDependencies(
@@ -397,7 +397,7 @@ def test_iteration_pipeline_runs_gate_phase_after_verification_failure_cases(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-137.yaml",
         attempt=1,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
 
@@ -411,7 +411,7 @@ def test_iteration_pipeline_runs_gate_phase_after_verification_failure_cases(
             failed_gate=None,
             gate_status="passed",
             gate_output="",
-            hook_feedback=None,
+            feedback=None,
         )
 
     report = run_feature_iteration_pipeline(
@@ -426,7 +426,7 @@ def test_iteration_pipeline_runs_gate_phase_after_verification_failure_cases(
                     },
                     result="passed",
                     failed_gate=None,
-                    hook_feedback=None,
+                    feedback=None,
                 )
             ),
             ready_for_active_iteration=lambda *_args, **_kwargs: True,
@@ -443,7 +443,7 @@ def test_iteration_pipeline_runs_gate_phase_after_verification_failure_cases(
                     archived_path=None,
                     result="passed",
                     failed_gate=None,
-                    hook_feedback=None,
+                    feedback=None,
                 )
             ),
             should_archive_selected_feature=lambda *_args, **_kwargs: False,
@@ -463,7 +463,7 @@ def test_iteration_pipeline_runs_gate_phase_after_verification_failure_cases(
                     verification_status=verification_status,
                     verification_failed_command=failed_command,
                     verification_output="verification failed",
-                    hook_feedback="verification failed",
+                    feedback="verification failed",
                 )
             ),
             run_reviewer_phase=(
@@ -474,7 +474,7 @@ def test_iteration_pipeline_runs_gate_phase_after_verification_failure_cases(
                     reviewer_decision="approve",
                     failed_reviewer_id=None,
                     reviewer_output="",
-                    hook_feedback=None,
+                    feedback=None,
                 )
             ),
             reviewer_phase_dependencies=ReviewerPhaseDependencies(
@@ -489,7 +489,7 @@ def test_iteration_pipeline_runs_gate_phase_after_verification_failure_cases(
                     result="failed",
                     failed_gate=None,
                     next_action="retry_same_feature",
-                    hook_feedback="verification failed",
+                    feedback="verification failed",
                 )
             ),
             completion_phase_dependencies=CompletionPhaseDependencies(
@@ -511,7 +511,7 @@ def test_iteration_pipeline_collects_changed_paths_once_per_iteration(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-999.yaml",
         attempt=1,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
 
@@ -533,7 +533,7 @@ def test_iteration_pipeline_collects_changed_paths_once_per_iteration(
             failed_gate=None,
             gate_status="passed",
             gate_output="",
-            hook_feedback=None,
+            feedback=None,
         )
 
     def _run_reviewer_phase(
@@ -551,7 +551,7 @@ def test_iteration_pipeline_collects_changed_paths_once_per_iteration(
             reviewer_decision=None,
             failed_reviewer_id=None,
             reviewer_output="",
-            hook_feedback=None,
+            feedback=None,
         )
 
     report = run_feature_iteration_pipeline(
@@ -566,7 +566,7 @@ def test_iteration_pipeline_collects_changed_paths_once_per_iteration(
                     },
                     result="passed",
                     failed_gate=None,
-                    hook_feedback=None,
+                    feedback=None,
                 )
             ),
             ready_for_active_iteration=lambda *_args, **_kwargs: True,
@@ -583,7 +583,7 @@ def test_iteration_pipeline_collects_changed_paths_once_per_iteration(
                     archived_path=None,
                     result="passed",
                     failed_gate=None,
-                    hook_feedback=None,
+                    feedback=None,
                 )
             ),
             should_archive_selected_feature=lambda *_args, **_kwargs: False,
@@ -599,7 +599,7 @@ def test_iteration_pipeline_collects_changed_paths_once_per_iteration(
                     verification_status="not_run",
                     verification_failed_command=None,
                     verification_output="",
-                    hook_feedback=None,
+                    feedback=None,
                 )
             ),
             run_reviewer_phase=_run_reviewer_phase,
@@ -615,7 +615,7 @@ def test_iteration_pipeline_collects_changed_paths_once_per_iteration(
                     result="passed",
                     failed_gate=None,
                     next_action="retry_same_feature",
-                    hook_feedback=None,
+                    feedback=None,
                 )
             ),
             completion_phase_dependencies=CompletionPhaseDependencies(
@@ -666,7 +666,7 @@ def test_iteration_pipeline_records_phase_timings(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-065.yaml",
         attempt=1,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
 
@@ -678,7 +678,7 @@ def test_iteration_pipeline_records_phase_timings(
                     feature={"id": "FEAT-065", "status": "in_progress"},
                     result="passed",
                     failed_gate=None,
-                    hook_feedback=None,
+                    feedback=None,
                 )
             ),
             ready_for_active_iteration=lambda *_args, **_kwargs: True,
@@ -691,7 +691,7 @@ def test_iteration_pipeline_records_phase_timings(
                     archived_path=None,
                     result="passed",
                     failed_gate=None,
-                    hook_feedback=None,
+                    feedback=None,
                 )
             ),
             should_archive_selected_feature=lambda *_args, **_kwargs: False,
@@ -702,7 +702,7 @@ def test_iteration_pipeline_records_phase_timings(
                     failed_gate=None,
                     gate_status="passed",
                     gate_output="",
-                    hook_feedback=None,
+                    feedback=None,
                 )
             ),
             gate_phase_dependencies=GatePhaseDependencies(
@@ -719,7 +719,7 @@ def test_iteration_pipeline_records_phase_timings(
                     verification_status="not_run",
                     verification_failed_command=None,
                     verification_output="",
-                    hook_feedback=None,
+                    feedback=None,
                 )
             ),
             run_reviewer_phase=(
@@ -730,7 +730,7 @@ def test_iteration_pipeline_records_phase_timings(
                     reviewer_decision="approve",
                     failed_reviewer_id=None,
                     reviewer_output="[reviewer:code_reviewer] decision=approve",
-                    hook_feedback=None,
+                    feedback=None,
                 )
             ),
             reviewer_phase_dependencies=ReviewerPhaseDependencies(
@@ -745,7 +745,7 @@ def test_iteration_pipeline_records_phase_timings(
                     result="passed",
                     failed_gate=None,
                     next_action="retry_same_feature",
-                    hook_feedback=None,
+                    feedback=None,
                 )
             ),
             completion_phase_dependencies=CompletionPhaseDependencies(

@@ -60,14 +60,14 @@ def _resolve_forwarded_reviewer_feedback(
     if isinstance(forwarded, str) and forwarded.strip():
         return _strip_ansi(forwarded).strip()
 
-    hook_feedback = telemetry_inputs.hook_feedback
-    if not isinstance(hook_feedback, str) or not hook_feedback.strip():
+    feedback = telemetry_inputs.feedback
+    if not isinstance(feedback, str) or not feedback.strip():
         return None
     if telemetry_inputs.reviewer_status == "not_run":
         return None
-    if not hook_feedback.lstrip().startswith("reviewer '"):
+    if not feedback.lstrip().startswith("reviewer '"):
         return None
-    return _strip_ansi(hook_feedback).strip()
+    return _strip_ansi(feedback).strip()
 
 
 def _summarize_reviewer_feedback(text: str, max_chars: int = 240) -> str:
@@ -268,9 +268,9 @@ def write_iteration_telemetry(  # noqa: C901
                 "reviewer_feedback_forwarded_end",
             ]
         )
-    if telemetry_inputs.hook_feedback:
+    if telemetry_inputs.feedback:
         feature_progress_log_lines.append(
-            f"detail={_truncate_feedback(telemetry_inputs.hook_feedback)}"
+            f"detail={_truncate_feedback(telemetry_inputs.feedback)}"
         )
     _append_feature_progress_log(
         feature_progress_log_path,

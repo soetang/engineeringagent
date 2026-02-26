@@ -149,12 +149,12 @@ rules:
       - run
       - python
       - harness/fitness-functions/check_prompt_locality.py
-  - rule_id: architecture.retry-feedback-no-truncation
-    name: Retry feedback no truncation
-    summary: Block truncation-by-slicing in retry feedback prompt injection.
+  - rule_id: architecture.feedback-no-truncation
+    name: Feedback no truncation
+    summary: Block truncation-by-slicing in feedback prompt injection.
     rationale: Prevents prompt retries from losing the most relevant failure details.
-    remediation: Remove truncation-by-slicing from retry feedback injection; bound retry
-      feedback by contract caps and canonical re-serialization.
+    remediation: Remove truncation-by-slicing from feedback injection; bound feedback
+      by contract caps and canonical re-serialization.
     scope: src/engineeringagent/prompts/renderer.py
     severity: error
     side_effect_free: true
@@ -163,7 +163,7 @@ rules:
       - uv
       - run
       - python
-      - harness/fitness-functions/check_retry_feedback_no_truncation.py
+      - harness/fitness-functions/check_feedback_no_truncation.py
   - rule_id: architecture.progress-log-path-locality
     name: Progress log path locality
     summary: Centralize loop progress artifact paths and writes behind approved helpers.
@@ -294,9 +294,9 @@ rules:
       - harness/fitness-functions/check_loop_checks_result_boundary.py
   - rule_id: architecture.checks-own-prompt-feedback-rendering
     name: Checks-owned prompt feedback rendering
-    summary: Fail when loop/prompt code performs checks-specific retry feedback shaping outside checks strategies.
+    summary: Fail when loop/prompt code performs checks-specific feedback shaping outside checks strategies.
     rationale: Keeps checks failure feedback rendering owned by checks strategies so loop and prompt wiring only forward prompt_feedback.
-    remediation: Remove loop/prompt checks-specific retry-feedback builders and pass run_checks(...).prompt_feedback through unchanged.
+    remediation: Remove loop/prompt checks-specific feedback builders and pass run_checks(...).prompt_feedback through unchanged.
     scope: src/engineeringagent/loop_runtime/**, src/engineeringagent/loop.py, and src/engineeringagent/prompts/renderer.py
     severity: error
     side_effect_free: true

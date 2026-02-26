@@ -117,7 +117,7 @@ def test_write_iteration_telemetry_appends_handoff_entry_from_envelope(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-130.yaml",
         attempt=5,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
     telemetry_inputs = IterationTelemetryInputs(
@@ -146,7 +146,7 @@ def test_write_iteration_telemetry_appends_handoff_entry_from_envelope(
         gate_output="",
         verification_output="",
         reviewer_output="",
-        hook_feedback=None,
+        feedback=None,
     )
 
     write_iteration_telemetry(
@@ -171,7 +171,7 @@ def test_write_iteration_telemetry_appends_fallback_handoff_when_missing(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-130.yaml",
         attempt=6,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
     telemetry_inputs = IterationTelemetryInputs(
@@ -192,7 +192,7 @@ def test_write_iteration_telemetry_appends_fallback_handoff_when_missing(
         gate_output="",
         verification_output="",
         reviewer_output="",
-        hook_feedback=None,
+        feedback=None,
     )
 
     write_iteration_telemetry(
@@ -256,7 +256,7 @@ def test_progress_log_records_verification_status(tmp_path: Path) -> None:
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-040.yaml",
         attempt=3,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
     telemetry_inputs = IterationTelemetryInputs(
@@ -277,7 +277,7 @@ def test_progress_log_records_verification_status(tmp_path: Path) -> None:
         gate_output="",
         verification_output="E       assert 1 == 2",
         reviewer_output="[reviewer:security-reviewer] decision=request_changes",
-        hook_feedback=f"[verification] command={verification_command}",
+        feedback=f"[verification] command={verification_command}",
     )
 
     write_iteration_telemetry(
@@ -328,7 +328,7 @@ def test_progress_log_writes_do_not_use_path_open(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-040.yaml",
         attempt=1,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
     telemetry_inputs = IterationTelemetryInputs(
@@ -349,7 +349,7 @@ def test_progress_log_writes_do_not_use_path_open(
         gate_output="ok",
         verification_output="ok",
         reviewer_output="",
-        hook_feedback="",
+        feedback="",
     )
 
     original_open = Path.open
@@ -384,7 +384,7 @@ def test_progress_log_strips_ansi_only_at_write_time(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-040.yaml",
         attempt=1,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
     telemetry_inputs = IterationTelemetryInputs(
@@ -405,7 +405,7 @@ def test_progress_log_strips_ansi_only_at_write_time(
         gate_output="",
         verification_output="",
         reviewer_output="",
-        hook_feedback="",
+        feedback="",
     )
 
     original_strip_ansi = _strip_ansi
@@ -447,7 +447,7 @@ def test_progress_log_records_phase_timings(tmp_path: Path, monkeypatch: Any) ->
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-040.yaml",
         attempt=1,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
     telemetry_inputs = IterationTelemetryInputs(
@@ -482,7 +482,7 @@ def test_progress_log_records_phase_timings(tmp_path: Path, monkeypatch: Any) ->
         gate_output="",
         verification_output="",
         reviewer_output="",
-        hook_feedback="",
+        feedback="",
     )
 
     write_iteration_telemetry(
@@ -526,7 +526,7 @@ def test_progress_log_records_verification_command_timings(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-040.yaml",
         attempt=1,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
     command = "uv run pytest -q tests/test_loop_output.py"
@@ -572,7 +572,7 @@ def test_progress_log_records_verification_command_timings(
         gate_output="",
         verification_output=verification_outcome.verification_output,
         reviewer_output="",
-        hook_feedback=None,
+        feedback=None,
     )
 
     write_iteration_telemetry(
@@ -607,7 +607,7 @@ def test_verification_command_timing_clamps_ended_at_when_clock_skews_backwards(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-040.yaml",
         attempt=1,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
     command = "uv run pytest -q tests/test_loop_output.py"
@@ -637,7 +637,7 @@ def test_progress_log_records_slowest_summary(tmp_path: Path) -> None:
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-040.yaml",
         attempt=1,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
     telemetry_inputs = IterationTelemetryInputs(
@@ -675,7 +675,7 @@ def test_progress_log_records_slowest_summary(tmp_path: Path) -> None:
         gate_output="",
         verification_output="",
         reviewer_output="",
-        hook_feedback="",
+        feedback="",
     )
 
     write_iteration_telemetry(
@@ -700,7 +700,7 @@ def test_progress_log_records_reviewer_approve_status(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-059.yaml",
         attempt=2,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
     telemetry_inputs = IterationTelemetryInputs(
@@ -721,7 +721,7 @@ def test_progress_log_records_reviewer_approve_status(
         gate_output="",
         verification_output="",
         reviewer_output="[reviewer:code_simplifier] decision=approve",
-        hook_feedback=(
+        feedback=(
             "reviewer 'code_simplifier' feedback (decision=approve): simplify nested branching."
         ),
     )
@@ -757,10 +757,10 @@ def test_run_telemetry_summary_strips_feedback_context_block(tmp_path: Path) -> 
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-059.yaml",
         attempt=2,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
-    hook_feedback = (
+    feedback = (
         "reviewer 'onboarding_review' requested changes (attempt 1/3): "
         "Add missing usage section.\n"
         "required_actions:\n"
@@ -788,7 +788,7 @@ def test_run_telemetry_summary_strips_feedback_context_block(tmp_path: Path) -> 
         gate_output="",
         verification_output="",
         reviewer_output="[reviewer:onboarding_review] decision=request_changes",
-        hook_feedback=hook_feedback,
+        feedback=feedback,
     )
 
     write_iteration_telemetry(
@@ -810,7 +810,7 @@ def test_reviewer_feedback_forwarded_field_takes_precedence(tmp_path: Path) -> N
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-059.yaml",
         attempt=1,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
     telemetry_inputs = IterationTelemetryInputs(
@@ -835,7 +835,7 @@ def test_reviewer_feedback_forwarded_field_takes_precedence(tmp_path: Path) -> N
             "reviewer 'onboarding_review' feedback (decision=request_changes): "
             "Use the repo README conventions.\nfeedback_context:\nclean-room sandbox"
         ),
-        hook_feedback="(ignored) not a reviewer line",
+        feedback="(ignored) not a reviewer line",
     )
 
     write_iteration_telemetry(

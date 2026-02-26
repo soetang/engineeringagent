@@ -178,7 +178,7 @@ def _build_implement_prompt(implement_inputs: ImplementStepInputs) -> str:
     return build_implementation_prompt(
         feature=implement_inputs.feature,
         feature_path=implement_inputs.feature_path,
-        hook_feedback=implement_inputs.hook_feedback,
+        feedback=implement_inputs.feedback,
     )
 
 

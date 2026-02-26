@@ -20,7 +20,6 @@ _ALLOWED_CHECKS_IMPORT_NAMES = set(checks.__all__)
 _EXCLUDED_PACKAGES = {
     "checks",
     "fitness",
-    "retry_feedback",
 }
 
 

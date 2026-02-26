@@ -12,12 +12,12 @@ from engineeringagent.checks.fitness.contracts import (
 )
 
 
-RULE_ID = "architecture.retry-feedback-no-truncation"
+RULE_ID = "architecture.feedback-no-truncation"
 
-_RETRY_RENDERER_PATH = Path("src/engineeringagent/prompts/renderer.py")
+_FEEDBACK_RENDERER_PATH = Path("src/engineeringagent/prompts/renderer.py")
 _REMEDIATION = (
-    "remove truncation-by-slicing from retry feedback prompt injection; "
-    "retry feedback must be bounded by contract caps and canonical re-serialization"
+    "remove truncation-by-slicing from feedback prompt injection; "
+    "feedback must be bounded by contract caps and canonical re-serialization"
 )
 
 
@@ -26,9 +26,7 @@ def _parse_module(
 ) -> tuple[ast.AST | None, list[str]]:
     file_path = project_root / relative_path
     if not file_path.exists() or not file_path.is_file():
-        return None, [
-            f"{relative_path}:1 missing retry feedback prompt renderer; {_REMEDIATION}"
-        ]
+        return None, [f"{relative_path}:1 missing feedback prompt renderer; {_REMEDIATION}"]
 
     try:
         tree = ast.parse(file_path.read_text(encoding="utf-8"), filename=str(file_path))
@@ -55,22 +53,22 @@ def _is_truncate_feedback_call(node: ast.Call) -> bool:
     )
 
 
-def _retry_feedback_injection_violations(
+def _feedback_injection_violations(
     renderer_tree: ast.AST,
     *,
     relative_path: Path,
 ) -> list[str]:
-    inject_node = _find_function(renderer_tree, "inject_retry_feedback")
+    inject_node = _find_function(renderer_tree, "inject_feedback")
     if inject_node is None:
         return [
-            f"{relative_path}:1 missing inject_retry_feedback implementation; {_REMEDIATION}"
+            f"{relative_path}:1 missing inject_feedback implementation; {_REMEDIATION}"
         ]
 
     violations: list[str] = []
     for node in ast.walk(inject_node):
         if isinstance(node, ast.Call) and _is_truncate_feedback_call(node):
             violations.append(
-                f"{relative_path}:{node.lineno} retry feedback injection calls "
+                f"{relative_path}:{node.lineno} feedback injection calls "
                 f"_truncate_feedback; {_REMEDIATION}"
             )
 
@@ -78,42 +76,40 @@ def _retry_feedback_injection_violations(
             continue
 
         value = node.value
-        if isinstance(value, ast.Name) and value.id == "hook_feedback":
+        if isinstance(value, ast.Name) and value.id == "feedback":
             violations.append(
-                f"{relative_path}:{node.lineno} retry feedback injection slices "
-                f"hook_feedback; {_REMEDIATION}"
+                f"{relative_path}:{node.lineno} feedback injection slices "
+                f"feedback; {_REMEDIATION}"
             )
             continue
 
         if (
             isinstance(value, ast.Call)
             and isinstance(value.func, ast.Name)
-            and value.func.id == "_normalize_retry_feedback"
+            and value.func.id == "_normalize_feedback"
         ):
             violations.append(
-                f"{relative_path}:{node.lineno} retry feedback injection slices "
-                f"normalized retry feedback; {_REMEDIATION}"
+                f"{relative_path}:{node.lineno} feedback injection slices "
+                f"normalized feedback; {_REMEDIATION}"
             )
 
     return sorted(violations)
 
 
 def main() -> int:
-    """Run the retry-feedback no-truncation fitness rule."""
-    tree, violations = _parse_module(Path("."), _RETRY_RENDERER_PATH)
+    """Run the feedback no-truncation fitness rule."""
+    tree, violations = _parse_module(Path("."), _FEEDBACK_RENDERER_PATH)
     if tree is not None:
         violations.extend(
-            _retry_feedback_injection_violations(
-                tree, relative_path=_RETRY_RENDERER_PATH
-            )
+            _feedback_injection_violations(tree, relative_path=_FEEDBACK_RENDERER_PATH)
         )
 
     violations = sorted(violations)
     status = RuleStatus.PASS if not violations else RuleStatus.FAIL
     summary = (
-        "Retry feedback injection does not truncate by slicing."
+        "Feedback injection does not truncate by slicing."
         if status == RuleStatus.PASS
-        else f"Detected {len(violations)} retry feedback injection truncation violation(s)."
+        else f"Detected {len(violations)} feedback injection truncation violation(s)."
     )
 
     emit_result_envelope(

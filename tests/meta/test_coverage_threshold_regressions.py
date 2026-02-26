@@ -205,7 +205,7 @@ def test_feature_state_error_paths(tmp_path: Path, monkeypatch: Any) -> None:
     )
     assert post_outcome.result == "failed"
     assert post_outcome.failed_gate == "feature_missing"
-    assert post_outcome.hook_feedback == "load-failed"
+    assert post_outcome.feedback == "load-failed"
 
     monkeypatch.setattr(
         feature_state_module,
@@ -402,7 +402,7 @@ def test_gate_and_verification_phase_error_paths(
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
         run_all=True,
         attempt=1,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=True,
     )
 
@@ -444,7 +444,7 @@ def test_completion_phase_fallback_paths() -> None:
         project_root=Path("."),
         feature_path=Path("docs/spec/features/FEAT-001.yaml"),
         attempt=1,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
 
@@ -481,8 +481,8 @@ def test_completion_phase_fallback_paths() -> None:
     )
     assert commit_failed.result == "failed"
     assert "archive rollback failed: restore failed" in commit_failed.completion_output
-    assert commit_failed.hook_feedback is not None
-    assert '"kind":"command_failure"' in commit_failed.hook_feedback
+    assert commit_failed.feedback is not None
+    assert '"kind":"command_failure"' in commit_failed.feedback
 
 
 def test_command_adapter_error_paths(monkeypatch: Any, tmp_path: Path) -> None:

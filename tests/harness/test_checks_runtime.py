@@ -75,7 +75,7 @@ def test_run_gate_phase_uses_checks_yaml_for_run_all_iteration_end(
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
         run_all=True,
         attempt=1,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
 
@@ -124,7 +124,7 @@ def test_run_gate_phase_skips_on_change_command_checks_when_no_match(
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
         run_all=True,
         attempt=1,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
 
@@ -179,7 +179,7 @@ def test_run_gate_phase_runs_feature_done_checks_only_when_archived(
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
         run_all=True,
         attempt=1,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
 
@@ -234,7 +234,7 @@ def test_run_gate_phase_uses_structured_invocations_for_gate_timings(
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
         run_all=True,
         attempt=1,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
 
@@ -331,7 +331,7 @@ def test_run_gate_phase_runs_fitness_checks_scope_all(
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
         run_all=True,
         attempt=1,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
 
@@ -402,7 +402,7 @@ def test_run_gate_phase_fails_when_fitness_check_fails(
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
         run_all=True,
         attempt=1,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
 
@@ -459,7 +459,7 @@ def test_run_reviewer_phase_uses_checks_yaml_for_run_all_feature_done(
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
         run_all=True,
         attempt=1,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
 
@@ -537,7 +537,7 @@ def test_run_reviewer_phase_skips_on_change_reviewer_checks_when_no_match(
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
         run_all=True,
         attempt=1,
-        hook_feedback=None,
+        feedback=None,
         verbose_output=False,
     )
 

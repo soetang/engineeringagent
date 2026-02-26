@@ -47,7 +47,7 @@ def test_run_reviewer_loads_harness_prompt_and_parses_decision(tmp_path) -> None
             run_all=False,
             reason=None,
         ),
-        prior_feedback="tighten error handling",
+        feedback="tighten error handling",
         run_agent_fn=_run_agent,
     )
 
@@ -95,7 +95,7 @@ def test_run_reviewer_does_not_inject_deprecated_responseformat_contract(
         feature_id="FEAT-050",
         feature_path=tmp_path / "docs/spec/features/FEAT-050.yaml",
         changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
-        prior_feedback=None,
+        feedback=None,
         run_agent_fn=_run_agent,
     )
 
@@ -131,7 +131,7 @@ def test_run_reviewer_parse_failure_returns_request_changes(tmp_path) -> None:
         feature_id="FEAT-050",
         feature_path=tmp_path / "docs/spec/features/FEAT-050.yaml",
         changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
-        prior_feedback=None,
+        feedback=None,
         run_agent_fn=_run_agent,
     )
 
@@ -168,7 +168,7 @@ def test_run_reviewer_passes_max_validation_retries_to_canonical_runner(
         feature_id="FEAT-070",
         feature_path=tmp_path / "docs/spec/features/FEAT-070.yaml",
         changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
-        prior_feedback=None,
+        feedback=None,
         run_agent_fn=_run_agent,
     )
 
@@ -207,7 +207,7 @@ def test_run_reviewer_does_not_require_responseformat_placeholder(tmp_path) -> N
         feature_id="FEAT-050",
         feature_path=tmp_path / "docs/spec/features/FEAT-050.yaml",
         changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
-        prior_feedback=None,
+        feedback=None,
         run_agent_fn=_run_agent,
     )
 

@@ -24,7 +24,7 @@ def _write_prompt_templates(project_root: Path) -> None:
     (template_root / "loop_implementation.md").write_text(
         "implementation", encoding="utf-8"
     )
-    (template_root / "loop_retry_feedback.md").write_text("retry", encoding="utf-8")
+    (template_root / "loop_feedback.md").write_text("feedback", encoding="utf-8")
 
 
 def _violations(result: dict[str, object]) -> list[str]:
@@ -85,15 +85,15 @@ def test_prompt_locality_rule_fails_when_required_template_is_empty(
 ) -> None:
     """Fail when required templates exist but contain only whitespace."""
     _write_prompt_templates(tmp_path)
-    retry_template = (
+    feedback_template = (
         tmp_path
         / "src"
         / "engineeringagent"
         / "prompts"
         / "templates"
-        / "loop_retry_feedback.md"
+        / "loop_feedback.md"
     )
-    retry_template.write_text(" \n\t\n", encoding="utf-8")
+    feedback_template.write_text(" \n\t\n", encoding="utf-8")
 
     proc, result = _run_checker(tmp_path, checker_path=_script_path(repo_root))
     violations = _violations(result)
@@ -101,8 +101,8 @@ def test_prompt_locality_rule_fails_when_required_template_is_empty(
     assert proc.returncode == 0
     assert result["status"] == "fail"
     assert any(
-        "loop_retry_feedback.md:1 required prompt template "
-        "'loop_retry_feedback.md' is empty" in violation
+        "loop_feedback.md:1 required prompt template "
+        "'loop_feedback.md' is empty" in violation
         for violation in violations
     )
 
