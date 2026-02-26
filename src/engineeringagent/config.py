@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import re
 from pathlib import Path
 from typing import Any
 
@@ -23,6 +24,116 @@ _BACKEND_KEY = "backend"
 _CODEX_TABLE = "codex"
 _CODEX_PROFILE_KEY = "profile"
 _CODEX_MODEL_KEY = "model"
+
+_TOML_TABLE_HEADER_RE = re.compile(r"^\s*\[([^\]]+)\]\s*$")
+_TOML_AGENTS_BACKEND_RE = re.compile(rf"^\s*{re.escape(_BACKEND_KEY)}\s*=")
+
+
+def write_init_docs_root_config(
+    project_root: Path,
+    docs_dir: str,
+    *,
+    force: bool,
+) -> tuple[int, int]:
+    """Persist docs-root config during init when separate docs mode is used."""
+    if docs_dir == DEFAULT_DOCS_ROOT:
+        return (0, 0)
+
+    config_path = project_root / "engineeringagent.toml"
+    config_content = f'{_DOCS_ROOT_KEY} = "{docs_dir}"\n'
+    if config_path.exists() and not force:
+        return (0, 1)
+
+    config_path.write_text(config_content, encoding="utf-8")
+    return (1, 0)
+
+
+def upsert_agents_backend_toml(  # noqa: C901
+    *,
+    content: str,
+    backend_id: str,
+    force: bool,
+) -> tuple[str, bool]:
+    """Insert or update `[agents] backend` in TOML content."""
+    lines = _ensure_trailing_newline(content).splitlines()
+    table_ranges: dict[str, tuple[int, int]] = {}
+    table_order: list[tuple[str, int]] = []
+
+    for index, line in enumerate(lines):
+        match = _TOML_TABLE_HEADER_RE.match(line)
+        if match is None:
+            continue
+        table_order.append((match.group(1).strip(), index))
+
+    for table_index, (table_name, start) in enumerate(table_order):
+        if table_index + 1 < len(table_order):
+            end = table_order[table_index + 1][1]
+        else:
+            end = len(lines)
+        table_ranges[table_name] = (start, end)
+
+    agents_range = table_ranges.get(_AGENTS_TABLE)
+    if agents_range is None:
+        rendered = _ensure_trailing_newline(content).rstrip("\n")
+        if rendered:
+            rendered += "\n\n"
+        rendered += f'[{_AGENTS_TABLE}]\n{_BACKEND_KEY} = "{backend_id}"\n'
+        return rendered, True
+
+    agents_start, agents_end = agents_range
+    backend_line_index: int | None = None
+    for index in range(agents_start + 1, agents_end):
+        if _TOML_AGENTS_BACKEND_RE.match(lines[index]):
+            backend_line_index = index
+            break
+
+    if backend_line_index is not None:
+        current_line = lines[backend_line_index].strip()
+        desired_line = f'{_BACKEND_KEY} = "{backend_id}"'
+        if current_line == desired_line or not force:
+            return _render_toml_lines(lines), False
+        lines[backend_line_index] = desired_line
+        return _render_toml_lines(lines), True
+
+    insertion_index = agents_end
+    while (
+        insertion_index > agents_start + 1 and lines[insertion_index - 1].strip() == ""
+    ):
+        insertion_index -= 1
+    lines.insert(insertion_index, f'{_BACKEND_KEY} = "{backend_id}"')
+    return _render_toml_lines(lines), True
+
+
+def write_init_backend_config(
+    project_root: Path,
+    *,
+    backend_id: str,
+    force: bool,
+) -> tuple[int, int]:
+    """Persist `[agents] backend = "..."` in engineeringagent.toml."""
+    config_path = project_root / "engineeringagent.toml"
+    current_content = ""
+    if config_path.exists():
+        current_content = config_path.read_text(encoding="utf-8")
+
+    rendered, changed = upsert_agents_backend_toml(
+        content=current_content,
+        backend_id=backend_id,
+        force=force,
+    )
+    if not changed:
+        return (0, 1)
+
+    config_path.write_text(rendered, encoding="utf-8")
+    return (1, 0)
+
+
+def _render_toml_lines(lines: list[str]) -> str:
+    return _ensure_trailing_newline("\n".join(lines))
+
+
+def _ensure_trailing_newline(value: str) -> str:
+    return value.rstrip("\n") + "\n"
 
 
 def resolve_docs_root(project_root: Path) -> Path:

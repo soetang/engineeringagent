@@ -883,7 +883,7 @@ def test_non_verbose_terminal_output_shows_verification_summary(
     capsys: Any,
 ) -> None:
     verification_command = "uv run pytest -q tests/test_loop_output.py"
-    monkeypatch.setattr(presentation_module, "_stdout_is_tty", lambda _stdout: False)
+    monkeypatch.setattr(presentation_module, "stdout_is_tty", lambda _stdout: False)
     monkeypatch.delenv("NO_COLOR", raising=False)
     monkeypatch.setenv("TERM", "xterm-256color")
 

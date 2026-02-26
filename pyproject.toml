@@ -61,6 +61,9 @@ extend-select = [
 "src/engineeringagent/cli.py" = [
   "PLR0913",
 ]
+"src/engineeringagent/cli_typer.py" = [
+  "PLR0913",
+]
 "src/engineeringagent/loop.py" = [
   "PLR0913",
 ]

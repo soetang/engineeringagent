@@ -2,25 +2,27 @@ from __future__ import annotations
 
 import importlib.metadata
 import json
-import re
 import shutil
 import sys
-from collections.abc import Callable
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Literal
 
 import typer
 from .agents import default_backend_id, list_backends
-from .config import resolve_agents_backend_id
+from . import cli_typer
+from .config import (
+    resolve_agents_backend_id,
+    write_init_backend_config,
+    write_init_docs_root_config,
+)
 from .git import client as git_client
 from .init_scaffold import (
     apply_baseline_scaffold,
-    BaselineScaffoldOptions,
     DEFAULT_AGENT_MODEL,
     build_agents_merge_followup_spec,
     build_scaffold_agents_markdown,
 )
+from .init_service import InitDependencies, InitRequest, run_init_command
 from .loop import (
     RunConfigOptions,
     build_loop_run,
@@ -29,8 +31,11 @@ from .loop import (
 )
 from .progress import handoff as progress_handoff
 from .progress import paths as progress_paths
+from .terminal import stdout_is_tty
 from . import checks as checks_module
 from .specs import HarnessCheckPhase
+
+__all__ = ["HarnessCheckPhase"]
 
 _HandlerArgs = SimpleNamespace
 
@@ -38,7 +43,7 @@ _INIT_PACK_DEFAULT = "slim"
 _INIT_PACK_CHOICES: tuple[str, ...] = ("slim", "standard")
 
 
-def _normalize_cli_checks_groups(checks: list[str] | None) -> list[str] | None:
+def normalize_cli_checks_groups(checks: list[str] | None) -> list[str] | None:
     """Normalize and validate optional checks-group selections."""
     if not checks:
         return None
@@ -48,23 +53,12 @@ def _normalize_cli_checks_groups(checks: list[str] | None) -> list[str] | None:
         raise ValueError(f"checks config error: {exc}") from exc
 
 
-def _stdout_is_tty() -> bool:
-    """Return True when stdout looks like an interactive TTY."""
-    isatty = getattr(sys.stdout, "isatty", None)
-    if isatty is None:
-        return False
-    try:
-        return bool(isatty())
-    except (OSError, ValueError):
-        return False
-
-
 def _resolve_init_pack(pack: str | None) -> tuple[str | None, str | None]:
     """Resolve the init pack (slim|standard), prompting only on TTY when omitted."""
     if pack is not None:
         return pack, None
 
-    if not _stdout_is_tty():
+    if not stdout_is_tty(sys.stdout):
         return _INIT_PACK_DEFAULT, None
 
     prompt = "init pack: choose [slim/standard] (default slim): "
@@ -112,7 +106,7 @@ def _resolve_init_backend(  # noqa: C901
         return available_backends[0], None
 
     default_backend = default_backend_id()
-    if not _stdout_is_tty():
+    if not stdout_is_tty(sys.stdout):
         return default_backend, None
 
     prompt = (
@@ -243,129 +237,6 @@ def _next_agents_backup_path(project_root: Path) -> Path:
         suffix += 1
         candidate = project_root / f"AGENTS.user.{suffix}.md"
     return candidate
-
-
-def _write_init_docs_root_config(
-    project_root: Path,
-    docs_dir: str,
-    *,
-    force: bool,
-) -> tuple[int, int]:
-    """Persist docs-root TOML config when init uses separate docs mode.
-
-    Args:
-        project_root: Repository root where init is running.
-        docs_dir: Resolved scaffold docs directory.
-        force: Whether init is allowed to overwrite existing config files.
-
-    Returns:
-        Tuple of (created_count, skipped_count).
-    """
-    if docs_dir == "docs":
-        return (0, 0)
-
-    config_path = project_root / "engineeringagent.toml"
-    config_content = f'docs-root = "{docs_dir}"\n'
-    if config_path.exists() and not force:
-        return (0, 1)
-
-    config_path.write_text(config_content, encoding="utf-8")
-    return (1, 0)
-
-
-_TOML_TABLE_HEADER_RE = re.compile(r"^\s*\[([^\]]+)\]\s*$")
-_TOML_AGENTS_BACKEND_RE = re.compile(r"^\s*backend\s*=")
-
-
-def _ensure_trailing_newline(value: str) -> str:
-    """Return text with exactly one trailing newline."""
-    return value.rstrip("\n") + "\n"
-
-
-def _upsert_agents_backend_toml(  # noqa: C901
-    *,
-    content: str,
-    backend_id: str,
-    force: bool,
-) -> tuple[str, bool]:
-    """Insert or update `[agents] backend` in TOML content.
-
-    Returns:
-        Tuple of (new_content, changed).
-    """
-    lines = _ensure_trailing_newline(content).splitlines()
-    table_ranges: dict[str, tuple[int, int]] = {}
-    table_order: list[tuple[str, int]] = []
-
-    for index, line in enumerate(lines):
-        match = _TOML_TABLE_HEADER_RE.match(line)
-        if match is None:
-            continue
-        table_order.append((match.group(1).strip(), index))
-
-    for table_index, (table_name, start) in enumerate(table_order):
-        if table_index + 1 < len(table_order):
-            end = table_order[table_index + 1][1]
-        else:
-            end = len(lines)
-        table_ranges[table_name] = (start, end)
-
-    agents_range = table_ranges.get("agents")
-    if agents_range is None:
-        rendered = _ensure_trailing_newline(content).rstrip("\n")
-        if rendered:
-            rendered += "\n\n"
-        rendered += f'[agents]\nbackend = "{backend_id}"\n'
-        return rendered, True
-
-    agents_start, agents_end = agents_range
-    backend_line_index: int | None = None
-    for index in range(agents_start + 1, agents_end):
-        if _TOML_AGENTS_BACKEND_RE.match(lines[index]):
-            backend_line_index = index
-            break
-
-    if backend_line_index is not None:
-        current_line = lines[backend_line_index].strip()
-        desired_line = f'backend = "{backend_id}"'
-        if current_line == desired_line:
-            return _ensure_trailing_newline("\n".join(lines)), False
-        if not force:
-            return _ensure_trailing_newline("\n".join(lines)), False
-        lines[backend_line_index] = desired_line
-        return _ensure_trailing_newline("\n".join(lines)), True
-
-    insertion_index = agents_end
-    while (
-        insertion_index > agents_start + 1 and lines[insertion_index - 1].strip() == ""
-    ):
-        insertion_index -= 1
-    lines.insert(insertion_index, f'backend = "{backend_id}"')
-    return _ensure_trailing_newline("\n".join(lines)), True
-
-
-def _write_init_backend_config(
-    project_root: Path,
-    *,
-    backend_id: str,
-    force: bool,
-) -> tuple[int, int]:
-    """Persist `[agents] backend = "..."` in engineeringagent.toml."""
-    config_path = project_root / "engineeringagent.toml"
-    current_content = ""
-    if config_path.exists():
-        current_content = config_path.read_text(encoding="utf-8")
-
-    rendered, changed = _upsert_agents_backend_toml(
-        content=current_content,
-        backend_id=backend_id,
-        force=force,
-    )
-    if not changed:
-        return (0, 1)
-
-    config_path.write_text(rendered, encoding="utf-8")
-    return (1, 0)
 
 
 def cmd_validate(args: _HandlerArgs) -> int:
@@ -596,123 +467,33 @@ def cmd_init(args: _HandlerArgs) -> int:  # noqa: C901
     Returns:
         Process exit code where 0 means success.
     """
-    project_root = Path(args.project_root).resolve()
-
-    pack, error = _resolve_init_pack(getattr(args, "pack", None))
-    if error is not None or pack is None:
-        print(error)
-        return 1
-
-    selected_backend, error = _resolve_init_backend(
-        project_root=project_root,
-        backend=getattr(args, "backend", None),
+    request = InitRequest(
+        project_root=Path(args.project_root).resolve(),
         force=bool(args.force),
-    )
-    if error is not None or selected_backend is None:
-        print(error)
-        return 1
-
-    docs_dir, error = _resolve_init_docs_dir(
-        project_root=project_root,
-        docs_mode=args.docs_mode,
+        scaffold_profile=args.scaffold_profile,
         scaffold_docs_dir=args.scaffold_docs_dir,
-    )
-    if error is not None or docs_dir is None:
-        print(error)
-        return 1
-
-    resolved_agents_mode, error = _resolve_init_agents_mode(
-        project_root=project_root,
+        pack=getattr(args, "pack", None),
+        backend=getattr(args, "backend", None),
+        docs_mode=args.docs_mode,
         agents_mode=getattr(args, "agents_mode", None),
+        model=getattr(args, "model", DEFAULT_AGENT_MODEL),
+        no_precommit_install=bool(getattr(args, "no_precommit_install", False)),
     )
-    if error is not None or resolved_agents_mode is None:
-        print(error)
-        return 1
-    if resolved_agents_mode == "abort":
-        print("init aborted: kept existing AGENTS.md; no scaffold files changed")
-        return 0
-
-    agents_backup_name: str | None = None
-    if resolved_agents_mode == "preserve":
-        agents_backup_path = _next_agents_backup_path(project_root)
-        (project_root / "AGENTS.md").rename(agents_backup_path)
-        agents_backup_name = agents_backup_path.name
-
-    created, skipped = apply_baseline_scaffold(
-        project_root=project_root,
-        options=BaselineScaffoldOptions(
-            force=bool(args.force),
-            docs_dir=docs_dir,
-            profile=args.scaffold_profile,
-            pack=pack,
-            backend_id=selected_backend,
-            agent_model=getattr(args, "model", DEFAULT_AGENT_MODEL),
-        ),
+    deps = InitDependencies(
+        emit=print,
+        resolve_pack=_resolve_init_pack,
+        resolve_backend=_resolve_init_backend,
+        resolve_docs_dir=_resolve_init_docs_dir,
+        resolve_agents_mode=_resolve_init_agents_mode,
+        next_agents_backup_path=_next_agents_backup_path,
+        apply_baseline_scaffold=apply_baseline_scaffold,
+        write_init_docs_root_config=write_init_docs_root_config,
+        write_init_backend_config=write_init_backend_config,
+        build_scaffold_agents_markdown=build_scaffold_agents_markdown,
+        build_agents_merge_followup_spec=build_agents_merge_followup_spec,
+        install_precommit_hooks_best_effort=_install_precommit_hooks_best_effort,
     )
-
-    if pack == "standard":
-        print(
-            "init pack standard: wired a demo failing fitness rule into precommit (expected to fail)"
-        )
-    config_created, config_skipped = _write_init_docs_root_config(
-        project_root,
-        docs_dir,
-        force=args.force,
-    )
-    created += config_created
-    skipped += config_skipped
-
-    backend_created, backend_skipped = _write_init_backend_config(
-        project_root,
-        backend_id=selected_backend,
-        force=bool(args.force),
-    )
-    created += backend_created
-    skipped += backend_skipped
-
-    if resolved_agents_mode == "overwrite":
-        agents_path = project_root / "AGENTS.md"
-        agents_path.write_text(build_scaffold_agents_markdown(), encoding="utf-8")
-
-    merge_spec_output = ""
-    if resolved_agents_mode == "preserve" and agents_backup_name is not None:
-        merge_spec_relative = (
-            Path(docs_dir)
-            / "spec"
-            / "features"
-            / "FEAT-900-merge-preserved-agents-guidance.yaml"
-        )
-        merge_spec_path = project_root / merge_spec_relative
-        if not merge_spec_path.exists() or args.force:
-            merge_spec_path.parent.mkdir(parents=True, exist_ok=True)
-            merge_spec_path.write_text(
-                build_agents_merge_followup_spec(agents_backup_name),
-                encoding="utf-8",
-            )
-            created += 1
-            merge_spec_output = f" merge_spec={merge_spec_relative}"
-        else:
-            skipped += 1
-            merge_spec_output = f" merge_spec_skipped={merge_spec_relative}"
-
-    if not getattr(args, "no_precommit_install", False):
-        _install_precommit_hooks_best_effort(
-            project_root=project_root,
-            scaffold_profile=args.scaffold_profile,
-        )
-
-    agents_mode_output = f" agents_mode={resolved_agents_mode}"
-    if agents_backup_name is not None:
-        agents_mode_output += f" agents_backup={agents_backup_name}"
-
-    print(
-        f"init scaffold complete: docs_dir={docs_dir} "
-        f"created={created} skipped={skipped}"
-        f" profile={args.scaffold_profile}"
-        f" pack={pack}"
-        f"{agents_mode_output}{merge_spec_output}"
-    )
-    return 0
+    return run_init_command(request, deps)
 
 
 def cmd_progress_handoff_append(args: _HandlerArgs) -> int:
@@ -853,7 +634,7 @@ def _install_precommit_hooks_best_effort(
         )
 
 
-def _version_callback(value: bool) -> None:
+def version_callback(value: bool) -> None:
     """Print package version and exit early when requested."""
     if not value:
         return
@@ -861,416 +642,9 @@ def _version_callback(value: bool) -> None:
     raise typer.Exit(code=0)
 
 
-def _project_root_from_typer_context(ctx: typer.Context) -> str:
-    """Extract project-root value stored on the Typer root context."""
-    root_ctx = ctx.find_root()
-    if isinstance(root_ctx.obj, dict):
-        return str(root_ctx.obj.get("project_root", "."))
-    return "."
-
-
-def _exit_with_handler_code(
-    handler: Callable[[_HandlerArgs], int],
-    *,
-    ctx: typer.Context,
-    **kwargs: object,
-) -> None:
-    """Run a command handler and exit with its return code."""
-    args = _build_handler_args(ctx=ctx, **kwargs)
-    raise typer.Exit(code=handler(args))
-
-
-def _build_handler_args(ctx: typer.Context, **kwargs: object) -> _HandlerArgs:
-    """Build command handler args with root project context."""
-    return _HandlerArgs(
-        project_root=_project_root_from_typer_context(ctx),
-        **kwargs,
-    )
-
-
-def _build_typer_checks_app() -> typer.Typer:
-    """Build the Typer checks app with nested command routing."""
-    check_groups_help = "|".join(checks_module.list_check_groups())
-    checks_app = typer.Typer(
-        help="run repo-owned checks from harness/checks.yaml",
-        add_completion=False,
-        no_args_is_help=False,
-    )
-
-    @checks_app.command("run", help="run checks declared in harness/checks.yaml")
-    def _checks_run(
-        ctx: typer.Context,
-        checks: list[str] | None = typer.Option(
-            None,
-            "--checks",
-            help=f"repeatable checks group selection: {check_groups_help}",
-        ),
-        check_id: str | None = typer.Option(
-            None,
-            "--check-id",
-            help="optional check id to run within selected groups",
-        ),
-        feature_path: str | None = typer.Option(
-            None,
-            "--feature-path",
-            help="feature spec path required when running reviewers checks",
-        ),
-        phase: HarnessCheckPhase = typer.Option(
-            HarnessCheckPhase.ITERATION_END,
-            "--phase",
-            help="check execution phase to run (iteration_end|feature_done|manual)",
-        ),
-        base: str | None = typer.Option(
-            None,
-            "--base",
-            help="optional base revision for on_change diff",
-        ),
-        head: str | None = typer.Option(
-            None,
-            "--head",
-            help="optional head revision for on_change diff",
-        ),
-        verbose_output: bool = typer.Option(
-            False,
-            "--verbose-output",
-            help="stream full command output in terminal",
-        ),
-        dry_run: bool = typer.Option(
-            False,
-            "--dry-run",
-            help="plan checks only (no command or reviewer execution)",
-        ),
-    ) -> None:
-        try:
-            normalized_checks = _normalize_cli_checks_groups(checks)
-        except ValueError as exc:
-            print(str(exc))
-            raise typer.Exit(code=1) from exc
-
-        resolved_feature_path: str | None
-        if feature_path is None:
-            resolved_feature_path = None
-        else:
-            resolved_feature_path = str(feature_path).strip() or None
-
-        if normalized_checks is not None and "reviewers" in normalized_checks:
-            if resolved_feature_path is None:
-                print(
-                    "checks config error: --feature-path is required when running reviewers. "
-                    "Remediation: re-run with --feature-path <path-to-feature-yaml>."
-                )
-                raise typer.Exit(code=1)
-
-        _exit_with_handler_code(
-            cmd_checks_run,
-            ctx=ctx,
-            checks=normalized_checks,
-            check_id=check_id,
-            feature_path=resolved_feature_path,
-            phase=phase,
-            base=base,
-            head=head,
-            verbose_output=verbose_output,
-            dry_run=dry_run,
-        )
-
-    @checks_app.command("catalog", help="generate fitness rule catalog")
-    def _checks_catalog(
-        ctx: typer.Context,
-        manifest_path: str | None = typer.Option(
-            None,
-            "--manifest-path",
-            help="optional path to custom fitness rules manifest",
-        ),
-        output_format: Literal["markdown", "json"] = typer.Option(
-            "markdown",
-            "--format",
-        ),
-        output: str | None = typer.Option(
-            None,
-            "--output",
-            help="write catalog output to a file",
-        ),
-    ) -> None:
-        _exit_with_handler_code(
-            cmd_checks_catalog,
-            ctx=ctx,
-            manifest_path=manifest_path,
-            output_format=output_format,
-            output=output,
-        )
-
-    return checks_app
-
-
-def _build_typer_fitness_app() -> typer.Typer:
-    """Build a compatibility fitness app."""
-
-    fitness_app = typer.Typer(
-        help="run fitness checks",
-        add_completion=False,
-        no_args_is_help=False,
-    )
-
-    @fitness_app.command("run", help="run configured fitness checks")
-    def _fitness_run(
-        ctx: typer.Context,
-        output_format: Literal["json", "text"] = typer.Option(
-            "text",
-            "--format",
-        ),
-        phase: HarnessCheckPhase = typer.Option(
-            HarnessCheckPhase.ITERATION_END,
-            "--phase",
-            help="check execution phase to run (iteration_end|feature_done|manual)",
-        ),
-        check_id: str | None = typer.Option(
-            None,
-            "--check-id",
-            help="optional fitness check id to run",
-        ),
-        base: str | None = typer.Option(
-            None,
-            "--base",
-            help="optional base revision for on_change diff",
-        ),
-        head: str | None = typer.Option(
-            None,
-            "--head",
-            help="optional head revision for on_change diff",
-        ),
-        dry_run: bool = typer.Option(
-            False,
-            "--dry-run",
-            help="plan checks only (no command execution)",
-        ),
-    ) -> None:
-        _exit_with_handler_code(
-            cmd_fitness_run,
-            ctx=ctx,
-            output_format=output_format,
-            phase=phase,
-            check_id=check_id,
-            base=base,
-            head=head,
-            dry_run=dry_run,
-        )
-
-    return fitness_app
-
-
-def _build_typer_progress_app() -> typer.Typer:
-    """Build manual progress helper commands."""
-
-    progress_app = typer.Typer(
-        help="manual progress artifact helpers",
-        add_completion=False,
-        no_args_is_help=False,
-    )
-    handoff_reference = progress_paths.handoff_markdown_template_reference(Path("."))
-
-    @progress_app.command(
-        "handoff-append",
-        help="append one feature handoff markdown entry from JSON stdin",
-    )
-    def _progress_handoff_append(
-        ctx: typer.Context,
-        feature_id: str = typer.Option(
-            ...,
-            "--feature-id",
-            help=f"feature id used for {handoff_reference}",
-        ),
-        attempt: int = typer.Option(
-            ..., "--attempt", min=1, help="iteration attempt number for heading"
-        ),
-        timestamp: str | None = typer.Option(
-            None,
-            "--timestamp",
-            help="optional ISO-8601 timestamp override (defaults to current UTC)",
-        ),
-    ) -> None:
-        _exit_with_handler_code(
-            cmd_progress_handoff_append,
-            ctx=ctx,
-            feature_id=feature_id,
-            attempt=attempt,
-            timestamp=timestamp,
-        )
-
-    @progress_app.command(
-        "feature-prune",
-        help="delete one feature-scoped progress directory",
-    )
-    def _progress_feature_prune(
-        ctx: typer.Context,
-        feature_id: str = typer.Option(
-            ..., "--feature-id", help="feature id under progress/features"
-        ),
-    ) -> None:
-        _exit_with_handler_code(
-            cmd_progress_feature_prune,
-            ctx=ctx,
-            feature_id=feature_id,
-        )
-
-    return progress_app
-
-
 def build_typer_app() -> typer.Typer:
     """Build the Typer root app with top-level command wiring."""
-    app = typer.Typer(
-        name="engineeringagent",
-        help="A framework for running coding agents as long running tasks - with deterministic feedback loops and agent reviewers",
-        add_completion=False,
-        no_args_is_help=False,
-    )
-
-    @app.callback(invoke_without_command=False)
-    def _root_callback(
-        ctx: typer.Context,
-        project_root: str = typer.Option(".", "--project-root"),
-        version: bool = typer.Option(
-            False,
-            "--version",
-            callback=_version_callback,
-            is_eager=True,
-        ),
-    ) -> None:
-        _ = version
-        ctx.obj = {"project_root": project_root}
-
-    @app.command("validate", help="validate feature specs")
-    def _validate_command(
-        ctx: typer.Context,
-        schema_only: bool = typer.Option(False, "--schema-only"),
-    ) -> None:
-        _exit_with_handler_code(
-            cmd_validate,
-            ctx=ctx,
-            schema_only=schema_only,
-        )
-
-    @app.command(
-        "run",
-        help="run feature loops from spec file paths",
-    )
-    def _run_command(
-        ctx: typer.Context,
-        feature_paths: list[str] = typer.Argument(None, help="feature spec file paths"),
-        run_all: bool = typer.Option(
-            False,
-            "--all",
-            help="auto-discover active feature specs under docs/spec/features",
-        ),
-        dry_run: bool = typer.Option(False, "--dry-run"),
-        max_iterations: int = typer.Option(
-            50,
-            "--max-iterations",
-            help="max non-dry iterations across all selected features",
-        ),
-        allow_dirty: bool = typer.Option(
-            False,
-            "--allow-dirty",
-            help="allow run execution with uncommitted code changes",
-        ),
-        verbose_output: bool = typer.Option(
-            False,
-            "--verbose-output",
-            help="stream full implement and gate output in terminal",
-        ),
-    ) -> None:
-        _exit_with_handler_code(
-            cmd_run,
-            ctx=ctx,
-            feature_paths=list(feature_paths or []),
-            run_all=run_all,
-            dry_run=dry_run,
-            max_iterations=max_iterations,
-            allow_dirty=allow_dirty,
-            verbose_output=verbose_output,
-        )
-
-    app.add_typer(
-        _build_typer_checks_app(),
-        name="checks",
-        help="run repo-owned checks from harness/checks.yaml",
-    )
-    app.add_typer(
-        _build_typer_fitness_app(),
-        name="fitness",
-        help="run fitness checks",
-    )
-    app.add_typer(
-        _build_typer_progress_app(),
-        name="progress",
-        help="manual progress artifact helpers",
-    )
-
-    @app.command(
-        "init",
-        help="scaffold baseline harness files (default core profile)",
-    )
-    def _init_command(
-        ctx: typer.Context,
-        pack: Literal["slim", "standard"] | None = typer.Argument(
-            None,
-            help="optional init pack (slim|standard); omit to prompt on TTY",
-        ),
-        backend: str | None = typer.Option(
-            None,
-            "--backend",
-            help="agent backend id to persist for repo automation",
-        ),
-        model: str = typer.Option(
-            DEFAULT_AGENT_MODEL,
-            "--model",
-            help="agent model id for backend-contributed scaffold assets",
-            show_default=True,
-        ),
-        force: bool = typer.Option(
-            False,
-            "--force",
-            help="overwrite scaffold-managed files that already exist",
-        ),
-        scaffold_profile: Literal["core", "python_uv"] = typer.Option(
-            "core",
-            "--scaffold-profile",
-            help=(
-                "scaffold profile to apply "
-                "(core=language-agnostic default, python_uv=Python/uv bootstrap)"
-            ),
-        ),
-        docs_mode: Literal["reuse", "separate"] | None = typer.Option(
-            None,
-            "--docs-mode",
-            help="docs conflict mode when docs/ already exists",
-        ),
-        scaffold_docs_dir: str = typer.Option(
-            "docs.engineeringagent",
-            "--scaffold-docs-dir",
-            help="docs directory to scaffold when using docs-mode=separate",
-        ),
-        no_precommit_install: bool = typer.Option(
-            False,
-            "--no-precommit-install",
-            help="skip best-effort pre-commit hook installation",
-        ),
-    ) -> None:
-        _exit_with_handler_code(
-            cmd_init,
-            ctx=ctx,
-            pack=pack,
-            backend=backend,
-            model=model,
-            force=force,
-            scaffold_profile=scaffold_profile,
-            docs_mode=docs_mode,
-            scaffold_docs_dir=scaffold_docs_dir,
-            agents_mode=None,
-            no_precommit_install=no_precommit_install,
-        )
-
-    return app
+    return cli_typer.build_typer_app(sys.modules[__name__])
 
 
 def main(argv: list[str] | None = None) -> None:

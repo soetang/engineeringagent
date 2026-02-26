@@ -7,21 +7,13 @@ from typing import TextIO
 
 from pydantic import BaseModel, ConfigDict
 
+from ..terminal import stdout_is_tty
+
 ANSI_RESET = "\x1b[0m"
 ANSI_BOLD = "\x1b[1m"
 ANSI_GREEN = "\x1b[32m"
 ANSI_RED = "\x1b[31m"
 ANSI_YELLOW = "\x1b[33m"
-
-
-def _stdout_is_tty(stdout: TextIO) -> bool:
-    isatty = getattr(stdout, "isatty", None)
-    if not callable(isatty):
-        return False
-    try:
-        return bool(isatty())
-    except (OSError, ValueError, RuntimeError):
-        return False
 
 
 def tty_supports_ansi(
@@ -30,9 +22,7 @@ def tty_supports_ansi(
 ) -> bool:
     """Return whether run-loop output should use ANSI styling."""
     active_stdout = stdout or sys.stdout
-    if not _stdout_is_tty(active_stdout):
-        return False
-    return True
+    return stdout_is_tty(active_stdout)
 
 
 class RunOutputPresenter(BaseModel):

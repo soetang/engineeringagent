@@ -1332,7 +1332,7 @@ def test_run_loop_writes_per_feature_progress_log(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(presentation_module, "_stdout_is_tty", lambda _stdout: True)
+    monkeypatch.setattr(presentation_module, "stdout_is_tty", lambda _stdout: True)
     monkeypatch.delenv("NO_COLOR", raising=False)
     monkeypatch.setenv("TERM", "xterm-256color")
 
@@ -1545,7 +1545,7 @@ def test_run_loop_plain_output_when_not_tty(
     monkeypatch: pytest.MonkeyPatch,
     capsys: Any,
 ) -> None:
-    monkeypatch.setattr(presentation_module, "_stdout_is_tty", lambda _stdout: False)
+    monkeypatch.setattr(presentation_module, "stdout_is_tty", lambda _stdout: False)
     monkeypatch.delenv("NO_COLOR", raising=False)
     monkeypatch.setenv("TERM", "xterm-256color")
 
@@ -1567,7 +1567,7 @@ def test_run_loop_styled_output_when_tty(
     monkeypatch: pytest.MonkeyPatch,
     capsys: Any,
 ) -> None:
-    monkeypatch.setattr(presentation_module, "_stdout_is_tty", lambda _stdout: True)
+    monkeypatch.setattr(presentation_module, "stdout_is_tty", lambda _stdout: True)
     monkeypatch.delenv("NO_COLOR", raising=False)
     monkeypatch.setenv("TERM", "xterm-256color")
 
@@ -1589,7 +1589,7 @@ def test_run_loop_no_color_env_does_not_disable_styling(
     monkeypatch: pytest.MonkeyPatch,
     capsys: Any,
 ) -> None:
-    monkeypatch.setattr(presentation_module, "_stdout_is_tty", lambda _stdout: True)
+    monkeypatch.setattr(presentation_module, "stdout_is_tty", lambda _stdout: True)
     monkeypatch.setenv("NO_COLOR", "1")
     monkeypatch.setenv("TERM", "xterm-256color")
 
@@ -1612,7 +1612,7 @@ def test_run_loop_iteration_output_uses_emoji_contract(
     monkeypatch: pytest.MonkeyPatch,
     capsys: Any,
 ) -> None:
-    monkeypatch.setattr(presentation_module, "_stdout_is_tty", lambda _stdout: False)
+    monkeypatch.setattr(presentation_module, "stdout_is_tty", lambda _stdout: False)
     monkeypatch.delenv("NO_COLOR", raising=False)
     monkeypatch.setenv("TERM", "xterm-256color")
 
@@ -1665,7 +1665,7 @@ def test_run_loop_passed_iteration_not_completed_records_continue_next_action(
     monkeypatch: pytest.MonkeyPatch,
     capsys: Any,
 ) -> None:
-    monkeypatch.setattr(presentation_module, "_stdout_is_tty", lambda _stdout: False)
+    monkeypatch.setattr(presentation_module, "stdout_is_tty", lambda _stdout: False)
     monkeypatch.delenv("NO_COLOR", raising=False)
     monkeypatch.setenv("TERM", "xterm-256color")
 
@@ -1699,7 +1699,7 @@ def test_run_loop_telemetry_includes_log_path(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(presentation_module, "_stdout_is_tty", lambda _stdout: True)
+    monkeypatch.setattr(presentation_module, "stdout_is_tty", lambda _stdout: True)
     monkeypatch.delenv("NO_COLOR", raising=False)
     monkeypatch.setenv("TERM", "xterm-256color")
 

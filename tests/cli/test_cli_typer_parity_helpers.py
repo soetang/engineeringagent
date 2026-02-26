@@ -11,6 +11,7 @@ import pytest
 import typer
 
 from engineeringagent import cli as cli_module
+from engineeringagent import cli_typer as cli_typer_module
 
 
 def test_path_resolution_helpers_cover_manifest_and_absolute_paths(
@@ -83,7 +84,7 @@ def test_write_init_docs_root_config_skips_existing_file_without_force(
     config_path = tmp_path / "engineeringagent.toml"
     config_path.write_text('docs-root = "docs.already"\n', encoding="utf-8")
 
-    created, skipped = cli_module._write_init_docs_root_config(
+    created, skipped = cli_module.write_init_docs_root_config(
         tmp_path,
         "docs.engineeringagent",
         force=False,
@@ -152,7 +153,7 @@ def test_cmd_init_preserve_mode_reports_skipped_merge_spec(
     monkeypatch.setattr(cli_module, "apply_baseline_scaffold", lambda **_kwargs: (0, 0))
     monkeypatch.setattr(
         cli_module,
-        "_write_init_docs_root_config",
+        "write_init_docs_root_config",
         lambda *_args, **_kwargs: (0, 0),
     )
 
@@ -180,7 +181,7 @@ def test_version_callback_exits_with_zero(
 ) -> None:
     monkeypatch.setattr(cli_module.importlib.metadata, "version", lambda _name: "1.2.3")
     with pytest.raises(typer.Exit) as exc_info:
-        cli_module._version_callback(True)
+        cli_module.version_callback(True)
     assert exc_info.value.exit_code == 0
 
 
@@ -190,7 +191,10 @@ def test_project_root_from_context_defaults_to_current_directory() -> None:
             """Return a minimal Typer root context stub."""
             return SimpleNamespace(obj=None)
 
-    assert cli_module._project_root_from_typer_context(cast(Any, _FakeContext())) == "."
+    assert (
+        cli_typer_module.project_root_from_typer_context(cast(Any, _FakeContext()))
+        == "."
+    )
 
 
 def test_cli_module_no_longer_exposes_argparse_bridge() -> None:

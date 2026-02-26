@@ -90,7 +90,7 @@ def test_init_defaults_to_slim_pack_without_prompting_in_non_tty(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Verify init defaults to slim without prompting when not a TTY."""
-    monkeypatch.setattr(cli_module, "_stdout_is_tty", lambda: False)
+    monkeypatch.setattr(cli_module, "stdout_is_tty", lambda _stream: False)
     monkeypatch.setattr(
         "builtins.input",
         lambda _prompt: pytest.fail("init prompted unexpectedly"),
@@ -107,7 +107,7 @@ def test_init_prompts_for_pack_when_omitted_and_tty(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Verify init prompts for pack selection when omitted in a TTY."""
-    monkeypatch.setattr(cli_module, "_stdout_is_tty", lambda: True)
+    monkeypatch.setattr(cli_module, "stdout_is_tty", lambda _stream: True)
     monkeypatch.setattr(cli_module, "list_backends", lambda: ("opencode",))
     monkeypatch.setattr("builtins.input", lambda _prompt: "standard")
 
@@ -122,7 +122,7 @@ def test_init_pack_arg_never_prompts_even_on_tty(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Verify providing the pack positional disables the interactive prompt."""
-    monkeypatch.setattr(cli_module, "_stdout_is_tty", lambda: True)
+    monkeypatch.setattr(cli_module, "stdout_is_tty", lambda _stream: True)
     monkeypatch.setattr(cli_module, "list_backends", lambda: ("opencode",))
     monkeypatch.setattr(
         "builtins.input",
@@ -140,7 +140,7 @@ def test_init_backend_option_skips_prompt_even_on_tty(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Verify explicit --backend disables interactive backend prompt."""
-    monkeypatch.setattr(cli_module, "_stdout_is_tty", lambda: True)
+    monkeypatch.setattr(cli_module, "stdout_is_tty", lambda _stream: True)
     monkeypatch.setattr(
         cli_module,
         "list_backends",
@@ -172,7 +172,7 @@ def test_init_prompts_for_backend_when_omitted_and_tty(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Verify init prompts for backend selection when omitted in a TTY."""
-    monkeypatch.setattr(cli_module, "_stdout_is_tty", lambda: True)
+    monkeypatch.setattr(cli_module, "stdout_is_tty", lambda _stream: True)
     monkeypatch.setattr(
         cli_module,
         "list_backends",
@@ -203,7 +203,7 @@ def test_init_backend_prompt_invalid_input_returns_deterministic_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Verify invalid backend prompt input exits with deterministic error text."""
-    monkeypatch.setattr(cli_module, "_stdout_is_tty", lambda: True)
+    monkeypatch.setattr(cli_module, "stdout_is_tty", lambda _stream: True)
     monkeypatch.setattr(
         cli_module,
         "list_backends",
@@ -228,7 +228,7 @@ def test_init_backend_prompt_uses_default_on_eof(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Verify backend prompt falls back to default when stdin is closed (EOF)."""
-    monkeypatch.setattr(cli_module, "_stdout_is_tty", lambda: True)
+    monkeypatch.setattr(cli_module, "stdout_is_tty", lambda _stream: True)
     monkeypatch.setattr(
         cli_module,
         "list_backends",
@@ -255,7 +255,7 @@ def test_init_backend_uses_existing_config_without_prompt_unless_force(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Verify existing backend config skips prompt unless --force is used."""
-    monkeypatch.setattr(cli_module, "_stdout_is_tty", lambda: True)
+    monkeypatch.setattr(cli_module, "stdout_is_tty", lambda _stream: True)
     monkeypatch.setattr(
         cli_module,
         "list_backends",
@@ -327,7 +327,7 @@ def test_init_backend_selects_single_backend_without_prompt(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Verify init auto-selects when only one backend is registered."""
-    monkeypatch.setattr(cli_module, "_stdout_is_tty", lambda: True)
+    monkeypatch.setattr(cli_module, "stdout_is_tty", lambda _stream: True)
     monkeypatch.setattr(cli_module, "list_backends", lambda: ("opencode",))
     monkeypatch.setattr(cli_module, "default_backend_id", lambda: "opencode")
     monkeypatch.setattr(
@@ -428,7 +428,7 @@ def test_init_writes_backend_to_engineeringagent_toml_when_missing(
     """Verify init persists selected backend when config file is missing."""
     monkeypatch.setattr(cli_module, "list_backends", lambda: ("opencode", "mock-b"))
     monkeypatch.setattr(cli_module, "default_backend_id", lambda: "opencode")
-    monkeypatch.setattr(cli_module, "_stdout_is_tty", lambda: False)
+    monkeypatch.setattr(cli_module, "stdout_is_tty", lambda _stream: False)
 
     result = _invoke_cli(
         ["--project-root", str(tmp_path), "init", "slim", "--no-precommit-install"]
@@ -447,7 +447,7 @@ def test_init_explicit_non_default_backend_persists_to_engineeringagent_toml(
     """Verify explicit non-default --backend persists on a fresh init run."""
     monkeypatch.setattr(cli_module, "list_backends", lambda: ("opencode", "mock-b"))
     monkeypatch.setattr(cli_module, "default_backend_id", lambda: "mock-b")
-    monkeypatch.setattr(cli_module, "_stdout_is_tty", lambda: False)
+    monkeypatch.setattr(cli_module, "stdout_is_tty", lambda _stream: False)
 
     result = _invoke_cli(
         [
@@ -475,7 +475,7 @@ def test_init_with_codex_backend_scaffolds_codex_profile_config(
     """Verify codex backend selection scaffolds .codex/config.toml."""
     monkeypatch.setattr(cli_module, "list_backends", lambda: ("codex", "opencode"))
     monkeypatch.setattr(cli_module, "default_backend_id", lambda: "opencode")
-    monkeypatch.setattr(cli_module, "_stdout_is_tty", lambda: False)
+    monkeypatch.setattr(cli_module, "stdout_is_tty", lambda _stream: False)
 
     result = _invoke_cli(
         [
@@ -510,7 +510,7 @@ def test_init_appends_backend_to_existing_engineeringagent_toml(
     """Verify init appends [agents].backend when config exists without it."""
     monkeypatch.setattr(cli_module, "list_backends", lambda: ("opencode", "mock-b"))
     monkeypatch.setattr(cli_module, "default_backend_id", lambda: "opencode")
-    monkeypatch.setattr(cli_module, "_stdout_is_tty", lambda: False)
+    monkeypatch.setattr(cli_module, "stdout_is_tty", lambda _stream: False)
 
     config_path = tmp_path / "engineeringagent.toml"
     config_path.write_text('docs-root = "docs.engineeringagent"\n', encoding="utf-8")
@@ -532,7 +532,7 @@ def test_init_preserves_existing_backend_without_force(
     """Verify init does not overwrite existing backend unless --force is used."""
     monkeypatch.setattr(cli_module, "list_backends", lambda: ("opencode", "mock-b"))
     monkeypatch.setattr(cli_module, "default_backend_id", lambda: "opencode")
-    monkeypatch.setattr(cli_module, "_stdout_is_tty", lambda: False)
+    monkeypatch.setattr(cli_module, "stdout_is_tty", lambda _stream: False)
 
     config_path = tmp_path / "engineeringagent.toml"
     config_path.write_text('[agents]\nbackend = "mock-b"\n', encoding="utf-8")
