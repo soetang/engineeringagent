@@ -1,0 +1,116 @@
+id: FEAT-160
+title: Modularize repo policy validators and add boundary guardrails
+type: feature
+expected_commit_subject: 'feat: modularize repo policy validators and add boundary guardrails'
+status: backlog
+priority: high
+objective: >
+  Break up `src/engineeringagent/checks/validate/repo_validators.py` into focused
+  validator modules while preserving deterministic repo validation behavior and
+  strengthening architectural guardrails with characterization tests and a new
+  boundary fitness rule.
+context: |
+  `repo_validators.py` currently mixes multiple responsibilities (feature-id invariants,
+  contract projection, docs-map checks, purge invariant git scanning, and message/code
+  projection). This feature extracts those concerns behind a thin orchestrator so each
+  policy can evolve independently with lower coupling and better testability.
+constraints:
+- 'In scope: add characterization tests for `run_repo_validation_messages` ordering/contract and `_repo_message_to_issue` issue-code projection.'
+- 'In scope: extract concern modules for feature-id invariants, docs-map validation, and purge invariant scanning.'
+- 'In scope: keep deterministic message ordering and deterministic semantic issue-code mapping.'
+- 'In scope: allow minor wording improvements to validation messages when deterministic and covered by tests.'
+- 'In scope: leave `RepoPolicyValidator.validate(...)` and `run_repo_validation_messages(...)` as the stable entrypoints.'
+- 'Out of scope: changing validate command UX shape or registry ownership model.'
+- 'Out of scope: rewriting unrelated strategy validators.'
+implementation_notes: |
+  Contract change declaration
+
+  Surface:
+  - Repo validation internals under `engineeringagent.checks.validate`.
+  - Message-to-issue projection behavior used by registry validate flow.
+
+  Old behavior:
+  - One large module owns multiple policy domains and side-effect adapters.
+  - Message projection and policy execution are tightly coupled in one file.
+
+  New behavior:
+  - `repo_validators.py` becomes a thin composer/orchestrator.
+  - Policy domains move into dedicated modules with focused contracts.
+  - Characterization tests lock deterministic ordering and issue-code semantics.
+
+  Compatibility policy:
+  - No API break for validator entrypoints.
+  - Minor wording changes are allowed if deterministic and test-covered.
+  - Semantic issue-code behavior remains stable for known classes.
+
+  Migration plan:
+  1) Add characterization tests for message ordering and code mapping.
+  2) Extract feature-id invariants into dedicated module.
+  3) Extract docs-map checks into dedicated module.
+  4) Extract purge invariant scan into dedicated module.
+  5) Reduce `repo_validators.py` to composition/orchestration only.
+  6) Add/enable boundary fitness guardrail for thin-orchestrator enforcement.
+
+  Fitness-function impact assessment:
+
+  - fitness-function changes required.
+  - Add rule: `architecture.repo-validators-boundary`.
+  - Add script: `harness/fitness-functions/check_repo_validators_boundary.py`.
+  - Add tests: `tests/fitness/test_fitness_rules_repo_validators_boundary.py`.
+  - Update docs catalog via checks catalog generation.
+acceptance:
+- '`RepoPolicyValidator.validate(...)` still projects repo issues with deterministic ordering.'
+- '`run_repo_validation_messages(...)` returns deterministic tuple output and preserves message sequence semantics.'
+- '`_repo_message_to_issue(...)` mapping remains deterministic for prefix/contains/field-path code derivation cases.'
+- '`src/engineeringagent/checks/validate/repo_validators.py` acts as thin orchestrator/composer; extracted concern modules own policy logic.'
+- 'New fitness rule `architecture.repo-validators-boundary` is registered and fails on regressions to monolithic ownership.'
+- 'Verification command passes: `uv run pytest -q tests/checks/test_validate_entrypoint_registry.py`.'
+- 'Verification command passes: `uv run pytest -q tests/fitness/test_fitness_rules_repo_validators_boundary.py`.'
+- 'Verification command passes: `uv run engineeringagent validate`.'
+subtasks:
+- id: ST-001
+  title: Add characterization tests for repo message projection
+  status: backlog
+  context: >
+    Add table-driven tests that lock message ordering and deterministic issue-code mapping
+    behavior for repo validation message projection.
+  verification:
+  - uv run pytest -q tests/checks/test_validate_entrypoint_registry.py
+
+- id: ST-002
+  title: Extract feature-id invariants from repo_validators
+  status: backlog
+  context: >
+    Move feature-id duplicate/alignment logic to a focused module and preserve existing
+    deterministic behavior through characterization tests.
+  verification:
+  - uv run pytest -q tests/checks/test_validate_entrypoint_registry.py
+
+- id: ST-003
+  title: Extract docs-map and purge-invariant policy modules
+  status: backlog
+  context: >
+    Move AGENTS docs-map validation and purge invariant scanning into dedicated modules
+    and keep orchestrator behavior deterministic.
+  verification:
+  - uv run pytest -q tests/checks/test_validate_entrypoint_registry.py
+
+- id: ST-004
+  title: Add repo validators boundary fitness rule
+  status: backlog
+  context: >
+    Add a focused fitness rule that prevents monolithic regression by enforcing
+    orchestrator-boundary constraints for repo validators.
+  verification:
+  - uv run pytest -q tests/fitness/test_fitness_rules_repo_validators_boundary.py
+
+- id: ST-005
+  title: Final validation and docs sync
+  status: backlog
+  context: >
+    Run repository validation and ensure fitness catalog documentation is in sync after
+    rule additions.
+  verification:
+  - uv run engineeringagent validate
+  - uv run engineeringagent checks catalog --format markdown --output docs/fitness-functions/rules.md
+updated_at: '2026-02-27T00:00:00Z'

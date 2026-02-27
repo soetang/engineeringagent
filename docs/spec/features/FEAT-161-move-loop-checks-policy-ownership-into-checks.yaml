@@ -1,0 +1,115 @@
+id: FEAT-161
+title: Move loop checks timing and selection policy ownership into checks
+type: feature
+expected_commit_subject: 'feat: move loop checks timing and selection policy into checks'
+status: backlog
+priority: high
+objective: >
+  Remove loop-owned checks timing/group policy from `src/engineeringagent/loop_runtime/phases.py`
+  so loop runtime emits phase events and consumes stable checks results while checks owns
+  timing/selection policy decisions.
+context: |
+  The target architecture requires loop to avoid checks-type/group semantics and consume
+  one stable checks result contract. Today loop runtime still defines triggered phases
+  and gate-group mapping constants, and passes explicit groups to checks execution.
+  This feature shifts timing/selection ownership into checks and adds fitness guardrails
+  to prevent regressions.
+constraints:
+- 'In scope: remove loop-owned check-group mapping constants and explicit group-selection lists from loop runtime.'
+- 'In scope: keep loop consumption focused on stable checks result fields (`ok`, `output`, `prompt_feedback`, failure id).'
+- 'In scope: keep deterministic gate/reviewer outcomes and rollback behavior.'
+- 'In scope: update tests to validate checks-owned selection semantics from loop call sites.'
+- 'In scope: add a focused fitness rule to enforce loop/check policy ownership boundaries.'
+- 'Out of scope: changing checks result contract field names or removing phase concept entirely.'
+- 'Out of scope: unrelated loop iteration pipeline redesign.'
+implementation_notes: |
+  Contract change declaration
+
+  Surface:
+  - Loop runtime to checks orchestration boundary (`loop_runtime/phases.py` -> `run_checks(...)`).
+  - Checks selection/timing policy ownership.
+
+  Old behavior:
+  - Loop declares `_LOOP_TRIGGERED_CHECK_PHASES` and `_GATE_CHECK_GROUPS_BY_PHASE`.
+  - Loop passes explicit checks groups by phase when invoking checks.
+
+  New behavior:
+  - Loop emits phase context and delegates selection/timing policy to checks.
+  - Loop no longer encodes checks group policy constants/literals.
+  - Boundary stays contract-driven via stable checks result fields.
+
+  Compatibility policy:
+  - Internal architecture break is allowed.
+  - External CLI behavior remains deterministic.
+
+  Migration plan:
+  1) Add/adjust loop phase tests to lock delegated checks behavior.
+  2) Remove loop-owned checks group/timing policy constants and explicit checks lists.
+  3) Keep gate/reviewer failure mapping and prompt feedback forwarding deterministic.
+  4) Add fitness guardrail for loop/check policy ownership.
+  5) Update rule catalog/docs and run full validation.
+
+  Fitness-function impact assessment:
+
+  - fitness-function changes required.
+  - Add rule: `architecture.loop-checks-policy-ownership`.
+  - Add script: `harness/fitness-functions/check_loop_checks_policy_ownership.py`.
+  - Add tests: `tests/fitness/test_fitness_rules_loop_checks_policy_ownership.py`.
+  - Keep and complement existing `architecture.loop-checks-result-boundary`.
+acceptance:
+- '`src/engineeringagent/loop_runtime/phases.py` no longer defines loop-owned checks group/timing policy maps for gate/reviewer selection.'
+- 'Loop checks invocation paths delegate selection ownership to checks and avoid explicit checks group lists.'
+- 'Gate and reviewer failure feedback forwarding remains deterministic and checks-owned (`prompt_feedback` passthrough semantics preserved).'
+- 'New fitness rule `architecture.loop-checks-policy-ownership` is registered and fails when loop reintroduces checks policy ownership.'
+- 'Existing boundary rule coverage (`architecture.loop-checks-result-boundary`) remains passing.'
+- 'Verification command passes: `uv run pytest -q tests/loop/test_loop_phases_coverage.py`.'
+- 'Verification command passes: `uv run pytest -q tests/fitness/test_fitness_rules_loop_checks_policy_ownership.py tests/fitness/test_fitness_rules_loop_checks_result_boundary.py`.'
+- 'Verification command passes: `uv run engineeringagent checks run --phase iteration_end`.'
+subtasks:
+- id: ST-001
+  title: Lock loop to checks delegation behavior with tests
+  status: backlog
+  context: >
+    Update and add loop phase coverage tests to assert loop delegates policy ownership
+    and preserves deterministic outcomes.
+  verification:
+  - uv run pytest -q tests/loop/test_loop_phases_coverage.py
+
+- id: ST-002
+  title: Remove loop-owned checks policy constants and explicit groups
+  status: backlog
+  context: >
+    Refactor loop phase orchestration to stop encoding checks group and timing policy
+    and rely on checks-owned selection decisions.
+  verification:
+  - uv run pytest -q tests/loop/test_loop_phases_coverage.py
+
+- id: ST-003
+  title: Add loop checks policy ownership fitness rule
+  status: backlog
+  context: >
+    Add focused fitness enforcement that detects loop-side checks policy ownership
+    regressions (group maps/literals and explicit list selection patterns).
+  verification:
+  - uv run pytest -q tests/fitness/test_fitness_rules_loop_checks_policy_ownership.py
+
+- id: ST-004
+  title: Boundary regression and runtime verification
+  status: backlog
+  context: >
+    Validate compatibility with existing loop and checks boundary rules and runtime
+    checks command flows.
+  verification:
+  - uv run pytest -q tests/fitness/test_fitness_rules_loop_checks_result_boundary.py
+  - uv run engineeringagent checks run --phase iteration_end
+
+- id: ST-005
+  title: Final validation and docs sync
+  status: backlog
+  context: >
+    Run repository validation and regenerate fitness catalog docs after adding the
+    new rule.
+  verification:
+  - uv run engineeringagent validate
+  - uv run engineeringagent checks catalog --format markdown --output docs/fitness-functions/rules.md
+updated_at: '2026-02-27T00:00:00Z'

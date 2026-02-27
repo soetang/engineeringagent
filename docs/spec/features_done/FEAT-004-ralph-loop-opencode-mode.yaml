@@ -1,5 +1,7 @@
 id: FEAT-004
 title: Ralph-style OpenCode loop mode
+type: chore
+expected_commit_subject: 'chore: legacy archived spec metadata backfill'
 status: done
 priority: high
 objective: Implement a Ralph-style loop mode that runs OpenCode against a feature spec directly, without subtask orchestration.

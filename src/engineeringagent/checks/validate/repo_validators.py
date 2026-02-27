@@ -7,9 +7,6 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.config import (
-    resolve_allow_duplicate_done_base_ids_below,
-)
 from engineeringagent.git import client as git_client
 from engineeringagent.specs import (
     ValidationIssue,
@@ -24,7 +21,6 @@ from engineeringagent.checks.validate.contracts import (
 )
 
 DONE_ACTIVE_UNSUPPORTED_FILE = ".allow-done-active.txt"
-LEGACY_DONE_OPTIONAL_FIELDS = {"type", "expected_commit_subject"}
 AGENTS_DOCS_MAP_SECTION_TITLE = "Documentation Layout Reference"
 AGENTS_PATH = Path("AGENTS.md")
 
@@ -71,7 +67,6 @@ class _FeatureIdInvariantContext(BaseModel):
     project_root: Path
     features_dir: Path
     features_done_dir: Path
-    threshold: int | None
 
 
 class RepoPolicyValidator:
@@ -222,7 +217,6 @@ def run_repo_validation(
     )
 
     _append_unsupported_done_active_file_issues(messages, features_dir, project_root)
-    threshold = resolve_allow_duplicate_done_base_ids_below(project_root)
     _append_feature_id_invariant_issues(
         messages,
         ctx=_FeatureIdInvariantContext(
@@ -231,7 +225,6 @@ def run_repo_validation(
             project_root=project_root,
             features_dir=features_dir,
             features_done_dir=features_done_dir,
-            threshold=threshold,
         ),
     )
     _append_active_feature_issues(
@@ -257,7 +250,7 @@ def _append_feature_id_invariant_issues(
     duplicates = _duplicate_base_id_occurrences(entries)
     if not duplicates:
         return
-    _append_duplicate_base_id_messages(messages, duplicates, ctx.threshold)
+    _append_duplicate_base_id_messages(messages, duplicates)
 
 
 def _collect_feature_id_entries(
@@ -325,7 +318,6 @@ def _duplicate_base_id_occurrences(
 def _append_duplicate_base_id_messages(
     messages: list[str],
     duplicates: dict[tuple[str, int], list[tuple[str, str, bool]]],
-    threshold: int | None,
 ) -> None:
     for base_id in sorted(duplicates, key=lambda entry: (entry[0], entry[1])):
         specs = sorted(duplicates[base_id], key=lambda entry: (entry[0], entry[1]))
@@ -343,9 +335,6 @@ def _append_duplicate_base_id_messages(
             )
             continue
 
-        numeric_id = base_id[1]
-        if threshold is not None and numeric_id < threshold:
-            continue
         messages.append(
             _duplicate_base_id_message_done_only(
                 base_id_text,
@@ -386,12 +375,9 @@ def _duplicate_base_id_message_done_only(
     done_labels = ", ".join(
         f"{rel} (id {raw_id})" for rel, raw_id, _is_done in done_specs
     )
-    opt_out = "[tool.engineeringagent.specs] allow-duplicate-done-base-ids-below = <N>"
     return (
         f"validate: duplicate base feature id {base_id_text} found in archived done specs: {done_labels}; "
-        "remediation: rename/re-id archived specs to remove duplicates; "
-        f"legacy opt-out: set `{opt_out}` to allow duplicates for archived specs only "
-        "(does not apply to active specs; only ids below the threshold)"
+        "remediation: rename/re-id archived specs to remove duplicates"
     )
 
 
@@ -490,11 +476,7 @@ def _append_multiline_verification_command_issues(
 
 def _append_done_feature_issues(messages: list[str], done_files: list[Path]) -> None:
     for file_path in done_files:
-        _append_feature_contract_issues(
-            messages,
-            file_path,
-            issue_filter=_filter_legacy_done_contract_issues,
-        )
+        _append_feature_contract_issues(messages, file_path)
 
 
 def _append_potential_features_issues(
@@ -774,17 +756,3 @@ def _iter_docs_references(line: str) -> list[str]:
 
 def _is_glob_reference(reference: str) -> bool:
     return any(char in reference for char in "*?[]")
-
-
-def _filter_legacy_done_contract_issues(
-    issues: list[ValidationIssue],
-) -> list[ValidationIssue]:
-    """Drop transitional required-field errors for legacy archived specs."""
-
-    filtered: list[ValidationIssue] = []
-    for issue in issues:
-        field = issue.path.rsplit(":", maxsplit=1)[-1]
-        if field in LEGACY_DONE_OPTIONAL_FIELDS and issue.message == "Field required":
-            continue
-        filtered.append(issue)
-    return filtered

@@ -1,5 +1,7 @@
 id: FEAT-005
 title: Adopt uv project workflow
+type: chore
+expected_commit_subject: 'chore: legacy archived spec metadata backfill'
 status: done
 priority: medium
 objective: Standardize this repository on uv for environment management, dependency sync, and command execution.

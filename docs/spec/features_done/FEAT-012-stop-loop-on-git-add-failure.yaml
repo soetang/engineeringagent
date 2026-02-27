@@ -1,5 +1,7 @@
 id: FEAT-012
 title: Stop loop immediately on git_add failure during feature completion
+type: chore
+expected_commit_subject: 'chore: legacy archived spec metadata backfill'
 status: done
 priority: high
 objective: Treat `git_add` commit-stage failures as terminal loop failures so automated

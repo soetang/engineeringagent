@@ -1,5 +1,7 @@
 id: FEAT-010
 title: Add Ruff and pytest gates with Google-docstring enforcement
+type: chore
+expected_commit_subject: 'chore: legacy archived spec metadata backfill'
 status: done
 priority: high
 objective: Add Ruff-based linting and pytest execution to the harness precommit profile,

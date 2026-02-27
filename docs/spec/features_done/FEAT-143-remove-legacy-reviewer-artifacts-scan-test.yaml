@@ -1,4 +1,4 @@
-id: FEAT-092
+id: FEAT-143
 title: Remove repository-wide legacy reviewer artifact scan test
 type: test
 expected_commit_subject: 'test: remove legacy reviewer artifacts scan test'

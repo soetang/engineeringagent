@@ -752,7 +752,7 @@ def test_validate_transitional_policy_for_preexisting_done_features(
     )
 
 
-def test_validate_allows_legacy_done_specs_missing_new_metadata(
+def test_validate_rejects_done_specs_missing_required_metadata(
     tmp_path: Path,
 ) -> None:
     project_root = tmp_path
@@ -767,7 +767,7 @@ def test_validate_allows_legacy_done_specs_missing_new_metadata(
                 "title": "Legacy done spec",
                 "status": "done",
                 "priority": "high",
-                "objective": "Allow transitional done validation.",
+                "objective": "Reject done specs missing required metadata.",
                 "acceptance": ["Done specs remain readable during migration."],
                 "subtasks": [
                     {
@@ -785,7 +785,16 @@ def test_validate_allows_legacy_done_specs_missing_new_metadata(
 
     messages = validate(project_root=project_root)
 
-    assert not messages
+    assert messages
+    assert any(
+        "FEAT-899-legacy-done.yaml:type: Field required" in message
+        for message in messages
+    )
+    assert any(
+        "FEAT-899-legacy-done.yaml:expected_commit_subject: Field required"
+        in message
+        for message in messages
+    )
 
 
 def test_validate_allows_noncontiguous_done_and_multiple_in_progress_subtasks(
@@ -1284,12 +1293,9 @@ def test_validate_rejects_duplicate_feature_ids_in_active_specs_without_opt_out(
     messages = validate(project_root=project_root)
 
     assert any("duplicate base feature id" in message for message in messages)
-    assert all(
-        "allow-duplicate-done-base-ids-below" not in message for message in messages
-    )
 
 
-def test_validate_rejects_duplicate_feature_ids_in_done_specs_by_default_with_opt_out_hint(
+def test_validate_rejects_duplicate_feature_ids_in_done_specs(
     tmp_path: Path,
 ) -> None:
     project_root = tmp_path
@@ -1299,6 +1305,8 @@ def test_validate_rejects_duplicate_feature_ids_in_done_specs_by_default_with_op
     payload = {
         "id": "FEAT-050",
         "title": "Duplicate done id",
+        "type": "feature",
+        "expected_commit_subject": "feat: duplicate done id",
         "status": "done",
         "priority": "high",
         "objective": "Reject overlapping done feature ids by default.",
@@ -1325,57 +1333,6 @@ def test_validate_rejects_duplicate_feature_ids_in_done_specs_by_default_with_op
     messages = validate(project_root=project_root)
 
     assert any("duplicate base feature id" in message for message in messages)
-    assert any(
-        "allow-duplicate-done-base-ids-below" in message
-        and "[tool.engineeringagent.specs]" in message
-        for message in messages
-    )
-
-
-def test_validate_allows_duplicate_done_ids_below_threshold_when_configured(
-    tmp_path: Path,
-) -> None:
-    project_root = tmp_path
-    (project_root / "pyproject.toml").write_text(
-        "\n".join(
-            [
-                "[tool.engineeringagent.specs]",
-                "allow-duplicate-done-base-ids-below = 100",
-                "",
-            ]
-        ),
-        encoding="utf-8",
-    )
-    features_done_dir = project_root / "docs" / "spec" / "features_done"
-    features_done_dir.mkdir(parents=True, exist_ok=True)
-
-    payload = {
-        "id": "FEAT-050",
-        "title": "Duplicate done id",
-        "status": "done",
-        "priority": "high",
-        "objective": "Allow legacy duplicate done ids below threshold.",
-        "acceptance": ["Validator allows duplicates below threshold."],
-        "subtasks": [
-            {
-                "id": "ST-001",
-                "title": "Already complete",
-                "status": "done",
-                "verification": ["true"],
-            }
-        ],
-    }
-
-    (features_done_dir / "FEAT-050-one.yaml").write_text(
-        yaml.safe_dump(payload, sort_keys=False),
-        encoding="utf-8",
-    )
-    (features_done_dir / "FEAT-050-two.yaml").write_text(
-        yaml.safe_dump(payload, sort_keys=False),
-        encoding="utf-8",
-    )
-
-    assert not validate(project_root=project_root)
 
 
 def test_validate_reports_filename_id_token_extraction_failure(tmp_path: Path) -> None:
@@ -1455,6 +1412,8 @@ def test_validate_rejects_duplicate_feature_id_across_active_and_done_specs(
             {
                 "id": "FEAT-020",
                 "title": "Archived",
+                "type": "feature",
+                "expected_commit_subject": "feat: archived",
                 "status": "done",
                 "priority": "high",
                 "objective": "Create active/done collision.",
@@ -1480,57 +1439,6 @@ def test_validate_rejects_duplicate_feature_id_across_active_and_done_specs(
         and "duplicate base feature id" in message
         for message in messages
     )
-    assert all(
-        "allow-duplicate-done-base-ids-below" not in message for message in messages
-    )
-
-
-def test_validate_rejects_duplicate_done_ids_above_threshold_even_when_configured(
-    tmp_path: Path,
-) -> None:
-    project_root = tmp_path
-    (project_root / "pyproject.toml").write_text(
-        "\n".join(
-            [
-                "[tool.engineeringagent.specs]",
-                "allow-duplicate-done-base-ids-below = 100",
-                "",
-            ]
-        ),
-        encoding="utf-8",
-    )
-    features_done_dir = project_root / "docs" / "spec" / "features_done"
-    features_done_dir.mkdir(parents=True, exist_ok=True)
-
-    payload = {
-        "id": "FEAT-150",
-        "title": "Duplicate done id above threshold",
-        "status": "done",
-        "priority": "high",
-        "objective": "Ensure threshold does not allow higher ids.",
-        "acceptance": ["Validator rejects duplicates above threshold."],
-        "subtasks": [
-            {
-                "id": "ST-001",
-                "title": "Already complete",
-                "status": "done",
-                "verification": ["true"],
-            }
-        ],
-    }
-
-    (features_done_dir / "FEAT-150-one.yaml").write_text(
-        yaml.safe_dump(payload, sort_keys=False),
-        encoding="utf-8",
-    )
-    (features_done_dir / "FEAT-150-two.yaml").write_text(
-        yaml.safe_dump(payload, sort_keys=False),
-        encoding="utf-8",
-    )
-
-    messages = validate(project_root=project_root)
-    assert any("duplicate base feature id" in message for message in messages)
-    assert any("allow-duplicate-done-base-ids-below" in message for message in messages)
 
 
 def test_pytest_default_coverage_contract_is_declared(repo_root: Path) -> None:

@@ -1,5 +1,7 @@
 id: FEAT-015
 title: Adopt Pydantic validation for engineeringagent YAML contracts
+type: chore
+expected_commit_subject: 'chore: legacy archived spec metadata backfill'
 status: done
 priority: high
 objective: Replace the current jsonschema plus ad-hoc custom validation path with

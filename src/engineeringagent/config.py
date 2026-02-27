@@ -14,9 +14,6 @@ else:  # pragma: no cover - Python < 3.11 fallback
 DEFAULT_DOCS_ROOT = "docs"
 _DOCS_ROOT_KEY = "docs-root"
 
-_SPECS_TABLE = "specs"
-_ALLOW_DUPLICATE_DONE_BASE_IDS_BELOW_KEY = "allow-duplicate-done-base-ids-below"
-
 _HARNESS_TABLE = "harness"
 
 _AGENTS_TABLE = "agents"
@@ -161,39 +158,6 @@ def resolve_docs_root(project_root: Path) -> Path:
         return project_root / docs_root_value
 
     return project_root / DEFAULT_DOCS_ROOT
-
-
-def resolve_allow_duplicate_done_base_ids_below(project_root: Path) -> int | None:
-    """Resolve legacy done-spec duplicate-id opt-out threshold.
-
-    Precedence:
-    - engineeringagent.toml[specs]
-    - pyproject.toml[tool.engineeringagent.specs]
-    - default: unset (None)
-
-    Args:
-        project_root: Repository root.
-
-    Returns:
-        Threshold integer or None when unset.
-
-    Raises:
-        ValueError: If TOML cannot be parsed or the configured value is invalid.
-    """
-
-    engineeringagent_toml = project_root / "engineeringagent.toml"
-    threshold = _allow_duplicate_done_base_ids_below_from_engineeringagent_toml(
-        engineeringagent_toml
-    )
-    if threshold is not None:
-        return threshold
-
-    pyproject_toml = project_root / "pyproject.toml"
-    threshold = _allow_duplicate_done_base_ids_below_from_pyproject_toml(pyproject_toml)
-    if threshold is not None:
-        return threshold
-
-    return None
 
 
 def resolve_harness_bool_setting(
@@ -395,24 +359,6 @@ def _agents_codex_option_from_engineeringagent_toml(
     )
 
 
-def _allow_duplicate_done_base_ids_below_from_engineeringagent_toml(
-    path: Path,
-) -> int | None:
-    document = _load_toml(path)
-    if document is None:
-        return None
-
-    specs_table = document.get(_SPECS_TABLE)
-    if not isinstance(specs_table, dict):
-        return None
-
-    return _normalize_allow_duplicate_done_base_ids_below(
-        specs_table.get(_ALLOW_DUPLICATE_DONE_BASE_IDS_BELOW_KEY),
-        source_path=path,
-        source_scope=f"[{_SPECS_TABLE}]",
-    )
-
-
 def _docs_root_from_pyproject_toml(path: Path) -> Path | None:
     document = _load_toml(path)
     if document is None:
@@ -518,30 +464,6 @@ def _agents_codex_option_from_pyproject_toml(
     )
 
 
-def _allow_duplicate_done_base_ids_below_from_pyproject_toml(path: Path) -> int | None:
-    document = _load_toml(path)
-    if document is None:
-        return None
-
-    tool_config = document.get("tool")
-    if not isinstance(tool_config, dict):
-        return None
-
-    engineeringagent_config = tool_config.get("engineeringagent")
-    if not isinstance(engineeringagent_config, dict):
-        return None
-
-    specs_config = engineeringagent_config.get(_SPECS_TABLE)
-    if not isinstance(specs_config, dict):
-        return None
-
-    return _normalize_allow_duplicate_done_base_ids_below(
-        specs_config.get(_ALLOW_DUPLICATE_DONE_BASE_IDS_BELOW_KEY),
-        source_path=path,
-        source_scope=f"[tool.engineeringagent.{_SPECS_TABLE}]",
-    )
-
-
 def _maybe_table(parent: dict[str, Any], key: str) -> dict[str, Any] | None:
     value = parent.get(key)
     if not isinstance(value, dict):
@@ -601,28 +523,6 @@ def _normalize_docs_root(
         )
 
     return Path(*normalized_parts)
-
-
-def _normalize_allow_duplicate_done_base_ids_below(
-    raw_value: Any,
-    *,
-    source_path: Path,
-    source_scope: str,
-) -> int | None:
-    if raw_value is None:
-        return None
-
-    if isinstance(raw_value, bool) or not isinstance(raw_value, int):
-        raise ValueError(
-            f"invalid allow-duplicate-done-base-ids-below in {source_path} ({source_scope}): expected int"
-        )
-
-    if raw_value < 0:
-        raise ValueError(
-            f"invalid allow-duplicate-done-base-ids-below in {source_path} ({source_scope}): must be >= 0"
-        )
-
-    return raw_value
 
 
 def _normalize_bool(

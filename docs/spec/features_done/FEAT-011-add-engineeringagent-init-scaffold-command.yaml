@@ -1,5 +1,7 @@
 id: FEAT-011
 title: Add engineeringagent init scaffold command with safe conflict handling
+type: chore
+expected_commit_subject: 'chore: legacy archived spec metadata backfill'
 status: done
 priority: high
 objective: Add a one-command `engineeringagent init` bootstrap flow that scaffolds

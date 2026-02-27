@@ -1,5 +1,7 @@
 id: FEAT-013
 title: Add run --all auto-discovery for incomplete active features
+type: chore
+expected_commit_subject: 'chore: legacy archived spec metadata backfill'
 status: done
 priority: high
 objective: Add a `engineeringagent run --all` mode that automatically snapshots all

@@ -1,5 +1,7 @@
 id: FEAT-009
 title: Remove scripts folder and canonicalize command entrypoints
+type: chore
+expected_commit_subject: 'chore: legacy archived spec metadata backfill'
 status: done
 priority: high
 objective: Eliminate generic script-wrapper workflows by moving any necessary automation

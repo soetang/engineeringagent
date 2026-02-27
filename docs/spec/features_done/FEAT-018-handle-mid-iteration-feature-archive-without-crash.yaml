@@ -1,5 +1,7 @@
 id: FEAT-018
 title: Handle mid-iteration feature archive without FileNotFoundError crashes
+type: chore
+expected_commit_subject: 'chore: legacy archived spec metadata backfill'
 status: done
 priority: high
 objective: 'Make `engineeringagent run` resilient when the selected feature spec is

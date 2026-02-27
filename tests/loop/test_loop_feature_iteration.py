@@ -2377,7 +2377,10 @@ def test_loop_uses_expected_commit_subject(tmp_path: Path) -> None:
     assert subject == "docs: publish FEAT-900 release notes"
 
 
-def test_loop_commit_subject_fallback_uses_type_mapping(tmp_path: Path) -> None:
+def test_loop_fails_validation_when_expected_commit_subject_missing(
+    tmp_path: Path,
+) -> None:
+    max_iterations = 5
     feature_data = _base_feature()
     feature_data.pop("expected_commit_subject")
     feature_data["type"] = "bug"
@@ -2395,12 +2398,15 @@ def test_loop_commit_subject_fallback_uses_type_mapping(tmp_path: Path) -> None:
             project_root=project_root,
             feature_paths=[str(feature_path)],
             dry_run=False,
-            max_iterations=5,
+            max_iterations=max_iterations,
         )
 
-    assert code == 0
-    subject = _run_git(project_root, "log", "-1", "--pretty=%s").stdout.strip()
-    assert subject.startswith("fix: complete FEAT-900")
+    assert code == 1
+    runs = _read_runs(project_root)
+    assert len(runs) == max_iterations
+    assert all(run["result"] == "failed" for run in runs)
+    assert all(run["failed_gate"] == "validate" for run in runs)
+    assert runs[-1]["attempt"] == max_iterations
 
 
 def test_git_add_failure_exits_immediately(tmp_path: Path) -> None:

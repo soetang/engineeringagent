@@ -1,5 +1,7 @@
 id: FEAT-002
 title: Human-gated loop runner core
+type: chore
+expected_commit_subject: 'chore: legacy archived spec metadata backfill'
 status: done
 priority: high
 objective: Implement a Bash-first loop runner that executes one subtask at a time and records deterministic state changes.

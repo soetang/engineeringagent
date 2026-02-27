@@ -11,7 +11,6 @@ from typer.testing import CliRunner
 
 from engineeringagent import cli as cli_module
 from engineeringagent.config import (
-    resolve_allow_duplicate_done_base_ids_below,
     resolve_docs_root,
 )
 from engineeringagent.loop_runtime.run_context import LoopRun, RunConfig
@@ -719,99 +718,3 @@ def test_docs_root_resolver_reads_pyproject_tool_engineeringagent(
     )
 
     assert resolve_docs_root(tmp_path) == tmp_path / "docs.from.pyproject"
-
-
-def test_specs_allow_duplicate_done_base_ids_below_defaults_to_none(
-    tmp_path: Path,
-) -> None:
-    assert resolve_allow_duplicate_done_base_ids_below(tmp_path) is None
-
-
-def test_specs_allow_duplicate_done_base_ids_below_prefers_engineeringagent_toml(
-    tmp_path: Path,
-) -> None:
-    (tmp_path / "engineeringagent.toml").write_text(
-        "[specs]\nallow-duplicate-done-base-ids-below = 100\n",
-        encoding="utf-8",
-    )
-    (tmp_path / "pyproject.toml").write_text(
-        "[tool.engineeringagent.specs]\nallow-duplicate-done-base-ids-below = 200\n",
-        encoding="utf-8",
-    )
-
-    assert resolve_allow_duplicate_done_base_ids_below(tmp_path) == 100
-
-
-def test_specs_allow_duplicate_done_base_ids_below_reads_pyproject_tool_engineeringagent_specs(
-    tmp_path: Path,
-) -> None:
-    (tmp_path / "pyproject.toml").write_text(
-        "[tool.engineeringagent.specs]\nallow-duplicate-done-base-ids-below = 100\n",
-        encoding="utf-8",
-    )
-
-    assert resolve_allow_duplicate_done_base_ids_below(tmp_path) == 100
-
-
-def test_specs_allow_duplicate_done_base_ids_below_engineeringagent_missing_table_returns_none(
-    tmp_path: Path,
-) -> None:
-    (tmp_path / "engineeringagent.toml").write_text(
-        "docs-root = 'docs'\n",
-        encoding="utf-8",
-    )
-
-    assert resolve_allow_duplicate_done_base_ids_below(tmp_path) is None
-
-
-def test_specs_allow_duplicate_done_base_ids_below_engineeringagent_non_table_specs_returns_none(
-    tmp_path: Path,
-) -> None:
-    (tmp_path / "engineeringagent.toml").write_text(
-        "specs = 'not-a-table'\n",
-        encoding="utf-8",
-    )
-
-    assert resolve_allow_duplicate_done_base_ids_below(tmp_path) is None
-
-
-def test_specs_allow_duplicate_done_base_ids_below_pyproject_missing_sections_returns_none(
-    tmp_path: Path,
-) -> None:
-    pyproject = tmp_path / "pyproject.toml"
-    pyproject.write_text("[build-system]\nrequires = []\n", encoding="utf-8")
-    assert resolve_allow_duplicate_done_base_ids_below(tmp_path) is None
-
-    pyproject.write_text("tool = 'not-a-table'\n", encoding="utf-8")
-    assert resolve_allow_duplicate_done_base_ids_below(tmp_path) is None
-
-    pyproject.write_text("[tool]\nengineeringagent = 'not-a-table'\n", encoding="utf-8")
-    assert resolve_allow_duplicate_done_base_ids_below(tmp_path) is None
-
-    pyproject.write_text("[tool.engineeringagent]\n", encoding="utf-8")
-    assert resolve_allow_duplicate_done_base_ids_below(tmp_path) is None
-
-    pyproject.write_text(
-        "[tool.engineeringagent]\nspecs = 'not-a-table'\n",
-        encoding="utf-8",
-    )
-    assert resolve_allow_duplicate_done_base_ids_below(tmp_path) is None
-
-
-@pytest.mark.parametrize(
-    "payload",
-    [
-        "[specs]\nallow-duplicate-done-base-ids-below = true\n",
-        "[specs]\nallow-duplicate-done-base-ids-below = 1.0\n",
-        "[specs]\nallow-duplicate-done-base-ids-below = '100'\n",
-        "[specs]\nallow-duplicate-done-base-ids-below = -1\n",
-    ],
-)
-def test_specs_allow_duplicate_done_base_ids_below_rejects_invalid_values(
-    tmp_path: Path,
-    payload: str,
-) -> None:
-    (tmp_path / "engineeringagent.toml").write_text(payload, encoding="utf-8")
-
-    with pytest.raises(ValueError, match="allow-duplicate-done-base-ids-below"):
-        resolve_allow_duplicate_done_base_ids_below(tmp_path)

@@ -1,5 +1,7 @@
 id: FEAT-006
 title: Spec authoring interview workflow and documentation
+type: chore
+expected_commit_subject: 'chore: legacy archived spec metadata backfill'
 status: done
 priority: high
 objective: Require an interview-first workflow before writing new feature specs and document it in-repo for agents and humans.

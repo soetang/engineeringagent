@@ -1,5 +1,7 @@
 id: FEAT-001
 title: Spec model and validator foundation
+type: chore
+expected_commit_subject: 'chore: legacy archived spec metadata backfill'
 status: done
 priority: high
 objective: Establish a strict, machine-validated YAML spec format for feature-driven
