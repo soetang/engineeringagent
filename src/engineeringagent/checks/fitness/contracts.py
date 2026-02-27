@@ -7,7 +7,7 @@ from typing import Annotated, Any, Literal
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-
+from engineeringagent.json_schema import JSON_SCHEMA_DRAFT_URL
 CONTRACT_VERSION = "1.0"
 
 NonEmptyStr = Annotated[str, Field(strict=True, min_length=1)]
@@ -135,3 +135,10 @@ def load_custom_rule_manifest(path: Path) -> CustomRuleManifest:
         raise ValueError(f"{path} must contain a YAML mapping at top level")
 
     return CustomRuleManifest.model_validate(payload)
+
+
+def custom_rule_manifest_schema_from_model() -> dict[str, Any]:
+    """Return the JSON Schema contract for custom fitness rule manifests."""
+    schema = CustomRuleManifest.model_json_schema(mode="validation")
+    schema["$schema"] = JSON_SCHEMA_DRAFT_URL
+    return schema

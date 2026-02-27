@@ -7,8 +7,10 @@ this stable surface.
 from .api import ChecksRunResult, run_checks
 from .catalog import render_fitness_catalog
 from .config_loader import load_harness_checks_document
+from .fitness.contracts import custom_rule_manifest_schema_from_model
 from .fitness.envelope import emit_fitness_result
 from .request_normalization import GROUP_ORDER, normalize_groups
+from .reviewers.engine import reviewer_decision_schema_from_model
 
 
 def list_check_groups() -> tuple[str, ...]:
@@ -18,10 +20,12 @@ def list_check_groups() -> tuple[str, ...]:
 
 __all__ = [
     "ChecksRunResult",
+    "custom_rule_manifest_schema_from_model",
     "emit_fitness_result",
     "list_check_groups",
     "load_harness_checks_document",
     "normalize_groups",
     "render_fitness_catalog",
+    "reviewer_decision_schema_from_model",
     "run_checks",
 ]

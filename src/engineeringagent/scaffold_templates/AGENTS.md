@@ -26,7 +26,7 @@ Keep this file concise. Add durable references and rules, not task logs.
 ## Documentation Layout Reference
 
 - `docs/references/workflow.md`: Use before running loop work; defines the expected execution and verification loop.
-- `docs/references/spec-writing.md`: Use when drafting feature specs; defines feature schema expectations and the expected red-green-refactor loop.
+- `docs/references/spec-writing.md`: Use when drafting feature specs; defines CLI schema retrieval (`engineeringagent schema`) and the expected red-green-refactor loop.
 - `docs/references/quality-check-playbook.md`: Use when selecting checks and deciding where to enforce behavior.
 - `docs/references/reviewer-authoring-guide.md`: Use when adding or updating repository reviewer checks and prompts.
 - `docs/references/contributor-commands.md`: Use for canonical contributor command references while iterating on this repository.
@@ -45,6 +45,7 @@ Note: Some repos use a separate docs root for specs (configured via `engineering
 ## Verification Quick Reference
 
 - Validate feature schema and file structure: `engineeringagent validate`.
+- List available schema contracts: `engineeringagent schema list`.
 - Run the engineering loop: `engineeringagent run --all`.
 
 ## Repo Extensions (Fill In)

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import shutil
 import subprocess
 from pathlib import Path
@@ -10,15 +9,10 @@ import pytest
 import tomli
 import yaml
 
-from engineeringagent.specs import feature_schema_from_model
 from engineeringagent.checks.validate.validator import (
     validate,
 )
 from engineeringagent.checks.validate import repo_validators
-
-
-def _schema_source(repo_root: Path) -> Path:
-    return repo_root / "docs" / "spec" / "schemas" / "feature.schema.json"
 
 
 def _invalid_spec_fixtures_dir(repo_root: Path) -> Path:
@@ -28,11 +22,8 @@ def _invalid_spec_fixtures_dir(repo_root: Path) -> Path:
 def _make_invalid_project(repo_root: Path, tmp_path: Path, fixture_name: str) -> Path:
     project_root = tmp_path
     features_dir = project_root / "docs" / "spec" / "features"
-    schema_target = project_root / "docs" / "spec" / "schemas" / "feature.schema.json"
 
     features_dir.mkdir(parents=True, exist_ok=True)
-    schema_target.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(_schema_source(repo_root), schema_target)
     shutil.copy2(
         _invalid_spec_fixtures_dir(repo_root) / fixture_name,
         features_dir / f"{fixture_name}",
@@ -330,29 +321,6 @@ def test_validate_reports_invalid_potential_features_contract(tmp_path: Path) ->
     )
 
 
-def test_validate_reports_schema_json_parse_error(tmp_path: Path) -> None:
-    schema_path = tmp_path / "docs" / "spec" / "schemas" / "feature.schema.json"
-    schema_path.parent.mkdir(parents=True, exist_ok=True)
-    schema_path.write_text("{not-json}\n", encoding="utf-8")
-
-    messages = validate(project_root=tmp_path)
-
-    assert messages
-    assert any("failed to parse JSON schema" in message for message in messages)
-
-
-def test_validate_reports_schema_out_of_sync_with_model(tmp_path: Path) -> None:
-    schema_path = tmp_path / "docs" / "spec" / "schemas" / "feature.schema.json"
-    schema_path.parent.mkdir(parents=True, exist_ok=True)
-    schema_path.write_text("{}\n", encoding="utf-8")
-
-    messages = validate(project_root=tmp_path)
-
-    assert messages == [
-        f"{schema_path}:<root>: schema artifact is out of sync with FeatureSpec model"
-    ]
-
-
 def test_validate_reports_yaml_parse_errors_across_validator_inputs(
     tmp_path: Path,
 ) -> None:
@@ -373,6 +341,46 @@ def test_validate_reports_yaml_parse_errors_across_validator_inputs(
     assert any("FEAT-999-bad-active.yaml: failed to parse YAML" in m for m in messages)
     assert any("FEAT-998-bad-done.yaml: failed to parse YAML" in m for m in messages)
     assert any("potential_features.yaml: failed to parse YAML" in m for m in messages)
+
+
+def test_validate_ignores_legacy_feature_schema_artifact_parse_and_sync_errors(
+    tmp_path: Path,
+) -> None:
+    features_dir = tmp_path / "docs" / "spec" / "features"
+    schemas_dir = tmp_path / "docs" / "spec" / "schemas"
+    features_dir.mkdir(parents=True, exist_ok=True)
+    schemas_dir.mkdir(parents=True, exist_ok=True)
+
+    (features_dir / "FEAT-999-valid.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "id": "FEAT-999",
+                "title": "Ignore legacy schema artifact file",
+                "type": "feature",
+                "expected_commit_subject": "feat: ignore legacy feature schema artifact",
+                "status": "backlog",
+                "priority": "medium",
+                "objective": "Validation should ignore removed schema artifact checks.",
+                "acceptance": ["Legacy schema artifact drift checks stay removed."],
+                "subtasks": [
+                    {
+                        "id": "ST-001",
+                        "title": "Validate contracts",
+                        "status": "backlog",
+                        "verification": ["true"],
+                    }
+                ],
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+    (schemas_dir / "feature.schema.json").write_text("{", encoding="utf-8")
+
+    messages = validate(project_root=tmp_path)
+
+    assert all("failed to parse JSON schema" not in message for message in messages)
+    assert all("schema artifact is out of sync" not in message for message in messages)
 
 
 def test_validate_reports_reviewer_prompt_with_deprecated_responseformat(
@@ -549,22 +557,13 @@ def test_validate_preserves_non_legacy_done_required_field_errors(
     )
 
 
-def test_feature_schema_artifact_generated_from_pydantic_model(repo_root: Path) -> None:
-    schema_payload = json.loads(_schema_source(repo_root).read_text(encoding="utf-8"))
-    assert schema_payload == feature_schema_from_model()
-
-
 def test_validate_reports_done_feature_left_in_active_directory(
     tmp_path: Path,
-    repo_root: Path,
 ) -> None:
     project_root = tmp_path
     features_dir = project_root / "docs" / "spec" / "features"
-    schema_target = project_root / "docs" / "spec" / "schemas" / "feature.schema.json"
 
     features_dir.mkdir(parents=True, exist_ok=True)
-    schema_target.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(_schema_source(repo_root), schema_target)
 
     feature_path = features_dir / "FEAT-901-preexisting-done.yaml"
     feature_path.write_text(
@@ -604,16 +603,11 @@ def test_validate_reports_done_feature_left_in_active_directory(
     )
 
 
-def test_validate_defaults_to_docs_without_toml_config(
-    tmp_path: Path, repo_root: Path
-) -> None:
+def test_validate_defaults_to_docs_without_toml_config(tmp_path: Path) -> None:
     project_root = tmp_path
     features_dir = project_root / "docs" / "spec" / "features"
-    schema_target = project_root / "docs" / "spec" / "schemas" / "feature.schema.json"
 
     features_dir.mkdir(parents=True, exist_ok=True)
-    schema_target.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(_schema_source(repo_root), schema_target)
 
     feature_path = features_dir / "FEAT-938-default-docs-root.yaml"
     feature_path.write_text(
@@ -652,19 +646,16 @@ def test_validate_defaults_to_docs_without_toml_config(
     )
 
 
-def test_validate_uses_configured_docs_root(tmp_path: Path, repo_root: Path) -> None:
+def test_validate_uses_configured_docs_root(tmp_path: Path) -> None:
     project_root = tmp_path
     docs_root = project_root / "docs.engineeringagent"
     features_dir = docs_root / "spec" / "features"
-    schema_target = docs_root / "spec" / "schemas" / "feature.schema.json"
 
     (project_root / "engineeringagent.toml").write_text(
         'docs-root = "docs.engineeringagent"\n',
         encoding="utf-8",
     )
     features_dir.mkdir(parents=True, exist_ok=True)
-    schema_target.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(_schema_source(repo_root), schema_target)
 
     feature_path = features_dir / "FEAT-937-configured-docs-root.yaml"
     feature_path.write_text(
@@ -713,15 +704,11 @@ def test_validate_uses_configured_docs_root(tmp_path: Path, repo_root: Path) -> 
 
 def test_validate_transitional_policy_for_preexisting_done_features(
     tmp_path: Path,
-    repo_root: Path,
 ) -> None:
     project_root = tmp_path
     features_dir = project_root / "docs" / "spec" / "features"
-    schema_target = project_root / "docs" / "spec" / "schemas" / "feature.schema.json"
 
     features_dir.mkdir(parents=True, exist_ok=True)
-    schema_target.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(_schema_source(repo_root), schema_target)
 
     feature_name = "FEAT-902-transition-done.yaml"
     feature_path = features_dir / feature_name
@@ -767,15 +754,11 @@ def test_validate_transitional_policy_for_preexisting_done_features(
 
 def test_validate_allows_legacy_done_specs_missing_new_metadata(
     tmp_path: Path,
-    repo_root: Path,
 ) -> None:
     project_root = tmp_path
     features_done_dir = project_root / "docs" / "spec" / "features_done"
-    schema_target = project_root / "docs" / "spec" / "schemas" / "feature.schema.json"
 
     features_done_dir.mkdir(parents=True, exist_ok=True)
-    schema_target.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(_schema_source(repo_root), schema_target)
 
     (features_done_dir / "FEAT-899-legacy-done.yaml").write_text(
         yaml.safe_dump(

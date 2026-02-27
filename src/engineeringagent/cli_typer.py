@@ -351,6 +351,38 @@ def build_typer_app(command_module: ModuleType) -> typer.Typer:
     )
 
     @app.command(
+        "schema",
+        help="emit model-owned contract schemas (`schema list` or `schema <schema_id>`)",
+    )
+    def _schema_command(
+        ctx: typer.Context,
+        schema_id: str | None = typer.Argument(
+            None,
+            help="schema id to emit; use `list` to show available ids",
+        ),
+        output_format: Literal["json", "yaml"] = typer.Option(
+            "json",
+            "--format",
+            help="schema output format",
+        ),
+        output: str | None = typer.Option(
+            None,
+            "--output",
+            help="optional path to write schema output",
+        ),
+    ) -> None:
+        if schema_id == "list":
+            _exit_with_handler_code(command_module.cmd_schema_list, ctx=ctx)
+            return
+        _exit_with_handler_code(
+            command_module.cmd_schema,
+            ctx=ctx,
+            schema_id=schema_id,
+            output_format=output_format,
+            output=output,
+        )
+
+    @app.command(
         "init",
         help="scaffold baseline harness files (default core profile)",
     )

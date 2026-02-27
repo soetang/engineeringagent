@@ -11,6 +11,7 @@ from typing import Any, Callable, Iterator, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from engineeringagent.changed_paths import ChangedPathsResult
+from engineeringagent.json_schema import JSON_SCHEMA_DRAFT_URL
 from engineeringagent.agents import (
     AgentBackendError,
     AgentOutputValidationError,
@@ -69,6 +70,13 @@ class ReviewerDecisionEnvelope(BaseModel):
         if not stripped:
             raise ValueError("summary must be a non-empty string")
         return stripped
+
+
+def reviewer_decision_schema_from_model() -> dict[str, Any]:
+    """Return the reviewer decision envelope JSON Schema contract."""
+    schema = ReviewerDecisionEnvelope.model_json_schema(mode="validation")
+    schema["$schema"] = JSON_SCHEMA_DRAFT_URL
+    return schema
 
 
 class ReviewerSandboxHandle(BaseModel):

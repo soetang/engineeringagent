@@ -28,6 +28,7 @@ def test_build_baseline_scaffold_manifest_excludes_reviewers_by_default() -> Non
 
     assert "harness/reviewers.yaml" not in manifest
     assert "harness/gates.yaml" not in manifest
+    assert "docs/spec/schemas/feature.schema.json" not in manifest
     assert "harness/reviewers/prompts/code_simplifier.md" not in manifest
     assert removed_prompt not in manifest
 

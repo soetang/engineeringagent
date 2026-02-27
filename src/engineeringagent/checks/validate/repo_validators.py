@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import re
 from collections.abc import Callable
 from pathlib import Path
@@ -15,9 +14,7 @@ from engineeringagent.git import client as git_client
 from engineeringagent.specs import (
     ValidationIssue,
     feature_contract_issues,
-    feature_schema_from_model,
     iter_feature_files,
-    load_schema,
     load_yaml,
     potential_features_contract_issues,
 )
@@ -41,11 +38,9 @@ _ORIGINAL_MESSAGE_PREFIX_CODES: tuple[tuple[str, str], ...] = (
 )
 _MESSAGE_CONTAINS_CODES: tuple[tuple[str, str], ...] = (
     ("forbidden token present (purge invariant)", "repo.policy.purge-invariant"),
-    ("schema artifact is out of sync", "repo.policy.schema-sync"),
 )
 _MESSAGE_PREFIX_CODES: tuple[tuple[str, str], ...] = (
     ("failed to parse YAML", "repo.policy.parse-yaml"),
-    ("failed to parse JSON schema", "repo.policy.parse-json-schema"),
     (
         "verification commands must be single-line strings",
         "repo.policy.verification-single-line",
@@ -217,7 +212,6 @@ def run_repo_validation(
     spec_root = docs_root / "spec"
     features_dir = spec_root / "features"
     features_done_dir = spec_root / "features_done"
-    schema_path = spec_root / "schemas" / "feature.schema.json"
     potential_features_path = spec_root / "potential_features.yaml"
 
     files = iter_feature_files(features_dir)
@@ -227,7 +221,6 @@ def run_repo_validation(
         project_root=project_root,
     )
 
-    _append_schema_sync_issues(messages, schema_path)
     _append_unsupported_done_active_file_issues(messages, features_dir, project_root)
     threshold = resolve_allow_duplicate_done_base_ids_below(project_root)
     _append_feature_id_invariant_issues(
@@ -441,24 +434,6 @@ def _is_under(path: Path, root: Path) -> bool:
     except ValueError:
         return False
     return True
-
-
-def _append_schema_sync_issues(messages: list[str], schema_path: Path) -> None:
-    if not schema_path.exists():
-        return
-
-    try:
-        current_schema = load_schema(schema_path)
-    except (OSError, json.JSONDecodeError, ValueError) as exc:
-        messages.append(f"{schema_path}: failed to parse JSON schema: {exc}")
-        return
-
-    generated_schema = feature_schema_from_model()
-    if current_schema != generated_schema:
-        messages.append(
-            f"{schema_path}:<root>: schema artifact is out of sync with "
-            "FeatureSpec model"
-        )
 
 
 def _append_active_feature_issues(

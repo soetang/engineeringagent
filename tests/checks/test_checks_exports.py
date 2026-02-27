@@ -5,11 +5,13 @@ import pytest
 from engineeringagent import checks
 from engineeringagent.checks import (
     ChecksRunResult,
+    custom_rule_manifest_schema_from_model,
     emit_fitness_result,
     list_check_groups,
     load_harness_checks_document,
     normalize_groups,
     render_fitness_catalog,
+    reviewer_decision_schema_from_model,
     run_checks,
 )
 from engineeringagent.checks.fitness.contracts import (
@@ -27,14 +29,18 @@ def test_checks_supported_exports_are_importable() -> None:
     assert callable(load_harness_checks_document)
     assert callable(normalize_groups)
     assert callable(render_fitness_catalog)
+    assert callable(custom_rule_manifest_schema_from_model)
+    assert callable(reviewer_decision_schema_from_model)
     assert ChecksRunResult is not None
     assert set(checks.__all__) == {
         "ChecksRunResult",
+        "custom_rule_manifest_schema_from_model",
         "emit_fitness_result",
         "list_check_groups",
         "load_harness_checks_document",
         "normalize_groups",
         "render_fitness_catalog",
+        "reviewer_decision_schema_from_model",
         "run_checks",
     }
 

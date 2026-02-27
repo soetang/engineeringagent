@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
+import yaml
 from typer.testing import CliRunner
 
 from engineeringagent import cli as cli_module
@@ -14,6 +15,7 @@ from engineeringagent.config import (
     resolve_docs_root,
 )
 from engineeringagent.loop_runtime.run_context import LoopRun, RunConfig
+from engineeringagent.schema_registry import list_schema_ids, schema_from_registry
 
 
 def _invoke_cli(args: list[str]) -> Any:
@@ -28,6 +30,7 @@ def test_cli_surface_inventory_commands() -> None:
     for token in (
         "validate",
         "run",
+        "schema",
         "checks",
         "fitness",
         "progress",
@@ -41,6 +44,14 @@ def test_cli_surface_inventory_commands() -> None:
 def test_cli_surface_inventory_option_spellings() -> None:
     cases = [
         (["validate", "--help"], ["--schema-only"]),
+        (
+            ["schema", "--help"],
+            ["--format", "--output"],
+        ),
+        (
+            ["schema", "list", "--help"],
+            [],
+        ),
         (
             ["run", "--help"],
             [
@@ -109,6 +120,13 @@ def test_run_rejects_implement_command_option() -> None:
 
     assert result.exit_code != 0
     assert "--implement-command" in (result.stderr or result.stdout)
+
+
+def test_schema_requires_id_when_no_subcommand_is_provided() -> None:
+    result = _invoke_cli(["schema"])
+
+    assert result.exit_code == 1
+    assert "provide a schema id or use `engineeringagent schema list`" in result.stdout
 
 
 def test_run_all_requires_checks_yaml(tmp_path: Path) -> None:
@@ -244,6 +262,35 @@ def test_main_run_command_uses_typer_handler(monkeypatch: Any) -> None:
         "allow_dirty": True,
         "verbose_output": True,
     }
+
+
+def test_main_schema_command_writes_registry_schema_via_real_cli(tmp_path: Path) -> None:
+    result = _invoke_cli(
+        [
+            "--project-root",
+            str(tmp_path),
+            "schema",
+            "feature.spec",
+            "--format",
+            "yaml",
+            "--output",
+            "tmp/schema.yaml",
+        ]
+    )
+
+    assert result.exit_code == 0
+    assert result.stdout == "schema written: tmp/schema.yaml\n"
+    schema_payload = yaml.safe_load(
+        (tmp_path / "tmp" / "schema.yaml").read_text(encoding="utf-8")
+    )
+    assert schema_payload == schema_from_registry("feature.spec")
+
+
+def test_main_schema_list_command_prints_registry_ids_via_real_cli() -> None:
+    result = _invoke_cli(["schema", "list"])
+
+    assert result.exit_code == 0
+    assert result.stdout.splitlines() == list(list_schema_ids())
 
 
 def test_main_checks_run_command_uses_typer_handler(monkeypatch: Any) -> None:
@@ -565,6 +612,131 @@ def test_cmd_validate_delegates_to_run_checks(
         "checks": ["validate"],
         "schema_only": True,
     }
+
+
+def test_cmd_schema_list_prints_registry_ids(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: Any,
+) -> None:
+    monkeypatch.setattr(cli_module, "list_schema_ids", lambda: ("a.schema", "b.schema"))
+
+    code = cli_module.cmd_schema_list(SimpleNamespace(project_root="."))
+    output = capsys.readouterr().out
+
+    assert code == 0
+    assert output == "a.schema\nb.schema\n"
+
+
+def test_cmd_schema_prints_registry_schema_as_json(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: Any,
+) -> None:
+    monkeypatch.setattr(
+        cli_module,
+        "schema_from_registry",
+        lambda _schema_id: {"z": {"a": 1}, "a": 1},
+    )
+
+    code = cli_module.cmd_schema(
+        SimpleNamespace(project_root=".", schema_id="feature.spec")
+    )
+    output = capsys.readouterr().out
+
+    assert code == 0
+    payload = json.loads(output)
+    assert payload == {"a": 1, "z": {"a": 1}}
+
+
+def test_cmd_schema_prints_registry_schema_as_yaml(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: Any,
+) -> None:
+    monkeypatch.setattr(
+        cli_module,
+        "schema_from_registry",
+        lambda _schema_id: {"z": {"a": 1}, "a": 1},
+    )
+
+    code = cli_module.cmd_schema(
+        SimpleNamespace(project_root=".", schema_id="feature.spec", output_format="yaml")
+    )
+    output = capsys.readouterr().out
+
+    assert code == 0
+    assert output == "a: 1\nz:\n  a: 1\n"
+
+
+def test_cmd_schema_writes_to_output_path(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: Any,
+) -> None:
+    monkeypatch.setattr(
+        cli_module,
+        "schema_from_registry",
+        lambda _schema_id: {"z": {"a": 1}, "a": 1},
+    )
+
+    code = cli_module.cmd_schema(
+        SimpleNamespace(
+            project_root=str(tmp_path),
+            schema_id="feature.spec",
+            output_format="json",
+            output="artifacts/schema.json",
+        )
+    )
+    output = capsys.readouterr().out
+
+    assert code == 0
+    assert output == "schema written: artifacts/schema.json\n"
+    payload = json.loads(
+        (tmp_path / "artifacts" / "schema.json").read_text(encoding="utf-8")
+    )
+    assert payload == {"a": 1, "z": {"a": 1}}
+
+
+def test_cmd_schema_rejects_unknown_schema_id(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: Any,
+) -> None:
+    def _raise_unknown(_schema_id: str) -> dict[str, object]:
+        raise cli_module.UnknownSchemaIdError(
+            "unknown schema id: missing; supported ids: feature.spec"
+        )
+
+    monkeypatch.setattr(cli_module, "schema_from_registry", _raise_unknown)
+
+    code = cli_module.cmd_schema(SimpleNamespace(project_root=".", schema_id="missing"))
+    output = capsys.readouterr().out
+
+    assert code == 1
+    assert (
+        output
+        == "schema input error: unknown schema id: missing; "
+        "supported ids: feature.spec\n"
+    )
+
+
+def test_cmd_schema_rejects_empty_schema_id(capsys: Any) -> None:
+    code = cli_module.cmd_schema(SimpleNamespace(project_root=".", schema_id=" "))
+    output = capsys.readouterr().out
+
+    assert code == 1
+    assert (
+        output
+        == "schema input error: provide a schema id or use "
+        "`engineeringagent schema list`\n"
+    )
+
+
+def test_cmd_schema_rejects_invalid_output_format(capsys: Any) -> None:
+    code = cli_module.cmd_schema(
+        SimpleNamespace(project_root=".", schema_id="feature.spec", output_format="toml")
+    )
+    output = capsys.readouterr().out
+
+    assert code == 1
+    assert output == "schema input error: --format must be one of: json, yaml\n"
 
 
 def test_docs_root_resolver_defaults_to_docs(tmp_path: Path) -> None:

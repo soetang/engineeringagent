@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from enum import Enum
 from pathlib import Path
 from typing import Any, Annotated, Literal, cast
@@ -11,9 +10,8 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 from pydantic_core import InitErrorDetails, PydanticCustomError
 
-
+from engineeringagent.json_schema import JSON_SCHEMA_DRAFT_URL
 PRIORITY_ORDER = {"high": 0, "medium": 1, "low": 2}
-JSON_SCHEMA_DRAFT_URL = "https://json-schema.org/draft/2020-12/schema"
 ERR_DUP_SUBTASK_ID: LiteralString = "duplicate subtask id: {subtask_id}"
 
 
@@ -457,22 +455,16 @@ def iter_feature_files(features_dir: Path) -> list[Path]:
     return sorted(features_dir.glob("*.yaml"))
 
 
-def load_schema(schema_path: Path) -> dict[str, Any]:
-    """Load the JSON schema used for feature validation.
-
-    Args:
-        schema_path: Path to the schema JSON file.
-
-    Returns:
-        Parsed schema mapping.
-    """
-    with schema_path.open("r", encoding="utf-8") as f:
-        return json.load(f)
-
-
 def feature_schema_from_model() -> dict[str, Any]:
     """Return feature schema generated from the Pydantic feature model."""
     schema = FeatureSpec.model_json_schema(mode="validation")
+    schema["$schema"] = JSON_SCHEMA_DRAFT_URL
+    return schema
+
+
+def checks_schema_from_model() -> dict[str, Any]:
+    """Return harness checks schema generated from the Pydantic checks model."""
+    schema = HarnessChecksDocument.model_json_schema(mode="validation")
     schema["$schema"] = JSON_SCHEMA_DRAFT_URL
     return schema
 

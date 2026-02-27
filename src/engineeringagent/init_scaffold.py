@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from importlib.resources import files
 from pathlib import Path
 from typing import NamedTuple
@@ -9,9 +8,6 @@ from string import Template
 import yaml
 
 from .agents import build_backend_scaffold_manifest, default_backend_id
-from .specs import feature_schema_from_model
-
-
 _SUPPORTED_SCAFFOLD_PROFILES = {"core", "python_uv"}
 _SCAFFOLD_TEMPLATE_PACKAGE = "engineeringagent.scaffold_templates"
 _SCAFFOLDED_USER_DOC_TEMPLATE_CATEGORIES: tuple[tuple[str, str], ...] = (
@@ -254,11 +250,6 @@ def build_baseline_scaffold_manifest(
             sort_keys=False,
             allow_unicode=False,
         ),
-        f"{docs_dir_normalized}/spec/schemas/feature.schema.json": json.dumps(
-            feature_schema_from_model(),
-            indent=2,
-        )
-        + "\n",
         "harness/checks.yaml": _build_checks_yaml(),
         "harness/fitness-functions/rules.yaml": yaml.safe_dump(
             {

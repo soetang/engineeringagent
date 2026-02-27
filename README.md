@@ -42,7 +42,18 @@ Primary flow: `feature spec -> run loop`.
 
 1. Create a feature spec in `docs/spec/features/`.
 
-   Use the schema `docs/spec/schemas/feature.schema.json` to create a spec.
+   Discover available contract schemas with:
+
+   ```bash
+   uvx engineeringagent schema list
+   ```
+
+   Emit the feature spec schema when drafting:
+
+   ```bash
+   uvx engineeringagent schema feature.spec --format yaml
+   ```
+
    Save this as `docs/spec/features/FEAT-001-example.yaml`.
 
 1. Validate and dry-run the loop first:
