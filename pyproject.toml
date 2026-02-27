@@ -38,7 +38,6 @@ dev = [
     "pytest-cov>=7.0.0",
     "pytest-xdist>=3.8.0",
     "ruff>=0.15.0",
-    "semgrep>=1.95.0",
     "twine>=6.2.0",
 ]
 pypi = [

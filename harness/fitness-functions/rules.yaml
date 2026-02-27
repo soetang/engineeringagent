@@ -57,7 +57,7 @@ rules:
       - run
       - python
       - harness/fitness-functions/check_loop_subprocess_boundary.py
-    config_file: policies/loop_subprocess_boundary_semgrep_policy.yaml
+    config_file: policies/loop_subprocess_boundary_policy.yaml
   - rule_id: architecture.agents-backends-boundary
     name: Agents/backends boundary
     summary: Forbid direct backend package usage outside the agents boundary.

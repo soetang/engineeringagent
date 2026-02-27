@@ -21,7 +21,7 @@ def _policy_path(repo_root: Path) -> Path:
         / "harness"
         / "fitness-functions"
         / "policies"
-        / "loop_subprocess_boundary_semgrep_policy.yaml"
+        / "loop_subprocess_boundary_policy.yaml"
     )
 
 
@@ -56,86 +56,105 @@ def test_loop_subprocess_boundary_rule_reports_expected_violations_and_respects_
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Report expected violations in one semgrep run.
+    """Report expected violations in one native checker run.
 
     This test writes multiple source modules into a single tmp fixture so the checker
-    pays semgrep startup cost once.
+    scans once.
     """
-    _write_module(
-        tmp_path,
-        "src/engineeringagent/loop.py",
-        "\n".join(
-            [
-                "import subprocess",
-                "",
-                "def run() -> None:",
-                "    subprocess.run(['git', 'status'], check=False)",
-            ]
+    modules = [
+        (
+            "src/engineeringagent/loop.py",
+            "\n".join(
+                [
+                    "import subprocess",
+                    "",
+                    "def run() -> None:",
+                    "    subprocess.run(['git', 'status'], check=False)",
+                ]
+            ),
         ),
-    )
-    _write_module(
-        tmp_path,
-        "src/engineeringagent/process_runner.py",
-        "\n".join(
-            [
-                "import subprocess as sp",
-                "",
-                "def run_process() -> None:",
-                "    sp.run(['git', 'status'], check=False)",
-            ]
+        (
+            "src/engineeringagent/process_runner.py",
+            "\n".join(
+                [
+                    "import subprocess as sp",
+                    "",
+                    "def run_process() -> None:",
+                    "    sp.run(['git', 'status'], check=False)",
+                ]
+            ),
         ),
-    )
-    _write_module(
-        tmp_path,
-        "src/engineeringagent/from_import_runner.py",
-        "\n".join(
-            [
-                "from subprocess import run as run_cmd",
-                "",
-                "def run() -> None:",
-                "    run_cmd(['git', 'status'], check=False)",
-            ]
+        (
+            "src/engineeringagent/from_import_runner.py",
+            "\n".join(
+                [
+                    "from subprocess import run as run_cmd",
+                    "",
+                    "def run() -> None:",
+                    "    run_cmd(['git', 'status'], check=False)",
+                ]
+            ),
         ),
-    )
-    _write_module(
-        tmp_path,
-        "src/engineeringagent/gates.py",
-        "\n".join(
-            [
-                "import subprocess",
-                "",
-                "def run_gate() -> None:",
-                "    subprocess.run(['git', 'status'], check=False)",
-            ]
+        (
+            "src/engineeringagent/wildcard_import_runner.py",
+            "\n".join(
+                [
+                    "from subprocess import *",
+                    "",
+                    "def run() -> None:",
+                    "    check_output(['git', 'status'])",
+                ]
+            ),
         ),
-    )
-
-    # Backend command execution is intentionally centralized behind allowlisted
-    # client adapter modules.
-    _write_module(
-        tmp_path,
-        "src/engineeringagent/agents/backends/opencode/client.py",
-        "\n".join(
-            [
-                "import subprocess",
-                "",
-                "def run_agent() -> None:",
-                "    subprocess.run(['opencode', '--version'], check=False)",
-            ]
+        (
+            "src/engineeringagent/from_import_check_call_runner.py",
+            "\n".join(
+                [
+                    "from subprocess import check_call as call_check",
+                    "",
+                    "def run() -> None:",
+                    "    call_check(['git', 'status'])",
+                ]
+            ),
         ),
-    )
-    _write_module(
-        tmp_path,
-        "src/engineeringagent/agents/backends/codex/client.py",
-        "\n".join(
-            [
-                "import subprocess",
-                "",
-                "def run_agent() -> None:",
-                "    subprocess.run(['codex', '--version'], check=False)",
-            ]
+        (
+            "src/engineeringagent/gates.py",
+            "\n".join(
+                [
+                    "import subprocess",
+                    "",
+                    "def run_gate() -> None:",
+                    "    subprocess.run(['git', 'status'], check=False)",
+                ]
+            ),
         ),
-    )
+        # Backend command execution is intentionally centralized behind allowlisted
+        # client adapter modules.
+        (
+            "src/engineeringagent/agents/backends/opencode/client.py",
+            "\n".join(
+                [
+                    "import subprocess",
+                    "",
+                    "def run_agent() -> None:",
+                    "    subprocess.run(['opencode', '--version'], check=False)",
+                ]
+            ),
+        ),
+        (
+            "src/engineeringagent/agents/backends/codex/client.py",
+            "\n".join(
+                [
+                    "import subprocess",
+                    "",
+                    "def run_agent() -> None:",
+                    "    subprocess.run(['codex', '--version'], check=False)",
+                ]
+            ),
+        ),
+    ]
+    for relative_path, body in modules:
+        _write_module(tmp_path, relative_path, body)
 
     proc, payload = _run_checker(
         tmp_path,
@@ -148,7 +167,7 @@ def test_loop_subprocess_boundary_rule_reports_expected_violations_and_respects_
     assert payload["rule_id"] == "architecture.loop-subprocess-boundary"
     assert payload["status"] == "fail"
     assert isinstance(violations, list)
-    assert len(violations) == 3
+    assert len(violations) == 5
     assert violations == sorted(violations)
     assert all(
         "src/engineeringagent/gates.py:" not in violation for violation in violations
@@ -158,6 +177,14 @@ def test_loop_subprocess_boundary_rule_reports_expected_violations_and_respects_
         ("src/engineeringagent/loop.py", ("subprocess.run",)),
         ("src/engineeringagent/process_runner.py", ("sp.run",)),
         ("src/engineeringagent/from_import_runner.py", ("from subprocess", "run_cmd")),
+        (
+            "src/engineeringagent/wildcard_import_runner.py",
+            ("from subprocess", "check_output"),
+        ),
+        (
+            "src/engineeringagent/from_import_check_call_runner.py",
+            ("from subprocess", "call_check"),
+        ),
     ]
     for file_path, patterns in expected:
         match = next((v for v in violations if file_path in v), None)
@@ -184,4 +211,38 @@ def test_loop_subprocess_boundary_rule_errors_when_config_file_is_missing(
     assert payload["violations"] == []
     summary = payload["summary"]
     assert isinstance(summary, str)
-    assert "Semgrep subprocess-boundary scan failed:" in summary
+    assert "Native subprocess-boundary scan failed:" in summary
+
+
+def test_loop_subprocess_boundary_rule_errors_when_config_file_is_invalid(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    _write_module(
+        tmp_path,
+        "src/engineeringagent/placeholder.py",
+        "def noop() -> None:\n    return None\n",
+    )
+    invalid_policy = tmp_path / "invalid-loop-subprocess-policy.yaml"
+    invalid_policy.write_text(
+        "\n".join(
+            [
+                "allowlisted_modules: not-a-list",
+                "subprocess_call_names: [run]",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    proc, payload = _run_checker(
+        tmp_path,
+        checker_path=_script_path(repo_root),
+        config_file=invalid_policy,
+    )
+
+    assert proc.returncode == 0
+    assert payload["rule_id"] == "architecture.loop-subprocess-boundary"
+    assert payload["status"] == "error"
+    assert payload["violations"] == []
+    summary = payload["summary"]
+    assert isinstance(summary, str)
+    assert summary.startswith("Native subprocess-boundary scan failed:")

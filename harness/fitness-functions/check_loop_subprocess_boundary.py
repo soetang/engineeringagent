@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import argparse
-import json
-import os
+import ast
 from pathlib import Path
-import re
-import subprocess
+from typing import Final
+
+import yaml
 
 from engineeringagent.checks import emit_fitness_result
 from engineeringagent.checks.fitness.contracts import (
@@ -18,195 +18,143 @@ from engineeringagent.checks.fitness.contracts import (
 
 RULE_ID = "architecture.loop-subprocess-boundary"
 _SOURCE_PACKAGE_ROOT = Path("src/engineeringagent")
-_DEFAULT_SEMGREP_POLICY = (
+_DEFAULT_POLICY = (
     Path(__file__).resolve().parent
     / "policies"
-    / "loop_subprocess_boundary_semgrep_policy.yaml"
+    / "loop_subprocess_boundary_policy.yaml"
 )
-_MODULE_RULE_ID = "architecture.loop-subprocess-boundary.module-subprocess-calls"
-_ATTRIBUTE_CALL_RE = re.compile(
-    r"\b(?P<module>[A-Za-z_][A-Za-z0-9_]*)\s*\.\s*"
-    r"(?P<call>run|Popen|call|check_call|check_output)\s*\("
+_DEFAULT_SUBPROCESS_CALL_NAMES: Final[tuple[str, ...]] = (
+    "run",
+    "Popen",
+    "call",
+    "check_call",
+    "check_output",
 )
-_DIRECT_CALL_RE = re.compile(r"\b(?P<call>[A-Za-z_][A-Za-z0-9_]*)\s*\(")
 
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config-file", default=str(_DEFAULT_SEMGREP_POLICY))
+    parser.add_argument("--config-file", default=str(_DEFAULT_POLICY))
     return parser.parse_args()
 
 
 def _resolve_config_file(path_value: str) -> Path:
     config_file = Path(path_value)
     if not config_file.is_file():
-        raise ValueError(f"semgrep policy config not found: {config_file}")
+        raise ValueError(f"policy config not found: {config_file}")
     return config_file
 
 
-def _loop_subprocess_boundary_violations(
-    project_root: Path,
+def _require_string_list(payload: dict[str, object], field: str) -> list[str]:
+    value = payload.get(field)
+    if not isinstance(value, list) or not all(
+        isinstance(item, str) and item for item in value
+    ):
+        raise ValueError(f"policy field '{field}' must be a list of strings")
+    return value
+
+
+def _load_policy(config_file: Path) -> tuple[set[str], set[str]]:
+    try:
+        payload = yaml.safe_load(config_file.read_text(encoding="utf-8"))
+    except OSError as exc:
+        raise ValueError(f"failed to read policy config: {config_file}") from exc
+    except yaml.YAMLError as exc:
+        raise ValueError(f"policy config is not valid YAML: {config_file}") from exc
+
+    if not isinstance(payload, dict):
+        raise ValueError("policy config must be a mapping")
+
+    allowlisted_modules = _require_string_list(payload, "allowlisted_modules")
+
+    subprocess_call_names = payload.get("subprocess_call_names")
+    if subprocess_call_names is None:
+        call_names: set[str] = set(_DEFAULT_SUBPROCESS_CALL_NAMES)
+    else:
+        call_names = set(_require_string_list(payload, "subprocess_call_names"))
+
+    return set(allowlisted_modules), call_names
+
+
+def _collect_python_files(source_root: Path) -> list[Path]:
+    return sorted(path for path in source_root.rglob("*.py") if path.is_file())
+
+
+def _analyze_subprocess_calls(
+    source_text: str,
     *,
-    semgrep_config: Path,
+    call_names: set[str],
+) -> list[tuple[int, str]]:
+    tree = ast.parse(source_text)
+    subprocess_modules: set[str] = set()
+    direct_subprocess_calls: set[str] = set()
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name == "subprocess":
+                    subprocess_modules.add(alias.asname or alias.name)
+        if isinstance(node, ast.ImportFrom) and node.module == "subprocess":
+            for alias in node.names:
+                if alias.name == "*":
+                    # Treat wildcard imports as exposing all forbidden subprocess call names.
+                    direct_subprocess_calls.update(call_names)
+                    continue
+                if alias.name in call_names:
+                    direct_subprocess_calls.add(alias.asname or alias.name)
+
+    findings: list[tuple[int, str]] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        function = node.func
+        if isinstance(function, ast.Attribute) and isinstance(function.value, ast.Name):
+            module_name = function.value.id
+            call_name = function.attr
+            if module_name in subprocess_modules and call_name in call_names:
+                findings.append((node.lineno, f"{module_name}.{call_name}"))
+                continue
+        if isinstance(function, ast.Name) and function.id in direct_subprocess_calls:
+            imported_name = function.id
+            findings.append((node.lineno, f"{imported_name}(...) from subprocess"))
+
+    return findings
+
+
+def _loop_subprocess_boundary_violations(
+    project_root: Path, *, config_file: Path
 ) -> list[str]:
     source_root = project_root / _SOURCE_PACKAGE_ROOT
     if not source_root.exists():
         return [f"missing source package root: {_SOURCE_PACKAGE_ROOT}"]
 
-    findings = _run_semgrep(project_root, semgrep_config=semgrep_config)
-    results = findings.get("results")
-    if not isinstance(results, list):
-        raise ValueError("semgrep output missing 'results' list")
+    allowlisted_modules, call_names = _load_policy(config_file)
+    violations: set[str] = set()
 
-    violations = {
-        _format_violation(project_root, finding)
-        for finding in results
-        if isinstance(finding, dict)
-    }
-    violations.discard("")
-    return sorted(violations)
+    for source_file in _collect_python_files(source_root):
+        relative_path = source_file.relative_to(project_root).as_posix()
+        if relative_path in allowlisted_modules:
+            continue
 
-
-def _run_semgrep(project_root: Path, *, semgrep_config: Path) -> dict[str, object]:
-    semgrep_state_dir = project_root / ".semgrep"
-    semgrep_state_dir.mkdir(parents=True, exist_ok=True)
-    env = dict(os.environ)
-    env.setdefault("SEMGREP_LOG_FILE", str(semgrep_state_dir / "semgrep.log"))
-    env.setdefault("SEMGREP_SETTINGS_FILE", str(semgrep_state_dir / "settings.yml"))
-
-    command = [
-        "semgrep",
-        "scan",
-        "--config",
-        str(semgrep_config),
-        "--json",
-        "--quiet",
-        "--metrics=off",
-        "--disable-version-check",
-        "--no-git-ignore",
-        "--no-rewrite-rule-ids",
-        ".",
-    ]
-    proc = subprocess.run(
-        command,
-        cwd=project_root,
-        capture_output=True,
-        text=True,
-        check=False,
-        env=env,
-    )
-
-    if proc.returncode not in {0, 1}:
-        stderr = (proc.stderr or "").strip()
-        message = f"semgrep exited with code {proc.returncode}"
-        if stderr:
-            message = f"{message}: {stderr}"
-        raise ValueError(message)
-
-    stdout = (proc.stdout or "").strip()
-    if not stdout:
-        raise ValueError("semgrep produced empty stdout")
-
-    try:
-        payload = json.loads(stdout)
-    except json.JSONDecodeError as exc:
-        raise ValueError("semgrep output is not valid JSON") from exc
-
-    if not isinstance(payload, dict):
-        raise ValueError("semgrep output JSON must be an object")
-    return payload
-
-
-def _format_violation(project_root: Path, finding: dict[str, object]) -> str:
-    path = _result_path(project_root, finding.get("path"))
-    line = _result_line(finding)
-    code_line = _result_code_line(project_root, finding, line)
-    check_id = finding.get("check_id")
-
-    if check_id == _MODULE_RULE_ID:
-        call_expr = _attribute_call_expression(code_line)
-        if call_expr is None:
-            return ""
-        return (
-            f"{path}:{line} uses {call_expr}; move this command call to an approved "
-            "client/adapter module"
-        )
-
-    call_name = _direct_call_name(code_line)
-    return (
-        f"{path}:{line} uses {call_name}(...) from subprocess; move this command call "
-        "to an approved client/adapter module"
-    )
-
-
-def _result_path(project_root: Path, value: object) -> str:
-    if not isinstance(value, str) or not value:
-        return str(_SOURCE_PACKAGE_ROOT)
-
-    candidate = Path(value)
-    if candidate.is_absolute():
         try:
-            candidate = candidate.relative_to(project_root)
-        except ValueError:
-            return candidate.as_posix()
-    return candidate.as_posix()
+            source_text = source_file.read_text(encoding="utf-8")
+        except OSError as exc:
+            raise ValueError(f"failed reading source file: {relative_path}") from exc
 
+        try:
+            findings = _analyze_subprocess_calls(source_text, call_names=call_names)
+        except SyntaxError as exc:
+            raise ValueError(
+                f"failed parsing Python module {relative_path}: {exc.msg} at line {exc.lineno}"
+            ) from exc
 
-def _result_line(finding: dict[str, object]) -> int:
-    start = finding.get("start")
-    if not isinstance(start, dict):
-        return 1
-    line = start.get("line")
-    return line if isinstance(line, int) and line > 0 else 1
+        for line, expression in findings:
+            violations.add(
+                f"{relative_path}:{line} uses {expression}; move this command call "
+                "to an approved client/adapter module"
+            )
 
-
-def _result_code_line(project_root: Path, finding: dict[str, object], line: int) -> str:
-    extra = finding.get("extra")
-    if not isinstance(extra, dict):
-        return _source_line(project_root, finding.get("path"), line)
-
-    lines = extra.get("lines")
-    if isinstance(lines, str):
-        first = lines.strip().splitlines()
-        candidate = first[0].strip() if first else ""
-        if candidate and candidate != "requires login":
-            return candidate
-
-    return _source_line(project_root, finding.get("path"), line)
-
-
-def _source_line(project_root: Path, path_value: object, line: int) -> str:
-    if not isinstance(path_value, str) or not path_value:
-        return ""
-
-    candidate = Path(path_value)
-    if candidate.is_absolute():
-        source_path = candidate
-    else:
-        source_path = project_root / candidate
-
-    try:
-        lines = source_path.read_text(encoding="utf-8").splitlines()
-    except OSError:
-        return ""
-
-    if line <= 0 or line > len(lines):
-        return ""
-    return lines[line - 1].strip()
-
-
-def _attribute_call_expression(code_line: str) -> str | None:
-    match = _ATTRIBUTE_CALL_RE.search(code_line)
-    if match is None:
-        return None
-    return f"{match.group('module')}.{match.group('call')}"
-
-
-def _direct_call_name(code_line: str) -> str:
-    match = _DIRECT_CALL_RE.search(code_line)
-    if match is None:
-        return "subprocess_call"
-    return match.group("call")
+    return sorted(violations)
 
 
 def main() -> int:
@@ -217,10 +165,10 @@ def main() -> int:
     summary = "Subprocess boundary allowlist constraints satisfied."
 
     try:
-        semgrep_config = _resolve_config_file(args.config_file)
+        config_file = _resolve_config_file(args.config_file)
         violations = _loop_subprocess_boundary_violations(
             Path("."),
-            semgrep_config=semgrep_config,
+            config_file=config_file,
         )
         status = RuleStatus.PASS if not violations else RuleStatus.FAIL
         if status == RuleStatus.FAIL:
@@ -230,7 +178,7 @@ def main() -> int:
             )
     except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-exception-caught
         status = RuleStatus.ERROR
-        summary = f"Semgrep subprocess-boundary scan failed: {exc}"
+        summary = f"Native subprocess-boundary scan failed: {exc}"
 
     emit_fitness_result(
         FitnessRuleResult(
