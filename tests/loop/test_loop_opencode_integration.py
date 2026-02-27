@@ -20,6 +20,7 @@ from engineeringagent.loop import (
     build_run_config,
 )
 from engineeringagent.loop_runtime.controller import run_loop_controller as _run_loop
+from engineeringagent.progress.handoff import ImplementProgressEnvelope
 from engineeringagent.agents.backends.opencode.permissions import (
     PERMISSION_REMEDIATION_HINT,
     PermissionProbeResult,
@@ -251,9 +252,15 @@ def test_loop_reports_permission_rejection_in_run_telemetry(
 
     precheck_calls: list[Path] = []
 
-    def fake_run_agent(project_root: Path, prompt: str) -> str:
+    def fake_run_agent(
+        project_root: Path,
+        prompt: str,
+        *,
+        output_type: type[Any],
+    ) -> str:
         del project_root
         del prompt
+        assert output_type is ImplementProgressEnvelope
         raise AgentBackendError(
             backend="opencode",
             message="opencode run failed",
@@ -319,8 +326,14 @@ def test_run_loop_creates_progress_artifacts_before_implement_invocation(
         "saw_implement": False,
     }
 
-    def fake_run_agent(project_root: Path, prompt: str) -> str:
+    def fake_run_agent(
+        project_root: Path,
+        prompt: str,
+        *,
+        output_type: type[Any],
+    ) -> str:
         del prompt
+        assert output_type is ImplementProgressEnvelope
         observed["saw_implement"] = True
         assert (project_root / "progress").exists()
         assert (project_root / "progress" / "runs" / "runs.jsonl").exists()
@@ -601,11 +614,13 @@ def test_gate_failure_feedback_round_trips_to_retry_prompt_integration(
         project_root: Path,
         prompt: str,
         *,
+        output_type: type[Any],
         agent: str = "build",
         capture_output: bool = True,
         text: bool = True,
     ) -> str:
         del project_root, agent, capture_output, text
+        assert output_type is ImplementProgressEnvelope
         prompts.append(prompt)
         subprocess.run(
             [sys.executable, str(set_done_script), str(feature_path)],
@@ -706,11 +721,13 @@ def test_gate_failure_feedback_replaces_previous_feedback_integration(
         project_root: Path,
         prompt: str,
         *,
+        output_type: type[Any],
         agent: str = "build",
         capture_output: bool = True,
         text: bool = True,
     ) -> str:
         del project_root, agent, capture_output, text
+        assert output_type is ImplementProgressEnvelope
         prompts.append(prompt)
         if len(prompts) == 2:
             _write_yaml(
@@ -837,10 +854,16 @@ def test_loop_archived_done_continues_run_all_when_selected_path_disappears(
     def fake_run_permission_probe(_: Path) -> PermissionProbeResult:
         return PermissionProbeResult(ok=True, reason="ok", returncode=0, output="")
 
-    def fake_run_agent(project_root: Path, prompt: str) -> str:
+    def fake_run_agent(
+        project_root: Path,
+        prompt: str,
+        *,
+        output_type: type[Any] | None = None,
+    ) -> str:
         if "Choose the next feature spec to execute" in prompt:
             return str(feature_path)
 
+        assert output_type is ImplementProgressEnvelope
         subprocess.run(
             [sys.executable, str(script_path), str(project_root)],
             check=True,

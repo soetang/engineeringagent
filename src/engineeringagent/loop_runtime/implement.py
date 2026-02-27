@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import subprocess
 import json
-import inspect
-from typing import Any, Callable
+from pathlib import Path
+from typing import Any, Protocol
 
 from engineeringagent.agents import (
     AgentBackendError,
@@ -23,10 +23,22 @@ from engineeringagent.prompts import (
 )
 
 
+class StructuredImplementAgentRunner(Protocol):
+    """Canonical implement-phase run-agent contract with structured output."""
+
+    def __call__(
+        self,
+        project_root: Path,
+        prompt: str,
+        *,
+        output_type: type[progress_handoff.ImplementProgressEnvelope],
+    ) -> Any: ...
+
+
 def run_implement_step_from_inputs(
     implement_inputs: ImplementStepInputs,
     *,
-    run_agent_fn: Callable[..., Any],
+    run_agent_fn: StructuredImplementAgentRunner,
 ) -> ImplementStepResult:
     """Run the implement phase and coerce structured progress output."""
     prompt = _build_implement_prompt(implement_inputs)
@@ -72,33 +84,16 @@ def run_implement_step_from_inputs(
 
 
 def _run_agent_with_structured_output(
-    run_agent_fn: Callable[..., Any],
+    run_agent_fn: StructuredImplementAgentRunner,
     *,
     implement_inputs: ImplementStepInputs,
     prompt: str,
 ) -> Any:
-    if _supports_output_type_argument(run_agent_fn):
-        return run_agent_fn(
-            implement_inputs.project_root,
-            prompt,
-            output_type=progress_handoff.ImplementProgressEnvelope,
-        )
-    return run_agent_fn(implement_inputs.project_root, prompt)
-
-
-def _supports_output_type_argument(run_agent_fn: Callable[..., Any]) -> bool:
-    """Return True when run_agent_fn can accept output_type kwarg."""
-    try:
-        signature = inspect.signature(run_agent_fn)
-    except (TypeError, ValueError):
-        return False
-
-    for parameter in signature.parameters.values():
-        if parameter.kind is inspect.Parameter.VAR_KEYWORD:
-            return True
-        if parameter.name == "output_type":
-            return True
-    return False
+    return run_agent_fn(
+        implement_inputs.project_root,
+        prompt,
+        output_type=progress_handoff.ImplementProgressEnvelope,
+    )
 
 
 def _coerce_implement_output(

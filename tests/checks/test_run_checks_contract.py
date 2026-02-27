@@ -123,71 +123,39 @@ def test_run_checks_group_order_is_deterministic(
     assert [record.check_type for record in result.executions] == ["command", "fitness"]
 
 
-def test_call_collect_changed_paths_falls_back_when_kwargs_unexpected(
+def test_call_collect_changed_paths_raises_on_incompatible_signature(
     tmp_path: Path,
 ) -> None:
-    calls: list[tuple[str, Path]] = []
-
     def _collector(project_root: Path) -> object:
-        calls.append(("one-arg", project_root))
+        _ = project_root
         return {"ok": True}
 
-    result = _call_collect_changed_paths(
-        _collector,
-        tmp_path,
-        base="main",
-        head=None,
-    )
-    assert result == {"ok": True}
-    assert calls == [("one-arg", tmp_path)]
-
-
-def test_call_collect_changed_paths_falls_back_when_signature_introspection_fails(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    calls: list[Path] = []
-
-    def _collector(project_root: Path) -> object:
-        calls.append(project_root)
-        return {"ok": True}
-
-    def _raise_signature_error(_fn: object) -> object:
-        raise TypeError("signature unavailable")
-
-    monkeypatch.setattr(
-        "engineeringagent.checks.api.inspect.signature",
-        _raise_signature_error,
-        raising=True,
-    )
-
-    result = _call_collect_changed_paths(
-        _collector,
-        tmp_path,
-        base="main",
-        head="feature",
-    )
-    assert result == {"ok": True}
-    assert calls == [tmp_path]
+    with pytest.raises(TypeError, match="unexpected keyword argument 'base'"):
+        _call_collect_changed_paths(
+            cast(Any, _collector),
+            tmp_path,
+            base="main",
+            head=None,
+        )
 
 
 def test_call_collect_changed_paths_does_not_swallow_internal_type_errors(
     tmp_path: Path,
 ) -> None:
     def _collector(
-        _project_root: Path,
+        project_root: Path,
         *,
         base: str | None = None,
         head: str | None = None,
     ) -> object:
-        _ = head
+        _ = (project_root, head)
         if base is not None:
             raise TypeError("collector internal error")
         return {"ok": True}
 
     with pytest.raises(TypeError, match="collector internal error"):
         _call_collect_changed_paths(
-            _collector,
+            cast(Any, _collector),
             tmp_path,
             base="main",
             head=None,
@@ -197,9 +165,9 @@ def test_call_collect_changed_paths_does_not_swallow_internal_type_errors(
 def test_call_collect_changed_paths_passes_kwargs_to_var_keyword_collector(
     tmp_path: Path,
 ) -> None:
-    calls: list[tuple[Path, dict[str, str]]] = []
+    calls: list[tuple[Path, dict[str, str | None]]] = []
 
-    def _collector(project_root: Path, **kwargs: str) -> object:
+    def _collector(project_root: Path, **kwargs: str | None) -> object:
         calls.append((project_root, kwargs))
         return {"ok": True}
 

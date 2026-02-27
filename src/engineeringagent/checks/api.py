@@ -1,8 +1,6 @@
 from __future__ import annotations
-
-import inspect
 from pathlib import Path
-from typing import Any, Callable, cast
+from typing import Any, Protocol, cast
 
 from pydantic import BaseModel, ConfigDict
 from typing_extensions import Unpack
@@ -81,38 +79,20 @@ class _OrchestrationState:
         self.command_invocations = []
 
 
-def _supports_collect_changed_paths_kwargs(
-    fn: Callable[..., object],
-    *,
-    keyword_names: tuple[str, ...],
-) -> bool:
-    """Return whether ``fn`` accepts all provided keyword names."""
+class ChangedPathsCollector(Protocol):
+    """Canonical changed-path collector contract used by checks orchestration."""
 
-    try:
-        signature = inspect.signature(fn)
-    except (TypeError, ValueError):
-        return False
-
-    parameters = signature.parameters
-    if any(
-        parameter.kind == inspect.Parameter.VAR_KEYWORD
-        for parameter in parameters.values()
-    ):
-        return True
-
-    supported_kinds = {
-        inspect.Parameter.POSITIONAL_OR_KEYWORD,
-        inspect.Parameter.KEYWORD_ONLY,
-    }
-    for keyword_name in keyword_names:
-        parameter = parameters.get(keyword_name)
-        if parameter is None or parameter.kind not in supported_kinds:
-            return False
-    return True
+    def __call__(
+        self,
+        project_root: Path,
+        *,
+        base: str | None = None,
+        head: str | None = None,
+    ) -> object: ...
 
 
 def _call_collect_changed_paths(
-    fn: Callable[..., object],
+    fn: ChangedPathsCollector,
     project_root: Path,
     *,
     base: str | None,
@@ -125,14 +105,7 @@ def _call_collect_changed_paths(
         kwargs["head"] = head
     if not kwargs:
         return fn(project_root)
-
-    if _supports_collect_changed_paths_kwargs(
-        fn,
-        keyword_names=tuple(kwargs),
-    ):
-        return fn(project_root, **kwargs)
-
-    return fn(project_root)
+    return fn(project_root, **kwargs)
 
 
 def _resolve_changed_paths(

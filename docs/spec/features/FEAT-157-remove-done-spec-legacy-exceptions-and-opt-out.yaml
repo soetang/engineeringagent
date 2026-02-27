@@ -1,0 +1,152 @@
+id: FEAT-157
+title: Remove done-spec legacy validator exceptions and duplicate-id opt-out
+type: spec
+expected_commit_subject: 'spec: add FEAT-157 remove done-spec legacy exceptions'
+status: backlog
+priority: high
+objective: >
+  Remove transitional compatibility behavior for archived done specs by fully
+  migrating `docs/spec/features_done/*.yaml` to current contract requirements,
+  then deleting validator/config exceptions that allow legacy metadata gaps and
+  duplicate done base IDs.
+context: |
+  Today, validate still carries two legacy compatibility paths:
+
+  - Archived done specs can omit required metadata (`type`,
+    `expected_commit_subject`) through a dedicated issue filter.
+  - Duplicate done base IDs can be opt-out allowed below a configured threshold
+    (`allow-duplicate-done-base-ids-below`).
+
+  This feature removes both exceptions. Migration is done first, then runtime
+  compatibility paths are deleted.
+
+  You requested rough historical ordering to be preserved when removing done-ID
+  duplicates, including cascading renumbering of later archived IDs when needed.
+constraints:
+- 'In scope: migrate archived done specs in `docs/spec/features_done/*.yaml` to require `type` and `expected_commit_subject` with no legacy exceptions.'
+- 'In scope: use a single generic placeholder subject for metadata backfill: `chore: legacy archived spec metadata backfill`.'
+- 'In scope: remove duplicate done base IDs with an order-preserving cascade strategy for later archived specs (rename filenames + frontmatter IDs together).'
+- 'In scope: ensure global uniqueness across active (`docs/spec/features`) and done (`docs/spec/features_done`) specs after migration.'
+- 'In scope: remove validator support for legacy done-field filtering and done-id threshold opt-out.'
+- 'In scope: remove `allow-duplicate-done-base-ids-below` from config loading, repo config files, and tests/docs referencing it.'
+- 'Out of scope: codex schema/model compatibility behavior.'
+- 'Out of scope: unrelated runtime compatibility shims tracked in FEAT-156.'
+- 'Compatibility policy is immediate break: no temporary migration branch in runtime validation logic.'
+implementation_notes: |
+  Contract change declaration
+
+  Surface:
+
+  - Archived done feature-spec metadata requirements.
+  - Duplicate base-id validation policy for done specs.
+  - Specs config surface for duplicate-id opt-out.
+
+  Old behavior:
+
+  - Done specs missing `type` and/or `expected_commit_subject` can pass due to
+    legacy filtering.
+  - Done-only duplicate base IDs can be suppressed below configured threshold.
+  - Config key `allow-duplicate-done-base-ids-below` is supported in
+    `engineeringagent.toml` and `pyproject.toml`.
+
+  New behavior:
+
+  - Done specs follow the same required metadata contract as active specs.
+  - Duplicate base IDs are rejected for done specs with no threshold opt-out.
+  - No config support remains for `allow-duplicate-done-base-ids-below`.
+
+  Compatibility policy:
+
+  - Immediate break after migration commit lands.
+  - No runtime fallback and no opt-out key.
+
+  Migration plan:
+
+  1) Metadata backfill for legacy done specs
+     - Add `type: chore` and
+       `expected_commit_subject: chore: legacy archived spec metadata backfill`
+       to archived specs missing these fields.
+
+  2) Duplicate-ID elimination with order-preserving cascade
+     - Build deterministic archived-spec ordering.
+     - For each duplicate archived base ID, keep the earliest archived entry and
+       cascade-renumber later archived entries to restore uniqueness while
+       preserving rough chronological order.
+     - Apply renumbering consistently to filename token and frontmatter `id`.
+     - Ensure no collision with active feature IDs.
+
+  3) Remove compatibility code and config
+     - Delete done-spec legacy required-field filter behavior.
+     - Delete done duplicate-id threshold resolution and related remediation text.
+     - Remove `allow-duplicate-done-base-ids-below` from config readers,
+       project config files, and test fixtures.
+
+  4) Update tests and documentation
+     - Replace tests that assert legacy allowances with strict-contract tests.
+     - Remove references to threshold opt-out from validator/config docs/tests.
+
+  Fitness-function impact assessment:
+
+  - no fitness-function changes required.
+  - Rationale: this removes transitional exceptions and tightens existing
+    contract enforcement; architecture intent is unchanged.
+acceptance:
+- All archived done specs include `type` and `expected_commit_subject`.
+- 'Backfilled `expected_commit_subject` uses the exact generic placeholder value: `chore: legacy archived spec metadata backfill`.'
+- No duplicate base feature IDs remain across `docs/spec/features/*.yaml` and `docs/spec/features_done/*.yaml`.
+- Validator no longer filters required-field errors for done specs.
+- Validator/config no longer support `allow-duplicate-done-base-ids-below`.
+- '`engineeringagent.toml` and `pyproject.toml` no longer define `allow-duplicate-done-base-ids-below`.'
+- Tests are updated to strict behavior (no legacy opt-out expectations).
+- 'Verification command passes: `uv run engineeringagent validate`.'
+- 'Verification command passes: `uv run pytest -q tests/meta/test_validator.py tests/cli/test_cli.py`.'
+- 'Verification command passes: `uv run engineeringagent validate --schema-only`.'
+subtasks:
+- id: ST-001
+  title: Backfill legacy done metadata fields
+  status: backlog
+  context: >
+    Add missing `type` and `expected_commit_subject` fields to archived specs
+    that predate the current contract, using the repository-approved generic
+    placeholder subject.
+  verification:
+  - uv run engineeringagent validate
+
+- id: ST-002
+  title: Cascade-renumber archived duplicate done IDs
+  status: backlog
+  context: >
+    Remove archived duplicate base IDs via deterministic cascade renumbering of
+    later done specs while preserving rough historical order and avoiding active
+    ID collisions; rename filenames and frontmatter IDs together.
+  verification:
+  - uv run engineeringagent validate
+
+- id: ST-003
+  title: Remove legacy validator exceptions and threshold config support
+  status: backlog
+  context: >
+    Delete done-spec legacy required-field filtering and done duplicate threshold
+    opt-out behavior, including config readers and remediation messaging.
+  verification:
+  - uv run pytest -q tests/meta/test_validator.py tests/cli/test_cli.py
+
+- id: ST-004
+  title: Remove repo config/test references to duplicate-id opt-out
+  status: backlog
+  context: >
+    Remove `allow-duplicate-done-base-ids-below` from repository config files,
+    fixtures, and assertions that currently reference the transitional policy.
+  verification:
+  - uv run pytest -q tests/meta/test_validator.py tests/cli/test_cli.py
+
+- id: ST-005
+  title: Final validation and contract lock-in
+  status: backlog
+  context: >
+    Run strict validator and schema checks to confirm all transitional behavior
+    is removed and migrated data remains contract-compliant.
+  verification:
+  - uv run engineeringagent validate
+  - uv run engineeringagent validate --schema-only
+updated_at: '2026-02-27T19:03:45Z'

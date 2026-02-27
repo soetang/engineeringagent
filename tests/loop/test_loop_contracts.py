@@ -6,6 +6,7 @@ import subprocess
 import sys
 from inspect import Parameter
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 import yaml
@@ -330,7 +331,7 @@ def test_run_implement_step_from_inputs_reraises_unexpected_errors(
         )
 
 
-def test_run_implement_step_from_inputs_supports_legacy_run_agent_signature(
+def test_run_implement_step_from_inputs_fails_fast_for_legacy_run_agent_signature(
     tmp_path: Path,
 ) -> None:
     inputs = ImplementStepInputs(
@@ -347,16 +348,11 @@ def test_run_implement_step_from_inputs_supports_legacy_run_agent_signature(
             '"verification":["uv run pytest -q"],"remaining_work":["none"]}'
         )
 
-    result = run_implement_step_from_inputs(inputs, run_agent_fn=_legacy_run_agent)
-
-    assert len(result) == 5
-    ok, failed_gate, command_output, envelope, used_fallback = result
-    assert ok is True
-    assert failed_gate is None
-    assert isinstance(command_output, str)
-    assert isinstance(envelope, ImplementProgressEnvelope)
-    assert envelope.summary == "ok"
-    assert used_fallback is False
+    with pytest.raises(TypeError, match="output_type"):
+        run_implement_step_from_inputs(
+            inputs,
+            run_agent_fn=cast(Any, _legacy_run_agent),
+        )
 
 
 def test_run_implement_step_from_inputs_reraises_non_signature_type_error(
