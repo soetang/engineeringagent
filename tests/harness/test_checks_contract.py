@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from engineeringagent.specs import checks_contract_issues, reviewer_contract_issues
+from engineeringagent.specs import checks_contract_issues
 
 
 def test_checks_contract_accepts_minimal_command_check() -> None:
@@ -133,19 +133,9 @@ def test_checks_contract_rejects_fitness_check_with_both_scope_and_rule_ids() ->
         ("harness/reviewers/prompts", False, "must reference a file"),
     ],
 )
-def test_prompt_file_validation_parity_across_contract_surfaces(
+def test_checks_contract_validates_reviewer_prompt_file_location(
     prompt_file: str, is_valid: bool, message_fragment: str | None
 ) -> None:
-    reviewer_document = {
-        "contract_version": "1.0",
-        "profiles": {"loop_fast": ["code_simplifier"]},
-        "reviewers": {
-            "code_simplifier": {
-                "prompt_file": prompt_file,
-                "trigger": {"phase": "iteration_end"},
-            }
-        },
-    }
     checks_document = {
         "contract_version": "1.0",
         "checks": {
@@ -157,22 +147,13 @@ def test_prompt_file_validation_parity_across_contract_surfaces(
         },
     }
 
-    reviewer_issues = reviewer_contract_issues(
-        reviewer_document, Path("harness/reviewers.yaml")
-    )
     checks_issues = checks_contract_issues(checks_document, Path("harness/checks.yaml"))
 
     if is_valid:
-        assert not reviewer_issues
         assert not checks_issues
         return
 
     assert message_fragment is not None
-    assert any(
-        issue.path == "harness/reviewers.yaml:reviewers.code_simplifier"
-        and message_fragment in issue.message
-        for issue in reviewer_issues
-    )
     assert any(
         issue.path == "harness/checks.yaml:checks.doc_review.reviewer"
         and message_fragment in issue.message

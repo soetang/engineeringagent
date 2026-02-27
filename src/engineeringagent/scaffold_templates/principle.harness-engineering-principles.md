@@ -52,20 +52,20 @@ This keeps quality gates mechanical instead of relying on memory.
 
 A fitness function is an executable check that protects an architectural or process property over time.
 
-In this repository, gate profiles and validators serve as fitness functions for:
+In this repository, checks declared in `harness/checks.yaml` and validators serve as fitness functions for:
 
 - Documentation structure and audience boundaries.
 - Spec integrity and run-loop discipline.
 - Repeatable quality checks that resist entropy.
 
-## 6) Agent reviewer: planned complement, not current default
+## 6) Agent reviewer: optional complement to deterministic checks
 
-Agent reviewer workflows are planned for judgment-heavy checks that deterministic validation cannot fully cover. They are not the primary control mechanism today.
+Agent reviewer workflows are a complement for judgment-heavy checks that deterministic validation cannot fully cover. They are not the primary control mechanism.
 
 Current default:
 
 - Humans steer priorities and approve direction.
-- Deterministic validators and gate profiles enforce baseline quality.
+- Deterministic validators and checks enforce baseline quality.
 
 Planned direction:
 

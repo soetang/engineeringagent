@@ -13,10 +13,6 @@ import pytest
             "tests/reviewers/test_repo_reviewers_config.py",
         ),
         (
-            "tests/test_reviewers_contract.py",
-            "tests/reviewers/test_reviewers_contract.py",
-        ),
-        (
             "tests/test_reviewers_runtime.py",
             "tests/reviewers/test_reviewers_runtime.py",
         ),

@@ -147,33 +147,6 @@ def test_run_all_rejects_invalid_checks_yaml(tmp_path: Path) -> None:
     assert "harness/checks.yaml:contract_version" in result.stdout
 
 
-def test_run_all_rejects_legacy_harness_contract_files(tmp_path: Path) -> None:
-    checks_path = tmp_path / "harness" / "checks.yaml"
-    checks_path.parent.mkdir(parents=True, exist_ok=True)
-    checks_path.write_text(
-        "contract_version: '1.0'\nchecks: {}\n",
-        encoding="utf-8",
-    )
-
-    legacy_path = tmp_path / "harness" / "gates.yaml"
-    legacy_path.write_text("profiles: {}\n", encoding="utf-8")
-
-    result = _invoke_cli(
-        [
-            "--project-root",
-            str(tmp_path),
-            "run",
-            "--all",
-            "--dry-run",
-        ]
-    )
-
-    assert result.exit_code == 1
-    assert "legacy harness contract" in result.stdout
-    assert "harness/gates.yaml" in result.stdout
-    assert "engineeringagent init" in result.stdout
-
-
 @pytest.mark.parametrize("reported_version", ["9.9.9", "3.2.1"])
 def test_root_version_flag_uses_distribution_metadata_source(
     reported_version: str,

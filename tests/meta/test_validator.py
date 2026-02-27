@@ -359,49 +359,20 @@ def test_validate_reports_yaml_parse_errors_across_validator_inputs(
     features_dir = tmp_path / "docs" / "spec" / "features"
     features_done_dir = tmp_path / "docs" / "spec" / "features_done"
     potential_features_path = tmp_path / "docs" / "spec" / "potential_features.yaml"
-    gates_path = tmp_path / "harness" / "gates.yaml"
 
     features_dir.mkdir(parents=True, exist_ok=True)
     features_done_dir.mkdir(parents=True, exist_ok=True)
     potential_features_path.parent.mkdir(parents=True, exist_ok=True)
-    gates_path.parent.mkdir(parents=True, exist_ok=True)
 
     (features_dir / "FEAT-999-bad-active.yaml").write_text("[\n", encoding="utf-8")
     (features_done_dir / "FEAT-998-bad-done.yaml").write_text("[\n", encoding="utf-8")
     potential_features_path.write_text("[\n", encoding="utf-8")
-    gates_path.write_text("[\n", encoding="utf-8")
 
     messages = validate(project_root=tmp_path)
 
     assert any("FEAT-999-bad-active.yaml: failed to parse YAML" in m for m in messages)
     assert any("FEAT-998-bad-done.yaml: failed to parse YAML" in m for m in messages)
     assert any("potential_features.yaml: failed to parse YAML" in m for m in messages)
-    assert all("harness/gates.yaml" not in m for m in messages)
-
-
-def test_validate_ignores_legacy_reviewer_contract_file(tmp_path: Path) -> None:
-    reviewers_path = tmp_path / "harness" / "reviewers.yaml"
-    reviewers_path.parent.mkdir(parents=True, exist_ok=True)
-    reviewers_path.write_text(
-        yaml.safe_dump(
-            {
-                "contract_version": "1.0",
-                "profiles": {"loop_fast": ["onboarding_review"]},
-                "reviewers": {
-                    "onboarding_review": {
-                        "prompt_file": "README.md",
-                        "trigger": {"phase": "feature_done"},
-                    }
-                },
-            },
-            sort_keys=False,
-        ),
-        encoding="utf-8",
-    )
-
-    messages = validate(project_root=tmp_path)
-
-    assert not messages
 
 
 def test_validate_reports_reviewer_prompt_with_deprecated_responseformat(

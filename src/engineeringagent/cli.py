@@ -284,24 +284,6 @@ def cmd_run(args: _HandlerArgs) -> int:
     project_root = Path(args.project_root).resolve()
 
     if args.run_all:
-        legacy_paths = (
-            project_root / "harness" / "gates.yaml",
-            project_root / "harness" / "reviewers.yaml",
-        )
-        legacy_present = [path for path in legacy_paths if path.exists()]
-        if legacy_present:
-            rendered = ", ".join(
-                sorted(
-                    str(path.relative_to(project_root)).replace("\\", "/")
-                    for path in legacy_present
-                )
-            )
-            print(
-                "run config error: legacy harness contract file(s) are no longer supported: "
-                f"{rendered}. Migrate to harness/checks.yaml and delete legacy files. "
-                "Remediation: run `engineeringagent init`."
-            )
-            return 1
         _, checks_error = checks_module.load_harness_checks_document(
             project_root,
             error_prefix="run config error",

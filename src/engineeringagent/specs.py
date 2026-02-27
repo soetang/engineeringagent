@@ -96,57 +96,11 @@ class PotentialFeaturesDocument(StrictContractModel):
     potential_features: list[PotentialFeatureSpec] = Field(default_factory=list)
 
 
-class GateRunnerDefinition(StrictContractModel):
-    """Runner configuration for a gate profile entry."""
-
-    type: Literal["command"]
-    command: NonEmptyStr
-
-
-class GateDefinition(StrictContractModel):
-    """Definition for a single harness gate."""
-
-    run: NonEmptyStr | None = None
-    runner: GateRunnerDefinition | None = None
-    on_change: Annotated[list[NonEmptyStr], Field(min_length=1)] | None = None
-
-    @model_validator(mode="after")
-    def enforce_runner_form(self) -> "GateDefinition":
-        """Enforce that exactly one of run or runner is set."""
-        has_run = self.run is not None
-        has_runner = self.runner is not None
-        if has_run == has_runner:
-            raise ValueError("define exactly one of run or runner")
-        return self
-
-
-class GateConfigDocument(StrictContractModel):
-    """Top-level schema for harness/checks.yaml."""
-
-    contract_version: Literal["1.0"] = "1.0"
-    profiles: dict[NonEmptyStr, list[NonEmptyStr]]
-    gates: dict[NonEmptyStr, GateDefinition]
-
-
-class ReviewerTriggerPhase(str, Enum):
-    """Phase that triggers a reviewer check."""
-
-    ITERATION_END = "iteration_end"
-    FEATURE_DONE = "feature_done"
-
-
 class ReviewerSandboxMode(str, Enum):
     """Sandbox strategy for running reviewer agents."""
 
     TEMP_WORKTREE_SNAPSHOT = "temp_worktree_snapshot"
     EMPTY_FOLDER = "empty_folder"
-
-
-class ReviewerTriggerDefinition(StrictContractModel):
-    """Selection criteria for when to run a reviewer."""
-
-    phase: ReviewerTriggerPhase
-    on_change: Annotated[list[NonEmptyStr], Field(min_length=1)] | None = None
 
 
 class ReviewerApprovalDefinition(StrictContractModel):
@@ -189,32 +143,6 @@ def _validate_prompt_file_location(prompt_file: str) -> None:
         raise ValueError(
             "prompt_file must reference a file under harness/reviewers/prompts/"
         )
-
-
-class ReviewerDefinition(StrictContractModel):
-    """Definition for one reviewer entry in harness/reviewers.yaml."""
-
-    prompt_file: NonEmptyStr
-    feedback_context: StrictString | None = None
-    trigger: ReviewerTriggerDefinition
-    approval: ReviewerApprovalDefinition = Field(
-        default_factory=ReviewerApprovalDefinition
-    )
-    sandbox: ReviewerSandboxDefinition | None = None
-
-    @model_validator(mode="after")
-    def enforce_prompt_file_location(self) -> "ReviewerDefinition":
-        """Ensure prompt_file points under harness/reviewers/prompts/."""
-        _validate_prompt_file_location(self.prompt_file)
-        return self
-
-
-class ReviewerConfigDocument(StrictContractModel):
-    """Top-level schema for harness/reviewers.yaml."""
-
-    contract_version: Literal["1.0"] = "1.0"
-    profiles: dict[NonEmptyStr, list[NonEmptyStr]]
-    reviewers: dict[NonEmptyStr, ReviewerDefinition]
 
 
 class HarnessCheckPhase(str, Enum):
@@ -607,28 +535,6 @@ def potential_features_contract_issues(
     """Collect strict contract issues for potential features backlog YAML."""
     return _model_contract_issues(
         model_type=PotentialFeaturesDocument,
-        payload=document,
-        file_path=file_path,
-    )
-
-
-def gate_contract_issues(
-    document: dict[str, Any], file_path: Path
-) -> list[ValidationIssue]:
-    """Collect strict contract issues for gate configuration YAML."""
-    return _model_contract_issues(
-        model_type=GateConfigDocument,
-        payload=document,
-        file_path=file_path,
-    )
-
-
-def reviewer_contract_issues(
-    document: dict[str, Any], file_path: Path
-) -> list[ValidationIssue]:
-    """Collect strict contract issues for reviewer configuration YAML."""
-    return _model_contract_issues(
-        model_type=ReviewerConfigDocument,
         payload=document,
         file_path=file_path,
     )
