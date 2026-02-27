@@ -1,0 +1,126 @@
+id: FEAT-150
+title: Centralize PlannedCheck planning record in strategy contracts
+type: spec
+expected_commit_subject: 'spec: add FEAT-150 shared planned-check strategy contract'
+status: done
+priority: medium
+objective: 'Remove duplicated `PlannedCheck` definitions across command, fitness,
+  and reviewer runtimes by defining one canonical planning record in `src/engineeringagent/checks/strategy_contracts.py`
+  and reusing it everywhere without changing planning semantics.
+
+  '
+context: 'The checks planners currently define near-identical `PlannedCheck` models
+  in:
+
+  - `src/engineeringagent/checks/commands/runtime.py`
+
+  - `src/engineeringagent/checks/fitness/runtime.py`
+
+  - `src/engineeringagent/checks/reviewers/runtime.py`
+
+
+  This duplication increases drift risk and raises maintenance cost when planning
+
+  contracts evolve.
+
+
+  We want one canonical planning-record contract colocated with strategy contracts,
+
+  not a generic utility module.
+
+  '
+constraints:
+- 'In scope: deduplicate planner record definitions for command/fitness/reviewer checks.'
+- 'In scope: define canonical `PlannedCheck` in `src/engineeringagent/checks/strategy_contracts.py`.'
+- 'Out of scope: changing run/skip planning policy semantics or check execution behavior.'
+- 'Out of scope: broad checks-orchestration redesign beyond planned-record ownership.'
+- Preserve deterministic planner fields and semantics (`check_id`, `decision`, `reason`).
+- Avoid generic naming (`utils`/`helpers`); keep ownership explicit via strategy contracts.
+- Preserve practical import ergonomics for runtime/test consumers (module re-export
+  allowed where useful).
+implementation_notes: "Contract change declaration\n\nSurface:\n\n- Shared planning\
+  \ record contract used by:\n  - `plan_command_checks(...)`\n  - `plan_fitness_checks(...)`\n\
+  \  - `plan_reviewer_checks(...)`\n- Internal imports in checks runtime/tests that\
+  \ reference `PlannedCheck`.\n\nOld behavior:\n\n- Each runtime module defines a\
+  \ local `PlannedCheck` model with equivalent fields.\n\nNew behavior:\n\n- One canonical\
+  \ `PlannedCheck` type is defined in\n  `src/engineeringagent/checks/strategy_contracts.py`.\n\
+  - All check planners return that shared type.\n- Runtime modules may re-export `PlannedCheck`\
+  \ for local import stability.\n\nCompatibility policy:\n\n- No intentional behavior\
+  \ changes for planning decisions/reasons.\n- Internal import paths may be preserved\
+  \ via re-export where that reduces churn.\n\nMigration plan:\n\n- Add canonical\
+  \ `PlannedCheck` to strategy contracts.\n- Update command/fitness/reviewer planner\
+  \ signatures and return construction.\n- Remove duplicated local `PlannedCheck`\
+  \ declarations from runtime modules.\n- Update tests/imports to rely on the canonical\
+  \ planning contract.\n\nVerification evidence:\n\n- Planner/runtime checks tests\
+  \ pass for command, fitness, and reviewer paths.\n- Checks contract tests pass with\
+  \ shared planning record.\n- `uv run engineeringagent validate` passes.\n\nFitness-function\
+  \ impact assessment:\n\n- no fitness-function changes required.\n- Rationale: this\
+  \ is a localized ownership/deduplication refactor and does not\n  alter policy boundaries\
+  \ or runtime planning behavior.\n"
+acceptance:
+- Canonical `PlannedCheck` is defined in `src/engineeringagent/checks/strategy_contracts.py`.
+- '`plan_command_checks(...)`, `plan_fitness_checks(...)`, and `plan_reviewer_checks(...)`
+  return the shared `PlannedCheck` type.'
+- Duplicate local `PlannedCheck` definitions are removed from command/fitness/reviewer
+  runtime modules.
+- Planner outputs remain deterministic and unchanged in meaning (`check_id`, `decision`,
+  `reason`).
+- Planning-policy parity remains intact across command/fitness/reviewer planners.
+- 'Verification command passes: `uv run pytest -q tests/checks/test_commands_runtime.py
+  tests/checks/test_fitness_runtime.py tests/checks/test_checks_reviewers_runtime.py
+  tests/checks/test_run_checks_contract.py`.'
+- 'Verification command passes: `uv run engineeringagent validate`.'
+subtasks:
+- id: ST-001
+  title: Define canonical PlannedCheck in strategy contracts
+  status: done
+  context: 'Add one shared planning-record type in `strategy_contracts.py` with fields
+    `check_id`, `decision`, and `reason`.
+
+    '
+  verification:
+  - uv run pytest -q tests/checks/test_commands_runtime.py tests/checks/test_fitness_runtime.py
+- id: ST-002
+  title: Update check planners to return shared PlannedCheck
+  status: done
+  context: 'Update command/fitness/reviewer planning functions to construct and return
+    the shared type and remove local duplicate model declarations.
+
+    '
+  verification:
+  - uv run pytest -q tests/checks/test_commands_runtime.py tests/checks/test_fitness_runtime.py
+    tests/checks/test_checks_reviewers_runtime.py
+- id: ST-003
+  title: Align tests and imports to canonical planning contract
+  status: done
+  context: 'Update tests/imports to use the shared strategy-contract planning record
+    and keep runtime-module import ergonomics stable where needed.
+
+    '
+  verification:
+  - uv run pytest -q tests/checks/test_checks_reviewers_runtime.py tests/checks/test_run_checks_contract.py
+- id: ST-004
+  title: Run final validation for planning parity
+  status: done
+  context: 'Validate that deduplication does not change deterministic planner outcomes
+    and repository validation contracts.
+
+    '
+  verification:
+  - uv run pytest -q tests/checks/test_commands_runtime.py tests/checks/test_fitness_runtime.py
+    tests/checks/test_checks_reviewers_runtime.py tests/checks/test_run_checks_contract.py
+  - uv run engineeringagent validate
+- id: ST-005
+  title: Reviewer feedback cleanup for planner constructors and import ordering
+  status: done
+  context: 'Address post-review maintainability feedback by centralizing planned-check
+    constructor wiring and restoring repo-standard import ordering in touched modules.
+
+    '
+  verification:
+  - UV_CACHE_DIR=/tmp/uv-cache uv run ruff check --select I --fix src/engineeringagent/checks/commands/runtime.py
+    src/engineeringagent/checks/fitness/runtime.py src/engineeringagent/checks/reviewers/runtime.py
+    src/engineeringagent/checks/strategy_contracts.py
+  - UV_CACHE_DIR=/tmp/uv-cache uv run pytest -q tests/checks/test_commands_runtime.py
+    tests/checks/test_fitness_runtime.py tests/checks/test_checks_reviewers_runtime.py
+updated_at: '2026-02-27T16:20:24Z'

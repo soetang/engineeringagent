@@ -2,14 +2,13 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Callable, Iterable, cast
+from typing import Any, Callable, Iterable
 
 from pydantic import BaseModel, ConfigDict
 
 from engineeringagent.changed_paths import (
     ChangedPathsResult,
 )
-
 from engineeringagent.checks.reviewers.engine import (
     DECISION_APPROVE,
     DECISION_REQUEST_CHANGES,
@@ -19,23 +18,29 @@ from engineeringagent.checks.reviewers.engine import (
     run_reviewer,
     save_reviewers_state,
 )
+from engineeringagent.checks.strategy_contracts import (
+    CheckDecision,
+    PlannedCheck,
+    make_planned_check,
+)
 from engineeringagent.specs import (
     HarnessCheckPhase,
     HarnessCheckReviewerDefinition,
     HarnessChecksDocument,
 )
-from engineeringagent.checks.strategy_contracts import (
-    CheckDecision,
-    CheckDecisionAction,
-)
 
 from ..planning_policy import (
     ALWAYS_RUN_NO_ON_CHANGE_REASON as _ALWAYS_RUN_NO_ON_CHANGE_REASON,
+)
+from ..planning_policy import (
     MATCHED_ON_CHANGE_REASON as _MATCHED_ON_CHANGE_REASON,
+)
+from ..planning_policy import (
     NO_ON_CHANGE_MATCH_REASON as _NO_ON_CHANGE_MATCH_REASON,
+)
+from ..planning_policy import (
     plan_checks_for_definition_type,
 )
-
 
 ALWAYS_RUN_NO_ON_CHANGE_REASON = _ALWAYS_RUN_NO_ON_CHANGE_REASON
 MATCHED_ON_CHANGE_REASON = _MATCHED_ON_CHANGE_REASON
@@ -45,16 +50,6 @@ FALLBACK_REMEDIATION_GUIDANCE = (
     "reviewer did not provide required_actions; use summary and scope_notes to plan "
     "next edits and rerun checks."
 )
-
-
-class PlannedCheck(BaseModel):
-    """Deterministic plan entry for a reviewer check."""
-
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-    check_id: str
-    decision: CheckDecisionAction
-    reason: str
 
 
 class RunPlannedReviewerChecksRequest(BaseModel):
@@ -89,11 +84,7 @@ def plan_reviewer_checks(
         phase=phase,
         changed_paths=changed_paths,
         definition_type=HarnessCheckReviewerDefinition,
-        make_record=lambda check_id, decision, reason: PlannedCheck(
-            check_id=check_id,
-            decision=cast(CheckDecisionAction, decision),
-            reason=reason,
-        ),
+        make_record=make_planned_check,
     )
 
 

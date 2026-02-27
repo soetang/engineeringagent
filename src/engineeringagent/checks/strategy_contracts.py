@@ -8,7 +8,10 @@ from typing import (
     NamedTuple,
     Protocol,
     Sequence,
+    cast,
 )
+
+from pydantic import BaseModel, ConfigDict
 from typing_extensions import Literal, TypedDict
 
 from engineeringagent.changed_paths import ChangedPathsResult
@@ -37,6 +40,26 @@ class CheckDecision(TypedDict):
     phase: str
     decision: CheckDecisionAction
     reason: str
+
+
+class PlannedCheck(BaseModel):
+    """Canonical deterministic planner record shared by checks runtimes."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    check_id: str
+    decision: CheckDecisionAction
+    reason: str
+
+
+def make_planned_check(check_id: str, decision: str, reason: str) -> PlannedCheck:
+    """Construct one canonical planner output record."""
+
+    return PlannedCheck(
+        check_id=check_id,
+        decision=cast(CheckDecisionAction, decision),
+        reason=reason,
+    )
 
 
 class PlannedCheckRecord(Protocol):

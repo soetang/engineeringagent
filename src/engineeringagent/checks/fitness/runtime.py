@@ -1,37 +1,29 @@
 from __future__ import annotations
 
-from typing import cast
-
-from pydantic import BaseModel, ConfigDict
-
 from engineeringagent.changed_paths import ChangedPathsResult
+from engineeringagent.checks.strategy_contracts import PlannedCheck, make_planned_check
 from engineeringagent.specs import (
     HarnessCheckFitnessDefinition,
     HarnessCheckPhase,
     HarnessChecksDocument,
 )
-from engineeringagent.checks.strategy_contracts import CheckDecisionAction
+
 from ..planning_policy import (
     ALWAYS_RUN_NO_ON_CHANGE_REASON as _ALWAYS_RUN_NO_ON_CHANGE_REASON,
+)
+from ..planning_policy import (
     MATCHED_ON_CHANGE_REASON as _MATCHED_ON_CHANGE_REASON,
+)
+from ..planning_policy import (
     NO_ON_CHANGE_MATCH_REASON as _NO_ON_CHANGE_MATCH_REASON,
+)
+from ..planning_policy import (
     plan_checks_for_definition_type,
 )
-
 
 ALWAYS_RUN_NO_ON_CHANGE_REASON = _ALWAYS_RUN_NO_ON_CHANGE_REASON
 MATCHED_ON_CHANGE_REASON = _MATCHED_ON_CHANGE_REASON
 NO_ON_CHANGE_MATCH_REASON = _NO_ON_CHANGE_MATCH_REASON
-
-
-class PlannedCheck(BaseModel):
-    """A deterministic run/skip decision for a single fitness check."""
-
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-    check_id: str
-    decision: CheckDecisionAction
-    reason: str
 
 
 def plan_fitness_checks(
@@ -46,9 +38,5 @@ def plan_fitness_checks(
         phase=phase,
         changed_paths=changed_paths,
         definition_type=HarnessCheckFitnessDefinition,
-        make_record=lambda check_id, decision, reason: PlannedCheck(
-            check_id=check_id,
-            decision=cast(CheckDecisionAction, decision),
-            reason=reason,
-        ),
+        make_record=make_planned_check,
     )

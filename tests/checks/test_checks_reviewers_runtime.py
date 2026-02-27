@@ -8,12 +8,12 @@ import pytest
 from engineeringagent.changed_paths import ChangedPathsResult
 from engineeringagent.checks.reviewers.runtime import (
     FALLBACK_REMEDIATION_GUIDANCE,
-    PlannedCheck,
     RunPlannedReviewerChecksRequest,
     plan_reviewer_checks,
     run_planned_reviewer_checks_from_plan,
 )
 from engineeringagent.checks.strategy_contracts import (
+    PlannedCheck,
     map_planned_checks_to_decisions,
     strategy_run_decisions,
 )
