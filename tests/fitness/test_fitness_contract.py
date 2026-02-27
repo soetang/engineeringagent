@@ -12,7 +12,7 @@ from engineeringagent.checks.fitness.contracts import (
     RuleSeverity,
     RuleStatus,
 )
-from engineeringagent.checks import emit_result_envelope
+from engineeringagent.checks import emit_fitness_result
 
 
 def test_rule_metadata_requires_side_effect_free_true() -> None:
@@ -63,10 +63,10 @@ def test_rule_result_rejects_missing_contract_version() -> None:
         )
 
 
-def test_emit_result_envelope_is_deterministic_and_validates(
+def test_emit_fitness_result_is_deterministic_and_validates(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    emit_result_envelope(
+    emit_fitness_result(
         FitnessRuleResult(
             contract_version=CONTRACT_VERSION,
             rule_id="architecture.dep-direction",
@@ -93,10 +93,10 @@ def test_emit_result_envelope_is_deterministic_and_validates(
     assert result.contract_version == CONTRACT_VERSION
 
 
-def test_emit_result_envelope_includes_details_when_provided(
+def test_emit_fitness_result_includes_details_when_provided(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    emit_result_envelope(
+    emit_fitness_result(
         FitnessRuleResult(
             contract_version=CONTRACT_VERSION,
             rule_id="architecture.dep-direction",

@@ -6,7 +6,6 @@ from engineeringagent import checks
 from engineeringagent.checks import (
     ChecksRunResult,
     emit_fitness_result,
-    emit_result_envelope,
     list_check_groups,
     load_harness_checks_document,
     normalize_groups,
@@ -24,7 +23,6 @@ from engineeringagent.checks.fitness.contracts import (
 def test_checks_supported_exports_are_importable() -> None:
     assert callable(run_checks)
     assert callable(emit_fitness_result)
-    assert emit_result_envelope is emit_fitness_result
     assert callable(list_check_groups)
     assert callable(load_harness_checks_document)
     assert callable(normalize_groups)
@@ -33,7 +31,6 @@ def test_checks_supported_exports_are_importable() -> None:
     assert set(checks.__all__) == {
         "ChecksRunResult",
         "emit_fitness_result",
-        "emit_result_envelope",
         "list_check_groups",
         "load_harness_checks_document",
         "normalize_groups",
@@ -64,6 +61,16 @@ def test_checks_group_helpers_use_deterministic_contract() -> None:
 def test_checks_does_not_export_removed_legacy_runtime_helpers(legacy_name: str) -> None:
     assert legacy_name not in checks.__all__
     assert not hasattr(checks, legacy_name)
+
+
+def test_checks_does_not_export_emit_result_envelope_alias() -> None:
+    assert "emit_result_envelope" not in checks.__all__
+    assert not hasattr(checks, "emit_result_envelope")
+
+
+def test_importing_removed_emit_result_envelope_alias_raises_import_error() -> None:
+    with pytest.raises(ImportError):
+        exec("from engineeringagent.checks import emit_result_envelope", {})
 
 
 def test_checks_emit_fitness_result_is_deterministic_and_validates(

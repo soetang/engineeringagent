@@ -9,7 +9,7 @@ from typing import Iterable
 import os
 import yaml
 
-from engineeringagent.checks import emit_result_envelope
+from engineeringagent.checks import emit_fitness_result
 from engineeringagent.checks.fitness.contracts import (
     CONTRACT_VERSION,
     FitnessRuleResult,
@@ -179,7 +179,7 @@ def main() -> int:
     try:
         enabled = resolve_harness_fitness_opencode_real_smoke_enabled(repo_root)
     except ValueError as exc:
-        emit_result_envelope(
+        emit_fitness_result(
             _result(
                 status=RuleStatus.FAIL,
                 summary="invalid engineeringagent TOML configuration for smoke rule",
@@ -192,7 +192,7 @@ def main() -> int:
         return 0
 
     if not enabled:
-        emit_result_envelope(
+        emit_fitness_result(
             _result(
                 status=RuleStatus.PASS,
                 summary="skipped (disabled in engineeringagent.toml)",
@@ -201,7 +201,7 @@ def main() -> int:
         return 0
 
     if shutil.which("opencode") is None:
-        emit_result_envelope(
+        emit_fitness_result(
             _result(
                 status=RuleStatus.FAIL,
                 summary="opencode not installed (enabled in engineeringagent.toml)",
@@ -253,7 +253,7 @@ def main() -> int:
                 timeout_seconds=60,
             )
             if not _require_ok(uv_init_proc, label="uv init", violations=violations):
-                emit_result_envelope(
+                emit_fitness_result(
                     _result(
                         status=RuleStatus.FAIL,
                         summary="failed to initialize uv project in temp repo",
@@ -267,7 +267,7 @@ def main() -> int:
             if not _require_ok(
                 init_proc, label="engineeringagent init slim", violations=violations
             ):
-                emit_result_envelope(
+                emit_fitness_result(
                     _result(
                         status=RuleStatus.FAIL,
                         summary="failed to initialize temp repo with engineeringagent init slim",
@@ -281,7 +281,7 @@ def main() -> int:
                 violations.append(
                     "engineeringagent init slim did not create .opencode/agents/engineeringagent.md"
                 )
-                emit_result_envelope(
+                emit_fitness_result(
                     _result(
                         status=RuleStatus.FAIL,
                         summary="init scaffold missing required OpenCode agents doc",
@@ -302,7 +302,7 @@ def main() -> int:
             if not _require_ok(
                 commit_proc, label="git commit baseline", violations=violations
             ):
-                emit_result_envelope(
+                emit_fitness_result(
                     _result(
                         status=RuleStatus.FAIL,
                         summary="failed to create baseline commit in temp repo",
@@ -340,7 +340,7 @@ def main() -> int:
                     _require_ok(
                         run_proc, label="engineeringagent run", violations=violations
                     )
-                emit_result_envelope(
+                emit_fitness_result(
                     _result(
                         status=RuleStatus.FAIL,
                         summary="engineeringagent run did not complete successfully",
@@ -356,7 +356,7 @@ def main() -> int:
                 violations.append(
                     "expected archived feature spec under docs/spec/features_done (missing FEAT-001*.yaml)"
                 )
-                emit_result_envelope(
+                emit_fitness_result(
                     _result(
                         status=RuleStatus.FAIL,
                         summary="loop did not archive hello-world feature spec",
@@ -386,7 +386,7 @@ def main() -> int:
                 if status == RuleStatus.PASS
                 else f"Real OpenCode hello-world smoke loop failed ({len(violations)} issue(s))."
             )
-            emit_result_envelope(
+            emit_fitness_result(
                 _result(
                     status=status,
                     summary=summary,
@@ -395,7 +395,7 @@ def main() -> int:
             )
             return 0
     except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-exception-caught
-        emit_result_envelope(
+        emit_fitness_result(
             _result(
                 status=RuleStatus.ERROR,
                 summary=f"unexpected exception during real-agent smoke run: {exc}",

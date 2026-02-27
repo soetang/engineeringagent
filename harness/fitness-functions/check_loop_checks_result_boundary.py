@@ -3,7 +3,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from engineeringagent.checks import emit_result_envelope
+from engineeringagent.checks import emit_fitness_result
 from engineeringagent.checks.fitness.boundary_reporting import (
     build_boundary_rule_result,
 )
@@ -109,7 +109,7 @@ def _loop_checks_result_boundary_violations(project_root: Path) -> list[str]:
 def main() -> int:
     """Run loop-checks result-boundary fitness rule."""
     violations = _loop_checks_result_boundary_violations(Path("."))
-    emit_result_envelope(
+    emit_fitness_result(
         build_boundary_rule_result(
             rule_id=RULE_ID,
             violations=violations,

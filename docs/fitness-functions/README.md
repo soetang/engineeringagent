@@ -13,17 +13,17 @@ depend on a small, explicit helper surface from `engineeringagent`.
 
 By default, harness scripts may import only:
 
-- `engineeringagent.fitness.*`
+- `engineeringagent.checks` (supported helper names only)
 
 They must not import orchestration/runtime internals (for example
 `engineeringagent.loop`, `engineeringagent.cli`, or `engineeringagent.loop_runtime.*`).
 
-For deterministic result emission, use `engineeringagent.fitness.envelope`:
+For deterministic result emission, use `engineeringagent.checks.emit_fitness_result`:
 
 ```python
-from engineeringagent.fitness.envelope import emit_result_envelope
+from engineeringagent.checks import emit_fitness_result
 
-emit_result_envelope(...)
+emit_fitness_result(...)
 ```
 
 Regenerate the catalog after rule metadata changes:

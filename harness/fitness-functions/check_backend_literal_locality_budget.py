@@ -7,7 +7,7 @@ from typing import Any
 
 import yaml
 
-from engineeringagent.checks import emit_result_envelope
+from engineeringagent.checks import emit_fitness_result
 from engineeringagent.checks.fitness.contracts import (
     CONTRACT_VERSION,
     FitnessRuleResult,
@@ -275,7 +275,7 @@ def main() -> int:
             refresh_delta,
         ) = _error_baseline_state()
 
-    emit_result_envelope(
+    emit_fitness_result(
         FitnessRuleResult(
             contract_version=CONTRACT_VERSION,
             rule_id=RULE_ID,

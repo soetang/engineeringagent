@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from engineeringagent.checks import emit_result_envelope, render_fitness_catalog
+from engineeringagent.checks import emit_fitness_result, render_fitness_catalog
 from engineeringagent.checks.fitness.contracts import (
     CONTRACT_VERSION,
     FitnessRuleResult,
@@ -51,7 +51,7 @@ def main() -> int:
         else f"Detected {len(violations)} fitness catalog docs sync violation(s)."
     )
 
-    emit_result_envelope(
+    emit_fitness_result(
         FitnessRuleResult(
             contract_version=CONTRACT_VERSION,
             rule_id=RULE_ID,

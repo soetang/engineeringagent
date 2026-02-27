@@ -10,10 +10,7 @@ from engineeringagent.checks.fitness.contracts import (
 
 
 def emit_fitness_result(result: FitnessRuleResult) -> None:
-    """Emit a deterministic JSON fitness result envelope.
-
-    The canonical implementation is introduced during the FEAT-097 migration.
-    """
+    """Emit a deterministic JSON fitness result envelope."""
 
     payload: dict[str, Any] = result.model_dump(mode="json", exclude_none=True)
     payload["contract_version"] = CONTRACT_VERSION

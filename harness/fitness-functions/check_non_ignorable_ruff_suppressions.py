@@ -9,7 +9,7 @@ from typing import Any
 
 import yaml
 
-from engineeringagent.checks import emit_result_envelope
+from engineeringagent.checks import emit_fitness_result
 from engineeringagent.checks.fitness.contracts import (
     CONTRACT_VERSION,
     FitnessRuleResult,
@@ -229,7 +229,7 @@ def main() -> int:
     try:
         rule_id, blocked_rule_ids, scan_roots = _resolve_runtime_policy(args)
     except _RuntimePolicyError as exc:
-        emit_result_envelope(
+        emit_fitness_result(
             FitnessRuleResult(
                 contract_version=CONTRACT_VERSION,
                 rule_id=exc.rule_id,
@@ -259,7 +259,7 @@ def main() -> int:
         )
     )
 
-    emit_result_envelope(
+    emit_fitness_result(
         FitnessRuleResult(
             contract_version=CONTRACT_VERSION,
             rule_id=rule_id,

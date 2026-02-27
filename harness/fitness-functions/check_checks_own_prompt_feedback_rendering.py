@@ -3,7 +3,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from engineeringagent.checks import emit_result_envelope
+from engineeringagent.checks import emit_fitness_result
 from engineeringagent.checks.fitness.boundary_reporting import (
     build_boundary_rule_result,
 )
@@ -85,7 +85,7 @@ def _module_prompt_feedback_violations(relative: Path, tree: ast.AST) -> list[st
 def main() -> int:
     """Run checks-owned prompt-feedback rendering boundary rule."""
     violations = _checks_owned_prompt_feedback_violations(Path("."))
-    emit_result_envelope(
+    emit_fitness_result(
         build_boundary_rule_result(
             rule_id=RULE_ID,
             violations=violations,
