@@ -193,7 +193,6 @@ def build_agents_merge_followup_spec(backup_agents_name: str) -> str:
 def build_baseline_scaffold_manifest(
     docs_dir: str = "docs",
     profile: str = "core",
-    include_reviewers: bool = False,
     backend_id: str | None = None,
     agent_model: str = DEFAULT_AGENT_MODEL,
 ) -> dict[str, str]:
@@ -202,14 +201,12 @@ def build_baseline_scaffold_manifest(
     Args:
         docs_dir: Docs root directory where spec files should be scaffolded.
         profile: Scaffold profile that determines language/tool defaults.
-        include_reviewers: Backward-compatible no-op; init does not seed reviewers.
         backend_id: Optional backend id for backend-contributed scaffold assets.
         agent_model: Agent model id passed to backend-contributed scaffold assets.
 
     Returns:
         Mapping of relative file paths to scaffolded file contents.
     """
-    del include_reviewers
     if profile not in _SUPPORTED_SCAFFOLD_PROFILES:
         raise ValueError(f"unsupported scaffold profile: {profile}")
     resolved_backend_id = backend_id or default_backend_id()
@@ -324,7 +321,6 @@ def build_init_scaffold_manifest(
     manifest = build_baseline_scaffold_manifest(
         docs_dir=resolved_options.docs_dir,
         profile=resolved_options.profile,
-        include_reviewers=resolved_options.include_reviewers,
         backend_id=resolved_options.backend_id,
         agent_model=resolved_options.agent_model,
     )
@@ -384,7 +380,6 @@ class BaselineScaffoldOptions(NamedTuple):
     docs_dir: str = "docs"
     profile: str = "core"
     pack: str = "slim"
-    include_reviewers: bool = False
     backend_id: str | None = None
     agent_model: str = DEFAULT_AGENT_MODEL
 

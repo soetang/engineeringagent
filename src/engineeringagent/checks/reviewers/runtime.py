@@ -12,6 +12,7 @@ from engineeringagent.changed_paths import (
 from engineeringagent.checks.reviewers.engine import (
     DECISION_APPROVE,
     DECISION_REQUEST_CHANGES,
+    ReviewerRunRequest,
     evaluate_cached_reviewer_approval,
     load_reviewers_state,
     record_reviewer_approval,
@@ -100,6 +101,13 @@ def run_planned_reviewer_checks_from_plan(
 
     state = load_reviewers_state(request.project_root)
     output_parts: list[str] = []
+    reviewer_run_request = ReviewerRunRequest(
+        feature_id=request.feature_id,
+        feature_path=request.feature_path,
+        changed_paths=request.changed_paths,
+        feedback=request.feedback,
+        run_agent_fn=request.run_agent_fn,
+    )
 
     for entry in planned_entries:
         check_id = str(entry["check_id"])
@@ -131,11 +139,7 @@ def run_planned_reviewer_checks_from_plan(
             request.project_root,
             reviewer_id,
             reviewer,
-            feature_id=request.feature_id,
-            feature_path=request.feature_path,
-            changed_paths=request.changed_paths,
-            feedback=request.feedback,
-            run_agent_fn=request.run_agent_fn,
+            request=reviewer_run_request,
         )
         decision_name, summary, decision_payload = _normalize_reviewer_decision(
             decision

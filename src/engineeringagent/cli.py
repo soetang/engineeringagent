@@ -476,41 +476,6 @@ def cmd_checks_run(args: _HandlerArgs) -> int:
     return exit_code
 
 
-def cmd_fitness_run(args: _HandlerArgs) -> int:
-    """Run fitness checks via a compatibility command surface."""
-
-    project_root = Path(args.project_root).resolve()
-    result = checks_module.run_checks(
-        project_root,
-        phase=args.phase,
-        checks=["fitness"],
-        check_id=getattr(args, "check_id", None),
-        base=getattr(args, "base", None),
-        head=getattr(args, "head", None),
-        dry_run=bool(getattr(args, "dry_run", False)),
-    )
-
-    output_format = getattr(args, "output_format", "text")
-    if output_format == "json":
-        payload = {
-            "ok": result.ok,
-            "dry_run": result.dry_run,
-            "failed_check_id": result.failed_check_id,
-            "failed_payload": result.failed_payload,
-            "output": result.output,
-            "prompt_feedback": result.prompt_feedback,
-        }
-        print(json.dumps(payload, sort_keys=True))
-        return 0 if result.ok else 1
-
-    return _emit_run_result(
-        result,
-        noun="fitness",
-        success_label="ok",
-        fail_label="failed",
-    )
-
-
 def cmd_init(args: _HandlerArgs) -> int:  # noqa: C901
     """Scaffold baseline harness files for a repository.
 

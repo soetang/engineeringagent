@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any, cast
+
+import pytest
 
 from engineeringagent.changed_paths import ChangedPathsResult
 from engineeringagent.checks.reviewers.engine import (
     PARSER_FAILURE_SUMMARY_PREFIX,
     ReviewerDecisionEnvelope,
+    ReviewerRunRequest,
     run_reviewer,
 )
 from engineeringagent.agents import AgentOutputValidationError
@@ -40,15 +44,17 @@ def test_run_reviewer_loads_harness_prompt_and_parses_decision(tmp_path) -> None
             "prompt_file": "harness/reviewers/prompts/code_simplifier.md",
             "trigger": {"phase": "iteration_end"},
         },
-        feature_id="FEAT-050",
-        feature_path=tmp_path / "docs/spec/features/FEAT-050.yaml",
-        changed_paths=ChangedPathsResult(
-            paths=("src/engineeringagent/checks/reviewers/engine.py",),
-            run_all=False,
-            reason=None,
+        request=ReviewerRunRequest(
+            feature_id="FEAT-050",
+            feature_path=tmp_path / "docs/spec/features/FEAT-050.yaml",
+            changed_paths=ChangedPathsResult(
+                paths=("src/engineeringagent/checks/reviewers/engine.py",),
+                run_all=False,
+                reason=None,
+            ),
+            feedback="tighten error handling",
+            run_agent_fn=_run_agent,
         ),
-        feedback="tighten error handling",
-        run_agent_fn=_run_agent,
     )
 
     assert decision == {
@@ -92,11 +98,13 @@ def test_run_reviewer_does_not_inject_deprecated_responseformat_contract(
             "prompt_file": "harness/reviewers/prompts/code_simplifier.md",
             "trigger": {"phase": "iteration_end"},
         },
-        feature_id="FEAT-050",
-        feature_path=tmp_path / "docs/spec/features/FEAT-050.yaml",
-        changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
-        feedback=None,
-        run_agent_fn=_run_agent,
+        request=ReviewerRunRequest(
+            feature_id="FEAT-050",
+            feature_path=tmp_path / "docs/spec/features/FEAT-050.yaml",
+            changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
+            feedback=None,
+            run_agent_fn=_run_agent,
+        ),
     )
 
     assert decision["decision"] == "approve"
@@ -128,11 +136,13 @@ def test_run_reviewer_parse_failure_returns_request_changes(tmp_path) -> None:
             "prompt_file": "harness/reviewers/prompts/code_simplifier.md",
             "trigger": {"phase": "iteration_end"},
         },
-        feature_id="FEAT-050",
-        feature_path=tmp_path / "docs/spec/features/FEAT-050.yaml",
-        changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
-        feedback=None,
-        run_agent_fn=_run_agent,
+        request=ReviewerRunRequest(
+            feature_id="FEAT-050",
+            feature_path=tmp_path / "docs/spec/features/FEAT-050.yaml",
+            changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
+            feedback=None,
+            run_agent_fn=_run_agent,
+        ),
     )
 
     assert decision["decision"] == "request_changes"
@@ -165,11 +175,13 @@ def test_run_reviewer_passes_max_validation_retries_to_canonical_runner(
             "prompt_file": "harness/reviewers/prompts/code_simplifier.md",
             "trigger": {"phase": "iteration_end"},
         },
-        feature_id="FEAT-070",
-        feature_path=tmp_path / "docs/spec/features/FEAT-070.yaml",
-        changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
-        feedback=None,
-        run_agent_fn=_run_agent,
+        request=ReviewerRunRequest(
+            feature_id="FEAT-070",
+            feature_path=tmp_path / "docs/spec/features/FEAT-070.yaml",
+            changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
+            feedback=None,
+            run_agent_fn=_run_agent,
+        ),
     )
 
     assert decision == {
@@ -178,6 +190,17 @@ def test_run_reviewer_passes_max_validation_retries_to_canonical_runner(
         "required_actions": [],
     }
     assert captured_max_validation_retries == [2]
+
+
+def test_run_reviewer_rejects_legacy_kwargs_invocation(tmp_path) -> None:
+    legacy_kwargs_call = cast(Any, run_reviewer)
+    with pytest.raises(TypeError, match="unexpected keyword argument"):
+        legacy_kwargs_call(
+            tmp_path,
+            "code_simplifier",
+            {"prompt_file": "harness/reviewers/prompts/code_simplifier.md"},
+            feature_id="FEAT-050",
+        )
 
 
 def test_run_reviewer_does_not_require_responseformat_placeholder(tmp_path) -> None:
@@ -204,11 +227,13 @@ def test_run_reviewer_does_not_require_responseformat_placeholder(tmp_path) -> N
             "prompt_file": "harness/reviewers/prompts/code_simplifier.md",
             "trigger": {"phase": "iteration_end"},
         },
-        feature_id="FEAT-050",
-        feature_path=tmp_path / "docs/spec/features/FEAT-050.yaml",
-        changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
-        feedback=None,
-        run_agent_fn=_run_agent,
+        request=ReviewerRunRequest(
+            feature_id="FEAT-050",
+            feature_path=tmp_path / "docs/spec/features/FEAT-050.yaml",
+            changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
+            feedback=None,
+            run_agent_fn=_run_agent,
+        ),
     )
 
     assert decision == {

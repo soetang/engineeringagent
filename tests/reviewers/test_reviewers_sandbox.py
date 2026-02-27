@@ -6,6 +6,7 @@ from engineeringagent.changed_paths import ChangedPathsResult
 from engineeringagent.checks.reviewers.engine import (
     PARSER_FAILURE_SUMMARY_PREFIX,
     ReviewerDecisionEnvelope,
+    ReviewerRunRequest,
     build_reviewer_sandbox,
     run_reviewer,
 )
@@ -198,15 +199,17 @@ def test_run_reviewer_uses_empty_folder_sandbox_when_configured(
             },
             "sandbox": {"mode": "empty_folder", "assets": ["README.md"]},
         },
-        feature_id="FEAT-050",
-        feature_path=tmp_path / "docs/spec/features/FEAT-050.yaml",
-        changed_paths=ChangedPathsResult(
-            paths=("README.md",),
-            run_all=False,
-            reason=None,
+        request=ReviewerRunRequest(
+            feature_id="FEAT-050",
+            feature_path=tmp_path / "docs/spec/features/FEAT-050.yaml",
+            changed_paths=ChangedPathsResult(
+                paths=("README.md",),
+                run_all=False,
+                reason=None,
+            ),
+            feedback=None,
+            run_agent_fn=_run_agent,
         ),
-        feedback=None,
-        run_agent_fn=_run_agent,
     )
 
     assert decision["decision"] == "approve"
@@ -257,15 +260,17 @@ def test_run_reviewer_uses_temp_worktree_snapshot_sandbox_when_configured(
             },
             "sandbox": {"mode": "temp_worktree_snapshot"},
         },
-        feature_id="FEAT-052",
-        feature_path=tmp_path / "docs/spec/features/FEAT-052.yaml",
-        changed_paths=ChangedPathsResult(
-            paths=("README.md",),
-            run_all=False,
-            reason=None,
+        request=ReviewerRunRequest(
+            feature_id="FEAT-052",
+            feature_path=tmp_path / "docs/spec/features/FEAT-052.yaml",
+            changed_paths=ChangedPathsResult(
+                paths=("README.md",),
+                run_all=False,
+                reason=None,
+            ),
+            feedback=None,
+            run_agent_fn=_run_agent,
         ),
-        feedback=None,
-        run_agent_fn=_run_agent,
     )
 
     assert decision["decision"] == "approve"
@@ -307,15 +312,17 @@ def test_run_reviewer_returns_request_changes_when_snapshot_setup_fails(
             },
             "sandbox": {"mode": "temp_worktree_snapshot"},
         },
-        feature_id="FEAT-050",
-        feature_path=tmp_path / "docs/spec/features/FEAT-050.yaml",
-        changed_paths=ChangedPathsResult(
-            paths=("README.md",),
-            run_all=False,
-            reason=None,
+        request=ReviewerRunRequest(
+            feature_id="FEAT-050",
+            feature_path=tmp_path / "docs/spec/features/FEAT-050.yaml",
+            changed_paths=ChangedPathsResult(
+                paths=("README.md",),
+                run_all=False,
+                reason=None,
+            ),
+            feedback=None,
+            run_agent_fn=lambda *_args, **_kwargs: None,
         ),
-        feedback=None,
-        run_agent_fn=lambda *_args, **_kwargs: None,
     )
 
     assert decision["decision"] == "request_changes"

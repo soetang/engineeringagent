@@ -288,11 +288,10 @@ def run_reviewer(
     project_root: Path,
     reviewer_id: str,
     reviewer: dict[str, Any],
-    request: ReviewerRunRequest | None = None,
-    **legacy_request_kwargs: Any,
+    *,
+    request: ReviewerRunRequest,
 ) -> dict[str, Any]:
     """Run one reviewer and return a deterministic decision envelope."""
-    run_request = _coerce_reviewer_run_request(request, legacy_request_kwargs)
     try:
         with _reviewer_execution_root(
             project_root, reviewer_id, reviewer
@@ -312,12 +311,12 @@ def run_reviewer(
                 composed_prompt = _compose_reviewer_prompt(
                     reviewer_prompt=reviewer_prompt,
                     reviewer_id=reviewer_id,
-                    request=run_request,
+                    request=request,
                 )
             except ValueError as exc:
                 return _parser_failure_decision(str(exc))
 
-            agent_runner = run_request.run_agent_fn or run_agent
+            agent_runner = request.run_agent_fn or run_agent
 
             try:
                 envelope = agent_runner(
@@ -340,23 +339,6 @@ def run_reviewer(
             )
     except RuntimeError as exc:
         return _parser_failure_decision(str(exc))
-
-
-def _coerce_reviewer_run_request(
-    request: ReviewerRunRequest | None,
-    legacy_request_kwargs: dict[str, Any],
-) -> ReviewerRunRequest:
-    if request is not None:
-        if legacy_request_kwargs:
-            return ReviewerRunRequest.model_validate(
-                {
-                    **request.model_dump(),
-                    **legacy_request_kwargs,
-                }
-            )
-        return request
-
-    return ReviewerRunRequest.model_validate(legacy_request_kwargs)
 
 
 def build_reviewer_sandbox(

@@ -149,61 +149,6 @@ def _build_typer_checks_app(command_module: ModuleType) -> typer.Typer:
     return checks_app
 
 
-def _build_typer_fitness_app(command_module: ModuleType) -> typer.Typer:
-    """Build a compatibility fitness app."""
-    fitness_app = typer.Typer(
-        help="run fitness checks",
-        add_completion=False,
-        no_args_is_help=False,
-    )
-
-    @fitness_app.command("run", help="run configured fitness checks")
-    def _fitness_run(
-        ctx: typer.Context,
-        output_format: Literal["json", "text"] = typer.Option(
-            "text",
-            "--format",
-        ),
-        phase: HarnessCheckPhase = typer.Option(
-            HarnessCheckPhase.ITERATION_END,
-            "--phase",
-            help="check execution phase to run (iteration_end|feature_done|manual)",
-        ),
-        check_id: str | None = typer.Option(
-            None,
-            "--check-id",
-            help="optional fitness check id to run",
-        ),
-        base: str | None = typer.Option(
-            None,
-            "--base",
-            help="optional base revision for on_change diff",
-        ),
-        head: str | None = typer.Option(
-            None,
-            "--head",
-            help="optional head revision for on_change diff",
-        ),
-        dry_run: bool = typer.Option(
-            False,
-            "--dry-run",
-            help="plan checks only (no command execution)",
-        ),
-    ) -> None:
-        _exit_with_handler_code(
-            command_module.cmd_fitness_run,
-            ctx=ctx,
-            output_format=output_format,
-            phase=phase,
-            check_id=check_id,
-            base=base,
-            head=head,
-            dry_run=dry_run,
-        )
-
-    return fitness_app
-
-
 def _build_typer_progress_app(command_module: ModuleType) -> typer.Typer:
     """Build manual progress helper commands."""
     progress_app = typer.Typer(
@@ -338,11 +283,6 @@ def build_typer_app(command_module: ModuleType) -> typer.Typer:
         _build_typer_checks_app(command_module),
         name="checks",
         help="run repo-owned checks from harness/checks.yaml",
-    )
-    app.add_typer(
-        _build_typer_fitness_app(command_module),
-        name="fitness",
-        help="run fitness checks",
     )
     app.add_typer(
         _build_typer_progress_app(command_module),

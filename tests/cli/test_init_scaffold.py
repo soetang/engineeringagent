@@ -33,17 +33,10 @@ def test_build_baseline_scaffold_manifest_excludes_reviewers_by_default() -> Non
     assert removed_prompt not in manifest
 
 
-def test_build_baseline_scaffold_manifest_ignores_include_reviewers_flag() -> None:
-    manifest = build_baseline_scaffold_manifest(include_reviewers=True)
+def test_build_baseline_scaffold_manifest_api_excludes_include_reviewers() -> None:
+    parameters = inspect.signature(build_baseline_scaffold_manifest).parameters
 
-    removed_prompt = (
-        "harness/reviewers/prompts/" + "_".join(["readme", "process"]) + ".md"
-    )
-
-    assert "harness/reviewers.yaml" not in manifest
-    assert "harness/gates.yaml" not in manifest
-    assert "harness/reviewers/prompts/code_simplifier.md" not in manifest
-    assert removed_prompt not in manifest
+    assert "include_reviewers" not in parameters
 
 
 def test_build_init_scaffold_manifest_excludes_legacy_harness_files() -> None:

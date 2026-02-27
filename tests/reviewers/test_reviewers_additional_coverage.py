@@ -13,6 +13,7 @@ from engineeringagent.checks.reviewers.engine import (
     FEATURE_DONE_PHASE,
     PARSER_FAILURE_SUMMARY_PREFIX,
     ReviewerDecisionEnvelope,
+    ReviewerRunRequest,
     evaluate_cached_reviewer_approval,
     increment_blocking_reviewer_retry_count,
     invalidate_reviewer_approval,
@@ -145,14 +146,14 @@ def test_run_reviewer_returns_parser_failure_for_missing_prompt_file(
     def run_agent_fn(*_a: Any, **_k: Any) -> Any:
         raise AssertionError("run_agent_fn should not be called")
 
-    request = {
-        "feature_id": "FEAT-1",
-        "feature_path": tmp_path,
-        "changed_paths": ChangedPathsResult(paths=(), run_all=False, reason=None),
-        "feedback": None,
-        "run_agent_fn": run_agent_fn,
-    }
-    decision = run_reviewer(tmp_path, "rev", {"prompt_file": ""}, **request)
+    request = ReviewerRunRequest(
+        feature_id="FEAT-1",
+        feature_path=tmp_path,
+        changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
+        feedback=None,
+        run_agent_fn=run_agent_fn,
+    )
+    decision = run_reviewer(tmp_path, "rev", {"prompt_file": ""}, request=request)
     assert decision["decision"] == DECISION_REQUEST_CHANGES
     assert decision["summary"].startswith(f"{PARSER_FAILURE_SUMMARY_PREFIX}:")
 
@@ -163,14 +164,19 @@ def test_run_reviewer_returns_parser_failure_when_prompt_file_missing_on_disk(
     def run_agent_fn(*_a: Any, **_k: Any) -> Any:
         raise AssertionError("run_agent_fn should not be called")
 
-    request = {
-        "feature_id": "FEAT-1",
-        "feature_path": tmp_path,
-        "changed_paths": ChangedPathsResult(paths=(), run_all=False, reason=None),
-        "feedback": None,
-        "run_agent_fn": run_agent_fn,
-    }
-    decision = run_reviewer(tmp_path, "rev", {"prompt_file": "missing.txt"}, **request)
+    request = ReviewerRunRequest(
+        feature_id="FEAT-1",
+        feature_path=tmp_path,
+        changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
+        feedback=None,
+        run_agent_fn=run_agent_fn,
+    )
+    decision = run_reviewer(
+        tmp_path,
+        "rev",
+        {"prompt_file": "missing.txt"},
+        request=request,
+    )
     assert decision["decision"] == DECISION_REQUEST_CHANGES
     assert decision["summary"].startswith(f"{PARSER_FAILURE_SUMMARY_PREFIX}:")
 
@@ -184,14 +190,19 @@ def test_run_reviewer_returns_parser_failure_when_opencode_is_missing(
     def fake_run_agent(*_args: Any, **_kwargs: Any) -> Any:
         raise FileNotFoundError("opencode")
 
-    request = {
-        "feature_id": "FEAT-1",
-        "feature_path": tmp_path,
-        "changed_paths": ChangedPathsResult(paths=(), run_all=False, reason=None),
-        "feedback": None,
-        "run_agent_fn": fake_run_agent,
-    }
-    decision = run_reviewer(tmp_path, "rev", {"prompt_file": "prompt.txt"}, **request)
+    request = ReviewerRunRequest(
+        feature_id="FEAT-1",
+        feature_path=tmp_path,
+        changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
+        feedback=None,
+        run_agent_fn=fake_run_agent,
+    )
+    decision = run_reviewer(
+        tmp_path,
+        "rev",
+        {"prompt_file": "prompt.txt"},
+        request=request,
+    )
     assert decision["decision"] == DECISION_REQUEST_CHANGES
     assert "opencode executable missing" in decision["summary"]
 
@@ -205,15 +216,20 @@ def test_run_reviewer_returns_parser_failure_when_agent_backend_errors(
     def fake_run_agent(*_args: Any, **_kwargs: Any) -> Any:
         raise AgentBackendError(backend="fake", message="run failed")
 
-    request = {
-        "feature_id": "FEAT-1",
-        "feature_path": tmp_path,
-        "changed_paths": ChangedPathsResult(paths=(), run_all=False, reason=None),
-        "feedback": None,
-        "run_agent_fn": fake_run_agent,
-    }
+    request = ReviewerRunRequest(
+        feature_id="FEAT-1",
+        feature_path=tmp_path,
+        changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
+        feedback=None,
+        run_agent_fn=fake_run_agent,
+    )
 
-    decision = run_reviewer(tmp_path, "rev", {"prompt_file": "prompt.txt"}, **request)
+    decision = run_reviewer(
+        tmp_path,
+        "rev",
+        {"prompt_file": "prompt.txt"},
+        request=request,
+    )
     assert decision["decision"] == DECISION_REQUEST_CHANGES
     assert decision["summary"].startswith(f"{PARSER_FAILURE_SUMMARY_PREFIX}:")
     assert "fake: run failed" in decision["summary"]

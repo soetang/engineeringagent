@@ -32,7 +32,6 @@ def test_cli_surface_inventory_commands() -> None:
         "run",
         "schema",
         "checks",
-        "fitness",
         "progress",
         "init",
         "--project-root",
@@ -66,10 +65,6 @@ def test_cli_surface_inventory_option_spellings() -> None:
         (
             ["checks", "catalog", "--help"],
             ["--manifest-path", "--format", "--output"],
-        ),
-        (
-            ["fitness", "run", "--help"],
-            ["--format", "--phase", "--check-id", "--dry-run"],
         ),
         (
             ["progress", "handoff-append", "--help"],
@@ -343,52 +338,11 @@ def test_main_checks_run_command_uses_typer_handler(monkeypatch: Any) -> None:
     }
 
 
-def test_main_fitness_run_command_uses_typer_handler(monkeypatch: Any) -> None:
-    recorded: dict[str, object] = {}
+def test_fitness_command_is_rejected() -> None:
+    result = _invoke_cli(["fitness", "run"])
 
-    def _fake_cmd_fitness_run(args: Any) -> int:
-        recorded["project_root"] = args.project_root
-        recorded["output_format"] = args.output_format
-        recorded["phase"] = args.phase
-        recorded["check_id"] = args.check_id
-        recorded["base"] = args.base
-        recorded["head"] = args.head
-        recorded["dry_run"] = args.dry_run
-        return 0
-
-    monkeypatch.setattr(cli_module, "cmd_fitness_run", _fake_cmd_fitness_run)
-
-    with pytest.raises(SystemExit) as exc_info:
-        cli_module.main(
-            [
-                "--project-root",
-                "repo",
-                "fitness",
-                "run",
-                "--format",
-                "json",
-                "--phase",
-                "feature_done",
-                "--check-id",
-                "boundary",
-                "--base",
-                "main",
-                "--head",
-                "HEAD",
-                "--dry-run",
-            ]
-        )
-
-    assert exc_info.value.code == 0
-    assert recorded == {
-        "project_root": "repo",
-        "output_format": "json",
-        "phase": cli_module.HarnessCheckPhase.FEATURE_DONE,
-        "check_id": "boundary",
-        "base": "main",
-        "head": "HEAD",
-        "dry_run": True,
-    }
+    assert result.exit_code != 0
+    assert "No such command 'fitness'" in (result.stderr or result.stdout)
 
 
 def test_cmd_run_builds_looprun_context_for_loop_entrypoint(
