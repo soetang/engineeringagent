@@ -107,14 +107,6 @@ def _build_typer_checks_app(command_module: ModuleType) -> typer.Typer:
         else:
             resolved_feature_path = str(feature_path).strip() or None
 
-        if normalized_checks is not None and "reviewers" in normalized_checks:
-            if resolved_feature_path is None:
-                print(
-                    "checks config error: --feature-path is required when running reviewers. "
-                    "Remediation: re-run with --feature-path <path-to-feature-yaml>."
-                )
-                raise typer.Exit(code=1)
-
         _exit_with_handler_code(
             command_module.cmd_checks_run,
             ctx=ctx,

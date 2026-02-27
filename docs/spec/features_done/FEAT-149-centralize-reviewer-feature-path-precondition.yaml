@@ -1,0 +1,134 @@
+id: FEAT-149
+title: Centralize reviewer feature_path precondition in checks request normalization
+type: spec
+expected_commit_subject: 'spec: add FEAT-149 reviewer feature-path validation ownership'
+status: done
+priority: medium
+objective: Eliminate duplicated validation for reviewer feature-path requirements
+  by keeping the rule in checks request normalization and leaving CLI as a thin transport/presentation
+  adapter.
+context: 'The reviewer feature-path requirement is currently enforced in two places:
+
+
+  - CLI command wiring (`src/engineeringagent/cli_typer.py`) pre-validates `--feature-path`
+  for reviewer runs.
+
+  - checks request normalization (`src/engineeringagent/checks/request_normalization.py`)
+  enforces the same invariant.
+
+
+  This duplication increases drift risk, complicates ownership boundaries, and can
+  produce inconsistent behavior between CLI and non-CLI callers.
+
+  '
+constraints:
+- 'In scope: remove duplicated reviewer feature-path precondition logic from CLI checks
+  command wiring and keep invariant enforcement in checks request normalization.'
+- 'In scope: maintain clear CLI error rendering and exit semantics (non-zero on invalid
+  input) when normalization rejects the request.'
+- 'Out of scope: broader checks architecture changes, strategy planning behavior,
+  and reviewer execution/runtime behavior.'
+- 'Out of scope: changing reviewer selection semantics or introducing new reviewer
+  flags/options.'
+- Preserve request normalization as the single source of truth for checks input invariants.
+- Minor user-facing error wording cleanup is allowed if remediation remains explicit.
+implementation_notes: 'Contract change declaration
+
+
+  Surface:
+
+
+  - checks input-validation ownership boundary for reviewer feature-path requirements.
+
+  - CLI checks-run error handling path for normalization failures.
+
+
+  Old behavior:
+
+
+  - CLI pre-validates missing reviewer `--feature-path` before invoking checks API.
+
+  - checks request normalization also validates the same requirement.
+
+
+  New behavior:
+
+
+  - checks request normalization is authoritative for reviewer `feature_path` requirements.
+
+  - CLI forwards inputs and renders normalization errors without duplicating policy
+  logic.
+
+
+  Compatibility policy:
+
+
+  - Preserve failure semantics (invalid reviewer runs without feature path exit non-zero).
+
+  - Minor wording differences are acceptable when error intent and remediation stay
+  clear.
+
+
+  Migration plan:
+
+
+  - Remove reviewer `--feature-path` precondition branch from CLI checks command wiring.
+
+  - Ensure checks command handler catches and renders normalization `ValueError` deterministically.
+
+  - Update targeted CLI/contract tests to assert boundary ownership and stable failure
+  semantics.
+
+
+  Verification evidence:
+
+
+  - `uv run pytest -q tests/cli/test_cli_checks.py tests/checks/test_run_checks_contract.py`
+  passes.
+
+  - `uv run engineeringagent validate` passes.
+
+
+  Fitness-function impact assessment:
+
+
+  - no fitness-function changes required.
+
+  - Rationale: this feature narrows validation ownership and removes duplicated prechecks
+  without changing fitness-policy intent.
+
+  '
+acceptance:
+- Reviewer feature-path requirement is enforced in checks request normalization, not
+  duplicated in CLI checks command wiring.
+- CLI `checks run` still returns a non-zero exit code for reviewer runs missing `--feature-path`.
+- CLI surfaces an actionable normalization error message for missing reviewer feature
+  path.
+- Non-CLI callers of checks API observe the same invariant enforcement path as CLI
+  callers.
+- 'Verification command passes: `uv run pytest -q tests/cli/test_cli_checks.py tests/checks/test_run_checks_contract.py`.'
+- 'Verification command passes: `uv run engineeringagent validate`.'
+subtasks:
+- id: ST-001
+  title: Remove CLI-side duplicate reviewer feature-path precondition
+  status: done
+  context: Delete the CLI checks-wiring guard that duplicates reviewer feature-path
+    policy owned by request normalization.
+  verification:
+  - uv run pytest -q tests/cli/test_cli_checks.py
+- id: ST-002
+  title: Make checks command rendering handle normalization input errors
+  status: done
+  context: Ensure CLI command handler renders normalization validation failures cleanly
+    and exits non-zero without stack-trace behavior.
+  verification:
+  - uv run pytest -q tests/cli/test_cli_checks.py tests/checks/test_run_checks_contract.py
+- id: ST-003
+  title: Run targeted regression and spec validation
+  status: done
+  context: Confirm boundary ownership and deterministic behavior remain intact after
+    deduplication.
+  verification:
+  - uv run pytest -q tests/cli/test_cli_checks.py tests/checks/test_run_checks_contract.py
+  - uv run engineeringagent validate
+updated_at: '2026-02-27T15:59:26Z'

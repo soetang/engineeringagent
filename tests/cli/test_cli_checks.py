@@ -106,7 +106,40 @@ def test_cli_checks_run_rejects_unknown_checks_group(tmp_path: Path) -> None:
     assert "Supported" in result.stdout
 
 
-def test_cli_checks_run_reviewers_requires_feature_path(tmp_path: Path) -> None:
+def test_cli_checks_run_reviewers_without_feature_path_delegates_to_handler(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    def _fake_cmd_checks_run(args: object) -> int:
+        captured["checks"] = getattr(args, "checks", None)
+        captured["feature_path"] = getattr(args, "feature_path", "missing")
+        return 0
+
+    monkeypatch.setattr(cli_module, "cmd_checks_run", _fake_cmd_checks_run)
+
+    runner = CliRunner(mix_stderr=False)
+    result = runner.invoke(
+        cli_module.build_typer_app(),
+        [
+            "--project-root",
+            str(tmp_path),
+            "checks",
+            "run",
+            "--checks",
+            "reviewers",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert captured["checks"] == ["reviewers"]
+    assert captured["feature_path"] is None
+
+
+def test_cli_checks_run_reviewers_without_feature_path_is_actionable_error(
+    tmp_path: Path,
+) -> None:
     runner = CliRunner(mix_stderr=False)
     result = runner.invoke(
         cli_module.build_typer_app(),
@@ -121,8 +154,8 @@ def test_cli_checks_run_reviewers_requires_feature_path(tmp_path: Path) -> None:
     )
 
     assert result.exit_code == 1
-    assert "--feature-path" in result.stdout
-    assert "required" in result.stdout
+    assert "checks input error:" in result.stdout
+    assert "feature_path is required when reviewers checks are selected" in result.stdout
 
 
 def test_cli_checks_run_accepts_check_id_option(tmp_path: Path) -> None:

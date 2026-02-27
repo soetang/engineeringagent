@@ -379,17 +379,21 @@ def cmd_checks_run(args: _HandlerArgs) -> int:
     """
 
     project_root = Path(args.project_root).resolve()
-    result = checks_module.run_checks(
-        project_root,
-        phase=args.phase,
-        checks=getattr(args, "checks", None),
-        check_id=getattr(args, "check_id", None),
-        feature_path=getattr(args, "feature_path", None),
-        verbose_output=bool(getattr(args, "verbose_output", False)),
-        base=getattr(args, "base", None),
-        head=getattr(args, "head", None),
-        dry_run=bool(getattr(args, "dry_run", False)),
-    )
+    try:
+        result = checks_module.run_checks(
+            project_root,
+            phase=args.phase,
+            checks=getattr(args, "checks", None),
+            check_id=getattr(args, "check_id", None),
+            feature_path=getattr(args, "feature_path", None),
+            verbose_output=bool(getattr(args, "verbose_output", False)),
+            base=getattr(args, "base", None),
+            head=getattr(args, "head", None),
+            dry_run=bool(getattr(args, "dry_run", False)),
+        )
+    except ValueError as exc:
+        print(f"checks input error: {exc}")
+        return 1
 
     failed_runtime_message: str | None = None
     failed_check_type = _resolve_failed_check_type(result)
