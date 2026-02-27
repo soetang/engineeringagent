@@ -12,7 +12,10 @@ import yaml
 from engineeringagent.checks.validate.validator import (
     validate,
 )
-from engineeringagent.checks.validate import repo_validators
+from engineeringagent.checks.validate.repo_policy_docs_map import (
+    iter_agents_docs_map_references,
+)
+from engineeringagent.checks.validate.repo_policy_purge_invariant import git_client
 
 
 def _invalid_spec_fixtures_dir(repo_root: Path) -> Path:
@@ -413,7 +416,7 @@ def test_validate_reports_git_ls_files_failure(
     (tmp_path / ".git").mkdir(parents=True, exist_ok=True)
 
     monkeypatch.setattr(
-        repo_validators.git_client,
+        git_client,
         "ls_files",
         lambda _root: SimpleNamespace(returncode=1, stdout="", stderr="boom"),
     )
@@ -991,7 +994,7 @@ def test_agents_docs_map_extraction_scoped_to_docs_layout_section(
         encoding="utf-8",
     )
 
-    references = repo_validators.iter_agents_docs_map_references(tmp_path)
+    references = iter_agents_docs_map_references(tmp_path)
 
     assert references == [(6, "docs/kept-from-map.md")]
 
@@ -1013,7 +1016,7 @@ def test_agents_docs_map_extraction_allows_section_renumbering(tmp_path: Path) -
         encoding="utf-8",
     )
 
-    references = repo_validators.iter_agents_docs_map_references(tmp_path)
+    references = iter_agents_docs_map_references(tmp_path)
 
     assert references == [(4, "docs/kept-after-renumbering.md")]
 
@@ -1036,8 +1039,8 @@ def test_agents_docs_map_extraction_is_deterministic(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    first = repo_validators.iter_agents_docs_map_references(tmp_path)
-    second = repo_validators.iter_agents_docs_map_references(tmp_path)
+    first = iter_agents_docs_map_references(tmp_path)
+    second = iter_agents_docs_map_references(tmp_path)
 
     assert first == [
         (4, "docs/a-first.md"),
