@@ -13,21 +13,8 @@ from engineeringagent.specs import (
 )
 
 from ..planning_policy import (
-    ALWAYS_RUN_NO_ON_CHANGE_REASON as _ALWAYS_RUN_NO_ON_CHANGE_REASON,
-)
-from ..planning_policy import (
-    MATCHED_ON_CHANGE_REASON as _MATCHED_ON_CHANGE_REASON,
-)
-from ..planning_policy import (
-    NO_ON_CHANGE_MATCH_REASON as _NO_ON_CHANGE_MATCH_REASON,
-)
-from ..planning_policy import (
     plan_checks_for_definition_type,
 )
-
-ALWAYS_RUN_NO_ON_CHANGE_REASON = _ALWAYS_RUN_NO_ON_CHANGE_REASON
-MATCHED_ON_CHANGE_REASON = _MATCHED_ON_CHANGE_REASON
-NO_ON_CHANGE_MATCH_REASON = _NO_ON_CHANGE_MATCH_REASON
 
 
 class CommandInvocationRecord(BaseModel):

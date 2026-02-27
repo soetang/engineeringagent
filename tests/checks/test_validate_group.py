@@ -19,7 +19,7 @@ def test_run_checks_validate_group_delegates_to_checks_validate(
         return ["validate: boom"]
 
     monkeypatch.setattr(
-        "engineeringagent.checks.validate.runtime.run_validate",
+        "engineeringagent.checks.strategies.validate",
         _fake_validate,
     )
 
@@ -42,7 +42,7 @@ def test_run_checks_validate_group_passes_schema_only(
         return []
 
     monkeypatch.setattr(
-        "engineeringagent.checks.validate.runtime.run_validate",
+        "engineeringagent.checks.strategies.validate",
         _fake_validate,
     )
 

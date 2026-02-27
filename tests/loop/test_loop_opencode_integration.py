@@ -37,17 +37,13 @@ def run_loop(
     *,
     project_root: Path,
     feature_paths: list[str],
-    gate_profile: str,
-    opencode_prompt: str | None,
     dry_run: bool,
     run_all: bool = False,
     max_iterations: int = 50,
     allow_dirty: bool = False,
     verbose_output: bool = False,
 ) -> int:
-    """Compatibility wrapper for legacy scalar run_loop tests."""
-    del opencode_prompt  # back-compat signature; intentionally unused
-    del gate_profile
+    """Run loop controller through the canonical run-config pipeline."""
     config = build_run_config(
         project_root=project_root,
         feature_paths=feature_paths,
@@ -216,8 +212,6 @@ def test_loop_runs_opencode_integration(
     code = run_loop(
         project_root=project_root,
         feature_paths=[str(feature_path)],
-        gate_profile="loop_fast",
-        opencode_prompt="Reply READY.",
         dry_run=False,
         max_iterations=1,
     )
@@ -286,8 +280,6 @@ def test_loop_reports_permission_rejection_in_run_telemetry(
     code = run_loop(
         project_root=project_root,
         feature_paths=[str(feature_path)],
-        gate_profile="loop_fast",
-        opencode_prompt="Run exactly: git status --short.",
         dry_run=False,
         max_iterations=1,
     )
@@ -354,8 +346,6 @@ def test_run_loop_creates_progress_artifacts_before_implement_invocation(
     code = run_loop(
         project_root=project_root,
         feature_paths=[str(_feature_path)],
-        gate_profile="loop_fast",
-        opencode_prompt=None,
         dry_run=False,
         max_iterations=1,
     )
@@ -390,8 +380,6 @@ def test_run_loop_permission_precheck_applies_only_to_default_implement_mode(
     default_mode_code = run_loop(
         project_root=project_root,
         feature_paths=[str(feature_path)],
-        gate_profile="loop_fast",
-        opencode_prompt=None,
         dry_run=False,
         max_iterations=1,
     )
@@ -424,8 +412,6 @@ def test_run_loop_exits_before_selection_when_permission_precheck_fails(
     code = run_loop(
         project_root=project_root,
         feature_paths=[str(feature_path)],
-        gate_profile="loop_fast",
-        opencode_prompt=None,
         dry_run=False,
         max_iterations=1,
     )
@@ -463,8 +449,6 @@ def test_run_loop_skips_permission_precheck_in_dry_run(
     code = run_loop(
         project_root=project_root,
         feature_paths=[str(feature_path)],
-        gate_profile="loop_fast",
-        opencode_prompt=None,
         dry_run=True,
         max_iterations=1,
     )
@@ -500,8 +484,6 @@ def test_run_loop_permission_precheck_failure_prints_remediation_hint(
     code = run_loop(
         project_root=project_root,
         feature_paths=[str(feature_path)],
-        gate_profile="loop_fast",
-        opencode_prompt=None,
         dry_run=False,
         max_iterations=1,
     )
@@ -555,8 +537,6 @@ def test_run_loop_permission_precheck_pass_prints_bypass_hint_and_log_locations(
     code = run_loop(
         project_root=project_root,
         feature_paths=[str(feature_path)],
-        gate_profile="loop_fast",
-        opencode_prompt=None,
         dry_run=False,
         max_iterations=1,
     )
@@ -646,8 +626,6 @@ def test_gate_failure_feedback_round_trips_to_retry_prompt_integration(
     code = run_loop(
         project_root=project_root,
         feature_paths=[str(feature_path)],
-        gate_profile="loop_fast",
-        opencode_prompt=None,
         dry_run=False,
         allow_dirty=True,
         max_iterations=6,
@@ -772,8 +750,6 @@ def test_gate_failure_feedback_replaces_previous_feedback_integration(
     code = run_loop(
         project_root=project_root,
         feature_paths=[str(feature_path)],
-        gate_profile="loop_fast",
-        opencode_prompt=None,
         dry_run=False,
         allow_dirty=True,
         max_iterations=8,
@@ -882,8 +858,6 @@ def test_loop_archived_done_continues_run_all_when_selected_path_disappears(
     code = run_loop(
         project_root=project_root,
         feature_paths=[],
-        gate_profile="loop_fast",
-        opencode_prompt=None,
         dry_run=False,
         run_all=True,
         max_iterations=4,

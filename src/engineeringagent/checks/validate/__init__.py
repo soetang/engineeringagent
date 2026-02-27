@@ -7,7 +7,6 @@ from .contracts import (
     ValidationIssue,
 )
 from .registry import ValidationRegistry
-from .runtime import run_validate
 
 __all__ = [
     "RepoValidator",
@@ -15,5 +14,4 @@ __all__ = [
     "ValidationContext",
     "ValidationIssue",
     "ValidationRegistry",
-    "run_validate",
 ]

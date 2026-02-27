@@ -38,10 +38,10 @@ def test_checker_flags_checks_submodule_imports_outside_checks_dir(
     (src_root / "app.py").write_text(
         "\n".join(
             [
-                "from engineeringagent.checks.validate.runtime import run_validate",
+                "from engineeringagent.checks.validate.validator import validate",
                 "\n",
                 "def run() -> None:",
-                "    _ = run_validate",
+                "    _ = validate",
                 "",
             ]
         ),
@@ -50,7 +50,7 @@ def test_checker_flags_checks_submodule_imports_outside_checks_dir(
 
     violations = checker._collect_violations(tmp_path)
     assert (
-        "src/engineeringagent/app.py:1 imports checks submodule engineeringagent.checks.validate.runtime"
+        "src/engineeringagent/app.py:1 imports checks submodule engineeringagent.checks.validate.validator"
         in violations
     )
 

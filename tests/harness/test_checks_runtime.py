@@ -41,11 +41,6 @@ def _load_checks_document(checks_path: Path) -> HarnessChecksDocument:
     return HarnessChecksDocument.model_validate(payload)
 
 
-# Backwards-compatible alias to reduce test churn as the checks migration
-# deletes legacy runtimes.
-load_checks_document = _load_checks_document
-
-
 def _write_fitness_manifest(tmp_path: Path, content: str) -> Path:
     manifest_path = tmp_path / "harness" / "fitness-functions" / "rules.yaml"
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
@@ -579,7 +574,7 @@ def test_plan_command_checks_manual_phase_skips(tmp_path: Path) -> None:
             ]
         ),
     )
-    doc = load_checks_document(checks_path)
+    doc = _load_checks_document(checks_path)
 
     planned = plan_command_checks(
         doc,
@@ -610,7 +605,7 @@ def test_plan_command_checks_runs_when_run_all_change_discovery_fallback(
             ]
         ),
     )
-    doc = load_checks_document(checks_path)
+    doc = _load_checks_document(checks_path)
     planned = plan_command_checks(
         doc,
         phase=HarnessCheckPhase.ITERATION_END,
@@ -645,7 +640,7 @@ def test_plan_command_checks_runs_when_on_change_matches(tmp_path: Path) -> None
             ]
         ),
     )
-    doc = load_checks_document(checks_path)
+    doc = _load_checks_document(checks_path)
 
     planned = plan_command_checks(
         doc,
@@ -678,7 +673,7 @@ def test_plan_command_checks_uses_defaults_when_phase(tmp_path: Path) -> None:
             ]
         ),
     )
-    doc = load_checks_document(checks_path)
+    doc = _load_checks_document(checks_path)
 
     planned = plan_command_checks(
         doc,
@@ -705,7 +700,7 @@ def test_plan_fitness_checks_manual_phase_skips(tmp_path: Path) -> None:
             ]
         ),
     )
-    doc = load_checks_document(checks_path)
+    doc = _load_checks_document(checks_path)
 
     planned = plan_fitness_checks(
         doc,
@@ -734,7 +729,7 @@ def test_plan_fitness_checks_skips_when_phase_mismatch(tmp_path: Path) -> None:
             ]
         ),
     )
-    doc = load_checks_document(checks_path)
+    doc = _load_checks_document(checks_path)
 
     planned = plan_fitness_checks(
         doc,
@@ -762,7 +757,7 @@ def test_plan_fitness_checks_runs_when_run_all_change_discovery_fallback(
             ]
         ),
     )
-    doc = load_checks_document(checks_path)
+    doc = _load_checks_document(checks_path)
 
     planned = plan_fitness_checks(
         doc,
@@ -793,7 +788,7 @@ def test_plan_fitness_checks_runs_when_on_change_matches(tmp_path: Path) -> None
             ]
         ),
     )
-    doc = load_checks_document(checks_path)
+    doc = _load_checks_document(checks_path)
 
     planned = plan_fitness_checks(
         doc,
@@ -830,7 +825,7 @@ def test_plan_reviewer_checks_runs_when_on_change_matches(tmp_path: Path) -> Non
         "$responseformat\n",
         encoding="utf-8",
     )
-    doc = load_checks_document(checks_path)
+    doc = _load_checks_document(checks_path)
 
     planned = plan_reviewer_checks(
         doc,
@@ -862,7 +857,7 @@ def test_plan_reviewer_checks_manual_phase_skips(tmp_path: Path) -> None:
             ]
         ),
     )
-    doc = load_checks_document(checks_path)
+    doc = _load_checks_document(checks_path)
 
     planned = plan_reviewer_checks(
         doc,
@@ -894,7 +889,7 @@ def test_plan_reviewer_checks_runs_when_run_all_change_discovery_fallback(
             ]
         ),
     )
-    doc = load_checks_document(checks_path)
+    doc = _load_checks_document(checks_path)
 
     planned = plan_reviewer_checks(
         doc,
@@ -931,7 +926,7 @@ def test_plan_reviewer_checks_skips_non_reviewer_and_phase_mismatch(
             ]
         ),
     )
-    doc = load_checks_document(checks_path)
+    doc = _load_checks_document(checks_path)
 
     planned = plan_reviewer_checks(
         doc,
@@ -956,7 +951,7 @@ def test_iter_planned_command_check_commands_skips_non_run(tmp_path: Path) -> No
             ]
         ),
     )
-    doc = load_checks_document(checks_path)
+    doc = _load_checks_document(checks_path)
 
     planned = [CommandPlannedCheck(check_id="smoke", decision="skip", reason="manual")]
     yielded = list(
@@ -984,7 +979,7 @@ def test_iter_planned_command_check_commands_yields_run_command(
             ]
         ),
     )
-    doc = load_checks_document(checks_path)
+    doc = _load_checks_document(checks_path)
 
     planned = [CommandPlannedCheck(check_id="smoke", decision="run", reason="always")]
     yielded = list(iter_planned_command_check_commands(doc, planned))
@@ -1009,7 +1004,7 @@ def test_iter_planned_command_check_commands_skips_non_command_defs(
             ]
         ),
     )
-    doc = load_checks_document(checks_path)
+    doc = _load_checks_document(checks_path)
 
     planned = [
         CommandPlannedCheck(check_id="doc_review", decision="run", reason="always")

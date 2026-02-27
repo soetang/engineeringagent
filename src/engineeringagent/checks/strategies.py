@@ -21,7 +21,7 @@ from engineeringagent.checks.reviewers.runtime import (
     plan_reviewer_checks,
     run_planned_reviewer_checks_from_plan,
 )
-from engineeringagent.checks.validate import runtime as validate_runtime
+from engineeringagent.checks.validate.validator import validate
 from engineeringagent.process import run_shell_command
 from engineeringagent.specs import (
     HarnessCheckCommandDefinition,
@@ -392,7 +392,7 @@ class ValidateCheckStrategy(CheckStrategy):
     ) -> tuple[CheckExecutionRecord, ...]:
         if not strategy_run_decisions(decisions):
             return ()
-        messages = validate_runtime.run_validate(
+        messages = validate(
             context.project_root,
             schema_only=self._schema_only,
         )
