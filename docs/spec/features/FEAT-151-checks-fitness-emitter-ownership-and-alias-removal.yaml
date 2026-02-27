@@ -1,0 +1,154 @@
+id: FEAT-151
+title: Clarify checks fitness emitter ownership and remove emit_result_envelope alias
+type: docs
+expected_commit_subject: 'docs: add FEAT-151 checks fitness emitter ownership and alias removal'
+status: backlog
+priority: high
+objective: >
+  Resolve confusion around fitness envelope helper ownership by colocating the
+  canonical emitter implementation under `src/engineeringagent/checks/fitness/**`,
+  while keeping `engineeringagent.checks` as the public entrypoint, and update
+  contributor docs to match the current checks architecture.
+
+  Remove the `engineeringagent.checks.emit_result_envelope` compatibility alias
+  now (no shim), migrate harness fitness scripts to the canonical
+  `emit_fitness_result`, and document the resulting contract clearly.
+context: |
+  The current emitter implementation lives in `src/engineeringagent/checks/fitness_api.py`,
+  which appears outside the fitness package despite being fitness-specific behavior.
+  This has created architecture ambiguity.
+
+  Documentation is also stale:
+  - `docs/fitness-functions/README.md` still references `engineeringagent.fitness.envelope`.
+  - `docs/fitness-functions/architecture.md` still describes the removed `fitness` CLI group
+    instead of the current checks-based surface.
+
+  At the same time, harness fitness scripts currently import
+  `emit_result_envelope` from `engineeringagent.checks`, and the checks package
+  still exports both helper names.
+
+  This feature aligns code layout, public API messaging, and docs in one
+  contract-preserving refactor for top-level checks ownership, with one explicit
+  contract break: remove `emit_result_envelope` immediately.
+constraints:
+  - 'In scope: move the canonical emitter implementation from `src/engineeringagent/checks/fitness_api.py` to a fitness-owned module under `src/engineeringagent/checks/fitness/**`.'
+  - 'In scope: keep top-level checks ownership by exporting canonical helper(s) from `engineeringagent.checks`.'
+  - 'In scope: update harness fitness scripts to import and call `emit_fitness_result` (remove `emit_result_envelope` usage).'
+  - 'In scope: update `docs/fitness-functions/README.md` and `docs/fitness-functions/architecture.md` to match the post-migration checks architecture and helper import path.'
+  - 'In scope: remove `emit_result_envelope` from the supported `engineeringagent.checks` public surface with no compatibility shim.'
+  - 'Out of scope: changing fitness contract payload shape (`FitnessRuleResult`, `contract_version`, deterministic JSON encoding).'
+  - 'Out of scope: introducing a new top-level `engineeringagent.fitness` package or restoring removed legacy paths.'
+  - Preserve deterministic JSON envelope emission semantics and stdout formatting.
+  - Preserve checks import-surface and harness import-allowlist policy intent.
+implementation_notes: |
+  Contract change declaration
+
+  Surface:
+
+  - Public helper export surface in `engineeringagent.checks`.
+  - Harness fitness-script helper import path and call name.
+  - Fitness authoring architecture docs.
+
+  Old behavior:
+
+  - Canonical emitter implementation is `src/engineeringagent/checks/fitness_api.py`.
+  - `engineeringagent.checks` exports:
+    - `emit_fitness_result`
+    - `emit_result_envelope` (alias)
+  - Harness scripts import `emit_result_envelope` from `engineeringagent.checks`.
+  - `docs/fitness-functions/README.md` references removed `engineeringagent.fitness.envelope`.
+  - `docs/fitness-functions/architecture.md` references removed `fitness` CLI commands.
+
+  New behavior:
+
+  - Canonical emitter implementation lives under `src/engineeringagent/checks/fitness/**`
+    (for example `src/engineeringagent/checks/fitness/envelope.py`).
+  - `engineeringagent.checks` exposes `emit_fitness_result` only (no alias).
+  - Harness fitness scripts import and call `emit_fitness_result` from
+    `engineeringagent.checks`.
+  - Fitness docs describe the checks-owned public surface and current checks CLI
+    architecture.
+
+  Compatibility policy:
+
+  - Intentional immediate break for alias users:
+    `engineeringagent.checks.emit_result_envelope` is removed in this feature.
+  - No deprecation shim and no staged dual-support window.
+
+  Migration plan:
+
+  - Move/rename emitter implementation into `checks/fitness/*`.
+  - Update `checks/__init__.py` exports and remove alias wiring.
+  - Update all harness fitness scripts to `emit_fitness_result`.
+  - Update affected tests to validate canonical import name and export surface.
+  - Update fitness README and architecture documentation.
+
+  Verification evidence:
+
+  - Checks export tests confirm alias removal and canonical helper availability.
+  - Harness-surface and rule-script tests confirm migrated imports still satisfy
+    policy boundaries.
+  - `engineeringagent validate` passes.
+
+  Fitness-function impact assessment:
+
+  - no fitness-function rule changes required.
+  - Rationale: this feature updates harness script imports and docs to comply with
+    existing rule intent (`architecture.harness-src-import-allowlist` and
+    `architecture.checks-import-surface`) rather than changing enforcement policy.
+acceptance:
+  - Canonical emitter implementation is colocated under `src/engineeringagent/checks/fitness/**` and `src/engineeringagent/checks/fitness_api.py` is removed.
+  - '`engineeringagent.checks` exports `emit_fitness_result` and does not export `emit_result_envelope`.'
+  - All harness fitness-function scripts under `harness/fitness-functions/*.py` use `from engineeringagent.checks import emit_fitness_result` (no `emit_result_envelope` imports).
+  - '`docs/fitness-functions/README.md` documents deterministic emission via `engineeringagent.checks.emit_fitness_result`.'
+  - '`docs/fitness-functions/architecture.md` reflects checks-based CLI/runtime architecture (no removed `fitness list/run/catalog` references).'
+  - 'Verification command passes: `uv run pytest -q tests/checks/test_checks_exports.py tests/fitness/test_fitness_harness_envelope_helper_surface.py tests/fitness/test_fitness_rules_harness_src_import_allowlist.py tests/fitness/test_fitness_rules_checks_import_surface.py`.'
+  - 'Verification command passes: `uv run engineeringagent validate`.'
+subtasks:
+  - id: ST-001
+    title: Relocate fitness emitter implementation under checks/fitness
+    status: backlog
+    context: >
+      Move the canonical deterministic JSON emitter implementation from
+      `checks/fitness_api.py` into a fitness-owned module and keep import
+      ownership explicit via top-level checks exports.
+    verification:
+      - uv run pytest -q tests/checks/test_checks_exports.py
+
+  - id: ST-002
+    title: Remove emit_result_envelope alias from checks surface
+    status: backlog
+    context: >
+      Remove alias export and all alias wiring from `engineeringagent.checks`.
+      Update dependent tests to assert alias removal and canonical helper usage.
+    verification:
+      - uv run pytest -q tests/checks/test_checks_exports.py
+
+  - id: ST-003
+    title: Migrate harness fitness scripts to emit_fitness_result
+    status: backlog
+    context: >
+      Update all harness fitness-function scripts to import and call
+      `emit_fitness_result` from `engineeringagent.checks`.
+    verification:
+      - uv run pytest -q tests/fitness/test_fitness_harness_envelope_helper_surface.py tests/fitness/test_fitness_rules_harness_src_import_allowlist.py
+
+  - id: ST-004
+    title: Correct fitness README and architecture documentation
+    status: backlog
+    context: >
+      Update fitness docs so helper import examples and architecture flow describe
+      the current checks-owned contract and CLI surface.
+    verification:
+      - uv run engineeringagent validate
+
+  - id: ST-005
+    title: Run targeted regression and repository validation
+    status: backlog
+    context: >
+      Run focused tests for checks export surface and harness fitness script
+      contracts, then run full spec/doc validation to ensure no contract drift.
+    verification:
+      - uv run pytest -q tests/checks/test_checks_exports.py tests/fitness/test_fitness_harness_envelope_helper_surface.py tests/fitness/test_fitness_rules_harness_src_import_allowlist.py tests/fitness/test_fitness_rules_checks_import_surface.py
+      - uv run engineeringagent validate
+updated_at: '2026-02-27T00:00:00Z'

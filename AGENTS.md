@@ -15,7 +15,7 @@ Below is a list of files describing relevant parts of the approach. You should o
 
 ## Verification Quick Reference
 
-- Validate specs: `uv run engineeringagent validate`
+- Validate specs: `uv run engineeringagent validate --schema-only`
 - Inspect init profile options: `uv run engineeringagent init --help`
 - Run iteration-end checks: `uv run engineeringagent checks run --phase iteration_end`
 - Run feature-done checks: `uv run engineeringagent checks run --phase feature_done`

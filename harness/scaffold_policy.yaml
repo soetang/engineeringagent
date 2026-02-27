@@ -3,6 +3,7 @@ docs_root: docs
 contributor_docs:
   - docs/architecture/Architecture.md
   - docs/architecture/agent-backends-architecture.md
+  - docs/architecture/checks-validation-architecture.md
   - docs/architecture/checks-orchestration-architecture.md
   - docs/fitness-functions/README.md
   - docs/fitness-functions/architecture.md

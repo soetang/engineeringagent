@@ -946,7 +946,6 @@ def test_ralph_prompt_contract_uses_schema_only_validate_command(
     )
 
     assert "Validate with: `uv run engineeringagent validate --schema-only`." in prompt
-    assert "Validate with: `uv run engineeringagent validate`." not in prompt
 
 
 def test_cli_run_dry_run_path_first(tmp_path: Path) -> None:

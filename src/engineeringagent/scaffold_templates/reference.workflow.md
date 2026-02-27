@@ -18,7 +18,7 @@ Run the loop with: `uv run engineeringagent run --all`
 ## Verification Baseline
 
 - Primary verification flow: `uv run engineeringagent checks run` (consumes `harness/checks.yaml`).
-- Optional spec-only validation: `uv run engineeringagent validate`.
+- Optional spec-only validation: `uv run engineeringagent validate --schema-only`.
 
 ## Loop outcome taxonomy
 

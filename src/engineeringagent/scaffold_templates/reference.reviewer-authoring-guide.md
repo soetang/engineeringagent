@@ -59,7 +59,7 @@ When migrating older reviewer prompts:
 Recommended checks:
 
 ```bash
-uv run engineeringagent validate
+uv run engineeringagent validate --schema-only
 uv run engineeringagent checks run --phase feature_done
 ```
 

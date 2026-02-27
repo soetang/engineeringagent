@@ -23,7 +23,7 @@ Use this playbook as a practical default, then apply judgment based on risk.
 - Before commit or merge:
   - Run the relevant direct tools (`uv run ruff ...`, `uv run pyright ...`, `uv run pytest ...`)
 - When editing feature specs or schema-related files:
-  - `uv run engineeringagent validate`
+  - `uv run engineeringagent validate --schema-only`
 - When debugging a specific class of failure:
   - Ruff: `uv run ruff check src/engineeringagent harness`
   - Pylint: `uv run pylint --score=n --reports=n src/engineeringagent tests harness`

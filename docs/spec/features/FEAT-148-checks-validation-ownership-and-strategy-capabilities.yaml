@@ -1,0 +1,105 @@
+id: FEAT-148
+title: Split validate ownership into repo validators and optional strategy validators
+type: spec
+expected_commit_subject: 'spec: add FEAT-148 checks validation ownership architecture'
+status: backlog
+priority: high
+objective: Define and implement a target-state validation architecture where `engineeringagent validate` remains a single deterministic entrypoint while validator ownership is split between repo-level policy and optional strategy-owned policy.
+context: |
+  Validation behavior currently lives in one broad validator module, including rules that are logically owned by specific check domains (reviewer and fitness).
+
+  This coupling makes policy ownership unclear, increases change blast radius, and creates duplication risk between runtime strategy policy and static validation policy.
+
+  We now have a target architecture document (`docs/architecture/checks-validation-architecture.md`) that defines a validator capability model aligned with checks strategy boundaries.
+constraints:
+  - 'In scope: validation architecture and code-ownership refactor for static checks under `src/engineeringagent/checks/validate/**` and strategy-owned validation modules.'
+  - 'In scope: deterministic validator registry behavior and stable, actionable validation output.'
+  - 'Out of scope: changing core run/skip planning semantics in checks orchestration (`src/engineeringagent/checks/api.py` strategy execution flow).'
+  - 'Out of scope: introducing side-effecting validation (no command execution, no reviewer agent runs during validate).'
+  - Preserve `engineeringagent validate` as the single CLI surface for static repository and checks-contract validation.
+implementation_notes: |
+  Contract change declaration
+
+  Surface:
+
+  - Validation architecture and ownership boundaries behind `engineeringagent validate`.
+  - Internal checks contracts for validator registration and deterministic execution ordering.
+
+  Old behavior:
+
+  - One broad validator module owns both repo-global policy and strategy-domain policy.
+  - Strategy-specific static rules (for example reviewer prompt hygiene and fitness catalog integrity) are enforced from repo-level validate internals.
+
+  New behavior:
+
+  - Repo-global policy is enforced by repo validators.
+  - Strategy-specific static policy is enforced by optional strategy validators owned by the relevant check domain.
+  - `engineeringagent validate` composes both through one deterministic validation registry and output renderer.
+
+  Compatibility policy:
+
+  - Keep one `engineeringagent validate` entrypoint.
+  - Preserve deterministic message ordering and actionable error text.
+  - Minor message wording updates are acceptable only when they improve ownership clarity and keep remediation explicit.
+
+  Migration plan:
+
+  - Add validator contracts (`ValidationContext`, `ValidationIssue`, repo-validator and optional strategy-validator protocols).
+  - Introduce registry/composition layer for deterministic validator execution.
+  - Extract reviewer and fitness static checks from monolithic validate internals into strategy-owned validators.
+  - Keep cross-cutting repository invariants in repo validators.
+  - Add coverage for ordering, duplicate-registration rejection, and parity of existing validation intent.
+
+  Verification evidence:
+
+  - `uv run engineeringagent validate` passes with deterministic output.
+  - Targeted tests for validator contracts and registry behavior pass.
+  - Targeted reviewer and fitness validation tests pass through strategy-owned validator paths.
+
+  Fitness-function impact assessment:
+
+  - no fitness-function changes required.
+  - Rationale: this feature changes ownership and module boundaries for static validation only; it does not weaken the existing policy guarantees fitness rules assert.
+acceptance:
+  - A validator contract layer exists for shared validation context, issue modeling, and deterministic registration.
+  - Repo-level validation rules are implemented in repo-owned validator modules without strategy-specific policy coupling.
+  - Reviewer prompt static validation is owned by a reviewer strategy validator path instead of monolithic repo validate internals.
+  - Fitness catalog and manifest static validation is owned by a fitness strategy validator path instead of monolithic repo validate internals.
+  - '`engineeringagent validate` composes repo and strategy validators through one deterministic registry and returns stable output ordering.'
+  - Duplicate validator registrations fail deterministically with clear diagnostics.
+  - Existing cross-cutting repo invariants (schema sync, feature id invariants, docs-map checks, purge invariants) remain enforced.
+  - 'Verification command passes: `uv run pytest -q tests/checks`.'
+  - 'Verification command passes: `uv run engineeringagent validate`.'
+subtasks:
+  - id: ST-001
+    title: Add validator contracts and deterministic registry
+    status: backlog
+    context: Introduce shared validation models/protocols and enforce deterministic ordering and duplicate-registration rejection.
+    verification:
+      - uv run pytest -q tests/checks
+  - id: ST-002
+    title: Extract repo-global validators from monolithic validate module
+    status: backlog
+    context: Move cross-cutting repository policies into focused repo validator modules while preserving behavior.
+    verification:
+      - uv run pytest -q tests/checks tests/specs
+  - id: ST-003
+    title: Implement reviewer strategy-owned static validator
+    status: backlog
+    context: Move reviewer prompt static policy checks into reviewer-owned validation path.
+    verification:
+      - uv run pytest -q tests/reviewers tests/checks
+  - id: ST-004
+    title: Implement fitness strategy-owned static validator
+    status: backlog
+    context: Move fitness catalog and manifest static policy checks into fitness-owned validation path.
+    verification:
+      - uv run pytest -q tests/fitness tests/checks
+  - id: ST-005
+    title: Wire validate entrypoint to composed validator registry and preserve deterministic output
+    status: backlog
+    context: Keep one `engineeringagent validate` command surface while routing execution through the new ownership model.
+    verification:
+      - uv run engineeringagent validate
+      - uv run pytest -q tests/checks
+updated_at: '2026-02-27T00:00:00Z'
