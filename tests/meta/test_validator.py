@@ -12,11 +12,9 @@ import yaml
 
 from engineeringagent.specs import feature_schema_from_model
 from engineeringagent.checks.validate.validator import (
-    _append_legacy_harness_contract_file_issues,
-    _iter_agents_docs_map_references,
     validate,
 )
-import engineeringagent.checks.validate.validator as validator_module
+from engineeringagent.checks.validate import repo_validators
 
 
 def _schema_source(repo_root: Path) -> Path:
@@ -429,29 +427,6 @@ def test_validate_reports_reviewer_prompt_with_deprecated_responseformat(
     )
     assert all("missing-token.md" not in message for message in messages)
 
-
-def test_legacy_harness_contract_issue_formatter_handles_external_paths(
-    tmp_path: Path,
-) -> None:
-    project_root = tmp_path / "root"
-    project_root.mkdir(parents=True, exist_ok=True)
-
-    legacy_root = tmp_path / "external"
-    gates_path = legacy_root / "harness" / "gates.yaml"
-    gates_path.parent.mkdir(parents=True, exist_ok=True)
-    gates_path.write_text("contract_version: '1.0'\n", encoding="utf-8")
-
-    messages: list[str] = []
-    _append_legacy_harness_contract_file_issues(
-        messages,
-        project_root=project_root,
-        gates_path=gates_path,
-        reviewers_path=legacy_root / "harness" / "reviewers.yaml",
-    )
-
-    assert not messages
-
-
 def test_validate_reports_git_ls_files_failure(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -459,7 +434,7 @@ def test_validate_reports_git_ls_files_failure(
     (tmp_path / ".git").mkdir(parents=True, exist_ok=True)
 
     monkeypatch.setattr(
-        validator_module.git_client,
+        repo_validators.git_client,
         "ls_files",
         lambda _root: SimpleNamespace(returncode=1, stdout="", stderr="boom"),
     )
@@ -1053,7 +1028,7 @@ def test_agents_docs_map_extraction_scoped_to_docs_layout_section(
         encoding="utf-8",
     )
 
-    references = _iter_agents_docs_map_references(tmp_path)
+    references = repo_validators.iter_agents_docs_map_references(tmp_path)
 
     assert references == [(6, "docs/kept-from-map.md")]
 
@@ -1075,7 +1050,7 @@ def test_agents_docs_map_extraction_allows_section_renumbering(tmp_path: Path) -
         encoding="utf-8",
     )
 
-    references = _iter_agents_docs_map_references(tmp_path)
+    references = repo_validators.iter_agents_docs_map_references(tmp_path)
 
     assert references == [(4, "docs/kept-after-renumbering.md")]
 
@@ -1098,8 +1073,8 @@ def test_agents_docs_map_extraction_is_deterministic(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    first = _iter_agents_docs_map_references(tmp_path)
-    second = _iter_agents_docs_map_references(tmp_path)
+    first = repo_validators.iter_agents_docs_map_references(tmp_path)
+    second = repo_validators.iter_agents_docs_map_references(tmp_path)
 
     assert first == [
         (4, "docs/a-first.md"),
