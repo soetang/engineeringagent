@@ -165,7 +165,7 @@ class HarnessCheckDefaultsDefinition(StrictContractModel):
 
 
 class HarnessCheckCommandDefinition(StrictContractModel):
-    """A shell command check executed by the harness."""
+    """A plain command-string check executed as argv by the harness."""
 
     type: Literal["command"]
     command: NonEmptyStr

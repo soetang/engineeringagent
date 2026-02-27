@@ -909,6 +909,114 @@ def test_run_checks_rejects_run_shell_command_kwarg(tmp_path: Path) -> None:
         )
 
 
+def test_run_checks_reports_parse_failures_without_raising(tmp_path: Path) -> None:
+    _write_checks_yaml(
+        tmp_path,
+        "\n".join(
+            [
+                'contract_version: "1.0"',
+                "checks:",
+                "  smoke:",
+                "    type: command",
+                "    command: echo hi | cat",
+                "",
+            ]
+        ),
+    )
+
+    result = run_checks(tmp_path, phase="iteration_end", checks=["commands"])
+
+    assert not result.ok
+    assert "[check:smoke] returncode=2" in result.output
+    assert "shell syntax is not supported" in result.output
+    assert "Remediation: provide a plain argv-style command" in result.output
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "echo `uname`",
+        "echo $HOME",
+        "echo ${HOME}",
+    ],
+)
+def test_run_checks_rejects_embedded_shell_syntax_without_execution(
+    tmp_path: Path,
+    command: str,
+) -> None:
+    _write_checks_yaml(
+        tmp_path,
+        "\n".join(
+            [
+                'contract_version: "1.0"',
+                "checks:",
+                "  smoke:",
+                "    type: command",
+                f"    command: '{command}'",
+                "",
+            ]
+        ),
+    )
+
+    result = run_checks(tmp_path, phase="iteration_end", checks=["commands"])
+
+    assert not result.ok
+    assert "[check:smoke] returncode=2" in result.output
+    assert "shell syntax is not supported" in result.output
+    assert "Remediation: provide a plain argv-style command" in result.output
+
+
+def test_run_checks_rejects_shell_chaining_without_partial_execution(
+    tmp_path: Path,
+) -> None:
+    marker_path = tmp_path / "checks-shell-chaining-marker.txt"
+    command = f"touch {marker_path.as_posix()} && echo should-not-run"
+    _write_checks_yaml(
+        tmp_path,
+        "\n".join(
+            [
+                'contract_version: "1.0"',
+                "checks:",
+                "  smoke:",
+                "    type: command",
+                f"    command: {command}",
+                "",
+            ]
+        ),
+    )
+
+    result = run_checks(tmp_path, phase="iteration_end", checks=["commands"])
+
+    assert not result.ok
+    assert "[check:smoke] returncode=2" in result.output
+    assert "shell syntax is not supported" in result.output
+    assert "Remediation: provide a plain argv-style command" in result.output
+    assert not marker_path.exists()
+
+
+def test_run_checks_reports_missing_executable_without_raising(tmp_path: Path) -> None:
+    _write_checks_yaml(
+        tmp_path,
+        "\n".join(
+            [
+                'contract_version: "1.0"',
+                "checks:",
+                "  smoke:",
+                "    type: command",
+                "    command: missing-executable-for-feat-159",
+                "",
+            ]
+        ),
+    )
+
+    result = run_checks(tmp_path, phase="iteration_end", checks=["commands"])
+
+    assert not result.ok
+    assert "[check:smoke] returncode=127" in result.output
+    assert "command executable not found: missing-executable-for-feat-159" in result.output
+    assert "Remediation: install the executable" in result.output
+
+
 def test_run_checks_exposes_structured_command_invocations(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

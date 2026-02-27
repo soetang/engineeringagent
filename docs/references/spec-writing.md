@@ -41,6 +41,7 @@
 - Use one feature file with nested subtasks.
 - Keep acceptance criteria outcome-based and testable.
 - Keep verification commands concrete and executable.
+- Write verification/check commands as plain argv-style command strings; shell operators (for example `&&`, `|`, redirects, or subshell syntax) are invalid.
 - Preserve repository language and conventions used in existing FEAT files.
 - Require an explicit fitness-function impact assessment for every new spec.
   - Evaluate the planned behavior against active rules in `docs/fitness-functions/rules.md` and call out likely violations.

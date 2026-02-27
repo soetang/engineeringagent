@@ -482,6 +482,60 @@ def test_run_verification_phase_emits_command_failure_feedback_contract(
     assert envelope.rerun.cwd == "repo_root"
 
 
+def test_run_verification_phase_reports_parse_failures_with_stable_output(
+    tmp_path: Path,
+) -> None:
+    inputs = FeatureIterationInputs(
+        project_root=tmp_path,
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        run_all=False,
+        attempt=1,
+        feedback=None,
+        verbose_output=False,
+    )
+    command = 'python -c "print(1)'
+
+    outcome = run_verification_phase(
+        inputs,
+        verification_commands=[command],
+    )
+
+    assert outcome.result == "failed"
+    assert outcome.verification_status == f"failed:{command}"
+    assert outcome.verification_failed_command == command
+    assert f"[verification] command={command}" in outcome.verification_output
+    assert "[verification] returncode=2" in outcome.verification_output
+    assert "command parse error:" in outcome.verification_output
+    assert "Remediation: provide a plain argv-style command" in outcome.verification_output
+
+
+def test_run_verification_phase_reports_missing_executable_with_stable_output(
+    tmp_path: Path,
+) -> None:
+    inputs = FeatureIterationInputs(
+        project_root=tmp_path,
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        run_all=False,
+        attempt=1,
+        feedback=None,
+        verbose_output=False,
+    )
+    command = "missing-executable-for-feat-159-verification"
+
+    outcome = run_verification_phase(
+        inputs,
+        verification_commands=[command],
+    )
+
+    assert outcome.result == "failed"
+    assert outcome.verification_status == f"failed:{command}"
+    assert outcome.verification_failed_command == command
+    assert f"[verification] command={command}" in outcome.verification_output
+    assert "[verification] returncode=127" in outcome.verification_output
+    assert f"command executable not found: {command}" in outcome.verification_output
+    assert "Remediation: install the executable" in outcome.verification_output
+
+
 def test_run_gate_phase_emits_fitness_failure_feedback_contract(
     tmp_path: Path,
 ) -> None:

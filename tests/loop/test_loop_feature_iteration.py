@@ -565,6 +565,56 @@ def test_verification_failure_for_newly_done_subtask_marks_iteration_non_pass(
     assert runs[-1]["verification_failed_command"] == verification_command
 
 
+def test_verification_rejects_shell_chaining_without_partial_execution(
+    tmp_path: Path,
+) -> None:
+    marker_path = tmp_path / "verification-shell-chaining-marker.txt"
+    verification_command = (
+        f'"{sys.executable}" -c "from pathlib import Path; '
+        f"Path('{marker_path.as_posix()}').write_text('ran', encoding='utf-8')\" "
+        '&& echo "should-not-run"'
+    )
+    feature_data = _base_feature(status="in_progress")
+    feature_data["subtasks"] = [
+        {
+            "id": "ST-001",
+            "title": "Reject shell chaining in verification command",
+            "status": "backlog",
+            "context": "Ensure shell-only syntax fails before any command execution.",
+            "verification": [verification_command],
+        }
+    ]
+    project_root, feature_path = _make_project_root(tmp_path, feature_data=feature_data)
+    script_path = _write_set_subtask_done_script(
+        tmp_path.parent / f"{tmp_path.name}-set-subtask-done-shell-chain.py",
+        "ST-001",
+    )
+
+    def implement_effect() -> None:
+        _run_python_script(script_path, feature_path)
+
+    with _with_opencode_implement_side_effect(implement_effect):
+        outcome = _run_feature_iteration(
+            project_root=project_root,
+            feature_path=feature_path,
+            run_all=False,
+            attempt=1,
+            feedback=None,
+            verbose_output=False,
+        )
+
+    assert outcome.result == "failed"
+    assert outcome.next_action == "retry_same_feature"
+    assert outcome.verification_status == f"failed:{verification_command}"
+    assert outcome.verification_failed_command == verification_command
+    feature_log = project_root / "progress" / "features" / "FEAT-900" / "run.txt"
+    log_text = feature_log.read_text(encoding="utf-8")
+    assert "[verification] returncode=2" in log_text
+    assert "shell syntax is not supported" in log_text
+    assert "Remediation: provide a plain argv-style command" in log_text
+    assert not marker_path.exists()
+
+
 def test_verification_selection_ignores_non_string_commands(
     tmp_path: Path,
 ) -> None:
