@@ -1,0 +1,106 @@
+id: FEAT-162
+title: Narrow shell-false parsing to operators only
+type: bug
+expected_commit_subject: 'fix: narrow shell false parsing scope'
+status: in_progress
+priority: high
+objective: >-
+  Undo the unintended scope expansion introduced by commit `093e4de` while keeping the
+  `shell=False` migration. Command execution must reject shell operators, but plain
+  shell-like argument text (for example `$VAR`, `${VAR}`, and backtick text) should be
+  treated as argv data.
+context: >-
+  This feature is a narrow scope correction of FEAT-159 behavior after commit `093e4de`.
+  That change added broad token-pattern bans for backticks and shell-like tokens even when
+  they were provided as literal arguments. Those rejects are over-broad and remove valid
+  deterministic argv command usage.
+constraints:
+  - 'In scope: keep command execution owned by the existing command runner path and keep
+    `subprocess.run(..., shell=False)` as the execution strategy.'
+  - 'In scope: remove only embedded token bans inside `parse_command_argv` and keep explicit
+    shell-operator token checks.'
+  - 'In scope: preserve deterministic parse errors and missing-executable error framing.'
+  - 'Out of scope: adding command argv-list schema fields or changing check command contracts.'
+  - 'Out of scope: reintroducing callable-injection seams for command execution.'
+implementation_notes: |
+  Contract change declaration
+
+  Surface:
+  - `engineeringagent.process.parse_command_argv`
+  - `engineeringagent.process.run_shell_command`
+
+  Old behavior:
+  - After commit `093e4de`, parser validation rejects shell-like text appearing inside
+    tokens, including literal `$HOME`, `${HOME}`, and backtick-containing strings, even with
+    plain argv usage.
+  - This causes false positives for valid shell-false commands.
+
+  New behavior:
+  - Parser validation only rejects explicit shell operator tokens (for example `|`, `&&`, `;`,
+    `<`, `>`, `(`, `)`, `|&`).
+  - Literal shell-like text inside arguments is accepted as normal argv text.
+  - `run_shell_command` continues to execute with `shell=False` and keeps deterministic
+    parse/missing-executable result shaping.
+
+  Compatibility policy:
+  - Compatibility is improved for valid literal-argument cases previously blocked by parser
+    over-restriction.
+  - No compatibility shim is required; this is a narrow behavior correction.
+
+  Migration plan:
+  - Update parser checks in `src/engineeringagent/process.py` to remove embedded-pattern bans.
+  - Replace tests that currently assert false-positive failures for literal `$HOME` and backtick args.
+  - Add coverage for acceptance of shell-like literal args in parser and contract tests.
+  - Clarify contributor guidance wording to avoid implying all shell-style tokens are invalid.
+
+  Fitness-function impact assessment:
+  - no fitness-function changes required.
+  - Existing subprocess and checks-boundary guardrails already cover scope and ownership.
+acceptance:
+  - 'Parser validation rejects shell-operator syntax tokens, but accepts literal shell-like
+    argument text as plain argv tokens.'
+  - '`run_shell_command` still executes commands with `shell=False` and returns deterministic
+    parse/executable errors without raising.'
+  - 'Commands that are plain argv text with `$VAR`, `${VAR}`, or backtick characters pass parsing and
+    execute as arguments.'
+  - 'Tests continue to reject shell chaining and redirection forms without partial execution.'
+  - 'Run tests with `uv run pytest -q tests/checks/test_commands_group_port.py` and
+    `uv run pytest -q tests/checks/test_run_checks_contract.py` to validate updated acceptance and
+    rejection behavior.'
+  - 'Run `uv run engineeringagent validate --schema-only` to confirm the feature spec schema.'
+subtasks:
+  - id: ST-001
+    title: Remove embedded-pattern bans from command parser
+    status: backlog
+    context: >-
+      Update `src/engineeringagent/process.py` to remove embedded-pattern checks for backticks
+      and variable tokens so only explicit shell-operator token checks remain.
+    verification:
+      - uv run pytest -q tests/checks/test_commands_group_port.py::test_parse_command_argv_rejects_shell_operators
+  - id: ST-002
+    title: Add acceptance coverage for literal shell-like arguments
+    status: backlog
+    context: >-
+      Add/update parser and contract tests that verify literal `$HOME`, `${HOME}`, and backtick
+      strings execute as plain arguments under `shell=False`.
+    verification:
+      - uv run pytest -q tests/checks/test_commands_group_port.py
+      - uv run pytest -q tests/checks/test_run_checks_contract.py
+  - id: ST-003
+    title: Update false-positive rejection tests
+    status: backlog
+    context: >-
+      Remove or convert parser/contract test expectations that currently require rejection for
+      `echo $HOME`, `echo ${HOME}`, and backtick-containing commands.
+    verification:
+      - uv run pytest -q tests/checks/test_commands_group_port.py
+      - uv run pytest -q tests/checks/test_run_checks_contract.py
+  - id: ST-004
+    title: Align command authoring guidance wording
+    status: backlog
+    context: >-
+      Update command-authoring guidance in spec-writing docs so it does not overstate that any
+      shell-like token text is unsupported.
+    verification:
+      - uv run engineeringagent validate --schema-only
+updated_at: '2026-03-01T00:00:00Z'
