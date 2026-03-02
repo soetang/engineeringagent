@@ -17,6 +17,7 @@ This file is generated from active manifest-declared fitness rules.
 | `architecture.harness-root-yaml-only` | error | command | custom | `harness/ (regular files at root)` | - | Enforce YAML-only regular files directly under harness root. |
 | `architecture.harness-src-import-allowlist` | error | command | custom | `harness/fitness-functions` | - | Restrict harness fitness functions to a narrow supported engineeringagent surface. |
 | `architecture.iteration-pipeline-observer-decoupling` | error | command | custom | `src/engineeringagent/loop_runtime/iteration.py` | - | Keep iteration pipeline free of telemetry and console side effects. |
+| `architecture.loop-checks-policy-ownership` | error | command | custom | `src/engineeringagent/loop_runtime/** and src/engineeringagent/loop.py` | - | Fail when loop runtime encodes checks group/timing selection policy. |
 | `architecture.loop-checks-result-boundary` | error | command | custom | `src/engineeringagent/loop_runtime/** and src/engineeringagent/loop.py` | - | Fail when loop runtime branches on checks type/group semantics or parses checks-internal payloads. |
 | `architecture.loop-facade-line-budget` | error | command | custom | `src/engineeringagent/loop.py` | - | Enforce a permanent line budget cap for the loop facade. |
 | `architecture.loop-subprocess-boundary` | error | command | custom | `src/engineeringagent` | `harness/fitness-functions/policies/loop_subprocess_boundary_policy.yaml` | Enforce subprocess allowlist boundaries for command adapters/clients. |
@@ -115,6 +116,13 @@ This file is generated from active manifest-declared fitness rules.
 - Side-effect free: `true`
 - Rationale: Preserves the report-plus-observer split so orchestration remains testable and side effects stay localized.
 - Remediation: Move telemetry and console output calls out of loop_runtime.iteration and into loop-wired observers that consume IterationReport.
+
+### `architecture.loop-checks-policy-ownership`
+
+- Name: Loop/checks policy ownership
+- Side-effect free: `true`
+- Rationale: Keeps loop runtime phase-driven while checks owns check-group and timing selection decisions.
+- Remediation: Remove loop-owned checks group maps/literals and explicit checks policy kwargs; call run_checks with phase context only.
 
 ### `architecture.loop-checks-result-boundary`
 

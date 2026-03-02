@@ -306,6 +306,20 @@ rules:
       - run
       - python
       - harness/fitness-functions/check_loop_checks_result_boundary.py
+  - rule_id: architecture.loop-checks-policy-ownership
+    name: Loop/checks policy ownership
+    summary: Fail when loop runtime encodes checks group/timing selection policy.
+    rationale: Keeps loop runtime phase-driven while checks owns check-group and timing selection decisions.
+    remediation: Remove loop-owned checks group maps/literals and explicit checks policy kwargs; call run_checks with phase context only.
+    scope: src/engineeringagent/loop_runtime/** and src/engineeringagent/loop.py
+    severity: error
+    side_effect_free: true
+    adapter: command
+    command:
+      - uv
+      - run
+      - python
+      - harness/fitness-functions/check_loop_checks_policy_ownership.py
   - rule_id: architecture.checks-own-prompt-feedback-rendering
     name: Checks-owned prompt feedback rendering
     summary: Fail when loop/prompt code performs checks-specific feedback shaping outside checks strategies.

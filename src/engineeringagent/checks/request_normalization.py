@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Callable, TypedDict
+from typing import Any, Callable, Literal, TypedDict
 
 from pydantic import BaseModel, ConfigDict
 
@@ -29,13 +29,12 @@ DEFAULT_GROUPS = (
     CHECK_GROUP_COMMANDS,
     CHECK_GROUP_FITNESS,
 )
+SelectionProfile = Literal["default", "loop_gate", "loop_reviewer", "loop_runtime"]
 HARNESS_GROUPS = {
     CHECK_GROUP_COMMANDS,
     CHECK_GROUP_FITNESS,
     CHECK_GROUP_REVIEWERS,
 }
-
-
 class RunChecksRequest(BaseModel):
     """Normalized request consumed by checks orchestration internals."""
 
@@ -72,6 +71,7 @@ class RunChecksKwargs(TypedDict, total=False):
     schema_only: bool
     dry_run: bool
     collect_changed_paths: Callable[..., object] | None
+    selection_profile: SelectionProfile
 
 
 RUN_CHECKS_ALLOWED_KWARGS = frozenset(
@@ -86,13 +86,90 @@ RUN_CHECKS_ALLOWED_KWARGS = frozenset(
         "schema_only",
         "dry_run",
         "collect_changed_paths",
+        "selection_profile",
     }
 )
 
 
-def normalize_groups(checks: list[str] | None) -> tuple[str, ...]:
+_LOOP_GATE_GROUPS_BY_PHASE: dict[HarnessCheckPhase, tuple[str, ...]] = {
+    HarnessCheckPhase.ITERATION_END: (
+        CHECK_GROUP_VALIDATE,
+        CHECK_GROUP_COMMANDS,
+        CHECK_GROUP_FITNESS,
+    ),
+    HarnessCheckPhase.FEATURE_DONE: (
+        CHECK_GROUP_COMMANDS,
+        CHECK_GROUP_FITNESS,
+    ),
+}
+
+_SELECTION_PROFILE_ERROR = (
+    "unknown selection profile; expected one of: "
+    "default|loop_gate|loop_reviewer|loop_runtime"
+)
+
+
+def _groups_for_loop_gate_phase(phase: HarnessCheckPhase) -> tuple[str, ...]:
+    groups = _LOOP_GATE_GROUPS_BY_PHASE.get(phase)
+    if groups is None:
+        raise ValueError("loop_gate selection_profile requires iteration_end|feature_done")
+    return groups
+
+
+def _groups_for_loop_reviewer_phase(phase: HarnessCheckPhase) -> tuple[str, ...]:
+    if phase != HarnessCheckPhase.FEATURE_DONE:
+        raise ValueError("loop_reviewer selection_profile requires feature_done")
+    return (CHECK_GROUP_REVIEWERS,)
+
+
+def _groups_for_loop_runtime_phase(
+    phase: HarnessCheckPhase,
+    feature_path: str | Path | None,
+) -> tuple[str, ...]:
+    if phase == HarnessCheckPhase.FEATURE_DONE and feature_path is not None:
+        return (CHECK_GROUP_REVIEWERS,)
+    if phase not in _LOOP_GATE_GROUPS_BY_PHASE:
+        raise ValueError(
+            "loop_runtime selection_profile requires iteration_end|feature_done"
+        )
+    return _LOOP_GATE_GROUPS_BY_PHASE[phase]
+
+
+def _default_groups_for_selection_profile(
+    *,
+    phase: HarnessCheckPhase,
+    selection_profile: SelectionProfile,
+    feature_path: str | Path | None = None,
+) -> tuple[str, ...]:
+    if selection_profile == "default":
+        return DEFAULT_GROUPS
+    if selection_profile == "loop_gate":
+        return _groups_for_loop_gate_phase(phase)
+    if selection_profile == "loop_reviewer":
+        return _groups_for_loop_reviewer_phase(phase)
+    if selection_profile == "loop_runtime":
+        return _groups_for_loop_runtime_phase(phase, feature_path)
+    raise ValueError(_SELECTION_PROFILE_ERROR)
+
+
+def normalize_groups(
+    checks: list[str] | None,
+    *,
+    phase: HarnessCheckPhase = HarnessCheckPhase.MANUAL,
+    selection_profile: SelectionProfile = "default",
+    feature_path: str | Path | None = None,
+) -> tuple[str, ...]:
     """Normalize requested check groups into deterministic execution order."""
-    requested = list(checks) if checks is not None else list(DEFAULT_GROUPS)
+    if checks is not None:
+        requested = list(checks)
+    else:
+        requested = list(
+            _default_groups_for_selection_profile(
+                phase=phase,
+                selection_profile=selection_profile,
+                feature_path=feature_path,
+            )
+        )
     normalized: list[str] = []
     for group in requested:
         value = str(group or "").strip()
@@ -143,7 +220,7 @@ def build_run_checks_request(
 ) -> tuple[Path, RunChecksRequest]:
     """Build and validate a normalized run request for checks orchestration."""
     root = coerce_project_root(project_root)
-    ordered_groups = normalize_groups(checks)
+    phase_value = coerce_phase(phase)
 
     unexpected = sorted(set(kwargs) - RUN_CHECKS_ALLOWED_KWARGS)
     if unexpected:
@@ -161,6 +238,22 @@ def build_run_checks_request(
     schema_only = bool(kwargs.get("schema_only", False))
     dry_run = bool(kwargs.get("dry_run", False))
     collect_changed_paths_fn = kwargs.get("collect_changed_paths")
+    raw_selection_profile = kwargs.get("selection_profile")
+    selection_profile = (
+        "default"
+        if checks is not None
+        else _resolve_selection_profile(
+            phase=phase_value,
+            raw_selection_profile=raw_selection_profile,
+            collect_changed_paths_fn=collect_changed_paths_fn,
+        )
+    )
+    ordered_groups = normalize_groups(
+        checks,
+        phase=phase_value,
+        selection_profile=selection_profile,
+        feature_path=feature_path,
+    )
 
     if schema_only and CHECK_GROUP_VALIDATE not in ordered_groups:
         raise ValueError("schema_only requires the validate checks group")
@@ -169,7 +262,7 @@ def build_run_checks_request(
         raise ValueError("feature_path is required when reviewers checks are selected")
 
     request = RunChecksRequest(
-        phase=coerce_phase(phase),
+        phase=phase_value,
         ordered_groups=ordered_groups,
         check_id=check_id,
         feature_path=Path(feature_path).resolve() if feature_path is not None else None,
@@ -183,3 +276,33 @@ def build_run_checks_request(
         collect_changed_paths_fn=collect_changed_paths_fn,
     )
     return root, request
+
+
+def _coerce_selection_profile(raw_selection_profile: object) -> SelectionProfile:
+    if raw_selection_profile == "default":
+        return "default"
+    if raw_selection_profile == "loop_gate":
+        return "loop_gate"
+    if raw_selection_profile == "loop_reviewer":
+        return "loop_reviewer"
+    if raw_selection_profile == "loop_runtime":
+        return "loop_runtime"
+    raise ValueError(_SELECTION_PROFILE_ERROR)
+
+
+def _resolve_selection_profile(
+    *,
+    phase: HarnessCheckPhase,
+    raw_selection_profile: object | None,
+    collect_changed_paths_fn: Callable[..., object] | None,
+) -> SelectionProfile:
+    if raw_selection_profile is not None:
+        return _coerce_selection_profile(raw_selection_profile)
+
+    if (
+        phase != HarnessCheckPhase.MANUAL
+        and collect_changed_paths_fn is not None
+    ):
+        return "loop_runtime"
+
+    return "default"

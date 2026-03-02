@@ -33,16 +33,6 @@ from .models import (
 from .time_format import utc_iso_from_epoch_sec
 from ..feature_commit import feature_completion_commit_subject
 
-_LOOP_TRIGGERED_CHECK_PHASES: tuple[HarnessCheckPhase, ...] = (
-    HarnessCheckPhase.ITERATION_END,
-    HarnessCheckPhase.FEATURE_DONE,
-)
-_GATE_CHECK_GROUPS_BY_PHASE: dict[HarnessCheckPhase, tuple[str, ...]] = {
-    HarnessCheckPhase.ITERATION_END: ("validate", "commands", "fitness"),
-    HarnessCheckPhase.FEATURE_DONE: ("commands", "fitness"),
-}
-
-
 class LoopTriggeredChecksRequest(BaseModel):
     """Structured request for loop-triggered checks execution."""
 
@@ -50,7 +40,6 @@ class LoopTriggeredChecksRequest(BaseModel):
 
     project_root: Path
     phase: HarnessCheckPhase
-    checks: list[str] | None = None
     collect_changed_paths: Callable[..., Any] | None = None
     feature_path: Path | None = None
     run_agent_fn: Callable[..., Any] | None = None
@@ -59,18 +48,10 @@ class LoopTriggeredChecksRequest(BaseModel):
 
 
 def _run_loop_triggered_checks(request: LoopTriggeredChecksRequest) -> ChecksRunResult:
-    """Run checks from loop runtime with strict phase constraints."""
-    if request.phase not in _LOOP_TRIGGERED_CHECK_PHASES:
-        allowed = "|".join(item.value for item in _LOOP_TRIGGERED_CHECK_PHASES)
-        raise ValueError(
-            "unsupported loop-triggered checks phase: "
-            f"{request.phase} ({allowed})"
-        )
-
+    """Run checks from loop runtime using checks-owned selection policy."""
     return run_checks(
         request.project_root,
         phase=request.phase,
-        checks=request.checks,
         feature_path=request.feature_path,
         run_agent_fn=request.run_agent_fn,
         feedback=request.feedback,
@@ -181,13 +162,16 @@ def _run_gate_phase_checks(
 ) -> tuple[ChecksRunResult, list[str], list[CommandTiming]]:
     outputs: list[str] = []
     command_timings: list[CommandTiming] = []
+    gate_phases = (HarnessCheckPhase.ITERATION_END,) if not archived_in_iteration else (
+        HarnessCheckPhase.ITERATION_END,
+        HarnessCheckPhase.FEATURE_DONE,
+    )
 
-    def _run_gate_groups(phase: HarnessCheckPhase) -> ChecksRunResult:
+    for phase in gate_phases:
         result = _run_loop_triggered_checks(
             LoopTriggeredChecksRequest(
                 project_root=iteration_inputs.project_root,
                 phase=phase,
-                checks=list(_GATE_CHECK_GROUPS_BY_PHASE[phase]),
                 collect_changed_paths=dependencies.collect_changed_paths,
                 verbose_output=iteration_inputs.verbose_output,
             )
@@ -195,13 +179,10 @@ def _run_gate_phase_checks(
         _append_gate_command_timings(result.command_invocations, command_timings)
         if result.output:
             outputs.append(result.output)
-        return result
+        if not result.ok:
+            break
 
-    last_result = _run_gate_groups(HarnessCheckPhase.ITERATION_END)
-    if last_result.ok and archived_in_iteration:
-        last_result = _run_gate_groups(HarnessCheckPhase.FEATURE_DONE)
-
-    return last_result, outputs, command_timings
+    return result, outputs, command_timings
 
 
 def _gate_failure_outcome(
@@ -427,7 +408,6 @@ def run_reviewer_phase(
         LoopTriggeredChecksRequest(
             project_root=iteration_inputs.project_root,
             phase=HarnessCheckPhase.FEATURE_DONE,
-            checks=["reviewers"],
             feature_path=feature_path,
             run_agent_fn=dependencies.run_agent_fn,
             feedback=iteration_inputs.feedback,

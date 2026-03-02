@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 from types import SimpleNamespace
-from typing import cast
 
 from engineeringagent.changed_paths import ChangedPathsResult
 from engineeringagent.checks import ChecksRunResult
@@ -142,10 +141,16 @@ def test_run_reviewer_phase_forwards_request_changes_feedback_for_run_all(
 
     sentinel_feedback = "REVIEWER_FEEDBACK_SENTINEL"
     raw_output = "REVIEWER_RAW_OUTPUT_SHOULD_NOT_BE_FORWARDED"
-    recorded_phases: list[object] = []
+    recorded_calls: list[tuple[object, object, object]] = []
 
     def _run_checks(_project_root: Path, **kwargs: object) -> ChecksRunResult:
-        recorded_phases.append(kwargs.get("phase"))
+        recorded_calls.append(
+            (
+                kwargs.get("phase"),
+                kwargs.get("checks"),
+                kwargs.get("selection_profile"),
+            )
+        )
         return ChecksRunResult(
             ok=False,
             dry_run=False,
@@ -179,7 +184,7 @@ def test_run_reviewer_phase_forwards_request_changes_feedback_for_run_all(
     assert outcome.reviewer_status == "failed:doc_review"
     assert outcome.feedback == sentinel_feedback
     assert raw_output not in outcome.feedback
-    assert recorded_phases == ["feature_done"]
+    assert recorded_calls == [("feature_done", None, None)]
 
 
 def test_run_gate_phase_emits_command_failure_feedback_contract(
@@ -304,7 +309,7 @@ def test_run_gate_phase_uses_generic_feedback_when_prompt_feedback_missing(
     assert raw_output not in outcome.feedback
 
 
-def test_run_gate_phase_includes_validate_group_for_iteration_end_only(
+def test_run_gate_phase_delegates_policy_selection_to_checks(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
@@ -340,11 +345,16 @@ def test_run_gate_phase_includes_validate_group_for_iteration_end_only(
         ),
     )
 
-    recorded_calls: list[tuple[object, list[str] | None]] = []
+    recorded_calls: list[tuple[object, object, object]] = []
 
     def _run_checks(_project_root: Path, **kwargs: object) -> ChecksRunResult:
-        checks = cast(list[str] | None, kwargs.get("checks"))
-        recorded_calls.append((kwargs.get("phase"), checks))
+        recorded_calls.append(
+            (
+                kwargs.get("phase"),
+                kwargs.get("checks"),
+                kwargs.get("selection_profile"),
+            )
+        )
         return ChecksRunResult(ok=True, dry_run=False)
 
     monkeypatch.setattr("engineeringagent.loop_runtime.phases.run_checks", _run_checks)
@@ -358,8 +368,8 @@ def test_run_gate_phase_includes_validate_group_for_iteration_end_only(
 
     assert outcome.result == "passed"
     assert recorded_calls == [
-        ("iteration_end", ["validate", "commands", "fitness"]),
-        ("feature_done", ["commands", "fitness"]),
+        ("iteration_end", None, None),
+        ("feature_done", None, None),
     ]
 
 
