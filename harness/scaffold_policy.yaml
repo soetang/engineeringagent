@@ -8,9 +8,9 @@ contributor_docs:
   - docs/fitness-functions/README.md
   - docs/fitness-functions/architecture.md
   - docs/fitness-functions/rules.md
+  - docs/references/contributor-commands.md
 user_docs:
   - docs/principles/harness-engineering-principles.md
-  - docs/references/contributor-commands.md
   - docs/references/documentation-practices.md
   - docs/references/quality-check-playbook.md
   - docs/references/reviewer-authoring-guide.md
@@ -21,7 +21,6 @@ scaffold_docs:
   - docs/references/spec-writing.md
   - docs/references/quality-check-playbook.md
   - docs/references/reviewer-authoring-guide.md
-  - docs/references/contributor-commands.md
   - docs/references/documentation-practices.md
   - docs/principles/harness-engineering-principles.md
 exact_sync:
@@ -33,8 +32,6 @@ exact_sync:
     template_name: reference.quality-check-playbook.md
   - docs_path: docs/references/reviewer-authoring-guide.md
     template_name: reference.reviewer-authoring-guide.md
-  - docs_path: docs/references/contributor-commands.md
-    template_name: reference.contributor-commands.md
   - docs_path: docs/references/documentation-practices.md
     template_name: reference.documentation-practices.md
   - docs_path: docs/principles/harness-engineering-principles.md

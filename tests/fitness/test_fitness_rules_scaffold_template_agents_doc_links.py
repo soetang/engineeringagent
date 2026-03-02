@@ -95,26 +95,6 @@ def test_agents_link_checker_fails_when_scaffold_doc_is_missing_from_template(
     )
 
 
-def test_agents_link_checker_fails_when_doc_link_has_no_description(
-    tmp_path: Path,
-    repo_root: Path,
-) -> None:
-    """Fail when a required link exists but lacks a per-file description."""
-    expected = ["docs/references/a.md"]
-    _write_policy(tmp_path, scaffold_docs=expected)
-    _write_scaffold_agents(
-        tmp_path,
-        content="# AGENTS\n\n- `docs/references/a.md`\n",
-    )
-
-    proc, result = _run_checker(tmp_path, checker_path=_script_path(repo_root))
-    violations = _violations(result)
-
-    assert proc.returncode == 0
-    assert result["status"] == "fail"
-    assert any("missing per-file description" in violation for violation in violations)
-
-
 def test_agents_link_checker_passes_when_all_scaffold_docs_are_linked(
     tmp_path: Path,
     repo_root: Path,

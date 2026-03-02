@@ -38,35 +38,6 @@ def _build_checks_yaml() -> str:
         allow_unicode=False,
     )
 
-
-def _build_scaffold_policy_yaml(
-    *,
-    docs_root: str,
-    user_docs: list[str],
-    scaffold_docs: list[str],
-    exact_sync: list[dict[str, str]],
-) -> str:
-    """Build a minimal scaffold policy file.
-
-    Notes:
-    - The docs allowlist fitness rule is stdlib-only and reads this file directly.
-    - Keep the contract small and deterministic for reviewability.
-    """
-
-    return yaml.safe_dump(
-        {
-            "contract_version": "1.0",
-            "docs_root": docs_root,
-            "contributor_docs": [],
-            "user_docs": user_docs,
-            "scaffold_docs": scaffold_docs,
-            "exact_sync": exact_sync,
-        },
-        sort_keys=False,
-        allow_unicode=False,
-    )
-
-
 def _spec_validate_gate(docs_dir_normalized: str) -> dict[str, object]:
     """Return a stable spec validation gate config for harness profiles."""
 
@@ -216,16 +187,6 @@ def build_baseline_scaffold_manifest(
 
     scaffolded_user_doc_templates = _discover_scaffolded_user_doc_templates()
     user_docs_manifest = _build_user_docs_manifest(scaffolded_user_doc_templates)
-    policy_user_docs: list[str] = []
-    policy_scaffold_docs: list[str] = []
-    policy_exact_sync: list[dict[str, str]] = []
-    if docs_dir_normalized == "docs":
-        policy_user_docs = sorted(user_docs_manifest.keys())
-        policy_scaffold_docs = list(user_docs_manifest.keys())
-        policy_exact_sync = [
-            {"docs_path": docs_path, "template_name": template_name}
-            for docs_path, template_name in scaffolded_user_doc_templates
-        ]
 
     manifest = {
         ".pre-commit-config.yaml": _build_precommit_config(profile=profile),
@@ -255,12 +216,6 @@ def build_baseline_scaffold_manifest(
             },
             sort_keys=False,
             allow_unicode=False,
-        ),
-        "harness/scaffold_policy.yaml": _build_scaffold_policy_yaml(
-            docs_root=docs_dir_normalized,
-            user_docs=policy_user_docs,
-            scaffold_docs=policy_scaffold_docs,
-            exact_sync=policy_exact_sync,
         ),
         "AGENTS.md": build_scaffold_agents_markdown(),
         **user_docs_manifest,

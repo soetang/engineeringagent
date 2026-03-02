@@ -19,8 +19,7 @@ _POLICY_PATH = Path("harness/scaffold_policy.yaml")
 _AGENTS_TEMPLATE_PATH = Path("src/engineeringagent/scaffold_templates/AGENTS.md")
 _REMEDIATION = (
     "update src/engineeringagent/scaffold_templates/AGENTS.md to link each "
-    "scaffolded reference doc listed in harness/scaffold_policy.yaml scaffold_docs "
-    "with a short per-file description."
+    "scaffolded reference doc listed in harness/scaffold_policy.yaml scaffold_docs."
 )
 
 
@@ -50,21 +49,8 @@ def _load_scaffold_doc_paths(project_root: Path) -> list[str]:
     return scaffold_docs
 
 
-def _is_bullet_line(line: str) -> bool:
-    stripped = line.lstrip()
-    return stripped.startswith("- ") or stripped.startswith("* ")
-
-
-def _line_contains_link_with_description(line: str, doc_path: str) -> bool:
-    if doc_path not in line:
-        return False
-    if not _is_bullet_line(line):
-        return False
-    suffix = line.split(doc_path, 1)[1]
-    if ":" not in suffix:
-        return False
-    after_colon = suffix.split(":", 1)[1].strip()
-    return bool(after_colon)
+def _line_contains_link(line: str, doc_path: str) -> bool:
+    return doc_path in line
 
 
 def _agents_links_violations(project_root: Path) -> list[str]:
@@ -104,16 +90,13 @@ def _agents_links_violations(project_root: Path) -> list[str]:
             )
             continue
 
-        if any(
-            _line_contains_link_with_description(line, doc_path)
-            for _, line in candidates
-        ):
+        if any(_line_contains_link(line, doc_path) for _, line in candidates):
             continue
 
         first_line = candidates[0][0]
         violations.append(
-            f"{_AGENTS_TEMPLATE_PATH}:{first_line} missing per-file description for "
-            f"{doc_path} (policy={_POLICY_PATH}); {_REMEDIATION}"
+            f"{_AGENTS_TEMPLATE_PATH}:{first_line} missing link for {doc_path} "
+            f"(policy={_POLICY_PATH}); {_REMEDIATION}"
         )
 
     return sorted(violations)

@@ -92,59 +92,6 @@ def test_render_scaffold_template_supports_substitutions_argument() -> None:
     assert isinstance(rendered, str)
     assert rendered
 
-
-def test_build_baseline_scaffold_manifest_user_docs_are_deterministic() -> None:
-    first = build_baseline_scaffold_manifest()
-    second = build_baseline_scaffold_manifest()
-
-    assert first == second
-
-    first_policy = yaml.safe_load(first["harness/scaffold_policy.yaml"])
-    second_policy = yaml.safe_load(second["harness/scaffold_policy.yaml"])
-    assert first_policy == second_policy
-
-
-def test_build_baseline_scaffold_manifest_user_docs_follow_template_categories() -> (
-    None
-):
-    template_root = files("engineeringagent.scaffold_templates")
-    category_roots = {"principle": "principles", "reference": "references"}
-    expected_docs: set[str] = set()
-    expected_exact_sync: set[tuple[str, str]] = set()
-
-    for entry in template_root.iterdir():
-        if not entry.is_file():
-            continue
-        template_name = entry.name
-        if not template_name.endswith(".md"):
-            continue
-        category, _, relative_name = template_name.partition(".")
-        docs_subdir = category_roots.get(category)
-        if docs_subdir is None:
-            continue
-        docs_path = f"docs/{docs_subdir}/{relative_name}"
-        expected_docs.add(docs_path)
-        expected_exact_sync.add((docs_path, template_name))
-
-    manifest = build_baseline_scaffold_manifest(docs_dir="docs", profile="core")
-    policy = yaml.safe_load(manifest["harness/scaffold_policy.yaml"])
-
-    assert expected_docs
-    assert set(policy["user_docs"]) == expected_docs
-    assert set(policy["scaffold_docs"]) == expected_docs
-    assert {
-        (entry["docs_path"], entry["template_name"]) for entry in policy["exact_sync"]
-    } == expected_exact_sync
-    assert all(docs_path in manifest for docs_path in expected_docs)
-    assert "docs/architecture/Architecture.md" not in manifest
-    assert "docs/architecture/Architecture.md" not in policy["user_docs"]
-    assert "docs/architecture/Architecture.md" not in policy["scaffold_docs"]
-    assert all(
-        entry["docs_path"] != "docs/architecture/Architecture.md"
-        for entry in policy["exact_sync"]
-    )
-
-
 def test_build_precommit_config_rejects_unknown_profile() -> None:
     with pytest.raises(ValueError, match="unsupported scaffold profile"):
         init_scaffold_module._build_precommit_config("unknown")  # pylint: disable=protected-access
