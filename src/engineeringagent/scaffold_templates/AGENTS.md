@@ -3,7 +3,7 @@
 
 Below is a list of files describing relevant parts of the approach. You should only read the relevant ones for the task at hand. 
 
-Devlopment in this repo follows the process used by the cli tool engineeringagent. It can be used by running `uvx engineeringagent --help`.
+Development in this repo follows the process used by the cli tool engineeringagent. It can be used by running `uvx engineeringagent --help`.
 
 1. [Principles](docs/principles/harness-engineering-principles.md): High level description of the principles we follow. 
 1. [README.md](README): Userfacing documentation
