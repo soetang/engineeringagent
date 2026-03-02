@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "engineeringagent"
-version = "0.3.0"
+version = "0.3.1"
 description = "A framework for running coding agents as long running tasks - with deterministic feedback loops and agent reviewers"
 readme = "README.md"
 requires-python = ">=3.10"
