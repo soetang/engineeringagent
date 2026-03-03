@@ -21,7 +21,7 @@ context: |
   User intent for this feature:
   - CLI-only immediately for guidance delivery (no staged compatibility period)
   - do not replace AGENTS.md wholesale; append/prepend one deterministic bootstrap line
-  - reconsider names/structure of guidance subdocuments for better discoverability
+  - define stable approach topic ids/aliases while preserving migrated doc bodies
   - reduce tests and rules tied to scaffolded-doc synchronization
 constraints:
   - 'CLI guidance must be deterministic and non-interactive: plain text/markdown output,
@@ -34,6 +34,10 @@ constraints:
     the file-based scaffold behavior is removed.'
   - 'Out of scope: adding network-dependent doc retrieval; approach content must be local and
     version-pinned to installed package artifacts.'
+  - 'Migration-fidelity contract: each new `src/engineeringagent/approach/docs/*.md` file
+    must start as an exact copy of its mapped source doc content, with only these allowed
+    edits: `approach_id` frontmatter insertion, relocation-driven internal link/path updates,
+    and launcher-neutral command normalization to `engineeringagent ...` forms.'
 implementation_notes: |
   Contract change declaration
 
@@ -100,12 +104,12 @@ implementation_notes: |
     - `docs/references/contributor-commands.md`
     - `docs/references/documentation-practices.md`
 
-  2) Subdocument metadata and naming quality
+  2) Subdocument metadata and copy-fidelity contract
   - Decision: add one frontmatter metadata line to each source markdown guidance doc:
     `approach_id: <stable-id>`.
   - Use markdown H1 as display title to avoid duplicated title metadata.
-  - Introduce a quality pass to improve current subdocument naming and grouping so topic
-    names read naturally in CLI and remain concise for agent prompting.
+  - Do not perform broad editorial rewrites during migration; only the three allowed edit
+    classes from the migration-fidelity constraint are permitted.
 
   3) Source-of-truth and package delivery
   - Decision: avoid dual-source duplication by storing canonical approach docs directly
@@ -113,6 +117,9 @@ implementation_notes: |
   - Required workflow:
     - no cross-tree copy/sync step between `docs/references` and package docs; approach
       subdocuments live only under `src/engineeringagent/approach/docs/`
+    - initial migration into approach docs preserves source prose exactly (except allowed
+      migration edits) before any future intentional content revision is proposed in a
+      separate spec/feature
     - include approach package docs in build artifacts created by `python -m build`
     - load approach content via `importlib.resources` from the approach package
     - add tests that verify packaged docs are discoverable at runtime and that one
@@ -242,6 +249,9 @@ acceptance:
     validated by deterministic tests.
   - Every approach subdocument includes frontmatter `approach_id` and a single H1 title,
     and duplicate/missing ids fail deterministic validation tests.
+  - Migrated approach subdocuments are exact copies of mapped source docs, except for
+    allowed migration edits (frontmatter insertion, relocation link/path updates, and
+    launcher-neutral command normalization).
   - User-facing approach docs do not require schema-export walkthroughs; schema surfaces
     remain available for contributor/internal workflows without being a required user
     guidance element.
@@ -264,9 +274,10 @@ subtasks:
     title: Define approach information architecture and stable topic ids
     status: backlog
     context: |
-      Finalize subdocument naming, grouping, canonical ids, and aliases with a progressive
-      disclosure model that starts from an overview and drills into specific guidance.
-      Include explicit rationale for each chosen id/name and migration notes for renamed topics.
+      Finalize canonical ids and aliases with a progressive disclosure model that starts
+      from an overview and drills into specific guidance, without rewriting migrated doc
+      bodies beyond the allowed migration edits. Include rationale for id/alias choices
+      and source-to-topic mapping notes.
     verification:
       - uv run engineeringagent validate --schema-only
   - id: ST-002
@@ -274,7 +285,8 @@ subtasks:
     status: backlog
     context: |
       Add `approach_id` to each selected guidance markdown source document and enforce
-      deterministic parsing constraints (single id, unique ids, required H1 title).
+      deterministic parsing constraints (single id, unique ids, required H1 title)
+      while preserving source prose aside from allowed migration edits.
     verification:
       - uv run pytest -q tests/cli/test_approach_registry.py
   - id: ST-003
