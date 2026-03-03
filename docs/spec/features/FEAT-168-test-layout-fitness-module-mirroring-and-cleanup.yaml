@@ -1,0 +1,141 @@
+id: FEAT-168
+title: Replace test layout migration checks with module-mirroring fitness invariant
+type: test
+expected_commit_subject: 'test: enforce test layout with module-mirroring fitness rule'
+status: backlog
+priority: high
+objective: Replace per-topic migration-era layout assertions with one policy-driven
+  fitness rule that enforces module-mirroring test layout, allows explicit exception
+  roots, and removes current alias-style test folders.
+context: |
+  The repository currently enforces test layout through multiple `tests/meta/test_test_layout_*_topic.py`
+  files that hardcode old->new migration paths from FEAT-080.
+
+  Those tests still guard against regressions, but they are historical and list-based.
+  They do not scale as a long-term layout contract and do not express a generalized
+  module-structure policy.
+
+  We want a single fitness-function invariant that:
+  - bans root-level `tests/test_*.py`,
+  - enforces module-oriented test folder structure,
+  - disallows alias topic roots,
+  - allows a small explicit exception set for non-module test infrastructure and
+    repository-policy surfaces.
+
+  The repository has no external users, so breaking test-path changes are acceptable
+  when they improve structure and policy clarity.
+constraints:
+  - Do not use alias topic roots in `tests/` (for example `vcs`, `opencode`, `reviewers`).
+  - Allow nested test paths that mirror nested source modules (for example `tests/agents/backends/opencode`).
+  - Keep an explicit exception list for non-module surfaces.
+  - Keep `tests/conftest.py` and `tests/fixtures/` behavior stable.
+  - Enforce `tests/test_*.py` root ban as part of the new invariant.
+  - Remove migration-list meta layout tests after the generalized invariant is in place.
+  - Keep the new checker side-effect free and deterministic.
+implementation_notes: |
+  Contract change declaration
+
+  Surface:
+  - repository test layout policy enforcement
+  - fitness rule catalog and harness fitness rule registry
+
+  Old behavior:
+  - multiple per-topic meta tests assert historical old->new file move lists.
+
+  New behavior:
+  - one fitness rule validates layout policy from current repository structure,
+    with strict no-alias enforcement and explicit exceptions.
+
+  Compatibility policy:
+  - breaking test path moves are allowed for structural cleanup.
+
+  Proposed exception roots (explicitly allowed):
+  - `tests/meta`
+  - `tests/fitness`
+  - `tests/harness`
+  - `tests/helpers`
+  - `tests/fixtures`
+  - root infra files: `tests/conftest.py`, `tests/__init__.py`
+
+  Concrete cleanup move map for current alias roots:
+  - `tests/vcs/test_git_client.py` -> `tests/git/test_git_client.py`
+  - `tests/vcs/test_commit_message_validation.py` -> `tests/git/test_commit_message_validation.py`
+  - `tests/opencode/test_opencode_client.py` -> `tests/agents/backends/opencode/test_opencode_client.py`
+  - `tests/opencode/test_opencode_permissions.py` -> `tests/agents/backends/opencode/test_opencode_permissions.py`
+  - `tests/reviewers/test_repo_reviewers_config.py` -> `tests/checks/reviewers/test_repo_reviewers_config.py`
+  - `tests/reviewers/test_reviewer_strategy_validator.py` -> `tests/checks/reviewers/test_reviewer_strategy_validator.py`
+  - `tests/reviewers/test_reviewers_additional_coverage.py` -> `tests/checks/reviewers/test_reviewers_additional_coverage.py`
+  - `tests/reviewers/test_reviewers_runtime.py` -> `tests/checks/reviewers/test_reviewers_runtime.py`
+  - `tests/reviewers/test_reviewers_sandbox.py` -> `tests/checks/reviewers/test_reviewers_sandbox.py`
+  - `tests/reviewers/test_reviewers_state.py` -> `tests/checks/reviewers/test_reviewers_state.py`
+  - `tests/reviewers/test_reviewers_state_cache.py` -> `tests/checks/reviewers/test_reviewers_state_cache.py`
+
+  Fitness-function impact assessment
+  - add a new architecture fitness rule for test layout module mirroring.
+  - delete migration-era meta layout tests once the new rule and moves land.
+acceptance:
+  - A new fitness rule enforces generalized test layout policy (no root `tests/test_*.py`,
+    no alias topic roots, explicit exceptions, nested mirroring allowed).
+  - Alias roots `tests/vcs`, `tests/opencode`, and `tests/reviewers` are removed after moves.
+  - Moved test suites pass from their new mirrored locations.
+  - Per-topic migration meta layout tests are removed.
+  - Fitness rule registration and docs catalog are updated and in sync.
+  - '`uv run engineeringagent validate --schema-only` passes.'
+subtasks:
+  - id: ST-001
+    title: Define generalized test-layout mirroring policy and exception contract
+    status: backlog
+    context: |
+      Implement a single checker script under `harness/fitness-functions/` plus a
+      policy config file that encodes explicit exception roots. The checker should
+      validate current repository layout (not historical move maps).
+    verification:
+      - uv run python harness/fitness-functions/check_test_layout_module_mirroring.py
+  - id: ST-002
+    title: Register new fitness rule and add checker regression tests
+    status: backlog
+    context: |
+      Add a new `architecture.*` rule entry in `harness/fitness-functions/rules.yaml`,
+      add test coverage in `tests/fitness/`, and refresh generated fitness catalog docs.
+    verification:
+      - uv run pytest -q tests/fitness -k test_layout_module_mirroring
+      - uv run engineeringagent checks catalog --format markdown --output docs/fitness-functions/rules.md
+      - uv run pytest -q tests/fitness/test_fitness_rules_catalog_docs_sync.py
+  - id: ST-003
+    title: Move alias-root test suites to mirrored module paths
+    status: backlog
+    context: |
+      Execute the cleanup move map for `vcs`, `opencode`, and `reviewers`, creating
+      nested module-mirroring directories where needed.
+    verification:
+      - uv run pytest -q tests/git
+      - uv run pytest -q tests/agents/backends/opencode
+      - uv run pytest -q tests/checks/reviewers
+  - id: ST-004
+    title: Remove legacy topic layout meta tests
+    status: backlog
+    context: |
+      Delete `tests/meta/test_test_layout_*_topic.py` files that encode migration-only
+      old->new lists, and keep layout enforcement solely in the new fitness rule.
+    verification:
+      - uv run pytest -q tests/meta
+  - id: ST-005
+    title: Update path literals and references affected by moved tests
+    status: backlog
+    context: |
+      Update hardcoded test paths in assertions, command strings, and docs/spec references
+      that still point to old alias-root locations.
+    verification:
+      - uv run pytest -q tests/loop
+      - uv run pytest -q tests/cli
+  - id: ST-006
+    title: Run end-to-end policy and regression validation
+    status: backlog
+    context: |
+      Run schema validation, targeted suites, and iteration-end checks to confirm
+      deterministic enforcement and no policy regressions.
+    verification:
+      - uv run engineeringagent validate --schema-only
+      - uv run pytest -q
+      - uv run engineeringagent checks run --phase iteration_end
+updated_at: '2026-03-03T00:00:00Z'
