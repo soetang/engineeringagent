@@ -1,16 +1,20 @@
 # AGENTS.md
 
+In this repository, run EngineeringAgent CLI commands with `uvx engineeringagent ...`.
+
+Use `engineeringagent approach` for the overall workflow and guidance map.
+
+Use `engineeringagent approach list` to discover topics, then open one (for example `engineeringagent approach specifications`).
+
 You can assume that this repository currently have no users. So changes are allowed to be breaking, and we prefer to improve the design and structure over maintaining exact compatbility with current functionality.
 
-Below is a list of files describing relevant parts of the approach. You should only read the relevant ones. 
-
-1. [Principles](docs/principles/harness-engineering-principles.md) - High level description of the principles we follow. 
-1. [README.md](README) - Userfacing documentation
-1. [Spec writing](docs/references/spec-writing.md) - Guide for how to write specs in this repo.
-1. [Contributor commands](docs/references/contributor-commands.md) - The key commands to know when contributing to the repo.
-1. [User workflow](docs/references/workflow.md) - Description of workflow for users of engineering agent.
-1. [Dokumentation practices](docs/references/documentation-practices.md) - How to write documentation for this repo.
-1. [Quality checks](docs/references/quality-check-playbook.md) - How to run quality checks as a user.
+To access up-to-date guidance, use the CLI approach surface:
+1. `engineeringagent approach` - Guidance map and topic overview.
+1. `engineeringagent approach principles` - High-level engineering principles.
+1. `engineeringagent approach workflow` - Workflow and execution sequence.
+1. `engineeringagent approach specifications` - How to write and maintain specs.
+1. `engineeringagent approach quality-checks` - Quality and verification playbook.
+1. `engineeringagent approach reviewer-authoring` - Reviewer workflows and prompts.
 1. [Architecture map](docs/architecture/Architecture.md) - Entry point for target-state architecture documents.
 
 ## Verification Quick Reference

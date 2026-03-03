@@ -1,3 +1,7 @@
+---
+approach_id: quality-checks
+---
+
 # Quality Check Playbook
 
 This guide explains when to use each quality check in this repository and how to design checks that stay deterministic over time.
@@ -14,22 +18,22 @@ Use this playbook as a practical default, then apply judgment based on risk.
 | Linting (`ruff`, `pylint`) | Enforce code quality and consistency | Style, static hygiene, maintainability | Complexity limits, import hygiene, docstring completeness |
 | Type checks (`pyright`) | Catch interface/type mismatches early | Cross-module contracts and API usage | Wrong argument types, missing attributes |
 | Spec/contract validation | Ensure loop/spec integrity | Feature specs and schema conformance | YAML/schema validity |
-| Agent reviewers | Reviews the code changes with an agent for automatic feedback | All that cannot be covered by deterministic rules see: [ Reviewers guide](`docs/references/reviewer-authoring-guide.md`) | Test reviewer, Code simplifier | 
+| Agent reviewers | Reviews the code changes with an agent for automatic feedback | All that cannot be covered by deterministic rules see: [Reviewers guide](reviewer-authoring.md) | Test reviewer, Code simplifier | 
 
 ## When to Run What
 
 - During normal implementation loops:
   - `engineeringagent run --all` (consumes `harness/checks.yaml`)
 - Before commit or merge:
-  - Run the relevant direct tools (`uv run ruff ...`, `uv run pyright ...`, `uv run pytest ...`)
+  - Run the relevant direct tools (`ruff ...`, `pyright ...`, `pytest ...`)
 - When editing feature specs or schema-related files:
-  - `uv run engineeringagent validate --schema-only`
+  - `engineeringagent validate --schema-only`
 - When debugging a specific class of failure:
-  - Ruff: `uv run ruff check src/engineeringagent harness`
-  - Pylint: `uv run pylint --score=n --reports=n src/engineeringagent tests harness`
-  - Pyright: `uv run pyright src/engineeringagent tests harness`
-  - Unit tests: `uv run pytest -q`
-  - Fitness functions: `uv run engineeringagent checks run --checks fitness --phase iteration_end`
+- Ruff: `ruff check src/engineeringagent harness`
+- Pylint: `pylint --score=n --reports=n src/engineeringagent tests harness`
+- Pyright: `pyright src/engineeringagent tests harness`
+- Unit tests: `pytest -q`
+  - Fitness functions: `engineeringagent checks run --checks fitness --phase iteration_end`
 
 ## How to Think About Fitness Functions
 
@@ -70,5 +74,5 @@ Avoid checks that can be satisfied by comment edits or keyword stuffing. Prefer 
 1. Iterate with small, deterministic changes.
 2. Add or update unit tests for behavior changes.
 3. Add or update fitness checks when introducing or protecting structural constraints.
-4. Run `uv run pytest -q` before finalizing.
+4. Run `pytest -q` before finalizing.
 5. If a check fails, fix root cause first. Relax thresholds or rules only with explicit rationale.

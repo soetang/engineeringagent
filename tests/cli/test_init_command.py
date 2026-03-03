@@ -16,6 +16,20 @@ from engineeringagent.init_scaffold import (
     build_baseline_scaffold_manifest,
     build_scaffold_agents_markdown,
 )
+from tests.cli.approach_fixture_data import APPROACH_AGENTS_BOOTSTRAP_TEXT
+
+EXPECTED_AGENTS_BOOTSTRAP = APPROACH_AGENTS_BOOTSTRAP_TEXT
+
+
+def test_scaffold_agents_bootstrap_matches_approach_fixture() -> None:
+    template_payload = (
+        files("engineeringagent.scaffold_templates")
+        .joinpath("AGENTS.md")
+        .read_text(encoding="utf-8")
+        .strip()
+    )
+
+    assert template_payload == EXPECTED_AGENTS_BOOTSTRAP
 
 
 def _invoke_cli(args: list[str]) -> Any:
@@ -634,7 +648,7 @@ def test_init_agents_conflict_overwrite(
     assert "agents_mode=overwrite" in result.stdout
     scaffold_agents = (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
     assert "user guidance" not in scaffold_agents
-    assert "engineeringagent validate" in scaffold_agents
+    assert EXPECTED_AGENTS_BOOTSTRAP in scaffold_agents
 
 
 def test_init_agents_conflict_preserve_and_create_merge_spec(
@@ -656,6 +670,7 @@ def test_init_agents_conflict_preserve_and_create_merge_spec(
     ) == "legacy guidance\n"
     scaffold_agents = (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
     assert "legacy guidance" not in scaffold_agents
+    assert EXPECTED_AGENTS_BOOTSTRAP in scaffold_agents
 
     merge_spec_path = (
         tmp_path

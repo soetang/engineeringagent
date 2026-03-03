@@ -1,5 +1,6 @@
 # Development practices
 
+1. For guidance topics, use the approach surface: `engineeringagent approach list` and `engineeringagent approach <topic_id>`.
 1. Tests the package with: `uv run pytest -q`
 1. Run ruff checks `uv run ruff check`
 1. Fomat code `uv run ruff format`

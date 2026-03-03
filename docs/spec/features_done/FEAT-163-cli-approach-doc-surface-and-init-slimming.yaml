@@ -1,0 +1,427 @@
+id: FEAT-163
+title: Move guidance docs to CLI approach surface and slim init scaffold
+type: feature
+expected_commit_subject: 'feat: add cli approach docs surface and slim init scaffold'
+status: done
+priority: high
+objective: Replace scaffolded reference/principle markdown handouts with a CLI-native
+  progressive-disclosure guidance surface so init becomes lighter, AGENTS integration
+  is minimal, and doc-sync fitness complexity is retired.
+context: 'Current init scaffolds user-facing docs from template assets into docs/references/*
+
+  and docs/principles/*. This creates multiple maintenance burdens:
+
+  - docs/template drift risk and byte-sync enforcement complexity
+
+  - AGENTS docs-map rules that hardcode docs/* file references
+
+  - heavier first-run scaffold output and conflict handling
+
+
+  We already have a successful model for progressive CLI disclosure via schema commands.
+
+  This feature applies the same idea to user guidance by introducing a dedicated
+
+  `engineeringagent approach ...` command surface.
+
+
+  User intent for this feature:
+
+  - CLI-only immediately for guidance delivery (no staged compatibility period)
+
+  - do not replace AGENTS.md wholesale; append/prepend one deterministic bootstrap
+  line
+
+  - define stable approach topic ids/aliases while preserving migrated doc bodies
+
+  - reduce tests and rules tied to scaffolded-doc synchronization
+
+  '
+constraints:
+- 'CLI guidance must be deterministic and non-interactive: plain text/markdown output,
+  stable ordering, and no pager/ANSI/interactivity requirements.'
+- Guidance must remain available from installed wheels/sdists (not only from git checkout
+  docs paths).
+- 'In scope: breaking changes to init scaffold and AGENTS docs-map behavior are allowed,
+  but each contract change must be explicit and covered by tests/docs.'
+- 'In scope: retire fitness rules that only protect scaffolded-doc file sync/linking
+  once the file-based scaffold behavior is removed.'
+- 'Out of scope: adding network-dependent doc retrieval; approach content must be
+  local and version-pinned to installed package artifacts.'
+- 'Migration-fidelity contract: each new `src/engineeringagent/approach/docs/*.md`
+  file must start as an exact copy of its mapped source doc content, with only these
+  allowed edits: `approach_id` frontmatter insertion, relocation-driven internal link/path
+  updates, and launcher-neutral command normalization to `engineeringagent ...` forms.'
+implementation_notes: "Contract change declaration\n\nSurface:\n- CLI command surface\
+  \ in `src/engineeringagent/cli_typer.py` and `src/engineeringagent/cli.py`\n- Init\
+  \ scaffold behavior in `src/engineeringagent/init_scaffold.py` and init orchestration\n\
+  \  in `src/engineeringagent/init_service.py`\n- AGENTS/docs-map validation in `src/engineeringagent/checks/validate/repo_policy_docs_map.py`\n\
+  - Fitness rule manifest and docs in `harness/fitness-functions/rules.yaml` and\n\
+  \  `docs/fitness-functions/rules.md`\n\nOld behavior:\n- init writes user-facing\
+  \ docs from `src/engineeringagent/scaffold_templates/*.md` to\n  `docs/references/*`\
+  \ and `docs/principles/*`.\n- AGENTS docs-map validation expects `docs/*` references\
+  \ in the Documentation Layout\n  Reference section.\n- Fitness rules enforce scaffold-doc\
+  \ file sync/linking/list classification.\n\nNew behavior:\n- guidance is delivered\
+  \ by CLI via `engineeringagent approach` and topic subdocuments,\n  with progressive\
+  \ disclosure and stable topic ids.\n- init no longer scaffolds user guidance markdown\
+  \ docs; it scaffolds operational\n  essentials only (harness/spec folders/config/backends\
+  \ plus AGENTS bootstrap patch).\n- AGENTS guidance bootstraps CLI usage with one\
+  \ deterministic line instead of a full\n  scaffolded docs list.\n- doc-sync/link/list\
+  \ fitness rules tied to scaffolded user docs are retired.\n\nCompatibility policy:\n\
+  - Immediate break from file-scaffolded user docs to CLI-delivered docs is accepted.\n\
+  - CLI should include clear error/help text for unknown approach ids and list available\
+  \ ids.\n\nDesign choices\n\n1) Command naming and progressive disclosure\n- Decision:\
+  \ use `engineeringagent approach` as the canonical guidance namespace.\n- Required\
+  \ behavior:\n  - `engineeringagent approach` prints overview/how-to plus available\
+  \ topic ids.\n  - `engineeringagent approach list` prints deterministic topic id\
+  \ + short title list.\n  - `engineeringagent approach <topic_id>` prints one subdocument.\n\
+  \  - Optional `--output <path>` writes emitted content to file.\n- Overview-file\
+  \ contract:\n  - add a dedicated overview source document in packaged approach docs\
+  \ (for example\n    `src/engineeringagent/approach/docs/overview.md`) so the root\
+  \ command has an\n    explicit authored narrative rather than only generated command\
+  \ help.\n- Topic-id policy:\n  - ids are stable machine-friendly tokens (for example\
+  \ `specifications`, `workflow`,\n    `quality-checks`, `principles`,\n    `reviewer-authoring`).\n\
+  \  - allow aliases when renaming for clarity, but keep one canonical id in output.\n\
+  \  - exclude contributor-maintainer-only docs from this user-facing surface.\n\n\
+  Topic matrix v1 (canonical ids, aliases, and source mapping)\n- `overview` (aliases:\
+  \ none) -> `src/engineeringagent/approach/docs/overview.md`\n- `principles` (aliases:\
+  \ `harness-engineering-principles`) ->\n  `src/engineeringagent/approach/docs/principles.md`\n\
+  - `workflow` (aliases: none) -> `src/engineeringagent/approach/docs/workflow.md`\n\
+  - `specifications` (aliases: `spec-writing`) ->\n  `src/engineeringagent/approach/docs/specifications.md`\n\
+  - `quality-checks` (aliases: `quality-check-playbook`) ->\n  `src/engineeringagent/approach/docs/quality-checks.md`\n\
+  - `reviewer-authoring` (aliases: `reviewer-authoring-guide`) ->\n  `src/engineeringagent/approach/docs/reviewer-authoring.md`\n\
+  - Excluded from user-facing approach surface:\n  - `docs/references/contributor-commands.md`\n\
+  \  - `docs/references/documentation-practices.md`\n\n2) Subdocument metadata and\
+  \ copy-fidelity contract\n- Decision: add one frontmatter metadata line to each\
+  \ source markdown guidance doc:\n  `approach_id: <stable-id>`.\n- Use markdown H1\
+  \ as display title to avoid duplicated title metadata.\n- Do not perform broad editorial\
+  \ rewrites during migration; only the three allowed edit\n  classes from the migration-fidelity\
+  \ constraint are permitted.\n\n3) Source-of-truth and package delivery\n- Decision:\
+  \ avoid dual-source duplication by storing canonical approach docs directly\n  under\
+  \ one package path: `src/engineeringagent/approach/docs/*.md`.\n- Required workflow:\n\
+  \  - no cross-tree copy/sync step between `docs/references` and package docs; approach\n\
+  \    subdocuments live only under `src/engineeringagent/approach/docs/`\n  - initial\
+  \ migration into approach docs preserves source prose exactly (except allowed\n\
+  \    migration edits) before any future intentional content revision is proposed\
+  \ in a\n    separate spec/feature\n  - include approach package docs in build artifacts\
+  \ created by `python -m build`\n  - load approach content via `importlib.resources`\
+  \ from the approach package\n  - add tests that verify packaged docs are discoverable\
+  \ at runtime and that one\n    source-of-truth path is used.\n\n4) AGENTS integration\
+  \ strategy\n- Decision: do not replace AGENTS.md wholesale during init for this\
+  \ purpose.\n- Init should prepend/append a deterministic AGENTS bootstrap snippet\
+  \ of 1-3 sentences\n  pointing to `engineeringagent approach` discovery.\n- Approach\
+  \ subdocuments should use launcher-neutral command forms (for example\n  `engineeringagent\
+  \ schema list`) so content stays portable.\n- AGENTS bootstrap snippet should carry\
+  \ launcher preference for the repository (for\n  example `uv run engineeringagent\
+  \ ...`, `uvx engineeringagent ...`, or\n  `engineeringagent ...`) and clarify that\
+  \ commands in approach docs use base\n  `engineeringagent ...` form.\n- Canonical\
+  \ scaffold snippet (exact text):\n  - 'In this repository, run EngineeringAgent\
+  \ CLI commands with `uvx engineeringagent ...`.'\n  - 'Use `engineeringagent approach`\
+  \ for the overall workflow and guidance map.'\n  - 'Use `engineeringagent approach\
+  \ list` to discover topics, then open one (for example `engineeringagent approach\
+  \ specifications`).'\n- Existing AGENTS conflict modes remain for user-authored\
+  \ AGENTS preservation, but\n  scaffolded full docs-map section for references/principles\
+  \ is removed.\n\n5) Init simplification\n- Decision: stop scaffolding user guidance\
+  \ docs and remove related template-discovery\n  machinery from init manifest construction.\n\
+  - Keep only essential scaffold files for loop operation and specs workflow.\n- Do\
+  \ not scaffold `docs/spec/potential_features.yaml` (or equivalent docs-root path);\n\
+  \  this parking-lot artifact should be opt-in, not baseline init output.\n\n6) Modularization\
+  \ and clean-architecture boundaries\n- Decision: split approach delivery into small,\
+  \ single-purpose modules so CLI,\n  content parsing, and init-scaffold concerns\
+  \ do not leak across boundaries.\n- Target boundaries:\n  - CLI boundary (`cli_typer.py`,\
+  \ `cli.py`): argument parsing, command routing,\n    exit codes, and terminal output\
+  \ only.\n  - Approach domain boundary (`src/engineeringagent/approach/registry.py`,\n\
+  \    `src/engineeringagent/approach/rendering.py`):\n    topic discovery, alias\
+  \ resolution, frontmatter validation, and content rendering.\n  - Init boundary\
+  \ (`init_service.py`, `init_scaffold.py`): scaffold decisions and file\n    writes,\
+  \ including AGENTS bootstrap snippet insertion.\n  - Validator boundary (`repo_policy_docs_map.py`\
+  \ or successor): validate AGENTS\n    bootstrap contract, not markdown content parsing\
+  \ rules.\n- Guardrails:\n  - no markdown/frontmatter parsing logic inside CLI handlers.\n\
+  \  - no runtime dependence on init template discovery for approach topic delivery.\n\
+  \  - no hidden coupling where AGENTS snippet text is duplicated across multiple\
+  \ modules;\n    keep one canonical producer.\n  - add focused tests per boundary\
+  \ so refactors remain low-risk.\n\nFiles expected to be edited\n- `src/engineeringagent/cli_typer.py`\
+  \ (new `approach` command routing)\n- `src/engineeringagent/cli.py` (handlers for\
+  \ approach list/show/output)\n- `harness/fitness-functions/check_markdown_locality_reference_coverage.py`\
+  \ (allow and\n  validate approach markdown locality under `src/engineeringagent/approach/docs`)\n\
+  - `src/engineeringagent/init_scaffold.py` (remove scaffolded user-doc generation)\n\
+  - `src/engineeringagent/init_service.py` (align AGENTS patch behavior and init output)\n\
+  - `src/engineeringagent/checks/validate/repo_policy_docs_map.py` (replace file-path\
+  \ docs-map\n  assumptions with CLI-bootstrap invariant or retire this validator)\n\
+  - `src/engineeringagent/scaffold_templates/AGENTS.md` (replace docs layout references\
+  \ with\n  `engineeringagent approach` bootstrap text)\n- `pyproject.toml` (only\
+  \ if needed to guarantee package data inclusion)\n- selected agent-facing guidance\
+  \ references (for example scaffolded AGENTS content) to\n  point to approach commands\n\
+  - `harness/fitness-functions/rules.yaml` and `docs/fitness-functions/rules.md`\n\
+  \nFiles expected to be added\n- `src/engineeringagent/approach/__init__.py` (stable\
+  \ approach domain exports)\n- `src/engineeringagent/approach/registry.py` (topic\
+  \ discovery + metadata parsing)\n- `src/engineeringagent/approach/rendering.py`\
+  \ (shared formatting/render helpers)\n- `src/engineeringagent/approach/docs/*.md`\
+  \ (canonical packaged guidance subdocuments)\n- `src/engineeringagent/approach/docs/overview.md`\
+  \ (root approach narrative source)\n- CLI tests for approach surface (new test module\
+  \ under `tests/cli/`)\n- unit tests for approach registry/metadata parsing (new\
+  \ test module)\n\nFiles expected to be deleted or retired\n- `harness/fitness-functions/check_scaffold_docs_exact_sync.py`\n\
+  - `harness/fitness-functions/check_scaffold_template_agents_doc_links.py`\n- `harness/fitness-functions/check_docs_allowlist_policy.py`\n\
+  - `tests/fitness/test_fitness_rules_scaffold_docs_exact_sync.py`\n- `tests/fitness/test_fitness_rules_scaffold_template_agents_doc_links.py`\n\
+  - `tests/fitness/test_fitness_rules_docs_allowlist_policy.py`\n- scaffold template\
+  \ markdown assets used only for user-doc scaffolding in\n  `src/engineeringagent/scaffold_templates/`\
+  \ (reference/principle files), once package\n  approach docs fully replace their\
+  \ purpose\n- migrated user-facing source docs in `docs/references/` and `docs/principles/`\
+  \ that are\n  replaced by canonical `src/engineeringagent/approach/docs/*.md` content\n\
+  \nTest updates expected (edit, not delete)\n- `tests/cli/test_init_scaffold.py`\n\
+  - `tests/cli/test_init_command.py`\n- `tests/cli/test_cli.py`\n- `tests/cli/test_cli_typer_parity_helpers.py`\n\
+  - `tests/meta/test_validator.py`\n- `tests/meta/test_test_layout_fitness_topic.py`\n\
+  - `tests/fitness/test_fitness_rules_markdown_locality.py`\n- `tests/fitness/test_fitness_rules_markdown_references.py`\n\
+  - `tests/fitness/test_fitness_rules_catalog_docs_sync.py` (catalog updates after\
+  \ rule retirement)\n\nMigration and rollout sequence\n1. Add approach registry,\
+  \ frontmatter parsing, and packaged docs resources.\n2. Add CLI approach commands\
+  \ and tests.\n3. Update scaffold AGENTS bootstrap line and init output behavior.\n\
+  4. Remove user-doc scaffold generation from init and related tests.\n5. Retire doc-sync/link/allowlist\
+  \ fitness rules/scripts/tests.\n6. Update validators and docs references.\n7. Regenerate\
+  \ fitness catalog docs and run full checks.\n\nFitness-function impact assessment\n\
+  - Rules to retire from `harness/fitness-functions/rules.yaml`:\n  - `architecture.scaffold-docs-exact-sync`\n\
+  \  - `architecture.scaffold-template-agents-doc-links`\n  - `architecture.docs-allowlist-policy`\n\
+  - Rationale:\n  - these rules exist primarily to protect file-scaffolded user docs\
+  \ and AGENTS file-link\n    discoverability contracts that no longer apply under\
+  \ CLI-delivered guidance.\n- Guardrails replacing retired rules:\n  - approach registry\
+  \ tests for deterministic discovery and topic metadata validity\n  - CLI tests for\
+  \ list/show/output behavior and error messages\n  - packaging tests confirming docs\
+  \ resources are shipped and readable after build/install\n"
+acceptance:
+- '`engineeringagent approach` renders an authored overview file and points users/agents
+  to subtopics without requiring local scaffolded reference/principle docs files.'
+- '`engineeringagent approach list` and `engineeringagent approach <topic_id>` work
+  in both source checkout and installed package environments.'
+- The v1 topic matrix (canonical ids + aliases + source mappings) is implemented and
+  validated by deterministic tests.
+- Every approach subdocument includes frontmatter `approach_id` and a single H1 title,
+  and duplicate/missing ids fail deterministic validation tests.
+- Migrated approach subdocuments are exact copies of mapped source docs, except for
+  allowed migration edits (frontmatter insertion, relocation link/path updates, and
+  launcher-neutral command normalization).
+- User-facing approach docs do not require schema-export walkthroughs; schema surfaces
+  remain available for contributor/internal workflows without being a required user
+  guidance element.
+- Approach docs use launcher-neutral command examples (`engineeringagent ...`), and
+  scaffolded AGENTS bootstrap text declares repository launcher preference separately.
+- 'Scaffolded AGENTS bootstrap snippet matches this exact text: "In this repository,
+  run EngineeringAgent CLI commands with `uvx engineeringagent ...`." "Use `engineeringagent
+  approach` for the overall workflow and guidance map." "Use `engineeringagent approach
+  list` to discover topics, then open one (for example `engineeringagent approach
+  specifications`)."'
+- 'Approach architecture keeps module boundaries explicit: CLI handlers delegate topic
+  resolution/rendering to approach modules, and markdown parsing is not duplicated
+  in CLI.'
+- Init no longer writes `docs/references/*` or `docs/principles/*` user guidance files,
+  while still scaffolding required harness/spec operational files.
+- Init does not create `docs/spec/potential_features.yaml` (or corresponding configured
+  docs-root path).
+- Init AGENTS behavior uses a deterministic 1-3 sentence bootstrap snippet for approach
+  discovery instead of full docs-map replacement content.
+- Retired doc-sync/link/allowlist fitness rules are removed from manifest/scripts/tests,
+  and catalog docs are regenerated to match the new rule set.
+- Agent-facing guidance references are updated to use the approach command surface.
+- The feature spec validates with `uv run engineeringagent validate --schema-only`.
+subtasks:
+- id: ST-001
+  title: Define approach information architecture and stable topic ids
+  status: done
+  context: 'Finalize canonical ids and aliases with a progressive disclosure model
+    that starts
+
+    from an overview and drills into specific guidance, without rewriting migrated
+    doc
+
+    bodies beyond the allowed migration edits. Include rationale for id/alias choices
+
+    and source-to-topic mapping notes.
+
+    '
+  verification:
+  - uv run engineeringagent validate --schema-only
+- id: ST-002
+  title: Add frontmatter metadata contract for guidance source docs
+  status: done
+  context: 'Add `approach_id` to each selected guidance markdown source document and
+    enforce
+
+    deterministic parsing constraints (single id, unique ids, required H1 title)
+
+    while preserving source prose aside from allowed migration edits.
+
+    '
+  verification:
+  - uv run pytest -q tests/cli/test_approach_registry.py
+- id: ST-003
+  title: Implement approach registry and packaged docs resource loading
+  status: done
+  context: 'Introduce a registry module that discovers packaged approach docs, validates
+
+    metadata, and returns deterministic list/show payloads for CLI handlers.
+
+    Ensure package build artifacts include approach docs resources.
+
+    '
+  verification:
+  - uv run pytest -q tests/cli/test_approach_registry.py
+  - python -m build
+- id: ST-004
+  title: Add CLI approach command surface with list show output behavior
+  status: done
+  context: 'Extend Typer/CLI handlers with `approach`, `approach list`, and `approach
+    <topic_id>`
+
+    semantics plus optional `--output` file writing and deterministic input errors.
+
+    '
+  verification:
+  - uv run pytest -q tests/cli/test_cli.py
+  - uv run pytest -q tests/cli/test_cli_typer_parity_helpers.py
+- id: ST-005
+  title: Slim init scaffold to operational essentials and AGENTS bootstrap patch
+  status: done
+  context: 'Remove user guidance markdown scaffolding from init manifests and align
+    init output,
+
+    counters, and tests. Keep AGENTS handling modes but switch scaffold guidance to
+    a
+
+    deterministic 1-3 sentence approach bootstrap snippet that also declares launcher
+
+    preference separately from approach doc command examples. Remove baseline scaffold
+
+    creation of `docs/spec/potential_features.yaml`.
+
+    '
+  verification:
+  - uv run pytest -q tests/cli/test_init_scaffold.py
+  - uv run pytest -q tests/cli/test_init_command.py
+- id: ST-006
+  title: Retire scaffold-doc fitness rules scripts and related tests
+  status: done
+  context: 'Remove doc-sync/link/allowlist fitness rule entries, delete obsolete scripts/tests,
+
+    and update layout guard tests that enumerate expected fitness test locations.
+
+    '
+  verification:
+  - uv run pytest -q tests/fitness
+  - uv run pytest -q tests/meta/test_test_layout_fitness_topic.py
+- id: ST-007
+  title: Update AGENTS docs-map validator contract for approach bootstrap
+  status: done
+  context: 'Replace or retire validator assumptions that require docs/* file references
+    in the
+
+    Documentation Layout Reference section. Add deterministic validation coverage
+    for
+
+    the new bootstrap contract.
+
+    '
+  verification:
+  - uv run pytest -q tests/meta/test_validator.py
+  - uv run pytest -q tests/cli/test_cli.py
+- id: ST-008
+  title: Update agent-facing docs and regenerate fitness catalog docs
+  status: done
+  context: 'Update agent-facing guidance references to use `engineeringagent approach`
+    commands
+
+    without making README a user redirect target for approach.
+
+    Regenerate `docs/fitness-functions/rules.md` after manifest updates and keep sync
+    tests green.
+
+    '
+  verification:
+  - uv run engineeringagent checks catalog --format markdown --output docs/fitness-functions/rules.md
+  - uv run pytest -q tests/fitness/test_fitness_rules_catalog_docs_sync.py
+- id: ST-009
+  title: Run full quality gates for feature completion
+  status: done
+  context: 'Run repository validation and core quality gates to confirm the new docs
+    delivery
+
+    model and init simplification are stable.
+
+    '
+  verification:
+  - uv run engineeringagent validate
+  - uv run pytest -q
+  - uv run ruff check src tests harness
+  - uv run pyright src/engineeringagent tests harness
+- id: ST-010
+  title: Enforce modular boundaries for approach architecture
+  status: done
+  context: 'Implement and verify explicit separation between CLI routing, approach
+    metadata/content
+
+    handling, and init scaffold responsibilities. Ensure AGENTS bootstrap text has
+    one
+
+    canonical producer and avoid duplicated parsing/rendering logic across layers.
+
+    '
+  verification:
+  - uv run pytest -q tests/cli/test_approach_registry.py
+  - uv run pytest -q tests/cli/test_cli.py
+- id: ST-011
+  title: Apply code simplifier clarity refactors to init and init-scaffold plumbing
+  status: done
+  context: 'Refactor init backend resolution helpers, extract init request/dependencies
+    builders, and simplify precommit template/config helper shape for reduced control-flow
+    nesting and mutation noise.
+
+    Keep runtime behavior and user-facing output/error text unchanged. '
+  verification:
+  - uv run engineeringagent validate --schema-only
+- id: ST-012
+  title: Harden approach CLI and validator tests against contract wording drift
+  status: done
+  context: 'Reduce brittle test assertions by validating CLI user-visible behavior
+    and bootstrap diagnostics by contract shape instead of internal handler args or
+    exact line numbers.
+
+    Keep command outputs stable while minimizing maintenance risk from prose edits.'
+  verification:
+  - uv run pytest -q tests/cli/test_cli.py
+  - uv run pytest -q tests/cli/test_approach_registry.py
+  - uv run pytest -q tests/meta/test_validator.py
+- id: ST-013
+  title: Enforce launcher-neutral approach docs and installed-package resource proof
+  status: done
+  context: 'Replace launcher-specific commands in canonical approach documents with
+    launcher-neutral `engineeringagent ...` examples, and add a focused test that
+    asserts approach docs are loadable through package resources via `importlib.resources.files("engineeringagent.approach").joinpath("docs")`
+    with a known topic round-trip.
+
+    '
+  verification:
+  - uv run pytest -q tests/cli/test_approach_registry.py::test_approach_docs_are_packaged_resources
+  - uv run engineeringagent validate --schema-only
+  - uv run pytest -q tests/cli/test_approach_registry.py
+- id: ST-014
+  title: Harden approach tests against registry-output coupling and topic formatting
+    drift
+  status: done
+  context: Replace registry-derived test fixture expectations with explicit topic
+    matrix constants and ensure assertions validate IDs/order and alias coverage without
+    binding to formatted topic titles.
+  verification:
+  - uv run pytest -q tests/cli/test_approach_registry.py
+  - uv run pytest -q tests/cli/test_cli.py
+- id: ST-015
+  title: Remove self-referential AGENTS bootstrap fixtures and gate packaging checks
+  status: done
+  context: Replace tests reading bootstrap expectation from production template path
+    with an immutable fixture and gate heavy packaging assertions behind integration
+    tooling checks plus explicit skip behavior when build execution is unavailable.
+  verification:
+  - uv run pytest -q tests/cli/test_approach_registry.py::test_approach_docs_are_packaged_resources
+  - uv run pytest -q tests/cli/test_init_command.py::test_scaffold_agents_bootstrap_matches_approach_fixture
+  - uv run pytest -q tests/cli/test_cli.py::test_main_approach_commands_render_expected_markdown
+  - uv run pytest -q tests/meta/test_validator.py::test_validate_accepts_agents_bootstrap_contract_when_complete
+  - uv run engineeringagent validate --schema-only
+  - uv run pytest -q tests/cli/test_cli.py::test_validate_fails_on_agents_bootstrap_contract_errors
+updated_at: '2026-03-03T17:42:47Z'

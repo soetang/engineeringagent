@@ -8,14 +8,13 @@ from string import Template
 import yaml
 
 from .agents import build_backend_scaffold_manifest, default_backend_id
-_SUPPORTED_SCAFFOLD_PROFILES = {"core", "python_uv"}
 _SCAFFOLD_TEMPLATE_PACKAGE = "engineeringagent.scaffold_templates"
-_SCAFFOLDED_USER_DOC_TEMPLATE_CATEGORIES: tuple[tuple[str, str], ...] = (
-    ("principle", "principles"),
-    ("reference", "references"),
-)
-
 _SUPPORTED_INIT_PACKS = {"slim", "standard"}
+_PRECOMMIT_TEMPLATES = {
+    "core": "precommit.core.yaml",
+    "python_uv": "precommit.python_uv.yaml",
+}
+_SUPPORTED_SCAFFOLD_PROFILES = frozenset(_PRECOMMIT_TEMPLATES)
 
 DEFAULT_AGENT_MODEL = "openai/gpt-5.3-codex"
 
@@ -37,6 +36,7 @@ def _build_checks_yaml() -> str:
         sort_keys=False,
         allow_unicode=False,
     )
+
 
 def _spec_validate_gate(docs_dir_normalized: str) -> dict[str, object]:
     """Return a stable spec validation gate config for harness profiles."""
@@ -64,56 +64,16 @@ def _render_scaffold_template(
 
 def _build_precommit_config(profile: str) -> str:
     """Build pre-commit hook wiring for a scaffold profile."""
-    if profile == "core":
-        return _render_scaffold_template("precommit.core.yaml")
+    template_name = _PRECOMMIT_TEMPLATES.get(profile)
+    if template_name is None:
+        raise ValueError(f"unsupported scaffold profile: {profile}")
 
-    if profile == "python_uv":
-        return _render_scaffold_template("precommit.python_uv.yaml")
-
-    raise ValueError(f"unsupported scaffold profile: {profile}")
+    return _render_scaffold_template(template_name)
 
 
 def build_scaffold_agents_markdown() -> str:
     """Build baseline AGENTS.md guidance for scaffolded repositories."""
     return _render_scaffold_template("AGENTS.md")
-
-
-def _build_user_docs_manifest(
-    scaffolded_user_doc_templates: tuple[tuple[str, str], ...],
-) -> dict[str, str]:
-    """Build scaffolded user-facing documentation files.
-
-    Note: These are kept under the default `docs/` directory even when feature specs
-    are configured to live under a separate docs root.
-    """
-    return {
-        docs_path: _render_scaffold_template(template_name)
-        for docs_path, template_name in scaffolded_user_doc_templates
-    }
-
-
-def _discover_scaffolded_user_doc_templates() -> tuple[tuple[str, str], ...]:
-    """Discover scaffolded user docs from category-prefixed markdown templates."""
-    category_roots = dict(_SCAFFOLDED_USER_DOC_TEMPLATE_CATEGORIES)
-    template_root = files(_SCAFFOLD_TEMPLATE_PACKAGE)
-    discovered: list[tuple[str, str]] = []
-
-    for template_entry in sorted(template_root.iterdir(), key=lambda entry: entry.name):
-        if not template_entry.is_file():
-            continue
-
-        template_name = template_entry.name
-        if not template_name.endswith(".md"):
-            continue
-
-        category, _, relative_name = template_name.partition(".")
-        docs_subdir = category_roots.get(category)
-        if docs_subdir is None:
-            continue
-
-        discovered.append((f"docs/{docs_subdir}/{relative_name}", template_name))
-
-    return tuple(discovered)
 
 
 def _render_template(
@@ -185,9 +145,6 @@ def build_baseline_scaffold_manifest(
     docs_dir_normalized = docs_dir.strip("/")
     is_python_uv = profile == "python_uv"
 
-    scaffolded_user_doc_templates = _discover_scaffolded_user_doc_templates()
-    user_docs_manifest = _build_user_docs_manifest(scaffolded_user_doc_templates)
-
     manifest = {
         ".pre-commit-config.yaml": _build_precommit_config(profile=profile),
         **build_backend_scaffold_manifest(
@@ -196,18 +153,6 @@ def build_baseline_scaffold_manifest(
         ),
         f"{docs_dir_normalized}/spec/features/.gitkeep": "",
         f"{docs_dir_normalized}/spec/features_done/.gitkeep": "",
-        f"{docs_dir_normalized}/spec/potential_features.yaml": yaml.safe_dump(
-            {
-                "version": 1,
-                "description": (
-                    "Parking lot for future ideas that are intentionally not part of "
-                    "active loop specs."
-                ),
-                "potential_features": [],
-            },
-            sort_keys=False,
-            allow_unicode=False,
-        ),
         "harness/checks.yaml": _build_checks_yaml(),
         "harness/fitness-functions/rules.yaml": yaml.safe_dump(
             {
@@ -218,7 +163,6 @@ def build_baseline_scaffold_manifest(
             allow_unicode=False,
         ),
         "AGENTS.md": build_scaffold_agents_markdown(),
-        **user_docs_manifest,
     }
 
     if is_python_uv:

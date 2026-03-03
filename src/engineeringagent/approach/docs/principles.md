@@ -1,3 +1,7 @@
+---
+approach_id: principles
+---
+
 # Harness Engineering Principles
 
 This document explains the human-first principles behind EngineeringAgent. It is written for operators who steer work, review outcomes, and decide what to run next.

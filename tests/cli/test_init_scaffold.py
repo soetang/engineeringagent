@@ -39,6 +39,15 @@ def test_build_baseline_scaffold_manifest_api_excludes_include_reviewers() -> No
     assert "include_reviewers" not in parameters
 
 
+def test_build_baseline_scaffold_manifest_excludes_user_guidance_templates() -> None:
+    manifest = build_baseline_scaffold_manifest()
+
+    assert not any(path.startswith("docs/references/") for path in manifest)
+    assert not any(path.startswith("docs/principles/") for path in manifest)
+    assert "docs/spec/potential_features.yaml" not in manifest
+    assert "docs/spec/features/potential_features.yaml" not in manifest
+
+
 def test_build_init_scaffold_manifest_excludes_legacy_harness_files() -> None:
     slim_manifest = build_init_scaffold_manifest(pack="slim")
     assert "harness/gates.yaml" not in slim_manifest

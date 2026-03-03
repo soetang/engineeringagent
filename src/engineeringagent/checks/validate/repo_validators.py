@@ -232,7 +232,6 @@ def run_repo_validation(
     append_agents_docs_map_issues(
         messages,
         project_root=project_root,
-        docs_root=docs_root,
     )
     append_purge_invariant_issues(messages, project_root=project_root)
 

@@ -57,6 +57,11 @@ def _configure_checker_for_synthetic_templates(
         "_SCAFFOLD_TEMPLATE_CANARY_TOKENS",
         (("alpha", "canary"), ("beta", "canary")),
     )
+    monkeypatch.setattr(
+        checker,
+        "_DEPRECATED_SCAFFOLD_GUIDANCE_TEMPLATES",
+        ("deprecated-template.md",),
+    )
 
 
 def _write_templates(project_root: Path, *, template_a: str, template_b: str) -> None:
@@ -177,3 +182,27 @@ def test_scaffold_template_locality_rule_passes_for_localized_templates(
 
     violations = checker._scaffold_template_locality_violations(tmp_path)
     assert not violations
+
+
+def test_scaffold_template_locality_rule_fails_when_deprecated_guidance_template_exists(
+    tmp_path: Path,
+    repo_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Fail when deprecated guidance template mirrors are kept in scaffold templates."""
+    checker = _load_checker_module(repo_root)
+    _configure_checker_for_synthetic_templates(checker, monkeypatch)
+
+    _write_templates(tmp_path, template_a="alpha canary\n", template_b="beta canary\n")
+    _write_module(
+        tmp_path,
+        "src/engineeringagent/scaffold_templates/deprecated-template.md",
+        "legacy guidance mirror\n",
+    )
+
+    violations = checker._scaffold_template_locality_violations(tmp_path)
+    assert any(
+        "deprecated guidance template 'deprecated-template.md' must not be present"
+        in item
+        for item in violations
+    )

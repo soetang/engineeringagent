@@ -11,7 +11,6 @@ This file is generated from active manifest-declared fitness rules.
 | `architecture.checks-import-surface` | error | command | custom | `src/engineeringagent` | - | Enforce a narrow import surface for engineeringagent.checks. |
 | `architecture.checks-own-prompt-feedback-rendering` | error | command | custom | `src/engineeringagent/loop_runtime/**, src/engineeringagent/loop.py, and src/engineeringagent/prompts/renderer.py` | - | Fail when loop/prompt code performs checks-specific feedback shaping outside checks strategies. |
 | `architecture.dep-directionality` | error | command | custom | `src/engineeringagent` | - | Enforce core module import direction boundaries. |
-| `architecture.docs-allowlist-policy` | error | command | custom | `docs_root markdown (*.md) excluding docs_root/spec/**` | - | Require each docs_root markdown file to be listed in exactly one policy list. |
 | `architecture.feedback-no-truncation` | error | command | custom | `src/engineeringagent/prompts/renderer.py` | - | Block truncation-by-slicing in feedback prompt injection. |
 | `architecture.fitness-catalog-docs-sync` | error | command | custom | `docs/fitness-functions/rules.md` | - | Enforce byte-for-byte sync between docs catalog markdown and generated catalog output. |
 | `architecture.harness-root-yaml-only` | error | command | custom | `harness/ (regular files at root)` | - | Enforce YAML-only regular files directly under harness root. |
@@ -31,8 +30,6 @@ This file is generated from active manifest-declared fitness rules.
 | `architecture.progress-log-path-locality` | error | command | custom | `src/engineeringagent` | - | Centralize loop progress artifact paths and writes behind approved helpers. |
 | `architecture.prompt-locality` | error | command | custom | `src/engineeringagent` | - | Keep canonical loop prompt content and template reads localized. |
 | `architecture.repo-validators-boundary` | error | command | custom | `src/engineeringagent/checks/validate` | - | Keep repo validators modular by requiring extracted policy modules and a thin orchestrator. |
-| `architecture.scaffold-docs-exact-sync` | error | command | custom | `docs and src/engineeringagent/scaffold_templates` | - | Enforce byte-for-byte sync between selected docs and scaffold templates. |
-| `architecture.scaffold-template-agents-doc-links` | error | command | custom | `src/engineeringagent/scaffold_templates/AGENTS.md` | - | Require scaffolded reference docs to be linked from scaffold AGENTS.md. |
 | `architecture.scaffold-template-locality` | error | command | custom | `src/engineeringagent` | - | Keep scaffold template payloads in scaffold_templates assets. |
 | `architecture.source-first-loop-command-policy` | error | command | custom | `docs/spec/features/*.yaml and harness/checks.yaml` | - | Enforce source-first workspace execution for loop command surfaces. |
 | `smoke.opencode-real-hello-world` | error | command | custom | `repository (temp repo)` | - | Validate the real agent loop end-to-end in an isolated temp repository. |
@@ -74,13 +71,6 @@ This file is generated from active manifest-declared fitness rules.
 - Side-effect free: `true`
 - Rationale: Keeps orchestration and contracts layered for reviewability.
 - Remediation: Refactor imports to follow the declared architecture boundaries.
-
-### `architecture.docs-allowlist-policy`
-
-- Name: Docs allowlist policy
-- Side-effect free: `true`
-- Rationale: Keeps docs additions explicit and reviewable by classifying each file as user-facing or contributor-facing.
-- Remediation: Add every docs markdown file to exactly one of user_docs or contributor_docs in harness/scaffold_policy.yaml.
 
 ### `architecture.feedback-no-truncation`
 
@@ -217,20 +207,6 @@ This file is generated from active manifest-declared fitness rules.
 - Side-effect free: `true`
 - Rationale: Prevents regressions where repo policy logic drifts back into a monolithic validator module.
 - Remediation: Keep policy logic in repo_policy_* modules and limit repo_validators.py to orchestration and projection wiring.
-
-### `architecture.scaffold-docs-exact-sync`
-
-- Name: Scaffold docs exact sync
-- Side-effect free: `true`
-- Rationale: Prevents drift between canonical docs/ and init scaffold templates.
-- Remediation: Update scaffold template files to match canonical docs per harness/scaffold_policy.yaml.
-
-### `architecture.scaffold-template-agents-doc-links`
-
-- Name: Scaffold template AGENTS doc links
-- Side-effect free: `true`
-- Rationale: Keeps scaffolded reference docs discoverable and prevents drift between what init scaffolds and what AGENTS.md points users to.
-- Remediation: Add missing links and short descriptions for each scaffolded reference doc in src/engineeringagent/scaffold_templates/AGENTS.md.
 
 ### `architecture.scaffold-template-locality`
 

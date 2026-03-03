@@ -1,13 +1,17 @@
+---
+approach_id: workflow
+---
+
 # Engineering Workflow Reference
 
 This reference describes the expected workflow for implementing a feature with engineeringagent.
 
 ## Create one or more specs:
-- Create a spec see [docs/references/spec-writing.md](Spec Writing)
+- Create a spec using [specifications](specifications.md).
 
 ## Core Loop
 
-Run the loop with: `uv run engineeringagent run --all`
+Run the loop with: `engineeringagent run --all`
 
 1. Select one eligible feature and one eligible subtask.
 1. Implement one incremental, deterministic unit.
@@ -17,8 +21,8 @@ Run the loop with: `uv run engineeringagent run --all`
 
 ## Verification Baseline
 
-- Primary verification flow: `uv run engineeringagent checks run` (consumes `harness/checks.yaml`).
-- Optional spec-only validation: `uv run engineeringagent validate --schema-only`.
+- Primary verification flow: `engineeringagent checks run` (consumes `harness/checks.yaml`).
+- Optional spec-only validation: `engineeringagent validate --schema-only`.
 
 ## Loop outcome taxonomy
 

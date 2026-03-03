@@ -44,10 +44,6 @@ import pytest
             "tests/fitness/test_fitness_rules_directionality.py",
         ),
         (
-            "tests/test_fitness_rules_docs_allowlist_policy.py",
-            "tests/fitness/test_fitness_rules_docs_allowlist_policy.py",
-        ),
-        (
             "tests/test_fitness_rules_harness_root_yaml_only.py",
             "tests/fitness/test_fitness_rules_harness_root_yaml_only.py",
         ),
@@ -74,14 +70,6 @@ import pytest
         (
             "tests/test_fitness_rules_prompt_locality.py",
             "tests/fitness/test_fitness_rules_prompt_locality.py",
-        ),
-        (
-            "tests/test_fitness_rules_scaffold_docs_exact_sync.py",
-            "tests/fitness/test_fitness_rules_scaffold_docs_exact_sync.py",
-        ),
-        (
-            "tests/test_fitness_rules_scaffold_template_agents_doc_links.py",
-            "tests/fitness/test_fitness_rules_scaffold_template_agents_doc_links.py",
         ),
         (
             "tests/test_fitness_rules_scaffold_template_locality.py",

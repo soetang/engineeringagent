@@ -20,10 +20,16 @@ _REQUIRED_SCAFFOLD_TEMPLATES = (
     "AGENTS.md",
     "precommit.core.yaml",
     "precommit.python_uv.yaml",
-    "reference.workflow.md",
-    "reference.documentation-practices.md",
 )
 _SCAFFOLD_TEMPLATE_ALLOWED_ROOT = _SOURCE_PACKAGE_ROOT / "scaffold_templates"
+_DEPRECATED_SCAFFOLD_GUIDANCE_TEMPLATES = (
+    "reference.workflow.md",
+    "reference.documentation-practices.md",
+    "reference.spec-writing.md",
+    "reference.quality-check-playbook.md",
+    "reference.reviewer-authoring-guide.md",
+    "principle.harness-engineering-principles.md",
+)
 _SCAFFOLD_TEMPLATE_CANARY_TOKENS = (
     ("agent", "operating", "guide", "for", "this", "repository"),
     ("keep", "this", "file", "concise"),
@@ -93,6 +99,23 @@ def _scaffold_template_integrity_violations(project_root: Path) -> list[str]:
     return violations
 
 
+def _deprecated_template_violations(project_root: Path) -> list[str]:
+    template_root = project_root / _SCAFFOLD_TEMPLATE_ROOT
+    violations: list[str] = []
+
+    for template_name in _DEPRECATED_SCAFFOLD_GUIDANCE_TEMPLATES:
+        template_path = template_root / template_name
+        if template_path.exists():
+            relative = template_path.relative_to(project_root)
+            violations.append(
+                f"{relative}:1 deprecated guidance template '{template_name}' must not be "
+                "present; migrate canonical guidance to "
+                "src/engineeringagent/approach/docs."
+            )
+
+    return violations
+
+
 def _scaffold_template_source_locality_violations(project_root: Path) -> list[str]:
     source_root = project_root / _SOURCE_PACKAGE_ROOT
     violations: list[str] = []
@@ -132,6 +155,7 @@ def _scaffold_template_source_locality_violations(project_root: Path) -> list[st
 def _scaffold_template_locality_violations(project_root: Path) -> list[str]:
     violations = _scaffold_template_integrity_violations(project_root)
     violations.extend(_scaffold_template_source_locality_violations(project_root))
+    violations.extend(_deprecated_template_violations(project_root))
     return sorted(violations)
 
 

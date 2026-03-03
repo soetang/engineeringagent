@@ -22,5 +22,5 @@ This guide defines who each documentation surface is for, what belongs in it, an
 - For in-repo loop command surfaces, document source-first execution forms (`uv run ...`)
 
 ## Ownership and Placement
-- `docs/references/*.md` contains operational references for users and contributors.
+- `engineeringagent approach` provides operational reference topics for users and contributors; discover them with `engineeringagent approach list`.
 - Specs under `docs/spec/features/*.yaml` define loop-scoped execution work.

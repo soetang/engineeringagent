@@ -18,6 +18,7 @@ _MARKDOWN_ALLOWED_ROOTS = (
     Path("harness/reviewers/prompts"),
     Path("src/engineeringagent/prompts"),
     Path("src/engineeringagent/scaffold_templates"),
+    Path("src/engineeringagent/approach/docs"),
 )
 _BACKEND_SCAFFOLD_ROOT = Path("src/engineeringagent/agents/backends")
 _PROMPT_TEMPLATE_ROOT = Path("src/engineeringagent/prompts/templates")
@@ -54,7 +55,8 @@ _MARKDOWN_IGNORE_DIRECTORIES = {
 _MARKDOWN_LOCALITY_REMEDIATION = (
     "move markdown files under docs/, harness/reviewers/prompts/, "
     "src/engineeringagent/prompts/, src/engineeringagent/scaffold_templates/, "
-    "or src/engineeringagent/agents/backends/*/scaffold_templates/; "
+    "src/engineeringagent/approach/docs/, or "
+    "src/engineeringagent/agents/backends/*/scaffold_templates/; "
     "only repository-root README.md and AGENTS.md are exempt from locality "
     "restrictions."
 )

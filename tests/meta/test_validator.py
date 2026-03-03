@@ -16,6 +16,45 @@ from engineeringagent.checks.validate.repo_policy_docs_map import (
     iter_agents_docs_map_references,
 )
 from engineeringagent.checks.validate.repo_policy_purge_invariant import git_client
+from tests.cli.approach_fixture_data import (
+    APPROACH_AGENTS_BOOTSTRAP_LINES,
+    APPROACH_AGENTS_BOOTSTRAP_TEXT,
+)
+
+_BOOTSTRAP_PREFIX = "AGENTS docs bootstrap contract missing required line: "
+
+
+def _bootstrap_payload(message: str) -> str:
+    if _BOOTSTRAP_PREFIX in message:
+        return message.split(_BOOTSTRAP_PREFIX, 1)[1]
+    return message
+
+
+def assert_bootstrap_line_messages(
+    messages: list[str],
+    *expected_lines: str,
+    enforce_order: bool = False,
+) -> None:
+    """Assert every required bootstrap line fragment appears in messages."""
+    payloads = [_bootstrap_payload(message) for message in messages]
+    if not expected_lines:
+        assert not messages
+        return
+
+    for expected in expected_lines:
+        assert any(expected in payload for payload in payloads), (
+            f"missing required validator payload fragment: {expected}"
+        )
+
+    if not enforce_order:
+        return
+
+    positions: list[int] = []
+    for expected in expected_lines:
+        positions.append(
+            min(i for i, msg in enumerate(messages) if expected in msg)
+        )
+    assert positions == sorted(positions)
 
 
 def _invalid_spec_fixtures_dir(repo_root: Path) -> Path:
@@ -502,19 +541,14 @@ def test_validate_does_not_enforce_opencode_config_invariant(tmp_path: Path) -> 
     assert not violations
 
 
-def test_validate_accepts_agents_docs_map_glob_when_it_matches(tmp_path: Path) -> None:
-    docs_dir = tmp_path / "docs"
-    docs_dir.mkdir(parents=True, exist_ok=True)
-    (docs_dir / "exists.md").write_text("ok\n", encoding="utf-8")
-
+def test_validate_accepts_agents_bootstrap_contract_when_complete(tmp_path: Path) -> None:
     agents_path = tmp_path / "AGENTS.md"
     agents_path.write_text(
         "\n".join(
             [
                 "# AGENTS.md",
                 "",
-                "## 5) Documentation Layout Reference",
-                "- `docs/*.md`",
+                APPROACH_AGENTS_BOOTSTRAP_TEXT,
                 "",
                 "## 6) First-Window Boot Sequence",
             ]
@@ -972,7 +1006,7 @@ def test_validate_preserves_feature_status_invariant_rules(tmp_path: Path) -> No
     )
 
 
-def test_agents_docs_map_extraction_scoped_to_docs_layout_section(
+def test_agents_bootstrap_extraction_prefers_exact_guide_lines(
     tmp_path: Path,
 ) -> None:
     agents_path = tmp_path / "AGENTS.md"
@@ -981,13 +1015,11 @@ def test_agents_docs_map_extraction_scoped_to_docs_layout_section(
             [
                 "# AGENTS.md",
                 "",
-                "- `docs/ignored-before-map.md`",
+                "- ignored line",
                 "",
-                "## 5) Documentation Layout Reference",
-                "- `docs/kept-from-map.md`",
+                *APPROACH_AGENTS_BOOTSTRAP_LINES,
                 "",
                 "## 6) First-Window Boot Sequence",
-                "- `docs/ignored-after-map.md`",
             ]
         )
         + "\n",
@@ -996,18 +1028,22 @@ def test_agents_docs_map_extraction_scoped_to_docs_layout_section(
 
     references = iter_agents_docs_map_references(tmp_path)
 
-    assert references == [(6, "docs/kept-from-map.md")]
+    assert references == [
+        (index, line)
+        for index, line in enumerate(APPROACH_AGENTS_BOOTSTRAP_LINES, start=5)
+    ]
 
 
-def test_agents_docs_map_extraction_allows_section_renumbering(tmp_path: Path) -> None:
+def test_agents_bootstrap_extraction_scopes_whole_file(tmp_path: Path) -> None:
     agents_path = tmp_path / "AGENTS.md"
     agents_path.write_text(
         "\n".join(
             [
                 "# AGENTS.md",
                 "",
-                "## 9) Documentation Layout Reference",
-                "- `docs/kept-after-renumbering.md`",
+                APPROACH_AGENTS_BOOTSTRAP_LINES[1],
+                APPROACH_AGENTS_BOOTSTRAP_LINES[0],
+                APPROACH_AGENTS_BOOTSTRAP_LINES[2],
                 "",
                 "## 10) First-Window Boot Sequence",
             ]
@@ -1018,7 +1054,11 @@ def test_agents_docs_map_extraction_allows_section_renumbering(tmp_path: Path) -
 
     references = iter_agents_docs_map_references(tmp_path)
 
-    assert references == [(4, "docs/kept-after-renumbering.md")]
+    assert references == [
+        (3, APPROACH_AGENTS_BOOTSTRAP_LINES[1]),
+        (4, APPROACH_AGENTS_BOOTSTRAP_LINES[0]),
+        (5, APPROACH_AGENTS_BOOTSTRAP_LINES[2]),
+    ]
 
 
 def test_agents_docs_map_extraction_is_deterministic(tmp_path: Path) -> None:
@@ -1029,10 +1069,7 @@ def test_agents_docs_map_extraction_is_deterministic(tmp_path: Path) -> None:
                 "# AGENTS.md",
                 "",
                 "## 5) Documentation Layout Reference",
-                "- `docs/z-last.md` and `docs/a-first.md`",
-                "- `docs/m-middle.md`",
-                "",
-                "## 6) First-Window Boot Sequence",
+                *APPROACH_AGENTS_BOOTSTRAP_LINES,
             ]
         )
         + "\n",
@@ -1043,11 +1080,35 @@ def test_agents_docs_map_extraction_is_deterministic(tmp_path: Path) -> None:
     second = iter_agents_docs_map_references(tmp_path)
 
     assert first == [
-        (4, "docs/a-first.md"),
-        (4, "docs/z-last.md"),
-        (5, "docs/m-middle.md"),
+        (index, line)
+        for index, line in enumerate(APPROACH_AGENTS_BOOTSTRAP_LINES, start=4)
     ]
     assert second == first
+
+
+def test_validate_reports_missing_contract_with_non_bootstrap_agents_file(tmp_path: Path) -> None:
+    agents_path = tmp_path / "AGENTS.md"
+    agents_path.write_text(
+        "\n".join(
+            [
+                "# AGENTS.md",
+                "",
+                "# Legacy user guidance",
+                "",
+                "Do not include any bootstrap contract lines.",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    messages = validate(project_root=tmp_path)
+
+    assert_bootstrap_line_messages(
+        messages,
+        *APPROACH_AGENTS_BOOTSTRAP_LINES,
+        enforce_order=True,
+    )
 
 
 def test_meta_validator_has_no_docs_wording_assertions() -> None:
@@ -1061,17 +1122,15 @@ def test_meta_validator_has_no_docs_wording_assertions() -> None:
     assert True
 
 
-def test_validate_reports_missing_agents_docs_map_path(tmp_path: Path) -> None:
+def test_validate_reports_missing_agents_bootstrap_lines(tmp_path: Path) -> None:
     agents_path = tmp_path / "AGENTS.md"
     agents_path.write_text(
         "\n".join(
             [
                 "# AGENTS.md",
                 "",
-                "## 5) Documentation Layout Reference",
-                "- `docs/missing.md`",
-                "",
-                "## 6) First-Window Boot Sequence",
+                APPROACH_AGENTS_BOOTSTRAP_LINES[0],
+                APPROACH_AGENTS_BOOTSTRAP_LINES[2],
             ]
         )
         + "\n",
@@ -1080,24 +1139,20 @@ def test_validate_reports_missing_agents_docs_map_path(tmp_path: Path) -> None:
 
     messages = validate(project_root=tmp_path)
 
-    assert messages == ["AGENTS.md:4: docs-map path does not exist: docs/missing.md"]
+    assert_bootstrap_line_messages(
+        messages,
+        APPROACH_AGENTS_BOOTSTRAP_LINES[1],
+    )
 
 
-def test_validate_reports_empty_agents_docs_map_glob(tmp_path: Path) -> None:
-    docs_dir = tmp_path / "docs"
-    docs_dir.mkdir(parents=True, exist_ok=True)
-    (docs_dir / "exists.md").write_text("ok\n", encoding="utf-8")
-
+def test_validate_reports_multiple_missing_bootstrap_lines(tmp_path: Path) -> None:
     agents_path = tmp_path / "AGENTS.md"
     agents_path.write_text(
         "\n".join(
             [
                 "# AGENTS.md",
                 "",
-                "## 5) Documentation Layout Reference",
-                "- `docs/*.txt`",
-                "",
-                "## 6) First-Window Boot Sequence",
+                APPROACH_AGENTS_BOOTSTRAP_LINES[1],
             ]
         )
         + "\n",
@@ -1106,33 +1161,12 @@ def test_validate_reports_empty_agents_docs_map_glob(tmp_path: Path) -> None:
 
     messages = validate(project_root=tmp_path)
 
-    assert messages == ["AGENTS.md:4: docs-map glob matches no paths: docs/*.txt"]
-
-
-def test_validate_reports_agents_docs_map_section_with_no_references(
-    tmp_path: Path,
-) -> None:
-    agents_path = tmp_path / "AGENTS.md"
-    agents_path.write_text(
-        "\n".join(
-            [
-                "# AGENTS.md",
-                "",
-                "## 5) Documentation Layout Reference",
-                "- Keep this list updated.",
-                "",
-                "## 6) First-Window Boot Sequence",
-            ]
-        )
-        + "\n",
-        encoding="utf-8",
+    assert_bootstrap_line_messages(
+        messages,
+        APPROACH_AGENTS_BOOTSTRAP_LINES[0],
+        APPROACH_AGENTS_BOOTSTRAP_LINES[2],
+        enforce_order=True,
     )
-
-    messages = validate(project_root=tmp_path)
-
-    assert messages == [
-        "AGENTS.md:3: docs-map section is present but contains no docs/* references"
-    ]
 
 
 def test_validate_rejects_builtin_manifest_references(tmp_path: Path) -> None:
@@ -1454,3 +1488,16 @@ def test_pytest_default_coverage_contract_is_declared(repo_root: Path) -> None:
     assert "--cov=engineeringagent" in addopts
     assert "--cov-fail-under=95" in addopts
     assert "not integration" not in addopts
+
+
+def test_validate_reports_missing_contract_for_empty_agents_file(tmp_path: Path) -> None:
+    agents_path = tmp_path / "AGENTS.md"
+    agents_path.write_text("", encoding="utf-8")
+
+    messages = validate(project_root=tmp_path)
+
+    assert_bootstrap_line_messages(
+        messages,
+        *APPROACH_AGENTS_BOOTSTRAP_LINES,
+        enforce_order=True,
+    )

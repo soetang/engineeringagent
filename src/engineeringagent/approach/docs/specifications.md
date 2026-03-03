@@ -1,3 +1,7 @@
+---
+approach_id: specifications
+---
+
 # Spec Writing Guide
 
 ## Purpose
@@ -36,8 +40,8 @@
 ## Drafting Rules After Interview
 
 - Emit and follow the feature contract schema exactly:
-  - `uv run engineeringagent schema feature.spec --format yaml`
-  - Use `uv run engineeringagent schema list` to discover available schema ids.
+  - `engineeringagent schema feature.spec --format yaml`
+  - Use `engineeringagent schema list` to discover available schema ids.
 - Use one feature file with nested subtasks.
 - Keep acceptance criteria outcome-based and testable.
 - Keep verification commands concrete and executable.

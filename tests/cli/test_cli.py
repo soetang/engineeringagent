@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -15,6 +16,31 @@ from engineeringagent.config import (
 )
 from engineeringagent.loop_runtime.run_context import LoopRun, RunConfig
 from engineeringagent.schema_registry import list_schema_ids, schema_from_registry
+from tests.cli.approach_fixture_data import (
+    APPROACH_AGENTS_BOOTSTRAP_LINES,
+    APPROACH_TOPIC_IDS,
+)
+
+_APPROACH_TOPIC_ID_PREFIX = re.compile(r"^\s*(?P<topic_id>[A-Za-z0-9-]+):")
+
+
+def _frontmatter_from_markdown(payload: str) -> dict[str, object]:
+    assert payload.startswith("---\n")
+    parts = payload.split("---\n", 2)
+    assert len(parts) == 3
+    frontmatter = yaml.safe_load(parts[1])
+    assert isinstance(frontmatter, dict)
+    return frontmatter
+
+
+def _parse_approach_topic_ids(payload: str) -> tuple[str, ...]:
+    topic_ids: list[str] = []
+    for line in payload.splitlines():
+        match = _APPROACH_TOPIC_ID_PREFIX.match(line)
+        if match is None:
+            continue
+        topic_ids.append(match.group("topic_id"))
+    return tuple(topic_ids)
 
 
 def _invoke_cli(args: list[str]) -> Any:
@@ -29,6 +55,7 @@ def test_cli_surface_inventory_commands() -> None:
     for token in (
         "validate",
         "run",
+        "approach",
         "schema",
         "checks",
         "progress",
@@ -49,6 +76,10 @@ def test_cli_surface_inventory_option_spellings() -> None:
         (
             ["schema", "list", "--help"],
             [],
+        ),
+        (
+            ["approach", "--help"],
+            ["--output"],
         ),
         (
             ["run", "--help"],
@@ -188,74 +219,84 @@ def test_root_parser_still_requires_subcommand_without_version_flag() -> None:
     assert "Missing command" in result.stderr
 
 
-def test_main_validate_command_uses_typer_handler(monkeypatch: Any) -> None:
-    recorded: dict[str, object] = {}
+def test_main_validate_command_reports_ok_via_real_cli(
+    tmp_path: Path,
+    monkeypatch: Any,
+) -> None:
+    observed: dict[str, object] = {}
 
-    def _fake_cmd_validate(args: Any) -> int:
-        recorded["project_root"] = args.project_root
-        recorded["schema_only"] = args.schema_only
-        return 0
+    def _fake_run_checks(
+        project_root: str | Path,
+        *,
+        phase: str,
+        checks: list[str] | None = None,
+        schema_only: bool = False,
+        **_: object,
+    ) -> Any:
+        observed["project_root"] = str(Path(project_root))
+        observed["phase"] = phase
+        observed["checks"] = checks
+        observed["schema_only"] = schema_only
+        return SimpleNamespace(ok=True, output="")
 
-    monkeypatch.setattr(cli_module, "cmd_validate", _fake_cmd_validate)
+    monkeypatch.setattr(cli_module.checks_module, "run_checks", _fake_run_checks)
 
-    with pytest.raises(SystemExit) as exc_info:
-        cli_module.main(
-            [
-                "--project-root",
-                "repo",
-                "validate",
-                "--schema-only",
-            ]
-        )
+    result = _invoke_cli(
+        [
+            "--project-root",
+            str(tmp_path),
+            "validate",
+            "--schema-only",
+        ]
+    )
 
-    assert exc_info.value.code == 0
-    assert recorded == {
-        "project_root": "repo",
+    assert result.exit_code == 0
+    assert result.stdout == "spec validation: ok\n"
+    assert observed == {
+        "project_root": str(tmp_path.resolve()),
+        "phase": "manual",
+        "checks": ["validate"],
         "schema_only": True,
     }
 
 
-def test_main_run_command_uses_typer_handler(monkeypatch: Any) -> None:
-    recorded: dict[str, object] = {}
+def test_main_run_command_executes_loop_context_via_real_cli(
+    tmp_path: Path,
+    monkeypatch: Any,
+) -> None:
+    captured: dict[str, LoopRun] = {}
 
-    def _fake_cmd_run(args: Any) -> int:
-        recorded["project_root"] = args.project_root
-        recorded["feature_paths"] = args.feature_paths
-        recorded["run_all"] = args.run_all
-        recorded["dry_run"] = args.dry_run
-        recorded["max_iterations"] = args.max_iterations
-        recorded["allow_dirty"] = args.allow_dirty
-        recorded["verbose_output"] = args.verbose_output
-        return 0
+    def _fake_run_loop(loop_run: LoopRun) -> int:
+        captured["loop_run"] = loop_run
+        return 7
 
-    monkeypatch.setattr(cli_module, "cmd_run", _fake_cmd_run)
+    monkeypatch.setattr(cli_module, "run_loop_controller", _fake_run_loop)
 
-    with pytest.raises(SystemExit) as exc_info:
-        cli_module.main(
-            [
-                "--project-root",
-                "repo",
-                "run",
-                "docs/spec/features/FEAT-900.yaml",
-                "--all",
-                "--dry-run",
-                "--max-iterations",
-                "7",
-                "--allow-dirty",
-                "--verbose-output",
-            ]
-        )
+    result = _invoke_cli(
+        [
+            "--project-root",
+            str(tmp_path),
+            "run",
+            "docs/spec/features/FEAT-900.yaml",
+            "--dry-run",
+            "--max-iterations",
+            "7",
+            "--allow-dirty",
+            "--verbose-output",
+        ]
+    )
 
-    assert exc_info.value.code == 0
-    assert recorded == {
-        "project_root": "repo",
-        "feature_paths": ["docs/spec/features/FEAT-900.yaml"],
-        "run_all": True,
-        "dry_run": True,
-        "max_iterations": 7,
-        "allow_dirty": True,
-        "verbose_output": True,
-    }
+    assert result.exit_code == 7
+    loop_run = captured["loop_run"]
+    assert loop_run.config == RunConfig(
+        project_root=tmp_path.resolve(),
+        feature_paths=("docs/spec/features/FEAT-900.yaml",),
+        dry_run=True,
+        run_all=False,
+        max_iterations=7,
+        allow_dirty=True,
+        verbose_output=True,
+    )
 
 
 def test_main_schema_command_writes_registry_schema_via_real_cli(tmp_path: Path) -> None:
@@ -287,54 +328,159 @@ def test_main_schema_list_command_prints_registry_ids_via_real_cli() -> None:
     assert result.stdout.splitlines() == list(list_schema_ids())
 
 
-def test_main_checks_run_command_uses_typer_handler(monkeypatch: Any) -> None:
-    recorded: dict[str, object] = {}
+def test_main_checks_run_command_invokes_checks_via_real_cli(
+    tmp_path: Path,
+    monkeypatch: Any,
+) -> None:
+    observed: dict[str, object] = {}
 
-    def _fake_cmd_checks_run(args: Any) -> int:
-        recorded["project_root"] = args.project_root
-        recorded["checks"] = args.checks
-        recorded["check_id"] = args.check_id
-        recorded["feature_path"] = args.feature_path
-        recorded["phase"] = args.phase
-        recorded["base"] = args.base
-        recorded["head"] = args.head
-        recorded["verbose_output"] = args.verbose_output
-        return 0
-
-    monkeypatch.setattr(cli_module, "cmd_checks_run", _fake_cmd_checks_run)
-
-    with pytest.raises(SystemExit) as exc_info:
-        cli_module.main(
-            [
-                "--project-root",
-                "repo",
-                "checks",
-                "run",
-                "--checks",
-                "commands",
-                "--check-id",
-                "smoke",
-                "--phase",
-                "feature_done",
-                "--base",
-                "main",
-                "--head",
-                "HEAD",
-                "--verbose-output",
-            ]
+    def _fake_run_checks(
+        project_root: str | Path,
+        *,
+        phase: str,
+        checks: list[str] | None = None,
+        check_id: str | None = None,
+        feature_path: str | None = None,
+        verbose_output: bool = False,
+        base: str | None = None,
+        head: str | None = None,
+        dry_run: bool = False,
+        **_: object,
+    ) -> Any:
+        observed["project_root"] = str(Path(project_root))
+        observed["checks"] = checks
+        observed["check_id"] = check_id
+        observed["feature_path"] = feature_path
+        observed["phase"] = phase
+        observed["base"] = base
+        observed["head"] = head
+        observed["verbose_output"] = verbose_output
+        observed["dry_run"] = dry_run
+        return SimpleNamespace(
+            ok=True,
+            output="checks ok",
+            dry_run=dry_run,
+            failed_check_id=None,
+            executions=[],
+            decisions=[],
         )
 
-    assert exc_info.value.code == 0
-    assert recorded == {
-        "project_root": "repo",
-        "checks": ["commands"],
-        "check_id": "smoke",
-        "feature_path": None,
-        "phase": cli_module.HarnessCheckPhase.FEATURE_DONE,
-        "base": "main",
-        "head": "HEAD",
-        "verbose_output": True,
-    }
+    monkeypatch.setattr(cli_module.checks_module, "run_checks", _fake_run_checks)
+
+    result = _invoke_cli(
+        [
+            "--project-root",
+            str(tmp_path),
+            "checks",
+            "run",
+            "--checks",
+            "commands",
+            "--check-id",
+            "smoke",
+            "--phase",
+            "feature_done",
+            "--base",
+            "main",
+            "--head",
+            "HEAD",
+            "--verbose-output",
+        ]
+    )
+
+    assert result.exit_code == 0
+    assert result.stdout == "checks ok\nchecks run: ok\n"
+    assert observed["project_root"] == str(tmp_path.resolve())
+    assert observed["checks"] == ["commands"]
+    assert observed["check_id"] == "smoke"
+    assert observed["feature_path"] is None
+    assert observed["phase"] == "feature_done"
+    assert observed["base"] == "main"
+    assert observed["head"] == "HEAD"
+    assert observed["verbose_output"] is True
+    assert observed["dry_run"] is False
+
+
+def test_main_approach_root_command_renders_overview_via_real_cli(tmp_path: Path) -> None:
+    output_path = tmp_path / "artifacts" / "approach-overview.md"
+    result = _invoke_cli(
+        [
+            "--project-root",
+            str(tmp_path),
+            "approach",
+            "--output",
+            "artifacts/approach-overview.md",
+        ]
+    )
+
+    assert result.exit_code == 0
+    assert result.stdout == "approach overview written: artifacts/approach-overview.md\n"
+    rendered = output_path.read_text(encoding="utf-8")
+    frontmatter = _frontmatter_from_markdown(rendered)
+    assert frontmatter.get("approach_id") == "overview"
+
+
+def test_main_approach_topic_command_renders_topic_via_real_cli(tmp_path: Path) -> None:
+    output_path = tmp_path / "artifacts" / "approach-topic.md"
+    result = _invoke_cli(
+        [
+            "--project-root",
+            str(tmp_path),
+            "approach",
+            "principles",
+            "--output",
+            "artifacts/approach-topic.md",
+        ]
+    )
+
+    assert result.exit_code == 0
+    assert result.stdout == "approach topic written: artifacts/approach-topic.md\n"
+    rendered = output_path.read_text(encoding="utf-8")
+    frontmatter = _frontmatter_from_markdown(rendered)
+    assert frontmatter.get("approach_id") == "principles"
+
+
+def test_main_approach_list_command_renders_via_real_cli(tmp_path: Path) -> None:
+    output_path = tmp_path / "artifacts" / "approach-list.md"
+    result = _invoke_cli(
+        [
+            "--project-root",
+            str(tmp_path),
+            "approach",
+            "list",
+            "--output",
+            "artifacts/approach-list.md",
+        ]
+    )
+
+    assert result.exit_code == 0
+    assert result.stdout == "approach list written: artifacts/approach-list.md\n"
+    rendered = output_path.read_text(encoding="utf-8").splitlines()
+    assert _parse_approach_topic_ids("\n".join(rendered)) == APPROACH_TOPIC_IDS
+
+
+def test_main_approach_commands_render_expected_markdown() -> None:
+    overview = _invoke_cli(["approach"])
+    topic_list = _invoke_cli(["approach", "list"])
+    topic_page = _invoke_cli(["approach", "specifications"])
+
+    assert overview.exit_code == 0
+    assert topic_list.exit_code == 0
+    assert topic_page.exit_code == 0
+
+    assert _parse_approach_topic_ids(topic_list.stdout) == APPROACH_TOPIC_IDS
+    overview_frontmatter = _frontmatter_from_markdown(overview.stdout)
+    topic_frontmatter = _frontmatter_from_markdown(topic_page.stdout)
+
+    assert overview_frontmatter.get("approach_id") == "overview"
+    assert topic_frontmatter.get("approach_id") == "specifications"
+
+
+def test_main_unknown_approach_topic_is_helpful() -> None:
+    result = _invoke_cli(["approach", "does-not-exist"])
+
+    assert result.exit_code == 1
+    assert "approach input error: unknown approach id or alias: does-not-exist" in result.stdout
+    assert "engineeringagent approach list" in result.stdout
 
 
 def test_fitness_command_is_rejected() -> None:
@@ -465,38 +611,37 @@ def test_progress_feature_prune_removes_feature_progress_directory(
     assert not feature_dir.exists()
 
 
-def test_main_init_command_uses_typer_handler(monkeypatch: Any) -> None:
-    recorded: dict[str, object] = {}
+def test_main_init_command_uses_typer_handler(monkeypatch: Any, tmp_path: Path) -> None:
+    observed: dict[str, object] = {}
 
-    def _fake_cmd_init(args: Any) -> int:
-        recorded["project_root"] = args.project_root
-        recorded["force"] = args.force
-        recorded["scaffold_profile"] = args.scaffold_profile
-        recorded["docs_mode"] = args.docs_mode
-        recorded["scaffold_docs_dir"] = args.scaffold_docs_dir
+    def _fake_run_init_command(request: Any, _deps: Any) -> int:
+        observed["project_root"] = str(request.project_root)
+        observed["force"] = request.force
+        observed["scaffold_profile"] = request.scaffold_profile
+        observed["docs_mode"] = request.docs_mode
+        observed["scaffold_docs_dir"] = request.scaffold_docs_dir
         return 0
 
-    monkeypatch.setattr(cli_module, "cmd_init", _fake_cmd_init)
+    monkeypatch.setattr(cli_module, "run_init_command", _fake_run_init_command)
 
-    with pytest.raises(SystemExit) as exc_info:
-        cli_module.main(
-            [
-                "--project-root",
-                "repo",
-                "init",
-                "--force",
-                "--scaffold-profile",
-                "python_uv",
-                "--docs-mode",
-                "separate",
-                "--scaffold-docs-dir",
-                "docs.custom",
-            ]
-        )
+    result = _invoke_cli(
+        [
+            "--project-root",
+            str(tmp_path),
+            "init",
+            "--force",
+            "--scaffold-profile",
+            "python_uv",
+            "--docs-mode",
+            "separate",
+            "--scaffold-docs-dir",
+            "docs.custom",
+        ]
+    )
 
-    assert exc_info.value.code == 0
-    assert recorded == {
-        "project_root": "repo",
+    assert result.exit_code == 0
+    assert observed == {
+        "project_root": str(tmp_path.resolve()),
         "force": True,
         "scaffold_profile": "python_uv",
         "docs_mode": "separate",
@@ -504,16 +649,13 @@ def test_main_init_command_uses_typer_handler(monkeypatch: Any) -> None:
     }
 
 
-def test_validate_fails_on_agents_docs_map_errors(tmp_path: Path, capsys: Any) -> None:
+def test_validate_fails_on_agents_bootstrap_contract_errors(tmp_path: Path, capsys: Any) -> None:
     (tmp_path / "AGENTS.md").write_text(
         "\n".join(
             [
                 "# AGENTS.md",
                 "",
-                "## 5) Documentation Layout Reference",
-                "- `docs/missing.md`",
-                "",
-                "## 6) First-Window Boot Sequence",
+                *APPROACH_AGENTS_BOOTSTRAP_LINES[:2],
             ]
         )
         + "\n",
@@ -526,7 +668,10 @@ def test_validate_fails_on_agents_docs_map_errors(tmp_path: Path, capsys: Any) -
     output = capsys.readouterr().out
 
     assert code == 1
-    assert "AGENTS.md:4: docs-map path does not exist: docs/missing.md" in output
+    assert (
+        "AGENTS.md:1: AGENTS docs bootstrap contract missing required line: "
+        f"{APPROACH_AGENTS_BOOTSTRAP_LINES[2]}"
+    ) in output
 
 
 def test_cmd_validate_delegates_to_run_checks(

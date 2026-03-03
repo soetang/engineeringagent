@@ -11,6 +11,12 @@ import typer
 import yaml
 from .agents import default_backend_id, list_backends
 from . import cli_typer
+from .approach import (
+    UnknownApproachIdError,
+    format_approach_topic_index,
+    load_topic_content,
+    render_approach_overview,
+)
 from .config import (
     resolve_agents_backend_id,
     write_init_backend_config,
@@ -86,29 +92,28 @@ def _backend_choice_error(backend_ids: tuple[str, ...]) -> str:
     return f"init input error: backend must be one of: {', '.join(backend_ids)}"
 
 
-def _resolve_init_backend(  # noqa: C901
+def _resolve_configured_backend(
     *,
     project_root: Path,
-    backend: str | None,
     force: bool,
+) -> str | None:
+    if force:
+        return None
+    return resolve_agents_backend_id(project_root)
+
+
+def _resolve_init_backend_candidate(
+    candidate: str,
+    available_backends: tuple[str, ...],
 ) -> tuple[str | None, str | None]:
-    """Resolve init backend choice from CLI args/config/prompt defaults."""
-    available_backends = tuple(sorted(list_backends()))
-    if not available_backends:
-        return None, "init backend error: no registered backends"
+    if candidate in available_backends:
+        return candidate, None
+    return None, _backend_choice_error(available_backends)
 
-    if backend is not None:
-        if backend in available_backends:
-            return backend, None
-        return None, _backend_choice_error(available_backends)
 
-    if not force:
-        configured_backend = resolve_agents_backend_id(project_root)
-        if configured_backend is not None:
-            if configured_backend in available_backends:
-                return configured_backend, None
-            return None, _backend_choice_error(available_backends)
-
+def _resolve_init_backend_interactive(
+    available_backends: tuple[str, ...],
+) -> tuple[str | None, str | None]:
     if len(available_backends) == 1:
         return available_backends[0], None
 
@@ -129,6 +134,30 @@ def _resolve_init_backend(  # noqa: C901
     if selected in available_backends:
         return selected, None
     return None, _backend_choice_error(available_backends)
+
+
+def _resolve_init_backend(
+    *,
+    project_root: Path,
+    backend: str | None,
+    force: bool,
+) -> tuple[str | None, str | None]:
+    """Resolve init backend choice from CLI args/config/prompt defaults."""
+    available_backends = tuple(sorted(list_backends()))
+    if not available_backends:
+        return None, "init backend error: no registered backends"
+
+    if backend is not None:
+        return _resolve_init_backend_candidate(backend, available_backends)
+
+    configured_backend = _resolve_configured_backend(
+        project_root=project_root,
+        force=force,
+    )
+    if configured_backend is not None:
+        return _resolve_init_backend_candidate(configured_backend, available_backends)
+
+    return _resolve_init_backend_interactive(available_backends)
 
 
 def _resolve_manifest_path(manifest_path: str | None) -> Path | None:
@@ -280,6 +309,92 @@ def cmd_schema_list(args: _HandlerArgs) -> int:
     return 0
 
 
+def _emit_markdown_output(
+    payload: str,
+    *,
+    project_root: Path,
+    output: str | None,
+    output_prefix: str,
+) -> int:
+    output_path = _resolve_optional_path(path=output, project_root=project_root)
+    if output_path is None:
+        print(payload)
+        return 0
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(payload + "\n", encoding="utf-8")
+    try:
+        shown_path = output_path.relative_to(project_root)
+    except ValueError:
+        shown_path = output_path
+    print(f"{output_prefix}: {shown_path}")
+    return 0
+
+
+def cmd_approach_overview(args: _HandlerArgs) -> int:
+    """Render CLI-native overview text and topic index."""
+    project_root = Path(args.project_root).resolve()
+    try:
+        overview = load_topic_content("overview")
+    except UnknownApproachIdError as exc:
+        print(f"approach input error: {exc}")
+        return 1
+    except ValueError as exc:
+        print(f"approach content error: {exc}")
+        return 1
+
+    rendered = render_approach_overview(overview)
+    return _emit_markdown_output(
+        rendered,
+        project_root=project_root,
+        output=getattr(args, "output", None),
+        output_prefix="approach overview written",
+    )
+
+
+def cmd_approach_list(args: _HandlerArgs) -> int:
+    """Render a deterministic list of approach topic ids with short titles."""
+    output = getattr(args, "output", None)
+    rendered = format_approach_topic_index()
+    if rendered == "":
+        rendered = "No approach topics are available."
+
+    return _emit_markdown_output(
+        rendered,
+        project_root=Path(args.project_root).resolve(),
+        output=output,
+        output_prefix="approach list written",
+    )
+
+
+def cmd_approach_show(args: _HandlerArgs) -> int:
+    """Render one approach topic by canonical id or alias."""
+    project_root = Path(args.project_root).resolve()
+    topic_id = str(getattr(args, "topic_id", "")).strip()
+    if topic_id == "":
+        print(
+            "approach input error: provide a topic id or use "
+            "`engineeringagent approach list`"
+        )
+        return 1
+
+    try:
+        rendered = load_topic_content(topic_id)
+    except UnknownApproachIdError as exc:
+        print(f"approach input error: {exc}; use `engineeringagent approach list`")
+        return 1
+    except ValueError as exc:
+        print(f"approach content error: {exc}")
+        return 1
+
+    return _emit_markdown_output(
+        rendered,
+        project_root=project_root,
+        output=getattr(args, "output", None),
+        output_prefix="approach topic written",
+    )
+
+
 def cmd_schema(args: _HandlerArgs) -> int:
     """Emit one schema from the model-owned registry."""
     raw_schema_id = getattr(args, "schema_id", None)
@@ -313,23 +428,12 @@ def cmd_schema(args: _HandlerArgs) -> int:
             default_flow_style=False,
         ).rstrip("\n")
 
-    project_root = Path(args.project_root).resolve()
-    output_path = _resolve_optional_path(
-        path=getattr(args, "output", None),
-        project_root=project_root,
+    return _emit_markdown_output(
+        rendered,
+        project_root=Path(args.project_root).resolve(),
+        output=getattr(args, "output", None),
+        output_prefix="schema written",
     )
-    if output_path is not None:
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(rendered + "\n", encoding="utf-8")
-        try:
-            shown_path = output_path.relative_to(project_root)
-        except ValueError:
-            shown_path = output_path
-        print(f"schema written: {shown_path}")
-        return 0
-
-    print(rendered)
-    return 0
 
 
 def cmd_run(args: _HandlerArgs) -> int:
@@ -380,26 +484,18 @@ def cmd_checks_catalog(args: _HandlerArgs) -> int:
 
     project_root = Path(args.project_root).resolve()
     manifest_path = _resolve_manifest_path(args.manifest_path)
-    output_path = _resolve_optional_path(path=args.output, project_root=project_root)
-
     rendered = checks_module.render_fitness_catalog(
         project_root,
         manifest_path=manifest_path,
         format=args.output_format,
     )
 
-    if output_path is not None:
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(rendered + "\n", encoding="utf-8")
-        try:
-            shown_path = output_path.relative_to(project_root)
-        except ValueError:
-            shown_path = output_path
-        print(f"checks catalog written: {shown_path}")
-        return 0
-
-    print(rendered)
-    return 0
+    return _emit_markdown_output(
+        rendered,
+        project_root=project_root,
+        output=args.output,
+        output_prefix="checks catalog written",
+    )
 
 
 def _emit_run_result(
@@ -476,16 +572,10 @@ def cmd_checks_run(args: _HandlerArgs) -> int:
     return exit_code
 
 
-def cmd_init(args: _HandlerArgs) -> int:  # noqa: C901
-    """Scaffold baseline harness files for a repository.
+def _build_init_request(args: _HandlerArgs) -> InitRequest:
+    """Build an immutable init request from CLI arguments."""
 
-    Args:
-        args: Parsed CLI arguments for the init subcommand.
-
-    Returns:
-        Process exit code where 0 means success.
-    """
-    request = InitRequest(
+    return InitRequest(
         project_root=Path(args.project_root).resolve(),
         force=bool(args.force),
         scaffold_profile=args.scaffold_profile,
@@ -497,7 +587,12 @@ def cmd_init(args: _HandlerArgs) -> int:  # noqa: C901
         model=getattr(args, "model", DEFAULT_AGENT_MODEL),
         no_precommit_install=bool(getattr(args, "no_precommit_install", False)),
     )
-    deps = InitDependencies(
+
+
+def _build_init_dependencies() -> InitDependencies:
+    """Assemble dependency implementations for init execution."""
+
+    return InitDependencies(
         emit=print,
         resolve_pack=_resolve_init_pack,
         resolve_backend=_resolve_init_backend,
@@ -511,6 +606,19 @@ def cmd_init(args: _HandlerArgs) -> int:  # noqa: C901
         build_agents_merge_followup_spec=build_agents_merge_followup_spec,
         install_precommit_hooks_best_effort=_install_precommit_hooks_best_effort,
     )
+
+
+def cmd_init(args: _HandlerArgs) -> int:
+    """Scaffold baseline harness files for a repository.
+
+    Args:
+        args: Parsed CLI arguments for the init subcommand.
+
+    Returns:
+        Process exit code where 0 means success.
+    """
+    request = _build_init_request(args)
+    deps = _build_init_dependencies()
     return run_init_command(request, deps)
 
 

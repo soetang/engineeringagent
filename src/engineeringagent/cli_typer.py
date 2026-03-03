@@ -205,6 +205,66 @@ def _build_typer_progress_app(command_module: ModuleType) -> typer.Typer:
     return progress_app
 
 
+def _dispatch_approach_command(
+    command_module: ModuleType,
+    *,
+    ctx: typer.Context,
+    topic_id: str | None,
+    output: str | None,
+) -> None:
+    """Route approach topic requests to the correct handler."""
+    if topic_id == "list":
+        _exit_with_handler_code(
+            command_module.cmd_approach_list,
+            ctx=ctx,
+            output=output,
+        )
+        return
+    if topic_id is None:
+        _exit_with_handler_code(
+            command_module.cmd_approach_overview,
+            ctx=ctx,
+            output=output,
+        )
+        return
+
+    _exit_with_handler_code(
+        command_module.cmd_approach_show,
+        ctx=ctx,
+        topic_id=topic_id,
+        output=output,
+    )
+
+
+def _dispatch_schema_command(
+    command_module: ModuleType,
+    *,
+    ctx: typer.Context,
+    schema_id: str | None,
+    output_format: Literal["json", "yaml"],
+    output: str | None,
+) -> None:
+    """Route schema commands to list or single-schema handler."""
+    if schema_id == "list":
+        _exit_with_handler_code(
+            command_module.cmd_schema_list,
+            ctx=ctx,
+            output_format=output_format,
+            output=output,
+        )
+        return
+
+    kwargs = {"output_format": output_format, "output": output}
+    if schema_id is not None:
+        kwargs["schema_id"] = schema_id
+
+    _exit_with_handler_code(
+        command_module.cmd_schema,
+        ctx=ctx,
+        **kwargs,
+    )
+
+
 def build_typer_app(command_module: ModuleType) -> typer.Typer:
     """Build the Typer root app with top-level command wiring."""
     app = typer.Typer(
@@ -291,6 +351,32 @@ def build_typer_app(command_module: ModuleType) -> typer.Typer:
     )
 
     @app.command(
+        "approach",
+        help="open packaged approach guidance",
+    )
+    def _approach_command(
+        ctx: typer.Context,
+        topic_id: str | None = typer.Argument(
+            None,
+            help=(
+                "optional approach topic id; use `list` to list available topics or "
+                "omit for overview"
+            ),
+        ),
+        output: str | None = typer.Option(
+            None,
+            "--output",
+            help="optional path to write rendered output",
+        ),
+    ) -> None:
+        _dispatch_approach_command(
+            command_module,
+            ctx=ctx,
+            topic_id=topic_id,
+            output=output,
+        )
+
+    @app.command(
         "schema",
         help="emit model-owned contract schemas (`schema list` or `schema <schema_id>`)",
     )
@@ -311,11 +397,8 @@ def build_typer_app(command_module: ModuleType) -> typer.Typer:
             help="optional path to write schema output",
         ),
     ) -> None:
-        if schema_id == "list":
-            _exit_with_handler_code(command_module.cmd_schema_list, ctx=ctx)
-            return
-        _exit_with_handler_code(
-            command_module.cmd_schema,
+        _dispatch_schema_command(
+            command_module,
             ctx=ctx,
             schema_id=schema_id,
             output_format=output_format,
