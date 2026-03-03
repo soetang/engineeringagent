@@ -8,6 +8,7 @@ dist/
 build/
 *.egg-info/
 .engineeringagent/progress/
+/progress/
 .coverage
 .coverage.*
 .semgrep/semgrep.log
