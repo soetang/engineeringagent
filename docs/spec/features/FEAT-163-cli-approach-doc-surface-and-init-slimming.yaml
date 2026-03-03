@@ -76,7 +76,7 @@ implementation_notes: |
     - Optional `--output <path>` writes emitted content to file.
   - Overview-file contract:
     - add a dedicated overview source document in packaged approach docs (for example
-      `src/engineeringagent/approach_docs/overview.md`) so the root command has an
+      `src/engineeringagent/approach/docs/overview.md`) so the root command has an
       explicit authored narrative rather than only generated command help.
   - Topic-id policy:
     - ids are stable machine-friendly tokens (for example `specifications`, `workflow`,
@@ -86,15 +86,16 @@ implementation_notes: |
     - exclude contributor-maintainer-only docs from this user-facing surface.
 
   Topic matrix v1 (canonical ids, aliases, and source mapping)
-  - `overview` (aliases: none) -> overview source doc in packaged approach docs.
+  - `overview` (aliases: none) -> `src/engineeringagent/approach/docs/overview.md`
   - `principles` (aliases: `harness-engineering-principles`) ->
-    `docs/principles/harness-engineering-principles.md`
-  - `workflow` (aliases: none) -> `docs/references/workflow.md`
-  - `specifications` (aliases: `spec-writing`) -> `docs/references/spec-writing.md`
+    `src/engineeringagent/approach/docs/principles.md`
+  - `workflow` (aliases: none) -> `src/engineeringagent/approach/docs/workflow.md`
+  - `specifications` (aliases: `spec-writing`) ->
+    `src/engineeringagent/approach/docs/specifications.md`
   - `quality-checks` (aliases: `quality-check-playbook`) ->
-    `docs/references/quality-check-playbook.md`
+    `src/engineeringagent/approach/docs/quality-checks.md`
   - `reviewer-authoring` (aliases: `reviewer-authoring-guide`) ->
-    `docs/references/reviewer-authoring-guide.md`
+    `src/engineeringagent/approach/docs/reviewer-authoring.md`
   - Excluded from user-facing approach surface:
     - `docs/references/contributor-commands.md`
     - `docs/references/documentation-practices.md`
@@ -107,13 +108,15 @@ implementation_notes: |
     names read naturally in CLI and remain concise for agent prompting.
 
   3) Source-of-truth and package delivery
-  - Decision: keep authoring docs in repository `docs/` while shipping CLI-readable docs
-    as package resources under `src/engineeringagent/approach_docs/`.
+  - Decision: avoid dual-source duplication by storing canonical approach docs directly
+    under one package path: `src/engineeringagent/approach/docs/*.md`.
   - Required workflow:
-    - deterministic sync/copy from selected `docs/` sources into package resource folder
-    - include package-resource docs in build artifacts created by `python -m build`
-    - add tests that verify packaged docs are discoverable at runtime via
-      `importlib.resources`.
+    - no cross-tree copy/sync step between `docs/references` and package docs; approach
+      subdocuments live only under `src/engineeringagent/approach/docs/`
+    - include approach package docs in build artifacts created by `python -m build`
+    - load approach content via `importlib.resources` from the approach package
+    - add tests that verify packaged docs are discoverable at runtime and that one
+      source-of-truth path is used.
 
   4) AGENTS integration strategy
   - Decision: do not replace AGENTS.md wholesale during init for this purpose.
@@ -145,7 +148,8 @@ implementation_notes: |
   - Target boundaries:
     - CLI boundary (`cli_typer.py`, `cli.py`): argument parsing, command routing,
       exit codes, and terminal output only.
-    - Approach domain boundary (`approach_registry.py`, rendering helper module):
+    - Approach domain boundary (`src/engineeringagent/approach/registry.py`,
+      `src/engineeringagent/approach/rendering.py`):
       topic discovery, alias resolution, frontmatter validation, and content rendering.
     - Init boundary (`init_service.py`, `init_scaffold.py`): scaffold decisions and file
       writes, including AGENTS bootstrap snippet insertion.
@@ -161,6 +165,8 @@ implementation_notes: |
   Files expected to be edited
   - `src/engineeringagent/cli_typer.py` (new `approach` command routing)
   - `src/engineeringagent/cli.py` (handlers for approach list/show/output)
+  - `harness/fitness-functions/check_markdown_locality_reference_coverage.py` (allow and
+    validate approach markdown locality under `src/engineeringagent/approach/docs`)
   - `src/engineeringagent/init_scaffold.py` (remove scaffolded user-doc generation)
   - `src/engineeringagent/init_service.py` (align AGENTS patch behavior and init output)
   - `src/engineeringagent/checks/validate/repo_policy_docs_map.py` (replace file-path docs-map
@@ -168,14 +174,16 @@ implementation_notes: |
   - `src/engineeringagent/scaffold_templates/AGENTS.md` (replace docs layout references with
     `engineeringagent approach` bootstrap text)
   - `pyproject.toml` (only if needed to guarantee package data inclusion)
-  - `README.md` and selected docs references to point to approach commands
+  - selected agent-facing guidance references (for example scaffolded AGENTS content) to
+    point to approach commands
   - `harness/fitness-functions/rules.yaml` and `docs/fitness-functions/rules.md`
 
   Files expected to be added
-  - `src/engineeringagent/approach_registry.py` (topic discovery + metadata parsing + rendering)
-  - `src/engineeringagent/approach_rendering.py` (shared formatting/render helpers used by CLI)
-  - `src/engineeringagent/approach_docs/*.md` (packaged guidance subdocuments)
-  - `src/engineeringagent/approach_docs/overview.md` (root approach narrative source)
+  - `src/engineeringagent/approach/__init__.py` (stable approach domain exports)
+  - `src/engineeringagent/approach/registry.py` (topic discovery + metadata parsing)
+  - `src/engineeringagent/approach/rendering.py` (shared formatting/render helpers)
+  - `src/engineeringagent/approach/docs/*.md` (canonical packaged guidance subdocuments)
+  - `src/engineeringagent/approach/docs/overview.md` (root approach narrative source)
   - CLI tests for approach surface (new test module under `tests/cli/`)
   - unit tests for approach registry/metadata parsing (new test module)
 
@@ -189,6 +197,8 @@ implementation_notes: |
   - scaffold template markdown assets used only for user-doc scaffolding in
     `src/engineeringagent/scaffold_templates/` (reference/principle files), once package
     approach docs fully replace their purpose
+  - migrated user-facing source docs in `docs/references/` and `docs/principles/` that are
+    replaced by canonical `src/engineeringagent/approach/docs/*.md` content
 
   Test updates expected (edit, not delete)
   - `tests/cli/test_init_scaffold.py`
@@ -197,6 +207,8 @@ implementation_notes: |
   - `tests/cli/test_cli_typer_parity_helpers.py`
   - `tests/meta/test_validator.py`
   - `tests/meta/test_test_layout_fitness_topic.py`
+  - `tests/fitness/test_fitness_rules_markdown_locality.py`
+  - `tests/fitness/test_fitness_rules_markdown_references.py`
   - `tests/fitness/test_fitness_rules_catalog_docs_sync.py` (catalog updates after rule retirement)
 
   Migration and rollout sequence
@@ -245,7 +257,7 @@ acceptance:
     discovery instead of full docs-map replacement content.
   - Retired doc-sync/link/allowlist fitness rules are removed from manifest/scripts/tests,
     and catalog docs are regenerated to match the new rule set.
-  - Documentation and README references are updated to use the approach command surface.
+  - Agent-facing guidance references are updated to use the approach command surface.
   - The feature spec validates with `uv run engineeringagent validate --schema-only`.
 subtasks:
   - id: ST-001
@@ -316,10 +328,11 @@ subtasks:
       - uv run pytest -q tests/meta/test_validator.py
       - uv run pytest -q tests/cli/test_cli.py
   - id: ST-008
-    title: Update user-facing docs and regenerate fitness catalog docs
+    title: Update agent-facing docs and regenerate fitness catalog docs
     status: backlog
     context: |
-      Update README and guidance references to use `engineeringagent approach` commands.
+      Update agent-facing guidance references to use `engineeringagent approach` commands
+      without making README a user redirect target for approach.
       Regenerate `docs/fitness-functions/rules.md` after manifest updates and keep sync tests green.
     verification:
       - uv run engineeringagent checks catalog --format markdown --output docs/fitness-functions/rules.md
