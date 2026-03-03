@@ -503,7 +503,6 @@ def test_execute_rule_definition_runs_dependency_directionality_adapter(
     """Surface fail status from the migrated dependency-directionality adapter."""
     _write_file(tmp_path, "src/engineeringagent/cli.py", "")
     _write_file(tmp_path, "src/engineeringagent/loop.py", "")
-    _write_file(tmp_path, "src/engineeringagent/gates.py", "")
     _write_file(
         tmp_path,
         "src/engineeringagent/validator.py",

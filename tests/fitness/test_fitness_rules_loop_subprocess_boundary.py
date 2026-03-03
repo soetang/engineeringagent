@@ -117,17 +117,6 @@ def test_loop_subprocess_boundary_rule_reports_expected_violations_and_respects_
                 ]
             ),
         ),
-        (
-            "src/engineeringagent/gates.py",
-            "\n".join(
-                [
-                    "import subprocess",
-                    "",
-                    "def run_gate() -> None:",
-                    "    subprocess.run(['git', 'status'], check=False)",
-                ]
-            ),
-        ),
         # Backend command execution is intentionally centralized behind allowlisted
         # client adapter modules.
         (
@@ -169,9 +158,6 @@ def test_loop_subprocess_boundary_rule_reports_expected_violations_and_respects_
     assert isinstance(violations, list)
     assert len(violations) == 5
     assert violations == sorted(violations)
-    assert all(
-        "src/engineeringagent/gates.py:" not in violation for violation in violations
-    )
 
     expected = [
         ("src/engineeringagent/loop.py", ("subprocess.run",)),

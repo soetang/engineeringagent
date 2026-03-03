@@ -1,19 +1,11 @@
 from __future__ import annotations
 
-import importlib
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
-import pytest
-
 from engineeringagent import changed_paths
 from engineeringagent.git import client as git_client
-
-
-def test_legacy_gates_module_is_removed() -> None:
-    with pytest.raises(ModuleNotFoundError):
-        importlib.import_module("engineeringagent.gates")
 
 
 def test_collect_changed_paths_falls_back_when_git_diff_fails(

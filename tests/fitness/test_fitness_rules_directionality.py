@@ -24,7 +24,6 @@ def _write_module(project_root: Path, module_path: str, body: str) -> None:
 def _write_directionality_fixture(project_root: Path) -> None:
     _write_module(project_root, "cli.py", "")
     _write_module(project_root, "loop.py", "")
-    _write_module(project_root, "gates.py", "")
     _write_module(
         project_root,
         "checks/validate/validator.py",
