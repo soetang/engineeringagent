@@ -1,0 +1,115 @@
+id: FEAT-169
+title: Remove stale legacy gates module references from fitness policy and tests
+type: chore
+expected_commit_subject: 'chore: remove stale legacy gates module references'
+status: backlog
+priority: high
+objective: Ensure active runtime policy and test suites no longer encode legacy
+  behavior around the removed `engineeringagent.gates` module.
+context: |
+  The production module path `src/engineeringagent/gates.py` has already been removed,
+  but active fitness policy/test assets still reference it as if it were an allowlisted
+  or special-case module.
+
+  These stale references create policy drift, make fitness fixtures less representative
+  of current architecture, and preserve migration-era behavior assumptions that should
+  be gone in a breaking-change-friendly repository.
+constraints:
+  - In scope is runtime policy and test cleanup only.
+  - Do not modify historical `docs/spec/features_done/*.yaml` migration records.
+  - Remove `src/engineeringagent/gates.py` from active subprocess-boundary policy allowlists
+    and parity policy assets.
+  - Replace or remove test fixtures/assertions that rely on `src/engineeringagent/gates.py`
+    as an allowlisted module.
+  - Remove the explicit legacy-module deletion assertion test that imports `engineeringagent.gates`
+    and expects `ModuleNotFoundError`.
+  - Preserve current loop/checks architecture boundaries and subprocess-boundary intent.
+implementation_notes: |
+  Contract change declaration
+
+  Surface:
+  - `architecture.loop-subprocess-boundary` policy configuration files.
+  - Fitness tests that model allowlisted-module behavior.
+  - Harness tests that explicitly assert legacy module import failure.
+
+  Old behavior:
+  - Loop subprocess boundary policy still allowlists `src/engineeringagent/gates.py`.
+  - Fitness tests include fixtures/assertions that treat `gates.py` as a valid exempt
+    module path.
+  - Harness tests include a direct import probe for `engineeringagent.gates`.
+
+  New behavior:
+  - Active policy allowlists include only current module paths.
+  - Fitness fixtures/assertions use non-legacy allowlisted modules or avoid removed-path
+    assumptions.
+  - No active test explicitly imports `engineeringagent.gates` as a legacy deletion guard.
+
+  Compatibility policy:
+  - Immediate breaking cleanup of legacy references is intended.
+
+  Migration plan:
+  - Update subprocess-boundary policy files to remove legacy module path entries.
+  - Update fitness tests to remove legacy allowlisted-module fixtures/assertions.
+  - Remove the legacy import-deletion test in harness suite.
+
+  Verification evidence:
+  - Targeted fitness and harness tests pass after path cleanup.
+  - Feature spec schema validation passes.
+
+  Fitness-function impact assessment:
+  - This change updates the existing `architecture.loop-subprocess-boundary` policy
+    configuration to remove a stale allowlisted module path.
+  - Path chosen: adjust implementation/configuration to satisfy current rule intent;
+    do not change rule ID, severity, or ownership boundaries.
+  - Expected guardrail effect: tighter allowlist accuracy, less false architectural
+    signal, and cleaner long-term policy maintenance.
+acceptance:
+  - '`harness/fitness-functions/policies/loop_subprocess_boundary_policy.yaml` no longer
+    contains `src/engineeringagent/gates.py`.'
+  - '`harness/fitness-functions/policies/loop_subprocess_boundary_semgrep_policy.yaml`
+    no longer contains `src/engineeringagent/gates.py`.'
+  - Active tests do not create fixtures or assertions that treat `src/engineeringagent/gates.py`
+    as an allowlisted/owned module path.
+  - '`tests/harness/test_gates.py` no longer contains the explicit legacy-module import
+    deletion assertion.'
+  - '`uv run pytest -q tests/fitness/test_fitness_rules_loop_subprocess_boundary.py tests/fitness/test_fitness_adapters.py tests/fitness/test_fitness_rules_directionality.py tests/harness/test_gates.py`
+    passes.'
+  - '`uv run engineeringagent validate --schema-only` passes.'
+subtasks:
+  - id: ST-001
+    title: Remove legacy gates path from subprocess boundary policy assets
+    status: backlog
+    context: |
+      Remove `src/engineeringagent/gates.py` from native and semgrep parity policy
+      files so active allowlists only contain current modules.
+    verification:
+      - uv run python harness/fitness-functions/check_loop_subprocess_boundary.py
+  - id: ST-002
+    title: Update fitness fixtures and assertions to stop modeling gates module allowlisting
+    status: backlog
+    context: |
+      Update tests that currently create `src/engineeringagent/gates.py` fixtures or
+      assert non-violation behavior for that path, replacing with active module paths
+      where needed.
+    verification:
+      - uv run pytest -q tests/fitness/test_fitness_rules_loop_subprocess_boundary.py
+      - uv run pytest -q tests/fitness/test_fitness_adapters.py
+      - uv run pytest -q tests/fitness/test_fitness_rules_directionality.py
+  - id: ST-003
+    title: Remove legacy module import-deletion assertion from harness tests
+    status: backlog
+    context: |
+      Remove the `engineeringagent.gates` import probe assertion in `tests/harness/test_gates.py`
+      while preserving the remaining changed-path behavior coverage.
+    verification:
+      - uv run pytest -q tests/harness/test_gates.py
+  - id: ST-004
+    title: Run schema validation and focused regression checks
+    status: backlog
+    context: |
+      Confirm the new cleanup spec validates and targeted suites pass with no remaining
+      active legacy gates module references.
+    verification:
+      - uv run engineeringagent validate --schema-only
+      - uv run pytest -q tests/fitness/test_fitness_rules_loop_subprocess_boundary.py tests/fitness/test_fitness_adapters.py tests/fitness/test_fitness_rules_directionality.py tests/harness/test_gates.py
+updated_at: '2026-03-03T00:00:00Z'
