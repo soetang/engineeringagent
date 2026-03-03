@@ -12,7 +12,7 @@ from engineeringagent.checks.reviewers.engine import (
     ReviewerRunRequest,
     run_reviewer,
 )
-from engineeringagent.agents import AgentOutputValidationError
+from engineeringagent.agents import AgentBackendError, AgentOutputValidationError
 
 
 def test_run_reviewer_loads_harness_prompt_and_parses_decision(tmp_path) -> None:
@@ -147,6 +147,60 @@ def test_run_reviewer_parse_failure_returns_request_changes(tmp_path) -> None:
 
     assert decision["decision"] == "request_changes"
     assert decision["summary"].startswith(PARSER_FAILURE_SUMMARY_PREFIX)
+
+
+def test_run_reviewer_recovers_from_codex_exec_failure_by_retrying_raw_output(tmp_path) -> None:
+    prompt_path = tmp_path / "harness" / "reviewers" / "prompts" / "code_simplifier.md"
+    prompt_path.parent.mkdir(parents=True)
+    prompt_path.write_text("Return JSON only.", encoding="utf-8")
+
+    captured_max_validation_retries: list[int] = []
+
+    def _run_agent(
+        _project_root,
+        _prompt,
+        *,
+        output_type,
+        max_validation_retries=2,
+    ):
+        captured_max_validation_retries.append(max_validation_retries)
+        if output_type is ReviewerDecisionEnvelope:
+            raise AgentBackendError(
+                backend="codex",
+                message="codex exec failed",
+            )
+        return (
+            "Execution diagnostics:\n"
+            "{\n"
+            '  "decision": "request_changes",\n'
+            '  "summary": "Recovered JSON from raw output.",\n'
+            '  "required_actions": ["address diagnostics"]\n'
+            "}\n"
+            "End of transcript.\n"
+        )
+
+    decision = run_reviewer(
+        tmp_path,
+        "code_simplifier",
+        {
+            "prompt_file": "harness/reviewers/prompts/code_simplifier.md",
+            "trigger": {"phase": "iteration_end"},
+        },
+        request=ReviewerRunRequest(
+            feature_id="FEAT-167",
+            feature_path=tmp_path / "docs/spec/features/FEAT-167.yaml",
+            changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
+            feedback=None,
+            run_agent_fn=_run_agent,
+        ),
+    )
+
+    assert decision == {
+        "decision": "request_changes",
+        "summary": "Recovered JSON from raw output.",
+        "required_actions": ["address diagnostics"],
+    }
+    assert captured_max_validation_retries == [2, 2]
 
 
 def test_run_reviewer_passes_max_validation_retries_to_canonical_runner(

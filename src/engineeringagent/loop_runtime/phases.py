@@ -15,7 +15,10 @@ from ..checks import (
     ChecksRunResult,
     run_checks,
 )
-from ..prompt_feedback import resolve_checks_prompt_feedback
+from ..prompt_feedback import (
+    format_failed_command_feedback_lines,
+    resolve_checks_prompt_feedback,
+)
 from ..prompts.feedback_envelope import (
     build_command_failure_feedback,
 )
@@ -32,6 +35,7 @@ from .models import (
 )
 from .time_format import utc_iso_from_epoch_sec
 from ..feature_commit import feature_completion_commit_subject
+
 
 class LoopTriggeredChecksRequest(BaseModel):
     """Structured request for loop-triggered checks execution."""
@@ -297,14 +301,22 @@ def run_verification_phase(
 
         if proc.returncode != 0:
             verification_output = "\n".join(command_outputs)
+            message = "\n".join(
+                [
+                    "Verification command failed.",
+                    *format_failed_command_feedback_lines(
+                        command=command,
+                        return_code=proc.returncode,
+                        failure_output=output,
+                    ),
+                ]
+            )
             feedback = build_command_failure_feedback(
                 phase="verification",
                 gate=None,
                 command=command,
                 precommit=False,
-                message=(
-                    "Verification command failed. Rerun the command to see full diagnostics."
-                ),
+                message=message,
             )
             return VerificationPhaseOutcome(
                 result="failed",

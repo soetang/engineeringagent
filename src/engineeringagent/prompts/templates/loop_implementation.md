@@ -12,6 +12,7 @@ Objective: $objective
 Context: $context
 
 Before doing new work, read prior handoff context from .engineeringagent/progress/features/$feature_id/handoff.md when the file exists.
+Because handoff is append-only, read from the bottom first (for example: `tail -n 60 ...`) to get the latest iteration(s).
 Write the hand-off so that the next developer can easily continue the work.
 Do not write the handoff file directly; loop/runtime owns handoff file appends.
 

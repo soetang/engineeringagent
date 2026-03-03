@@ -27,6 +27,7 @@ from engineeringagent.loop_runtime.models import ImplementStepResult
 from engineeringagent.loop_runtime import presentation as presentation_module
 from engineeringagent.progress.handoff import fallback_implement_progress_envelope
 from engineeringagent.prompts import build_implementation_prompt
+from tests.loop._feedback_envelope import parse_feedback_envelope_from_prompt
 
 
 def run_loop(
@@ -2762,10 +2763,12 @@ def test_verification_failure_feedback_is_injected_into_next_prompt(
 
     assert code == 0
     assert len(prompts) >= 2
-    assert "VERIFICATION_FAILURE_TOKEN" not in prompts[1]
-    assert '"kind":"command_failure"' in prompts[1]
-    assert '"phase":"verification"' in prompts[1]
-    assert f'"command":"{verification_command}"' in prompts[1]
+    assert "VERIFICATION_FAILURE_TOKEN" in prompts[1]
+    feedback = parse_feedback_envelope_from_prompt(prompts[1], phase="verification")
+    assert feedback.kind == "command_failure"
+    assert feedback.phase == "verification"
+    assert feedback.command == verification_command
+    assert "VERIFICATION_FAILURE_TOKEN" in feedback.message
 
 
 def test_gate_failure_feedback_includes_fitness_remediation_guidance(
@@ -2844,8 +2847,13 @@ def test_gate_failure_feedback_includes_fitness_remediation_guidance(
     assert code == 0
     assert len(prompts) >= 2
     assert "fitness_validate" in prompts[1]
-    assert str(check_script) in prompts[1]
-    assert remediation not in prompts[1]
+    feedback = parse_feedback_envelope_from_prompt(prompts[1], phase="gates")
+    assert feedback.kind == "command_failure"
+    assert feedback.phase == "gates"
+    assert feedback.command == (
+        f'"{sys.executable}" "{check_script}" "{counter_path}"'
+    )
+    assert remediation in feedback.message
 
 
 def test_spec_validate_failure_feedback_round_trips_to_retry_prompt(
@@ -2920,9 +2928,13 @@ def test_spec_validate_failure_feedback_round_trips_to_retry_prompt(
 
     assert code == 0
     assert len(prompts) >= 2
-    assert "spec_validate" in prompts[1]
-    assert str(check_script) in prompts[1]
-    assert token not in prompts[1]
+    feedback = parse_feedback_envelope_from_prompt(prompts[1], phase="gates")
+    assert feedback.kind == "command_failure"
+    assert feedback.phase == "gates"
+    assert feedback.command == (
+        f'"{sys.executable}" "{check_script}" "{counter_path}"'
+    )
+    assert token in feedback.message
 
 
 def test_non_validation_gate_failure_feedback_round_trips_to_retry_prompt(
@@ -2997,9 +3009,13 @@ def test_non_validation_gate_failure_feedback_round_trips_to_retry_prompt(
 
     assert code == 0
     assert len(prompts) >= 2
-    assert "pytest_validate" in prompts[1]
-    assert str(check_script) in prompts[1]
-    assert token not in prompts[1]
+    feedback = parse_feedback_envelope_from_prompt(prompts[1], phase="gates")
+    assert feedback.kind == "command_failure"
+    assert feedback.phase == "gates"
+    assert feedback.command == (
+        f'"{sys.executable}" "{check_script}" "{counter_path}"'
+    )
+    assert token in feedback.message
 
 
 def test_gate_failure_feedback_replaces_previous_feedback(
@@ -3113,16 +3129,121 @@ def test_gate_failure_feedback_replaces_previous_feedback(
 
     assert code == 0
     assert len(prompts) >= 3
-    assert "spec_validate" in prompts[1]
-    assert str(first_check_script) in prompts[1]
-    assert str(second_check_script) not in prompts[1]
-    assert first_token not in prompts[1]
-    assert second_token not in prompts[1]
-    assert "spec_validate" in prompts[2]
-    assert str(second_check_script) in prompts[2]
-    assert str(first_check_script) not in prompts[2]
-    assert first_token not in prompts[2]
-    assert second_token not in prompts[2]
+    first_feedback = parse_feedback_envelope_from_prompt(prompts[1], phase="gates")
+    second_feedback = parse_feedback_envelope_from_prompt(prompts[2], phase="gates")
+    assert first_feedback.kind == "command_failure"
+    assert first_feedback.phase == "gates"
+    assert first_feedback.command == (
+        f'"{sys.executable}" "{first_check_script}" "{first_counter_path}"'
+    )
+    assert first_token in first_feedback.message
+    assert second_feedback.kind == "command_failure"
+    assert second_feedback.phase == "gates"
+    assert second_feedback.command == (
+        f'"{sys.executable}" "{second_check_script}" "{second_counter_path}"'
+    )
+    assert second_token in second_feedback.message
+    assert first_token not in second_feedback.message
+    assert second_token in second_feedback.message
+
+
+def test_gate_failure_feedback_replaces_previous_output_for_same_command(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    first_token = "FIRST_GATE_FAILURE_TOKEN"
+    second_token = "SECOND_GATE_FAILURE_TOKEN"
+    counter_path = tmp_path / ".check-attempt"
+    check_script = tmp_path.parent / f"{tmp_path.name}-check-fail-once-twice.py"
+    command = f'"{sys.executable}" "{check_script}" "{counter_path}"'
+    check_script.write_text(
+        "\n".join(
+            [
+                "from pathlib import Path",
+                "import sys",
+                "counter = Path(sys.argv[1])",
+                "count = int(counter.read_text(encoding='utf-8')) if counter.exists() else 0",
+                "count += 1",
+                "counter.write_text(str(count), encoding='utf-8')",
+                f"if count == 1:",
+                f"    print({first_token!r})",
+                "    raise SystemExit(1)",
+                f"if count == 2:",
+                f"    print({second_token!r})",
+                "    raise SystemExit(1)",
+                "print('ok')",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    project_root, feature_path = _make_project_root(
+        tmp_path,
+        feature_data=_base_feature(),
+        gates_data={
+            "gates": {
+                "spec_validate": {
+                    "run": (
+                        f'"{sys.executable}" "{check_script}" "{counter_path}"'
+                    )
+                }
+            }
+        },
+    )
+    _init_git_repo(project_root)
+
+    real_run = subprocess.run
+    prompts: list[str] = []
+
+    def fake_subprocess_run(
+        command: Any, **kwargs: Any
+    ) -> subprocess.CompletedProcess[str]:
+        if isinstance(command, list) and command[:3] == ["opencode", "run", "--agent"]:
+            prompt = command[4]
+            prompts.append(prompt)
+            if len(prompts) >= 3:
+                feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
+                feature["status"] = "done"
+                feature_path.write_text(
+                    yaml.safe_dump(feature, sort_keys=False), encoding="utf-8"
+                )
+            return subprocess.CompletedProcess(command, 0, stdout="ok\n", stderr="")
+        check = bool(kwargs.pop("check", False))
+        return real_run(command, check=check, **kwargs)
+
+    _patch_run_agent_with_fake(monkeypatch, fake_subprocess_run)
+    monkeypatch.setattr(
+        loop_module,
+        "preflight",
+        lambda **_: True,
+    )
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        dry_run=False,
+        max_iterations=6,
+    )
+
+    assert code == 0
+    assert len(prompts) >= 3
+
+    first_feedback = parse_feedback_envelope_from_prompt(prompts[1], phase="gates")
+    second_feedback = parse_feedback_envelope_from_prompt(prompts[2], phase="gates")
+
+    assert first_feedback.kind == "command_failure"
+    assert first_feedback.phase == "gates"
+    assert first_feedback.command == command
+    assert first_feedback.message is not None
+    assert first_token in first_feedback.message
+    assert second_feedback.kind == "command_failure"
+    assert second_feedback.phase == "gates"
+    assert second_feedback.command == command
+    assert second_feedback.message is not None
+    assert second_token in second_feedback.message
+    assert first_token not in second_feedback.message
+    assert second_token in second_feedback.message
 
 
 def test_verification_failure_feedback_replaces_previous_feedback(
@@ -3233,14 +3354,152 @@ def test_verification_failure_feedback_replaces_previous_feedback(
 
     assert code == 0
     assert len(prompts) >= 3
-    assert "FIRST_VERIFICATION_FAILURE_TOKEN" not in prompts[1]
-    assert "SECOND_VERIFICATION_FAILURE_TOKEN" not in prompts[1]
-    assert "FIRST_VERIFICATION_FAILURE_TOKEN" not in prompts[2]
-    assert "SECOND_VERIFICATION_FAILURE_TOKEN" not in prompts[2]
-    assert '"kind":"command_failure"' in prompts[1]
-    assert '"kind":"command_failure"' in prompts[2]
-    assert '"phase":"verification"' in prompts[1]
-    assert '"phase":"verification"' in prompts[2]
+    first_feedback = parse_feedback_envelope_from_prompt(prompts[1], phase="verification")
+    second_feedback = parse_feedback_envelope_from_prompt(prompts[2], phase="verification")
+    assert first_feedback.kind == "command_failure"
+    assert first_feedback.phase == "verification"
+    assert first_feedback.command == verification_command
+    assert second_feedback.kind == "command_failure"
+    assert second_feedback.phase == "verification"
+    assert second_feedback.command == verification_command
+    assert "FIRST_VERIFICATION_FAILURE_TOKEN" in first_feedback.message
+    assert "SECOND_VERIFICATION_FAILURE_TOKEN" not in first_feedback.message
+    assert "FIRST_VERIFICATION_FAILURE_TOKEN" not in second_feedback.message
+    assert "- returncode: 1" in first_feedback.message
+    assert "- returncode: 1" in second_feedback.message
+    assert "SECOND_VERIFICATION_FAILURE_TOKEN" in second_feedback.message
+
+
+def test_verification_failure_feedback_replaces_previous_command_context(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    first_verification_command = (
+        "python -c \"import sys; print('FIRST_VERIFICATION_FAILURE_TOKEN'); sys.exit(1)\""
+    )
+    second_verification_command = (
+        "python -c \"import sys; print('SECOND_VERIFICATION_FAILURE_TOKEN'); sys.exit(1)\""
+    )
+    feature_data = _base_feature(status="in_progress")
+    feature_data["subtasks"] = [
+        {
+            "id": "ST-001",
+            "title": "Replace verification failure command in retry context",
+            "status": "backlog",
+            "context": "Ensure latest verification command appears in retry feedback.",
+            "verification": [first_verification_command],
+        },
+        {
+            "id": "ST-002",
+            "title": "Verify second failing command is forwarded only",
+            "status": "backlog",
+            "context": "Ensure stale verification context is not re-used.",
+            "verification": [second_verification_command],
+        },
+    ]
+    project_root, feature_path = _make_project_root(tmp_path, feature_data=feature_data)
+    _init_git_repo(project_root)
+
+    real_run = subprocess.run
+    prompts: list[str] = []
+
+    def fake_subprocess_run(
+        command: Any,
+        **kwargs: Any,
+    ) -> subprocess.CompletedProcess[str]:
+        if isinstance(command, list) and command[:3] == ["opencode", "run", "--agent"]:
+            prompt = command[4]
+            prompts.append(prompt)
+            feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
+            subtasks = feature.get("subtasks", [])
+            if (
+                len(prompts) == 1
+                and len(subtasks) >= 1
+                and isinstance(subtasks[0], dict)
+            ):
+                subtasks[0]["status"] = "done"
+                feature["status"] = "in_progress"
+            elif (
+                len(prompts) == 2
+                and len(subtasks) >= 2
+                and isinstance(subtasks[1], dict)
+            ):
+                subtasks[1]["status"] = "done"
+                feature["status"] = "in_progress"
+            else:
+                feature["status"] = "done"
+            feature_path.write_text(
+                yaml.safe_dump(feature, sort_keys=False), encoding="utf-8"
+            )
+            return subprocess.CompletedProcess(command, 0, stdout="ok\n", stderr="")
+
+        check = bool(kwargs.pop("check", False))
+        return real_run(command, check=check, **kwargs)
+
+    verification_results = iter(
+        [
+            subprocess.CompletedProcess(
+                ["verify", "attempt-1"],
+                1,
+                stdout="FIRST_VERIFICATION_FAILURE_TOKEN\n",
+                stderr="",
+            ),
+            subprocess.CompletedProcess(
+                ["verify", "attempt-2"],
+                1,
+                stdout="SECOND_VERIFICATION_FAILURE_TOKEN\n",
+                stderr="",
+            ),
+            subprocess.CompletedProcess(
+                ["verify", "attempt-3"],
+                0,
+                stdout="verification passed\n",
+                stderr="",
+            ),
+        ]
+    )
+
+    def fake_run_shell_command(
+        _project_root: Path,
+        command: str,
+    ) -> subprocess.CompletedProcess[str]:
+        del command
+        return next(verification_results)
+
+    _patch_run_agent_with_fake(monkeypatch, fake_subprocess_run)
+    monkeypatch.setattr(
+        loop_module,
+        "preflight",
+        lambda **_: True,
+    )
+    monkeypatch.setattr(
+        "engineeringagent.loop_runtime.phases.run_shell_command",
+        fake_run_shell_command,
+    )
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        dry_run=False,
+        max_iterations=6,
+    )
+
+    assert code == 0
+    assert len(prompts) >= 3
+
+    first_feedback = parse_feedback_envelope_from_prompt(prompts[1], phase="verification")
+    second_feedback = parse_feedback_envelope_from_prompt(prompts[2], phase="verification")
+
+    assert first_feedback.kind == "command_failure"
+    assert first_feedback.phase == "verification"
+    assert first_feedback.command == first_verification_command
+    assert second_feedback.kind == "command_failure"
+    assert second_feedback.phase == "verification"
+    assert second_feedback.command == second_verification_command
+    assert "FIRST_VERIFICATION_FAILURE_TOKEN" in first_feedback.message
+    assert "SECOND_VERIFICATION_FAILURE_TOKEN" not in first_feedback.message
+    assert "FIRST_VERIFICATION_FAILURE_TOKEN" not in second_feedback.message
+    assert "SECOND_VERIFICATION_FAILURE_TOKEN" in second_feedback.message
 
 
 def test_gate_failure_feedback_is_truncated_before_prompt_injection(
@@ -3319,7 +3578,7 @@ def test_gate_failure_feedback_is_truncated_before_prompt_injection(
 
     assert code == 0
     assert len(prompts) >= 2
-    assert "BEGIN_GATE_FEEDBACK" not in prompts[1]
-    assert "END_GATE_FEEDBACK" not in prompts[1]
+    assert "BEGIN_GATE_FEEDBACK" in prompts[1]
+    assert "END_GATE_FEEDBACK" in prompts[1]
     assert "...[truncated]" not in prompts[1]
     assert "spec_validate" in prompts[1]

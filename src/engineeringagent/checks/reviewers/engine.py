@@ -8,7 +8,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory, mkdtemp
 from typing import Any, Callable, Iterator, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from engineeringagent.changed_paths import ChangedPathsResult
 from engineeringagent.json_schema import JSON_SCHEMA_DRAFT_URL
@@ -284,7 +284,7 @@ def evaluate_cached_reviewer_approval(
     return True, FIRST_FEATURE_APPROVAL_REUSED_REASON
 
 
-def run_reviewer(
+def run_reviewer(  # noqa: C901
     project_root: Path,
     reviewer_id: str,
     reviewer: dict[str, Any],
@@ -328,6 +328,17 @@ def run_reviewer(
             except FileNotFoundError:
                 return _parser_failure_decision("opencode executable missing")
             except AgentBackendError as exc:
+                if not _is_recoverable_codex_backend_error(exc):
+                    return _parser_failure_decision(str(exc))
+
+                recovered = _recover_reviewer_decision_from_str_output(
+                    agent_runner=agent_runner,
+                    execution_root=execution_root,
+                    composed_prompt=composed_prompt,
+                    max_validation_retries=REVIEWER_DECISION_PARSE_MAX_RETRIES,
+                )
+                if isinstance(recovered, dict):
+                    return recovered
                 return _parser_failure_decision(str(exc))
             except AgentOutputValidationError as exc:
                 return _parser_failure_decision(exc.error_summary)
@@ -339,6 +350,10 @@ def run_reviewer(
             )
     except RuntimeError as exc:
         return _parser_failure_decision(str(exc))
+
+
+def _is_recoverable_codex_backend_error(exc: AgentBackendError) -> bool:
+    return exc.backend == "codex" and "codex exec failed" in exc.message.lower()
 
 
 def build_reviewer_sandbox(
@@ -471,6 +486,50 @@ def _parser_failure_decision(reason: str) -> dict[str, Any]:
             "Return a strict JSON object that validates against the reviewer decision JSON Schema in the reviewer instructions."
         ],
     }
+
+
+def _parse_reviewer_output_from_text(
+    output: str,
+) -> dict[str, Any] | None:
+    """Parse a strict reviewer envelope from permissive text output."""
+    normalized = output.strip()
+    if not normalized:
+        return None
+
+    start = normalized.find("{")
+    end = normalized.rfind("}")
+    if start < 0 or end <= start:
+        return None
+
+    try:
+        return ReviewerDecisionEnvelope.model_validate_json(
+            normalized[start : end + 1]
+        ).model_dump(exclude_none=True)
+    except (ValidationError, ValueError):
+        return None
+
+
+def _recover_reviewer_decision_from_str_output(
+    *,
+    agent_runner: Callable[..., Any],
+    execution_root: Path,
+    composed_prompt: str,
+    max_validation_retries: int,
+) -> dict[str, Any] | None:
+    """Attempt a one-shot raw-output retry to recover a valid reviewer decision."""
+    try:
+        raw_output = agent_runner(
+            execution_root,
+            composed_prompt,
+            output_type=str,
+            max_validation_retries=max_validation_retries,
+        )
+    except (AgentBackendError, FileNotFoundError):
+        return None
+
+    if not isinstance(raw_output, str):
+        return None
+    return _parse_reviewer_output_from_text(raw_output)
 
 
 def _compose_reviewer_prompt(

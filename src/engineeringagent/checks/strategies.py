@@ -30,6 +30,10 @@ from engineeringagent.specs import (
     load_yaml,
 )
 from engineeringagent.checks.planning_policy import ALWAYS_RUN_NO_ON_CHANGE_REASON
+from engineeringagent.prompt_feedback import (
+    format_command_return_code,
+    format_failed_command_feedback_lines,
+)
 
 from .strategy_contracts import (
     CheckContext,
@@ -96,9 +100,6 @@ class CommandCheckStrategy(CheckStrategy):
             returncode = returncode_raw if isinstance(returncode_raw, int) else None
             stdout = getattr(proc, "stdout", "") or ""
             stderr = getattr(proc, "stderr", "") or ""
-            rendered_returncode = (
-                returncode_raw if returncode_raw is not None else "unknown"
-            )
 
             invocation = CommandInvocationRecord(
                 check_id=check_id,
@@ -119,7 +120,7 @@ class CommandCheckStrategy(CheckStrategy):
 
             check_output_parts = [
                 f"[check:{check_id}] command={check.command}",
-                f"[check:{check_id}] returncode={rendered_returncode}",
+                f"[check:{check_id}] returncode={format_command_return_code(returncode_raw)}",
             ]
             output = f"{stdout}{stderr}".rstrip("\n")
             if output:
@@ -131,6 +132,8 @@ class CommandCheckStrategy(CheckStrategy):
                     "kind": "command_failure",
                     "check_id": check_id,
                     "command": check.command,
+                    "returncode": returncode,
+                    "failure_output": output,
                 }
 
             record = CheckExecutionRecord(
@@ -158,11 +161,20 @@ class CommandCheckStrategy(CheckStrategy):
         command = payload.get("command")
         if not isinstance(command, str) or not command.strip():
             return None
+        returncode = payload.get("returncode")
+        failure_output = payload.get("failure_output")
         lines = _checks_failure_header_lines(
             check_id=failed_record.check_id,
             check_type=self.check_type,
         )
         lines.append(f"- rerun: `{command}`")
+        lines.extend(
+            format_failed_command_feedback_lines(
+                command=command,
+                return_code=returncode,
+                failure_output=failure_output,
+            )
+        )
         return "\n".join(lines)
 
 

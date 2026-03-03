@@ -27,6 +27,7 @@ from engineeringagent.agents.backends.opencode.permissions import (
     PermissionProbeResult,
     evaluate_permission_probe,
 )
+from tests.loop._feedback_envelope import parse_feedback_envelope_from_prompt
 
 
 def test_opencode_integration_gate_does_not_reference_env_var() -> None:
@@ -665,9 +666,11 @@ def test_gate_failure_feedback_round_trips_to_retry_prompt_integration(
 
     assert code == 0
     assert len(prompts) >= 2
-    assert "spec_validate" in prompts[1]
-    assert str(gate_script) in prompts[1]
-    assert "SPEC_VALIDATE_INTEGRATION_TOKEN" not in prompts[1]
+    feedback = parse_feedback_envelope_from_prompt(prompts[1], phase="gates")
+    assert feedback.kind == "command_failure"
+    assert feedback.phase == "gates"
+    assert feedback.command == f'"{sys.executable}" "{gate_script}"'
+    assert "SPEC_VALIDATE_INTEGRATION_TOKEN" in feedback.message
 
 
 def test_gate_failure_feedback_replaces_previous_feedback_integration(
@@ -791,16 +794,19 @@ def test_gate_failure_feedback_replaces_previous_feedback_integration(
 
     assert code == 0
     assert len(prompts) >= 3
-    assert "spec_validate" in prompts[1]
-    assert str(first_gate_script) in prompts[1]
-    assert str(second_gate_script) not in prompts[1]
-    assert first_output not in prompts[1]
-    assert second_output not in prompts[1]
-    assert "spec_validate" in prompts[2]
-    assert str(second_gate_script) in prompts[2]
-    assert str(first_gate_script) not in prompts[2]
-    assert first_output not in prompts[2]
-    assert second_output not in prompts[2]
+    first_feedback = parse_feedback_envelope_from_prompt(prompts[1], phase="gates")
+    second_feedback = parse_feedback_envelope_from_prompt(prompts[2], phase="gates")
+    assert first_feedback.kind == "command_failure"
+    assert first_feedback.phase == "gates"
+    assert first_feedback.command == f'"{sys.executable}" "{first_gate_script}"'
+    assert first_output in first_feedback.message
+    assert second_feedback.kind == "command_failure"
+    assert second_feedback.phase == "gates"
+    assert second_feedback.command == f'"{sys.executable}" "{second_gate_script}"'
+    assert second_output in second_feedback.message
+    assert second_output not in first_feedback.message
+    assert first_output not in second_feedback.message
+    assert second_output in second_feedback.message
 
 
 def test_loop_archived_done_continues_run_all_when_selected_path_disappears(

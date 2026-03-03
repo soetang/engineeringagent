@@ -1039,6 +1039,34 @@ def test_run_checks_reports_missing_executable_without_raising(tmp_path: Path) -
     assert "Remediation: install the executable" in result.output
 
 
+def test_run_checks_command_prompt_feedback_includes_command_returncode_and_excerpt(
+    tmp_path: Path,
+) -> None:
+    command = 'python -c "print(1); import sys; sys.exit(3)"'
+    _write_checks_yaml(
+        tmp_path,
+        "\n".join(
+            [
+                'contract_version: "1.0"',
+                "checks:",
+                "  smoke:",
+                "    type: command",
+                f"    command: '{command}'",
+                "",
+            ]
+        ),
+    )
+
+    result = run_checks(tmp_path, phase="iteration_end", checks=["commands"])
+
+    assert not result.ok
+    assert result.prompt_feedback is not None
+    assert f"- command: `{command}`" in result.prompt_feedback
+    assert "- returncode: 3" in result.prompt_feedback
+    assert "- failure_output_excerpt:" in result.prompt_feedback
+    assert "  1" in result.prompt_feedback
+
+
 def test_run_checks_exposes_structured_command_invocations(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

@@ -482,7 +482,7 @@ def test_run_verification_phase_emits_command_failure_feedback_contract(
     assert outcome.result == "failed"
     assert outcome.verification_failed_command
     assert outcome.feedback
-    assert "verification failure" not in outcome.feedback
+    assert "verification failure for command=python -c 'raise SystemExit(1)'" in outcome.feedback
 
     envelope = parse_feedback_envelope(outcome.feedback)
     assert envelope.kind == "command_failure"
@@ -490,6 +490,11 @@ def test_run_verification_phase_emits_command_failure_feedback_contract(
     assert envelope.gate is None
     assert envelope.command == "python -c 'raise SystemExit(1)'"
     assert envelope.rerun.cwd == "repo_root"
+    assert envelope.message.startswith("Verification command failed.")
+    assert "- command: `python -c 'raise SystemExit(1)'`" in envelope.message
+    assert "- returncode: 1" in envelope.message
+    assert "- failure_output_excerpt:" in envelope.message
+    assert "verification failure for command=python -c 'raise SystemExit(1)'" in envelope.message
 
 
 def test_run_verification_phase_reports_parse_failures_with_stable_output(
