@@ -6,7 +6,7 @@ from engineeringagent.git import client as git_client
 
 _EXCLUDED_PREFIXES = (
     "docs/spec/features_done/",
-    "progress/",
+    ".engineeringagent/progress/",
 )
 
 

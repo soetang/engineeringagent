@@ -36,6 +36,13 @@ from engineeringagent.progress.handoff import (
 )
 
 
+_PROGRESS_ROOT_PARTS = (".engineeringagent", "progress")
+
+
+def _progress_root(project_root: Path) -> Path:
+    return project_root.joinpath(*_PROGRESS_ROOT_PARTS)
+
+
 def test_loop_runtime_models_define_timing_types_before_first_use() -> None:
     source = Path(models_module.__file__).read_text(encoding="utf-8")
 
@@ -92,7 +99,7 @@ def test_handoff_envelope_parser_falls_back_for_invalid_payload() -> None:
 def test_handoff_markdown_append_creates_file_and_appends_entries(
     tmp_path: Path,
 ) -> None:
-    handoff_path = tmp_path / "progress" / "features" / "FEAT-130" / "handoff.md"
+    handoff_path = _progress_root(tmp_path) / "features" / "FEAT-130" / "handoff.md"
     append_handoff_markdown_entry(
         handoff_path=handoff_path,
         entry_lines=["## Iteration 4 - 2026-02-25T07:00:00Z", "", "Summary: first"],
@@ -154,7 +161,7 @@ def test_write_iteration_telemetry_appends_handoff_entry_from_envelope(
         git_head_resolver=lambda _: "abc1234",
     )
 
-    handoff_path = tmp_path / "progress" / "features" / "FEAT-130" / "handoff.md"
+    handoff_path = _progress_root(tmp_path) / "features" / "FEAT-130" / "handoff.md"
     assert handoff_path.exists()
     assert handoff_path.stat().st_size > 0
 
@@ -162,7 +169,7 @@ def test_write_iteration_telemetry_appends_handoff_entry_from_envelope(
 def test_write_iteration_telemetry_appends_fallback_handoff_when_missing(
     tmp_path: Path,
 ) -> None:
-    handoff_path = tmp_path / "progress" / "features" / "FEAT-130" / "handoff.md"
+    handoff_path = _progress_root(tmp_path) / "features" / "FEAT-130" / "handoff.md"
     handoff_path.parent.mkdir(parents=True, exist_ok=True)
     handoff_path.write_text("seed-entry\n", encoding="utf-8")
     baseline_stat = handoff_path.stat()
@@ -286,7 +293,7 @@ def test_progress_log_records_verification_status(tmp_path: Path) -> None:
     )
 
     run = json.loads(
-        (tmp_path / "progress" / "runs" / "runs.jsonl").read_text(encoding="utf-8")
+        (_progress_root(tmp_path) / "runs" / "runs.jsonl").read_text(encoding="utf-8")
     )
     assert run["verification_status"] == f"failed:{verification_command}"
     assert run["verification_failed_command"] == verification_command
@@ -297,7 +304,7 @@ def test_progress_log_records_verification_status(tmp_path: Path) -> None:
     assert run["reviewer_feedback_summary"] == ""
 
     feature_log = (
-        tmp_path / "progress" / "features" / "FEAT-040" / "run.txt"
+        _progress_root(tmp_path) / "features" / "FEAT-040" / "run.txt"
     ).read_text(encoding="utf-8")
     first_line = feature_log.splitlines()[0]
     assert first_line.startswith("ts=")
@@ -369,8 +376,8 @@ def test_progress_log_writes_do_not_use_path_open(
     finally:
         monkeypatch.setattr(Path, "open", original_open)
 
-    assert (tmp_path / "progress" / "runs" / "runs.jsonl").exists()
-    assert (tmp_path / "progress" / "features" / "FEAT-040" / "run.txt").exists()
+    assert (_progress_root(tmp_path) / "runs" / "runs.jsonl").exists()
+    assert (_progress_root(tmp_path) / "features" / "FEAT-040" / "run.txt").exists()
 
 
 def test_progress_log_strips_ansi_only_at_write_time(
@@ -430,7 +437,7 @@ def test_progress_log_strips_ansi_only_at_write_time(
     assert gates_line in strip_inputs
 
     feature_log = (
-        tmp_path / "progress" / "features" / "FEAT-040" / "run.txt"
+        _progress_root(tmp_path) / "features" / "FEAT-040" / "run.txt"
     ).read_text(encoding="utf-8")
     assert "\x1b[" not in feature_log
 
@@ -491,7 +498,7 @@ def test_progress_log_records_phase_timings(tmp_path: Path, monkeypatch: Any) ->
     )
 
     feature_log = (
-        tmp_path / "progress" / "features" / "FEAT-040" / "run.txt"
+        _progress_root(tmp_path) / "features" / "FEAT-040" / "run.txt"
     ).read_text(encoding="utf-8")
     assert (
         "phase_timing phase=initial_load started_at=1970-01-01T00:00:00Z "
@@ -581,7 +588,7 @@ def test_progress_log_records_verification_command_timings(
     )
 
     feature_log = (
-        tmp_path / "progress" / "features" / "FEAT-040" / "run.txt"
+        _progress_root(tmp_path) / "features" / "FEAT-040" / "run.txt"
     ).read_text(encoding="utf-8")
     assert (
         "command_timing phase=verification command=uv run pytest -q "
@@ -684,7 +691,7 @@ def test_progress_log_records_slowest_summary(tmp_path: Path) -> None:
     )
 
     feature_log = (
-        tmp_path / "progress" / "features" / "FEAT-040" / "run.txt"
+        _progress_root(tmp_path) / "features" / "FEAT-040" / "run.txt"
     ).read_text(encoding="utf-8")
     assert (
         "slowest=command phase=verification command=uv run pytest -q "
@@ -732,7 +739,7 @@ def test_progress_log_records_reviewer_approve_status(
     )
 
     run = json.loads(
-        (tmp_path / "progress" / "runs" / "runs.jsonl").read_text(encoding="utf-8")
+        (_progress_root(tmp_path) / "runs" / "runs.jsonl").read_text(encoding="utf-8")
     )
     assert run["reviewer_status"] == "passed"
     assert run["reviewer_decision"] == "approve"
@@ -741,7 +748,7 @@ def test_progress_log_records_reviewer_approve_status(
     assert "simplify nested branching" in run["reviewer_feedback_summary"]
 
     feature_log = (
-        tmp_path / "progress" / "features" / "FEAT-059" / "run.txt"
+        _progress_root(tmp_path) / "features" / "FEAT-059" / "run.txt"
     ).read_text(encoding="utf-8")
     assert "reviewer=passed decision=approve failed_reviewer=-" in feature_log
     assert "reviewer_output_begin" in feature_log
@@ -797,7 +804,7 @@ def test_run_telemetry_summary_strips_feedback_context_block(tmp_path: Path) -> 
     )
 
     run = json.loads(
-        (tmp_path / "progress" / "runs" / "runs.jsonl").read_text(encoding="utf-8")
+        (_progress_root(tmp_path) / "runs" / "runs.jsonl").read_text(encoding="utf-8")
     )
     assert run["reviewer_feedback_present"] is True
     assert "requested changes" in run["reviewer_feedback_summary"]
@@ -844,7 +851,7 @@ def test_reviewer_feedback_forwarded_field_takes_precedence(tmp_path: Path) -> N
     )
 
     run = json.loads(
-        (tmp_path / "progress" / "runs" / "runs.jsonl").read_text(encoding="utf-8")
+        (_progress_root(tmp_path) / "runs" / "runs.jsonl").read_text(encoding="utf-8")
     )
     assert run["reviewer_feedback_present"] is True
     assert "onboarding_review" in run["reviewer_feedback_summary"]
@@ -895,7 +902,7 @@ def test_non_verbose_terminal_output_shows_verification_summary(
         next_action="retry_same_feature",
         selected_path="docs/spec/features/FEAT-040-per-iteration-verification-feedback-and-failure-signaling.yaml",
         implement_step="default opencode implement step",
-        log_path="progress/features/FEAT-040/run.txt",
+        log_path=".engineeringagent/progress/features/FEAT-040/run.txt",
         verification_status=f"failed:{verification_command}",
         verification_failed_command=verification_command,
         reviewer_status="failed:request_changes",

@@ -193,7 +193,7 @@ def _build_typer_progress_app(command_module: ModuleType) -> typer.Typer:
     def _progress_feature_prune(
         ctx: typer.Context,
         feature_id: str = typer.Option(
-            ..., "--feature-id", help="feature id under progress/features"
+            ..., "--feature-id", help="feature id under .engineeringagent/progress/features"
         ),
     ) -> None:
         _exit_with_handler_code(

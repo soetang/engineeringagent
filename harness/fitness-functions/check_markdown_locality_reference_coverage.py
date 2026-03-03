@@ -42,6 +42,7 @@ _MARKDOWN_REFERENCE_SCAN_SUFFIXES = {
 _MARKDOWN_IGNORE_DIRECTORIES = {
     ".git",
     ".opencode",
+    ".engineeringagent",
     ".pytest_cache",
     ".ruff_cache",
     ".venv",

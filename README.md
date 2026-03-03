@@ -35,6 +35,16 @@ If your repository uses restrictive agent command allowlists, add these commands
 - `engineeringagent approach`
 - `engineeringagent schema *`
 
+## Repository hygiene
+
+EngineeringAgent runtime state is written under `.engineeringagent/progress/` during real runs:
+- `.engineeringagent/progress/runs/runs.jsonl`
+- `.engineeringagent/progress/features/<FEATURE_ID>/run.txt`
+- `.engineeringagent/progress/features/<FEATURE_ID>/handoff.md`
+- `.engineeringagent/progress/reviewers/state.json`
+This path is ignored by default via `/.engineeringagent/progress/` in `.gitignore`.
+These artifacts are lazily materialized on first non-dry writes; dry-run loop execution does not create them.
+
 ## Contributor policy
 
 - Pull requests are not accepted for this repository.

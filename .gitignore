@@ -7,13 +7,8 @@ __pycache__/
 dist/
 build/
 *.egg-info/
-progress/runs/
-progress/features/
-progress/runs.jsonl
+.engineeringagent/progress/
 .coverage
 .coverage.*
-progress/reviewers/state.json
-progress/reviewers-state.json
-progress/run-feature-*.txt
 .semgrep/semgrep.log
 .semgrep/settings.yml

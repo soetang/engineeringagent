@@ -1,14 +1,14 @@
 """Centralized construction for loop progress and state artifact paths.
 
 This module is the canonical source for resolving repository-local paths under the
-`progress/` directory that are used by loop telemetry and reviewer state.
+`.engineeringagent/progress/` namespace that are used by loop telemetry and reviewer state.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 
-PROGRESS_DIRNAME = "progress"
+PROGRESS_DIRNAME = Path(".engineeringagent") / "progress"
 PROGRESS_RUNS_DIRNAME = "runs"
 PROGRESS_FEATURES_DIRNAME = "features"
 PROGRESS_REVIEWERS_DIRNAME = "reviewers"
@@ -53,9 +53,9 @@ def _to_reference(project_root: Path, path: Path) -> str:
     """Return a repo-relative path string when possible."""
 
     try:
-        return str(path.relative_to(project_root))
+        return path.relative_to(project_root).as_posix()
     except ValueError:
-        return str(path)
+        return path.as_posix()
 
 
 def reviewers_state_path(project_root: Path) -> Path:

@@ -558,7 +558,9 @@ def test_progress_handoff_append_reads_json_stdin_and_appends_markdown(
 
     assert result.exit_code == 0
     assert "fallback=false" in result.stdout
-    handoff_path = tmp_path / "progress" / "features" / "FEAT-130" / "handoff.md"
+    handoff_path = (
+        tmp_path / ".engineeringagent" / "progress" / "features" / "FEAT-130" / "handoff.md"
+    )
     assert handoff_path.exists()
 
 
@@ -583,13 +585,17 @@ def test_progress_handoff_append_uses_fallback_for_invalid_json(
 
     assert result.exit_code == 0
     assert "fallback=true" in result.stdout
-    assert (tmp_path / "progress" / "features" / "FEAT-130" / "handoff.md").exists()
+    assert (
+        tmp_path / ".engineeringagent" / "progress" / "features" / "FEAT-130" / "handoff.md"
+    ).exists()
 
 
 def test_progress_feature_prune_removes_feature_progress_directory(
     tmp_path: Path,
 ) -> None:
-    feature_dir = tmp_path / "progress" / "features" / "FEAT-130"
+    feature_dir = (
+        tmp_path / ".engineeringagent" / "progress" / "features" / "FEAT-130"
+    )
     feature_dir.mkdir(parents=True, exist_ok=True)
     (feature_dir / "run.txt").write_text("log\n", encoding="utf-8")
 
@@ -607,7 +613,7 @@ def test_progress_feature_prune_removes_feature_progress_directory(
     )
 
     assert result.exit_code == 0
-    assert "removed path=progress/features/FEAT-130" in result.stdout
+    assert "removed path=.engineeringagent/progress/features/FEAT-130" in result.stdout
     assert not feature_dir.exists()
 
 

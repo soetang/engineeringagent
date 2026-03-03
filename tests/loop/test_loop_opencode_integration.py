@@ -20,6 +20,7 @@ from engineeringagent.loop import (
     build_run_config,
 )
 from engineeringagent.loop_runtime.controller import run_loop_controller as _run_loop
+from engineeringagent.progress import paths as progress_paths
 from engineeringagent.progress.handoff import ImplementProgressEnvelope
 from engineeringagent.agents.backends.opencode.permissions import (
     PERMISSION_REMEDIATION_HINT,
@@ -60,6 +61,22 @@ def run_loop(
 
 
 _SPARK_AGENT_MODEL = "openai/gpt-5.3-codex-spark"
+
+
+def _progress_runs_jsonl_path(project_root: Path) -> Path:
+    return progress_paths.runs_jsonl_path(project_root)
+
+
+def _progress_runs_jsonl_reference(project_root: Path) -> str:
+    return progress_paths.runs_jsonl_reference(project_root)
+
+
+def _progress_feature_log_path(project_root: Path, feature_id: str) -> Path:
+    return progress_paths.run_feature_log_path(project_root, feature_id)
+
+
+def _progress_feature_log_template_reference(project_root: Path) -> str:
+    return progress_paths.run_feature_log_template_reference(project_root)
 
 
 def _build_test_agent_config(*, repo_root: Path, model: str) -> str:
@@ -219,7 +236,7 @@ def test_loop_runs_opencode_integration(
 
     assert code in {0, 1}
 
-    runs_path = project_root / "progress" / "runs" / "runs.jsonl"
+    runs_path = _progress_runs_jsonl_path(project_root)
     run = json.loads(runs_path.read_text(encoding="utf-8").splitlines()[0])
     assert run["feature_id"] == "FEAT-901"
     assert run["result"] == "passed"
@@ -292,7 +309,7 @@ def test_loop_reports_permission_rejection_in_run_telemetry(
     )
 
     assert code == 1
-    runs_path = project_root / "progress" / "runs" / "runs.jsonl"
+    runs_path = _progress_runs_jsonl_path(project_root)
     runs = runs_path.read_text(encoding="utf-8").splitlines()
     assert len(runs) == 1
     run = json.loads(runs[0])
@@ -335,10 +352,10 @@ def test_run_loop_creates_progress_artifacts_before_implement_invocation(
         del prompt
         assert output_type is ImplementProgressEnvelope
         observed["saw_implement"] = True
-        assert (project_root / "progress").exists()
-        assert (project_root / "progress" / "runs" / "runs.jsonl").exists()
+        assert progress_paths.progress_dir(project_root).exists()
+        assert _progress_runs_jsonl_path(project_root).exists()
         assert (
-            project_root / "progress" / "features" / "FEAT-901" / "run.txt"
+            _progress_feature_log_path(project_root, "FEAT-901")
         ).exists()
         raise AgentBackendError(
             backend="opencode",
@@ -432,7 +449,7 @@ def test_run_loop_exits_before_selection_when_permission_precheck_fails(
     output = capsys.readouterr().out
 
     assert code == 1
-    assert not (project_root / "progress" / "runs" / "runs.jsonl").exists()
+    assert not _progress_runs_jsonl_path(project_root).exists()
     assert "Precondition failed: OpenCode permission precheck failed" in output
     assert "git status --short" in output
     assert PERMISSION_REMEDIATION_HINT in output
@@ -468,7 +485,7 @@ def test_run_loop_skips_permission_precheck_in_dry_run(
 
     assert code == 0
     assert precheck_called is False
-    assert not (project_root / "progress" / "runs" / "runs.jsonl").exists()
+    assert not _progress_runs_jsonl_path(project_root).exists()
 
 
 def test_run_loop_permission_precheck_failure_prints_remediation_hint(
@@ -561,8 +578,8 @@ def test_run_loop_permission_precheck_pass_prints_bypass_hint_and_log_locations(
     assert "default implement mode" not in output
     assert "--implement-command" not in output
     assert "engineeringagent run --dry-run" in output
-    assert "progress/runs/runs.jsonl" in output
-    assert "progress/features/<FEATURE_ID>/run.txt" in output
+    assert _progress_runs_jsonl_reference(project_root) in output
+    assert _progress_feature_log_template_reference(project_root) in output
 
 
 def test_gate_failure_feedback_round_trips_to_retry_prompt_integration(
@@ -889,9 +906,7 @@ def test_loop_archived_done_continues_run_all_when_selected_path_disappears(
     assert code == 0
     runs = [
         json.loads(line)
-        for line in (project_root / "progress" / "runs" / "runs.jsonl")
-        .read_text(encoding="utf-8")
-        .splitlines()
+        for line in _progress_runs_jsonl_path(project_root).read_text(encoding="utf-8").splitlines()
     ]
     assert len(runs) == 2
     assert runs[0]["feature_id"] == "FEAT-901"

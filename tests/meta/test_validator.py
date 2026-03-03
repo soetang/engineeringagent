@@ -486,20 +486,56 @@ def test_validate_enforces_purge_invariants_using_git_ls_files(tmp_path: Path) -
     )
     _run_git("add", "active.txt")
 
-    excluded_dir = tmp_path / "progress"
+    excluded_dir = tmp_path / ".engineeringagent" / "progress"
     excluded_dir.mkdir(parents=True, exist_ok=True)
     (excluded_dir / "excluded.txt").write_text(
         f"{removed_reviewer_id}\n",
         encoding="utf-8",
     )
-    _run_git("add", "progress/excluded.txt")
+    _run_git("add", ".engineeringagent/progress/excluded.txt")
 
     messages = validate(project_root=tmp_path)
 
     assert any(
         "active.txt" in message and "purge invariant" in message for message in messages
     )
-    assert all("progress/excluded.txt" not in message for message in messages)
+    assert all(
+        ".engineeringagent/progress/excluded.txt" not in message for message in messages
+    )
+
+
+def test_validate_does_not_exclude_legacy_progress_artifacts_from_purge_scan(
+    tmp_path: Path,
+) -> None:
+    def _run_git(*args: str) -> None:
+        proc = subprocess.run(
+            ["git", *args],
+            cwd=tmp_path,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert proc.returncode == 0, proc.stderr
+
+    _run_git("init")
+
+    removed_reviewer_id = "_".join(["readme", "process"])
+
+    legacy_progress_dir = tmp_path / "progress"
+    legacy_progress_dir.mkdir(parents=True, exist_ok=True)
+    legacy_artifact = legacy_progress_dir / "runs" / "runs.jsonl"
+    legacy_artifact.parent.mkdir(parents=True, exist_ok=True)
+    legacy_artifact.write_text(
+        f"artifact marker: {removed_reviewer_id}\n",
+        encoding="utf-8",
+    )
+    _run_git("add", "progress/runs/runs.jsonl")
+
+    messages = validate(project_root=tmp_path)
+    assert any(
+        "progress/runs/runs.jsonl" in message and "purge invariant" in message
+        for message in messages
+    )
 
 
 def test_validate_does_not_enforce_opencode_config_invariant(tmp_path: Path) -> None:

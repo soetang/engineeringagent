@@ -6,6 +6,10 @@ Use `engineeringagent approach` for the overall workflow and guidance map.
 
 Use `engineeringagent approach list` to discover topics, then open one (for example `engineeringagent approach specifications`).
 
+Runtime progress artifacts are emitted under `.engineeringagent/progress/`. Keep this path out of git unless you intentionally share it.
+Recommended ignore entry: `/.engineeringagent/progress/`.
+Paths are materialized only when the loop/runtime writes for the first non-dry execution.
+
 You can assume that this repository currently have no users. So changes are allowed to be breaking, and we prefer to improve the design and structure over maintaining exact compatbility with current functionality.
 
 To access up-to-date guidance, use the CLI approach surface:

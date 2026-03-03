@@ -38,33 +38,40 @@ from engineeringagent.progress.handoff import ImplementProgressEnvelope
 from engineeringagent.progress import paths as progress_paths
 
 
+_PROGRESS_ROOT_PARTS = (".engineeringagent", "progress")
+
+
+def _progress_root(project_root: Path) -> Path:
+    return project_root.joinpath(*_PROGRESS_ROOT_PARTS)
+
+
 def test_progress_paths_contract(tmp_path: Path) -> None:
     assert progress_paths.runs_jsonl_path(tmp_path) == (
-        tmp_path / "progress" / "runs" / "runs.jsonl"
+        _progress_root(tmp_path) / "runs" / "runs.jsonl"
     )
     assert progress_paths.run_feature_log_path(tmp_path, "FEAT-040") == (
-        tmp_path / "progress" / "features" / "FEAT-040" / "run.txt"
+        _progress_root(tmp_path) / "features" / "FEAT-040" / "run.txt"
     )
     assert progress_paths.run_feature_log_reference(tmp_path, "FEAT-040") == (
-        "progress/features/FEAT-040/run.txt"
+        ".engineeringagent/progress/features/FEAT-040/run.txt"
     )
     assert progress_paths.run_feature_log_reference(tmp_path, "FEAT 040/../../") == (
-        "progress/features/FEAT_040/run.txt"
+        ".engineeringagent/progress/features/FEAT_040/run.txt"
     )
     assert progress_paths.run_feature_log_reference(tmp_path, "!!!") == (
-        "progress/features/unknown-feature/run.txt"
+        ".engineeringagent/progress/features/unknown-feature/run.txt"
     )
 
 
 def test_handoff_paths_contract(tmp_path: Path) -> None:
     assert progress_paths.handoff_markdown_path(tmp_path, "FEAT-040") == (
-        tmp_path / "progress" / "features" / "FEAT-040" / "handoff.md"
+        _progress_root(tmp_path) / "features" / "FEAT-040" / "handoff.md"
     )
     assert progress_paths.handoff_markdown_reference(tmp_path, "FEAT-040") == (
-        "progress/features/FEAT-040/handoff.md"
+        ".engineeringagent/progress/features/FEAT-040/handoff.md"
     )
     assert progress_paths.handoff_markdown_template_reference(tmp_path) == (
-        "progress/features/<FEATURE_ID>/handoff.md"
+        ".engineeringagent/progress/features/<FEATURE_ID>/handoff.md"
     )
 
 
@@ -817,7 +824,9 @@ def test_feedback_contract_accepts_verification_failure(tmp_path: Path) -> None:
     )
 
     run = json.loads(
-        (tmp_path / "progress" / "runs" / "runs.jsonl").read_text(encoding="utf-8")
+        (
+            _progress_root(tmp_path) / "runs" / "runs.jsonl"
+        ).read_text(encoding="utf-8")
     )
     assert run["verification_status"] == "failed:uv run pytest -q"
     assert run["verification_failed_command"] == "uv run pytest -q"
@@ -826,7 +835,7 @@ def test_feedback_contract_accepts_verification_failure(tmp_path: Path) -> None:
     assert run["failed_reviewer_id"] == "security-reviewer"
 
     feature_log = (
-        tmp_path / "progress" / "features" / "FEAT-040" / "run.txt"
+        _progress_root(tmp_path) / "features" / "FEAT-040" / "run.txt"
     ).read_text(encoding="utf-8")
     assert (
         "verification=failed:uv run pytest -q failed_command=uv run pytest -q"

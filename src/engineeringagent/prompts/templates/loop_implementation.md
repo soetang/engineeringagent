@@ -11,7 +11,7 @@ Always focus on the intention of the feature over overly specific instructions, 
 Objective: $objective
 Context: $context
 
-Before doing new work, read prior handoff context from progress/features/$feature_id/handoff.md when the file exists.
+Before doing new work, read prior handoff context from .engineeringagent/progress/features/$feature_id/handoff.md when the file exists.
 Write the hand-off so that the next developer can easily continue the work.
 Do not write the handoff file directly; loop/runtime owns handoff file appends.
 

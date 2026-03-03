@@ -31,10 +31,10 @@ def _write_progress_paths(project_root: Path) -> None:
                 "from pathlib import Path",
                 "",
                 "def runs_jsonl_path(project_root: Path) -> Path:",
-                "    return project_root / 'progress' / 'runs' / 'runs.jsonl'",
+                "    return project_root / '.engineeringagent' / 'progress' / 'runs' / 'runs.jsonl'",
                 "",
                 "def run_feature_log_path(project_root: Path, feature_id: str) -> Path:",
-                "    return project_root / 'progress' / 'features' / feature_id / 'run.txt'",
+                "    return project_root / '.engineeringagent' / 'progress' / 'features' / feature_id / 'run.txt'",
             ]
         )
         + "\n",
@@ -83,7 +83,7 @@ def test_logging_path_locality_rule_fails_on_inline_progress_path_literal(
     _write_module(
         tmp_path,
         "src/engineeringagent/loop_runtime/telemetry.py",
-        "PATH = 'progress/runs/runs.jsonl'\n",
+        "PATH = '.engineeringagent/progress/runs/runs.jsonl'\n",
     )
 
     proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
@@ -93,7 +93,7 @@ def test_logging_path_locality_rule_fails_on_inline_progress_path_literal(
     assert payload["status"] == "fail"
     assert violations == sorted(violations)
     assert any(
-        "src/engineeringagent/loop_runtime/telemetry.py:1 contains progress artifact path literal 'progress/runs/runs.jsonl'"
+        "src/engineeringagent/loop_runtime/telemetry.py:1 contains progress artifact path literal '.engineeringagent/progress/runs/runs.jsonl'"
         in violation
         for violation in violations
     )
