@@ -1,0 +1,13 @@
+exception_root_dirs:
+  - tests/meta
+  - tests/fitness
+  - tests/harness
+  - tests/helpers
+  - tests/fixtures
+exception_root_files:
+  - tests/conftest.py
+  - tests/__init__.py
+alias_topic_roots:
+  - vcs
+  - opencode
+  - reviewers

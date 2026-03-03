@@ -336,6 +336,23 @@ rules:
       - run
       - python
       - harness/fitness-functions/check_source_first_loop_commands.py
+  - rule_id: architecture.test-layout-module-mirroring
+    name: Test layout module mirroring
+    summary: Enforce module-mirroring test structure and explicit test-layout exceptions.
+    rationale: Replaces per-topic migration assertions with a single deterministic
+      policy that keeps tests aligned to source ownership boundaries.
+    remediation: Move tests into mirrored module paths under tests/, or enumerate
+      explicit exceptions for repository-level test policy surfaces.
+    scope: tests
+    severity: error
+    side_effect_free: true
+    adapter: command
+    config_file: policies/test_layout_module_mirroring.yaml
+    command:
+      - uv
+      - run
+      - python
+      - harness/fitness-functions/check_test_layout_module_mirroring.py
   - rule_id: architecture.harness-root-yaml-only
     name: Harness root YAML-only
     summary: Enforce YAML-only regular files directly under harness root.

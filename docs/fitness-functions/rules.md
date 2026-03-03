@@ -32,6 +32,7 @@ This file is generated from active manifest-declared fitness rules.
 | `architecture.repo-validators-boundary` | error | command | custom | `src/engineeringagent/checks/validate` | - | Keep repo validators modular by requiring extracted policy modules and a thin orchestrator. |
 | `architecture.scaffold-template-locality` | error | command | custom | `src/engineeringagent` | - | Keep scaffold template payloads in scaffold_templates assets. |
 | `architecture.source-first-loop-command-policy` | error | command | custom | `docs/spec/features/*.yaml and harness/checks.yaml` | - | Enforce source-first workspace execution for loop command surfaces. |
+| `architecture.test-layout-module-mirroring` | error | command | custom | `tests` | `harness/fitness-functions/policies/test_layout_module_mirroring.yaml` | Enforce module-mirroring test structure and explicit test-layout exceptions. |
 | `smoke.opencode-real-hello-world` | error | command | custom | `repository (temp repo)` | - | Validate the real agent loop end-to-end in an isolated temp repository. |
 
 ## Rule Details
@@ -221,6 +222,14 @@ This file is generated from active manifest-declared fitness rules.
 - Side-effect free: `true`
 - Rationale: Prevent stale cached package artifacts from bypassing current workspace source.
 - Remediation: Replace forbidden in-repo uvx self-invocations with source-first forms; prefer uv run engineeringagent ...
+
+### `architecture.test-layout-module-mirroring`
+
+- Name: Test layout module mirroring
+- Config file: `harness/fitness-functions/policies/test_layout_module_mirroring.yaml`
+- Side-effect free: `true`
+- Rationale: Replaces per-topic migration assertions with a single deterministic policy that keeps tests aligned to source ownership boundaries.
+- Remediation: Move tests into mirrored module paths under tests/, or enumerate explicit exceptions for repository-level test policy surfaces.
 
 ### `smoke.opencode-real-hello-world`
 
