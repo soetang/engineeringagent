@@ -125,11 +125,14 @@ def append_handoff_markdown_entry(
     progress_logging.append_text_block(log_path=handoff_path, lines=entry_lines)
 
 
-def _render_markdown_list(items: list[str]) -> list[str]:
-    if not items:
-        return ["- (none)"]
-    return [f"- {item}" for item in items]
-
-
 def _render_markdown_section(title: str, items: list[str]) -> list[str]:
-    return ["", f"### {title}", *_render_markdown_list(items), ""]
+    rendered_items = [item for item in items if not _is_placeholder_item(item)]
+    if not rendered_items:
+        return []
+    return ["", f"### {title}", *(f"- {item}" for item in rendered_items), ""]
+
+
+def _is_placeholder_item(item: str) -> bool:
+    """Return True for items that represent synthetic placeholder bullets."""
+
+    return item.strip() == "(none)"

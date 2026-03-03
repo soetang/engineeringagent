@@ -32,6 +32,7 @@ from engineeringagent.loop_runtime.telemetry import (
 from engineeringagent.progress.handoff import (
     ImplementProgressEnvelope,
     append_handoff_markdown_entry,
+    render_handoff_markdown_entry,
     parse_implement_progress_envelope,
 )
 
@@ -115,6 +116,35 @@ def test_handoff_markdown_append_creates_file_and_appends_entries(
     assert handoff_path.exists()
     assert first_size > 0
     assert second_size > first_size
+
+
+def test_handoff_markdown_entry_omits_empty_and_placeholder_sections() -> None:
+    envelope = ImplementProgressEnvelope(
+        summary="Minimizing handoff noise in markdown.",
+        completed_work=["Render compact completed-work bullets."],
+        verification=["uv run pytest -q tests/loop/test_loop_output.py -k handoff"],
+        remaining_work=["(none)", "Continue next subtask."],
+        blockers=["(none)"],
+    )
+    lines = render_handoff_markdown_entry(
+        attempt=3,
+        envelope=envelope,
+        timestamp="2026-03-03T19:18:56Z",
+    )
+
+    section_headers = [line for line in lines if line.startswith("### ")]
+    bullet_lines = [line for line in lines if line.startswith("- ")]
+
+    assert section_headers == [
+        "### Completed Work",
+        "### Verification",
+        "### Remaining Work",
+    ]
+    assert "### Blockers" not in section_headers
+    assert "### Verification" in section_headers
+    assert "### Remaining Work" in section_headers
+    assert "- (none)" not in bullet_lines
+    assert "- Continue next subtask." in lines
 
 
 def test_write_iteration_telemetry_appends_handoff_entry_from_envelope(
