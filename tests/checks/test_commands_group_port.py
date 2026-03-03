@@ -67,17 +67,33 @@ def test_parse_command_argv_rejects_blank_command() -> None:
         parse_command_argv("   ")
 
 
-def test_parse_command_argv_rejects_shell_operators() -> None:
-    with pytest.raises(ValueError, match="shell syntax is not supported"):
-        parse_command_argv("echo hi | cat")
-
-
-def test_parse_command_argv_rejects_embedded_backticks() -> None:
-    with pytest.raises(ValueError, match="shell syntax is not supported"):
-        parse_command_argv("echo `uname`")
-
-
-@pytest.mark.parametrize("command", ["echo $HOME", "echo ${HOME}"])
-def test_parse_command_argv_rejects_embedded_variable_expansion(command: str) -> None:
+@pytest.mark.parametrize(
+    "command",
+    [
+        "echo hi | cat",
+        "echo hi && echo again",
+        "echo hi; echo again",
+        "echo hi || echo again",
+        "echo hi > /tmp/engineeragent-checks.out",
+        "cat < /tmp/engineeragent-checks.in",
+        "echo hi |& cat",
+    ],
+)
+def test_parse_command_argv_rejects_shell_operators(command: str) -> None:
     with pytest.raises(ValueError, match="shell syntax is not supported"):
         parse_command_argv(command)
+
+
+@pytest.mark.parametrize(
+    ("command", "expected"),
+    [
+        ("echo $HOME", ("echo", "$HOME")),
+        ("echo ${HOME}", ("echo", "${HOME}")),
+        ("echo `uname`", ("echo", "`uname`")),
+    ],
+)
+def test_parse_command_argv_allows_embedded_shell_like_text(
+    command: str,
+    expected: tuple[str, ...],
+) -> None:
+    assert parse_command_argv(command) == expected

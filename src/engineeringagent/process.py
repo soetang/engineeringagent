@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 import shlex
 import subprocess
 from pathlib import Path
@@ -18,17 +17,8 @@ _UNSUPPORTED_SHELL_TOKENS = {
     ">>",
     "(",
     ")",
-    "$",
-    "`",
     "|&",
 }
-
-_UNSUPPORTED_EMBEDDED_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
-    (re.compile(r"`"), "`"),
-    (re.compile(r"\$\("), "$("),
-    (re.compile(r"\$\{"), "${"),
-    (re.compile(r"\$[A-Za-z_][A-Za-z0-9_]*"), "$VAR"),
-)
 
 
 def parse_command_argv(command: str) -> tuple[str, ...]:
@@ -57,10 +47,6 @@ def parse_command_argv(command: str) -> tuple[str, ...]:
         if token in _UNSUPPORTED_SHELL_TOKENS and token not in seen:
             seen.add(token)
             disallowed.append(token)
-        for pattern, label in _UNSUPPORTED_EMBEDDED_PATTERNS:
-            if pattern.search(token) and label not in seen:
-                seen.add(label)
-                disallowed.append(label)
     if disallowed:
         unique = ", ".join(disallowed)
         raise ValueError(

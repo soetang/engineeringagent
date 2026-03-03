@@ -932,17 +932,8 @@ def test_run_checks_reports_parse_failures_without_raising(tmp_path: Path) -> No
     assert "Remediation: provide a plain argv-style command" in result.output
 
 
-@pytest.mark.parametrize(
-    "command",
-    [
-        "echo `uname`",
-        "echo $HOME",
-        "echo ${HOME}",
-    ],
-)
-def test_run_checks_rejects_embedded_shell_syntax_without_execution(
+def test_run_checks_allows_literal_shell_like_command_arguments(
     tmp_path: Path,
-    command: str,
 ) -> None:
     _write_checks_yaml(
         tmp_path,
@@ -952,7 +943,7 @@ def test_run_checks_rejects_embedded_shell_syntax_without_execution(
                 "checks:",
                 "  smoke:",
                 "    type: command",
-                f"    command: '{command}'",
+                "    command: echo $HOME ${HOME} `uname`",
                 "",
             ]
         ),
@@ -960,10 +951,11 @@ def test_run_checks_rejects_embedded_shell_syntax_without_execution(
 
     result = run_checks(tmp_path, phase="iteration_end", checks=["commands"])
 
-    assert not result.ok
-    assert "[check:smoke] returncode=2" in result.output
-    assert "shell syntax is not supported" in result.output
-    assert "Remediation: provide a plain argv-style command" in result.output
+    assert result.ok
+    assert "[check:smoke] returncode=0" in result.output
+    stdout = result.output.split("[check:smoke] returncode=0", 1)[1].lstrip()
+    stdout_line = stdout.splitlines()[0]
+    assert stdout_line == "$HOME ${HOME} `uname`"
 
 
 def test_run_checks_rejects_shell_chaining_without_partial_execution(
@@ -992,6 +984,36 @@ def test_run_checks_rejects_shell_chaining_without_partial_execution(
     assert "shell syntax is not supported" in result.output
     assert "Remediation: provide a plain argv-style command" in result.output
     assert not marker_path.exists()
+
+
+def test_run_checks_rejects_shell_redirection_without_partial_execution(
+    tmp_path: Path,
+) -> None:
+    marker_path = tmp_path / "checks-shell-redirection-marker.txt"
+    redirected_path = tmp_path / "checks-shell-redirection.out"
+    command = f"touch {marker_path.as_posix()} > {redirected_path.as_posix()}"
+    _write_checks_yaml(
+        tmp_path,
+        "\n".join(
+            [
+                'contract_version: "1.0"',
+                "checks:",
+                "  smoke:",
+                "    type: command",
+                f"    command: {command}",
+                "",
+            ]
+        ),
+    )
+
+    result = run_checks(tmp_path, phase="iteration_end", checks=["commands"])
+
+    assert not result.ok
+    assert "[check:smoke] returncode=2" in result.output
+    assert "shell syntax is not supported" in result.output
+    assert "Remediation: provide a plain argv-style command" in result.output
+    assert not marker_path.exists()
+    assert not redirected_path.exists()
 
 
 def test_run_checks_reports_missing_executable_without_raising(tmp_path: Path) -> None:
