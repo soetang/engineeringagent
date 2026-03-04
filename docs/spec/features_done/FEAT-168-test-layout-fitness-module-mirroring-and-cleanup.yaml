@@ -3,7 +3,7 @@ title: Replace test layout migration checks with module-mirroring fitness invari
 type: test
 expected_commit_subject: 'test: enforce test layout with module-mirroring fitness
   rule'
-status: in-progress
+status: done
 priority: high
 objective: Replace per-topic migration-era layout assertions with one policy-driven
   fitness rule that enforces module-mirroring test layout, allows explicit exception
@@ -130,4 +130,4 @@ subtasks:
   - uv run engineeringagent validate --schema-only
   - uv run pytest -q
   - uv run engineeringagent checks run --phase iteration_end
-updated_at: '2026-03-03T22:00:12Z'
+updated_at: '2026-03-03T22:08:58Z'
