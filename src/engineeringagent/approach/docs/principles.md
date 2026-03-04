@@ -40,7 +40,7 @@ Practical effect:
 - Progress is auditable (`status`, `updated_at`, run logs).
 - Handoffs between humans and agents stay consistent.
 
-## 4) Automatic validation: verify every loop
+## 4) Automatic validation: verify every iteration
 
 Each iteration should run automatic validation before claiming progress.
 

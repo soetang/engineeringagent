@@ -6,17 +6,23 @@ changes before committing.
 
 ## What this is
 
-Engineeringagent helps you move from ideas to implementations through specs.
+The goal of Engineeringagent is to help you move from ideas to quality implementations. The core idea is setup a structure for harness for you coding agent (lint, checks, fitness functions, agentic reviewers etc). You have to decide your self which checks is nessesary for you - just write a spec for it and let the agent implement.  When a spec is done, implement it with engineeringagent - it will iterate over you spec. solve one task a a time clear its context and run nessesary checks and validations (automatically providing feedback to the agent.) 
+
+See [Principles](src/engineeringagent/approach/docs/principles.md) for core ideas with engineeringagent
+
+This means the flow is really simple:
 
 **Primary flow:** `spec -> implement`
 
 ## Minimal onboarding
 
-1. Start your favorite coding agent at the repository root.
-2. Ask it to write a spec for your change in `docs/spec/features/<ID>.yaml`.
-3. Run the spec with `uvx engineeringagent run <path-to-spec>`.
+1. Run "uvx engineeringagent init" - this will create the nessesary files and guide you to the through the first decisions.
+2. Start your favorite coding agent at the repository root.
+3. Ask it to write a spec for your change in `docs/spec/features/<ID>.yaml`.
+4. Implement the spec by `uvx engineeringagent run <path-to-spec>`.
 
-Prefer `--dry-run` for the first pass and review results before committing.
+OBS: This will commit changes to your code!
+Currently opencode and codex is supported. 
 
 ## AGENTS bootstrap fallback
 
@@ -28,11 +34,13 @@ Use `engineeringagent approach` for the overall workflow and guidance map.
 Use `engineeringagent approach list` to discover topics, then open one (for example `engineeringagent approach specifications`).
 ```
 
+This is important as the CLI contains the instructions for the agent how to use the engineeringagent. So to make sure it is used correctly the agent needs to be aware of it. Else keep the AGENTS.md slim - make it a map with links to relevant documentation. Becarefull documenting the code in AGENTS.md - it might confuse the agent more than it helås. Never use a AGENTS.md, made by an agent. 
+
 ## Allowlist recommendation for restricted agents
 
 If your repository uses restrictive agent command allowlists, add these commands:
 
-- `engineeringagent approach`
+- `engineeringagent approach *`
 - `engineeringagent schema *`
 
 ## Repository hygiene
