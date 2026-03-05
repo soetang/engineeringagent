@@ -256,6 +256,13 @@ def test_run_repo_validation_messages_returns_deterministic_tuple_in_append_orde
             "repo.policy.message",
             id="fallback-mapping",
         ),
+        pytest.param(
+            "README.md: some unknown validator message",
+            "README.md",
+            "some unknown validator message",
+            "repo.policy.message",
+            id="unknown-path-message-falls-back",
+        ),
     ],
 )
 def test_repo_message_to_issue_projects_deterministic_semantic_codes(
@@ -264,7 +271,7 @@ def test_repo_message_to_issue_projects_deterministic_semantic_codes(
     expected_message: str,
     expected_code: str,
 ) -> None:
-    """Legacy message projection keeps path/message parsing and code mapping stable."""
+    """Message projection keeps path/message parsing and code mapping stable."""
 
     issue = _repo_message_to_issue(message, validator_id="repo.policy")
 

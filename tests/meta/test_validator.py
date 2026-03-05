@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import shutil
 import subprocess
 from pathlib import Path
@@ -12,50 +13,7 @@ import yaml
 from engineeringagent.checks.validate.validator import (
     validate,
 )
-from engineeringagent.checks.validate.repo_policy_docs_map import (
-    iter_agents_docs_map_references,
-)
 from engineeringagent.checks.validate.repo_policy_purge_invariant import git_client
-from tests.cli.approach_fixture_data import (
-    APPROACH_AGENTS_BOOTSTRAP_LINES,
-    APPROACH_AGENTS_BOOTSTRAP_TEXT,
-)
-
-_BOOTSTRAP_PREFIX = "AGENTS docs bootstrap contract missing required line: "
-
-
-def _bootstrap_payload(message: str) -> str:
-    if _BOOTSTRAP_PREFIX in message:
-        return message.split(_BOOTSTRAP_PREFIX, 1)[1]
-    return message
-
-
-def assert_bootstrap_line_messages(
-    messages: list[str],
-    *expected_lines: str,
-    enforce_order: bool = False,
-) -> None:
-    """Assert every required bootstrap line fragment appears in messages."""
-    payloads = [_bootstrap_payload(message) for message in messages]
-    if not expected_lines:
-        assert not messages
-        return
-
-    for expected in expected_lines:
-        assert any(expected in payload for payload in payloads), (
-            f"missing required validator payload fragment: {expected}"
-        )
-
-    if not enforce_order:
-        return
-
-    positions: list[int] = []
-    for expected in expected_lines:
-        positions.append(
-            min(i for i, msg in enumerate(messages) if expected in msg)
-        )
-    assert positions == sorted(positions)
-
 
 def _invalid_spec_fixtures_dir(repo_root: Path) -> Path:
     return repo_root / "tests" / "fixtures" / "specs" / "invalid"
@@ -577,14 +535,15 @@ def test_validate_does_not_enforce_opencode_config_invariant(tmp_path: Path) -> 
     assert not violations
 
 
-def test_validate_accepts_agents_bootstrap_contract_when_complete(tmp_path: Path) -> None:
+def test_validate_allows_arbitrary_agents_content(tmp_path: Path) -> None:
     agents_path = tmp_path / "AGENTS.md"
     agents_path.write_text(
         "\n".join(
             [
                 "# AGENTS.md",
                 "",
-                APPROACH_AGENTS_BOOTSTRAP_TEXT,
+                "legacy line A",
+                "legacy line B",
                 "",
                 "## 6) First-Window Boot Sequence",
             ]
@@ -1042,87 +1001,7 @@ def test_validate_preserves_feature_status_invariant_rules(tmp_path: Path) -> No
     )
 
 
-def test_agents_bootstrap_extraction_prefers_exact_guide_lines(
-    tmp_path: Path,
-) -> None:
-    agents_path = tmp_path / "AGENTS.md"
-    agents_path.write_text(
-        "\n".join(
-            [
-                "# AGENTS.md",
-                "",
-                "- ignored line",
-                "",
-                *APPROACH_AGENTS_BOOTSTRAP_LINES,
-                "",
-                "## 6) First-Window Boot Sequence",
-            ]
-        )
-        + "\n",
-        encoding="utf-8",
-    )
-
-    references = iter_agents_docs_map_references(tmp_path)
-
-    assert references == [
-        (index, line)
-        for index, line in enumerate(APPROACH_AGENTS_BOOTSTRAP_LINES, start=5)
-    ]
-
-
-def test_agents_bootstrap_extraction_scopes_whole_file(tmp_path: Path) -> None:
-    agents_path = tmp_path / "AGENTS.md"
-    agents_path.write_text(
-        "\n".join(
-            [
-                "# AGENTS.md",
-                "",
-                APPROACH_AGENTS_BOOTSTRAP_LINES[1],
-                APPROACH_AGENTS_BOOTSTRAP_LINES[0],
-                APPROACH_AGENTS_BOOTSTRAP_LINES[2],
-                "",
-                "## 10) First-Window Boot Sequence",
-            ]
-        )
-        + "\n",
-        encoding="utf-8",
-    )
-
-    references = iter_agents_docs_map_references(tmp_path)
-
-    assert references == [
-        (3, APPROACH_AGENTS_BOOTSTRAP_LINES[1]),
-        (4, APPROACH_AGENTS_BOOTSTRAP_LINES[0]),
-        (5, APPROACH_AGENTS_BOOTSTRAP_LINES[2]),
-    ]
-
-
-def test_agents_docs_map_extraction_is_deterministic(tmp_path: Path) -> None:
-    agents_path = tmp_path / "AGENTS.md"
-    agents_path.write_text(
-        "\n".join(
-            [
-                "# AGENTS.md",
-                "",
-                "## 5) Documentation Layout Reference",
-                *APPROACH_AGENTS_BOOTSTRAP_LINES,
-            ]
-        )
-        + "\n",
-        encoding="utf-8",
-    )
-
-    first = iter_agents_docs_map_references(tmp_path)
-    second = iter_agents_docs_map_references(tmp_path)
-
-    assert first == [
-        (index, line)
-        for index, line in enumerate(APPROACH_AGENTS_BOOTSTRAP_LINES, start=4)
-    ]
-    assert second == first
-
-
-def test_validate_reports_missing_contract_with_non_bootstrap_agents_file(tmp_path: Path) -> None:
+def test_validate_allows_non_bootstrap_agents_file(tmp_path: Path) -> None:
     agents_path = tmp_path / "AGENTS.md"
     agents_path.write_text(
         "\n".join(
@@ -1140,11 +1019,15 @@ def test_validate_reports_missing_contract_with_non_bootstrap_agents_file(tmp_pa
 
     messages = validate(project_root=tmp_path)
 
-    assert_bootstrap_line_messages(
-        messages,
-        *APPROACH_AGENTS_BOOTSTRAP_LINES,
-        enforce_order=True,
+    assert all(
+        "AGENTS docs bootstrap contract missing required line" not in message
+        for message in messages
     )
+
+
+def test_repo_policy_docs_map_module_is_retired() -> None:
+    with pytest.raises(ModuleNotFoundError):
+        importlib.import_module("engineeringagent.checks.validate.repo_policy_docs_map")
 
 
 def test_meta_validator_has_no_docs_wording_assertions() -> None:
@@ -1158,15 +1041,14 @@ def test_meta_validator_has_no_docs_wording_assertions() -> None:
     assert True
 
 
-def test_validate_reports_missing_agents_bootstrap_lines(tmp_path: Path) -> None:
+def test_validate_allows_partial_legacy_agents_content(tmp_path: Path) -> None:
     agents_path = tmp_path / "AGENTS.md"
     agents_path.write_text(
         "\n".join(
             [
                 "# AGENTS.md",
                 "",
-                APPROACH_AGENTS_BOOTSTRAP_LINES[0],
-                APPROACH_AGENTS_BOOTSTRAP_LINES[2],
+                "legacy line A",
             ]
         )
         + "\n",
@@ -1175,20 +1057,20 @@ def test_validate_reports_missing_agents_bootstrap_lines(tmp_path: Path) -> None
 
     messages = validate(project_root=tmp_path)
 
-    assert_bootstrap_line_messages(
-        messages,
-        APPROACH_AGENTS_BOOTSTRAP_LINES[1],
+    assert all(
+        "AGENTS docs bootstrap contract missing required line" not in message
+        for message in messages
     )
 
 
-def test_validate_reports_multiple_missing_bootstrap_lines(tmp_path: Path) -> None:
+def test_validate_allows_single_legacy_agents_line(tmp_path: Path) -> None:
     agents_path = tmp_path / "AGENTS.md"
     agents_path.write_text(
         "\n".join(
             [
                 "# AGENTS.md",
                 "",
-                APPROACH_AGENTS_BOOTSTRAP_LINES[1],
+                "legacy line B",
             ]
         )
         + "\n",
@@ -1197,11 +1079,9 @@ def test_validate_reports_multiple_missing_bootstrap_lines(tmp_path: Path) -> No
 
     messages = validate(project_root=tmp_path)
 
-    assert_bootstrap_line_messages(
-        messages,
-        APPROACH_AGENTS_BOOTSTRAP_LINES[0],
-        APPROACH_AGENTS_BOOTSTRAP_LINES[2],
-        enforce_order=True,
+    assert all(
+        "AGENTS docs bootstrap contract missing required line" not in message
+        for message in messages
     )
 
 
@@ -1526,14 +1406,13 @@ def test_pytest_default_coverage_contract_is_declared(repo_root: Path) -> None:
     assert "not integration" not in addopts
 
 
-def test_validate_reports_missing_contract_for_empty_agents_file(tmp_path: Path) -> None:
+def test_validate_allows_empty_agents_file(tmp_path: Path) -> None:
     agents_path = tmp_path / "AGENTS.md"
     agents_path.write_text("", encoding="utf-8")
 
     messages = validate(project_root=tmp_path)
 
-    assert_bootstrap_line_messages(
-        messages,
-        *APPROACH_AGENTS_BOOTSTRAP_LINES,
-        enforce_order=True,
+    assert all(
+        "AGENTS docs bootstrap contract missing required line" not in message
+        for message in messages
     )

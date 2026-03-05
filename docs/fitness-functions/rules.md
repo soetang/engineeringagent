@@ -29,7 +29,6 @@ This file is generated from active manifest-declared fitness rules.
 | `architecture.no-stdlib-dataclasses-in-src` | error | command | custom | `src/engineeringagent` | - | Block stdlib dataclasses usage in production source models. |
 | `architecture.progress-log-path-locality` | error | command | custom | `src/engineeringagent` | - | Centralize loop progress artifact paths and writes behind approved helpers. |
 | `architecture.prompt-locality` | error | command | custom | `src/engineeringagent` | - | Keep canonical loop prompt content and template reads localized. |
-| `architecture.repo-validators-boundary` | error | command | custom | `src/engineeringagent/checks/validate` | - | Keep repo validators modular by requiring extracted policy modules and a thin orchestrator. |
 | `architecture.scaffold-template-locality` | error | command | custom | `src/engineeringagent` | - | Keep scaffold template payloads in scaffold_templates assets. |
 | `architecture.source-first-loop-command-policy` | error | command | custom | `docs/spec/features/*.yaml and harness/checks.yaml` | - | Enforce source-first workspace execution for loop command surfaces. |
 | `architecture.test-layout-module-mirroring` | error | command | custom | `tests` | `harness/fitness-functions/policies/test_layout_module_mirroring.yaml` | Enforce module-mirroring test structure and explicit test-layout exceptions. |
@@ -201,13 +200,6 @@ This file is generated from active manifest-declared fitness rules.
 - Side-effect free: `true`
 - Rationale: Prevents prompt drift and duplicate canonical wording across modules.
 - Remediation: Move canonical prompt text and template reads to engineeringagent.prompts templates/renderer modules.
-
-### `architecture.repo-validators-boundary`
-
-- Name: Repo validators boundary
-- Side-effect free: `true`
-- Rationale: Prevents regressions where repo policy logic drifts back into a monolithic validator module.
-- Remediation: Keep policy logic in repo_policy_* modules and limit repo_validators.py to orchestration and projection wiring.
 
 ### `architecture.scaffold-template-locality`
 

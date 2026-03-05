@@ -17,7 +17,6 @@ from engineeringagent.config import (
 from engineeringagent.loop_runtime.run_context import LoopRun, RunConfig
 from engineeringagent.schema_registry import list_schema_ids, schema_from_registry
 from tests.cli.approach_fixture_data import (
-    APPROACH_AGENTS_BOOTSTRAP_LINES,
     APPROACH_TOPIC_IDS,
 )
 
@@ -655,13 +654,14 @@ def test_main_init_command_uses_typer_handler(monkeypatch: Any, tmp_path: Path) 
     }
 
 
-def test_validate_fails_on_agents_bootstrap_contract_errors(tmp_path: Path, capsys: Any) -> None:
+def test_validate_allows_custom_agents_content(tmp_path: Path, capsys: Any) -> None:
     (tmp_path / "AGENTS.md").write_text(
         "\n".join(
             [
                 "# AGENTS.md",
                 "",
-                *APPROACH_AGENTS_BOOTSTRAP_LINES[:2],
+                "Custom user-owned guidance.",
+                "No bootstrap template lines required.",
             ]
         )
         + "\n",
@@ -673,11 +673,8 @@ def test_validate_fails_on_agents_bootstrap_contract_errors(tmp_path: Path, caps
     )
     output = capsys.readouterr().out
 
-    assert code == 1
-    assert (
-        "AGENTS.md:1: AGENTS docs bootstrap contract missing required line: "
-        f"{APPROACH_AGENTS_BOOTSTRAP_LINES[2]}"
-    ) in output
+    assert code == 0
+    assert "AGENTS docs bootstrap contract" not in output
 
 
 def test_cmd_validate_delegates_to_run_checks(

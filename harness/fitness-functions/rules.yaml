@@ -72,20 +72,6 @@ rules:
       - run
       - python
       - harness/fitness-functions/check_agents_backends_boundary.py
-  - rule_id: architecture.repo-validators-boundary
-    name: Repo validators boundary
-    summary: Keep repo validators modular by requiring extracted policy modules and a thin orchestrator.
-    rationale: Prevents regressions where repo policy logic drifts back into a monolithic validator module.
-    remediation: Keep policy logic in repo_policy_* modules and limit repo_validators.py to orchestration and projection wiring.
-    scope: src/engineeringagent/checks/validate
-    severity: error
-    side_effect_free: true
-    adapter: command
-    command:
-      - uv
-      - run
-      - python
-      - harness/fitness-functions/check_repo_validators_boundary.py
   - rule_id: architecture.backend-literal-locality-budget
     name: Backend literal locality budget
     summary: Enforce a zero-budget backend literal locality boundary outside allowed packages.

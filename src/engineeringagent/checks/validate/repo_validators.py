@@ -22,9 +22,6 @@ from engineeringagent.checks.validate.repo_policy_feature_ids import (
     FeatureIdInvariantContext,
     append_feature_id_invariant_issues,
 )
-from engineeringagent.checks.validate.repo_policy_docs_map import (
-    append_agents_docs_map_issues,
-)
 from engineeringagent.checks.validate.repo_policy_purge_invariant import (
     append_purge_invariant_issues,
 )
@@ -45,12 +42,6 @@ _MESSAGE_PREFIX_CODES: tuple[tuple[str, str], ...] = (
         "verification commands must be single-line strings",
         "repo.policy.verification-single-line",
     ),
-    (
-        "docs-map section is present but contains no docs/* references",
-        "repo.policy.docs-map-empty",
-    ),
-    ("docs-map glob matches no paths", "repo.policy.docs-map-glob-empty"),
-    ("docs-map path does not exist", "repo.policy.docs-map-path-missing"),
     ("completed feature specs must be archived", "repo.policy.done-archival"),
     ("unsupported configuration file; remove", "repo.policy.unsupported-config-file"),
 )
@@ -229,10 +220,6 @@ def run_repo_validation(
     )
     _append_done_feature_issues(messages, done_files)
     _append_potential_features_issues(messages, potential_features_path)
-    append_agents_docs_map_issues(
-        messages,
-        project_root=project_root,
-    )
     append_purge_invariant_issues(messages, project_root=project_root)
 
 
