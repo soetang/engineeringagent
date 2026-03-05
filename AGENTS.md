@@ -1,6 +1,6 @@
 # AGENTS.md
 
-In this repository, run EngineeringAgent CLI commands with `uvx engineeringagent ...`.
+In this repository, run EngineeringAgent CLI commands with `uv run engineeringagent ...`.
 
 While planning use:
 Use `engineeringagent approach` for the overall workflow and guidance map.
