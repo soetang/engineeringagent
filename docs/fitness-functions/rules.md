@@ -11,8 +11,6 @@ This file is generated from active manifest-declared fitness rules.
 | `architecture.checks-import-surface` | error | command | custom | `src/engineeringagent` | - | Enforce a narrow import surface for engineeringagent.checks. |
 | `architecture.checks-own-prompt-feedback-rendering` | error | command | custom | `src/engineeringagent/loop_runtime/**, src/engineeringagent/loop.py, and src/engineeringagent/prompts/renderer.py` | - | Fail when loop/prompt code performs checks-specific feedback shaping outside checks strategies. |
 | `architecture.dep-directionality` | error | command | custom | `src/engineeringagent` | - | Enforce core module import direction boundaries. |
-| `architecture.feedback-no-truncation` | error | command | custom | `src/engineeringagent/prompts/renderer.py` | - | Block truncation-by-slicing in feedback prompt injection. |
-| `architecture.fitness-catalog-docs-sync` | error | command | custom | `docs/fitness-functions/rules.md` | - | Enforce byte-for-byte sync between docs catalog markdown and generated catalog output. |
 | `architecture.harness-root-yaml-only` | error | command | custom | `harness/ (regular files at root)` | - | Enforce YAML-only regular files directly under harness root. |
 | `architecture.harness-src-import-allowlist` | error | command | custom | `harness/fitness-functions` | - | Restrict harness fitness functions to a narrow supported engineeringagent surface. |
 | `architecture.iteration-pipeline-observer-decoupling` | error | command | custom | `src/engineeringagent/loop_runtime/iteration.py` | - | Keep iteration pipeline free of telemetry and console side effects. |
@@ -71,20 +69,6 @@ This file is generated from active manifest-declared fitness rules.
 - Side-effect free: `true`
 - Rationale: Keeps orchestration and contracts layered for reviewability.
 - Remediation: Refactor imports to follow the declared architecture boundaries.
-
-### `architecture.feedback-no-truncation`
-
-- Name: Feedback no truncation
-- Side-effect free: `true`
-- Rationale: Prevents prompt retries from losing the most relevant failure details.
-- Remediation: Remove truncation-by-slicing from feedback injection; bound feedback by contract caps and canonical re-serialization.
-
-### `architecture.fitness-catalog-docs-sync`
-
-- Name: Fitness catalog docs sync
-- Side-effect free: `true`
-- Rationale: Prevents stale generated fitness catalog docs from drifting from the current manifest and renderer contract.
-- Remediation: Regenerate docs/fitness-functions/rules.md via uv run engineeringagent checks catalog --format markdown --output docs/fitness-functions/rules.md.
 
 ### `architecture.harness-root-yaml-only`
 

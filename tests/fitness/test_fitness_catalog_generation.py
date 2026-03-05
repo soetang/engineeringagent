@@ -150,3 +150,11 @@ def test_format_config_file_returns_project_relative_path(tmp_path: Path) -> Non
         format_config_file(config_path, project_root=tmp_path)
         == "harness/fitness-functions/policies/custom_shell_contract.yaml"
     )
+
+
+def test_repo_fitness_catalog_excludes_retired_rigid_rules(repo_root: Path) -> None:
+    payload = json.loads(render_fitness_catalog(repo_root, format="json"))
+    rule_ids = {entry["rule_id"] for entry in payload}
+
+    assert "architecture.feedback-no-truncation" not in rule_ids
+    assert "architecture.fitness-catalog-docs-sync" not in rule_ids

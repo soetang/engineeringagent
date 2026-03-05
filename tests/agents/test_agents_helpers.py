@@ -121,6 +121,17 @@ def test_classify_backend_exception_maps_generic_backend_error() -> None:
     assert message == "bad"
 
 
+def test_classify_backend_exception_falls_back_to_backend_failure_message() -> None:
+    exc = agents.AgentBackendError(
+        backend="custom",
+        message="",
+        process=agents.AgentBackendFailureDetails(returncode=1, stderr=""),
+    )
+    failed_gate, message = agents.classify_backend_exception(exc)
+    assert failed_gate == "custom_build"
+    assert message == "custom backend failure"
+
+
 def test_classify_backend_exception_maps_unknown_exception_type() -> None:
     failed_gate, message = agents.classify_backend_exception(RuntimeError("boom"))
     assert failed_gate == "agent_error"
