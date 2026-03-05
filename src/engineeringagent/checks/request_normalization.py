@@ -26,6 +26,7 @@ GROUP_ORDER = (
     CHECK_GROUP_REVIEWERS,
 )
 DEFAULT_GROUPS = (
+    CHECK_GROUP_VALIDATE,
     CHECK_GROUP_COMMANDS,
     CHECK_GROUP_FITNESS,
 )
@@ -56,6 +57,7 @@ class RunChecksRequest(BaseModel):
     schema_only: bool
     dry_run: bool
     collect_changed_paths_fn: Callable[..., object] | None
+    phase_only_policy: bool
 
 
 class RunChecksKwargs(TypedDict, total=False):
@@ -193,6 +195,13 @@ def normalize_groups(
     return tuple(group for group in GROUP_ORDER if group in deduped)
 
 
+def reviewers_group_selected(groups: list[str] | tuple[str, ...] | None) -> bool:
+    """Return whether the normalized selection includes reviewer checks."""
+    if not groups:
+        return False
+    return any(str(group).strip() == CHECK_GROUP_REVIEWERS for group in groups)
+
+
 def coerce_project_root(project_root: str | Path) -> Path:
     """Resolve the project root path for check execution."""
     return Path(project_root).resolve()
@@ -258,7 +267,7 @@ def build_run_checks_request(
     if schema_only and CHECK_GROUP_VALIDATE not in ordered_groups:
         raise ValueError("schema_only requires the validate checks group")
 
-    if CHECK_GROUP_REVIEWERS in ordered_groups and feature_path is None:
+    if reviewers_group_selected(ordered_groups) and feature_path is None:
         raise ValueError("feature_path is required when reviewers checks are selected")
 
     request = RunChecksRequest(
@@ -274,6 +283,7 @@ def build_run_checks_request(
         schema_only=schema_only,
         dry_run=dry_run,
         collect_changed_paths_fn=collect_changed_paths_fn,
+        phase_only_policy=(selection_profile == "default"),
     )
     return root, request
 

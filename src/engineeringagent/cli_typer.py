@@ -75,6 +75,11 @@ def _build_typer_checks_app(command_module: ModuleType) -> typer.Typer:
             "--phase",
             help="check execution phase to run (iteration_end|feature_done|manual)",
         ),
+        all_phases: bool = typer.Option(
+            False,
+            "--all-phases",
+            help="run checks across iteration_end, feature_done, and manual phases",
+        ),
         base: str | None = typer.Option(
             None,
             "--base",
@@ -115,6 +120,7 @@ def _build_typer_checks_app(command_module: ModuleType) -> typer.Typer:
             check_id=check_id,
             feature_path=resolved_feature_path,
             phase=phase,
+            all_phases=all_phases,
             base=base,
             head=head,
             verbose_output=verbose_output,

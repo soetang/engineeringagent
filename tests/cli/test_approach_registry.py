@@ -196,3 +196,16 @@ def test_approach_topic_lookup_accepts_aliases() -> None:
 def test_approach_topic_lookup_raises_for_unknown() -> None:
     with pytest.raises(registry.UnknownApproachIdError):
         registry.resolve_approach_topic_id("does-not-exist")
+
+
+@pytest.mark.parametrize("topic_id", ["quality-checks", "workflow"])
+def test_approach_topics_resolve_stable_resource_contract(topic_id: str) -> None:
+    topic = next(
+        item for item in registry.list_approach_topics() if item.canonical_id == topic_id
+    )
+    content = registry.load_topic_content(topic_id)
+    frontmatter = _expected_frontmatter(content)
+
+    assert topic.filename.endswith(".md")
+    assert Path(topic.path).name == topic.filename
+    assert frontmatter["approach_id"] == topic_id

@@ -30,6 +30,7 @@ class CheckContext(NamedTuple):
     feedback: str | None = None
     run_agent_fn: Any | None = None
     verbose_output: bool = False
+    phase_only_policy: bool = False
 
 
 class CheckDecision(TypedDict):
@@ -90,6 +91,7 @@ class ChecksPlanner(Protocol):
         *,
         phase: HarnessCheckPhase,
         changed_paths: ChangedPathsResult,
+        phase_only_policy: bool = False,
     ) -> Sequence[PlannedCheckRecord]:
         raise NotImplementedError
 
@@ -148,6 +150,7 @@ def plan_doc_strategy_decisions(
             doc,
             phase=context.phase,
             changed_paths=context.changed_paths,
+            phase_only_policy=context.phase_only_policy,
         ),
         check_type=check_type,
         phase=context.phase,

@@ -54,7 +54,7 @@ class _StubStrategy:
         return None
 
 
-def test_run_checks_defaults_to_commands_and_fitness(tmp_path: Path) -> None:
+def test_run_checks_defaults_to_validate_commands_and_fitness(tmp_path: Path) -> None:
     _write_checks_yaml(
         tmp_path,
         "\n".join(
@@ -64,15 +64,169 @@ def test_run_checks_defaults_to_commands_and_fitness(tmp_path: Path) -> None:
                 "  smoke:",
                 "    type: command",
                 '    command: "python -c \\"print(\'ok\')\\""',
+                "  fit_all:",
+                "    type: fitness",
+                "    scope: all",
                 "",
             ]
         ),
     )
 
-    result = run_checks(tmp_path, phase="iteration_end")
+    result = run_checks(tmp_path, phase="iteration_end", dry_run=True)
     assert result.ok
-    assert [decision["check_id"] for decision in result.decisions] == ["smoke"]
-    assert [record.check_id for record in result.executions] == ["smoke"]
+    assert [decision["check_type"] for decision in result.decisions] == [
+        "validate",
+        "command",
+        "fitness",
+    ]
+    assert result.executions == ()
+
+
+def test_run_checks_direct_mode_ignores_on_change_for_phase_matched_checks(
+    tmp_path: Path,
+) -> None:
+    _write_checks_yaml(
+        tmp_path,
+        "\n".join(
+            [
+                'contract_version: "1.0"',
+                "checks:",
+                "  cmd_on_change:",
+                "    type: command",
+                "    command: echo ok",
+                "    when:",
+                "      phase: feature_done",
+                "      on_change:",
+                "        - src/**/*.py",
+                "  fit_on_change:",
+                "    type: fitness",
+                "    scope: all",
+                "    when:",
+                "      phase: feature_done",
+                "      on_change:",
+                "        - src/**/*.py",
+                "  doc_review:",
+                "    type: reviewer",
+                "    prompt_file: harness/reviewers/prompts/doc_review.md",
+                "    when:",
+                "      phase: feature_done",
+                "      on_change:",
+                "        - src/**/*.py",
+                "",
+            ]
+        ),
+    )
+    prompt_path = tmp_path / "harness" / "reviewers" / "prompts" / "doc_review.md"
+    prompt_path.parent.mkdir(parents=True, exist_ok=True)
+    prompt_path.write_text("# reviewer", encoding="utf-8")
+    result = run_checks(
+        tmp_path,
+        phase="feature_done",
+        checks=["commands", "fitness", "reviewers"],
+        feature_path="docs/spec/features/FEAT-175.yaml",
+        dry_run=True,
+        collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
+            paths=("README.md",),
+            run_all=False,
+            reason=None,
+        ),
+    )
+
+    assert result.ok
+    assert [decision["check_id"] for decision in result.decisions] == [
+        "cmd_on_change",
+        "fit_on_change",
+        "doc_review",
+    ]
+    assert {decision["decision"] for decision in result.decisions} == {"run"}
+
+
+def test_run_checks_loop_runtime_mode_still_honors_on_change(
+    tmp_path: Path,
+) -> None:
+    _write_checks_yaml(
+        tmp_path,
+        "\n".join(
+            [
+                'contract_version: "1.0"',
+                "checks:",
+                "  cmd_on_change:",
+                "    type: command",
+                "    command: echo ok",
+                "    when:",
+                "      phase: iteration_end",
+                "      on_change:",
+                "        - src/**/*.py",
+                "  fit_on_change:",
+                "    type: fitness",
+                "    scope: all",
+                "    when:",
+                "      phase: iteration_end",
+                "      on_change:",
+                "        - src/**/*.py",
+                "",
+            ]
+        ),
+    )
+
+    result = run_checks(
+        tmp_path,
+        phase="iteration_end",
+        dry_run=True,
+        collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
+            paths=("README.md",),
+            run_all=False,
+            reason=None,
+        ),
+    )
+
+    assert result.ok
+    decisions = [d for d in result.decisions if d["check_type"] in {"command", "fitness"}]
+    assert [decision["decision"] for decision in decisions] == ["skip", "skip"]
+    assert [decision["reason"] for decision in decisions] == [
+        "no_on_change_match",
+        "no_on_change_match",
+    ]
+
+
+def test_run_checks_direct_mode_runs_manual_phase_checks(
+    tmp_path: Path,
+) -> None:
+    _write_checks_yaml(
+        tmp_path,
+        "\n".join(
+            [
+                'contract_version: "1.0"',
+                "checks:",
+                "  manual_cmd:",
+                "    type: command",
+                "    command: echo ok",
+                "    when:",
+                "      phase: manual",
+                "      on_change:",
+                "        - src/**/*.py",
+                "",
+            ]
+        ),
+    )
+
+    result = run_checks(
+        tmp_path,
+        phase="manual",
+        checks=["commands"],
+        dry_run=True,
+        collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
+            paths=("README.md",),
+            run_all=False,
+            reason=None,
+        ),
+    )
+
+    assert result.ok
+    assert len(result.decisions) == 1
+    assert result.decisions[0]["check_id"] == "manual_cmd"
+    assert result.decisions[0]["decision"] == "run"
+    assert result.decisions[0]["reason"] == "phase_only_policy"
 
 
 def test_run_checks_group_order_is_deterministic(
@@ -213,6 +367,7 @@ def test_resolve_changed_paths_uses_request_collector_with_base_head(
         schema_only=False,
         dry_run=False,
         collect_changed_paths_fn=_collector,
+        phase_only_policy=False,
     )
 
     result = _resolve_changed_paths(tmp_path, request)

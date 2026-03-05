@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Callable, TypeVar, Sequence
 
+from pydantic import BaseModel, ConfigDict
+
 from engineeringagent.changed_paths import (
     ChangedPathsResult,
     FALLBACK_CHANGE_DISCOVERY_REASON,
@@ -18,9 +20,21 @@ ALWAYS_RUN_NO_ON_CHANGE_REASON = "always_run_no_on_change"
 MATCHED_ON_CHANGE_REASON = "matched_on_change"
 NO_ON_CHANGE_MATCH_REASON = "no_on_change_match"
 MANUAL_SKIP_REASON = "manual"
+PHASE_ONLY_POLICY_REASON = "phase_only_policy"
 
 
 _PlannedCheckT = TypeVar("_PlannedCheckT")
+
+
+class PlanningPolicyContext(BaseModel):
+    """Shared deterministic policy inputs for planning decisions."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    phase: HarnessCheckPhase
+    changed_paths: ChangedPathsResult
+    phase_only_policy: bool = False
+    path_matcher: Callable[[str, Sequence[str]], bool] = path_matches_any_glob
 
 
 def effective_default_phase(doc: HarnessChecksDocument) -> HarnessCheckPhase:
@@ -48,9 +62,13 @@ def plan_run_skip_decision(
     phase: HarnessCheckPhase,
     on_change: Sequence[str] | None,
     changed_paths: ChangedPathsResult,
+    phase_only_policy: bool = False,
     path_matcher: Callable[[str, Sequence[str]], bool] = path_matches_any_glob,
 ) -> tuple[str, str]:
     """Return deterministic run/skip decision and reason for phase/on_change policy."""
+    if phase_only_policy:
+        return "run", PHASE_ONLY_POLICY_REASON
+
     if phase == HarnessCheckPhase.MANUAL:
         return "skip", MANUAL_SKIP_REASON
 
@@ -70,27 +88,25 @@ def plan_run_skip_decision(
 def plan_check_when_decision(
     *,
     doc: HarnessChecksDocument,
-    phase: HarnessCheckPhase,
     check_when: HarnessCheckWhenDefinition | None,
-    changed_paths: ChangedPathsResult,
-    path_matcher: Callable[[str, Sequence[str]], bool] = path_matches_any_glob,
+    context: PlanningPolicyContext,
 ) -> tuple[str, str] | None:
     """Return a check decision for phase/on_change or None when phase mismatches."""
-    if effective_check_phase(doc=doc, check_when=check_when) != phase:
+    if effective_check_phase(doc=doc, check_when=check_when) != context.phase:
         return None
     return plan_run_skip_decision(
-        phase=phase,
+        phase=context.phase,
         on_change=check_when.on_change if check_when is not None else None,
-        changed_paths=changed_paths,
-        path_matcher=path_matcher,
+        changed_paths=context.changed_paths,
+        phase_only_policy=context.phase_only_policy,
+        path_matcher=context.path_matcher,
     )
 
 
 def plan_checks_for_definition_type(
     doc: HarnessChecksDocument,
     *,
-    phase: HarnessCheckPhase,
-    changed_paths: ChangedPathsResult,
+    context: PlanningPolicyContext,
     definition_type: type[Any],
     make_record: Callable[[str, str, str], _PlannedCheckT],
 ) -> list[_PlannedCheckT]:
@@ -102,9 +118,8 @@ def plan_checks_for_definition_type(
             continue
         decision = plan_check_when_decision(
             doc=doc,
-            phase=phase,
             check_when=getattr(check, "when", None),
-            changed_paths=changed_paths,
+            context=context,
         )
         if decision is None:
             continue

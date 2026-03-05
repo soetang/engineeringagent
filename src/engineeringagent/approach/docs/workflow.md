@@ -21,7 +21,7 @@ Run the loop with: `engineeringagent run --all`
 
 ## Verification Baseline
 
-- Primary verification flow: `engineeringagent checks run` (consumes `harness/checks.yaml`).
+- Primary verification flow: `engineeringagent checks run --all-phases` (consumes `harness/checks.yaml`).
 - Optional spec-only validation: `engineeringagent validate --schema-only`.
 
 ## Loop outcome taxonomy

@@ -90,7 +90,10 @@ def test_cli_surface_inventory_option_spellings() -> None:
                 "--verbose-output",
             ],
         ),
-        (["checks", "run", "--help"], ["--checks", "--check-id", "--phase"]),
+        (
+            ["checks", "run", "--help"],
+            ["--checks", "--check-id", "--phase", "--all-phases"],
+        ),
         (
             ["checks", "catalog", "--help"],
             ["--manifest-path", "--format", "--output"],

@@ -24,15 +24,18 @@ Use this playbook as a practical default, then apply judgment based on risk.
 
 - During normal implementation loops:
   - `engineeringagent run --all` (consumes `harness/checks.yaml`)
+- For explicit phase-driven checks from CLI:
+  - `engineeringagent checks run --all-phases`
+  - Direct `checks run` defaults to deterministic non-reviewer groups (`validate`, `commands`, `fitness`) and direct runs ignore `when.on_change`.
 - Before commit or merge:
   - Run the relevant direct tools (`ruff ...`, `pyright ...`, `pytest ...`)
 - When editing feature specs or schema-related files:
   - `engineeringagent validate --schema-only`
 - When debugging a specific class of failure:
-- Ruff: `ruff check src/engineeringagent harness`
-- Pylint: `pylint --score=n --reports=n src/engineeringagent tests harness`
-- Pyright: `pyright src/engineeringagent tests harness`
-- Unit tests: `pytest -q`
+  - Ruff: `ruff check src/engineeringagent harness`
+  - Pylint: `pylint --score=n --reports=n src/engineeringagent tests harness`
+  - Pyright: `pyright src/engineeringagent tests harness`
+  - Unit tests: `pytest -q`
   - Fitness functions: `engineeringagent checks run --checks fitness --phase iteration_end`
 
 ## How to Think About Fitness Functions

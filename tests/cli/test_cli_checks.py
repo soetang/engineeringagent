@@ -6,6 +6,7 @@ import pytest
 from typer.testing import CliRunner
 
 from engineeringagent import cli as cli_module
+from engineeringagent.changed_paths import ChangedPathsResult
 from engineeringagent.checks.api import ChecksRunResult
 from engineeringagent.checks.strategy_contracts import CheckExecutionRecord
 
@@ -163,6 +164,51 @@ def test_cli_checks_run_reviewers_without_feature_path_is_actionable_error(
             str(tmp_path),
             "checks",
             "run",
+            "--checks",
+            "reviewers",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "checks input error:" in result.stdout
+    assert "feature_path is required when reviewers checks are selected" in result.stdout
+
+
+def test_cli_checks_run_all_phases_reviewers_without_feature_path_is_actionable_error(
+    tmp_path: Path,
+) -> None:
+    runner = CliRunner(mix_stderr=False)
+    result = runner.invoke(
+        cli_module.build_typer_app(),
+        [
+            "--project-root",
+            str(tmp_path),
+            "checks",
+            "run",
+            "--checks",
+            "reviewers",
+            "--all-phases",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "checks input error:" in result.stdout
+    assert "feature_path is required when reviewers checks are selected" in result.stdout
+
+
+def test_cli_checks_run_mixed_groups_with_reviewers_requires_feature_path(
+    tmp_path: Path,
+) -> None:
+    runner = CliRunner(mix_stderr=False)
+    result = runner.invoke(
+        cli_module.build_typer_app(),
+        [
+            "--project-root",
+            str(tmp_path),
+            "checks",
+            "run",
+            "--checks",
+            "commands",
             "--checks",
             "reviewers",
         ],
@@ -467,3 +513,176 @@ def test_cli_checks_run_failure_emits_runtime_type_without_failed_group(
 
     assert result.exit_code == 1
     assert "checks failed: type=command check_id=smoke" in result.stdout
+
+
+def test_cli_checks_run_ignores_on_change_for_explicit_phase_execution(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    harness_dir = tmp_path / "harness"
+    harness_dir.mkdir(parents=True, exist_ok=True)
+    (harness_dir / "checks.yaml").write_text(
+        "\n".join(
+            [
+                'contract_version: "1.0"',
+                "checks:",
+                "  smoke:",
+                "    type: command",
+                '    command: "python -c \\"print(\'ok\')\\""',
+                "    when:",
+                "      phase: feature_done",
+                "      on_change:",
+                "        - src/**/*.py",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "engineeringagent.checks.api.collect_changed_paths",
+        lambda *_args, **_kwargs: ChangedPathsResult(
+            paths=("README.md",),
+            run_all=False,
+            reason=None,
+        ),
+        raising=True,
+    )
+
+    runner = CliRunner(mix_stderr=False)
+    result = runner.invoke(
+        cli_module.build_typer_app(),
+        [
+            "--project-root",
+            str(tmp_path),
+            "checks",
+            "run",
+            "--checks",
+            "commands",
+            "--phase",
+            "feature_done",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "[check:smoke]" in result.stdout
+    assert "checks run: ok" in result.stdout
+
+
+def test_cli_checks_run_all_phases_fans_out_in_deterministic_order(
+    tmp_path: Path,
+) -> None:
+    harness_dir = tmp_path / "harness"
+    harness_dir.mkdir(parents=True, exist_ok=True)
+    (harness_dir / "checks.yaml").write_text(
+        "\n".join(
+            [
+                'contract_version: "1.0"',
+                "checks:",
+                "  phase_iteration:",
+                "    type: command",
+                '    command: "python -c \\"print(\'iteration\')\\""',
+                "    when:",
+                "      phase: iteration_end",
+                "  phase_feature:",
+                "    type: command",
+                '    command: "python -c \\"print(\'feature\')\\""',
+                "    when:",
+                "      phase: feature_done",
+                "  phase_manual:",
+                "    type: command",
+                '    command: "python -c \\"print(\'manual\')\\""',
+                "    when:",
+                "      phase: manual",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    runner = CliRunner(mix_stderr=False)
+    result = runner.invoke(
+        cli_module.build_typer_app(),
+        [
+            "--project-root",
+            str(tmp_path),
+            "checks",
+            "run",
+            "--checks",
+            "commands",
+            "--all-phases",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "[phase:iteration_end]" in result.stdout
+    assert "[phase:feature_done]" in result.stdout
+    assert "[phase:manual]" in result.stdout
+    assert result.stdout.index("[phase:iteration_end]") < result.stdout.index(
+        "[phase:feature_done]"
+    )
+    assert result.stdout.index("[phase:feature_done]") < result.stdout.index(
+        "[phase:manual]"
+    )
+    assert "[check:phase_iteration]" in result.stdout
+    assert "[check:phase_feature]" in result.stdout
+    assert "[check:phase_manual]" in result.stdout
+    assert "checks run: ok" in result.stdout
+
+
+def test_cli_checks_run_all_phases_stops_at_first_failed_phase(
+    tmp_path: Path,
+) -> None:
+    harness_dir = tmp_path / "harness"
+    harness_dir.mkdir(parents=True, exist_ok=True)
+    (harness_dir / "checks.yaml").write_text(
+        "\n".join(
+            [
+                'contract_version: "1.0"',
+                "checks:",
+                "  phase_iteration:",
+                "    type: command",
+                '    command: "python -c \\"print(\'iteration\')\\""',
+                "    when:",
+                "      phase: iteration_end",
+                "  phase_feature_fail:",
+                "    type: command",
+                '    command: "python -c \\"import sys; sys.exit(1)\\""',
+                "    when:",
+                "      phase: feature_done",
+                "  phase_manual:",
+                "    type: command",
+                '    command: "python -c \\"print(\'manual\')\\""',
+                "    when:",
+                "      phase: manual",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    runner = CliRunner(mix_stderr=False)
+    result = runner.invoke(
+        cli_module.build_typer_app(),
+        [
+            "--project-root",
+            str(tmp_path),
+            "checks",
+            "run",
+            "--checks",
+            "commands",
+            "--all-phases",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "[phase:iteration_end]" in result.stdout
+    assert "[phase:feature_done]" in result.stdout
+    assert "[phase:manual]" not in result.stdout
+    assert "[check:phase_iteration]" in result.stdout
+    assert "[check:phase_feature_fail]" in result.stdout
+    assert "[check:phase_manual]" not in result.stdout
+    assert (
+        "checks failed: phase=feature_done type=command check_id=phase_feature_fail"
+        in result.stdout
+    )
+

@@ -9,8 +9,13 @@ from .catalog import render_fitness_catalog
 from .config_loader import load_harness_checks_document
 from .fitness.contracts import custom_rule_manifest_schema_from_model
 from .fitness.envelope import emit_fitness_result
-from .request_normalization import GROUP_ORDER, normalize_groups
+from . import request_normalization as _request_normalization
 from .reviewers.engine import reviewer_decision_schema_from_model
+
+GROUP_ORDER = _request_normalization.GROUP_ORDER
+normalize_groups = _request_normalization.normalize_groups
+# Intentionally exposed as a module attribute for internal production wiring.
+reviewers_group_selected = _request_normalization.reviewers_group_selected
 
 
 def list_check_groups() -> tuple[str, ...]:

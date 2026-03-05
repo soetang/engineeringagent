@@ -341,6 +341,7 @@ def _build_check_context(
         feedback=request.feedback,
         run_agent_fn=request.run_agent_fn,
         verbose_output=request.verbose_output,
+        phase_only_policy=request.phase_only_policy,
     )
 
 

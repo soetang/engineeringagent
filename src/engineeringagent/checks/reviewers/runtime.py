@@ -31,6 +31,7 @@ from engineeringagent.specs import (
 )
 
 from ..planning_policy import (
+    PlanningPolicyContext,
     plan_checks_for_definition_type,
 )
 
@@ -65,12 +66,17 @@ def plan_reviewer_checks(
     *,
     phase: HarnessCheckPhase,
     changed_paths: ChangedPathsResult,
+    phase_only_policy: bool = False,
 ) -> list[PlannedCheck]:
     """Plan deterministic run/skip decisions for reviewer checks."""
-    return plan_checks_for_definition_type(
-        doc,
+    context = PlanningPolicyContext(
         phase=phase,
         changed_paths=changed_paths,
+        phase_only_policy=phase_only_policy,
+    )
+    return plan_checks_for_definition_type(
+        doc,
+        context=context,
         definition_type=HarnessCheckReviewerDefinition,
         make_record=make_planned_check,
     )

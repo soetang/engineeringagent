@@ -57,6 +57,12 @@ _HandlerArgs = SimpleNamespace
 _INIT_PACK_DEFAULT = "slim"
 _INIT_PACK_CHOICES: tuple[str, ...] = ("slim", "standard")
 _SCHEMA_FORMATS: tuple[str, ...] = ("json", "yaml")
+_CHECKS_ALL_PHASES_ORDER: tuple[HarnessCheckPhase, ...] = (
+    HarnessCheckPhase.ITERATION_END,
+    HarnessCheckPhase.FEATURE_DONE,
+    HarnessCheckPhase.MANUAL,
+)
+reviewers_group_selected = checks_module.reviewers_group_selected
 
 
 def normalize_cli_checks_groups(checks: list[str] | None) -> list[str] | None:
@@ -611,6 +617,79 @@ def _resolve_failed_check_type(
     return None
 
 
+def _checks_run_phases(
+    *,
+    requested_phase: HarnessCheckPhase,
+    all_phases: bool,
+) -> tuple[HarnessCheckPhase, ...]:
+    """Return the deterministic phase execution list for checks run."""
+    return _CHECKS_ALL_PHASES_ORDER if all_phases else (requested_phase,)
+
+
+def _run_checks_phases(
+    *,
+    project_root: Path,
+    phases: tuple[HarnessCheckPhase, ...],
+    selected_checks: list[str] | None,
+    check_id: str | None,
+    feature_path: str | None,
+    verbose_output: bool,
+    base: str | None,
+    head: str | None,
+    dry_run: bool,
+    all_phases: bool,
+) -> tuple[checks_module.ChecksRunResult, HarnessCheckPhase | None]:
+    """Execute checks for selected phases with deterministic first-failure semantics."""
+
+    result: checks_module.ChecksRunResult | None = None
+    failed_phase: HarnessCheckPhase | None = None
+    for phase in phases:
+        phase_result = checks_module.run_checks(
+            project_root,
+            phase=phase,
+            checks=selected_checks,
+            check_id=check_id,
+            feature_path=feature_path,
+            verbose_output=verbose_output,
+            base=base,
+            head=head,
+            dry_run=dry_run,
+        )
+
+        if all_phases and phase_result.output:
+            print(f"[phase:{phase.value}]")
+            print(phase_result.output)
+        result = phase_result
+        if phase_result.ok:
+            continue
+        failed_phase = phase if all_phases else None
+        break
+
+    assert result is not None
+    return result, failed_phase
+
+
+def _build_checks_failed_runtime_message(
+    *,
+    result: checks_module.ChecksRunResult,
+    failed_phase: HarnessCheckPhase | None,
+) -> str | None:
+    """Build a stable runtime failure summary for failed checks execution."""
+    if result.ok:
+        return None
+    failed_check_type = _resolve_failed_check_type(result)
+    if failed_check_type is None:
+        return None
+
+    failed_check_id = result.failed_check_id or "unknown"
+    if failed_phase is not None:
+        return (
+            "checks failed: "
+            f"phase={failed_phase.value} type={failed_check_type} check_id={failed_check_id}"
+        )
+    return f"checks failed: type={failed_check_type} check_id={failed_check_id}"
+
+
 def cmd_checks_run(args: _HandlerArgs) -> int:
     """Execute repo-owned checks declared in repository configuration.
 
@@ -620,29 +699,47 @@ def cmd_checks_run(args: _HandlerArgs) -> int:
     """
 
     project_root = Path(args.project_root).resolve()
+    selected_checks = getattr(args, "checks", None)
+    check_id = getattr(args, "check_id", None)
+    feature_path = getattr(args, "feature_path", None)
+    verbose_output = bool(getattr(args, "verbose_output", False))
+    base = getattr(args, "base", None)
+    head = getattr(args, "head", None)
+    dry_run = bool(getattr(args, "dry_run", False))
+    if reviewers_group_selected(selected_checks) and feature_path is None:
+        print("checks input error: feature_path is required when reviewers checks are selected")
+        return 1
+
+    all_phases = bool(getattr(args, "all_phases", False))
+    requested_phase = getattr(args, "phase", HarnessCheckPhase.ITERATION_END)
+    phases = _checks_run_phases(requested_phase=requested_phase, all_phases=all_phases)
+
     try:
-        result = checks_module.run_checks(
-            project_root,
-            phase=args.phase,
-            checks=getattr(args, "checks", None),
-            check_id=getattr(args, "check_id", None),
-            feature_path=getattr(args, "feature_path", None),
-            verbose_output=bool(getattr(args, "verbose_output", False)),
-            base=getattr(args, "base", None),
-            head=getattr(args, "head", None),
-            dry_run=bool(getattr(args, "dry_run", False)),
+        result, failed_phase = _run_checks_phases(
+            project_root=project_root,
+            phases=phases,
+            selected_checks=selected_checks,
+            check_id=check_id,
+            feature_path=feature_path,
+            verbose_output=verbose_output,
+            base=base,
+            head=head,
+            dry_run=dry_run,
+            all_phases=all_phases,
         )
     except ValueError as exc:
         print(f"checks input error: {exc}")
         return 1
 
-    failed_runtime_message: str | None = None
-    failed_check_type = _resolve_failed_check_type(result)
-    if not result.ok and failed_check_type is not None:
-        check_id = result.failed_check_id or "unknown"
-        failed_runtime_message = (
-            f"checks failed: type={failed_check_type} check_id={check_id}"
-        )
+    failed_runtime_message = _build_checks_failed_runtime_message(
+        result=result,
+        failed_phase=failed_phase,
+    )
+
+    if all_phases and result.ok:
+        status_label = "dry-run" if result.dry_run else "run"
+        print(f"checks {status_label}: ok")
+        return 0
 
     exit_code = _emit_run_result(result, noun="checks", success_label="ok")
     if failed_runtime_message is not None:

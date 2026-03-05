@@ -2,11 +2,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from engineeringagent.checks.config_selection import (
     ChecksConfigSelectionError,
     load_selected_harness_checks_document,
 )
-from engineeringagent.checks.request_normalization import build_run_checks_request
+from engineeringagent.checks.request_normalization import (
+    build_run_checks_request,
+)
 
 
 def _commands_request(project_root: Path):
@@ -35,3 +39,18 @@ def test_selection_returns_config_error_for_missing_configured_checks_path(
     assert doc is None
     assert isinstance(error, ChecksConfigSelectionError)
     assert "checks config error: missing config/checks.yaml" in error.output
+
+
+def test_build_request_requires_feature_path_for_trimmed_reviewers_group(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(
+        ValueError,
+        match="feature_path is required when reviewers checks are selected",
+    ):
+        build_run_checks_request(
+            tmp_path,
+            phase="iteration_end",
+            checks=["commands", " reviewers "],
+            kwargs={},
+        )

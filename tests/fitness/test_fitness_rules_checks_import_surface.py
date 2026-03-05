@@ -204,3 +204,14 @@ def test_checker_flags_removed_legacy_runtime_helper_imports(
         f"src/engineeringagent/bad_legacy.py:1 imports disallowed name {legacy_name} from engineeringagent.checks"
         in violations
     )
+
+
+def test_cli_production_module_uses_checks_top_level_surface_only(
+    repo_root: Path,
+) -> None:
+    checker = _load_checker_module(repo_root)
+
+    violations = checker._collect_violations(repo_root)
+    cli_violations = [line for line in violations if line.startswith("src/engineeringagent/cli.py:")]
+
+    assert cli_violations == []
