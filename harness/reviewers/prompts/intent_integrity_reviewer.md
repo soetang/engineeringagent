@@ -64,6 +64,9 @@ When in doubt, prefer implementation fixes for immediate feature outcomes, and u
 - Prefer externally observable behavioral evidence.
 - Flag confidence gaps where checks pass but intent evidence is weak.
 - Require targeted tests when necessary to prove intended outcomes.
+- For interactive/input-validation error paths in init-style workflows, require
+  `fail-before-mutate` evidence: invalid input must exit before scaffold/config file
+  writes or other project mutations.
 
 Decision policy:
 - Use `approve` (pass) only when all are true:

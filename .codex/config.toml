@@ -4,3 +4,7 @@ sandbox_mode = "danger-full-access"
 approval_policy = "never"
 web_search = 'cached'
 network_access = true
+
+[shell_environment_policy]
+inherit = "all"
+set = {UV_CACHE_DIR="/tmp/uv-cache"}

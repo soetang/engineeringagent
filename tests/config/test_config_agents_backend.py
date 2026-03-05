@@ -1,14 +1,22 @@
 from __future__ import annotations
 
+import sys
 from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 
+if sys.version_info >= (3, 11):
+    import tomllib
+else:  # pragma: no cover - Python < 3.11 fallback
+    import tomli as tomllib
+
 from engineeringagent.config import (
+    DEFAULT_CODEX_PROFILE,
     resolve_agents_backend_id,
     resolve_agents_codex_model,
     resolve_agents_codex_profile,
+    write_init_backend_config,
 )
 
 
@@ -145,3 +153,60 @@ def test_agents_codex_options_reject_invalid_values(
 
     with pytest.raises(ValueError, match="agents.codex"):
         resolver(tmp_path)
+
+
+def test_write_init_backend_config_persists_codex_profile_for_codex_backend(
+    tmp_path: Path,
+) -> None:
+    created, skipped = write_init_backend_config(
+        tmp_path,
+        backend_id="codex",
+        force=False,
+    )
+
+    assert (created, skipped) == (1, 0)
+    payload = tomllib.loads(
+        (tmp_path / "engineeringagent.toml").read_text(encoding="utf-8")
+    )
+    assert payload["agents"]["backend"] == "codex"
+    assert payload["agents"]["codex"]["profile"] == DEFAULT_CODEX_PROFILE
+    assert "model" not in payload["agents"]["codex"]
+
+
+def test_write_init_backend_config_does_not_persist_codex_profile_for_non_codex_backend(
+    tmp_path: Path,
+) -> None:
+    created, skipped = write_init_backend_config(
+        tmp_path,
+        backend_id="opencode",
+        force=False,
+    )
+
+    assert (created, skipped) == (1, 0)
+    payload = tomllib.loads(
+        (tmp_path / "engineeringagent.toml").read_text(encoding="utf-8")
+    )
+    assert payload["agents"]["backend"] == "opencode"
+    assert "codex" not in payload["agents"]
+
+
+def test_write_init_backend_config_non_codex_preserves_existing_codex_profile(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "engineeringagent.toml").write_text(
+        '[agents]\nbackend = "codex"\n\n[agents.codex]\nprofile = "custom"\n',
+        encoding="utf-8",
+    )
+
+    created, skipped = write_init_backend_config(
+        tmp_path,
+        backend_id="opencode",
+        force=True,
+    )
+
+    assert (created, skipped) == (1, 0)
+    payload = tomllib.loads(
+        (tmp_path / "engineeringagent.toml").read_text(encoding="utf-8")
+    )
+    assert payload["agents"]["backend"] == "opencode"
+    assert payload["agents"]["codex"]["profile"] == "custom"

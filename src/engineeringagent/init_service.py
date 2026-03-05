@@ -43,6 +43,18 @@ class ResolveInitAgentsMode(Protocol):
     ) -> tuple[str | None, str | None]: ...
 
 
+class ResolveInitCodexProfileOverwrite(Protocol):
+    """Resolve codex profile conflict behavior and return overwrite flag or error."""
+
+    def __call__(
+        self,
+        *,
+        project_root: Path,
+        selected_backend: str,
+        force: bool,
+    ) -> tuple[bool, str | None]: ...
+
+
 class ApplyBaselineScaffold(Protocol):
     """Apply baseline scaffold and return created/skipped counters."""
 
@@ -75,6 +87,7 @@ class WriteInitBackendConfig(Protocol):
         project_root: Path,
         backend_id: str,
         force: bool,
+        codex_profile_force: bool,
     ) -> tuple[int, int]: ...
 
 
@@ -116,6 +129,7 @@ class InitDependencies(BaseModel):  # pylint: disable=too-many-instance-attribut
     resolve_backend: SkipValidation[ResolveInitBackend]
     resolve_docs_dir: SkipValidation[ResolveInitDocsDir]
     resolve_agents_mode: SkipValidation[ResolveInitAgentsMode]
+    resolve_codex_profile_overwrite: SkipValidation[ResolveInitCodexProfileOverwrite]
     next_agents_backup_path: Callable[[Path], Path]
     apply_baseline_scaffold: SkipValidation[ApplyBaselineScaffold]
     write_init_docs_root_config: SkipValidation[WriteInitDocsRootConfig]
@@ -193,6 +207,7 @@ def _apply_init_config_writes(
     *,
     docs_dir: str,
     selected_backend: str,
+    codex_profile_overwrite: bool,
 ) -> tuple[int, int]:
     config_created, config_skipped = deps.write_init_docs_root_config(
         project_root=request.project_root,
@@ -203,8 +218,25 @@ def _apply_init_config_writes(
         project_root=request.project_root,
         backend_id=selected_backend,
         force=request.force,
+        codex_profile_force=codex_profile_overwrite,
     )
     return config_created + backend_created, config_skipped + backend_skipped
+
+
+def _resolve_codex_profile_overwrite_or_fail(
+    request: InitRequest,
+    deps: InitDependencies,
+    *,
+    selected_backend: str,
+) -> tuple[bool, int | None]:
+    codex_profile_overwrite, error = deps.resolve_codex_profile_overwrite(
+        project_root=request.project_root,
+        selected_backend=selected_backend,
+        force=request.force,
+    )
+    if error is not None:
+        return False, _emit_error_and_fail(deps, error)
+    return codex_profile_overwrite, None
 
 
 def _maybe_write_agents_markdown(
@@ -281,6 +313,14 @@ def run_init_command(request: InitRequest, deps: InitDependencies) -> int:
         deps.emit("init aborted: kept existing AGENTS.md; no scaffold files changed")
         return 0
 
+    codex_profile_overwrite, failure_code = _resolve_codex_profile_overwrite_or_fail(
+        request,
+        deps,
+        selected_backend=selected_backend,
+    )
+    if failure_code is not None:
+        return failure_code
+
     agents_backup_name = _maybe_backup_agents_file(request, deps, resolved_agents_mode)
 
     created, skipped = deps.apply_baseline_scaffold(
@@ -299,11 +339,13 @@ def run_init_command(request: InitRequest, deps: InitDependencies) -> int:
         deps.emit(
             "init pack standard: wired a demo failing fitness rule into precommit (expected to fail)"
         )
+
     config_created, config_skipped = _apply_init_config_writes(
         request,
         deps,
         docs_dir=docs_dir,
         selected_backend=selected_backend,
+        codex_profile_overwrite=codex_profile_overwrite,
     )
     created += config_created
     skipped += config_skipped

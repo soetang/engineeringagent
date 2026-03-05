@@ -23,7 +23,8 @@ _CODEX_PROFILE_KEY = "profile"
 _CODEX_MODEL_KEY = "model"
 
 _TOML_TABLE_HEADER_RE = re.compile(r"^\s*\[([^\]]+)\]\s*$")
-_TOML_AGENTS_BACKEND_RE = re.compile(rf"^\s*{re.escape(_BACKEND_KEY)}\s*=")
+
+DEFAULT_CODEX_PROFILE = "engineeringagent"
 
 
 def write_init_docs_root_config(
@@ -45,60 +46,80 @@ def write_init_docs_root_config(
     return (1, 0)
 
 
-def upsert_agents_backend_toml(  # noqa: C901
+def _upsert_string_key_in_table(
+    *,
+    content: str,
+    table: str,
+    key: str,
+    value: str,
+    force: bool,
+) -> tuple[str, bool]:
+    """Insert or update a string key in a TOML table."""
+    lines = _ensure_trailing_newline(content).splitlines()
+    table_ranges = _toml_table_ranges(lines)
+    table_range = table_ranges.get(table)
+    desired_line = f'{key} = "{value}"'
+
+    if table_range is None:
+        rendered = _ensure_trailing_newline(content).rstrip("\n")
+        if rendered:
+            rendered += "\n\n"
+        rendered += f"[{table}]\n{desired_line}\n"
+        return rendered, True
+
+    table_start, table_end = table_range
+    key_line_re = re.compile(rf"^\s*{re.escape(key)}\s*=")
+    key_line_index: int | None = None
+    for index in range(table_start + 1, table_end):
+        if key_line_re.match(lines[index]):
+            key_line_index = index
+            break
+
+    if key_line_index is not None:
+        current_line = lines[key_line_index].strip()
+        if current_line == desired_line or not force:
+            return _render_toml_lines(lines), False
+        lines[key_line_index] = desired_line
+        return _render_toml_lines(lines), True
+
+    insertion_index = table_end
+    while insertion_index > table_start + 1 and lines[insertion_index - 1].strip() == "":
+        insertion_index -= 1
+    lines.insert(insertion_index, desired_line)
+    return _render_toml_lines(lines), True
+
+
+def upsert_agents_backend_toml(
     *,
     content: str,
     backend_id: str,
     force: bool,
 ) -> tuple[str, bool]:
     """Insert or update `[agents] backend` in TOML content."""
-    lines = _ensure_trailing_newline(content).splitlines()
-    table_ranges: dict[str, tuple[int, int]] = {}
-    table_order: list[tuple[str, int]] = []
+    return _upsert_string_key_in_table(
+        content=content,
+        table=_AGENTS_TABLE,
+        key=_BACKEND_KEY,
+        value=backend_id,
+        force=force,
+    )
 
-    for index, line in enumerate(lines):
-        match = _TOML_TABLE_HEADER_RE.match(line)
-        if match is None:
-            continue
-        table_order.append((match.group(1).strip(), index))
 
-    for table_index, (table_name, start) in enumerate(table_order):
-        if table_index + 1 < len(table_order):
-            end = table_order[table_index + 1][1]
-        else:
-            end = len(lines)
-        table_ranges[table_name] = (start, end)
-
-    agents_range = table_ranges.get(_AGENTS_TABLE)
-    if agents_range is None:
-        rendered = _ensure_trailing_newline(content).rstrip("\n")
-        if rendered:
-            rendered += "\n\n"
-        rendered += f'[{_AGENTS_TABLE}]\n{_BACKEND_KEY} = "{backend_id}"\n'
-        return rendered, True
-
-    agents_start, agents_end = agents_range
-    backend_line_index: int | None = None
-    for index in range(agents_start + 1, agents_end):
-        if _TOML_AGENTS_BACKEND_RE.match(lines[index]):
-            backend_line_index = index
-            break
-
-    if backend_line_index is not None:
-        current_line = lines[backend_line_index].strip()
-        desired_line = f'{_BACKEND_KEY} = "{backend_id}"'
-        if current_line == desired_line or not force:
-            return _render_toml_lines(lines), False
-        lines[backend_line_index] = desired_line
-        return _render_toml_lines(lines), True
-
-    insertion_index = agents_end
-    while (
-        insertion_index > agents_start + 1 and lines[insertion_index - 1].strip() == ""
-    ):
-        insertion_index -= 1
-    lines.insert(insertion_index, f'{_BACKEND_KEY} = "{backend_id}"')
-    return _render_toml_lines(lines), True
+def upsert_agents_codex_profile_toml(
+    *,
+    content: str,
+    profile: str,
+    force: bool,
+) -> tuple[str, bool]:
+    """Insert or update `[agents.codex] profile` in TOML content."""
+    codex_table = f"{_AGENTS_TABLE}.{_CODEX_TABLE}"
+    return _upsert_string_key_in_table(
+        content=content,
+        table=codex_table,
+        key=_CODEX_PROFILE_KEY,
+        value=profile,
+        force=force,
+    )
 
 
 def write_init_backend_config(
@@ -106,6 +127,7 @@ def write_init_backend_config(
     *,
     backend_id: str,
     force: bool,
+    codex_profile_force: bool = False,
 ) -> tuple[int, int]:
     """Persist `[agents] backend = "..."` in engineeringagent.toml."""
     config_path = project_root / "engineeringagent.toml"
@@ -118,6 +140,15 @@ def write_init_backend_config(
         backend_id=backend_id,
         force=force,
     )
+    if backend_id == _CODEX_TABLE:
+        effective_codex_profile_force = force or codex_profile_force
+        rendered, codex_changed = upsert_agents_codex_profile_toml(
+            content=rendered,
+            profile=DEFAULT_CODEX_PROFILE,
+            force=effective_codex_profile_force,
+        )
+        changed = changed or codex_changed
+
     if not changed:
         return (0, 1)
 
@@ -131,6 +162,23 @@ def _render_toml_lines(lines: list[str]) -> str:
 
 def _ensure_trailing_newline(value: str) -> str:
     return value.rstrip("\n") + "\n"
+
+
+def _toml_table_ranges(lines: list[str]) -> dict[str, tuple[int, int]]:
+    table_ranges: dict[str, tuple[int, int]] = {}
+    table_order: list[tuple[str, int]] = []
+
+    for index, line in enumerate(lines):
+        match = _TOML_TABLE_HEADER_RE.match(line)
+        if match is None:
+            continue
+        table_order.append((match.group(1).strip(), index))
+
+    for table_index, (table_name, start) in enumerate(table_order):
+        end = table_order[table_index + 1][1] if table_index + 1 < len(table_order) else len(lines)
+        table_ranges[table_name] = (start, end)
+
+    return table_ranges
 
 
 def resolve_docs_root(project_root: Path) -> Path:
@@ -259,6 +307,18 @@ def resolve_agents_codex_profile(project_root: Path) -> str | None:
     pyproject_toml = project_root / "pyproject.toml"
     return _agents_codex_option_from_pyproject_toml(
         pyproject_toml,
+        key=_CODEX_PROFILE_KEY,
+    )
+
+
+def resolve_agents_codex_profile_in_engineeringagent_toml(
+    project_root: Path,
+) -> str | None:
+    """Resolve Codex profile configured only in engineeringagent.toml."""
+
+    engineeringagent_toml = project_root / "engineeringagent.toml"
+    return _agents_codex_option_from_engineeringagent_toml(
+        engineeringagent_toml,
         key=_CODEX_PROFILE_KEY,
     )
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from importlib.resources import files
 from pathlib import Path
 from types import SimpleNamespace
@@ -8,6 +9,11 @@ from typing import Any
 import pytest
 import yaml
 from typer.testing import CliRunner
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:  # pragma: no cover - Python < 3.11 fallback
+    import tomli as tomllib
 
 from engineeringagent.agents import build_backend_scaffold_manifest
 from engineeringagent import cli as cli_module
@@ -504,9 +510,13 @@ def test_init_with_codex_backend_scaffolds_codex_profile_config(
     )
 
     assert result.exit_code == 0
-    assert (tmp_path / "engineeringagent.toml").read_text(encoding="utf-8") == (
-        '[agents]\nbackend = "codex"\n'
+    engineeringagent_toml = (tmp_path / "engineeringagent.toml").read_text(
+        encoding="utf-8"
     )
+    parsed_toml = tomllib.loads(engineeringagent_toml)
+    assert parsed_toml["agents"]["backend"] == "codex"
+    assert parsed_toml["agents"]["codex"]["profile"] == "engineeringagent"
+    assert "model" not in parsed_toml["agents"]["codex"]
 
     codex_config = tmp_path / ".codex" / "config.toml"
     assert codex_config.exists()
@@ -515,6 +525,133 @@ def test_init_with_codex_backend_scaffolds_codex_profile_config(
     assert 'model = "gpt-5.3-codex"' in codex_config_text
     assert 'approval_policy = "never"' in codex_config_text
     assert not (tmp_path / ".opencode").exists()
+
+
+@pytest.mark.parametrize(
+    ("prompt_input", "expected_profile"),
+    [
+        ("keep", "custom"),
+        ("overwrite", "engineeringagent"),
+    ],
+)
+def test_init_with_codex_backend_profile_conflict_prompts_for_keep_or_overwrite(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    prompt_input: str,
+    expected_profile: str,
+) -> None:
+    """Verify interactive codex profile conflict handling keeps or overwrites as selected."""
+    monkeypatch.setattr(cli_module, "list_backends", lambda: ("codex", "opencode"))
+    monkeypatch.setattr(cli_module, "default_backend_id", lambda: "opencode")
+    monkeypatch.setattr(cli_module, "stdout_is_tty", lambda _stream: True)
+
+    (tmp_path / "engineeringagent.toml").write_text(
+        '[agents]\nbackend = "codex"\n\n[agents.codex]\nprofile = "custom"\n',
+        encoding="utf-8",
+    )
+
+    prompts: list[str] = []
+
+    def _fake_input(prompt: str) -> str:
+        prompts.append(prompt)
+        return prompt_input
+
+    monkeypatch.setattr("builtins.input", _fake_input)
+    result = _invoke_cli(
+        [
+            "--project-root",
+            str(tmp_path),
+            "init",
+            "slim",
+            "--backend",
+            "codex",
+            "--no-precommit-install",
+        ]
+    )
+
+    assert result.exit_code == 0
+    assert prompts
+    assert any("keep/overwrite" in prompt.lower() for prompt in prompts)
+    persisted = tomllib.loads(
+        (tmp_path / "engineeringagent.toml").read_text(encoding="utf-8")
+    )
+    assert persisted["agents"]["backend"] == "codex"
+    assert persisted["agents"]["codex"]["profile"] == expected_profile
+
+
+def test_init_with_codex_backend_profile_conflict_invalid_input_fails_and_preserves(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify invalid interactive codex-profile input fails before any scaffold mutation."""
+    monkeypatch.setattr(cli_module, "list_backends", lambda: ("codex", "opencode"))
+    monkeypatch.setattr(cli_module, "default_backend_id", lambda: "opencode")
+    monkeypatch.setattr(cli_module, "stdout_is_tty", lambda _stream: True)
+
+    config_path = tmp_path / "engineeringagent.toml"
+    config_path.write_text(
+        '[agents]\nbackend = "codex"\n\n[agents.codex]\nprofile = "custom"\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("builtins.input", lambda _prompt: "invalid")
+
+    result = _invoke_cli(
+        [
+            "--project-root",
+            str(tmp_path),
+            "init",
+            "slim",
+            "--backend",
+            "codex",
+            "--no-precommit-install",
+        ]
+    )
+
+    assert result.exit_code == 1
+    assert "codex profile handling must be 'keep' or 'overwrite'" in result.stdout
+    persisted = tomllib.loads(config_path.read_text(encoding="utf-8"))
+    assert persisted["agents"]["codex"]["profile"] == "custom"
+    assert not (tmp_path / "AGENTS.md").exists()
+    assert not (tmp_path / "docs" / "spec").exists()
+    assert not (tmp_path / ".codex" / "config.toml").exists()
+
+
+def test_init_with_codex_backend_profile_conflict_non_interactive_keeps_existing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify non-interactive init preserves an existing conflicting codex profile."""
+    monkeypatch.setattr(cli_module, "list_backends", lambda: ("codex", "opencode"))
+    monkeypatch.setattr(cli_module, "default_backend_id", lambda: "opencode")
+    monkeypatch.setattr(cli_module, "stdout_is_tty", lambda _stream: False)
+    monkeypatch.setattr(
+        "builtins.input",
+        lambda _prompt: pytest.fail("init prompted unexpectedly"),
+    )
+
+    (tmp_path / "engineeringagent.toml").write_text(
+        '[agents]\nbackend = "codex"\n\n[agents.codex]\nprofile = "custom"\n',
+        encoding="utf-8",
+    )
+
+    result = _invoke_cli(
+        [
+            "--project-root",
+            str(tmp_path),
+            "init",
+            "slim",
+            "--backend",
+            "codex",
+            "--no-precommit-install",
+        ]
+    )
+
+    assert result.exit_code == 0
+    persisted = tomllib.loads(
+        (tmp_path / "engineeringagent.toml").read_text(encoding="utf-8")
+    )
+    assert persisted["agents"]["backend"] == "codex"
+    assert persisted["agents"]["codex"]["profile"] == "custom"
 
 
 def test_init_appends_backend_to_existing_engineeringagent_toml(

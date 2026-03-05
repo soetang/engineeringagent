@@ -18,7 +18,9 @@ from .approach import (
     render_approach_overview,
 )
 from .config import (
+    DEFAULT_CODEX_PROFILE,
     resolve_agents_backend_id,
+    resolve_agents_codex_profile_in_engineeringagent_toml,
     write_init_backend_config,
     write_init_docs_root_config,
 )
@@ -158,6 +160,46 @@ def _resolve_init_backend(
         return _resolve_init_backend_candidate(configured_backend, available_backends)
 
     return _resolve_init_backend_interactive(available_backends)
+
+
+def _resolve_init_codex_profile_overwrite(
+    *,
+    project_root: Path,
+    selected_backend: str,
+    force: bool,
+) -> tuple[bool, str | None]:
+    """Resolve whether init should overwrite an existing codex profile value."""
+    if selected_backend != "codex":
+        return False, None
+    if force:
+        return True, None
+
+    configured_profile = resolve_agents_codex_profile_in_engineeringagent_toml(
+        project_root
+    )
+    if configured_profile is None or configured_profile == DEFAULT_CODEX_PROFILE:
+        return False, None
+    if not stdout_is_tty(sys.stdout):
+        return False, None
+
+    prompt = (
+        f'init conflict: [agents.codex].profile is "{configured_profile}". '
+        "Choose codex profile handling [keep/overwrite]: "
+    )
+    try:
+        selected = input(prompt).strip().lower()
+    except EOFError:
+        selected = "keep"
+    if selected in {"", "keep"}:
+        return False, None
+    if selected == "overwrite":
+        return True, None
+
+    return (
+        False,
+        "init input error: codex profile handling must be 'keep' or "
+        "'overwrite' when [agents.codex].profile differs",
+    )
 
 
 def _resolve_manifest_path(manifest_path: str | None) -> Path | None:
@@ -598,6 +640,7 @@ def _build_init_dependencies() -> InitDependencies:
         resolve_backend=_resolve_init_backend,
         resolve_docs_dir=_resolve_init_docs_dir,
         resolve_agents_mode=_resolve_init_agents_mode,
+        resolve_codex_profile_overwrite=_resolve_init_codex_profile_overwrite,
         next_agents_backup_path=_next_agents_backup_path,
         apply_baseline_scaffold=apply_baseline_scaffold,
         write_init_docs_root_config=write_init_docs_root_config,
