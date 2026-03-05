@@ -6,3 +6,6 @@ opencode-integration = true
 
 [agents]
 backend = "codex"
+
+[agents.codex]
+profile = "engineeringagent"

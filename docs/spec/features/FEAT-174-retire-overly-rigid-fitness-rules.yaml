@@ -1,0 +1,97 @@
+id: FEAT-174
+title: Retire overly rigid fitness rules
+type: chore
+expected_commit_subject: 'chore: retire rigid feedback and catalog sync fitness rules'
+status: backlog
+priority: high
+objective: Remove fitness rules that enforce brittle implementation details or strict
+  byte-level doc sync without proportional product value.
+context: |
+  Two active fitness rules are currently over-constraining:
+
+  1) `architecture.feedback-no-truncation`
+  - Checker implementation targets specific file/function/helper names in prompt
+    renderer internals.
+  - This is brittle against refactors and duplicates coverage better handled by
+    unit/integration tests around feedback contract behavior.
+
+  2) `architecture.fitness-catalog-docs-sync`
+  - Checker enforces byte-for-byte equality for generated markdown catalog docs.
+  - This catches formatting drift, but imposes high maintenance overhead for
+    low-value non-semantic differences.
+
+  Note:
+  - This catalog-sync rule is not a duplicate-doc finder; it is a strict generated-doc
+    drift gate. The decision here is to retire that gate, not because of duplicates,
+    but because byte-level enforcement is unnecessarily rigid.
+constraints:
+- Remove both rule entries from `harness/fitness-functions/rules.yaml`.
+- Delete `harness/fitness-functions/check_feedback_no_truncation.py`.
+- Delete `harness/fitness-functions/check_fitness_catalog_docs_sync.py`.
+- Remove or update tests dedicated to these removed rules.
+- Regenerate fitness catalog docs after manifest changes.
+- Do not change unrelated fitness rules in this feature.
+implementation_notes: |
+  Contract change declaration
+
+  Surface:
+  - active custom fitness rule set and repo-maintainer quality gate behavior.
+
+  Old behavior:
+  - repo fails fitness for violations from the two retired rule checkers.
+
+  New behavior:
+  - these two rule IDs are no longer evaluated by checks fitness runs.
+  - docs/catalog and tests reflect the reduced rule set.
+
+  Compatibility policy:
+  - repository-maintainer policy change only; no end-user runtime contract impact.
+
+  Migration plan:
+  - remove rule entries/scripts/tests in one change and regenerate catalog docs.
+
+  Verification evidence:
+  - fitness test suite passes with removed rule artifacts.
+
+  Fitness-function impact assessment:
+  - remove existing rules:
+    - `architecture.feedback-no-truncation`
+    - `architecture.fitness-catalog-docs-sync`
+  - Rationale: both rules are overly rigid relative to architectural intent and
+    produce maintenance friction disproportionate to enforcement value.
+acceptance:
+- '`architecture.feedback-no-truncation` is absent from
+  `harness/fitness-functions/rules.yaml`.'
+- '`architecture.fitness-catalog-docs-sync` is absent from
+  `harness/fitness-functions/rules.yaml`.'
+- '`harness/fitness-functions/check_feedback_no_truncation.py` is removed.'
+- '`harness/fitness-functions/check_fitness_catalog_docs_sync.py` is removed.'
+- Dedicated rule tests are removed or rewritten to avoid asserting retired rule IDs.
+- '`docs/fitness-functions/rules.md` is regenerated and no longer lists retired rule IDs.'
+- '`uv run pytest -q tests/fitness` passes.'
+subtasks:
+- id: ST-001
+  title: Remove rule manifest entries and scripts for retired rules
+  status: backlog
+  context: |
+    Remove both rule IDs from fitness manifest and delete the corresponding
+    checker scripts.
+  verification:
+  - uv run pytest -q tests/fitness
+- id: ST-002
+  title: Update fitness tests impacted by rule retirement
+  status: backlog
+  context: |
+    Delete or refactor tests dedicated to removed rules so suite reflects
+    active rule inventory.
+  verification:
+  - uv run pytest -q tests/fitness
+- id: ST-003
+  title: Regenerate fitness catalog documentation
+  status: backlog
+  context: |
+    Regenerate markdown catalog docs from current manifest and ensure retired
+    rule IDs are no longer documented.
+  verification:
+  - uv run engineeringagent checks catalog --format markdown --output docs/fitness-functions/rules.md
+updated_at: '2026-03-04T00:00:00Z'

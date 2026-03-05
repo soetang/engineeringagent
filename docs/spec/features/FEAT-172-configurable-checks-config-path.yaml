@@ -1,0 +1,90 @@
+id: FEAT-172
+title: Make checks config path configurable
+type: feature
+expected_commit_subject: 'feat: support configurable checks config path'
+status: backlog
+priority: high
+objective: Allow repositories to configure the checks config file location instead of
+  hardcoding `harness/checks.yaml`.
+context: |
+  Checks loading and several loop/CLI flows currently assume checks config lives at
+  `harness/checks.yaml`.
+
+  This is too rigid for repositories with custom layout preferences. We should support
+  a repo-owned path setting in config while keeping the current default behavior.
+constraints:
+- Add a configurable checks-config path setting via `engineeringagent.toml` with
+  pyproject fallback support.
+- Keep default behavior unchanged when no setting is provided (`harness/checks.yaml`).
+- Use one canonical path resolver shared by checks loader, CLI run-all precondition,
+  and loop gate/reviewer phase checks-config presence checks.
+- Treat configured paths as repository-local (no parent traversal outside project root).
+- Error messages should include the resolved checks-config path, not a hardcoded string.
+- Do not change checks manifest schema itself in this feature; this is file-location
+  resolution only.
+implementation_notes: |
+  Contract change declaration
+
+  Surface:
+  - checks config discovery for `checks run`, `run --all`, and loop gate/reviewer flows.
+  - config resolution from repo-owned TOML settings.
+
+  Old behavior:
+  - checks config path is always `harness/checks.yaml`.
+  - missing/invalid errors always reference that fixed path.
+
+  New behavior:
+  - checks config path resolves from configuration (for example
+    `engineeringagent.toml[harness.checks].path`) with existing defaults preserved.
+  - all checks-loading and checks-presence flows use the resolved path consistently.
+
+  Compatibility policy:
+  - additive; repositories without the new setting behave exactly as before.
+
+  Migration plan:
+  - optional opt-in by adding a configured checks path in repository config.
+
+  Verification evidence:
+  - targeted checks contract, CLI, and loop phase tests cover default and configured paths.
+
+  Fitness-function impact assessment:
+  - no fitness-function changes required.
+  - Rationale: this is path-resolution/config plumbing and does not change architecture
+    boundaries or rule ownership.
+acceptance:
+- Without configuration, checks still load from `harness/checks.yaml`.
+- With configured checks path, `engineeringagent checks run` loads and validates that
+  configured file.
+- With configured checks path, `engineeringagent run --all` and loop gate/reviewer
+  phase preconditions use the configured path (no hardcoded `harness/checks.yaml`).
+- Missing/invalid checks config errors reference the resolved configured path.
+- Configured path values that escape repository root are rejected with deterministic
+  input/config errors.
+- '`uv run pytest -q tests/checks/test_run_checks_contract.py tests/cli/test_cli_checks.py
+  tests/loop/test_loop_phases_coverage.py` passes.'
+subtasks:
+- id: ST-001
+  title: Add checks config path resolver in config boundary
+  status: backlog
+  context: |
+    Introduce a shared resolver for checks config path with precedence
+    `engineeringagent.toml` -> `pyproject.toml` -> default path.
+  verification:
+  - uv run pytest -q tests/checks/test_run_checks_contract.py
+- id: ST-002
+  title: Replace hardcoded checks path usage in checks CLI and loop runtime
+  status: backlog
+  context: |
+    Update checks loader and run-all/gate-phase path checks to use the shared
+    resolver so behavior is consistent across surfaces.
+  verification:
+  - uv run pytest -q tests/cli/test_cli_checks.py tests/loop/test_loop_phases_coverage.py
+- id: ST-003
+  title: Add regression tests for default and configured path behavior
+  status: backlog
+  context: |
+    Add/adjust tests for default path fallback, configured path success,
+    and invalid-path error handling.
+  verification:
+  - uv run pytest -q tests/checks/test_run_checks_contract.py tests/cli/test_cli.py
+updated_at: '2026-03-04T00:00:00Z'

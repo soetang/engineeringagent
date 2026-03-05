@@ -2,9 +2,11 @@
 
 In this repository, run EngineeringAgent CLI commands with `uvx engineeringagent ...`.
 
+While planning use:
 Use `engineeringagent approach` for the overall workflow and guidance map.
-
 Use `engineeringagent approach list` to discover topics, then open one (for example `engineeringagent approach specifications`).
+
+If building use those as well if you are creating or editing harness, checks, reviewers etc. Else just follow the specification.
 
 Runtime progress artifacts are emitted under `.engineeringagent/progress/`. Keep this path out of git unless you intentionally share it.
 Recommended ignore entry: `/.engineeringagent/progress/`.
