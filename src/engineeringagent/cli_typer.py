@@ -5,10 +5,11 @@ from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import Literal
 
+import click
 import typer
 
 from . import checks as checks_module
-from .init_scaffold import DEFAULT_AGENT_MODEL
+from .init_scaffold import AGENTS_LAUNCHER_CHOICES, DEFAULT_AGENT_MODEL
 from .progress import paths as progress_paths
 from .specs import HarnessCheckPhase
 
@@ -449,6 +450,12 @@ def build_typer_app(command_module: ModuleType) -> typer.Typer:
             "--scaffold-docs-dir",
             help="docs directory to scaffold when using docs-mode=separate",
         ),
+        agents_launcher: str | None = typer.Option(
+            None,
+            "--agents-launcher",
+            help="launcher wording for scaffolded AGENTS examples",
+            click_type=click.Choice(list(AGENTS_LAUNCHER_CHOICES)),
+        ),
         no_precommit_install: bool = typer.Option(
             False,
             "--no-precommit-install",
@@ -466,6 +473,7 @@ def build_typer_app(command_module: ModuleType) -> typer.Typer:
             docs_mode=docs_mode,
             scaffold_docs_dir=scaffold_docs_dir,
             agents_mode=None,
+            agents_launcher=agents_launcher,
             no_precommit_install=no_precommit_install,
         )
 

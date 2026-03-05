@@ -56,6 +56,7 @@ Markdown rules (very strong defaults):
 - Allowed markdown-related tests are limited to:
   - scaffolding verifies a markdown file was created at expected path(s)
   - docs are linked: verify presence of expected links when those links are a real contract
+  - template parameterization: allow narrow token-level assertions that validate selected placeholders were substituted (for example launcher command tokens), plus inverse checks that the replaced default token is absent
   - Avoid if possible to have tests that relies on the specific naming of markdown files. This will make changes to documentation hard. Focus should be functionality, prefer to tests it in a tempoary repo/folder.
 - Everything else about markdown content is presumed brittle and should be removed unless there is an exceptionally strong reason.
 - Do NOT propose parsing/anchoring/structured outputs as alternatives; the default action is removal of content assertions.

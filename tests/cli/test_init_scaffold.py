@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from importlib.resources import files
 import inspect
 import yaml
 import pytest
@@ -9,8 +8,12 @@ from typer.testing import CliRunner
 from engineeringagent import cli as cli_module
 import engineeringagent.init_scaffold as init_scaffold_module
 from engineeringagent.init_scaffold import (
+    AGENTS_LAUNCHER_CHOICES,
+    AGENTS_LAUNCHER_COMMANDS,
+    DEFAULT_AGENTS_LAUNCHER,
     build_baseline_scaffold_manifest,
     build_init_scaffold_manifest,
+    build_scaffold_agents_markdown,
 )
 
 
@@ -100,6 +103,31 @@ def test_render_scaffold_template_supports_substitutions_argument() -> None:
     )
     assert isinstance(rendered, str)
     assert rendered
+
+
+def test_build_scaffold_agents_markdown_defaults_to_explicit_uvx() -> None:
+    implicit_default = build_scaffold_agents_markdown()
+    explicit_default = build_scaffold_agents_markdown(DEFAULT_AGENTS_LAUNCHER)
+
+    assert implicit_default == explicit_default
+
+
+def test_build_scaffold_agents_markdown_launcher_variants_are_deterministic() -> None:
+    for launcher in AGENTS_LAUNCHER_CHOICES:
+        rendered = build_scaffold_agents_markdown(launcher)
+        assert isinstance(rendered, str)
+        assert rendered
+        selected_command = AGENTS_LAUNCHER_COMMANDS[launcher]
+        assert f"`{selected_command}`" in rendered
+        if launcher != DEFAULT_AGENTS_LAUNCHER:
+            default_command = AGENTS_LAUNCHER_COMMANDS[DEFAULT_AGENTS_LAUNCHER]
+            assert f"`{default_command}`" not in rendered
+
+
+def test_build_scaffold_agents_markdown_rejects_unknown_launcher() -> None:
+    with pytest.raises(ValueError, match="unsupported AGENTS launcher"):
+        build_scaffold_agents_markdown("unknown")
+
 
 def test_build_precommit_config_rejects_unknown_profile() -> None:
     with pytest.raises(ValueError, match="unsupported scaffold profile"):

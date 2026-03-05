@@ -26,10 +26,11 @@ from .config import (
 )
 from .git import client as git_client
 from .init_scaffold import (
+    AGENTS_LAUNCHER_CHOICES,
     apply_baseline_scaffold,
     DEFAULT_AGENT_MODEL,
+    DEFAULT_AGENTS_LAUNCHER,
     build_agents_merge_followup_spec,
-    build_scaffold_agents_markdown,
 )
 from .init_service import InitDependencies, InitRequest, run_init_command
 from .loop import (
@@ -305,6 +306,41 @@ def _resolve_init_agents_mode(
         "init input error: AGENTS mode must be 'overwrite', 'preserve', or 'abort' "
         "when AGENTS.md exists",
     )
+
+
+def _resolve_init_agents_launcher(
+    *,
+    agents_launcher: str | None,
+) -> tuple[str | None, str | None]:
+    """Resolve AGENTS scaffold launcher wording."""
+    choices_csv = ", ".join(AGENTS_LAUNCHER_CHOICES)
+    error_message = (
+        "init input error: AGENTS launcher must be one of: "
+        + choices_csv
+    )
+
+    if agents_launcher is not None:
+        if agents_launcher in AGENTS_LAUNCHER_CHOICES:
+            return agents_launcher, None
+        return None, error_message
+
+    if not stdout_is_tty(sys.stdout):
+        return DEFAULT_AGENTS_LAUNCHER, None
+
+    prompt_choices = "/".join(AGENTS_LAUNCHER_CHOICES)
+    prompt = (
+        f"init AGENTS launcher: choose [{prompt_choices}] "
+        f"(default {DEFAULT_AGENTS_LAUNCHER}): "
+    )
+    try:
+        selected = input(prompt).strip().lower()
+    except EOFError:
+        selected = ""
+    if selected == "":
+        return DEFAULT_AGENTS_LAUNCHER, None
+    if selected in AGENTS_LAUNCHER_CHOICES:
+        return selected, None
+    return None, error_message
 
 
 def _next_agents_backup_path(project_root: Path) -> Path:
@@ -626,6 +662,7 @@ def _build_init_request(args: _HandlerArgs) -> InitRequest:
         backend=getattr(args, "backend", None),
         docs_mode=args.docs_mode,
         agents_mode=getattr(args, "agents_mode", None),
+        agents_launcher=getattr(args, "agents_launcher", None),
         model=getattr(args, "model", DEFAULT_AGENT_MODEL),
         no_precommit_install=bool(getattr(args, "no_precommit_install", False)),
     )
@@ -640,12 +677,12 @@ def _build_init_dependencies() -> InitDependencies:
         resolve_backend=_resolve_init_backend,
         resolve_docs_dir=_resolve_init_docs_dir,
         resolve_agents_mode=_resolve_init_agents_mode,
+        resolve_agents_launcher=_resolve_init_agents_launcher,
         resolve_codex_profile_overwrite=_resolve_init_codex_profile_overwrite,
         next_agents_backup_path=_next_agents_backup_path,
         apply_baseline_scaffold=apply_baseline_scaffold,
         write_init_docs_root_config=write_init_docs_root_config,
         write_init_backend_config=write_init_backend_config,
-        build_scaffold_agents_markdown=build_scaffold_agents_markdown,
         build_agents_merge_followup_spec=build_agents_merge_followup_spec,
         install_precommit_hooks_best_effort=_install_precommit_hooks_best_effort,
     )

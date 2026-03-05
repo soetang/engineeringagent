@@ -17,6 +17,13 @@ _PRECOMMIT_TEMPLATES = {
 _SUPPORTED_SCAFFOLD_PROFILES = frozenset(_PRECOMMIT_TEMPLATES)
 
 DEFAULT_AGENT_MODEL = "openai/gpt-5.3-codex"
+DEFAULT_AGENTS_LAUNCHER = "uvx"
+AGENTS_LAUNCHER_CHOICES: tuple[str, ...] = ("uvx", "uv-run", "engineeringagent")
+AGENTS_LAUNCHER_COMMANDS = {
+    "uvx": "uvx engineeringagent ...",
+    "uv-run": "uv run engineeringagent ...",
+    "engineeringagent": "engineeringagent ...",
+}
 
 
 def _build_checks_yaml() -> str:
@@ -71,9 +78,22 @@ def _build_precommit_config(profile: str) -> str:
     return _render_scaffold_template(template_name)
 
 
-def build_scaffold_agents_markdown() -> str:
+def build_scaffold_agents_markdown(
+    agents_launcher: str = DEFAULT_AGENTS_LAUNCHER,
+) -> str:
     """Build baseline AGENTS.md guidance for scaffolded repositories."""
-    return _render_scaffold_template("AGENTS.md")
+    launcher_command = AGENTS_LAUNCHER_COMMANDS.get(agents_launcher)
+    if launcher_command is None:
+        choices = ", ".join(AGENTS_LAUNCHER_CHOICES)
+        raise ValueError(
+            f"unsupported AGENTS launcher: {agents_launcher} (expected one of: {choices})"
+        )
+
+    rendered = _render_scaffold_template("AGENTS.md")
+    if agents_launcher == DEFAULT_AGENTS_LAUNCHER:
+        return rendered
+    default_command = AGENTS_LAUNCHER_COMMANDS[DEFAULT_AGENTS_LAUNCHER]
+    return rendered.replace(f"`{default_command}`", f"`{launcher_command}`")
 
 
 def _render_template(
@@ -125,6 +145,7 @@ def build_baseline_scaffold_manifest(
     docs_dir: str = "docs",
     profile: str = "core",
     backend_id: str | None = None,
+    agents_launcher: str = DEFAULT_AGENTS_LAUNCHER,
     agent_model: str = DEFAULT_AGENT_MODEL,
 ) -> dict[str, str]:
     """Build the baseline scaffold manifest for a docs root.
@@ -133,6 +154,7 @@ def build_baseline_scaffold_manifest(
         docs_dir: Docs root directory where spec files should be scaffolded.
         profile: Scaffold profile that determines language/tool defaults.
         backend_id: Optional backend id for backend-contributed scaffold assets.
+        agents_launcher: Launcher wording used for scaffolded AGENTS command examples.
         agent_model: Agent model id passed to backend-contributed scaffold assets.
 
     Returns:
@@ -162,7 +184,7 @@ def build_baseline_scaffold_manifest(
             sort_keys=False,
             allow_unicode=False,
         ),
-        "AGENTS.md": build_scaffold_agents_markdown(),
+        "AGENTS.md": build_scaffold_agents_markdown(agents_launcher),
     }
 
     if is_python_uv:
@@ -221,6 +243,7 @@ def build_init_scaffold_manifest(
         docs_dir=resolved_options.docs_dir,
         profile=resolved_options.profile,
         backend_id=resolved_options.backend_id,
+        agents_launcher=resolved_options.agents_launcher,
         agent_model=resolved_options.agent_model,
     )
 
@@ -280,6 +303,7 @@ class BaselineScaffoldOptions(NamedTuple):
     profile: str = "core"
     pack: str = "slim"
     backend_id: str | None = None
+    agents_launcher: str = DEFAULT_AGENTS_LAUNCHER
     agent_model: str = DEFAULT_AGENT_MODEL
 
 

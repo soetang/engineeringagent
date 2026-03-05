@@ -18,13 +18,17 @@ else:  # pragma: no cover - Python < 3.11 fallback
 from engineeringagent.agents import build_backend_scaffold_manifest
 from engineeringagent import cli as cli_module
 from engineeringagent.init_scaffold import (
+    AGENTS_LAUNCHER_COMMANDS,
     _spec_validate_gate,
     build_baseline_scaffold_manifest,
-    build_scaffold_agents_markdown,
 )
 from tests.cli.approach_fixture_data import APPROACH_AGENTS_BOOTSTRAP_TEXT
 
 EXPECTED_AGENTS_BOOTSTRAP = APPROACH_AGENTS_BOOTSTRAP_TEXT
+UVX_TOKEN = AGENTS_LAUNCHER_COMMANDS["uvx"]
+UV_RUN_TOKEN = AGENTS_LAUNCHER_COMMANDS["uv-run"]
+ENGINEERINGAGENT_TOKEN = AGENTS_LAUNCHER_COMMANDS["engineeringagent"]
+DEFAULT_LAUNCHER_ARGS = ["--agents-launcher", "uvx", "--no-precommit-install"]
 
 
 def test_scaffold_agents_bootstrap_matches_approach_fixture() -> None:
@@ -41,6 +45,10 @@ def test_scaffold_agents_bootstrap_matches_approach_fixture() -> None:
 def _invoke_cli(args: list[str]) -> Any:
     runner = CliRunner(mix_stderr=False)
     return runner.invoke(cli_module.build_typer_app(), args)
+
+
+def _init_args(tmp_path: Path, *extra: str) -> list[str]:
+    return ["--project-root", str(tmp_path), "init", *extra]
 
 
 def test_init_subcommand_registered(
@@ -129,7 +137,8 @@ def test_init_prompts_for_pack_when_omitted_and_tty(
     """Verify init prompts for pack selection when omitted in a TTY."""
     monkeypatch.setattr(cli_module, "stdout_is_tty", lambda _stream: True)
     monkeypatch.setattr(cli_module, "list_backends", lambda: ("opencode",))
-    monkeypatch.setattr("builtins.input", lambda _prompt: "standard")
+    answers = iter(("standard", ""))
+    monkeypatch.setattr("builtins.input", lambda _prompt: next(answers))
 
     result = _invoke_cli(["--project-root", str(tmp_path), "init"])
 
@@ -149,10 +158,105 @@ def test_init_pack_arg_never_prompts_even_on_tty(
         lambda _prompt: pytest.fail("init prompted unexpectedly"),
     )
 
-    result = _invoke_cli(["--project-root", str(tmp_path), "init", "slim"])
+    result = _invoke_cli(_init_args(tmp_path, "slim", "--agents-launcher", "uvx"))
 
     assert result.exit_code == 0
     assert "pack=slim" in result.stdout
+
+
+def test_init_prompts_for_agents_launcher_when_omitted_and_tty(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify init prompts for AGENTS launcher wording when AGENTS will be written."""
+    monkeypatch.setattr(cli_module, "stdout_is_tty", lambda _stream: True)
+    monkeypatch.setattr(cli_module, "list_backends", lambda: ("opencode",))
+
+    prompts: list[str] = []
+
+    def _fake_input(prompt: str) -> str:
+        prompts.append(prompt)
+        return ""
+
+    monkeypatch.setattr("builtins.input", _fake_input)
+    result = _invoke_cli(
+        ["--project-root", str(tmp_path), "init", "slim", "--no-precommit-install"]
+    )
+
+    assert result.exit_code == 0
+    assert len(prompts) == 1
+    assert "AGENTS launcher" in prompts[0]
+    assert "uvx" in prompts[0]
+    assert "uv-run" in prompts[0]
+    assert "engineeringagent" in prompts[0]
+
+
+def test_init_agents_launcher_option_skips_prompt_even_on_tty(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify explicit --agents-launcher disables interactive launcher prompt."""
+    monkeypatch.setattr(cli_module, "stdout_is_tty", lambda _stream: True)
+    monkeypatch.setattr(cli_module, "list_backends", lambda: ("opencode",))
+    monkeypatch.setattr(
+        "builtins.input",
+        lambda _prompt: pytest.fail("init prompted unexpectedly"),
+    )
+
+    result = _invoke_cli(
+        [
+            "--project-root",
+            str(tmp_path),
+            "init",
+            "slim",
+            "--agents-launcher",
+            "uv-run",
+            "--no-precommit-install",
+        ]
+    )
+
+    assert result.exit_code == 0
+    assert "agents_launcher=uv-run" in result.stdout
+    rendered_agents = (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
+    assert UV_RUN_TOKEN in rendered_agents
+    assert UVX_TOKEN not in rendered_agents
+
+
+def test_init_agents_launcher_prompt_invalid_input_returns_deterministic_error(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify invalid launcher prompt input exits before any scaffold mutation."""
+    monkeypatch.setattr(cli_module, "stdout_is_tty", lambda _stream: True)
+    monkeypatch.setattr(cli_module, "list_backends", lambda: ("opencode",))
+    answers = iter(("overwrite", "invalid"))
+    monkeypatch.setattr("builtins.input", lambda _prompt: next(answers))
+    agents_path = tmp_path / "AGENTS.md"
+    original_agents = "# User guidance\n"
+    agents_path.write_text(original_agents, encoding="utf-8")
+
+    result = _invoke_cli(
+        [
+            "--project-root",
+            str(tmp_path),
+            "init",
+            "slim",
+            "--no-precommit-install",
+        ]
+    )
+
+    assert result.exit_code == 1
+    assert (
+        "init input error: AGENTS launcher must be one of: "
+        "uvx, uv-run, engineeringagent"
+    ) in result.stdout
+    assert agents_path.read_text(encoding="utf-8") == original_agents
+    assert not (tmp_path / "AGENTS.user.md").exists()
+    assert not (tmp_path / "AGENTS.user.2.md").exists()
+    assert not (tmp_path / "docs" / "spec").exists()
+    assert not (tmp_path / "engineeringagent.toml").exists()
+    assert not (tmp_path / ".opencode").exists()
+    assert not (tmp_path / ".codex" / "config.toml").exists()
 
 
 def test_init_backend_option_skips_prompt_even_on_tty(
@@ -173,15 +277,7 @@ def test_init_backend_option_skips_prompt_even_on_tty(
     )
 
     result = _invoke_cli(
-        [
-            "--project-root",
-            str(tmp_path),
-            "init",
-            "slim",
-            "--backend",
-            "opencode",
-            "--no-precommit-install",
-        ]
+        _init_args(tmp_path, "slim", "--backend", "opencode", *DEFAULT_LAUNCHER_ARGS)
     )
 
     assert result.exit_code == 0
@@ -204,7 +300,9 @@ def test_init_prompts_for_backend_when_omitted_and_tty(
 
     def _fake_input(prompt: str) -> str:
         prompts.append(prompt)
-        return "opencode"
+        if "init backend:" in prompt:
+            return "opencode"
+        return ""
 
     monkeypatch.setattr("builtins.input", _fake_input)
 
@@ -213,9 +311,13 @@ def test_init_prompts_for_backend_when_omitted_and_tty(
     )
 
     assert result.exit_code == 0
-    assert prompts == [
-        "init backend: choose [alpha/opencode/zeta] (default opencode): "
-    ]
+    assert len(prompts) == 2
+    assert "init backend:" in prompts[0]
+    assert "alpha/opencode/zeta" in prompts[0]
+    assert "AGENTS launcher" in prompts[1]
+    assert "uvx" in prompts[1]
+    assert "uv-run" in prompts[1]
+    assert "engineeringagent" in prompts[1]
 
 
 def test_init_backend_prompt_invalid_input_returns_deterministic_error(
@@ -296,13 +398,7 @@ def test_init_backend_uses_existing_config_without_prompt_unless_force(
     )
 
     no_force = _invoke_cli(
-        [
-            "--project-root",
-            str(no_force_root),
-            "init",
-            "slim",
-            "--no-precommit-install",
-        ]
+        _init_args(no_force_root, "slim", *DEFAULT_LAUNCHER_ARGS)
     )
     assert no_force.exit_code == 0
     assert (no_force_root / "engineeringagent.toml").read_text(encoding="utf-8") == (
@@ -325,14 +421,7 @@ def test_init_backend_uses_existing_config_without_prompt_unless_force(
 
     monkeypatch.setattr("builtins.input", _force_input)
     forced = _invoke_cli(
-        [
-            "--project-root",
-            str(force_root),
-            "init",
-            "slim",
-            "--force",
-            "--no-precommit-install",
-        ]
+        _init_args(force_root, "slim", "--force", *DEFAULT_LAUNCHER_ARGS)
     )
     assert forced.exit_code == 0
     assert prompts == ["init backend: choose [mock-b/opencode] (default opencode): "]
@@ -355,9 +444,7 @@ def test_init_backend_selects_single_backend_without_prompt(
         lambda _prompt: pytest.fail("init prompted unexpectedly"),
     )
 
-    result = _invoke_cli(
-        ["--project-root", str(tmp_path), "init", "slim", "--no-precommit-install"]
-    )
+    result = _invoke_cli(_init_args(tmp_path, "slim", *DEFAULT_LAUNCHER_ARGS))
 
     assert result.exit_code == 0
     toml_text = (tmp_path / "engineeringagent.toml").read_text(encoding="utf-8")
@@ -498,15 +585,7 @@ def test_init_with_codex_backend_scaffolds_codex_profile_config(
     monkeypatch.setattr(cli_module, "stdout_is_tty", lambda _stream: False)
 
     result = _invoke_cli(
-        [
-            "--project-root",
-            str(tmp_path),
-            "init",
-            "slim",
-            "--backend",
-            "codex",
-            "--no-precommit-install",
-        ]
+        _init_args(tmp_path, "slim", "--backend", "codex", *DEFAULT_LAUNCHER_ARGS)
     )
 
     assert result.exit_code == 0
@@ -558,15 +637,7 @@ def test_init_with_codex_backend_profile_conflict_prompts_for_keep_or_overwrite(
 
     monkeypatch.setattr("builtins.input", _fake_input)
     result = _invoke_cli(
-        [
-            "--project-root",
-            str(tmp_path),
-            "init",
-            "slim",
-            "--backend",
-            "codex",
-            "--no-precommit-install",
-        ]
+        _init_args(tmp_path, "slim", "--backend", "codex", *DEFAULT_LAUNCHER_ARGS)
     )
 
     assert result.exit_code == 0
@@ -596,15 +667,7 @@ def test_init_with_codex_backend_profile_conflict_invalid_input_fails_and_preser
     monkeypatch.setattr("builtins.input", lambda _prompt: "invalid")
 
     result = _invoke_cli(
-        [
-            "--project-root",
-            str(tmp_path),
-            "init",
-            "slim",
-            "--backend",
-            "codex",
-            "--no-precommit-install",
-        ]
+        _init_args(tmp_path, "slim", "--backend", "codex", *DEFAULT_LAUNCHER_ARGS)
     )
 
     assert result.exit_code == 1
@@ -788,6 +851,41 @@ def test_init_agents_conflict_overwrite(
     assert EXPECTED_AGENTS_BOOTSTRAP in scaffold_agents
 
 
+@pytest.mark.parametrize(
+    ("agents_mode", "expected_backup"),
+    [("overwrite", False), ("preserve", True)],
+)
+def test_init_agents_conflict_honors_explicit_launcher_option(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    agents_mode: str,
+    expected_backup: bool,
+) -> None:
+    """Verify conflict flows use explicit --agents-launcher wording deterministically."""
+    (tmp_path / "AGENTS.md").write_text("legacy guidance\n", encoding="utf-8")
+    monkeypatch.setattr("builtins.input", lambda _prompt: agents_mode)
+
+    result = _invoke_cli(
+        [
+            "--project-root",
+            str(tmp_path),
+            "init",
+            "slim",
+            "--agents-launcher",
+            "engineeringagent",
+            "--no-precommit-install",
+        ]
+    )
+
+    assert result.exit_code == 0
+    assert f"agents_mode={agents_mode}" in result.stdout
+    rendered_agents = (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
+    assert rendered_agents != "legacy guidance\n"
+    assert ENGINEERINGAGENT_TOKEN in rendered_agents
+    assert UVX_TOKEN not in rendered_agents
+    assert (tmp_path / "AGENTS.user.md").exists() is expected_backup
+
+
 def test_init_agents_conflict_preserve_and_create_merge_spec(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -834,6 +932,7 @@ def test_init_agents_conflict_abort(
     assert "init aborted" in result.stdout
     assert (tmp_path / "AGENTS.md").read_text(encoding="utf-8") == "do not touch\n"
     assert not (tmp_path / "docs" / "spec").exists()
+
 
 def test_init_writes_precommit_and_empty_gate_profiles(
     tmp_path: Path,

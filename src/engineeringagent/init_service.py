@@ -43,6 +43,16 @@ class ResolveInitAgentsMode(Protocol):
     ) -> tuple[str | None, str | None]: ...
 
 
+class ResolveInitAgentsLauncher(Protocol):
+    """Resolve AGENTS launcher wording and return launcher id or error."""
+
+    def __call__(
+        self,
+        *,
+        agents_launcher: str | None,
+    ) -> tuple[str | None, str | None]: ...
+
+
 class ResolveInitCodexProfileOverwrite(Protocol):
     """Resolve codex profile conflict behavior and return overwrite flag or error."""
 
@@ -115,6 +125,7 @@ class InitRequest(BaseModel):  # pylint: disable=too-many-instance-attributes
     backend: str | None = None
     docs_mode: str | None = None
     agents_mode: str | None = None
+    agents_launcher: str | None = None
     model: str = DEFAULT_AGENT_MODEL
     no_precommit_install: bool = False
 
@@ -129,12 +140,12 @@ class InitDependencies(BaseModel):  # pylint: disable=too-many-instance-attribut
     resolve_backend: SkipValidation[ResolveInitBackend]
     resolve_docs_dir: SkipValidation[ResolveInitDocsDir]
     resolve_agents_mode: SkipValidation[ResolveInitAgentsMode]
+    resolve_agents_launcher: SkipValidation[ResolveInitAgentsLauncher]
     resolve_codex_profile_overwrite: SkipValidation[ResolveInitCodexProfileOverwrite]
     next_agents_backup_path: Callable[[Path], Path]
     apply_baseline_scaffold: SkipValidation[ApplyBaselineScaffold]
     write_init_docs_root_config: SkipValidation[WriteInitDocsRootConfig]
     write_init_backend_config: SkipValidation[WriteInitBackendConfig]
-    build_scaffold_agents_markdown: Callable[[], str]
     build_agents_merge_followup_spec: Callable[[str], str]
     install_precommit_hooks_best_effort: SkipValidation[InstallPrecommitHooksBestEffort]
 
@@ -191,6 +202,18 @@ def _resolve_agents_mode_or_fail(
     return resolved_agents_mode, None
 
 
+def _resolve_agents_launcher_or_fail(
+    request: InitRequest,
+    deps: InitDependencies,
+) -> tuple[str, int | None]:
+    resolved_agents_launcher, error = deps.resolve_agents_launcher(
+        agents_launcher=request.agents_launcher,
+    )
+    if error is not None or resolved_agents_launcher is None:
+        return "", _emit_error_and_fail(deps, error)
+    return resolved_agents_launcher, None
+
+
 def _maybe_backup_agents_file(
     request: InitRequest, deps: InitDependencies, resolved_agents_mode: str
 ) -> str | None:
@@ -199,6 +222,16 @@ def _maybe_backup_agents_file(
     agents_backup_path = deps.next_agents_backup_path(request.project_root)
     (request.project_root / "AGENTS.md").rename(agents_backup_path)
     return agents_backup_path.name
+
+
+def _maybe_remove_existing_agents_for_overwrite(
+    request: InitRequest, resolved_agents_mode: str
+) -> None:
+    if resolved_agents_mode != "overwrite":
+        return
+    agents_path = request.project_root / "AGENTS.md"
+    if agents_path.exists():
+        agents_path.unlink()
 
 
 def _apply_init_config_writes(
@@ -237,15 +270,6 @@ def _resolve_codex_profile_overwrite_or_fail(
     if error is not None:
         return False, _emit_error_and_fail(deps, error)
     return codex_profile_overwrite, None
-
-
-def _maybe_write_agents_markdown(
-    request: InitRequest, deps: InitDependencies, resolved_agents_mode: str
-) -> None:
-    if resolved_agents_mode != "overwrite":
-        return
-    agents_path = request.project_root / "AGENTS.md"
-    agents_path.write_text(deps.build_scaffold_agents_markdown(), encoding="utf-8")
 
 
 def _maybe_write_merge_followup_spec(
@@ -313,6 +337,10 @@ def run_init_command(request: InitRequest, deps: InitDependencies) -> int:
         deps.emit("init aborted: kept existing AGENTS.md; no scaffold files changed")
         return 0
 
+    agents_launcher, failure_code = _resolve_agents_launcher_or_fail(request, deps)
+    if failure_code is not None:
+        return failure_code
+
     codex_profile_overwrite, failure_code = _resolve_codex_profile_overwrite_or_fail(
         request,
         deps,
@@ -322,6 +350,7 @@ def run_init_command(request: InitRequest, deps: InitDependencies) -> int:
         return failure_code
 
     agents_backup_name = _maybe_backup_agents_file(request, deps, resolved_agents_mode)
+    _maybe_remove_existing_agents_for_overwrite(request, resolved_agents_mode)
 
     created, skipped = deps.apply_baseline_scaffold(
         project_root=request.project_root,
@@ -331,6 +360,7 @@ def run_init_command(request: InitRequest, deps: InitDependencies) -> int:
             profile=request.scaffold_profile,
             pack=pack,
             backend_id=selected_backend,
+            agents_launcher=agents_launcher,
             agent_model=request.model,
         ),
     )
@@ -349,8 +379,6 @@ def run_init_command(request: InitRequest, deps: InitDependencies) -> int:
     )
     created += config_created
     skipped += config_skipped
-
-    _maybe_write_agents_markdown(request, deps, resolved_agents_mode)
 
     merge_created, merge_skipped, merge_spec_output = _maybe_write_merge_followup_spec(
         request,
@@ -374,6 +402,7 @@ def run_init_command(request: InitRequest, deps: InitDependencies) -> int:
         f"created={created} skipped={skipped}"
         f" profile={request.scaffold_profile}"
         f" pack={pack}"
+        f" agents_launcher={agents_launcher}"
         f"{agents_mode_output}{merge_spec_output}"
     )
     return 0
