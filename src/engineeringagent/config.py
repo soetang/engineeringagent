@@ -15,6 +15,9 @@ DEFAULT_DOCS_ROOT = "docs"
 _DOCS_ROOT_KEY = "docs-root"
 
 _HARNESS_TABLE = "harness"
+_CHECKS_TABLE = "checks"
+_CHECKS_PATH_KEY = "path"
+DEFAULT_HARNESS_CHECKS_PATH = "harness/checks.yaml"
 
 _AGENTS_TABLE = "agents"
 _BACKEND_KEY = "backend"
@@ -256,6 +259,45 @@ def resolve_harness_bool_setting(
     return default
 
 
+def resolve_harness_checks_config_path(project_root: Path) -> Path:
+    """Resolve checks config path from TOML configuration.
+
+    Precedence:
+    - engineeringagent.toml[harness.checks]
+    - pyproject.toml[tool.engineeringagent.harness.checks]
+    - default: harness/checks.yaml
+
+    Args:
+        project_root: Repository root used as the base for relative path values.
+
+    Returns:
+        Absolute checks config path under project_root.
+
+    Raises:
+        ValueError: If TOML cannot be parsed or the configured value is invalid.
+    """
+
+    engineeringagent_toml = project_root / "engineeringagent.toml"
+    checks_path = _harness_checks_path_from_engineeringagent_toml(engineeringagent_toml)
+    if checks_path is not None:
+        return project_root / checks_path
+
+    pyproject_toml = project_root / "pyproject.toml"
+    checks_path = _harness_checks_path_from_pyproject_toml(pyproject_toml)
+    if checks_path is not None:
+        return project_root / checks_path
+
+    return project_root / DEFAULT_HARNESS_CHECKS_PATH
+
+
+def repo_relative_label(project_root: Path, target_path: Path) -> str:
+    """Render target_path relative to project_root when possible."""
+    try:
+        return target_path.relative_to(project_root).as_posix()
+    except ValueError:
+        return str(target_path)
+
+
 def resolve_agents_backend_id(project_root: Path) -> str | None:
     """Resolve configured default agent backend id.
 
@@ -379,6 +421,22 @@ def _harness_bool_from_engineeringagent_toml(
     )
 
 
+def _harness_checks_path_from_engineeringagent_toml(path: Path) -> Path | None:
+    document = _load_toml(path)
+    if document is None:
+        return None
+
+    checks_table = _harness_checks_table(document, pyproject=False)
+    if checks_table is None:
+        return None
+
+    return _normalize_repo_local_path(
+        checks_table.get(_CHECKS_PATH_KEY),
+        source_path=path,
+        source_scope=f"[{_HARNESS_TABLE}.{_CHECKS_TABLE}]",
+    )
+
+
 def _agents_backend_id_from_engineeringagent_toml(path: Path) -> str | None:
     document = _load_toml(path)
     if document is None:
@@ -471,6 +529,22 @@ def _harness_bool_from_pyproject_toml(
     )
 
 
+def _harness_checks_path_from_pyproject_toml(path: Path) -> Path | None:
+    document = _load_toml(path)
+    if document is None:
+        return None
+
+    checks_table = _harness_checks_table(document, pyproject=True)
+    if checks_table is None:
+        return None
+
+    return _normalize_repo_local_path(
+        checks_table.get(_CHECKS_PATH_KEY),
+        source_path=path,
+        source_scope=f"[tool.engineeringagent.{_HARNESS_TABLE}.{_CHECKS_TABLE}]",
+    )
+
+
 def _agents_backend_id_from_pyproject_toml(path: Path) -> str | None:
     document = _load_toml(path)
     if document is None:
@@ -529,6 +603,26 @@ def _maybe_table(parent: dict[str, Any], key: str) -> dict[str, Any] | None:
     if not isinstance(value, dict):
         return None
     return value
+
+
+def _harness_checks_table(
+    document: dict[str, Any],
+    *,
+    pyproject: bool,
+) -> dict[str, Any] | None:
+    if pyproject:
+        tool_config = _maybe_table(document, "tool")
+        if tool_config is None:
+            return None
+        engineeringagent_config = _maybe_table(tool_config, "engineeringagent")
+        if engineeringagent_config is None:
+            return None
+        harness_table = _maybe_table(engineeringagent_config, _HARNESS_TABLE)
+    else:
+        harness_table = _maybe_table(document, _HARNESS_TABLE)
+    if harness_table is None:
+        return None
+    return _maybe_table(harness_table, _CHECKS_TABLE)
 
 
 def _load_toml(path: Path) -> dict[str, Any] | None:
@@ -648,3 +742,41 @@ def _normalize_nonempty_string(
         )
 
     return normalized
+
+
+def _normalize_repo_local_path(
+    raw_value: Any,
+    *,
+    source_path: Path,
+    source_scope: str,
+) -> Path | None:
+    if raw_value is None:
+        return None
+    if not isinstance(raw_value, str):
+        raise ValueError(
+            f"invalid path in {source_path} ({source_scope}): expected string"
+        )
+
+    stripped = raw_value.strip()
+    if not stripped:
+        raise ValueError(
+            f"invalid path in {source_path} ({source_scope}): cannot be empty"
+        )
+
+    candidate = Path(stripped)
+    if candidate.is_absolute():
+        raise ValueError(
+            f"invalid path in {source_path} ({source_scope}): must be relative"
+        )
+    if any(part == ".." for part in candidate.parts):
+        raise ValueError(
+            f"invalid path in {source_path} ({source_scope}): cannot contain '..'"
+        )
+
+    normalized_parts = [part for part in candidate.parts if part not in {"", "."}]
+    if not normalized_parts:
+        raise ValueError(
+            f"invalid path in {source_path} ({source_scope}): cannot be '.'"
+        )
+
+    return Path(*normalized_parts)

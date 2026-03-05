@@ -24,6 +24,7 @@ from ..prompts.feedback_envelope import (
 )
 from ..process import run_shell_command
 from ..specs import HarnessCheckPhase
+from ..config import repo_relative_label, resolve_harness_checks_config_path
 
 from .models import (
     CommandTiming,
@@ -137,9 +138,18 @@ class GateFailureDetails(BaseModel):
     command_timings: list[CommandTiming]
 
 
-def _gate_not_configured_outcome(run_all: bool) -> GatePhaseOutcome:
+def _resolve_checks_path(
+    project_root: Path,
+) -> tuple[Path | None, str | None]:
+    try:
+        return resolve_harness_checks_config_path(project_root), None
+    except ValueError as exc:
+        return None, f"checks config error: {exc}"
+
+
+def _gate_not_configured_outcome(run_all: bool, *, checks_label: str) -> GatePhaseOutcome:
     if run_all:
-        output = "missing harness/checks.yaml (required for --all)"
+        output = f"missing {checks_label} (required for --all)"
         return GatePhaseOutcome(
             result="failed",
             failed_gate="checks_config",
@@ -222,9 +232,23 @@ def run_gate_phase(
     dependencies: GatePhaseDependencies,
 ) -> GatePhaseOutcome:
     """Run post-implement gates and perform archive rollback on failure."""
-    checks_path = iteration_inputs.project_root / "harness" / "checks.yaml"
+    checks_path, checks_error = _resolve_checks_path(iteration_inputs.project_root)
+    if checks_error is not None:
+        return GatePhaseOutcome(
+            result="failed",
+            failed_gate="checks_config",
+            gate_status="failed:checks_config",
+            gate_output=checks_error,
+            command_timings=[],
+            feedback=checks_error,
+        )
+    assert checks_path is not None
+    checks_label = repo_relative_label(iteration_inputs.project_root, checks_path)
     if not checks_path.exists():
-        return _gate_not_configured_outcome(iteration_inputs.run_all)
+        return _gate_not_configured_outcome(
+            iteration_inputs.run_all,
+            checks_label=checks_label,
+        )
 
     last_result, outputs, command_timings = _run_gate_phase_checks(
         iteration_inputs,
@@ -411,7 +435,19 @@ def run_reviewer_phase(
     if feature is None or not archived_in_iteration:
         return _reviewer_not_run_outcome()
 
-    checks_path = iteration_inputs.project_root / "harness" / "checks.yaml"
+    checks_path, checks_error = _resolve_checks_path(iteration_inputs.project_root)
+    if checks_error is not None:
+        return ReviewerPhaseOutcome(
+            result="failed",
+            failed_gate="checks_config",
+            reviewer_status="failed:checks_config",
+            reviewer_decision=None,
+            failed_reviewer_id=None,
+            reviewer_output=checks_error,
+            command_timings=[],
+            feedback=checks_error,
+        )
+    assert checks_path is not None
     if not checks_path.exists():
         return _reviewer_not_configured_outcome()
 

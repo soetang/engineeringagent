@@ -53,6 +53,43 @@ def test_run_gate_phase_fails_fast_when_checks_yaml_missing_for_run_all(
     assert outcome.gate_status == "failed:checks_config"
 
 
+def test_run_gate_phase_reports_configured_checks_path_when_missing_for_run_all(
+    tmp_path: Path,
+) -> None:
+    _write_text(
+        tmp_path / "engineeringagent.toml",
+        "[harness.checks]\npath = \"config/checks.yaml\"\n",
+    )
+
+    inputs = FeatureIterationInputs(
+        project_root=tmp_path,
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        run_all=True,
+        attempt=1,
+        feedback=None,
+        verbose_output=False,
+    )
+    deps = GatePhaseDependencies(
+        restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+        collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
+            paths=(),
+            run_all=True,
+            reason=None,
+        ),
+    )
+
+    outcome = run_gate_phase(
+        inputs,
+        archived_in_iteration=False,
+        archived_path=None,
+        dependencies=deps,
+    )
+
+    assert outcome.result == "failed"
+    assert outcome.failed_gate == "checks_config"
+    assert "missing config/checks.yaml (required for --all)" in outcome.gate_output
+
+
 def test_run_gate_phase_reports_load_error_when_checks_document_raises(
     tmp_path: Path,
 ) -> None:
@@ -185,6 +222,63 @@ def test_run_reviewer_phase_forwards_request_changes_feedback_for_run_all(
     assert outcome.feedback == sentinel_feedback
     assert raw_output not in outcome.feedback
     assert recorded_calls == [("feature_done", None, None)]
+
+
+def test_run_reviewer_phase_uses_configured_checks_path_presence_precheck(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    _write_text(
+        tmp_path / "engineeringagent.toml",
+        "[harness.checks]\npath = \"config/checks.yaml\"\n",
+    )
+    _write_text(
+        tmp_path / "config" / "checks.yaml",
+        'contract_version: "1.0"\nchecks: {}\n',
+    )
+
+    inputs = FeatureIterationInputs(
+        project_root=tmp_path,
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        run_all=True,
+        attempt=1,
+        feedback=None,
+        verbose_output=False,
+    )
+    archived_feature_path = (
+        tmp_path / "docs" / "spec" / "features_done" / "FEAT-001.yaml"
+    )
+    _write_text(archived_feature_path, "id: FEAT-001\n")
+
+    recorded_calls: list[tuple[object, object]] = []
+
+    def _run_checks(_project_root: Path, **kwargs: object) -> ChecksRunResult:
+        recorded_calls.append((kwargs.get("phase"), kwargs.get("feature_path")))
+        return ChecksRunResult(ok=True, output="[reviewer:doc_review] decision=approve")
+
+    monkeypatch.setattr("engineeringagent.loop_runtime.phases.run_checks", _run_checks)
+
+    deps = ReviewerPhaseDependencies(
+        collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
+            paths=(),
+            run_all=True,
+            reason=None,
+        ),
+        restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+        run_agent_fn=None,
+    )
+
+    outcome = run_reviewer_phase(
+        inputs,
+        {"id": "FEAT-001"},
+        archived_in_iteration=True,
+        archived_path=archived_feature_path,
+        dependencies=deps,
+    )
+
+    assert outcome.result == "passed"
+    assert outcome.reviewer_status == "passed"
+    assert recorded_calls == [("feature_done", archived_feature_path)]
 
 
 def test_run_gate_phase_emits_command_failure_feedback_contract(

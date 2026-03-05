@@ -101,7 +101,7 @@ def load_selected_harness_checks_document(
             ),
         )
     if doc is None:
-        output = "checks config error: failed to load harness/checks.yaml"
+        output = "checks config error: failed to load checks configuration"
         return (
             None,
             ChecksConfigSelectionError(

@@ -411,6 +411,76 @@ def test_shared_loader_includes_missing_context_when_provided(tmp_path: Path) ->
     assert "Remediation: run `engineeringagent init`." in error
 
 
+def test_shared_loader_uses_engineeringagent_toml_checks_path(tmp_path: Path) -> None:
+    (tmp_path / "engineeringagent.toml").write_text(
+        "[harness.checks]\npath = \"repo/checks/custom.yaml\"\n",
+        encoding="utf-8",
+    )
+    checks_path = tmp_path / "repo" / "checks" / "custom.yaml"
+    checks_path.parent.mkdir(parents=True, exist_ok=True)
+    checks_path.write_text(
+        "\n".join(
+            [
+                'contract_version: "1.0"',
+                "checks:",
+                "  smoke:",
+                "    type: command",
+                '    command: "echo ok"',
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    doc, error = load_harness_checks_document(
+        tmp_path,
+        error_prefix="checks config error",
+    )
+
+    assert error is None
+    assert doc is not None
+    assert "smoke" in doc.checks
+
+
+def test_shared_loader_uses_pyproject_checks_path_when_toml_missing(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "pyproject.toml").write_text(
+        "[tool.engineeringagent.harness.checks]\npath = \"repo/checks/custom.yaml\"\n",
+        encoding="utf-8",
+    )
+
+    doc, error = load_harness_checks_document(
+        tmp_path,
+        error_prefix="checks config error",
+    )
+
+    assert doc is None
+    assert error is not None
+    assert "missing repo/checks/custom.yaml" in error
+
+
+def test_shared_loader_rejects_checks_path_with_parent_traversal(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "engineeringagent.toml").write_text(
+        "[harness.checks]\npath = \"../checks.yaml\"\n",
+        encoding="utf-8",
+    )
+
+    doc, error = load_harness_checks_document(
+        tmp_path,
+        error_prefix="checks config error",
+    )
+
+    assert doc is None
+    assert error is not None
+    assert (
+        "checks config error: invalid path in "
+        f"{tmp_path / 'engineeringagent.toml'} ([harness.checks]): cannot contain '..'"
+    ) in error
+
+
 def test_shared_loader_failed_load_is_deterministic(tmp_path: Path) -> None:
     _write_checks_yaml(tmp_path, "- list\n")
 

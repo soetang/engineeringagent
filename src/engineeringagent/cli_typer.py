@@ -46,12 +46,12 @@ def _build_typer_checks_app(command_module: ModuleType) -> typer.Typer:
     """Build the Typer checks app with nested command routing."""
     check_groups_help = "|".join(checks_module.list_check_groups())
     checks_app = typer.Typer(
-        help="run repo-owned checks from harness/checks.yaml",
+        help="run repo-owned checks from repository configuration",
         add_completion=False,
         no_args_is_help=False,
     )
 
-    @checks_app.command("run", help="run checks declared in harness/checks.yaml")
+    @checks_app.command("run", help="run checks declared in repository configuration")
     def _checks_run(
         ctx: typer.Context,
         checks: list[str] | None = typer.Option(
@@ -342,7 +342,7 @@ def build_typer_app(command_module: ModuleType) -> typer.Typer:
     app.add_typer(
         _build_typer_checks_app(command_module),
         name="checks",
-        help="run repo-owned checks from harness/checks.yaml",
+        help="run repo-owned checks from repository configuration",
     )
     app.add_typer(
         _build_typer_progress_app(command_module),

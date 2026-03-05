@@ -576,7 +576,7 @@ def _resolve_failed_check_type(
 
 
 def cmd_checks_run(args: _HandlerArgs) -> int:
-    """Execute repo-owned checks declared in harness/checks.yaml.
+    """Execute repo-owned checks declared in repository configuration.
 
     This command is intended for automation surfaces (e.g. pre-commit, CI) that
     want deterministic execution of repo-owned verification without running the

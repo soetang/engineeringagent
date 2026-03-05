@@ -21,6 +21,21 @@ def test_cli_checks_run_requires_checks_yaml(tmp_path: Path) -> None:
     assert "missing harness/checks.yaml" in result.stdout
 
 
+def test_cli_checks_run_requires_configured_checks_path(tmp_path: Path) -> None:
+    (tmp_path / "engineeringagent.toml").write_text(
+        "[harness.checks]\npath = \"config/checks.yaml\"\n",
+        encoding="utf-8",
+    )
+    runner = CliRunner(mix_stderr=False)
+    result = runner.invoke(
+        cli_module.build_typer_app(),
+        ["--project-root", str(tmp_path), "checks", "run"],
+    )
+
+    assert result.exit_code == 1
+    assert "missing config/checks.yaml" in result.stdout
+
+
 def test_cli_checks_run_executes_command_check(tmp_path: Path) -> None:
     harness_dir = tmp_path / "harness"
     harness_dir.mkdir(parents=True, exist_ok=True)

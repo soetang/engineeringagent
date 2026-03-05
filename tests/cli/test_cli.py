@@ -169,6 +169,50 @@ def test_run_all_requires_checks_yaml(tmp_path: Path) -> None:
     assert "engineeringagent init" in result.stdout
 
 
+def test_run_all_requires_configured_checks_path(tmp_path: Path) -> None:
+    (tmp_path / "engineeringagent.toml").write_text(
+        "[harness.checks]\npath = \"config/checks.yaml\"\n",
+        encoding="utf-8",
+    )
+
+    result = _invoke_cli(
+        [
+            "--project-root",
+            str(tmp_path),
+            "run",
+            "--all",
+            "--dry-run",
+        ]
+    )
+
+    assert result.exit_code == 1
+    assert "missing config/checks.yaml" in result.stdout
+    assert "required for --all" in result.stdout
+
+
+def test_run_all_rejects_configured_checks_path_with_parent_traversal(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "engineeringagent.toml").write_text(
+        "[harness.checks]\npath = \"../checks.yaml\"\n",
+        encoding="utf-8",
+    )
+
+    result = _invoke_cli(
+        [
+            "--project-root",
+            str(tmp_path),
+            "run",
+            "--all",
+            "--dry-run",
+        ]
+    )
+
+    assert result.exit_code == 1
+    assert "run config error: invalid path in" in result.stdout
+    assert "cannot contain '..'" in result.stdout
+
+
 def test_run_all_rejects_invalid_checks_yaml(tmp_path: Path) -> None:
     checks_path = tmp_path / "harness" / "checks.yaml"
     checks_path.parent.mkdir(parents=True, exist_ok=True)
