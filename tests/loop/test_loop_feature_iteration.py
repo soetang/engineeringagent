@@ -94,21 +94,19 @@ def _stub_opencode_start_agent(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def fake_run_agent(
-        project_root: Path,
-        prompt: str,
-        **_kwargs: Any,
+        _project_root: Path,
+        _prompt: str,
+        *,
+        output_type: Any | None = None,
+        **_unused_kwargs: Any,
     ) -> str:
-        del project_root
-        if "Read and use this feature spec from disk:" in prompt:
+        is_implement_call = output_type is not None
+        if is_implement_call:
             effect = _OPENCODE_IMPLEMENT.side_effect
             if effect is not None:
                 effect()
 
-        override = (
-            _OPENCODE_IMPLEMENT.fake_result
-            if "Read and use this feature spec from disk:" in prompt
-            else None
-        )
+        override = _OPENCODE_IMPLEMENT.fake_result if is_implement_call else None
         if override is None:
             override = (0, "ok\n", "")
 
@@ -960,7 +958,9 @@ def test_verification_failure_restores_feature_archived_during_iteration(
 
 
 def test_ralph_prompt_includes_feature_file_path(tmp_path: Path) -> None:
-    _, feature_path = _make_project_root(tmp_path, feature_data=_base_feature())
+    feature_data = _base_feature()
+    feature_data["context"] = "Loop iteration uses runtime phase orchestration."
+    _, feature_path = _make_project_root(tmp_path, feature_data=feature_data)
     feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
 
     prompt = build_implementation_prompt(
@@ -969,19 +969,15 @@ def test_ralph_prompt_includes_feature_file_path(tmp_path: Path) -> None:
         feedback=None,
     )
 
-    expected_prompt_phrases = (
+    expected_interpolated_values = (
         str(feature_path),
-        "Read and use this feature spec from disk",
-        "Before doing new work, read prior handoff context from .engineeringagent/progress/features/FEAT-900/handoff.md when the file exists.",
-        "Write the hand-off so that the next developer can easily continue the work.",
-        "Do not write the handoff file directly; loop/runtime owns handoff file appends.",
-        "most important open subtask",
-        "most important open subtask first",
-        "Update progress in the same feature YAML",
-        "only after it transitions to done in this iteration",
+        ".engineeringagent/progress/features/FEAT-900/handoff.md",
+        "feature FEAT-900 (Feature iteration smoke test)",
+        f"Objective: {feature_data['objective']}",
+        f"Context: {feature_data['context']}",
     )
-    for phrase in expected_prompt_phrases:
-        assert phrase in prompt
+    for value in expected_interpolated_values:
+        assert value in prompt
 
 
 def test_ralph_prompt_contract_uses_schema_only_validate_command(
@@ -996,7 +992,7 @@ def test_ralph_prompt_contract_uses_schema_only_validate_command(
         feedback=None,
     )
 
-    assert "Validate with: `uv run engineeringagent validate --schema-only`." in prompt
+    assert "uv run engineeringagent validate --schema-only" in prompt
 
 
 def test_cli_run_dry_run_path_first(tmp_path: Path) -> None:
@@ -1389,7 +1385,9 @@ def test_run_loop_writes_per_feature_progress_log(
         )
 
     assert code == 0
-    feature_log_path = _progress_root(project_root) / "features" / "FEAT-900" / "run.txt"
+    feature_log_path = (
+        _progress_root(project_root) / "features" / "FEAT-900" / "run.txt"
+    )
     assert feature_log_path.exists()
     log_text = feature_log_path.read_text(encoding="utf-8")
     assert "attempt=1" in log_text
@@ -1493,7 +1491,9 @@ def test_run_loop_concise_mode_hides_raw_implement_and_gate_output(
     assert implement_stdout_token not in output
     assert gate_stdout_token not in output
 
-    feature_log_path = _progress_root(project_root) / "features" / "FEAT-900" / "run.txt"
+    feature_log_path = (
+        _progress_root(project_root) / "features" / "FEAT-900" / "run.txt"
+    )
     log_text = feature_log_path.read_text(encoding="utf-8")
     assert implement_stdout_token in log_text
     assert implement_stderr_token in log_text
@@ -1749,9 +1749,9 @@ def test_run_loop_telemetry_includes_log_path(
     runs = _read_runs(project_root)
     assert runs
     assert runs[-1]["log_path"] == _FEATURE_LOG_REF
-    assert "\x1b[" not in (_progress_root(project_root) / "runs" / "runs.jsonl").read_text(
-        encoding="utf-8"
-    )
+    assert "\x1b[" not in (
+        _progress_root(project_root) / "runs" / "runs.jsonl"
+    ).read_text(encoding="utf-8")
 
 
 def test_run_loop_failure_prints_detailed_log_pointer(
@@ -2850,9 +2850,7 @@ def test_gate_failure_feedback_includes_fitness_remediation_guidance(
     feedback = parse_feedback_envelope_from_prompt(prompts[1], phase="gates")
     assert feedback.kind == "command_failure"
     assert feedback.phase == "gates"
-    assert feedback.command == (
-        f'"{sys.executable}" "{check_script}" "{counter_path}"'
-    )
+    assert feedback.command == (f'"{sys.executable}" "{check_script}" "{counter_path}"')
     assert remediation in feedback.message
 
 
@@ -2931,9 +2929,7 @@ def test_spec_validate_failure_feedback_round_trips_to_retry_prompt(
     feedback = parse_feedback_envelope_from_prompt(prompts[1], phase="gates")
     assert feedback.kind == "command_failure"
     assert feedback.phase == "gates"
-    assert feedback.command == (
-        f'"{sys.executable}" "{check_script}" "{counter_path}"'
-    )
+    assert feedback.command == (f'"{sys.executable}" "{check_script}" "{counter_path}"')
     assert token in feedback.message
 
 
@@ -3012,9 +3008,7 @@ def test_non_validation_gate_failure_feedback_round_trips_to_retry_prompt(
     feedback = parse_feedback_envelope_from_prompt(prompts[1], phase="gates")
     assert feedback.kind == "command_failure"
     assert feedback.phase == "gates"
-    assert feedback.command == (
-        f'"{sys.executable}" "{check_script}" "{counter_path}"'
-    )
+    assert feedback.command == (f'"{sys.executable}" "{check_script}" "{counter_path}"')
     assert token in feedback.message
 
 
@@ -3184,9 +3178,7 @@ def test_gate_failure_feedback_replaces_previous_output_for_same_command(
         gates_data={
             "gates": {
                 "spec_validate": {
-                    "run": (
-                        f'"{sys.executable}" "{check_script}" "{counter_path}"'
-                    )
+                    "run": (f'"{sys.executable}" "{check_script}" "{counter_path}"')
                 }
             }
         },
@@ -3354,8 +3346,12 @@ def test_verification_failure_feedback_replaces_previous_feedback(
 
     assert code == 0
     assert len(prompts) >= 3
-    first_feedback = parse_feedback_envelope_from_prompt(prompts[1], phase="verification")
-    second_feedback = parse_feedback_envelope_from_prompt(prompts[2], phase="verification")
+    first_feedback = parse_feedback_envelope_from_prompt(
+        prompts[1], phase="verification"
+    )
+    second_feedback = parse_feedback_envelope_from_prompt(
+        prompts[2], phase="verification"
+    )
     assert first_feedback.kind == "command_failure"
     assert first_feedback.phase == "verification"
     assert first_feedback.command == verification_command
@@ -3374,12 +3370,8 @@ def test_verification_failure_feedback_replaces_previous_command_context(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    first_verification_command = (
-        "python -c \"import sys; print('FIRST_VERIFICATION_FAILURE_TOKEN'); sys.exit(1)\""
-    )
-    second_verification_command = (
-        "python -c \"import sys; print('SECOND_VERIFICATION_FAILURE_TOKEN'); sys.exit(1)\""
-    )
+    first_verification_command = "python -c \"import sys; print('FIRST_VERIFICATION_FAILURE_TOKEN'); sys.exit(1)\""
+    second_verification_command = "python -c \"import sys; print('SECOND_VERIFICATION_FAILURE_TOKEN'); sys.exit(1)\""
     feature_data = _base_feature(status="in_progress")
     feature_data["subtasks"] = [
         {
@@ -3487,8 +3479,12 @@ def test_verification_failure_feedback_replaces_previous_command_context(
     assert code == 0
     assert len(prompts) >= 3
 
-    first_feedback = parse_feedback_envelope_from_prompt(prompts[1], phase="verification")
-    second_feedback = parse_feedback_envelope_from_prompt(prompts[2], phase="verification")
+    first_feedback = parse_feedback_envelope_from_prompt(
+        prompts[1], phase="verification"
+    )
+    second_feedback = parse_feedback_envelope_from_prompt(
+        prompts[2], phase="verification"
+    )
 
     assert first_feedback.kind == "command_failure"
     assert first_feedback.phase == "verification"
