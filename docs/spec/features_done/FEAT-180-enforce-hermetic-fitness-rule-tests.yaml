@@ -277,4 +277,4 @@ subtasks:
   - uv run pytest -q tests/fitness
   - uv run engineeringagent checks catalog --format markdown --output docs/fitness-functions/rules.md
   - uv run engineeringagent validate --schema-only
-updated_at: '2026-03-06T20:36:31Z'
+updated_at: '2026-03-06T20:44:24Z'
