@@ -16,6 +16,7 @@ constraints:
 - 'In scope: detect forbidden live-repo scan patterns including `_run_checker(repo_root, ...)`, `execute_rule_definition(..., project_root=repo_root)`, and `subprocess.run(..., cwd=repo_root, ...)`, plus equivalent helper wrappers where `repo_root` is passed as the effective scan target.'
 - 'In scope: allow `repo_root` in path-building expressions used only to locate checker scripts/resources, such as `_script_path(repo_root)` or `repo_root / "harness" / "fitness-functions" / ...`.'
 - 'In scope: store explicit integration-test exceptions in a small policy allowlist file under `harness/fitness-functions/policies/`; avoid hardcoding file exceptions inside the checker.'
+- 'In scope: keep FEAT-180 implementation harness-local; do not add new `src/engineeringagent/checks/**` modules solely to support this rule.'
 - 'In scope: update or replace tests that currently assert live-repo compliance from pytest so they instead validate deterministic behavior on synthetic fixtures.'
 - 'Out of scope: changing the production behavior of existing fitness checker scripts beyond what is needed to support hermetic testing and explicit harness integration coverage.'
 - 'Out of scope: salvaging or preserving the current FEAT-176 implementation diff; restart should assume those uncommitted implementation changes are discarded wholesale.'
@@ -29,6 +30,8 @@ implementation_notes: 'Contract change declaration
   - Harness-level ownership of real-repo compliance enforcement.
 
   - New repository fitness rule guarding against non-hermetic fitness tests.
+
+  - Harness-local policy/config parsing for this rule.
 
 
   Old behavior:
@@ -49,6 +52,10 @@ implementation_notes: 'Contract change declaration
   - Real-repo compliance checks occur only through harness/gate execution or a small explicit integration-test allowlist.
 
   - A dedicated guardrail fitness rule fails if `tests/fitness/**` reintroduces the forbidden live-repo scan pattern.
+
+  - The rule remains harness-local and uses only the existing `engineeringagent.checks`
+    fitness envelope; it does not expand `src/engineeringagent/checks/**` with new
+    FEAT-180-specific helpers.
 
   - Existing active rules do not already cover this gap: `architecture.no-doc-content-tests`
     only forbids brittle README/docs wording assertions, and harness smoke rules such as
@@ -92,6 +99,9 @@ implementation_notes: 'Contract change declaration
 
   - Update violating test modules under `tests/fitness/**` to match the approved pattern.
 
+  - Keep any policy loader/model for this rule inside `harness/fitness-functions/`
+    rather than adding new checks-owned modules.
+
   Recommended enforcement shape:
 
   - parse `tests/fitness/**/*.py` with `ast` and analyze call sites rather than relying on substring matching alone;
@@ -108,6 +118,9 @@ implementation_notes: 'Contract change declaration
 
   - load allowlisted integration modules from a small policy file (for example a YAML list of test-file paths) so exceptions are explicit and reviewable;
 
+  - parse that allowlist inside the harness checker or a harness-local helper, not a new
+    `src/engineeringagent/checks/**` module;
+
   - emit concise violations in the form `<path>:<line> fitness tests must not use repo_root as checker scan target (<pattern>)`;
 
   - support a small explicit allowlist for named integration modules so real-repo harness coverage stays intentional and visible.
@@ -120,6 +133,7 @@ acceptance:
 - The checker implementation is AST-based and explicitly detects forbidden scan-target patterns such as `_run_checker(repo_root, ...)`, `execute_rule_definition(..., project_root=repo_root)`, and `subprocess.run(..., cwd=repo_root, ...)`.
 - Equivalent helper/wrapper calls that forward `repo_root` into a checker scan target are also detected.
 - Explicit integration exceptions are loaded from a small policy allowlist file rather than hardcoded in checker logic.
+- FEAT-180 introduces no new `src/engineeringagent/checks/**` modules; the checker uses the existing fitness envelope imports only.
 - Violation strings identify the offending test file and line and name the forbidden pattern concisely.
 - Existing violating fitness tests are rewritten or removed so pytest covers checker behavior on temp fixtures rather than repository-wide compliance.
 - Real-repo compliance responsibility is clearly reserved for harness/gate execution paths and any small explicit integration-test allowlist.
@@ -137,7 +151,7 @@ subtasks:
 - id: ST-002
   title: Add the guardrail fitness checker and rule registration
   status: backlog
-  context: Implement a new AST-based guardrail rule that scans `tests/fitness/**/*.py`, detects forbidden `repo_root` scan-target patterns (`_run_checker(repo_root, ...)`, `execute_rule_definition(..., project_root=repo_root)`, `subprocess.run(..., cwd=repo_root, ...)`, and equivalent wrappers), consults the explicit allowlist policy file, and registers the rule in the fitness manifest.
+  context: Implement a new AST-based guardrail rule that scans `tests/fitness/**/*.py`, detects forbidden `repo_root` scan-target patterns (`_run_checker(repo_root, ...)`, `execute_rule_definition(..., project_root=repo_root)`, `subprocess.run(..., cwd=repo_root, ...)`, and equivalent wrappers), consults the explicit allowlist policy file, and registers the rule in the fitness manifest. Keep any policy parsing/model code harness-local instead of adding FEAT-180-specific modules under `src/engineeringagent/checks/**`.
   verification:
   - uv run pytest -q tests/fitness
   - uv run engineeringagent checks catalog --format markdown --output docs/fitness-functions/rules.md
