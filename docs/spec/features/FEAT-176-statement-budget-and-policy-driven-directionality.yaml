@@ -30,6 +30,8 @@ constraints:
   - 'In scope: convert `architecture.dep-directionality` to a policy-driven checker (config file) while preserving existing boundary behavior as baseline policy.'
   - 'In scope: update/remediate current known offenders to satisfy initial caps (`src/engineeringagent/cli.py`, `src/engineeringagent/config.py`, `tests/loop/test_loop_feature_iteration.py`, `tests/cli/test_init_command.py`).'
   - 'In scope: disable pylint module-length enforcement (`too-many-lines` / `C0302`) so module-size policy is owned by fitness rules.'
+  - 'In scope: checker semantics tests for this feature must use synthetic temp repos only; they may use `repo_root` only to locate checker scripts/resources, not as the scan target.'
+  - 'In scope: real-repo statement-budget enforcement for this feature must happen only through harness/integration execution paths (for example `engineeringagent checks run`), not direct checker-rule pytest against the live checkout.'
   - 'Out of scope: introducing token-count or non-comment-LOC budgets in this feature.'
   - 'Out of scope: lowering statement caps beyond the initial thresholds; future ratchet reductions should be separate specs with dedicated remediation plans.'
 implementation_notes: >-
@@ -69,12 +71,18 @@ implementation_notes: >-
   - Rule id continuity is required for existing `architecture.dep-directionality` consumers.
 
   Migration plan:
-  1) Introduce statement-budget checker + policy config + tests.
+  1) Introduce statement-budget checker + policy config + hermetic synthetic-fixture tests.
   2) Register rule and refresh catalog docs.
   3) Migrate dependency-directionality checker to policy config while preserving baseline behavior.
   4) Disable pylint `C0302`.
   5) Refactor current oversized modules into coherent package-owned slices and update
      directionality policy when new internal boundaries are introduced.
+
+  Test-authoring guardrail for this feature:
+  - follow FEAT-180 hermetic fitness-test policy before implementing FEAT-176.
+  - do not add pytest assertions that the live repository checkout passes the new checker.
+  - use synthetic fixture repos to prove checker semantics, violation formatting, and policy behavior.
+  - reserve live-repo verification for harness/gate commands only.
 
   Fitness-function impact assessment:
   - add `architecture.module-statement-budget` (new checker + policy config + catalog docs entry).
@@ -89,6 +97,8 @@ acceptance:
   - 'Pylint no longer enforces module-length (`C0302`) in this repository; module-size enforcement is owned by fitness rules.'
   - '`architecture.dep-directionality` behavior is policy-driven via config file and preserves current blocked-boundary behavior as initial baseline policy.'
   - 'Directionality policy updates are required when remediation extracts new internal seams, so moved internals do not become accidental cross-module dependencies.'
+  - 'Checker-rule pytest for this feature validates behavior only on synthetic temp repos; it does not scan the live repository checkout directly.'
+  - 'Live-repo statement-budget enforcement is verified through harness/integration commands rather than direct checker-rule pytest against `repo_root`.'
   - 'Current oversized modules are remediated to pass initial caps: `src/engineeringagent/cli.py`, `src/engineeringagent/config.py`, `tests/loop/test_loop_feature_iteration.py`, and `tests/cli/test_init_command.py`.'
   - 'Fitness catalog/docs are updated to reflect the new statement-budget rule and directionality policy ownership model.'
   - '`uv run engineeringagent validate --schema-only` passes.'
@@ -100,7 +110,8 @@ subtasks:
       Implement a new checker under `harness/fitness-functions/` that counts non-doc
       AST statements per Python file and enforces threshold policies by path scope.
       Add a policy file under `harness/fitness-functions/policies/` with initial caps
-      for `src/engineeringagent`, `tests`, and `harness`.
+      for `src/engineeringagent`, `tests`, and `harness`. Rule tests must use only
+      synthetic fixture repos for checker execution.
     verification:
       - uv run pytest -q tests/fitness -k statement_budget
   - id: ST-002
@@ -136,7 +147,9 @@ subtasks:
       Reduce duplication and extract cohesive concerns into existing package folders
       first (or new domain subpackages when justified) for current offenders. When
       introducing new internal seams, update directionality policy boundaries so extracted
-      internals remain owned and cannot be imported from unauthorized modules.
+      internals remain owned and cannot be imported from unauthorized modules. Do not
+      introduce stricter repo-wide ratchets or additional offender targets beyond this
+      spec without a separate follow-on spec.
     verification:
       - uv run engineeringagent checks run --checks fitness --phase iteration_end
       - uv run pytest -q tests/cli/test_cli.py tests/cli/test_init_command.py tests/loop/test_loop_feature_iteration.py tests/checks/test_run_checks_contract.py
