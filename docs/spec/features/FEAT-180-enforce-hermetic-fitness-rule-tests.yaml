@@ -8,16 +8,18 @@ objective: Prevent fitness-rule tests from scanning the live repository checkout
 context: "`tests/fitness/**` already had a repository policy in FEAT-111: pytest should verify checker behavior on synthetic fixtures, while real repository compliance should be enforced by the harness and gate profiles. FEAT-176 regressed that boundary by adding many statement-budget tests that invoke the checker with `repo_root` as the scan target. That caused implementation pressure to refactor large parts of the live codebase merely to satisfy rule tests, producing broad repository churn unrelated to the intended feature scope.\n\nWe need an explicit guardrail that blocks this pattern from recurring anywhere in `tests/fitness/**`, not just in one rule module. The rule must allow use of `repo_root` only for locating checker scripts or static resources, while requiring the scanned project root to be a synthetic temp fixture. Real-repo enforcement remains valid, but only through explicit harness/integration tests with a narrow allowlist and clear naming."
 constraints:
 - 'In scope: add a new fitness guardrail that covers all tests under `tests/fitness/**`, with a narrow explicit allowlist for harness integration tests that intentionally exercise real-repo execution paths.'
+- 'In scope: implement the guardrail as an AST-based checker over `tests/fitness/**/*.py`; do not rely on plain text grep alone.'
+- 'In scope: define a finite enforcement surface with exactly two implementation rules: (1) a `repo_root`-taint rule for explicit checker scan-target sinks, and (2) a forwarding-wrapper rule for local helpers that pass values into those same sinks.'
+- 'In scope: keep the explicit sink list finite and named in the spec: `_run_checker(..., project_root/cwd)`, `execute_rule_definition(..., project_root=...)`, and `subprocess` execution with `cwd=...`.'
 - 'In scope: treat direct checker subprocess tests and adapter-driven fitness tests as hermetic by default; the scanned `project_root`/`cwd` must be a synthetic temp fixture rather than `repo_root`.'
 - 'In scope: allow `repo_root` to resolve checker scripts, static test resources, or manifest fixtures only; it must not be used as the project root passed to checker execution.'
 - 'In scope: make the rule target the coupling pattern rather than banning path names; synthetic fixtures may still create artificial `src/engineeringagent/**`, `tests/**`, or `harness/**` paths inside temp repos.'
 - 'In scope: require explicit integration-test affordances for any permitted real-repo fitness execution path, such as a dedicated allowlisted module or clearly named integration marker.'
-- 'In scope: implement the guardrail as an AST-based checker over `tests/fitness/**/*.py`; do not rely on plain text grep alone.'
-- 'In scope: detect forbidden live-repo scan patterns including `_run_checker(repo_root, ...)`, `execute_rule_definition(..., project_root=repo_root)`, and `subprocess.run(..., cwd=repo_root, ...)`, plus equivalent helper wrappers where `repo_root` is passed as the effective scan target.'
-- 'In scope: allow `repo_root` in path-building expressions used only to locate checker scripts/resources, such as `_script_path(repo_root)` or `repo_root / "harness" / "fitness-functions" / ...`.'
 - 'In scope: store explicit integration-test exceptions in a small policy allowlist file under `harness/fitness-functions/policies/`; avoid hardcoding file exceptions inside the checker.'
 - 'In scope: keep FEAT-180 implementation harness-local; do not add new `src/engineeringagent/checks/**` modules solely to support this rule.'
 - 'In scope: update or replace tests that currently assert live-repo compliance from pytest so they instead validate deterministic behavior on synthetic fixtures.'
+- 'Out of scope: exploratory loophole hunting beyond the finite sink list and representative test scenarios named in this spec.'
+- 'Out of scope: adding new syntactic edge-case coverage only because another possible aliasing or forwarding form might exist; new cases should be added only when they are needed to satisfy one of the explicit rules or when a concrete repository violation appears.'
 - 'Out of scope: changing the production behavior of existing fitness checker scripts beyond what is needed to support hermetic testing and explicit harness integration coverage.'
 - 'Out of scope: salvaging or preserving the current FEAT-176 implementation diff; restart should assume those uncommitted implementation changes are discarded wholesale.'
 implementation_notes: 'Contract change declaration
@@ -83,9 +85,11 @@ implementation_notes: 'Contract change declaration
 
   Verification evidence:
 
-  - The new guardrail rule fails on a representative forbidden pattern and passes on the approved hermetic pattern.
+  - The new guardrail rule fails on representative scenarios for each explicit implementation rule and passes on the approved hermetic scenarios.
 
   - `tests/fitness/**` no longer runs checkers with `repo_root` as the scan target except in explicit allowlisted integration cases.
+
+  - FEAT-180 is complete when the finite rules below are implemented, their named representative scenarios pass, violating pytest modules are rewritten, and the listed verification commands pass. The feature does not remain open for additional exploratory loophole discovery once that bar is met.
 
 
   Fitness-function impact assessment:
@@ -106,13 +110,19 @@ implementation_notes: 'Contract change declaration
 
   - parse `tests/fitness/**/*.py` with `ast` and analyze call sites rather than relying on substring matching alone;
 
-  - detect helper patterns where a checker is executed with `cwd=repo_root`, `project_root=repo_root`, or equivalent live-repo scan targets;
+  - implement only these two enforcement rules:
+    1) `repo_root`-taint rule: treat `repo_root` and simple values derived from it as forbidden when passed into an explicit scan-target sink;
+    2) forwarding-wrapper rule: treat local helpers as violations when they forward a value into one of those same explicit scan-target sinks;
 
-  - treat at least these forms as first-class violations:
-    - `_run_checker(repo_root, ...)`
-    - `execute_rule_definition(..., project_root=repo_root)`
-    - `subprocess.run(..., cwd=repo_root, ...)`
-    - local wrapper/helper calls that forward `repo_root` into those scan-target parameters;
+  - keep the sink list finite and named: `_run_checker(..., project_root/cwd)`, `execute_rule_definition(..., project_root=...)`, and `subprocess` execution with `cwd=...`;
+
+  - treat these representative patterns as sufficient verification evidence for the two rules rather than as an open-ended loophole inventory:
+    - direct helper call with `repo_root` as scan target;
+    - direct adapter or subprocess call with `repo_root` as scan target;
+    - one `repo_root` alias or derived-value case reaching a sink;
+    - one kwargs or forwarding case reaching a sink;
+    - one allowed script/resource lookup case;
+    - one allowlisted integration case;
 
   - permit `repo_root` when used only to build checker script paths under `harness/fitness-functions/`;
 
@@ -121,23 +131,23 @@ implementation_notes: 'Contract change declaration
   - parse that allowlist inside the harness checker or a harness-local helper, not a new
     `src/engineeringagent/checks/**` module;
 
-  - emit concise violations in the form `<path>:<line> fitness tests must not use repo_root as checker scan target (<pattern>)`;
-
-  - support a small explicit allowlist for named integration modules so real-repo harness coverage stays intentional and visible.
+  - emit concise violations in the form `<path>:<line> fitness tests must not use repo_root as checker scan target (<pattern>)`.
 
   '
 acceptance:
 - A new fitness guardrail fails when tests under `tests/fitness/**` execute a checker against `repo_root` or otherwise use the live repository as the scan target, unless the test module is explicitly allowlisted as an integration case.
 - The guardrail does not ban synthetic fixture paths such as artificial `src/engineeringagent/**`; it specifically bans scanning the real checkout.
 - '`repo_root` usage limited to locating checker scripts/resources remains allowed.'
-- The checker implementation is AST-based and explicitly detects forbidden scan-target patterns such as `_run_checker(repo_root, ...)`, `execute_rule_definition(..., project_root=repo_root)`, and `subprocess.run(..., cwd=repo_root, ...)`.
-- Equivalent helper/wrapper calls that forward `repo_root` into a checker scan target are also detected.
+- 'The checker implementation is AST-based and implements exactly two explicit enforcement rules: a `repo_root`-taint rule for named scan-target sinks, and a forwarding-wrapper rule for local helpers that pass values into those same sinks.'
+- 'The checker explicitly detects the finite sink list named by this spec: `_run_checker(..., project_root/cwd)`, `execute_rule_definition(..., project_root=...)`, and `subprocess` execution with `cwd=...`.'
+- Equivalent helper/wrapper calls that forward `repo_root` into one of those named sinks are also detected.
 - Explicit integration exceptions are loaded from a small policy allowlist file rather than hardcoded in checker logic.
 - FEAT-180 introduces no new `src/engineeringagent/checks/**` modules; the checker uses the existing fitness envelope imports only.
 - Violation strings identify the offending test file and line and name the forbidden pattern concisely.
 - Existing violating fitness tests are rewritten or removed so pytest covers checker behavior on temp fixtures rather than repository-wide compliance.
 - Real-repo compliance responsibility is clearly reserved for harness/gate execution paths and any small explicit integration-test allowlist.
 - Fitness rule docs/catalog text is updated consistently for the new guardrail.
+- FEAT-180 completion does not require additional exploratory loophole hunting once the named rules, representative scenarios, test rewrites, and verification commands are complete.
 - 'Verification command passes: `uv run pytest -q tests/fitness`.'
 - 'Verification command passes: `uv run engineeringagent checks catalog --format markdown --output docs/fitness-functions/rules.md`.'
 - 'Verification command passes: `uv run engineeringagent validate --schema-only`.'
@@ -145,26 +155,28 @@ subtasks:
 - id: ST-001
   title: Define repository policy and explicit allowlist shape for hermetic fitness tests
   status: backlog
-  context: Translate the FEAT-111 intent into a precise enforceable repository rule covering all of `tests/fitness/**`, with a small explicit integration allowlist for intentional real-repo harness coverage. Define the allowlist as policy data under `harness/fitness-functions/policies/` rather than embedded conditionals.
+  context: Translate the FEAT-111 intent into a precise enforceable repository rule covering all of `tests/fitness/**`, with a small explicit integration allowlist for intentional real-repo harness coverage. Define the allowlist as policy data under `harness/fitness-functions/policies/` rather than embedded conditionals. Document that FEAT-180 is complete when the named subtasks and representative scenarios are implemented; it is not an open-ended loophole search.
   verification:
-  - uv run pytest -q tests/fitness
+  - uv run engineeringagent validate --schema-only
 - id: ST-002
-  title: Add the guardrail fitness checker and rule registration
+  title: 'Implement rule 1: repo_root-taint detection for explicit scan-target sinks'
   status: backlog
-  context: Implement a new AST-based guardrail rule that scans `tests/fitness/**/*.py`, detects forbidden `repo_root` scan-target patterns (`_run_checker(repo_root, ...)`, `execute_rule_definition(..., project_root=repo_root)`, `subprocess.run(..., cwd=repo_root, ...)`, and equivalent wrappers), consults the explicit allowlist policy file, and registers the rule in the fitness manifest. Keep any policy parsing/model code harness-local instead of adding FEAT-180-specific modules under `src/engineeringagent/checks/**`.
+  context: 'Implement the first finite FEAT-180 rule in a harness-local AST checker: `repo_root` and simple derived values must not reach the explicit sink list `_run_checker(..., project_root/cwd)`, `execute_rule_definition(..., project_root=...)`, or `subprocess` execution with `cwd=...`. Keep the sink list finite and spec-owned. Representative test scenarios must include one direct helper violation, one direct adapter or subprocess violation, one alias or simple derived-value violation, and one allowed script/resource lookup case.'
+  verification:
+  - uv run pytest -q tests/fitness/test_fitness_rules_hermetic_fitness_test_isolation.py
+  - uv run engineeringagent checks catalog --format markdown --output docs/fitness-functions/rules.md
+- id: ST-003
+  title: 'Implement rule 2: forwarding-wrapper detection for explicit scan-target sinks'
+  status: backlog
+  context: 'Implement the second finite FEAT-180 rule in the same checker: local wrappers, helper calls, or simple forwarding forms violate the rule when they pass a value into one of the explicit sink slots named by this spec. Representative test scenarios must include one local helper forwarding violation, one kwargs or forwarding violation, and one allowlisted integration case. This subtask is complete when those named scenarios pass; it does not require further exploratory syntax hunting beyond the finite rules.'
+  verification:
+  - uv run pytest -q tests/fitness/test_fitness_rules_hermetic_fitness_test_isolation.py
+- id: ST-004
+  title: Rewrite violating pytest modules and close FEAT-180 verification
+  status: backlog
+  context: Remove or rewrite tests that currently use `repo_root` as the scan target so they instead verify deterministic checker behavior on minimal artificial fixtures. Register the FEAT-180 rule, refresh catalog docs, and run the full verification commands. This subtask should reference the representative scenarios from ST-002 and ST-003 and close the feature once the rewritten tests and verification commands pass.
   verification:
   - uv run pytest -q tests/fitness
   - uv run engineeringagent checks catalog --format markdown --output docs/fitness-functions/rules.md
-- id: ST-003
-  title: Refactor violating fitness tests to synthetic temp-repo fixtures
-  status: backlog
-  context: Remove or rewrite tests that currently use `repo_root` as the scan target so they instead verify deterministic checker behavior on minimal artificial fixtures. Add focused FEAT-180 rule tests that cover one forbidden helper pattern, one forbidden subprocess/adapters pattern, one allowed script-path lookup case, and one allowlisted integration case.
-  verification:
-  - uv run pytest -q tests/fitness
-- id: ST-004
-  title: Restart FEAT-176 after guardrail adoption
-  status: backlog
-  context: Once the guardrail is active, discard the current uncommitted FEAT-176 implementation diff and recreate FEAT-176 work from a clean state under the new hermetic-testing policy.
-  verification:
   - uv run engineeringagent validate --schema-only
 updated_at: '2026-03-06T00:00:00Z'
