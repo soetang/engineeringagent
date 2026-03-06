@@ -13,6 +13,7 @@ This file is generated from active manifest-declared fitness rules.
 | `architecture.dep-directionality` | error | command | custom | `src/engineeringagent` | - | Enforce core module import direction boundaries. |
 | `architecture.harness-root-yaml-only` | error | command | custom | `harness/ (regular files at root)` | - | Enforce YAML-only regular files directly under harness root. |
 | `architecture.harness-src-import-allowlist` | error | command | custom | `harness/fitness-functions` | - | Restrict harness fitness functions to a narrow supported engineeringagent surface. |
+| `architecture.hermetic-fitness-test-isolation` | error | command | custom | `tests/fitness` | `harness/fitness-functions/policies/hermetic_fitness_test_isolation.yaml` | Prevent tests/fitness from scanning the live repository checkout. |
 | `architecture.iteration-pipeline-observer-decoupling` | error | command | custom | `src/engineeringagent/loop_runtime/iteration.py` | - | Keep iteration pipeline free of telemetry and console side effects. |
 | `architecture.loop-checks-policy-ownership` | error | command | custom | `src/engineeringagent/loop_runtime/** and src/engineeringagent/loop.py` | - | Fail when loop runtime encodes checks group/timing selection policy. |
 | `architecture.loop-checks-result-boundary` | error | command | custom | `src/engineeringagent/loop_runtime/** and src/engineeringagent/loop.py` | - | Fail when loop runtime branches on checks type/group semantics or parses checks-internal payloads. |
@@ -83,6 +84,14 @@ This file is generated from active manifest-declared fitness rules.
 - Side-effect free: `true`
 - Rationale: Prevents harness scripts from depending on orchestration/runtime internals that are not part of the supported authoring API.
 - Remediation: Replace forbidden imports with the supported helpers under engineeringagent.checks.*.
+
+### `architecture.hermetic-fitness-test-isolation`
+
+- Name: Hermetic fitness test isolation
+- Config file: `harness/fitness-functions/policies/hermetic_fitness_test_isolation.yaml`
+- Side-effect free: `true`
+- Rationale: Keeps pytest focused on synthetic fixture behavior while reserving real-repo compliance for harness and gate execution.
+- Remediation: Pass a synthetic temp fixture as the checker project root/cwd and keep any real-repo cases in the explicit integration allowlist.
 
 ### `architecture.iteration-pipeline-observer-decoupling`
 

@@ -120,6 +120,21 @@ rules:
       - run
       - python
       - harness/fitness-functions/check_no_doc_content_tests.py
+  - rule_id: architecture.hermetic-fitness-test-isolation
+    name: Hermetic fitness test isolation
+    summary: Prevent tests/fitness from scanning the live repository checkout.
+    rationale: Keeps pytest focused on synthetic fixture behavior while reserving real-repo compliance for harness and gate execution.
+    remediation: Pass a synthetic temp fixture as the checker project root/cwd and keep any real-repo cases in the explicit integration allowlist.
+    scope: tests/fitness
+    severity: error
+    side_effect_free: true
+    adapter: command
+    config_file: policies/hermetic_fitness_test_isolation.yaml
+    command:
+      - uv
+      - run
+      - python
+      - harness/fitness-functions/check_hermetic_fitness_test_isolation.py
   - rule_id: architecture.no-env-key-reads
     name: No env-key reads
     summary: Forbid env-key reads (os.getenv, os.environ.get, os.environ['X'], 'X' in os.environ).
