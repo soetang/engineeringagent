@@ -1,0 +1,202 @@
+id: FEAT-179
+title: Expand directionality policy for CLI and contract ownership boundaries
+type: spec
+expected_commit_subject: 'spec: add FEAT-179 cli and contract directionality guards'
+status: backlog
+priority: high
+objective: Strengthen architectural enforcement for the planned CLI package split and
+  domain-owned contract moves by expanding policy-driven dependency directionality rules
+  to cover the new boundaries explicitly.
+context: '`harness/fitness-functions/policies/dependency_directionality.yaml` currently
+  enforces only a small set of broad module boundaries. That is helpful, but it is not
+  enough to protect the specific seams we want to create for `src/engineeringagent/cli/`
+  and domain-owned contracts. Prior analysis and `pydeps` output show broad CLI imports,
+  narrow checks-owned contracts living under `specs`, and parser/wiring modules depending
+  on more domain internals than they should.
+
+  We want the architectural split to be enforced when it lands, not just documented.
+  This feature should extend the existing policy-driven directionality mechanism rather
+  than introducing a one-off checker.'
+constraints:
+- 'In scope: expand `harness/fitness-functions/policies/dependency_directionality.yaml`
+  with explicit boundaries for the new CLI package and domain-owned contract seams.'
+- 'In scope: encode concrete blocked-dependency policy entries for nested CLI modules
+  such as `engineeringagent.cli.main`, `engineeringagent.cli.typer` or `engineeringagent.cli.app`,
+  `engineeringagent.cli.checks`, and a checks-owned contract module such as `engineeringagent.checks.contracts`.'
+- 'In scope: keep using the existing `architecture.dep-directionality` rule and checker;
+  represent new enforcement through policy config rather than a separate bespoke rule.'
+- 'In scope: forbid CLI package modules from reaching into checks/runtime internals beyond
+  approved stable surfaces.'
+- 'In scope: forbid checks/domain modules from importing CLI package modules.'
+- 'In scope: add coverage for parser/wiring modules so they remain thin composition layers
+  instead of silently reacquiring domain logic.'
+- 'In scope: use current architecture intent and actual repo ownership to choose policy
+  boundaries; avoid speculative rules with no practical seam behind them.'
+- 'Out of scope: adding a mandatory `pydeps` artifact generation workflow or new dependency
+  visualization tooling requirements.'
+- 'Out of scope: statement-budget changes; those are already covered by FEAT-176.'
+- 'Out of scope: introducing a brand-new fitness checker for these boundaries.'
+implementation_notes: 'Contract change declaration
+
+
+  Surface:
+
+  - Policy config for `architecture.dep-directionality`.
+
+  - Architectural import boundaries for CLI package modules and domain-owned contract
+    modules.
+
+
+  Old behavior:
+
+  - Directionality policy covers only a few broad module boundaries.
+
+  - Planned CLI and contract seams are not explicitly protected.
+
+
+  New behavior:
+
+  - Directionality policy explicitly encodes allowed ownership boundaries for the CLI
+    package and domain-owned contract modules.
+
+  - Thin parser/wiring modules are protected from reaching into domain internals.
+
+  - Domain packages are protected from reverse imports back into CLI composition modules.
+
+
+  Compatibility policy:
+
+  - No user-facing behavior change.
+
+  - Internal imports that violate the clarified architecture are intentionally disallowed.
+
+
+  Migration plan:
+
+  1) Define desired CLI/package and contract-owner boundaries with concrete module entries,
+     not just broad package narratives.
+
+  2) Expand directionality policy config to encode those seams.
+
+  3) Add/update deterministic tests for nested module paths and reverse-direction failures.
+
+  4) Update any violating imports introduced by related refactors.
+
+  5) Keep the rule id/checker stable and document the new policy intent.
+
+
+  Fitness-function impact assessment:
+
+
+  - fitness-function changes required.
+
+  - Update policy config: `harness/fitness-functions/policies/dependency_directionality.yaml`.
+
+  - Update/add tests covering the expanded policy in `tests/fitness/test_fitness_rules_directionality.py`.
+
+  - Update fitness catalog/docs if rule remediation or scope wording changes.
+
+  Candidate policy entries to drive implementation:
+
+  ```yaml
+  - module: engineeringagent.cli.main
+    blocked_dependencies:
+      - engineeringagent.loop_runtime
+      - engineeringagent.checks.commands
+      - engineeringagent.checks.fitness
+      - engineeringagent.checks.reviewers
+      - engineeringagent.checks.validate
+      - engineeringagent.specs
+
+  - module: engineeringagent.cli.typer
+    blocked_dependencies:
+      - engineeringagent.loop
+      - engineeringagent.loop_runtime
+      - engineeringagent.checks.commands
+      - engineeringagent.checks.fitness
+      - engineeringagent.checks.reviewers
+      - engineeringagent.checks.validate
+      - engineeringagent.specs
+
+  - module: engineeringagent.cli.checks
+    blocked_dependencies:
+      - engineeringagent.loop
+      - engineeringagent.loop_runtime
+      - engineeringagent.checks.commands
+      - engineeringagent.checks.fitness
+      - engineeringagent.checks.reviewers
+      - engineeringagent.checks.validate
+      - engineeringagent.specs
+
+  - module: engineeringagent.checks.contracts
+    blocked_dependencies:
+      - engineeringagent.cli
+      - engineeringagent.loop
+      - engineeringagent.loop_runtime
+      - engineeringagent.specs
+
+  - module: engineeringagent.specs
+    blocked_dependencies:
+      - engineeringagent.cli
+      - engineeringagent.loop
+      - engineeringagent.loop_runtime
+      - engineeringagent.checks.validate.validator
+      - engineeringagent.checks.contracts
+  ```
+
+  Note: the current checker resolves `<module>.py`, not package directories, so package-root
+  enforcement should target concrete nested modules (or `__init__`) rather than bare package
+  names unless the checker itself is changed in a separate feature.
+
+  '
+acceptance:
+- '`architecture.dep-directionality` policy explicitly covers the new CLI package/module
+  seams and domain-owned contract boundaries.'
+- The policy includes concrete nested-module entries compatible with the current checker
+  resolution behavior rather than relying on unsupported bare package names.
+- CLI package modules are prevented from importing disallowed checks/runtime internals
+  beyond approved stable surfaces.
+- Domain packages such as checks are prevented from importing CLI package modules.
+- Thin parser/wiring modules are protected from silently becoming mixed-responsibility
+  handler hubs again.
+- Directionality tests cover the new policy boundaries and fail deterministically on
+  regressions.
+- Any documentation/catalog text affected by the stronger policy is updated consistently.
+- 'Verification command passes: `uv run pytest -q tests/fitness/test_fitness_rules_directionality.py`.'
+- 'Verification command passes: `uv run engineeringagent checks catalog --format markdown --output docs/fitness-functions/rules.md`.'
+- 'Verification command passes: `uv run engineeringagent validate --schema-only`.'
+subtasks:
+- id: ST-001
+  title: Define explicit CLI package and contract-owner directionality boundaries
+  status: backlog
+  context: Translate the intended `src/engineeringagent/cli/` package seams and domain-owned
+    contract ownership into concrete blocked-dependency policy entries. Prefer nested
+    module entries such as `engineeringagent.cli.typer`/`engineeringagent.cli.main`
+    over unsupported bare package names.
+  verification:
+  - uv run pytest -q tests/fitness/test_fitness_rules_directionality.py
+- id: ST-002
+  title: Add/update deterministic tests for expanded directionality policy
+  status: backlog
+  context: Extend the existing fitness-rule tests so CLI-package and contract-owner boundaries
+    are enforced by deterministic test cases rather than implicit expectations. Add
+    nested-module tests and reverse-direction tests for `engineeringagent.specs` versus
+    `engineeringagent.checks.contracts`.
+  verification:
+  - uv run pytest -q tests/fitness/test_fitness_rules_directionality.py
+- id: ST-003
+  title: Sync rule docs after policy expansion
+  status: backlog
+  context: Refresh any generated or maintained rule documentation affected by the expanded
+    directionality policy.
+  verification:
+  - uv run engineeringagent checks catalog --format markdown --output docs/fitness-functions/rules.md
+- id: ST-004
+  title: Run final validation for boundary enforcement updates
+  status: backlog
+  context: Confirm the stronger policy is validated, documented, and compatible with
+    the current repository layout.
+  verification:
+  - uv run pytest -q tests/fitness/test_fitness_rules_directionality.py
+  - uv run engineeringagent validate --schema-only
+updated_at: '2026-03-06T00:00:00Z'
