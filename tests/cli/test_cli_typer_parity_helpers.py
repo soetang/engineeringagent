@@ -177,7 +177,7 @@ def test_init_preserve_mode_reports_skipped_merge_spec(
 def test_version_flag_prints_version_and_exits_zero(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(cli_module.importlib.metadata, "version", lambda _name: "1.2.3")
+    monkeypatch.setattr(cli_module.importlib_metadata, "version", lambda _name: "1.2.3")
     runner = CliRunner(mix_stderr=False)
 
     result = runner.invoke(cli_module.build_typer_app(), ["--version"])

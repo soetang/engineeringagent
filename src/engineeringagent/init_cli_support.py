@@ -378,8 +378,6 @@ def install_precommit_hooks_best_effort(
     project_root: Path,
     scaffold_profile: str,
     emit: Callable[[str], None] = print,
-    shutil_module=shutil,
-    git_client_module=git_client,
 ) -> None:
     """Best-effort install pre-commit hooks when prerequisites are met."""
     if not (project_root / ".git").exists():
@@ -392,7 +390,7 @@ def install_precommit_hooks_best_effort(
         )
         return
 
-    if shutil_module.which("pre-commit") is None:
+    if shutil.which("pre-commit") is None:
         remediation = " && ".join(
             precommit_remediation_commands(scaffold_profile=scaffold_profile)
         )
@@ -412,9 +410,7 @@ def install_precommit_hooks_best_effort(
             retry_command = f"pre-commit install --hook-type {hook_type}"
 
         try:
-            result = git_client_module.precommit_install(
-                project_root, hook_type=hook_type
-            )
+            result = git_client.precommit_install(project_root, hook_type=hook_type)
         except OSError as exc:
             emit(
                 "init warning: pre-commit hook install failed "

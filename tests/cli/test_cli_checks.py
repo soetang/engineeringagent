@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-
 import pytest
 from typer.testing import CliRunner
 
@@ -301,6 +300,8 @@ def test_cli_checks_run_delegates_to_checks_surface(
             "commands",
             "--check-id",
             "smoke",
+            "--feature-path",
+            "docs/spec/features/FEAT-177.yaml",
             "--phase",
             "iteration_end",
             "--base",
@@ -308,6 +309,7 @@ def test_cli_checks_run_delegates_to_checks_surface(
             "--head",
             "HEAD",
             "--verbose-output",
+            "--dry-run",
         ],
     )
 
@@ -320,9 +322,11 @@ def test_cli_checks_run_delegates_to_checks_surface(
     assert phase is not None
     assert checks == ["commands"]
     assert kwargs.get("check_id") == "smoke"
+    assert kwargs.get("feature_path") == "docs/spec/features/FEAT-177.yaml"
     assert kwargs.get("base") == "main"
     assert kwargs.get("head") == "HEAD"
     assert kwargs.get("verbose_output") is True
+    assert kwargs.get("dry_run") is True
     assert "start_agent_fn" not in kwargs
     assert "run_agent_fn" not in kwargs
 
@@ -685,4 +689,3 @@ def test_cli_checks_run_all_phases_stops_at_first_failed_phase(
         "checks failed: phase=feature_done type=command check_id=phase_feature_fail"
         in result.stdout
     )
-

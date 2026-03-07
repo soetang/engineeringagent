@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from engineeringagent import cli as cli_module
+from engineeringagent.cli import init as cli_init_module
 from engineeringagent import init_cli_support
 from tests.cli.init_command_support import (
     DEFAULT_LAUNCHER_ARGS,
@@ -230,8 +230,10 @@ def test_init_writes_backend_to_engineeringagent_toml_when_missing(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Verify init persists selected backend when config file is missing."""
-    monkeypatch.setattr(cli_module, "list_backends", lambda: ("opencode", "mock-b"))
-    monkeypatch.setattr(cli_module, "default_backend_id", lambda: "opencode")
+    monkeypatch.setattr(
+        cli_init_module, "list_backends", lambda: ("opencode", "mock-b")
+    )
+    monkeypatch.setattr(cli_init_module, "default_backend_id", lambda: "opencode")
     patch_non_tty(monkeypatch)
 
     result = invoke_cli(
@@ -247,8 +249,10 @@ def test_init_explicit_non_default_backend_persists_to_engineeringagent_toml(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Verify explicit non-default --backend persists on a fresh init run."""
-    monkeypatch.setattr(cli_module, "list_backends", lambda: ("opencode", "mock-b"))
-    monkeypatch.setattr(cli_module, "default_backend_id", lambda: "mock-b")
+    monkeypatch.setattr(
+        cli_init_module, "list_backends", lambda: ("opencode", "mock-b")
+    )
+    monkeypatch.setattr(cli_init_module, "default_backend_id", lambda: "mock-b")
     patch_non_tty(monkeypatch)
 
     result = invoke_cli(
@@ -365,8 +369,8 @@ def test_init_with_codex_backend_scaffolds_codex_profile_config(
 ) -> None:
     """Verify codex backend selection scaffolds .codex/config.toml."""
     patch_non_tty(monkeypatch)
-    monkeypatch.setattr(cli_module, "list_backends", lambda: ("codex", "opencode"))
-    monkeypatch.setattr(cli_module, "default_backend_id", lambda: "opencode")
+    monkeypatch.setattr(cli_init_module, "list_backends", lambda: ("codex", "opencode"))
+    monkeypatch.setattr(cli_init_module, "default_backend_id", lambda: "opencode")
 
     result = invoke_cli(
         init_args(tmp_path, "slim", "--backend", "codex", *DEFAULT_LAUNCHER_ARGS)
@@ -458,8 +462,8 @@ def test_init_with_codex_backend_profile_conflict_non_interactive_keeps_existing
 ) -> None:
     """Verify non-interactive init preserves an existing conflicting codex profile."""
     patch_non_tty(monkeypatch)
-    monkeypatch.setattr(cli_module, "list_backends", lambda: ("codex", "opencode"))
-    monkeypatch.setattr(cli_module, "default_backend_id", lambda: "opencode")
+    monkeypatch.setattr(cli_init_module, "list_backends", lambda: ("codex", "opencode"))
+    monkeypatch.setattr(cli_init_module, "default_backend_id", lambda: "opencode")
     fail_on_input(monkeypatch)
     (tmp_path / "engineeringagent.toml").write_text(
         '[agents]\nbackend = "codex"\n\n[agents.codex]\nprofile = "custom"\n',
@@ -491,8 +495,10 @@ def test_init_appends_backend_to_existing_engineeringagent_toml(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Verify init appends [agents].backend when config exists without it."""
-    monkeypatch.setattr(cli_module, "list_backends", lambda: ("opencode", "mock-b"))
-    monkeypatch.setattr(cli_module, "default_backend_id", lambda: "opencode")
+    monkeypatch.setattr(
+        cli_init_module, "list_backends", lambda: ("opencode", "mock-b")
+    )
+    monkeypatch.setattr(cli_init_module, "default_backend_id", lambda: "opencode")
     patch_non_tty(monkeypatch)
 
     config_path = tmp_path / "engineeringagent.toml"
@@ -513,8 +519,10 @@ def test_init_preserves_existing_backend_without_force(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Verify init does not overwrite existing backend unless --force is used."""
-    monkeypatch.setattr(cli_module, "list_backends", lambda: ("opencode", "mock-b"))
-    monkeypatch.setattr(cli_module, "default_backend_id", lambda: "opencode")
+    monkeypatch.setattr(
+        cli_init_module, "list_backends", lambda: ("opencode", "mock-b")
+    )
+    monkeypatch.setattr(cli_init_module, "default_backend_id", lambda: "opencode")
     patch_non_tty(monkeypatch)
 
     config_path = tmp_path / "engineeringagent.toml"

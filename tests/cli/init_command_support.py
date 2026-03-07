@@ -8,6 +8,7 @@ import pytest
 from typer.testing import CliRunner
 
 from engineeringagent import cli as cli_module
+from engineeringagent.cli import init as cli_init_module
 from engineeringagent.init_scaffold import AGENTS_LAUNCHER_COMMANDS
 
 if sys.version_info >= (3, 11):
@@ -31,7 +32,7 @@ def init_args(tmp_path: Path, *extra: str) -> list[str]:
 
 
 def patch_non_tty(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(cli_module, "stdout_is_tty", lambda _stream: False)
+    monkeypatch.setattr(cli_init_module, "stdout_is_tty", lambda _stream: False)
 
 
 def patch_tty(
@@ -40,10 +41,12 @@ def patch_tty(
     backends: tuple[str, ...] = ("opencode",),
     default_backend: str | None = None,
 ) -> None:
-    monkeypatch.setattr(cli_module, "stdout_is_tty", lambda _stream: True)
-    monkeypatch.setattr(cli_module, "list_backends", lambda: backends)
+    monkeypatch.setattr(cli_init_module, "stdout_is_tty", lambda _stream: True)
+    monkeypatch.setattr(cli_init_module, "list_backends", lambda: backends)
     if default_backend is not None:
-        monkeypatch.setattr(cli_module, "default_backend_id", lambda: default_backend)
+        monkeypatch.setattr(
+            cli_init_module, "default_backend_id", lambda: default_backend
+        )
 
 
 def fail_on_input(

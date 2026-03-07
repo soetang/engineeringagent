@@ -11,6 +11,9 @@ import yaml
 from typer.testing import CliRunner
 
 from engineeringagent import cli as cli_module
+from engineeringagent.cli import init as cli_init_module
+from engineeringagent.cli import run as cli_run_module
+from engineeringagent.cli import schema as cli_schema_module
 from engineeringagent.config import (
     resolve_docs_root,
 )
@@ -247,7 +250,7 @@ def test_root_version_flag_uses_distribution_metadata_source(
         requested_distribution_names.append(distribution_name)
         return reported_version
 
-    monkeypatch.setattr(cli_module.importlib.metadata, "version", _fake_version)
+    monkeypatch.setattr(cli_module.importlib_metadata, "version", _fake_version)
 
     result = _invoke_cli(["--version"])
 
@@ -316,7 +319,7 @@ def test_main_run_command_executes_loop_context_via_real_cli(
         captured["loop_run"] = loop_run
         return 7
 
-    monkeypatch.setattr(cli_module, "run_loop_controller", _fake_run_loop)
+    monkeypatch.setattr(cli_run_module, "run_loop_controller", _fake_run_loop)
 
     result = _invoke_cli(
         [
@@ -546,7 +549,7 @@ def test_cmd_run_builds_looprun_context_for_loop_entrypoint(
         captured["loop_run"] = loop_run
         return 7
 
-    monkeypatch.setattr(cli_module, "run_loop_controller", _fake_run_loop)
+    monkeypatch.setattr(cli_run_module, "run_loop_controller", _fake_run_loop)
 
     exit_code = cli_module.cmd_run(
         SimpleNamespace(
@@ -674,7 +677,7 @@ def test_main_init_command_uses_typer_handler(monkeypatch: Any, tmp_path: Path) 
         observed["scaffold_docs_dir"] = request.scaffold_docs_dir
         return 0
 
-    monkeypatch.setattr(cli_module, "run_init_command", _fake_run_init_command)
+    monkeypatch.setattr(cli_init_module, "run_init_command", _fake_run_init_command)
 
     result = _invoke_cli(
         [
@@ -766,7 +769,11 @@ def test_cmd_schema_list_prints_registry_ids(
     monkeypatch: pytest.MonkeyPatch,
     capsys: Any,
 ) -> None:
-    monkeypatch.setattr(cli_module, "list_schema_ids", lambda: ("a.schema", "b.schema"))
+    monkeypatch.setattr(
+        cli_schema_module,
+        "list_schema_ids",
+        lambda: ("a.schema", "b.schema"),
+    )
 
     code = cli_module.cmd_schema_list(SimpleNamespace(project_root="."))
     output = capsys.readouterr().out
@@ -780,7 +787,7 @@ def test_cmd_schema_prints_registry_schema_as_json(
     capsys: Any,
 ) -> None:
     monkeypatch.setattr(
-        cli_module,
+        cli_schema_module,
         "schema_from_registry",
         lambda _schema_id: {"z": {"a": 1}, "a": 1},
     )
@@ -800,7 +807,7 @@ def test_cmd_schema_prints_registry_schema_as_yaml(
     capsys: Any,
 ) -> None:
     monkeypatch.setattr(
-        cli_module,
+        cli_schema_module,
         "schema_from_registry",
         lambda _schema_id: {"z": {"a": 1}, "a": 1},
     )
@@ -820,7 +827,7 @@ def test_cmd_schema_writes_to_output_path(
     capsys: Any,
 ) -> None:
     monkeypatch.setattr(
-        cli_module,
+        cli_schema_module,
         "schema_from_registry",
         lambda _schema_id: {"z": {"a": 1}, "a": 1},
     )
@@ -848,11 +855,11 @@ def test_cmd_schema_rejects_unknown_schema_id(
     capsys: Any,
 ) -> None:
     def _raise_unknown(_schema_id: str) -> dict[str, object]:
-        raise cli_module.UnknownSchemaIdError(
+        raise cli_schema_module.UnknownSchemaIdError(
             "unknown schema id: missing; supported ids: feature.spec"
         )
 
-    monkeypatch.setattr(cli_module, "schema_from_registry", _raise_unknown)
+    monkeypatch.setattr(cli_schema_module, "schema_from_registry", _raise_unknown)
 
     code = cli_module.cmd_schema(SimpleNamespace(project_root=".", schema_id="missing"))
     output = capsys.readouterr().out

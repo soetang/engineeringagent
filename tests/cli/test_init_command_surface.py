@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
 
 from engineeringagent import cli as cli_module
+from engineeringagent.cli import init as cli_init_module
+from engineeringagent.init_service import InitDependencies, InitRequest
 from tests.cli.init_command_support import (
     DEFAULT_LAUNCHER_ARGS,
     UV_RUN_TOKEN,
@@ -42,6 +45,114 @@ def test_init_subcommand_registered(
 
     assert result.exit_code == 0
     assert recorded == {"project_root": str(tmp_path)}
+
+
+def test_cmd_init_accepts_explicit_cli_overrides(tmp_path: Path) -> None:
+    (tmp_path / "AGENTS.md").write_text("existing agents\n", encoding="utf-8")
+    observed = SimpleNamespace(
+        request=None,
+        deps=None,
+    )
+
+    def _list_backends() -> tuple[str, ...]:
+        return ("alpha", "beta", "opencode")
+
+    def _resolve_agents_backend_id(project_root: Path) -> str | None:
+        assert project_root == tmp_path.resolve()
+        return "beta"
+
+    def _default_backend_id() -> str:
+        return "alpha"
+
+    def _resolve_docs_dir(
+        project_root: Path,
+        docs_mode: str | None,
+        scaffold_docs_dir: str,
+    ) -> tuple[str | None, str | None]:
+        assert project_root == tmp_path.resolve()
+        assert docs_mode == "separate"
+        assert scaffold_docs_dir == "docs.custom"
+        return "docs.override", None
+
+    def _fake_run_init_command(request: InitRequest, deps: InitDependencies) -> int:
+        observed.request = request
+        observed.deps = deps
+        return 0
+
+    adapters = cli_init_module.InitCliAdapters(
+        backend=cli_init_module.InitCliBackendAdapters(
+            list_backends_fn=_list_backends,
+            resolve_agents_backend_id_fn=_resolve_agents_backend_id,
+            default_backend_id_fn=_default_backend_id,
+        ),
+        command=cli_init_module.InitCliCommandAdapters(
+            run_init_command_fn=_fake_run_init_command
+        ),
+        selection=cli_init_module.InitCliSelectionAdapters(
+            resolve_docs_dir_fn=_resolve_docs_dir
+        ),
+    )
+
+    result = cli_init_module.cmd_init(
+        SimpleNamespace(
+            project_root=str(tmp_path),
+            force=True,
+            scaffold_profile="python_uv",
+            docs_mode="separate",
+            scaffold_docs_dir="docs.custom",
+            agents_mode="overwrite",
+            pack="slim",
+            backend="opencode",
+            agents_launcher="uvx",
+            model="openai/gpt-5.3-codex",
+            no_precommit_install=True,
+        ),
+        adapters=adapters,
+    )
+
+    assert result == 0
+    request = observed.request
+    assert request is not None
+    assert request.project_root == tmp_path.resolve()
+    assert request.force is True
+    assert request.scaffold_profile == "python_uv"
+    assert request.docs_mode == "separate"
+    assert request.scaffold_docs_dir == "docs.custom"
+    assert request.pack == "slim"
+    assert request.backend == "opencode"
+    assert request.agents_mode == "overwrite"
+    assert request.agents_launcher == "uvx"
+    assert request.model == "openai/gpt-5.3-codex"
+    assert request.no_precommit_install is True
+    deps = observed.deps
+    assert deps is not None
+    assert (
+        deps.resolve_backend(
+            project_root=request.project_root,
+            backend=request.backend,
+            force=request.force,
+        )
+        == ("opencode", None)
+    )
+    assert (
+        deps.resolve_docs_dir(
+            project_root=request.project_root,
+            docs_mode=request.docs_mode,
+            scaffold_docs_dir=request.scaffold_docs_dir,
+        )
+        == ("docs.override", None)
+    )
+    assert (
+        deps.resolve_agents_mode(
+            project_root=request.project_root,
+            agents_mode=request.agents_mode,
+        )
+        == ("overwrite", None)
+    )
+    assert (
+        deps.resolve_agents_launcher(agents_launcher=request.agents_launcher)
+        == ("uvx", None)
+    )
 
 
 def test_init_help_documents_model_option() -> None:

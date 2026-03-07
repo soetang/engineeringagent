@@ -2,13 +2,13 @@ id: FEAT-177
 title: Create CLI package and thin top-level command composition
 type: spec
 expected_commit_subject: 'spec: add FEAT-177 cli package composition boundaries'
-status: backlog
+status: done
 priority: high
 objective: Reduce CLI coupling and hotspot size by moving command-family wiring and
   handlers into `src/engineeringagent/cli/` while preserving all current command names,
   options, output contracts, and runtime behavior.
-context: '`src/engineeringagent/cli.py` currently acts as a broad composition hub for
-  command handlers, init wiring, checks execution helpers, schema output, progress
+context: '`src/engineeringagent/cli.py` currently acts as a broad composition hub
+  for command handlers, init wiring, checks execution helpers, schema output, progress
   utilities, and Typer app bootstrap. Prior review and `pydeps` analysis show that
   the module imports a wide cross-section of the repository (`agents`, `approach`,
   `checks`, `config`, `git`, `init_service`, `loop`, `progress`, `schema_registry`,
@@ -34,12 +34,12 @@ constraints:
   that surface to thin package composition if possible without compatibility shims.'
 - 'In scope: replace module-global dependency injection patterns touched by this refactor
   with more explicit package-local adapters or dependency builders when practical.'
-- 'Out of scope: changing checks planning/execution policy, loop runtime behavior, or
-  CLI UX semantics beyond behavior-preserving cleanup.'
+- 'Out of scope: changing checks planning/execution policy, loop runtime behavior,
+  or CLI UX semantics beyond behavior-preserving cleanup.'
 - 'Out of scope: introducing a generic shared CLI helpers bucket that obscures command-family
   ownership.'
-- no fitness-function changes required; this spec reorganizes CLI ownership while keeping
-  architectural policy changes in a separate enforcement spec.
+- no fitness-function changes required; this spec reorganizes CLI ownership while
+  keeping architectural policy changes in a separate enforcement spec.
 implementation_notes: 'Contract change declaration
 
 
@@ -52,48 +52,50 @@ implementation_notes: 'Contract change declaration
 
   Old behavior:
 
-  - `src/engineeringagent/cli.py` is a large mixed-responsibility module that owns app
-    bootstrap plus multiple command-family handlers and helper seams.
+  - `src/engineeringagent/cli.py` is a large mixed-responsibility module that owns
+  app bootstrap plus multiple command-family handlers and helper seams.
 
   - CLI package boundaries are implicit rather than expressed through filesystem ownership.
 
 
   New behavior:
 
-  - `src/engineeringagent/cli/` becomes the canonical home for CLI app wiring and command-family
-    modules.
+  - `src/engineeringagent/cli/` becomes the canonical home for CLI app wiring and
+  command-family modules.
 
   - Top-level CLI composition is thin and delegates to package-owned command modules.
 
-  - Command-family logic is grouped by responsibility instead of accumulating in one file.
+  - Command-family logic is grouped by responsibility instead of accumulating in one
+  file.
 
   - The preferred package shape follows existing repo patterns such as `engineeringagent.approach`
-    and `engineeringagent.checks`: explicit facade exports plus focused implementation modules.
+  and `engineeringagent.checks`: explicit facade exports plus focused implementation
+  modules.
 
 
   Compatibility policy:
 
   - External command behavior remains unchanged.
 
-  - Internal imports may change; no temporary dual-path shim layer beyond what is required
-    for the published `engineeringagent.cli:main` entrypoint.
+  - Internal imports may change; no temporary dual-path shim layer beyond what is
+  required for the published `engineeringagent.cli:main` entrypoint.
 
 
   Migration plan:
 
   1) Introduce `src/engineeringagent/cli/` package with a package root, `__main__.py`
-     for `python -m engineeringagent.cli`, and one app/bootstrap module.
+  for `python -m engineeringagent.cli`, and one app/bootstrap module.
 
   2) Move Typer wiring into `cli/app.py` or `cli/typer.py` and keep command registration
-     in the CLI package.
+  in the CLI package.
 
   3) Move command-family handlers into focused package modules in this order: `checks`,
-     `schema`/`approach`, `progress`, `run`, `init`.
+  `schema`/`approach`, `progress`, `run`, `init`.
 
   4) Keep the published script entrypoint stable while reducing top-level glue.
 
-  5) Update targeted tests and any path-sensitive/meta tests that currently assume a
-     single-file `src/engineeringagent/cli.py` layout.
+  5) Update targeted tests and any path-sensitive/meta tests that currently assume
+  a single-file `src/engineeringagent/cli.py` layout.
 
 
   Verification evidence:
@@ -111,8 +113,9 @@ acceptance:
 - A package root and module-execution path exist so `engineeringagent.cli:main` and
   `python -m engineeringagent.cli` both remain supported if they are part of current
   repository behavior.
-- Command-family modules are separated by ownership (`run`, `validate`, `schema`, `approach`,
-  `checks`, `init`, `progress`) instead of remaining co-located in one large file.
+- Command-family modules are separated by ownership (`run`, `validate`, `schema`,
+  `approach`, `checks`, `init`, `progress`) instead of remaining co-located in one
+  large file.
 - Typer/click registration stays within the CLI package and does not leak into domain
   packages like `engineeringagent.checks`.
 - Existing command behavior remains stable for command names, options, exit codes,
@@ -124,7 +127,7 @@ acceptance:
 subtasks:
 - id: ST-001
   title: Introduce CLI package bootstrap and top-level composition seam
-  status: backlog
+  status: done
   context: Create `src/engineeringagent/cli/` with `__init__.py`, `__main__.py`, and
     one bootstrap module (`app.py` or `typer.py`) while preserving the published CLI
     entrypoint and current module-execution behavior.
@@ -132,7 +135,7 @@ subtasks:
   - uv run pytest -q tests/cli/test_cli.py tests/cli/test_cli_typer_parity_helpers.py
 - id: ST-002
   title: Move command-family handlers into focused CLI package modules
-  status: backlog
+  status: done
   context: Split command implementation by ownership so `run`, `validate`, `schema`,
     `approach`, `checks`, `init`, and `progress` each live in package-owned modules.
     Update path-sensitive tests that currently reference `src/engineeringagent/cli.py`
@@ -142,18 +145,19 @@ subtasks:
   - uv run pytest -q tests/meta/test_agent_boundary_migration_smoke.py tests/fitness/test_fitness_rules_statement_budget.py
 - id: ST-003
   title: Replace touched CLI global injection seams with explicit package-local adapters
-  status: backlog
+  status: done
   context: Where this refactor currently depends on module-global mutation or hidden
     indirection, move to explicit dependency builders or adapter functions owned by
     the CLI package.
   verification:
-  - uv run pytest -q tests/cli/test_init_service.py tests/cli/test_init_command.py
+  - uv run pytest -q tests/cli/test_init_service.py tests/cli/test_init_command_surface.py
+    tests/cli/test_init_command_backend.py tests/cli/test_init_command_conflicts.py
 - id: ST-004
   title: Run final CLI regression validation for package refactor
-  status: backlog
+  status: done
   context: Confirm the CLI package split preserves behavior and that spec validation
     still passes after the reorganization.
   verification:
   - uv run pytest -q tests/cli
   - uv run engineeringagent validate --schema-only
-updated_at: '2026-03-06T00:00:00Z'
+updated_at: '2026-03-07T09:06:59Z'
