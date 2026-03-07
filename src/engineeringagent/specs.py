@@ -10,9 +10,8 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 from pydantic_core import InitErrorDetails, PydanticCustomError
 
+from engineeringagent.checks import HarnessCheckPhase
 from engineeringagent.json_schema import JSON_SCHEMA_DRAFT_URL
-
-from .checks.contracts import HarnessCheckPhase
 
 PRIORITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 ERR_DUP_SUBTASK_ID: LiteralString = "duplicate subtask id: {subtask_id}"

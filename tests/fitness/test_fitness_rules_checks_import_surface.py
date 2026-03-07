@@ -260,7 +260,7 @@ def test_specs_production_module_reuses_checks_owned_harness_check_phase(
     assert specs.HarnessCheckPhase is ChecksHarnessCheckPhase
 
 
-def test_checker_allows_specs_module_to_import_checks_contracts(
+def test_checker_allows_specs_module_to_import_checks_top_level_surface(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
@@ -272,7 +272,7 @@ def test_checker_allows_specs_module_to_import_checks_contracts(
     (src_root / "specs.py").write_text(
         "\n".join(
             [
-                "from .checks.contracts import HarnessCheckPhase",
+                "from engineeringagent.checks import HarnessCheckPhase",
                 "",
                 "PHASE = HarnessCheckPhase.ITERATION_END",
                 "",
@@ -283,6 +283,34 @@ def test_checker_allows_specs_module_to_import_checks_contracts(
 
     violations = checker._collect_violations(tmp_path)
     assert violations == []
+
+
+def test_checker_flags_specs_module_importing_checks_contracts_submodule(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    checker = _load_checker_module(repo_root)
+
+    src_root = tmp_path / "src" / "engineeringagent"
+    src_root.mkdir(parents=True)
+    (src_root / "__init__.py").write_text("", encoding="utf-8")
+    (src_root / "specs.py").write_text(
+        "\n".join(
+            [
+                "from engineeringagent.checks.contracts import HarnessCheckPhase",
+                "",
+                "PHASE = HarnessCheckPhase.ITERATION_END",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    violations = checker._collect_violations(tmp_path)
+    assert (
+        "src/engineeringagent/specs.py:1 imports checks submodule engineeringagent.checks.contracts"
+        in violations
+    )
 
 
 def test_checker_still_flags_non_specs_checks_contracts_imports(

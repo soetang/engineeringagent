@@ -195,6 +195,7 @@ def test_repo_fitness_catalog_docs_surface_directionality_policy_config(
         encoding="utf-8"
     )
 
+    assert "architecture.dep-directionality" in checked_in_catalog
     assert (
         "harness/fitness-functions/policies/dependency_directionality.yaml"
         in checked_in_catalog

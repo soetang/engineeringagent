@@ -2,6 +2,7 @@ rules:
   - module: engineeringagent.specs
     blocked_dependencies:
       - engineeringagent.cli
+      - engineeringagent.checks.contracts
       - engineeringagent.loop
       - engineeringagent.loop_runtime
       - engineeringagent.checks.validate.validator
@@ -10,9 +11,41 @@ rules:
       - engineeringagent.cli
       - engineeringagent.loop
       - engineeringagent.loop_runtime
+  - module: engineeringagent.checks.contracts
+    blocked_dependencies:
+      - engineeringagent.cli
+      - engineeringagent.loop
+      - engineeringagent.loop_runtime
+      - engineeringagent.specs
   - module: engineeringagent.cli
     blocked_dependencies:
       - engineeringagent.loop_runtime
+  - module: engineeringagent.cli.app
+    blocked_dependencies:
+      - engineeringagent.loop_runtime
+      - engineeringagent.checks.commands
+      - engineeringagent.checks.fitness
+      - engineeringagent.checks.reviewers
+      - engineeringagent.checks.validate
+      - engineeringagent.specs
+  - module: engineeringagent.cli.typer
+    blocked_dependencies:
+      - engineeringagent.loop
+      - engineeringagent.loop_runtime
+      - engineeringagent.checks.commands
+      - engineeringagent.checks.fitness
+      - engineeringagent.checks.reviewers
+      - engineeringagent.checks.validate
+      - engineeringagent.specs
+  - module: engineeringagent.cli.checks
+    blocked_dependencies:
+      - engineeringagent.loop
+      - engineeringagent.loop_runtime
+      - engineeringagent.checks.commands
+      - engineeringagent.checks.fitness
+      - engineeringagent.checks.reviewers
+      - engineeringagent.checks.validate
+      - engineeringagent.specs
   - module: engineeringagent.loop
     blocked_dependencies:
       - engineeringagent.cli

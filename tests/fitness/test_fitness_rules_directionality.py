@@ -128,6 +128,107 @@ def test_directionality_rule_reports_blocked_loop_runtime_import(
     )
 
 
+def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    _write_directionality_fixture(tmp_path)
+    _write_module(
+        tmp_path,
+        "specs.py",
+        "import engineeringagent.checks.contracts\n",
+    )
+    _write_module(tmp_path, "cli/checks.py", "")
+    _write_module(
+        tmp_path,
+        "cli/app.py",
+        "import engineeringagent.loop_runtime.selection\n",
+    )
+    _write_module(
+        tmp_path,
+        "cli/typer.py",
+        "import engineeringagent.checks.reviewers.engine\n",
+    )
+    _write_module(
+        tmp_path,
+        "checks/contracts.py",
+        "import engineeringagent.cli.app\n",
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["rule_id"] == "architecture.dep-directionality"
+    assert payload["status"] == "fail"
+    assert payload["violations"] == [
+        (
+            "engineeringagent.checks.contracts imports blocked dependency "
+            "engineeringagent.cli.app"
+        ),
+        (
+            "engineeringagent.cli.app imports blocked dependency "
+            "engineeringagent.loop_runtime.selection"
+        ),
+        (
+            "engineeringagent.cli.typer imports blocked dependency "
+            "engineeringagent.checks.reviewers.engine"
+        ),
+        (
+            "engineeringagent.specs imports blocked dependency "
+            "engineeringagent.checks.contracts"
+        ),
+    ]
+
+
+def test_directionality_rule_supports_reverse_direction_specs_contract_boundaries(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    _write_module(
+        tmp_path,
+        "specs.py",
+        "import engineeringagent.checks.contracts\n",
+    )
+    _write_module(
+        tmp_path,
+        "checks/contracts.py",
+        "import engineeringagent.specs\n",
+    )
+    policy_file = _write_policy(
+        tmp_path,
+        [
+            {
+                "module": "engineeringagent.specs",
+                "blocked_dependencies": ["engineeringagent.checks.contracts"],
+            },
+            {
+                "module": "engineeringagent.checks.contracts",
+                "blocked_dependencies": ["engineeringagent.specs"],
+            },
+        ],
+    )
+
+    proc, payload = _run_checker(
+        tmp_path,
+        checker_path=_script_path(repo_root),
+        config_file=policy_file,
+    )
+
+    assert proc.returncode == 0
+    assert payload["rule_id"] == "architecture.dep-directionality"
+    assert payload["status"] == "fail"
+    assert payload["violations"] == [
+        (
+            "engineeringagent.checks.contracts imports blocked dependency "
+            "engineeringagent.specs"
+        ),
+        (
+            "engineeringagent.specs imports blocked dependency "
+            "engineeringagent.checks.contracts"
+        ),
+    ]
+
+
 def test_directionality_rule_loads_blocked_boundaries_from_policy(
     tmp_path: Path,
     repo_root: Path,

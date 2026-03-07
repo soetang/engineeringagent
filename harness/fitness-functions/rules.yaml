@@ -2,9 +2,9 @@ contract_version: "1.0"
 rules:
   - rule_id: architecture.dep-directionality
     name: Dependency directionality
-    summary: Enforce core module import direction boundaries.
-    rationale: Keeps orchestration and contracts layered for reviewability.
-    remediation: Refactor imports to follow the declared architecture boundaries.
+    summary: Enforce CLI package and checks-owned contract import direction boundaries.
+    rationale: Keeps CLI composition modules and checks-owned contracts layered for reviewability.
+    remediation: Refactor imports to follow the declared CLI/package and contract-owner boundaries.
     scope: src/engineeringagent
     severity: error
     side_effect_free: true
