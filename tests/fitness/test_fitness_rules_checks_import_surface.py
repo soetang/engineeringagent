@@ -4,10 +4,15 @@ from __future__ import annotations
 # pylint: disable=protected-access
 
 import importlib.util
+import os
 from pathlib import Path
+import subprocess
+import sys
 
 import pytest
 from engineeringagent import checks
+from engineeringagent import specs
+from engineeringagent.checks.contracts import HarnessCheckPhase as ChecksHarnessCheckPhase
 
 
 def _load_checker_module(repo_root: Path):
@@ -207,11 +212,102 @@ def test_checker_flags_removed_legacy_runtime_helper_imports(
 
 
 def test_cli_production_module_uses_checks_top_level_surface_only(
+    tmp_path: Path,
     repo_root: Path,
 ) -> None:
     checker = _load_checker_module(repo_root)
 
-    violations = checker._collect_violations(repo_root)
-    cli_violations = [line for line in violations if line.startswith("src/engineeringagent/cli.py:")]
+    src_root = tmp_path / "src" / "engineeringagent" / "cli"
+    src_root.mkdir(parents=True)
+    (tmp_path / "src" / "engineeringagent" / "__init__.py").write_text(
+        "",
+        encoding="utf-8",
+    )
+    (src_root / "__init__.py").write_text(
+        "\n".join(
+            [
+                "from engineeringagent.checks import HarnessCheckPhase, run_checks",
+                "",
+                "__all__ = ['HarnessCheckPhase', 'run_checks']",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    (src_root / "checks.py").write_text(
+        "\n".join(
+            [
+                "from engineeringagent.checks import HarnessCheckPhase",
+                "",
+                "PHASE = HarnessCheckPhase.ITERATION_END",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    violations = checker._collect_violations(tmp_path)
+    cli_violations = [
+        line for line in violations if line.startswith("src/engineeringagent/cli/")
+    ]
 
     assert cli_violations == []
+
+
+def test_specs_production_module_reuses_checks_owned_harness_check_phase(
+    repo_root: Path,
+) -> None:
+    assert specs.HarnessCheckPhase is ChecksHarnessCheckPhase
+
+
+def test_checker_allows_specs_module_to_import_checks_contracts(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    checker = _load_checker_module(repo_root)
+
+    src_root = tmp_path / "src" / "engineeringagent"
+    src_root.mkdir(parents=True)
+    (src_root / "__init__.py").write_text("", encoding="utf-8")
+    (src_root / "specs.py").write_text(
+        "\n".join(
+            [
+                "from .checks.contracts import HarnessCheckPhase",
+                "",
+                "PHASE = HarnessCheckPhase.ITERATION_END",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    violations = checker._collect_violations(tmp_path)
+    assert violations == []
+
+
+def test_checker_still_flags_non_specs_checks_contracts_imports(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    checker = _load_checker_module(repo_root)
+
+    src_root = tmp_path / "src" / "engineeringagent"
+    src_root.mkdir(parents=True)
+    (src_root / "__init__.py").write_text("", encoding="utf-8")
+    (src_root / "bad.py").write_text(
+        "\n".join(
+            [
+                "from engineeringagent.checks.contracts import HarnessCheckPhase",
+                "",
+                "PHASE = HarnessCheckPhase.ITERATION_END",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    violations = checker._collect_violations(tmp_path)
+    assert (
+        "src/engineeringagent/bad.py:1 imports checks submodule engineeringagent.checks.contracts"
+        in violations
+    )

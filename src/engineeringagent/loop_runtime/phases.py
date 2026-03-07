@@ -13,6 +13,7 @@ from pydantic import BaseModel, ConfigDict
 from ..changed_paths import ChangedPathsResult
 from ..checks import (
     ChecksRunResult,
+    HarnessCheckPhase,
     run_checks,
 )
 from ..prompt_feedback import (
@@ -23,7 +24,6 @@ from ..prompts.feedback_envelope import (
     build_command_failure_feedback,
 )
 from ..process import run_shell_command
-from ..specs import HarnessCheckPhase
 from ..config import repo_relative_label, resolve_harness_checks_config_path
 
 from .models import (

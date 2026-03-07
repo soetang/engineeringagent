@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from typing import Iterable
 
-from pydantic import BaseModel, ConfigDict
-
 from engineeringagent.changed_paths import ChangedPathsResult
+from engineeringagent.checks.contracts import (
+    CommandInvocationRecord,
+    HarnessCheckPhase,
+)
 from engineeringagent.checks.strategy_contracts import PlannedCheck, make_planned_check
 from engineeringagent.specs import (
     HarnessCheckCommandDefinition,
-    HarnessCheckPhase,
     HarnessChecksDocument,
 )
 
@@ -16,21 +17,6 @@ from ..planning_policy import (
     PlanningPolicyContext,
     plan_checks_for_definition_type,
 )
-
-
-class CommandInvocationRecord(BaseModel):
-    """Structured metadata for one command-check invocation."""
-
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-    check_id: str
-    command: str
-    returncode: int | None
-    started_epoch_sec: int
-    ended_epoch_sec: int
-    started_monotonic_ns: int
-    finished_monotonic_ns: int
-    duration_ms: float
 
 
 def plan_command_checks(
@@ -67,3 +53,12 @@ def iter_planned_command_check_commands(
         if not isinstance(check, HarnessCheckCommandDefinition):
             continue
         yield entry.check_id, check.command
+
+
+__all__ = [
+    "CommandInvocationRecord",
+    "HarnessCheckPhase",
+    "PlannedCheck",
+    "iter_planned_command_check_commands",
+    "plan_command_checks",
+]

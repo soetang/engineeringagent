@@ -12,13 +12,13 @@ from . import schema as schema_commands
 from . import validate as validate_commands
 from .. import checks as checks_module
 from .. import init_cli_support as init_cli_support_module
-from ..specs import HarnessCheckPhase
 
+HarnessCheckPhase = checks_module.HarnessCheckPhase
 _HandlerArgs = checks_commands.HandlerArgs
 cmd_checks_catalog = checks_commands.cmd_checks_catalog
 cmd_checks_run = checks_commands.cmd_checks_run
 normalize_cli_checks_groups = checks_commands.normalize_cli_checks_groups
-reviewers_group_selected = checks_commands.reviewers_group_selected
+reviewers_group_selected = checks_module.reviewers_group_selected
 
 cmd_init = init_commands.cmd_init
 git_client = init_cli_support_module.git_client

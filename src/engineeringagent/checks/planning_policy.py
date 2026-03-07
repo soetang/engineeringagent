@@ -8,8 +8,8 @@ from engineeringagent.changed_paths import (
     ChangedPathsResult,
     FALLBACK_CHANGE_DISCOVERY_REASON,
 )
+from engineeringagent.checks.contracts import HarnessCheckPhase
 from engineeringagent.specs import (
-    HarnessCheckPhase,
     HarnessCheckWhenDefinition,
     HarnessChecksDocument,
 )

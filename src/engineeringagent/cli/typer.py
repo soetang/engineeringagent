@@ -11,9 +11,9 @@ import typer
 from .. import checks as checks_module
 from ..init_scaffold import AGENTS_LAUNCHER_CHOICES, DEFAULT_AGENT_MODEL
 from ..progress import paths as progress_paths
-from ..specs import HarnessCheckPhase
 
 _HandlerArgs = SimpleNamespace
+HarnessCheckPhase = checks_module.HarnessCheckPhase
 
 
 def project_root_from_typer_context(ctx: typer.Context) -> str:

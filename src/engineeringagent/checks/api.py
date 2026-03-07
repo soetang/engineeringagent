@@ -2,11 +2,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Protocol, cast
 
-from pydantic import BaseModel, ConfigDict
 from typing_extensions import Unpack
 
 from engineeringagent.changed_paths import ChangedPathsResult, collect_changed_paths
-from engineeringagent.checks.commands.runtime import (
+from engineeringagent.checks.contracts import (
+    CheckDecision,
+    CheckExecutionRecord,
     CommandInvocationRecord,
 )
 from engineeringagent.checks.config_selection import (
@@ -29,11 +30,10 @@ from engineeringagent.checks.strategies import (
 )
 from engineeringagent.checks.strategy_contracts import (
     CheckContext,
-    CheckDecision,
-    CheckExecutionRecord,
     CheckStrategy,
     build_strategy_registry,
 )
+from engineeringagent.checks.results import ChecksRunResult
 from engineeringagent.prompt_feedback import normalize_checks_contract_prompt_feedback
 
 __all__ = [
@@ -43,27 +43,6 @@ __all__ = [
     "_call_collect_changed_paths",
     "_resolve_changed_paths",
 ]
-
-
-class ChecksRunResult(BaseModel):
-    """Structured result for a checks run.
-
-    This contract is intentionally small and will expand as the migration
-    progresses. For now, it primarily signals success/failure and preserves
-    deterministic human-readable output for CLI parity.
-    """
-
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    ok: bool
-    dry_run: bool = False
-    failed_check_id: str | None = None
-    failed_payload: dict[str, Any] | None = None
-    output: str = ""
-    decisions: tuple[CheckDecision, ...] = ()
-    executions: tuple[CheckExecutionRecord, ...] = ()
-    prompt_feedback: str | None = None
-    command_invocations: tuple[CommandInvocationRecord, ...] = ()
 
 
 class _OrchestrationState:

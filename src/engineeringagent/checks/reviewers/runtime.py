@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict
 from engineeringagent.changed_paths import (
     ChangedPathsResult,
 )
+from engineeringagent.checks.contracts import HarnessCheckPhase
 from engineeringagent.checks.reviewers.engine import (
     DECISION_APPROVE,
     DECISION_REQUEST_CHANGES,
@@ -25,7 +26,6 @@ from engineeringagent.checks.strategy_contracts import (
     make_planned_check,
 )
 from engineeringagent.specs import (
-    HarnessCheckPhase,
     HarnessCheckReviewerDefinition,
     HarnessChecksDocument,
 )

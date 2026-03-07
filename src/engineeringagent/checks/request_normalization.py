@@ -5,7 +5,7 @@ from typing import Any, Callable, Literal, TypedDict
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.specs import HarnessCheckPhase
+from engineeringagent.checks.contracts import HarnessCheckPhase
 
 
 CHECK_GROUP_VALIDATE = "validate"
@@ -109,6 +109,11 @@ _SELECTION_PROFILE_ERROR = (
     "unknown selection profile; expected one of: "
     "default|loop_gate|loop_reviewer|loop_runtime"
 )
+
+
+def list_check_groups() -> tuple[str, ...]:
+    """Return supported checks groups in deterministic CLI order."""
+    return GROUP_ORDER
 
 
 def _groups_for_loop_gate_phase(phase: HarnessCheckPhase) -> tuple[str, ...]:

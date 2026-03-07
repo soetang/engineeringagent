@@ -11,6 +11,9 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_valida
 from pydantic_core import InitErrorDetails, PydanticCustomError
 
 from engineeringagent.json_schema import JSON_SCHEMA_DRAFT_URL
+
+from .checks.contracts import HarnessCheckPhase
+
 PRIORITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 ERR_DUP_SUBTASK_ID: LiteralString = "duplicate subtask id: {subtask_id}"
 
@@ -141,14 +144,6 @@ def _validate_prompt_file_location(prompt_file: str) -> None:
         raise ValueError(
             "prompt_file must reference a file under harness/reviewers/prompts/"
         )
-
-
-class HarnessCheckPhase(str, Enum):
-    """Execution phase for harness checks."""
-
-    ITERATION_END = "iteration_end"
-    FEATURE_DONE = "feature_done"
-    MANUAL = "manual"
 
 
 class HarnessCheckWhenDefinition(StrictContractModel):

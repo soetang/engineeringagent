@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import (
     Any,
     Iterable,
-    Mapping,
     NamedTuple,
     Protocol,
     Sequence,
@@ -12,12 +11,15 @@ from typing import (
 )
 
 from pydantic import BaseModel, ConfigDict
-from typing_extensions import Literal, TypedDict
 
 from engineeringagent.changed_paths import ChangedPathsResult
-from engineeringagent.specs import HarnessCheckPhase, HarnessChecksDocument
-
-CheckDecisionAction = Literal["run", "skip"]
+from engineeringagent.checks.contracts import (
+    CheckDecision,
+    CheckDecisionAction,
+    CheckExecutionRecord,
+    HarnessCheckPhase,
+)
+from engineeringagent.specs import HarnessChecksDocument
 
 
 class CheckContext(NamedTuple):
@@ -31,16 +33,6 @@ class CheckContext(NamedTuple):
     run_agent_fn: Any | None = None
     verbose_output: bool = False
     phase_only_policy: bool = False
-
-
-class CheckDecision(TypedDict):
-    """Deterministic check planning record."""
-
-    check_id: str
-    check_type: str
-    phase: str
-    decision: CheckDecisionAction
-    reason: str
 
 
 class PlannedCheck(BaseModel):
@@ -167,17 +159,6 @@ def strategy_run_decisions(
         for decision in decisions
         if decision["decision"] == "run"
     )
-
-
-class CheckExecutionRecord(NamedTuple):
-    """One side-effecting execution result emitted by a strategy."""
-
-    check_id: str
-    check_type: str
-    ok: bool
-    output: str
-    payload: dict[str, Any] | None = None
-    timing: Mapping[str, Any] | None = None
 
 
 class CheckStrategy(Protocol):

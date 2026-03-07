@@ -22,6 +22,10 @@ _EXCLUDED_PACKAGES = {
     "fitness",
 }
 
+_ALLOWED_CHECKS_SUBMODULE_IMPORTS: dict[str, set[str]] = {
+    "engineeringagent.specs": {"engineeringagent.checks.contracts"},
+}
+
 
 def _iter_python_files(project_root: Path) -> list[Path]:
     src_root = project_root / "src" / "engineeringagent"
@@ -97,6 +101,11 @@ def _collect_violations(project_root: Path) -> list[str]:
                     name = alias.name
                     if name == "engineeringagent.checks":
                         continue
+                    allowed_submodules = _ALLOWED_CHECKS_SUBMODULE_IMPORTS.get(
+                        module_name, set()
+                    )
+                    if name in allowed_submodules:
+                        continue
                     if name.startswith("engineeringagent.checks."):
                         violations.add(
                             f"{relpath}:{node.lineno} imports checks submodule {name}"
@@ -121,6 +130,10 @@ def _collect_violations(project_root: Path) -> list[str]:
                         violations.add(
                             f"{relpath}:{node.lineno} imports disallowed name {alias.name} from engineeringagent.checks"
                         )
+                continue
+
+            allowed_submodules = _ALLOWED_CHECKS_SUBMODULE_IMPORTS.get(module_name, set())
+            if base in allowed_submodules:
                 continue
 
             if base.startswith("engineeringagent.checks."):

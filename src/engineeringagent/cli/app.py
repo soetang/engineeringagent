@@ -5,7 +5,7 @@ from importlib import metadata as importlib_metadata
 
 import typer
 
-from ..specs import HarnessCheckPhase
+from .. import checks as checks_module
 from .typer import build_typer_app as _build_typer_app
 
 __all__ = [
@@ -15,6 +15,8 @@ __all__ = [
     "main",
     "version_callback",
 ]
+
+HarnessCheckPhase = checks_module.HarnessCheckPhase
 
 
 def version_callback(value: bool) -> None:

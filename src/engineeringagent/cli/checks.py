@@ -6,20 +6,17 @@ from types import SimpleNamespace
 from pydantic import BaseModel, ConfigDict
 
 from .. import checks as checks_domain
-from ..specs import HarnessCheckPhase
 from .output import emit_markdown_output, resolve_optional_path
 
 _HandlerArgs = SimpleNamespace
 HandlerArgs = _HandlerArgs
+HarnessCheckPhase = checks_domain.HarnessCheckPhase
 
 _CHECKS_ALL_PHASES_ORDER: tuple[HarnessCheckPhase, ...] = (
     HarnessCheckPhase.ITERATION_END,
     HarnessCheckPhase.FEATURE_DONE,
     HarnessCheckPhase.MANUAL,
 )
-
-reviewers_group_selected = checks_domain.reviewers_group_selected
-
 
 class _ChecksGitRange(BaseModel):
     """Optional git diff range forwarded to the checks runtime."""
@@ -191,7 +188,7 @@ def cmd_checks_run(args: _HandlerArgs) -> int:
     invocation = _build_checks_run_invocation(args)
 
     if (
-        reviewers_group_selected(invocation.selected_checks)
+        checks_domain.reviewers_group_selected(invocation.selected_checks)
         and invocation.feature_path is None
     ):
         print("checks input error: feature_path is required when reviewers checks are selected")

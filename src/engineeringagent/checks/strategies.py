@@ -8,8 +8,12 @@ from typing import Any
 import yaml
 
 from engineeringagent.checks.commands.runtime import (
-    CommandInvocationRecord,
     plan_command_checks,
+)
+from engineeringagent.checks.contracts import (
+    CheckDecision,
+    CheckExecutionRecord,
+    CommandInvocationRecord,
 )
 from engineeringagent.checks.fitness.adapters import execute_rule_definition
 from engineeringagent.checks.fitness.contracts import RuleStatus
@@ -37,8 +41,6 @@ from engineeringagent.prompt_feedback import (
 
 from .strategy_contracts import (
     CheckContext,
-    CheckDecision,
-    CheckExecutionRecord,
     CheckStrategy,
     make_check_decision,
     plan_doc_strategy_decisions,
