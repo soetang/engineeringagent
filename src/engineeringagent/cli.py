@@ -4,6 +4,7 @@ import importlib.metadata
 import json
 import shutil
 import sys
+from functools import partial
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -18,7 +19,6 @@ from .approach import (
     render_approach_overview,
 )
 from .config import (
-    DEFAULT_CODEX_PROFILE,
     resolve_agents_backend_id,
     resolve_agents_codex_profile_in_engineeringagent_toml,
     write_init_backend_config,
@@ -31,6 +31,20 @@ from .init_scaffold import (
     DEFAULT_AGENT_MODEL,
     DEFAULT_AGENTS_LAUNCHER,
     build_agents_merge_followup_spec,
+)
+from .init_cli_support import (
+    InitAgentsLauncherResolverDeps,
+    InitBackendResolverDeps,
+    InitCodexProfileResolverDeps,
+    InitPromptContext,
+    install_precommit_hooks_best_effort as _install_precommit_hooks_best_effort_impl,
+    next_agents_backup_path,
+    resolve_init_agents_launcher,
+    resolve_init_agents_mode,
+    resolve_init_backend,
+    resolve_init_codex_profile_overwrite,
+    resolve_init_docs_dir,
+    resolve_init_pack,
 )
 from .init_service import InitDependencies, InitRequest, run_init_command
 from .loop import (
@@ -54,8 +68,6 @@ __all__ = ["HarnessCheckPhase"]
 
 _HandlerArgs = SimpleNamespace
 
-_INIT_PACK_DEFAULT = "slim"
-_INIT_PACK_CHOICES: tuple[str, ...] = ("slim", "standard")
 _SCHEMA_FORMATS: tuple[str, ...] = ("json", "yaml")
 _CHECKS_ALL_PHASES_ORDER: tuple[HarnessCheckPhase, ...] = (
     HarnessCheckPhase.ITERATION_END,
@@ -73,141 +85,6 @@ def normalize_cli_checks_groups(checks: list[str] | None) -> list[str] | None:
         return list(checks_module.normalize_groups(checks))
     except ValueError as exc:
         raise ValueError(f"checks config error: {exc}") from exc
-
-
-def _resolve_init_pack(pack: str | None) -> tuple[str | None, str | None]:
-    """Resolve the init pack (slim|standard), prompting only on TTY when omitted."""
-    if pack is not None:
-        return pack, None
-
-    if not stdout_is_tty(sys.stdout):
-        return _INIT_PACK_DEFAULT, None
-
-    prompt = "init pack: choose [slim/standard] (default slim): "
-    selected = input(prompt).strip().lower()
-    if selected == "":
-        return _INIT_PACK_DEFAULT, None
-    if selected in _INIT_PACK_CHOICES:
-        return selected, None
-
-    return (
-        None,
-        "init input error: pack must be 'slim' or 'standard'",
-    )
-
-
-def _backend_choice_error(backend_ids: tuple[str, ...]) -> str:
-    """Return deterministic backend input error text."""
-    return f"init input error: backend must be one of: {', '.join(backend_ids)}"
-
-
-def _resolve_configured_backend(
-    *,
-    project_root: Path,
-    force: bool,
-) -> str | None:
-    if force:
-        return None
-    return resolve_agents_backend_id(project_root)
-
-
-def _resolve_init_backend_candidate(
-    candidate: str,
-    available_backends: tuple[str, ...],
-) -> tuple[str | None, str | None]:
-    if candidate in available_backends:
-        return candidate, None
-    return None, _backend_choice_error(available_backends)
-
-
-def _resolve_init_backend_interactive(
-    available_backends: tuple[str, ...],
-) -> tuple[str | None, str | None]:
-    if len(available_backends) == 1:
-        return available_backends[0], None
-
-    default_backend = default_backend_id()
-    if not stdout_is_tty(sys.stdout):
-        return default_backend, None
-
-    prompt = (
-        f"init backend: choose [{'/'.join(available_backends)}] "
-        f"(default {default_backend}): "
-    )
-    try:
-        selected = input(prompt).strip()
-    except EOFError:
-        selected = ""
-    if selected == "":
-        return default_backend, None
-    if selected in available_backends:
-        return selected, None
-    return None, _backend_choice_error(available_backends)
-
-
-def _resolve_init_backend(
-    *,
-    project_root: Path,
-    backend: str | None,
-    force: bool,
-) -> tuple[str | None, str | None]:
-    """Resolve init backend choice from CLI args/config/prompt defaults."""
-    available_backends = tuple(sorted(list_backends()))
-    if not available_backends:
-        return None, "init backend error: no registered backends"
-
-    if backend is not None:
-        return _resolve_init_backend_candidate(backend, available_backends)
-
-    configured_backend = _resolve_configured_backend(
-        project_root=project_root,
-        force=force,
-    )
-    if configured_backend is not None:
-        return _resolve_init_backend_candidate(configured_backend, available_backends)
-
-    return _resolve_init_backend_interactive(available_backends)
-
-
-def _resolve_init_codex_profile_overwrite(
-    *,
-    project_root: Path,
-    selected_backend: str,
-    force: bool,
-) -> tuple[bool, str | None]:
-    """Resolve whether init should overwrite an existing codex profile value."""
-    if selected_backend != "codex":
-        return False, None
-    if force:
-        return True, None
-
-    configured_profile = resolve_agents_codex_profile_in_engineeringagent_toml(
-        project_root
-    )
-    if configured_profile is None or configured_profile == DEFAULT_CODEX_PROFILE:
-        return False, None
-    if not stdout_is_tty(sys.stdout):
-        return False, None
-
-    prompt = (
-        f'init conflict: [agents.codex].profile is "{configured_profile}". '
-        "Choose codex profile handling [keep/overwrite]: "
-    )
-    try:
-        selected = input(prompt).strip().lower()
-    except EOFError:
-        selected = "keep"
-    if selected in {"", "keep"}:
-        return False, None
-    if selected == "overwrite":
-        return True, None
-
-    return (
-        False,
-        "init input error: codex profile handling must be 'keep' or "
-        "'overwrite' when [agents.codex].profile differs",
-    )
-
 
 def _resolve_manifest_path(manifest_path: str | None) -> Path | None:
     """Return optional manifest path from CLI args."""
@@ -228,135 +105,6 @@ def _resolve_optional_path(
     if resolved.is_absolute():
         return resolved
     return project_root / resolved
-
-
-def _resolve_init_docs_dir(
-    project_root: Path,
-    docs_mode: str | None,
-    scaffold_docs_dir: str,
-) -> tuple[str | None, str | None]:
-    """Resolve the docs target for scaffold output.
-
-    Args:
-        project_root: Repository root where init is running.
-        docs_mode: Explicit docs conflict choice when docs/ already exists.
-        scaffold_docs_dir: Candidate scaffold docs directory for separate mode.
-
-    Returns:
-        Tuple of (resolved docs dir, error message).
-    """
-    normalized_scaffold_docs_dir = scaffold_docs_dir.strip("/")
-    docs_exists = (project_root / "docs").is_dir()
-
-    if not normalized_scaffold_docs_dir:
-        return None, "init input error: --scaffold-docs-dir cannot be empty"
-
-    if not docs_exists:
-        return "docs", None
-
-    selected_mode = docs_mode
-    if selected_mode is None:
-        prompt = (
-            "init conflict: docs/ already exists. Choose docs handling "
-            "[reuse/separate]: "
-        )
-        selected_mode = input(prompt).strip().lower()
-
-    if selected_mode == "reuse":
-        return "docs", None
-    if selected_mode == "separate":
-        if normalized_scaffold_docs_dir == "docs":
-            return (
-                None,
-                "init input error: --scaffold-docs-dir must differ from docs "
-                "when using --docs-mode separate",
-            )
-        return normalized_scaffold_docs_dir, None
-
-    return (
-        None,
-        "init input error: docs mode must be 'reuse' or 'separate' when docs/ exists",
-    )
-
-
-def _resolve_init_agents_mode(
-    project_root: Path,
-    agents_mode: str | None,
-) -> tuple[str | None, str | None]:
-    """Resolve AGENTS.md conflict behavior.
-
-    Args:
-        project_root: Repository root where init is running.
-        agents_mode: Explicit AGENTS conflict mode when AGENTS.md already exists.
-
-    Returns:
-        Tuple of (resolved mode, error message).
-    """
-    agents_path = project_root / "AGENTS.md"
-    if not agents_path.exists():
-        return "create", None
-
-    selected_mode = agents_mode
-    if selected_mode is None:
-        prompt = (
-            "init conflict: AGENTS.md already exists. Choose AGENTS handling "
-            "[overwrite/preserve/abort]: "
-        )
-        selected_mode = input(prompt).strip().lower()
-
-    if selected_mode in {"overwrite", "preserve", "abort"}:
-        return selected_mode, None
-
-    return (
-        None,
-        "init input error: AGENTS mode must be 'overwrite', 'preserve', or 'abort' "
-        "when AGENTS.md exists",
-    )
-
-
-def _resolve_init_agents_launcher(
-    *,
-    agents_launcher: str | None,
-) -> tuple[str | None, str | None]:
-    """Resolve AGENTS scaffold launcher wording."""
-    choices_csv = ", ".join(AGENTS_LAUNCHER_CHOICES)
-    error_message = (
-        "init input error: AGENTS launcher must be one of: "
-        + choices_csv
-    )
-
-    if agents_launcher is not None:
-        if agents_launcher in AGENTS_LAUNCHER_CHOICES:
-            return agents_launcher, None
-        return None, error_message
-
-    if not stdout_is_tty(sys.stdout):
-        return DEFAULT_AGENTS_LAUNCHER, None
-
-    prompt_choices = "/".join(AGENTS_LAUNCHER_CHOICES)
-    prompt = (
-        f"init AGENTS launcher: choose [{prompt_choices}] "
-        f"(default {DEFAULT_AGENTS_LAUNCHER}): "
-    )
-    try:
-        selected = input(prompt).strip().lower()
-    except EOFError:
-        selected = ""
-    if selected == "":
-        return DEFAULT_AGENTS_LAUNCHER, None
-    if selected in AGENTS_LAUNCHER_CHOICES:
-        return selected, None
-    return None, error_message
-
-
-def _next_agents_backup_path(project_root: Path) -> Path:
-    """Select the next available AGENTS backup path."""
-    candidate = project_root / "AGENTS.user.md"
-    suffix = 1
-    while candidate.exists():
-        suffix += 1
-        candidate = project_root / f"AGENTS.user.{suffix}.md"
-    return candidate
 
 
 def cmd_validate(args: _HandlerArgs) -> int:
@@ -767,16 +515,38 @@ def _build_init_request(args: _HandlerArgs) -> InitRequest:
 
 def _build_init_dependencies() -> InitDependencies:
     """Assemble dependency implementations for init execution."""
+    prompt_context = InitPromptContext(stdout_is_tty_fn=stdout_is_tty)
 
     return InitDependencies(
         emit=print,
-        resolve_pack=_resolve_init_pack,
-        resolve_backend=_resolve_init_backend,
-        resolve_docs_dir=_resolve_init_docs_dir,
-        resolve_agents_mode=_resolve_init_agents_mode,
-        resolve_agents_launcher=_resolve_init_agents_launcher,
-        resolve_codex_profile_overwrite=_resolve_init_codex_profile_overwrite,
-        next_agents_backup_path=_next_agents_backup_path,
+        resolve_pack=partial(resolve_init_pack, stdout_is_tty_fn=stdout_is_tty),
+        resolve_backend=partial(
+            resolve_init_backend,
+            prompt_context=prompt_context,
+            deps=InitBackendResolverDeps(
+                list_backends_fn=list_backends,
+                resolve_agents_backend_id_fn=resolve_agents_backend_id,
+                default_backend_id_fn=default_backend_id,
+            ),
+        ),
+        resolve_docs_dir=resolve_init_docs_dir,
+        resolve_agents_mode=resolve_init_agents_mode,
+        resolve_agents_launcher=partial(
+            resolve_init_agents_launcher,
+            prompt_context=prompt_context,
+            deps=InitAgentsLauncherResolverDeps(
+                launcher_choices=AGENTS_LAUNCHER_CHOICES,
+                default_launcher=DEFAULT_AGENTS_LAUNCHER,
+            ),
+        ),
+        resolve_codex_profile_overwrite=partial(
+            resolve_init_codex_profile_overwrite,
+            prompt_context=prompt_context,
+            deps=InitCodexProfileResolverDeps(
+                resolve_codex_profile_fn=resolve_agents_codex_profile_in_engineeringagent_toml
+            ),
+        ),
+        next_agents_backup_path=next_agents_backup_path,
         apply_baseline_scaffold=apply_baseline_scaffold,
         write_init_docs_root_config=write_init_docs_root_config,
         write_init_backend_config=write_init_backend_config,
@@ -861,14 +631,6 @@ def cmd_progress_feature_prune(args: _HandlerArgs) -> int:
     return 0
 
 
-def _precommit_remediation_commands(*, scaffold_profile: str) -> list[str]:
-    """Return deterministic remediation commands for hook installation."""
-    commands = ["pre-commit install"]
-    if scaffold_profile == "python_uv":
-        commands.append("pre-commit install --hook-type commit-msg")
-    return commands
-
-
 def _require_feature_id(args: _HandlerArgs) -> str | None:
     """Return normalized feature id or emit deterministic CLI input error."""
     feature_id = str(args.feature_id).strip()
@@ -883,58 +645,14 @@ def _install_precommit_hooks_best_effort(
     project_root: Path,
     scaffold_profile: str,
 ) -> None:
-    """Best-effort install pre-commit hooks when prerequisites are met.
-
-    Notes:
-    - Non-fatal: failures emit deterministic warnings but never raise.
-    - Non-interactive: stdin is redirected away from TTY.
-    """
-    if not (project_root / ".git").exists():
-        remediation = " && ".join(
-            [
-                "git init",
-                *_precommit_remediation_commands(scaffold_profile=scaffold_profile),
-            ]
-        )
-        print(
-            "init hint: skipped pre-commit hook install (no .git directory). "
-            f"To enable later: {remediation}"
-        )
-        return
-
-    if shutil.which("pre-commit") is None:
-        remediation = " && ".join(
-            _precommit_remediation_commands(scaffold_profile=scaffold_profile)
-        )
-        print(
-            "init hint: skipped pre-commit hook install (pre-commit not found on PATH). "
-            f"To enable later: {remediation}"
-        )
-        return
-
-    hook_types: list[str | None] = [None]
-    if scaffold_profile == "python_uv":
-        hook_types.append("commit-msg")
-
-    for hook_type in hook_types:
-        retry_command = "pre-commit install"
-        if hook_type is not None:
-            retry_command = f"pre-commit install --hook-type {hook_type}"
-
-        try:
-            result = git_client.precommit_install(project_root, hook_type=hook_type)
-        except OSError as exc:
-            print(
-                "init warning: pre-commit hook install failed "
-                f"(error={exc.__class__.__name__}). To retry: {retry_command}"
-            )
-            continue
-        if result.returncode == 0:
-            continue
-        print(
-            "init warning: pre-commit hook install failed "
-            f"(exit_code={result.returncode}). To retry: {retry_command}"
-        )
+    """Best-effort install pre-commit hooks when prerequisites are met."""
+    _install_precommit_hooks_best_effort_impl(
+        project_root=project_root,
+        scaffold_profile=scaffold_profile,
+        emit=print,
+        shutil_module=shutil,
+        git_client_module=git_client,
+    )
 
 
 def version_callback(value: bool) -> None:

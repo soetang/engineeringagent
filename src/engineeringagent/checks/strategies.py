@@ -334,6 +334,10 @@ class FitnessCheckStrategy(CheckStrategy):
                     f"summary={result.summary}"
                 )
             )
+            for violation in result.violations:
+                output_lines.append(
+                    f"[fitness:{result.rule_id}] violation={violation}"
+                )
             if result.status not in {RuleStatus.FAIL, RuleStatus.ERROR}:
                 continue
             failed_rules.append(

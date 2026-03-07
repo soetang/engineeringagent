@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -12,6 +13,7 @@ from engineeringagent.checks.fitness.config import (
 from engineeringagent.checks.pytest.config import (
     resolve_harness_pytest_opencode_integration_enabled,
 )
+from engineeringagent.config import resolve_harness_bool_setting
 
 
 def test_harness_fitness_opencode_real_smoke_defaults_to_false(tmp_path: Path) -> None:
@@ -60,21 +62,50 @@ def test_harness_toggle_defaults_when_setting_key_is_missing(tmp_path: Path) -> 
     assert resolve_harness_fitness_opencode_real_smoke_enabled(tmp_path) is False
 
 
+def test_resolve_harness_bool_setting_returns_explicit_default_when_unset(
+    tmp_path: Path,
+) -> None:
+    assert (
+        resolve_harness_bool_setting(
+            tmp_path,
+            table="fitness",
+            key="opencode-real-smoke",
+            default=True,
+        )
+        is True
+    )
+
+
 @pytest.mark.parametrize(
-    "payload",
+    ("payload", "resolver"),
     [
-        "[harness.fitness]\nopencode-real-smoke = 1\n",
-        "[harness.fitness]\nopencode-real-smoke = 'true'\n",
-        "[harness.pytest]\nopencode-integration = 0\n",
-        "[harness.pytest]\nopencode-integration = 'false'\n",
+        (
+            "[harness.fitness]\nopencode-real-smoke = 1\n",
+            resolve_harness_fitness_opencode_real_smoke_enabled,
+        ),
+        (
+            "[harness.fitness]\nopencode-real-smoke = 'true'\n",
+            resolve_harness_fitness_opencode_real_smoke_enabled,
+        ),
+        (
+            "[harness.pytest]\nopencode-integration = 0\n",
+            resolve_harness_pytest_opencode_integration_enabled,
+        ),
+        (
+            "[harness.pytest]\nopencode-integration = 'false'\n",
+            resolve_harness_pytest_opencode_integration_enabled,
+        ),
     ],
 )
-def test_harness_toggles_reject_invalid_values(tmp_path: Path, payload: str) -> None:
+def test_harness_toggles_reject_invalid_values(
+    tmp_path: Path,
+    payload: str,
+    resolver: Callable[[Path], bool],
+) -> None:
     (tmp_path / "engineeringagent.toml").write_text(payload, encoding="utf-8")
 
     with pytest.raises(ValueError, match="harness"):
-        resolve_harness_fitness_opencode_real_smoke_enabled(tmp_path)
-        resolve_harness_pytest_opencode_integration_enabled(tmp_path)
+        resolver(tmp_path)
 
 
 def test_config_module_does_not_export_backend_specific_harness_resolvers() -> None:

@@ -1,0 +1,178 @@
+id: FEAT-176
+title: Enforce statement budgets and policy-driven dependency directionality boundaries
+type: spec
+expected_commit_subject: 'spec: add FEAT-176 statement budgets and policy-driven directionality'
+status: done
+priority: high
+objective: Reduce module sprawl and agent context load by enforcing AST statement
+  budgets for Python code, remediating current oversized modules, and making dependency
+  directionality boundary ownership policy-driven instead of hardcoded.
+context: 'The repository currently has large Python modules (including tests) that
+  increase cognitive and retrieval load for agent-driven development. Existing file-length
+  lint checks can be gamed by comments/formatting and do not directly represent executable
+  structure. We want a deterministic fitness rule based on non-doc AST statements
+  so limits are resilient to comment-only edits, plus explicit remediation guidance
+  that drives cohesive modularization into existing or clearly named subpackages (not
+  root-level helper sprawl).
+
+  The repository already enforces architecture boundaries via fitness rules, but `architecture.dep-directionality`
+  is currently hardcoded in checker source. As extraction work proceeds, boundary
+  updates should be handled via policy config instead of creating one-off import checker
+  scripts.'
+constraints:
+- 'In scope: add a new fitness rule for statement budgets over Python files under
+  `src/engineeringagent`, `tests`, and `harness`.'
+- 'In scope: statement counting must use AST `ast.stmt` nodes and exclude docstring-only
+  statement expressions so comments/docstrings cannot satisfy the budget by formatting
+  changes.'
+- 'In scope: initial caps are `<= 300` non-doc statements for `src/engineeringagent/**`
+  and `harness/**`, and `<= 400` for `tests/**`.'
+- 'In scope: keep remediation guidance at rule-registration level (single canonical
+  message); per-file violations should stay concise and avoid repeating long remediation
+  prose.'
+- 'In scope: remediation messaging must explicitly prioritize reducing duplication
+  and extracting cohesive concerns into existing folders first, or into a new domain
+  subpackage when needed; avoid root-level helper file sprawl.'
+- 'In scope: convert `architecture.dep-directionality` to a policy-driven checker
+  (config file) while preserving existing boundary behavior as baseline policy.'
+- 'In scope: update/remediate current known offenders to satisfy initial caps (`src/engineeringagent/cli.py`,
+  `src/engineeringagent/config.py`, `tests/loop/test_loop_feature_iteration.py`, `tests/cli/test_init_command.py`).'
+- 'In scope: disable pylint module-length enforcement (`too-many-lines` / `C0302`)
+  so module-size policy is owned by fitness rules.'
+- 'In scope: checker semantics tests for this feature must use synthetic temp repos
+  only; they may use `repo_root` only to locate checker scripts/resources, not as
+  the scan target.'
+- 'In scope: real-repo statement-budget enforcement for this feature must happen only
+  through harness/integration execution paths (for example `engineeringagent checks
+  run`), not direct checker-rule pytest against the live checkout.'
+- 'Out of scope: introducing token-count or non-comment-LOC budgets in this feature.'
+- 'Out of scope: lowering statement caps beyond the initial thresholds; future ratchet
+  reductions should be separate specs with dedicated remediation plans.'
+implementation_notes: "Contract change declaration\nSurface: - fitness policy surface\
+  \ in `harness/fitness-functions/rules.yaml` and policy configs. - dependency directionality\
+  \ checker configuration model. - lint policy ownership between pylint and repository\
+  \ fitness rules.\nOld behavior: - No generalized statement-budget fitness rule exists\
+  \ for Python modules. - `architecture.dep-directionality` embeds blocked import\
+  \ mappings directly in checker code. - Pylint can emit `C0302` module-length failures\
+  \ independently of fitness policy.\nNew behavior: - Add `architecture.module-statement-budget`\
+  \ with policy-configured path scopes and\n  statement caps (`src/harness <= 300`,\
+  \ `tests <= 400`).\n- Statement budget violations report deterministic per-file\
+  \ offender entries with\n  path, observed statements, and cap; detailed remediation\
+  \ guidance is provided once\n  in rule metadata/docs instead of repeated in each\
+  \ violation string.\n- `architecture.dep-directionality` reads boundary policy from\
+  \ config (with stable\n  baseline constraints equivalent to current hardcoded behavior).\n\
+  - Pylint `C0302` is disabled so module-size governance is centralized in fitness\
+  \ checks.\nCanonical remediation guidance intent for `architecture.module-statement-budget`:\
+  \ - reduce duplicated control-flow before splitting. - extract cohesive concerns\
+  \ into existing domain packages first, or a clearly named\n  subpackage when needed.\n\
+  - avoid root-level helper sprawl; keep ownership boundaries explicit. - for tests,\
+  \ prefer fixtures/builders/parametrization over repeated setup/assertions. - when\
+  \ new internal seams are introduced, update dependency-directionality policy\n \
+  \ so internals remain owned and cannot be imported from unauthorized modules.\n\n\
+  Compatibility policy: - Breaking refactors are allowed to improve structure. - Rule\
+  \ id continuity is required for existing `architecture.dep-directionality` consumers.\n\
+  Migration plan: 1) Introduce statement-budget checker + policy config + hermetic\
+  \ synthetic-fixture tests. 2) Register rule and refresh catalog docs. 3) Migrate\
+  \ dependency-directionality checker to policy config while preserving baseline behavior.\
+  \ 4) Disable pylint `C0302`. 5) Refactor current oversized modules into coherent\
+  \ package-owned slices and update\n   directionality policy when new internal boundaries\
+  \ are introduced.\n\nTest-authoring guardrail for this feature: - follow FEAT-180\
+  \ hermetic fitness-test policy before implementing FEAT-176. - do not add pytest\
+  \ assertions that the live repository checkout passes the new checker. - use synthetic\
+  \ fixture repos to prove checker semantics, violation formatting, and policy behavior.\
+  \ - reserve live-repo verification for harness/gate commands only.\nFitness-function\
+  \ impact assessment: - add `architecture.module-statement-budget` (new checker +\
+  \ policy config + catalog docs entry). - update `architecture.dep-directionality`\
+  \ implementation to policy-driven config (same rule id). - no new one-off import-boundary\
+  \ rule ids are required for this feature; boundary evolution\n  should be represented\
+  \ by policy updates to the generalized directionality checker."
+acceptance:
+- 'A new `architecture.module-statement-budget` fitness rule enforces non-doc statement
+  caps for Python modules: `src/engineeringagent/**` and `harness/**` at `<= 300`,
+  `tests/**` at `<= 400`.'
+- Statement counting is AST-based (`ast.stmt`) and excludes docstring-only statement
+  expressions; comments/blank lines do not affect pass/fail outcomes.
+- 'Violation output is concise and file-focused: each offender entry includes file
+  path, observed non-doc statement count, and cap (for example `path: statements=<n>
+  cap=<m>`).'
+- Rule registration/docs include one canonical remediation guidance section; checker
+  output does not repeat long remediation prose per violation.
+- Pylint no longer enforces module-length (`C0302`) in this repository; module-size
+  enforcement is owned by fitness rules.
+- '`architecture.dep-directionality` behavior is policy-driven via config file and
+  preserves current blocked-boundary behavior as initial baseline policy.'
+- Directionality policy updates are required when remediation extracts new internal
+  seams, so moved internals do not become accidental cross-module dependencies.
+- Checker-rule pytest for this feature validates behavior only on synthetic temp repos;
+  it does not scan the live repository checkout directly.
+- Live-repo statement-budget enforcement is verified through harness/integration commands
+  rather than direct checker-rule pytest against `repo_root`.
+- 'Current oversized modules are remediated to pass initial caps: `src/engineeringagent/cli.py`,
+  `src/engineeringagent/config.py`, `tests/loop/test_loop_feature_iteration.py`, and
+  `tests/cli/test_init_command.py`.'
+- Fitness catalog/docs are updated to reflect the new statement-budget rule and directionality
+  policy ownership model.
+- '`uv run engineeringagent validate --schema-only` passes.'
+subtasks:
+- id: ST-001
+  title: Add policy-driven AST statement budget checker and config schema
+  status: done
+  context: Implement a new checker under `harness/fitness-functions/` that counts
+    non-doc AST statements per Python file and enforces threshold policies by path
+    scope. Add a policy file under `harness/fitness-functions/policies/` with initial
+    caps for `src/engineeringagent`, `tests`, and `harness`. Rule tests must use only
+    synthetic fixture repos for checker execution.
+  verification:
+  - uv run pytest -q tests/fitness -k statement_budget
+- id: ST-002
+  title: Register statement budget rule and refresh fitness catalog docs
+  status: done
+  context: Add the new rule to `harness/fitness-functions/rules.yaml`, ensure rule
+    metadata includes canonical remediation guidance once, and regenerate docs catalog
+    output.
+  verification:
+  - uv run engineeringagent checks catalog --format markdown --output docs/fitness-functions/rules.md
+  - uv run pytest -q tests/fitness/test_fitness_catalog_generation.py
+- id: ST-003
+  title: Migrate dependency directionality checker to policy-configured boundaries
+  status: done
+  context: Replace hardcoded blocked import maps in `check_dependency_directionality.py`
+    with policy-configured boundaries while keeping the existing rule id and baseline
+    blocked imports behaviorally equivalent.
+  verification:
+  - uv run pytest -q tests/fitness/test_fitness_rules_directionality.py tests/fitness/test_fitness_adapters.py
+- id: ST-004
+  title: Centralize module-size policy by disabling pylint C0302
+  status: done
+  context: Update lint configuration so pylint no longer emits `too-many-lines` diagnostics,
+    leaving module-size governance to the statement-budget fitness rule.
+  verification:
+  - uv run pylint --score=n --reports=n src/engineeringagent tests harness
+- id: ST-005
+  title: Refactor oversized modules to satisfy initial statement caps
+  status: done
+  context: Reduce duplication and extract cohesive concerns into existing package
+    folders first (or new domain subpackages when justified) for current offenders.
+    When introducing new internal seams, update directionality policy boundaries so
+    extracted internals remain owned and cannot be imported from unauthorized modules.
+    Do not introduce stricter repo-wide ratchets or additional offender targets beyond
+    this spec without a separate follow-on spec.
+  verification:
+  - uv run engineeringagent checks run --checks fitness --phase iteration_end
+  - uv run pytest -q tests/cli/test_cli.py tests/cli/test_init_command_surface.py
+    tests/cli/test_init_command_backend.py tests/cli/test_init_command_conflicts.py
+    tests/cli/test_init_command_scaffold.py tests/loop/test_loop_feature_iteration_support.py
+    tests/loop/test_loop_feature_iteration_verification.py tests/loop/test_loop_feature_iteration_execution.py
+    tests/loop/test_loop_feature_iteration_lifecycle.py tests/loop/test_loop_feature_iteration_feedback.py
+    tests/checks/test_run_checks_contract_core.py tests/checks/test_run_checks_contract_commands.py
+    tests/checks/test_run_checks_contract_loader.py tests/checks/test_run_checks_contract_reviewers.py
+- id: ST-006
+  title: Run end-to-end validation for FEAT-176 policy and remediation changes
+  status: done
+  context: Validate schema, fitness checks, and targeted regressions after policy
+    migration and module decomposition work lands.
+  verification:
+  - uv run engineeringagent validate --schema-only
+  - uv run engineeringagent checks run --phase iteration_end
+  - uv run pytest -q
+updated_at: '2026-03-07T05:56:11Z'

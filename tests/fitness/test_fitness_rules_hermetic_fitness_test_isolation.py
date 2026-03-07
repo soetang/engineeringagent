@@ -6,6 +6,8 @@ import subprocess
 import sys
 from typing import cast
 
+import yaml
+
 
 def _script_path(repo_root: Path) -> Path:
     return (
@@ -219,9 +221,10 @@ def test_rule_allows_repo_root_for_checker_script_lookup_only(
 
 
 def test_default_policy_has_no_real_repo_integration_allowlist(repo_root: Path) -> None:
-    policy = _policy_path(repo_root).read_text(encoding="utf-8")
+    policy = yaml.safe_load(_policy_path(repo_root).read_text(encoding="utf-8"))
 
-    assert policy == "integration_test_modules: []\n"
+    assert isinstance(policy, dict)
+    assert policy.get("integration_test_modules") == []
 
 
 def test_rule_flags_local_helper_forwarding_repo_root_to_run_checker(
@@ -470,3 +473,46 @@ def test_rule_skips_allowlisted_real_repo_integration_module(
     assert proc.returncode == 0
     assert result["status"] == "pass"
     assert _violations(result) == []
+
+
+def test_rule_flags_class_kwargs_forwarding_repo_root_to_named_sink(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    _write_file(
+        tmp_path,
+        "tests/fitness/test_class_kwargs_forwarding_violation.py",
+        "\n".join(
+            [
+                "from __future__ import annotations",
+                "",
+                "from pathlib import Path",
+                "",
+                "def execute_rule_definition(definition: object, *, project_root: Path) -> None:",
+                "    raise NotImplementedError",
+                "",
+                "class TestHermeticFitnessIsolation:",
+                "    def _invoke(self, definition: object, **kwargs: Path) -> None:",
+                "        execute_rule_definition(definition, **kwargs)",
+                "",
+                "    def test_violates(self, repo_root: Path) -> None:",
+                '        definition = {"rule_id": "demo.rule"}',
+                '        kwargs = {"project_root": repo_root / "src"}',
+                "        self._invoke(definition, **kwargs)",
+                "",
+            ]
+        ),
+    )
+
+    proc, result = _run_checker(
+        tmp_path,
+        checker_path=_script_path(repo_root),
+        config_file=_policy_path(repo_root),
+    )
+
+    assert proc.returncode == 0
+    assert result["status"] == "fail"
+    assert _violations(result) == [
+        "tests/fitness/test_class_kwargs_forwarding_violation.py:15 fitness tests must not use "
+        "repo_root as checker scan target (execute_rule_definition project_root)"
+    ]

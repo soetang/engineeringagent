@@ -1,0 +1,18 @@
+rules:
+  - module: engineeringagent.specs
+    blocked_dependencies:
+      - engineeringagent.cli
+      - engineeringagent.loop
+      - engineeringagent.loop_runtime
+      - engineeringagent.checks.validate.validator
+  - module: engineeringagent.checks.validate.validator
+    blocked_dependencies:
+      - engineeringagent.cli
+      - engineeringagent.loop
+      - engineeringagent.loop_runtime
+  - module: engineeringagent.cli
+    blocked_dependencies:
+      - engineeringagent.loop_runtime
+  - module: engineeringagent.loop
+    blocked_dependencies:
+      - engineeringagent.cli

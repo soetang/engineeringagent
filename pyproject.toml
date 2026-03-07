@@ -97,6 +97,7 @@ convention = "google"
 disable = [
   "missing-module-docstring", # C0114
   "line-too-long",            # C0301
+  "too-many-lines",           # C0302
 ]
 
 [tool.pylint."BASIC"]
@@ -106,7 +107,6 @@ no-docstring-rgx = "^(_|test_)"
 allow-any-import-level = true
 
 [tool.pylint."DESIGN"]
-max-module-lines = 3500
 max-args = 14
 max-positional-arguments = 14
 max-locals = 25

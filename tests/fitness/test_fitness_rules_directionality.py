@@ -4,7 +4,9 @@ import json
 from pathlib import Path
 import subprocess
 import sys
+from typing import cast
 
+import yaml
 
 def _script_path(repo_root: Path) -> Path:
     return (
@@ -32,13 +34,27 @@ def _write_directionality_fixture(project_root: Path) -> None:
     _write_module(project_root, "specs.py", "")
 
 
+def _write_policy(project_root: Path, rules: list[dict[str, object]]) -> Path:
+    policy_path = project_root / "dependency-directionality-policy.yaml"
+    policy_path.write_text(
+        yaml.safe_dump({"rules": rules}, sort_keys=False, allow_unicode=False),
+        encoding="utf-8",
+    )
+    return policy_path
+
+
 def _run_checker(
     project_root: Path,
     *,
     checker_path: Path,
+    config_file: Path | None = None,
 ) -> tuple[subprocess.CompletedProcess[str], dict[str, object]]:
+    command = [sys.executable, str(checker_path)]
+    if config_file is not None:
+        command.extend(["--config-file", str(config_file)])
+
     proc = subprocess.run(
-        [sys.executable, str(checker_path)],
+        command,
         cwd=project_root,
         capture_output=True,
         text=True,
@@ -46,6 +62,10 @@ def _run_checker(
     )
     payload = json.loads(proc.stdout)
     return proc, payload
+
+
+def _summary(payload: dict[str, object]) -> str:
+    return cast(str, payload["summary"])
 
 
 def test_directionality_checker_emits_expected_rule_id(
@@ -105,4 +125,128 @@ def test_directionality_rule_reports_blocked_loop_runtime_import(
         )
         in violation
         for violation in violations
+    )
+
+
+def test_directionality_rule_loads_blocked_boundaries_from_policy(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    _write_module(
+        tmp_path,
+        "domain.py",
+        "import engineeringagent.cli\n",
+    )
+    _write_module(tmp_path, "cli.py", "")
+    policy_file = _write_policy(
+        tmp_path,
+        [
+            {
+                "module": "engineeringagent.domain",
+                "blocked_dependencies": ["engineeringagent.cli"],
+            }
+        ],
+    )
+
+    proc, payload = _run_checker(
+        tmp_path,
+        checker_path=_script_path(repo_root),
+        config_file=policy_file,
+    )
+
+    assert proc.returncode == 0
+    assert payload["rule_id"] == "architecture.dep-directionality"
+    assert payload["status"] == "fail"
+    assert payload["violations"] == [
+        "engineeringagent.domain imports blocked dependency engineeringagent.cli"
+    ]
+
+
+def test_directionality_rule_supports_package_modules_from_policy(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    _write_module(
+        tmp_path,
+        "domain/__init__.py",
+        "import engineeringagent.cli\n",
+    )
+    _write_module(tmp_path, "cli.py", "")
+    policy_file = _write_policy(
+        tmp_path,
+        [
+            {
+                "module": "engineeringagent.domain",
+                "blocked_dependencies": ["engineeringagent.cli"],
+            }
+        ],
+    )
+
+    proc, payload = _run_checker(
+        tmp_path,
+        checker_path=_script_path(repo_root),
+        config_file=policy_file,
+    )
+
+    assert proc.returncode == 0
+    assert payload["rule_id"] == "architecture.dep-directionality"
+    assert payload["status"] == "fail"
+    assert payload["violations"] == [
+        "engineeringagent.domain imports blocked dependency engineeringagent.cli"
+    ]
+
+
+def test_directionality_rule_errors_when_policy_is_invalid(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    invalid_policy = tmp_path / "invalid-policy.yaml"
+    invalid_policy.write_text("rules: bad\n", encoding="utf-8")
+
+    proc, payload = _run_checker(
+        tmp_path,
+        checker_path=_script_path(repo_root),
+        config_file=invalid_policy,
+    )
+
+    assert proc.returncode == 0
+    assert payload["rule_id"] == "architecture.dep-directionality"
+    assert payload["status"] == "error"
+    assert payload["violations"] == []
+    assert _summary(payload).startswith("Dependency directionality scan failed:")
+
+
+def test_directionality_rule_errors_when_policy_repeats_module_boundary(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    _write_module(tmp_path, "domain.py", "")
+    duplicate_policy = _write_policy(
+        tmp_path,
+        [
+            {
+                "module": "engineeringagent.domain",
+                "blocked_dependencies": ["engineeringagent.cli"],
+            },
+            {
+                "module": "engineeringagent.domain",
+                "blocked_dependencies": ["engineeringagent.loop"],
+            },
+        ],
+    )
+
+    proc, payload = _run_checker(
+        tmp_path,
+        checker_path=_script_path(repo_root),
+        config_file=duplicate_policy,
+    )
+
+    assert proc.returncode == 0
+    assert payload["rule_id"] == "architecture.dep-directionality"
+    assert payload["status"] == "error"
+    assert payload["violations"] == []
+    assert (
+        _summary(payload)
+        == "Dependency directionality scan failed: duplicate policy module: "
+        "engineeringagent.domain"
     )

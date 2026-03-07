@@ -16,6 +16,7 @@ from engineeringagent.config import (
     resolve_agents_backend_id,
     resolve_agents_codex_model,
     resolve_agents_codex_profile,
+    resolve_agents_codex_profile_in_engineeringagent_toml,
     write_init_backend_config,
 )
 
@@ -129,6 +130,27 @@ def test_agents_codex_options_read_pyproject_when_engineeringagent_unset(
 
     assert resolve_agents_codex_profile(tmp_path) == expected_profile
     assert resolve_agents_codex_model(tmp_path) == expected_model
+
+
+def test_agents_codex_profile_in_engineeringagent_toml_ignores_pyproject(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "pyproject.toml").write_text(
+        '[tool.engineeringagent.agents.codex]\nprofile = "profile.from.pyproject"\n',
+        encoding="utf-8",
+    )
+
+    assert resolve_agents_codex_profile_in_engineeringagent_toml(tmp_path) is None
+
+    (tmp_path / "engineeringagent.toml").write_text(
+        '[agents.codex]\nprofile = "profile.from.engineeringagent"\n',
+        encoding="utf-8",
+    )
+
+    assert (
+        resolve_agents_codex_profile_in_engineeringagent_toml(tmp_path)
+        == "profile.from.engineeringagent"
+    )
 
 
 @pytest.mark.parametrize(

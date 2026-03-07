@@ -10,7 +10,7 @@ This file is generated from active manifest-declared fitness rules.
 | `architecture.backend-literal-locality-budget` | error | command | custom | `src/engineeringagent excluding src/engineeringagent/agents/** and src/engineeringagent/checks/**` | `harness/fitness-functions/policies/backend_literal_locality_budget.yaml` | Enforce a zero-budget backend literal locality boundary outside allowed packages. |
 | `architecture.checks-import-surface` | error | command | custom | `src/engineeringagent` | - | Enforce a narrow import surface for engineeringagent.checks. |
 | `architecture.checks-own-prompt-feedback-rendering` | error | command | custom | `src/engineeringagent/loop_runtime/**, src/engineeringagent/loop.py, and src/engineeringagent/prompts/renderer.py` | - | Fail when loop/prompt code performs checks-specific feedback shaping outside checks strategies. |
-| `architecture.dep-directionality` | error | command | custom | `src/engineeringagent` | - | Enforce core module import direction boundaries. |
+| `architecture.dep-directionality` | error | command | custom | `src/engineeringagent` | `harness/fitness-functions/policies/dependency_directionality.yaml` | Enforce core module import direction boundaries. |
 | `architecture.harness-root-yaml-only` | error | command | custom | `harness/ (regular files at root)` | - | Enforce YAML-only regular files directly under harness root. |
 | `architecture.harness-src-import-allowlist` | error | command | custom | `harness/fitness-functions` | - | Restrict harness fitness functions to a narrow supported engineeringagent surface. |
 | `architecture.hermetic-fitness-test-isolation` | error | command | custom | `tests/fitness` | `harness/fitness-functions/policies/hermetic_fitness_test_isolation.yaml` | Prevent tests/fitness from scanning the live repository checkout. |
@@ -20,6 +20,7 @@ This file is generated from active manifest-declared fitness rules.
 | `architecture.loop-facade-line-budget` | error | command | custom | `src/engineeringagent/loop.py` | - | Enforce a permanent line budget cap for the loop facade. |
 | `architecture.loop-subprocess-boundary` | error | command | custom | `src/engineeringagent` | `harness/fitness-functions/policies/loop_subprocess_boundary_policy.yaml` | Enforce subprocess allowlist boundaries for command adapters/clients. |
 | `architecture.markdown-locality-reference-coverage` | error | command | custom | `repository markdown (*.md)` | - | Restrict markdown to approved paths and require non-doc markdown files to be referenced in-repo (excluding prompt/scaffold template asset roots). |
+| `architecture.module-statement-budget` | error | command | custom | `src/engineeringagent, harness, and tests` | `harness/fitness-functions/policies/module_statement_budget_policy.yaml` | Enforce AST-based non-doc statement caps for Python modules. |
 | `architecture.no-doc-content-tests` | error | command | custom | `tests` | - | Prevent pytest from asserting exact wording in README/docs markdown. |
 | `architecture.no-env-key-reads` | error | command | custom | `src/ harness/ tests/` | - | Forbid env-key reads (os.getenv, os.environ.get, os.environ['X'], 'X' in os.environ). |
 | `architecture.no-facade-varargs-shims` | error | command | custom | `src/engineeringagent` | - | Block facade varargs shims, __signature__ masking, and hidden kwargs dropping. |
@@ -67,6 +68,7 @@ This file is generated from active manifest-declared fitness rules.
 ### `architecture.dep-directionality`
 
 - Name: Dependency directionality
+- Config file: `harness/fitness-functions/policies/dependency_directionality.yaml`
 - Side-effect free: `true`
 - Rationale: Keeps orchestration and contracts layered for reviewability.
 - Remediation: Refactor imports to follow the declared architecture boundaries.
@@ -135,6 +137,14 @@ This file is generated from active manifest-declared fitness rules.
 - Side-effect free: `true`
 - Rationale: Prevents markdown sprawl and orphaned non-doc markdown assets across repository zones while allowing internal template assets to remain self-contained.
 - Remediation: Move markdown under approved roots and add at least one deterministic in-repo reference for each eligible markdown file outside docs/ (excluding src/engineeringagent/prompts/templates/, src/engineeringagent/scaffold_templates/, and backend scaffold templates).
+
+### `architecture.module-statement-budget`
+
+- Name: Module statement budget
+- Config file: `harness/fitness-functions/policies/module_statement_budget_policy.yaml`
+- Side-effect free: `true`
+- Rationale: Limits module sprawl using executable structure so review and retrieval stay cohesive as packages evolve.
+- Remediation: Reduce duplicated control-flow before splitting; extract cohesive concerns into existing folders first, or into a clearly named domain subpackage when needed; avoid root-level helper sprawl; for tests, prefer fixtures/builders/parametrization over repeated setup/assertions.
 
 ### `architecture.no-doc-content-tests`
 

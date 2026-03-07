@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import sys
 import re
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar, cast
 
 if sys.version_info >= (3, 11):
     import tomllib
@@ -24,10 +25,13 @@ _BACKEND_KEY = "backend"
 _CODEX_TABLE = "codex"
 _CODEX_PROFILE_KEY = "profile"
 _CODEX_MODEL_KEY = "model"
+_PYPROJECT_ENGINEERINGAGENT_TABLE = ("tool", "engineeringagent")
 
 _TOML_TABLE_HEADER_RE = re.compile(r"^\s*\[([^\]]+)\]\s*$")
 
 DEFAULT_CODEX_PROFILE = "engineeringagent"
+
+_ConfigValue = TypeVar("_ConfigValue")
 
 
 def write_init_docs_root_config(
@@ -198,17 +202,13 @@ def resolve_docs_root(project_root: Path) -> Path:
     Raises:
         ValueError: If TOML cannot be parsed or docs-root value is invalid.
     """
-    engineeringagent_toml = project_root / "engineeringagent.toml"
-    docs_root_value = _docs_root_from_engineeringagent_toml(engineeringagent_toml)
-    if docs_root_value is not None:
-        return project_root / docs_root_value
-
-    pyproject_toml = project_root / "pyproject.toml"
-    docs_root_value = _docs_root_from_pyproject_toml(pyproject_toml)
-    if docs_root_value is not None:
-        return project_root / docs_root_value
-
-    return project_root / DEFAULT_DOCS_ROOT
+    docs_root_value = _resolve_preferred_project_config(
+        project_root,
+        engineeringagent_reader=_docs_root_from_engineeringagent_toml,
+        pyproject_reader=_docs_root_from_pyproject_toml,
+        default=Path(DEFAULT_DOCS_ROOT),
+    )
+    return project_root / cast(Path, docs_root_value)
 
 
 def resolve_harness_bool_setting(
@@ -238,25 +238,23 @@ def resolve_harness_bool_setting(
         ValueError: If TOML cannot be parsed or the configured value is invalid.
     """
 
-    engineeringagent_toml = project_root / "engineeringagent.toml"
-    enabled = _harness_bool_from_engineeringagent_toml(
-        engineeringagent_toml,
-        table=table,
-        key=key,
+    return cast(
+        bool,
+        _resolve_preferred_project_config(
+            project_root,
+            engineeringagent_reader=lambda path: _harness_bool_from_engineeringagent_toml(
+                path,
+                table=table,
+                key=key,
+            ),
+            pyproject_reader=lambda path: _harness_bool_from_pyproject_toml(
+                path,
+                table=table,
+                key=key,
+            ),
+            default=default,
+        ),
     )
-    if enabled is not None:
-        return enabled
-
-    pyproject_toml = project_root / "pyproject.toml"
-    enabled = _harness_bool_from_pyproject_toml(
-        pyproject_toml,
-        table=table,
-        key=key,
-    )
-    if enabled is not None:
-        return enabled
-
-    return default
 
 
 def resolve_harness_checks_config_path(project_root: Path) -> Path:
@@ -277,17 +275,13 @@ def resolve_harness_checks_config_path(project_root: Path) -> Path:
         ValueError: If TOML cannot be parsed or the configured value is invalid.
     """
 
-    engineeringagent_toml = project_root / "engineeringagent.toml"
-    checks_path = _harness_checks_path_from_engineeringagent_toml(engineeringagent_toml)
-    if checks_path is not None:
-        return project_root / checks_path
-
-    pyproject_toml = project_root / "pyproject.toml"
-    checks_path = _harness_checks_path_from_pyproject_toml(pyproject_toml)
-    if checks_path is not None:
-        return project_root / checks_path
-
-    return project_root / DEFAULT_HARNESS_CHECKS_PATH
+    checks_path = _resolve_preferred_project_config(
+        project_root,
+        engineeringagent_reader=_harness_checks_path_from_engineeringagent_toml,
+        pyproject_reader=_harness_checks_path_from_pyproject_toml,
+        default=Path(DEFAULT_HARNESS_CHECKS_PATH),
+    )
+    return project_root / cast(Path, checks_path)
 
 
 def repo_relative_label(project_root: Path, target_path: Path) -> str:
@@ -316,17 +310,12 @@ def resolve_agents_backend_id(project_root: Path) -> str | None:
         ValueError: If TOML cannot be parsed or the configured value is invalid.
     """
 
-    engineeringagent_toml = project_root / "engineeringagent.toml"
-    backend_id = _agents_backend_id_from_engineeringagent_toml(engineeringagent_toml)
-    if backend_id is not None:
-        return backend_id
-
-    pyproject_toml = project_root / "pyproject.toml"
-    backend_id = _agents_backend_id_from_pyproject_toml(pyproject_toml)
-    if backend_id is not None:
-        return backend_id
-
-    return None
+    return _resolve_preferred_project_config(
+        project_root,
+        engineeringagent_reader=_agents_backend_id_from_engineeringagent_toml,
+        pyproject_reader=_agents_backend_id_from_pyproject_toml,
+        default=None,
+    )
 
 
 def resolve_agents_codex_profile(project_root: Path) -> str | None:
@@ -338,18 +327,17 @@ def resolve_agents_codex_profile(project_root: Path) -> str | None:
     - default: unset (None)
     """
 
-    engineeringagent_toml = project_root / "engineeringagent.toml"
-    profile = _agents_codex_option_from_engineeringagent_toml(
-        engineeringagent_toml,
-        key=_CODEX_PROFILE_KEY,
-    )
-    if profile is not None:
-        return profile
-
-    pyproject_toml = project_root / "pyproject.toml"
-    return _agents_codex_option_from_pyproject_toml(
-        pyproject_toml,
-        key=_CODEX_PROFILE_KEY,
+    return _resolve_preferred_project_config(
+        project_root,
+        engineeringagent_reader=lambda path: _agents_codex_option_from_engineeringagent_toml(
+            path,
+            key=_CODEX_PROFILE_KEY,
+        ),
+        pyproject_reader=lambda path: _agents_codex_option_from_pyproject_toml(
+            path,
+            key=_CODEX_PROFILE_KEY,
+        ),
+        default=None,
     )
 
 
@@ -374,26 +362,109 @@ def resolve_agents_codex_model(project_root: Path) -> str | None:
     - default: unset (None)
     """
 
-    engineeringagent_toml = project_root / "engineeringagent.toml"
-    model = _agents_codex_option_from_engineeringagent_toml(
-        engineeringagent_toml,
-        key=_CODEX_MODEL_KEY,
+    return _resolve_preferred_project_config(
+        project_root,
+        engineeringagent_reader=lambda path: _agents_codex_option_from_engineeringagent_toml(
+            path,
+            key=_CODEX_MODEL_KEY,
+        ),
+        pyproject_reader=lambda path: _agents_codex_option_from_pyproject_toml(
+            path,
+            key=_CODEX_MODEL_KEY,
+        ),
+        default=None,
     )
-    if model is not None:
-        return model
 
-    pyproject_toml = project_root / "pyproject.toml"
-    return _agents_codex_option_from_pyproject_toml(
-        pyproject_toml,
-        key=_CODEX_MODEL_KEY,
+
+def _resolve_preferred_project_config(
+    project_root: Path,
+    *,
+    engineeringagent_reader: Callable[[Path], _ConfigValue],
+    pyproject_reader: Callable[[Path], _ConfigValue],
+    default: _ConfigValue,
+) -> _ConfigValue:
+    engineeringagent_value = engineeringagent_reader(
+        project_root / "engineeringagent.toml"
     )
+    if engineeringagent_value is not None:
+        return engineeringagent_value
+
+    pyproject_value = pyproject_reader(project_root / "pyproject.toml")
+    if pyproject_value is not None:
+        return pyproject_value
+
+    return default
 
 
-def _docs_root_from_engineeringagent_toml(path: Path) -> Path | None:
+def _toml_scope(table_path: tuple[str, ...], *, default: str = "top-level") -> str:
+    if not table_path:
+        return default
+    return f"[{'.'.join(table_path)}]"
+
+
+def _table_at_path(
+    document: dict[str, Any],
+    table_path: tuple[str, ...],
+) -> dict[str, Any] | None:
+    current: dict[str, Any] | None = document
+    for key in table_path:
+        if current is None:
+            return None
+        current = _maybe_table(current, key)
+    return current
+
+
+def _read_toml_value(
+    path: Path,
+    *,
+    table_path: tuple[str, ...] = (),
+    key: str,
+    top_level_scope: str = "top-level",
+) -> tuple[Any, str] | None:
     document = _load_toml(path)
     if document is None:
         return None
-    return _normalize_docs_root(document.get(_DOCS_ROOT_KEY), source_path=path)
+
+    if table_path:
+        table = _table_at_path(document, table_path)
+        if table is None:
+            return None
+    else:
+        table = document
+
+    return table.get(key), _toml_scope(table_path, default=top_level_scope)
+
+
+def _normalize_toml_value(
+    path: Path,
+    *,
+    table_path: tuple[str, ...] = (),
+    key: str,
+    normalizer: Callable[[Any, str], _ConfigValue | None],
+    top_level_scope: str = "top-level",
+) -> _ConfigValue | None:
+    resolved = _read_toml_value(
+        path,
+        table_path=table_path,
+        key=key,
+        top_level_scope=top_level_scope,
+    )
+    if resolved is None:
+        return None
+    raw_value, source_scope = resolved
+    return normalizer(raw_value, source_scope)
+
+
+def _docs_root_from_engineeringagent_toml(path: Path) -> Path | None:
+    return _normalize_toml_value(
+        path,
+        key=_DOCS_ROOT_KEY,
+        normalizer=lambda raw_value, source_scope: _normalize_docs_root(
+            raw_value,
+            source_path=path,
+            source_scope=source_scope,
+        ),
+    )
 
 
 def _harness_bool_from_engineeringagent_toml(
@@ -402,54 +473,42 @@ def _harness_bool_from_engineeringagent_toml(
     table: str,
     key: str,
 ) -> bool | None:
-    document = _load_toml(path)
-    if document is None:
-        return None
-
-    harness_table = _maybe_table(document, _HARNESS_TABLE)
-    if harness_table is None:
-        return None
-    setting_table = _maybe_table(harness_table, table)
-    if setting_table is None:
-        return None
-
-    return _normalize_bool(
-        setting_table.get(key),
-        key_name=key,
-        source_path=path,
-        source_scope=f"[{_HARNESS_TABLE}.{table}]",
+    return _normalize_toml_value(
+        path,
+        table_path=(_HARNESS_TABLE, table),
+        key=key,
+        normalizer=lambda raw_value, source_scope: _normalize_bool(
+            raw_value,
+            key_name=key,
+            source_path=path,
+            source_scope=source_scope,
+        ),
     )
 
 
 def _harness_checks_path_from_engineeringagent_toml(path: Path) -> Path | None:
-    document = _load_toml(path)
-    if document is None:
-        return None
-
-    checks_table = _harness_checks_table(document, pyproject=False)
-    if checks_table is None:
-        return None
-
-    return _normalize_repo_local_path(
-        checks_table.get(_CHECKS_PATH_KEY),
-        source_path=path,
-        source_scope=f"[{_HARNESS_TABLE}.{_CHECKS_TABLE}]",
+    return _normalize_toml_value(
+        path,
+        table_path=(_HARNESS_TABLE, _CHECKS_TABLE),
+        key=_CHECKS_PATH_KEY,
+        normalizer=lambda raw_value, source_scope: _normalize_repo_local_path(
+            raw_value,
+            source_path=path,
+            source_scope=source_scope,
+        ),
     )
 
 
 def _agents_backend_id_from_engineeringagent_toml(path: Path) -> str | None:
-    document = _load_toml(path)
-    if document is None:
-        return None
-
-    agents_table = _maybe_table(document, _AGENTS_TABLE)
-    if agents_table is None:
-        return None
-
-    return _normalize_backend_id(
-        agents_table.get(_BACKEND_KEY),
-        source_path=path,
-        source_scope=f"[{_AGENTS_TABLE}]",
+    return _normalize_toml_value(
+        path,
+        table_path=(_AGENTS_TABLE,),
+        key=_BACKEND_KEY,
+        normalizer=lambda raw_value, source_scope: _normalize_backend_id(
+            raw_value,
+            source_path=path,
+            source_scope=source_scope,
+        ),
     )
 
 
@@ -458,42 +517,29 @@ def _agents_codex_option_from_engineeringagent_toml(
     *,
     key: str,
 ) -> str | None:
-    document = _load_toml(path)
-    if document is None:
-        return None
-
-    agents_table = _maybe_table(document, _AGENTS_TABLE)
-    if agents_table is None:
-        return None
-    codex_table = _maybe_table(agents_table, _CODEX_TABLE)
-    if codex_table is None:
-        return None
-
-    return _normalize_nonempty_string(
-        codex_table.get(key),
-        key_name=key,
-        source_path=path,
-        source_scope=f"[{_AGENTS_TABLE}.{_CODEX_TABLE}]",
+    return _normalize_toml_value(
+        path,
+        table_path=(_AGENTS_TABLE, _CODEX_TABLE),
+        key=key,
+        normalizer=lambda raw_value, source_scope: _normalize_nonempty_string(
+            raw_value,
+            key_name=key,
+            source_path=path,
+            source_scope=source_scope,
+        ),
     )
 
 
 def _docs_root_from_pyproject_toml(path: Path) -> Path | None:
-    document = _load_toml(path)
-    if document is None:
-        return None
-
-    tool_config = document.get("tool")
-    if not isinstance(tool_config, dict):
-        return None
-
-    engineeringagent_config = tool_config.get("engineeringagent")
-    if not isinstance(engineeringagent_config, dict):
-        return None
-
-    return _normalize_docs_root(
-        engineeringagent_config.get(_DOCS_ROOT_KEY),
-        source_path=path,
-        source_scope="[tool.engineeringagent]",
+    return _normalize_toml_value(
+        path,
+        table_path=_PYPROJECT_ENGINEERINGAGENT_TABLE,
+        key=_DOCS_ROOT_KEY,
+        normalizer=lambda raw_value, source_scope: _normalize_docs_root(
+            raw_value,
+            source_path=path,
+            source_scope=source_scope,
+        ),
     )
 
 
@@ -503,68 +549,42 @@ def _harness_bool_from_pyproject_toml(
     table: str,
     key: str,
 ) -> bool | None:
-    document = _load_toml(path)
-    if document is None:
-        return None
-
-    tool_config = _maybe_table(document, "tool")
-    if tool_config is None:
-        return None
-    engineeringagent_config = _maybe_table(tool_config, "engineeringagent")
-    if engineeringagent_config is None:
-        return None
-
-    harness_table = _maybe_table(engineeringagent_config, _HARNESS_TABLE)
-    if harness_table is None:
-        return None
-    setting_table = _maybe_table(harness_table, table)
-    if setting_table is None:
-        return None
-
-    return _normalize_bool(
-        setting_table.get(key),
-        key_name=key,
-        source_path=path,
-        source_scope=f"[tool.engineeringagent.{_HARNESS_TABLE}.{table}]",
+    return _normalize_toml_value(
+        path,
+        table_path=(*_PYPROJECT_ENGINEERINGAGENT_TABLE, _HARNESS_TABLE, table),
+        key=key,
+        normalizer=lambda raw_value, source_scope: _normalize_bool(
+            raw_value,
+            key_name=key,
+            source_path=path,
+            source_scope=source_scope,
+        ),
     )
 
 
 def _harness_checks_path_from_pyproject_toml(path: Path) -> Path | None:
-    document = _load_toml(path)
-    if document is None:
-        return None
-
-    checks_table = _harness_checks_table(document, pyproject=True)
-    if checks_table is None:
-        return None
-
-    return _normalize_repo_local_path(
-        checks_table.get(_CHECKS_PATH_KEY),
-        source_path=path,
-        source_scope=f"[tool.engineeringagent.{_HARNESS_TABLE}.{_CHECKS_TABLE}]",
+    return _normalize_toml_value(
+        path,
+        table_path=(*_PYPROJECT_ENGINEERINGAGENT_TABLE, _HARNESS_TABLE, _CHECKS_TABLE),
+        key=_CHECKS_PATH_KEY,
+        normalizer=lambda raw_value, source_scope: _normalize_repo_local_path(
+            raw_value,
+            source_path=path,
+            source_scope=source_scope,
+        ),
     )
 
 
 def _agents_backend_id_from_pyproject_toml(path: Path) -> str | None:
-    document = _load_toml(path)
-    if document is None:
-        return None
-
-    tool_config = _maybe_table(document, "tool")
-    if tool_config is None:
-        return None
-    engineeringagent_config = _maybe_table(tool_config, "engineeringagent")
-    if engineeringagent_config is None:
-        return None
-
-    agents_table = _maybe_table(engineeringagent_config, _AGENTS_TABLE)
-    if agents_table is None:
-        return None
-
-    return _normalize_backend_id(
-        agents_table.get(_BACKEND_KEY),
-        source_path=path,
-        source_scope=f"[tool.engineeringagent.{_AGENTS_TABLE}]",
+    return _normalize_toml_value(
+        path,
+        table_path=(*_PYPROJECT_ENGINEERINGAGENT_TABLE, _AGENTS_TABLE),
+        key=_BACKEND_KEY,
+        normalizer=lambda raw_value, source_scope: _normalize_backend_id(
+            raw_value,
+            source_path=path,
+            source_scope=source_scope,
+        ),
     )
 
 
@@ -573,28 +593,16 @@ def _agents_codex_option_from_pyproject_toml(
     *,
     key: str,
 ) -> str | None:
-    document = _load_toml(path)
-    if document is None:
-        return None
-
-    tool_config = _maybe_table(document, "tool")
-    if tool_config is None:
-        return None
-    engineeringagent_config = _maybe_table(tool_config, "engineeringagent")
-    if engineeringagent_config is None:
-        return None
-    agents_table = _maybe_table(engineeringagent_config, _AGENTS_TABLE)
-    if agents_table is None:
-        return None
-    codex_table = _maybe_table(agents_table, _CODEX_TABLE)
-    if codex_table is None:
-        return None
-
-    return _normalize_nonempty_string(
-        codex_table.get(key),
-        key_name=key,
-        source_path=path,
-        source_scope=f"[tool.engineeringagent.{_AGENTS_TABLE}.{_CODEX_TABLE}]",
+    return _normalize_toml_value(
+        path,
+        table_path=(*_PYPROJECT_ENGINEERINGAGENT_TABLE, _AGENTS_TABLE, _CODEX_TABLE),
+        key=key,
+        normalizer=lambda raw_value, source_scope: _normalize_nonempty_string(
+            raw_value,
+            key_name=key,
+            source_path=path,
+            source_scope=source_scope,
+        ),
     )
 
 
@@ -603,26 +611,6 @@ def _maybe_table(parent: dict[str, Any], key: str) -> dict[str, Any] | None:
     if not isinstance(value, dict):
         return None
     return value
-
-
-def _harness_checks_table(
-    document: dict[str, Any],
-    *,
-    pyproject: bool,
-) -> dict[str, Any] | None:
-    if pyproject:
-        tool_config = _maybe_table(document, "tool")
-        if tool_config is None:
-            return None
-        engineeringagent_config = _maybe_table(tool_config, "engineeringagent")
-        if engineeringagent_config is None:
-            return None
-        harness_table = _maybe_table(engineeringagent_config, _HARNESS_TABLE)
-    else:
-        harness_table = _maybe_table(document, _HARNESS_TABLE)
-    if harness_table is None:
-        return None
-    return _maybe_table(harness_table, _CHECKS_TABLE)
 
 
 def _load_toml(path: Path) -> dict[str, Any] | None:

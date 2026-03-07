@@ -35,3 +35,18 @@ def test_ruff_per_file_ignores_exempt_harness_fitness_functions(
 
     # But harness fitness-function scripts are allowed to violate them.
     assert expected_ignored_rules.issubset(ignored_rules)
+
+
+def test_pylint_module_size_policy_is_disabled_in_favor_of_fitness_rules(
+    repo_root: Path,
+) -> None:
+    pyproject_text = (repo_root / "pyproject.toml").read_text(encoding="utf-8")
+    config = tomli.loads(pyproject_text)
+
+    disabled_messages = set(
+        config["tool"]["pylint"]["MESSAGES CONTROL"].get("disable", [])
+    )
+    design_config = config["tool"]["pylint"].get("DESIGN", {})
+
+    assert "too-many-lines" in disabled_messages
+    assert "max-module-lines" not in design_config

@@ -9,11 +9,27 @@ rules:
     severity: error
     side_effect_free: true
     adapter: command
+    config_file: policies/dependency_directionality.yaml
     command:
       - uv
       - run
       - python
       - harness/fitness-functions/check_dependency_directionality.py
+  - rule_id: architecture.module-statement-budget
+    name: Module statement budget
+    summary: Enforce AST-based non-doc statement caps for Python modules.
+    rationale: Limits module sprawl using executable structure so review and retrieval stay cohesive as packages evolve.
+    remediation: Reduce duplicated control-flow before splitting; extract cohesive concerns into existing folders first, or into a clearly named domain subpackage when needed; avoid root-level helper sprawl; for tests, prefer fixtures/builders/parametrization over repeated setup/assertions.
+    scope: src/engineeringagent, harness, and tests
+    severity: error
+    side_effect_free: true
+    adapter: command
+    config_file: policies/module_statement_budget_policy.yaml
+    command:
+      - uv
+      - run
+      - python
+      - harness/fitness-functions/check_module_statement_budget.py
   - rule_id: architecture.harness-src-import-allowlist
     name: Harness-to-src import allowlist
     summary: Restrict harness fitness functions to a narrow supported engineeringagent surface.

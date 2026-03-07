@@ -1,145 +1,143 @@
 from __future__ import annotations
 
-# Tests intentionally exercise private path-resolution helpers.
-# pylint: disable=protected-access
-
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, cast
 
 import pytest
-import typer
+from typer.testing import CliRunner
 
 from engineeringagent import cli as cli_module
-from engineeringagent import cli_typer as cli_typer_module
+from tests.cli.init_command_support import (
+    UV_RUN_TOKEN,
+    UVX_TOKEN,
+    invoke_cli,
+    patch_non_tty,
+    patch_tty,
+    tomllib,
+)
+from tests.helpers.fitness_manifest import write_shell_contract_manifest
 
 
-def test_path_resolution_helpers_cover_manifest_and_absolute_paths(
+def test_checks_catalog_accepts_absolute_manifest_and_output_paths(
     tmp_path: Path,
 ) -> None:
-    assert cli_module._resolve_manifest_path(None) is None
-    assert cli_module._resolve_manifest_path("harness/rules.yaml") == Path(
-        "harness/rules.yaml"
+    manifest_path = write_shell_contract_manifest(tmp_path)
+    output_path = tmp_path / "catalog.md"
+    runner = CliRunner(mix_stderr=False)
+
+    result = runner.invoke(
+        cli_module.build_typer_app(),
+        [
+            "--project-root",
+            str(tmp_path),
+            "checks",
+            "catalog",
+            "--manifest-path",
+            str(manifest_path),
+            "--format",
+            "markdown",
+            "--output",
+            str(output_path),
+        ],
     )
 
-    absolute = tmp_path / "fitness-rules.json"
-    assert (
-        cli_module._resolve_optional_path(path=str(absolute), project_root=tmp_path)
-        == absolute
+    assert result.exit_code == 0
+    assert "checks catalog written:" in result.stdout
+    assert output_path.exists()
+
+
+def test_init_rejects_empty_scaffold_docs_dir(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    patch_non_tty(monkeypatch)
+
+    result = invoke_cli(
+        [
+            "--project-root",
+            str(tmp_path),
+            "init",
+            "slim",
+            "--backend",
+            "opencode",
+            "--agents-launcher",
+            "uvx",
+            "--scaffold-docs-dir",
+            "",
+            "--no-precommit-install",
+        ]
     )
 
+    assert result.exit_code == 1
+    assert "init input error: --scaffold-docs-dir cannot be empty" in result.stdout
 
-def test_resolve_init_docs_dir_reports_invalid_inputs(tmp_path: Path) -> None:
-    docs_dir, error = cli_module._resolve_init_docs_dir(
-        project_root=tmp_path,
-        docs_mode=None,
-        scaffold_docs_dir="",
-    )
-    assert docs_dir is None
-    assert error == "init input error: --scaffold-docs-dir cannot be empty"
 
+def test_cmd_init_rejects_invalid_docs_mode_when_docs_exists(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    patch_non_tty(monkeypatch)
     (tmp_path / "docs").mkdir()
-    docs_dir, error = cli_module._resolve_init_docs_dir(
-        project_root=tmp_path,
-        docs_mode="separate",
-        scaffold_docs_dir="docs",
+
+    result = cli_module.cmd_init(
+        SimpleNamespace(
+            project_root=str(tmp_path),
+            force=False,
+            scaffold_profile="core",
+            docs_mode="invalid",
+            scaffold_docs_dir="docs.engineeringagent",
+            agents_mode=None,
+            pack="slim",
+            backend="opencode",
+            agents_launcher="uvx",
+            model="gpt-5",
+            no_precommit_install=True,
+        )
     )
-    assert docs_dir is None
+
+    assert result == 1
     assert (
-        error
-        == "init input error: --scaffold-docs-dir must differ from docs when using --docs-mode separate"
-    )
-
-    docs_dir, error = cli_module._resolve_init_docs_dir(
-        project_root=tmp_path,
-        docs_mode="invalid",
-        scaffold_docs_dir="docs.engineeringagent",
-    )
-    assert docs_dir is None
-    assert (
-        error
-        == "init input error: docs mode must be 'reuse' or 'separate' when docs/ exists"
+        "init input error: docs mode must be 'reuse' or 'separate' when docs/ exists"
+        in capsys.readouterr().out
     )
 
 
-def test_resolve_init_agents_mode_rejects_invalid_prompt_selection(
+def test_init_rejects_invalid_agents_prompt_selection(
     tmp_path: Path,
-    monkeypatch: Any,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    patch_non_tty(monkeypatch)
     (tmp_path / "AGENTS.md").write_text("# AGENTS\n", encoding="utf-8")
     monkeypatch.setattr("builtins.input", lambda _prompt: "invalid")
 
-    mode, error = cli_module._resolve_init_agents_mode(tmp_path, None)
+    result = invoke_cli(
+        [
+            "--project-root",
+            str(tmp_path),
+            "init",
+            "slim",
+            "--backend",
+            "opencode",
+            "--no-precommit-install",
+        ]
+    )
 
-    assert mode is None
+    assert result.exit_code == 1
     assert (
-        error
-        == "init input error: AGENTS mode must be 'overwrite', 'preserve', or 'abort' when AGENTS.md exists"
-    )
+        "init input error: AGENTS mode must be 'overwrite', 'preserve', or 'abort' "
+        "when AGENTS.md exists"
+    ) in result.stdout
 
 
-def test_write_init_docs_root_config_skips_existing_file_without_force(
+def test_init_preserve_mode_reports_skipped_merge_spec(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    config_path = tmp_path / "engineeringagent.toml"
-    config_path.write_text('docs-root = "docs.already"\n', encoding="utf-8")
-
-    created, skipped = cli_module.write_init_docs_root_config(
-        tmp_path,
-        "docs.engineeringagent",
-        force=False,
-    )
-
-    assert (created, skipped) == (0, 1)
-
-
-def test_cmd_init_reports_docs_and_agents_input_errors(
-    tmp_path: Path,
-    monkeypatch: Any,
-    capsys: Any,
-) -> None:
-    args = SimpleNamespace(
-        project_root=str(tmp_path),
-        force=False,
-        scaffold_profile="core",
-        docs_mode=None,
-        scaffold_docs_dir="docs.engineeringagent",
-        agents_mode=None,
-    )
-
-    monkeypatch.setattr(
-        cli_module,
-        "_resolve_init_docs_dir",
-        lambda **_kwargs: (None, "docs mode error"),
-    )
-    docs_error_code = cli_module.cmd_init(args)
-    docs_error_output = capsys.readouterr().out
-    assert docs_error_code == 1
-    assert "docs mode error" in docs_error_output
-
-    monkeypatch.setattr(
-        cli_module,
-        "_resolve_init_docs_dir",
-        lambda **_kwargs: ("docs", None),
-    )
-    monkeypatch.setattr(
-        cli_module,
-        "_resolve_init_agents_mode",
-        lambda **_kwargs: (None, "agents mode error"),
-    )
-    agents_error_code = cli_module.cmd_init(args)
-    agents_error_output = capsys.readouterr().out
-    assert agents_error_code == 1
-    assert "agents mode error" in agents_error_output
-
-
-def test_cmd_init_preserve_mode_reports_skipped_merge_spec(
-    tmp_path: Path,
-    monkeypatch: Any,
-    capsys: Any,
-) -> None:
+    patch_non_tty(monkeypatch)
     (tmp_path / "AGENTS.md").write_text("# User agents\n", encoding="utf-8")
     (tmp_path / "AGENTS.user.md").write_text("# Existing backup\n", encoding="utf-8")
+    monkeypatch.setattr("builtins.input", lambda _prompt: "preserve")
     merge_spec_path = (
         tmp_path
         / "docs"
@@ -150,55 +148,73 @@ def test_cmd_init_preserve_mode_reports_skipped_merge_spec(
     merge_spec_path.parent.mkdir(parents=True, exist_ok=True)
     merge_spec_path.write_text("id: FEAT-900\n", encoding="utf-8")
 
-    monkeypatch.setattr(cli_module, "apply_baseline_scaffold", lambda **_kwargs: (0, 0))
-    monkeypatch.setattr(
-        cli_module,
-        "write_init_docs_root_config",
-        lambda *_args, **_kwargs: (0, 0),
+    result = invoke_cli(
+        [
+            "--project-root",
+            str(tmp_path),
+            "init",
+            "slim",
+            "--backend",
+            "opencode",
+            "--docs-mode",
+            "reuse",
+            "--agents-launcher",
+            "uvx",
+            "--no-precommit-install",
+        ]
     )
 
-    code = cli_module.cmd_init(
+    assert result.exit_code == 0
+    assert (
+        "merge_spec_skipped=docs/spec/features/FEAT-900-merge-preserved-agents-guidance.yaml"
+        in result.stdout
+    )
+    backup_paths = sorted(tmp_path.glob("AGENTS.user*.md"))
+    assert len(backup_paths) == 2
+    assert "agents_backup=" in result.stdout
+
+
+def test_version_flag_prints_version_and_exits_zero(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(cli_module.importlib.metadata, "version", lambda _name: "1.2.3")
+    runner = CliRunner(mix_stderr=False)
+
+    result = runner.invoke(cli_module.build_typer_app(), ["--version"])
+
+    assert result.exit_code == 0
+    assert result.stdout.strip() == "1.2.3"
+
+
+def test_cmd_init_uses_cli_resolvers_for_backend_and_launcher_prompts(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    patch_tty(monkeypatch, backends=("mock-b", "opencode"), default_backend="mock-b")
+    answers = iter(("opencode", "uv-run"))
+    monkeypatch.setattr("builtins.input", lambda _prompt: next(answers))
+
+    result = cli_module.cmd_init(
         SimpleNamespace(
             project_root=str(tmp_path),
             force=False,
             scaffold_profile="core",
-            docs_mode="reuse",
-            scaffold_docs_dir="docs.engineeringagent",
-            agents_mode="preserve",
+            scaffold_docs_dir="docs",
+            pack="slim",
+            backend=None,
+            docs_mode=None,
+            agents_mode=None,
+            agents_launcher=None,
+            model="gpt-5",
+            no_precommit_install=True,
         )
     )
-    output = capsys.readouterr().out
 
-    assert code == 0
-    assert (
-        "merge_spec_skipped=docs/spec/features/FEAT-900-merge-preserved-agents-guidance.yaml"
-        in output
-    )
+    assert result == 0
+    assert tomllib.loads(
+        (tmp_path / "engineeringagent.toml").read_text(encoding="utf-8")
+    ) == {"agents": {"backend": "opencode"}}
 
-
-def test_version_callback_exits_with_zero(
-    monkeypatch: Any,
-) -> None:
-    monkeypatch.setattr(cli_module.importlib.metadata, "version", lambda _name: "1.2.3")
-    with pytest.raises(typer.Exit) as exc_info:
-        cli_module.version_callback(True)
-    assert exc_info.value.exit_code == 0
-
-
-def test_project_root_from_context_defaults_to_current_directory() -> None:
-    class _FakeContext:
-        def find_root(self) -> SimpleNamespace:
-            """Return a minimal Typer root context stub."""
-            return SimpleNamespace(obj=None)
-
-    assert (
-        cli_typer_module.project_root_from_typer_context(cast(Any, _FakeContext()))
-        == "."
-    )
-
-
-def test_cli_module_no_longer_exposes_argparse_bridge() -> None:
-    assert not hasattr(cli_module, "CommandArgs")
-    assert not hasattr(cli_module, "build_parser")
-    assert not hasattr(cli_module, "_dispatch_typer_command_with_argparse")
-    assert not hasattr(cli_module, "_run_legacy_cli_command")
+    rendered_agents = (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
+    assert UV_RUN_TOKEN in rendered_agents
+    assert UVX_TOKEN not in rendered_agents

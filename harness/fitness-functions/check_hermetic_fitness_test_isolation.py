@@ -8,12 +8,24 @@ from typing import NamedTuple
 import yaml
 
 from engineeringagent.checks import emit_fitness_result
+from engineeringagent.checks.fitness.local_support_loader import load_local_support_module
 from engineeringagent.checks.fitness.contracts import (
     CONTRACT_VERSION,
     FitnessRuleResult,
     RuleSeverity,
     RuleStatus,
 )
+
+
+_support = load_local_support_module(
+    "hermetic_fitness_test_isolation_support",
+    caller_file=Path(__file__),
+)
+TaintState = _support.TaintState
+is_tainted = _support.is_tainted
+mapping_taint_keys = _support.mapping_taint_keys
+scan_statement = _support.scan_statement
+tainted_source_names = _support.tainted_source_names
 
 
 RULE_ID = "architecture.hermetic-fitness-test-isolation"
@@ -78,47 +90,6 @@ def _iter_fitness_test_files(project_root: Path) -> list[Path]:
     if not tests_root.exists():
         return []
     return sorted(path for path in tests_root.rglob("*.py") if path.is_file())
-
-
-def _is_tainted(expr: ast.AST, *, tainted_names: set[str]) -> bool:
-    if isinstance(expr, ast.Name):
-        return expr.id == "repo_root" or expr.id in tainted_names
-    if isinstance(expr, ast.Attribute):
-        return _is_tainted(expr.value, tainted_names=tainted_names)
-    if isinstance(expr, ast.BinOp) and isinstance(expr.op, ast.Div):
-        return _is_tainted(expr.left, tainted_names=tainted_names)
-    if isinstance(expr, ast.Call):
-        if isinstance(expr.func, ast.Name) and expr.func.id == "Path":
-            return any(_is_tainted(arg, tainted_names=tainted_names) for arg in expr.args)
-        if isinstance(expr.func, ast.Attribute):
-            return _is_tainted(expr.func.value, tainted_names=tainted_names)
-    return False
-
-
-def _tainted_source_names(
-    expr: ast.AST,
-    *,
-    tainted_sources: dict[str, set[str]],
-) -> set[str]:
-    if isinstance(expr, ast.Name):
-        if expr.id == "repo_root":
-            return {"repo_root"}
-        return set(tainted_sources.get(expr.id, set()))
-    if isinstance(expr, ast.Attribute):
-        return _tainted_source_names(expr.value, tainted_sources=tainted_sources)
-    if isinstance(expr, ast.BinOp) and isinstance(expr.op, ast.Div):
-        return _tainted_source_names(expr.left, tainted_sources=tainted_sources)
-    if isinstance(expr, ast.Call):
-        if isinstance(expr.func, ast.Name) and expr.func.id == "Path":
-            tainted_sources_found: set[str] = set()
-            for arg in expr.args:
-                tainted_sources_found.update(
-                    _tainted_source_names(arg, tainted_sources=tainted_sources)
-                )
-            return tainted_sources_found
-        if isinstance(expr.func, ast.Attribute):
-            return _tainted_source_names(expr.func.value, tainted_sources=tainted_sources)
-    return set()
 
 
 def _call_name(call: ast.Call) -> str | None:
@@ -206,17 +177,17 @@ def _sink_pattern(
     call_name = _call_name(call)
 
     if call_name == "_run_checker":
-        if call.args and _is_tainted(call.args[0], tainted_names=tainted_names):
+        if call.args and is_tainted(call.args[0], tainted_names=tainted_names):
             return "_run_checker project_root"
         for keyword in call.keywords:
             if keyword.arg in {"project_root", "cwd"} and keyword.value is not None:
-                if _is_tainted(keyword.value, tainted_names=tainted_names):
+                if is_tainted(keyword.value, tainted_names=tainted_names):
                     return f"_run_checker {keyword.arg}"
 
     if call_name == "execute_rule_definition":
         for keyword in call.keywords:
             if keyword.arg == "project_root" and keyword.value is not None:
-                if _is_tainted(keyword.value, tainted_names=tainted_names):
+                if is_tainted(keyword.value, tainted_names=tainted_names):
                     return "execute_rule_definition project_root"
 
     if _is_subprocess_call(
@@ -226,7 +197,7 @@ def _sink_pattern(
     ):
         for keyword in call.keywords:
             if keyword.arg == "cwd" and keyword.value is not None:
-                if _is_tainted(keyword.value, tainted_names=tainted_names):
+                if is_tainted(keyword.value, tainted_names=tainted_names):
                     return "subprocess cwd"
 
     return None
@@ -241,7 +212,7 @@ def _forwarded_parameters(
 ) -> list[ForwardedSink]:
     forwarded: list[ForwardedSink] = []
     for parameter_name in sorted(
-        _tainted_source_names(expr, tainted_sources=tainted_sources)
+        tainted_source_names(expr, tainted_sources=tainted_sources)
     ):
         parameter_index = parameter_indexes.get(parameter_name)
         if parameter_index is None:
@@ -256,26 +227,6 @@ def _forwarded_parameters(
     return forwarded
 
 
-def _mapping_taint_keys(
-    expr: ast.AST,
-    *,
-    tainted_names: set[str],
-    tainted_mapping_keys: dict[str, set[str]],
-) -> set[str]:
-    if isinstance(expr, ast.Name):
-        return set(tainted_mapping_keys.get(expr.id, set()))
-    if not isinstance(expr, ast.Dict):
-        return set()
-
-    tainted_keys: set[str] = set()
-    for key, value in zip(expr.keys, expr.values, strict=False):
-        if not isinstance(key, ast.Constant) or not isinstance(key.value, str):
-            continue
-        if _is_tainted(value, tainted_names=tainted_names):
-            tainted_keys.add(key.value)
-    return tainted_keys
-
-
 def _collect_forwarding_contract(
     node: ast.FunctionDef | ast.AsyncFunctionDef,
     *,
@@ -288,6 +239,16 @@ def _collect_forwarding_contract(
     tainted_sources: dict[str, set[str]] = {
         parameter_name: {parameter_name} for parameter_name in parameter_indexes
     }
+
+    def _track_assignment(name: str, value: ast.AST) -> None:
+        tainted_source_names_found = tainted_source_names(
+            value,
+            tainted_sources=tainted_sources,
+        )
+        if tainted_source_names_found:
+            tainted_sources[name] = tainted_source_names_found
+            return
+        tainted_sources.pop(name, None)
 
     def _scan_expression(expr: ast.AST) -> None:
         for child in ast.walk(expr):
@@ -359,62 +320,13 @@ def _collect_forwarding_contract(
     def _scan_statement(statement: ast.stmt) -> None:
         if isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return
-
-        if isinstance(statement, ast.Assign):
-            if len(statement.targets) == 1 and isinstance(statement.targets[0], ast.Name):
-                tainted_source_names = _tainted_source_names(
-                    statement.value,
-                    tainted_sources=tainted_sources,
-                )
-                if tainted_source_names:
-                    tainted_sources[statement.targets[0].id] = tainted_source_names
-                else:
-                    tainted_sources.pop(statement.targets[0].id, None)
-            _scan_expression(statement.value)
-            return
-
-        if isinstance(statement, ast.AnnAssign) and isinstance(statement.target, ast.Name):
-            if statement.value is not None:
-                tainted_source_names = _tainted_source_names(
-                    statement.value,
-                    tainted_sources=tainted_sources,
-                )
-                if tainted_source_names:
-                    tainted_sources[statement.target.id] = tainted_source_names
-                else:
-                    tainted_sources.pop(statement.target.id, None)
-                _scan_expression(statement.value)
-            return
-
-        if isinstance(statement, ast.Expr):
-            _scan_expression(statement.value)
-            return
-
-        if isinstance(statement, ast.Return) and statement.value is not None:
-            _scan_expression(statement.value)
-            return
-
-        if isinstance(statement, ast.If):
-            _scan_expression(statement.test)
-            for child in statement.body:
-                _scan_statement(child)
-            for child in statement.orelse:
-                _scan_statement(child)
-            return
-
-        if isinstance(statement, (ast.With, ast.AsyncWith, ast.For, ast.AsyncFor, ast.While)):
-            for child in ast.iter_child_nodes(statement):
-                if isinstance(child, ast.expr):
-                    _scan_expression(child)
-            for child in getattr(statement, "body", []):
-                _scan_statement(child)
-            for child in getattr(statement, "orelse", []):
-                _scan_statement(child)
-            return
-
-        for child in ast.walk(statement):
-            if isinstance(child, ast.expr):
-                _scan_expression(child)
+        scan_statement(
+            statement,
+            scan_expression=_scan_expression,
+            scan_statement_recursively=_scan_statement,
+            handle_name_assignment=_track_assignment,
+            skip_classdefs=False,
+        )
 
     for statement in node.body:
         _scan_statement(statement)
@@ -511,8 +423,7 @@ def _collect_function_violations(
             direct_subprocess_calls=direct_subprocess_calls,
         )
     )
-    tainted_names: set[str] = set()
-    tainted_mapping_keys: dict[str, set[str]] = {}
+    taint_state = TaintState()
 
     def _scan_expression(expr: ast.AST) -> None:
         for child in ast.walk(expr):
@@ -520,7 +431,7 @@ def _collect_function_violations(
                 continue
             pattern = _sink_pattern(
                 child,
-                tainted_names=tainted_names,
+                tainted_names=taint_state.tainted_names,
                 subprocess_modules=subprocess_modules,
                 direct_subprocess_calls=direct_subprocess_calls,
             )
@@ -539,9 +450,9 @@ def _collect_function_violations(
                 if (
                     forwarded_sink.parameter_index is not None
                     and forwarded_sink.parameter_index < len(child.args)
-                    and _is_tainted(
+                    and is_tainted(
                         child.args[forwarded_sink.parameter_index],
-                        tainted_names=tainted_names,
+                        tainted_names=taint_state.tainted_names,
                     )
                 ):
                     violations.append(
@@ -555,7 +466,10 @@ def _collect_function_violations(
                         if (
                             keyword.arg == forwarded_sink.parameter_name
                             and keyword.value is not None
-                            and _is_tainted(keyword.value, tainted_names=tainted_names)
+                            and is_tainted(
+                                keyword.value,
+                                tainted_names=taint_state.tainted_names,
+                            )
                         ):
                             violations.append(
                                 f"{file_rel}:{child.lineno} fitness tests must not use "
@@ -567,10 +481,10 @@ def _collect_function_violations(
                     for keyword in child.keywords:
                         if keyword.arg is not None:
                             continue
-                        tainted_keys = _mapping_taint_keys(
+                        tainted_keys = mapping_taint_keys(
                             keyword.value,
-                            tainted_names=tainted_names,
-                            tainted_mapping_keys=tainted_mapping_keys,
+                            tainted_names=taint_state.tainted_names,
+                            tainted_mapping_keys=taint_state.tainted_mapping_keys,
                         )
                         if "project_root" in tainted_keys:
                             violations.append(
@@ -580,73 +494,13 @@ def _collect_function_violations(
                             break
 
     def _scan_statement(statement: ast.stmt) -> None:
-        if isinstance(statement, ast.ClassDef):
-            return
-        if isinstance(statement, ast.Assign):
-            if len(statement.targets) == 1 and isinstance(statement.targets[0], ast.Name):
-                if _is_tainted(statement.value, tainted_names=tainted_names):
-                    tainted_names.add(statement.targets[0].id)
-                else:
-                    tainted_names.discard(statement.targets[0].id)
-                tainted_keys = _mapping_taint_keys(
-                    statement.value,
-                    tainted_names=tainted_names,
-                    tainted_mapping_keys=tainted_mapping_keys,
-                )
-                if tainted_keys:
-                    tainted_mapping_keys[statement.targets[0].id] = tainted_keys
-                else:
-                    tainted_mapping_keys.pop(statement.targets[0].id, None)
-            _scan_expression(statement.value)
-            return
-
-        if isinstance(statement, ast.AnnAssign) and isinstance(statement.target, ast.Name):
-            if statement.value is not None:
-                if _is_tainted(statement.value, tainted_names=tainted_names):
-                    tainted_names.add(statement.target.id)
-                else:
-                    tainted_names.discard(statement.target.id)
-                tainted_keys = _mapping_taint_keys(
-                    statement.value,
-                    tainted_names=tainted_names,
-                    tainted_mapping_keys=tainted_mapping_keys,
-                )
-                if tainted_keys:
-                    tainted_mapping_keys[statement.target.id] = tainted_keys
-                else:
-                    tainted_mapping_keys.pop(statement.target.id, None)
-                _scan_expression(statement.value)
-            return
-
-        if isinstance(statement, ast.Expr):
-            _scan_expression(statement.value)
-            return
-
-        if isinstance(statement, ast.Return) and statement.value is not None:
-            _scan_expression(statement.value)
-            return
-
-        if isinstance(statement, ast.If):
-            _scan_expression(statement.test)
-            for child in statement.body:
-                _scan_statement(child)
-            for child in statement.orelse:
-                _scan_statement(child)
-            return
-
-        if isinstance(statement, (ast.With, ast.AsyncWith, ast.For, ast.AsyncFor, ast.While)):
-            for child in ast.iter_child_nodes(statement):
-                if isinstance(child, ast.expr):
-                    _scan_expression(child)
-            for child in getattr(statement, "body", []):
-                _scan_statement(child)
-            for child in getattr(statement, "orelse", []):
-                _scan_statement(child)
-            return
-
-        for child in ast.walk(statement):
-            if isinstance(child, ast.expr):
-                _scan_expression(child)
+        scan_statement(
+            statement,
+            scan_expression=_scan_expression,
+            scan_statement_recursively=_scan_statement,
+            handle_name_assignment=taint_state.update_assignment,
+            skip_classdefs=True,
+        )
 
     for statement in node.body:
         _scan_statement(statement)

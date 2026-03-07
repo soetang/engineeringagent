@@ -1,0 +1,7 @@
+budgets:
+  - root: src/engineeringagent
+    cap: 300
+  - root: harness
+    cap: 300
+  - root: tests
+    cap: 400
