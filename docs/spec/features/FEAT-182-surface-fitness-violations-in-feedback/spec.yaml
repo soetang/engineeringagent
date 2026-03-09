@@ -1,0 +1,79 @@
+id: FEAT-182
+title: Surface fitness-rule violations in checks feedback and implement prompts
+type: spec
+expected_commit_subject: "spec: add FEAT-182 fitness feedback violations rendering"
+planning_tier: planned
+status: backlog
+priority: high
+objective: >
+  Make failed fitness feedback more actionable by rendering concrete rule violations
+  alongside remediation guidance across checks-owned feedback surfaces, so retry
+  prompts and related checks renderers show the exact failing files or locations
+  instead of only generic remediation prose.
+context: >
+  Today failed fitness rules already capture concrete `violations` strings, and gate
+  output logs show them, but checks-owned prompt feedback reduces failures to rule id
+  plus remediation text before that feedback is forwarded into the next implement
+  prompt. This leaves the model without the most actionable context for rules like
+  `architecture.module-statement-budget`, where the important signal is the exact
+  module path and budget delta. We want one general rendering policy for fitness
+  feedback: when a failed rule provides concrete violations, surface them directly
+  while still keeping the remediation guidance available.
+constraints:
+  - "In scope: checks-owned fitness feedback rendering for implement-loop prompts and any other checks feedback renderers that summarize failed fitness rules."
+  - "Out of scope: changing how fitness rules detect violations or changing rule thresholds such as module statement caps."
+  - "Keep checks as the owner of prompt-ready feedback; loop/runtime must continue to forward checks-owned feedback without re-shaping rule-specific content."
+  - "The policy is general for failed fitness rules, not a one-off special case for `architecture.module-statement-budget`, even though that rule motivates the feature."
+  - "Feedback remains markdown mini-block text rather than switching this feature to a new structured envelope format."
+  - "When a failed fitness rule includes concrete `violations`, feedback must surface them and must also keep the rule remediation guidance available."
+  - "When a failed fitness rule has no concrete `violations`, feedback may fall back to remediation-only output."
+  - "Per-rule remediation should appear once per failed rule, not repeated for each violation."
+  - "This feature should preserve existing rule ids and checks failure headings so surrounding consumers keep a stable high-level shape."
+  - "All checks renderers that summarize failed fitness rules should follow the same content policy so humans and models do not see contradictory renderings on different surfaces."
+  - "By explicit user choice for this feature, the rendered feedback should include all reported violations rather than truncating to the first N entries."
+  - "Breaking internal rendering changes are allowed if they improve prompt usefulness and keep checks-owned feedback boundaries clear."
+implementation_notes: >
+  Contract change declaration.
+
+  Surface: checks-owned fitness failure feedback rendering, especially
+  `FitnessCheckStrategy.render_prompt_feedback(...)`, any checks-facing failure summaries,
+  and loop-consumed `prompt_feedback` text.
+
+  Old behavior: failed fitness rules keep `violations` in structured payloads and print
+  them in raw gate output, but the prompt feedback sent into retry flows only renders
+  rule id plus remediation text.
+
+  New behavior: failed fitness feedback renders one entry per failed rule containing the
+  rule id, one remediation line, and a `violations` subsection listing every concrete
+  violation string supplied by the rule. If a rule has no concrete violations, the entry
+  still renders the remediation guidance so the model receives actionable direction.
+
+  Compatibility policy: preserve the top-level checks failure markdown shape and checks
+  ownership boundary, but intentionally change failed-rule body content to include
+  concrete violations. No compatibility shim is required for the old remediation-only
+  body format.
+
+  Migration scope: update checks-owned fitness feedback rendering, surrounding tests that
+  currently assert remediation-only content, and any helper/documentation surfaces that
+  describe the current failed-rule rendering contract.
+
+  Verification evidence: targeted checks/loop regressions should prove that retry
+  feedback now contains both remediation and concrete violations, and that loop/runtime
+  still forwards checks-owned feedback verbatim rather than reconstructing it.
+
+  Fitness-function impact assessment: no fitness-function changes required. This feature
+  changes how existing failed-rule information is rendered back to users/models; it does
+  not change repository quality boundaries, rule logic, manifest membership, or policy
+  thresholds.
+acceptance:
+  - "Failed fitness feedback rendered by checks includes per-rule remediation and concrete `violations` when the rule payload provides them."
+  - "The next implement prompt receives failed fitness feedback that includes exact violation lines for rules like `architecture.module-statement-budget`, including file paths and budget/count details when provided by the rule."
+  - "Rules without concrete `violations` still render useful remediation guidance rather than producing blank or malformed failed-rule entries."
+  - "The failed-rule body format is consistent across checks feedback renderers that summarize failed fitness rules, rather than showing violations on one surface and hiding them on another."
+  - "Loop/runtime continues to forward checks-owned `prompt_feedback` without rule-specific reshaping, preserving the existing checks-owned boundary."
+  - "Existing raw gate output may continue to include full fitness failure lines, but the prompt-ready feedback is no longer remediation-only when concrete violations exist."
+  - "Regression coverage proves that fitness prompt feedback now includes both remediation and violation lines, and rejects old remediation-only behavior for failed rules with concrete violations."
+  - "Regression coverage preserves the checks failure heading and failed-rule grouping contract so surrounding consumers keep one stable markdown structure."
+  - "`uv run pytest -q tests/checks/test_fitness_group_port.py tests/loop/test_loop_phases_coverage.py tests/checks/test_run_checks_contract.py` passes after the rendering contract update."
+artifacts:
+  plan: plan.md
