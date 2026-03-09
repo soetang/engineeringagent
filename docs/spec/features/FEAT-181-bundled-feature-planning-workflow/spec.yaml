@@ -1,0 +1,95 @@
+id: FEAT-181
+title: Bundle per-feature planning artifacts with canonical spec ownership
+type: spec
+expected_commit_subject: "spec: add FEAT-181 bundled feature planning workflow"
+planning_tier: researched
+status: backlog
+priority: high
+objective: >
+  Replace the flat active-spec layout with bundled per-feature folders where
+  `spec.yaml` remains the canonical contract and companion planning artifacts live
+  beside it with explicit, tier-based requirements.
+context: >
+  Today active features are modeled as flat YAML files, which makes it awkward to keep
+  related planning material nearby and pushes too much design detail back into the
+  spec itself. We want a bundled feature package so the spec, plan, research, and any
+  supporting material are discoverable together, while still preserving one
+  machine-readable source of truth for feature identity, status, acceptance, and
+  workflow depth. This feature should clarify what belongs in `spec.yaml`, what belongs
+  in companion artifacts, what is validated by schema/runtime, and what remains agent
+  guidance only.
+constraints:
+  - "Breaking changes are allowed if the resulting workflow is cleaner long term."
+  - "spec.yaml remains the canonical executable contract for loop selection, acceptance, and feature status."
+  - "Per-feature folders become the primary active-spec layout rather than flat YAML files."
+  - "Bundled feature folders apply to both active features and archived done features."
+  - "planning_tier must be explicit and machine-validated for every active feature."
+  - "The initial bundled planning-tier enum is `direct`, `planned`, and `researched`."
+  - "`direct` requires only `spec.yaml`; `planned` requires `spec.yaml` plus `plan.md`; `researched` requires `spec.yaml`, `research.md`, and `plan.md`."
+  - "The bundled workflow preserves the current feature status vocabulary: `backlog`, `in_progress`, `done`, and `blocked`."
+  - "Required companion artifacts are enforced by planning_tier, but fresh-session behavior is guidance only."
+  - "Active bundled `spec.yaml` files do not carry `subtasks`; implementation sequencing and phase verification live in `plan.md` phases."
+  - "plan.md uses markdown with required YAML frontmatter rather than pure free-form markdown or pure YAML."
+  - "plan.md frontmatter includes a current plan status field, but must not replace spec.yaml as the canonical feature-status source."
+  - "When plans are required, their frontmatter should also support structured phase metadata including per-phase status fields."
+  - "Plan frontmatter status and per-phase statuses are expected to be updated as implementation progresses, while `spec.yaml` remains the canonical feature-status source."
+  - "research.md may remain markdown-first; only plan metadata needs additional frontmatter structure at this stage."
+  - "The spec must link required companion artifacts through a deterministic artifacts block using feature-relative paths."
+  - "The spec keeps outcome-oriented acceptance criteria rather than implementation-phase checklists."
+  - "Spec authoring stays first in the workflow; research and planning begin only after the spec is written."
+  - "Spec guidance must explicitly advise the user to start a fresh session before research, and another fresh session before planning."
+  - "Approach guidance should recommend fresh sessions between research, planning, and implementation for non-trivial work, but validators must not treat chat behavior as enforceable state."
+  - "The bundled research and planning approach documents must be discoverable from the CLI approach surface, including `uv run engineeringagent approach list`."
+  - "`uv run engineeringagent approach list` should label those research/planning topics as task-specific so users do not open them unless they need to create `research.md` or `plan.md`."
+  - "Those task-specific labels should come from explicit approach-document frontmatter metadata rather than overloading the visible title."
+  - "Optional support artifacts are allowed when referenced from the spec or plan."
+  - "Feature-local custom validation files are allowed as deterministic, spec-specific verification aids when a brittle or one-off check is the clearest way to prove the feature contract."
+  - "Those custom validation files are supporting artifacts for the current spec rather than long-lived shared repository checks unless they prove reusable beyond the feature."
+  - "Planning and implementation must review impacted fitness functions and update or improve them when the feature changes a long-lived repository quality boundary, workflow contract, or policy surface."
+  - "Learning tests are out of scope for the bundled feature package and should not live in the feature folder."
+implementation_notes: >
+  Old behavior: active work is discovered from flat files under `docs/spec/features/*.yaml`,
+  planning depth is implicit, `subtasks` carry implementation sequencing inside the spec,
+  and companion planning artifacts have no canonical package structure. New behavior: each
+  active feature lives in its own folder under `docs/spec/features/FEAT-xxx-.../`, and
+  each archived done feature lives in a matching folder under
+  `docs/spec/features_done/FEAT-xxx-.../`, both with a required `spec.yaml` entrypoint,
+  tier-driven companion artifacts, and deterministic artifact references from the spec.
+  `spec.yaml` continues to own feature state and acceptance, while `plan.md` owns
+  implementation sequencing, phase status, and phase verification using YAML frontmatter
+  plus markdown body content. Validation should focus on discovery, presence, ownership
+  boundaries, and rejecting legacy `subtasks` from active bundled specs; approach guidance
+  and prompts should carry the session-hygiene rules. The intended sequence is spec first,
+  then a fresh-session research pass when required, then a separate fresh-session planning
+  pass.
+acceptance:
+  - "Active feature discovery and done-feature archival support bundled per-feature folders with `spec.yaml` as the canonical entrypoint."
+  - "Every active feature declares a valid `planning_tier`, and validators enforce the required companion artifacts for that tier."
+  - "The bundled contract defines concrete planning tiers: `direct`, `planned`, and `researched`, with tier-specific artifact requirements enforced by validation."
+  - "Active bundled `spec.yaml` files do not require or accept `subtasks`; implementation sequencing and phase-level verification are modeled in `plan.md` phases instead."
+  - "`spec.yaml` contains a deterministic `artifacts` block that links required companion artifacts and any optional support artifacts using feature-relative paths."
+  - "Required `plan.md` files use markdown with YAML frontmatter that includes a current plan status field, structured phases with per-phase statuses, stable references back to the feature package, and status metadata intended to be updated as work progresses."
+  - "`spec.yaml` remains the sole canonical source for feature status and outcome-oriented acceptance; the plan does not become a second execution-status system."
+  - "The bundled workflow preserves the current feature status values rather than introducing a second status vocabulary."
+  - "Bundled guidance makes the workflow order explicit: write the spec first, then advise a fresh session for research, then advise a fresh session for planning."
+  - "The feature package includes starter prompt/approach files for research and planning sessions."
+  - "The bundled research and planning approach files appear as discoverable CLI approach topics rather than hidden feature-local documents only."
+  - "The CLI approach list output makes it clear that the research/planning topics are only for explicit `research.md` or `plan.md` authoring requests."
+  - "CLI approach list descriptions for task-specific topics come from approach frontmatter metadata so titles can stay concise while list output stays explicit."
+  - "Showing a specific approach topic renders the markdown body without exposing YAML frontmatter metadata to the user."
+  - "The feature package includes draft examples for the new `spec.yaml` format and the markdown-plus-frontmatter `plan.md` format."
+  - "Repository guidance explicitly distinguishes enforceable artifact rules from non-enforceable fresh-session recommendations for agents."
+  - "The migration updates the surrounding validator, prompt, documentation, smoke-test, and metadata-test surfaces that currently assume flat feature-spec paths."
+  - "Reviewer prompts and reviewer-facing guidance are updated for bundled feature packages, planning tiers, plan phases, and supporting artifacts."
+  - "Bundled guidance explains when spec-local custom validation files are appropriate, why they may be intentionally brittle or one-off, and why they should not automatically become permanent shared checks."
+  - "The feature includes a fitness-function impact review that updates affected rule manifests, rule docs, scripts, smoke fixtures, or fitness tests when bundled feature packages improve long-lived repository quality boundaries."
+  - "The bundled feature package contract excludes learning tests from per-feature storage."
+  - All supported files are linked from the spec's `artifacts` block with feature-relative paths or from the plan's frontmatter, and validators enforce their presence based on the declared `planning_tier`.
+artifacts:
+  plan: plan.md
+  research: research.md
+  supporting:
+    - supporting/research-session-approach.md
+    - supporting/plan-session-approach.md
+    - supporting/spec-format-example.yaml
+    - supporting/plan-format-example.md

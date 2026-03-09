@@ -1,0 +1,142 @@
+id: FEAT-181
+title: Bundle per-feature planning artifacts with canonical spec ownership
+type: spec
+expected_commit_subject: "spec: add FEAT-181 bundled feature planning workflow"
+status: backlog
+priority: high
+objective: >
+  Implement the bundled feature-package workflow using the current flat-spec loop by
+  introducing a temporary compatibility wrapper that points to the canonical FEAT-181
+  package docs and mirrors the implementation plan as legacy subtasks.
+context: >
+  The canonical FEAT-181 design package already lives under
+  `docs/spec/features/FEAT-181-bundled-feature-planning-workflow/` with the target
+  bundled `spec.yaml`, `plan.md`, `research.md`, and supporting approach/example files.
+  The current runtime still discovers only flat feature specs under `docs/spec/features/*.yaml`,
+  so this wrapper exists to let the current workflow select and execute FEAT-181 without
+  re-encoding the design in a second place.
+
+  Canonical bundled artifacts referenced by this wrapper:
+  - `docs/spec/features/FEAT-181-bundled-feature-planning-workflow/spec.yaml`
+  - `docs/spec/features/FEAT-181-bundled-feature-planning-workflow/plan.md`
+  - `docs/spec/features/FEAT-181-bundled-feature-planning-workflow/research.md`
+  - `docs/spec/features/FEAT-181-bundled-feature-planning-workflow/supporting/research-session-approach.md`
+  - `docs/spec/features/FEAT-181-bundled-feature-planning-workflow/supporting/plan-session-approach.md`
+  - `docs/spec/features/FEAT-181-bundled-feature-planning-workflow/supporting/spec-format-example.yaml`
+  - `docs/spec/features/FEAT-181-bundled-feature-planning-workflow/supporting/plan-format-example.md`
+constraints:
+  - "This flat YAML is a temporary compatibility wrapper for the current loop and should not replace the bundled FEAT-181 package as the design source."
+  - "Implementation should follow the canonical FEAT-181 package docs under `docs/spec/features/FEAT-181-bundled-feature-planning-workflow/`."
+  - "The delivered workflow must move active and done features to bundled folders with `spec.yaml` entrypoints."
+  - "The delivered workflow must preserve the current feature status vocabulary: `backlog`, `in_progress`, `done`, and `blocked`."
+  - "The delivered workflow must replace active bundled-spec `subtasks` with `plan.md` phases, even though this wrapper uses legacy subtasks for current-loop compatibility."
+  - "Planning tiers must be explicit and use the `direct`, `planned`, and `researched` enum described in the bundled FEAT-181 package."
+  - "CLI approach-list task labels must come from approach frontmatter metadata, while `engineeringagent approach <topic>` must hide frontmatter from users."
+  - "Reviewer prompts, fitness rules, smoke coverage, and docs must be updated alongside the runtime/validator changes."
+implementation_notes: >
+  Compatibility wrapper policy
+
+
+  This file exists only because the current runtime discovers `docs/spec/features/*.yaml`
+  and still uses subtasks as the execution/verification surface. The actual FEAT-181
+  contract, research, and architecture plan live in the bundled directory referenced in
+  `context`.
+
+
+  Implementation should use the bundled package docs as the canonical working set and
+  treat the subtasks below as a temporary projection of `plan.md` phases into the legacy
+  loop format. Once FEAT-181 lands and bundled `spec.yaml` discovery becomes real, this
+  wrapper should become unnecessary.
+
+
+  Most important bundled references:
+
+  - Canonical feature contract: `docs/spec/features/FEAT-181-bundled-feature-planning-workflow/spec.yaml`
+
+  - Canonical execution plan: `docs/spec/features/FEAT-181-bundled-feature-planning-workflow/plan.md`
+
+  - Research grounding and resolved planning questions:
+    `docs/spec/features/FEAT-181-bundled-feature-planning-workflow/research.md`
+
+  - Task-specific planning/research approach docs:
+    `docs/spec/features/FEAT-181-bundled-feature-planning-workflow/supporting/research-session-approach.md`
+    and
+    `docs/spec/features/FEAT-181-bundled-feature-planning-workflow/supporting/plan-session-approach.md`
+
+  - Updated format examples:
+    `docs/spec/features/FEAT-181-bundled-feature-planning-workflow/supporting/spec-format-example.yaml`
+    and
+    `docs/spec/features/FEAT-181-bundled-feature-planning-workflow/supporting/plan-format-example.md`
+acceptance:
+  - "Current-loop execution can select FEAT-181 through this legacy wrapper while implementation follows the bundled package under `docs/spec/features/FEAT-181-bundled-feature-planning-workflow/`."
+  - "Active and done feature discovery/archive support bundled per-feature folders with canonical `spec.yaml` entrypoints."
+  - "Bundled specs define explicit planning tiers (`direct`, `planned`, `researched`) and validators enforce tier-specific companion artifacts."
+  - "Bundled active `spec.yaml` files do not use `subtasks`; implementation sequencing and verification move to `plan.md` phases with live status fields."
+  - "CLI approach list shows task-specific research/planning labels from frontmatter metadata, and `engineeringagent approach <topic>` hides frontmatter from users."
+  - "Reviewer prompts, docs, fitness rules, smoke fixtures, and supporting examples all align with the bundled feature-package workflow."
+subtasks:
+  - id: ST-001
+    title: Redefine the bundled feature contract
+    status: backlog
+    context: >
+      Use the canonical bundled spec and plan to define the new package contract,
+      planning tiers, artifact ownership, no-subtask bundled spec shape, and compatibility
+      boundaries for this temporary wrapper.
+    verification:
+      - uv run engineeringagent validate --schema-only
+      - uv run pytest -q tests/meta/test_validator.py -k bundled_feature_contract
+    notes:
+      - "Primary source: docs/spec/features/FEAT-181-bundled-feature-planning-workflow/spec.yaml"
+      - "Phase mapping: P1 in docs/spec/features/FEAT-181-bundled-feature-planning-workflow/plan.md"
+  - id: ST-002
+    title: Add shared package discovery and bundled archive flow
+    status: backlog
+    context: >
+      Replace flat active/archive discovery assumptions with shared package discovery and
+      package-directory archive flow, while keeping `spec.yaml` as the selected path unit.
+    verification:
+      - uv run pytest -q tests/meta/test_coverage_threshold_regressions.py -k feature_state
+      - uv run pytest -q tests/loop/test_loop_selection.py -k bundled
+    notes:
+      - "Primary source: docs/spec/features/FEAT-181-bundled-feature-planning-workflow/plan.md"
+      - "Phase mapping: P2 in docs/spec/features/FEAT-181-bundled-feature-planning-workflow/plan.md"
+  - id: ST-003
+    title: Move implementation sequencing from subtasks to plan phases
+    status: backlog
+    context: >
+      Update loop sequencing, verification, handoff, and telemetry so `plan.md` phases
+      become the implementation progress surface and bundled specs no longer need subtasks.
+    verification:
+      - uv run pytest -q tests/loop/test_loop_feature_iteration_verification.py -k phase
+      - uv run pytest -q tests/loop/test_loop_feature_iteration_feedback.py -k phase
+    notes:
+      - "Primary source: docs/spec/features/FEAT-181-bundled-feature-planning-workflow/plan.md"
+      - "Phase mapping: P3 in docs/spec/features/FEAT-181-bundled-feature-planning-workflow/plan.md"
+  - id: ST-004
+    title: Add approach-list metadata and task-specific labels
+    status: backlog
+    context: >
+      Extend the CLI approach surface so list output can show task-specific research/planning
+      descriptions from frontmatter, while `engineeringagent approach <topic>` renders only
+      the markdown body.
+    verification:
+      - uv run pytest -q tests/cli/test_cli.py -k approach_list
+      - uv run pytest -q tests/cli/test_cli.py -k approach_show
+    notes:
+      - "Primary sources: docs/spec/features/FEAT-181-bundled-feature-planning-workflow/plan.md and supporting approach docs"
+      - "Phase mapping: P4 in docs/spec/features/FEAT-181-bundled-feature-planning-workflow/plan.md"
+  - id: ST-005
+    title: Align docs, fitness rules, prompts, and smoke coverage
+    status: backlog
+    context: >
+      Finish the migration by updating author/reviewer guidance, fitness rules, smoke
+      fixtures, and bundled supporting examples so they reflect the enforced bundled workflow.
+    verification:
+      - uv run pytest -q tests/fitness/test_fitness_rules_source_first_loop_commands.py
+      - uv run pytest -q tests/harness/test_real_opencode_smoke.py
+      - uv run pytest -q tests/meta/test_spec_writing_reference_doc.py
+      - uv run pytest -q tests/specs/test_specs_layout_smoke.py
+      - uv run pytest -q tests/cli/test_cli.py -k run_all
+    notes:
+      - "Primary sources: docs/spec/features/FEAT-181-bundled-feature-planning-workflow/plan.md and supporting examples"
+      - "Phase mapping: P5 in docs/spec/features/FEAT-181-bundled-feature-planning-workflow/plan.md"
