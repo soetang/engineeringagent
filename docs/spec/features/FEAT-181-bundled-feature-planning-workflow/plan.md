@@ -19,18 +19,31 @@ phases:
       - uv run pytest -q tests/meta/test_coverage_threshold_regressions.py -k feature_state
       - uv run pytest -q tests/loop/test_loop_selection.py -k bundled
   - id: P3
-    title: Move implementation sequencing from subtasks to plan phases
+    title: Move runtime sequencing and verification from subtasks to plan phases
     status: pending
     verification:
       - uv run pytest -q tests/loop/test_loop_feature_iteration_verification.py -k phase
       - uv run pytest -q tests/loop/test_loop_feature_iteration_feedback.py -k phase
   - id: P4
+    title: Remove unused CLI handoff/progress boundary
+    status: pending
+    verification:
+      - uv run pytest -q tests/cli/test_cli.py -k progress
+      - uv run engineeringagent validate --schema-only
+  - id: P5
+    title: Remove non-essential summary/observer and helper cleanup drift
+    status: pending
+    verification:
+      - uv run pytest -q tests/loop/test_loop_output.py -k summary
+      - uv run pytest -q tests/loop/test_loop_runtime_observers.py
+      - uv run engineeringagent validate --schema-only
+  - id: P6
     title: Add approach-list metadata and task-specific labels
     status: pending
     verification:
       - uv run pytest -q tests/cli/test_cli.py -k approach_list
       - uv run pytest -q tests/cli/test_cli.py -k approach_show
-  - id: P5
+  - id: P7
     title: Align docs, fitness rules, prompts, and smoke coverage
     status: pending
     verification:
@@ -104,10 +117,13 @@ phases:
 - `src/engineeringagent/loop_runtime/feature_state.py:106` - active discovery scans `docs/spec/features/*.yaml`, while `src/engineeringagent/loop_runtime/feature_state.py:150` archives a single YAML file instead of a bundled feature directory.
 - `src/engineeringagent/loop_runtime/selection.py:37` - selector parsing and deterministic fallback currently assume flat filenames and must continue to work with bundled `.../spec.yaml` entrypoints.
 - `src/engineeringagent/loop_runtime/iteration.py:179` and `src/engineeringagent/loop_runtime/phases.py:282` - verification currently snapshots and executes newly-done `subtasks`, which must shift to plan-phase metadata.
-- `src/engineeringagent/progress/handoff.py:15` and `src/engineeringagent/loop_runtime/telemetry.py:163` - progress summaries and telemetry still use `subtask` language and fields that should become phase-oriented.
+- `src/engineeringagent/loop_runtime/feature_state.py:106`, `src/engineeringagent/loop_runtime/progress_units.py:1`, and `src/engineeringagent/loop_runtime/implement.py:1` - iteration-start sync, progress-unit selection, fallback context, and post-implement refresh must all resolve bundled work through plan phases rather than subtask-era assumptions.
+- `src/engineeringagent/progress/handoff.py:15` and `src/engineeringagent/loop_runtime/telemetry.py:163` - runtime-written handoff entries and telemetry should preserve phase identity and wording without introducing a new manual CLI boundary.
+- `src/engineeringagent/loop.py:1` and `src/engineeringagent/loop_runtime/observers.py:1` - loop summary/reporting should only change where required to surface existing runtime phase metadata, not to create separate CLI-only progress behavior.
 - `src/engineeringagent/checks/validate/repo_validators.py:183` and `src/engineeringagent/checks/validate/repo_policy_feature_ids.py:26` - repo validation and feature-id invariants are still file-based and must validate packaged active/done specs plus companion artifacts.
 - `src/engineeringagent/approach/registry.py:67` - existing markdown frontmatter parsing is the best implementation pattern for `plan.md` metadata loading.
 - `src/engineeringagent/approach/registry.py:57`, `src/engineeringagent/approach/rendering.py:8`, and `src/engineeringagent/cli/approach.py:42` - the current CLI approach registry only exposes `approach_id` plus H1 title, so FEAT-181 needs frontmatter-backed description metadata and updated rendering for task-specific list labels.
+- `src/engineeringagent/cli/progress.py:1` and `src/engineeringagent/cli/typer.py:1` - any manual handoff/progress append or prune CLI boundary not used by the loop should be removed rather than expanded.
 - `docs/fitness-functions/rules.md:33` and `harness/fitness-functions/rules.yaml:1` - the fitness catalog and manifest need review because FEAT-181 changes long-lived workflow scope and rule wording.
 - `harness/fitness-functions/check_source_first_loop_commands.py:17` - the source-first loop rule still scans flat specs and `subtasks[*].verification`, so it is a direct contract-update surface.
 - `harness/fitness-functions/check_real_opencode_hello_world_smoke.py:24` and `harness/fitness-functions/real_opencode_hello_world_feature_template.yaml:1` - the smoke rule and template currently encode flat paths and subtask-owned verification/status, so they should move with the bundled workflow.
@@ -177,11 +193,25 @@ def test_archive_completed_feature_moves_package_directory(tmp_path: Path) -> No
 
 - Documentation changes: update path examples and any archived-feature references to describe bundled active and bundled done folders.
 
-### Phase 3: Move implementation sequencing from subtasks to plan phases
-- Goal: run iteration sequencing, verification, progress reporting, and post-implement bookkeeping from `plan.md` phase metadata instead of spec `subtasks`.
-- Areas touched: `src/engineeringagent/loop_runtime/iteration.py`, `src/engineeringagent/loop_runtime/phases.py`, `src/engineeringagent/progress/handoff.py`, `src/engineeringagent/loop_runtime/telemetry.py`, and the loop-test fixtures that currently synthesize `subtasks`.
-- Interfaces: phase status snapshots, phase-scoped verification commands, plan-frontmatter phase updates, live plan/phase status persistence, progress/handoff wording, and any telemetry fields that expose the current unit of work.
-- Refactoring: replace subtask-diff helpers with plan-phase helpers while keeping feature-level status and acceptance in `spec.yaml` unchanged.
+### Phase 3: Move runtime sequencing and verification from subtasks to plan phases
+- Goal: run runtime-owned iteration sequencing, verification, retry feedback, and post-implement bookkeeping from `plan.md` phase metadata instead of spec `subtasks`.
+- Areas touched: `src/engineeringagent/loop_runtime/iteration.py`, `src/engineeringagent/loop_runtime/phases.py`, `src/engineeringagent/loop_runtime/feature_state.py`, `src/engineeringagent/loop_runtime/progress_units.py`, `src/engineeringagent/loop_runtime/implement.py`, `src/engineeringagent/progress/handoff.py`, `src/engineeringagent/loop_runtime/telemetry.py`, and the loop-test fixtures that currently synthesize `subtasks`.
+- Functions and classes that may change in this phase:
+  - `src/engineeringagent/loop_runtime/iteration.py`: `IterationPipelineDependencies`, `_apply_initial_load_result()`, `_run_verification_phase_if_passed()`, `_refresh_feature_after_implement_if_ready()`, `_archive_selected_feature_if_needed()`, `_resolve_progress_feature_path()`, `run_feature_iteration_pipeline()`.
+  - `src/engineeringagent/loop_runtime/feature_state.py`: `_touch_active_plan_for_iteration()`, `_sync_active_plan_after_implement()`, `_normalize_done_plan()`, `_normalize_done_progress_artifacts()`, `refresh_feature_after_implement()`, `touch_active_feature_for_iteration()`, `archive_completed_feature()`.
+  - `src/engineeringagent/loop_runtime/progress_units.py`: `ProgressUnit`, `progress_status_snapshot()`, `done_transition_verification_commands()`, `current_progress_unit()`, `iter_progress_units()`, `_iter_plan_progress_units()`, `_iter_raw_plan_progress_units()`, `_iter_subtask_progress_units()`.
+  - `src/engineeringagent/loop_runtime/implement.py`: `_fallback_progress_context()` and only the fallback/output plumbing needed for runtime-owned phase context.
+  - `src/engineeringagent/progress/handoff.py`: `HandoffRenderMetadata`, `fallback_implement_progress_envelope()`, `_format_progress_reference()`, `render_handoff_markdown_entry()`, `_render_progress_context_line()`, `_render_progress_reference_label()`.
+  - `src/engineeringagent/loop_runtime/telemetry.py`: `write_iteration_telemetry()` and `_append_feature_handoff_markdown()`.
+- Functions and classes that should not change in this phase unless a concrete failing runtime test proves they are required:
+  - `src/engineeringagent/cli/progress.py`: `cmd_progress_handoff_append()`, `cmd_progress_feature_prune()`, `_read_json_stdin_payload()`, `_require_feature_id()`.
+  - `src/engineeringagent/cli/typer.py`: command registration for `progress handoff-append` / `progress feature-prune`.
+  - `src/engineeringagent/loop.py`: `print_summary()`.
+  - `src/engineeringagent/loop_runtime/observers.py`: `publish_iteration_report()`, `build_console_observer()`, `build_default_iteration_report_observers()`.
+- Interfaces: phase status snapshots, phase-scoped verification commands, plan-frontmatter phase updates, live plan/phase status persistence, retry/fallback context, runtime-written handoff wording, and telemetry fields that expose the current runtime unit of work.
+- Refactoring: replace subtask-diff helpers with plan-phase helpers while keeping feature-level status and acceptance in `spec.yaml` unchanged, and avoid broadening the public CLI surface while doing so.
+- Explicitly out of scope: manual `engineeringagent progress` CLI affordances, CLI readers/writers for handoff artifacts, validator/discovery/schema work already covered by earlier phases, and summary/observer reshaping that is not required for runtime phase ownership.
+- Done criteria: bundled planned/researched features run end-to-end without relying on spec `subtasks`, phase/frontmatter status remains synchronized across iteration touch, implement refresh, archive, and fallback paths, and the full `-k phase` verification/feedback pair passes before this phase is marked done.
 - Verification:
   - `uv run pytest -q tests/loop/test_loop_feature_iteration_verification.py -k phase`
   - `uv run pytest -q tests/loop/test_loop_feature_iteration_feedback.py -k phase`
@@ -201,9 +231,51 @@ def test_newly_completed_phase_runs_plan_verification_commands(tmp_path: Path) -
     assert outcome.verification_status == "passed"
 ```
 
-- Documentation changes: explain that implementation sequencing, phase status, and per-phase verification now live in `plan.md`, not `spec.yaml`.
+- Documentation changes: explain that implementation sequencing, phase status, and per-phase verification now live in `plan.md`, not `spec.yaml`, and note that handoff/progress artifacts remain runtime-owned rather than a user-facing CLI workflow.
 
-### Phase 4: Add approach-list metadata and task-specific labels
+### Phase 4: Remove unused CLI handoff/progress boundary
+- Goal: remove any manual CLI entrypoints and related test/plumbing for handoff/progress artifacts that are not used by the loop runtime.
+- Areas touched: `src/engineeringagent/cli/progress.py`, `src/engineeringagent/cli/typer.py`, and any tests or helper code added only to support manual progress append/prune paths.
+- Functions and classes to remove or simplify in this phase:
+  - `src/engineeringagent/cli/progress.py`: `cmd_progress_handoff_append()`, `cmd_progress_feature_prune()`, `_read_json_stdin_payload()`, `_require_feature_id()`.
+  - `src/engineeringagent/cli/typer.py`: progress command wiring for `handoff-append` and `feature-prune`.
+  - `tests/cli/test_cli.py`: `test_progress_handoff_append_reads_json_stdin_and_appends_markdown()`, `test_progress_handoff_append_uses_fallback_for_invalid_json()`, `test_progress_handoff_append_preserves_progress_metadata()`, and the `feature-prune` CLI coverage.
+- Interfaces: CLI surface inventory, command registration, and any progress-render metadata plumbing that exists only for unused manual CLI paths.
+- Refactoring: delete unused CLI compatibility paths instead of preserving or expanding them; keep runtime-written handoff artifact generation in the loop-owned code path.
+- Verification:
+  - `uv run pytest -q tests/cli/test_cli.py -k progress`
+  - `uv run engineeringagent validate --schema-only`
+- Documentation changes: none beyond keeping FEAT-181 scope notes explicit that handoff/progress artifacts are runtime internals.
+
+### Phase 5: Remove non-essential summary/observer and helper cleanup drift
+- Goal: remove or defer cleanup drift that is not required for phase-owned runtime behavior, especially console-summary/observer reshaping and helper-only refactors introduced during ST-003 work.
+- Areas touched: `src/engineeringagent/loop.py`, `src/engineeringagent/loop_runtime/observers.py`, `tests/loop/test_loop_output.py`, `tests/loop/test_loop_runtime_observers.py`, `tests/loop/test_loop_contracts.py`, `tests/loop/feature_iteration_feedback_support.py`, `tests/loop/test_feature_iteration_feedback_support.py`, and `tests/meta/validator_support.py`.
+- Functions and classes to review and either keep minimal or remove/defer:
+  - `src/engineeringagent/loop.py`: `print_summary()`.
+  - `src/engineeringagent/loop_runtime/observers.py`: `TelemetryObserverDependencies`, `ConsoleObserverDependencies`, `DefaultObserverDependencies`, `publish_iteration_report()`, `build_telemetry_observer()`, `build_console_observer()`, `build_default_iteration_report_observers()`.
+  - `tests/loop/feature_iteration_feedback_support.py`: `install_stateful_prompt_agent()`, `advance_bundled_plan_prompt_state()`, `advance_subtask_prompt_state()`.
+  - `tests/meta/validator_support.py`: `write_bundled_feature_spec()`, `write_plan_artifact()`, `write_legacy_feature_wrapper()` if they exist only to carry unrelated refactor churn rather than current behavior coverage.
+- Tests that should be removed or deferred unless a concrete runtime requirement proves they are necessary:
+  - `tests/loop/test_loop_output.py::test_non_verbose_terminal_output_surfaces_phase_progress_context`.
+  - `tests/loop/test_loop_runtime_observers.py::test_console_observer_prints_summary_and_failed_log_pointer`.
+  - `tests/loop/test_loop_runtime_observers.py::test_default_observers_publish_telemetry_before_console`.
+  - `tests/loop/test_loop_contracts.py::test_print_summary_signature_is_explicit`.
+- Tests that should stay because they cover runtime-owned telemetry/handoff behavior rather than optional console shaping:
+  - `tests/loop/test_loop_output.py::test_handoff_markdown_entry_includes_phase_progress_context`.
+  - `tests/loop/test_loop_output.py::test_write_iteration_telemetry_appends_handoff_entry_from_envelope`.
+  - `tests/loop/test_loop_output.py::test_write_iteration_telemetry_uses_phase_wording_for_fallback_handoff`.
+  - `tests/loop/test_loop_output.py::test_write_iteration_telemetry_uses_feature_wording_for_direct_bundle_fallback_handoff`.
+  - `tests/loop/test_loop_runtime_observers.py::test_publish_iteration_report_applies_observers_in_order`.
+  - `tests/loop/test_loop_runtime_observers.py::test_telemetry_observer_writes_telemetry_and_sets_log_path`.
+- Interfaces: observer/reporting contracts should remain as small as possible; helper extraction should stay only where it reduces duplication for behavior still kept in-scope.
+- Refactoring: prefer deletion/defer over keeping broad API reshaping; if a summary/observer change is necessary, tie it to one specific runtime phase-context requirement and corresponding failing test.
+- Verification:
+  - `uv run pytest -q tests/loop/test_loop_output.py -k summary`
+  - `uv run pytest -q tests/loop/test_loop_runtime_observers.py`
+  - `uv run engineeringagent validate --schema-only`
+- Documentation changes: none; this is a scope-control cleanup phase.
+
+### Phase 6: Add approach-list metadata and task-specific labels
 - Goal: extend approach-topic metadata and rendering so `engineeringagent approach list` can show task-specific descriptions from frontmatter for research/planning topics without overloading titles, while `engineeringagent approach <topic>` renders the markdown body without frontmatter.
 - Areas touched: `src/engineeringagent/approach/registry.py`, `src/engineeringagent/approach/rendering.py`, `src/engineeringagent/cli/approach.py`, packaged approach docs, and the bundled research/planning session guides.
 - Interfaces: approach frontmatter schema, `ApproachTopic` metadata model, CLI list rendering format, CLI topic rendering without frontmatter, and the task-specific descriptions for research/planning topics.
@@ -231,7 +303,7 @@ def test_approach_show_keeps_document_title_clean() -> None:
 
 - Documentation changes: explain that task-specific CLI approach labels come from frontmatter metadata, not from stuffing warnings into the visible title, and that `approach show` hides frontmatter from end users.
 
-### Phase 5: Align docs, fitness rules, prompts, and smoke coverage
+### Phase 7: Align docs, fitness rules, prompts, and smoke coverage
 - Goal: remove flat-file and subtask-era guidance from repository docs, reviewer prompts, fitness rules, smoke rules, and examples so authored guidance matches the enforced workflow.
 - Areas touched: `README.md`, `src/engineeringagent/approach/docs/specifications.md`, `src/engineeringagent/approach/registry.py`, `src/engineeringagent/cli/approach.py`, reviewer prompts, `docs/fitness-functions/rules.md`, `harness/fitness-functions/rules.yaml`, affected fitness scripts, smoke templates, metadata/layout tests, and FEAT-181 supporting examples.
 - Interfaces: author-facing spec location guidance, reviewer fallback discovery, reviewer access to plan phases and planning tiers, smoke-template paths, verification-command scanning surfaces that still assume flat YAML specs, tier guidance that explains when to use `direct`, `planned`, or `researched`, documentation for spec-local custom validation scripts, fitness-rule scope/behavior for bundled feature packages, and CLI approach topic discovery for the research/planning session guides.
