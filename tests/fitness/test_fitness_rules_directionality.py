@@ -172,8 +172,23 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
     )
     _write_module(
         tmp_path,
+        "cli/approach.py",
+        "from engineeringagent.adapters.guidance import PackagedGuidanceTopicRepository\n",
+    )
+    _write_module(
+        tmp_path,
         "application/prompt_builder.py",
         "import engineeringagent.progress.paths\n",
+    )
+    _write_module(
+        tmp_path,
+        "cli/validate.py",
+        "from engineeringagent.application import DefaultValidationService\n",
+    )
+    _write_module(
+        tmp_path,
+        "cli/checks.py",
+        "from engineeringagent.application import DefaultChecksService\n",
     )
 
     proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
@@ -207,8 +222,24 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
             "engineeringagent.loop_runtime.selection"
         ),
         (
+            "engineeringagent.cli.approach imports blocked dependency "
+            "engineeringagent.adapters.guidance"
+        ),
+        (
+            "engineeringagent.cli.approach imports blocked dependency "
+            "engineeringagent.adapters.guidance.PackagedGuidanceTopicRepository"
+        ),
+        (
+            "engineeringagent.cli.checks imports blocked dependency "
+            "engineeringagent.application.DefaultChecksService"
+        ),
+        (
             "engineeringagent.cli.typer imports blocked dependency "
             "engineeringagent.checks.reviewers.engine"
+        ),
+        (
+            "engineeringagent.cli.validate imports blocked dependency "
+            "engineeringagent.application.DefaultValidationService"
         ),
         (
             "engineeringagent.specs imports blocked dependency "

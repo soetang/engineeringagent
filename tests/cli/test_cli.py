@@ -292,10 +292,17 @@ def test_main_validate_command_reports_ok_via_real_cli(
             observed["schema_only"] = request.schema_only
             return SimpleNamespace(ok=True, messages=())
 
+    class _FakeAppFactory:
+        def __init__(self, project_root: Path) -> None:
+            observed["factory_project_root"] = str(project_root)
+
+        def build_validation_service(self) -> Any:
+            return _FakeValidationService()
+
     monkeypatch.setattr(
         cli_validate_module,
-        "DefaultValidationService",
-        _FakeValidationService,
+        "AppFactory",
+        _FakeAppFactory,
     )
 
     result = _invoke_cli(
@@ -310,6 +317,7 @@ def test_main_validate_command_reports_ok_via_real_cli(
     assert result.exit_code == 0
     assert result.stdout == "spec validation: ok\n"
     assert observed == {
+        "factory_project_root": str(tmp_path.resolve()),
         "project_root": str(tmp_path.resolve()),
         "schema_only": True,
     }
@@ -770,10 +778,17 @@ def test_cmd_validate_uses_validation_service(
             recorded["schema_only"] = request.schema_only
             return SimpleNamespace(ok=True, messages=())
 
+    class _FakeAppFactory:
+        def __init__(self, project_root: Path) -> None:
+            recorded["factory_project_root"] = str(project_root)
+
+        def build_validation_service(self) -> Any:
+            return _FakeValidationService()
+
     monkeypatch.setattr(
         cli_validate_module,
-        "DefaultValidationService",
-        _FakeValidationService,
+        "AppFactory",
+        _FakeAppFactory,
     )
 
     code = cli_module.cmd_validate(
@@ -784,6 +799,7 @@ def test_cmd_validate_uses_validation_service(
     assert code == 0
     assert "spec validation: ok" in output
     assert recorded == {
+        "factory_project_root": str(tmp_path.resolve()),
         "project_root": str(tmp_path.resolve()),
         "schema_only": True,
     }

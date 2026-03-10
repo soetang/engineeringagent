@@ -5,7 +5,8 @@ from types import SimpleNamespace
 
 from pydantic import BaseModel, ConfigDict
 
-from ..application import DefaultChecksService, RunChecksRequest
+from ..application import RunChecksRequest
+from ..bootstrap import AppFactory
 from .. import checks as checks_domain
 from .output import emit_markdown_output, resolve_optional_path
 
@@ -86,7 +87,7 @@ def cmd_checks_run(args: _HandlerArgs) -> int:
     full feature loop.
     """
     invocation = _build_checks_run_args(args)
-    service = DefaultChecksService()
+    service = AppFactory(invocation.project_root).build_checks_service()
 
     try:
         service_result = service.run(

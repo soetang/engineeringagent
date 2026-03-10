@@ -3,17 +3,12 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 
-from ..adapters.guidance import PackagedGuidanceTopicRepository
-from ..application import (
-    DefaultGuidanceService,
-    GuidanceInputError,
-    GuidanceQuery,
-)
+from ..application import GuidanceInputError, GuidanceQuery
 from ..approach import UnknownApproachIdError
+from ..bootstrap import AppFactory
 from .output import emit_markdown_output, resolve_optional_path
 
 _HandlerArgs = SimpleNamespace
-_GUIDANCE_SERVICE = DefaultGuidanceService(PackagedGuidanceTopicRepository())
 
 
 def cmd_approach_overview(args: _HandlerArgs) -> int:
@@ -24,7 +19,9 @@ def cmd_approach_overview(args: _HandlerArgs) -> int:
         project_root=project_root,
     )
     try:
-        result = _GUIDANCE_SERVICE.render(GuidanceQuery(kind="overview"))
+        result = AppFactory(project_root).build_guidance_service().render(
+            GuidanceQuery(kind="overview")
+        )
     except UnknownApproachIdError as exc:
         print(f"approach input error: {exc}")
         return 1
@@ -47,7 +44,9 @@ def cmd_approach_list(args: _HandlerArgs) -> int:
         path=getattr(args, "output", None),
         project_root=project_root,
     )
-    result = _GUIDANCE_SERVICE.render(GuidanceQuery(kind="list"))
+    result = AppFactory(project_root).build_guidance_service().render(
+        GuidanceQuery(kind="list")
+    )
 
     return emit_markdown_output(
         result.payload,
@@ -65,7 +64,7 @@ def cmd_approach_show(args: _HandlerArgs) -> int:
         project_root=project_root,
     )
     try:
-        result = _GUIDANCE_SERVICE.render(
+        result = AppFactory(project_root).build_guidance_service().render(
             GuidanceQuery(kind="topic", topic_id=str(getattr(args, "topic_id", "")))
         )
     except GuidanceInputError as exc:
