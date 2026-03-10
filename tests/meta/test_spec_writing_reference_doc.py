@@ -8,20 +8,6 @@ from engineeringagent.approach import registry
 from engineeringagent.spec_bundles import iter_feature_files, load_markdown_frontmatter
 
 
-def _verification_commands(document: dict[str, object]) -> list[str]:
-    commands: list[str] = []
-    subtasks = document.get("subtasks")
-    if not isinstance(subtasks, list):
-        return commands
-    for subtask in subtasks:
-        if not isinstance(subtask, dict):
-            continue
-        for command in subtask.get("verification", []):
-            if isinstance(command, str):
-                commands.append(command)
-    return commands
-
-
 def _feature_verification_commands(features_dir: Path) -> list[str]:
     commands: list[str] = []
     for feature_path in iter_feature_files(features_dir):
@@ -52,16 +38,6 @@ def _load_plan_phases(frontmatter: dict[str, object]) -> list[dict[str, Any]]:
     assert isinstance(phases, list)
     assert all(isinstance(phase, dict) for phase in phases)
     return phases
-
-
-def _feat_181_root(repo_root: Path) -> Path:
-    return (
-        repo_root
-        / "docs"
-        / "spec"
-        / "features_done"
-        / "FEAT-181-bundled-feature-planning-workflow"
-    )
 
 
 def test_feature_verification_commands_include_bundled_plan_phases(
@@ -122,14 +98,16 @@ def test_active_feature_verification_commands_do_not_require_ripgrep(
 def test_bundled_spec_example_uses_plan_artifact_without_subtasks(
     repo_root: Path,
 ) -> None:
-    example_path = _feat_181_root(repo_root) / "supporting" / "spec-format-example.yaml"
+    example_path = (
+        repo_root
+        / "harness"
+        / "fitness-functions"
+        / "real_opencode_hello_world_feature_template.yaml"
+    )
     example = yaml.safe_load(example_path.read_text(encoding="utf-8"))
 
     assert example["planning_tier"] == "planned"
-    assert example["artifacts"] == {
-        "plan": "plan.md",
-        "supporting": ["supporting/example-input.json"],
-    }
+    assert example["artifacts"] == {"plan": "plan.md"}
     assert "subtasks" not in example
 
 
@@ -147,20 +125,12 @@ def test_smoke_feature_template_matches_bundled_workflow(repo_root: Path) -> Non
     assert "subtasks" not in template
 
 
-def test_bundled_plan_examples_use_runtime_status_vocabulary(repo_root: Path) -> None:
-    feature_root = _feat_181_root(repo_root)
-    example_frontmatter = load_markdown_frontmatter(
-        feature_root / "supporting" / "plan-format-example.md"
-    )
+def test_bundled_plan_templates_use_runtime_status_vocabulary(repo_root: Path) -> None:
     smoke_frontmatter = load_markdown_frontmatter(
         repo_root / "docs" / "fixtures" / "real_opencode_hello_world_plan_template.md"
     )
     plan_session_doc = registry.load_topic_body("plan-session")
-    example_phases = _load_plan_phases(example_frontmatter)
     smoke_phases = _load_plan_phases(smoke_frontmatter)
-
-    assert example_frontmatter["status"] == "backlog"
-    assert all(phase["status"] == "backlog" for phase in example_phases)
 
     assert smoke_frontmatter["status"] == "backlog"
     assert all(phase["status"] == "backlog" for phase in smoke_phases)
