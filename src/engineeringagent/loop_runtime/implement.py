@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 from typing import Any, Protocol
 
+from engineeringagent.adapters.prompts import BundledPromptDefinitionRepository
 from engineeringagent.application import (
     DefaultPromptBuilder,
     ImplementationPromptRequest,
@@ -53,7 +54,8 @@ def run_implement_step_from_inputs(
     """Run the implement phase and coerce structured progress output."""
     prompt = _build_implement_prompt(
         implement_inputs,
-        prompt_builder=prompt_builder or DefaultPromptBuilder(),
+        prompt_builder=prompt_builder
+        or DefaultPromptBuilder(BundledPromptDefinitionRepository()),
     )
     command = describe_action(
         implement_inputs.project_root,

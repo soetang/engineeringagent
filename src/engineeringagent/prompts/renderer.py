@@ -1,21 +1,27 @@
 from __future__ import annotations
 
-from importlib.resources import files
 from pathlib import Path
 from string import Template
 from typing import Any, Mapping, Sequence
 
+from engineeringagent.adapters.prompts import BundledPromptDefinitionRepository
 from engineeringagent.application.prompt_builder import (
+    DefaultPromptBuilder,
     build_implementation_prompt as _build_implementation_prompt,
     inject_feedback as _inject_feedback,
 )
+from engineeringagent.ports import PromptDefinitionRepository
 
-_TEMPLATE_PACKAGE = "engineeringagent.prompts.templates"
+
+def _default_prompt_definitions() -> PromptDefinitionRepository:
+    return BundledPromptDefinitionRepository()
 
 
-def _load_template(name: str) -> Template:
-    template_text = files(_TEMPLATE_PACKAGE).joinpath(name).read_text(encoding="utf-8")
-    return Template(template_text)
+def _load_template(
+    prompt_definitions: PromptDefinitionRepository,
+    prompt_id: str,
+) -> Template:
+    return Template(prompt_definitions.get(prompt_id).template_text)
 
 
 def build_selector_prompt(pending: Sequence[tuple[Path, Mapping[str, Any]]]) -> str:
@@ -34,7 +40,10 @@ def build_selector_prompt(pending: Sequence[tuple[Path, Mapping[str, Any]]]) -> 
             f"priority={feature.get('priority')} path={feature_path}"
         )
 
-    selector_template = _load_template("loop_selector.md")
+    selector_template = _load_template(
+        _default_prompt_definitions(),
+        "loop_selector",
+    )
     return selector_template.substitute(choices="\n".join(choices))
 
 
@@ -56,4 +65,5 @@ def build_implementation_prompt(
         feature=feature,
         feature_path=feature_path,
         feedback=feedback,
+        prompt_builder=DefaultPromptBuilder(_default_prompt_definitions()),
     )

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from importlib.resources import files
 from pathlib import Path
 from string import Template
 from typing import Any, Mapping, Protocol
@@ -11,6 +10,7 @@ from typing import Any, Mapping, Protocol
 from pydantic import ValidationError
 
 from engineeringagent.loop_runtime.progress_units import current_progress_unit
+from engineeringagent.ports import PromptDefinitionRepository
 from engineeringagent.prompt_feedback import normalize_prompt_feedback
 from engineeringagent.prompts.feedback_envelope import (
     parse_feedback_envelope,
@@ -22,10 +22,6 @@ from engineeringagent.specs import (
     resolve_feature_plan_path,
     resolve_feature_research_path,
 )
-
-_TEMPLATE_PACKAGE = "engineeringagent.prompts.templates"
-
-
 @dataclass(frozen=True)
 class ImplementationPromptRequest:
     """Typed input for implementation prompt rendering."""
@@ -49,9 +45,15 @@ class PromptBuilder(Protocol):
 class DefaultPromptBuilder:
     """Deterministic prompt builder backed by bundled templates."""
 
+    def __init__(self, prompt_definitions: PromptDefinitionRepository) -> None:
+        self._prompt_definitions = prompt_definitions
+
     def build_implementation_prompt(self, request: ImplementationPromptRequest) -> str:
         """Render the implementation prompt for one iteration."""
-        implementation_template = _load_template("loop_implementation.md")
+        implementation_template = _load_template(
+            self._prompt_definitions,
+            "loop_implementation",
+        )
         progress_kind = feature_progress_kind(
             request.feature_path,
             dict(request.feature),
@@ -84,13 +86,12 @@ def build_implementation_prompt(
     feature_path: Path,
     feedback: str | None,
     handoff_path: str | None = None,
-    prompt_builder: PromptBuilder | None = None,
+    prompt_builder: PromptBuilder,
 ) -> str:
     """Compatibility helper for rendering implementation prompts."""
 
-    builder = prompt_builder or DefaultPromptBuilder()
     feature_id = str(feature.get("id", "unknown-feature"))
-    return builder.build_implementation_prompt(
+    return prompt_builder.build_implementation_prompt(
         ImplementationPromptRequest(
             feature=feature,
             feature_path=feature_path,
@@ -115,15 +116,22 @@ def inject_feedback(prompt: str, feedback: str | None) -> str:
     if not normalized_feedback:
         return prompt
 
-    feedback_template = _load_template("loop_feedback.md")
+    from engineeringagent.adapters.prompts import BundledPromptDefinitionRepository
+
+    feedback_template = _load_template(
+        BundledPromptDefinitionRepository(),
+        "loop_feedback",
+    )
     return prompt + feedback_template.substitute(
         feedback=normalized_feedback,
     )
 
 
-def _load_template(name: str) -> Template:
-    template_text = files(_TEMPLATE_PACKAGE).joinpath(name).read_text(encoding="utf-8")
-    return Template(template_text)
+def _load_template(
+    prompt_definitions: PromptDefinitionRepository,
+    prompt_id: str,
+) -> Template:
+    return Template(prompt_definitions.get(prompt_id).template_text)
 
 
 def _normalize_feedback(feedback: str) -> str:

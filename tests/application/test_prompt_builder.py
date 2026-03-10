@@ -4,6 +4,7 @@ from pathlib import Path
 
 import yaml
 
+from engineeringagent.adapters.prompts import BundledPromptDefinitionRepository
 from engineeringagent.application import (
     DefaultPromptBuilder,
     ImplementationPromptRequest,
@@ -14,6 +15,10 @@ from tests.loop.feature_iteration_support import (
     make_bundled_project_root,
     make_project_root,
 )
+
+
+def _prompt_builder() -> DefaultPromptBuilder:
+    return DefaultPromptBuilder(BundledPromptDefinitionRepository())
 
 
 def test_default_prompt_builder_renders_bundled_phase_prompt(tmp_path: Path) -> None:
@@ -45,7 +50,7 @@ def test_default_prompt_builder_renders_bundled_phase_prompt(tmp_path: Path) -> 
     )
     feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
 
-    prompt = DefaultPromptBuilder().build_implementation_prompt(
+    prompt = _prompt_builder().build_implementation_prompt(
         ImplementationPromptRequest(
             feature=feature,
             feature_path=feature_path,
@@ -88,7 +93,7 @@ def test_compatibility_helper_delegates_to_prompt_builder(tmp_path: Path) -> Non
         },
     )
     feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
-    builder = DefaultPromptBuilder()
+    builder = _prompt_builder()
 
     direct = builder.build_implementation_prompt(
         ImplementationPromptRequest(
@@ -119,7 +124,7 @@ def test_default_prompt_builder_uses_explicit_handoff_path_input(
     _, feature_path = make_project_root(tmp_path, feature_data=feature_data)
     feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
 
-    prompt = DefaultPromptBuilder().build_implementation_prompt(
+    prompt = _prompt_builder().build_implementation_prompt(
         ImplementationPromptRequest(
             feature=feature,
             feature_path=feature_path,
@@ -149,7 +154,7 @@ def test_default_prompt_builder_renders_explicit_plan_and_research_paths(
     }
     feature_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding="utf-8")
 
-    prompt = DefaultPromptBuilder().build_implementation_prompt(
+    prompt = _prompt_builder().build_implementation_prompt(
         ImplementationPromptRequest(
             feature=feature,
             feature_path=feature_path,
