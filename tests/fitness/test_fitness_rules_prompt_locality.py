@@ -17,14 +17,20 @@ def _write_module(project_root: Path, relative_path: str, body: str) -> None:
     path.write_text(body, encoding="utf-8")
 
 
-def _write_prompt_templates(project_root: Path) -> None:
-    template_root = project_root / "src" / "engineeringagent" / "prompts" / "templates"
-    template_root.mkdir(parents=True, exist_ok=True)
-    (template_root / "loop_selector.md").write_text("selector", encoding="utf-8")
-    (template_root / "loop_implementation.md").write_text(
-        "implementation", encoding="utf-8"
+def _write_prompt_definitions(project_root: Path) -> None:
+    definitions_root = (
+        project_root / "src" / "engineeringagent" / "prompts" / "definitions"
     )
-    (template_root / "loop_feedback.md").write_text("feedback", encoding="utf-8")
+    definitions_root.mkdir(parents=True, exist_ok=True)
+    (definitions_root / "loop_selector.py").write_text(
+        "PROMPT_DEFINITION = object()\n", encoding="utf-8"
+    )
+    (definitions_root / "loop_implementation.py").write_text(
+        "PROMPT_DEFINITION = object()\n", encoding="utf-8"
+    )
+    (definitions_root / "loop_feedback.py").write_text(
+        "PROMPT_DEFINITION = object()\n", encoding="utf-8"
+    )
 
 
 def _violations(result: dict[str, object]) -> list[str]:
@@ -52,7 +58,7 @@ def test_prompt_locality_checker_emits_expected_rule_id(
     repo_root: Path,
 ) -> None:
     """Emit the stable rule id from the harness command adapter."""
-    _write_prompt_templates(tmp_path)
+    _write_prompt_definitions(tmp_path)
 
     proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
 
@@ -60,11 +66,11 @@ def test_prompt_locality_checker_emits_expected_rule_id(
     assert payload["rule_id"] == "architecture.prompt-locality"
 
 
-def test_prompt_locality_rule_fails_when_required_templates_are_missing(
+def test_prompt_locality_rule_fails_when_required_definitions_are_missing(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Fail with deterministic diagnostics when template artifacts are absent."""
+    """Fail with deterministic diagnostics when prompt-definition artifacts are absent."""
     proc, result = _run_checker(tmp_path, checker_path=_script_path(repo_root))
     violations = _violations(result)
 
@@ -73,25 +79,25 @@ def test_prompt_locality_rule_fails_when_required_templates_are_missing(
     assert isinstance(violations, list)
     assert violations == sorted(violations)
     assert any(
-        "src/engineeringagent/prompts/templates:1 missing prompt template directory"
+        "src/engineeringagent/prompts/definitions:1 missing prompt definition directory"
         in violation
         for violation in violations
     )
 
 
-def test_prompt_locality_rule_fails_when_required_template_is_empty(
+def test_prompt_locality_rule_fails_when_required_definition_is_empty(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Fail when required templates exist but contain only whitespace."""
-    _write_prompt_templates(tmp_path)
+    """Fail when required prompt definitions exist but contain only whitespace."""
+    _write_prompt_definitions(tmp_path)
     feedback_template = (
         tmp_path
         / "src"
         / "engineeringagent"
         / "prompts"
-        / "templates"
-        / "loop_feedback.md"
+        / "definitions"
+        / "loop_feedback.py"
     )
     feedback_template.write_text(" \n\t\n", encoding="utf-8")
 
@@ -101,8 +107,8 @@ def test_prompt_locality_rule_fails_when_required_template_is_empty(
     assert proc.returncode == 0
     assert result["status"] == "fail"
     assert any(
-        "loop_feedback.md:1 required prompt template "
-        "'loop_feedback.md' is empty" in violation
+        "loop_feedback.py:1 required prompt definition "
+        "'loop_feedback.py' is empty" in violation
         for violation in violations
     )
 
@@ -112,7 +118,7 @@ def test_prompt_locality_rule_fails_on_canonical_builder_definition(
     repo_root: Path,
 ) -> None:
     """Fail when canonical prompt-builder names appear outside prompts modules."""
-    _write_prompt_templates(tmp_path)
+    _write_prompt_definitions(tmp_path)
     _write_module(
         tmp_path,
         "src/engineeringagent/loop.py",
@@ -131,17 +137,17 @@ def test_prompt_locality_rule_fails_on_canonical_builder_definition(
     )
 
 
-def test_prompt_locality_rule_fails_on_template_reads_outside_prompt_modules(
+def test_prompt_locality_rule_fails_on_definition_reads_outside_prompt_modules(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Fail when non-approved modules read template markdown files."""
-    _write_prompt_templates(tmp_path)
+    """Fail when non-approved modules read prompt-definition source files."""
+    _write_prompt_definitions(tmp_path)
     _write_module(
         tmp_path,
         "src/engineeringagent/loop.py",
         "def read_template() -> str:\n"
-        "    with open('src/engineeringagent/prompts/templates/loop_selector.md',"
+        "    with open('src/engineeringagent/prompts/definitions/loop_selector.py',"
         " encoding='utf-8') as handle:\n"
         "        return handle.read()\n",
     )
@@ -152,7 +158,7 @@ def test_prompt_locality_rule_fails_on_template_reads_outside_prompt_modules(
     assert proc.returncode == 0
     assert result["status"] == "fail"
     assert any(
-        "src/engineeringagent/loop.py:2 reads prompt template markdown" in violation
+        "src/engineeringagent/loop.py:2 reads prompt definition source" in violation
         for violation in violations
     )
 
@@ -162,7 +168,7 @@ def test_prompt_locality_rule_fails_on_normalized_canary_leakage(
     repo_root: Path,
 ) -> None:
     """Fail when canary phrases leak with punctuation/whitespace variation."""
-    _write_prompt_templates(tmp_path)
+    _write_prompt_definitions(tmp_path)
     _write_module(
         tmp_path,
         "src/engineeringagent/loop.py",
@@ -181,20 +187,19 @@ def test_prompt_locality_rule_fails_on_normalized_canary_leakage(
     )
 
 
-def test_prompt_locality_rule_passes_for_localized_templates_and_prompts(
+def test_prompt_locality_rule_passes_for_localized_definitions_and_prompts(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
     """Pass when prompt assets remain confined to approved prompts modules."""
-    _write_prompt_templates(tmp_path)
+    _write_prompt_definitions(tmp_path)
     _write_module(
         tmp_path,
         "src/engineeringagent/prompts/renderer.py",
-        "from importlib.resources import files\n"
+        "from engineeringagent.prompts.definitions.loop_selector import PROMPT_DEFINITION\n"
         "\n"
-        "def load() -> str:\n"
-        "    return files('engineeringagent.prompts.templates')"
-        ".joinpath('loop_selector.md').read_text(encoding='utf-8')\n",
+        "def load() -> object:\n"
+        "    return PROMPT_DEFINITION\n",
     )
     _write_module(
         tmp_path,
@@ -214,7 +219,7 @@ def test_prompt_locality_rule_reports_sorted_path_line_diagnostics(
     repo_root: Path,
 ) -> None:
     """Emit stable sorted path:line diagnostics across mixed violations."""
-    _write_prompt_templates(tmp_path)
+    _write_prompt_definitions(tmp_path)
     _write_module(
         tmp_path,
         "src/engineeringagent/alpha.py",

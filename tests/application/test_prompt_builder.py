@@ -27,6 +27,10 @@ def _prompt_builder() -> DefaultPromptBuilder:
     return DefaultPromptBuilder(BundledPromptDefinitionRepository())
 
 
+def _write_prompt_module(prompts_root: Path, prompt_id: str, body: str) -> None:
+    (prompts_root / f"{prompt_id}.py").write_text(body, encoding="utf-8")
+
+
 def test_default_prompt_builder_renders_bundled_phase_prompt(tmp_path: Path) -> None:
     """The application prompt builder preserves bundled-phase prompt context."""
 
@@ -92,9 +96,18 @@ def test_application_selector_prompt_prefers_repo_local_template(
 
     prompts_root = tmp_path / "harness" / "prompts"
     prompts_root.mkdir(parents=True)
-    (prompts_root / "loop_selector.md").write_text(
-        "repo selector\n$choices\n",
-        encoding="utf-8",
+    _write_prompt_module(
+        prompts_root,
+        "loop_selector",
+        "from engineeringagent.ports import PromptDefinition, PromptInterpolation\n"
+        "PROMPT_DEFINITION = PromptDefinition(\n"
+        "    prompt_id='loop_selector',\n"
+        "    purpose='selector',\n"
+        "    target='operator',\n"
+        "    body_template='repo selector\\n$choices\\n',\n"
+        "    interpolations=(PromptInterpolation(\n"
+        "        name='choices', source='test', required=True, rationale='test'),),\n"
+        ")\n",
     )
 
     prompt = build_selector_prompt(
@@ -182,13 +195,41 @@ def test_default_prompt_builder_prefers_repo_local_templates(
 
     prompts_root = tmp_path / "harness" / "prompts"
     prompts_root.mkdir(parents=True)
-    (prompts_root / "loop_implementation.md").write_text(
-        "repo implementation\n$feature_id\n$artifact_paths\n",
-        encoding="utf-8",
+    _write_prompt_module(
+        prompts_root,
+        "loop_implementation",
+        "from engineeringagent.ports import PromptDefinition, PromptInterpolation\n"
+        "PROMPT_DEFINITION = PromptDefinition(\n"
+        "    prompt_id='loop_implementation',\n"
+        "    purpose='implementation',\n"
+        "    target='implementation',\n"
+        "    body_template='repo implementation\\n$feature_id\\n$artifact_paths\\n',\n"
+        "    interpolations=(\n"
+        "        PromptInterpolation(name='feature_id', source='test', required=True, rationale='test'),\n"
+        "        PromptInterpolation(name='artifact_paths', source='test', required=True, rationale='test'),\n"
+        "        PromptInterpolation(name='handoff_path', source='test', required=True, rationale='test'),\n"
+        "        PromptInterpolation(name='feature_title', source='test', required=True, rationale='test'),\n"
+        "        PromptInterpolation(name='objective', source='test', required=True, rationale='test'),\n"
+        "        PromptInterpolation(name='context', source='test', required=True, rationale='test'),\n"
+        "        PromptInterpolation(name='progress_unit', source='test', required=True, rationale='test'),\n"
+        "        PromptInterpolation(name='current_progress_reference', source='test', required=True, rationale='test'),\n"
+        "        PromptInterpolation(name='progress_context_instruction', source='test', required=True, rationale='test'),\n"
+        "        PromptInterpolation(name='progress_update_instruction', source='test', required=True, rationale='test'),\n"
+        "    ),\n"
+        ")\n",
     )
-    (prompts_root / "loop_feedback.md").write_text(
-        "\n\nRepo feedback:\n$feedback\n",
-        encoding="utf-8",
+    _write_prompt_module(
+        prompts_root,
+        "loop_feedback",
+        "from engineeringagent.ports import PromptDefinition, PromptInterpolation\n"
+        "PROMPT_DEFINITION = PromptDefinition(\n"
+        "    prompt_id='loop_feedback',\n"
+        "    purpose='feedback',\n"
+        "    target='implementation',\n"
+        "    body_template='\\n\\nRepo feedback:\\n$feedback\\n',\n"
+        "    interpolations=(PromptInterpolation(\n"
+        "        name='feedback', source='test', required=True, rationale='test'),),\n"
+        ")\n",
     )
     feature_path = tmp_path / "docs" / "features" / "spec.yaml"
     feature_path.parent.mkdir(parents=True)

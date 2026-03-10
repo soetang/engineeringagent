@@ -28,8 +28,8 @@ CONTRIBUTOR_APPROACH_DOC_PATHS = (
     Path("src/engineeringagent/approach/docs/reviewer-authoring.md"),
     Path("src/engineeringagent/approach/docs/specifications.md"),
 )
-LOOP_IMPLEMENTATION_TEMPLATE_PATH = Path(
-    "src/engineeringagent/prompts/templates/loop_implementation.md"
+LOOP_IMPLEMENTATION_PROMPT_PATH = Path(
+    "src/engineeringagent/prompts/definitions/loop_implementation.py"
 )
 REMEDIATION = (
     "replace with source-first workspace execution; prefer "
@@ -210,7 +210,16 @@ def _scan_markdown_command_lines(path: Path) -> list[str]:
     for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
         if "engineeringagent" not in line:
             continue
-        candidates = [segment for segment in re.findall(r"`([^`]+)`", line) if "engineeringagent" in segment]
+        candidates = [
+            segment
+            for segment in re.findall(r"`([^`]+)`", line)
+            if "engineeringagent" in segment
+        ]
+        candidates.extend(
+            segment
+            for quote, segment in re.findall(r"(['\"])(.*?)\1", line)
+            if "engineeringagent" in segment
+        )
         if not candidates:
             candidates = [line.strip("`- ")]
         for candidate in candidates:
@@ -239,8 +248,8 @@ def _scan_contributor_approach_commands() -> list[str]:
     return violations
 
 
-def _scan_prompt_template_commands() -> list[str]:
-    return _scan_markdown_command_lines(LOOP_IMPLEMENTATION_TEMPLATE_PATH)
+def _scan_prompt_definition_commands() -> list[str]:
+    return _scan_markdown_command_lines(LOOP_IMPLEMENTATION_PROMPT_PATH)
 
 
 def _scan_check_commands() -> list[str]:
@@ -282,7 +291,7 @@ def main() -> int:
             + _scan_smoke_template_commands()
             + _scan_bundled_approach_commands()
             + _scan_contributor_approach_commands()
-            + _scan_prompt_template_commands()
+            + _scan_prompt_definition_commands()
             + _scan_check_commands()
         )
     )

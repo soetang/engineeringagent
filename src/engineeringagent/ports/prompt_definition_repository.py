@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from string import Template
-from typing import Any, Literal, Mapping, Protocol
+from typing import Any, Callable, Literal, Mapping, Protocol
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
@@ -47,12 +47,17 @@ class PromptInterpolation(BaseModel):
 class PromptDefinition(BaseModel):
     """Stable prompt definition with explicit interpolation ownership."""
 
-    model_config = ConfigDict(frozen=True, extra="forbid")
+    model_config = ConfigDict(
+        frozen=True,
+        extra="forbid",
+        arbitrary_types_allowed=True,
+    )
 
     prompt_id: str
     purpose: str
     target: Literal["implementation", "reviewer", "operator"]
-    body_template: str
+    body_template: str | None = None
+    renderer: Callable[[Mapping[str, object]], str] | None = None
     interpolations: tuple[PromptInterpolation, ...]
 
     @model_validator(mode="after")
@@ -66,20 +71,35 @@ class PromptDefinition(BaseModel):
                 f"interpolations: {duplicates_text}"
             )
 
-        placeholders = set(_template_placeholders(self.body_template))
-        undeclared = sorted(placeholders - set(declared))
-        if undeclared:
-            undeclared_text = ", ".join(undeclared)
+        if self.body_template is None and self.renderer is None:
             raise ValueError(
-                f"prompt definition {self.prompt_id!r} uses undeclared "
-                f"placeholders: {undeclared_text}"
+                f"prompt definition {self.prompt_id!r} must define either "
+                "body_template or renderer"
             )
+
+        if self.body_template is not None and self.renderer is not None:
+            raise ValueError(
+                f"prompt definition {self.prompt_id!r} must not define both "
+                "body_template and renderer"
+            )
+
+        if self.body_template is not None:
+            placeholders = set(_template_placeholders(self.body_template))
+            undeclared = sorted(placeholders - set(declared))
+            if undeclared:
+                undeclared_text = ", ".join(undeclared)
+                raise ValueError(
+                    f"prompt definition {self.prompt_id!r} uses undeclared "
+                    f"placeholders: {undeclared_text}"
+                )
         return self
 
     @property
     def placeholder_names(self) -> tuple[str, ...]:
         """Return placeholders referenced by the template body."""
-        return _template_placeholders(self.body_template)
+        if self.body_template is not None:
+            return _template_placeholders(self.body_template)
+        return tuple(sorted(item.name for item in self.interpolations))
 
     def render(self, values: Mapping[str, object]) -> str:
         """Render the template using only declared interpolations."""
@@ -108,6 +128,9 @@ class PromptDefinition(BaseModel):
             item.name: _coerce_prompt_value(values.get(item.name))
             for item in self.interpolations
         }
+        if self.renderer is not None:
+            return self.renderer(substitutions)
+        assert self.body_template is not None
         return Template(self.body_template).substitute(substitutions)
 
 

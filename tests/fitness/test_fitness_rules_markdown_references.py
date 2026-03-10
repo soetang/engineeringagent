@@ -46,11 +46,11 @@ def test_markdown_reference_coverage_passes_with_non_self_reference(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    _write_file(tmp_path, "src/engineeringagent/prompts/templates/loop.md")
+    _write_file(tmp_path, "README.md")
     _write_file(
         tmp_path,
-        "src/engineeringagent/prompts/renderer.py",
-        'TEMPLATE_PATH = "src/engineeringagent/prompts/templates/loop.md"\n',
+        "src/engineeringagent/app.py",
+        'README_PATH = "README.md"\n',
     )
 
     proc, result = _run_checker(tmp_path, checker_path=_script_path(repo_root))
@@ -103,19 +103,6 @@ def test_markdown_reference_coverage_exempts_scaffold_templates(
         "src/engineeringagent/scaffold_templates/AGENTS.md",
         "See src/engineeringagent/scaffold_templates/AGENTS.md\n",
     )
-
-    proc, result = _run_checker(tmp_path, checker_path=_script_path(repo_root))
-
-    assert proc.returncode == 0
-    assert result["status"] == "pass"
-    assert not _violations(result)
-
-
-def test_markdown_reference_coverage_exempts_prompt_templates(
-    tmp_path: Path,
-    repo_root: Path,
-) -> None:
-    _write_file(tmp_path, "src/engineeringagent/prompts/templates/loop_selector.md")
 
     proc, result = _run_checker(tmp_path, checker_path=_script_path(repo_root))
 

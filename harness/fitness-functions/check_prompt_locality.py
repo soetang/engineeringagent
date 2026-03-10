@@ -16,11 +16,11 @@ from engineeringagent.checks.fitness.contracts import (
 RULE_ID = "architecture.prompt-locality"
 
 _SOURCE_PACKAGE_ROOT = Path("src/engineeringagent")
-_PROMPT_TEMPLATE_ROOT = _SOURCE_PACKAGE_ROOT / "prompts" / "templates"
-_REQUIRED_PROMPT_TEMPLATES = (
-    "loop_selector.md",
-    "loop_implementation.md",
-    "loop_feedback.md",
+_PROMPT_DEFINITION_ROOT = _SOURCE_PACKAGE_ROOT / "prompts" / "definitions"
+_REQUIRED_PROMPT_DEFINITIONS = (
+    "loop_selector.py",
+    "loop_implementation.py",
+    "loop_feedback.py",
 )
 _PROMPT_ALLOWED_ROOT = _SOURCE_PACKAGE_ROOT / "prompts"
 _CANONICAL_PROMPT_BUILDERS = {
@@ -34,34 +34,34 @@ _PROMPT_CANARY_TOKENS = (
     ("previous", "feedback", "is", "available"),
 )
 _PROMPT_LOCALITY_REMEDIATION = (
-    "move canonical prompt text and template reads into "
-    "src/engineeringagent/prompts/templates and approved modules under "
+    "move canonical prompt text into "
+    "src/engineeringagent/prompts/definitions and approved modules under "
     "src/engineeringagent/prompts/."
 )
 
 
-def _prompt_template_integrity_violations(project_root: Path) -> list[str]:
-    template_root = project_root / _PROMPT_TEMPLATE_ROOT
+def _prompt_definition_integrity_violations(project_root: Path) -> list[str]:
+    definitions_root = project_root / _PROMPT_DEFINITION_ROOT
     violations: list[str] = []
-    if not template_root.exists() or not template_root.is_dir():
+    if not definitions_root.exists() or not definitions_root.is_dir():
         violations.append(
-            "src/engineeringagent/prompts/templates:1 missing prompt template "
+            "src/engineeringagent/prompts/definitions:1 missing prompt definition "
             f"directory; {_PROMPT_LOCALITY_REMEDIATION}"
         )
         return violations
 
-    for template_name in _REQUIRED_PROMPT_TEMPLATES:
-        template_path = template_root / template_name
-        relative = template_path.relative_to(project_root)
-        if not template_path.exists() or not template_path.is_file():
+    for definition_name in _REQUIRED_PROMPT_DEFINITIONS:
+        definition_path = definitions_root / definition_name
+        relative = definition_path.relative_to(project_root)
+        if not definition_path.exists() or not definition_path.is_file():
             violations.append(
-                f"{relative}:1 missing required prompt template '{template_name}'; "
+                f"{relative}:1 missing required prompt definition '{definition_name}'; "
                 f"{_PROMPT_LOCALITY_REMEDIATION}"
             )
             continue
-        if not template_path.read_text(encoding="utf-8").strip():
+        if not definition_path.read_text(encoding="utf-8").strip():
             violations.append(
-                f"{relative}:1 required prompt template '{template_name}' is empty; "
+                f"{relative}:1 required prompt definition '{definition_name}' is empty; "
                 f"{_PROMPT_LOCALITY_REMEDIATION}"
             )
 
@@ -113,9 +113,9 @@ def _call_targets_template_markdown(node: ast.Call) -> bool:
 
     for value in _string_literals_from_node(node):
         normalized = value.lower()
-        if "prompts/templates" in normalized and ".md" in normalized:
+        if "prompts/definitions" in normalized and ".py" in normalized:
             return True
-        if "templates" in normalized and normalized.endswith(".md"):
+        if "definitions" in normalized and normalized.endswith(".py"):
             return True
     return False
 
@@ -159,7 +159,7 @@ def _prompt_boundary_violations(file_path: Path, project_root: Path) -> list[str
 
         if isinstance(node, ast.Call) and _call_targets_template_markdown(node):
             violations.append(
-                f"{relative}:{node.lineno} reads prompt template markdown outside "
+                f"{relative}:{node.lineno} reads prompt definition source outside "
                 f"approved prompt modules; {_PROMPT_LOCALITY_REMEDIATION}"
             )
 
@@ -187,7 +187,7 @@ def _prompt_source_locality_violations(project_root: Path) -> list[str]:
 
 
 def _prompt_locality_violations(project_root: Path) -> list[str]:
-    violations = _prompt_template_integrity_violations(project_root)
+    violations = _prompt_definition_integrity_violations(project_root)
     violations.extend(_prompt_source_locality_violations(project_root))
     return sorted(violations)
 

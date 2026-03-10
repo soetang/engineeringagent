@@ -62,15 +62,13 @@ def test_markdown_locality_rule_passes_for_approved_markdown_locations(
     """Pass when markdown files remain in approved roots and root exceptions."""
     _write_markdown(tmp_path, "docs/guide.md")
     _write_markdown(tmp_path, "harness/reviewers/prompts/code_simplifier.md")
-    _write_markdown(tmp_path, "src/engineeringagent/prompts/templates/loop.md")
     _write_markdown(tmp_path, "src/engineeringagent/scaffold_templates/AGENTS.md")
     _write_markdown(tmp_path, "README.md")
     _write_markdown(tmp_path, "AGENTS.md")
     _write_markdown(
         tmp_path,
-        "src/engineeringagent/prompts/renderer.py",
+        "src/engineeringagent/app.py",
         (
-            'PROMPT_TEMPLATE = "src/engineeringagent/prompts/templates/loop.md"\n'
             'README_PATH = "README.md"\n'
             'AGENTS_PATH = "AGENTS.md"\n'
             'REVIEWER_PROMPT_PATH = "harness/reviewers/prompts/code_simplifier.md"\n'

@@ -42,14 +42,20 @@ def _write_file(project_root: Path, relative_path: str, body: str) -> None:
     path.write_text(body, encoding="utf-8")
 
 
-def _write_prompt_templates(project_root: Path) -> None:
-    template_root = project_root / "src" / "engineeringagent" / "prompts" / "templates"
-    template_root.mkdir(parents=True, exist_ok=True)
-    (template_root / "loop_selector.md").write_text("selector", encoding="utf-8")
-    (template_root / "loop_implementation.md").write_text(
-        "implementation", encoding="utf-8"
+def _write_prompt_definitions(project_root: Path) -> None:
+    definition_root = (
+        project_root / "src" / "engineeringagent" / "prompts" / "definitions"
     )
-    (template_root / "loop_feedback.md").write_text("feedback", encoding="utf-8")
+    definition_root.mkdir(parents=True, exist_ok=True)
+    (definition_root / "loop_selector.py").write_text(
+        "PROMPT_DEFINITION = object()\n", encoding="utf-8"
+    )
+    (definition_root / "loop_implementation.py").write_text(
+        "PROMPT_DEFINITION = object()\n", encoding="utf-8"
+    )
+    (definition_root / "loop_feedback.py").write_text(
+        "PROMPT_DEFINITION = object()\n", encoding="utf-8"
+    )
 
 
 def _write_scaffold_templates(project_root: Path) -> None:
@@ -553,7 +559,7 @@ def test_execute_rule_definition_runs_prompt_locality_adapter(
     repo_root: Path,
 ) -> None:
     """Surface fail status from the migrated prompt-locality adapter."""
-    _write_prompt_templates(tmp_path)
+    _write_prompt_definitions(tmp_path)
     _write_file(
         tmp_path,
         "src/engineeringagent/loop.py",
@@ -569,8 +575,8 @@ def test_execute_rule_definition_runs_prompt_locality_adapter(
             summary="Enforce canonical prompt locality boundaries.",
             rationale="Canonical prompt content must stay in approved prompt assets.",
             remediation=(
-                "Move canonical prompt text and template reads into "
-                "src/engineeringagent/prompts/templates and approved modules under "
+                "Move canonical prompt text into "
+                "src/engineeringagent/prompts/definitions and approved modules under "
                 "src/engineeringagent/prompts/."
             ),
             scope="src/engineeringagent",

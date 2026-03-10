@@ -1,226 +1,57 @@
-"""Shared prompt-definition metadata for bundled and repository-local prompts."""
+"""Prompt-definition loader helpers for bundled and repository-local prompts."""
 
 from __future__ import annotations
 
-from importlib.resources import files
-from string import Template
-from typing import Literal, TypedDict
+import importlib
+import importlib.util
+from pathlib import Path
+from types import ModuleType
 
-from engineeringagent.ports import PromptDefinition, PromptInterpolation
+from engineeringagent.ports import PromptDefinition
 
-PromptTarget = Literal["implementation", "reviewer", "operator"]
-
-
-class _PromptMetadata(TypedDict):
-    purpose: str
-    target: PromptTarget
-    interpolations: tuple[PromptInterpolation, ...]
-
-_TEMPLATE_PACKAGE = "engineeringagent.prompts.templates"
-_PROMPT_FILES = {
-    "loop_feedback": "loop_feedback.md",
-    "loop_implementation": "loop_implementation.md",
-    "loop_selector": "loop_selector.md",
-}
-
-_PROMPT_METADATA: dict[str, _PromptMetadata] = {
-    "loop_feedback": {
-        "purpose": "Inject retry feedback into the next implementation attempt.",
-        "target": "implementation",
-        "interpolations": (
-            PromptInterpolation(
-                name="feedback",
-                source="application.retry_feedback",
-                required=True,
-                render_as="markdown_block",
-                content_policy="summary_only",
-                content_bound=None,
-                rationale="The implementation prompt needs the prior failure context.",
-            ),
-        ),
-    },
-    "loop_implementation": {
-        "purpose": "Guide one deterministic implementation step for the active feature.",
-        "target": "implementation",
-        "interpolations": (
-            PromptInterpolation(
-                name="artifact_paths",
-                source="application.artifact_paths",
-                required=True,
-                render_as="path_list",
-                content_policy="path_only",
-                content_bound=None,
-                rationale="Artifact paths are the canonical references for implementation.",
-            ),
-            PromptInterpolation(
-                name="handoff_path",
-                source="application.handoff_path",
-                required=True,
-                render_as="scalar",
-                content_policy="path_only",
-                content_bound=None,
-                rationale="The agent needs the handoff artifact path when resuming work.",
-            ),
-            PromptInterpolation(
-                name="feature_id",
-                source="application.feature.id",
-                required=True,
-                render_as="scalar",
-                content_policy="summary_only",
-                content_bound=None,
-                rationale="The prompt identifies the active feature deterministically.",
-            ),
-            PromptInterpolation(
-                name="feature_title",
-                source="application.feature.title",
-                required=True,
-                render_as="scalar",
-                content_policy="summary_only",
-                content_bound=None,
-                rationale="The prompt includes the feature title for operator context.",
-            ),
-            PromptInterpolation(
-                name="objective",
-                source="application.feature.objective",
-                required=True,
-                render_as="markdown_block",
-                content_policy="summary_only",
-                content_bound=None,
-                rationale="The objective keeps the implementation step aligned with intent.",
-            ),
-            PromptInterpolation(
-                name="context",
-                source="application.feature.context",
-                required=True,
-                render_as="markdown_block",
-                content_policy="summary_only",
-                content_bound=None,
-                rationale="The prompt carries explicit feature context.",
-            ),
-            PromptInterpolation(
-                name="progress_unit",
-                source="application.progress.kind",
-                required=True,
-                render_as="scalar",
-                content_policy="summary_only",
-                content_bound=None,
-                rationale="The prompt names the progress unit to update.",
-            ),
-            PromptInterpolation(
-                name="current_progress_reference",
-                source="application.progress.current_reference",
-                required=True,
-                render_as="scalar",
-                content_policy="summary_only",
-                content_bound=None,
-                rationale="The current progress reference anchors the next increment.",
-            ),
-            PromptInterpolation(
-                name="progress_context_instruction",
-                source="application.progress.context_instruction",
-                required=True,
-                render_as="markdown_block",
-                content_policy="summary_only",
-                content_bound=None,
-                rationale="The prompt states the canonical progress source of truth.",
-            ),
-            PromptInterpolation(
-                name="progress_update_instruction",
-                source="application.progress.update_instruction",
-                required=True,
-                render_as="markdown_block",
-                content_policy="summary_only",
-                content_bound=None,
-                rationale="The prompt explains how progress should be updated.",
-            ),
-        ),
-    },
-    "loop_selector": {
-        "purpose": "Select the next eligible feature specification from a candidate list.",
-        "target": "operator",
-        "interpolations": (
-            PromptInterpolation(
-                name="choices",
-                source="application.feature_selection.choices",
-                required=True,
-                render_as="bullet_list",
-                content_policy="summary_only",
-                content_bound=None,
-                rationale="The selector prompt only needs deterministic feature summaries.",
-            ),
-        ),
-    },
+_BUNDLED_PROMPT_MODULES = {
+    "loop_feedback": "engineeringagent.prompts.definitions.loop_feedback",
+    "loop_implementation": "engineeringagent.prompts.definitions.loop_implementation",
+    "loop_selector": "engineeringagent.prompts.definitions.loop_selector",
 }
 
 
 def bundled_prompt_ids() -> list[str]:
     """Return the stable bundled prompt ids."""
-    return sorted(_PROMPT_FILES)
+    return sorted(_BUNDLED_PROMPT_MODULES)
 
 
 def bundled_prompt_definition(prompt_id: str) -> PromptDefinition:
-    """Return one bundled prompt definition with packaged template content."""
+    """Return one bundled Python-authored prompt definition."""
     try:
-        filename = _PROMPT_FILES[prompt_id]
-        metadata = _PROMPT_METADATA[prompt_id]
+        module_name = _BUNDLED_PROMPT_MODULES[prompt_id]
     except KeyError as exc:
         available = ", ".join(bundled_prompt_ids())
         raise KeyError(
             f"unknown prompt definition {prompt_id!r}; available definitions: {available}"
         ) from exc
 
-    template_text = files(_TEMPLATE_PACKAGE).joinpath(filename).read_text(
-        encoding="utf-8"
-    )
-    return PromptDefinition(
-        prompt_id=prompt_id,
-        purpose=metadata["purpose"],
-        target=metadata["target"],
-        body_template=template_text,
-        interpolations=metadata["interpolations"],
-    )
+    return _prompt_definition_from_module(importlib.import_module(module_name), prompt_id)
 
 
-def override_prompt_definition(
+def filesystem_prompt_definition(prompt_path: Path) -> PromptDefinition:
+    """Load one repository-local Python prompt definition module."""
+    module_name = f"engineeringagent_project_prompt_{prompt_path.stem}"
+    spec = importlib.util.spec_from_file_location(module_name, prompt_path)
+    if spec is None or spec.loader is None:
+        raise KeyError(f"failed to load prompt definition module from {prompt_path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return _prompt_definition_from_module(module, prompt_path.stem)
+
+
+def _prompt_definition_from_module(
+    module: ModuleType,
     prompt_id: str,
-    *,
-    body_template: str,
 ) -> PromptDefinition:
-    """Return a repository-local override using the bundled contract when available."""
-    if prompt_id in _PROMPT_METADATA:
-        metadata = _PROMPT_METADATA[prompt_id]
-        return PromptDefinition(
-            prompt_id=prompt_id,
-            purpose=metadata["purpose"],
-            target=metadata["target"],
-            body_template=body_template,
-            interpolations=metadata["interpolations"],
+    definition = getattr(module, "PROMPT_DEFINITION", None)
+    if not isinstance(definition, PromptDefinition):
+        raise KeyError(
+            f"prompt definition module for {prompt_id!r} must export PROMPT_DEFINITION"
         )
-
-    return PromptDefinition(
-        prompt_id=prompt_id,
-        purpose="Repository-local prompt definition.",
-        target="operator",
-        body_template=body_template,
-        interpolations=tuple(
-            PromptInterpolation(
-                name=name,
-                source="repository.prompt_override",
-                required=True,
-                render_as="scalar",
-                content_policy="summary_only",
-                content_bound=None,
-                rationale="Repository-local prompts declare placeholders from the template.",
-            )
-            for name in _placeholder_names(body_template)
-        ),
-    )
-
-
-def _placeholder_names(template_text: str) -> tuple[str, ...]:
-    names: set[str] = set()
-    for match in Template.pattern.finditer(template_text):
-        name = match.group("named") or match.group("braced")
-        if name:
-            names.add(name)
-    return tuple(sorted(names))
+    return definition

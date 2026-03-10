@@ -17,12 +17,10 @@ _MARKDOWN_ALLOWED_ROOTS = (
     Path("docs"),
     Path("harness/reviewers/prompts"),
     Path("new_architecture"),
-    Path("src/engineeringagent/prompts"),
     Path("src/engineeringagent/scaffold_templates"),
     Path("src/engineeringagent/approach/docs"),
 )
 _BACKEND_SCAFFOLD_ROOT = Path("src/engineeringagent/agents/backends")
-_PROMPT_TEMPLATE_ROOT = Path("src/engineeringagent/prompts/templates")
 _SCAFFOLD_TEMPLATE_ROOT = Path("src/engineeringagent/scaffold_templates")
 _MARKDOWN_ALLOWED_ROOT_FILES = (
     Path("README.md"),
@@ -57,7 +55,7 @@ _MARKDOWN_IGNORE_DIRECTORIES = {
 }
 _MARKDOWN_LOCALITY_REMEDIATION = (
     "move markdown files under docs/, harness/reviewers/prompts/, "
-    "new_architecture/, src/engineeringagent/prompts/, "
+    "new_architecture/, "
     "src/engineeringagent/scaffold_templates/, "
     "src/engineeringagent/approach/docs/, or "
     "src/engineeringagent/agents/backends/*/scaffold_templates/; "
@@ -106,11 +104,6 @@ def _is_backend_scaffold_template_markdown(relative_path: Path) -> bool:
 
 def _is_reference_coverage_exempt(relative_path: Path) -> bool:
     if _is_backend_scaffold_template_markdown(relative_path):
-        return True
-    if (
-        relative_path == _PROMPT_TEMPLATE_ROOT
-        or _PROMPT_TEMPLATE_ROOT in relative_path.parents
-    ):
         return True
     if (
         relative_path == _SCAFFOLD_TEMPLATE_ROOT

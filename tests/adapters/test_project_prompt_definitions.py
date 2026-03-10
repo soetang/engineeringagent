@@ -10,15 +10,43 @@ from engineeringagent.adapters.prompts import (
 )
 
 
-def test_filesystem_prompt_definition_repository_lists_markdown_templates(
+def _write_prompt_module(prompts_root: Path, prompt_id: str, body: str) -> None:
+    (prompts_root / f"{prompt_id}.py").write_text(body, encoding="utf-8")
+
+
+def test_filesystem_prompt_definition_repository_lists_python_modules(
     tmp_path: Path,
 ) -> None:
-    """Filesystem prompt repositories expose stable markdown prompt ids."""
+    """Filesystem prompt repositories expose stable Python prompt ids."""
 
     prompts_root = tmp_path / "prompts"
     prompts_root.mkdir()
-    (prompts_root / "loop_selector.md").write_text("selector", encoding="utf-8")
-    (prompts_root / "loop_feedback.md").write_text("feedback", encoding="utf-8")
+    _write_prompt_module(
+        prompts_root,
+        "loop_selector",
+        "from engineeringagent.ports import PromptDefinition, PromptInterpolation\n"
+        "PROMPT_DEFINITION = PromptDefinition(\n"
+        "    prompt_id='loop_selector',\n"
+        "    purpose='selector',\n"
+        "    target='operator',\n"
+        "    body_template='selector: $choices',\n"
+        "    interpolations=(PromptInterpolation(\n"
+        "        name='choices', source='test', required=True, rationale='test'),),\n"
+        ")\n",
+    )
+    _write_prompt_module(
+        prompts_root,
+        "loop_feedback",
+        "from engineeringagent.ports import PromptDefinition, PromptInterpolation\n"
+        "PROMPT_DEFINITION = PromptDefinition(\n"
+        "    prompt_id='loop_feedback',\n"
+        "    purpose='feedback',\n"
+        "    target='implementation',\n"
+        "    body_template='feedback: $feedback',\n"
+        "    interpolations=(PromptInterpolation(\n"
+        "        name='feedback', source='test', required=True, rationale='test'),),\n"
+        ")\n",
+    )
 
     repository = FilesystemPromptDefinitionRepository(prompts_root)
 
@@ -32,7 +60,19 @@ def test_filesystem_prompt_definition_repository_loads_template_text(
 
     prompts_root = tmp_path / "prompts"
     prompts_root.mkdir()
-    (prompts_root / "loop_selector.md").write_text("repo selector", encoding="utf-8")
+    _write_prompt_module(
+        prompts_root,
+        "loop_selector",
+        "from engineeringagent.ports import PromptDefinition, PromptInterpolation\n"
+        "PROMPT_DEFINITION = PromptDefinition(\n"
+        "    prompt_id='loop_selector',\n"
+        "    purpose='selector',\n"
+        "    target='operator',\n"
+        "    body_template='repo selector',\n"
+        "    interpolations=(PromptInterpolation(\n"
+        "        name='choices', source='test', required=True, rationale='test'),),\n"
+        ")\n",
+    )
 
     prompt = FilesystemPromptDefinitionRepository(prompts_root).get("loop_selector")
 
@@ -48,9 +88,18 @@ def test_project_prompt_definition_repository_prefers_repo_prompt_templates(
 
     prompts_root = tmp_path / "harness" / "prompts"
     prompts_root.mkdir(parents=True)
-    (prompts_root / "loop_selector.md").write_text(
-        "repo override: $choices",
-        encoding="utf-8",
+    _write_prompt_module(
+        prompts_root,
+        "loop_selector",
+        "from engineeringagent.ports import PromptDefinition, PromptInterpolation\n"
+        "PROMPT_DEFINITION = PromptDefinition(\n"
+        "    prompt_id='loop_selector',\n"
+        "    purpose='selector',\n"
+        "    target='operator',\n"
+        "    body_template='repo override: $choices',\n"
+        "    interpolations=(PromptInterpolation(\n"
+        "        name='choices', source='test', required=True, rationale='test'),),\n"
+        ")\n",
     )
 
     repository = ProjectPromptDefinitionRepository(tmp_path)
@@ -81,7 +130,18 @@ def test_project_prompt_definition_repository_lists_repo_and_bundled_ids(
 
     prompts_root = tmp_path / "harness" / "prompts"
     prompts_root.mkdir(parents=True)
-    (prompts_root / "custom_prompt.md").write_text("custom", encoding="utf-8")
+    _write_prompt_module(
+        prompts_root,
+        "custom_prompt",
+        "from engineeringagent.ports import PromptDefinition\n"
+        "PROMPT_DEFINITION = PromptDefinition(\n"
+        "    prompt_id='custom_prompt',\n"
+        "    purpose='custom',\n"
+        "    target='operator',\n"
+        "    renderer=lambda values: 'custom',\n"
+        "    interpolations=(),\n"
+        ")\n",
+    )
 
     repository = ProjectPromptDefinitionRepository(tmp_path)
 
@@ -111,7 +171,19 @@ def test_prompt_definition_render_rejects_undeclared_interpolations(
 
     prompts_root = tmp_path / "prompts"
     prompts_root.mkdir()
-    (prompts_root / "loop_selector.md").write_text("$choices", encoding="utf-8")
+    _write_prompt_module(
+        prompts_root,
+        "loop_selector",
+        "from engineeringagent.ports import PromptDefinition, PromptInterpolation\n"
+        "PROMPT_DEFINITION = PromptDefinition(\n"
+        "    prompt_id='loop_selector',\n"
+        "    purpose='selector',\n"
+        "    target='operator',\n"
+        "    body_template='$choices',\n"
+        "    interpolations=(PromptInterpolation(\n"
+        "        name='choices', source='test', required=True, rationale='test'),),\n"
+        ")\n",
+    )
 
     prompt = FilesystemPromptDefinitionRepository(prompts_root).get("loop_selector")
 

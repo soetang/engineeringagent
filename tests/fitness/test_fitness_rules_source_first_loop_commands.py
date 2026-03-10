@@ -440,25 +440,18 @@ def test_detects_forbidden_uvx_from_dot_in_workflow_approach_doc(
     assert "src/engineeringagent/approach/docs/workflow.md:line 7" in violations[0]
 
 
-def test_detects_forbidden_uvx_from_dot_in_loop_implementation_prompt_template(
+def test_detects_forbidden_uvx_from_dot_in_loop_implementation_prompt_definition(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
     """Fail when the loop implementation prompt regresses to uvx --from ."""
     path = (
         tmp_path
-        / "src/engineeringagent/prompts/templates/loop_implementation.md"
+        / "src/engineeringagent/prompts/definitions/loop_implementation.py"
     )
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
-        "\n".join(
-            [
-                "Study this specification from disk: $feature_path.",
-                "",
-                "Validate with: `uvx --from . engineeringagent validate --schema-only`.",
-                "",
-            ]
-        ),
+        "COMMAND = 'uvx --from . engineeringagent validate --schema-only'\n",
         encoding="utf-8",
     )
 
@@ -469,7 +462,7 @@ def test_detects_forbidden_uvx_from_dot_in_loop_implementation_prompt_template(
     violations = payload["violations"]
     assert isinstance(violations, list)
     assert len(violations) == 1
-    assert "src/engineeringagent/prompts/templates/loop_implementation.md:line 3" in (
+    assert "src/engineeringagent/prompts/definitions/loop_implementation.py:line 1" in (
         violations[0]
     )
 
@@ -565,12 +558,12 @@ def test_allows_uv_run_source_first_forms(tmp_path: Path, repo_root: Path) -> No
         tmp_path / "docs/fixtures/real_opencode_hello_world_plan_template.md",
         _smoke_plan_frontmatter("uv run engineeringagent validate --schema-only"),
     )
-    prompt_template_path = (
-        tmp_path / "src/engineeringagent/prompts/templates/loop_implementation.md"
+    prompt_definition_path = (
+        tmp_path / "src/engineeringagent/prompts/definitions/loop_implementation.py"
     )
-    prompt_template_path.parent.mkdir(parents=True, exist_ok=True)
-    prompt_template_path.write_text(
-        "Validate with: `uv run engineeringagent validate --schema-only`.\n",
+    prompt_definition_path.parent.mkdir(parents=True, exist_ok=True)
+    prompt_definition_path.write_text(
+        "COMMAND = 'uv run engineeringagent validate --schema-only'\n",
         encoding="utf-8",
     )
     workflow_doc_path = tmp_path / "src/engineeringagent/approach/docs/workflow.md"

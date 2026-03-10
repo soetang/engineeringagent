@@ -17,7 +17,7 @@ def test_bundled_prompt_definition_repository_lists_stable_prompt_ids() -> None:
 
 
 def test_bundled_prompt_definition_repository_loads_template_text() -> None:
-    """Load packaged prompt definitions through the adapter."""
+    """Load packaged Python prompt definitions through the adapter."""
     repository = BundledPromptDefinitionRepository()
 
     prompt = repository.get("loop_selector")
@@ -25,6 +25,7 @@ def test_bundled_prompt_definition_repository_loads_template_text() -> None:
     assert prompt.prompt_id == "loop_selector"
     assert prompt.target == "operator"
     assert prompt.placeholder_names == ("choices",)
+    assert prompt.body_template is None
     assert prompt.render({"choices": "- id=FEAT-100 path=docs/spec.yaml"}).startswith(
         "Choose the next feature spec"
     )
