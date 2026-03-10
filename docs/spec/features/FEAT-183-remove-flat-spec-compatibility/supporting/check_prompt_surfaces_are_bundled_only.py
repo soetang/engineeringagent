@@ -7,7 +7,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[5]
 
 CHECKS: dict[str, tuple[str, ...]] = {
-    "src/engineeringagent/prompts/renderer.py": (
+    "src/engineeringagent/application/prompt_builder.py": (
         "compatibility wrapper",
         "compatibility-wrapper",
         "canonical bundled package",
@@ -26,6 +26,8 @@ CHECKS: dict[str, tuple[str, ...]] = {
 
 
 def main() -> int:
+    """Fail when prompt-facing files mention retired flat-spec guidance."""
+
     violations: list[str] = []
     for relative_path, forbidden_terms in CHECKS.items():
         path = ROOT / relative_path

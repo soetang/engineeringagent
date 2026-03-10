@@ -38,8 +38,6 @@ def test_repo_reviewers_config_excludes_removed_onboarding_reviewer(
         "harness/**/*.py",
         "harness/**/*.md",
         "docs/fixtures/**/*.md",
-        "docs/spec/features/*.yaml",
-        "docs/spec/features/**/*.yaml",
+        "docs/spec/features/**/spec.yaml",
         "docs/spec/features/**/*.md",
     ]
-

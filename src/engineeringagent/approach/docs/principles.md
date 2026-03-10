@@ -35,7 +35,7 @@ Every feature runs from a structured package rooted at `spec.yaml`, with explici
 
 Practical effect:
 
-- Work selection is explicit (most important open plan phase or compatibility-wrapper subtask).
+- Work selection is explicit (most important open plan phase or feature-level implementation step).
 - Implementation follows explicit TDD sequencing (red -> green -> refactor).
 - Progress is auditable (`status`, `updated_at`, run logs).
 - Handoffs between humans and agents stay consistent.
@@ -47,7 +47,7 @@ Each iteration should run automatic validation before claiming progress.
 At minimum:
 
 - Validate feature specs against schema/contracts.
-- Run the requested docs/code checks for the current plan phase or compatibility-wrapper subtask.
+- Run the requested docs/code checks for the current plan phase or current implementation step.
 - Record pass/fail outcomes in loop artifacts.
 
 This keeps quality gates mechanical instead of relying on memory.

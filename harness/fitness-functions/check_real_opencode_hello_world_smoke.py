@@ -242,15 +242,6 @@ def _parse_feature_statuses(spec_path: Path) -> tuple[str | None, tuple[str, ...
                             progress_statuses.append(phase_status)
                 return (top_level_status, tuple(progress_statuses))
 
-    subtasks = payload.get("subtasks")
-    if isinstance(subtasks, list):
-        for subtask in subtasks:
-            if not isinstance(subtask, dict):
-                continue
-            subtask_status = subtask.get("status")
-            if isinstance(subtask_status, str):
-                progress_statuses.append(subtask_status)
-
     return (top_level_status, tuple(progress_statuses))
 
 

@@ -126,13 +126,11 @@ def _command_policy_violation(command: object) -> str | None:
 def _iter_feature_specs() -> list[Path]:
     if not FEATURES_ROOT.is_dir():
         return []
-    flat_specs = sorted(FEATURES_ROOT.glob("*.yaml"))
-    bundled_specs = sorted(
+    return sorted(
         child / "spec.yaml"
         for child in FEATURES_ROOT.iterdir()
         if child.is_dir() and (child / "spec.yaml").is_file()
     )
-    return sorted([*flat_specs, *bundled_specs], key=lambda path: path.as_posix())
 
 
 def _load_markdown_frontmatter(path: Path) -> dict[str, object] | None:
@@ -146,37 +144,6 @@ def _load_markdown_frontmatter(path: Path) -> dict[str, object] | None:
 
     frontmatter = yaml.safe_load(document[4:frontmatter_end].strip())
     return frontmatter if isinstance(frontmatter, dict) else None
-
-
-def _scan_subtask_verification_commands(
-    feature_path: Path,
-    document: dict[str, object],
-) -> list[str]:
-    violations: list[str] = []
-    subtasks = document.get("subtasks")
-    if not isinstance(subtasks, list):
-        return violations
-
-    for subtask_index, subtask in enumerate(subtasks):
-        if not isinstance(subtask, dict):
-            continue
-        verification = subtask.get("verification")
-        if not isinstance(verification, list):
-            continue
-
-        for command_index, command in enumerate(verification):
-            violation_reason = _command_policy_violation(command)
-            if violation_reason is None:
-                continue
-            rendered_command = _format_command(command)
-            violations.append(
-                (
-                    f"{feature_path.as_posix()}:subtasks[{subtask_index}]"
-                    f".verification[{command_index}] {violation_reason} "
-                    f"`{rendered_command}`; {REMEDIATION}"
-                )
-            )
-    return violations
 
 
 def _scan_markdown_phase_commands(plan_path: Path) -> list[str]:
@@ -230,9 +197,7 @@ def _scan_feature_verification_commands() -> list[str]:
         document = yaml.safe_load(feature_path.read_text(encoding="utf-8")) or {}
         if not isinstance(document, dict):
             continue
-        violations.extend(_scan_subtask_verification_commands(feature_path, document))
-        if feature_path.name == "spec.yaml":
-            violations.extend(_scan_bundled_plan_phase_commands(feature_path, document))
+        violations.extend(_scan_bundled_plan_phase_commands(feature_path, document))
     return violations
 
 

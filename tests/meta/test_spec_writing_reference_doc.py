@@ -28,10 +28,6 @@ def _feature_verification_commands(features_dir: Path) -> list[str]:
         body = feature_path.read_text(encoding="utf-8")
         document = yaml.safe_load(body)
         assert isinstance(document, dict)
-        commands.extend(_verification_commands(document))
-
-        if feature_path.name != "spec.yaml":
-            continue
 
         plan_path = feature_path.parent / "plan.md"
         if not plan_path.is_file():
@@ -73,19 +69,6 @@ def test_feature_verification_commands_include_bundled_plan_phases(
 ) -> None:
     features_dir = tmp_path / "docs" / "spec" / "features"
     features_dir.mkdir(parents=True)
-    (features_dir / "FEAT-001.yaml").write_text(
-        "\n".join(
-            [
-                "id: FEAT-001",
-                "subtasks:",
-                "  - id: ST-001",
-                "    verification:",
-                "      - uv run pytest -q tests/unit/test_flat.py",
-                "",
-            ]
-        ),
-        encoding="utf-8",
-    )
     bundled_dir = features_dir / "FEAT-002-bundled"
     bundled_dir.mkdir()
     (bundled_dir / "spec.yaml").write_text(
@@ -122,7 +105,6 @@ def test_feature_verification_commands_include_bundled_plan_phases(
     )
 
     assert _feature_verification_commands(features_dir) == [
-        "uv run pytest -q tests/unit/test_flat.py",
         "uv run pytest -q tests/unit/test_bundle.py",
     ]
 
@@ -248,10 +230,10 @@ def test_approach_docs_use_bundled_phase_language_and_uv_run_commands(
     )
 
     assert (
-        "most important open plan phase or compatibility-wrapper subtask"
+        "most important open plan phase or feature-level implementation step"
         in principles_doc
     )
-    assert "current plan phase or compatibility-wrapper subtask" in principles_doc
+    assert "current plan phase or current implementation step" in principles_doc
     assert "current subtask" not in principles_doc
 
 

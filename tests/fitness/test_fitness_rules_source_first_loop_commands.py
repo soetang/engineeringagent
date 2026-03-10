@@ -73,18 +73,26 @@ def test_detects_forbidden_uvx_from_dot_in_feature_verification(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Fail when a feature subtask verification command uses uvx --from ."""
+    """Fail when a bundled plan phase verification command uses uvx --from ."""
+    feature_root = tmp_path / "docs/spec/features/FEAT-001-bundled"
     _write_yaml(
-        tmp_path / "docs/spec/features/FEAT-001.yaml",
+        feature_root / "spec.yaml",
         {
             "id": "FEAT-001",
-            "subtasks": [
-                {
-                    "id": "ST-001",
-                    "verification": ["uvx --from . engineeringagent validate"],
-                }
-            ],
+            "title": "Bundled feature",
+            "type": "spec",
+            "expected_commit_subject": "spec: bundled feature",
+            "planning_tier": "planned",
+            "status": "backlog",
+            "priority": "high",
+            "objective": "Exercise bundled verification scanning.",
+            "acceptance": ["Detect bundled plan verification commands."],
+            "artifacts": {"plan": "plan.md"},
         },
+    )
+    _write_markdown_frontmatter(
+        feature_root / "plan.md",
+        _smoke_plan_frontmatter("uvx --from . engineeringagent validate"),
     )
 
     proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
@@ -95,7 +103,8 @@ def test_detects_forbidden_uvx_from_dot_in_feature_verification(
     assert isinstance(violations, list)
     assert len(violations) == 1
     assert (
-        "docs/spec/features/FEAT-001.yaml:subtasks[0].verification[0]" in violations[0]
+        "docs/spec/features/FEAT-001-bundled/plan.md:phases[0].verification[0]"
+        in violations[0]
     )
 
 
@@ -104,17 +113,25 @@ def test_detects_forbidden_uvx_from_dot_in_checks_config(
     repo_root: Path,
 ) -> None:
     """Fail when a command check uses uvx --from . engineeringagent."""
+    feature_root = tmp_path / "docs/spec/features/FEAT-001-bundled"
     _write_yaml(
-        tmp_path / "docs/spec/features/FEAT-001.yaml",
+        feature_root / "spec.yaml",
         {
             "id": "FEAT-001",
-            "subtasks": [
-                {
-                    "id": "ST-001",
-                    "verification": ["uv run engineeringagent validate --schema-only"],
-                }
-            ],
+            "title": "Bundled feature",
+            "type": "spec",
+            "expected_commit_subject": "spec: bundled feature",
+            "planning_tier": "planned",
+            "status": "backlog",
+            "priority": "high",
+            "objective": "Exercise bundled verification scanning.",
+            "acceptance": ["Allow bundled plan verification commands."],
+            "artifacts": {"plan": "plan.md"},
         },
+    )
+    _write_markdown_frontmatter(
+        feature_root / "plan.md",
+        _smoke_plan_frontmatter("uv run engineeringagent validate --schema-only"),
     )
     _write_yaml(
         tmp_path / "harness/checks.yaml",
@@ -144,17 +161,25 @@ def test_detects_legacy_module_form_in_loop_command_surfaces(
     repo_root: Path,
 ) -> None:
     """Fail when loop command surfaces still use python -m engineeringagent.cli."""
+    feature_root = tmp_path / "docs/spec/features/FEAT-001-bundled"
     _write_yaml(
-        tmp_path / "docs/spec/features/FEAT-001.yaml",
+        feature_root / "spec.yaml",
         {
             "id": "FEAT-001",
-            "subtasks": [
-                {
-                    "id": "ST-001",
-                    "verification": ["uv run python -m engineeringagent.cli validate"],
-                }
-            ],
+            "title": "Bundled feature",
+            "type": "spec",
+            "expected_commit_subject": "spec: bundled feature",
+            "planning_tier": "planned",
+            "status": "backlog",
+            "priority": "high",
+            "objective": "Exercise bundled verification scanning.",
+            "acceptance": ["Detect bundled plan verification commands."],
+            "artifacts": {"plan": "plan.md"},
         },
+    )
+    _write_markdown_frontmatter(
+        feature_root / "plan.md",
+        _smoke_plan_frontmatter("uv run python -m engineeringagent.cli validate"),
     )
     _write_yaml(
         tmp_path / "harness/checks.yaml",
@@ -176,7 +201,9 @@ def test_detects_legacy_module_form_in_loop_command_surfaces(
     violations = payload["violations"]
     assert isinstance(violations, list)
     assert len(violations) == 2
-    assert "docs/spec/features/FEAT-001.yaml:subtasks[0].verification[0]" in violations[0]
+    assert "docs/spec/features/FEAT-001-bundled/plan.md:phases[0].verification[0]" in (
+        violations[0]
+    )
     assert "harness/checks.yaml:checks.spec_validate.command" in violations[1]
     assert "prefer `uv run engineeringagent ...`" in violations[0]
 
@@ -489,19 +516,23 @@ def test_smoke_plan_template_fixtures_use_bundled_status_vocabulary() -> None:
 def test_allows_uv_run_source_first_forms(tmp_path: Path, repo_root: Path) -> None:
     """Pass when scoped commands use uv run or direct local workspace execution."""
     _write_yaml(
-        tmp_path / "docs/spec/features/FEAT-001.yaml",
+        tmp_path / "docs/spec/features/FEAT-001-bundled/spec.yaml",
         {
             "id": "FEAT-001",
-            "subtasks": [
-                {
-                    "id": "ST-001",
-                    "verification": [
-                        "uv run engineeringagent validate --schema-only",
-                        ".venv/bin/engineeringagent run --all --dry-run",
-                    ],
-                }
-            ],
+            "title": "Bundled feature",
+            "type": "spec",
+            "expected_commit_subject": "spec: bundled feature",
+            "planning_tier": "planned",
+            "status": "backlog",
+            "priority": "high",
+            "objective": "Exercise bundled verification scanning.",
+            "acceptance": ["Allow bundled source-first verification commands."],
+            "artifacts": {"plan": "plan.md"},
         },
+    )
+    _write_markdown_frontmatter(
+        tmp_path / "docs/spec/features/FEAT-001-bundled/plan.md",
+        _smoke_plan_frontmatter("uv run engineeringagent validate --schema-only"),
     )
     _write_yaml(
         tmp_path / "docs/spec/features/FEAT-181-bundled/spec.yaml",
