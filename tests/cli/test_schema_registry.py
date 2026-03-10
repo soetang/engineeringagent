@@ -27,7 +27,7 @@ def test_schema_registry_returns_model_owned_json_schema(schema_id: str) -> None
     assert schema.get("properties")
 
 
-def test_feature_schema_registry_preserves_object_top_level_for_union_contract() -> None:
+def test_feature_schema_registry_exposes_bundled_feature_contract() -> None:
     schema = schema_from_registry("feature.spec")
 
     assert schema["type"] == "object"
@@ -41,10 +41,12 @@ def test_feature_schema_registry_preserves_object_top_level_for_union_contract()
             "priority",
             "objective",
             "acceptance",
+            "planning_tier",
+            "artifacts",
             "updated_at",
         }
     )
-    assert schema["anyOf"]
+    assert "anyOf" not in schema
 
 
 def test_schema_registry_rejects_unknown_schema_id_with_supported_ids() -> None:

@@ -4,11 +4,7 @@ from pathlib import Path
 
 import pytest
 import yaml
-from engineeringagent.specs import (
-    compatibility_wrapper_plan_mirror_issues,
-    iter_feature_files,
-    resolve_compatibility_wrapper_canonical_spec_path,
-)
+from engineeringagent.specs import iter_feature_files
 
 
 def _has_feature_entrypoints(features_dir: Path) -> bool:
@@ -82,29 +78,7 @@ def test_active_bundled_plan_frontmatter_uses_runtime_status_vocabulary(
             )
 
 
-def test_flat_compatibility_wrappers_point_to_canonical_bundled_specs(
-    repo_root: Path,
-) -> None:
+def test_active_features_use_bundled_spec_entrypoints_only(repo_root: Path) -> None:
     features_dir = repo_root / "docs" / "spec" / "features"
 
-    for wrapper_path in sorted(features_dir.glob("*.yaml")):
-        canonical_spec_path = resolve_compatibility_wrapper_canonical_spec_path(
-            wrapper_path
-        )
-        assert canonical_spec_path is not None
-        assert canonical_spec_path.is_file(), (
-            f"{wrapper_path.name} must pair with canonical bundled spec "
-            f"{canonical_spec_path.relative_to(repo_root)}"
-        )
-
-
-def test_flat_compatibility_wrappers_mirror_canonical_plan_phases(
-    repo_root: Path,
-) -> None:
-    features_dir = repo_root / "docs" / "spec" / "features"
-
-    for wrapper_path in sorted(features_dir.glob("*.yaml")):
-        payload = yaml.safe_load(wrapper_path.read_text(encoding="utf-8"))
-        assert isinstance(payload, dict)
-        issues = compatibility_wrapper_plan_mirror_issues(wrapper_path, payload)
-        assert issues == []
+    assert sorted(features_dir.glob("*.yaml")) == []

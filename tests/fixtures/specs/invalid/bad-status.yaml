@@ -1,9 +1,0 @@
-id: FEAT-991
-title: Invalid status fixture
-type: feature
-expected_commit_subject: 'feat: invalid status fixture'
-status: doing
-priority: high
-objective: Verify invalid status gets rejected.
-acceptance:
-  - This fixture should fail schema validation.

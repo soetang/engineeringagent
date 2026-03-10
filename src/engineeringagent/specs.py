@@ -3,13 +3,10 @@ from __future__ import annotations
 from enum import Enum
 from pathlib import Path
 from typing import Any, Annotated, Literal, cast
-
-from typing_extensions import LiteralString
 from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
-    TypeAdapter,
     ValidationError,
     model_validator,
 )
@@ -20,7 +17,6 @@ from engineeringagent.json_schema import JSON_SCHEMA_DRAFT_URL
 from engineeringagent import spec_bundles as _spec_bundles
 
 PRIORITY_ORDER = {"high": 0, "medium": 1, "low": 2}
-ERR_DUP_SUBTASK_ID: LiteralString = "duplicate subtask id: {subtask_id}"
 FeaturePackagePaths = _spec_bundles.FeaturePackagePaths
 load_yaml = _spec_bundles.load_yaml
 dump_yaml = _spec_bundles.dump_yaml
@@ -33,12 +29,6 @@ resolve_feature_research_path = _spec_bundles.resolve_feature_research_path
 load_feature_plan_artifact = _spec_bundles.load_feature_plan_artifact
 feature_progress_kind = _spec_bundles.feature_progress_kind
 progress_kind_label = _spec_bundles.progress_kind_label
-resolve_compatibility_wrapper_canonical_spec_path = (
-    _spec_bundles.resolve_compatibility_wrapper_canonical_spec_path
-)
-compatibility_wrapper_plan_mirror_issues = (
-    _spec_bundles.compatibility_wrapper_plan_mirror_issues
-)
 _is_bundled_feature_spec_path = _spec_bundles.is_bundled_feature_spec_path
 _bundled_feature_artifact_issues = _spec_bundles.bundled_feature_artifact_issues
 
@@ -46,7 +36,6 @@ _bundled_feature_artifact_issues = _spec_bundles.bundled_feature_artifact_issues
 FeatureId = Annotated[
     str, Field(strict=True, min_length=1, pattern=r"^FEAT-[0-9]{3,}$")
 ]
-SubtaskId = Annotated[str, Field(strict=True, min_length=1, pattern=r"^ST-[0-9]{3,}$")]
 NonEmptyStr = Annotated[str, Field(strict=True, min_length=1)]
 StrictString = Annotated[str, Field(strict=True)]
 CommitSubject = Annotated[
@@ -306,58 +295,6 @@ def _effective_check_phase(
     return when.phase
 
 
-class SubtaskSpec(StrictContractModel):
-    """Schema for a single subtask within a feature spec."""
-
-    id: SubtaskId
-    title: NonEmptyStr
-    status: FeatureStatus
-    context: StrictString | None = None
-    constraints: list[StrictString] | None = None
-    verification: Annotated[list[StrictString], Field(min_length=1)]
-    attempts: Annotated[int, Field(strict=True, ge=0)] | None = None
-    last_error: StrictString | None = None
-    notes: list[StrictString] | None = None
-
-
-class FeatureSpec(StrictContractModel):
-    """Top-level schema for docs/spec/features/*.yaml."""
-
-    model_config = ConfigDict(extra="forbid", title="Agent Harness Feature")
-
-    id: FeatureId
-    title: NonEmptyStr
-    type: FeatureType
-    expected_commit_subject: CommitSubject
-    status: FeatureStatus
-    priority: FeaturePriority
-    objective: NonEmptyStr
-    context: StrictString | None = None
-    constraints: list[StrictString] | None = None
-    implementation_notes: StrictString | None = None
-    acceptance: Annotated[list[StrictString], Field(min_length=1)]
-    subtasks: list[SubtaskSpec] = Field(default_factory=list)
-    updated_at: StrictString | None = None
-
-    @model_validator(mode="after")
-    def enforce_invariants(self) -> FeatureSpec:
-        """Apply repository feature invariants in the model layer."""
-        errors, in_progress_count, done_count = _collect_subtask_state(self.subtasks)
-        errors.extend(
-            _feature_status_alignment_errors(
-                self.status,
-                len(self.subtasks),
-                in_progress_count,
-                done_count,
-            )
-        )
-
-        if errors:
-            raise ValidationError.from_exception_data(self.__class__.__name__, errors)
-
-        return self
-
-
 class FeatureArtifacts(StrictContractModel):
     """Deterministic artifact references for bundled feature packages."""
 
@@ -408,85 +345,6 @@ class FeaturePlanArtifact(StrictContractModel):
     phases: Annotated[list[PlanPhaseArtifact], Field(min_length=1)]
 
 
-FeatureSpecContract = FeatureSpec | BundledFeatureSpec
-
-
-def _collect_subtask_state(
-    subtasks: list[SubtaskSpec],
-) -> tuple[
-    list[InitErrorDetails],
-    int,
-    int,
-]:
-    errors: list[InitErrorDetails] = []
-    subtask_ids: set[str] = set()
-    in_progress_count = 0
-    done_count = 0
-
-    for idx, subtask in enumerate(subtasks):
-        if subtask.id in subtask_ids:
-            errors.append(
-                _init_error_detail(
-                    error=PydanticCustomError(
-                        "value_error",
-                        ERR_DUP_SUBTASK_ID,
-                        {"subtask_id": subtask.id},
-                    ),
-                    loc=("subtasks", idx, "id"),
-                    input_value=subtask.id,
-                )
-            )
-        subtask_ids.add(subtask.id)
-
-        if subtask.status == FeatureStatus.IN_PROGRESS:
-            in_progress_count += 1
-        if subtask.status == FeatureStatus.DONE:
-            done_count += 1
-
-    return (
-        errors,
-        in_progress_count,
-        done_count,
-    )
-
-
-def _feature_status_alignment_errors(
-    feature_status: FeatureStatus,
-    subtask_count: int,
-    in_progress_count: int,
-    done_count: int,
-) -> list[InitErrorDetails]:
-    errors: list[InitErrorDetails] = []
-    has_subtasks = subtask_count > 0
-    all_done = has_subtasks and done_count == subtask_count
-    any_in_progress = in_progress_count > 0
-
-    if feature_status == FeatureStatus.DONE and has_subtasks and not all_done:
-        errors.append(
-            _init_error_detail(
-                error=PydanticCustomError(
-                    "value_error", "feature status done requires all subtasks done"
-                ),
-                loc=("status",),
-                input_value=feature_status,
-            )
-        )
-
-    if any_in_progress and feature_status != FeatureStatus.IN_PROGRESS:
-        errors.append(
-            _init_error_detail(
-                error=PydanticCustomError(
-                    "value_error",
-                    "feature with in_progress subtask must be in_progress",
-                ),
-                loc=("status",),
-                input_value=feature_status,
-            )
-        )
-
-    return errors
-
-
 class ValidationIssue(StrictContractModel):
     """One contract validation issue emitted by strict model checks."""
 
@@ -496,18 +354,7 @@ class ValidationIssue(StrictContractModel):
 
 def feature_schema_from_model() -> dict[str, Any]:
     """Return feature schema generated from the Pydantic feature model."""
-    flat_schema = FeatureSpec.model_json_schema(mode="validation")
-    bundled_schema = BundledFeatureSpec.model_json_schema(mode="validation")
-    schema = TypeAdapter(FeatureSpecContract).json_schema(mode="validation")
-    merged_properties = dict(flat_schema["properties"])
-    for name, definition in bundled_schema["properties"].items():
-        merged_properties.setdefault(name, definition)
-    bundled_required = set(bundled_schema.get("required", []))
-    schema["type"] = "object"
-    schema["properties"] = merged_properties
-    schema["required"] = [
-        name for name in flat_schema.get("required", []) if name in bundled_required
-    ]
+    schema = BundledFeatureSpec.model_json_schema(mode="validation")
     schema["$schema"] = JSON_SCHEMA_DRAFT_URL
     return schema
 
@@ -564,18 +411,20 @@ def feature_contract_issues(
     Returns:
         Validation issues produced by strict Pydantic contract checks.
     """
-    model_type: type[BaseModel]
-    if _is_bundled_feature_spec_path(file_path):
-        model_type = BundledFeatureSpec
-    else:
-        model_type = FeatureSpec
+    if not _is_bundled_feature_spec_path(file_path):
+        return [
+            ValidationIssue(
+                path=str(file_path),
+                message="feature specs must use bundled spec.yaml entrypoints",
+            )
+        ]
 
     issues = _model_contract_issues(
-        model_type=model_type,
+        model_type=BundledFeatureSpec,
         payload=feature,
         file_path=file_path,
     )
-    if issues or not _is_bundled_feature_spec_path(file_path):
+    if issues:
         return issues
     return [*issues, *_bundled_feature_artifact_issues(feature, file_path)]
 

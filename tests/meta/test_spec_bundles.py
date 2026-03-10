@@ -10,31 +10,6 @@ from pydantic import BaseModel
 from engineeringagent import spec_bundles
 
 
-def _write_flat_feature(path: Path) -> dict[str, object]:
-    payload: dict[str, object] = {
-        "id": "FEAT-900",
-        "title": "Flat feature",
-        "type": "spec",
-        "expected_commit_subject": "spec: flat feature",
-        "status": "backlog",
-        "priority": "high",
-        "objective": "Exercise legacy subtask progress.",
-        "acceptance": ["Flat features keep subtask progress."],
-        "subtasks": [
-            {
-                "id": "ST-001",
-                "title": "Legacy unit",
-                "status": "backlog",
-                "context": "Legacy progress surface.",
-                "verification": ["uv run pytest -q"],
-            }
-        ],
-    }
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
-    return payload
-
-
 def _write_bundled_feature(feature_root: Path) -> tuple[Path, dict[str, object]]:
     spec_path = feature_root / "spec.yaml"
     spec_path.parent.mkdir(parents=True, exist_ok=True)
@@ -72,16 +47,10 @@ def _write_bundled_feature(feature_root: Path) -> tuple[Path, dict[str, object]]
 
 
 def test_feature_progress_kind_tracks_bundled_plan_artifacts(tmp_path: Path) -> None:
-    flat_feature_path = tmp_path / "docs" / "spec" / "features" / "FEAT-900-flat.yaml"
-    flat_feature_payload = _write_flat_feature(flat_feature_path)
     bundled_spec_path, bundled_feature_payload = _write_bundled_feature(
         tmp_path / "docs" / "spec" / "features" / "FEAT-181-bundled-feature-contract"
     )
 
-    assert (
-        spec_bundles.feature_progress_kind(flat_feature_path, flat_feature_payload)
-        == "subtask"
-    )
     assert (
         spec_bundles.feature_progress_kind(bundled_spec_path, bundled_feature_payload)
         == "phase"
@@ -125,7 +94,6 @@ def test_plan_artifact_issues_validate_plan_linkage_via_shared_module_import(
 
 def test_plan_artifact_issues_bootstraps_spec_contracts_when_registry_is_empty(
     tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     spec_path, feature_payload = _write_bundled_feature(
         tmp_path / "docs" / "spec" / "features" / "FEAT-181-bundled-feature-contract"
@@ -142,6 +110,7 @@ def test_bootstrap_spec_contracts_accepts_public_model_contract_hook(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     captured: dict[str, object] = {}
+
     class DummyModel(BaseModel):
         pass
 
@@ -194,123 +163,21 @@ def test_bootstrap_spec_contracts_accepts_public_model_contract_hook(
         spec_bundles.bootstrap_spec_contracts()
 
 
-def test_resolve_compatibility_wrapper_canonical_spec_path_points_to_bundle(
-    tmp_path: Path,
-) -> None:
-    wrapper_path = tmp_path / "docs" / "spec" / "features" / "FEAT-181-example.yaml"
-    canonical_root = tmp_path / "docs" / "spec" / "features" / "FEAT-181-example"
-    _write_flat_feature(wrapper_path)
-    _write_bundled_feature(canonical_root)
-
-    resolved = spec_bundles.resolve_compatibility_wrapper_canonical_spec_path(
-        wrapper_path
+def test_iter_feature_files_returns_only_bundled_specs(tmp_path: Path) -> None:
+    features_dir = tmp_path / "docs" / "spec" / "features"
+    bundled_spec_path, _payload = _write_bundled_feature(
+        features_dir / "FEAT-181-example"
+    )
+    (features_dir / "FEAT-181-example.yaml").write_text(
+        "id: FEAT-181\n",
+        encoding="utf-8",
     )
 
-    assert resolved == canonical_root / "spec.yaml"
+    assert spec_bundles.iter_feature_files(features_dir) == [bundled_spec_path]
 
 
-def test_resolve_compatibility_wrapper_canonical_spec_path_ignores_bundled_entrypoint(
-    tmp_path: Path,
-) -> None:
-    spec_path, _payload = _write_bundled_feature(
-        tmp_path / "docs" / "spec" / "features" / "FEAT-181-example"
-    )
-
-    resolved = spec_bundles.resolve_compatibility_wrapper_canonical_spec_path(
-        spec_path
-    )
-
-    assert resolved is None
-
-
-def test_compatibility_wrapper_plan_mirror_issues_report_title_and_verification_drift(
-    tmp_path: Path,
-) -> None:
-    wrapper_path = tmp_path / "docs" / "spec" / "features" / "FEAT-181-example.yaml"
-    canonical_root = tmp_path / "docs" / "spec" / "features" / "FEAT-181-example"
-    wrapper_payload = _write_flat_feature(wrapper_path)
-    _write_bundled_feature(canonical_root)
-
-    wrapper_payload["subtasks"] = [
-        {
-            "id": "ST-001",
-            "title": "Legacy unit",
-            "status": "backlog",
-            "context": "Legacy progress surface.",
-            "verification": ["uv run pytest -q tests/unit/test_legacy.py"],
-        }
-    ]
-    wrapper_path.write_text(
-        yaml.safe_dump(wrapper_payload, sort_keys=False), encoding="utf-8"
-    )
-
-    issues = spec_bundles.compatibility_wrapper_plan_mirror_issues(
-        wrapper_path,
-        wrapper_payload,
-    )
-
-    assert issues == [
-        (
-            "docs/spec/features/FEAT-181-example.yaml subtask ST-001 title "
-            "must mirror bundled phase P1 title"
-        ),
-        (
-            "docs/spec/features/FEAT-181-example.yaml subtask ST-001 status "
-            "must mirror bundled phase P1 status"
-        ),
-        (
-            "docs/spec/features/FEAT-181-example.yaml subtask ST-001 verification "
-            "must mirror bundled phase P1 verification"
-        ),
-    ]
-
-
-def test_compatibility_wrapper_plan_mirror_issues_report_status_drift(
-    tmp_path: Path,
-) -> None:
-    wrapper_path = tmp_path / "docs" / "spec" / "features" / "FEAT-181-example.yaml"
-    canonical_root = tmp_path / "docs" / "spec" / "features" / "FEAT-181-example"
-    wrapper_payload = _write_flat_feature(wrapper_path)
-    _write_bundled_feature(canonical_root)
-
-    wrapper_payload["subtasks"] = [
-        {
-            "id": "ST-001",
-            "title": "First phase",
-            "status": "in_progress",
-            "context": "Legacy progress surface.",
-            "verification": ["uv run pytest -q"],
-        }
-    ]
-    wrapper_path.write_text(
-        yaml.safe_dump(wrapper_payload, sort_keys=False), encoding="utf-8"
-    )
-
-    issues = spec_bundles.compatibility_wrapper_plan_mirror_issues(
-        wrapper_path,
-        wrapper_payload,
-    )
-
-    assert issues == [
-        (
-            "docs/spec/features/FEAT-181-example.yaml subtask ST-001 status "
-            "must mirror bundled phase P1 status"
+def test_feature_storage_root_rejects_flat_entrypoints() -> None:
+    with pytest.raises(ValueError, match="bundled spec.yaml"):
+        spec_bundles.feature_storage_root(
+            Path("docs/spec/features/FEAT-181-example.yaml")
         )
-    ]
-
-
-@pytest.mark.parametrize(
-    ("progress_kind", "expected"),
-    [
-        pytest.param(None, "subtask", id="missing"),
-        pytest.param("feature", "implementation step", id="feature"),
-        pytest.param("phase", "phase", id="phase"),
-        pytest.param("subtask", "subtask", id="subtask"),
-        pytest.param("unexpected", "subtask", id="fallback"),
-    ],
-)
-def test_progress_kind_label_normalizes_unknown_values(
-    progress_kind: str | None,
-    expected: str,
-) -> None:
-    assert spec_bundles.progress_kind_label(progress_kind) == expected

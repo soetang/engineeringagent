@@ -204,6 +204,7 @@ def run_repo_validation(
         project_root=project_root,
     )
 
+    _append_flat_feature_entrypoint_issues(messages, features_dir)
     _append_unsupported_done_active_file_issues(messages, features_dir, project_root)
     append_feature_id_invariant_issues(
         messages,
@@ -224,6 +225,16 @@ def run_repo_validation(
     _append_done_feature_issues(messages, done_files)
     _append_potential_features_issues(messages, potential_features_path)
     append_purge_invariant_issues(messages, project_root=project_root)
+
+
+def _append_flat_feature_entrypoint_issues(
+    messages: list[str],
+    features_dir: Path,
+) -> None:
+    for file_path in sorted(features_dir.glob("*.yaml")):
+        messages.append(
+            f"{file_path}: feature specs must use bundled spec.yaml entrypoints"
+        )
 
 
 def _append_active_feature_issues(
@@ -254,19 +265,6 @@ def _append_multiline_verification_command_issues(
     feature: dict[str, object],
     file_path: Path,
 ) -> None:
-    subtasks = feature.get("subtasks")
-    if isinstance(subtasks, list):
-        for subtask_index, subtask in enumerate(subtasks):
-            if not isinstance(subtask, dict):
-                continue
-            verification = subtask.get("verification")
-            _append_multiline_command_messages(
-                messages,
-                verification=verification,
-                file_path=file_path,
-                field_path=f"subtasks[{subtask_index}].verification",
-            )
-
     plan_path = resolve_feature_plan_path(file_path, feature)
     if plan_path is None or not plan_path.is_file():
         return

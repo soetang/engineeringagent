@@ -160,127 +160,19 @@ def iter_feature_files(features_dir: Path) -> list[Path]:
     if not features_dir.exists():
         return []
 
-    flat_specs = list(features_dir.glob("*.yaml"))
-    bundled_specs = [
+    return [
         child / "spec.yaml"
         for child in sorted(features_dir.iterdir())
         if child.is_dir() and (child / "spec.yaml").is_file()
     ]
-    return sorted([*flat_specs, *bundled_specs], key=lambda path: path.as_posix())
-
-
-def resolve_compatibility_wrapper_canonical_spec_path(
-    feature_path: Path,
-) -> Path | None:
-    """Return the bundled spec paired with a flat compatibility wrapper."""
-
-    if is_bundled_feature_spec_path(feature_path) or feature_path.suffix != ".yaml":
-        return None
-    return feature_path.with_suffix("") / "spec.yaml"
-
-
-def _load_compatibility_wrapper_plan_phases(
-    feature_path: Path,
-    feature: dict[str, Any] | None,
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]]] | None:
-    """Return wrapper subtasks and bundled plan phases when available."""
-
-    canonical_spec_path = resolve_compatibility_wrapper_canonical_spec_path(feature_path)
-    if canonical_spec_path is None or not canonical_spec_path.is_file():
-        return None
-    if not isinstance(feature, dict):
-        return None
-
-    subtasks = feature.get("subtasks")
-    if not isinstance(subtasks, list):
-        return None
-
-    canonical_feature = load_yaml(canonical_spec_path)
-    plan_path = resolve_feature_plan_path(canonical_spec_path, canonical_feature)
-    if plan_path is None or not plan_path.is_file():
-        return None
-
-    raw_phases = load_markdown_frontmatter(plan_path).get("phases")
-    if not isinstance(raw_phases, list):
-        return None
-
-    phases = [phase for phase in raw_phases if isinstance(phase, dict)]
-    return subtasks, phases
-
-
-def _wrapper_label(feature_path: Path) -> str:
-    """Return a repo-relative label for wrapper validation messages."""
-
-    parts = feature_path.parts
-    if "docs" not in parts:
-        return feature_path.as_posix()
-    docs_index = parts.index("docs")
-    return Path(*parts[docs_index:]).as_posix()
-
-
-def _compatibility_wrapper_phase_issues(
-    wrapper_label: str,
-    subtask: dict[str, Any],
-    phase: dict[str, Any],
-) -> list[str]:
-    """Compare one wrapper subtask against one bundled plan phase."""
-
-    issues: list[str] = []
-    subtask_id = subtask.get("id")
-    phase_id = phase.get("id")
-    label = (
-        f"{wrapper_label} subtask {subtask_id}"
-        if isinstance(subtask_id, str)
-        else f"{wrapper_label} subtask"
-    )
-
-    if subtask.get("title") != phase.get("title"):
-        issues.append(f"{label} title must mirror bundled phase {phase_id} title")
-
-    if subtask.get("status") != phase.get("status"):
-        issues.append(f"{label} status must mirror bundled phase {phase_id} status")
-
-    if subtask.get("verification") != phase.get("verification"):
-        issues.append(
-            f"{label} verification must mirror bundled phase {phase_id} verification"
-        )
-    return issues
-
-
-def compatibility_wrapper_plan_mirror_issues(
-    feature_path: Path,
-    feature: dict[str, Any] | None,
-) -> list[str]:
-    """Report drift between a flat compatibility wrapper and its bundled plan."""
-
-    wrapper_plan = _load_compatibility_wrapper_plan_phases(feature_path, feature)
-    if wrapper_plan is None:
-        return []
-
-    subtasks, phases = wrapper_plan
-    wrapper_label = _wrapper_label(feature_path)
-    issues: list[str] = []
-    if len(subtasks) != len(phases):
-        issues.append(
-            f"{wrapper_label} subtasks must mirror bundled plan phase count"
-        )
-        return issues
-
-    for subtask, phase in zip(subtasks, phases, strict=True):
-        if not isinstance(subtask, dict):
-            issues.append(f"{wrapper_label} subtasks must be mappings")
-            continue
-        issues.extend(_compatibility_wrapper_phase_issues(wrapper_label, subtask, phase))
-
-    return issues
 
 
 def feature_storage_root(feature_path: Path) -> Path:
     """Return the file-or-directory root moved for a feature entrypoint."""
 
-    if is_bundled_feature_spec_path(feature_path):
-        return feature_path.parent
-    return feature_path
+    if not is_bundled_feature_spec_path(feature_path):
+        raise ValueError("feature entrypoints must use bundled spec.yaml paths")
+    return feature_path.parent
 
 
 def resolve_feature_package_paths(
@@ -288,7 +180,7 @@ def resolve_feature_package_paths(
     done_dir: Path,
     feature_path: Path,
 ) -> FeaturePackagePaths:
-    """Resolve active/archive roots for a flat or bundled feature entrypoint."""
+    """Resolve active/archive roots for a bundled feature entrypoint."""
 
     active_spec_path = feature_path.resolve()
     active_root = feature_storage_root(active_spec_path)
@@ -297,12 +189,8 @@ def resolve_feature_package_paths(
             "completed feature archive source must be under docs/spec/features"
         )
 
-    if is_bundled_feature_spec_path(active_spec_path):
-        archive_root = done_dir / active_root.name
-        archive_spec_path = archive_root / active_spec_path.name
-    else:
-        archive_root = done_dir / active_root.name
-        archive_spec_path = archive_root
+    archive_root = done_dir / active_root.name
+    archive_spec_path = archive_root / active_spec_path.name
 
     return FeaturePackagePaths(
         active_root=active_root,
@@ -562,13 +450,9 @@ def feature_progress_kind(
 ) -> str:
     """Return the progress surface kind used for a feature."""
 
-    if is_bundled_feature_spec_path(spec_path):
-        if resolve_feature_plan_path(spec_path, feature) is not None:
-            return "phase"
-        return "feature"
     if resolve_feature_plan_path(spec_path, feature) is not None:
         return "phase"
-    return "subtask"
+    return "feature"
 
 
 def progress_kind_label(progress_kind: str | None) -> str:
@@ -576,6 +460,4 @@ def progress_kind_label(progress_kind: str | None) -> str:
 
     if progress_kind == "phase":
         return "phase"
-    if progress_kind == "feature":
-        return "implementation step"
-    return "subtask"
+    return "implementation step"
