@@ -78,3 +78,16 @@ def test_legacy_repository_adapter_module_paths_deleted() -> None:
         "expected legacy repository adapter modules to be deleted:\n"
         + "\n".join(existing)
     )
+
+
+def test_legacy_application_implementation_prompt_module_path_deleted() -> None:
+    """Legacy implementation prompt helper module stays deleted."""
+    repo_root = Path(__file__).resolve().parents[2]
+    legacy_path = (
+        repo_root / "src" / "engineeringagent" / "application" / "implementation_prompt.py"
+    )
+
+    assert not legacy_path.exists(), (
+        "expected legacy application helper module to be deleted: "
+        f"{legacy_path.relative_to(repo_root).as_posix()}"
+    )

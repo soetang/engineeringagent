@@ -6,10 +6,6 @@ from .checks_service import (
     RunChecksRequest,
     RunChecksResult,
 )
-from .implementation_prompt import (
-    build_implementation_prompt,
-    build_implementation_prompt_request,
-)
 from .progress_units import (
     ProgressUnit,
     current_progress_unit,
@@ -37,6 +33,8 @@ from .prompt_builder import (
     PromptBuilder,
     PromptArtifactPaths,
     PromptProgressKind,
+    build_implementation_prompt,
+    build_implementation_prompt_request,
     build_selector_prompt,
     inject_feedback,
 )
