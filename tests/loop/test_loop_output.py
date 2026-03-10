@@ -33,13 +33,14 @@ from engineeringagent.loop_runtime.telemetry import (
 from engineeringagent.progress.handoff import (
     ImplementProgressEnvelope,
     HandoffRenderMetadata,
-    append_handoff_markdown_entry,
     render_handoff_markdown_entry,
     parse_implement_progress_envelope,
 )
+from engineeringagent.adapters.progress import FilesystemProgressJournal
 
 
 _PROGRESS_ROOT_PARTS = (".engineeringagent", "progress")
+_PROGRESS_JOURNAL = FilesystemProgressJournal()
 
 
 def _progress_root(project_root: Path) -> Path:
@@ -103,14 +104,16 @@ def test_handoff_markdown_append_creates_file_and_appends_entries(
     tmp_path: Path,
 ) -> None:
     handoff_path = _progress_root(tmp_path) / "features" / "FEAT-130" / "handoff.md"
-    append_handoff_markdown_entry(
-        handoff_path=handoff_path,
+    _PROGRESS_JOURNAL.append_handoff_entry(
+        project_root=tmp_path,
+        feature_id="FEAT-130",
         entry_lines=["## Iteration 4 - 2026-02-25T07:00:00Z", "", "Summary: first"],
     )
     first_size = handoff_path.stat().st_size
 
-    append_handoff_markdown_entry(
-        handoff_path=handoff_path,
+    _PROGRESS_JOURNAL.append_handoff_entry(
+        project_root=tmp_path,
+        feature_id="FEAT-130",
         entry_lines=["## Iteration 5 - 2026-02-25T07:01:00Z", "", "Summary: second"],
     )
     second_size = handoff_path.stat().st_size

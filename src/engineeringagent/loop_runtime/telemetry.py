@@ -7,8 +7,8 @@ import time
 from pathlib import Path
 from typing import Any, Callable, Sequence
 
+from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.progress import handoff as progress_handoff
-from engineeringagent.progress import logging as progress_logging
 from engineeringagent.progress import paths as progress_paths
 
 from .models import CommandTiming, IterationTelemetryInputs, PhaseTiming
@@ -24,13 +24,24 @@ def _strip_feedback_context_blocks(text: str) -> str:
     return FEEDBACK_CONTEXT_BLOCK_RE.sub("", text)
 
 
-def append_run(log_path: Path, payload: dict[str, Any]) -> None:
+_PROGRESS_JOURNAL = FilesystemProgressJournal()
+
+
+def append_run(project_root: Path, payload: dict[str, Any]) -> None:
     """Append one loop telemetry record as JSONL."""
-    progress_logging.append_jsonl_record(log_path=log_path, payload=payload)
+    _PROGRESS_JOURNAL.append_run_record(project_root=project_root, payload=payload)
 
 
-def _append_feature_progress_log(log_path: Path, lines: Sequence[str]) -> None:
-    progress_logging.append_text_block(log_path=log_path, lines=lines)
+def _append_feature_progress_log(
+    project_root: Path,
+    feature_id: str,
+    lines: Sequence[str],
+) -> None:
+    _PROGRESS_JOURNAL.append_feature_log(
+        project_root=project_root,
+        feature_id=feature_id,
+        lines=lines,
+    )
 
 
 def _truncate_feedback(text: str, max_chars: int = 8_000) -> str:
@@ -152,10 +163,6 @@ def write_iteration_telemetry(  # noqa: C901
     """Persist telemetry JSONL and per-feature progress log for one iteration."""
     project_root = telemetry_inputs.iteration_inputs.project_root
     feature_id = telemetry_inputs.feature_id or "unknown-feature"
-    runs_log = progress_paths.runs_jsonl_path(project_root)
-    feature_progress_log_path = progress_paths.run_feature_log_path(
-        project_root, feature_id
-    )
     feature_progress_log_reference = progress_paths.run_feature_log_reference(
         project_root, feature_id
     )
@@ -278,10 +285,11 @@ def write_iteration_telemetry(  # noqa: C901
             f"detail={_truncate_feedback(telemetry_inputs.feedback)}"
         )
     _append_feature_progress_log(
-        feature_progress_log_path,
+        project_root,
+        feature_id,
         [_strip_ansi(line) for line in feature_progress_log_lines],
     )
-    append_run(runs_log, run_payload)
+    append_run(project_root, run_payload)
     _append_feature_handoff_markdown(
         telemetry_inputs=telemetry_inputs,
         feature_id=feature_id,
@@ -319,7 +327,8 @@ def _append_feature_handoff_markdown(
             progress_title=telemetry_inputs.progress_title,
         ),
     )
-    progress_handoff.append_handoff_markdown_entry(
-        handoff_path=progress_paths.handoff_markdown_path(project_root, feature_id),
+    _PROGRESS_JOURNAL.append_handoff_entry(
+        project_root=project_root,
+        feature_id=feature_id,
         entry_lines=entry_lines,
     )

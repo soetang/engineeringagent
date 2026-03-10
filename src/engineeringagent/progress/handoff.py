@@ -3,13 +3,10 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from engineeringagent.spec_bundles import progress_kind_label
-
-from . import logging as progress_logging
 
 _FALLBACK_SUMMARY = (
     "Structured handoff output unavailable; recorded deterministic fallback."
@@ -173,16 +170,6 @@ def render_handoff_markdown_entry(
     for title, items in sections:
         lines.extend(_render_markdown_section(title, items))
     return lines
-
-
-def append_handoff_markdown_entry(
-    *, handoff_path: Path, entry_lines: list[str]
-) -> None:
-    """Append one rendered markdown handoff entry to the feature handoff file."""
-
-    progress_logging.append_text_block(log_path=handoff_path, lines=entry_lines)
-
-
 def _render_markdown_section(title: str, items: list[str]) -> list[str]:
     rendered_items = [item for item in items if not _is_placeholder_item(item)]
     if not rendered_items:

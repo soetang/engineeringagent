@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.application import (
     DefaultChecksService,
     DefaultGuidanceService,
@@ -24,3 +25,4 @@ def test_app_factory_builds_default_application_services(tmp_path: Path) -> None
     assert isinstance(factory.build_checks_service(), DefaultChecksService)
     assert isinstance(factory.build_guidance_service(), DefaultGuidanceService)
     assert isinstance(factory.build_validation_service(), DefaultValidationService)
+    assert isinstance(factory.build_progress_journal(), FilesystemProgressJournal)

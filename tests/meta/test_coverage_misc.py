@@ -12,8 +12,11 @@ from typing import Any
 
 import pytest
 
+from engineeringagent.adapters.progress.filesystem_journal import (
+    _get_or_create_file_logger,
+    _logger_name_for_path,
+)
 from engineeringagent.checks import on_change_matcher
-from engineeringagent.progress import logging as progress_logging
 from engineeringagent.agents.backends.opencode import client as opencode_client
 
 
@@ -70,14 +73,14 @@ def test_opencode_start_agent_includes_optional_session_and_format(
 def test_progress_logging_skips_non_file_handlers(tmp_path: Path) -> None:
     log_path = tmp_path / "progress" / "runs.jsonl"
     namespace = "engineeringagent.progress.runs"
-    logger_name = progress_logging._logger_name_for_path(
+    logger_name = _logger_name_for_path(
         namespace=namespace, log_path=log_path
     )
     logger = logging.getLogger(logger_name)
     logger.handlers.clear()
     logger.addHandler(logging.StreamHandler())
 
-    resolved = progress_logging._get_or_create_file_logger(
+    resolved = _get_or_create_file_logger(
         namespace=namespace,
         log_path=log_path,
     )

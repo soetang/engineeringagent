@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 from typing import Any, Protocol
 
+from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.adapters.prompts import ProjectPromptDefinitionRepository
 from engineeringagent.application import (
     DefaultPromptBuilder,
@@ -24,7 +25,6 @@ from engineeringagent.agents import (
 from engineeringagent.loop_runtime.models import ImplementStepInputs
 from engineeringagent.loop_runtime.models import ImplementStepResult
 from engineeringagent.progress import handoff as progress_handoff
-from engineeringagent.progress import logging as progress_logging
 from engineeringagent.progress import paths as progress_paths
 from engineeringagent.specs import (
     feature_progress_kind,
@@ -41,6 +41,9 @@ class StructuredImplementAgentRunner(Protocol):
         *,
         output_type: type[progress_handoff.ImplementProgressEnvelope],
     ) -> Any: ...
+
+
+_PROGRESS_JOURNAL = FilesystemProgressJournal()
 
 
 def run_implement_step_from_inputs(
@@ -227,13 +230,14 @@ def _build_implement_prompt(
     prompt_builder: PromptBuilder,
 ) -> str:
     handoff_path = None
-    if progress_paths.handoff_markdown_path(
-        implement_inputs.project_root,
-        _feature_id_for_prompt(implement_inputs.feature),
-    ).is_file():
+    feature_id = _feature_id_for_prompt(implement_inputs.feature)
+    if _PROGRESS_JOURNAL.latest_handoff_path(
+        project_root=implement_inputs.project_root,
+        feature_id=feature_id,
+    ):
         handoff_path = progress_paths.handoff_markdown_reference(
             implement_inputs.project_root,
-            _feature_id_for_prompt(implement_inputs.feature),
+            feature_id,
         )
 
     request = build_implementation_prompt_request(
@@ -262,8 +266,9 @@ def _ensure_progress_artifacts(implement_inputs: ImplementStepInputs) -> None:
     progress_paths.runs_jsonl_path(project_root).touch(exist_ok=True)
 
     timestamp = progress_handoff.now_iso()
-    progress_logging.append_text_block(
-        log_path=progress_paths.run_feature_log_path(project_root, feature_id),
+    _PROGRESS_JOURNAL.append_feature_log(
+        project_root=project_root,
+        feature_id=feature_id,
         lines=[
             (
                 f"ts={timestamp} === IMPLEMENT START feature_id={feature_id} "
