@@ -25,6 +25,12 @@ from .guidance_service import (
     GuidanceResult,
     GuidanceService,
 )
+from .validation_service import (
+    DefaultValidationService,
+    ValidateRepositoryRequest,
+    ValidationResult,
+    ValidationService,
+)
 from .prompt_builder import (
     DefaultPromptBuilder,
     ImplementationPromptRequest,
@@ -40,6 +46,7 @@ __all__ = [
     "DefaultChecksService",
     "DefaultGuidanceService",
     "DefaultPromptBuilder",
+    "DefaultValidationService",
     "GuidanceInputError",
     "GuidanceQuery",
     "GuidanceResult",
@@ -51,6 +58,9 @@ __all__ = [
     "PromptProgressKind",
     "RunChecksRequest",
     "RunChecksResult",
+    "ValidateRepositoryRequest",
+    "ValidationResult",
+    "ValidationService",
     "build_implementation_prompt",
     "build_implementation_prompt_request",
     "build_selector_prompt",

@@ -14,6 +14,7 @@ from engineeringagent import cli as cli_module
 from engineeringagent.cli import init as cli_init_module
 from engineeringagent.cli import run as cli_run_module
 from engineeringagent.cli import schema as cli_schema_module
+from engineeringagent.cli import validate as cli_validate_module
 from engineeringagent.config import (
     resolve_docs_root,
 )
@@ -285,21 +286,17 @@ def test_main_validate_command_reports_ok_via_real_cli(
 ) -> None:
     observed: dict[str, object] = {}
 
-    def _fake_run_checks(
-        project_root: str | Path,
-        *,
-        phase: str,
-        checks: list[str] | None = None,
-        schema_only: bool = False,
-        **_: object,
-    ) -> Any:
-        observed["project_root"] = str(Path(project_root))
-        observed["phase"] = phase
-        observed["checks"] = checks
-        observed["schema_only"] = schema_only
-        return SimpleNamespace(ok=True, output="")
+    class _FakeValidationService:
+        def run(self, request: Any) -> Any:
+            observed["project_root"] = str(request.project_root)
+            observed["schema_only"] = request.schema_only
+            return SimpleNamespace(ok=True, messages=())
 
-    monkeypatch.setattr(cli_module.checks_module, "run_checks", _fake_run_checks)
+    monkeypatch.setattr(
+        cli_validate_module,
+        "DefaultValidationService",
+        _FakeValidationService,
+    )
 
     result = _invoke_cli(
         [
@@ -314,8 +311,6 @@ def test_main_validate_command_reports_ok_via_real_cli(
     assert result.stdout == "spec validation: ok\n"
     assert observed == {
         "project_root": str(tmp_path.resolve()),
-        "phase": "manual",
-        "checks": ["validate"],
         "schema_only": True,
     }
 
@@ -762,28 +757,24 @@ def test_validate_allows_custom_agents_content(tmp_path: Path, capsys: Any) -> N
     assert "AGENTS docs bootstrap contract" not in output
 
 
-def test_cmd_validate_delegates_to_run_checks(
+def test_cmd_validate_uses_validation_service(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: Any,
 ) -> None:
     recorded: dict[str, object] = {}
 
-    def _fake_run_checks(
-        project_root: str | Path,
-        *,
-        phase: str,
-        checks: list[str] | None = None,
-        schema_only: bool = False,
-        **_: object,
-    ) -> Any:
-        recorded["project_root"] = str(project_root)
-        recorded["phase"] = phase
-        recorded["checks"] = checks
-        recorded["schema_only"] = schema_only
-        return SimpleNamespace(ok=True, output="")
+    class _FakeValidationService:
+        def run(self, request: Any) -> Any:
+            recorded["project_root"] = str(request.project_root)
+            recorded["schema_only"] = request.schema_only
+            return SimpleNamespace(ok=True, messages=())
 
-    monkeypatch.setattr("engineeringagent.checks.run_checks", _fake_run_checks)
+    monkeypatch.setattr(
+        cli_validate_module,
+        "DefaultValidationService",
+        _FakeValidationService,
+    )
 
     code = cli_module.cmd_validate(
         SimpleNamespace(project_root=str(tmp_path), schema_only=True)
@@ -793,9 +784,7 @@ def test_cmd_validate_delegates_to_run_checks(
     assert code == 0
     assert "spec validation: ok" in output
     assert recorded == {
-        "project_root": str(tmp_path),
-        "phase": "manual",
-        "checks": ["validate"],
+        "project_root": str(tmp_path.resolve()),
         "schema_only": True,
     }
 

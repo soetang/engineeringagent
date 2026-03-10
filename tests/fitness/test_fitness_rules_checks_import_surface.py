@@ -110,6 +110,31 @@ def test_checker_allows_importing_shared_loader_from_top_level_checks(
     assert not checker._collect_violations(tmp_path)
 
 
+def test_checker_allows_importing_top_level_validation_entrypoint(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    checker = _load_checker_module(repo_root)
+
+    src_root = tmp_path / "src" / "engineeringagent"
+    src_root.mkdir(parents=True)
+    (src_root / "__init__.py").write_text("", encoding="utf-8")
+    (src_root / "ok_validate.py").write_text(
+        "\n".join(
+            [
+                "from engineeringagent.checks import validate_repository",
+                "\n",
+                "def run() -> None:",
+                "    _ = validate_repository",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    assert not checker._collect_violations(tmp_path)
+
+
 def test_checker_allows_importing_checks_group_helpers_from_top_level_checks(
     tmp_path: Path,
     repo_root: Path,

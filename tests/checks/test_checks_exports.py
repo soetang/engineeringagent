@@ -23,6 +23,7 @@ from engineeringagent.checks import (
     reviewer_decision_schema_from_model,
     reviewers_group_selected,
     run_checks,
+    validate_repository,
 )
 from engineeringagent.checks.results import ChecksRunResult as ChecksRunResultModel
 from engineeringagent.checks.fitness.contracts import (
@@ -46,6 +47,7 @@ def test_checks_supported_exports_are_importable() -> None:
     assert callable(render_fitness_catalog)
     assert callable(custom_rule_manifest_schema_from_model)
     assert callable(reviewer_decision_schema_from_model)
+    assert callable(validate_repository)
     assert ChecksRunResult is not None
     assert HarnessCheckPhase.ITERATION_END.value == "iteration_end"
     assert set(checks.__all__) == {
@@ -63,6 +65,7 @@ def test_checks_supported_exports_are_importable() -> None:
         "reviewer_decision_schema_from_model",
         "reviewers_group_selected",
         "run_checks",
+        "validate_repository",
     }
 
 

@@ -41,6 +41,7 @@ __all__ = [
     "reviewer_decision_schema_from_model",
     "reviewers_group_selected",
     "run_checks",
+    "validate_repository",
 ]
 
 
@@ -55,6 +56,17 @@ def run_checks(
 
     runtime = import_module("engineeringagent.checks.api")
     return runtime.run_checks(project_root, phase=phase, checks=checks, **kwargs)
+
+
+def validate_repository(
+    project_root: Path,
+    *,
+    schema_only: bool = False,
+) -> list[str]:
+    """Proxy to repository validation without importing checks internals at init."""
+
+    validator = import_module("engineeringagent.checks.validate.validator")
+    return validator.validate(project_root=project_root, schema_only=schema_only)
 
 
 def load_harness_checks_document(
