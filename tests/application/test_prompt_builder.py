@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 from pathlib import Path
 
 import yaml
@@ -169,3 +170,31 @@ def test_default_prompt_builder_renders_explicit_plan_and_research_paths(
     assert f"- specification: {feature_path}" in prompt
     assert f"- plan: {feature_path.parent / 'plan.md'}" in prompt
     assert f"- research: {feature_path.parent / 'research.md'}" in prompt
+
+
+def test_application_prompt_builder_does_not_import_prompt_adapters() -> None:
+    """Keep prompt-template adapter wiring out of the application layer."""
+
+    module_path = (
+        Path(__file__).resolve().parents[2]
+        / "src"
+        / "engineeringagent"
+        / "application"
+        / "prompt_builder.py"
+    )
+    tree = ast.parse(module_path.read_text(encoding="utf-8"), filename=str(module_path))
+
+    imported_modules = {
+        alias.name
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Import)
+        for alias in node.names
+    }
+    imported_from_modules = {
+        node.module
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ImportFrom) and node.module is not None
+    }
+
+    assert "engineeringagent.adapters.prompts" not in imported_modules
+    assert "engineeringagent.adapters.prompts" not in imported_from_modules

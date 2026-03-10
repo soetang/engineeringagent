@@ -9,7 +9,6 @@ from typing import Any, Mapping, Protocol
 
 from pydantic import ValidationError
 
-from engineeringagent.adapters.prompts import BundledPromptDefinitionRepository
 from engineeringagent.loop_runtime.progress_units import current_progress_unit
 from engineeringagent.ports import PromptDefinitionRepository
 from engineeringagent.prompt_feedback import normalize_prompt_feedback
@@ -78,7 +77,11 @@ class DefaultPromptBuilder:
             progress_context_instruction=_progress_context_instruction(progress_kind),
             progress_update_instruction=_progress_update_instruction(progress_kind),
         )
-        return inject_feedback(prompt, request.feedback)
+        return inject_feedback(
+            prompt,
+            request.feedback,
+            prompt_definitions=self._prompt_definitions,
+        )
 
 
 def build_implementation_prompt(
@@ -107,7 +110,12 @@ def build_implementation_prompt(
     )
 
 
-def inject_feedback(prompt: str, feedback: str | None) -> str:
+def inject_feedback(
+    prompt: str,
+    feedback: str | None,
+    *,
+    prompt_definitions: PromptDefinitionRepository,
+) -> str:
     """Append canonical feedback block to a prompt."""
 
     if not feedback:
@@ -118,7 +126,7 @@ def inject_feedback(prompt: str, feedback: str | None) -> str:
         return prompt
 
     feedback_template = _load_template(
-        BundledPromptDefinitionRepository(),
+        prompt_definitions,
         "loop_feedback",
     )
     return prompt + feedback_template.substitute(

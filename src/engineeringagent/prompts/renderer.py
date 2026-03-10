@@ -50,7 +50,11 @@ def build_selector_prompt(pending: Sequence[tuple[Path, Mapping[str, Any]]]) -> 
 def inject_feedback(prompt: str, feedback: str | None) -> str:
     """Compatibility facade for application-owned feedback injection."""
 
-    return _inject_feedback(prompt, feedback)
+    return _inject_feedback(
+        prompt,
+        feedback,
+        prompt_definitions=_default_prompt_definitions(),
+    )
 
 
 def build_implementation_prompt(
