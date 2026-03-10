@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 
+from ..adapters.guidance import PackagedGuidanceTopicRepository
 from ..application import (
     DefaultGuidanceService,
     GuidanceInputError,
@@ -12,7 +13,7 @@ from ..approach import UnknownApproachIdError
 from .output import emit_markdown_output, resolve_optional_path
 
 _HandlerArgs = SimpleNamespace
-_GUIDANCE_SERVICE = DefaultGuidanceService()
+_GUIDANCE_SERVICE = DefaultGuidanceService(PackagedGuidanceTopicRepository())
 
 
 def cmd_approach_overview(args: _HandlerArgs) -> int:

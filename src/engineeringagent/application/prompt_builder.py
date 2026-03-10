@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
 from string import Template
 from typing import Any, Mapping, Protocol
 
-from pydantic import ValidationError
+from pydantic import BaseModel, ConfigDict, ValidationError
 
 from engineeringagent.ports import PromptDefinitionRepository
 from engineeringagent.prompt_feedback import normalize_prompt_feedback
@@ -17,14 +16,23 @@ from engineeringagent.prompts.feedback_envelope import (
 )
 
 
-@dataclass(frozen=True)
-class ImplementationPromptRequest:
+class PromptArtifactPaths(BaseModel):
+    """Explicit prompt artifact references resolved before rendering."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    specification: Path
+    plan: str | None = None
+    research: str | None = None
+
+
+class ImplementationPromptRequest(BaseModel):
     """Typed input for implementation prompt rendering."""
 
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
     feature: Mapping[str, Any]
-    feature_path: Path
-    plan_path: str | None
-    research_path: str | None
+    artifacts: PromptArtifactPaths
     handoff_path: str
     feedback: str | None
     progress_kind: str
@@ -52,7 +60,7 @@ class DefaultPromptBuilder:
             "loop_implementation",
         )
         prompt = implementation_template.substitute(
-            feature_path=str(request.feature_path),
+            feature_path=str(request.artifacts.specification),
             artifact_paths=_artifact_paths_prompt_block(request),
             feature_id=str(request.feature.get("id", "unknown-feature")),
             handoff_path=request.handoff_path,
@@ -122,11 +130,14 @@ def _normalize_feedback(feedback: str) -> str:
 
 
 def _artifact_paths_prompt_block(request: ImplementationPromptRequest) -> str:
-    lines = ["Read and follow these files:", f"- specification: {request.feature_path}"]
-    if request.plan_path:
-        lines.append(f"- plan: {request.plan_path}")
-    if request.research_path:
-        lines.append(f"- research: {request.research_path}")
+    lines = [
+        "Read and follow these files:",
+        f"- specification: {request.artifacts.specification}",
+    ]
+    if request.artifacts.plan:
+        lines.append(f"- plan: {request.artifacts.plan}")
+    if request.artifacts.research:
+        lines.append(f"- research: {request.artifacts.research}")
     return "\n".join(lines)
 
 

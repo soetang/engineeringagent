@@ -9,6 +9,7 @@ from engineeringagent.adapters.prompts import BundledPromptDefinitionRepository
 from engineeringagent.application import (
     DefaultPromptBuilder,
     ImplementationPromptRequest,
+    PromptArtifactPaths,
     build_implementation_prompt,
     build_implementation_prompt_request,
 )
@@ -55,9 +56,7 @@ def test_default_prompt_builder_renders_bundled_phase_prompt(tmp_path: Path) -> 
     prompt = _prompt_builder().build_implementation_prompt(
         ImplementationPromptRequest(
             feature=feature,
-            feature_path=feature_path,
-            plan_path=None,
-            research_path=None,
+            artifacts=PromptArtifactPaths(specification=feature_path),
             handoff_path=".engineeringagent/progress/features/FEAT-900/handoff.md",
             feedback=None,
             progress_kind="phase",
@@ -128,9 +127,7 @@ def test_default_prompt_builder_uses_explicit_handoff_path_input(
     prompt = _prompt_builder().build_implementation_prompt(
         ImplementationPromptRequest(
             feature=feature,
-            feature_path=feature_path,
-            plan_path=None,
-            research_path=None,
+            artifacts=PromptArtifactPaths(specification=feature_path),
             handoff_path="custom/handoff-reference.md",
             feedback=None,
             progress_kind="subtask",
@@ -160,9 +157,11 @@ def test_default_prompt_builder_renders_explicit_plan_and_research_paths(
     prompt = _prompt_builder().build_implementation_prompt(
         ImplementationPromptRequest(
             feature=feature,
-            feature_path=feature_path,
-            plan_path=str(feature_path.parent / "plan.md"),
-            research_path=str(feature_path.parent / "research.md"),
+            artifacts=PromptArtifactPaths(
+                specification=feature_path,
+                plan=str(feature_path.parent / "plan.md"),
+                research=str(feature_path.parent / "research.md"),
+            ),
             handoff_path=".engineeringagent/progress/features/FEAT-900/handoff.md",
             feedback=None,
             progress_kind="phase",

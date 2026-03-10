@@ -15,6 +15,7 @@ from .prompt_builder import (
     DefaultPromptBuilder,
     ImplementationPromptRequest,
     PromptBuilder,
+    PromptArtifactPaths,
     inject_feedback,
 )
 
@@ -27,6 +28,7 @@ __all__ = [
     "GuidanceService",
     "ImplementationPromptRequest",
     "PromptBuilder",
+    "PromptArtifactPaths",
     "build_implementation_prompt",
     "build_implementation_prompt_request",
     "inject_feedback",

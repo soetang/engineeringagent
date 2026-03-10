@@ -19,6 +19,7 @@ from engineeringagent.specs import (
 from .prompt_builder import (
     ImplementationPromptRequest,
     PromptBuilder,
+    PromptArtifactPaths,
 )
 
 
@@ -41,9 +42,11 @@ def build_implementation_prompt_request(
     )
     return ImplementationPromptRequest(
         feature=feature,
-        feature_path=feature_path,
-        plan_path=_resolved_artifact_reference(feature_path, feature, "plan"),
-        research_path=_resolved_artifact_reference(feature_path, feature, "research"),
+        artifacts=PromptArtifactPaths(
+            specification=feature_path,
+            plan=_resolved_artifact_reference(feature_path, feature, "plan"),
+            research=_resolved_artifact_reference(feature_path, feature, "research"),
+        ),
         handoff_path=handoff_path
         or progress_paths.handoff_markdown_reference(Path(), feature_id),
         feedback=feedback,

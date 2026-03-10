@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import ast
 import re
+from pathlib import Path
 
 import pytest
 
@@ -73,7 +75,20 @@ def test_default_guidance_service_renders_overview_with_topic_index() -> None:
 
 def test_default_guidance_service_renders_topic_list() -> None:
     """List rendering preserves stable topic order and output metadata."""
-    result = DefaultGuidanceService().render(GuidanceQuery(kind="list"))
+    repo = _FakeGuidanceRepository(
+        tuple(
+            GuidanceTopic(
+                canonical_id=topic_id,
+                aliases=(),
+                title=topic_id.title(),
+                description=None,
+                document=f"---\napproach_id: {topic_id}\n---\n# {topic_id.title()}\n",
+                body=f"# {topic_id.title()}\n",
+            )
+            for topic_id in APPROACH_TOPIC_IDS
+        )
+    )
+    result = DefaultGuidanceService(repo).render(GuidanceQuery(kind="list"))
 
     assert result.output_prefix == "approach list written"
     assert _parse_approach_topic_ids(result.payload) == APPROACH_TOPIC_IDS
@@ -144,4 +159,34 @@ def test_default_guidance_service_rejects_missing_overview_document() -> None:
 def test_default_guidance_service_rejects_blank_topic_requests() -> None:
     """Blank topic ids are rejected before adapter lookup runs."""
     with pytest.raises(GuidanceInputError):
-        DefaultGuidanceService().render(GuidanceQuery(kind="topic", topic_id="  "))
+        DefaultGuidanceService(_FakeGuidanceRepository(())).render(
+            GuidanceQuery(kind="topic", topic_id="  ")
+        )
+
+
+def test_application_guidance_service_does_not_import_guidance_adapters() -> None:
+    """Keep guidance adapter wiring out of the application layer."""
+
+    module_path = (
+        Path(__file__).resolve().parents[2]
+        / "src"
+        / "engineeringagent"
+        / "application"
+        / "guidance_service.py"
+    )
+    tree = ast.parse(module_path.read_text(encoding="utf-8"), filename=str(module_path))
+
+    imported_modules = {
+        alias.name
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Import)
+        for alias in node.names
+    }
+    imported_from_modules = {
+        node.module
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ImportFrom) and node.module is not None
+    }
+
+    assert "engineeringagent.adapters.guidance" not in imported_modules
+    assert "engineeringagent.adapters.guidance" not in imported_from_modules

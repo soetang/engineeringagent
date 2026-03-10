@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Protocol
 
+from pydantic import BaseModel, ConfigDict
 
-@dataclass(frozen=True)
-class PromptTemplate:
+class PromptTemplate(BaseModel):
     """Named prompt template text."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     prompt_id: str
     template_text: str

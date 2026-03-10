@@ -2,24 +2,26 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Literal
 
-from engineeringagent.adapters.guidance import PackagedGuidanceTopicRepository
+from pydantic import BaseModel, ConfigDict
+
 from engineeringagent.ports import GuidanceTopic, GuidanceTopicRepository
 
 
-@dataclass(frozen=True)
-class GuidanceQuery:
+class GuidanceQuery(BaseModel):
     """Typed input for one guidance rendering request."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     kind: Literal["overview", "list", "topic"]
     topic_id: str | None = None
 
 
-@dataclass(frozen=True)
-class GuidanceResult:
+class GuidanceResult(BaseModel):
     """Rendered guidance payload plus stable output metadata."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     payload: str
     output_prefix: str
@@ -40,15 +42,8 @@ class GuidanceService:
 class DefaultGuidanceService(GuidanceService):
     """Application guidance service backed by packaged approach docs."""
 
-    def __init__(
-        self,
-        topic_repository: GuidanceTopicRepository | None = None,
-    ) -> None:
-        self._topic_repository = (
-            topic_repository
-            if topic_repository is not None
-            else PackagedGuidanceTopicRepository()
-        )
+    def __init__(self, topic_repository: GuidanceTopicRepository) -> None:
+        self._topic_repository = topic_repository
 
     def render(self, query: GuidanceQuery) -> GuidanceResult:
         """Render one guidance response for the requested query kind."""

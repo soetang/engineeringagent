@@ -34,6 +34,7 @@ from engineeringagent.loop_runtime.run_context import (
     RunState,
 )
 from engineeringagent.application import ImplementationPromptRequest
+from engineeringagent.application import PromptArtifactPaths
 from engineeringagent.loop_runtime.telemetry import write_iteration_telemetry
 from engineeringagent.progress.handoff import ImplementProgressEnvelope
 from engineeringagent.progress.handoff import fallback_implement_progress_envelope
@@ -1104,9 +1105,7 @@ def test_run_implement_step_uses_injected_prompt_builder(tmp_path: Path) -> None
     assert recorded_requests == [
         ImplementationPromptRequest(
             feature=inputs.feature,
-            feature_path=inputs.feature_path,
-            plan_path=None,
-            research_path=None,
+            artifacts=PromptArtifactPaths(specification=inputs.feature_path),
             handoff_path=".engineeringagent/progress/features/FEAT-900/handoff.md",
             feedback=None,
             progress_kind="subtask",
