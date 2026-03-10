@@ -19,6 +19,34 @@ from tests.meta.validator_support import (
 )
 
 
+def _write_done_plan_artifact(feature_root: Path, *, feature_id: str) -> Path:
+    plan_path = feature_root / "plan.md"
+    plan_path.write_text(
+        "\n".join(
+            [
+                "---",
+                f"plan_id: {feature_id}",
+                f"feature_id: {feature_id}",
+                "status: done",
+                "source_spec: spec.yaml",
+                "planning_tier: planned",
+                "phases:",
+                "  - id: P1",
+                "    title: Archived phase",
+                "    status: done",
+                "    verification:",
+                "      - 'true'",
+                "---",
+                "",
+                "# Plan",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    return plan_path
+
+
 def test_validate_rejects_flat_feature_entrypoints(tmp_path: Path) -> None:
     project_root = tmp_path
     features_dir = project_root / "docs" / "spec" / "features"
@@ -114,20 +142,34 @@ def test_validate_allows_multiline_verification_commands_in_done_specs(
 ) -> None:
     project_root = tmp_path
     features_done_dir = project_root / "docs" / "spec" / "features_done"
-    features_done_dir.mkdir(parents=True, exist_ok=True)
-
-    done_path = features_done_dir / "FEAT-921-multiline-verification-done.yaml"
-    done_path.write_text(
-        yaml.safe_dump(
-            {
-                "id": "FEAT-921",
-                "title": "Multiline verification command done spec",
-                "status": "done",
-                "priority": "high",
-                "objective": "Ensure validator does not block archived specs.",
-                "acceptance": ["Archived specs remain readable."],
-            },
-            sort_keys=False,
+    feature_root = features_done_dir / "FEAT-921-multiline-verification-done"
+    write_bundled_feature_spec(
+        feature_root,
+        feature_id="FEAT-921",
+        extra_fields={"status": "done"},
+    )
+    (feature_root / "plan.md").write_text(
+        "\n".join(
+            [
+                "---",
+                "plan_id: FEAT-921",
+                "feature_id: FEAT-921",
+                "status: done",
+                "source_spec: spec.yaml",
+                "planning_tier: planned",
+                "phases:",
+                "  - id: P1",
+                "    title: Archived done phase",
+                "    status: done",
+                "    verification:",
+                "      - |",
+                "        echo one",
+                "        echo two",
+                "---",
+                "",
+                "# Plan",
+                "",
+            ]
         ),
         encoding="utf-8",
     )
@@ -138,6 +180,38 @@ def test_validate_allows_multiline_verification_commands_in_done_specs(
         "verification commands must be single-line strings" not in message
         for message in messages
     )
+
+
+def test_validate_rejects_flat_done_feature_entrypoints(tmp_path: Path) -> None:
+    project_root = tmp_path
+    features_done_dir = project_root / "docs" / "spec" / "features_done"
+    features_done_dir.mkdir(parents=True, exist_ok=True)
+
+    done_path = features_done_dir / "FEAT-921-flat-done.yaml"
+    done_path.write_text(
+        yaml.safe_dump(
+            {
+                "id": "FEAT-921",
+                "title": "Flat done spec",
+                "type": "spec",
+                "expected_commit_subject": "spec: reject flat done spec",
+                "planning_tier": "direct",
+                "status": "done",
+                "priority": "high",
+                "objective": "Reject flat archived feature entrypoints.",
+                "acceptance": ["Bundled archived specs are the only supported layout."],
+                "artifacts": {},
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    messages = validate(project_root=project_root)
+
+    assert messages == [
+        f"{done_path}: feature specs must use bundled spec.yaml entrypoints"
+    ]
 
 
 def test_validate_rejects_multiline_bundled_plan_phase_verification_commands(
@@ -222,19 +296,21 @@ def test_validate_missing_required_fields_with_bundled_contract(tmp_path: Path) 
 
 def test_validate_requires_feature_type(tmp_path: Path) -> None:
     project_root = tmp_path
-    features_dir = project_root / "docs" / "spec" / "features"
-    features_dir.mkdir(parents=True, exist_ok=True)
+    feature_root = project_root / "docs" / "spec" / "features" / "FEAT-910-missing-type"
+    feature_root.mkdir(parents=True, exist_ok=True)
 
-    (features_dir / "FEAT-910-missing-type.yaml").write_text(
+    (feature_root / "spec.yaml").write_text(
         yaml.safe_dump(
             {
                 "id": "FEAT-910",
                 "title": "Missing type",
                 "expected_commit_subject": "feat: validate missing feature type",
+                "planning_tier": "direct",
                 "status": "backlog",
                 "priority": "high",
                 "objective": "Feature type is required.",
                 "acceptance": ["Validator reports missing type."],
+                "artifacts": {},
             },
             sort_keys=False,
         ),
@@ -250,21 +326,29 @@ def test_validate_requires_feature_type(tmp_path: Path) -> None:
 
 def test_validate_requires_expected_commit_subject(tmp_path: Path) -> None:
     project_root = tmp_path
-    features_dir = project_root / "docs" / "spec" / "features"
-    features_dir.mkdir(parents=True, exist_ok=True)
+    feature_root = (
+        project_root
+        / "docs"
+        / "spec"
+        / "features"
+        / "FEAT-911-missing-expected-subject"
+    )
+    feature_root.mkdir(parents=True, exist_ok=True)
 
-    (features_dir / "FEAT-911-missing-expected-subject.yaml").write_text(
+    (feature_root / "spec.yaml").write_text(
         yaml.safe_dump(
             {
                 "id": "FEAT-911",
                 "title": "Missing expected commit subject",
                 "type": "feature",
+                "planning_tier": "direct",
                 "status": "backlog",
                 "priority": "high",
                 "objective": "Expected commit subject is required.",
                 "acceptance": [
                     "Validator reports missing expected commit subject metadata."
                 ],
+                "artifacts": {},
             },
             sort_keys=False,
         ),
@@ -348,30 +432,24 @@ def test_validate_reports_yaml_parse_errors_across_validator_inputs(
 def test_validate_ignores_legacy_feature_schema_artifact_parse_and_sync_errors(
     tmp_path: Path,
 ) -> None:
-    features_dir = tmp_path / "docs" / "spec" / "features"
+    feature_root = tmp_path / "docs" / "spec" / "features" / "FEAT-999-valid"
     schemas_dir = tmp_path / "docs" / "spec" / "schemas"
-    features_dir.mkdir(parents=True, exist_ok=True)
+    feature_root.mkdir(parents=True, exist_ok=True)
     schemas_dir.mkdir(parents=True, exist_ok=True)
 
-    (features_dir / "FEAT-999-valid.yaml").write_text(
+    (feature_root / "spec.yaml").write_text(
         yaml.safe_dump(
             {
                 "id": "FEAT-999",
                 "title": "Ignore legacy schema artifact file",
                 "type": "feature",
                 "expected_commit_subject": "feat: ignore legacy feature schema artifact",
+                "planning_tier": "direct",
                 "status": "backlog",
                 "priority": "medium",
                 "objective": "Validation should ignore removed schema artifact checks.",
                 "acceptance": ["Legacy schema artifact drift checks stay removed."],
-                "subtasks": [
-                    {
-                        "id": "ST-001",
-                        "title": "Validate contracts",
-                        "status": "backlog",
-                        "verification": ["true"],
-                    }
-                ],
+                "artifacts": {},
             },
             sort_keys=False,
         ),
@@ -594,35 +672,15 @@ def test_validate_reports_done_feature_left_in_active_directory(
     tmp_path: Path,
 ) -> None:
     project_root = tmp_path
-    features_dir = project_root / "docs" / "spec" / "features"
-
-    features_dir.mkdir(parents=True, exist_ok=True)
-
-    feature_path = features_dir / "FEAT-901-preexisting-done.yaml"
-    feature_path.write_text(
-        yaml.safe_dump(
-            {
-                "id": "FEAT-901",
-                "title": "Done spec in active directory",
-                "type": "feature",
-                "expected_commit_subject": "feat: done spec in active directory",
-                "status": "done",
-                "priority": "high",
-                "objective": "Validate done specs are archived.",
-                "acceptance": ["Done specs are archived under features_done."],
-                "subtasks": [
-                    {
-                        "id": "ST-001",
-                        "title": "Already complete",
-                        "status": "done",
-                        "verification": ["true"],
-                    }
-                ],
-            },
-            sort_keys=False,
-        ),
-        encoding="utf-8",
+    feature_root = (
+        project_root / "docs" / "spec" / "features" / "FEAT-901-preexisting-done"
     )
+    feature_path = write_bundled_feature_spec(
+        feature_root,
+        feature_id="FEAT-901",
+        extra_fields={"status": "done"},
+    )
+    _write_done_plan_artifact(feature_root, feature_id="FEAT-901")
 
     messages = validate(project_root=project_root)
 
@@ -631,7 +689,7 @@ def test_validate_reports_done_feature_left_in_active_directory(
         "completed feature specs must be archived" in message for message in messages
     )
     assert any(
-        "docs/spec/features_done/FEAT-901-preexisting-done.yaml" in message
+        "docs/spec/features_done/FEAT-901-preexisting-done/spec.yaml" in message
         for message in messages
     )
 
@@ -692,43 +750,21 @@ def test_validate_reports_done_bundled_feature_left_in_active_directory(
 
 def test_validate_defaults_to_docs_without_toml_config(tmp_path: Path) -> None:
     project_root = tmp_path
-    features_dir = project_root / "docs" / "spec" / "features"
-
-    features_dir.mkdir(parents=True, exist_ok=True)
-
-    feature_path = features_dir / "FEAT-938-default-docs-root.yaml"
-    feature_path.write_text(
-        yaml.safe_dump(
-            {
-                "id": "FEAT-938",
-                "title": "Default docs root active done spec",
-                "type": "feature",
-                "expected_commit_subject": "feat: validate default docs root",
-                "status": "done",
-                "priority": "high",
-                "objective": "Use default docs root when TOML config is absent.",
-                "acceptance": [
-                    "Done specs are archived under docs/spec/features_done."
-                ],
-                "subtasks": [
-                    {
-                        "id": "ST-001",
-                        "title": "Already complete",
-                        "status": "done",
-                        "verification": ["true"],
-                    }
-                ],
-            },
-            sort_keys=False,
-        ),
-        encoding="utf-8",
+    feature_root = (
+        project_root / "docs" / "spec" / "features" / "FEAT-938-default-docs-root"
     )
+    write_bundled_feature_spec(
+        feature_root,
+        feature_id="FEAT-938",
+        extra_fields={"status": "done"},
+    )
+    _write_done_plan_artifact(feature_root, feature_id="FEAT-938")
 
     messages = validate(project_root=project_root)
 
     assert messages
     assert any(
-        "docs/spec/features_done/FEAT-938-default-docs-root.yaml" in message
+        "docs/spec/features_done/FEAT-938-default-docs-root/spec.yaml" in message
         for message in messages
     )
 
@@ -744,33 +780,15 @@ def test_validate_uses_configured_docs_root(tmp_path: Path) -> None:
     )
     features_dir.mkdir(parents=True, exist_ok=True)
 
-    feature_path = features_dir / "FEAT-937-configured-docs-root.yaml"
-    feature_path.write_text(
-        yaml.safe_dump(
-            {
-                "id": "FEAT-937",
-                "title": "Configured docs root active done spec",
-                "type": "feature",
-                "expected_commit_subject": "feat: validate configured docs root",
-                "status": "done",
-                "priority": "high",
-                "objective": "Use configured docs root for validator paths.",
-                "acceptance": ["Done specs are archived under configured docs root."],
-                "subtasks": [
-                    {
-                        "id": "ST-001",
-                        "title": "Already complete",
-                        "status": "done",
-                        "verification": ["true"],
-                    }
-                ],
-            },
-            sort_keys=False,
-        ),
-        encoding="utf-8",
+    feature_root = features_dir / "FEAT-937-configured-docs-root"
+    write_bundled_feature_spec(
+        feature_root,
+        feature_id="FEAT-937",
+        extra_fields={"status": "done"},
     )
+    _write_done_plan_artifact(feature_root, feature_id="FEAT-937")
     (features_dir / ".allow-done-active.txt").write_text(
-        "FEAT-937-configured-docs-root.yaml\n",
+        "FEAT-937-configured-docs-root/spec.yaml\n",
         encoding="utf-8",
     )
 
@@ -783,7 +801,7 @@ def test_validate_uses_configured_docs_root(tmp_path: Path) -> None:
         for message in messages
     )
     assert any(
-        "docs.engineeringagent/spec/features_done/FEAT-937-configured-docs-root.yaml"
+        "docs.engineeringagent/spec/features_done/FEAT-937-configured-docs-root/spec.yaml"
         in message
         for message in messages
     )
@@ -844,26 +862,20 @@ def test_validate_rejects_done_specs_missing_required_metadata(
 ) -> None:
     project_root = tmp_path
     features_done_dir = project_root / "docs" / "spec" / "features_done"
+    feature_root = features_done_dir / "FEAT-899-missing-done-metadata"
+    feature_root.mkdir(parents=True, exist_ok=True)
 
-    features_done_dir.mkdir(parents=True, exist_ok=True)
-
-    (features_done_dir / "FEAT-899-legacy-done.yaml").write_text(
+    (feature_root / "spec.yaml").write_text(
         yaml.safe_dump(
             {
                 "id": "FEAT-899",
-                "title": "Legacy done spec",
+                "title": "Done spec missing metadata",
+                "planning_tier": "direct",
                 "status": "done",
                 "priority": "high",
                 "objective": "Reject done specs missing required metadata.",
-                "acceptance": ["Done specs remain readable during migration."],
-                "subtasks": [
-                    {
-                        "id": "ST-001",
-                        "title": "Already complete",
-                        "status": "done",
-                        "verification": ["true"],
-                    }
-                ],
+                "acceptance": ["Done specs still enforce required metadata."],
+                "artifacts": {},
             },
             sort_keys=False,
         ),
@@ -874,184 +886,12 @@ def test_validate_rejects_done_specs_missing_required_metadata(
 
     assert messages
     assert any(
-        "FEAT-899-legacy-done.yaml:type: Field required" in message
+        "FEAT-899-missing-done-metadata/spec.yaml:type: Field required" in message
         for message in messages
     )
     assert any(
-        "FEAT-899-legacy-done.yaml:expected_commit_subject: Field required"
+        "FEAT-899-missing-done-metadata/spec.yaml:expected_commit_subject: Field required"
         in message
-        for message in messages
-    )
-
-
-def test_validate_allows_noncontiguous_done_and_multiple_in_progress_subtasks(
-    tmp_path: Path,
-) -> None:
-    project_root = tmp_path
-    features_dir = project_root / "docs" / "spec" / "features"
-    features_dir.mkdir(parents=True, exist_ok=True)
-
-    (features_dir / "FEAT-905-noncontiguous-order.yaml").write_text(
-        yaml.safe_dump(
-            {
-                "id": "FEAT-905",
-                "title": "Noncontiguous subtask order",
-                "type": "feature",
-                "expected_commit_subject": "feat: preserve contiguous order rule",
-                "status": "backlog",
-                "priority": "high",
-                "objective": "Preserve contiguous order rule.",
-                "acceptance": ["Validator reports contiguous order violations."],
-                "subtasks": [
-                    {
-                        "id": "ST-001",
-                        "title": "First",
-                        "status": "backlog",
-                        "verification": ["true"],
-                    },
-                    {
-                        "id": "ST-002",
-                        "title": "Second",
-                        "status": "backlog",
-                        "verification": ["true"],
-                    },
-                ],
-            },
-            sort_keys=False,
-        ),
-        encoding="utf-8",
-    )
-
-    (features_dir / "FEAT-906-done-prefix-break.yaml").write_text(
-        yaml.safe_dump(
-            {
-                "id": "FEAT-906",
-                "title": "Done prefix violation",
-                "type": "feature",
-                "expected_commit_subject": "feat: preserve done prefix rule",
-                "status": "in_progress",
-                "priority": "high",
-                "objective": "Preserve done-prefix rule.",
-                "acceptance": ["Validator reports done-prefix violations."],
-                "subtasks": [
-                    {
-                        "id": "ST-001",
-                        "title": "First",
-                        "status": "backlog",
-                        "verification": ["true"],
-                    },
-                    {
-                        "id": "ST-002",
-                        "title": "Second",
-                        "status": "done",
-                        "verification": ["true"],
-                    },
-                ],
-            },
-            sort_keys=False,
-        ),
-        encoding="utf-8",
-    )
-
-    (features_dir / "FEAT-939-multiple-inprogress.yaml").write_text(
-        yaml.safe_dump(
-            {
-                "id": "FEAT-939",
-                "title": "Multiple in-progress subtasks",
-                "type": "feature",
-                "expected_commit_subject": "feat: allow multiple in-progress subtasks",
-                "status": "in_progress",
-                "priority": "high",
-                "objective": "Allow more than one in-progress subtask.",
-                "acceptance": ["Validator allows multiple in-progress subtasks."],
-                "subtasks": [
-                    {
-                        "id": "ST-001",
-                        "title": "First",
-                        "status": "in_progress",
-                        "verification": ["true"],
-                    },
-                    {
-                        "id": "ST-002",
-                        "title": "Second",
-                        "status": "in_progress",
-                        "verification": ["true"],
-                    },
-                ],
-            },
-            sort_keys=False,
-        ),
-        encoding="utf-8",
-    )
-
-    messages = validate(project_root=project_root)
-
-    assert not messages
-
-
-def test_validate_preserves_feature_status_invariant_rules(tmp_path: Path) -> None:
-    project_root = tmp_path
-    features_dir = project_root / "docs" / "spec" / "features"
-    features_dir.mkdir(parents=True, exist_ok=True)
-
-    (features_dir / "FEAT-907-done-with-open-subtasks.yaml").write_text(
-        yaml.safe_dump(
-            {
-                "id": "FEAT-907",
-                "title": "Done but subtask open",
-                "type": "feature",
-                "expected_commit_subject": "feat: preserve done status invariant",
-                "status": "done",
-                "priority": "high",
-                "objective": "Preserve done status invariant.",
-                "acceptance": ["Validator reports done status mismatch."],
-                "subtasks": [
-                    {
-                        "id": "ST-001",
-                        "title": "Open",
-                        "status": "backlog",
-                        "verification": ["true"],
-                    }
-                ],
-            },
-            sort_keys=False,
-        ),
-        encoding="utf-8",
-    )
-
-    (features_dir / "FEAT-908-inprogress-subtask-on-backlog.yaml").write_text(
-        yaml.safe_dump(
-            {
-                "id": "FEAT-908",
-                "title": "In progress subtask on backlog feature",
-                "type": "feature",
-                "expected_commit_subject": "feat: preserve in progress status invariant",
-                "status": "backlog",
-                "priority": "high",
-                "objective": "Preserve in-progress status invariant.",
-                "acceptance": ["Validator reports feature status mismatch."],
-                "subtasks": [
-                    {
-                        "id": "ST-001",
-                        "title": "Running",
-                        "status": "in_progress",
-                        "verification": ["true"],
-                    }
-                ],
-            },
-            sort_keys=False,
-        ),
-        encoding="utf-8",
-    )
-
-    messages = validate(project_root=project_root)
-
-    assert any(
-        "feature status done requires all subtasks done" in message
-        for message in messages
-    )
-    assert any(
-        "feature with in_progress subtask must be in_progress" in message
         for message in messages
     )
 

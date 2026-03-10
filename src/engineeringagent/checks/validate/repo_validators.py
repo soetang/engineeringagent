@@ -205,6 +205,7 @@ def run_repo_validation(
     )
 
     _append_flat_feature_entrypoint_issues(messages, features_dir)
+    _append_flat_feature_entrypoint_issues(messages, features_done_dir)
     _append_unsupported_done_active_file_issues(messages, features_dir, project_root)
     append_feature_id_invariant_issues(
         messages,
