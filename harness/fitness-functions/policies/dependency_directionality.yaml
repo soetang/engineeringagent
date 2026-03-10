@@ -46,6 +46,23 @@ rules:
       - engineeringagent.checks.reviewers
       - engineeringagent.checks.validate
       - engineeringagent.specs
+  - module: engineeringagent.application.checks_service
+    blocked_dependencies:
+      - engineeringagent.cli
+      - engineeringagent.adapters
+      - engineeringagent.loop_runtime
+  - module: engineeringagent.application.guidance_service
+    blocked_dependencies:
+      - engineeringagent.adapters
+      - engineeringagent.cli
+      - engineeringagent.loop_runtime
+  - module: engineeringagent.application.prompt_builder
+    blocked_dependencies:
+      - engineeringagent.adapters
+      - engineeringagent.cli
+      - engineeringagent.loop_runtime
+      - engineeringagent.progress.paths
+      - engineeringagent.specs
   - module: engineeringagent.loop
     blocked_dependencies:
       - engineeringagent.cli

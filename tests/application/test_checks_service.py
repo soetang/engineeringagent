@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ast
 from pathlib import Path
 
 import pytest
@@ -119,32 +118,3 @@ def test_default_checks_service_rejects_reviewers_without_feature_path() -> None
         DefaultChecksService().run(
             _build_request(selected_checks=["reviewers"])
         )
-
-
-def test_application_checks_service_does_not_import_cli_or_adapters() -> None:
-    """Checks application orchestration must stay isolated from CLI and adapters."""
-    module_path = (
-        Path(__file__).resolve().parents[2]
-        / "src"
-        / "engineeringagent"
-        / "application"
-        / "checks_service.py"
-    )
-    tree = ast.parse(module_path.read_text(encoding="utf-8"), filename=str(module_path))
-
-    imported_modules = {
-        alias.name
-        for node in ast.walk(tree)
-        if isinstance(node, ast.Import)
-        for alias in node.names
-    }
-    imported_from_modules = {
-        node.module
-        for node in ast.walk(tree)
-        if isinstance(node, ast.ImportFrom) and node.module is not None
-    }
-
-    assert "engineeringagent.cli" not in imported_modules
-    assert "engineeringagent.adapters" not in imported_modules
-    assert "engineeringagent.cli" not in imported_from_modules
-    assert "engineeringagent.adapters" not in imported_from_modules

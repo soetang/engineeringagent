@@ -132,6 +132,7 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
+    """Honor the checked-in policy for CLI, contracts, and application boundaries."""
     _write_directionality_fixture(tmp_path)
     _write_module(
         tmp_path,
@@ -154,6 +155,21 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
         "checks/contracts.py",
         "import engineeringagent.cli.app\n",
     )
+    _write_module(
+        tmp_path,
+        "application/checks_service.py",
+        "import engineeringagent.adapters.prompts\n",
+    )
+    _write_module(
+        tmp_path,
+        "application/guidance_service.py",
+        "import engineeringagent.loop_runtime.selection\n",
+    )
+    _write_module(
+        tmp_path,
+        "application/prompt_builder.py",
+        "import engineeringagent.progress.paths\n",
+    )
 
     proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
 
@@ -161,6 +177,18 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
     assert payload["rule_id"] == "architecture.dep-directionality"
     assert payload["status"] == "fail"
     assert payload["violations"] == [
+        (
+            "engineeringagent.application.checks_service imports blocked dependency "
+            "engineeringagent.adapters.prompts"
+        ),
+        (
+            "engineeringagent.application.guidance_service imports blocked dependency "
+            "engineeringagent.loop_runtime.selection"
+        ),
+        (
+            "engineeringagent.application.prompt_builder imports blocked dependency "
+            "engineeringagent.progress.paths"
+        ),
         (
             "engineeringagent.checks.contracts imports blocked dependency "
             "engineeringagent.cli.app"
@@ -184,6 +212,7 @@ def test_directionality_rule_supports_reverse_direction_specs_contract_boundarie
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
+    """Support policies that declare both sides of a forbidden dependency edge."""
     _write_module(
         tmp_path,
         "specs.py",
@@ -233,6 +262,7 @@ def test_directionality_rule_loads_blocked_boundaries_from_policy(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
+    """Load arbitrary blocked dependency rules from a supplied policy file."""
     _write_module(
         tmp_path,
         "domain.py",
@@ -267,6 +297,7 @@ def test_directionality_rule_supports_package_modules_from_policy(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
+    """Resolve package modules declared in policy to their __init__ file."""
     _write_module(
         tmp_path,
         "domain/__init__.py",
@@ -301,6 +332,7 @@ def test_directionality_rule_errors_when_policy_is_invalid(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
+    """Return an error result when the policy payload cannot be parsed."""
     invalid_policy = tmp_path / "invalid-policy.yaml"
     invalid_policy.write_text("rules: bad\n", encoding="utf-8")
 
@@ -321,6 +353,7 @@ def test_directionality_rule_errors_when_policy_repeats_module_boundary(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
+    """Return an error result when the policy duplicates one protected module."""
     _write_module(tmp_path, "domain.py", "")
     duplicate_policy = _write_policy(
         tmp_path,
