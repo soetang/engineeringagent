@@ -12,7 +12,7 @@ from engineeringagent.prompts.feedback_envelope import (
     parse_feedback_envelope,
     serialize_feedback_envelope,
 )
-from engineeringagent.prompts.renderer import inject_feedback
+from engineeringagent.prompts import inject_feedback
 
 
 def test_feedback_contract_accepts_command_failure_envelope() -> None:

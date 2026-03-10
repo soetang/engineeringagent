@@ -11,6 +11,7 @@ from engineeringagent.application import (
     ImplementationPromptRequest,
     PromptArtifactPaths,
     build_implementation_prompt,
+    build_selector_prompt,
     build_implementation_prompt_request,
 )
 from tests.loop.feature_iteration_support import (
@@ -66,6 +67,20 @@ def test_default_prompt_builder_renders_bundled_phase_prompt(tmp_path: Path) -> 
 
     assert "Current phase: P1 - Build prompt seam" in prompt
     assert "Treat this bundled feature package as canonical" in prompt
+
+
+def test_application_selector_prompt_renders_feature_summaries(tmp_path: Path) -> None:
+    """Selector prompt rendering belongs to the application prompt surface."""
+
+    feature_path = tmp_path / "docs" / "spec" / "features" / "FEAT-900" / "spec.yaml"
+    feature_path.parent.mkdir(parents=True, exist_ok=True)
+    prompt = build_selector_prompt(
+        [(feature_path, {"id": "FEAT-900", "status": "backlog", "priority": "high"})],
+        prompt_definitions=BundledPromptDefinitionRepository(),
+    )
+
+    assert "id=FEAT-900" in prompt
+    assert f"path={feature_path}" in prompt
 
 
 def test_compatibility_helper_delegates_to_prompt_builder(tmp_path: Path) -> None:

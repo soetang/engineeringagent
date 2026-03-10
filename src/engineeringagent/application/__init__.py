@@ -22,6 +22,7 @@ from .prompt_builder import (
     ImplementationPromptRequest,
     PromptBuilder,
     PromptArtifactPaths,
+    build_selector_prompt,
     inject_feedback,
 )
 
@@ -41,5 +42,6 @@ __all__ = [
     "RunChecksResult",
     "build_implementation_prompt",
     "build_implementation_prompt_request",
+    "build_selector_prompt",
     "inject_feedback",
 ]

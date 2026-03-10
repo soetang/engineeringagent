@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from string import Template
-from typing import Any, Mapping, Protocol
+from typing import Any, Mapping, Protocol, Sequence
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
@@ -84,6 +84,27 @@ class DefaultPromptBuilder:
             request.feedback,
             prompt_definitions=self._prompt_definitions,
         )
+
+
+def build_selector_prompt(
+    pending: Sequence[tuple[Path, Mapping[str, Any]]],
+    *,
+    prompt_definitions: PromptDefinitionRepository,
+) -> str:
+    """Render the selector prompt from deterministic feature summaries."""
+
+    choices = []
+    for feature_path, feature in pending:
+        choices.append(
+            f"- id={feature.get('id')} status={feature.get('status')} "
+            f"priority={feature.get('priority')} path={feature_path}"
+        )
+
+    selector_template = _load_template(
+        prompt_definitions,
+        "loop_selector",
+    )
+    return selector_template.substitute(choices="\n".join(choices))
 
 
 def inject_feedback(

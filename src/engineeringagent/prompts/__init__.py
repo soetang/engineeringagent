@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from functools import lru_cache
 from importlib import import_module
 from pathlib import Path
 from types import ModuleType
 from typing import Any, Mapping, Sequence
+
+from engineeringagent.ports import PromptDefinitionRepository
 
 __all__ = [
     "build_implementation_prompt",
@@ -14,10 +15,27 @@ __all__ = [
     "inject_feedback",
 ]
 
-@lru_cache(maxsize=1)
-def _load_renderer() -> ModuleType:
-    """Load the renderer module lazily to avoid import cycles."""
-    return import_module("engineeringagent.prompts.renderer")
+
+def _load_adapters_module() -> ModuleType:
+    return import_module("engineeringagent.adapters.prompts")
+
+
+def _load_prompt_builder_module() -> ModuleType:
+    return import_module("engineeringagent.application.prompt_builder")
+
+
+def _load_application_module() -> ModuleType:
+    return import_module("engineeringagent.application")
+
+
+def _default_prompt_definitions(
+    project_root: Path | None = None,
+) -> PromptDefinitionRepository:
+    adapters_module = _load_adapters_module()
+
+    if project_root is not None:
+        return adapters_module.ProjectPromptDefinitionRepository(project_root)
+    return adapters_module.BundledPromptDefinitionRepository()
 
 
 def build_selector_prompt(
@@ -25,8 +43,12 @@ def build_selector_prompt(
     *,
     project_root: Path | None = None,
 ) -> str:
-    """Render the selector prompt through the renderer module."""
-    return _load_renderer().build_selector_prompt(pending, project_root=project_root)
+    """Render the selector prompt through the application layer."""
+
+    return _load_prompt_builder_module().build_selector_prompt(
+        pending,
+        prompt_definitions=_default_prompt_definitions(project_root),
+    )
 
 
 def inject_feedback(
@@ -35,11 +57,12 @@ def inject_feedback(
     *,
     project_root: Path | None = None,
 ) -> str:
-    """Inject retry feedback through the renderer compatibility layer."""
-    return _load_renderer().inject_feedback(
+    """Inject retry feedback through the application layer."""
+
+    return _load_prompt_builder_module().inject_feedback(
         prompt,
         feedback,
-        project_root=project_root,
+        prompt_definitions=_default_prompt_definitions(project_root),
     )
 
 
@@ -50,10 +73,15 @@ def build_implementation_prompt(
     feedback: str | None,
     project_root: Path | None = None,
 ) -> str:
-    """Render the implementation prompt through the renderer module."""
-    return _load_renderer().build_implementation_prompt(
+    """Render the implementation prompt through the application layer."""
+
+    application_module = _load_application_module()
+
+    return application_module.build_implementation_prompt(
         feature=feature,
         feature_path=feature_path,
         feedback=feedback,
-        project_root=project_root,
+        prompt_builder=application_module.DefaultPromptBuilder(
+            _default_prompt_definitions(project_root)
+        ),
     )
