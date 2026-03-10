@@ -48,6 +48,10 @@ def _write_fitness_manifest(tmp_path: Path, content: str) -> Path:
     return manifest_path
 
 
+ACTIVE_FEATURE_PATH = Path("docs/spec/features/FEAT-001/spec.yaml")
+ARCHIVED_FEATURE_PATH = Path("docs/spec/features_done/FEAT-001/spec.yaml")
+
+
 def test_run_gate_phase_uses_checks_yaml_for_run_all_iteration_end(
     tmp_path: Path,
 ) -> None:
@@ -67,7 +71,7 @@ def test_run_gate_phase_uses_checks_yaml_for_run_all_iteration_end(
 
     inputs = FeatureIterationInputs(
         project_root=tmp_path,
-        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        feature_path=tmp_path / ACTIVE_FEATURE_PATH,
         run_all=True,
         attempt=1,
         feedback=None,
@@ -116,7 +120,7 @@ def test_run_gate_phase_skips_on_change_command_checks_when_no_match(
 
     inputs = FeatureIterationInputs(
         project_root=tmp_path,
-        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        feature_path=tmp_path / ACTIVE_FEATURE_PATH,
         run_all=True,
         attempt=1,
         feedback=None,
@@ -171,7 +175,7 @@ def test_run_gate_phase_runs_feature_done_checks_only_when_archived(
 
     inputs = FeatureIterationInputs(
         project_root=tmp_path,
-        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        feature_path=tmp_path / ACTIVE_FEATURE_PATH,
         run_all=True,
         attempt=1,
         feedback=None,
@@ -199,7 +203,7 @@ def test_run_gate_phase_runs_feature_done_checks_only_when_archived(
     feature_done_outcome = run_gate_phase(
         inputs,
         archived_in_iteration=True,
-        archived_path=tmp_path / "docs" / "spec" / "features_done" / "FEAT-001.yaml",
+        archived_path=tmp_path / ARCHIVED_FEATURE_PATH,
         dependencies=deps,
     )
     assert "[check:iter] command=echo iter" in feature_done_outcome.gate_output
@@ -226,7 +230,7 @@ def test_run_gate_phase_uses_structured_invocations_for_gate_timings(
 
     inputs = FeatureIterationInputs(
         project_root=tmp_path,
-        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        feature_path=tmp_path / ACTIVE_FEATURE_PATH,
         run_all=True,
         attempt=1,
         feedback=None,
@@ -323,7 +327,7 @@ def test_run_gate_phase_runs_fitness_checks_scope_all(
 
     inputs = FeatureIterationInputs(
         project_root=tmp_path,
-        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        feature_path=tmp_path / ACTIVE_FEATURE_PATH,
         run_all=True,
         attempt=1,
         feedback=None,
@@ -394,7 +398,7 @@ def test_run_gate_phase_fails_when_fitness_check_fails(
 
     inputs = FeatureIterationInputs(
         project_root=tmp_path,
-        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        feature_path=tmp_path / ACTIVE_FEATURE_PATH,
         run_all=True,
         attempt=1,
         feedback=None,
@@ -443,15 +447,13 @@ def test_run_reviewer_phase_uses_checks_yaml_for_run_all_feature_done(
     prompt_path.parent.mkdir(parents=True, exist_ok=True)
     prompt_path.write_text("Check docs.\n$responseformat\n", encoding="utf-8")
 
-    archived_feature_path = (
-        tmp_path / "docs" / "spec" / "features_done" / "FEAT-001.yaml"
-    )
+    archived_feature_path = tmp_path / ARCHIVED_FEATURE_PATH
     archived_feature_path.parent.mkdir(parents=True, exist_ok=True)
     archived_feature_path.write_text("id: FEAT-001\n", encoding="utf-8")
 
     inputs = FeatureIterationInputs(
         project_root=tmp_path,
-        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        feature_path=tmp_path / ACTIVE_FEATURE_PATH,
         run_all=True,
         attempt=1,
         feedback=None,
@@ -521,15 +523,13 @@ def test_run_reviewer_phase_skips_on_change_reviewer_checks_when_no_match(
     prompt_path.parent.mkdir(parents=True, exist_ok=True)
     prompt_path.write_text("Check docs.\n$responseformat\n", encoding="utf-8")
 
-    archived_feature_path = (
-        tmp_path / "docs" / "spec" / "features_done" / "FEAT-001.yaml"
-    )
+    archived_feature_path = tmp_path / ARCHIVED_FEATURE_PATH
     archived_feature_path.parent.mkdir(parents=True, exist_ok=True)
     archived_feature_path.write_text("id: FEAT-001\n", encoding="utf-8")
 
     inputs = FeatureIterationInputs(
         project_root=tmp_path,
-        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        feature_path=tmp_path / ACTIVE_FEATURE_PATH,
         run_all=True,
         attempt=1,
         feedback=None,

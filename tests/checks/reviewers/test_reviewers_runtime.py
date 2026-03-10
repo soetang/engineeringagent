@@ -14,6 +14,10 @@ from engineeringagent.checks.reviewers.engine import (
 )
 from engineeringagent.agents import AgentBackendError, AgentOutputValidationError
 
+FEATURE_050_PATH = Path("docs/spec/features/FEAT-050/spec.yaml")
+FEATURE_070_PATH = Path("docs/spec/features/FEAT-070/spec.yaml")
+FEATURE_167_PATH = Path("docs/spec/features/FEAT-167/spec.yaml")
+
 
 def test_run_reviewer_loads_harness_prompt_and_parses_decision(tmp_path) -> None:
     prompt_path = tmp_path / "harness" / "reviewers" / "prompts" / "code_simplifier.md"
@@ -46,7 +50,7 @@ def test_run_reviewer_loads_harness_prompt_and_parses_decision(tmp_path) -> None
         },
         request=ReviewerRunRequest(
             feature_id="FEAT-050",
-            feature_path=tmp_path / "docs/spec/features/FEAT-050.yaml",
+            feature_path=tmp_path / FEATURE_050_PATH,
             changed_paths=ChangedPathsResult(
                 paths=("src/engineeringagent/checks/reviewers/engine.py",),
                 run_all=False,
@@ -100,7 +104,7 @@ def test_run_reviewer_does_not_inject_deprecated_responseformat_contract(
         },
         request=ReviewerRunRequest(
             feature_id="FEAT-050",
-            feature_path=tmp_path / "docs/spec/features/FEAT-050.yaml",
+            feature_path=tmp_path / FEATURE_050_PATH,
             changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
             feedback=None,
             run_agent_fn=_run_agent,
@@ -138,7 +142,7 @@ def test_run_reviewer_parse_failure_returns_request_changes(tmp_path) -> None:
         },
         request=ReviewerRunRequest(
             feature_id="FEAT-050",
-            feature_path=tmp_path / "docs/spec/features/FEAT-050.yaml",
+            feature_path=tmp_path / FEATURE_050_PATH,
             changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
             feedback=None,
             run_agent_fn=_run_agent,
@@ -188,7 +192,7 @@ def test_run_reviewer_recovers_from_codex_exec_failure_by_retrying_raw_output(tm
         },
         request=ReviewerRunRequest(
             feature_id="FEAT-167",
-            feature_path=tmp_path / "docs/spec/features/FEAT-167.yaml",
+            feature_path=tmp_path / FEATURE_167_PATH,
             changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
             feedback=None,
             run_agent_fn=_run_agent,
@@ -231,7 +235,7 @@ def test_run_reviewer_passes_max_validation_retries_to_canonical_runner(
         },
         request=ReviewerRunRequest(
             feature_id="FEAT-070",
-            feature_path=tmp_path / "docs/spec/features/FEAT-070.yaml",
+            feature_path=tmp_path / FEATURE_070_PATH,
             changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
             feedback=None,
             run_agent_fn=_run_agent,
@@ -283,7 +287,7 @@ def test_run_reviewer_does_not_require_responseformat_placeholder(tmp_path) -> N
         },
         request=ReviewerRunRequest(
             feature_id="FEAT-050",
-            feature_path=tmp_path / "docs/spec/features/FEAT-050.yaml",
+            feature_path=tmp_path / FEATURE_050_PATH,
             changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
             feedback=None,
             run_agent_fn=_run_agent,

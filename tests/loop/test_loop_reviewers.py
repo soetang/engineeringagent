@@ -14,13 +14,16 @@ from engineeringagent.loop_runtime.phases import (
     run_reviewer_phase,
 )
 
+ACTIVE_FEATURE_PATH = Path("docs/spec/features/FEAT-001/spec.yaml")
+ARCHIVED_FEATURE_PATH = Path("docs/spec/features_done/FEAT-001/spec.yaml")
+
 
 def test_run_gate_phase_is_not_configured_without_checks_yaml(
     tmp_path: Path,
 ) -> None:
     inputs = FeatureIterationInputs(
         project_root=tmp_path,
-        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        feature_path=tmp_path / ACTIVE_FEATURE_PATH,
         run_all=False,
         attempt=1,
         feedback=None,
@@ -51,7 +54,7 @@ def test_run_reviewer_phase_is_not_configured_without_checks_yaml(
 ) -> None:
     inputs = FeatureIterationInputs(
         project_root=tmp_path,
-        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        feature_path=tmp_path / ACTIVE_FEATURE_PATH,
         run_all=False,
         attempt=1,
         feedback=None,
@@ -71,7 +74,7 @@ def test_run_reviewer_phase_is_not_configured_without_checks_yaml(
         inputs,
         {"id": "FEAT-001"},
         archived_in_iteration=True,
-        archived_path=tmp_path / "docs" / "spec" / "features_done" / "FEAT-001.yaml",
+        archived_path=tmp_path / ARCHIVED_FEATURE_PATH,
         dependencies=deps,
     )
 
@@ -99,15 +102,13 @@ checks:
     prompt_path.parent.mkdir(parents=True, exist_ok=True)
     prompt_path.write_text("Please review.\n$responseformat\n", encoding="utf-8")
 
-    archived_feature_path = (
-        tmp_path / "docs" / "spec" / "features_done" / "FEAT-001.yaml"
-    )
+    archived_feature_path = tmp_path / ARCHIVED_FEATURE_PATH
     archived_feature_path.parent.mkdir(parents=True, exist_ok=True)
     archived_feature_path.write_text("id: FEAT-001\n", encoding="utf-8")
 
     inputs = FeatureIterationInputs(
         project_root=tmp_path,
-        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        feature_path=tmp_path / ACTIVE_FEATURE_PATH,
         run_all=False,
         attempt=1,
         feedback=None,
@@ -173,15 +174,13 @@ checks:
         encoding="utf-8",
     )
 
-    archived_feature_path = (
-        tmp_path / "docs" / "spec" / "features_done" / "FEAT-001.yaml"
-    )
+    archived_feature_path = tmp_path / ARCHIVED_FEATURE_PATH
     archived_feature_path.parent.mkdir(parents=True, exist_ok=True)
     archived_feature_path.write_text("id: FEAT-001\n", encoding="utf-8")
 
     inputs = FeatureIterationInputs(
         project_root=tmp_path,
-        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        feature_path=tmp_path / ACTIVE_FEATURE_PATH,
         run_all=False,
         attempt=1,
         feedback=None,
@@ -234,15 +233,13 @@ checks:
     prompt_path.parent.mkdir(parents=True, exist_ok=True)
     prompt_path.write_text("Please review.\n$responseformat\n", encoding="utf-8")
 
-    archived_feature_path = (
-        tmp_path / "docs" / "spec" / "features_done" / "FEAT-001.yaml"
-    )
+    archived_feature_path = tmp_path / ARCHIVED_FEATURE_PATH
     archived_feature_path.parent.mkdir(parents=True, exist_ok=True)
     archived_feature_path.write_text("id: FEAT-001\n", encoding="utf-8")
 
     inputs = FeatureIterationInputs(
         project_root=tmp_path,
-        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        feature_path=tmp_path / ACTIVE_FEATURE_PATH,
         run_all=False,
         attempt=1,
         feedback=None,

@@ -15,6 +15,8 @@ from engineeringagent.checks.reviewers.engine import (
 DEPRECATED_RESPONSEFORMAT_PROMPT_SENTENCE = (
     "Return exactly one strict JSON object and no other text."
 )
+FEATURE_050_PATH = Path("docs/spec/features/FEAT-050/spec.yaml")
+FEATURE_052_PATH = Path("docs/spec/features/FEAT-052/spec.yaml")
 
 
 def test_empty_folder_sandbox_copies_only_prompt_and_configured_assets_only(
@@ -201,7 +203,7 @@ def test_run_reviewer_uses_empty_folder_sandbox_when_configured(
         },
         request=ReviewerRunRequest(
             feature_id="FEAT-050",
-            feature_path=tmp_path / "docs/spec/features/FEAT-050.yaml",
+            feature_path=tmp_path / FEATURE_050_PATH,
             changed_paths=ChangedPathsResult(
                 paths=("README.md",),
                 run_all=False,
@@ -262,7 +264,7 @@ def test_run_reviewer_uses_temp_worktree_snapshot_sandbox_when_configured(
         },
         request=ReviewerRunRequest(
             feature_id="FEAT-052",
-            feature_path=tmp_path / "docs/spec/features/FEAT-052.yaml",
+            feature_path=tmp_path / FEATURE_052_PATH,
             changed_paths=ChangedPathsResult(
                 paths=("README.md",),
                 run_all=False,
@@ -314,7 +316,7 @@ def test_run_reviewer_returns_request_changes_when_snapshot_setup_fails(
         },
         request=ReviewerRunRequest(
             feature_id="FEAT-050",
-            feature_path=tmp_path / "docs/spec/features/FEAT-050.yaml",
+            feature_path=tmp_path / FEATURE_050_PATH,
             changed_paths=ChangedPathsResult(
                 paths=("README.md",),
                 run_all=False,

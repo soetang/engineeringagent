@@ -17,6 +17,9 @@ from engineeringagent.loop_runtime.phases import (
 )
 from engineeringagent.prompts.feedback_envelope import parse_feedback_envelope
 
+ACTIVE_FEATURE_PATH = Path("docs/spec/features/FEAT-001/spec.yaml")
+ARCHIVED_FEATURE_PATH = Path("docs/spec/features_done/FEAT-001/spec.yaml")
+
 
 def _write_text(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -28,7 +31,7 @@ def test_run_gate_phase_fails_fast_when_checks_yaml_missing_for_run_all(
 ) -> None:
     inputs = FeatureIterationInputs(
         project_root=tmp_path,
-        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        feature_path=tmp_path / ACTIVE_FEATURE_PATH,
         run_all=True,
         attempt=1,
         feedback=None,
@@ -65,7 +68,7 @@ def test_run_gate_phase_reports_configured_checks_path_when_missing_for_run_all(
 
     inputs = FeatureIterationInputs(
         project_root=tmp_path,
-        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        feature_path=tmp_path / ACTIVE_FEATURE_PATH,
         run_all=True,
         attempt=1,
         feedback=None,
@@ -112,7 +115,7 @@ def test_run_gate_phase_reports_load_error_when_checks_document_raises(
 
     inputs = FeatureIterationInputs(
         project_root=tmp_path,
-        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        feature_path=tmp_path / ACTIVE_FEATURE_PATH,
         run_all=True,
         attempt=1,
         feedback=None,
@@ -166,16 +169,14 @@ def test_run_reviewer_phase_forwards_request_changes_feedback_for_run_all(
 
     inputs = FeatureIterationInputs(
         project_root=tmp_path,
-        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        feature_path=tmp_path / ACTIVE_FEATURE_PATH,
         run_all=True,
         attempt=1,
         feedback=None,
         verbose_output=False,
     )
 
-    archived_feature_path = (
-        tmp_path / "docs" / "spec" / "features_done" / "FEAT-001.yaml"
-    )
+    archived_feature_path = tmp_path / ARCHIVED_FEATURE_PATH
     _write_text(archived_feature_path, "id: FEAT-001\n")
 
     sentinel_feedback = "REVIEWER_FEEDBACK_SENTINEL"
@@ -241,15 +242,13 @@ def test_run_reviewer_phase_uses_configured_checks_path_presence_precheck(
 
     inputs = FeatureIterationInputs(
         project_root=tmp_path,
-        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        feature_path=tmp_path / ACTIVE_FEATURE_PATH,
         run_all=True,
         attempt=1,
         feedback=None,
         verbose_output=False,
     )
-    archived_feature_path = (
-        tmp_path / "docs" / "spec" / "features_done" / "FEAT-001.yaml"
-    )
+    archived_feature_path = tmp_path / ARCHIVED_FEATURE_PATH
     _write_text(archived_feature_path, "id: FEAT-001\n")
 
     recorded_calls: list[tuple[object, object]] = []
@@ -288,15 +287,13 @@ def test_run_completion_commit_phase_marks_archive_rollback_after_failure(
 ) -> None:
     inputs = FeatureIterationInputs(
         project_root=tmp_path,
-        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        feature_path=tmp_path / ACTIVE_FEATURE_PATH,
         run_all=False,
         attempt=1,
         feedback=None,
         verbose_output=False,
     )
-    archived_feature_path = (
-        tmp_path / "docs" / "spec" / "features_done" / "FEAT-001.yaml"
-    )
+    archived_feature_path = tmp_path / ARCHIVED_FEATURE_PATH
 
     restore_calls: list[tuple[Path, Path]] = []
     outcome = run_completion_commit_phase(
@@ -348,7 +345,7 @@ def test_run_gate_phase_emits_command_failure_feedback_contract(
 
     inputs = FeatureIterationInputs(
         project_root=tmp_path,
-        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        feature_path=tmp_path / ACTIVE_FEATURE_PATH,
         run_all=True,
         attempt=1,
         feedback=None,
@@ -410,7 +407,7 @@ def test_run_gate_phase_uses_generic_feedback_when_prompt_feedback_missing(
 
     inputs = FeatureIterationInputs(
         project_root=tmp_path,
-        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        feature_path=tmp_path / ACTIVE_FEATURE_PATH,
         run_all=True,
         attempt=1,
         feedback=None,
@@ -470,7 +467,7 @@ def test_run_gate_phase_delegates_policy_selection_to_checks(
 
     inputs = FeatureIterationInputs(
         project_root=tmp_path,
-        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        feature_path=tmp_path / ACTIVE_FEATURE_PATH,
         run_all=True,
         attempt=1,
         feedback=None,
@@ -502,7 +499,7 @@ def test_run_gate_phase_delegates_policy_selection_to_checks(
     outcome = run_gate_phase(
         inputs,
         archived_in_iteration=True,
-        archived_path=tmp_path / "docs" / "spec" / "features_done" / "FEAT-001.yaml",
+        archived_path=tmp_path / ARCHIVED_FEATURE_PATH,
         dependencies=deps,
     )
 
@@ -619,7 +616,7 @@ def test_run_verification_phase_emits_command_failure_feedback_contract(
 ) -> None:
     inputs = FeatureIterationInputs(
         project_root=tmp_path,
-        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        feature_path=tmp_path / ACTIVE_FEATURE_PATH,
         run_all=False,
         attempt=1,
         feedback=None,
@@ -663,7 +660,7 @@ def test_run_verification_phase_reports_parse_failures_with_stable_output(
 ) -> None:
     inputs = FeatureIterationInputs(
         project_root=tmp_path,
-        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        feature_path=tmp_path / ACTIVE_FEATURE_PATH,
         run_all=False,
         attempt=1,
         feedback=None,
@@ -690,7 +687,7 @@ def test_run_verification_phase_reports_missing_executable_with_stable_output(
 ) -> None:
     inputs = FeatureIterationInputs(
         project_root=tmp_path,
-        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        feature_path=tmp_path / ACTIVE_FEATURE_PATH,
         run_all=False,
         attempt=1,
         feedback=None,
@@ -773,7 +770,7 @@ def test_run_gate_phase_emits_fitness_failure_feedback_contract(
 
     inputs = FeatureIterationInputs(
         project_root=tmp_path,
-        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        feature_path=tmp_path / ACTIVE_FEATURE_PATH,
         run_all=True,
         attempt=1,
         feedback=None,
