@@ -168,7 +168,6 @@ def render_handoff_markdown_entry(
     sections = (
         ("Completed Work", envelope.completed_work),
         ("Verification", envelope.verification),
-        ("Remaining Work", envelope.remaining_work),
         ("Blockers", envelope.blockers),
     )
     for title, items in sections:

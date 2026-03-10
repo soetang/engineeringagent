@@ -140,13 +140,12 @@ def test_handoff_markdown_entry_omits_empty_and_placeholder_sections() -> None:
     assert section_headers == [
         "### Completed Work",
         "### Verification",
-        "### Remaining Work",
     ]
     assert "### Blockers" not in section_headers
     assert "### Verification" in section_headers
-    assert "### Remaining Work" in section_headers
+    assert "### Remaining Work" not in lines
     assert "- (none)" not in bullet_lines
-    assert "- Continue next subtask." in lines
+    assert "- Continue next subtask." not in lines
 
 
 def test_handoff_markdown_entry_includes_phase_progress_context() -> None:
@@ -169,7 +168,10 @@ def test_handoff_markdown_entry_includes_phase_progress_context() -> None:
         ),
     )
 
-    assert "Progress: phase P3 - Move implementation sequencing from subtasks to plan phases" in lines
+    assert (
+        "Progress: phase P3 - Move implementation sequencing from subtasks to plan phases"
+        in lines
+    )
 
 
 def test_handoff_render_metadata_exposes_pydantic_dump_defaults() -> None:
@@ -327,9 +329,11 @@ def test_write_iteration_telemetry_uses_phase_wording_for_fallback_handoff(
 
     handoff_path = _progress_root(tmp_path) / "features" / "FEAT-130" / "handoff.md"
     handoff_text = handoff_path.read_text(encoding="utf-8")
-    assert "highest-priority open phase" in handoff_text
-    assert "highest-priority open subtask" not in handoff_text
-    assert "P3: Move implementation sequencing from subtasks to plan phases" in handoff_text
+    assert "### Remaining Work" not in handoff_text
+    assert (
+        "Progress: phase P3 - Move implementation sequencing from subtasks to plan phases"
+        in handoff_text
+    )
 
 
 def test_write_iteration_telemetry_uses_feature_wording_for_direct_bundle_fallback_handoff(
@@ -375,10 +379,10 @@ def test_write_iteration_telemetry_uses_feature_wording_for_direct_bundle_fallba
 
     handoff_path = _progress_root(tmp_path) / "features" / "FEAT-182" / "handoff.md"
     handoff_text = handoff_path.read_text(encoding="utf-8")
-    assert "highest-priority open implementation step" in handoff_text
-    assert "highest-priority open subtask" not in handoff_text
+    assert "### Remaining Work" not in handoff_text
     assert (
-        "FEAT-182: Direct bundled fallback handoff context" in handoff_text
+        "Progress: implementation step FEAT-182 - Direct bundled fallback handoff context"
+        in handoff_text
     )
 
 
