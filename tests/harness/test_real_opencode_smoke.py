@@ -32,6 +32,7 @@ def _load_smoke_module(repo_root: Path):
 
 def test_template_verification_commands_use_uv_run(repo_root: Path) -> None:
     """Verify the smoke template uses a bundled planned feature package."""
+    smoke = _load_smoke_module(repo_root)
     template_path = (
         repo_root
         / "harness"
@@ -43,7 +44,7 @@ def test_template_verification_commands_use_uv_run(repo_root: Path) -> None:
 
     assert payload.get("planning_tier") == "planned"
     assert payload.get("artifacts") == {"plan": "plan.md"}
-    assert "subtasks" not in payload
+    assert set(payload).issubset(smoke._SMOKE_TEMPLATE_ALLOWED_KEYS)
 
 
 def test_smoke_harness_pins_spark_model_in_init_command(
@@ -212,6 +213,31 @@ def test_smoke_fixture_bundle_detects_invalid_plan_phase_statuses_and_verificati
     assert "plan frontmatter status must use runtime vocabulary" in violations
     assert "plan phase 1 status must use runtime vocabulary" in violations
     assert "plan phase 1 must declare at least one verification command" in violations
+
+
+def test_smoke_fixture_bundle_detects_unsupported_spec_keys(
+    repo_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    smoke = _load_smoke_module(repo_root)
+    template_path = (
+        repo_root
+        / "harness"
+        / "fitness-functions"
+        / "real_opencode_hello_world_feature_template.yaml"
+    )
+    payload = yaml.safe_load(template_path.read_text(encoding="utf-8"))
+    assert isinstance(payload, dict)
+    payload["legacy_field"] = "deprecated"
+
+    monkeypatch.setattr(smoke.yaml, "safe_load", lambda _text: payload)
+
+    violations = smoke._bundle_template_violations(repo_root)
+
+    assert (
+        "spec template contains unsupported keys for the smoke bundle: legacy_field"
+        in violations
+    )
 
 
 def test_parse_archived_bundle_statuses_reads_plan_phase_statuses(

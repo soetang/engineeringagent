@@ -203,6 +203,7 @@ def test_intent_reviewer_prompt_mentions_only_bundled_specs() -> None:
 ### Phase 4: Delete flat archived specs and add repo-wide cutover checks
 
 - Goal: delete every `docs/spec/features_done/*.yaml` file, remove flat-path handling from `harness/checks.yaml`, `harness/fitness-functions/check_source_first_loop_commands.py`, and `harness/fitness-functions/check_real_opencode_hello_world_smoke.py`, and add feature-local scripts that fail if those paths or phrases reappear.
+- Progress update (2026-03-10): `check_real_opencode_hello_world_smoke.py` no longer carries the legacy smoke-template key check that encoded wrapper-era progress fields; remaining Phase 4 work is the broader repo cutover and archived-file deletion.
 - Areas touched: every flat archived file matching `docs/spec/features_done/*.yaml`, `harness/checks.yaml`, `harness/fitness-functions/check_source_first_loop_commands.py`, `harness/fitness-functions/check_real_opencode_hello_world_smoke.py`, `tests/fitness/test_fitness_rules_source_first_loop_commands.py`, `tests/harness/test_real_opencode_smoke.py`, `tests/checks/reviewers/test_repo_reviewers_config.py`, `tests/checks/test_checks_reviewers_runtime.py`, and the three supporting scripts under `docs/spec/features/FEAT-183-remove-flat-spec-compatibility/supporting/`.
 - Interfaces:
   - Delete remaining `docs/spec/features_done/*.yaml` files; if a done feature must stay present, keep it only as `docs/spec/features_done/<feature>/spec.yaml`.

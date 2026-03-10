@@ -28,6 +28,24 @@ _SPEC_TEMPLATE_NAME = "real_opencode_hello_world_feature_template.yaml"
 _PLAN_TEMPLATE_PATH = Path("docs/fixtures/real_opencode_hello_world_plan_template.md")
 _FEATURE_SPEC_RELATIVE_PATH = Path("docs/spec/features/FEAT-001-hello-world-smoke/spec.yaml")
 _RUNTIME_STATUSES = {"backlog", "in_progress", "done", "blocked"}
+_SMOKE_TEMPLATE_ALLOWED_KEYS = frozenset(
+    {
+        "id",
+        "title",
+        "type",
+        "expected_commit_subject",
+        "planning_tier",
+        "status",
+        "priority",
+        "objective",
+        "context",
+        "constraints",
+        "implementation_notes",
+        "acceptance",
+        "artifacts",
+        "updated_at",
+    }
+)
 
 SPARK_AGENT_MODEL = "openai/gpt-5.3-codex-spark"
 
@@ -138,11 +156,17 @@ def _bundle_template_violations(repo_root: Path) -> list[str]:
     spec_id = spec_payload.get("id")
     planning_tier = spec_payload.get("planning_tier")
     plan_artifact = spec_payload.get("artifacts", {}).get("plan")
+    unexpected_keys = sorted(
+        key for key in spec_payload if isinstance(key, str) and key not in _SMOKE_TEMPLATE_ALLOWED_KEYS
+    )
 
     if plan_artifact != "plan.md":
         violations.append("spec artifacts.plan must be plan.md for the smoke bundle")
-    if "subtasks" in spec_payload:
-        violations.append("spec template must not define subtasks for the smoke bundle")
+    if unexpected_keys:
+        violations.append(
+            "spec template contains unsupported keys for the smoke bundle: "
+            + ", ".join(unexpected_keys)
+        )
     if not isinstance(spec_id, str):
         violations.append("spec template id must be a string")
     if not isinstance(planning_tier, str):
