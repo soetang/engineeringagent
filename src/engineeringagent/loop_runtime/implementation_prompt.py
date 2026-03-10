@@ -1,10 +1,16 @@
-"""Adapter helpers for assembling implementation prompt requests."""
+"""Loop-runtime helpers for assembling implementation prompt requests."""
 
 from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, Mapping
 
+from engineeringagent.application.prompt_builder import (
+    ImplementationPromptRequest,
+    PromptArtifactPaths,
+    PromptBuilder,
+    PromptProgressKind,
+)
 from engineeringagent.loop_runtime.progress_units import (
     current_progress_unit,
     feature_progress_reference,
@@ -16,13 +22,6 @@ from engineeringagent.specs import (
     resolve_feature_research_path,
 )
 
-from .prompt_builder import (
-    ImplementationPromptRequest,
-    PromptBuilder,
-    PromptArtifactPaths,
-    PromptProgressKind,
-)
-
 
 def build_implementation_prompt_request(
     *,
@@ -31,7 +30,7 @@ def build_implementation_prompt_request(
     feedback: str | None,
     handoff_path: str | None = None,
 ) -> ImplementationPromptRequest:
-    """Resolve explicit implementation-prompt inputs from feature state."""
+    """Resolve explicit implementation-prompt inputs from loop state."""
 
     feature_id = str(feature.get("id", "unknown-feature"))
     raw_progress_kind = feature_progress_kind(feature_path, dict(feature))
@@ -65,7 +64,7 @@ def build_implementation_prompt(
     handoff_path: str | None = None,
     prompt_builder: PromptBuilder,
 ) -> str:
-    """Render the implementation prompt via the application prompt builder."""
+    """Render the implementation prompt from loop state."""
 
     request = build_implementation_prompt_request(
         feature=feature,

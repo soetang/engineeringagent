@@ -28,6 +28,10 @@ def _load_application_module() -> ModuleType:
     return import_module("engineeringagent.application")
 
 
+def _load_loop_runtime_prompt_module() -> ModuleType:
+    return import_module("engineeringagent.loop_runtime.implementation_prompt")
+
+
 def _default_prompt_definitions(
     project_root: Path | None = None,
 ) -> PromptDefinitionRepository:
@@ -76,8 +80,9 @@ def build_implementation_prompt(
     """Render the implementation prompt through the application layer."""
 
     application_module = _load_application_module()
+    loop_runtime_prompt_module = _load_loop_runtime_prompt_module()
 
-    return application_module.build_implementation_prompt(
+    return loop_runtime_prompt_module.build_implementation_prompt(
         feature=feature,
         feature_path=feature_path,
         feedback=feedback,

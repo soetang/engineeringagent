@@ -11,8 +11,10 @@ from engineeringagent.application import (
     DefaultPromptBuilder,
     ImplementationPromptRequest,
     PromptArtifactPaths,
-    build_implementation_prompt,
     build_selector_prompt,
+)
+from engineeringagent.loop_runtime.implementation_prompt import (
+    build_implementation_prompt,
     build_implementation_prompt_request,
 )
 from tests.loop.feature_iteration_support import (
@@ -84,8 +86,8 @@ def test_application_selector_prompt_renders_feature_summaries(tmp_path: Path) -
     assert f"path={feature_path}" in prompt
 
 
-def test_compatibility_helper_delegates_to_prompt_builder(tmp_path: Path) -> None:
-    """The compatibility helper routes through the application prompt builder."""
+def test_loop_runtime_prompt_helper_delegates_to_prompt_builder(tmp_path: Path) -> None:
+    """Loop runtime prompt assembly delegates rendering to the application builder."""
 
     feature_data = {
         **base_feature(status="in_progress"),
@@ -174,10 +176,10 @@ def test_default_prompt_builder_normalizes_legacy_subtask_progress_to_feature_wo
         )
 
 
-def test_compatibility_helper_normalizes_legacy_subtask_progress_for_application(
+def test_loop_runtime_prompt_request_normalizes_legacy_subtask_progress_for_application(
     tmp_path: Path,
 ) -> None:
-    """Legacy loop state is normalized before it reaches the application builder."""
+    """Legacy loop state is normalized before it reaches the application renderer."""
 
     feature_data = base_feature(status="in_progress")
     feature_data["subtasks"] = [
