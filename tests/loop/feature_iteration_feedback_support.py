@@ -48,24 +48,6 @@ def advance_bundled_plan_prompt_state(
     _write_plan_frontmatter(plan_path, frontmatter, body)
 
 
-def advance_subtask_prompt_state(
-    feature_path: Path,
-    *,
-    prompt_count: int,
-) -> None:
-    """Mark the next legacy subtask done for each prompt, then finish the feature."""
-
-    feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
-    subtasks = feature.get("subtasks", [])
-    next_subtask = _phase_at_index(subtasks, prompt_count - 1)
-    if next_subtask is not None:
-        next_subtask["status"] = "done"
-        feature["status"] = "in_progress"
-    else:
-        feature["status"] = "done"
-    feature_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding="utf-8")
-
-
 def _phase_at_index(items: object, index: int) -> dict[str, object] | None:
     if not isinstance(items, list) or index < 0 or index >= len(items):
         return None

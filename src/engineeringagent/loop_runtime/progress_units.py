@@ -17,7 +17,7 @@ from engineeringagent.specs import (
 
 
 class ProgressUnit(BaseModel):
-    """One feature-, phase-, or subtask-shaped execution unit."""
+    """One feature- or phase-shaped execution unit."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -121,9 +121,7 @@ def iter_progress_units(
         feature_unit = _feature_progress_unit(feature)
         if feature_unit is not None:
             yield feature_unit
-            return
-
-    yield from _iter_subtask_progress_units(feature)
+    return
 
 
 def _feature_progress_unit(feature: dict[str, Any] | None) -> ProgressUnit | None:
@@ -176,29 +174,6 @@ def _iter_raw_plan_progress_units(
         kind="phase",
         get_value=lambda phase, field: phase.get(field) if isinstance(phase, dict) else None,
     )
-
-
-def _iter_subtask_progress_units(
-    feature: dict[str, Any] | None,
-) -> Iterable[ProgressUnit]:
-    yield from _iter_mapping_progress_units(
-        _iter_subtasks(feature),
-        kind="subtask",
-        get_value=lambda subtask, field: (
-            subtask.get(field) if isinstance(subtask, dict) else None
-        ),
-    )
-
-
-def _iter_subtasks(feature: dict[str, Any] | None) -> Iterable[dict[str, Any]]:
-    if feature is None:
-        return
-    subtasks = feature.get("subtasks")
-    if not isinstance(subtasks, list) or not subtasks:
-        return
-    for subtask in subtasks:
-        if isinstance(subtask, dict):
-            yield subtask
 
 
 def _iter_mapping_progress_units(

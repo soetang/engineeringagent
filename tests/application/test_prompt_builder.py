@@ -177,10 +177,10 @@ def test_default_prompt_builder_normalizes_legacy_subtask_progress_to_feature_wo
         )
 
 
-def test_loop_runtime_prompt_request_normalizes_legacy_subtask_progress_for_application(
+def test_loop_runtime_prompt_request_ignores_legacy_subtasks_for_application(
     tmp_path: Path,
 ) -> None:
-    """Legacy loop state is normalized before it reaches the application renderer."""
+    """Loop prompt requests stay on the bundled feature surface."""
 
     feature_data = base_feature(status="in_progress")
     feature_data["subtasks"] = [

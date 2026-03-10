@@ -57,32 +57,12 @@ def _move_path(source: Path, destination: Path) -> None:
         shutil.move(str(source), str(destination))
 
 
-def _normalize_done_subtasks(feature: dict[str, Any]) -> bool:
-    if feature.get("status") != "done":
-        return False
-    subtasks = feature.get("subtasks")
-    if not isinstance(subtasks, list) or not subtasks:
-        return False
-    mutated = False
-    for subtask in subtasks:
-        if not isinstance(subtask, dict):
-            continue
-        if subtask.get("status") == "done":
-            continue
-        subtask["status"] = "done"
-        mutated = True
-    return mutated
-
-
 def _normalize_done_progress_artifacts(feature: dict[str, Any], feature_path: Path) -> bool:
-    mutated = _normalize_done_subtasks(feature)
-    if normalize_done_plan(feature, feature_path, FEATURE_TRANSITIONS):
-        mutated = True
-    return mutated
+    return normalize_done_plan(feature, feature_path, FEATURE_TRANSITIONS)
 
 
 def set_status(entity: dict[str, Any], target: str, kind: str = "feature") -> None:
-    """Transition a feature or subtask status with guardrails."""
+    """Transition a feature or progress entity status with guardrails."""
     current = str(entity.get("status", ""))
     allowed = FEATURE_TRANSITIONS.get(current)
     if not allowed:

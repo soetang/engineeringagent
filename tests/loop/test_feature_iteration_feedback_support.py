@@ -7,7 +7,6 @@ import yaml
 
 from tests.loop.feature_iteration_feedback_support import (
     advance_bundled_plan_prompt_state,
-    advance_subtask_prompt_state,
 )
 from tests.loop.feature_iteration_support import (
     base_feature,
@@ -55,27 +54,6 @@ def test_advance_bundled_plan_prompt_state_tracks_next_phase_then_finishes(
     final_plan = _load_plan_frontmatter(plan_path)
     assert final_feature["status"] == "done"
     assert final_plan["status"] == "done"
-
-
-def test_advance_subtask_prompt_state_tracks_next_subtask_then_finishes(
-    tmp_path: Path,
-) -> None:
-    feature_data = base_feature(status="in_progress")
-    feature_data["subtasks"] = [
-        {"id": "ST-001", "title": "First", "status": "backlog"},
-        {"id": "ST-002", "title": "Second", "status": "backlog"},
-    ]
-    _, feature_path = make_project_root(tmp_path, feature_data=feature_data)
-
-    advance_subtask_prompt_state(feature_path, prompt_count=1)
-    first_feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
-    assert first_feature["status"] == "in_progress"
-    assert first_feature["subtasks"][0]["status"] == "done"
-    assert first_feature["subtasks"][1]["status"] == "backlog"
-
-    advance_subtask_prompt_state(feature_path, prompt_count=3)
-    final_feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
-    assert final_feature["status"] == "done"
 
 
 def _load_plan_frontmatter(plan_path: Path) -> dict[str, object]:

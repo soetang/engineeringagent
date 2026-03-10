@@ -13,7 +13,6 @@ import engineeringagent.loop as loop_module
 from tests.loop._feedback_envelope import parse_feedback_envelope_from_prompt
 from tests.loop.feature_iteration_feedback_support import (
     advance_bundled_plan_prompt_state,
-    advance_subtask_prompt_state,
     install_stateful_prompt_agent,
 )
 from tests.loop.feature_iteration_support import (
@@ -28,6 +27,12 @@ from tests.loop.feature_iteration_support import (
     write_fail_once_script,
     write_yaml,
 )
+
+
+def _mark_feature_done(feature_path: Path) -> None:
+    feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
+    feature["status"] = "done"
+    feature_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding="utf-8")
 
 
 def test_commit_failure_feedback_still_injected_into_next_prompt(
@@ -421,7 +426,7 @@ def test_gate_failure_feedback_includes_fitness_remediation_guidance(
 
     prompts = install_stateful_prompt_agent(
         monkeypatch,
-        lambda _prompt_count: advance_subtask_prompt_state(feature_path, prompt_count=99),
+        lambda _prompt_count: _mark_feature_done(feature_path),
     )
     monkeypatch.setattr(loop_module, "preflight", lambda **_: True)
     code = run_loop(
@@ -482,7 +487,7 @@ def test_spec_validate_failure_feedback_round_trips_to_retry_prompt(
 
     prompts = install_stateful_prompt_agent(
         monkeypatch,
-        lambda _prompt_count: advance_subtask_prompt_state(feature_path, prompt_count=99),
+        lambda _prompt_count: _mark_feature_done(feature_path),
     )
     monkeypatch.setattr(loop_module, "preflight", lambda **_: True)
     code = run_loop(
@@ -542,7 +547,7 @@ def test_non_validation_gate_failure_feedback_round_trips_to_retry_prompt(
 
     prompts = install_stateful_prompt_agent(
         monkeypatch,
-        lambda _prompt_count: advance_subtask_prompt_state(feature_path, prompt_count=99),
+        lambda _prompt_count: _mark_feature_done(feature_path),
     )
     monkeypatch.setattr(loop_module, "preflight", lambda **_: True)
     code = run_loop(

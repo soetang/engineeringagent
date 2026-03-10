@@ -283,7 +283,7 @@ def run_verification_phase(
     iteration_inputs: FeatureIterationInputs,
     verification_commands: list[str],
 ) -> VerificationPhaseOutcome:
-    """Run selected-subtask verification commands for the current iteration."""
+    """Run selected progress-unit verification commands for the current iteration."""
     if not verification_commands:
         return VerificationPhaseOutcome(
             result="passed",
