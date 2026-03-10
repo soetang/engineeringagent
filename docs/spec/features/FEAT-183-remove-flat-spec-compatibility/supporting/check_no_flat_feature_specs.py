@@ -37,7 +37,6 @@ REFERENCE_CHECKS: dict[str, tuple[str, ...]] = {
     ),
     "harness/checks.yaml": ("docs/spec/features/*.yaml",),
     "harness/fitness-functions/check_source_first_loop_commands.py": (
-        'glob("*.yaml")',
         "docs/spec/features/*.yaml",
         "subtasks[*].verification",
     ),
@@ -51,7 +50,12 @@ REFERENCE_CHECKS: dict[str, tuple[str, ...]] = {
 def _flat_feature_specs(directory: Path) -> list[Path]:
     if not directory.is_dir():
         return []
-    return sorted(path for path in directory.glob("*.yaml") if path.name != "spec.yaml")
+    return sorted(
+        path
+        for pattern in ("*.yaml", "*.yml")
+        for path in directory.glob(pattern)
+        if path.name != "spec.yaml"
+    )
 
 
 def _check_reference_files() -> list[str]:

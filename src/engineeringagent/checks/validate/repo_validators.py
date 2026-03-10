@@ -232,7 +232,11 @@ def _append_flat_feature_entrypoint_issues(
     messages: list[str],
     features_dir: Path,
 ) -> None:
-    for file_path in sorted(features_dir.glob("*.yaml")):
+    for file_path in sorted(
+        path
+        for pattern in ("*.yaml", "*.yml")
+        for path in features_dir.glob(pattern)
+    ):
         messages.append(
             f"{file_path}: feature specs must use bundled spec.yaml entrypoints"
         )

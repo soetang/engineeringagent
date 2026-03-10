@@ -3,19 +3,22 @@ from __future__ import annotations
 from pathlib import Path
 
 import yaml
+import pytest
 
 from engineeringagent.checks.validate.validator import validate
 from tests.meta.validator_support import write_bundled_feature_spec, write_plan_artifact
 
 
+@pytest.mark.parametrize("suffix", [".yaml", ".yml"])
 def test_bundled_only_validate_rejects_flat_feature_entrypoints(
     tmp_path: Path,
+    suffix: str,
 ) -> None:
     project_root = tmp_path
     features_dir = project_root / "docs" / "spec" / "features"
     features_dir.mkdir(parents=True, exist_ok=True)
 
-    feature_path = features_dir / "FEAT-903-contract-errors.yaml"
+    feature_path = features_dir / f"FEAT-903-contract-errors{suffix}"
     feature_path.write_text(
         yaml.safe_dump(
             {
@@ -145,14 +148,16 @@ def test_validate_allows_multiline_verification_commands_in_done_specs(
     )
 
 
+@pytest.mark.parametrize("suffix", [".yaml", ".yml"])
 def test_bundled_only_validate_rejects_flat_done_feature_entrypoints(
     tmp_path: Path,
+    suffix: str,
 ) -> None:
     project_root = tmp_path
     features_done_dir = project_root / "docs" / "spec" / "features_done"
     features_done_dir.mkdir(parents=True, exist_ok=True)
 
-    done_path = features_done_dir / "FEAT-921-flat-done.yaml"
+    done_path = features_done_dir / f"FEAT-921-flat-done{suffix}"
     done_path.write_text(
         yaml.safe_dump(
             {
