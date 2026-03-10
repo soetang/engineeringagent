@@ -5,7 +5,7 @@ from string import Template
 from typing import Any, Mapping, Sequence
 
 from engineeringagent.adapters.prompts import BundledPromptDefinitionRepository
-from engineeringagent.application.prompt_builder import (
+from engineeringagent.application import (
     DefaultPromptBuilder,
     build_implementation_prompt as _build_implementation_prompt,
     inject_feedback as _inject_feedback,

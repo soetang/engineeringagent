@@ -9,19 +9,14 @@ from typing import Any, Mapping, Protocol
 
 from pydantic import ValidationError
 
-from engineeringagent.loop_runtime.progress_units import current_progress_unit
 from engineeringagent.ports import PromptDefinitionRepository
 from engineeringagent.prompt_feedback import normalize_prompt_feedback
 from engineeringagent.prompts.feedback_envelope import (
     parse_feedback_envelope,
     serialize_feedback_envelope,
 )
-from engineeringagent.progress import paths as progress_paths
-from engineeringagent.specs import (
-    feature_progress_kind,
-    resolve_feature_plan_path,
-    resolve_feature_research_path,
-)
+
+
 @dataclass(frozen=True)
 class ImplementationPromptRequest:
     """Typed input for implementation prompt rendering."""
@@ -32,6 +27,8 @@ class ImplementationPromptRequest:
     research_path: str | None
     handoff_path: str
     feedback: str | None
+    progress_kind: str
+    current_progress: str | None = None
 
 
 class PromptBuilder(Protocol):
@@ -54,14 +51,6 @@ class DefaultPromptBuilder:
             self._prompt_definitions,
             "loop_implementation",
         )
-        progress_kind = feature_progress_kind(
-            request.feature_path,
-            dict(request.feature),
-        )
-        current_progress = current_progress_unit(
-            request.feature_path,
-            dict(request.feature),
-        )
         prompt = implementation_template.substitute(
             feature_path=str(request.feature_path),
             artifact_paths=_artifact_paths_prompt_block(request),
@@ -70,44 +59,23 @@ class DefaultPromptBuilder:
             feature_title=str(request.feature.get("title", "")),
             objective=str(request.feature.get("objective", "")),
             context=str(request.feature.get("context", "")),
-            progress_unit=_progress_unit_prompt_label(progress_kind),
+            progress_unit=_progress_unit_prompt_label(request.progress_kind),
             current_progress_reference=_current_progress_reference_line(
-                current_progress
+                request.progress_kind,
+                request.current_progress,
             ),
-            progress_context_instruction=_progress_context_instruction(progress_kind),
-            progress_update_instruction=_progress_update_instruction(progress_kind),
+            progress_context_instruction=_progress_context_instruction(
+                request.progress_kind
+            ),
+            progress_update_instruction=_progress_update_instruction(
+                request.progress_kind
+            ),
         )
         return inject_feedback(
             prompt,
             request.feedback,
             prompt_definitions=self._prompt_definitions,
         )
-
-
-def build_implementation_prompt(
-    *,
-    feature: Mapping[str, Any],
-    feature_path: Path,
-    feedback: str | None,
-    handoff_path: str | None = None,
-    prompt_builder: PromptBuilder,
-) -> str:
-    """Compatibility helper for rendering implementation prompts."""
-
-    feature_id = str(feature.get("id", "unknown-feature"))
-    return prompt_builder.build_implementation_prompt(
-        ImplementationPromptRequest(
-            feature=feature,
-            feature_path=feature_path,
-            plan_path=_resolved_artifact_reference(feature_path, feature, "plan"),
-            research_path=_resolved_artifact_reference(
-                feature_path, feature, "research"
-            ),
-            handoff_path=handoff_path
-            or progress_paths.handoff_markdown_reference(Path(), feature_id),
-            feedback=feedback,
-        )
-    )
 
 
 def inject_feedback(
@@ -162,23 +130,6 @@ def _artifact_paths_prompt_block(request: ImplementationPromptRequest) -> str:
     return "\n".join(lines)
 
 
-def _resolved_artifact_reference(
-    feature_path: Path,
-    feature: Mapping[str, Any],
-    artifact_kind: str,
-) -> str | None:
-    feature_payload = dict(feature)
-    resolver = (
-        resolve_feature_plan_path
-        if artifact_kind == "plan"
-        else resolve_feature_research_path
-    )
-    artifact_path = resolver(feature_path, feature_payload)
-    if artifact_path is None:
-        return None
-    return str(artifact_path)
-
-
 def _progress_update_instruction(progress_kind: str) -> str:
     if progress_kind == "phase":
         return (
@@ -217,12 +168,14 @@ def _progress_unit_prompt_label(progress_kind: str) -> str:
     return progress_kind
 
 
-def _current_progress_reference_line(progress_unit: Any) -> str:
-    if progress_unit is None:
+def _current_progress_reference_line(
+    progress_kind: str,
+    current_progress: str | None,
+) -> str:
+    if not current_progress:
         return ""
 
-    progress_kind = _progress_unit_prompt_label(str(progress_unit.kind))
-    reference = str(progress_unit.id)
-    if progress_unit.title:
-        reference = f"{reference} - {progress_unit.title}"
-    return f"Current {progress_kind}: {reference}\n"
+    return (
+        f"Current {_progress_unit_prompt_label(progress_kind)}: "
+        f"{current_progress}\n"
+    )

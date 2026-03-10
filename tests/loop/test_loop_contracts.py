@@ -1109,5 +1109,7 @@ def test_run_implement_step_uses_injected_prompt_builder(tmp_path: Path) -> None
             research_path=None,
             handoff_path=".engineeringagent/progress/features/FEAT-900/handoff.md",
             feedback=None,
+            progress_kind="subtask",
+            current_progress=None,
         )
     ]

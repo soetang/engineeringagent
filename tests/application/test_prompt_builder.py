@@ -10,6 +10,7 @@ from engineeringagent.application import (
     DefaultPromptBuilder,
     ImplementationPromptRequest,
     build_implementation_prompt,
+    build_implementation_prompt_request,
 )
 from tests.loop.feature_iteration_support import (
     base_feature,
@@ -59,6 +60,8 @@ def test_default_prompt_builder_renders_bundled_phase_prompt(tmp_path: Path) -> 
             research_path=None,
             handoff_path=".engineeringagent/progress/features/FEAT-900/handoff.md",
             feedback=None,
+            progress_kind="phase",
+            current_progress="P1 - Build prompt seam",
         )
     )
 
@@ -97,12 +100,9 @@ def test_compatibility_helper_delegates_to_prompt_builder(tmp_path: Path) -> Non
     builder = _prompt_builder()
 
     direct = builder.build_implementation_prompt(
-        ImplementationPromptRequest(
+        build_implementation_prompt_request(
             feature=feature,
             feature_path=feature_path,
-            plan_path=str(feature_path.parent / "plan.md"),
-            research_path=None,
-            handoff_path=".engineeringagent/progress/features/FEAT-900/handoff.md",
             feedback="",
         )
     )
@@ -133,6 +133,8 @@ def test_default_prompt_builder_uses_explicit_handoff_path_input(
             research_path=None,
             handoff_path="custom/handoff-reference.md",
             feedback=None,
+            progress_kind="subtask",
+            current_progress="subtask-1 - Example",
         )
     )
 
@@ -163,6 +165,8 @@ def test_default_prompt_builder_renders_explicit_plan_and_research_paths(
             research_path=str(feature_path.parent / "research.md"),
             handoff_path=".engineeringagent/progress/features/FEAT-900/handoff.md",
             feedback=None,
+            progress_kind="phase",
+            current_progress="FEAT-900 - Artifact paths",
         )
     )
 
@@ -198,3 +202,36 @@ def test_application_prompt_builder_does_not_import_prompt_adapters() -> None:
 
     assert "engineeringagent.adapters.prompts" not in imported_modules
     assert "engineeringagent.adapters.prompts" not in imported_from_modules
+
+
+def test_application_prompt_builder_keeps_runtime_resolution_outside_renderer() -> None:
+    """Keep progress-state resolution out of the rendering service."""
+
+    module_path = (
+        Path(__file__).resolve().parents[2]
+        / "src"
+        / "engineeringagent"
+        / "application"
+        / "prompt_builder.py"
+    )
+    tree = ast.parse(module_path.read_text(encoding="utf-8"), filename=str(module_path))
+
+    imported_modules = {
+        alias.name
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Import)
+        for alias in node.names
+    }
+    imported_from_modules = {
+        node.module
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ImportFrom) and node.module is not None
+    }
+
+    forbidden = {
+        "engineeringagent.loop_runtime.progress_units",
+        "engineeringagent.progress.paths",
+        "engineeringagent.specs",
+    }
+    assert imported_modules.isdisjoint(forbidden)
+    assert imported_from_modules.isdisjoint(forbidden)

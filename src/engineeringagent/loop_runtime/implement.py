@@ -10,8 +10,8 @@ from typing import Any, Protocol
 from engineeringagent.adapters.prompts import BundledPromptDefinitionRepository
 from engineeringagent.application import (
     DefaultPromptBuilder,
-    ImplementationPromptRequest,
     PromptBuilder,
+    build_implementation_prompt_request,
 )
 from engineeringagent.agents import (
     AgentBackendError,
@@ -28,8 +28,6 @@ from engineeringagent.progress import logging as progress_logging
 from engineeringagent.progress import paths as progress_paths
 from engineeringagent.specs import (
     feature_progress_kind,
-    resolve_feature_plan_path,
-    resolve_feature_research_path,
 )
 
 
@@ -226,19 +224,16 @@ def _build_implement_prompt(
     *,
     prompt_builder: PromptBuilder,
 ) -> str:
-    return prompt_builder.build_implementation_prompt(
-        ImplementationPromptRequest(
-            feature=implement_inputs.feature,
-            feature_path=implement_inputs.feature_path,
-            plan_path=_resolve_prompt_artifact_path(implement_inputs, "plan"),
-            research_path=_resolve_prompt_artifact_path(implement_inputs, "research"),
-            handoff_path=progress_paths.handoff_markdown_reference(
-                implement_inputs.project_root,
-                _feature_id_for_prompt(implement_inputs.feature),
-            ),
-            feedback=implement_inputs.feedback,
-        )
+    request = build_implementation_prompt_request(
+        feature=implement_inputs.feature,
+        feature_path=implement_inputs.feature_path,
+        feedback=implement_inputs.feedback,
+        handoff_path=progress_paths.handoff_markdown_reference(
+            implement_inputs.project_root,
+            _feature_id_for_prompt(implement_inputs.feature),
+        ),
     )
+    return prompt_builder.build_implementation_prompt(request)
 
 
 def _feature_id_for_prompt(feature: dict[str, Any]) -> str:
@@ -246,24 +241,6 @@ def _feature_id_for_prompt(feature: dict[str, Any]) -> str:
     if isinstance(feature_id, str) and feature_id.strip():
         return feature_id
     return "unknown-feature"
-
-
-def _resolve_prompt_artifact_path(
-    implement_inputs: ImplementStepInputs,
-    artifact_kind: str,
-) -> str | None:
-    resolver = (
-        resolve_feature_plan_path
-        if artifact_kind == "plan"
-        else resolve_feature_research_path
-    )
-    artifact_path = resolver(
-        implement_inputs.feature_path,
-        implement_inputs.feature,
-    )
-    if artifact_path is None:
-        return None
-    return str(artifact_path)
 
 
 def _ensure_progress_artifacts(implement_inputs: ImplementStepInputs) -> None:
