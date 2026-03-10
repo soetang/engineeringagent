@@ -214,7 +214,7 @@ def test_repo_fitness_catalog_source_first_scope_mentions_bundled_plan_surfaces(
 
     assert source_first_rule["scope"] == (
         "legacy spec verification, bundled plan.md phases/examples, "
-        "bundled plan-session/research-session guidance, "
+        "packaged plan-session/research-session guidance, "
         "contributor approach docs, "
         "loop implementation prompt template, "
         "docs/fixtures/real_opencode_hello_world_plan_template.md, and "
@@ -226,6 +226,6 @@ def test_repo_fitness_catalog_source_first_scope_mentions_bundled_plan_surfaces(
     )
 
     assert "bundled plan.md phases/examples" in checked_in_catalog
-    assert "bundled plan-session/research-session guidance" in checked_in_catalog
+    assert "packaged plan-session/research-session guidance" in checked_in_catalog
     assert "contributor approach docs" in checked_in_catalog
     assert "loop implementation prompt template" in checked_in_catalog

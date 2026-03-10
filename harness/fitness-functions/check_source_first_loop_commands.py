@@ -23,12 +23,8 @@ SMOKE_PLAN_TEMPLATE_PATH = Path("docs/fixtures/real_opencode_hello_world_plan_te
 PLAN_FORMAT_EXAMPLE_PATH = Path(
     "docs/spec/features_done/FEAT-181-bundled-feature-planning-workflow/supporting/plan-format-example.md"
 )
-PLAN_SESSION_APPROACH_PATH = Path(
-    "docs/spec/features_done/FEAT-181-bundled-feature-planning-workflow/supporting/plan-session-approach.md"
-)
-RESEARCH_SESSION_APPROACH_PATH = Path(
-    "docs/spec/features_done/FEAT-181-bundled-feature-planning-workflow/supporting/research-session-approach.md"
-)
+PLAN_SESSION_APPROACH_PATH = Path("src/engineeringagent/approach/docs/plan-session.md")
+RESEARCH_SESSION_APPROACH_PATH = Path("src/engineeringagent/approach/docs/research-session.md")
 CONTRIBUTOR_APPROACH_DOC_PATHS = (
     Path("src/engineeringagent/approach/docs/workflow.md"),
     Path("src/engineeringagent/approach/docs/quality-checks.md"),

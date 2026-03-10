@@ -25,5 +25,4 @@ This guide defines who each documentation surface is for, what belongs in it, an
 ## Ownership and Placement
 - `engineeringagent approach` provides operational reference topics for users and contributors; discover them with `uv run engineeringagent approach list`.
 - Feature packages rooted at `docs/spec/features/<feature>/spec.yaml` define loop-scoped execution work.
-- Treat flat `docs/spec/features/*.yaml` files as temporary compatibility wrappers only; they must point to the canonical bundled package instead of becoming a second design source.
 - Keep `spec.yaml` as the canonical feature contract and use bundled `plan.md` phases for implementation sequencing when the planning tier requires a plan artifact.

@@ -53,7 +53,6 @@ feature-package layout:
 
 - Treat bundled entrypoints under `docs/spec/features/**/spec.yaml` as the canonical
   review surface.
-- If the active feature is a compatibility wrapper, say so explicitly and tell the reviewer to follow legacy wrappers (`docs/spec/features/*.yaml`) to the canonical bundled package before reviewing.
 - Tell the reviewer whether `plan.md` phases, `research.md`, or other supporting
   artifacts are in scope for the review.
 

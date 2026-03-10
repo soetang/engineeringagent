@@ -90,7 +90,7 @@ Conduct codebase research based on a user-provided specification and produce a `
 - Only include a Markdown link when a concrete link target is available; otherwise use plain text.
 - If required context is missing, do not guess; use the appropriate lookup method when the context is retrievable.
 - If context remains uncertain but you must proceed, state the assumption explicitly and choose the most reversible path.
-- If there are open questions, include them in `## Open Questions` 
+- If there are open questions, include them in `## Open Questions`
 
 # Reasoning Steps
 - Think step by step internally.

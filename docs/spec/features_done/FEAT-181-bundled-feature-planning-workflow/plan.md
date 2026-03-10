@@ -81,8 +81,6 @@ status: backlog
 artifacts:
   plan: plan.md
   research: research.md
-  supporting:
-    - supporting/plan-session-approach.md
 ```
 
 ```python
@@ -127,7 +125,7 @@ phases:
 - `docs/fitness-functions/rules.md:33` and `harness/fitness-functions/rules.yaml:1` - the fitness catalog and manifest need review because FEAT-181 changes long-lived workflow scope and rule wording.
 - `harness/fitness-functions/check_source_first_loop_commands.py:17` - the source-first loop rule still scans flat specs and `subtasks[*].verification`, so it is a direct contract-update surface.
 - `harness/fitness-functions/check_real_opencode_hello_world_smoke.py:24` and `harness/fitness-functions/real_opencode_hello_world_feature_template.yaml:1` - the smoke rule and template currently encode flat paths and subtask-owned verification/status, so they should move with the bundled workflow.
-- `docs/spec/features_done/FEAT-181-bundled-feature-planning-workflow/supporting/plan-session-approach.md:53`, `docs/spec/features_done/FEAT-181-bundled-feature-planning-workflow/supporting/research-session-approach.md:24`, `docs/spec/features_done/FEAT-181-bundled-feature-planning-workflow/supporting/spec-format-example.yaml:1`, and `docs/spec/features_done/FEAT-181-bundled-feature-planning-workflow/supporting/plan-format-example.md:1` - the bundled supporting guidance and examples are part of the feature contract and should stay aligned with the implemented workflow.
+- `src/engineeringagent/approach/docs/plan-session.md:1`, `src/engineeringagent/approach/docs/research-session.md:1`, `docs/spec/features_done/FEAT-181-bundled-feature-planning-workflow/supporting/spec-format-example.yaml:1`, and `docs/spec/features_done/FEAT-181-bundled-feature-planning-workflow/supporting/plan-format-example.md:1` - the packaged session guidance and bundled examples are part of the workflow contract and should stay aligned with the implemented workflow.
 - `README.md:19`, `src/engineeringagent/approach/docs/specifications.md:14`, `harness/reviewers/prompts/intent_integrity_reviewer.md:11`, `harness/fitness-functions/check_source_first_loop_commands.py:17`, and `harness/fitness-functions/check_real_opencode_hello_world_smoke.py:24` still encode flat-file or subtask-era assumptions that must be updated.
 
 ## Refactoring Strategy
@@ -379,7 +377,7 @@ def test_source_first_rule_scans_plan_phase_verification(tmp_path: Path) -> None
 - Add one canonical description of planning tiers and artifact requirements: `direct` for spec-only work, `planned` when a plan is required, and `researched` when both research and a plan are required before implementation.
 - Update `harness/reviewers/prompts/intent_integrity_reviewer.md` and `harness/reviewers/prompts/test_reviewer.md` to reference bundled spec entrypoints, planning tiers, plan phases, supporting artifacts, and the reviewer expectations introduced by the new package layout.
 - Refresh `docs/spec/features_done/FEAT-181-bundled-feature-planning-workflow/supporting/spec-format-example.yaml` and `docs/spec/features_done/FEAT-181-bundled-feature-planning-workflow/supporting/plan-format-example.md` so the examples show no-subtask specs and phase-owned sequencing.
-- Keep `docs/spec/features_done/FEAT-181-bundled-feature-planning-workflow/supporting/plan-session-approach.md` and `docs/spec/features_done/FEAT-181-bundled-feature-planning-workflow/supporting/research-session-approach.md` aligned with the implemented workflow, including the expectation that plans carry concise design/test snippets and link relevant support artifacts.
+- Keep `src/engineeringagent/approach/docs/plan-session.md` and `src/engineeringagent/approach/docs/research-session.md` aligned with the implemented workflow, including the expectation that plans carry concise design/test snippets and link relevant support artifacts.
 - Make the supporting research/planning guides discoverable through the CLI approach registry and document their topic ids so users can reach them from `uv run engineeringagent approach list`, while making their task-specific scope obvious in the list output itself.
 - Document the new approach frontmatter description field and when to use it for task-specific list labels versus the H1 title.
 - Document that approach frontmatter is authoring metadata for discovery/rendering and is not shown in normal `engineeringagent approach <topic>` output.

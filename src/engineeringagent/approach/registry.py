@@ -4,8 +4,7 @@ from __future__ import annotations
 from functools import lru_cache
 
 from importlib.resources import files
-from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 import yaml
@@ -30,10 +29,6 @@ _APPROACH_TOPIC_ORDER = (
 _APPROACH_TOPIC_ORDER_INDEX: dict[str, int] = {
     topic_id: index for index, topic_id in enumerate(_APPROACH_TOPIC_ORDER)
 }
-_REPO_APPROACH_DOCS: tuple[str, ...] = (
-    "docs/spec/features_done/FEAT-181-bundled-feature-planning-workflow/supporting/research-session-approach.md",
-    "docs/spec/features_done/FEAT-181-bundled-feature-planning-workflow/supporting/plan-session-approach.md",
-)
 
 
 class ApproachTopic(BaseModel):
@@ -46,25 +41,16 @@ class ApproachTopic(BaseModel):
     title: str
     filename: str
     description: str | None = None
-    source: Literal["package", "repo"] = "package"
-    repo_relative_path: str | None = None
 
     @property
     def path(self) -> str:
         """Absolute path hint for this approach topic when rendered in source tree."""
-        if self.repo_relative_path is not None:
-            return str(_repo_root() / self.repo_relative_path)
         return str(_approach_docs_root() / self.filename)
 
 
 def _approach_docs_root():
     """Return the package-local approach docs directory for resource loading."""
     return files(_SCHEME).joinpath("docs")
-
-
-def _repo_root() -> Path:
-    """Return the repository root when running from a source checkout."""
-    return Path(__file__).resolve().parents[3]
 
 
 class UnknownApproachIdError(ValueError):
@@ -127,8 +113,6 @@ def _topic_from_document(
     *,
     filename: str,
     raw_document: str,
-    source: Literal["package", "repo"],
-    repo_relative_path: str | None = None,
 ) -> ApproachTopic:
     """Load and parse metadata for one approach markdown document."""
     frontmatter, frontmatter_end = _parse_frontmatter(raw_document)
@@ -150,8 +134,6 @@ def _topic_from_document(
         title=title,
         filename=filename,
         description=description.strip() if isinstance(description, str) else None,
-        source=source,
-        repo_relative_path=repo_relative_path,
     )
 
 
@@ -161,27 +143,7 @@ def _load_packaged_approach_topic(filename: str) -> ApproachTopic:
     return _topic_from_document(
         filename=filename,
         raw_document=resource.read_text(encoding="utf-8"),
-        source="package",
     )
-
-
-def _iter_repo_approach_topics() -> list[ApproachTopic]:
-    """Load FEAT-owned approach docs that live in the repository tree."""
-    repo_root = _repo_root()
-    topics: list[ApproachTopic] = []
-    for relative_path in _REPO_APPROACH_DOCS:
-        path = repo_root / relative_path
-        if not path.is_file():
-            continue
-        topics.append(
-            _topic_from_document(
-                filename=path.name,
-                raw_document=path.read_text(encoding="utf-8"),
-                source="repo",
-                repo_relative_path=relative_path,
-            )
-        )
-    return topics
 
 
 @lru_cache(maxsize=1)
@@ -191,11 +153,6 @@ def list_approach_topics() -> tuple[ApproachTopic, ...]:
     seen_ids: set[str] = set()
     for filename in _approach_docs_resources():
         topic = _load_packaged_approach_topic(filename)
-        if topic.canonical_id in seen_ids:
-            raise ValueError(f"duplicate approach_id: {topic.canonical_id}")
-        seen_ids.add(topic.canonical_id)
-        topics.append(topic)
-    for topic in _iter_repo_approach_topics():
         if topic.canonical_id in seen_ids:
             raise ValueError(f"duplicate approach_id: {topic.canonical_id}")
         seen_ids.add(topic.canonical_id)
@@ -218,10 +175,6 @@ def resolve_approach_topic_id(topic_id: str) -> str:
 def load_topic_content(topic_id: str) -> str:
     """Return the markdown payload for one approach topic."""
     topic = _resolve_topic(topic_id)
-    if topic.source == "repo":
-        if topic.repo_relative_path is None:
-            raise ValueError(f"repo-backed approach topic is missing a source path: {topic_id}")
-        return (_repo_root() / topic.repo_relative_path).read_text(encoding="utf-8")
     return _approach_docs_root().joinpath(topic.filename).read_text(encoding="utf-8")
 
 

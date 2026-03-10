@@ -340,11 +340,8 @@ def test_detects_forbidden_uvx_from_dot_in_plan_session_approach_doc(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Fail when bundled plan-session guidance regresses to uvx --from ."""
-    path = (
-        tmp_path
-        / "docs/spec/features_done/FEAT-181-bundled-feature-planning-workflow/supporting/plan-session-approach.md"
-    )
+    """Fail when packaged plan-session guidance regresses to uvx --from ."""
+    path = tmp_path / "src/engineeringagent/approach/docs/plan-session.md"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
         "\n".join(
@@ -370,21 +367,15 @@ def test_detects_forbidden_uvx_from_dot_in_plan_session_approach_doc(
     violations = payload["violations"]
     assert isinstance(violations, list)
     assert len(violations) == 1
-    assert (
-        "docs/spec/features_done/FEAT-181-bundled-feature-planning-workflow/supporting/plan-session-approach.md:line 8"
-        in violations[0]
-    )
+    assert "src/engineeringagent/approach/docs/plan-session.md:line 8" in violations[0]
 
 
 def test_detects_forbidden_uvx_from_dot_in_research_session_approach_doc(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Fail when bundled research-session guidance regresses to uvx --from ."""
-    path = (
-        tmp_path
-        / "docs/spec/features_done/FEAT-181-bundled-feature-planning-workflow/supporting/research-session-approach.md"
-    )
+    """Fail when packaged research-session guidance regresses to uvx --from ."""
+    path = tmp_path / "src/engineeringagent/approach/docs/research-session.md"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
         "\n".join(
@@ -410,10 +401,7 @@ def test_detects_forbidden_uvx_from_dot_in_research_session_approach_doc(
     violations = payload["violations"]
     assert isinstance(violations, list)
     assert len(violations) == 1
-    assert (
-        "docs/spec/features_done/FEAT-181-bundled-feature-planning-workflow/supporting/research-session-approach.md:line 8"
-        in violations[0]
-    )
+    assert "src/engineeringagent/approach/docs/research-session.md:line 8" in violations[0]
 
 
 def test_detects_forbidden_uvx_from_dot_in_workflow_approach_doc(

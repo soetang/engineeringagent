@@ -14,9 +14,8 @@ This reference describes the expected workflow for implementing a feature with e
 Run the loop with: `uv run engineeringagent run --all`
 
 1. Select one eligible feature and one eligible plan phase.
-1. For a legacy compatibility wrapper, use the most important open subtask that mirrors the canonical bundled plan.
 1. Implement one incremental, deterministic unit.
-1. Run the current plan-phase or compatibility-wrapper verification commands.
+1. Run the current plan-phase verification commands.
 1. Update the bundled feature package status surfaces (`plan.md` when present, always `spec.yaml`) and `updated_at`.
 1. Persist outcomes for the next loop.
 

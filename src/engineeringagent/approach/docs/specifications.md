@@ -43,7 +43,7 @@ approach_id: specifications
   - `uv run engineeringagent schema feature.spec --format yaml`
   - Use `uv run engineeringagent schema list` to discover available schema ids.
 - Create a bundled feature package rooted at `docs/spec/features/FEAT-XXX-some-header/spec.yaml`.
-- Do not create a flat `docs/spec/features/FEAT-XXX-some-header.yaml` wrapper for new work. If the current runtime still needs one during a migration, treat it as a temporary compatibility shim that must point to the canonical bundled package instead of duplicating the design.
+- Bundled `spec.yaml` packages are the only supported active feature layout.
 - Treat `spec.yaml` as the canonical source for feature identity, status, and acceptance.
 - Keep active bundled `spec.yaml` files outcome-oriented. Sequencing belongs in `plan.md` phases, not in spec `subtasks`.
 - `plan.md` owns implementation sequencing and per-phase status.

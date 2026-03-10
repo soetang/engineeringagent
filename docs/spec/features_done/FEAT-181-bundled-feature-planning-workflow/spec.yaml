@@ -89,8 +89,6 @@ artifacts:
   plan: plan.md
   research: research.md
   supporting:
-    - supporting/research-session-approach.md
-    - supporting/plan-session-approach.md
     - supporting/spec-format-example.yaml
     - supporting/plan-format-example.md
 updated_at: "2026-03-10T06:15:41Z"

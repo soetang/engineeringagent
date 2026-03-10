@@ -255,7 +255,7 @@ def test_approach_docs_use_bundled_phase_language_and_uv_run_commands(
     assert "current subtask" not in principles_doc
 
 
-def test_specifications_doc_marks_flat_wrappers_as_temporary_compatibility_only(
+def test_specifications_doc_requires_bundled_spec_packages_only(
     repo_root: Path,
 ) -> None:
     specifications_doc = (
@@ -263,9 +263,9 @@ def test_specifications_doc_marks_flat_wrappers_as_temporary_compatibility_only(
     ).read_text(encoding="utf-8")
 
     assert "Create a bundled feature package rooted at `docs/spec/features/FEAT-XXX-some-header/spec.yaml`." in specifications_doc
-    assert "Do not create a flat `docs/spec/features/FEAT-XXX-some-header.yaml` wrapper" in specifications_doc
-    assert "temporary compatibility shim" in specifications_doc
-    assert "must point to the canonical bundled package instead of duplicating the design" in specifications_doc
+    assert "Bundled `spec.yaml` packages are the only supported active feature layout." in specifications_doc
+    assert "docs/spec/features/FEAT-XXX-some-header.yaml" not in specifications_doc
+    assert "temporary compatibility shim" not in specifications_doc
 
 
 def test_specifications_doc_keeps_spec_yaml_canonical_and_plan_phase_owned(
@@ -293,8 +293,8 @@ def test_reviewer_authoring_doc_covers_bundled_feature_review_context(
     ).read_text(encoding="utf-8")
 
     assert "docs/spec/features/**/spec.yaml" in reviewer_authoring_doc
-    assert "legacy wrappers (`docs/spec/features/*.yaml`)" in reviewer_authoring_doc
-    assert "compatibility wrapper" in reviewer_authoring_doc
-    assert "canonical bundled package" in reviewer_authoring_doc
+    assert "docs/spec/features/*.yaml" not in reviewer_authoring_doc
+    assert "compatibility wrapper" not in reviewer_authoring_doc
+    assert "canonical bundled package" not in reviewer_authoring_doc
     assert "`plan.md` phases" in reviewer_authoring_doc or "plan.md phases" in reviewer_authoring_doc
     assert "`research.md`" in reviewer_authoring_doc or "research.md" in reviewer_authoring_doc
