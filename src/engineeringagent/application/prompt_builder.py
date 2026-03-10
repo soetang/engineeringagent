@@ -12,6 +12,7 @@ from pydantic import ValidationError
 
 from engineeringagent.loop_runtime.progress_units import current_progress_unit
 from engineeringagent.prompt_feedback import normalize_prompt_feedback
+from engineeringagent.progress import paths as progress_paths
 from engineeringagent.specs import feature_progress_kind
 
 _TEMPLATE_PACKAGE = "engineeringagent.prompts.templates"
@@ -23,6 +24,7 @@ class ImplementationPromptRequest:
 
     feature: Mapping[str, Any]
     feature_path: Path
+    handoff_path: str
     feedback: str | None
 
 
@@ -50,6 +52,7 @@ class DefaultPromptBuilder:
         prompt = implementation_template.substitute(
             feature_path=str(request.feature_path),
             feature_id=str(request.feature.get("id", "unknown-feature")),
+            handoff_path=request.handoff_path,
             feature_title=str(request.feature.get("title", "")),
             objective=str(request.feature.get("objective", "")),
             context=str(request.feature.get("context", "")),
@@ -68,15 +71,19 @@ def build_implementation_prompt(
     feature: Mapping[str, Any],
     feature_path: Path,
     feedback: str | None,
+    handoff_path: str | None = None,
     prompt_builder: PromptBuilder | None = None,
 ) -> str:
     """Compatibility helper for rendering implementation prompts."""
 
     builder = prompt_builder or DefaultPromptBuilder()
+    feature_id = str(feature.get("id", "unknown-feature"))
     return builder.build_implementation_prompt(
         ImplementationPromptRequest(
             feature=feature,
             feature_path=feature_path,
+            handoff_path=handoff_path
+            or progress_paths.handoff_markdown_reference(Path(), feature_id),
             feedback=feedback,
         )
     )

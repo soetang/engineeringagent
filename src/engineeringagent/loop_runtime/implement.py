@@ -224,9 +224,20 @@ def _build_implement_prompt(
         ImplementationPromptRequest(
             feature=implement_inputs.feature,
             feature_path=implement_inputs.feature_path,
+            handoff_path=progress_paths.handoff_markdown_reference(
+                implement_inputs.project_root,
+                _feature_id_for_prompt(implement_inputs.feature),
+            ),
             feedback=implement_inputs.feedback,
         )
     )
+
+
+def _feature_id_for_prompt(feature: dict[str, Any]) -> str:
+    feature_id = feature.get("id")
+    if isinstance(feature_id, str) and feature_id.strip():
+        return feature_id
+    return "unknown-feature"
 
 
 def _ensure_progress_artifacts(implement_inputs: ImplementStepInputs) -> None:
