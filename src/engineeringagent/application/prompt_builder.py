@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from string import Template
 from typing import Any, Literal, Mapping, Protocol, Sequence
 
 from pydantic import BaseModel, ConfigDict, ValidationError
@@ -58,27 +57,27 @@ class DefaultPromptBuilder:
 
     def build_implementation_prompt(self, request: ImplementationPromptRequest) -> str:
         """Render the implementation prompt for one iteration."""
-        implementation_template = _load_template(
-            self._prompt_definitions,
-            "loop_implementation",
+        implementation_definition = self._prompt_definitions.get(
+            "loop_implementation"
         )
-        prompt = implementation_template.substitute(
-            feature_path=str(request.artifacts.specification),
-            artifact_paths=_artifact_paths_prompt_block(request),
-            feature_id=str(request.feature.get("id", "unknown-feature")),
-            handoff_path=request.handoff_path,
-            feature_title=str(request.feature.get("title", "")),
-            objective=str(request.feature.get("objective", "")),
-            context=str(request.feature.get("context", "")),
-            progress_unit=_progress_unit_prompt_label(request.progress_kind),
-            current_progress_reference=_current_progress_reference_line(
-                request.progress_kind,
-                request.current_progress,
-            ),
-            progress_context_instruction=_progress_context_instruction(),
-            progress_update_instruction=_progress_update_instruction(
-                request.progress_kind
-            ),
+        prompt = implementation_definition.render(
+            {
+                "feature_id": str(request.feature.get("id", "unknown-feature")),
+                "feature_title": str(request.feature.get("title", "")),
+                "objective": str(request.feature.get("objective", "")),
+                "context": str(request.feature.get("context", "")),
+                "artifact_paths": _artifact_paths_prompt_block(request),
+                "handoff_path": request.handoff_path,
+                "progress_unit": _progress_unit_prompt_label(request.progress_kind),
+                "current_progress_reference": _current_progress_reference_line(
+                    request.progress_kind,
+                    request.current_progress,
+                ),
+                "progress_context_instruction": _progress_context_instruction(),
+                "progress_update_instruction": _progress_update_instruction(
+                    request.progress_kind
+                ),
+            }
         )
         return inject_feedback(
             prompt,
@@ -101,11 +100,12 @@ def build_selector_prompt(
             f"priority={feature.get('priority')} path={feature_path}"
         )
 
-    selector_template = _load_template(
-        prompt_definitions,
-        "loop_selector",
+    selector_definition = prompt_definitions.get("loop_selector")
+    return selector_definition.render(
+        {
+            "choices": "\n".join(choices),
+        }
     )
-    return selector_template.substitute(choices="\n".join(choices))
 
 
 def inject_feedback(
@@ -123,20 +123,12 @@ def inject_feedback(
     if not normalized_feedback:
         return prompt
 
-    feedback_template = _load_template(
-        prompt_definitions,
-        "loop_feedback",
+    feedback_definition = prompt_definitions.get("loop_feedback")
+    return prompt + feedback_definition.render(
+        {
+            "feedback": normalized_feedback,
+        }
     )
-    return prompt + feedback_template.substitute(
-        feedback=normalized_feedback,
-    )
-
-
-def _load_template(
-    prompt_definitions: PromptDefinitionRepository,
-    prompt_id: str,
-) -> Template:
-    return Template(prompt_definitions.get(prompt_id).template_text)
 
 
 def _normalize_feedback(feedback: str) -> str:

@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from engineeringagent.config import resolve_harness_root
-from engineeringagent.ports import PromptDefinitionRepository, PromptTemplate
+from engineeringagent.ports import PromptDefinition, PromptDefinitionRepository
 
 from .bundled_prompt_definitions import BundledPromptDefinitionRepository
 from .filesystem_prompt_definitions import FilesystemPromptDefinitionRepository
@@ -26,7 +26,7 @@ class ProjectPromptDefinitionRepository(PromptDefinitionRepository):
             bundled_repository or BundledPromptDefinitionRepository()
         )
 
-    def get(self, prompt_id: str) -> PromptTemplate:
+    def get(self, prompt_id: str) -> PromptDefinition:
         try:
             return self._filesystem_repository.get(prompt_id)
         except KeyError:
