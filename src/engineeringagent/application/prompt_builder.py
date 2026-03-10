@@ -12,6 +12,10 @@ from pydantic import ValidationError
 
 from engineeringagent.loop_runtime.progress_units import current_progress_unit
 from engineeringagent.prompt_feedback import normalize_prompt_feedback
+from engineeringagent.prompts.feedback_envelope import (
+    parse_feedback_envelope,
+    serialize_feedback_envelope,
+)
 from engineeringagent.progress import paths as progress_paths
 from engineeringagent.specs import feature_progress_kind
 
@@ -33,13 +37,14 @@ class PromptBuilder(Protocol):
 
     def build_implementation_prompt(self, request: ImplementationPromptRequest) -> str:
         """Render the implementation prompt for one iteration."""
-        ...
+        raise NotImplementedError
 
 
 class DefaultPromptBuilder:
     """Deterministic prompt builder backed by bundled templates."""
 
     def build_implementation_prompt(self, request: ImplementationPromptRequest) -> str:
+        """Render the implementation prompt for one iteration."""
         implementation_template = _load_template("loop_implementation.md")
         progress_kind = feature_progress_kind(
             request.feature_path,
@@ -112,11 +117,6 @@ def _load_template(name: str) -> Template:
 
 def _normalize_feedback(feedback: str) -> str:
     """Normalize feedback for prompt injection."""
-
-    from engineeringagent.prompts.feedback_envelope import (
-        parse_feedback_envelope,
-        serialize_feedback_envelope,
-    )
 
     try:
         envelope = parse_feedback_envelope(feedback)

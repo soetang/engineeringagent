@@ -1,5 +1,12 @@
 """Application-layer services and contracts."""
 
+from .guidance_service import (
+    DefaultGuidanceService,
+    GuidanceInputError,
+    GuidanceQuery,
+    GuidanceResult,
+    GuidanceService,
+)
 from .prompt_builder import (
     DefaultPromptBuilder,
     ImplementationPromptRequest,
@@ -9,7 +16,12 @@ from .prompt_builder import (
 )
 
 __all__ = [
+    "DefaultGuidanceService",
     "DefaultPromptBuilder",
+    "GuidanceInputError",
+    "GuidanceQuery",
+    "GuidanceResult",
+    "GuidanceService",
     "ImplementationPromptRequest",
     "PromptBuilder",
     "build_implementation_prompt",
