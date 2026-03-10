@@ -7,6 +7,7 @@ from pathlib import Path
 from pydantic import BaseModel, ConfigDict
 
 from engineeringagent import checks as checks_domain
+from engineeringagent.checks.results import ChecksRunResult
 
 
 class RunChecksRequest(BaseModel):
@@ -73,16 +74,18 @@ class DefaultChecksService(ChecksService):
         result: checks_domain.ChecksRunResult | None = None
         failed_phase: checks_domain.HarnessCheckPhase | None = None
         for phase in phases:
-            result = checks_domain.run_checks(
-                request.project_root,
-                phase=phase,
-                checks=request.selected_checks,
-                check_id=request.check_id,
-                feature_path=request.feature_path,
-                verbose_output=request.verbose_output,
-                base=request.base,
-                head=request.head,
-                dry_run=request.dry_run,
+            result = self._coerce_result(
+                checks_domain.run_checks(
+                    request.project_root,
+                    phase=phase,
+                    checks=request.selected_checks,
+                    check_id=request.check_id,
+                    feature_path=request.feature_path,
+                    verbose_output=request.verbose_output,
+                    base=request.base,
+                    head=request.head,
+                    dry_run=request.dry_run,
+                )
             )
             phase_results.append((phase, result))
             if result.ok:
@@ -145,3 +148,8 @@ class DefaultChecksService(ChecksService):
                     return str(decision["check_type"]).strip() or None
 
         return None
+
+    def _coerce_result(self, result: object) -> ChecksRunResult:
+        if isinstance(result, ChecksRunResult):
+            return result
+        return ChecksRunResult.model_validate(result, from_attributes=True)

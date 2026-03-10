@@ -119,7 +119,7 @@ def choose_feature_with_selector(
     if len(pending) == 1:
         return pending[0]
 
-    prompt = build_selector_prompt(pending, project_root=project_root)
+    prompt = _build_selector_prompt_compat(pending, project_root)
     step_label = describe_action(project_root, action="selector", structured=False)
     print(f"Selector step: {step_label}")
     try:
@@ -140,3 +140,16 @@ def choose_feature_with_selector(
     fallback = deterministic_feature_choice_fn(pending)
     print(f"Selector fallback: selector_parse; selected {fallback[1].get('id')}")
     return fallback
+
+
+def _build_selector_prompt_compat(
+    pending: Sequence[tuple[Path, dict[str, Any]]],
+    project_root: Path,
+) -> str:
+    """Support prompt builders that have not yet adopted the project-root kwarg."""
+    try:
+        return build_selector_prompt(pending, project_root=project_root)
+    except TypeError as exc:
+        if "project_root" not in str(exc):
+            raise
+        return build_selector_prompt(pending)
