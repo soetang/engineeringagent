@@ -1,0 +1,4 @@
+[agent]
+command = "codex"
+args = ["exec", "--yolo"]
+prompt = "PROMPT.md"
