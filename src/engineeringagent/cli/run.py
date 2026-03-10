@@ -38,7 +38,7 @@ def _coerce_handler_args(args: object) -> _HandlerArgs:
 
 
 def cmd_run(args: object) -> int:
-    """Execute the loop runner for one or more feature files."""
+    """Execute the loop runner for one or more feature entrypoints."""
     resolved_args = _coerce_handler_args(args)
     if resolved_args.run_all and resolved_args.feature_paths:
         print("run input error: positional feature paths cannot be used with --all")

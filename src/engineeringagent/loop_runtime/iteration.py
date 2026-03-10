@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
-from typing import Any, Callable, Iterable, TypeVar
+from typing import Any, Callable, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -12,6 +12,7 @@ from engineeringagent.agents import describe_action
 from engineeringagent.progress.handoff import (
     ImplementProgressEnvelope,
 )
+from engineeringagent.specs import feature_progress_kind
 
 from .models import (
     CommandTiming,
@@ -31,6 +32,12 @@ from .phases import (
     CompletionPhaseDependencies,
     GatePhaseDependencies,
     ReviewerPhaseDependencies,
+)
+from .progress_units import (
+    current_progress_unit,
+    done_transition_verification_commands,
+    feature_progress_reference,
+    progress_status_snapshot,
 )
 from .time_format import utc_iso_from_epoch_sec
 
@@ -121,7 +128,10 @@ class _PipelineState(BaseModel):
     archived_in_iteration: bool = False
     selected_started_active: bool = False
     verification_commands: list[str] = Field(default_factory=list)
-    pre_implement_subtask_statuses: dict[str, str] = Field(default_factory=dict)
+    pre_implement_progress_statuses: dict[str, str] = Field(default_factory=dict)
+    progress_kind: str | None = None
+    progress_id: str | None = None
+    progress_title: str | None = None
 
 
 T = TypeVar("T")
@@ -176,81 +186,6 @@ def _record_implement_timing(
     )
 
 
-def _subtask_status_snapshot(
-    feature: dict[str, Any] | None,
-) -> dict[str, str]:
-    status_by_id: dict[str, str] = {}
-    for subtask in _iter_subtasks(feature):
-        subtask_id = subtask.get("id")
-        subtask_status = subtask.get("status")
-        if not isinstance(subtask_id, str) or not subtask_id:
-            continue
-        if not isinstance(subtask_status, str):
-            continue
-        status_by_id.setdefault(subtask_id, subtask_status)
-    return status_by_id
-
-
-def _done_transition_verification_commands(
-    previous_status_by_subtask_id: dict[str, str],
-    post_feature: dict[str, Any] | None,
-) -> list[str]:
-    commands: list[str] = []
-    for subtask in _iter_unique_subtasks_by_id(post_feature):
-        subtask_id = subtask.get("id")
-        assert isinstance(subtask_id, str)
-        previous_status = previous_status_by_subtask_id.get(subtask_id)
-        if not _transitioned_to_done(previous_status, subtask.get("status")):
-            continue
-        verification = subtask.get("verification")
-        if not isinstance(verification, list):
-            continue
-        commands.extend(_iter_verification_commands(verification))
-    return commands
-
-
-def _transitioned_to_done(previous_status: str | None, current_status: Any) -> bool:
-    return (
-        previous_status is not None
-        and previous_status != "done"
-        and current_status == "done"
-    )
-
-
-def _iter_unique_subtasks_by_id(
-    feature: dict[str, Any] | None,
-) -> Iterable[dict[str, Any]]:
-    seen_subtask_ids: set[str] = set()
-    for subtask in _iter_subtasks(feature):
-        subtask_id = subtask.get("id")
-        if not isinstance(subtask_id, str) or not subtask_id:
-            continue
-        if subtask_id in seen_subtask_ids:
-            continue
-        seen_subtask_ids.add(subtask_id)
-        yield subtask
-
-
-def _iter_subtasks(feature: dict[str, Any] | None) -> Iterable[dict[str, Any]]:
-    if feature is None:
-        return
-    subtasks = feature.get("subtasks")
-    if not isinstance(subtasks, list) or not subtasks:
-        return
-    for subtask in subtasks:
-        if isinstance(subtask, dict):
-            yield subtask
-
-
-def _iter_verification_commands(verification: list[Any]) -> Iterable[str]:
-    for command in verification:
-        if not isinstance(command, str):
-            continue
-        normalized_command = command.strip()
-        if normalized_command:
-            yield normalized_command
-
-
 def _apply_initial_load_result(
     state: _PipelineState,
     initial_result: str,
@@ -277,7 +212,10 @@ def _run_implement_phase_if_ready(
         return
 
     assert feature is not None
-    state.pre_implement_subtask_statuses = _subtask_status_snapshot(feature)
+    state.pre_implement_progress_statuses = progress_status_snapshot(
+        iteration_inputs.feature_path,
+        feature,
+    )
     state.selected_started_active = True
     dependencies.touch_active_feature_for_iteration(
         feature, iteration_inputs.feature_path
@@ -312,8 +250,13 @@ def _run_verification_phase_if_passed(
     if state.result != "passed":
         return
 
-    state.verification_commands = _done_transition_verification_commands(
-        state.pre_implement_subtask_statuses,
+    verification_feature_path = _resolve_progress_feature_path(
+        iteration_inputs,
+        state,
+    )
+    state.verification_commands = done_transition_verification_commands(
+        state.pre_implement_progress_statuses,
+        verification_feature_path,
         post_feature,
     )
 
@@ -483,6 +426,9 @@ def _run_reviewer_phase_if_passed(
             state.next_feedback = feedback
         return
 
+    if reviewer_phase.archived_rolled_back:
+        state.archived_in_iteration = False
+        state.archived_path = None
     state.result = reviewer_phase.result
     state.failed_gate = reviewer_phase.failed_gate
     state.next_feedback = feedback
@@ -510,6 +456,9 @@ def _run_completion_phase_if_needed(
     state.completed = completion_phase.completed
     state.completion_commit_succeeded = completion_phase.completion_commit_succeeded
     state.completion_output = completion_phase.completion_output
+    if completion_phase.archived_rolled_back:
+        state.archived_in_iteration = False
+        state.archived_path = None
 
 
 def _derive_next_action(*, result: str, completion_commit_succeeded: bool) -> str:
@@ -524,6 +473,17 @@ def _derive_next_action(*, result: str, completion_commit_succeeded: bool) -> st
     if completion_commit_succeeded:
         return "select_next_feature"
     return "continue_same_feature"
+
+
+def _resolve_progress_feature_path(
+    iteration_inputs: FeatureIterationInputs,
+    state: _PipelineState,
+) -> Path:
+    """Resolve the spec path that still owns progress metadata after this iteration."""
+
+    if state.archived_in_iteration and state.archived_path is not None:
+        return state.archived_path
+    return iteration_inputs.feature_path
 
 
 def run_feature_iteration_pipeline(
@@ -655,6 +615,25 @@ def run_feature_iteration_pipeline(
         result=state.result,
         completion_commit_succeeded=state.completion_commit_succeeded,
     )
+    progress_feature_path = _resolve_progress_feature_path(iteration_inputs, state)
+    progress_unit = current_progress_unit(
+        progress_feature_path,
+        post_feature if post_feature is not None else feature,
+    )
+    if progress_unit is not None:
+        state.progress_kind = progress_unit.kind
+        state.progress_id = progress_unit.id
+        state.progress_title = progress_unit.title
+    else:
+        resolved_progress_kind = feature_progress_kind(
+            progress_feature_path,
+            post_feature if post_feature is not None else feature,
+        )
+        state.progress_kind = resolved_progress_kind
+        if resolved_progress_kind == "feature":
+            state.progress_id, state.progress_title = feature_progress_reference(
+                post_feature if post_feature is not None else feature
+            )
 
     telemetry_inputs = IterationTelemetryInputs(
         iteration_inputs=iteration_inputs,
@@ -672,6 +651,9 @@ def run_feature_iteration_pipeline(
         reviewer_status=state.reviewer_status,
         reviewer_decision=state.reviewer_decision,
         failed_reviewer_id=state.failed_reviewer_id,
+        progress_kind=state.progress_kind,
+        progress_id=state.progress_id,
+        progress_title=state.progress_title,
         implement_output=state.implement_output,
         implement_handoff_envelope=state.implement_handoff_envelope,
         implement_handoff_used_fallback=state.implement_handoff_used_fallback,

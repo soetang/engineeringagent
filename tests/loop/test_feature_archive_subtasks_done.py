@@ -4,9 +4,11 @@ import errno
 from pathlib import Path
 
 import pytest
+import yaml
 
 from engineeringagent.loop_runtime.feature_state import (
     archive_completed_feature,
+    refresh_feature_after_implement,
     restore_archived_feature,
 )
 from engineeringagent.specs import load_yaml
@@ -37,6 +39,68 @@ def _write_done_feature(feature_path: Path) -> None:
     )
 
 
+def _write_done_bundled_feature(feature_root: Path) -> tuple[Path, Path]:
+    spec_path = feature_root / "spec.yaml"
+    plan_path = feature_root / "plan.md"
+    spec_path.parent.mkdir(parents=True, exist_ok=True)
+    spec_path.write_text(
+        "\n".join(
+            [
+                "id: FEAT-001",
+                "title: hello",
+                "type: feature",
+                "expected_commit_subject: 'feat: hello'",
+                "status: done",
+                "planning_tier: planned",
+                "priority: high",
+                "objective: hello",
+                "acceptance: ['ok']",
+                "artifacts:",
+                "  plan: plan.md",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    plan_path.write_text(
+        "---\n"
+        + yaml.safe_dump(
+            {
+                "plan_id": "FEAT-001",
+                "feature_id": "FEAT-001",
+                "status": "in_progress",
+                "source_spec": "spec.yaml",
+                "planning_tier": "planned",
+                "phases": [
+                    {
+                        "id": "P1",
+                        "title": "Wrap archive bookkeeping",
+                        "status": "done",
+                    },
+                    {
+                        "id": "P2",
+                        "title": "Normalize remaining plan metadata",
+                        "status": "in_progress",
+                    },
+                ],
+            },
+            sort_keys=False,
+        )
+        + "---\n\n# Plan\n",
+        encoding="utf-8",
+    )
+    return spec_path, plan_path
+
+
+def _load_plan_frontmatter(plan_path: Path) -> dict[str, object]:
+    document = plan_path.read_text(encoding="utf-8")
+    frontmatter_end = document.find("\n---", 4)
+    assert frontmatter_end >= 0
+    frontmatter = yaml.safe_load(document[4:frontmatter_end])
+    assert isinstance(frontmatter, dict)
+    return frontmatter
+
+
 def test_archive_completed_feature_marks_subtasks_done(tmp_path: Path) -> None:
     feature_path = tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml"
     _write_done_feature(feature_path)
@@ -53,6 +117,47 @@ def test_archive_completed_feature_marks_subtasks_done(tmp_path: Path) -> None:
     subtasks = archived.get("subtasks")
     assert isinstance(subtasks, list)
     assert subtasks[0]["status"] == "done"
+
+
+def test_archive_completed_feature_marks_bundled_plan_done(tmp_path: Path) -> None:
+    feature_path, _plan_path = _write_done_bundled_feature(
+        tmp_path / "docs" / "spec" / "features" / "FEAT-001"
+    )
+
+    ok, archived_path, message = archive_completed_feature(
+        tmp_path,
+        feature_path,
+    )
+
+    assert ok is True
+    assert message == ""
+    assert archived_path is not None
+    frontmatter = _load_plan_frontmatter(archived_path.parent / "plan.md")
+    assert frontmatter["status"] == "done"
+    phases = frontmatter.get("phases")
+    assert isinstance(phases, list)
+    assert [phase["status"] for phase in phases] == ["done", "done"]
+
+
+def test_refresh_archived_bundled_feature_marks_plan_done(tmp_path: Path) -> None:
+    active_spec_path = tmp_path / "docs" / "spec" / "features" / "FEAT-001" / "spec.yaml"
+    archived_spec_path, _plan_path = _write_done_bundled_feature(
+        tmp_path / "docs" / "spec" / "features_done" / "FEAT-001"
+    )
+
+    post_outcome = refresh_feature_after_implement(
+        tmp_path,
+        active_spec_path,
+    )
+
+    assert post_outcome.result == "passed"
+    assert post_outcome.archived_in_iteration is True
+    assert post_outcome.archived_path == archived_spec_path
+    frontmatter = _load_plan_frontmatter(archived_spec_path.parent / "plan.md")
+    assert frontmatter["status"] == "done"
+    phases = frontmatter.get("phases")
+    assert isinstance(phases, list)
+    assert [phase["status"] for phase in phases] == ["done", "done"]
 
 
 def test_archive_completed_feature_falls_back_on_exdev(

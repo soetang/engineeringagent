@@ -54,6 +54,15 @@ def test_approach_topics_include_frontmatter_and_title() -> None:
         assert topic.title
 
 
+def test_approach_task_specific_topics_expose_frontmatter_descriptions() -> None:
+    descriptions = {
+        topic.canonical_id: topic.description for topic in registry.list_approach_topics()
+    }
+
+    assert descriptions["research-session"] == "Task-specific: only when creating research.md."
+    assert descriptions["plan-session"] == "Task-specific: only when creating plan.md."
+
+
 def test_approach_topic_index_rendering_is_deterministic() -> None:
     topics = registry.list_approach_topics()
     rendered_lines = rendering.format_approach_topic_index(topics).splitlines()
@@ -76,6 +85,13 @@ def test_render_approach_overview_appends_topic_index() -> None:
 
     rendered_ids = _parse_approach_topic_ids("\n".join(lines[start:]))
     assert rendered_ids == APPROACH_TOPIC_IDS
+
+
+def test_load_topic_body_hides_frontmatter() -> None:
+    rendered = registry.load_topic_body("plan-session")
+
+    assert rendered.startswith("# Plan Session Approach")
+    assert not rendered.startswith("---\n")
 
 
 def _project_root(pytestconfig: Config) -> Path:

@@ -200,3 +200,32 @@ def test_repo_fitness_catalog_docs_surface_directionality_policy_config(
         "harness/fitness-functions/policies/dependency_directionality.yaml"
         in checked_in_catalog
     )
+
+
+def test_repo_fitness_catalog_source_first_scope_mentions_bundled_plan_surfaces(
+    repo_root: Path,
+) -> None:
+    payload = json.loads(render_fitness_catalog(repo_root, format="json"))
+    source_first_rule = next(
+        entry
+        for entry in payload
+        if entry["rule_id"] == "architecture.source-first-loop-command-policy"
+    )
+
+    assert source_first_rule["scope"] == (
+        "legacy spec verification, bundled plan.md phases/examples, "
+        "bundled plan-session/research-session guidance, "
+        "contributor approach docs, "
+        "loop implementation prompt template, "
+        "docs/fixtures/real_opencode_hello_world_plan_template.md, and "
+        "harness/checks.yaml"
+    )
+
+    checked_in_catalog = (repo_root / "docs" / "fitness-functions" / "rules.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert "bundled plan.md phases/examples" in checked_in_catalog
+    assert "bundled plan-session/research-session guidance" in checked_in_catalog
+    assert "contributor approach docs" in checked_in_catalog
+    assert "loop implementation prompt template" in checked_in_catalog

@@ -31,7 +31,6 @@ def test_cli_entrypoints_expose_same_top_level_help(
         "approach",
         "schema",
         "checks",
-        "progress",
         "init",
         "--project-root",
         "--version",

@@ -14,6 +14,7 @@ from engineeringagent.loop_runtime.models import (
     FeatureIterationInputs,
     CommandTiming,
     IterationTelemetryInputs,
+    IterationSummaryInputs,
     PhaseTiming,
 )
 from engineeringagent.loop_runtime.phases import (
@@ -31,6 +32,7 @@ from engineeringagent.loop_runtime.telemetry import (
 )
 from engineeringagent.progress.handoff import (
     ImplementProgressEnvelope,
+    HandoffRenderMetadata,
     append_handoff_markdown_entry,
     render_handoff_markdown_entry,
     parse_implement_progress_envelope,
@@ -129,7 +131,7 @@ def test_handoff_markdown_entry_omits_empty_and_placeholder_sections() -> None:
     lines = render_handoff_markdown_entry(
         attempt=3,
         envelope=envelope,
-        timestamp="2026-03-03T19:18:56Z",
+        metadata=HandoffRenderMetadata(timestamp="2026-03-03T19:18:56Z"),
     )
 
     section_headers = [line for line in lines if line.startswith("### ")]
@@ -145,6 +147,41 @@ def test_handoff_markdown_entry_omits_empty_and_placeholder_sections() -> None:
     assert "### Remaining Work" in section_headers
     assert "- (none)" not in bullet_lines
     assert "- Continue next subtask." in lines
+
+
+def test_handoff_markdown_entry_includes_phase_progress_context() -> None:
+    envelope = ImplementProgressEnvelope(
+        summary="Keep bundled handoff entries phase-oriented.",
+        completed_work=["Recorded deterministic phase context in handoff output."],
+        verification=[],
+        remaining_work=["Continue the current bundled phase."],
+        blockers=[],
+    )
+
+    lines = render_handoff_markdown_entry(
+        attempt=4,
+        envelope=envelope,
+        metadata=HandoffRenderMetadata(
+            timestamp="2026-03-09T21:30:00Z",
+            progress_kind="phase",
+            progress_id="P3",
+            progress_title="Move implementation sequencing from subtasks to plan phases",
+        ),
+    )
+
+    assert "Progress: phase P3 - Move implementation sequencing from subtasks to plan phases" in lines
+
+
+def test_handoff_render_metadata_exposes_pydantic_dump_defaults() -> None:
+    metadata = HandoffRenderMetadata()
+
+    assert metadata.model_dump() == {
+        "timestamp": None,
+        "used_fallback": False,
+        "progress_kind": None,
+        "progress_id": None,
+        "progress_title": None,
+    }
 
 
 def test_write_iteration_telemetry_appends_handoff_entry_from_envelope(
@@ -171,6 +208,9 @@ def test_write_iteration_telemetry_appends_handoff_entry_from_envelope(
         reviewer_status="not_run",
         reviewer_decision=None,
         failed_reviewer_id=None,
+        progress_kind="phase",
+        progress_id="P2",
+        progress_title="Track bundled handoff progress",
         implement_output="",
         implement_handoff_envelope=ImplementProgressEnvelope(
             summary="Added handoff append wiring to telemetry flow.",
@@ -194,6 +234,8 @@ def test_write_iteration_telemetry_appends_handoff_entry_from_envelope(
     handoff_path = _progress_root(tmp_path) / "features" / "FEAT-130" / "handoff.md"
     assert handoff_path.exists()
     assert handoff_path.stat().st_size > 0
+    handoff_text = handoff_path.read_text(encoding="utf-8")
+    assert "Progress: phase P2 - Track bundled handoff progress" in handoff_text
 
 
 def test_write_iteration_telemetry_appends_fallback_handoff_when_missing(
@@ -240,6 +282,104 @@ def test_write_iteration_telemetry_appends_fallback_handoff_when_missing(
     assert handoff_path.exists()
     assert handoff_path.stat().st_size > baseline_stat.st_size
     assert handoff_path.stat().st_mtime_ns >= baseline_stat.st_mtime_ns
+
+
+def test_write_iteration_telemetry_uses_phase_wording_for_fallback_handoff(
+    tmp_path: Path,
+) -> None:
+    iteration_inputs = FeatureIterationInputs(
+        project_root=tmp_path,
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-130" / "spec.yaml",
+        attempt=7,
+        feedback=None,
+        verbose_output=False,
+    )
+    telemetry_inputs = IterationTelemetryInputs(
+        iteration_inputs=iteration_inputs,
+        started=0.0,
+        feature_id="FEAT-130",
+        result="passed",
+        failed_gate=None,
+        next_action="continue_same_feature",
+        implement_status="passed",
+        gate_status="passed",
+        verification_status="not_run",
+        verification_failed_command=None,
+        reviewer_status="not_run",
+        reviewer_decision=None,
+        failed_reviewer_id=None,
+        progress_kind="phase",
+        progress_id="P3",
+        progress_title="Move implementation sequencing from subtasks to plan phases",
+        implement_output="",
+        implement_handoff_envelope=None,
+        implement_handoff_used_fallback=False,
+        gate_output="",
+        verification_output="",
+        reviewer_output="",
+        feedback=None,
+    )
+
+    write_iteration_telemetry(
+        telemetry_inputs,
+        git_head_resolver=lambda _: "abc1234",
+    )
+
+    handoff_path = _progress_root(tmp_path) / "features" / "FEAT-130" / "handoff.md"
+    handoff_text = handoff_path.read_text(encoding="utf-8")
+    assert "highest-priority open phase" in handoff_text
+    assert "highest-priority open subtask" not in handoff_text
+    assert "P3: Move implementation sequencing from subtasks to plan phases" in handoff_text
+
+
+def test_write_iteration_telemetry_uses_feature_wording_for_direct_bundle_fallback_handoff(
+    tmp_path: Path,
+) -> None:
+    iteration_inputs = FeatureIterationInputs(
+        project_root=tmp_path,
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-182" / "spec.yaml",
+        attempt=8,
+        feedback=None,
+        verbose_output=False,
+    )
+    telemetry_inputs = IterationTelemetryInputs(
+        iteration_inputs=iteration_inputs,
+        started=0.0,
+        feature_id="FEAT-182",
+        result="passed",
+        failed_gate=None,
+        next_action="continue_same_feature",
+        implement_status="passed",
+        gate_status="passed",
+        verification_status="not_run",
+        verification_failed_command=None,
+        reviewer_status="not_run",
+        reviewer_decision=None,
+        failed_reviewer_id=None,
+        progress_kind="feature",
+        progress_id="FEAT-182",
+        progress_title="Direct bundled fallback handoff context",
+        implement_output="",
+        implement_handoff_envelope=None,
+        implement_handoff_used_fallback=False,
+        gate_output="",
+        verification_output="",
+        reviewer_output="",
+        feedback=None,
+    )
+
+    write_iteration_telemetry(
+        telemetry_inputs,
+        git_head_resolver=lambda _: "abc1234",
+    )
+
+    handoff_path = _progress_root(tmp_path) / "features" / "FEAT-182" / "handoff.md"
+    handoff_text = handoff_path.read_text(encoding="utf-8")
+    assert "highest-priority open implementation step" in handoff_text
+    assert "highest-priority open subtask" not in handoff_text
+    assert (
+        "FEAT-182: Direct bundled fallback handoff context" in handoff_text
+    )
 
 
 def test_timing_format_helpers_emit_expected_lines() -> None:
@@ -355,6 +495,56 @@ def test_progress_log_records_verification_status(tmp_path: Path) -> None:
     assert "reviewer_output_begin" in feature_log
     assert "decision=request_changes" in feature_log
     assert "reviewer_output_end" in feature_log
+
+
+def test_progress_log_records_phase_progress_metadata(tmp_path: Path) -> None:
+    iteration_inputs = FeatureIterationInputs(
+        project_root=tmp_path,
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-040" / "spec.yaml",
+        attempt=3,
+        feedback=None,
+        verbose_output=False,
+    )
+    telemetry_inputs = IterationTelemetryInputs(
+        iteration_inputs=iteration_inputs,
+        started=0.0,
+        feature_id="FEAT-040",
+        result="passed",
+        failed_gate=None,
+        next_action="continue_same_feature",
+        implement_status="passed",
+        gate_status="passed",
+        verification_status="not_run",
+        verification_failed_command=None,
+        reviewer_status="not_run",
+        reviewer_decision=None,
+        failed_reviewer_id=None,
+        progress_kind="phase",
+        progress_id="P2",
+        progress_title="Track bundled phase progress",
+        implement_output="",
+        gate_output="",
+        verification_output="",
+        reviewer_output="",
+        feedback=None,
+    )
+
+    write_iteration_telemetry(
+        telemetry_inputs,
+        git_head_resolver=lambda _: "abc1234",
+    )
+
+    run = json.loads(
+        (_progress_root(tmp_path) / "runs" / "runs.jsonl").read_text(encoding="utf-8")
+    )
+    assert run["progress_kind"] == "phase"
+    assert run["progress_id"] == "P2"
+    assert run["progress_title"] == "Track bundled phase progress"
+
+    feature_log = (
+        _progress_root(tmp_path) / "features" / "FEAT-040" / "run.txt"
+    ).read_text(encoding="utf-8")
+    assert "progress=phase:P2 title=Track bundled phase progress" in feature_log
 
 
 def test_progress_log_writes_do_not_use_path_open(
@@ -925,19 +1115,21 @@ def test_non_verbose_terminal_output_shows_verification_summary(
     monkeypatch.setenv("TERM", "xterm-256color")
 
     print_summary(
-        feature_id="FEAT-040",
-        result="failed",
-        failed_gate=None,
-        attempt=2,
-        next_action="retry_same_feature",
-        selected_path="docs/spec/features/FEAT-040-per-iteration-verification-feedback-and-failure-signaling.yaml",
-        implement_step="default opencode implement step",
-        log_path=".engineeringagent/progress/features/FEAT-040/run.txt",
-        verification_status=f"failed:{verification_command}",
-        verification_failed_command=verification_command,
-        reviewer_status="failed:request_changes",
-        reviewer_decision="request_changes",
-        failed_reviewer_id="security-reviewer",
+        IterationSummaryInputs(
+            feature_id="FEAT-040",
+            result="failed",
+            failed_gate=None,
+            attempt=2,
+            next_action="retry_same_feature",
+            selected_path="docs/spec/features/FEAT-040-per-iteration-verification-feedback-and-failure-signaling.yaml",
+            implement_step="default opencode implement step",
+            log_path=".engineeringagent/progress/features/FEAT-040/run.txt",
+            verification_status=f"failed:{verification_command}",
+            verification_failed_command=verification_command,
+            reviewer_status="failed:request_changes",
+            reviewer_decision="request_changes",
+            failed_reviewer_id="security-reviewer",
+        )
     )
 
     output = capsys.readouterr().out
@@ -947,3 +1139,31 @@ def test_non_verbose_terminal_output_shows_verification_summary(
         in output
     )
     assert "❌ Failed: gate=unknown" in output
+
+
+def test_non_verbose_terminal_output_surfaces_phase_progress_context(
+    monkeypatch: Any,
+    capsys: Any,
+) -> None:
+    monkeypatch.setattr(presentation_module, "stdout_is_tty", lambda _stdout: False)
+
+    print_summary(
+        IterationSummaryInputs(
+            feature_id="FEAT-181",
+            result="passed",
+            failed_gate=None,
+            attempt=3,
+            next_action="continue_same_feature",
+            selected_path="docs/spec/features_done/FEAT-181-bundled-feature-planning-workflow/spec.yaml",
+            implement_step="uv run engineeringagent implement",
+            progress_kind="phase",
+            progress_id="P3",
+            progress_title="Move implementation sequencing from subtasks to plan phases",
+        )
+    )
+
+    output = capsys.readouterr().out
+    assert (
+        "📍 Progress: phase P3 - Move implementation sequencing from subtasks to plan phases"
+        in output
+    )

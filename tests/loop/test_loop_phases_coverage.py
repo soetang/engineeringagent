@@ -7,8 +7,10 @@ from engineeringagent.changed_paths import ChangedPathsResult
 from engineeringagent.checks import ChecksRunResult
 from engineeringagent.loop_runtime.models import FeatureIterationInputs
 from engineeringagent.loop_runtime.phases import (
+    CompletionPhaseDependencies,
     GatePhaseDependencies,
     ReviewerPhaseDependencies,
+    run_completion_commit_phase,
     run_gate_phase,
     run_reviewer_phase,
     run_verification_phase,
@@ -281,6 +283,50 @@ def test_run_reviewer_phase_uses_configured_checks_path_presence_precheck(
     assert recorded_calls == [("feature_done", archived_feature_path)]
 
 
+def test_run_completion_commit_phase_marks_archive_rollback_after_failure(
+    tmp_path: Path,
+) -> None:
+    inputs = FeatureIterationInputs(
+        project_root=tmp_path,
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        run_all=False,
+        attempt=1,
+        feedback=None,
+        verbose_output=False,
+    )
+    archived_feature_path = (
+        tmp_path / "docs" / "spec" / "features_done" / "FEAT-001.yaml"
+    )
+
+    restore_calls: list[tuple[Path, Path]] = []
+    outcome = run_completion_commit_phase(
+        inputs,
+        post_feature={
+            "id": "FEAT-001",
+            "title": "Completion rollback",
+            "expected_commit_subject": "feat: completion rollback",
+            "status": "done",
+        },
+        archived_in_iteration=True,
+        archived_path=archived_feature_path,
+        dependencies=CompletionPhaseDependencies(
+            commit_feature_completion=lambda *_args, **_kwargs: (
+                False,
+                "git_commit",
+                "commit failed",
+            ),
+            restore_archived_feature=lambda archived_path, feature_path: (
+                restore_calls.append((archived_path, feature_path)) or True,
+                "",
+            ),
+        ),
+    )
+
+    assert outcome.result == "failed"
+    assert outcome.archived_rolled_back is True
+    assert restore_calls == [(archived_feature_path, inputs.feature_path)]
+
+
 def test_run_gate_phase_emits_command_failure_feedback_contract(
     tmp_path: Path,
     monkeypatch,
@@ -543,6 +589,106 @@ def test_run_gate_phase_iteration_end_validate_enforces_status_alignment(
     assert outcome.failed_gate == "validate"
     assert outcome.gate_status == "failed:validate"
     assert "feature status done requires all subtasks done" in outcome.gate_output
+    assert not command_marker.exists()
+
+
+def test_run_gate_phase_iteration_end_validate_enforces_bundled_phase_alignment(
+    tmp_path: Path,
+) -> None:
+    command_marker = tmp_path / "command-ran.txt"
+    _write_text(
+        tmp_path / "harness" / "checks.yaml",
+        "\n".join(
+            [
+                'contract_version: "1.0"',
+                "checks:",
+                "  smoke:",
+                "    type: command",
+                "    command: >-",
+                "      python -c \"from pathlib import Path; Path(",
+                f"      r'{command_marker.as_posix()}').write_text('ran', encoding='utf-8')\"",
+                "",
+            ]
+        )
+        + "\n",
+    )
+    _write_text(
+        tmp_path / "docs" / "spec" / "features" / "FEAT-001-invalid-status" / "spec.yaml",
+        "\n".join(
+            [
+                "id: FEAT-001",
+                "title: Backlog but in-progress plan phase",
+                "type: feature",
+                "expected_commit_subject: 'feat: enforce bundled status invariants'",
+                "status: backlog",
+                "priority: high",
+                "objective: Keep bundled status alignment strict.",
+                "acceptance:",
+                "  - Validate catches bundled status mismatch.",
+                "planning_tier: planned",
+                "artifacts:",
+                "  plan: plan.md",
+                "",
+            ]
+        ),
+    )
+    _write_text(
+        tmp_path / "docs" / "spec" / "features" / "FEAT-001-invalid-status" / "plan.md",
+        "\n".join(
+            [
+                "---",
+                "plan_id: FEAT-001",
+                "feature_id: FEAT-001",
+                "status: in_progress",
+                "source_spec: spec.yaml",
+                "planning_tier: planned",
+                "phases:",
+                "  - id: P1",
+                "    title: Active bundled work",
+                "    status: in_progress",
+                "    verification:",
+                "      - 'true'",
+                "---",
+                "",
+                "# FEAT-001 Plan",
+                "",
+            ]
+        ),
+    )
+
+    inputs = FeatureIterationInputs(
+        project_root=tmp_path,
+        feature_path=tmp_path
+        / "docs"
+        / "spec"
+        / "features"
+        / "FEAT-001-invalid-status"
+        / "spec.yaml",
+        run_all=True,
+        attempt=1,
+        feedback=None,
+        verbose_output=False,
+    )
+    deps = GatePhaseDependencies(
+        restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+        collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
+            paths=(),
+            run_all=True,
+            reason=None,
+        ),
+    )
+
+    outcome = run_gate_phase(
+        inputs,
+        archived_in_iteration=False,
+        archived_path=None,
+        dependencies=deps,
+    )
+
+    assert outcome.result == "failed"
+    assert outcome.failed_gate == "validate"
+    assert outcome.gate_status == "failed:validate"
+    assert "feature with in_progress phase must be in_progress" in outcome.gate_output
     assert not command_marker.exists()
 
 

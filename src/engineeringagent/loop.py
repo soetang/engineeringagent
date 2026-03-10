@@ -19,6 +19,7 @@ from .loop_runtime.models import (
     ImplementStepInputs,
     IterationOutcome,
     IterationReport,
+    IterationSummaryInputs,
 )
 from .loop_runtime.iteration import (
     IterationPipelineDependencies,
@@ -60,6 +61,7 @@ from .loop_runtime.observers import (
 from .loop_runtime.telemetry import write_iteration_telemetry
 from .loop_runtime.presentation import RunOutputPresenter
 from .feature_commit import feature_completion_commit_subject
+from .specs import progress_kind_label
 
 __all__ = ["run_loop_controller"]
 
@@ -67,7 +69,7 @@ __all__ = ["run_loop_controller"]
 def _print_run_all_snapshot_banner(resolved_paths: Sequence[Path]) -> None:
     print(
         "[run --all] Startup snapshot captured "
-        f"{len(resolved_paths)} runnable feature file(s) from docs/spec/features/*.yaml."
+        f"{len(resolved_paths)} runnable feature entrypoint(s) from docs/spec/features/."
     )
 
 
@@ -76,7 +78,15 @@ def _print_run_all_no_work_message() -> None:
         "No runnable active features found for --all startup snapshot "
         "(statuses: backlog, in_progress)."
     )
-    print_summary(None, "no_work", None, None, "stop")
+    print_summary(
+        IterationSummaryInputs(
+            feature_id=None,
+            result="no_work",
+            failed_gate=None,
+            attempt=None,
+            next_action="stop",
+        )
+    )
 
 
 def _choose_feature_with_selector(
@@ -143,59 +153,57 @@ def _commit_feature_completion(
     return (False, "git_commit", output)
 
 
-def print_summary(
-    feature_id: str | None,
-    result: str,
-    failed_gate: str | None,
-    attempt: int | None,
-    next_action: str,
-    selected_path: str | None = None,
-    implement_step: str | None = None,
-    log_path: str | None = None,
-    archived_selection_path: str | None = None,
-    verification_status: str | None = None,
-    verification_failed_command: str | None = None,
-    reviewer_status: str | None = None,
-    reviewer_decision: str | None = None,
-    failed_reviewer_id: str | None = None,
-) -> None:
+def print_summary(summary: IterationSummaryInputs) -> None:
     """Print a one-line loop summary and optional gate failure."""
 
     presenter = RunOutputPresenter.for_current_terminal()
-    if attempt is not None:
-        print(f"🔁 Iteration {attempt} · {feature_id or '-'}")
-        if archived_selection_path:
+    if summary.attempt is not None:
+        print(f"🔁 Iteration {summary.attempt} · {summary.feature_id or '-'}")
+        if summary.archived_selection_path:
             print("  ♻️ Selected archived counterpart:")
-            print(f"     {archived_selection_path}")
+            print(f"     {summary.archived_selection_path}")
         else:
-            print(f"  🎯 Selected: {selected_path or '-'}")
-        print(f"  🛠 Implement: {implement_step or '-'}")
-        verification_label = verification_status or "not_run"
-        if verification_label.startswith("failed:") and verification_failed_command:
-            verification_label = f"failed ({verification_failed_command})"
+            print(f"  🎯 Selected: {summary.selected_path or '-'}")
+        print(f"  🛠 Implement: {summary.implement_step or '-'}")
+        if summary.progress_kind:
+            progress_parts = [
+                part for part in (summary.progress_id, summary.progress_title) if part
+            ]
+            progress_reference = " - ".join(progress_parts) or "-"
+            print(
+                "  📍 Progress: "
+                f"{progress_kind_label(summary.progress_kind)} {progress_reference}"
+            )
+        verification_label = summary.verification_status or "not_run"
+        if (
+            verification_label.startswith("failed:")
+            and summary.verification_failed_command
+        ):
+            verification_label = f"failed ({summary.verification_failed_command})"
         print(f"  🧪 Verify: {verification_label}")
-        reviewer_label = reviewer_status or "not_run"
-        if reviewer_decision:
-            reviewer_label = f"{reviewer_label} ({reviewer_decision})"
-        if failed_reviewer_id:
-            reviewer_label = f"{reviewer_label} [{failed_reviewer_id}]"
+        reviewer_label = summary.reviewer_status or "not_run"
+        if summary.reviewer_decision:
+            reviewer_label = f"{reviewer_label} ({summary.reviewer_decision})"
+        if summary.failed_reviewer_id:
+            reviewer_label = f"{reviewer_label} [{summary.failed_reviewer_id}]"
         print(f"  👀 Reviewer: {reviewer_label}")
-        if result == "passed":
+        if summary.result == "passed":
             print(f"  {presenter.format_iteration_passed_line()}")
         else:
-            print(f"  {presenter.format_iteration_failed_line(failed_gate)}")
-            if log_path:
-                print(f"  📄 Log: {log_path}")
-        print(f"  ➡️ Next: {next_action}")
+            print(f"  {presenter.format_iteration_failed_line(summary.failed_gate)}")
+            if summary.log_path:
+                print(f"  📄 Log: {summary.log_path}")
+        print(f"  ➡️ Next: {summary.next_action}")
 
     print(
         "Loop summary: "
-        f"result={result} feature={feature_id or '-'} "
-        f"attempt={attempt if attempt is not None else '-'} next={next_action}"
-        f"{presenter.format_summary_suffix(result)}"
+        f"result={summary.result} feature={summary.feature_id or '-'} "
+        f"attempt={summary.attempt if summary.attempt is not None else '-'} "
+        f"next={summary.next_action}"
+        f"{presenter.format_summary_suffix(summary.result)}"
     )
-    if failed_gate:
-        print(presenter.format_failed_gate_line(failed_gate))
+    if summary.failed_gate:
+        print(presenter.format_failed_gate_line(summary.failed_gate))
 
 
 def _iteration_cap_reached(total_iterations: int, max_iterations: int) -> bool:
@@ -203,6 +211,20 @@ def _iteration_cap_reached(total_iterations: int, max_iterations: int) -> bool:
         print(f"Reached max iteration cap ({max_iterations}) before completion.")
         return True
     return False
+
+
+def _iteration_cap_reached_after_failure(
+    outcome: IterationOutcome,
+    *,
+    total_iterations: int,
+    max_iterations: int,
+) -> bool:
+    if total_iterations < max_iterations:
+        return False
+    if outcome.log_path:
+        print(f"Detailed log: {outcome.log_path}")
+    print(f"Reached max iteration cap ({max_iterations}) before completion.")
+    return True
 
 
 def _drop_completed_feature_from_snapshot(
@@ -314,7 +336,6 @@ def _default_iteration_report_observers() -> tuple[IterationReportObserver, ...]
             ),
             git_head_resolver=git_head_short,
             print_summary=print_summary,
-            print_line=print,
         )
     )
 
@@ -369,7 +390,15 @@ def _handle_dry_run(
             _print_run_all_no_work_message()
         else:
             print("No pending features found in provided paths.")
-            print_summary(None, "dry_run", None, None, "stop")
+            print_summary(
+                IterationSummaryInputs(
+                    feature_id=None,
+                    result="dry_run",
+                    failed_gate=None,
+                    attempt=None,
+                    next_action="stop",
+                )
+            )
         return 0
 
     if run_all:
@@ -378,7 +407,15 @@ def _handle_dry_run(
     fid = str(feature.get("id", ""))
     print(f"[dry-run] Resolved {len(resolved_paths)} feature file(s).")
     print(f"[dry-run] Selected feature={fid} path={feature_path}")
-    print_summary(fid, "dry_run", None, None, "stop")
+    print_summary(
+        IterationSummaryInputs(
+            feature_id=fid,
+            result="dry_run",
+            failed_gate=None,
+            attempt=None,
+            next_action="stop",
+        )
+    )
     return 0
 
 
@@ -468,6 +505,12 @@ def _run_selected_feature_iterations(
             terminal_failure_exit_code = _terminal_iteration_failure_exit_code(outcome)
             if terminal_failure_exit_code is not None:
                 return terminal_failure_exit_code
+            if _iteration_cap_reached_after_failure(
+                outcome,
+                total_iterations=state.total_iterations,
+                max_iterations=config.max_iterations,
+            ):
+                return 1
 
 
 class RunConfigOptions(NamedTuple):

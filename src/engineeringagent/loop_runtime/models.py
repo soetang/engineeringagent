@@ -167,6 +167,7 @@ class ReviewerPhaseOutcome(BaseModel):
     reviewer_output: str
     command_timings: list[CommandTiming] = Field(default_factory=list)
     feedback: str | None
+    archived_rolled_back: bool = False
 
 
 class CompletionCommitOutcome(BaseModel):
@@ -181,6 +182,7 @@ class CompletionCommitOutcome(BaseModel):
     next_action: str
     feedback: str | None
     completion_output: str = ""
+    archived_rolled_back: bool = False
 
 
 class IterationTelemetryInputs(BaseModel):
@@ -203,6 +205,9 @@ class IterationTelemetryInputs(BaseModel):
     reviewer_status: str = "not_run"
     reviewer_decision: str | None = None
     failed_reviewer_id: str | None = None
+    progress_kind: str | None = None
+    progress_id: str | None = None
+    progress_title: str | None = None
     implement_output: str
     implement_handoff_envelope: ImplementProgressEnvelope | None = None
     implement_handoff_used_fallback: bool = False
@@ -236,3 +241,27 @@ class IterationReport(BaseModel):
     failed_reviewer_id: str | None = None
     telemetry_inputs: IterationTelemetryInputs
     log_path: str | None = None
+
+
+class IterationSummaryInputs(BaseModel):
+    """Structured console-summary payload for a loop iteration."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    feature_id: str | None
+    result: str
+    failed_gate: str | None
+    attempt: int | None
+    next_action: str
+    selected_path: str | None = None
+    implement_step: str | None = None
+    log_path: str | None = None
+    archived_selection_path: str | None = None
+    verification_status: str | None = None
+    verification_failed_command: str | None = None
+    reviewer_status: str | None = None
+    reviewer_decision: str | None = None
+    failed_reviewer_id: str | None = None
+    progress_kind: str | None = None
+    progress_id: str | None = None
+    progress_title: str | None = None

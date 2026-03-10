@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import shlex
 from pathlib import Path
+import re
 
 import yaml
 
 from engineeringagent.checks import emit_fitness_result
+from engineeringagent.checks import resolve_feature_plan_path
 from engineeringagent.checks.fitness.contracts import (
     CONTRACT_VERSION,
     FitnessRuleResult,
@@ -17,9 +19,29 @@ from engineeringagent.checks.fitness.contracts import (
 RULE_ID = "architecture.source-first-loop-command-policy"
 FEATURES_ROOT = Path("docs/spec/features")
 CHECKS_PATH = Path("harness/checks.yaml")
+SMOKE_PLAN_TEMPLATE_PATH = Path("docs/fixtures/real_opencode_hello_world_plan_template.md")
+PLAN_FORMAT_EXAMPLE_PATH = Path(
+    "docs/spec/features_done/FEAT-181-bundled-feature-planning-workflow/supporting/plan-format-example.md"
+)
+PLAN_SESSION_APPROACH_PATH = Path(
+    "docs/spec/features_done/FEAT-181-bundled-feature-planning-workflow/supporting/plan-session-approach.md"
+)
+RESEARCH_SESSION_APPROACH_PATH = Path(
+    "docs/spec/features_done/FEAT-181-bundled-feature-planning-workflow/supporting/research-session-approach.md"
+)
+CONTRIBUTOR_APPROACH_DOC_PATHS = (
+    Path("src/engineeringagent/approach/docs/workflow.md"),
+    Path("src/engineeringagent/approach/docs/quality-checks.md"),
+    Path("src/engineeringagent/approach/docs/reviewer-authoring.md"),
+    Path("src/engineeringagent/approach/docs/specifications.md"),
+)
+LOOP_IMPLEMENTATION_TEMPLATE_PATH = Path(
+    "src/engineeringagent/prompts/templates/loop_implementation.md"
+)
 REMEDIATION = (
     "replace with source-first workspace execution; prefer "
-    "`uv run engineeringagent ...`."
+    "`uv run engineeringagent ...` over "
+    "`uv run python -m engineeringagent.cli ...`."
 )
 
 
@@ -70,6 +92,25 @@ def _is_forbidden_uvx_self_invocation(command: object) -> bool:
     return has_from_dot and _command_targets_engineeringagent(tokens)
 
 
+def _is_legacy_module_cli_invocation(command: object) -> bool:
+    tokens = _tokenize_command(command)
+    if not tokens:
+        return False
+
+    index = 0
+    if len(tokens) >= 2 and Path(tokens[0]).name == "uv" and tokens[1] == "run":
+        index = 2
+
+    if index + 2 >= len(tokens):
+        return False
+
+    executable_name = Path(tokens[index]).name
+    if not executable_name.startswith("python"):
+        return False
+
+    return tokens[index + 1] == "-m" and tokens[index + 2] == "engineeringagent.cli"
+
+
 def _format_command(command: object) -> str:
     if isinstance(command, str):
         return command
@@ -78,39 +119,174 @@ def _format_command(command: object) -> str:
     return ""
 
 
-def _scan_feature_verification_commands() -> list[str]:
+def _command_policy_violation(command: object) -> str | None:
+    if _is_forbidden_uvx_self_invocation(command):
+        return "forbidden in-repo uvx self-invocation"
+    if _is_legacy_module_cli_invocation(command):
+        return "legacy module-form engineeringagent invocation"
+    return None
+
+
+def _iter_feature_specs() -> list[Path]:
     if not FEATURES_ROOT.is_dir():
+        return []
+    flat_specs = sorted(FEATURES_ROOT.glob("*.yaml"))
+    bundled_specs = sorted(
+        child / "spec.yaml"
+        for child in FEATURES_ROOT.iterdir()
+        if child.is_dir() and (child / "spec.yaml").is_file()
+    )
+    return sorted([*flat_specs, *bundled_specs], key=lambda path: path.as_posix())
+
+
+def _load_markdown_frontmatter(path: Path) -> dict[str, object] | None:
+    document = path.read_text(encoding="utf-8")
+    if not document.startswith("---\n"):
+        return None
+
+    frontmatter_end = document.find("\n---", 4)
+    if frontmatter_end < 0:
+        return None
+
+    frontmatter = yaml.safe_load(document[4:frontmatter_end].strip())
+    return frontmatter if isinstance(frontmatter, dict) else None
+
+
+def _scan_subtask_verification_commands(
+    feature_path: Path,
+    document: dict[str, object],
+) -> list[str]:
+    violations: list[str] = []
+    subtasks = document.get("subtasks")
+    if not isinstance(subtasks, list):
+        return violations
+
+    for subtask_index, subtask in enumerate(subtasks):
+        if not isinstance(subtask, dict):
+            continue
+        verification = subtask.get("verification")
+        if not isinstance(verification, list):
+            continue
+
+        for command_index, command in enumerate(verification):
+            violation_reason = _command_policy_violation(command)
+            if violation_reason is None:
+                continue
+            rendered_command = _format_command(command)
+            violations.append(
+                (
+                    f"{feature_path.as_posix()}:subtasks[{subtask_index}]"
+                    f".verification[{command_index}] {violation_reason} "
+                    f"`{rendered_command}`; {REMEDIATION}"
+                )
+            )
+    return violations
+
+
+def _scan_markdown_phase_commands(plan_path: Path) -> list[str]:
+    if not plan_path.is_file():
+        return []
+
+    frontmatter = _load_markdown_frontmatter(plan_path)
+    if not isinstance(frontmatter, dict):
+        return []
+
+    phases = frontmatter.get("phases")
+    if not isinstance(phases, list):
         return []
 
     violations: list[str] = []
-    for feature_path in sorted(FEATURES_ROOT.glob("*.yaml")):
+    for phase_index, phase in enumerate(phases):
+        if not isinstance(phase, dict):
+            continue
+        verification = phase.get("verification")
+        if not isinstance(verification, list):
+            continue
+
+        for command_index, command in enumerate(verification):
+            violation_reason = _command_policy_violation(command)
+            if violation_reason is None:
+                continue
+            rendered_command = _format_command(command)
+            violations.append(
+                (
+                    f"{plan_path.as_posix()}:phases[{phase_index}]"
+                    f".verification[{command_index}] {violation_reason} "
+                    f"`{rendered_command}`; {REMEDIATION}"
+                )
+            )
+    return violations
+
+
+def _scan_bundled_plan_phase_commands(
+    feature_path: Path,
+    document: dict[str, object],
+) -> list[str]:
+    plan_path = resolve_feature_plan_path(feature_path, document)
+    if plan_path is None:
+        return []
+    return _scan_markdown_phase_commands(plan_path)
+
+
+def _scan_feature_verification_commands() -> list[str]:
+    violations: list[str] = []
+    for feature_path in _iter_feature_specs():
         document = yaml.safe_load(feature_path.read_text(encoding="utf-8")) or {}
         if not isinstance(document, dict):
             continue
-
-        subtasks = document.get("subtasks")
-        if not isinstance(subtasks, list):
-            continue
-
-        for subtask_index, subtask in enumerate(subtasks):
-            if not isinstance(subtask, dict):
-                continue
-            verification = subtask.get("verification")
-            if not isinstance(verification, list):
-                continue
-
-            for command_index, command in enumerate(verification):
-                if not _is_forbidden_uvx_self_invocation(command):
-                    continue
-                rendered_command = _format_command(command)
-                violations.append(
-                    (
-                        f"{feature_path.as_posix()}:subtasks[{subtask_index}]"
-                        f".verification[{command_index}] forbidden in-repo uvx "
-                        f"self-invocation `{rendered_command}`; {REMEDIATION}"
-                    )
-                )
+        violations.extend(_scan_subtask_verification_commands(feature_path, document))
+        if feature_path.name == "spec.yaml":
+            violations.extend(_scan_bundled_plan_phase_commands(feature_path, document))
     return violations
+
+
+def _scan_smoke_template_commands() -> list[str]:
+    return _scan_markdown_phase_commands(SMOKE_PLAN_TEMPLATE_PATH)
+
+
+def _scan_bundled_example_commands() -> list[str]:
+    return _scan_markdown_phase_commands(PLAN_FORMAT_EXAMPLE_PATH)
+
+
+def _scan_markdown_command_lines(path: Path) -> list[str]:
+    if not path.is_file():
+        return []
+
+    violations: list[str] = []
+    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        if "engineeringagent" not in line:
+            continue
+        candidates = [segment for segment in re.findall(r"`([^`]+)`", line) if "engineeringagent" in segment]
+        if not candidates:
+            candidates = [line.strip("`- ")]
+        for candidate in candidates:
+            violation_reason = _command_policy_violation(candidate)
+            if violation_reason is None:
+                continue
+            violations.append(
+                (
+                    f"{path.as_posix()}:line {line_number} {violation_reason} "
+                    f"`{line.strip()}`; {REMEDIATION}"
+                )
+            )
+    return violations
+
+
+def _scan_bundled_approach_commands() -> list[str]:
+    return _scan_markdown_command_lines(
+        PLAN_SESSION_APPROACH_PATH
+    ) + _scan_markdown_command_lines(RESEARCH_SESSION_APPROACH_PATH)
+
+
+def _scan_contributor_approach_commands() -> list[str]:
+    violations: list[str] = []
+    for path in CONTRIBUTOR_APPROACH_DOC_PATHS:
+        violations.extend(_scan_markdown_command_lines(path))
+    return violations
+
+
+def _scan_prompt_template_commands() -> list[str]:
+    return _scan_markdown_command_lines(LOOP_IMPLEMENTATION_TEMPLATE_PATH)
 
 
 def _scan_check_commands() -> list[str]:
@@ -131,12 +307,12 @@ def _scan_check_commands() -> list[str]:
             continue
 
         command = check.get("command")
-        if not _is_forbidden_uvx_self_invocation(command):
+        violation_reason = _command_policy_violation(command)
+        if violation_reason is None:
             continue
         violations.append(
             (
-                f"{CHECKS_PATH.as_posix()}:checks.{check_id}.command forbidden "
-                "in-repo uvx self-invocation "
+                f"{CHECKS_PATH.as_posix()}:checks.{check_id}.command {violation_reason} "
                 f"`{_format_command(command)}`; {REMEDIATION}"
             )
         )
@@ -147,7 +323,15 @@ def _scan_check_commands() -> list[str]:
 def main() -> int:
     """Check scoped loop commands for forbidden in-repo uvx self-invocation."""
     violations = sorted(
-        set(_scan_feature_verification_commands() + _scan_check_commands())
+        set(
+            _scan_feature_verification_commands()
+            + _scan_smoke_template_commands()
+            + _scan_bundled_example_commands()
+            + _scan_bundled_approach_commands()
+            + _scan_contributor_approach_commands()
+            + _scan_prompt_template_commands()
+            + _scan_check_commands()
+        )
     )
     status = RuleStatus.PASS if not violations else RuleStatus.FAIL
     summary = (

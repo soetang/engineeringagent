@@ -15,6 +15,8 @@ APPROACH_TOPIC_IDS = (
     "principles",
     "workflow",
     "specifications",
+    "research-session",
+    "plan-session",
     "quality-checks",
     "reviewer-authoring",
 )
@@ -24,6 +26,8 @@ APPROACH_ALIAS_MAP = {
     "principles": ("harness-engineering-principles",),
     "workflow": (),
     "specifications": ("spec-writing",),
+    "research-session": (),
+    "plan-session": (),
     "quality-checks": ("quality-check-playbook",),
     "reviewer-authoring": ("reviewer-authoring-guide",),
 }

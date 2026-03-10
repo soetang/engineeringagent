@@ -36,6 +36,7 @@ from engineeringagent.loop_runtime.run_context import (
 from engineeringagent.loop_runtime.telemetry import write_iteration_telemetry
 from engineeringagent.progress.handoff import ImplementProgressEnvelope
 from engineeringagent.progress import paths as progress_paths
+from tests.loop.feature_iteration_support import make_bundled_project_root
 
 
 _PROGRESS_ROOT_PARTS = (".engineeringagent", "progress")
@@ -208,22 +209,7 @@ def test_print_summary_signature_is_explicit() -> None:
     signature = inspect.signature(loop_module.print_summary)
     parameters = signature.parameters
 
-    assert tuple(parameters) == (
-        "feature_id",
-        "result",
-        "failed_gate",
-        "attempt",
-        "next_action",
-        "selected_path",
-        "implement_step",
-        "log_path",
-        "archived_selection_path",
-        "verification_status",
-        "verification_failed_command",
-        "reviewer_status",
-        "reviewer_decision",
-        "failed_reviewer_id",
-    )
+    assert tuple(parameters) == ("summary",)
     assert all(
         parameter.kind not in {Parameter.VAR_POSITIONAL, Parameter.VAR_KEYWORD}
         for parameter in parameters.values()
@@ -439,6 +425,218 @@ def test_run_implement_step_from_inputs_accepts_structured_envelope_output(
     assert len(result) == 5
     assert result[0] is True
     assert result[4] is False
+
+
+def test_run_implement_step_from_inputs_preserves_phase_context_in_fallback_envelope(
+    tmp_path: Path,
+) -> None:
+    feature_data = {
+        "id": "FEAT-999",
+        "title": "Bundled fallback handoff context",
+        "type": "feature",
+        "expected_commit_subject": "feat: preserve bundled fallback handoff context",
+        "status": "in_progress",
+        "priority": "high",
+        "objective": "Keep fallback handoff output phase-oriented.",
+        "acceptance": ["Fallback output references the current phase."],
+        "planning_tier": "planned",
+        "artifacts": {"plan": "plan.md"},
+        "updated_at": "2026-03-09T00:00:00Z",
+    }
+    plan_frontmatter = {
+        "plan_id": "FEAT-999",
+        "feature_id": "FEAT-999",
+        "status": "in_progress",
+        "source_spec": "spec.yaml",
+        "planning_tier": "planned",
+        "phases": [
+            {"id": "P1", "title": "Preserve fallback context", "status": "in_progress"}
+        ],
+    }
+    project_root, feature_path, _plan_path = make_bundled_project_root(
+        tmp_path,
+        feature_data=feature_data,
+        plan_frontmatter=plan_frontmatter,
+    )
+    inputs = ImplementStepInputs(
+        project_root=project_root,
+        feature=feature_data,
+        feature_path=feature_path,
+        feedback=None,
+        verbose_output=False,
+    )
+
+    def _run_agent_invalid_payload(*_args: object, **_kwargs: object) -> str:
+        return '{"summary":""}'
+
+    ok, failed_gate, command_output, envelope, used_fallback = (
+        run_implement_step_from_inputs(inputs, run_agent_fn=_run_agent_invalid_payload)
+    )
+
+    assert ok is True
+    assert failed_gate is None
+    assert "returncode=0" in command_output
+    assert used_fallback is True
+    assert envelope.remaining_work == [
+        "Review latest progress logs and continue the highest-priority open phase (P1: Preserve fallback context)."
+    ]
+
+
+def test_run_implement_step_from_inputs_uses_raw_phase_context_for_invalid_plan_contract(
+    tmp_path: Path,
+) -> None:
+    feature_data = {
+        "id": "FEAT-996",
+        "title": "Bundled invalid plan fallback handoff context",
+        "type": "feature",
+        "expected_commit_subject": "feat: preserve invalid bundled fallback handoff context",
+        "status": "in_progress",
+        "priority": "high",
+        "objective": "Keep fallback handoff output on the raw phase surface.",
+        "acceptance": ["Fallback output recovers parseable raw phase metadata."],
+        "planning_tier": "planned",
+        "artifacts": {"plan": "plan.md"},
+        "updated_at": "2026-03-09T00:00:00Z",
+    }
+    plan_frontmatter = {
+        "plan_id": "FEAT-996",
+        "status": "in_progress",
+        "source_spec": "spec.yaml",
+        "planning_tier": "planned",
+        "phases": [
+            {
+                "id": "P1",
+                "title": "Recover fallback context from invalid plan contract",
+                "status": "in_progress",
+            }
+        ],
+    }
+    project_root, feature_path, _plan_path = make_bundled_project_root(
+        tmp_path,
+        feature_data=feature_data,
+        plan_frontmatter=plan_frontmatter,
+    )
+    inputs = ImplementStepInputs(
+        project_root=project_root,
+        feature=feature_data,
+        feature_path=feature_path,
+        feedback=None,
+        verbose_output=False,
+    )
+
+    def _run_agent_invalid_payload(*_args: object, **_kwargs: object) -> str:
+        return '{"summary":""}'
+
+    ok, failed_gate, command_output, envelope, used_fallback = (
+        run_implement_step_from_inputs(inputs, run_agent_fn=_run_agent_invalid_payload)
+    )
+
+    assert ok is True
+    assert failed_gate is None
+    assert "returncode=0" in command_output
+    assert used_fallback is True
+    assert envelope.remaining_work == [
+        "Review latest progress logs and continue the highest-priority open phase (P1: Recover fallback context from invalid plan contract)."
+    ]
+
+
+def test_run_implement_step_from_inputs_does_not_project_feature_context_onto_missing_phase(
+    tmp_path: Path,
+) -> None:
+    feature_data = {
+        "id": "FEAT-997",
+        "title": "Bundled fallback without concrete phase",
+        "type": "feature",
+        "expected_commit_subject": "feat: preserve missing phase fallback context",
+        "status": "in_progress",
+        "priority": "high",
+        "objective": "Keep fallback output off feature-projected phase references.",
+        "acceptance": ["Fallback output omits synthetic phase identifiers."],
+        "planning_tier": "planned",
+        "artifacts": {"plan": "plan.md"},
+        "updated_at": "2026-03-09T00:00:00Z",
+    }
+    plan_frontmatter = {
+        "plan_id": "FEAT-997",
+        "feature_id": "FEAT-997",
+        "status": "in_progress",
+        "source_spec": "spec.yaml",
+        "planning_tier": "planned",
+        "phases": [],
+    }
+    project_root, feature_path, _plan_path = make_bundled_project_root(
+        tmp_path,
+        feature_data=feature_data,
+        plan_frontmatter=plan_frontmatter,
+    )
+    inputs = ImplementStepInputs(
+        project_root=project_root,
+        feature=feature_data,
+        feature_path=feature_path,
+        feedback=None,
+        verbose_output=False,
+    )
+
+    def _run_agent_invalid_payload(*_args: object, **_kwargs: object) -> str:
+        return '{"summary":""}'
+
+    ok, failed_gate, command_output, envelope, used_fallback = (
+        run_implement_step_from_inputs(inputs, run_agent_fn=_run_agent_invalid_payload)
+    )
+
+    assert ok is True
+    assert failed_gate is None
+    assert "returncode=0" in command_output
+    assert used_fallback is True
+    assert envelope.remaining_work == [
+        "Review latest progress logs and continue the highest-priority open phase."
+    ]
+
+
+def test_run_implement_step_from_inputs_preserves_feature_context_in_fallback_envelope(
+    tmp_path: Path,
+) -> None:
+    project_root = tmp_path
+    feature_path = (
+        project_root / "docs" / "spec" / "features" / "FEAT-998-direct-bundled" / "spec.yaml"
+    )
+    feature_path.parent.mkdir(parents=True, exist_ok=True)
+    feature_data = {
+        "id": "FEAT-998",
+        "title": "Direct bundled fallback handoff context",
+        "type": "spec",
+        "expected_commit_subject": "spec: preserve direct bundled fallback handoff context",
+        "status": "in_progress",
+        "priority": "high",
+        "objective": "Keep fallback output feature-oriented for bundled direct work.",
+        "acceptance": ["Fallback output references the active bundled feature."],
+        "planning_tier": "direct",
+        "artifacts": {},
+        "updated_at": "2026-03-09T00:00:00Z",
+    }
+    feature_path.write_text(yaml.safe_dump(feature_data, sort_keys=False), encoding="utf-8")
+    inputs = ImplementStepInputs(
+        project_root=project_root,
+        feature=feature_data,
+        feature_path=feature_path,
+        feedback=None,
+        verbose_output=False,
+    )
+
+    def _run_agent_invalid_payload(*_args: object, **_kwargs: object) -> str:
+        return '{"summary":""}'
+
+    ok, failed_gate, command_output, envelope, used_fallback = (
+        run_implement_step_from_inputs(inputs, run_agent_fn=_run_agent_invalid_payload)
+    )
+
+    assert ok is True
+    assert failed_gate is None
+    assert "returncode=0" in command_output
+    assert used_fallback is True
+    assert envelope.remaining_work == [
+        "Review latest progress logs and continue the highest-priority open implementation step (FEAT-998: Direct bundled fallback handoff context)."
+    ]
 
 
 def test_drop_completed_feature_from_snapshot_keeps_existing_paths(

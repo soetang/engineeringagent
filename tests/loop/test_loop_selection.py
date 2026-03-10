@@ -24,6 +24,19 @@ def _pending_features() -> list[tuple[Path, dict[str, Any]]]:
     ]
 
 
+def _bundled_pending_features() -> list[tuple[Path, dict[str, Any]]]:
+    return [
+        (
+            Path("docs/spec/features/FEAT-320-first-bundle/spec.yaml"),
+            {"id": "FEAT-320", "status": "backlog", "priority": "medium"},
+        ),
+        (
+            Path("docs/spec/features/FEAT-321-second-bundle/spec.yaml"),
+            {"id": "FEAT-321", "status": "in_progress", "priority": "high"},
+        ),
+    ]
+
+
 def test_deterministic_feature_choice_prefers_status_then_priority_then_id() -> None:
     chosen_path, chosen_feature = selection.deterministic_feature_choice(
         _pending_features()
@@ -54,6 +67,25 @@ def test_parse_selector_output_uses_unique_file_name_and_id_tokens() -> None:
 
     assert selected_by_name == Path("docs/spec/features/beta.yaml")
     assert selected_by_id == Path("docs/spec/features/alpha.yaml")
+
+
+def test_parse_selector_output_uses_unique_bundled_package_directory_tokens() -> None:
+    pending = _bundled_pending_features()
+
+    selected = selection.parse_selector_output("pick FEAT-321-second-bundle", pending)
+
+    assert selected == Path("docs/spec/features/FEAT-321-second-bundle/spec.yaml")
+
+
+def test_parse_selector_output_normalizes_multiline_punctuated_tokens() -> None:
+    pending = _bundled_pending_features()
+
+    selected = selection.parse_selector_output(
+        "pick\n`FEAT-320-first-bundle`, please",
+        pending,
+    )
+
+    assert selected == Path("docs/spec/features/FEAT-320-first-bundle/spec.yaml")
 
 
 def test_parse_selector_output_returns_none_for_empty_or_ambiguous_tokens() -> None:

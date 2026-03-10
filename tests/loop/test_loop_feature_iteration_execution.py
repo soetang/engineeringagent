@@ -9,11 +9,13 @@ import yaml
 
 import engineeringagent.loop as loop_module
 from engineeringagent.loop_runtime import presentation as presentation_module
+from engineeringagent.loop_runtime.models import IterationSummaryInputs
 from tests.loop.feature_iteration_support import (
     FEATURE_LOG_REF,
     RUNS_LOG_REF,
     base_feature,
     init_git_repo,
+    make_bundled_project_root,
     make_project_root,
     progress_root,
     read_runs,
@@ -221,6 +223,46 @@ def test_run_loop_all_dry_run_reports_snapshot_selection(
     output = capsys.readouterr().out
     assert code == 0
     assert "Startup snapshot captured" in output
+    assert "Selection is taken from the startup snapshot" in output
+
+
+def test_run_loop_all_snapshot_banner_mentions_feature_entrypoints_for_bundles(
+    tmp_path: Path, capsys: Any
+) -> None:
+    project_root, _, _ = make_bundled_project_root(
+        tmp_path,
+        feature_data={
+            **base_feature(),
+            "planning_tier": "planned",
+            "artifacts": {"plan": "plan.md"},
+        },
+        plan_frontmatter={
+            "plan_id": "FEAT-900",
+            "feature_id": "FEAT-900",
+            "status": "backlog",
+            "source_spec": "spec.yaml",
+            "planning_tier": "planned",
+            "phases": [
+                {
+                    "id": "P1",
+                    "title": "Bundle run-all smoke coverage",
+                    "status": "backlog",
+                }
+            ],
+        },
+    )
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[],
+        dry_run=True,
+        run_all=True,
+    )
+
+    output = capsys.readouterr().out
+    assert code == 0
+    assert "runnable feature entrypoint(s) from docs/spec/features/" in output
+    assert "docs/spec/features/*.yaml" not in output
     assert "Selection is taken from the startup snapshot" in output
 
 
@@ -525,11 +567,13 @@ def test_run_loop_plain_output_when_not_tty(
     monkeypatch.setenv("TERM", "xterm-256color")
 
     loop_module.print_summary(
-        feature_id="FEAT-900",
-        result="passed",
-        failed_gate=None,
-        attempt=1,
-        next_action="continue_same_feature",
+        IterationSummaryInputs(
+            feature_id="FEAT-900",
+            result="passed",
+            failed_gate=None,
+            attempt=1,
+            next_action="continue_same_feature",
+        )
     )
 
     output = capsys.readouterr().out
@@ -547,11 +591,13 @@ def test_run_loop_styled_output_when_tty(
     monkeypatch.setenv("TERM", "xterm-256color")
 
     loop_module.print_summary(
-        feature_id="FEAT-900",
-        result="passed",
-        failed_gate=None,
-        attempt=1,
-        next_action="continue_same_feature",
+        IterationSummaryInputs(
+            feature_id="FEAT-900",
+            result="passed",
+            failed_gate=None,
+            attempt=1,
+            next_action="continue_same_feature",
+        )
     )
 
     output = capsys.readouterr().out
@@ -569,11 +615,13 @@ def test_run_loop_no_color_env_does_not_disable_styling(
     monkeypatch.setenv("TERM", "xterm-256color")
 
     loop_module.print_summary(
-        feature_id="FEAT-900",
-        result="failed",
-        failed_gate="spec_validate",
-        attempt=1,
-        next_action="retry_same_feature",
+        IterationSummaryInputs(
+            feature_id="FEAT-900",
+            result="failed",
+            failed_gate="spec_validate",
+            attempt=1,
+            next_action="retry_same_feature",
+        )
     )
 
     output = capsys.readouterr().out
@@ -592,33 +640,39 @@ def test_run_loop_iteration_output_uses_emoji_contract(
     monkeypatch.setenv("TERM", "xterm-256color")
 
     loop_module.print_summary(
-        feature_id="FEAT-900",
-        result="passed",
-        failed_gate=None,
-        attempt=1,
-        next_action="continue_same_feature",
-        selected_path="docs/spec/features/FEAT-900.yaml",
-        implement_step="opencode run --agent engineeringagent",
+        IterationSummaryInputs(
+            feature_id="FEAT-900",
+            result="passed",
+            failed_gate=None,
+            attempt=1,
+            next_action="continue_same_feature",
+            selected_path="docs/spec/features/FEAT-900.yaml",
+            implement_step="opencode run --agent engineeringagent",
+        )
     )
     loop_module.print_summary(
-        feature_id="FEAT-900",
-        result="failed",
-        failed_gate="spec_validate",
-        attempt=2,
-        next_action="retry_same_feature",
-        selected_path="docs/spec/features/FEAT-900.yaml",
-        implement_step="opencode run --agent engineeringagent",
-        log_path=FEATURE_LOG_REF,
+        IterationSummaryInputs(
+            feature_id="FEAT-900",
+            result="failed",
+            failed_gate="spec_validate",
+            attempt=2,
+            next_action="retry_same_feature",
+            selected_path="docs/spec/features/FEAT-900.yaml",
+            implement_step="opencode run --agent engineeringagent",
+            log_path=FEATURE_LOG_REF,
+        )
     )
     loop_module.print_summary(
-        feature_id="FEAT-900",
-        result="passed",
-        failed_gate=None,
-        attempt=3,
-        next_action="select_next_feature",
-        selected_path="docs/spec/features/FEAT-900.yaml",
-        implement_step="opencode run --agent engineeringagent",
-        archived_selection_path="docs/spec/features_done/FEAT-900.yaml",
+        IterationSummaryInputs(
+            feature_id="FEAT-900",
+            result="passed",
+            failed_gate=None,
+            attempt=3,
+            next_action="select_next_feature",
+            selected_path="docs/spec/features/FEAT-900.yaml",
+            implement_step="opencode run --agent engineeringagent",
+            archived_selection_path="docs/spec/features_done/FEAT-900.yaml",
+        )
     )
 
     output = capsys.readouterr().out

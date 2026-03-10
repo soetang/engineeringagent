@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from ..approach import (
     UnknownApproachIdError,
     format_approach_topic_index,
+    load_topic_body,
     load_topic_content,
     render_approach_overview,
 )
@@ -74,7 +75,7 @@ def cmd_approach_show(args: _HandlerArgs) -> int:
         return 1
 
     try:
-        rendered = load_topic_content(topic_id)
+        rendered = load_topic_body(topic_id)
     except UnknownApproachIdError as exc:
         print(f"approach input error: {exc}; use `engineeringagent approach list`")
         return 1

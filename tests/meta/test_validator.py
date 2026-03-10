@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import importlib
-import shutil
 import subprocess
 from pathlib import Path
 from types import SimpleNamespace
@@ -14,22 +13,12 @@ from engineeringagent.checks.validate.validator import (
     validate,
 )
 from engineeringagent.checks.validate.repo_policy_purge_invariant import git_client
-
-def _invalid_spec_fixtures_dir(repo_root: Path) -> Path:
-    return repo_root / "tests" / "fixtures" / "specs" / "invalid"
-
-
-def _make_invalid_project(repo_root: Path, tmp_path: Path, fixture_name: str) -> Path:
-    project_root = tmp_path
-    features_dir = project_root / "docs" / "spec" / "features"
-
-    features_dir.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(
-        _invalid_spec_fixtures_dir(repo_root) / fixture_name,
-        features_dir / f"{fixture_name}",
-    )
-
-    return project_root
+from tests.meta.validator_support import (
+    make_invalid_project,
+    write_bundled_feature_spec,
+    write_legacy_feature_wrapper,
+    write_plan_artifact,
+)
 
 
 @pytest.mark.parametrize(
@@ -45,7 +34,7 @@ def test_invalid_spec_fixtures_report_clear_errors(
     fixture_name: str,
     expected: str,
 ) -> None:
-    project_root = _make_invalid_project(repo_root, tmp_path, fixture_name)
+    project_root = make_invalid_project(repo_root, tmp_path, fixture_name)
 
     messages = validate(project_root=project_root)
 
@@ -179,6 +168,53 @@ def test_validate_allows_multiline_verification_commands_in_done_specs(
         "verification commands must be single-line strings" not in message
         for message in messages
     )
+
+
+def test_validate_rejects_multiline_bundled_plan_phase_verification_commands(
+    tmp_path: Path,
+) -> None:
+    project_root = tmp_path
+    feature_root = (
+        project_root
+        / "docs"
+        / "spec"
+        / "features"
+        / "FEAT-922-multiline-bundled-phase-verification"
+    )
+    write_bundled_feature_spec(feature_root, feature_id="FEAT-922")
+    plan_path = write_plan_artifact(feature_root, feature_id="FEAT-922")
+    plan_path.write_text(
+        "\n".join(
+            [
+                "---",
+                "plan_id: FEAT-922",
+                "feature_id: FEAT-922",
+                "status: pending",
+                "source_spec: spec.yaml",
+                "planning_tier: planned",
+                "phases:",
+                "  - id: P1",
+                "    title: First phase",
+                "    status: pending",
+                "    verification:",
+                "      - |",
+                "        echo one",
+                "        echo two",
+                "---",
+                "",
+                "# Plan",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    messages = validate(project_root=project_root)
+
+    assert len(messages) == 1
+    assert messages[0].startswith(f"{plan_path}:phases[0].verification[0]:")
+    assert "verification commands must be single-line strings" in messages[0]
+    assert "no \\n or \\r" in messages[0]
 
 
 def test_validate_missing_required_fields_with_pydantic(tmp_path: Path) -> None:
@@ -635,6 +671,60 @@ def test_validate_reports_done_feature_left_in_active_directory(
     )
 
 
+def test_validate_reports_done_bundled_feature_left_in_active_directory(
+    tmp_path: Path,
+) -> None:
+    project_root = tmp_path
+    feature_root = (
+        project_root
+        / "docs"
+        / "spec"
+        / "features"
+        / "FEAT-902-preexisting-done-bundle"
+    )
+    write_bundled_feature_spec(
+        feature_root,
+        feature_id="FEAT-902",
+        planning_tier="planned",
+        extra_fields={"status": "done"},
+    )
+    (feature_root / "plan.md").write_text(
+        "\n".join(
+            [
+                "---",
+                "plan_id: FEAT-902",
+                "feature_id: FEAT-902",
+                "status: done",
+                "source_spec: spec.yaml",
+                "planning_tier: planned",
+                "phases:",
+                "  - id: P1",
+                "    title: First phase",
+                "    status: done",
+                "    verification:",
+                "      - 'true'",
+                "---",
+                "",
+                "# Plan",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    messages = validate(project_root=project_root)
+
+    assert messages
+    assert any(
+        "completed feature specs must be archived" in message for message in messages
+    )
+    assert any(
+        "docs/spec/features_done/FEAT-902-preexisting-done-bundle/spec.yaml"
+        in message
+        for message in messages
+    )
+
+
 def test_validate_defaults_to_docs_without_toml_config(tmp_path: Path) -> None:
     project_root = tmp_path
     features_dir = project_root / "docs" / "spec" / "features"
@@ -997,6 +1087,124 @@ def test_validate_preserves_feature_status_invariant_rules(tmp_path: Path) -> No
     )
     assert any(
         "feature with in_progress subtask must be in_progress" in message
+        for message in messages
+    )
+
+
+def test_validate_preserves_bundled_plan_phase_status_invariants(
+    tmp_path: Path,
+) -> None:
+    project_root = tmp_path
+    feature_dir = (
+        project_root / "docs" / "spec" / "features" / "FEAT-909-bundled-status-mismatch"
+    )
+    feature_dir.mkdir(parents=True, exist_ok=True)
+
+    (feature_dir / "spec.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "id": "FEAT-909",
+                "title": "Backlog but plan phase in progress",
+                "type": "feature",
+                "expected_commit_subject": "feat: preserve bundled phase invariants",
+                "status": "backlog",
+                "priority": "high",
+                "objective": "Preserve bundled phase status invariants.",
+                "acceptance": ["Validator reports bundled plan status mismatch."],
+                "planning_tier": "planned",
+                "artifacts": {"plan": "plan.md"},
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+    (feature_dir / "plan.md").write_text(
+        "\n".join(
+            [
+                "---",
+                "plan_id: FEAT-909",
+                "feature_id: FEAT-909",
+                "status: in_progress",
+                "source_spec: spec.yaml",
+                "planning_tier: planned",
+                "phases:",
+                "  - id: P1",
+                "    title: Active bundled work",
+                "    status: in_progress",
+                "    verification:",
+                "      - 'true'",
+                "---",
+                "",
+                "# FEAT-909 Plan",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    messages = validate(project_root=project_root)
+
+    assert any(
+        "feature with in_progress phase must be in_progress" in message
+        for message in messages
+    )
+
+
+def test_validate_preserves_blocked_bundled_plan_phase_status_invariants(
+    tmp_path: Path,
+) -> None:
+    project_root = tmp_path
+    feature_dir = (
+        project_root / "docs" / "spec" / "features" / "FEAT-910-bundled-status-mismatch"
+    )
+    feature_dir.mkdir(parents=True, exist_ok=True)
+
+    (feature_dir / "spec.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "id": "FEAT-910",
+                "title": "In progress but plan phase blocked",
+                "type": "feature",
+                "expected_commit_subject": "feat: preserve blocked bundled phase invariants",
+                "status": "in_progress",
+                "priority": "high",
+                "objective": "Preserve blocked bundled phase status invariants.",
+                "acceptance": ["Validator reports blocked bundled plan status mismatch."],
+                "planning_tier": "planned",
+                "artifacts": {"plan": "plan.md"},
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+    (feature_dir / "plan.md").write_text(
+        "\n".join(
+            [
+                "---",
+                "plan_id: FEAT-910",
+                "feature_id: FEAT-910",
+                "status: blocked",
+                "source_spec: spec.yaml",
+                "planning_tier: planned",
+                "phases:",
+                "  - id: P1",
+                "    title: Blocked bundled work",
+                "    status: blocked",
+                "    verification:",
+                "      - 'true'",
+                "---",
+                "",
+                "# FEAT-910 Plan",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    messages = validate(project_root=project_root)
+
+    assert any(
+        "feature with blocked phase must be blocked" in message
         for message in messages
     )
 
@@ -1392,6 +1600,92 @@ def test_validate_rejects_duplicate_feature_id_across_active_and_done_specs(
         and "duplicate base feature id" in message
         for message in messages
     )
+
+
+def test_validate_bundled_feature_contract_accepts_planned_package(
+    tmp_path: Path,
+) -> None:
+    feature_root = (
+        tmp_path / "docs" / "spec" / "features" / "FEAT-181-bundled-feature-contract"
+    )
+    write_bundled_feature_spec(feature_root)
+    write_plan_artifact(feature_root)
+
+    messages = validate(project_root=tmp_path)
+
+    assert not messages
+
+
+def test_validate_bundled_feature_contract_rejects_subtasks_in_active_spec(
+    tmp_path: Path,
+) -> None:
+    feature_root = (
+        tmp_path / "docs" / "spec" / "features" / "FEAT-181-bundled-feature-contract"
+    )
+    write_bundled_feature_spec(
+        feature_root,
+        extra_fields={
+            "subtasks": [
+                {
+                    "id": "ST-001",
+                    "title": "Legacy subtask",
+                    "status": "backlog",
+                    "verification": ["true"],
+                }
+            ]
+        },
+    )
+    write_plan_artifact(feature_root)
+
+    messages = validate(project_root=tmp_path)
+
+    assert any(
+        "spec.yaml:subtasks" in message and "Extra inputs are not permitted" in message
+        for message in messages
+    )
+
+
+def test_validate_bundled_feature_contract_requires_companion_artifacts(
+    tmp_path: Path,
+) -> None:
+    feature_root = (
+        tmp_path / "docs" / "spec" / "features" / "FEAT-181-bundled-feature-contract"
+    )
+    write_bundled_feature_spec(
+        feature_root,
+        planning_tier="researched",
+        include_research_artifact=False,
+    )
+    write_plan_artifact(feature_root, planning_tier="researched")
+
+    messages = validate(project_root=tmp_path)
+
+    assert any(
+        "spec.yaml:artifacts.research" in message
+        and "planning_tier researched requires artifacts.research" in message
+        for message in messages
+    )
+
+
+def test_validate_bundled_feature_contract_allows_wrapper_and_canonical_spec_pair(
+    tmp_path: Path,
+) -> None:
+    features_dir = tmp_path / "docs" / "spec" / "features"
+    write_legacy_feature_wrapper(
+        features_dir / "FEAT-181-bundled-feature-contract.yaml",
+    )
+    feature_root = features_dir / "FEAT-181-bundled-feature-contract"
+    write_bundled_feature_spec(
+        feature_root,
+        planning_tier="researched",
+        include_research_artifact=True,
+    )
+    write_plan_artifact(feature_root, planning_tier="researched")
+    (feature_root / "research.md").write_text("# Research\n", encoding="utf-8")
+
+    messages = validate(project_root=tmp_path)
+
+    assert all("duplicate base feature id FEAT-181" not in message for message in messages)
 
 
 def test_pytest_default_coverage_contract_is_declared(repo_root: Path) -> None:

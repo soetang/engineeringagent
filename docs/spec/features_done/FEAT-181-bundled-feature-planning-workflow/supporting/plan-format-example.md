@@ -1,24 +1,24 @@
 ---
 plan_id: FEAT-999
 feature_id: FEAT-999
-status: ready
+status: backlog
 source_spec: spec.yaml
 planning_tier: planned
 phases:
   - id: P1
     title: Define bundled feature contract
-    status: pending
+    status: backlog
     verification:
       - uv run engineeringagent validate --schema-only
   - id: P2
     title: Implement discovery and validation
-    status: pending
+    status: backlog
     verification:
       - uv run pytest -q tests/specs/test_bundled_feature_discovery.py
       - uv run python docs/spec/features/FEAT-999-example-bundled-feature-package/supporting/validate_artifact_requirements.py
   - id: P3
     title: Update guidance, reviewers, and examples
-    status: pending
+    status: backlog
     verification:
       - uv run pytest -q tests/cli/test_cli.py -k approach
       - uv run python docs/spec/features/FEAT-999-example-bundled-feature-package/supporting/validate_example_bundle.py

@@ -11,18 +11,19 @@ This reference describes the expected workflow for implementing a feature with e
 
 ## Core Loop
 
-Run the loop with: `engineeringagent run --all`
+Run the loop with: `uv run engineeringagent run --all`
 
-1. Select one eligible feature and one eligible subtask.
+1. Select one eligible feature and one eligible plan phase.
+1. For a legacy compatibility wrapper, use the most important open subtask that mirrors the canonical bundled plan.
 1. Implement one incremental, deterministic unit.
-1. Run the subtask verification commands.
-1. Update the feature YAML status and `updated_at`.
+1. Run the current plan-phase or compatibility-wrapper verification commands.
+1. Update the bundled feature package status surfaces (`plan.md` when present, always `spec.yaml`) and `updated_at`.
 1. Persist outcomes for the next loop.
 
 ## Verification Baseline
 
-- Primary verification flow: `engineeringagent checks run --all-phases` (consumes `harness/checks.yaml`).
-- Optional spec-only validation: `engineeringagent validate --schema-only`.
+- Primary verification flow: `uv run engineeringagent checks run --all-phases` (consumes `harness/checks.yaml`).
+- Optional spec-only validation: `uv run engineeringagent validate --schema-only`.
 
 ## Loop outcome taxonomy
 

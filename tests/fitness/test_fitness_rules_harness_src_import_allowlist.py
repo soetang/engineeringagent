@@ -67,3 +67,45 @@ def test_checker_scans_rules_manifest_scripts_not_just_check_prefix(
     assert violations == [
         "harness/fitness-functions/validate_custom.py: imports disallowed module engineeringagent.cli.main (allowed: engineeringagent.checks)"
     ]
+
+
+def test_checker_allows_deep_engineeringagent_checks_imports(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    checker = _load_checker_module(repo_root)
+
+    harness_root = tmp_path / "harness" / "fitness-functions"
+    harness_root.mkdir(parents=True)
+    (harness_root / "rules.yaml").write_text(
+        "\n".join(
+            [
+                'contract_version: "1.0"',
+                "rules:",
+                "  - rule_id: architecture.tmp",
+                "    command:",
+                "      - uv",
+                "      - run",
+                "      - python",
+                "      - harness/fitness-functions/validate_custom.py",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    (harness_root / "validate_custom.py").write_text(
+        "\n".join(
+            [
+                "from engineeringagent.checks.validate.repo_validators import (",
+                "    iter_feature_files,",
+                ")",
+                "",
+                "def run() -> None:",
+                "    _ = iter_feature_files",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    assert checker._collect_violations(tmp_path) == []

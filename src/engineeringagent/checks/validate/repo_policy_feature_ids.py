@@ -103,7 +103,10 @@ def _duplicate_base_id_occurrences(
 ) -> dict[tuple[str, int], list[tuple[str, str, bool]]]:
     occurrences: dict[tuple[str, int], list[tuple[str, str, bool]]] = {}
     for base_id, rel, raw_id, is_done in entries:
-        occurrences.setdefault(base_id, []).append((rel, raw_id, is_done))
+        specs = occurrences.setdefault(base_id, [])
+        if _matches_compatibility_wrapper_pair(specs, rel=rel, raw_id=raw_id, is_done=is_done):
+            continue
+        specs.append((rel, raw_id, is_done))
     return {base_id: specs for base_id, specs in occurrences.items() if len(specs) > 1}
 
 
@@ -175,6 +178,8 @@ def _duplicate_base_id_message_done_only(
 
 def _filename_id_token(file_path: Path) -> str | None:
     stem = file_path.name
+    if stem == "spec.yaml":
+        stem = file_path.parent.name
     if stem.endswith(".yaml"):
         stem = stem[: -len(".yaml")]
     parts = stem.split("-")
@@ -197,6 +202,41 @@ def _normalized_base_id(raw_id: str) -> tuple[str, int] | None:
 def _format_base_id(base_id: tuple[str, int]) -> str:
     prefix, numeric_id = base_id
     return f"{prefix}-{numeric_id}"
+
+
+def _matches_compatibility_wrapper_pair(
+    specs: list[tuple[str, str, bool]],
+    *,
+    rel: str,
+    raw_id: str,
+    is_done: bool,
+) -> bool:
+    """Allow one flat wrapper and one bundled spec to share the same active id."""
+
+    if is_done:
+        return False
+
+    slug = _compatibility_slug(rel)
+    if slug is None:
+        return False
+
+    return any(
+        not existing_is_done
+        and existing_raw_id == raw_id
+        and _compatibility_slug(existing_rel) == slug
+        for existing_rel, existing_raw_id, existing_is_done in specs
+    )
+
+
+def _compatibility_slug(rel: str) -> str | None:
+    """Return the shared wrapper/package slug for compatibility-pair paths."""
+
+    path = Path(rel)
+    if path.name == "spec.yaml":
+        return path.parent.name
+    if path.suffix == ".yaml":
+        return path.stem
+    return None
 
 
 def _relpath(project_root: Path, file_path: Path) -> str:

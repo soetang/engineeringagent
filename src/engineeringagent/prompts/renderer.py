@@ -7,7 +7,9 @@ from typing import Any, Mapping, Sequence
 
 from pydantic import ValidationError
 
+from engineeringagent.loop_runtime.progress_units import current_progress_unit
 from engineeringagent.prompt_feedback import normalize_prompt_feedback
+from engineeringagent.specs import feature_progress_kind
 from engineeringagent.prompts.feedback_envelope import (
     parse_feedback_envelope,
     serialize_feedback_envelope,
@@ -98,12 +100,75 @@ def build_implementation_prompt(
         Rendered implementation prompt text.
     """
     implementation_template = _load_template("loop_implementation.md")
+    progress_kind = feature_progress_kind(feature_path, dict(feature))
+    current_progress = current_progress_unit(feature_path, dict(feature))
     prompt = implementation_template.substitute(
         feature_path=str(feature_path),
         feature_id=str(feature.get("id", "unknown-feature")),
         feature_title=str(feature.get("title", "")),
         objective=str(feature.get("objective", "")),
         context=str(feature.get("context", "")),
+        progress_unit=_progress_unit_prompt_label(progress_kind),
+        current_progress_reference=_current_progress_reference_line(current_progress),
+        progress_context_instruction=_progress_context_instruction(progress_kind),
+        progress_update_instruction=_progress_update_instruction(progress_kind),
     )
 
     return inject_feedback(prompt, feedback)
+
+
+def _progress_update_instruction(progress_kind: str) -> str:
+    """Return progress-update instructions for the active execution surface."""
+
+    if progress_kind == "phase":
+        return (
+            "Update progress in the bundled feature package, including "
+            "`plan.md` by setting relevant phase status fields, `spec.yaml` "
+            "feature status fields, and `updated_at`."
+        )
+    if progress_kind == "feature":
+        return (
+            "Update progress in the bundled feature package by setting "
+            "`spec.yaml` feature status fields and `updated_at`."
+        )
+    return (
+        "Update progress in the same feature YAML by setting relevant "
+        "subtask/feature status fields and `updated_at`."
+    )
+
+
+def _progress_context_instruction(progress_kind: str) -> str:
+    """Return prompt guidance for the active canonical working set."""
+
+    if progress_kind == "subtask":
+        return (
+            "Treat the compatibility wrapper as a temporary shim and follow its "
+            "canonical bundled package references as the source of truth."
+        )
+    return (
+        "Treat this bundled feature package as canonical: keep lifecycle status "
+        "in `spec.yaml` and sequencing in `plan.md` when present."
+    )
+
+
+def _progress_unit_prompt_label(progress_kind: str) -> str:
+    """Return the prompt wording for the active progress surface."""
+
+    if progress_kind == "subtask":
+        return "compatibility-wrapper subtask"
+    if progress_kind == "feature":
+        return "implementation step"
+    return progress_kind
+
+
+def _current_progress_reference_line(progress_unit: Any) -> str:
+    """Return an optional prompt line naming the active progress unit."""
+
+    if progress_unit is None:
+        return ""
+
+    progress_kind = _progress_unit_prompt_label(str(progress_unit.kind))
+    reference = str(progress_unit.id)
+    if progress_unit.title:
+        reference = f"{reference} - {progress_unit.title}"
+    return f"Current {progress_kind}: {reference}\n"

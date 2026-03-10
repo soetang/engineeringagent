@@ -1,4 +1,11 @@
-# Role and Objective
+---
+approach_id: research-session
+description: "Task-specific: only when creating research.md."
+---
+
+# Research Session Approach
+
+## Role and Objective
 
 Conduct codebase research based on a user-provided specification and produce a `research.md` document in the specification directory.
 
@@ -31,7 +38,7 @@ Conduct codebase research based on a user-provided specification and produce a `
 - Break down the user's query into composable research areas.
 - Think through the underlying patterns, connections, and architectural implications the user may be seeking.
 - Identify the specific components, patterns, or concepts to investigate.
-- Create a research plan using TodoWrite to track all subtasks.
+- Create a research plan to track the research areas and deliverables for the session.
 - Keep an internal checklist of required deliverables and treat the task as incomplete until all requested items are covered or explicitly marked [blocked].
 - Consider which directories, files, and architectural patterns are relevant.
 
@@ -92,7 +99,7 @@ Conduct codebase research based on a user-provided specification and produce a `
 - Do not reveal internal reasoning unless explicitly requested.
 
 # Planning and Verification
-- Create and maintain a research plan with TodoWrite.
+- Create and maintain a research plan that keeps the research areas and deliverables explicit.
 - Verify the specification path before writing `research.md`.
 - Confirm all required sections and metadata fields are present.
 - If metadata cannot be determined, use `"unknown"` for scalar metadata fields.

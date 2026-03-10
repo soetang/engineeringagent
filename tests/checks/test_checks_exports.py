@@ -13,9 +13,12 @@ from engineeringagent.checks import (
     HarnessCheckPhase,
     custom_rule_manifest_schema_from_model,
     emit_fitness_result,
+    iter_feature_files,
     list_check_groups,
+    load_markdown_frontmatter,
     load_harness_checks_document,
     normalize_groups,
+    resolve_feature_plan_path,
     render_fitness_catalog,
     reviewer_decision_schema_from_model,
     reviewers_group_selected,
@@ -34,9 +37,12 @@ def test_checks_supported_exports_are_importable() -> None:
     """Checks package should expose the supported FEAT-178 public surface."""
     assert callable(run_checks)
     assert callable(emit_fitness_result)
+    assert callable(iter_feature_files)
     assert callable(list_check_groups)
+    assert callable(load_markdown_frontmatter)
     assert callable(load_harness_checks_document)
     assert callable(normalize_groups)
+    assert callable(resolve_feature_plan_path)
     assert callable(render_fitness_catalog)
     assert callable(custom_rule_manifest_schema_from_model)
     assert callable(reviewer_decision_schema_from_model)
@@ -47,9 +53,12 @@ def test_checks_supported_exports_are_importable() -> None:
         "HarnessCheckPhase",
         "custom_rule_manifest_schema_from_model",
         "emit_fitness_result",
+        "iter_feature_files",
         "list_check_groups",
+        "load_markdown_frontmatter",
         "load_harness_checks_document",
         "normalize_groups",
+        "resolve_feature_plan_path",
         "render_fitness_catalog",
         "reviewer_decision_schema_from_model",
         "reviewers_group_selected",
@@ -76,6 +85,47 @@ def test_schema_helpers_remain_available_from_package_facade() -> None:
     """Checks schema helpers should stay usable from the package facade."""
     assert custom_rule_manifest_schema_from_model()["title"]
     assert reviewer_decision_schema_from_model()["title"]
+
+
+def test_feature_plan_resolver_remains_available_from_package_facade(
+    tmp_path: Path,
+) -> None:
+    """Checks facade should expose the bundled feature plan resolver for harness code."""
+    spec_path = tmp_path / "docs/spec/features/FEAT-181/spec.yaml"
+    spec_path.parent.mkdir(parents=True)
+
+    resolved = resolve_feature_plan_path(
+        spec_path,
+        {
+            "artifacts": {
+                "plan": "planning/plan.md",
+            }
+        },
+    )
+
+    assert resolved == spec_path.parent / "planning/plan.md"
+
+
+def test_bundled_spec_helpers_remain_available_from_package_facade(
+    tmp_path: Path,
+) -> None:
+    """Checks facade should expose bundled spec helpers for harness scripts."""
+    features_dir = tmp_path / "docs/spec/features"
+    bundled_root = features_dir / "FEAT-181-bundled"
+    bundled_root.mkdir(parents=True)
+    spec_path = bundled_root / "spec.yaml"
+    spec_path.write_text("id: FEAT-181\n", encoding="utf-8")
+    plan_path = bundled_root / "plan.md"
+    plan_path.write_text(
+        "---\nstatus: backlog\nphases: []\n---\n# Plan\n",
+        encoding="utf-8",
+    )
+
+    assert tuple(iter_feature_files(features_dir)) == (spec_path,)
+    assert load_markdown_frontmatter(plan_path) == {
+        "status": "backlog",
+        "phases": [],
+    }
 
 
 def test_checks_run_result_remains_importable_after_specs_import(

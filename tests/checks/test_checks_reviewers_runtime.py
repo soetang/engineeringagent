@@ -251,6 +251,60 @@ def test_plan_reviewer_checks_on_change_and_run_all_are_deterministic(
     assert planned[0].reason == "no_on_change_match"
 
 
+@pytest.mark.parametrize(
+    "changed_path",
+    [
+        "src/engineeringagent/approach/docs/workflow.md",
+        "harness/reviewers/prompts/test_reviewer.md",
+        "docs/fixtures/real_opencode_hello_world_plan_template.md",
+    ],
+)
+def test_plan_reviewer_checks_match_bundled_workflow_markdown_surfaces(
+    tmp_path: Path,
+    changed_path: str,
+) -> None:
+    checks_path = _write_checks_yaml(
+        tmp_path,
+        "\n".join(
+            [
+                'contract_version: "1.0"',
+                "checks:",
+                "  intent_integrity_reviewer:",
+                "    type: reviewer",
+                "    prompt_file: harness/reviewers/prompts/intent_integrity_reviewer.md",
+                "    when:",
+                "      phase: feature_done",
+                "      on_change:",
+                "        - src/**/*.py",
+                "        - src/engineeringagent/approach/docs/*.md",
+                "        - tests/**/*.py",
+                "        - harness/**/*.py",
+                "        - harness/**/*.md",
+                "        - docs/fixtures/**/*.md",
+                "        - docs/spec/features/*.yaml",
+                "        - docs/spec/features/**/*.yaml",
+                "        - docs/spec/features/**/*.md",
+                "",
+            ]
+        ),
+    )
+    doc = _load_checks_document(checks_path)
+
+    planned = plan_reviewer_checks(
+        doc,
+        phase=HarnessCheckPhase.FEATURE_DONE,
+        changed_paths=ChangedPathsResult(
+            paths=(changed_path,),
+            run_all=False,
+            reason=None,
+        ),
+    )
+
+    assert planned[0].check_id == "intent_integrity_reviewer"
+    assert planned[0].decision == "run"
+    assert planned[0].reason == "matched_on_change"
+
+
 def test_run_planned_reviewer_checks_manual_phase_returns_empty_output(
     tmp_path: Path,
 ) -> None:

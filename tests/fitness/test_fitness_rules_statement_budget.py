@@ -33,6 +33,13 @@ def _write_policy(project_root: Path, budgets: list[dict[str, object]]) -> Path:
     return policy_path
 
 
+def _copy_file(project_root: Path, source_root: Path, relative_path: str) -> None:
+    source_path = source_root / relative_path
+    destination_path = project_root / relative_path
+    destination_path.parent.mkdir(parents=True, exist_ok=True)
+    destination_path.write_text(source_path.read_text(encoding="utf-8"), encoding="utf-8")
+
+
 def _statement_module(statement_count: int) -> str:
     return "\n".join(f"value_{index} = {index}" for index in range(statement_count))
 
@@ -239,6 +246,26 @@ def test_statement_budget_rule_uses_bundled_default_policy_thresholds(
         "src/engineeringagent/over_budget.py: statements=301 cap=300",
         "tests/test_over_budget.py: statements=401 cap=400",
     ]
+
+
+def test_phase_runtime_fixture_keeps_fe_181_modules_within_budget(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    for relative_path in (
+        "src/engineeringagent/loop_runtime/feature_state.py",
+        "tests/loop/test_loop_feature_iteration_verification.py",
+    ):
+        _copy_file(tmp_path, repo_root, relative_path)
+
+    proc, payload = _run_checker(
+        tmp_path,
+        checker_path=_script_path(repo_root),
+    )
+
+    assert proc.returncode == 0
+    assert payload["status"] == "pass"
+    assert payload["violations"] == []
 
 
 def test_statement_budget_rule_errors_when_policy_is_invalid(

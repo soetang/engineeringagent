@@ -10,7 +10,14 @@ def format_approach_topic_index(topics: tuple[ApproachTopic, ...] | None = None)
 
     if topics is None:
         topics = list_approach_topics()
-    return "\n".join(f"{topic.canonical_id}: {topic.title}" for topic in topics)
+    return "\n".join(
+        (
+            f"{topic.canonical_id}: {topic.title} - {topic.description}"
+            if topic.description
+            else f"{topic.canonical_id}: {topic.title}"
+        )
+        for topic in topics
+    )
 
 
 def render_approach_overview(overview_payload: str) -> str:

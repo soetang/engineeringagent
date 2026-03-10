@@ -2,6 +2,7 @@ id: FEAT-001
 title: Implement hello-world interface (smoke)
 type: feature
 expected_commit_subject: 'feat: implement hello-world smoke interface'
+planning_tier: planned
 status: backlog
 priority: high
 objective: >
@@ -15,17 +16,10 @@ constraints:
   - Do not add dependencies; stdlib only.
   - Do not modify the uv-generated pyproject.toml; do not add build backends.
   - Do not modify harness/runtime plumbing; only implement the requested interface.
-  - 'After verification passes, update this subtask and feature to status: done.'
+  - 'After verification passes, update this feature and bundled plan to status: done.'
 acceptance:
   - "Provide hello_world.hello(name: str) -> str returning exactly 'Hello, {name}!'"
   - "from hello_world import hello; hello('World') == 'Hello, World!'"
   - "python -m hello_world prints exactly 'Hello, World!' (newline allowed)"
-subtasks:
-  - id: ST-001
-    title: Implement hello_world package + CLI
-    status: backlog
-    context: >
-      Implement the hello-world interface contract exactly.
-    verification:
-      - uv run python -c "from hello_world import hello; assert hello('World') == 'Hello, World!'"
-      - uv run python -c "import subprocess; out=subprocess.check_output(['uv','run','python','-m','hello_world'], text=True); assert out.strip()=='Hello, World!'"
+artifacts:
+  plan: plan.md

@@ -29,13 +29,13 @@ Keep first-run guidance concise, then link to deeper references.
 
 This split lowers onboarding friction without hiding operational depth.
 
-## 3) Structured YAML specs: deterministic units of work
+## 3) Structured feature packages: deterministic units of work
 
-Every feature runs from a structured YAML spec with explicit fields for objective, constraints, acceptance criteria, and subtasks.
+Every feature runs from a structured package rooted at `spec.yaml`, with explicit fields for objective, constraints, acceptance criteria, and planning-tier artifact ownership.
 
 Practical effect:
 
-- Work selection is explicit (most important open subtask).
+- Work selection is explicit (most important open plan phase or compatibility-wrapper subtask).
 - Implementation follows explicit TDD sequencing (red -> green -> refactor).
 - Progress is auditable (`status`, `updated_at`, run logs).
 - Handoffs between humans and agents stay consistent.
@@ -47,7 +47,7 @@ Each iteration should run automatic validation before claiming progress.
 At minimum:
 
 - Validate feature specs against schema/contracts.
-- Run the requested docs/code checks for the current subtask.
+- Run the requested docs/code checks for the current plan phase or compatibility-wrapper subtask.
 - Record pass/fail outcomes in loop artifacts.
 
 This keeps quality gates mechanical instead of relying on memory.

@@ -201,6 +201,58 @@ def make_project_root(
     return project_root, feature_path
 
 
+def make_bundled_project_root(
+    tmp_path: Path,
+    *,
+    feature_data: dict[str, Any],
+    plan_frontmatter: dict[str, Any],
+    plan_body: str = "# Plan\n",
+    gates_data: dict[str, Any] | None = None,
+) -> tuple[Path, Path, Path]:
+    project_root = tmp_path
+    feature_root = (
+        project_root / "docs" / "spec" / "features" / "FEAT-900-bundled-smoke-test"
+    )
+    feature_path = feature_root / "spec.yaml"
+    plan_path = feature_root / "plan.md"
+
+    checks: dict[str, Any] = {}
+    if gates_data is not None:
+        gates = gates_data.get("gates") if isinstance(gates_data, dict) else None
+        if isinstance(gates, dict):
+            for gate_id, gate in gates.items():
+                if not isinstance(gate_id, str) or not gate_id:
+                    continue
+                if not isinstance(gate, dict):
+                    continue
+                command = gate.get("run")
+                if not isinstance(command, str) or not command.strip():
+                    continue
+                checks[gate_id] = {
+                    "type": "command",
+                    "command": command,
+                }
+
+    write_yaml(
+        project_root / "harness" / "checks.yaml",
+        {
+            "contract_version": "1.0",
+            "defaults": {"when": {"phase": "iteration_end"}},
+            "checks": checks,
+        },
+    )
+    write_yaml(feature_path, feature_data)
+    plan_path.parent.mkdir(parents=True, exist_ok=True)
+    plan_path.write_text(
+        "---\n"
+        + yaml.safe_dump(plan_frontmatter, sort_keys=False)
+        + "---\n\n"
+        + plan_body,
+        encoding="utf-8",
+    )
+    return project_root, feature_path, plan_path
+
+
 def progress_root(project_root: Path) -> Path:
     return project_root.joinpath(*PROGRESS_ROOT_PARTS)
 
@@ -250,6 +302,71 @@ def patch_run_agent_with_fake(
     monkeypatch.setattr(loop_module, "run_agent", fake_run_agent)
 
 
+def install_prompt_capture_agent(
+    monkeypatch: pytest.MonkeyPatch,
+    prompt_handler: Callable[[str, list[str]], subprocess.CompletedProcess[str]],
+) -> list[str]:
+    prompts: list[str] = []
+    real_run = subprocess.run
+
+    def fake_subprocess_run(
+        command: Any, **kwargs: Any
+    ) -> subprocess.CompletedProcess[str]:
+        if isinstance(command, list) and command[:3] == ["opencode", "run", "--agent"]:
+            prompt = command[4]
+            prompts.append(prompt)
+            return prompt_handler(prompt, prompts)
+        check = bool(kwargs.pop("check", False))
+        return real_run(command, check=check, **kwargs)
+
+    patch_run_agent_with_fake(monkeypatch, fake_subprocess_run)
+    return prompts
+
+
+def install_shell_command_results(
+    monkeypatch: pytest.MonkeyPatch,
+    results: list[subprocess.CompletedProcess[str]],
+) -> None:
+    remaining = iter(results)
+
+    def fake_run_shell_command(
+        project_root: Path, command: str
+    ) -> subprocess.CompletedProcess[str]:
+        del project_root, command
+        return next(remaining)
+
+    monkeypatch.setattr(
+        "engineeringagent.loop_runtime.phases.run_shell_command",
+        fake_run_shell_command,
+    )
+
+
+def write_fail_once_script(
+    script_path: Path,
+    counter_path: Path,
+    message: str,
+) -> Path:
+    script_path.write_text(
+        "\n".join(
+            [
+                "from pathlib import Path",
+                "import sys",
+                "counter = Path(sys.argv[1])",
+                "count = int(counter.read_text(encoding='utf-8')) if counter.exists() else 0",
+                "count += 1",
+                "counter.write_text(str(count), encoding='utf-8')",
+                "if count == 1:",
+                f"    print({message!r})",
+                "    raise SystemExit(1)",
+                "print('ok')",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return script_path
+
+
 def init_git_repo(project_root: Path) -> None:
     run_git(project_root, "init")
     run_git(project_root, "add", "-A")
@@ -279,6 +396,74 @@ def write_set_done_script(script_path: Path) -> Path:
                 "    if isinstance(subtask, dict):",
                 "        subtask['status'] = 'done'",
                 "feature_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding='utf-8')",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return script_path
+
+
+def write_set_plan_phase_done_script(script_path: Path, phase_id: str) -> Path:
+    script_path.write_text(
+        "\n".join(
+            [
+                "from pathlib import Path",
+                "import sys",
+                "import yaml",
+                f"target_phase_id = {phase_id!r}",
+                "plan_path = Path(sys.argv[1])",
+                "document = plan_path.read_text(encoding='utf-8')",
+                "frontmatter_end = document.find('\\n---', 4)",
+                "frontmatter = yaml.safe_load(document[4:frontmatter_end])",
+                "for phase in frontmatter.get('phases', []):",
+                "    if isinstance(phase, dict) and phase.get('id') == target_phase_id:",
+                "        phase['status'] = 'done'",
+                "        break",
+                "plan_path.write_text(",
+                "    '---\\n' + yaml.safe_dump(frontmatter, sort_keys=False) + '---\\n' + document[frontmatter_end + 4:],",
+                "    encoding='utf-8',",
+                ")",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return script_path
+
+
+def write_set_done_and_duplicate_plan_phase_script(
+    script_path: Path,
+    phase_id: str,
+    duplicate_verification_command: str,
+) -> Path:
+    script_path.write_text(
+        "\n".join(
+            [
+                "from pathlib import Path",
+                "import sys",
+                "import yaml",
+                f"target_phase_id = {phase_id!r}",
+                f"duplicate_verification_command = {duplicate_verification_command!r}",
+                "plan_path = Path(sys.argv[1])",
+                "document = plan_path.read_text(encoding='utf-8')",
+                "frontmatter_end = document.find('\\n---', 4)",
+                "frontmatter = yaml.safe_load(document[4:frontmatter_end])",
+                "phases = frontmatter.get('phases', [])",
+                "for phase in phases:",
+                "    if isinstance(phase, dict) and phase.get('id') == target_phase_id:",
+                "        phase['status'] = 'done'",
+                "        phases.append({",
+                "            'id': target_phase_id,",
+                "            'title': 'Duplicated done phase',",
+                "            'status': 'done',",
+                "            'verification': [duplicate_verification_command],",
+                "        })",
+                "        break",
+                "plan_path.write_text(",
+                "    '---\\n' + yaml.safe_dump(frontmatter, sort_keys=False) + '---\\n' + document[frontmatter_end + 4:],",
+                "    encoding='utf-8',",
+                ")",
             ]
         )
         + "\n",

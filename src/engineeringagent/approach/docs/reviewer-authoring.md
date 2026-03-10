@@ -48,6 +48,15 @@ Keep prompt text specific to what the reviewer should evaluate:
 - quality criteria (readability, correctness, docs/process, and so on)
 - required evidence or failure-reporting expectations
 
+When reviewer scope depends on the active feature, anchor that guidance to the bundled
+feature-package layout:
+
+- Treat bundled entrypoints under `docs/spec/features/**/spec.yaml` as the canonical
+  review surface.
+- If the active feature is a compatibility wrapper, say so explicitly and tell the reviewer to follow legacy wrappers (`docs/spec/features/*.yaml`) to the canonical bundled package before reviewing.
+- Tell the reviewer whether `plan.md` phases, `research.md`, or other supporting
+  artifacts are in scope for the review.
+
 The decision envelope remains canonical (`decision`, `summary`, optional `required_actions`, `scope_notes`).
 `decision` is a strict two-state value: `approve` or `request_changes`.
 
@@ -63,13 +72,13 @@ When migrating older reviewer prompts:
 Recommended checks:
 
 ```bash
-engineeringagent validate --schema-only
-engineeringagent checks run --phase feature_done
+uv run engineeringagent validate --schema-only
+uv run engineeringagent checks run --phase feature_done
 ```
 
 ## 5) Troubleshooting
 
 - If validation reports deprecated response-format placeholder usage, remove it from the prompt file.
 - If reviewer output is malformed, runtime emits a deterministic `request_changes` envelope.
-- Use `engineeringagent checks run --phase feature_done --verbose-output` to inspect the full normalized reviewer decision payload in terminal output.
+- Use `uv run engineeringagent checks run --phase feature_done --verbose-output` to inspect the full normalized reviewer decision payload in terminal output.
 - For non-approve outcomes without reviewer-provided `required_actions`, checks output includes deterministic fallback remediation guidance so terminal workflows stay actionable.

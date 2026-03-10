@@ -10,6 +10,8 @@ import os
 import yaml
 
 from engineeringagent.checks import emit_fitness_result
+from engineeringagent.checks import iter_feature_files
+from engineeringagent.checks import load_markdown_frontmatter
 from engineeringagent.checks.fitness.contracts import (
     CONTRACT_VERSION,
     FitnessRuleResult,
@@ -22,8 +24,10 @@ from engineeringagent.checks.fitness.config import (
 
 
 RULE_ID = "smoke.opencode-real-hello-world"
-_TEMPLATE_NAME = "real_opencode_hello_world_feature_template.yaml"
-_FEATURE_SPEC_RELATIVE_PATH = Path("docs/spec/features/FEAT-001-hello-world-smoke.yaml")
+_SPEC_TEMPLATE_NAME = "real_opencode_hello_world_feature_template.yaml"
+_PLAN_TEMPLATE_PATH = Path("docs/fixtures/real_opencode_hello_world_plan_template.md")
+_FEATURE_SPEC_RELATIVE_PATH = Path("docs/spec/features/FEAT-001-hello-world-smoke/spec.yaml")
+_RUNTIME_STATUSES = {"backlog", "in_progress", "done", "blocked"}
 
 SPARK_AGENT_MODEL = "openai/gpt-5.3-codex-spark"
 
@@ -33,9 +37,7 @@ def build_init_argv(*, tmp_repo: Path) -> list[str]:
     return [
         "uv",
         "run",
-        "python",
-        "-m",
-        "engineeringagent.cli",
+        "engineeringagent",
         "--project-root",
         str(tmp_repo),
         "init",
@@ -43,6 +45,21 @@ def build_init_argv(*, tmp_repo: Path) -> list[str]:
         "--model",
         SPARK_AGENT_MODEL,
         "--no-precommit-install",
+    ]
+
+
+def build_run_argv(*, tmp_repo: Path) -> list[str]:
+    """Build the loop argv used by the real-agent smoke run."""
+    return [
+        "uv",
+        "run",
+        "engineeringagent",
+        "--project-root",
+        str(tmp_repo),
+        "run",
+        "--all",
+        "--max-iterations",
+        "3",
     ]
 
 
@@ -106,20 +123,94 @@ def _require_ok(
     return False
 
 
+def _bundle_template_violations(repo_root: Path) -> list[str]:
+    script_dir = Path(__file__).parent
+    spec_path = script_dir / _SPEC_TEMPLATE_NAME
+    spec_payload = yaml.safe_load(spec_path.read_text(encoding="utf-8"))
+    if not isinstance(spec_payload, dict):
+        return [f"{_SPEC_TEMPLATE_NAME} must parse as a mapping"]
+
+    plan_frontmatter = load_markdown_frontmatter(repo_root / _PLAN_TEMPLATE_PATH)
+    if not isinstance(plan_frontmatter, dict):
+        return [f"{_PLAN_TEMPLATE_PATH.as_posix()} frontmatter must parse as a mapping"]
+
+    violations: list[str] = []
+    spec_id = spec_payload.get("id")
+    planning_tier = spec_payload.get("planning_tier")
+    plan_artifact = spec_payload.get("artifacts", {}).get("plan")
+
+    if plan_artifact != "plan.md":
+        violations.append("spec artifacts.plan must be plan.md for the smoke bundle")
+    if "subtasks" in spec_payload:
+        violations.append("spec template must not define subtasks for the smoke bundle")
+    if not isinstance(spec_id, str):
+        violations.append("spec template id must be a string")
+    if not isinstance(planning_tier, str):
+        violations.append("spec template planning_tier must be a string")
+
+    if isinstance(spec_id, str):
+        if plan_frontmatter.get("plan_id") != spec_id:
+            violations.append(f"plan frontmatter plan_id must match spec id {spec_id}")
+        if plan_frontmatter.get("feature_id") != spec_id:
+            violations.append(f"plan frontmatter feature_id must match spec id {spec_id}")
+    if plan_frontmatter.get("source_spec") != "spec.yaml":
+        violations.append("plan frontmatter source_spec must be spec.yaml")
+    if isinstance(planning_tier, str) and (
+        plan_frontmatter.get("planning_tier") != planning_tier
+    ):
+        violations.append(
+            "plan frontmatter planning_tier must match spec planning_tier "
+            f"{planning_tier}"
+        )
+    plan_status = plan_frontmatter.get("status")
+    if plan_status not in _RUNTIME_STATUSES:
+        violations.append("plan frontmatter status must use runtime vocabulary")
+
+    phases = plan_frontmatter.get("phases")
+    if not isinstance(phases, list) or not phases:
+        violations.append("plan frontmatter must declare at least one phase")
+        return violations
+
+    for index, phase in enumerate(phases, start=1):
+        if not isinstance(phase, dict):
+            violations.append(f"plan phase {index} must be a mapping")
+            continue
+
+        phase_status = phase.get("status")
+        if phase_status not in _RUNTIME_STATUSES:
+            violations.append(f"plan phase {index} status must use runtime vocabulary")
+
+        verification = phase.get("verification")
+        if not isinstance(verification, list) or not any(
+            isinstance(command, str) and command.strip() for command in verification
+        ):
+            violations.append(
+                f"plan phase {index} must declare at least one verification command"
+            )
+
+    return violations
+
+
 def _write_feature_spec(tmp_repo: Path) -> None:
-    template_path = Path(__file__).with_name(_TEMPLATE_NAME)
-    payload = template_path.read_text(encoding="utf-8")
+    script_dir = Path(__file__).parent
+    spec_payload = (script_dir / _SPEC_TEMPLATE_NAME).read_text(encoding="utf-8")
+    repo_root = script_dir.parents[1]
+    plan_payload = (repo_root / _PLAN_TEMPLATE_PATH).read_text(encoding="utf-8")
 
     target = tmp_repo / _FEATURE_SPEC_RELATIVE_PATH
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(payload.rstrip("\n") + "\n", encoding="utf-8")
+    target.write_text(spec_payload.rstrip("\n") + "\n", encoding="utf-8")
+    (target.parent / "plan.md").write_text(
+        plan_payload.rstrip("\n") + "\n",
+        encoding="utf-8",
+    )
 
 
 def _iter_done_specs(tmp_repo: Path) -> Iterable[Path]:
     root = tmp_repo / "docs/spec/features_done"
     if not root.exists():
         return ()
-    return sorted(root.glob("*.yaml"), key=lambda path: path.name)
+    return iter_feature_files(root)
 
 
 def _parse_feature_statuses(spec_path: Path) -> tuple[str | None, tuple[str, ...]]:
@@ -131,7 +222,26 @@ def _parse_feature_statuses(spec_path: Path) -> tuple[str | None, tuple[str, ...
     if not isinstance(top_level_status, str):
         top_level_status = None
 
-    subtask_statuses: list[str] = []
+    progress_statuses: list[str] = []
+    plan_ref = payload.get("artifacts", {}).get("plan")
+    if isinstance(plan_ref, str) and spec_path.name == "spec.yaml":
+        plan_path = spec_path.parent / plan_ref
+        if plan_path.is_file():
+            try:
+                frontmatter = load_markdown_frontmatter(plan_path)
+            except (OSError, ValueError, yaml.YAMLError):
+                frontmatter = None
+            if isinstance(frontmatter, dict):
+                phases = frontmatter.get("phases")
+                if isinstance(phases, list):
+                    for phase in phases:
+                        if not isinstance(phase, dict):
+                            continue
+                        phase_status = phase.get("status")
+                        if isinstance(phase_status, str):
+                            progress_statuses.append(phase_status)
+                return (top_level_status, tuple(progress_statuses))
+
     subtasks = payload.get("subtasks")
     if isinstance(subtasks, list):
         for subtask in subtasks:
@@ -139,9 +249,9 @@ def _parse_feature_statuses(spec_path: Path) -> tuple[str | None, tuple[str, ...
                 continue
             subtask_status = subtask.get("status")
             if isinstance(subtask_status, str):
-                subtask_statuses.append(subtask_status)
+                progress_statuses.append(subtask_status)
 
-    return (top_level_status, tuple(subtask_statuses))
+    return (top_level_status, tuple(progress_statuses))
 
 
 def _run_verification_commands(tmp_repo: Path, violations: list[str]) -> bool:
@@ -290,6 +400,17 @@ def main() -> int:
                 )
                 return 0
 
+            template_violations = _bundle_template_violations(repo_root)
+            if template_violations:
+                emit_fitness_result(
+                    _result(
+                        status=RuleStatus.FAIL,
+                        summary="real-agent smoke bundle templates are inconsistent",
+                        violations=template_violations,
+                    )
+                )
+                return 0
+
             _write_feature_spec(tmp_repo)
 
             add_proc = _run(["git", "add", "-A"], cwd=tmp_repo, timeout_seconds=30)
@@ -311,19 +432,7 @@ def main() -> int:
                 )
                 return 0
 
-            run_cmd = [
-                "uv",
-                "run",
-                "python",
-                "-m",
-                "engineeringagent.cli",
-                "--project-root",
-                str(tmp_repo),
-                "run",
-                str(tmp_repo / _FEATURE_SPEC_RELATIVE_PATH),
-                "--max-iterations",
-                "3",
-            ]
+            run_cmd = build_run_argv(tmp_repo=tmp_repo)
             run_proc = _run(run_cmd, cwd=repo_root, timeout_seconds=780)
             if run_proc.returncode != 0:
                 combined = (
@@ -350,11 +459,13 @@ def main() -> int:
                 return 0
 
             done_specs = [
-                path for path in _iter_done_specs(tmp_repo) if "FEAT-001" in path.name
+                path
+                for path in _iter_done_specs(tmp_repo)
+                if "FEAT-001" in path.as_posix()
             ]
             if not done_specs:
                 violations.append(
-                    "expected archived feature spec under docs/spec/features_done (missing FEAT-001*.yaml)"
+                    "expected archived feature spec under docs/spec/features_done (missing FEAT-001 bundle)"
                 )
                 emit_fitness_result(
                     _result(
@@ -366,16 +477,16 @@ def main() -> int:
                 return 0
 
             archived = done_specs[0]
-            top_status, subtask_statuses = _parse_feature_statuses(archived)
+            top_status, progress_statuses = _parse_feature_statuses(archived)
             if top_status != "done":
                 violations.append(
                     f"archived spec top-level status must be done (got {top_status!r})"
                 )
-            if not subtask_statuses or any(
-                status != "done" for status in subtask_statuses
+            if not progress_statuses or any(
+                status != "done" for status in progress_statuses
             ):
                 violations.append(
-                    "archived spec must have all subtask statuses set to done"
+                    "archived feature progress must have all statuses set to done"
                 )
 
             _run_verification_commands(tmp_repo, violations)

@@ -313,9 +313,11 @@ rules:
     name: Source-first loop command policy
     summary: Enforce source-first workspace execution for loop command surfaces.
     rationale: Prevent stale cached package artifacts from bypassing current workspace source.
-    remediation: Replace forbidden in-repo uvx self-invocations with source-first
-      forms; prefer uv run engineeringagent ...
-    scope: docs/spec/features/*.yaml and harness/checks.yaml
+    remediation: Replace forbidden in-repo uvx self-invocations and legacy module-form
+      CLI commands with source-first forms; prefer uv run engineeringagent ...
+    scope: legacy spec verification, bundled plan.md phases/examples, bundled plan-session/research-session
+      guidance, contributor approach docs, loop implementation prompt template,
+      docs/fixtures/real_opencode_hello_world_plan_template.md, and harness/checks.yaml
     severity: error
     side_effect_free: true
     adapter: command

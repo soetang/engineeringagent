@@ -9,9 +9,11 @@ from types import SimpleNamespace
 from typing import Any, cast
 
 import pytest
+from pydantic import ValidationError
 
 import engineeringagent.config as config_module
 import engineeringagent.checks.fitness.adapters as adapters_module
+from engineeringagent.loop_runtime import feature_plan_state
 import engineeringagent.loop_runtime.feature_state as feature_state_module
 from engineeringagent.checks.fitness.contracts import (
     CONTRACT_VERSION,
@@ -134,6 +136,25 @@ def test_presentation_ignores_env_keys_for_ansi_decision(
     assert tty_supports_ansi(stdout=cast(Any, _Tty())) is True
 
 
+def test_feature_state_plan_loader_compatibility_shim() -> None:
+    assert (
+        feature_state_module._load_plan_document_and_frontmatter
+        is feature_plan_state.load_plan_document_and_frontmatter
+    )
+
+
+def test_feature_plan_progress_update_config_uses_pydantic_model_boundary() -> None:
+    config = feature_plan_state._PlanProgressUpdateConfig(
+        allow_done_feature=False,
+        feature_transitions={"in_progress": {"done"}},
+        mutate_frontmatter=lambda _frontmatter: False,
+    )
+
+    assert hasattr(config, "model_dump")
+    with pytest.raises(ValidationError, match="frozen"):
+        config.allow_done_feature = True
+
+
 def test_feature_state_error_paths(tmp_path: Path, monkeypatch: Any) -> None:
     with pytest.raises(ValueError, match="unknown status"):
         feature_state_module.set_status({}, "in_progress")
@@ -220,8 +241,7 @@ def test_feature_state_error_paths(tmp_path: Path, monkeypatch: Any) -> None:
     assert post_outcome.failed_gate is None
 
     monkeypatch.setattr(
-        feature_state_module,
-        "_resolve_archive_path",
+        "engineeringagent.loop_runtime.feature_state.resolve_feature_package_paths",
         lambda *_args, **_kwargs: (_ for _ in ()).throw(ValueError("bad archive")),
     )
     ok, archived_path, message = feature_state_module.archive_completed_feature(
@@ -236,9 +256,13 @@ def test_feature_state_error_paths(tmp_path: Path, monkeypatch: Any) -> None:
     existing_archive.write_text("id: FEAT-009\n", encoding="utf-8")
     missing_feature = features_dir / "exists.yaml"
     monkeypatch.setattr(
-        feature_state_module,
-        "_resolve_archive_path",
-        lambda *_args, **_kwargs: existing_archive,
+        "engineeringagent.loop_runtime.feature_state.resolve_feature_package_paths",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            active_root=missing_feature,
+            active_spec_path=missing_feature,
+            archive_root=existing_archive,
+            archive_spec_path=existing_archive,
+        ),
     )
     ok, archived_path, message = feature_state_module.archive_completed_feature(
         tmp_path,
@@ -273,6 +297,215 @@ def test_feature_state_error_paths(tmp_path: Path, monkeypatch: Any) -> None:
     assert "source already exists" in message
 
 
+def test_touch_active_feature_for_iteration_promotes_bundled_plan_phase_statuses(
+    tmp_path: Path,
+) -> None:
+    feature_root = tmp_path / "docs" / "spec" / "features" / "FEAT-330-bundled-touch"
+    feature_root.mkdir(parents=True)
+    feature_path = feature_root / "spec.yaml"
+    feature_path.write_text(
+        "\n".join(
+            [
+                "id: FEAT-330",
+                "title: Promote bundled plan phase statuses",
+                "type: feature",
+                "expected_commit_subject: 'feat: promote bundled plan phase statuses'",
+                "planning_tier: planned",
+                "status: backlog",
+                "priority: high",
+                "objective: Promote plan progress into in_progress state.",
+                "acceptance:",
+                "  - Ensure iteration touch updates plan phase status metadata.",
+                "artifacts:",
+                "  plan: plan.md",
+                "updated_at: '2026-03-09T00:00:00Z'",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    plan_path = feature_root / "plan.md"
+    plan_path.write_text(
+        "\n".join(
+            [
+                "---",
+                "plan_id: FEAT-330",
+                "feature_id: FEAT-330",
+                "status: pending",
+                "source_spec: spec.yaml",
+                "planning_tier: planned",
+                "phases:",
+                "  - id: P1",
+                "    title: Finish prior work",
+                "    status: done",
+                "  - id: P2",
+                "    title: Start next bundled phase",
+                "    status: pending",
+                "    verification:",
+                "      - uv run pytest -q tests/test_bundled_phase_touch.py",
+                "---",
+                "",
+                "# FEAT-330 Plan",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    feature = feature_state_module.load_yaml(feature_path)
+    feature_state_module.touch_active_feature_for_iteration(feature, feature_path)
+
+    refreshed_feature = feature_state_module.load_yaml(feature_path)
+    assert refreshed_feature["status"] == "in_progress"
+    assert refreshed_feature["updated_at"] != "2026-03-09T00:00:00Z"
+
+    loaded_plan = feature_state_module._load_plan_document_and_frontmatter(plan_path)
+    assert loaded_plan is not None
+    _, frontmatter = loaded_plan
+    assert frontmatter["status"] == "in_progress"
+    phases = frontmatter["phases"]
+    assert phases[0]["status"] == "done"
+    assert phases[1]["status"] == "in_progress"
+
+
+def test_touch_active_feature_for_iteration_preserves_blocked_bundled_plan_phase(
+    tmp_path: Path,
+) -> None:
+    feature_root = tmp_path / "docs" / "spec" / "features" / "FEAT-331-bundled-touch"
+    feature_root.mkdir(parents=True)
+    feature_path = feature_root / "spec.yaml"
+    feature_path.write_text(
+        "\n".join(
+            [
+                "id: FEAT-331",
+                "title: Preserve blocked bundled plan phase statuses",
+                "type: feature",
+                "expected_commit_subject: 'feat: preserve blocked bundled plan phase statuses'",
+                "planning_tier: planned",
+                "status: blocked",
+                "priority: high",
+                "objective: Keep blocked phase state stable during iteration touch.",
+                "acceptance:",
+                "  - Ensure iteration touch does not overwrite blocked plan phase metadata.",
+                "artifacts:",
+                "  plan: plan.md",
+                "updated_at: '2026-03-09T00:00:00Z'",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    plan_path = feature_root / "plan.md"
+    plan_path.write_text(
+        "\n".join(
+            [
+                "---",
+                "plan_id: FEAT-331",
+                "feature_id: FEAT-331",
+                "status: pending",
+                "source_spec: spec.yaml",
+                "planning_tier: planned",
+                "phases:",
+                "  - id: P1",
+                "    title: Blocked bundled phase",
+                "    status: blocked",
+                "  - id: P2",
+                "    title: Later bundled phase",
+                "    status: pending",
+                "---",
+                "",
+                "# FEAT-331 Plan",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    feature = feature_state_module.load_yaml(feature_path)
+    feature_state_module.touch_active_feature_for_iteration(feature, feature_path)
+
+    refreshed_feature = feature_state_module.load_yaml(feature_path)
+    assert refreshed_feature["status"] == "blocked"
+    assert refreshed_feature["updated_at"] != "2026-03-09T00:00:00Z"
+
+    loaded_plan = feature_state_module._load_plan_document_and_frontmatter(plan_path)
+    assert loaded_plan is not None
+    _, frontmatter = loaded_plan
+    assert frontmatter["status"] == "blocked"
+    phases = frontmatter["phases"]
+    assert phases[0]["status"] == "blocked"
+    assert phases[1]["status"] == "pending"
+
+
+def test_touch_active_feature_for_iteration_syncs_feature_status_from_blocked_plan(
+    tmp_path: Path,
+) -> None:
+    feature_root = tmp_path / "docs" / "spec" / "features" / "FEAT-332-bundled-touch"
+    feature_root.mkdir(parents=True)
+    feature_path = feature_root / "spec.yaml"
+    feature_path.write_text(
+        "\n".join(
+            [
+                "id: FEAT-332",
+                "title: Sync feature status from blocked bundled plan",
+                "type: feature",
+                "expected_commit_subject: 'feat: sync feature status from blocked bundled plan'",
+                "planning_tier: planned",
+                "status: in_progress",
+                "priority: high",
+                "objective: Keep spec status aligned with blocked plan phases during iteration touch.",
+                "acceptance:",
+                "  - Ensure iteration touch syncs spec status from blocked bundled plan metadata.",
+                "artifacts:",
+                "  plan: plan.md",
+                "updated_at: '2026-03-09T00:00:00Z'",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    plan_path = feature_root / "plan.md"
+    plan_path.write_text(
+        "\n".join(
+            [
+                "---",
+                "plan_id: FEAT-332",
+                "feature_id: FEAT-332",
+                "status: pending",
+                "source_spec: spec.yaml",
+                "planning_tier: planned",
+                "phases:",
+                "  - id: P1",
+                "    title: Blocked bundled phase",
+                "    status: blocked",
+                "  - id: P2",
+                "    title: Later bundled phase",
+                "    status: pending",
+                "---",
+                "",
+                "# FEAT-332 Plan",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    feature = feature_state_module.load_yaml(feature_path)
+    feature_state_module.touch_active_feature_for_iteration(feature, feature_path)
+
+    refreshed_feature = feature_state_module.load_yaml(feature_path)
+    assert refreshed_feature["status"] == "blocked"
+    assert refreshed_feature["updated_at"] != "2026-03-09T00:00:00Z"
+
+    loaded_plan = feature_state_module._load_plan_document_and_frontmatter(plan_path)
+    assert loaded_plan is not None
+    _, frontmatter = loaded_plan
+    assert frontmatter["status"] == "blocked"
+    phases = frontmatter["phases"]
+    assert phases[0]["status"] == "blocked"
+    assert phases[1]["status"] == "pending"
+
+
 def _setup_archived_selected_counterpart(
     tmp_path: Path,
     *,
@@ -291,6 +524,158 @@ def _setup_archived_selected_counterpart(
         encoding="utf-8",
     )
     return active_feature_path, archived_feature_path
+
+
+def _write_bundled_feature_package(
+    package_dir: Path,
+    *,
+    status: str,
+    extra_files: dict[str, str] | None = None,
+) -> Path:
+    package_dir.mkdir(parents=True, exist_ok=True)
+    spec_path = package_dir / "spec.yaml"
+    feature_prefix, feature_number, *_rest = package_dir.name.split("-", 2)
+    spec_path.write_text(
+        "\n".join(
+            [
+                f"id: {feature_prefix}-{feature_number}",
+                f"status: {status}",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    for relative_path, contents in (extra_files or {}).items():
+        target = package_dir / relative_path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(contents, encoding="utf-8")
+    return spec_path
+
+
+def test_feature_state_supports_bundled_package_discovery_and_archive_flow(
+    tmp_path: Path,
+) -> None:
+    features_dir = tmp_path / "docs" / "spec" / "features"
+    active_spec = _write_bundled_feature_package(
+        features_dir / "FEAT-320-active-bundle",
+        status="backlog",
+    )
+    done_spec = _write_bundled_feature_package(
+        features_dir / "FEAT-321-done-bundle",
+        status="done",
+        extra_files={"plan.md": "# plan\n"},
+    )
+
+    active_paths = feature_state_module.discover_active_feature_paths(tmp_path)
+    assert active_paths == [active_spec]
+
+    ok, archived_path, message = feature_state_module.archive_completed_feature(
+        tmp_path,
+        done_spec,
+    )
+
+    assert (ok, message) == (True, "")
+    assert archived_path == (
+        tmp_path
+        / "docs"
+        / "spec"
+        / "features_done"
+        / "FEAT-321-done-bundle"
+        / "spec.yaml"
+    )
+    assert archived_path is not None
+    assert archived_path.exists()
+    assert (archived_path.parent / "plan.md").exists()
+    assert done_spec.exists() is False
+
+
+def test_feature_state_refresh_and_restore_support_bundled_archives(
+    tmp_path: Path,
+) -> None:
+    features_dir = tmp_path / "docs" / "spec" / "features"
+    active_spec = features_dir / "FEAT-322-refresh-bundle" / "spec.yaml"
+    archived_spec = _write_bundled_feature_package(
+        tmp_path / "docs" / "spec" / "features_done" / "FEAT-322-refresh-bundle",
+        status="done",
+        extra_files={"plan.md": "# archived plan\n"},
+    )
+
+    post_outcome = feature_state_module.refresh_feature_after_implement(
+        tmp_path,
+        active_spec,
+    )
+
+    assert post_outcome.result == "passed"
+    assert post_outcome.archived_in_iteration is True
+    assert post_outcome.archived_path == archived_spec
+
+    ok, message = feature_state_module.restore_archived_feature(
+        archived_spec,
+        active_spec,
+    )
+
+    assert (ok, message) == (True, "")
+    assert active_spec.exists()
+    assert (active_spec.parent / "plan.md").exists()
+    assert archived_spec.exists() is False
+
+
+def test_post_implement_refresh_rejects_archived_bundles_with_open_plan_phases(
+    tmp_path: Path,
+) -> None:
+    features_dir = tmp_path / "docs" / "spec" / "features"
+    active_spec = features_dir / "FEAT-323-refresh-bundle" / "spec.yaml"
+    archived_root = (
+        tmp_path / "docs" / "spec" / "features_done" / "FEAT-323-refresh-bundle"
+    )
+    archived_spec = archived_root / "spec.yaml"
+    archived_root.mkdir(parents=True, exist_ok=True)
+    archived_spec.write_text(
+        "\n".join(
+            [
+                "id: FEAT-323",
+                "status: done",
+                "planning_tier: planned",
+                "artifacts:",
+                "  plan: plan.md",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    (archived_root / "plan.md").write_text(
+        "\n".join(
+            [
+                "---",
+                "plan_id: FEAT-323",
+                "feature_id: FEAT-323",
+                "status: in_progress",
+                "source_spec: spec.yaml",
+                "planning_tier: planned",
+                "phases:",
+                "  - id: P1",
+                "    title: Archived bundle still has an open phase",
+                "    status: pending",
+                "---",
+                "",
+                "# Plan",
+                "",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    post_outcome = feature_state_module.refresh_feature_after_implement(
+        tmp_path,
+        active_spec,
+    )
+
+    assert post_outcome.result == "failed"
+    assert post_outcome.failed_gate == "feature_missing"
+    assert post_outcome.archived_in_iteration is False
+    assert post_outcome.archived_path is None
+    assert archived_spec.exists()
 
 
 def test_post_implement_refresh_recovers_selected_archived_done_feature(

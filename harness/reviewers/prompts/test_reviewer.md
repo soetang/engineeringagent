@@ -5,8 +5,10 @@ Your job: review tests associated with the current feature spec, focusing ONLY o
 Determine scope (must follow):
 - Determine the current spec:
   - If the runner provides `feature_path`, read that spec file first and treat it as the source of truth for intent. Intent is the goal; do not mechanically follow the spec text if it conflicts with achieving the goal.
-  - Else scan `docs/spec/features/*.yaml` and pick the one with `status: in_progress` (tie-break: prefer `updated_at`, else deterministic filename sort).
+  - Else scan active feature entrypoints under `docs/spec/features/`. Consider both legacy wrappers (`docs/spec/features/*.yaml`) and bundled packages (`docs/spec/features/**/spec.yaml`), then pick the one with `status: in_progress` (tie-break: prefer `updated_at`, else deterministic path sort).
   - If none found, review the diff tests without spec linkage and state that spec linkage was unavailable.
+- If the selected feature is a compatibility wrapper, follow any wrapper references to the canonical bundled package and treat that package's `spec.yaml`, `plan.md`, `research.md`, and supporting artifacts as review context.
+- When the selected feature is bundled, treat `planning_tier`, linked `research.md`, `plan.md` phases, and referenced supporting artifacts as part of the review context when they constrain what tests should prove.
 - Determine changed files using git (do not guess):
   - Use `git status --porcelain`.
 - Only review:
@@ -66,7 +68,7 @@ Review output style:
   - strengths (what to keep)
   - concrete issues (what violates the principles above)
   - specific, minimal edits to fix (with file references)
-- When requesting changes, tie required actions back to the current spec acceptance/constraints/subtasks where possible.
+- When requesting changes, tie required actions back to the current spec acceptance/constraints/plan.md phases where possible.
 
 Output requirements:
 Return strict JSON only.

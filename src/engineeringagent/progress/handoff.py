@@ -7,14 +7,25 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
+from engineeringagent.spec_bundles import progress_kind_label
+
 from . import logging as progress_logging
 
 _FALLBACK_SUMMARY = (
     "Structured handoff output unavailable; recorded deterministic fallback."
 )
-_FALLBACK_REMAINING_WORK = (
-    "Review latest progress logs and continue the highest-priority open subtask."
-)
+
+
+class HandoffRenderMetadata(BaseModel):
+    """Optional rendering metadata for one markdown handoff entry."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    timestamp: str | None = None
+    used_fallback: bool = False
+    progress_kind: str | None = None
+    progress_id: str | None = None
+    progress_title: str | None = None
 
 
 class ImplementProgressEnvelope(BaseModel):
@@ -53,27 +64,68 @@ class ImplementProgressEnvelope(BaseModel):
         return normalized
 
 
-def fallback_implement_progress_envelope() -> ImplementProgressEnvelope:
+def fallback_implement_progress_envelope(
+    *,
+    progress_kind: str | None = None,
+    progress_id: str | None = None,
+    progress_title: str | None = None,
+) -> ImplementProgressEnvelope:
     """Return deterministic fallback handoff envelope content."""
+
+    progress_reference = _format_progress_reference(
+        progress_id=progress_id,
+        progress_title=progress_title,
+    )
+    remaining_work = (
+        "Review latest progress logs and continue the highest-priority open "
+        f"{progress_kind_label(progress_kind)}{progress_reference}."
+    )
 
     return ImplementProgressEnvelope(
         summary=_FALLBACK_SUMMARY,
         completed_work=[],
         verification=[],
-        remaining_work=[_FALLBACK_REMAINING_WORK],
+        remaining_work=[remaining_work],
         blockers=[],
     )
 
 
+def _format_progress_reference(
+    *,
+    progress_id: str | None,
+    progress_title: str | None,
+) -> str:
+    normalized_id = (progress_id or "").strip()
+    normalized_title = (progress_title or "").strip()
+    if normalized_id and normalized_title:
+        return f" ({normalized_id}: {normalized_title})"
+    if normalized_id:
+        return f" ({normalized_id})"
+    if normalized_title:
+        return f" ({normalized_title})"
+    return ""
+
+
 def parse_implement_progress_envelope(
     payload: object,
+    *,
+    progress_kind: str | None = None,
+    progress_id: str | None = None,
+    progress_title: str | None = None,
 ) -> tuple[ImplementProgressEnvelope, bool]:
     """Parse structured handoff payload; return deterministic fallback when invalid."""
 
     try:
         envelope = ImplementProgressEnvelope.model_validate(payload)
     except ValidationError:
-        return fallback_implement_progress_envelope(), True
+        return (
+            fallback_implement_progress_envelope(
+                progress_kind=progress_kind,
+                progress_id=progress_id,
+                progress_title=progress_title,
+            ),
+            True,
+        )
     return envelope, False
 
 
@@ -92,18 +144,25 @@ def render_handoff_markdown_entry(
     *,
     attempt: int,
     envelope: ImplementProgressEnvelope,
-    timestamp: str | None = None,
-    used_fallback: bool = False,
+    metadata: HandoffRenderMetadata | None = None,
 ) -> list[str]:
     """Render deterministic markdown lines for one append-only handoff entry."""
 
-    entry_timestamp = timestamp or now_iso()
+    render_metadata = metadata or HandoffRenderMetadata()
+    entry_timestamp = render_metadata.timestamp or now_iso()
     lines = [
         f"## Iteration {attempt} - {entry_timestamp}",
         "",
         f"Summary: {envelope.summary}",
     ]
-    if used_fallback:
+    progress_line = _render_progress_context_line(
+        progress_kind=render_metadata.progress_kind,
+        progress_id=render_metadata.progress_id,
+        progress_title=render_metadata.progress_title,
+    )
+    if progress_line is not None:
+        lines.append(progress_line)
+    if render_metadata.used_fallback:
         lines.append("Structured output: invalid_or_missing (deterministic fallback)")
 
     sections = (
@@ -136,3 +195,38 @@ def _is_placeholder_item(item: str) -> bool:
     """Return True for items that represent synthetic placeholder bullets."""
 
     return item.strip() == "(none)"
+
+
+def _render_progress_context_line(
+    *,
+    progress_kind: str | None,
+    progress_id: str | None,
+    progress_title: str | None,
+) -> str | None:
+    """Return a deterministic handoff line naming the active progress unit."""
+
+    reference = _render_progress_reference_label(
+        progress_id=progress_id,
+        progress_title=progress_title,
+    )
+    if reference is None:
+        return None
+    return f"Progress: {progress_kind_label(progress_kind)} {reference}"
+
+
+def _render_progress_reference_label(
+    *,
+    progress_id: str | None,
+    progress_title: str | None,
+) -> str | None:
+    """Return a compact progress-unit label for markdown handoff entries."""
+
+    normalized_id = (progress_id or "").strip()
+    normalized_title = (progress_title or "").strip()
+    if normalized_id and normalized_title:
+        return f"{normalized_id} - {normalized_title}"
+    if normalized_id:
+        return normalized_id
+    if normalized_title:
+        return normalized_title
+    return None

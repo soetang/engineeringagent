@@ -369,6 +369,7 @@ def _reviewer_not_run_outcome() -> ReviewerPhaseOutcome:
         reviewer_output="",
         command_timings=[],
         feedback=None,
+        archived_rolled_back=False,
     )
 
 
@@ -380,6 +381,7 @@ def _reviewer_not_configured_outcome() -> ReviewerPhaseOutcome:
         reviewer_output="",
         command_timings=[],
         feedback=None,
+        archived_rolled_back=False,
     )
 
 
@@ -395,6 +397,7 @@ def _reviewer_success_outcome(result: ChecksRunResult) -> ReviewerPhaseOutcome:
         reviewer_output=result.output,
         command_timings=[],
         feedback=None,
+        archived_rolled_back=False,
     )
 
 
@@ -405,11 +408,13 @@ def _reviewer_failure_outcome(
     archived_path: Path | None,
     result: ChecksRunResult,
 ) -> ReviewerPhaseOutcome:
+    archived_rolled_back = False
     if archived_path is not None:
-        dependencies.restore_archived_feature(
+        restored_ok, _restore_error = dependencies.restore_archived_feature(
             archived_path,
             iteration_inputs.feature_path,
         )
+        archived_rolled_back = restored_ok
 
     failed_gate = _checks_failure_gate_id(result, default="reviewer")
     return ReviewerPhaseOutcome(
@@ -421,6 +426,7 @@ def _reviewer_failure_outcome(
         reviewer_output=result.output,
         command_timings=[],
         feedback=_checks_failure_feedback(result),
+        archived_rolled_back=archived_rolled_back,
     )
 
 
@@ -446,6 +452,7 @@ def run_reviewer_phase(
             reviewer_output=checks_error,
             command_timings=[],
             feedback=checks_error,
+            archived_rolled_back=False,
         )
     assert checks_path is not None
     if not checks_path.exists():
@@ -489,6 +496,7 @@ def run_completion_commit_phase(
             failed_gate=None,
             next_action="retry_same_feature",
             feedback=None,
+            archived_rolled_back=False,
         )
 
     if post_feature is None:
@@ -499,6 +507,7 @@ def run_completion_commit_phase(
             failed_gate="feature_archive",
             next_action="retry_same_feature",
             feedback="archived feature payload missing before completion commit",
+            archived_rolled_back=False,
         )
 
     commit_ok, commit_failed_gate, commit_output = (
@@ -515,14 +524,17 @@ def run_completion_commit_phase(
             failed_gate=None,
             next_action="select_next_feature",
             feedback=None,
+            archived_rolled_back=False,
         )
 
     rollback_output = ""
+    archived_rolled_back = False
     if archived_path is not None:
         restored_ok, restore_error = dependencies.restore_archived_feature(
             archived_path,
             iteration_inputs.feature_path,
         )
+        archived_rolled_back = restored_ok
         if not restored_ok:
             rollback_output = f"\narchive rollback failed: {restore_error}"
 
@@ -556,4 +568,5 @@ def run_completion_commit_phase(
         next_action="retry_same_feature",
         feedback=feedback,
         completion_output=completion_output,
+        archived_rolled_back=archived_rolled_back,
     )

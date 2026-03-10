@@ -1,4 +1,11 @@
-# Role and Objective
+---
+approach_id: plan-session
+description: "Task-specific: only when creating plan.md."
+---
+
+# Plan Session Approach
+
+## Role and Objective
 
 Create a grounded `plan.md` for a feature package. The plan should explain the intended architecture, the interfaces that change, the refactoring needed to implement the feature cleanly, the tests that validate each phase, and any required documentation updates.
 
@@ -102,19 +109,19 @@ Use this structure:
 ---
 plan_id: FEAT-XXX
 feature_id: FEAT-XXX
-status: draft
+status: backlog
 source_spec: spec.yaml
 source_research: research.md
 planning_tier: researched
 phases:
   - id: P1
     title: Establish the contract
-    status: pending
+    status: backlog
     verification:
       - uv run engineeringagent validate --schema-only
   - id: P2
     title: Implement integration points
-    status: pending
+    status: backlog
     verification:
       - uv run python path/to/supporting/check_example.py
 ---

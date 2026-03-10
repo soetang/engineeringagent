@@ -11,12 +11,21 @@ import yaml
 
 import engineeringagent.loop as loop_module
 from tests.loop._feedback_envelope import parse_feedback_envelope_from_prompt
+from tests.loop.feature_iteration_feedback_support import (
+    advance_bundled_plan_prompt_state,
+    advance_subtask_prompt_state,
+    install_stateful_prompt_agent,
+)
 from tests.loop.feature_iteration_support import (
     base_feature,
     init_git_repo,
+    install_prompt_capture_agent,
+    install_shell_command_results,
+    make_bundled_project_root,
     make_project_root,
     patch_run_agent_with_fake,
     run_loop,
+    write_fail_once_script,
     write_yaml,
 )
 
@@ -39,31 +48,17 @@ def test_commit_failure_feedback_still_injected_into_next_prompt(
     )
     hook_path.chmod(0o755)
 
-    real_run = subprocess.run
-    prompts: list[str] = []
-
-    def fake_subprocess_run(
-        command: Any, **kwargs: Any
+    def prompt_handler(
+        _prompt: str, prompts: list[str]
     ) -> subprocess.CompletedProcess[str]:
-        if isinstance(command, list) and command[:3] == ["opencode", "run", "--agent"]:
-            prompt = command[4]
-            prompts.append(prompt)
+        feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
+        feature["status"] = "done"
+        feature_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding="utf-8")
+        if len(prompts) >= 2:
+            (project_root / ".allow_commit").write_text("ok\n", encoding="utf-8")
+        return subprocess.CompletedProcess(["opencode"], 0, stdout="ok\n", stderr="")
 
-            feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
-            feature["status"] = "done"
-            feature_path.write_text(
-                yaml.safe_dump(feature, sort_keys=False), encoding="utf-8"
-            )
-
-            if len(prompts) >= 2:
-                (project_root / ".allow_commit").write_text("ok\n", encoding="utf-8")
-
-            return subprocess.CompletedProcess(command, 0, stdout="ok\n", stderr="")
-
-        check = bool(kwargs.pop("check", False))
-        return real_run(command, check=check, **kwargs)
-
-    patch_run_agent_with_fake(monkeypatch, fake_subprocess_run)
+    prompts = install_prompt_capture_agent(monkeypatch, prompt_handler)
     monkeypatch.setattr(loop_module, "preflight", lambda **_: True)
 
     code = run_loop(
@@ -106,30 +101,16 @@ def test_verification_failure_feedback_is_injected_into_next_prompt(
     project_root, feature_path = make_project_root(tmp_path, feature_data=feature_data)
     init_git_repo(project_root)
 
-    real_run = subprocess.run
-    prompts: list[str] = []
-
-    def fake_subprocess_run(
-        command: Any, **kwargs: Any
-    ) -> subprocess.CompletedProcess[str]:
-        if isinstance(command, list) and command[:3] == ["opencode", "run", "--agent"]:
-            prompt = command[4]
-            prompts.append(prompt)
-            feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
-            subtasks = feature.get("subtasks", [])
-            if len(prompts) == 1 and subtasks and isinstance(subtasks[0], dict):
-                subtasks[0]["status"] = "done"
-                feature["status"] = "in_progress"
-            else:
-                feature["status"] = "done"
-            feature_path.write_text(
-                yaml.safe_dump(feature, sort_keys=False), encoding="utf-8"
-            )
-            return subprocess.CompletedProcess(command, 0, stdout="ok\n", stderr="")
-        check = bool(kwargs.pop("check", False))
-        return real_run(command, check=check, **kwargs)
-
-    verification_results = iter(
+    prompts = install_stateful_prompt_agent(
+        monkeypatch,
+        lambda prompt_count: advance_subtask_prompt_state(
+            feature_path,
+            prompt_count=prompt_count,
+        ),
+    )
+    monkeypatch.setattr(loop_module, "preflight", lambda **_: True)
+    install_shell_command_results(
+        monkeypatch,
         [
             subprocess.CompletedProcess(
                 ["verify", "attempt-1"],
@@ -143,20 +124,7 @@ def test_verification_failure_feedback_is_injected_into_next_prompt(
                 stdout="verification passed\n",
                 stderr="",
             ),
-        ]
-    )
-
-    def fake_run_shell_command(
-        project_root: Path, command: str
-    ) -> subprocess.CompletedProcess[str]:
-        del project_root, command
-        return next(verification_results)
-
-    patch_run_agent_with_fake(monkeypatch, fake_subprocess_run)
-    monkeypatch.setattr(loop_module, "preflight", lambda **_: True)
-    monkeypatch.setattr(
-        "engineeringagent.loop_runtime.phases.run_shell_command",
-        fake_run_shell_command,
+        ],
     )
 
     code = run_loop(
@@ -176,6 +144,314 @@ def test_verification_failure_feedback_is_injected_into_next_prompt(
     assert "VERIFICATION_FAILURE_TOKEN" in feedback.message
 
 
+def test_bundled_phase_verification_failure_feedback_is_injected_into_next_prompt(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    verification_command = "uv run pytest -q tests/test_phase_verification_feedback.py"
+    feature_data = {
+        **base_feature(status="in_progress"),
+        "title": "Bundled feature feedback test",
+        "planning_tier": "planned",
+        "artifacts": {"plan": "plan.md"},
+    }
+    feature_data.pop("subtasks", None)
+    plan_frontmatter = {
+        "plan_id": "FEAT-900",
+        "feature_id": "FEAT-900",
+        "status": "in_progress",
+        "source_spec": "spec.yaml",
+        "planning_tier": "planned",
+        "phases": [
+            {
+                "id": "P1",
+                "title": "Inject bundled verification failures into retry prompt",
+                "status": "pending",
+                "verification": [verification_command],
+            }
+        ],
+    }
+    project_root, feature_path, plan_path = make_bundled_project_root(
+        tmp_path,
+        feature_data=feature_data,
+        plan_frontmatter=plan_frontmatter,
+    )
+    init_git_repo(project_root)
+
+    prompts = install_stateful_prompt_agent(
+        monkeypatch,
+        lambda prompt_count: advance_bundled_plan_prompt_state(
+            feature_path,
+            plan_path,
+            prompt_count=prompt_count,
+        ),
+    )
+    monkeypatch.setattr(loop_module, "preflight", lambda **_: True)
+    install_shell_command_results(
+        monkeypatch,
+        [
+            subprocess.CompletedProcess(
+                ["verify", "attempt-1"],
+                1,
+                stdout="PLAN_PHASE_FAILURE_TOKEN\n",
+                stderr="",
+            ),
+            subprocess.CompletedProcess(
+                ["verify", "attempt-2"],
+                0,
+                stdout="verification passed\n",
+                stderr="",
+            ),
+        ],
+    )
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        dry_run=False,
+        max_iterations=6,
+    )
+
+    assert code == 0
+    assert len(prompts) >= 2
+    assert "PLAN_PHASE_FAILURE_TOKEN" in prompts[1]
+    feedback = parse_feedback_envelope_from_prompt(prompts[1], phase="verification")
+    assert feedback.kind == "command_failure"
+    assert feedback.phase == "verification"
+    assert feedback.command == verification_command
+    assert "PLAN_PHASE_FAILURE_TOKEN" in feedback.message
+
+
+def test_bundled_phase_verification_failure_feedback_replaces_previous_feedback(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    verification_command = "uv run pytest -q tests/test_phase_verification_feedback.py"
+    feature_data = {
+        **base_feature(status="in_progress"),
+        "title": "Bundled phase verification retry feedback replacement",
+        "planning_tier": "planned",
+        "artifacts": {"plan": "plan.md"},
+    }
+    feature_data.pop("subtasks", None)
+    plan_frontmatter = {
+        "plan_id": "FEAT-900",
+        "feature_id": "FEAT-900",
+        "status": "in_progress",
+        "source_spec": "spec.yaml",
+        "planning_tier": "planned",
+        "phases": [
+            {
+                "id": "P1",
+                "title": "Trigger first bundled verification failure",
+                "status": "pending",
+                "verification": [verification_command],
+            },
+            {
+                "id": "P2",
+                "title": "Trigger second bundled verification failure",
+                "status": "pending",
+                "verification": [verification_command],
+            },
+        ],
+    }
+    project_root, feature_path, plan_path = make_bundled_project_root(
+        tmp_path,
+        feature_data=feature_data,
+        plan_frontmatter=plan_frontmatter,
+    )
+    init_git_repo(project_root)
+
+    prompts = install_stateful_prompt_agent(
+        monkeypatch,
+        lambda prompt_count: advance_bundled_plan_prompt_state(
+            feature_path,
+            plan_path,
+            prompt_count=prompt_count,
+        ),
+    )
+    verification_results = iter(
+        [
+            subprocess.CompletedProcess(
+                ["verify", "attempt-1"],
+                1,
+                stdout="FIRST_PLAN_PHASE_FAILURE_TOKEN\n",
+                stderr="",
+            ),
+            subprocess.CompletedProcess(
+                ["verify", "attempt-2"],
+                1,
+                stdout="SECOND_PLAN_PHASE_FAILURE_TOKEN\n",
+                stderr="",
+            ),
+            subprocess.CompletedProcess(
+                ["verify", "attempt-3"],
+                0,
+                stdout="verification passed\n",
+                stderr="",
+            ),
+        ]
+    )
+
+    def fake_run_shell_command(
+        _project_root: Path,
+        command: str,
+    ) -> subprocess.CompletedProcess[str]:
+        del command
+        return next(verification_results)
+
+    monkeypatch.setattr(loop_module, "preflight", lambda **_: True)
+    monkeypatch.setattr(
+        "engineeringagent.loop_runtime.phases.run_shell_command",
+        fake_run_shell_command,
+    )
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        dry_run=False,
+        max_iterations=6,
+    )
+
+    assert code == 0
+    assert len(prompts) >= 3
+    first_feedback = parse_feedback_envelope_from_prompt(
+        prompts[1],
+        phase="verification",
+    )
+    second_feedback = parse_feedback_envelope_from_prompt(
+        prompts[2],
+        phase="verification",
+    )
+    assert first_feedback.kind == "command_failure"
+    assert first_feedback.phase == "verification"
+    assert first_feedback.command == verification_command
+    assert second_feedback.kind == "command_failure"
+    assert second_feedback.phase == "verification"
+    assert second_feedback.command == verification_command
+    assert "FIRST_PLAN_PHASE_FAILURE_TOKEN" in first_feedback.message
+    assert "SECOND_PLAN_PHASE_FAILURE_TOKEN" not in first_feedback.message
+    assert "FIRST_PLAN_PHASE_FAILURE_TOKEN" not in second_feedback.message
+    assert "SECOND_PLAN_PHASE_FAILURE_TOKEN" in second_feedback.message
+
+
+def test_bundled_phase_verification_failure_feedback_replaces_previous_command_context(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    first_verification_command = (
+        "python -c \"import sys; print('FIRST_PLAN_PHASE_FAILURE_TOKEN'); sys.exit(1)\""
+    )
+    second_verification_command = (
+        "python -c \"import sys; print('SECOND_PLAN_PHASE_FAILURE_TOKEN'); sys.exit(1)\""
+    )
+    feature_data = {
+        **base_feature(status="in_progress"),
+        "title": "Bundled phase verification command retry replacement",
+        "planning_tier": "planned",
+        "artifacts": {"plan": "plan.md"},
+    }
+    feature_data.pop("subtasks", None)
+    project_root, feature_path, plan_path = make_bundled_project_root(
+        tmp_path,
+        feature_data=feature_data,
+        plan_frontmatter={
+            "plan_id": "FEAT-900",
+            "feature_id": "FEAT-900",
+            "status": "in_progress",
+            "source_spec": "spec.yaml",
+            "planning_tier": "planned",
+            "phases": [
+                {
+                    "id": "P1",
+                    "title": "Replace first bundled verification command",
+                    "status": "pending",
+                    "verification": [first_verification_command],
+                },
+                {
+                    "id": "P2",
+                    "title": "Replace second bundled verification command",
+                    "status": "pending",
+                    "verification": [second_verification_command],
+                },
+            ],
+        },
+    )
+    init_git_repo(project_root)
+
+    prompts = install_stateful_prompt_agent(
+        monkeypatch,
+        lambda prompt_count: advance_bundled_plan_prompt_state(
+            feature_path,
+            plan_path,
+            prompt_count=prompt_count,
+        ),
+    )
+    verification_results = iter(
+        [
+            subprocess.CompletedProcess(
+                ["verify", "attempt-1"],
+                1,
+                stdout="FIRST_PLAN_PHASE_FAILURE_TOKEN\n",
+                stderr="",
+            ),
+            subprocess.CompletedProcess(
+                ["verify", "attempt-2"],
+                1,
+                stdout="SECOND_PLAN_PHASE_FAILURE_TOKEN\n",
+                stderr="",
+            ),
+            subprocess.CompletedProcess(
+                ["verify", "attempt-3"],
+                0,
+                stdout="verification passed\n",
+                stderr="",
+            ),
+        ]
+    )
+
+    def fake_run_shell_command(
+        _project_root: Path,
+        command: str,
+    ) -> subprocess.CompletedProcess[str]:
+        del command
+        return next(verification_results)
+
+    monkeypatch.setattr(loop_module, "preflight", lambda **_: True)
+    monkeypatch.setattr(
+        "engineeringagent.loop_runtime.phases.run_shell_command",
+        fake_run_shell_command,
+    )
+
+    code = run_loop(
+        project_root=project_root,
+        feature_paths=[str(feature_path)],
+        dry_run=False,
+        max_iterations=6,
+    )
+
+    assert code == 0
+    assert len(prompts) >= 3
+    first_feedback = parse_feedback_envelope_from_prompt(
+        prompts[1],
+        phase="verification",
+    )
+    second_feedback = parse_feedback_envelope_from_prompt(
+        prompts[2],
+        phase="verification",
+    )
+    assert first_feedback.kind == "command_failure"
+    assert first_feedback.phase == "verification"
+    assert first_feedback.command == first_verification_command
+    assert second_feedback.kind == "command_failure"
+    assert second_feedback.phase == "verification"
+    assert second_feedback.command == second_verification_command
+    assert "FIRST_PLAN_PHASE_FAILURE_TOKEN" in first_feedback.message
+    assert "SECOND_PLAN_PHASE_FAILURE_TOKEN" not in first_feedback.message
+    assert "FIRST_PLAN_PHASE_FAILURE_TOKEN" not in second_feedback.message
+    assert "SECOND_PLAN_PHASE_FAILURE_TOKEN" in second_feedback.message
+
+
 def test_gate_failure_feedback_includes_fitness_remediation_guidance(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -185,24 +461,10 @@ def test_gate_failure_feedback_includes_fitness_remediation_guidance(
         "prefer uv run engineeringagent ..."
     )
     counter_path = tmp_path / ".check-attempt"
-    check_script = tmp_path.parent / f"{tmp_path.name}-check-fail-once.py"
-    check_script.write_text(
-        "\n".join(
-            [
-                "from pathlib import Path",
-                "import sys",
-                "counter = Path(sys.argv[1])",
-                "count = int(counter.read_text(encoding='utf-8')) if counter.exists() else 0",
-                "count += 1",
-                "counter.write_text(str(count), encoding='utf-8')",
-                "if count == 1:",
-                f"    print({remediation!r})",
-                "    raise SystemExit(1)",
-                "print('ok')",
-            ]
-        )
-        + "\n",
-        encoding="utf-8",
+    check_script = write_fail_once_script(
+        tmp_path.parent / f"{tmp_path.name}-check-fail-once.py",
+        counter_path,
+        remediation,
     )
 
     project_root, feature_path = make_project_root(
@@ -218,25 +480,10 @@ def test_gate_failure_feedback_includes_fitness_remediation_guidance(
     )
     init_git_repo(project_root)
 
-    real_run = subprocess.run
-    prompts: list[str] = []
-
-    def fake_subprocess_run(
-        command: Any, **kwargs: Any
-    ) -> subprocess.CompletedProcess[str]:
-        if isinstance(command, list) and command[:3] == ["opencode", "run", "--agent"]:
-            prompt = command[4]
-            prompts.append(prompt)
-            feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
-            feature["status"] = "done"
-            feature_path.write_text(
-                yaml.safe_dump(feature, sort_keys=False), encoding="utf-8"
-            )
-            return subprocess.CompletedProcess(command, 0, stdout="ok\n", stderr="")
-        check = bool(kwargs.pop("check", False))
-        return real_run(command, check=check, **kwargs)
-
-    patch_run_agent_with_fake(monkeypatch, fake_subprocess_run)
+    prompts = install_stateful_prompt_agent(
+        monkeypatch,
+        lambda _prompt_count: advance_subtask_prompt_state(feature_path, prompt_count=99),
+    )
     monkeypatch.setattr(loop_module, "preflight", lambda **_: True)
     code = run_loop(
         project_root=project_root,
@@ -294,25 +541,10 @@ def test_spec_validate_failure_feedback_round_trips_to_retry_prompt(
     )
     init_git_repo(project_root)
 
-    real_run = subprocess.run
-    prompts: list[str] = []
-
-    def fake_subprocess_run(
-        command: Any, **kwargs: Any
-    ) -> subprocess.CompletedProcess[str]:
-        if isinstance(command, list) and command[:3] == ["opencode", "run", "--agent"]:
-            prompt = command[4]
-            prompts.append(prompt)
-            feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
-            feature["status"] = "done"
-            feature_path.write_text(
-                yaml.safe_dump(feature, sort_keys=False), encoding="utf-8"
-            )
-            return subprocess.CompletedProcess(command, 0, stdout="ok\n", stderr="")
-        check = bool(kwargs.pop("check", False))
-        return real_run(command, check=check, **kwargs)
-
-    patch_run_agent_with_fake(monkeypatch, fake_subprocess_run)
+    prompts = install_stateful_prompt_agent(
+        monkeypatch,
+        lambda _prompt_count: advance_subtask_prompt_state(feature_path, prompt_count=99),
+    )
     monkeypatch.setattr(loop_module, "preflight", lambda **_: True)
     code = run_loop(
         project_root=project_root,
@@ -369,25 +601,10 @@ def test_non_validation_gate_failure_feedback_round_trips_to_retry_prompt(
     )
     init_git_repo(project_root)
 
-    real_run = subprocess.run
-    prompts: list[str] = []
-
-    def fake_subprocess_run(
-        command: Any, **kwargs: Any
-    ) -> subprocess.CompletedProcess[str]:
-        if isinstance(command, list) and command[:3] == ["opencode", "run", "--agent"]:
-            prompt = command[4]
-            prompts.append(prompt)
-            feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
-            feature["status"] = "done"
-            feature_path.write_text(
-                yaml.safe_dump(feature, sort_keys=False), encoding="utf-8"
-            )
-            return subprocess.CompletedProcess(command, 0, stdout="ok\n", stderr="")
-        check = bool(kwargs.pop("check", False))
-        return real_run(command, check=check, **kwargs)
-
-    patch_run_agent_with_fake(monkeypatch, fake_subprocess_run)
+    prompts = install_stateful_prompt_agent(
+        monkeypatch,
+        lambda _prompt_count: advance_subtask_prompt_state(feature_path, prompt_count=99),
+    )
     monkeypatch.setattr(loop_module, "preflight", lambda **_: True)
     code = run_loop(
         project_root=project_root,
@@ -648,32 +865,13 @@ def test_verification_failure_feedback_replaces_previous_feedback(
     project_root, feature_path = make_project_root(tmp_path, feature_data=feature_data)
     init_git_repo(project_root)
 
-    real_run = subprocess.run
-    prompts: list[str] = []
-
-    def fake_subprocess_run(
-        command: Any, **kwargs: Any
-    ) -> subprocess.CompletedProcess[str]:
-        if isinstance(command, list) and command[:3] == ["opencode", "run", "--agent"]:
-            prompt = command[4]
-            prompts.append(prompt)
-            feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
-            subtasks = feature.get("subtasks", [])
-            if len(prompts) == 1 and len(subtasks) >= 1 and isinstance(subtasks[0], dict):
-                subtasks[0]["status"] = "done"
-                feature["status"] = "in_progress"
-            elif len(prompts) == 2 and len(subtasks) >= 2 and isinstance(subtasks[1], dict):
-                subtasks[1]["status"] = "done"
-                feature["status"] = "in_progress"
-            else:
-                feature["status"] = "done"
-            feature_path.write_text(
-                yaml.safe_dump(feature, sort_keys=False), encoding="utf-8"
-            )
-            return subprocess.CompletedProcess(command, 0, stdout="ok\n", stderr="")
-        check = bool(kwargs.pop("check", False))
-        return real_run(command, check=check, **kwargs)
-
+    prompts = install_stateful_prompt_agent(
+        monkeypatch,
+        lambda prompt_count: advance_subtask_prompt_state(
+            feature_path,
+            prompt_count=prompt_count,
+        ),
+    )
     verification_results = iter(
         [
             subprocess.CompletedProcess(
@@ -703,7 +901,6 @@ def test_verification_failure_feedback_replaces_previous_feedback(
         del project_root, command
         return next(verification_results)
 
-    patch_run_agent_with_fake(monkeypatch, fake_subprocess_run)
     monkeypatch.setattr(loop_module, "preflight", lambda **_: True)
     monkeypatch.setattr(
         "engineeringagent.loop_runtime.phases.run_shell_command",
@@ -765,34 +962,13 @@ def test_verification_failure_feedback_replaces_previous_command_context(
     project_root, feature_path = make_project_root(tmp_path, feature_data=feature_data)
     init_git_repo(project_root)
 
-    real_run = subprocess.run
-    prompts: list[str] = []
-
-    def fake_subprocess_run(
-        command: Any,
-        **kwargs: Any,
-    ) -> subprocess.CompletedProcess[str]:
-        if isinstance(command, list) and command[:3] == ["opencode", "run", "--agent"]:
-            prompt = command[4]
-            prompts.append(prompt)
-            feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
-            subtasks = feature.get("subtasks", [])
-            if len(prompts) == 1 and len(subtasks) >= 1 and isinstance(subtasks[0], dict):
-                subtasks[0]["status"] = "done"
-                feature["status"] = "in_progress"
-            elif len(prompts) == 2 and len(subtasks) >= 2 and isinstance(subtasks[1], dict):
-                subtasks[1]["status"] = "done"
-                feature["status"] = "in_progress"
-            else:
-                feature["status"] = "done"
-            feature_path.write_text(
-                yaml.safe_dump(feature, sort_keys=False), encoding="utf-8"
-            )
-            return subprocess.CompletedProcess(command, 0, stdout="ok\n", stderr="")
-
-        check = bool(kwargs.pop("check", False))
-        return real_run(command, check=check, **kwargs)
-
+    prompts = install_stateful_prompt_agent(
+        monkeypatch,
+        lambda prompt_count: advance_subtask_prompt_state(
+            feature_path,
+            prompt_count=prompt_count,
+        ),
+    )
     verification_results = iter(
         [
             subprocess.CompletedProcess(
@@ -823,7 +999,6 @@ def test_verification_failure_feedback_replaces_previous_command_context(
         del command
         return next(verification_results)
 
-    patch_run_agent_with_fake(monkeypatch, fake_subprocess_run)
     monkeypatch.setattr(loop_module, "preflight", lambda **_: True)
     monkeypatch.setattr(
         "engineeringagent.loop_runtime.phases.run_shell_command",

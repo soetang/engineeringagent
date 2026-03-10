@@ -1,25 +1,25 @@
 ---
 plan_id: FEAT-182
 feature_id: FEAT-182
-status: ready
+status: backlog
 source_spec: spec.yaml
 planning_tier: planned
 phases:
   - id: P1
     title: Define the failed-fitness feedback rendering contract
-    status: pending
+    status: backlog
     verification:
       - uv run pytest -q tests/checks/test_fitness_group_port.py -k statement_budget
       - uv run pytest -q tests/checks/test_run_checks_contract.py -k prompt_feedback
   - id: P2
     title: Update shared checks feedback renderers to include remediation and violations
-    status: pending
+    status: backlog
     verification:
       - uv run pytest -q tests/checks/test_fitness_group_port.py
       - uv run pytest -q tests/loop/test_loop_phases_coverage.py -k fitness
   - id: P3
     title: Lock loop forwarding and renderer consistency with regressions
-    status: pending
+    status: backlog
     verification:
       - uv run pytest -q tests/loop/test_loop_phases_coverage.py
       - uv run pytest -q tests/checks/test_run_checks_contract.py

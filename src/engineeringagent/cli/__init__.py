@@ -6,7 +6,6 @@ from .app import build_typer_app, importlib_metadata, main, version_callback
 from . import approach as approach_commands
 from . import checks as checks_commands
 from . import init as init_commands
-from . import progress as progress_commands
 from . import run as run_commands
 from . import schema as schema_commands
 from . import validate as validate_commands
@@ -23,9 +22,6 @@ reviewers_group_selected = checks_module.reviewers_group_selected
 cmd_init = init_commands.cmd_init
 git_client = init_cli_support_module.git_client
 shutil = init_cli_support_module.shutil
-
-cmd_progress_feature_prune = progress_commands.cmd_progress_feature_prune
-cmd_progress_handoff_append = progress_commands.cmd_progress_handoff_append
 
 cmd_run = run_commands.cmd_run
 cmd_validate = validate_commands.cmd_validate

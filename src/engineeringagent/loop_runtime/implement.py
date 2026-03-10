@@ -15,12 +15,15 @@ from engineeringagent.agents import (
 )
 from engineeringagent.loop_runtime.models import ImplementStepInputs
 from engineeringagent.loop_runtime.models import ImplementStepResult
+from engineeringagent.loop_runtime.progress_units import current_progress_unit
+from engineeringagent.loop_runtime.progress_units import feature_progress_reference
 from engineeringagent.progress import handoff as progress_handoff
 from engineeringagent.progress import logging as progress_logging
 from engineeringagent.progress import paths as progress_paths
 from engineeringagent.prompts import (
     build_implementation_prompt,
 )
+from engineeringagent.specs import feature_progress_kind
 
 
 class StructuredImplementAgentRunner(Protocol):
@@ -47,6 +50,7 @@ def run_implement_step_from_inputs(
         action="implement",
         structured=False,
     )
+    fallback_context = _fallback_progress_context(implement_inputs)
 
     _ensure_progress_artifacts(implement_inputs)
     print(f"Implement step: {command}", flush=True)
@@ -57,7 +61,9 @@ def run_implement_step_from_inputs(
             prompt=prompt,
         )
     except AgentOutputValidationError as exc:
-        fallback_envelope = progress_handoff.fallback_implement_progress_envelope()
+        fallback_envelope = progress_handoff.fallback_implement_progress_envelope(
+            **fallback_context
+        )
         output = _format_structured_output_validation_failure(exc)
         _print_agent_output(output, verbose_output=implement_inputs.verbose_output)
         command_output = _format_success_implement_output(command, output)
@@ -73,11 +79,14 @@ def run_implement_step_from_inputs(
             False,
             failed_gate,
             command_output,
-            progress_handoff.fallback_implement_progress_envelope(),
+            progress_handoff.fallback_implement_progress_envelope(**fallback_context),
             True,
         )
 
-    envelope, used_fallback, output = _coerce_implement_output(raw_output)
+    envelope, used_fallback, output = _coerce_implement_output(
+        raw_output,
+        fallback_context=fallback_context,
+    )
     _print_agent_output(output, verbose_output=implement_inputs.verbose_output)
     command_output = _format_success_implement_output(command, output)
     return (True, None, command_output, envelope, used_fallback)
@@ -98,6 +107,8 @@ def _run_agent_with_structured_output(
 
 def _coerce_implement_output(
     raw_output: object,
+    *,
+    fallback_context: dict[str, str | None],
 ) -> tuple[progress_handoff.ImplementProgressEnvelope, bool, str]:
     if isinstance(raw_output, progress_handoff.ImplementProgressEnvelope):
         output = json.dumps(
@@ -119,9 +130,38 @@ def _coerce_implement_output(
                 payload = raw_output
 
     envelope, used_fallback = progress_handoff.parse_implement_progress_envelope(
-        payload
+        payload,
+        **fallback_context,
     )
     return envelope, used_fallback, output
+
+
+def _fallback_progress_context(
+    implement_inputs: ImplementStepInputs,
+) -> dict[str, str | None]:
+    progress_unit = current_progress_unit(
+        implement_inputs.feature_path,
+        implement_inputs.feature,
+    )
+    if progress_unit is not None:
+        return {
+            "progress_kind": progress_unit.kind,
+            "progress_id": progress_unit.id,
+            "progress_title": progress_unit.title,
+        }
+    progress_kind = feature_progress_kind(
+        implement_inputs.feature_path,
+        implement_inputs.feature,
+    )
+    progress_id: str | None = None
+    progress_title: str | None = None
+    if progress_kind == "feature":
+        progress_id, progress_title = feature_progress_reference(implement_inputs.feature)
+    return {
+        "progress_kind": progress_kind,
+        "progress_id": progress_id,
+        "progress_title": progress_title,
+    }
 
 
 def _format_structured_output_validation_failure(

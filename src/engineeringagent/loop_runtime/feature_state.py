@@ -10,12 +10,25 @@ from typing import Any, Sequence
 import yaml
 
 from engineeringagent.config import resolve_docs_root
+from engineeringagent.loop_runtime import feature_plan_state
+from engineeringagent.loop_runtime.feature_plan_state import (
+    archived_bundled_feature_is_done as _archived_bundled_feature_is_done,
+    normalize_done_plan,
+    sync_active_plan_after_implement,
+    touch_active_plan_for_iteration,
+)
 from engineeringagent.loop_runtime.models import (
     InitialFeatureLoadOutcome,
     PostImplementFeatureOutcome,
 )
 from engineeringagent.progress import handoff as progress_handoff
-from engineeringagent.specs import dump_yaml, load_yaml
+from engineeringagent.specs import (
+    dump_yaml,
+    feature_storage_root,
+    iter_feature_files,
+    load_yaml,
+    resolve_feature_package_paths,
+)
 
 FEATURE_TRANSITIONS: dict[str, set[str]] = {
     "backlog": {"backlog", "in_progress", "done"},
@@ -25,6 +38,12 @@ FEATURE_TRANSITIONS: dict[str, set[str]] = {
 }
 
 RUN_ALL_RUNNABLE_STATUSES: set[str] = {"backlog", "in_progress"}
+
+# Keep the extracted bundled-plan loader available on this module for tests and
+# any remaining compatibility callers.
+_load_plan_document_and_frontmatter = (
+    feature_plan_state.load_plan_document_and_frontmatter
+)
 
 
 def _move_path(source: Path, destination: Path) -> None:
@@ -50,6 +69,13 @@ def _normalize_done_subtasks(feature: dict[str, Any]) -> bool:
         if subtask.get("status") == "done":
             continue
         subtask["status"] = "done"
+        mutated = True
+    return mutated
+
+
+def _normalize_done_progress_artifacts(feature: dict[str, Any], feature_path: Path) -> bool:
+    mutated = _normalize_done_subtasks(feature)
+    if normalize_done_plan(feature, feature_path, FEATURE_TRANSITIONS):
         mutated = True
     return mutated
 
@@ -107,7 +133,7 @@ def discover_active_feature_paths(project_root: Path) -> list[Path]:
     """Discover runnable feature specs from docs/spec/features."""
     features_dir, _ = _resolve_spec_directories(project_root)
     resolved: list[Path] = []
-    for feature_path in sorted(features_dir.glob("*.yaml")):
+    for feature_path in iter_feature_files(features_dir):
         try:
             feature = load_yaml(feature_path)
         except Exception as exc:  # noqa: BLE001
@@ -149,13 +175,11 @@ def done_features_pending_archive(
 
 def _resolve_archive_path(project_root: Path, feature_path: Path) -> Path:
     active_dir, done_dir = _resolve_spec_directories(project_root)
-    resolved_feature = feature_path.resolve()
-
-    if resolved_feature.parent != active_dir:
-        raise ValueError(
-            "completed feature archive source must be under docs/spec/features"
-        )
-    return done_dir / resolved_feature.name
+    return resolve_feature_package_paths(
+        active_dir,
+        done_dir,
+        feature_path,
+    ).archive_spec_path
 
 
 def _resolve_spec_directories(project_root: Path) -> tuple[Path, Path]:
@@ -200,8 +224,10 @@ def _load_archived_selected_feature_after_implement(
 
     if archived_feature.get("status") != "done":
         return (None, None)
+    if not _archived_bundled_feature_is_done(archived_feature, archive_path):
+        return (None, None)
 
-    if _normalize_done_subtasks(archived_feature):
+    if _normalize_done_progress_artifacts(archived_feature, archive_path):
         dump_yaml(archive_path, archived_feature)
 
     return (archived_feature, archive_path)
@@ -267,6 +293,12 @@ def refresh_feature_after_implement(
     post_feature, post_load_error = _load_selected_feature(feature_path)
 
     if post_load_error is None:
+        if post_feature is not None:
+            sync_active_plan_after_implement(
+                post_feature,
+                feature_path,
+                FEATURE_TRANSITIONS,
+            )
         return _post_implement_passed(
             feature=post_feature,
         )
@@ -297,17 +329,18 @@ def archive_completed_feature(
 ) -> tuple[bool, Path | None, str]:
     """Move a done feature spec to docs/spec/features_done safely."""
     try:
-        archive_path = _resolve_archive_path(project_root, feature_path)
+        active_dir, done_dir = _resolve_spec_directories(project_root)
+        package_paths = resolve_feature_package_paths(active_dir, done_dir, feature_path)
     except ValueError as exc:
         return (False, None, str(exc))
 
     if not feature_path.exists():
         return (False, None, f"completed feature spec not found: {feature_path}")
-    if archive_path.exists():
+    if package_paths.archive_root.exists():
         return (
             False,
             None,
-            f"archive destination already exists: {archive_path}",
+            f"archive destination already exists: {package_paths.archive_spec_path}",
         )
 
     try:
@@ -319,15 +352,15 @@ def archive_completed_feature(
             f"failed to load completed feature spec for archive: {exc}",
         )
 
-    if _normalize_done_subtasks(feature):
+    if _normalize_done_progress_artifacts(feature, feature_path):
         dump_yaml(feature_path, feature)
 
-    archive_path.parent.mkdir(parents=True, exist_ok=True)
+    package_paths.archive_root.parent.mkdir(parents=True, exist_ok=True)
     try:
-        _move_path(feature_path, archive_path)
+        _move_path(package_paths.active_root, package_paths.archive_root)
     except OSError as exc:
         return (False, None, f"failed to archive completed feature spec: {exc}")
-    return (True, archive_path, "")
+    return (True, package_paths.archive_spec_path, "")
 
 
 def restore_archived_feature(
@@ -336,14 +369,16 @@ def restore_archived_feature(
     """Restore an archived feature spec to its original active location."""
     if not archived_path.exists():
         return (True, "")
-    if original_feature_path.exists():
+    archived_root = feature_storage_root(archived_path)
+    original_root = feature_storage_root(original_feature_path)
+    if original_root.exists():
         return (
             False,
             "cannot restore archived feature path because source already exists",
         )
-    original_feature_path.parent.mkdir(parents=True, exist_ok=True)
+    original_root.parent.mkdir(parents=True, exist_ok=True)
     try:
-        _move_path(archived_path, original_feature_path)
+        _move_path(archived_root, original_root)
     except OSError as exc:
         return (False, f"failed to restore archived feature spec: {exc}")
     return (True, "")
@@ -378,3 +413,4 @@ def touch_active_feature_for_iteration(
         set_status(feature, "in_progress")
     feature["updated_at"] = progress_handoff.now_iso()
     dump_yaml(feature_path, feature)
+    touch_active_plan_for_iteration(feature, feature_path, FEATURE_TRANSITIONS)

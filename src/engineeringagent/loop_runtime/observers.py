@@ -7,27 +7,9 @@ from typing import Callable, Sequence
 
 from pydantic import BaseModel, ConfigDict
 
-from .models import IterationReport, IterationTelemetryInputs
+from .models import IterationReport, IterationSummaryInputs, IterationTelemetryInputs
 
-PrintSummaryFn = Callable[
-    [
-        str | None,
-        str,
-        str | None,
-        int | None,
-        str,
-        str | None,
-        str | None,
-        str | None,
-        str | None,
-        str | None,
-        str | None,
-        str | None,
-        str | None,
-        str | None,
-    ],
-    None,
-]
+PrintSummaryFn = Callable[[IterationSummaryInputs], None]
 
 
 class TelemetryObserverDependencies(BaseModel):
@@ -48,7 +30,6 @@ class ConsoleObserverDependencies(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     print_summary: PrintSummaryFn
-    print_line: Callable[[str], None]
 
 
 class DefaultObserverDependencies(BaseModel):
@@ -62,7 +43,6 @@ class DefaultObserverDependencies(BaseModel):
     ]
     git_head_resolver: Callable[[Path], str | None]
     print_summary: PrintSummaryFn
-    print_line: Callable[[str], None]
 
 
 IterationReportObserver = Callable[[IterationReport], IterationReport]
@@ -98,27 +78,30 @@ def build_telemetry_observer(
 def build_console_observer(
     dependencies: ConsoleObserverDependencies,
 ) -> IterationReportObserver:
-    """Build observer that renders run summary and failure log pointer."""
+    """Build observer that renders the run summary."""
 
     def _observe(report: IterationReport) -> IterationReport:
         dependencies.print_summary(
-            report.feature_id,
-            report.result,
-            report.failed_gate,
-            report.attempt,
-            report.next_action,
-            report.selected_feature_path,
-            report.implement_step,
-            report.log_path if report.result != "passed" else None,
-            report.archived_selection_path,
-            report.verification_status,
-            report.verification_failed_command,
-            report.reviewer_status,
-            report.reviewer_decision,
-            report.failed_reviewer_id,
+            IterationSummaryInputs(
+                feature_id=report.feature_id,
+                result=report.result,
+                failed_gate=report.failed_gate,
+                attempt=report.attempt,
+                next_action=report.next_action,
+                selected_path=report.selected_feature_path,
+                implement_step=report.implement_step,
+                log_path=report.log_path if report.result != "passed" else None,
+                archived_selection_path=report.archived_selection_path,
+                verification_status=report.verification_status,
+                verification_failed_command=report.verification_failed_command,
+                reviewer_status=report.reviewer_status,
+                reviewer_decision=report.reviewer_decision,
+                failed_reviewer_id=report.failed_reviewer_id,
+                progress_kind=report.telemetry_inputs.progress_kind,
+                progress_id=report.telemetry_inputs.progress_id,
+                progress_title=report.telemetry_inputs.progress_title,
+            )
         )
-        if report.result != "passed" and report.log_path:
-            dependencies.print_line(f"Detailed log: {report.log_path}")
         return report
 
     return _observe
@@ -138,7 +121,6 @@ def build_default_iteration_report_observers(
     console_observer = build_console_observer(
         ConsoleObserverDependencies(
             print_summary=dependencies.print_summary,
-            print_line=dependencies.print_line,
         )
     )
     return (telemetry_observer, console_observer)

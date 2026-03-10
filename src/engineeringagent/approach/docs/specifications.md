@@ -11,7 +11,7 @@ approach_id: specifications
 
 ## Hard Rule
 
-- Do not draft a new `docs/spec/features/FEAT-*.yaml` file until you complete a user interview and the user confirms scope.
+- Do not draft a new feature package under `docs/spec/features/FEAT-XXX-some-header/` until you complete a user interview and the user confirms scope.
 - If the feature changes any API/contract behavior, explicit contract-delta documentation is mandatory and high priority in the spec (old behavior -> new behavior, compatibility policy, migration/rollout expectation).
 
 ## Mandatory Interview Flow
@@ -40,9 +40,18 @@ approach_id: specifications
 ## Drafting Rules After Interview
 
 - Emit and follow the feature contract schema exactly:
-  - `engineeringagent schema feature.spec --format yaml`
-  - Use `engineeringagent schema list` to discover available schema ids.
-- Use one feature file with nested subtasks.
+  - `uv run engineeringagent schema feature.spec --format yaml`
+  - Use `uv run engineeringagent schema list` to discover available schema ids.
+- Create a bundled feature package rooted at `docs/spec/features/FEAT-XXX-some-header/spec.yaml`.
+- Do not create a flat `docs/spec/features/FEAT-XXX-some-header.yaml` wrapper for new work. If the current runtime still needs one during a migration, treat it as a temporary compatibility shim that must point to the canonical bundled package instead of duplicating the design.
+- Treat `spec.yaml` as the canonical source for feature identity, status, and acceptance.
+- Keep active bundled `spec.yaml` files outcome-oriented. Sequencing belongs in `plan.md` phases, not in spec `subtasks`.
+- `plan.md` owns implementation sequencing and per-phase status.
+- `plan.md` must not replace canonical feature status in `spec.yaml`.
+- Choose the planning tier explicitly: `direct`, `planned`, and `researched`.
+  - `direct`: `spec.yaml` only.
+  - `planned`: `spec.yaml` plus `plan.md`.
+  - `researched`: `spec.yaml`, `research.md`, and `plan.md`.
 - Keep acceptance criteria outcome-based and testable.
 - Keep verification commands concrete and executable.
 - Write verification/check commands as plain argv-style command strings; shell operators (for example `&&`, `|`, redirects, or subshell syntax) are invalid as command separators, but shell-like text inside a token (such as `$VAR`, `${VAR}`, or backticks) is treated as data.
@@ -61,7 +70,7 @@ approach_id: specifications
 
 ## Spec Creation Checklist
 
-- Include required top-level fields in every active feature spec:
+- Include required top-level fields in every active bundled `spec.yaml`:
   - `type` (one of: `feature`, `bug`, `spec`, `docs`, `chore`, `test`)
   - `expected_commit_subject` in `type: summary` format
 - Keep the expected subject deterministic for the spec intent (example: `spec: add FEAT-016 commit message policy and spec typing`).
@@ -70,12 +79,14 @@ approach_id: specifications
 
 ## Post-Draft Commit Workflow
 
-After creating or updating a spec file, commit it in the same loop so state is recoverable.
+After creating or updating a bundled feature package, commit it in the same loop so state is recoverable.
 
 1. Validate specs before commit:
-   - `engineeringagent validate`
+   - `uv run engineeringagent validate --schema-only`
 2. Stage only the intended spec/doc files:
-   - `git add docs/spec/features/FEAT-*.yaml`
+   - `git add docs/spec/features/FEAT-XXX-some-header/spec.yaml`
+   - `git add docs/spec/features/FEAT-XXX-some-header/plan.md`
+   - `git add docs/spec/features/FEAT-XXX-some-header/research.md`
    - Add related doc updates when applicable.
 3. Use a clear commit message focused on intent:
    - Example: `spec: add FEAT-007 path-first run CLI`

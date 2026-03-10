@@ -5,16 +5,41 @@ from pathlib import Path
 from typing import Any, Annotated, Literal, cast
 
 from typing_extensions import LiteralString
-
-import yaml
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    TypeAdapter,
+    ValidationError,
+    model_validator,
+)
 from pydantic_core import InitErrorDetails, PydanticCustomError
 
 from engineeringagent.checks import HarnessCheckPhase
 from engineeringagent.json_schema import JSON_SCHEMA_DRAFT_URL
+from engineeringagent import spec_bundles as _spec_bundles
 
 PRIORITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 ERR_DUP_SUBTASK_ID: LiteralString = "duplicate subtask id: {subtask_id}"
+FeaturePackagePaths = _spec_bundles.FeaturePackagePaths
+load_yaml = _spec_bundles.load_yaml
+dump_yaml = _spec_bundles.dump_yaml
+iter_feature_files = _spec_bundles.iter_feature_files
+feature_storage_root = _spec_bundles.feature_storage_root
+resolve_feature_package_paths = _spec_bundles.resolve_feature_package_paths
+load_markdown_frontmatter = _spec_bundles.load_markdown_frontmatter
+resolve_feature_plan_path = _spec_bundles.resolve_feature_plan_path
+load_feature_plan_artifact = _spec_bundles.load_feature_plan_artifact
+feature_progress_kind = _spec_bundles.feature_progress_kind
+progress_kind_label = _spec_bundles.progress_kind_label
+resolve_compatibility_wrapper_canonical_spec_path = (
+    _spec_bundles.resolve_compatibility_wrapper_canonical_spec_path
+)
+compatibility_wrapper_plan_mirror_issues = (
+    _spec_bundles.compatibility_wrapper_plan_mirror_issues
+)
+_is_bundled_feature_spec_path = _spec_bundles.is_bundled_feature_spec_path
+_bundled_feature_artifact_issues = _spec_bundles.bundled_feature_artifact_issues
 
 
 FeatureId = Annotated[
@@ -75,6 +100,14 @@ class PotentialFeatureStatus(str, Enum):
 PotentialFeatureId = Annotated[
     str, Field(strict=True, min_length=1, pattern=r"^POT-[0-9]{3,}$")
 ]
+
+
+class PlanningTier(str, Enum):
+    """Explicit planning depth for bundled feature packages."""
+
+    DIRECT = "direct"
+    PLANNED = "planned"
+    RESEARCHED = "researched"
 
 
 class PotentialFeatureSpec(StrictContractModel):
@@ -324,6 +357,59 @@ class FeatureSpec(StrictContractModel):
         return self
 
 
+class FeatureArtifacts(StrictContractModel):
+    """Deterministic artifact references for bundled feature packages."""
+
+    plan: StrictString | None = None
+    research: StrictString | None = None
+    supporting: list[StrictString] | None = None
+
+
+class BundledFeatureSpec(StrictContractModel):
+    """Top-level schema for bundled docs/spec/features/<feature>/spec.yaml."""
+
+    model_config = ConfigDict(extra="forbid", title="Agent Harness Bundled Feature")
+
+    id: FeatureId
+    title: NonEmptyStr
+    type: FeatureType
+    expected_commit_subject: CommitSubject
+    planning_tier: PlanningTier
+    status: FeatureStatus
+    priority: FeaturePriority
+    objective: NonEmptyStr
+    context: StrictString | None = None
+    constraints: list[StrictString] | None = None
+    implementation_notes: StrictString | None = None
+    acceptance: Annotated[list[StrictString], Field(min_length=1)]
+    artifacts: FeatureArtifacts
+    updated_at: StrictString | None = None
+
+
+class PlanPhaseArtifact(StrictContractModel):
+    """Structured plan phase metadata stored in plan.md frontmatter."""
+
+    id: NonEmptyStr
+    title: NonEmptyStr
+    status: StrictString
+    verification: list[StrictString] | None = None
+
+
+class FeaturePlanArtifact(StrictContractModel):
+    """Required plan.md frontmatter for bundled planned/researched features."""
+
+    plan_id: NonEmptyStr
+    feature_id: FeatureId
+    status: StrictString
+    source_spec: StrictString
+    source_research: StrictString | None = None
+    planning_tier: PlanningTier
+    phases: Annotated[list[PlanPhaseArtifact], Field(min_length=1)]
+
+
+FeatureSpecContract = FeatureSpec | BundledFeatureSpec
+
+
 def _collect_subtask_state(
     subtasks: list[SubtaskSpec],
 ) -> tuple[
@@ -407,51 +493,20 @@ class ValidationIssue(StrictContractModel):
     message: str
 
 
-def load_yaml(path: Path) -> dict[str, Any]:
-    """Load a YAML mapping from disk.
-
-    Args:
-        path: Path to a YAML file.
-
-    Returns:
-        Parsed YAML mapping.
-
-    Raises:
-        ValueError: If YAML top level is not a mapping.
-    """
-    with path.open("r", encoding="utf-8") as f:
-        data = yaml.safe_load(f)
-    if not isinstance(data, dict):
-        raise ValueError(f"{path} must contain a YAML mapping at top level")
-    return data
-
-
-def dump_yaml(path: Path, data: dict[str, Any]) -> None:
-    """Write a YAML mapping to disk.
-
-    Args:
-        path: Destination YAML file path.
-        data: Mapping content to serialize.
-    """
-    with path.open("w", encoding="utf-8") as f:
-        yaml.safe_dump(data, f, sort_keys=False, allow_unicode=False)
-
-
-def iter_feature_files(features_dir: Path) -> list[Path]:
-    """Return sorted feature spec files from a directory.
-
-    Args:
-        features_dir: Directory containing feature YAML files.
-
-    Returns:
-        Sorted list of matching feature file paths.
-    """
-    return sorted(features_dir.glob("*.yaml"))
-
-
 def feature_schema_from_model() -> dict[str, Any]:
     """Return feature schema generated from the Pydantic feature model."""
-    schema = FeatureSpec.model_json_schema(mode="validation")
+    flat_schema = FeatureSpec.model_json_schema(mode="validation")
+    bundled_schema = BundledFeatureSpec.model_json_schema(mode="validation")
+    schema = TypeAdapter(FeatureSpecContract).json_schema(mode="validation")
+    merged_properties = dict(flat_schema["properties"])
+    for name, definition in bundled_schema["properties"].items():
+        merged_properties.setdefault(name, definition)
+    bundled_required = set(bundled_schema.get("required", []))
+    schema["type"] = "object"
+    schema["properties"] = merged_properties
+    schema["required"] = [
+        name for name in flat_schema.get("required", []) if name in bundled_required
+    ]
     schema["$schema"] = JSON_SCHEMA_DRAFT_URL
     return schema
 
@@ -508,11 +563,20 @@ def feature_contract_issues(
     Returns:
         Validation issues produced by strict Pydantic contract checks.
     """
-    return _model_contract_issues(
-        model_type=FeatureSpec,
+    model_type: type[BaseModel]
+    if _is_bundled_feature_spec_path(file_path):
+        model_type = BundledFeatureSpec
+    else:
+        model_type = FeatureSpec
+
+    issues = _model_contract_issues(
+        model_type=model_type,
         payload=feature,
         file_path=file_path,
     )
+    if issues or not _is_bundled_feature_spec_path(file_path):
+        return issues
+    return [*issues, *_bundled_feature_artifact_issues(feature, file_path)]
 
 
 def potential_features_contract_issues(
@@ -561,6 +625,14 @@ def _model_contract_issues(
             )
         return issues
     return []
+
+
+_spec_bundles.configure_spec_contracts(
+    planning_tier=PlanningTier,
+    build_validation_issue=ValidationIssue,
+    feature_plan_artifact=FeaturePlanArtifact,
+    model_contract_issues=_model_contract_issues,
+)
 
 
 def feature_sort_key(feature: dict[str, Any]) -> tuple[int, str]:

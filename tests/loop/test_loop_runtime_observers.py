@@ -5,6 +5,7 @@ from pathlib import Path
 from engineeringagent.loop_runtime.models import (
     FeatureIterationInputs,
     IterationReport,
+    IterationSummaryInputs,
     IterationTelemetryInputs,
 )
 from engineeringagent.loop_runtime.observers import (
@@ -108,46 +109,37 @@ def test_telemetry_observer_writes_telemetry_and_sets_log_path(tmp_path: Path) -
 
 
 def test_console_observer_prints_summary_and_failed_log_pointer(tmp_path: Path) -> None:
-    calls: list[tuple[str, ...]] = []
-    printed: list[str] = []
+    calls: list[IterationSummaryInputs] = []
     report = _build_iteration_report(tmp_path, result="failed").model_copy(
-        update={"log_path": "progress/run-feature-FEAT-116.txt"}
+        update={
+            "log_path": "progress/run-feature-FEAT-116.txt",
+            "telemetry_inputs": _build_iteration_report(
+                tmp_path, result="failed"
+            ).telemetry_inputs.model_copy(
+                update={
+                    "progress_kind": "phase",
+                    "progress_id": "P3",
+                    "progress_title": (
+                        "Move implementation sequencing from subtasks to plan phases"
+                    ),
+                }
+            ),
+        }
     )
     observer = build_console_observer(
         ConsoleObserverDependencies(
-            print_summary=(
-                lambda feature_id, result, failed_gate, attempt, next_action, selected_path, implement_step, log_path, archived_selection_path, verification_status, verification_failed_command, reviewer_status, reviewer_decision, failed_reviewer_id: (
-                    calls.append(
-                        (
-                            str(feature_id),
-                            result,
-                            str(failed_gate),
-                            str(attempt),
-                            next_action,
-                            str(selected_path),
-                            str(implement_step),
-                            str(log_path),
-                            str(archived_selection_path),
-                            str(verification_status),
-                            str(verification_failed_command),
-                            str(reviewer_status),
-                            str(reviewer_decision),
-                            str(failed_reviewer_id),
-                        )
-                    )
-                )
-            ),
-            print_line=printed.append,
+            print_summary=calls.append,
         )
     )
 
     published_report = observer(report)
 
     assert len(calls) == 1
-    assert calls[0][0] == "FEAT-116"
-    assert calls[0][1] == "failed"
-    assert calls[0][7] == "progress/run-feature-FEAT-116.txt"
-    assert printed == ["Detailed log: progress/run-feature-FEAT-116.txt"]
+    assert calls[0].feature_id == "FEAT-116"
+    assert calls[0].result == "failed"
+    assert calls[0].log_path == "progress/run-feature-FEAT-116.txt"
+    assert calls[0].progress_kind == "phase"
+    assert calls[0].progress_id == "P3"
     assert published_report is report
 
 
@@ -156,24 +148,9 @@ def test_default_observers_publish_telemetry_before_console(tmp_path: Path) -> N
     summary_log_paths: list[str | None] = []
     report = _build_iteration_report(tmp_path, result="failed")
 
-    def _record_summary(
-        _feature_id: str | None,
-        _result: str,
-        _failed_gate: str | None,
-        _attempt: int | None,
-        _next_action: str,
-        _selected_path: str | None,
-        _implement_step: str | None,
-        log_path: str | None,
-        _archived_selection_path: str | None,
-        _verification_status: str | None,
-        _verification_failed_command: str | None,
-        _reviewer_status: str | None,
-        _reviewer_decision: str | None,
-        _failed_reviewer_id: str | None,
-    ) -> None:
+    def _record_summary(summary: IterationSummaryInputs) -> None:
         calls.append(("console", "summary"))
-        summary_log_paths.append(log_path)
+        summary_log_paths.append(summary.log_path)
 
     observers = build_default_iteration_report_observers(
         DefaultObserverDependencies(
@@ -185,7 +162,6 @@ def test_default_observers_publish_telemetry_before_console(tmp_path: Path) -> N
             ),
             git_head_resolver=lambda _project_root: "abc1234",
             print_summary=_record_summary,
-            print_line=lambda _message: None,
         )
     )
 

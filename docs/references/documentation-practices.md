@@ -20,7 +20,10 @@ This guide defines who each documentation surface is for, what belongs in it, an
 ## Contributor Documentation Principles
 - `AGENTS.md` is the primary contributor routing map.
 - For in-repo loop command surfaces, document source-first execution forms (`uv run ...`)
+- Point contributors to `uv run engineeringagent approach list` when they need discoverable workflow/reference topics.
 
 ## Ownership and Placement
-- `engineeringagent approach` provides operational reference topics for users and contributors; discover them with `engineeringagent approach list`.
-- Specs under `docs/spec/features/*.yaml` define loop-scoped execution work.
+- `engineeringagent approach` provides operational reference topics for users and contributors; discover them with `uv run engineeringagent approach list`.
+- Feature packages rooted at `docs/spec/features/<feature>/spec.yaml` define loop-scoped execution work.
+- Treat flat `docs/spec/features/*.yaml` files as temporary compatibility wrappers only; they must point to the canonical bundled package instead of becoming a second design source.
+- Keep `spec.yaml` as the canonical feature contract and use bundled `plan.md` phases for implementation sequencing when the planning tier requires a plan artifact.

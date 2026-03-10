@@ -25,6 +25,34 @@ def _write_yaml(path: Path, content: dict[str, object]) -> None:
     )
 
 
+def _write_markdown_frontmatter(path: Path, frontmatter: dict[str, object]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        "---\n"
+        + yaml.safe_dump(frontmatter, sort_keys=False, allow_unicode=False)
+        + "---\n",
+        encoding="utf-8",
+    )
+
+
+def _smoke_plan_frontmatter(command: str) -> dict[str, object]:
+    return {
+        "plan_id": "FEAT-001",
+        "feature_id": "FEAT-001",
+        "status": "backlog",
+        "source_spec": "spec.yaml",
+        "planning_tier": "planned",
+        "phases": [
+            {
+                "id": "P1",
+                "title": "Smoke phase",
+                "status": "backlog",
+                "verification": [command],
+            }
+        ],
+    }
+
+
 def _run_checker(
     project_root: Path,
     *,
@@ -83,7 +111,7 @@ def test_detects_forbidden_uvx_from_dot_in_checks_config(
             "subtasks": [
                 {
                     "id": "ST-001",
-                    "verification": ["uv run python -m engineeringagent.cli validate"],
+                    "verification": ["uv run engineeringagent validate --schema-only"],
                 }
             ],
         },
@@ -111,8 +139,11 @@ def test_detects_forbidden_uvx_from_dot_in_checks_config(
     assert "harness/checks.yaml:checks.fitness_validate.command" in violations[0]
 
 
-def test_allows_uv_run_source_first_forms(tmp_path: Path, repo_root: Path) -> None:
-    """Pass when scoped commands use uv run or direct local workspace execution."""
+def test_detects_legacy_module_form_in_loop_command_surfaces(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Fail when loop command surfaces still use python -m engineeringagent.cli."""
     _write_yaml(
         tmp_path / "docs/spec/features/FEAT-001.yaml",
         {
@@ -120,10 +151,7 @@ def test_allows_uv_run_source_first_forms(tmp_path: Path, repo_root: Path) -> No
             "subtasks": [
                 {
                     "id": "ST-001",
-                    "verification": [
-                        "uv run python -m engineeringagent.cli validate",
-                        ".venv/bin/engineeringagent run --all --dry-run",
-                    ],
+                    "verification": ["uv run python -m engineeringagent.cli validate"],
                 }
             ],
         },
@@ -136,6 +164,400 @@ def test_allows_uv_run_source_first_forms(tmp_path: Path, repo_root: Path) -> No
                 "spec_validate": {
                     "type": "command",
                     "command": "uv run python -m engineeringagent.cli validate",
+                }
+            },
+        },
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 1
+    assert payload["status"] == "fail"
+    violations = payload["violations"]
+    assert isinstance(violations, list)
+    assert len(violations) == 2
+    assert "docs/spec/features/FEAT-001.yaml:subtasks[0].verification[0]" in violations[0]
+    assert "harness/checks.yaml:checks.spec_validate.command" in violations[1]
+    assert "prefer `uv run engineeringagent ...`" in violations[0]
+
+
+def test_detects_forbidden_uvx_from_dot_in_bundled_plan_phase_verification(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Fail when bundled plan phases use uvx --from . engineeringagent."""
+    feature_root = tmp_path / "docs/spec/features/FEAT-181-bundled"
+    _write_yaml(
+        feature_root / "spec.yaml",
+        {
+            "id": "FEAT-181",
+            "title": "Bundled feature",
+            "type": "spec",
+            "expected_commit_subject": "spec: bundled feature",
+            "planning_tier": "planned",
+            "status": "backlog",
+            "priority": "high",
+            "objective": "Exercise bundled verification scanning.",
+            "acceptance": ["Detect bundled plan verification commands."],
+            "artifacts": {"plan": "plan.md"},
+        },
+    )
+    _write_markdown_frontmatter(
+        feature_root / "plan.md",
+        {
+            "plan_id": "FEAT-181",
+            "feature_id": "FEAT-181",
+            "status": "backlog",
+            "source_spec": "spec.yaml",
+            "planning_tier": "planned",
+            "phases": [
+                {
+                    "id": "P1",
+                    "title": "Phase one",
+                    "status": "backlog",
+                    "verification": [
+                        "uvx --from . engineeringagent validate --schema-only"
+                    ],
+                }
+            ],
+        },
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 1
+    assert payload["status"] == "fail"
+    violations = payload["violations"]
+    assert isinstance(violations, list)
+    assert len(violations) == 1
+    assert "docs/spec/features/FEAT-181-bundled/plan.md:phases[0].verification[0]" in (
+        violations[0]
+    )
+
+
+def test_detects_forbidden_uvx_from_dot_in_bundled_declared_plan_artifact(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Fail when bundled specs point at a non-default plan artifact path."""
+    feature_root = tmp_path / "docs/spec/features/FEAT-181-bundled"
+    _write_yaml(
+        feature_root / "spec.yaml",
+        {
+            "id": "FEAT-181",
+            "title": "Bundled feature",
+            "type": "spec",
+            "expected_commit_subject": "spec: bundled feature",
+            "planning_tier": "planned",
+            "status": "backlog",
+            "priority": "high",
+            "objective": "Exercise bundled verification scanning.",
+            "acceptance": ["Detect declared bundled plan verification commands."],
+            "artifacts": {"plan": "planning/active-plan.md"},
+        },
+    )
+    _write_markdown_frontmatter(
+        feature_root / "planning/active-plan.md",
+        {
+            "plan_id": "FEAT-181",
+            "feature_id": "FEAT-181",
+            "status": "backlog",
+            "source_spec": "spec.yaml",
+            "planning_tier": "planned",
+            "phases": [
+                {
+                    "id": "P1",
+                    "title": "Phase one",
+                    "status": "backlog",
+                    "verification": [
+                        "uvx --from . engineeringagent validate --schema-only"
+                    ],
+                }
+            ],
+        },
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 1
+    assert payload["status"] == "fail"
+    violations = payload["violations"]
+    assert isinstance(violations, list)
+    assert len(violations) == 1
+    assert (
+        "docs/spec/features/FEAT-181-bundled/planning/active-plan.md:phases[0].verification[0]"
+        in violations[0]
+    )
+
+
+def test_detects_forbidden_uvx_from_dot_in_smoke_plan_template(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Fail when the real-opencode smoke plan template regresses to uvx --from ."""
+    _write_markdown_frontmatter(
+        tmp_path / "docs/fixtures/real_opencode_hello_world_plan_template.md",
+        _smoke_plan_frontmatter("uvx --from . engineeringagent validate --schema-only"),
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 1
+    assert payload["status"] == "fail"
+    violations = payload["violations"]
+    assert isinstance(violations, list)
+    assert len(violations) == 1
+    assert "docs/fixtures/real_opencode_hello_world_plan_template.md:phases[0].verification[0]" in (
+        violations[0]
+    )
+
+
+def test_detects_forbidden_uvx_from_dot_in_bundled_plan_format_example(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Fail when the bundled plan-format example regresses to uvx --from ."""
+    _write_markdown_frontmatter(
+        tmp_path
+        / "docs/spec/features_done/FEAT-181-bundled-feature-planning-workflow/supporting/plan-format-example.md",
+        _smoke_plan_frontmatter("uvx --from . engineeringagent validate --schema-only"),
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 1
+    assert payload["status"] == "fail"
+    violations = payload["violations"]
+    assert isinstance(violations, list)
+    assert len(violations) == 1
+    assert (
+        "docs/spec/features_done/FEAT-181-bundled-feature-planning-workflow/supporting/plan-format-example.md:phases[0].verification[0]"
+        in violations[0]
+    )
+
+
+def test_detects_forbidden_uvx_from_dot_in_plan_session_approach_doc(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Fail when bundled plan-session guidance regresses to uvx --from ."""
+    path = (
+        tmp_path
+        / "docs/spec/features_done/FEAT-181-bundled-feature-planning-workflow/supporting/plan-session-approach.md"
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        "\n".join(
+            [
+                "---",
+                "approach_id: plan-session",
+                "description: Task-specific: only when creating plan.md.",
+                "---",
+                "",
+                "# Plan Session Approach",
+                "",
+                "- `uvx --from . engineeringagent validate --schema-only`",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 1
+    assert payload["status"] == "fail"
+    violations = payload["violations"]
+    assert isinstance(violations, list)
+    assert len(violations) == 1
+    assert (
+        "docs/spec/features_done/FEAT-181-bundled-feature-planning-workflow/supporting/plan-session-approach.md:line 8"
+        in violations[0]
+    )
+
+
+def test_detects_forbidden_uvx_from_dot_in_research_session_approach_doc(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Fail when bundled research-session guidance regresses to uvx --from ."""
+    path = (
+        tmp_path
+        / "docs/spec/features_done/FEAT-181-bundled-feature-planning-workflow/supporting/research-session-approach.md"
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        "\n".join(
+            [
+                "---",
+                "approach_id: research-session",
+                "description: Task-specific: only when creating research.md.",
+                "---",
+                "",
+                "# Research Session Approach",
+                "",
+                "- `uvx --from . engineeringagent validate --schema-only`",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 1
+    assert payload["status"] == "fail"
+    violations = payload["violations"]
+    assert isinstance(violations, list)
+    assert len(violations) == 1
+    assert (
+        "docs/spec/features_done/FEAT-181-bundled-feature-planning-workflow/supporting/research-session-approach.md:line 8"
+        in violations[0]
+    )
+
+
+def test_detects_forbidden_uvx_from_dot_in_workflow_approach_doc(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Fail when contributor workflow guidance regresses to uvx --from ."""
+    path = tmp_path / "src/engineeringagent/approach/docs/workflow.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        "\n".join(
+            [
+                "---",
+                "approach_id: workflow",
+                "---",
+                "",
+                "# Workflow",
+                "",
+                "Run the loop with: `uvx --from . engineeringagent run --all`",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 1
+    assert payload["status"] == "fail"
+    violations = payload["violations"]
+    assert isinstance(violations, list)
+    assert len(violations) == 1
+    assert "src/engineeringagent/approach/docs/workflow.md:line 7" in violations[0]
+
+
+def test_detects_forbidden_uvx_from_dot_in_loop_implementation_prompt_template(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Fail when the loop implementation prompt regresses to uvx --from ."""
+    path = (
+        tmp_path
+        / "src/engineeringagent/prompts/templates/loop_implementation.md"
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        "\n".join(
+            [
+                "Study this specification from disk: $feature_path.",
+                "",
+                "Validate with: `uvx --from . engineeringagent validate --schema-only`.",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 1
+    assert payload["status"] == "fail"
+    violations = payload["violations"]
+    assert isinstance(violations, list)
+    assert len(violations) == 1
+    assert "src/engineeringagent/prompts/templates/loop_implementation.md:line 3" in (
+        violations[0]
+    )
+
+
+def test_smoke_plan_template_fixtures_use_bundled_status_vocabulary() -> None:
+    smoke_failure_frontmatter = _smoke_plan_frontmatter(
+        "uvx --from . engineeringagent validate --schema-only"
+    )
+    smoke_success_frontmatter = _smoke_plan_frontmatter(
+        "uv run engineeringagent validate --schema-only"
+    )
+
+    for frontmatter in (smoke_failure_frontmatter, smoke_success_frontmatter):
+        assert frontmatter["status"] in {"backlog", "in_progress", "done", "blocked"}
+        phases = frontmatter["phases"]
+        assert isinstance(phases, list)
+        assert phases[0]["status"] in {"backlog", "in_progress", "done", "blocked"}
+
+
+def test_allows_uv_run_source_first_forms(tmp_path: Path, repo_root: Path) -> None:
+    """Pass when scoped commands use uv run or direct local workspace execution."""
+    _write_yaml(
+        tmp_path / "docs/spec/features/FEAT-001.yaml",
+        {
+            "id": "FEAT-001",
+            "subtasks": [
+                {
+                    "id": "ST-001",
+                    "verification": [
+                        "uv run engineeringagent validate --schema-only",
+                        ".venv/bin/engineeringagent run --all --dry-run",
+                    ],
+                }
+            ],
+        },
+    )
+    _write_yaml(
+        tmp_path / "docs/spec/features/FEAT-181-bundled/spec.yaml",
+        {
+            "id": "FEAT-181",
+            "title": "Bundled feature",
+            "type": "spec",
+            "expected_commit_subject": "spec: bundled feature",
+            "planning_tier": "planned",
+            "status": "backlog",
+            "priority": "high",
+            "objective": "Exercise bundled verification scanning.",
+            "acceptance": ["Allow bundled source-first verification commands."],
+            "artifacts": {"plan": "plan.md"},
+        },
+    )
+    _write_markdown_frontmatter(
+        tmp_path / "docs/spec/features/FEAT-181-bundled/plan.md",
+        {
+            "plan_id": "FEAT-181",
+            "feature_id": "FEAT-181",
+            "status": "backlog",
+            "source_spec": "spec.yaml",
+            "planning_tier": "planned",
+            "phases": [
+                {
+                    "id": "P1",
+                    "title": "Phase one",
+                    "status": "backlog",
+                    "verification": [
+                        "uv run engineeringagent validate --schema-only",
+                    ],
+                }
+            ],
+        },
+    )
+    _write_yaml(
+        tmp_path / "harness/checks.yaml",
+        {
+            "contract_version": "1.0",
+            "checks": {
+                "spec_validate": {
+                    "type": "command",
+                    "command": "uv run engineeringagent validate --schema-only",
                 },
                 "fitness_validate": {
                     "type": "command",
@@ -143,6 +565,24 @@ def test_allows_uv_run_source_first_forms(tmp_path: Path, repo_root: Path) -> No
                 },
             },
         },
+    )
+    _write_markdown_frontmatter(
+        tmp_path / "docs/fixtures/real_opencode_hello_world_plan_template.md",
+        _smoke_plan_frontmatter("uv run engineeringagent validate --schema-only"),
+    )
+    prompt_template_path = (
+        tmp_path / "src/engineeringagent/prompts/templates/loop_implementation.md"
+    )
+    prompt_template_path.parent.mkdir(parents=True, exist_ok=True)
+    prompt_template_path.write_text(
+        "Validate with: `uv run engineeringagent validate --schema-only`.\n",
+        encoding="utf-8",
+    )
+    workflow_doc_path = tmp_path / "src/engineeringagent/approach/docs/workflow.md"
+    workflow_doc_path.parent.mkdir(parents=True, exist_ok=True)
+    workflow_doc_path.write_text(
+        "Run the loop with: `uv run engineeringagent run --all`\n",
+        encoding="utf-8",
     )
 
     proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))

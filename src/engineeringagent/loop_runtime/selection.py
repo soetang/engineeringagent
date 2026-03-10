@@ -43,25 +43,61 @@ def parse_selector_output(
     if not text:
         return None
 
-    path_strings = {str(path): path for path, _ in pending}
-    for path_str, path in path_strings.items():
-        if path_str in text:
-            return path
+    matched_path = _match_selector_path_fragment(text, pending)
+    if matched_path is not None:
+        return matched_path
 
+    token_indexes = _build_selector_token_indexes(pending)
+    tokens = _selector_tokens(text)
+    for token in tokens:
+        matched_path = _unique_index_match(token_indexes, token)
+        if matched_path is not None:
+            return matched_path
+    return None
+
+
+def _match_selector_path_fragment(
+    text: str,
+    pending: Sequence[tuple[Path, dict[str, Any]]],
+) -> Path | None:
+    for path, _feature in pending:
+        if str(path) in text:
+            return path
+    return None
+
+
+def _build_selector_token_indexes(
+    pending: Sequence[tuple[Path, dict[str, Any]]],
+) -> dict[str, dict[str, list[Path]]]:
     by_name: dict[str, list[Path]] = {}
+    by_parent_name: dict[str, list[Path]] = {}
     by_id: dict[str, list[Path]] = {}
     for path, feature in pending:
         by_name.setdefault(path.name, []).append(path)
+        if path.name == "spec.yaml":
+            by_parent_name.setdefault(path.parent.name, []).append(path)
         feature_id = str(feature.get("id", "")).strip()
         if feature_id:
             by_id.setdefault(feature_id, []).append(path)
+    return {
+        "by_name": by_name,
+        "by_parent_name": by_parent_name,
+        "by_id": by_id,
+    }
 
-    tokens = [token.strip("`'\" ,") for token in text.replace("\n", " ").split(" ")]
-    for token in tokens:
-        if token in by_name and len(by_name[token]) == 1:
-            return by_name[token][0]
-        if token in by_id and len(by_id[token]) == 1:
-            return by_id[token][0]
+
+def _selector_tokens(text: str) -> list[str]:
+    return [token.strip("`'\" ,") for token in text.replace("\n", " ").split(" ")]
+
+
+def _unique_index_match(
+    token_indexes: dict[str, dict[str, list[Path]]],
+    token: str,
+) -> Path | None:
+    for index_name in ("by_name", "by_parent_name", "by_id"):
+        matches = token_indexes[index_name].get(token, [])
+        if len(matches) == 1:
+            return matches[0]
     return None
 
 

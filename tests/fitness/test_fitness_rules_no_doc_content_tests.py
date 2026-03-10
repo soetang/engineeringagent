@@ -104,6 +104,36 @@ def test_checker_flags_wrapper_helper_calls_with_variable_doc_paths(
     assert any("docs/guide.md" in violation for violation in violations)
 
 
+def test_checker_flags_direct_readme_read_text_calls(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Flag direct README.md reads inside pytest coverage."""
+    _write_test_module(
+        tmp_path,
+        relative_path="tests/test_readme_content_violation.py",
+        content="\n".join(
+            [
+                "from __future__ import annotations",
+                "",
+                "from pathlib import Path",
+                "",
+                "def test_reads_readme(repo_root: Path) -> None:",
+                '    readme_path = repo_root / "README.md"',
+                '    _ = readme_path.read_text(encoding="utf-8")',
+                "",
+            ]
+        ),
+    )
+
+    proc, result = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+    violations = _violations(result)
+
+    assert proc.returncode == 0
+    assert result["status"] == "fail"
+    assert any("README.md" in violation for violation in violations)
+
+
 def test_checker_allows_generated_rules_markdown_sync_reads(
     tmp_path: Path,
     repo_root: Path,

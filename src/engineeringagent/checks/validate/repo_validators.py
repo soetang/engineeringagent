@@ -10,9 +10,12 @@ from pydantic import BaseModel, ConfigDict
 from engineeringagent.specs import (
     ValidationIssue,
     feature_contract_issues,
+    feature_storage_root,
     iter_feature_files,
     load_yaml,
+    load_markdown_frontmatter,
     potential_features_contract_issues,
+    resolve_feature_plan_path,
 )
 from engineeringagent.checks.validate.contracts import (
     ValidationContext,
@@ -252,26 +255,63 @@ def _append_multiline_verification_command_issues(
     file_path: Path,
 ) -> None:
     subtasks = feature.get("subtasks")
-    if not isinstance(subtasks, list):
+    if isinstance(subtasks, list):
+        for subtask_index, subtask in enumerate(subtasks):
+            if not isinstance(subtask, dict):
+                continue
+            verification = subtask.get("verification")
+            _append_multiline_command_messages(
+                messages,
+                verification=verification,
+                file_path=file_path,
+                field_path=f"subtasks[{subtask_index}].verification",
+            )
+
+    plan_path = resolve_feature_plan_path(file_path, feature)
+    if plan_path is None or not plan_path.is_file():
         return
 
-    for subtask_index, subtask in enumerate(subtasks):
-        if not isinstance(subtask, dict):
+    try:
+        frontmatter = load_markdown_frontmatter(plan_path)
+    except (OSError, ValueError, yaml.YAMLError):
+        return
+    if not isinstance(frontmatter, dict):
+        return
+
+    phases = frontmatter.get("phases")
+    if not isinstance(phases, list):
+        return
+    for phase_index, phase in enumerate(phases):
+        if not isinstance(phase, dict):
             continue
-        verification = subtask.get("verification")
-        if not isinstance(verification, list):
+        verification = phase.get("verification")
+        _append_multiline_command_messages(
+            messages,
+            verification=verification,
+            file_path=plan_path,
+            field_path=f"phases[{phase_index}].verification",
+        )
+
+
+def _append_multiline_command_messages(
+    messages: list[str],
+    *,
+    verification: object,
+    file_path: Path,
+    field_path: str,
+) -> None:
+    if not isinstance(verification, list):
+        return
+
+    for verify_index, command in enumerate(verification):
+        if not isinstance(command, str):
+            continue
+        if "\n" not in command and "\r" not in command:
             continue
 
-        for verify_index, command in enumerate(verification):
-            if not isinstance(command, str):
-                continue
-            if "\n" not in command and "\r" not in command:
-                continue
-
-            field_path = f"subtasks[{subtask_index}].verification[{verify_index}]"
-            messages.append(
-                f"{file_path}:{field_path}: verification commands must be single-line strings (no \\n or \\r); "
-                "remediation: rewrite the command as a one-liner (e.g. wrap with `bash -lc ...`)"
+        messages.append(
+            f"{file_path}:{field_path}[{verify_index}]: verification commands must be single-line strings (no \\n or \\r); "
+            "remediation: rewrite the command as a one-liner (e.g. wrap with `bash -lc ...`)"
             )
 
 
@@ -350,8 +390,12 @@ def _append_done_archival_policy_issue(
     if feature.get("status") != "done":
         return
 
-    feature_name = file_path.name
-    expected_archive_path = archival_context.features_done_dir / feature_name
+    storage_root = feature_storage_root(file_path)
+    if storage_root == file_path:
+        expected_archive_path = archival_context.features_done_dir / file_path.name
+    else:
+        expected_archive_path = archival_context.features_done_dir / storage_root.name
+        expected_archive_path = expected_archive_path / file_path.name
     messages.append(
         f"{file_path}:status: completed feature specs must be archived under "
         f"{expected_archive_path.relative_to(archival_context.project_root)}; move this file there"

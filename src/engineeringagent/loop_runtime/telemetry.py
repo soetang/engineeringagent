@@ -163,7 +163,9 @@ def write_iteration_telemetry(  # noqa: C901
     run_payload: dict[str, Any] = {
         "ts": progress_handoff.now_iso(),
         "feature_id": telemetry_inputs.feature_id,
-        "subtask_id": None,
+        "progress_kind": telemetry_inputs.progress_kind,
+        "progress_id": telemetry_inputs.progress_id,
+        "progress_title": telemetry_inputs.progress_title,
         "result": telemetry_inputs.result,
         "failed_gate": telemetry_inputs.failed_gate,
         "verification_status": telemetry_inputs.verification_status,
@@ -205,6 +207,9 @@ def write_iteration_telemetry(  # noqa: C901
         "reviewer_feedback="
         f"{'present' if reviewer_feedback_present else 'absent'}"
         f" summary={reviewer_feedback_summary or '-'}",
+        "progress="
+        f"{telemetry_inputs.progress_kind or '-'}:{telemetry_inputs.progress_id or '-'} "
+        f"title={telemetry_inputs.progress_title or '-'}",
         "result="
         f"{run_payload.get('result')} failed_gate={run_payload.get('failed_gate') or '-'} "
         f"next_action={run_payload.get('next_action')}",
@@ -295,15 +300,24 @@ def _append_feature_handoff_markdown(
 ) -> None:
     envelope = telemetry_inputs.implement_handoff_envelope
     used_fallback = telemetry_inputs.implement_handoff_used_fallback
-    if envelope is None:
-        envelope = progress_handoff.fallback_implement_progress_envelope()
+    if envelope is None or used_fallback:
+        envelope = progress_handoff.fallback_implement_progress_envelope(
+            progress_kind=telemetry_inputs.progress_kind,
+            progress_id=telemetry_inputs.progress_id,
+            progress_title=telemetry_inputs.progress_title,
+        )
         used_fallback = True
 
     entry_lines = progress_handoff.render_handoff_markdown_entry(
         attempt=telemetry_inputs.iteration_inputs.attempt,
         envelope=envelope,
-        timestamp=timestamp,
-        used_fallback=used_fallback,
+        metadata=progress_handoff.HandoffRenderMetadata(
+            timestamp=timestamp,
+            used_fallback=used_fallback,
+            progress_kind=telemetry_inputs.progress_kind,
+            progress_id=telemetry_inputs.progress_id,
+            progress_title=telemetry_inputs.progress_title,
+        ),
     )
     progress_handoff.append_handoff_markdown_entry(
         handoff_path=progress_paths.handoff_markdown_path(project_root, feature_id),

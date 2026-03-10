@@ -3,7 +3,7 @@ title: Bundle per-feature planning artifacts with canonical spec ownership
 type: spec
 expected_commit_subject: "spec: add FEAT-181 bundled feature planning workflow"
 planning_tier: researched
-status: backlog
+status: done
 priority: high
 objective: >
   Replace the flat active-spec layout with bundled per-feature folders where
@@ -93,3 +93,4 @@ artifacts:
     - supporting/plan-session-approach.md
     - supporting/spec-format-example.yaml
     - supporting/plan-format-example.md
+updated_at: "2026-03-10T06:15:41Z"

@@ -59,8 +59,13 @@ checks:
       phase: feature_done
       on_change:
         - "src/**/*.py"
+        - "src/engineeringagent/approach/docs/*.md"
         - "tests/**/*.py"
         - "harness/**/*.py"
+        - "harness/**/*.md"
+        - "docs/fixtures/**/*.md"
         - "docs/spec/features/*.yaml"
+        - "docs/spec/features/**/*.yaml"
+        - "docs/spec/features/**/*.md"
     approval:
       first_feature_approval: true

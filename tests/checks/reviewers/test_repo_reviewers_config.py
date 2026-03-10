@@ -28,5 +28,18 @@ def test_repo_reviewers_config_excludes_removed_onboarding_reviewer(
     assert checks["test_reviewer"]["when"]["phase"] == "feature_done"
     assert checks["test_reviewer"]["when"]["on_change"] == ["tests/**/*.py"]
 
-
+    assert "intent_integrity_reviewer" in checks
+    assert checks["intent_integrity_reviewer"]["type"] == "reviewer"
+    assert checks["intent_integrity_reviewer"]["when"]["phase"] == "feature_done"
+    assert checks["intent_integrity_reviewer"]["when"]["on_change"] == [
+        "src/**/*.py",
+        "src/engineeringagent/approach/docs/*.md",
+        "tests/**/*.py",
+        "harness/**/*.py",
+        "harness/**/*.md",
+        "docs/fixtures/**/*.md",
+        "docs/spec/features/*.yaml",
+        "docs/spec/features/**/*.yaml",
+        "docs/spec/features/**/*.md",
+    ]
 

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import Literal
 
@@ -10,8 +9,6 @@ import typer
 
 from .. import checks as checks_module
 from ..init_scaffold import AGENTS_LAUNCHER_CHOICES, DEFAULT_AGENT_MODEL
-from ..progress import paths as progress_paths
-
 _HandlerArgs = SimpleNamespace
 HarnessCheckPhase = checks_module.HarnessCheckPhase
 
@@ -156,62 +153,6 @@ def _build_typer_checks_app(command_module: ModuleType) -> typer.Typer:
     return checks_app
 
 
-def _build_typer_progress_app(command_module: ModuleType) -> typer.Typer:
-    """Build manual progress helper commands."""
-    progress_app = typer.Typer(
-        help="manual progress artifact helpers",
-        add_completion=False,
-        no_args_is_help=False,
-    )
-    handoff_reference = progress_paths.handoff_markdown_template_reference(Path("."))
-
-    @progress_app.command(
-        "handoff-append",
-        help="append one feature handoff markdown entry from JSON stdin",
-    )
-    def _progress_handoff_append(
-        ctx: typer.Context,
-        feature_id: str = typer.Option(
-            ...,
-            "--feature-id",
-            help=f"feature id used for {handoff_reference}",
-        ),
-        attempt: int = typer.Option(
-            ..., "--attempt", min=1, help="iteration attempt number for heading"
-        ),
-        timestamp: str | None = typer.Option(
-            None,
-            "--timestamp",
-            help="optional ISO-8601 timestamp override (defaults to current UTC)",
-        ),
-    ) -> None:
-        _exit_with_handler_code(
-            command_module.cmd_progress_handoff_append,
-            ctx=ctx,
-            feature_id=feature_id,
-            attempt=attempt,
-            timestamp=timestamp,
-        )
-
-    @progress_app.command(
-        "feature-prune",
-        help="delete one feature-scoped progress directory",
-    )
-    def _progress_feature_prune(
-        ctx: typer.Context,
-        feature_id: str = typer.Option(
-            ..., "--feature-id", help="feature id under .engineeringagent/progress/features"
-        ),
-    ) -> None:
-        _exit_with_handler_code(
-            command_module.cmd_progress_feature_prune,
-            ctx=ctx,
-            feature_id=feature_id,
-        )
-
-    return progress_app
-
-
 def _dispatch_approach_command(
     command_module: ModuleType,
     *,
@@ -308,15 +249,18 @@ def build_typer_app(command_module: ModuleType) -> typer.Typer:
 
     @app.command(
         "run",
-        help="run feature loops from spec file paths",
+        help="run feature loops from bundled spec.yaml entrypoint paths",
     )
     def _run_command(
         ctx: typer.Context,
-        feature_paths: list[str] = typer.Argument(None, help="feature spec file paths"),
+        feature_paths: list[str] = typer.Argument(
+            None,
+            help="feature spec.yaml entrypoint paths",
+        ),
         run_all: bool = typer.Option(
             False,
             "--all",
-            help="auto-discover active feature specs under docs/spec/features",
+            help="auto-discover active feature entrypoints under docs/spec/features",
         ),
         dry_run: bool = typer.Option(False, "--dry-run"),
         max_iterations: int = typer.Option(
@@ -351,12 +295,6 @@ def build_typer_app(command_module: ModuleType) -> typer.Typer:
         name="checks",
         help="run repo-owned checks from repository configuration",
     )
-    app.add_typer(
-        _build_typer_progress_app(command_module),
-        name="progress",
-        help="manual progress artifact helpers",
-    )
-
     @app.command(
         "approach",
         help="open packaged approach guidance",

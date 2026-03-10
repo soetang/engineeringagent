@@ -60,7 +60,6 @@ def test_cli_surface_inventory_commands() -> None:
         "approach",
         "schema",
         "checks",
-        "progress",
         "init",
         "--project-root",
         "--version",
@@ -102,14 +101,6 @@ def test_cli_surface_inventory_option_spellings() -> None:
             ["--manifest-path", "--format", "--output"],
         ),
         (
-            ["progress", "handoff-append", "--help"],
-            ["--feature-id", "--attempt", "--timestamp"],
-        ),
-        (
-            ["progress", "feature-prune", "--help"],
-            ["--feature-id"],
-        ),
-        (
             ["init", "--help"],
             ["--force", "--scaffold-profile", "--docs-mode", "--scaffold-docs-dir"],
         ),
@@ -133,6 +124,24 @@ def test_run_help_does_not_advertise_implement_command() -> None:
     assert removed_skip_flag not in stdout
     assert "skip implementation and run gates only" not in stdout
     assert "skip the implementation command" not in stdout
+
+
+def test_run_help_describes_bundled_feature_entrypoints() -> None:
+    result = _invoke_cli(["run", "--help"])
+    normalized_output = " ".join(result.stdout.split())
+
+    assert result.exit_code == 0
+    assert (
+        "run feature loops from bundled spec.yaml entrypoint paths"
+        in normalized_output
+    )
+    assert "feature spec.yaml entrypoint paths" in normalized_output
+    assert "auto-discover active feature entrypoints" in normalized_output
+    assert "under docs/spec/features" in normalized_output
+    assert (
+        "auto-discover active feature specs under docs/spec/features"
+        not in normalized_output
+    )
 
 
 def test_run_rejects_removed_skip_flag() -> None:
@@ -468,7 +477,7 @@ def test_main_approach_root_command_renders_overview_via_real_cli(tmp_path: Path
     assert frontmatter.get("approach_id") == "overview"
 
 
-def test_main_approach_topic_command_renders_topic_via_real_cli(tmp_path: Path) -> None:
+def test_main_approach_show_command_renders_topic_via_real_cli(tmp_path: Path) -> None:
     output_path = tmp_path / "artifacts" / "approach-topic.md"
     result = _invoke_cli(
         [
@@ -484,8 +493,8 @@ def test_main_approach_topic_command_renders_topic_via_real_cli(tmp_path: Path) 
     assert result.exit_code == 0
     assert result.stdout == "approach topic written: artifacts/approach-topic.md\n"
     rendered = output_path.read_text(encoding="utf-8")
-    frontmatter = _frontmatter_from_markdown(rendered)
-    assert frontmatter.get("approach_id") == "principles"
+    assert rendered.startswith("# Harness Engineering Principles")
+    assert not rendered.startswith("---\n")
 
 
 def test_main_approach_list_command_renders_via_real_cli(tmp_path: Path) -> None:
@@ -503,8 +512,10 @@ def test_main_approach_list_command_renders_via_real_cli(tmp_path: Path) -> None
 
     assert result.exit_code == 0
     assert result.stdout == "approach list written: artifacts/approach-list.md\n"
-    rendered = output_path.read_text(encoding="utf-8").splitlines()
-    assert _parse_approach_topic_ids("\n".join(rendered)) == APPROACH_TOPIC_IDS
+    rendered = output_path.read_text(encoding="utf-8")
+    assert _parse_approach_topic_ids(rendered) == APPROACH_TOPIC_IDS
+    assert "research-session: Research Session Approach - Task-specific: only when creating research.md." in rendered
+    assert "plan-session: Plan Session Approach - Task-specific: only when creating plan.md." in rendered
 
 
 def test_main_approach_commands_render_expected_markdown() -> None:
@@ -518,10 +529,33 @@ def test_main_approach_commands_render_expected_markdown() -> None:
 
     assert _parse_approach_topic_ids(topic_list.stdout) == APPROACH_TOPIC_IDS
     overview_frontmatter = _frontmatter_from_markdown(overview.stdout)
-    topic_frontmatter = _frontmatter_from_markdown(topic_page.stdout)
 
     assert overview_frontmatter.get("approach_id") == "overview"
-    assert topic_frontmatter.get("approach_id") == "specifications"
+    assert topic_page.stdout.startswith("# Spec Writing Guide")
+    assert not topic_page.stdout.startswith("---\n")
+
+
+def test_approach_docs_render_source_first_command_examples() -> None:
+    overview = _invoke_cli(["approach"])
+    specifications = _invoke_cli(["approach", "specifications"])
+
+    assert overview.exit_code == 0
+    assert specifications.exit_code == 0
+    assert "`uv run engineeringagent approach`" in overview.stdout
+    assert "`uv run engineeringagent approach list`" in overview.stdout
+    assert "`uv run engineeringagent approach <topic_id>`" in overview.stdout
+    assert "`uv run engineeringagent schema feature.spec --format yaml`" in (
+        specifications.stdout
+    )
+    assert "`uv run engineeringagent schema list`" in specifications.stdout
+    assert "`uv run engineeringagent validate --schema-only`" in specifications.stdout
+
+
+def test_local_approach_bootstrap_fixture_uses_repo_local_command_examples() -> None:
+    bootstrap = Path("docs/fixtures/approach_bootstrap.md").read_text(encoding="utf-8")
+
+    assert "`uv run engineeringagent ...`" in bootstrap
+    assert "`uvx engineeringagent ...`" not in bootstrap
 
 
 def test_main_unknown_approach_topic_is_helpful() -> None:
@@ -577,93 +611,92 @@ def test_cmd_run_builds_looprun_context_for_loop_entrypoint(
     )
 
 
-def test_progress_handoff_append_reads_json_stdin_and_appends_markdown(
+def test_cmd_run_builds_looprun_context_for_run_all_entrypoint(
     tmp_path: Path,
+    monkeypatch: Any,
 ) -> None:
-    payload = {
-        "summary": "Iteration completed.",
-        "completed_work": ["Implemented CLI append command"],
-        "verification": ["uv run pytest -q tests/cli/test_cli.py -k progress"],
-        "remaining_work": ["Add docs updates"],
+    captured: dict[str, object] = {}
+
+    def _fake_load_checks_document(
+        project_root: Path,
+        *,
+        error_prefix: str,
+        missing_context: str,
+    ) -> tuple[dict[str, object], None]:
+        captured["checks_request"] = {
+            "project_root": project_root,
+            "error_prefix": error_prefix,
+            "missing_context": missing_context,
+        }
+        return {"checks": {}}, None
+
+    def _fake_run_loop(loop_run: LoopRun) -> int:
+        captured["loop_run"] = loop_run
+        return 9
+
+    monkeypatch.setattr(
+        cli_run_module.checks_module,
+        "load_harness_checks_document",
+        _fake_load_checks_document,
+    )
+    monkeypatch.setattr(cli_run_module, "run_loop_controller", _fake_run_loop)
+
+    exit_code = cli_module.cmd_run(
+        SimpleNamespace(
+            project_root=str(tmp_path),
+            feature_paths=[],
+            run_all=True,
+            dry_run=True,
+            max_iterations=5,
+            allow_dirty=False,
+            verbose_output=False,
+        )
+    )
+
+    assert exit_code == 9
+    assert captured["checks_request"] == {
+        "project_root": tmp_path.resolve(),
+        "error_prefix": "run config error",
+        "missing_context": " (required for --all)",
     }
-
-    runner = CliRunner(mix_stderr=False)
-    result = runner.invoke(
-        cli_module.build_typer_app(),
-        [
-            "--project-root",
-            str(tmp_path),
-            "progress",
-            "handoff-append",
-            "--feature-id",
-            "FEAT-130",
-            "--attempt",
-            "6",
-            "--timestamp",
-            "2026-02-25T07:00:00Z",
-        ],
-        input=json.dumps(payload),
+    loop_run = captured["loop_run"]
+    assert isinstance(loop_run, LoopRun)
+    assert loop_run.config == RunConfig(
+        project_root=tmp_path.resolve(),
+        feature_paths=(),
+        dry_run=True,
+        run_all=True,
+        max_iterations=5,
+        allow_dirty=False,
+        verbose_output=False,
     )
+
+
+def test_progress_commands_are_not_listed_in_root_help() -> None:
+    result = _invoke_cli(["--help"])
 
     assert result.exit_code == 0
-    assert "fallback=false" in result.stdout
-    handoff_path = (
-        tmp_path / ".engineeringagent" / "progress" / "features" / "FEAT-130" / "handoff.md"
-    )
-    assert handoff_path.exists()
+    assert "progress" not in result.stdout
 
 
-def test_progress_handoff_append_uses_fallback_for_invalid_json(
-    tmp_path: Path,
+@pytest.mark.parametrize(
+    ("args", "expected_token"),
+    [
+        (["progress", "--help"], "No such command"),
+        (["progress", "handoff-append"], "No such command"),
+        (["progress", "feature-prune"], "No such command"),
+    ],
+)
+def test_progress_commands_are_rejected(
+    args: list[str],
+    expected_token: str,
 ) -> None:
-    runner = CliRunner(mix_stderr=False)
-    result = runner.invoke(
-        cli_module.build_typer_app(),
-        [
-            "--project-root",
-            str(tmp_path),
-            "progress",
-            "handoff-append",
-            "--feature-id",
-            "FEAT-130",
-            "--attempt",
-            "6",
-        ],
-        input="{bad-json",
-    )
+    result = _invoke_cli(args)
 
-    assert result.exit_code == 0
-    assert "fallback=true" in result.stdout
-    assert (
-        tmp_path / ".engineeringagent" / "progress" / "features" / "FEAT-130" / "handoff.md"
-    ).exists()
-
-
-def test_progress_feature_prune_removes_feature_progress_directory(
-    tmp_path: Path,
-) -> None:
-    feature_dir = (
-        tmp_path / ".engineeringagent" / "progress" / "features" / "FEAT-130"
-    )
-    feature_dir.mkdir(parents=True, exist_ok=True)
-    (feature_dir / "run.txt").write_text("log\n", encoding="utf-8")
-
-    runner = CliRunner(mix_stderr=False)
-    result = runner.invoke(
-        cli_module.build_typer_app(),
-        [
-            "--project-root",
-            str(tmp_path),
-            "progress",
-            "feature-prune",
-            "--feature-id",
-            "FEAT-130",
-        ],
-    )
-
-    assert result.exit_code == 0
-    assert "removed path=.engineeringagent/progress/features/FEAT-130" in result.stdout
-    assert not feature_dir.exists()
+    assert result.exit_code != 0
+    combined_output = (result.stderr or "") + (result.stdout or "")
+    assert expected_token in combined_output
+    assert "progress" in combined_output
 
 
 def test_main_init_command_uses_typer_handler(monkeypatch: Any, tmp_path: Path) -> None:

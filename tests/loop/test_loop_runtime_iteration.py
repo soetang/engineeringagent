@@ -31,8 +31,16 @@ from engineeringagent.loop_runtime.phases import (
     GatePhaseDependencies,
     ReviewerPhaseDependencies,
 )
+from engineeringagent.loop_runtime.feature_state import (
+    archive_completed_feature,
+    restore_archived_feature,
+)
 from engineeringagent.changed_paths import ChangedPathsResult
 from engineeringagent.progress.handoff import fallback_implement_progress_envelope
+from tests.loop.feature_iteration_support import (
+    base_feature,
+    make_bundled_project_root,
+)
 
 
 def _passing_implement_result(output: str = "") -> ImplementStepResult:
@@ -208,6 +216,1035 @@ def test_iteration_pipeline_carries_passed_reviewer_feedback_to_continue(
     assert report.completed is False
     assert report.next_action == "continue_same_feature"
     assert report.feedback == reviewer_feedback
+
+
+def test_iteration_pipeline_tracks_bundled_plan_phase_progress_metadata(
+    tmp_path: Path,
+) -> None:
+    feature_data = {
+        **base_feature(status="in_progress"),
+        "planning_tier": "planned",
+        "artifacts": {"plan": "plan.md"},
+    }
+    feature_data.pop("subtasks", None)
+    project_root, feature_path, _plan_path = make_bundled_project_root(
+        tmp_path,
+        feature_data=feature_data,
+        plan_frontmatter={
+            "plan_id": "FEAT-900",
+            "feature_id": "FEAT-900",
+            "status": "in_progress",
+            "source_spec": "spec.yaml",
+            "planning_tier": "planned",
+            "phases": [
+                {
+                    "id": "P1",
+                    "title": "Completed setup",
+                    "status": "done",
+                },
+                {
+                    "id": "P2",
+                    "title": "Track bundled phase progress",
+                    "status": "in_progress",
+                },
+            ],
+        },
+    )
+    iteration_inputs = FeatureIterationInputs(
+        project_root=project_root,
+        feature_path=feature_path,
+        attempt=1,
+        feedback=None,
+        verbose_output=False,
+    )
+
+    report = run_feature_iteration_pipeline(
+        iteration_inputs,
+        IterationPipelineDependencies(
+            evaluate_initial_feature_load=(
+                lambda _path: InitialFeatureLoadOutcome(
+                    feature=feature_data,
+                    result="passed",
+                    failed_gate=None,
+                    feedback=None,
+                )
+            ),
+            ready_for_active_iteration=lambda *_args, **_kwargs: False,
+            touch_active_feature_for_iteration=lambda *_args, **_kwargs: None,
+            run_implement_step=lambda *_args, **_kwargs: _passing_implement_result(),
+            refresh_feature_after_implement=(
+                lambda _project_root, _feature_path: PostImplementFeatureOutcome(
+                    feature=feature_data,
+                    archived_in_iteration=False,
+                    archived_path=None,
+                    result="passed",
+                    failed_gate=None,
+                    feedback=None,
+                )
+            ),
+            should_archive_selected_feature=lambda *_args, **_kwargs: False,
+            archive_completed_feature=lambda *_args, **_kwargs: (True, None, None),
+            run_gate_phase=(
+                lambda *_args, **_kwargs: GatePhaseOutcome(
+                    result="passed",
+                    failed_gate=None,
+                    gate_status="passed",
+                    gate_output="",
+                    feedback=None,
+                )
+            ),
+            gate_phase_dependencies=GatePhaseDependencies(
+                restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+                collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
+                    paths=(),
+                    run_all=True,
+                    reason=None,
+                ),
+            ),
+            run_verification_phase=(
+                lambda *_args, **_kwargs: VerificationPhaseOutcome(
+                    result="passed",
+                    verification_status="not_run",
+                    verification_failed_command=None,
+                    verification_output="",
+                    feedback=None,
+                )
+            ),
+            run_reviewer_phase=(
+                lambda *_args, **_kwargs: ReviewerPhaseOutcome(
+                    result="passed",
+                    failed_gate=None,
+                    reviewer_status="not_run",
+                    reviewer_decision=None,
+                    failed_reviewer_id=None,
+                    reviewer_output="",
+                    feedback=None,
+                )
+            ),
+            reviewer_phase_dependencies=ReviewerPhaseDependencies(
+                collect_changed_paths=lambda *_args, **_kwargs: None,
+                restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+                run_agent_fn=lambda *_args, **_kwargs: None,
+            ),
+            run_completion_commit_phase=(
+                lambda *_args, **_kwargs: CompletionCommitOutcome(
+                    completed=False,
+                    completion_commit_succeeded=False,
+                    result="passed",
+                    failed_gate=None,
+                    next_action="retry_same_feature",
+                    feedback=None,
+                )
+            ),
+            completion_phase_dependencies=CompletionPhaseDependencies(
+                commit_feature_completion=lambda *_args, **_kwargs: (True, None, ""),
+                restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+            ),
+        ),
+    )
+
+    assert report.telemetry_inputs.progress_kind == "phase"
+    assert report.telemetry_inputs.progress_id == "P2"
+    assert report.telemetry_inputs.progress_title == "Track bundled phase progress"
+
+
+def test_iteration_pipeline_keeps_phase_progress_kind_when_bundled_plan_is_invalid(
+    tmp_path: Path,
+) -> None:
+    feature_data = {
+        **base_feature(status="in_progress"),
+        "planning_tier": "planned",
+        "artifacts": {"plan": "plan.md"},
+    }
+    feature_data.pop("subtasks", None)
+    project_root, feature_path, plan_path = make_bundled_project_root(
+        tmp_path,
+        feature_data=feature_data,
+        plan_frontmatter={
+            "plan_id": "FEAT-900",
+            "feature_id": "FEAT-900",
+            "status": "in_progress",
+            "source_spec": "spec.yaml",
+            "planning_tier": "planned",
+            "phases": [
+                {
+                    "id": "P1",
+                    "title": "Track bundled phase progress",
+                    "status": "in_progress",
+                }
+            ],
+        },
+    )
+    plan_path.write_text("---\ninvalid: [\n---\n# Plan\n", encoding="utf-8")
+    iteration_inputs = FeatureIterationInputs(
+        project_root=project_root,
+        feature_path=feature_path,
+        attempt=1,
+        feedback=None,
+        verbose_output=False,
+    )
+
+    report = run_feature_iteration_pipeline(
+        iteration_inputs,
+        IterationPipelineDependencies(
+            evaluate_initial_feature_load=(
+                lambda _path: InitialFeatureLoadOutcome(
+                    feature=feature_data,
+                    result="passed",
+                    failed_gate=None,
+                    feedback=None,
+                )
+            ),
+            ready_for_active_iteration=lambda *_args, **_kwargs: False,
+            touch_active_feature_for_iteration=lambda *_args, **_kwargs: None,
+            run_implement_step=lambda *_args, **_kwargs: _passing_implement_result(),
+            refresh_feature_after_implement=(
+                lambda _project_root, _feature_path: PostImplementFeatureOutcome(
+                    feature=feature_data,
+                    archived_in_iteration=False,
+                    archived_path=None,
+                    result="passed",
+                    failed_gate=None,
+                    feedback=None,
+                )
+            ),
+            should_archive_selected_feature=lambda *_args, **_kwargs: False,
+            archive_completed_feature=lambda *_args, **_kwargs: (True, None, None),
+            run_gate_phase=(
+                lambda *_args, **_kwargs: GatePhaseOutcome(
+                    result="passed",
+                    failed_gate=None,
+                    gate_status="passed",
+                    gate_output="",
+                    feedback=None,
+                )
+            ),
+            gate_phase_dependencies=GatePhaseDependencies(
+                restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+                collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
+                    paths=(),
+                    run_all=True,
+                    reason=None,
+                ),
+            ),
+            run_verification_phase=(
+                lambda *_args, **_kwargs: VerificationPhaseOutcome(
+                    result="passed",
+                    verification_status="not_run",
+                    verification_failed_command=None,
+                    verification_output="",
+                    feedback=None,
+                )
+            ),
+            run_reviewer_phase=(
+                lambda *_args, **_kwargs: ReviewerPhaseOutcome(
+                    result="passed",
+                    failed_gate=None,
+                    reviewer_status="not_run",
+                    reviewer_decision=None,
+                    failed_reviewer_id=None,
+                    reviewer_output="",
+                    feedback=None,
+                )
+            ),
+            reviewer_phase_dependencies=ReviewerPhaseDependencies(
+                collect_changed_paths=lambda *_args, **_kwargs: None,
+                restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+                run_agent_fn=lambda *_args, **_kwargs: None,
+            ),
+            run_completion_commit_phase=(
+                lambda *_args, **_kwargs: CompletionCommitOutcome(
+                    completed=False,
+                    completion_commit_succeeded=False,
+                    result="passed",
+                    failed_gate=None,
+                    next_action="retry_same_feature",
+                    feedback=None,
+                )
+            ),
+            completion_phase_dependencies=CompletionPhaseDependencies(
+                commit_feature_completion=lambda *_args, **_kwargs: (True, None, ""),
+                restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+            ),
+        ),
+    )
+
+    assert report.telemetry_inputs.progress_kind == "phase"
+    assert report.telemetry_inputs.progress_id is None
+    assert report.telemetry_inputs.progress_title is None
+
+
+def test_iteration_pipeline_tracks_direct_bundle_feature_progress_metadata(
+    tmp_path: Path,
+) -> None:
+    project_root = tmp_path
+    feature_path = (
+        project_root / "docs" / "spec" / "features" / "FEAT-901-direct-bundle" / "spec.yaml"
+    )
+    feature_path.parent.mkdir(parents=True, exist_ok=True)
+    feature_data = {
+        "id": "FEAT-901",
+        "title": "Track direct bundled feature progress",
+        "type": "spec",
+        "expected_commit_subject": "spec: track direct bundled feature progress",
+        "planning_tier": "direct",
+        "status": "in_progress",
+        "priority": "high",
+        "objective": "Ensure telemetry stays on the bundled feature surface.",
+        "acceptance": ["Direct bundled features keep feature-level progress wording."],
+        "artifacts": {},
+    }
+    feature_path.write_text(json.dumps(feature_data), encoding="utf-8")
+    iteration_inputs = FeatureIterationInputs(
+        project_root=project_root,
+        feature_path=feature_path,
+        attempt=1,
+        feedback=None,
+        verbose_output=False,
+    )
+
+    report = run_feature_iteration_pipeline(
+        iteration_inputs,
+        IterationPipelineDependencies(
+            evaluate_initial_feature_load=(
+                lambda _path: InitialFeatureLoadOutcome(
+                    feature=feature_data,
+                    result="passed",
+                    failed_gate=None,
+                    feedback=None,
+                )
+            ),
+            ready_for_active_iteration=lambda *_args, **_kwargs: False,
+            touch_active_feature_for_iteration=lambda *_args, **_kwargs: None,
+            run_implement_step=lambda *_args, **_kwargs: _passing_implement_result(),
+            refresh_feature_after_implement=(
+                lambda _project_root, _feature_path: PostImplementFeatureOutcome(
+                    feature=feature_data,
+                    archived_in_iteration=False,
+                    archived_path=None,
+                    result="passed",
+                    failed_gate=None,
+                    feedback=None,
+                )
+            ),
+            should_archive_selected_feature=lambda *_args, **_kwargs: False,
+            archive_completed_feature=lambda *_args, **_kwargs: (True, None, None),
+            run_gate_phase=(
+                lambda *_args, **_kwargs: GatePhaseOutcome(
+                    result="passed",
+                    failed_gate=None,
+                    gate_status="passed",
+                    gate_output="",
+                    feedback=None,
+                )
+            ),
+            gate_phase_dependencies=GatePhaseDependencies(
+                restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+                collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
+                    paths=(),
+                    run_all=True,
+                    reason=None,
+                ),
+            ),
+            run_verification_phase=(
+                lambda *_args, **_kwargs: VerificationPhaseOutcome(
+                    result="passed",
+                    verification_status="not_run",
+                    verification_failed_command=None,
+                    verification_output="",
+                    feedback=None,
+                )
+            ),
+            run_reviewer_phase=(
+                lambda *_args, **_kwargs: ReviewerPhaseOutcome(
+                    result="passed",
+                    failed_gate=None,
+                    reviewer_status="not_run",
+                    reviewer_decision=None,
+                    failed_reviewer_id=None,
+                    reviewer_output="",
+                    feedback=None,
+                )
+            ),
+            reviewer_phase_dependencies=ReviewerPhaseDependencies(
+                collect_changed_paths=lambda *_args, **_kwargs: None,
+                restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+                run_agent_fn=lambda *_args, **_kwargs: None,
+            ),
+            run_completion_commit_phase=(
+                lambda *_args, **_kwargs: CompletionCommitOutcome(
+                    completed=False,
+                    completion_commit_succeeded=False,
+                    result="passed",
+                    failed_gate=None,
+                    next_action="retry_same_feature",
+                    feedback=None,
+                )
+            ),
+            completion_phase_dependencies=CompletionPhaseDependencies(
+                commit_feature_completion=lambda *_args, **_kwargs: (True, None, ""),
+                restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+            ),
+        ),
+    )
+
+    assert report.telemetry_inputs.progress_kind == "feature"
+    assert report.telemetry_inputs.progress_id == "FEAT-901"
+    assert report.telemetry_inputs.progress_title == "Track direct bundled feature progress"
+
+
+def test_iteration_pipeline_keeps_legacy_subtask_progress_kind_without_unit(
+    tmp_path: Path,
+) -> None:
+    feature_data = base_feature(status="in_progress")
+    feature_data["subtasks"] = []
+    iteration_inputs = FeatureIterationInputs(
+        project_root=tmp_path,
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-900.yaml",
+        attempt=1,
+        feedback=None,
+        verbose_output=False,
+    )
+
+    report = run_feature_iteration_pipeline(
+        iteration_inputs,
+        IterationPipelineDependencies(
+            evaluate_initial_feature_load=(
+                lambda _path: InitialFeatureLoadOutcome(
+                    feature=feature_data,
+                    result="passed",
+                    failed_gate=None,
+                    feedback=None,
+                )
+            ),
+            ready_for_active_iteration=lambda *_args, **_kwargs: False,
+            touch_active_feature_for_iteration=lambda *_args, **_kwargs: None,
+            run_implement_step=lambda *_args, **_kwargs: _passing_implement_result(),
+            refresh_feature_after_implement=(
+                lambda _project_root, _feature_path: PostImplementFeatureOutcome(
+                    feature=feature_data,
+                    archived_in_iteration=False,
+                    archived_path=None,
+                    result="passed",
+                    failed_gate=None,
+                    feedback=None,
+                )
+            ),
+            should_archive_selected_feature=lambda *_args, **_kwargs: False,
+            archive_completed_feature=lambda *_args, **_kwargs: (True, None, None),
+            run_gate_phase=(
+                lambda *_args, **_kwargs: GatePhaseOutcome(
+                    result="passed",
+                    failed_gate=None,
+                    gate_status="passed",
+                    gate_output="",
+                    feedback=None,
+                )
+            ),
+            gate_phase_dependencies=GatePhaseDependencies(
+                restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+                collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
+                    paths=(),
+                    run_all=True,
+                    reason=None,
+                ),
+            ),
+            run_verification_phase=(
+                lambda *_args, **_kwargs: VerificationPhaseOutcome(
+                    result="passed",
+                    verification_status="not_run",
+                    verification_failed_command=None,
+                    verification_output="",
+                    feedback=None,
+                )
+            ),
+            run_reviewer_phase=(
+                lambda *_args, **_kwargs: ReviewerPhaseOutcome(
+                    result="passed",
+                    failed_gate=None,
+                    reviewer_status="not_run",
+                    reviewer_decision=None,
+                    failed_reviewer_id=None,
+                    reviewer_output="",
+                    feedback=None,
+                )
+            ),
+            reviewer_phase_dependencies=ReviewerPhaseDependencies(
+                collect_changed_paths=lambda *_args, **_kwargs: None,
+                restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+                run_agent_fn=lambda *_args, **_kwargs: None,
+            ),
+            run_completion_commit_phase=(
+                lambda *_args, **_kwargs: CompletionCommitOutcome(
+                    completed=False,
+                    completion_commit_succeeded=False,
+                    result="passed",
+                    failed_gate=None,
+                    next_action="retry_same_feature",
+                    feedback=None,
+                )
+            ),
+            completion_phase_dependencies=CompletionPhaseDependencies(
+                commit_feature_completion=lambda *_args, **_kwargs: (True, None, ""),
+                restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+            ),
+        ),
+    )
+
+    assert report.telemetry_inputs.progress_kind == "subtask"
+    assert report.telemetry_inputs.progress_id is None
+    assert report.telemetry_inputs.progress_title is None
+
+
+def test_iteration_pipeline_recovers_phase_metadata_from_parseable_invalid_plan_contract(
+    tmp_path: Path,
+) -> None:
+    feature_data = {
+        **base_feature(status="in_progress"),
+        "planning_tier": "planned",
+        "artifacts": {"plan": "plan.md"},
+    }
+    feature_data.pop("subtasks", None)
+    project_root, feature_path, _plan_path = make_bundled_project_root(
+        tmp_path,
+        feature_data=feature_data,
+        plan_frontmatter={
+            "plan_id": "FEAT-900",
+            "status": "in_progress",
+            "source_spec": "spec.yaml",
+            "planning_tier": "planned",
+            "phases": [
+                {
+                    "id": "P1",
+                    "title": "Recover phase metadata from invalid plan contract",
+                    "status": "in_progress",
+                }
+            ],
+        },
+    )
+    iteration_inputs = FeatureIterationInputs(
+        project_root=project_root,
+        feature_path=feature_path,
+        attempt=1,
+        feedback=None,
+        verbose_output=False,
+    )
+
+    report = run_feature_iteration_pipeline(
+        iteration_inputs,
+        IterationPipelineDependencies(
+            evaluate_initial_feature_load=(
+                lambda _path: InitialFeatureLoadOutcome(
+                    feature=feature_data,
+                    result="passed",
+                    failed_gate=None,
+                    feedback=None,
+                )
+            ),
+            ready_for_active_iteration=lambda *_args, **_kwargs: False,
+            touch_active_feature_for_iteration=lambda *_args, **_kwargs: None,
+            run_implement_step=lambda *_args, **_kwargs: _passing_implement_result(),
+            refresh_feature_after_implement=(
+                lambda _project_root, _feature_path: PostImplementFeatureOutcome(
+                    feature=feature_data,
+                    archived_in_iteration=False,
+                    archived_path=None,
+                    result="passed",
+                    failed_gate=None,
+                    feedback=None,
+                )
+            ),
+            should_archive_selected_feature=lambda *_args, **_kwargs: False,
+            archive_completed_feature=lambda *_args, **_kwargs: (True, None, None),
+            run_gate_phase=(
+                lambda *_args, **_kwargs: GatePhaseOutcome(
+                    result="passed",
+                    failed_gate=None,
+                    gate_status="passed",
+                    gate_output="",
+                    feedback=None,
+                )
+            ),
+            gate_phase_dependencies=GatePhaseDependencies(
+                restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+                collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
+                    paths=(),
+                    run_all=True,
+                    reason=None,
+                ),
+            ),
+            run_verification_phase=(
+                lambda *_args, **_kwargs: VerificationPhaseOutcome(
+                    result="passed",
+                    verification_status="not_run",
+                    verification_failed_command=None,
+                    verification_output="",
+                    feedback=None,
+                )
+            ),
+            run_reviewer_phase=(
+                lambda *_args, **_kwargs: ReviewerPhaseOutcome(
+                    result="passed",
+                    failed_gate=None,
+                    reviewer_status="not_run",
+                    reviewer_decision=None,
+                    failed_reviewer_id=None,
+                    reviewer_output="",
+                    feedback=None,
+                )
+            ),
+            reviewer_phase_dependencies=ReviewerPhaseDependencies(
+                collect_changed_paths=lambda *_args, **_kwargs: None,
+                restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+                run_agent_fn=lambda *_args, **_kwargs: None,
+            ),
+            run_completion_commit_phase=(
+                lambda *_args, **_kwargs: CompletionCommitOutcome(
+                    completed=False,
+                    completion_commit_succeeded=False,
+                    result="passed",
+                    failed_gate=None,
+                    next_action="retry_same_feature",
+                    feedback=None,
+                )
+            ),
+            completion_phase_dependencies=CompletionPhaseDependencies(
+                commit_feature_completion=lambda *_args, **_kwargs: (True, None, ""),
+                restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+            ),
+        ),
+    )
+
+    assert report.telemetry_inputs.progress_kind == "phase"
+    assert report.telemetry_inputs.progress_id == "P1"
+    assert (
+        report.telemetry_inputs.progress_title
+        == "Recover phase metadata from invalid plan contract"
+    )
+
+
+def test_iteration_pipeline_preserves_phase_metadata_after_bundled_archive(
+    tmp_path: Path,
+) -> None:
+    feature_data = {
+        **base_feature(status="in_progress"),
+        "planning_tier": "planned",
+        "artifacts": {"plan": "plan.md"},
+    }
+    feature_data.pop("subtasks", None)
+    project_root, feature_path, _plan_path = make_bundled_project_root(
+        tmp_path,
+        feature_data=feature_data,
+        plan_frontmatter={
+            "plan_id": "FEAT-900",
+            "feature_id": "FEAT-900",
+            "status": "in_progress",
+            "source_spec": "spec.yaml",
+            "planning_tier": "planned",
+            "phases": [
+                {
+                    "id": "P1",
+                    "title": "Preserve archived bundled phase metadata",
+                    "status": "in_progress",
+                }
+            ],
+        },
+    )
+    iteration_inputs = FeatureIterationInputs(
+        project_root=project_root,
+        feature_path=feature_path,
+        attempt=1,
+        feedback=None,
+        verbose_output=False,
+    )
+
+    def _refresh_feature_after_implement(
+        _project_root: Path,
+        selected_feature_path: Path,
+    ) -> PostImplementFeatureOutcome:
+        refreshed_feature = base_feature(status="done")
+        refreshed_feature["planning_tier"] = "planned"
+        refreshed_feature["artifacts"] = {"plan": "plan.md"}
+        refreshed_feature.pop("subtasks", None)
+        selected_feature_path.write_text(
+            json.dumps(refreshed_feature),
+            encoding="utf-8",
+        )
+        return PostImplementFeatureOutcome(
+            feature=refreshed_feature,
+            archived_in_iteration=False,
+            archived_path=None,
+            result="passed",
+            failed_gate=None,
+            feedback=None,
+        )
+
+    def _run_reviewer_phase(
+        _inputs: FeatureIterationInputs,
+        _feature: dict[str, Any] | None,
+        _archived_in_iteration: bool,
+        archived_path: Path | None,
+        _deps: ReviewerPhaseDependencies,
+    ) -> ReviewerPhaseOutcome:
+        if archived_path is not None:
+            restore_archived_feature(archived_path, feature_path)
+        return ReviewerPhaseOutcome(
+            result="failed",
+            failed_gate="request_changes",
+            reviewer_status="failed:request_changes",
+            reviewer_decision="request_changes",
+            failed_reviewer_id="reviewer_1",
+            reviewer_output="request changes",
+            feedback="request changes",
+            archived_rolled_back=True,
+        )
+
+    report = run_feature_iteration_pipeline(
+        iteration_inputs,
+        IterationPipelineDependencies(
+            evaluate_initial_feature_load=(
+                lambda _path: InitialFeatureLoadOutcome(
+                    feature=feature_data,
+                    result="passed",
+                    failed_gate=None,
+                    feedback=None,
+                )
+            ),
+            ready_for_active_iteration=lambda *_args, **_kwargs: True,
+            touch_active_feature_for_iteration=lambda *_args, **_kwargs: None,
+            run_implement_step=lambda *_args, **_kwargs: _passing_implement_result(),
+            refresh_feature_after_implement=_refresh_feature_after_implement,
+            should_archive_selected_feature=lambda *_args, **_kwargs: True,
+            archive_completed_feature=archive_completed_feature,
+            run_gate_phase=(
+                lambda *_args, **_kwargs: GatePhaseOutcome(
+                    result="passed",
+                    failed_gate=None,
+                    gate_status="passed",
+                    gate_output="",
+                    feedback=None,
+                )
+            ),
+            gate_phase_dependencies=GatePhaseDependencies(
+                restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+                collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
+                    paths=(),
+                    run_all=True,
+                    reason=None,
+                ),
+            ),
+            run_verification_phase=(
+                lambda *_args, **_kwargs: VerificationPhaseOutcome(
+                    result="passed",
+                    verification_status="not_run",
+                    verification_failed_command=None,
+                    verification_output="",
+                    feedback=None,
+                )
+            ),
+            run_reviewer_phase=(
+                lambda *_args, **_kwargs: ReviewerPhaseOutcome(
+                    result="passed",
+                    failed_gate=None,
+                    reviewer_status="not_run",
+                    reviewer_decision=None,
+                    failed_reviewer_id=None,
+                    reviewer_output="",
+                    feedback=None,
+                )
+            ),
+            reviewer_phase_dependencies=ReviewerPhaseDependencies(
+                collect_changed_paths=lambda *_args, **_kwargs: None,
+                restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+                run_agent_fn=lambda *_args, **_kwargs: None,
+            ),
+            run_completion_commit_phase=(
+                lambda *_args, **_kwargs: CompletionCommitOutcome(
+                    completed=True,
+                    completion_commit_succeeded=True,
+                    result="passed",
+                    failed_gate=None,
+                    next_action="select_next_feature",
+                    feedback=None,
+                )
+            ),
+            completion_phase_dependencies=CompletionPhaseDependencies(
+                commit_feature_completion=lambda *_args, **_kwargs: (True, None, ""),
+                restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+            ),
+        ),
+    )
+
+    assert report.telemetry_inputs.progress_kind == "phase"
+    assert report.telemetry_inputs.progress_id == "P1"
+    assert (
+        report.telemetry_inputs.progress_title
+        == "Preserve archived bundled phase metadata"
+    )
+    assert (
+        project_root
+        / "docs"
+        / "spec"
+        / "features_done"
+        / "FEAT-900-bundled-smoke-test"
+        / "spec.yaml"
+    ).exists()
+
+
+def test_iteration_pipeline_clears_archived_selection_after_reviewer_rollback(
+    tmp_path: Path,
+) -> None:
+    feature_data = {
+        **base_feature(status="in_progress"),
+        "planning_tier": "planned",
+        "artifacts": {"plan": "plan.md"},
+    }
+    feature_data.pop("subtasks", None)
+    project_root, feature_path, _plan_path = make_bundled_project_root(
+        tmp_path,
+        feature_data=feature_data,
+        plan_frontmatter={
+            "plan_id": "FEAT-900",
+            "feature_id": "FEAT-900",
+            "status": "in_progress",
+            "source_spec": "spec.yaml",
+            "planning_tier": "planned",
+            "phases": [
+                {
+                    "id": "P1",
+                    "title": "Rollback reviewer archive state",
+                    "status": "in_progress",
+                }
+            ],
+        },
+    )
+    iteration_inputs = FeatureIterationInputs(
+        project_root=project_root,
+        feature_path=feature_path,
+        attempt=1,
+        feedback=None,
+        verbose_output=False,
+    )
+
+    def _refresh_feature_after_implement(
+        _project_root: Path,
+        selected_feature_path: Path,
+    ) -> PostImplementFeatureOutcome:
+        refreshed_feature = base_feature(status="done")
+        refreshed_feature["planning_tier"] = "planned"
+        refreshed_feature["artifacts"] = {"plan": "plan.md"}
+        refreshed_feature.pop("subtasks", None)
+        selected_feature_path.write_text(
+            json.dumps(refreshed_feature),
+            encoding="utf-8",
+        )
+        return PostImplementFeatureOutcome(
+            feature=refreshed_feature,
+            archived_in_iteration=False,
+            archived_path=None,
+            result="passed",
+            failed_gate=None,
+            feedback=None,
+        )
+
+    def _run_reviewer_phase(
+        _inputs: FeatureIterationInputs,
+        _feature: dict[str, Any] | None,
+        _archived_in_iteration: bool,
+        archived_path: Path | None,
+        _deps: ReviewerPhaseDependencies,
+    ) -> ReviewerPhaseOutcome:
+        if archived_path is not None:
+            restore_archived_feature(archived_path, feature_path)
+        return ReviewerPhaseOutcome(
+            result="failed",
+            failed_gate="request_changes",
+            reviewer_status="failed:request_changes",
+            reviewer_decision="request_changes",
+            failed_reviewer_id="reviewer_1",
+            reviewer_output="request changes",
+            feedback="request changes",
+            archived_rolled_back=True,
+        )
+
+    report = run_feature_iteration_pipeline(
+        iteration_inputs,
+        IterationPipelineDependencies(
+            evaluate_initial_feature_load=(
+                lambda _path: InitialFeatureLoadOutcome(
+                    feature=feature_data,
+                    result="passed",
+                    failed_gate=None,
+                    feedback=None,
+                )
+            ),
+            ready_for_active_iteration=lambda *_args, **_kwargs: True,
+            touch_active_feature_for_iteration=lambda *_args, **_kwargs: None,
+            run_implement_step=lambda *_args, **_kwargs: _passing_implement_result(),
+            refresh_feature_after_implement=_refresh_feature_after_implement,
+            should_archive_selected_feature=lambda *_args, **_kwargs: True,
+            archive_completed_feature=archive_completed_feature,
+            run_gate_phase=(
+                lambda *_args, **_kwargs: GatePhaseOutcome(
+                    result="passed",
+                    failed_gate=None,
+                    gate_status="passed",
+                    gate_output="",
+                    feedback=None,
+                )
+            ),
+            gate_phase_dependencies=GatePhaseDependencies(
+                restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+                collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
+                    paths=(),
+                    run_all=True,
+                    reason=None,
+                ),
+            ),
+            run_verification_phase=(
+                lambda *_args, **_kwargs: VerificationPhaseOutcome(
+                    result="passed",
+                    verification_status="not_run",
+                    verification_failed_command=None,
+                    verification_output="",
+                    feedback=None,
+                )
+            ),
+            run_reviewer_phase=_run_reviewer_phase,
+            reviewer_phase_dependencies=ReviewerPhaseDependencies(
+                collect_changed_paths=lambda *_args, **_kwargs: None,
+                restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+                run_agent_fn=lambda *_args, **_kwargs: None,
+            ),
+            run_completion_commit_phase=(
+                lambda *_args, **_kwargs: CompletionCommitOutcome(
+                    completed=False,
+                    completion_commit_succeeded=False,
+                    result="passed",
+                    failed_gate=None,
+                    next_action="retry_same_feature",
+                    feedback=None,
+                )
+            ),
+            completion_phase_dependencies=CompletionPhaseDependencies(
+                commit_feature_completion=lambda *_args, **_kwargs: (True, None, ""),
+                restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+            ),
+        ),
+    )
+
+    assert report.result == "failed"
+    assert report.archived_selection_path is None
+    assert report.telemetry_inputs.progress_kind == "phase"
+    assert report.telemetry_inputs.progress_id == "P1"
+
+
+def test_iteration_pipeline_clears_archived_selection_after_completion_rollback(
+    tmp_path: Path,
+) -> None:
+    iteration_inputs = FeatureIterationInputs(
+        project_root=tmp_path,
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-999.yaml",
+        attempt=1,
+        feedback=None,
+        verbose_output=False,
+    )
+
+    report = run_feature_iteration_pipeline(
+        iteration_inputs,
+        IterationPipelineDependencies(
+            evaluate_initial_feature_load=(
+                lambda _path: InitialFeatureLoadOutcome(
+                    feature={"id": "FEAT-999", "status": "in_progress"},
+                    result="passed",
+                    failed_gate=None,
+                    feedback=None,
+                )
+            ),
+            ready_for_active_iteration=lambda *_args, **_kwargs: True,
+            touch_active_feature_for_iteration=lambda *_args, **_kwargs: None,
+            run_implement_step=lambda *_args, **_kwargs: _passing_implement_result(),
+            refresh_feature_after_implement=(
+                lambda _project_root, _feature_path: PostImplementFeatureOutcome(
+                    feature={"id": "FEAT-999", "status": "done"},
+                    archived_in_iteration=False,
+                    archived_path=None,
+                    result="passed",
+                    failed_gate=None,
+                    feedback=None,
+                )
+            ),
+            should_archive_selected_feature=lambda *_args, **_kwargs: True,
+            archive_completed_feature=(
+                lambda *_args, **_kwargs: (
+                    True,
+                    tmp_path / "docs" / "spec" / "features_done" / "FEAT-999.yaml",
+                    "",
+                )
+            ),
+            run_gate_phase=(
+                lambda *_args, **_kwargs: GatePhaseOutcome(
+                    result="passed",
+                    failed_gate=None,
+                    gate_status="passed",
+                    gate_output="",
+                    feedback=None,
+                )
+            ),
+            gate_phase_dependencies=GatePhaseDependencies(
+                restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+                collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
+                    paths=(),
+                    run_all=True,
+                    reason=None,
+                ),
+            ),
+            run_verification_phase=(
+                lambda *_args, **_kwargs: VerificationPhaseOutcome(
+                    result="passed",
+                    verification_status="not_run",
+                    verification_failed_command=None,
+                    verification_output="",
+                    feedback=None,
+                )
+            ),
+            run_reviewer_phase=(
+                lambda *_args, **_kwargs: ReviewerPhaseOutcome(
+                    result="passed",
+                    failed_gate=None,
+                    reviewer_status="not_run",
+                    reviewer_decision=None,
+                    failed_reviewer_id=None,
+                    reviewer_output="",
+                    feedback=None,
+                )
+            ),
+            reviewer_phase_dependencies=ReviewerPhaseDependencies(
+                collect_changed_paths=lambda *_args, **_kwargs: None,
+                restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+                run_agent_fn=lambda *_args, **_kwargs: None,
+            ),
+            run_completion_commit_phase=(
+                lambda *_args, **_kwargs: CompletionCommitOutcome(
+                    completed=False,
+                    completion_commit_succeeded=False,
+                    result="failed",
+                    failed_gate="git_commit",
+                    next_action="retry_same_feature",
+                    feedback="commit failed",
+                    archived_rolled_back=True,
+                )
+            ),
+            completion_phase_dependencies=CompletionPhaseDependencies(
+                commit_feature_completion=lambda *_args, **_kwargs: (True, None, ""),
+                restore_archived_feature=lambda *_args, **_kwargs: (True, None),
+            ),
+        ),
+    )
+
+    assert report.result == "failed"
+    assert report.completed is False
+    assert report.archived_selection_path is None
 
 
 def test_iteration_pipeline_archives_before_running_done_transition_verification(
