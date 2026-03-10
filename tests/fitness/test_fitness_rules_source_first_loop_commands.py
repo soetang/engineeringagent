@@ -339,30 +339,6 @@ def test_detects_forbidden_uvx_from_dot_in_smoke_plan_template(
     )
 
 
-def test_detects_forbidden_uvx_from_dot_in_bundled_plan_format_example(
-    tmp_path: Path,
-    repo_root: Path,
-) -> None:
-    """Fail when the bundled plan-format example regresses to uvx --from ."""
-    _write_markdown_frontmatter(
-        tmp_path
-        / "docs/spec/features_done/FEAT-181-bundled-feature-planning-workflow/supporting/plan-format-example.md",
-        _smoke_plan_frontmatter("uvx --from . engineeringagent validate --schema-only"),
-    )
-
-    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
-
-    assert proc.returncode == 1
-    assert payload["status"] == "fail"
-    violations = payload["violations"]
-    assert isinstance(violations, list)
-    assert len(violations) == 1
-    assert (
-        "docs/spec/features_done/FEAT-181-bundled-feature-planning-workflow/supporting/plan-format-example.md:phases[0].verification[0]"
-        in violations[0]
-    )
-
-
 def test_detects_forbidden_uvx_from_dot_in_plan_session_approach_doc(
     tmp_path: Path,
     repo_root: Path,

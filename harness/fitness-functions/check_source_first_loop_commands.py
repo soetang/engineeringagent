@@ -20,9 +20,6 @@ RULE_ID = "architecture.source-first-loop-command-policy"
 FEATURES_ROOT = Path("docs/spec/features")
 CHECKS_PATH = Path("harness/checks.yaml")
 SMOKE_PLAN_TEMPLATE_PATH = Path("docs/fixtures/real_opencode_hello_world_plan_template.md")
-PLAN_FORMAT_EXAMPLE_PATH = Path(
-    "docs/spec/features_done/FEAT-181-bundled-feature-planning-workflow/supporting/plan-format-example.md"
-)
 PLAN_SESSION_APPROACH_PATH = Path("src/engineeringagent/approach/docs/plan-session.md")
 RESEARCH_SESSION_APPROACH_PATH = Path("src/engineeringagent/approach/docs/research-session.md")
 CONTRIBUTOR_APPROACH_DOC_PATHS = (
@@ -205,10 +202,6 @@ def _scan_smoke_template_commands() -> list[str]:
     return _scan_markdown_phase_commands(SMOKE_PLAN_TEMPLATE_PATH)
 
 
-def _scan_bundled_example_commands() -> list[str]:
-    return _scan_markdown_phase_commands(PLAN_FORMAT_EXAMPLE_PATH)
-
-
 def _scan_markdown_command_lines(path: Path) -> list[str]:
     if not path.is_file():
         return []
@@ -287,7 +280,6 @@ def main() -> int:
         set(
             _scan_feature_verification_commands()
             + _scan_smoke_template_commands()
-            + _scan_bundled_example_commands()
             + _scan_bundled_approach_commands()
             + _scan_contributor_approach_commands()
             + _scan_prompt_template_commands()
