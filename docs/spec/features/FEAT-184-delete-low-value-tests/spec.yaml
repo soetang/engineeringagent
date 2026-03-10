@@ -1,0 +1,80 @@
+id: FEAT-184
+title: Delete legacy and low-value brittle tests
+type: test
+expected_commit_subject: "spec: add FEAT-184 low-value test cleanup"
+planning_tier: direct
+status: blocked
+priority: high
+objective: >
+  Remove a broad slice of legacy, brittle, and low-value tests so the repository keeps
+  a smaller, faster, more behavior-oriented test suite instead of spending maintenance
+  budget on migration tripwires, repo-shape guards, and internal-helper coverage padding
+  that add little confidence.
+context: >
+  The current suite contains a large concentration of tests under `tests/meta`,
+  `tests/fitness`, and some loop helper/presentation surfaces that primarily assert
+  deleted paths stay deleted, internal architectural rules remain encoded exactly,
+  documentation wording stays synchronized, or private helper branches stay covered.
+  Examples include `tests/meta/test_coverage_threshold_regressions.py`,
+  `tests/meta/test_coverage_misc.py`, `tests/meta/test_legacy_shim_imports.py`,
+  `tests/specs/test_specs_layout_smoke.py`, and multiple `tests/fitness/`
+  rule-self-tests. The goal of this cleanup round is aggressive deletion with a bias
+  toward keeping behavior-facing CLI/runtime/backend/git tests as anchors, while still
+  preserving a passing full `pytest` run and the current `--cov-fail-under=95` policy.
+constraints:
+  - "In scope: aggressively delete tests in `tests/meta`, `tests/fitness`, loop helper/contract/presentation tests, and other non-behavior-facing test surfaces that mostly assert internal structure, migration cleanup, or repository layout rules."
+  - "Out of scope: removing core behavior-facing tests that exercise user-visible CLI behavior, runtime iteration flows, backend integration seams, git behavior, or checks runtime behavior."
+  - "Prefer deleting whole low-value files over rewriting them into smaller versions unless a remaining behavior-facing contract still clearly needs coverage."
+  - "Tests that primarily preserve deleted legacy paths, wording scans, file-layout mirrors, internal import boundaries, or private helper branch coverage are valid deletion targets."
+  - "Keep the current repository coverage gate, including `--cov-fail-under=95`, for this cleanup round rather than lowering or removing it."
+  - "Because the coverage gate stays in place, the cleanup may need to proceed in ordered waves that preserve enough useful coverage for the full suite to pass."
+  - "A full `pytest` run is required verification for the final cleanup result, not only targeted smoke suites."
+  - "If a deleted low-value test currently props up coverage for code that still matters, replace it only with narrower behavior-oriented coverage rather than another repo-shape or helper-only regression file."
+  - "Do not broaden production behavior or add new product features as part of this cleanup; the round is about test-surface reduction and test-value improvement."
+  - "Breaking cleanup is allowed for test-only surfaces because this repository currently has no external users who depend on the exact existing suite shape."
+implementation_notes: >
+  Contract change declaration.
+
+  Surface: repository test-suite composition, verification expectations for low-value
+  test categories, and the balance between behavior-facing regression coverage and
+  implementation-coupled coverage padding.
+
+  Old behavior: the repository keeps many tests whose primary purpose is to enforce
+  migration cleanup, repo-shape policies, documentation wording, architectural
+  boundary details, or private helper branch coverage. These files increase maintenance
+  cost and coverage totals without proportionally improving confidence in user-visible
+  behavior.
+
+  New behavior: the repository deletes most low-value tests in those categories,
+  retains a smaller set of behavior-facing anchors, and only preserves replacement
+  coverage when it directly protects meaningful behavior needed to keep the suite and
+  current coverage gate passing.
+
+  Compatibility policy: immediate break for the deleted test surfaces. We do not need
+  to preserve the old test inventory, migration guards, or exact architecture-rule
+  self-tests when they no longer justify their maintenance cost.
+
+  Migration scope: delete targeted test files and any now-unused fixtures or helper
+  references tied solely to those tests; adjust remaining tests only when needed to
+  preserve behavior-facing coverage or remove stale references to deleted test assets.
+
+  Verification evidence: the implementation must demonstrate that the reduced suite
+  still passes `pytest`, preserves the existing coverage threshold, and keeps core
+  behavior-facing test anchors green.
+
+  Fitness-function impact assessment: no fitness-function changes required. This work
+  may delete fitness-rule self-tests, but it does not change the intended repository
+  fitness policies or introduce a new architecture boundary.
+acceptance:
+  - "Most legacy, brittle, or low-value tests in `tests/meta` are deleted, especially migration guards, wording scans, deleted-path assertions, and broad internal-helper coverage bundles."
+  - "Most fitness-rule self-tests that primarily validate repository shape, architectural guardrails, or checker implementation details rather than user-visible behavior are deleted from `tests/fitness`."
+  - "Loop helper, contract-shape, or output-format tests that mainly cover internal presentation or helper branches rather than workflow behavior are deleted or substantially reduced."
+  - "Behavior-facing anchor suites remain in place for core CLI, runtime loop, checks runtime, backend, and git workflows so the repository still has meaningful end-to-end confidence."
+  - "The cleanup removes stale fixtures, helper references, or test-only support code that become unnecessary after the deletions."
+  - "The final repository still passes a full `pytest` run after the cleanup."
+  - "The final repository still satisfies the current coverage gate, including `--cov-fail-under=95`, after the cleanup."
+  - "Any coverage replaced during the cleanup is narrower and more behavior-oriented than the deleted legacy or brittle tests it supersedes."
+  - "Repository guidance and feature artifacts created for this work document the deletion strategy and verification expectations clearly enough for a later implementation session."
+artifacts:
+  research: null
+  plan: null
