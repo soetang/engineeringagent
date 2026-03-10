@@ -7,6 +7,11 @@ import json
 from pathlib import Path
 from typing import Any, Protocol
 
+from engineeringagent.application import (
+    DefaultPromptBuilder,
+    ImplementationPromptRequest,
+    PromptBuilder,
+)
 from engineeringagent.agents import (
     AgentBackendError,
     AgentOutputValidationError,
@@ -20,9 +25,6 @@ from engineeringagent.loop_runtime.progress_units import feature_progress_refere
 from engineeringagent.progress import handoff as progress_handoff
 from engineeringagent.progress import logging as progress_logging
 from engineeringagent.progress import paths as progress_paths
-from engineeringagent.prompts import (
-    build_implementation_prompt,
-)
 from engineeringagent.specs import feature_progress_kind
 
 
@@ -42,9 +44,13 @@ def run_implement_step_from_inputs(
     implement_inputs: ImplementStepInputs,
     *,
     run_agent_fn: StructuredImplementAgentRunner,
+    prompt_builder: PromptBuilder | None = None,
 ) -> ImplementStepResult:
     """Run the implement phase and coerce structured progress output."""
-    prompt = _build_implement_prompt(implement_inputs)
+    prompt = _build_implement_prompt(
+        implement_inputs,
+        prompt_builder=prompt_builder or DefaultPromptBuilder(),
+    )
     command = describe_action(
         implement_inputs.project_root,
         action="implement",
@@ -209,11 +215,17 @@ def _format_success_implement_output(command: str, output: str) -> str:
     return f"[implement] command={command}\n[implement] returncode=0\n{output}"
 
 
-def _build_implement_prompt(implement_inputs: ImplementStepInputs) -> str:
-    return build_implementation_prompt(
-        feature=implement_inputs.feature,
-        feature_path=implement_inputs.feature_path,
-        feedback=implement_inputs.feedback,
+def _build_implement_prompt(
+    implement_inputs: ImplementStepInputs,
+    *,
+    prompt_builder: PromptBuilder,
+) -> str:
+    return prompt_builder.build_implementation_prompt(
+        ImplementationPromptRequest(
+            feature=implement_inputs.feature,
+            feature_path=implement_inputs.feature_path,
+            feedback=implement_inputs.feedback,
+        )
     )
 
 

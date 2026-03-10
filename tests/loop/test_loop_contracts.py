@@ -33,8 +33,10 @@ from engineeringagent.loop_runtime.run_context import (
     RunServices,
     RunState,
 )
+from engineeringagent.application import ImplementationPromptRequest
 from engineeringagent.loop_runtime.telemetry import write_iteration_telemetry
 from engineeringagent.progress.handoff import ImplementProgressEnvelope
+from engineeringagent.progress.handoff import fallback_implement_progress_envelope
 from engineeringagent.progress import paths as progress_paths
 from tests.loop.feature_iteration_support import make_bundled_project_root
 
@@ -1044,3 +1046,46 @@ def test_feedback_contract_accepts_verification_failure(tmp_path: Path) -> None:
         "failed_reviewer=security-reviewer" in feature_log
     )
     assert "detail=[verification] uv run pytest -q" in feature_log
+
+
+def test_run_implement_step_uses_injected_prompt_builder(tmp_path: Path) -> None:
+    inputs = ImplementStepInputs(
+        project_root=tmp_path,
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-900.yaml",
+        feature={"id": "FEAT-900", "title": "Prompt seam", "status": "in_progress"},
+        feedback=None,
+        verbose_output=False,
+    )
+    recorded_requests: list[ImplementationPromptRequest] = []
+
+    class _PromptBuilder:
+        def build_implementation_prompt(
+            self, request: ImplementationPromptRequest
+        ) -> str:
+            recorded_requests.append(request)
+            return "PROMPT FROM INJECTED BUILDER"
+
+    def _run_agent(
+        project_root: Path,
+        prompt: str,
+        *,
+        output_type: type[ImplementProgressEnvelope],
+    ) -> object:
+        assert project_root == tmp_path
+        assert prompt == "PROMPT FROM INJECTED BUILDER"
+        return fallback_implement_progress_envelope()
+
+    result = run_implement_step_from_inputs(
+        inputs,
+        run_agent_fn=_run_agent,
+        prompt_builder=_PromptBuilder(),
+    )
+
+    assert result[0] is True
+    assert recorded_requests == [
+        ImplementationPromptRequest(
+            feature=inputs.feature,
+            feature_path=inputs.feature_path,
+            feedback=None,
+        )
+    ]
