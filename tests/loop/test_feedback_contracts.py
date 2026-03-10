@@ -5,6 +5,7 @@ import json
 import pytest
 from pydantic import ValidationError
 
+from engineeringagent.adapters.prompts import BundledPromptDefinitionRepository
 from engineeringagent.prompts.feedback_envelope import (
     build_command_failure_feedback,
     build_fitness_failure_feedback,
@@ -12,7 +13,9 @@ from engineeringagent.prompts.feedback_envelope import (
     parse_feedback_envelope,
     serialize_feedback_envelope,
 )
-from engineeringagent.prompts import inject_feedback
+from engineeringagent.application import inject_feedback
+
+_PROMPT_DEFINITIONS = BundledPromptDefinitionRepository()
 
 
 def test_feedback_contract_accepts_command_failure_envelope() -> None:
@@ -125,7 +128,11 @@ def test_feedback_injection_does_not_truncate_contract_json() -> None:
     serialized = serialize_feedback_envelope(envelope)
     assert len(serialized) > 8_000
 
-    injected = inject_feedback("BASE\n", serialized)
+    injected = inject_feedback(
+        "BASE\n",
+        serialized,
+        prompt_definitions=_PROMPT_DEFINITIONS,
+    )
 
     assert "-TAIL-MARKER" in injected
     assert "...[truncated]" not in injected
@@ -134,13 +141,21 @@ def test_feedback_injection_does_not_truncate_contract_json() -> None:
 def test_feedback_injection_accepts_plain_markdown_feedback() -> None:
     feedback = "Retry guidance from checks runtime"
 
-    injected = inject_feedback("BASE\n", feedback)
+    injected = inject_feedback(
+        "BASE\n",
+        feedback,
+        prompt_definitions=_PROMPT_DEFINITIONS,
+    )
 
     assert feedback in injected
 
 
 def test_feedback_injection_ignores_blank_plain_feedback() -> None:
-    injected = inject_feedback("BASE\n", "   \n\t")
+    injected = inject_feedback(
+        "BASE\n",
+        "   \n\t",
+        prompt_definitions=_PROMPT_DEFINITIONS,
+    )
 
     assert injected == "BASE\n"
 

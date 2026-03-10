@@ -5,12 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Callable, Sequence
 
+from engineeringagent.adapters.prompts import ProjectPromptDefinitionRepository
 from engineeringagent.agents import (
     AgentBackendError,
     classify_backend_exception,
     describe_action,
 )
-from engineeringagent.prompts import build_selector_prompt
+from engineeringagent.application import build_selector_prompt
 from engineeringagent.specs import feature_sort_key
 
 STATUS_ORDER: dict[str, int] = {
@@ -119,7 +120,10 @@ def choose_feature_with_selector(
     if len(pending) == 1:
         return pending[0]
 
-    prompt = _build_selector_prompt_compat(pending, project_root)
+    prompt = build_selector_prompt(
+        pending,
+        prompt_definitions=ProjectPromptDefinitionRepository(project_root),
+    )
     step_label = describe_action(project_root, action="selector", structured=False)
     print(f"Selector step: {step_label}")
     try:
@@ -140,16 +144,3 @@ def choose_feature_with_selector(
     fallback = deterministic_feature_choice_fn(pending)
     print(f"Selector fallback: selector_parse; selected {fallback[1].get('id')}")
     return fallback
-
-
-def _build_selector_prompt_compat(
-    pending: Sequence[tuple[Path, dict[str, Any]]],
-    project_root: Path,
-) -> str:
-    """Support prompt builders that have not yet adopted the project-root kwarg."""
-    try:
-        return build_selector_prompt(pending, project_root=project_root)
-    except TypeError as exc:
-        if "project_root" not in str(exc):
-            raise
-        return build_selector_prompt(pending)

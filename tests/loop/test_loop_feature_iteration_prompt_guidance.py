@@ -4,12 +4,22 @@ from pathlib import Path
 
 import yaml
 
-from engineeringagent.prompts import build_implementation_prompt
+from engineeringagent.adapters.prompts import (
+    BundledPromptDefinitionRepository,
+)
+from engineeringagent.application import DefaultPromptBuilder
+from engineeringagent.loop_runtime.implementation_prompt import (
+    build_implementation_prompt,
+)
 from tests.loop.feature_iteration_support import (
     base_feature,
     make_bundled_project_root,
     make_project_root,
 )
+
+
+def _bundled_prompt_builder() -> DefaultPromptBuilder:
+    return DefaultPromptBuilder(BundledPromptDefinitionRepository())
 
 
 def test_ralph_prompt_includes_feature_file_path(tmp_path: Path) -> None:
@@ -22,6 +32,7 @@ def test_ralph_prompt_includes_feature_file_path(tmp_path: Path) -> None:
         feature=feature,
         feature_path=feature_path,
         feedback=None,
+        prompt_builder=_bundled_prompt_builder(),
     )
 
     expected_interpolated_values = (
@@ -46,6 +57,7 @@ def test_ralph_prompt_contract_uses_schema_only_validate_command(
         feature=feature,
         feature_path=feature_path,
         feedback=None,
+        prompt_builder=_bundled_prompt_builder(),
     )
 
     assert "uv run engineeringagent validate --schema-only" in prompt
@@ -84,6 +96,7 @@ def test_bundled_ralph_prompt_uses_phase_wording(tmp_path: Path) -> None:
         feature=feature,
         feature_path=feature_path,
         feedback=None,
+        prompt_builder=_bundled_prompt_builder(),
     )
 
     assert "Identify the most important open phase first." in prompt
@@ -133,6 +146,7 @@ def test_bundled_ralph_prompt_surfaces_current_phase_reference(tmp_path: Path) -
         feature=feature,
         feature_path=feature_path,
         feedback=None,
+        prompt_builder=_bundled_prompt_builder(),
     )
 
     assert "Current phase: P1 - Track bundled prompt context" in prompt
@@ -174,6 +188,7 @@ def test_bundled_ralph_prompt_keeps_phase_wording_with_invalid_plan_frontmatter(
         feature=feature,
         feature_path=feature_path,
         feedback=None,
+        prompt_builder=_bundled_prompt_builder(),
     )
 
     assert "Identify the most important open phase first." in prompt
@@ -189,6 +204,7 @@ def test_flat_feature_prompt_avoids_legacy_wrapper_wording(tmp_path: Path) -> No
         feature=feature,
         feature_path=feature_path,
         feedback=None,
+        prompt_builder=_bundled_prompt_builder(),
     )
 
     assert "Identify the most important open implementation step first." in prompt
@@ -238,6 +254,7 @@ def test_bundled_ralph_prompt_treats_package_as_canonical_working_set(
         feature=feature,
         feature_path=feature_path,
         feedback=None,
+        prompt_builder=_bundled_prompt_builder(),
     )
 
     assert (
@@ -274,6 +291,7 @@ def test_direct_bundled_ralph_prompt_avoids_legacy_subtask_wording(
         feature=feature,
         feature_path=feature_path,
         feedback=None,
+        prompt_builder=_bundled_prompt_builder(),
     )
 
     assert "Identify the most important open implementation step first." in prompt
@@ -312,6 +330,7 @@ def test_bundled_ralph_prompt_includes_plan_and_research_paths(tmp_path: Path) -
         feature=feature,
         feature_path=feature_path,
         feedback=None,
+        prompt_builder=_bundled_prompt_builder(),
     )
 
     assert f"- specification: {feature_path}" in prompt

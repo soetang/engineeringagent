@@ -128,7 +128,11 @@ def test_choose_feature_with_selector_uses_selector_output_when_parse_succeeds(
     monkeypatch: Any,
 ) -> None:
     pending = _pending_features()
-    monkeypatch.setattr(selection, "build_selector_prompt", lambda _: "prompt")
+    monkeypatch.setattr(
+        selection,
+        "build_selector_prompt",
+        lambda _pending, **_kwargs: "prompt",
+    )
 
     def _run_agent(*_: Any, **__: Any) -> str:
         return "FEAT-150"  # token parsed via feature id
@@ -151,7 +155,11 @@ def test_choose_feature_with_selector_falls_back_when_opencode_missing(
         '[agents]\nbackend = "opencode"\n',
         encoding="utf-8",
     )
-    monkeypatch.setattr(selection, "build_selector_prompt", lambda _: "prompt")
+    monkeypatch.setattr(
+        selection,
+        "build_selector_prompt",
+        lambda _pending, **_kwargs: "prompt",
+    )
 
     def _run_agent(*_: Any, **__: Any) -> str:
         raise FileNotFoundError("opencode")
@@ -177,7 +185,11 @@ def test_choose_feature_with_selector_falls_back_on_parse_or_command_failure(
         '[agents]\nbackend = "opencode"\n',
         encoding="utf-8",
     )
-    monkeypatch.setattr(selection, "build_selector_prompt", lambda _: "prompt")
+    monkeypatch.setattr(
+        selection,
+        "build_selector_prompt",
+        lambda _pending, **_kwargs: "prompt",
+    )
 
     def _run_agent(*_: Any, **__: Any) -> str:
         raise AgentBackendError(
@@ -207,7 +219,11 @@ def test_choose_feature_with_selector_logs_backend_agnostic_step_label(
     monkeypatch: Any, capsys: Any
 ) -> None:
     pending = _pending_features()
-    monkeypatch.setattr(selection, "build_selector_prompt", lambda _: "prompt")
+    monkeypatch.setattr(
+        selection,
+        "build_selector_prompt",
+        lambda _pending, **_kwargs: "prompt",
+    )
     monkeypatch.setattr(
         selection,
         "describe_action",
@@ -238,7 +254,11 @@ def test_choose_feature_with_selector_uses_configured_codex_backend(
         '[agents]\nbackend = "codex"\n',
         encoding="utf-8",
     )
-    monkeypatch.setattr(selection, "build_selector_prompt", lambda _: "prompt")
+    monkeypatch.setattr(
+        selection,
+        "build_selector_prompt",
+        lambda _pending, **_kwargs: "prompt",
+    )
 
     def _run_agent(*_: Any, **__: Any) -> str:
         raise AgentBackendError(

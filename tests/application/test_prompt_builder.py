@@ -8,6 +8,7 @@ import pytest
 import yaml
 
 from engineeringagent.adapters.prompts import BundledPromptDefinitionRepository
+from engineeringagent.adapters.prompts import ProjectPromptDefinitionRepository
 from engineeringagent.application import (
     DefaultPromptBuilder,
     ImplementationPromptRequest,
@@ -87,6 +88,26 @@ def test_application_selector_prompt_renders_feature_summaries(tmp_path: Path) -
     assert f"path={feature_path}" in prompt
 
 
+def test_application_selector_prompt_prefers_repo_local_template(
+    tmp_path: Path,
+) -> None:
+    """Selector prompt rendering should use repository-local overrides."""
+
+    prompts_root = tmp_path / "harness" / "prompts"
+    prompts_root.mkdir(parents=True)
+    (prompts_root / "loop_selector.md").write_text(
+        "repo selector\n$choices\n",
+        encoding="utf-8",
+    )
+
+    prompt = build_selector_prompt(
+        [(tmp_path / "feature.yaml", {"id": "FEAT-100", "status": "backlog"})],
+        prompt_definitions=ProjectPromptDefinitionRepository(tmp_path),
+    )
+
+    assert prompt.startswith("repo selector\n")
+
+
 def test_loop_runtime_prompt_helper_delegates_to_prompt_builder(tmp_path: Path) -> None:
     """Loop runtime prompt assembly delegates rendering to the application builder."""
 
@@ -155,6 +176,42 @@ def test_default_prompt_builder_uses_explicit_handoff_path_input(
     )
 
     assert "read prior handoff context from custom/handoff-reference.md" in prompt
+
+
+def test_default_prompt_builder_prefers_repo_local_templates(
+    tmp_path: Path,
+) -> None:
+    """Implementation prompt rendering should use repository-local overrides."""
+
+    prompts_root = tmp_path / "harness" / "prompts"
+    prompts_root.mkdir(parents=True)
+    (prompts_root / "loop_implementation.md").write_text(
+        "repo implementation\n$feature_id\n$artifact_paths\n",
+        encoding="utf-8",
+    )
+    (prompts_root / "loop_feedback.md").write_text(
+        "\n\nRepo feedback:\n$feedback\n",
+        encoding="utf-8",
+    )
+    feature_path = tmp_path / "docs" / "features" / "spec.yaml"
+    feature_path.parent.mkdir(parents=True)
+    feature_path.write_text("id: FEAT-101\n", encoding="utf-8")
+
+    prompt = DefaultPromptBuilder(
+        ProjectPromptDefinitionRepository(tmp_path)
+    ).build_implementation_prompt(
+        ImplementationPromptRequest(
+            feature={"id": "FEAT-101"},
+            artifacts=PromptArtifactPaths(specification=feature_path),
+            handoff_path=".engineeringagent/progress/features/FEAT-101/handoff.md",
+            feedback="retry",
+            progress_kind="feature",
+            current_progress="FEAT-101 - Repo local",
+        )
+    )
+
+    assert prompt.startswith("repo implementation\nFEAT-101\n")
+    assert "Repo feedback:\nretry" in prompt
 
 
 def test_default_prompt_builder_normalizes_legacy_subtask_progress_to_feature_wording(
