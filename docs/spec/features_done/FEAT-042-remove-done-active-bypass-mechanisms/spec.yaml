@@ -1,0 +1,39 @@
+id: FEAT-042
+title: Remove done-spec bypass mechanisms and enforce archival policy unconditionally
+type: bug
+expected_commit_subject: 'fix: add FEAT-042 remove done-active bypass mechanisms'
+planning_tier: planned
+status: done
+priority: high
+objective: Remove all validator bypass paths that allow completed feature specs to
+  stay in the active features directory so done-spec archival rules cannot be ignored.
+context: The validator currently allows two bypasses for done-spec archival enforcement.
+  First, `.allow-done-active.txt` can allowlist done specs in `docs/spec/features`.
+  Second, `engineeringagent validate --schema-only` skips done-spec archival policy
+  checks. User-confirmed scope is a hard cutover that removes both bypasses immediately,
+  treats `.allow-done-active.txt` as unsupported configuration, and keeps verification
+  focused on validator behavior plus targeted tests.
+constraints:
+- Remove runtime support for `.allow-done-active.txt` and remove any validator messages
+  that suggest allowlist exceptions.
+- Remove `--schema-only` from CLI and remove schema-only branching from validator
+  contract.
+- Validation must fail deterministically when `.allow-done-active.txt` is present
+  under the active features directory for the resolved docs root.
+- Treat this as an immediate breaking change with no soft-deprecation period.
+- Keep legacy archived-done compatibility behavior in `features_done` unchanged.
+- Update current user-facing command references so `validate --schema-only` is no
+  longer recommended.
+acceptance:
+- '`engineeringagent validate --help` no longer documents a `--schema-only` flag.'
+- Invoking `engineeringagent validate --schema-only` fails at argument parsing.
+- Validator reports an explicit error when `.allow-done-active.txt` exists under active
+  features and returns non-zero validation status.
+- Done specs left in active features always fail archival policy checks with no bypass
+  path in error guidance.
+- Repository transition file `docs/spec/features/.allow-done-active.txt` is removed.
+- Targeted tests cover removed bypass behavior and updated failure messaging.
+- '`uvx --from . engineeringagent validate` passes after migration updates.'
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-14T10:38:00Z'

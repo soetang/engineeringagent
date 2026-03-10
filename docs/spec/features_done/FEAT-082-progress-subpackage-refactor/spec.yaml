@@ -1,0 +1,64 @@
+id: FEAT-082
+title: Refactor progress helpers into a shared engineeringagent.progress subpackage
+type: chore
+expected_commit_subject: 'chore: refactor progress helpers into subpackage'
+planning_tier: planned
+status: done
+priority: medium
+objective: 'Improve discoverability and dependency layering by moving progress path
+  and logging
+
+  helpers into a dedicated `engineeringagent.progress` subpackage used by both loop
+
+  telemetry and reviewers state persistence.
+
+  '
+context: 'Progress artifact path construction and writes are currently implemented
+  as two
+
+  top-level modules:
+
+
+  - `src/engineeringagent/progress_paths.py`
+
+  - `src/engineeringagent/progress_logging.py`
+
+
+  These are used by both `engineeringagent.loop_runtime.telemetry` and
+
+  `engineeringagent.reviewers`. Reviewers is a stable integration surface tied to
+
+  `harness/reviewers.yaml`, and should not be forced to depend on
+
+  `engineeringagent.loop_runtime.*` internals.
+
+  '
+constraints:
+- Do not change the `harness/reviewers.yaml` contract shape or prompt locations.
+- Keep `engineeringagent.loop_runtime.*` internal; reviewers must not import loop_runtime
+  internals as a result of this refactor.
+- Update the progress locality fitness rule to reflect the new canonical module path
+  for progress helpers.
+- Breaking internal import paths is allowed (big-bang), but tests and fitness rules
+  must be updated in the same change.
+implementation_notes: "Contract/API delta (explicit):\n\n- Surface: internal module\
+  \ import paths for progress helpers.\n  - Old behavior: imports use `engineeringagent.progress_paths`\
+  \ and `engineeringagent.progress_logging`.\n  - New behavior: imports use `engineeringagent.progress.paths`\
+  \ and `engineeringagent.progress.logging`.\n\n- Surface: progress locality enforcement\
+  \ allowlist.\n  - Old behavior: harness rule allowlists only `src/engineeringagent/progress_paths.py`\
+  \ for progress path literals.\n  - New behavior: harness rule allowlists only `src/engineeringagent/progress/paths.py`\
+  \ for progress path literals.\n\nCompatibility policy:\n- This refactor is internal;\
+  \ CLI behavior must remain unchanged.\n- Reviewers runtime behavior and its relationship\
+  \ to `harness/reviewers.yaml` must remain unchanged.\n"
+acceptance:
+- Progress helpers live under `src/engineeringagent/progress/` and are imported via
+  `engineeringagent.progress.paths` and `engineeringagent.progress.logging`.
+- '`engineeringagent.reviewers` uses `engineeringagent.progress.*` and does not import
+  `engineeringagent.loop_runtime.*`.'
+- The progress locality fitness rule (`architecture.progress-log-path-locality`) is
+  updated to match the new canonical module path and remediation guidance.
+- '`uv run python -m engineeringagent.cli fitness run --format json` and `uv run pytest
+  -q` pass.'
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-17T07:42:40Z'

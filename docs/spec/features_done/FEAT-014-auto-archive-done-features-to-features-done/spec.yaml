@@ -1,0 +1,79 @@
+id: FEAT-014
+title: Auto-archive completed features and support explicit uncommitted-change resume
+type: chore
+expected_commit_subject: 'chore: legacy archived spec metadata backfill'
+planning_tier: planned
+status: done
+priority: high
+objective: Make the run loop automatically move a just-completed feature spec from
+  `docs/spec/features/` to `docs/spec/features_done/` as part of feature completion,
+  and allow failed-loop restart with uncommitted changes only when the user explicitly
+  opts in.
+context: 'The loop currently commits successful completion when a feature reaches
+  `status: done`, but the feature file remains in `docs/spec/features/`. This creates
+  drift against the documented repository contract that completed features belong
+  in `docs/spec/features_done/`, and it leaves stale done items mixed with active
+  backlog. Separately, the loop currently blocks non-dry execution when the repository
+  has uncommitted changes, which prevents intentional restart of a previously failed
+  iteration where local edits are already present. We need deterministic, automatic
+  archiving plus an explicit, opt-in resume path for uncommitted changes that preserves
+  strict defaults.
+
+  '
+constraints:
+- 'Default non-dry run behavior remains strict: uncommitted changes are rejected unless
+  an explicit allow-dirty flag is provided.'
+- Uncommitted-change start must be an explicit user opt-in via CLI flag `--allow-dirty`.
+- When allow-dirty mode is enabled, loop output must clearly indicate that execution
+  with uncommitted changes was explicitly allowed.
+- Do not document `--allow-dirty` in README/AGENTS until the flag is implemented and
+  shipped.
+- When documented, describe the behavior as allowing runs with uncommitted code changes;
+  avoid relying on 'dirty tree/worktree' jargon.
+- Archive only the selected feature that just completed in the current loop iteration.
+- Archive timing is immediate after successful iteration completion; include archive
+  change in the same completion commit.
+- Do not auto-migrate all preexisting done files in `docs/spec/features/` during loop
+  startup.
+- Preserve feature filename/id when moving to `docs/spec/features_done/`.
+- If completion commit fails (for example pre-commit hook failure), preserve retryability
+  for the same feature and avoid orphaned/ambiguous feature paths.
+- Add validation guardrails so active `docs/spec/features/` does not accumulate done
+  files; preexisting done files may be handled through an explicit transitional policy
+  until manually archived.
+implementation_notes: 'Add a CLI-level allow-dirty opt-in that bypasses the current
+  clean-state precondition only when explicitly requested, and keep current strict
+  behavior as the default. Ensure loop messaging is explicit when allow-dirty mode
+  is active so users can distinguish normal vs override runs.
+
+  Extend loop completion flow to resolve an archive destination path under `docs/spec/features_done/`,
+  perform a safe move for the completed selected feature, and commit both status/final
+  edits and path move together in one completion commit. Ensure commit-failure retries
+  are robust when archive staging has occurred. Update spec validation rules to report
+  done features left in active specs with actionable messaging, while supporting an
+  explicit transition mechanism for already-existing done specs until cleanup is performed
+  manually.
+
+  '
+acceptance:
+- Running `engineeringagent run ...` with uncommitted changes and no allow-dirty flag
+  fails fast with a clear precondition message.
+- Running `engineeringagent run ... --allow-dirty` starts loop execution with uncommitted
+  changes and supports restart of the selected feature.
+- When allow-dirty mode is used, CLI output clearly indicates execution with uncommitted
+  changes was explicitly enabled.
+- 'When a selected feature becomes `status: done` and completion succeeds, its YAML
+  file is moved from `docs/spec/features/` to `docs/spec/features_done/` automatically.'
+- The completion git commit includes the archive move in the same commit (no second
+  archive-only commit).
+- Loop behavior archives only the selected just-completed feature; unrelated done
+  files are not auto-migrated by startup scanning.
+- If commit hooks block completion, loop retry behavior remains deterministic for
+  the same feature and does not lose track of the feature spec path.
+- Validation reports clear errors when done specs remain under active features, with
+  explicit guidance for archive location and any transitional exception policy.
+- Repository docs describe the automatic archive contract and expected active-vs-archived
+  spec locations.
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-12T22:02:01Z'

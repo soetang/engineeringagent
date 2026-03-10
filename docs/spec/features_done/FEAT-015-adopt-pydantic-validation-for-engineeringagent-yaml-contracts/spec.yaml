@@ -1,0 +1,64 @@
+id: FEAT-015
+title: Adopt Pydantic validation for engineeringagent YAML contracts
+type: chore
+expected_commit_subject: 'chore: legacy archived spec metadata backfill'
+planning_tier: planned
+status: done
+priority: high
+objective: Replace the current jsonschema plus ad-hoc custom validation path with
+  strict Pydantic models for engineeringagent-owned YAML contracts, including enum
+  enforcement, forbidden extra fields, and deterministic error reporting.
+context: 'Validation currently splits behavior between JSON Schema checks (`feature.schema.json`)
+  and Python custom rules for feature invariants, while other YAML contracts like
+  `harness/gates.yaml` and `docs/spec/potential_features.yaml` are not enforced by
+  the same strict typed model layer. This creates duplicated contract logic and inconsistent
+  guarantees.
+
+  We want a single model-driven approach where Pydantic is the source of truth for
+  engineeringagent YAML contracts, with strict enums/types and no unknown fields.
+
+  '
+constraints:
+- 'Rollout is immediate replacement: `engineeringagent validate` uses Pydantic instead
+  of jsonschema runtime validation.'
+- 'Validation scope includes engineeringagent-owned YAML contracts only: `docs/spec/features/*.yaml`,
+  `docs/spec/features_done/*.yaml`, `docs/spec/potential_features.yaml`, and `harness/gates.yaml`.'
+- 'Out of scope for this feature: `.github/workflows/*.yaml`, `.pre-commit-config.yaml`,
+  and test fixtures under `tests/fixtures/`.'
+- 'Validation is strict: enums are enforced, unknown fields are forbidden, and implicit
+  coercion is not relied on for contract fields.'
+- Existing feature/subtask invariant checks remain enforced after migration (for example
+  contiguous subtask order and done-prefix rules).
+- '`docs/spec/schemas/feature.schema.json` is generated from the Pydantic feature
+  model and committed as a tracked artifact.'
+- Validation error output remains actionable and includes file path plus field path
+  context.
+implementation_notes: 'Introduce typed Pydantic models and Enums for feature specs,
+  subtasks, potential feature backlog, and gate configuration. Move invariant logic
+  from `custom_issues()` into model validators (or equivalent strict model checks)
+  so one model pass enforces both schema shape and cross-field invariants.
+
+  Refactor the validator pipeline to route each contract file through its Pydantic
+  model and normalize failures into deterministic, readable CLI messages. Add a schema
+  generation step that emits `docs/spec/schemas/feature.schema.json` from the Pydantic
+  feature model to keep external schema consumers aligned.
+
+  '
+acceptance:
+- '`engineeringagent validate` validates engineeringagent-owned YAML contracts via
+  Pydantic models and fails with exit code 1 when any contract is invalid.'
+- Feature contract violations for enums, missing required fields, unknown fields,
+  and type errors are reported with clear file and field paths.
+- Existing feature/subtask invariants remain enforced after migration with equivalent
+  or clearer validation messages.
+- '`harness/gates.yaml` and `docs/spec/potential_features.yaml` are validated against
+  strict Pydantic models during `engineeringagent validate`.'
+- '`docs/spec/schemas/feature.schema.json` is generated from the Pydantic feature
+  model and matches the committed artifact used by the repository.'
+- '`engineeringagent validate --schema-only` remains functional with defined, documented
+  behavior under the Pydantic validator pipeline.'
+- Repository dependencies and imports no longer require `jsonschema` for feature validation
+  runtime paths.
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-13T06:00:00Z'

@@ -1,0 +1,147 @@
+id: FEAT-132
+title: Consolidate run_agent into a single entrypoint path with backend-owned structured
+  output
+type: spec
+expected_commit_subject: 'spec: add FEAT-132 single run-agent path contract'
+planning_tier: planned
+status: done
+priority: high
+objective: 'Align agent invocation with a single public `run_agent(...)` execution
+  path while preserving backend-owned structured-output behavior, so text and structured
+  calls share one orchestration boundary and backend-specific structured strategies
+  remain encapsulated behind the agents package.
+
+  '
+context: '`src/engineeringagent/agents/api.py` currently branches into separate text-vs-structured
+  strategy resolution paths, and registry/runtime internals are shaped around a `structured_output`
+  split. This makes the public boundary appear unified while preserving internal dual-path
+  behavior.
+
+  For this feature, we keep `output_type` as the canonical public parameter, keep
+  structured return semantics as parsed-object output, and keep structured-output
+  policy backend-owned. The required change is consolidating internal orchestration
+  so `run_agent` has one canonical path in.
+
+  '
+constraints:
+- Keep `run_agent(..., output_type=...)` as the canonical public API parameter; do
+  not introduce a new canonical parameter name in this feature.
+- 'Keep public return semantics unchanged: `output_type=str` returns text, non-`str`
+  `output_type` returns parsed structured object.'
+- Backend-specific structured-output strategy remains backend-owned (schema transport,
+  retries/invocation count, and backend-specific failure mapping).
+- Enforce one internal run-agent orchestration path independent of text-vs-structured
+  mode.
+- Remove internal resolver/factory branching that depends on a `structured_output`
+  selector argument.
+- Do not add a separate top-level `run_structured_agent(...)` API.
+- Immediate internal break is allowed for agents backend interfaces and registry internals;
+  do not add temporary compatibility shims.
+- Keep backend-specific logic localized under allowed roots so existing backend-boundary/locality
+  fitness rules continue to pass.
+- Keep subprocess execution boundaries unchanged (backend clients remain command execution
+  owners).
+- No new fitness rule is added in this feature; satisfy existing fitness policies
+  through implementation choices and tests.
+implementation_notes: 'Contract change declaration (required)
+
+
+  Surface:
+
+  - `engineeringagent.agents.run_agent` orchestration path.
+
+  - `engineeringagent.agents` runtime/contracts/registry internal interfaces.
+
+  - Backend adapters under `src/engineeringagent/agents/backends/*`.
+
+  - Agent backend architecture doc (`docs/architecture/agent-backends-architecture.md`).
+
+
+  Old behavior:
+
+  - `run_agent(...)` branches into separate text-vs-structured internal strategy resolution.
+
+  - Backend factories are constructed via a structured flag (`structured_output=True/False`).
+
+  - Internal execution behavior is split across separate strategy/interface shapes.
+
+
+  New behavior:
+
+  - `run_agent(...)` uses one canonical orchestration path for both text and structured
+  requests.
+
+  - Backend resolution happens once per call, without structured-selector branching
+  in registry/runtime wiring.
+
+  - Backend implementations keep ownership of structured-output behavior, including
+  backend-specific retry/invocation policy.
+
+  - Public caller contract stays ergonomic and unchanged around `output_type` and
+  parsed-object return for structured mode.
+
+
+  Compatibility policy:
+
+  - Internal break now (no compatibility shim) for agents backend/runtime interface
+  seams.
+
+  - Public `run_agent(..., output_type=...)` call shape remains stable in this feature.
+
+
+  Migration plan:
+
+  - Define one normalized agent run request/flow contract used for both text and structured
+  invocations.
+
+  - Refactor registry/backend construction to remove structured-selector factory branching.
+
+  - Port OpenCode and Codex backends onto the single-path contract while preserving
+  backend-owned structured behavior.
+
+  - Remove deprecated split runtime interfaces and update all in-repo call sites/tests.
+
+  - Update architecture documentation to match the implemented single-path contract.
+
+
+  Fitness-function impact assessment:
+
+  - no fitness-function changes required: existing rules already enforce backend-boundary
+  locality and subprocess boundaries (`architecture.agents-backends-boundary`, `architecture.backend-literal-locality-budget`,
+  `architecture.loop-subprocess-boundary`), and this feature keeps backend-specific
+  behavior within those boundaries.
+
+
+  Verification evidence:
+
+  - Agents API/backend tests prove single-path orchestration and preserved structured
+  behavior.
+
+  - Reviewer/runtime call sites using structured output continue to pass without caller-specific
+  branching.
+
+  - Existing fitness and validation checks pass without rule updates.
+
+  '
+acceptance:
+- '`run_agent(...)` executes through one canonical internal orchestration path for
+  both text and structured calls.'
+- Agents runtime/registry no longer depends on a text-vs-structured selector argument
+  to resolve backend construction.
+- '`output_type` remains the canonical public parameter and existing in-repo call
+  sites continue using it.'
+- Structured mode continues returning parsed objects for both OpenCode and Codex backends.
+- OpenCode and Codex retain backend-owned structured behavior differences (including
+  invocation/retry policy) behind the same public call boundary.
+- No separate top-level structured agent API is introduced.
+- '`docs/architecture/agent-backends-architecture.md` is updated to match this feature
+  contract.'
+- '`uv run pytest -q tests/agents/test_agents_api.py tests/agents/test_opencode_backend.py
+  tests/agents/test_codex_backend.py tests/checks/test_checks_reviewers_runtime.py`
+  passes.'
+- '`uv run engineeringagent checks run --phase iteration_end` passes.'
+- '`uv run engineeringagent checks run --phase feature_done --checks fitness` passes.'
+- '`uv run engineeringagent validate` passes.'
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-25T09:00:45Z'

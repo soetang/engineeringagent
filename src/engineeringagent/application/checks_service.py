@@ -7,7 +7,6 @@ from pathlib import Path
 from pydantic import BaseModel, ConfigDict
 
 from engineeringagent import checks as checks_domain
-from engineeringagent.checks.results import ChecksRunResult
 
 
 class RunChecksRequest(BaseModel):
@@ -149,7 +148,10 @@ class DefaultChecksService(ChecksService):
 
         return None
 
-    def _coerce_result(self, result: object) -> ChecksRunResult:
-        if isinstance(result, ChecksRunResult):
+    def _coerce_result(self, result: object) -> checks_domain.ChecksRunResult:
+        if isinstance(result, checks_domain.ChecksRunResult):
             return result
-        return ChecksRunResult.model_validate(result, from_attributes=True)
+        return checks_domain.ChecksRunResult.model_validate(
+            result,
+            from_attributes=True,
+        )

@@ -1,0 +1,51 @@
+id: FEAT-141
+title: Recover selected-feature iterations when implement archives the same feature
+type: bug
+expected_commit_subject: 'spec: add FEAT-141 post-implement selected-feature archive
+  recovery'
+planning_tier: planned
+status: done
+priority: high
+objective: Keep loop iterations moving when implement moves the selected feature from
+  `docs/spec/features/` to `docs/spec/features_done/` in the same iteration, while
+  preserving strict startup-path loading and deterministic rollback behavior.
+context: FEAT-136 intentionally removed broad archive fallback loading. That simplification
+  made same-iteration archival by implement fail as `feature_missing` even when the
+  archived counterpart was valid and done. This bugfix restores a narrow post-implement
+  recovery path for the selected feature only.
+constraints:
+- Keep initial selected-feature load strict with no archive fallback.
+- Recover only in post-implement refresh, only for the selected feature, and only
+  for the deterministic counterpart path in `docs/spec/features_done/`.
+- 'Recover only when the archived counterpart has `status: done`.'
+- Preserve deterministic archive rollback semantics for gate/reviewer/completion failures.
+- Do not re-introduce broad archive scanning or non-deterministic fallback behavior.
+implementation_notes: "Contract change declaration\n\nSurface:\n\n- Post-implement\
+  \ selected-feature refresh in `src/engineeringagent/loop_runtime/feature_state.py`.\n\
+  \n- Archive gating in `src/engineeringagent/loop_runtime/iteration.py`.\n\n- Loop\
+  \ integration expectations in `tests/loop/test_loop_ralph_mode.py` and `tests/loop/test_loop_opencode_integration.py`.\n\
+  \nOld behavior:\n\n- If implement moved the selected feature to `features_done`\
+  \ mid-iteration, post-implement\n  refresh failed with `feature_missing`, and loop\
+  \ stopped/retried.\n\nNew behavior:\n\n- Post-implement refresh performs a narrow\
+  \ deterministic recovery for the selected\n  feature's archived counterpart when\
+  \ it exists and is `status: done`.\n\n- The iteration continues through verification/gates/reviewers/completion\
+  \ and can\n  select next work in `--all` flow.\n\nCompatibility policy:\n\n- Keep\
+  \ FEAT-136 strict initial-load semantics unchanged.\n\n- Add only targeted post-implement\
+  \ recovery; broad fallback remains removed.\n\nMigration plan:\n\n- Add recovery\
+  \ in feature-state refresh.\n\n- Skip duplicate archive attempts when refresh already\
+  \ marked archival as completed\n  in iteration state.\n\n- Update loop integration\
+  \ tests to assert continue/complete behavior.\n\nFitness-function impact assessment:\n\
+  \n- no fitness-function changes required. The change narrows runtime behavior while\n\
+  \  preserving deterministic selection, rollback, and checks sequencing contracts.\n"
+acceptance:
+- Initial selected-feature load still fails when active path is missing before implement.
+- 'Post-implement refresh recovers only when the selected archived counterpart exists
+  and has `status: done`.'
+- Iteration no longer fails as `feature_missing` for same-iteration selected-feature
+  archival by implement.
+- '`run --all` continues to subsequent pending features after this recovery path.'
+- Gate/reviewer/completion rollback behavior remains deterministic when later phases
+  fail.
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-26T00:00:00Z'

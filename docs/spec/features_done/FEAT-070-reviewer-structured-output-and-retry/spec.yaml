@@ -1,0 +1,179 @@
+id: FEAT-070
+title: Make reviewer decisions schema-validated with same-session retries on parse
+  failure
+type: bug
+expected_commit_subject: 'fix: make reviewer output parsing robust with schema and
+  retries'
+planning_tier: planned
+status: done
+priority: high
+objective: "Stop blocking reviewer gates from failing due to non-JSON / malformed\
+  \ reviewer outputs by:\n1) switching reviewer runs to OpenCode's JSON event stream\
+  \ transport and\n2) adding deterministic, bounded, same-session retries when the\
+  \ returned decision envelope\n   does not validate.\n"
+context: 'The readme_process blocking reviewer intermittently fails with reviewer_output_parse_failure
+
+  (e.g. "output is not valid JSON"), which forces full loop retries despite the underlying
+
+  reviewer intent being recoverable.
+
+
+  Reviewers already require the $responseformat placeholder in their prompt files,
+  but the
+
+  harness currently relies on a prose contract plus best-effort salvage parsing; this
+  is
+
+  not sufficient when the model returns non-JSON.
+
+
+  We want PydanticAI-like behavior: strict schema validation and automatic reflection
+  retries,
+
+  while remaining compatible with opencode run.
+
+  '
+constraints:
+- 'Reviewer execution must prefer structured transport via `opencode run --format
+  json` and
+
+  must extract the assistant''s final decision text output from the JSON event stream
+  rather
+
+  than parsing the formatted default CLI rendering.
+
+  '
+- "JSON event extraction must be deterministic.\n- Parse stdout as JSON Lines (one\
+  \ JSON object per line).\n- Treat `sessionID` from any event as the session identifier.\n\
+  - Collect candidate decision payloads from events where `type` is `text` and `part.text`\n\
+  \  is a string.\n- Use the LAST collected `part.text` as the decision payload.\n\
+  - Do not concatenate multiple `part.text` values.\n"
+- 'If JSON event parsing yields no sessionID or no text payload, treat this as an
+  output
+
+  failure and fall back to legacy behavior (current stdout/stderr parsing + best-effort
+  JSON
+
+  extraction).
+
+  '
+- 'The reviewer decision envelope must be defined as a Pydantic model with extra=forbid
+
+  (no unexpected keys) and must be used for validation.
+
+  '
+- 'The reviewer prompt $responseformat replacement must include a machine-readable
+  JSON Schema
+
+  (derived from the Pydantic model) in addition to any prose guidance.
+
+  '
+- 'On decision parse / schema validation failure, the system must retry up to 2 times
+  within
+
+  the same OpenCode session (`opencode run --session <id> --format json`) using a
+  minimal
+
+  corrective follow-up prompt that includes the validation error and repeats the schema
+
+  requirement.
+
+  '
+- 'Same-session retries must happen inside a single reviewer run and must not consume
+
+  loop-level reviewer retry counters unless all internal retries fail and the final
+  decision
+
+  is still request_changes.
+
+  '
+- 'As part of verification for this feature, run the readme_process reviewer via the
+  CLI even
+
+  if README.md is unchanged. If it requests README changes, apply them in this feature
+  so the
+
+  readme_process reviewer is exercised end-to-end.
+
+  '
+- 'The readme_process reviewer trigger set must reflect onboarding flow changes, not
+  just
+
+  README.md. Expand readme_process trigger.on_change to include docs/references/**/*.md,
+
+  docs/principles/**/*.md, and onboarding-surface code paths (src/engineeringagent/cli.py,
+
+  src/engineeringagent/init_scaffold.py, src/engineeringagent/scaffold_templates/**,
+
+  src/engineeringagent/validator.py, src/engineeringagent/gates.py, src/engineeringagent/loop.py,
+
+  src/engineeringagent/loop_runtime/**/*.py). Explicitly do NOT trigger on AGENTS.md.
+
+  '
+- 'Do not change semantics for valid reviewer decisions (approve/request_changes/warning);
+
+  only add robustness for malformed outputs.
+
+  '
+- 'Preserve that reviewers are invoked with `--agent engineeringagent` (never default
+  to build).
+
+  '
+implementation_notes: "Contract/API delta (explicit):\n\n- Surface: Reviewer response\
+  \ format contract.\n  - Old behavior: prose-only contract injected via $responseformat;\
+  \ manual parsing/validation.\n  - New behavior: contract includes explicit JSON\
+  \ Schema for the reviewer decision envelope\n    model, and parsing validates by\
+  \ the Pydantic model.\n\n- Surface: Reviewer runner transport + retries.\n  - Old\
+  \ behavior: `opencode run --agent engineeringagent` captured as formatted stdout/stderr;\n\
+  \    malformed output yields deterministic request_changes.\n  - New behavior: reviewer\
+  \ runner uses `opencode run --format json` to capture JSON events,\n    extracts\
+  \ assistant text + sessionID, and performs up to 2 same-session reflection retries\n\
+  \    on parse/schema failure before returning request_changes.\n\nNew $responseformat\
+  \ expansion (exact):\n\n---\nReturn exactly one strict JSON object and no other\
+  \ text.\nNo Markdown. No code fences. No surrounding commentary.\n\nThe JSON object\
+  \ MUST validate against the JSON Schema below.\nThe schema is derived from the reviewer\
+  \ decision envelope model and is emitted with sorted\nkeys for deterministic prompts.\n\
+  \nJSON Schema:\n{{REVIEWER_DECISION_JSON_SCHEMA}}\n\nNotes:\n- `decision` must be\
+  \ one of: \"approve\", \"request_changes\", \"warning\".\n- `summary` must be a\
+  \ non-empty string.\n- If present, `required_actions` must be a list of strings.\n\
+  - If present, `confidence` must be a number between 0 and 1.\n\nExample output:\n\
+  {\"decision\":\"approve\",\"summary\":\"Looks good.\",\"required_actions\":[]}\n\
+  ---\n\nCompatibility policy:\n- Additive behavior only; existing valid reviewer\
+  \ outputs must continue to parse unchanged.\n- Internal same-session retries apply\
+  \ only to parse/schema failures, not to contentful\n  request_changes decisions.\n\
+  \nOpenCode JSON event extraction (exact):\n- Run OpenCode with JSON output enabled.\n\
+  \  - opencode run --format json --agent engineeringagent \"<prompt>\"\n- Parse stdout\
+  \ as JSON Lines.\n- Capture session id.\n  - If any line contains a string `sessionID`,\
+  \ record it.\n- Capture candidate decision payloads.\n  - For each line where `type`\
+  \ is `text`, look for `part.text`.\n  - If `part.text` is a string, record it as\
+  \ a candidate.\n- Decision payload is the LAST candidate `part.text`.\n\nSame-session\
+  \ parse/schema retry prompt (exact):\n---\nYour previous output did not validate\
+  \ as a reviewer decision JSON object.\n\nValidation error:\n{{VALIDATION_ERROR}}\n\
+  \nReturn exactly one strict JSON object and no other text.\nIt MUST validate against\
+  \ the JSON Schema provided in the reviewer instructions.\nNo Markdown. No code fences.\
+  \ No surrounding commentary.\n---\n\nManual verification command (exact):\n- uv\
+  \ run python -m engineeringagent.cli reviewers run --reviewer readme_process --feature-id\
+  \ FEAT-070 \\\n    --feature-path docs/spec/features_done/FEAT-070-reviewer-structured-output-and-retry.yaml\n"
+acceptance:
+- Reviewer runs use `opencode run --format json` and extract assistant decision text
+  from the JSON event stream (not the default formatted output).
+- Reviewer decision validation is performed by a Pydantic model; invalid/missing keys
+  are detected with actionable error messages.
+- If the reviewer emits malformed output, the runner performs up to 2 retries in the
+  same session using `--session`, and succeeds when the model corrects the output.
+- If all internal retries fail, the reviewer result remains deterministic request_changes
+  with a parser-failure summary prefix and required_actions.
+- If OpenCode JSON event output cannot be parsed for any reason, reviewer execution
+  falls back to the legacy stdout/stderr parsing behavior (no hard failure).
+- Reviewers are always invoked with `--agent engineeringagent` regardless of opencode.json
+  presence.
+- Specs validate and targeted unit tests cover JSON event extraction, schema validation,
+  and same-session retry behavior.
+- 'Reviewer planning: readme_process is planned to run at phase feature_done when
+  any of the expanded onboarding trigger paths change (and is skipped otherwise).'
+- 'Manual verification: run the readme_process reviewer via the reviewers CLI and
+  confirm it completes without a parse or schema failure when invoked with FEAT-070
+  as feature context.'
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-15T16:10:19Z'

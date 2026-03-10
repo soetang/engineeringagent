@@ -1,0 +1,75 @@
+id: FEAT-052
+title: Add default readme_process blocking reviewer with temp worktree sandbox execution
+type: feature
+expected_commit_subject: 'feat: add FEAT-052 default readme_process reviewer configuration
+  and execution behavior'
+planning_tier: planned
+status: done
+priority: high
+objective: Add a default `readme_process` reviewer that runs only when `README.md`
+  changes, executes in an isolated temp worktree snapshot, and blocks completion until
+  approved or policy exhaustion.
+context: FEAT-050 defines the reviewer contract and FEAT-051 integrates reviewer runtime.
+  This feature provides a concrete built-in reviewer scenario focused on README getting-started
+  quality. The reviewer should validate that the documented setup flow is still coherent
+  and runnable, with clear machine-parseable decisions and deterministic policy handling.
+constraints:
+- The reviewer id is `readme_process` and its prompt source is `harness/reviewers/prompts/readme_process.md`.
+- Trigger only at `feature_done` phase.
+- Trigger only when `README.md` is in changed paths.
+- Execution must use `sandbox.mode=temp_worktree_snapshot`.
+- The reviewer prompt must instruct the agent to read `README.md` and execute the
+  documented getting-started/bootstrap flow in a fresh temporary directory, including
+  project scaffold/init commands required for first-run success.
+- On bootstrap failure, reviewer feedback must classify root cause as README instructions
+  issue, init/scaffold command issue, or both, so retries update the correct surface.
+- Approval policy defaults for this reviewer are blocking, first feature approval
+  reuse enabled, max retries 2, continue on exhausted true.
+- Reviewer output must follow the v1 decision JSON envelope contract.
+- Parse failures must be treated as deterministic `request_changes` outcomes.
+- Repositories without reviewer configuration still keep unchanged baseline behavior.
+implementation_notes: "Deliver one concrete reviewer profile entry, prompt guidance,\
+  \ and focused runtime validation for the README scenario.\n- Add default `readme_process`\
+  \ example in scaffold and docs exactly matching\n  agreed contract shape.\n\n- Author\
+  \ `harness/reviewers/prompts/readme_process.md` with plain-English\n  instructions\
+  \ to verify README getting-started flow and emit strict JSON\n  decision envelope.\n\
+  \n- Prompt content must explicitly require this execution contract:\n\n  - Read\
+  \ current `README.md` getting-started/bootstrap instructions.\n\n  - Create a new\
+  \ temporary directory and run the documented setup there.\n\n  - Verify setup reaches\
+  \ a usable scaffolded project state (for example\n    generated baseline files and\
+  \ successful validation command when listed).\n\n  - Return `request_changes` with\
+  \ concrete required actions when docs are\n    missing, ambiguous, or fail to produce\
+  \ a working scaffold.\n\n  - For failed bootstrap, required actions must explicitly\
+  \ state whether to\n    update `README.md`, init/scaffold command behavior, or both.\n\
+  \n  - Return `approve` only when a clean-room run from README succeeds.\n\n- Ensure\
+  \ runtime planner only schedules this reviewer when README changed and\n  phase\
+  \ is `feature_done`.\n\n- Ensure sandbox setup uses temp worktree snapshot and does\
+  \ not mutate active\n  worktree.\n\n- Ensure blocking retry behavior and exhausted\
+  \ continuation policy are applied\n  to this reviewer scenario.\n\nThe expected\
+  \ reviewer config sample for docs and scaffold must include:\nreadme_process:\n\
+  \  prompt_file: \"harness/reviewers/prompts/readme_process.md\"\n  trigger:\n  \
+  \  phase: \"feature_done\"\n    on_change: [\"README.md\"]\n  sandbox:\n    mode:\
+  \ \"temp_worktree_snapshot\"\n  approval:\n    mode: \"blocking\"\n    first_feature_approval:\
+  \ true\n    max_retries: 2\n    continue_on_exhausted: true"
+acceptance:
+- Default reviewer docs and scaffold include the exact `readme_process` YAML sample
+  agreed in planning.
+- '`readme_process` reviewer runs only when `README.md` changed and phase is `feature_done`.'
+- '`readme_process` execution runs in temp worktree snapshot isolation.'
+- '`readme_process` reads `README.md` and attempts a clean-room bootstrap/scaffold
+  run in a fresh temporary directory using documented getting-started steps.'
+- Blocking decisions from `readme_process` feed retry flow and hook feedback deterministically.
+- Parse failures for `readme_process` are surfaced as deterministic `request_changes`
+  outcomes.
+- Exhausted blocking behavior for `readme_process` follows configured continue policy
+  with warning telemetry by default.
+- Reviewer prompt content for `readme_process` is plain English and includes explicit
+  JSON response instructions.
+- '`readme_process` returns `request_changes` with actionable required actions when
+  README setup steps fail, are ambiguous, or do not produce a working scaffolded project.'
+- When clean-room bootstrap fails, reviewer feedback identifies whether the fix is
+  in `README.md`, init/scaffold command behavior, or both, and approval is withheld
+  until that surface is corrected.
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-14T22:23:28Z'

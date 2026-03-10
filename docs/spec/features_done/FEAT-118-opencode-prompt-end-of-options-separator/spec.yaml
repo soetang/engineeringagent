@@ -1,0 +1,78 @@
+id: FEAT-118
+title: Prevent OpenCode CLI prompt parsing failures for hyphen-leading structured
+  prompts
+type: bug
+expected_commit_subject: 'fix: terminate opencode options before prompt argument'
+planning_tier: planned
+status: done
+priority: high
+objective: 'Stop reviewer and other structured-output runs from failing when the rendered
+
+  prompt starts with `---` (or any `-`-prefixed text) and is passed as a
+
+  positional OpenCode argument.
+
+
+  Ensure prompt text is always treated as message payload, never as a CLI option.
+
+  '
+context: 'FEAT-113 retry loops surfaced repeated reviewer failures:
+
+  `reviewer_output_parse_failure: opencode: opencode run failed`.
+
+
+  Root cause: structured prompt wrappers in `engineeringagent.agents.run_agent`
+
+  start with `---`, while OpenCode invocation currently passes the prompt without
+
+  an end-of-options separator. In that shape, OpenCode CLI can parse prompt text
+
+  as command flags and return usage output with exit code 1.
+
+
+  This is a boundary bug in OpenCode client command construction, not a reviewer
+
+  policy/content bug.
+
+  '
+constraints:
+- Keep the existing `start_agent(...)` Python API unchanged (arguments and return
+  type remain stable).
+- In OpenCode client command construction, insert an explicit end-of-options separator
+  (`--`) before the prompt positional argument.
+- Preserve existing OpenCode option wiring and order for supported flags (`--session`,
+  `--format`, `--agent`) while adding separator safety.
+- Add regression tests that cover both normal prompts and hyphen-leading prompts,
+  including command argv assertions.
+- Add at least one dedicated non-regression unit test that would fail if the end-of-options
+  separator is removed in the future.
+- 'Scope boundary: do not change reviewer decision policy, retry counters, or feedback-forwarding
+  semantics in this feature.'
+- 'no fitness-function changes required: this fix is limited to OpenCode CLI argv
+  construction and test coverage, with no architecture-boundary or policy change.'
+implementation_notes: "Contract/API delta (explicit)\n\n- Surface: OpenCode CLI invocation\
+  \ contract in\n  `src/engineeringagent/agents/backends/opencode/client.py`.\n- Old\
+  \ behavior: command argv ended with `--agent <id> <prompt>`.\n  Prompts starting\
+  \ with `-` could be parsed as flags by the CLI.\n- New behavior: command argv ends\
+  \ with `--agent <id> -- <prompt>`.\n  Prompt content is always interpreted as message\
+  \ payload.\n- Compatibility policy: additive hardening only. Existing non-hyphen\
+  \ prompts\n  continue to work unchanged.\n- Migration scope: one-time code/test\
+  \ update only; no user config migration.\n- Verification evidence: targeted OpenCode\
+  \ client/backend tests plus normal\n  project validation.\n\nTest guidance\n\n-\
+  \ Keep unit tests deterministic by asserting generated argv directly.\n- Include\
+  \ at least one test where prompt begins with `---` and verify the\n  separator is\
+  \ present before the prompt argument.\n- Preferred explicit assertion shape for\
+  \ the hyphen-leading case:\n  `[..., \"--agent\", \"engineeringagent\", \"--\",\
+  \ \"--- hello\"]`.\n"
+acceptance:
+- OpenCode client argv includes `--` immediately before the prompt positional argument.
+- Prompts beginning with `---` are passed as payload, not parsed as OpenCode flags.
+- Existing OpenCode session/format/agent option behavior remains unchanged.
+- FEAT-113-style reviewer parse-failure loops are not re-triggered by this argv bug.
+- A dedicated regression test asserts hyphen-leading prompt argv includes `--` separator.
+- uv run pytest -q tests/opencode/test_opencode_client.py tests/agents/test_opencode_backend.py
+  passes.
+- uv run engineeringagent validate passes.
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-18T20:18:54Z'

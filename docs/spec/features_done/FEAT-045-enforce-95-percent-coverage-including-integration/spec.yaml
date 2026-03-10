@@ -1,0 +1,43 @@
+id: FEAT-045
+title: Enforce 95 percent minimum coverage with integration tests included
+type: test
+expected_commit_subject: 'test: add FEAT-045 enforce 95 percent coverage including
+  integration'
+planning_tier: planned
+status: done
+priority: high
+objective: Enforce a minimum total coverage threshold of 95 percent on the default
+  pytest workflow while always including integration tests in collection/execution.
+context: Coverage is currently run ad hoc and default pytest configuration excludes
+  integration tests via marker filtering. Recent full-suite coverage run (with integration
+  included) reports 94 percent total coverage, which is below the desired baseline.
+  The user-requested policy is direct pytest/coverage-config enforcement (without
+  adding new gate wiring) so local and CI test execution fail immediately when total
+  coverage drops below 95 percent.
+constraints:
+- Enforce the threshold through pytest and/or coverage configuration in `pyproject.toml`
+  (no new gate profile required).
+- Default pytest behavior must include integration tests; do not keep marker-based
+  default exclusion.
+- Coverage failure output must clearly report the configured minimum and measured
+  total.
+- Keep enforcement deterministic across local runs and CI.
+- Coordinate with FEAT-044 permission-contract fixes so integration participation
+  is reliable when OpenCode is available.
+implementation_notes: Add coverage tooling/config that makes `uv run pytest` enforce
+  total minimum coverage directly (for example through pytest-cov and/or coverage
+  fail-under settings). Remove default marker exclusion for integration tests, then
+  raise overall coverage to at least 95 percent by adding targeted tests in current
+  low-coverage modules.
+acceptance:
+- Default pytest invocation enforces total minimum coverage of 95 percent.
+- Integration tests are included by default in pytest collection/execution.
+- Coverage policy is declared in repository config, not only in ad hoc shell commands.
+- Repository test suite meets or exceeds 95 percent total coverage under the configured
+  default command.
+- A focused regression test guards the coverage threshold/config contract from accidental
+  drift.
+- uv run pytest -q passes with coverage enforcement active.
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-14T19:25:23Z'

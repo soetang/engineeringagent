@@ -154,10 +154,12 @@ def base_feature(status: str = "backlog") -> dict[str, Any]:
         "title": "Feature iteration smoke test",
         "type": "feature",
         "expected_commit_subject": "feat: complete FEAT-900 feature iteration smoke test",
+        "planning_tier": "direct",
         "status": status,
         "priority": "high",
         "objective": "Verify feature iteration does not require subtask selection.",
         "acceptance": ["Feature iteration runs as a feature-level unit."],
+        "artifacts": {},
         "updated_at": "2026-02-12T00:00:00Z",
     }
 
@@ -169,8 +171,11 @@ def make_project_root(
 ) -> tuple[Path, Path]:
     project_root = tmp_path
     feature_path = (
-        project_root / "docs" / "spec" / "features" / "FEAT-900-ralph-test.yaml"
+        project_root / "docs" / "spec" / "features" / "FEAT-900-ralph-test" / "spec.yaml"
     )
+    feature_payload = dict(feature_data)
+    feature_payload.setdefault("planning_tier", "direct")
+    feature_payload.setdefault("artifacts", {})
 
     checks: dict[str, Any] = {}
     if gates_data is not None:
@@ -197,7 +202,7 @@ def make_project_root(
             "checks": checks,
         },
     )
-    write_yaml(feature_path, feature_data)
+    write_yaml(feature_path, feature_payload)
     return project_root, feature_path
 
 
@@ -392,10 +397,20 @@ def write_set_done_script(script_path: Path) -> Path:
                 "feature_path = Path(sys.argv[1])",
                 "feature = yaml.safe_load(feature_path.read_text(encoding='utf-8'))",
                 "feature['status'] = 'done'",
-                "for subtask in feature.get('subtasks', []):",
-                "    if isinstance(subtask, dict):",
-                "        subtask['status'] = 'done'",
                 "feature_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding='utf-8')",
+                "plan_path = feature_path.parent / 'plan.md'",
+                "if plan_path.is_file():",
+                "    document = plan_path.read_text(encoding='utf-8')",
+                "    frontmatter_end = document.find('\\n---', 4)",
+                "    frontmatter = yaml.safe_load(document[4:frontmatter_end])",
+                "    frontmatter['status'] = 'done'",
+                "    for phase in frontmatter.get('phases', []):",
+                "        if isinstance(phase, dict):",
+                "            phase['status'] = 'done'",
+                "    plan_path.write_text(",
+                "        '---\\n' + yaml.safe_dump(frontmatter, sort_keys=False) + '---\\n' + document[frontmatter_end + 4:],",
+                "        encoding='utf-8',",
+                "    )",
             ]
         )
         + "\n",
@@ -574,19 +589,18 @@ def write_set_done_and_create_feature_script(script_path: Path) -> Path:
                 "created_feature_path = Path(sys.argv[2])",
                 "feature = yaml.safe_load(feature_path.read_text(encoding='utf-8'))",
                 "feature['status'] = 'done'",
-                "for subtask in feature.get('subtasks', []):",
-                "    if isinstance(subtask, dict):",
-                "        subtask['status'] = 'done'",
                 "feature_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding='utf-8')",
                 "created_feature = {",
                 "    'id': 'FEAT-999',",
                 "    'title': 'Created after startup snapshot',",
                 "    'type': 'feature',",
                 "    'expected_commit_subject': 'feat: create feature after startup snapshot',",
+                "    'planning_tier': 'direct',",
                 "    'status': 'backlog',",
                 "    'priority': 'high',",
                 "    'objective': 'Ensure run --all startup snapshot remains stable.',",
                 "    'acceptance': ['Feature can be selected in a later run.'],",
+                "    'artifacts': {},",
                 "    'updated_at': '2026-02-14T00:00:00Z',",
                 "}",
                 "created_feature_path.parent.mkdir(parents=True, exist_ok=True)",
@@ -607,16 +621,17 @@ def write_move_to_done_script(script_path: Path) -> Path:
         "\n".join(
             [
                 "from pathlib import Path",
+                "import shutil",
                 "import sys",
                 "import yaml",
                 "project_root = Path(sys.argv[1])",
                 "feature_path = Path(sys.argv[2])",
                 "feature = yaml.safe_load(feature_path.read_text(encoding='utf-8'))",
                 "feature['status'] = 'done'",
-                "done_path = project_root / 'docs' / 'spec' / 'features_done' / feature_path.name",
-                "done_path.parent.mkdir(parents=True, exist_ok=True)",
-                "done_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding='utf-8')",
-                "feature_path.unlink()",
+                "feature_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding='utf-8')",
+                "done_root = project_root / 'docs' / 'spec' / 'features_done' / feature_path.parent.name",
+                "done_root.parent.mkdir(parents=True, exist_ok=True)",
+                "shutil.move(str(feature_path.parent), str(done_root))",
             ]
         )
         + "\n",
@@ -644,7 +659,7 @@ def write_delete_selected_feature_script(script_path: Path) -> Path:
 def move_feature_to_done(project_root: Path, feature_path: Path) -> None:
     feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
     feature["status"] = "done"
-    done_path = project_root / "docs" / "spec" / "features_done" / feature_path.name
-    done_path.parent.mkdir(parents=True, exist_ok=True)
-    done_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding="utf-8")
-    feature_path.unlink()
+    feature_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding="utf-8")
+    done_root = project_root / "docs" / "spec" / "features_done" / feature_path.parent.name
+    done_root.parent.mkdir(parents=True, exist_ok=True)
+    feature_path.parent.rename(done_root)

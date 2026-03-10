@@ -105,7 +105,8 @@ def _make_project_root(tmp_path: Path) -> tuple[Path, Path]:
         / "docs"
         / "spec"
         / "features"
-        / "FEAT-901-opencode-integration.yaml"
+        / "FEAT-901-opencode-integration"
+        / "spec.yaml"
     )
 
     _write_yaml(
@@ -123,10 +124,12 @@ def _make_project_root(tmp_path: Path) -> tuple[Path, Path]:
             "title": "OpenCode integration test",
             "type": "feature",
             "expected_commit_subject": "feat: validate opencode integration loop",
+            "planning_tier": "direct",
             "status": "backlog",
             "priority": "high",
             "objective": "Verify loop can execute OpenCode from implement step.",
             "acceptance": ["Loop runs OpenCode successfully."],
+            "artifacts": {},
             "updated_at": "2026-02-12T00:00:00Z",
         },
     )
@@ -191,9 +194,6 @@ def _write_set_done_script(script_path: Path) -> Path:
                 "feature_path = Path(sys.argv[1])",
                 "feature = yaml.safe_load(feature_path.read_text(encoding='utf-8'))",
                 "feature['status'] = 'done'",
-                "for subtask in feature.get('subtasks', []):",
-                "    if isinstance(subtask, dict):",
-                "        subtask['status'] = 'done'",
                 "feature_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding='utf-8')",
             ]
         )
@@ -818,7 +818,7 @@ def test_loop_archived_done_continues_run_all_when_selected_path_disappears(
 
     project_root, feature_path = _make_project_root(tmp_path)
     second_feature_path = (
-        project_root / "docs" / "spec" / "features" / "FEAT-902-follow-on.yaml"
+        project_root / "docs" / "spec" / "features" / "FEAT-902-follow-on" / "spec.yaml"
     )
     _write_yaml(
         second_feature_path,
@@ -827,10 +827,12 @@ def test_loop_archived_done_continues_run_all_when_selected_path_disappears(
             "title": "Follow-on feature",
             "type": "feature",
             "expected_commit_subject": "feat: complete follow-on feature",
+            "planning_tier": "direct",
             "status": "backlog",
             "priority": "high",
             "objective": "Should run after selected feature archival recovery.",
             "acceptance": ["Loop continues to next selected feature."],
+            "artifacts": {},
             "updated_at": "2026-02-12T00:00:00Z",
         },
     )
@@ -846,13 +848,13 @@ def test_loop_archived_done_continues_run_all_when_selected_path_disappears(
                 "project_root = Path(sys.argv[1])",
                 "active_dir = project_root / 'docs' / 'spec' / 'features'",
                 "done_dir = project_root / 'docs' / 'spec' / 'features_done'",
-                "first_path = active_dir / 'FEAT-901-opencode-integration.yaml'",
-                "second_path = active_dir / 'FEAT-902-follow-on.yaml'",
+                "first_path = active_dir / 'FEAT-901-opencode-integration' / 'spec.yaml'",
+                "second_path = active_dir / 'FEAT-902-follow-on' / 'spec.yaml'",
                 "if first_path.exists():",
                 "    feature = yaml.safe_load(first_path.read_text(encoding='utf-8'))",
                 "    feature['status'] = 'done'",
-                "    done_dir.mkdir(parents=True, exist_ok=True)",
-                "    archived_path = done_dir / first_path.name",
+                "    archived_path = done_dir / first_path.parent.name / 'spec.yaml'",
+                "    archived_path.parent.mkdir(parents=True, exist_ok=True)",
                 "    archived_path.write_text(",
                 "        yaml.safe_dump(feature, sort_keys=False),",
                 "        encoding='utf-8',",
@@ -923,10 +925,20 @@ def test_loop_archived_done_continues_run_all_when_selected_path_disappears(
     assert runs[1]["result"] == "passed"
 
     archived_selected = (
-        project_root / "docs" / "spec" / "features_done" / feature_path.name
+        project_root
+        / "docs"
+        / "spec"
+        / "features_done"
+        / feature_path.parent.name
+        / "spec.yaml"
     )
     archived_follow_on = (
-        project_root / "docs" / "spec" / "features_done" / second_feature_path.name
+        project_root
+        / "docs"
+        / "spec"
+        / "features_done"
+        / second_feature_path.parent.name
+        / "spec.yaml"
     )
     assert not feature_path.exists()
     assert archived_selected.exists()

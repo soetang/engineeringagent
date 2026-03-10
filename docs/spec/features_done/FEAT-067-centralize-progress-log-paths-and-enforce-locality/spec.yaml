@@ -1,0 +1,80 @@
+id: FEAT-067
+title: Centralize progress log paths, migrate log writes to logging package, and enforce
+  locality
+type: feature
+expected_commit_subject: 'feat: add FEAT-067 progress log path centralization and
+  locality fitness rule'
+planning_tier: planned
+status: done
+priority: high
+objective: Define one canonical source for progress/log path construction, migrate
+  runtime log writing for loop telemetry/progress logs to Python logging handlers,
+  and enforce the contract with a fitness rule so direct path literals or direct file-appends
+  cannot reappear.
+context: 'Loop telemetry and reviewer state currently construct progress paths in
+  multiple places (for example `runs.jsonl`, `run-feature-<id>.txt`, and `reviewers-state.json`).
+  This scatters path policy and makes consistency checks harder.
+
+  We want a full logging-path migration where all production logging/state path construction
+  is centralized and referenced through a single helper API. We also want loop log
+  writes (`runs.jsonl`, `run-feature-<id>.txt`) to flow through Python''s `logging`
+  package instead of direct file append calls, with a deterministic fitness rule that
+  blocks regressions.'
+constraints:
+- Centralize canonical construction of `progress/runs.jsonl`, `progress/run-feature-<feature-id>.txt`,
+  and `progress/reviewers-state.json` behind one approved helper surface in `src/engineeringagent`.
+- Complete full runtime migration so production code no longer builds these paths
+  directly outside approved helper module(s).
+- Migrate writes to loop log artifacts (`progress/runs.jsonl` and `progress/run-feature-<feature-id>.txt`)
+  to Python `logging` package logger/handler plumbing (no direct file append writes
+  for these sinks outside approved logging helper module(s)).
+- 'Use stdlib logging contracts and terminology aligned with Python docs: https://docs.python.org/3/library/logging.html
+  and https://docs.python.org/3/howto/logging.html'
+- Add a fitness rule that scans `src/engineeringagent` and fails on direct references
+  to centralized progress/log path literals outside the approved helper module(s).
+- Extend the same fitness rule (or companion rule) to fail when direct file append/write
+  patterns target the centralized loop log sinks outside approved logging helper module(s).
+- The fitness rule must emit deterministic violation messages with file path and line
+  number and provide actionable remediation text.
+- Keep existing behavior and payload contracts stable for loop outputs and telemetry
+  values unless a change is explicitly documented in this feature.
+- Keep source-first command policy and existing fitness architecture patterns unchanged.
+- Document the new rule in generated fitness catalog output.
+implementation_notes: "Contract/API delta (explicit):\nReference: - Python logging\
+  \ package documentation: https://docs.python.org/3/library/logging.html - Python\
+  \ logging HOWTO: https://docs.python.org/3/howto/logging.html\n- Surface: internal\
+  \ runtime path-construction contract for loop/reviewer progress artifacts.\n  -\
+  \ Old behavior: multiple modules construct progress/log paths inline.\n  - New behavior:\
+  \ one canonical helper surface owns path construction for\n    `runs.jsonl`, `run-feature-<feature-id>.txt`,\
+  \ and `reviewers-state.json`.\n\n- Surface: architecture guardrails.\n  - Old behavior:\
+  \ no dedicated guardrail preventing reintroduction of inline progress\n    path\
+  \ literals.\n  - New behavior: fitness rule enforces logging-path locality and blocks\
+  \ regressions.\n\n- Surface: loop log write backend.\n  - Old behavior: loop telemetry\
+  \ helper appends to `runs.jsonl` and per-feature progress\n    logs via direct file-open/write\
+  \ operations.\n  - New behavior: loop log sinks are written through `logging` package\
+  \ handlers/logger\n    plumbing via approved helper module(s).\n\nCompatibility\
+  \ policy: - Runtime behavior must remain backward compatible (same effective file\
+  \ locations and\n  telemetry/log references) while internal call sites migrate to\
+  \ centralized helpers.\n\nMigration scope: - One-time repository migration across\
+  \ production modules that currently build these\n  paths inline.\n- One-time migration\
+  \ of loop log sink write paths from direct file append operations to\n  logging\
+  \ package handlers.\n- Add rule script + manifest registration + tests + generated\
+  \ rule catalog update."
+acceptance:
+- A single canonical helper surface resolves progress/log paths for `runs.jsonl`,
+  `run-feature-<feature-id>.txt`, and `reviewers-state.json`.
+- Production modules use centralized helper(s) instead of constructing those paths
+  inline.
+- Loop log sink writes (`runs.jsonl`, `run-feature-<feature-id>.txt`) use Python `logging`
+  package handlers/logger helpers rather than direct file append calls.
+- New fitness rule fails when direct references to centralized progress/log paths
+  appear outside approved helper module(s).
+- New fitness rule fails when loop log sinks are written via direct file append/write
+  operations outside approved logging helper module(s).
+- New fitness rule passes on repository state after migration and appears in fitness
+  catalog output.
+- Existing loop telemetry/log payload semantics remain parse-friendly and behaviorally
+  equivalent for current consumers.
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-15T11:42:37Z'

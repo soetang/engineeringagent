@@ -1,0 +1,85 @@
+id: FEAT-114
+title: Select agent backend during init and move backend scaffolds under agents
+type: feature
+expected_commit_subject: 'feat: select agent backend during init and scaffold config'
+planning_tier: planned
+status: done
+priority: high
+objective: 'Make backend choice an explicit init-time decision and ensure backend-specific
+
+  scaffold files (e.g. .opencode/...) are owned by the backend implementation
+
+  under `src/engineeringagent/agents/backends/**`.
+
+
+  After this change, init/CLI code outside `agents/**` and `checks/**` must not
+
+  contain backend-specific literal strings.
+
+  '
+context: "Users want to swap backends, and the backend choice depends on backend-specific\n\
+  config files (e.g. `.opencode/agents/engineeringagent.md`).\n\nToday, init scaffolding\
+  \ and CLI help text hard-code OpenCode details under\n`src/engineeringagent/init_scaffold.py`,\
+  \ `src/engineeringagent/cli.py`, and\n`src/engineeringagent/scaffold_templates/**`,\
+  \ which increases coupling.\n\nRelated specs and sequencing:\n\n- FEAT-113 introduces\
+  \ the backend registry and `engineeringagent.agents.list_backends()`\n  / `engineeringagent.agents.resolve_backend_id()`.\
+  \ This init work builds on that.\n- FEAT-112 adds a backend-literal coupling budget\
+  \ that this feature should reduce.\n- FEAT-115 cannot reach a strict \"no backend\
+  \ literals outside agents/checks\" state\n  until init/CLI scaffolding is also backend-agnostic.\n"
+constraints:
+- 'Precondition: FEAT-113 is done (backend registry + list_backends + resolve_backend_id).'
+- "Init must support backend selection.\nRequirements:\n- Add `engineeringagent init\
+  \ --backend <id>`.\n- When omitted and running on a TTY, prompt for backend selection.\n\
+  - When omitted and not a TTY, default deterministically to the agents registry\n\
+  \  default backend id."
+- "Backend prompt UX contract (for deterministic tests):\n- If the backend is already\
+  \ configured (engineeringagent.toml contains\n  `[agents] backend`), do not prompt\
+  \ unless `--force` is used.\n- Prompt only when `--backend` is omitted AND stdout\
+  \ is a TTY AND more than one\n  backend exists.\n- Backend ids shown in the prompt\
+  \ must be sorted and rendered as `[id1/id2/...]`.\n- The default backend id shown\
+  \ in the prompt must be the agents registry default\n  backend id (the same value\
+  \ used when backend config is absent).\n- Prompt text must be exactly:\n  `init\
+  \ backend: choose [<ids>] (default <default_id>): `\n- Empty input selects the default\
+  \ backend id.\n- EOF (stdin closed) selects the default backend id.\n- Invalid input\
+  \ returns an error and exit code 1 without reprompting.\n  Error text must be exactly:\n\
+  \  `init input error: backend must be one of: <id1>, <id2>, ...`\n- When only one\
+  \ backend exists, init selects it without prompting."
+- Init must persist backend selection to `engineeringagent.toml` under `[agents]`.
+- Backend-specific scaffold files must be contributed by backend-owned code under
+  `src/engineeringagent/agents/backends/<id>/**`.
+- Remove backend-specific literal strings from modules outside `agents/**` and `checks/**`
+  that participate in init/scaffolding (including moving or deleting OpenCode-specific
+  templates under `src/engineeringagent/scaffold_templates/**`).
+- Keep current init behavior stable for other scaffold outputs (docs root, packs,
+  AGENTS conflict handling).
+- 'Fitness-function impact assessment: this feature is expected to reduce the violation
+  count enforced by `architecture.backend-literal-locality-budget`.'
+- 'Recommended sequencing: implement FEAT-112 before FEAT-114 so coupling budgets
+  are tracked.'
+implementation_notes: "CLI contract\n\n- `engineeringagent init --help` must not mention\
+  \ any specific backend name or\n  backend-specific paths.\n- The existing `--model`\
+  \ option should be treated as a generic agent-model\n  setting used by backends\
+  \ that support it. Help text must be backend-agnostic.\n\nScaffolding contract\n\
+  \n- Refactor scaffold generation to combine:\n  - baseline scaffold manifest (generic\
+  \ files)\n  - backend-contributed manifest entries (backend config files)\n- Backend\
+  \ assets should be loaded using `importlib.resources` within the backend\n  package.\n\
+  \nConfig persistence\n\n- When init writes `engineeringagent.toml`, it must include\
+  \ both:\n  - top-level docs-root when using separate docs\n  - `[agents] backend\
+  \ = \"...\"` always\n- The content should be deterministic and end with a newline.\n\
+  \nDeterminism note\n\n- Keep backend prompting behavior aligned with existing init\
+  \ prompt helpers:\n  a single prompt attempt, no loops, stable prompt strings, and\
+  \ stable error\n  messages.\n"
+acceptance:
+- engineeringagent init supports --backend and an interactive backend prompt on TTY
+  when omitted.
+- After a successful init run, engineeringagent.toml contains [agents] backend = "<id>".
+  If the file already exists and backend is already configured, init preserves the
+  configured value unless --force is used.
+- OpenCode-specific scaffold templates and path literals no longer live under src/engineeringagent/scaffold_templates/**
+  or src/engineeringagent/init_scaffold.py.
+- src/engineeringagent/cli.py and src/engineeringagent/init_scaffold.py do not contain
+  backend-specific literal strings.
+- uv run pytest -q passes.
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-18T22:12:31Z'

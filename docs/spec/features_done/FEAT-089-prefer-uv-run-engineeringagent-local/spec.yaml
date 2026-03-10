@@ -1,0 +1,58 @@
+id: FEAT-089
+title: Prefer `uv run engineeringagent` for local (from-source) execution
+type: chore
+expected_commit_subject: 'chore: prefer uv run engineeringagent locally'
+planning_tier: planned
+status: done
+priority: medium
+objective: 'Replace local/from-source command guidance and in-repo gate commands that
+  currently
+
+  use `uv run python -m engineeringagent.cli ...` with `uv run engineeringagent ...`.
+
+
+  This repo already defines the `engineeringagent` console script entrypoint
+
+  (pyproject `[project.scripts]`). When the project is installed into the uv
+
+  environment (for example via `uv sync` or `uv pip install -e .`), we can run the
+
+  CLI directly without an explicit `python -m`.
+
+  '
+context: "Today the repository frequently documents and embeds commands like:\n\n\
+  - `uv run python -m engineeringagent.cli validate`\n- `uv run python -m engineeringagent.cli\
+  \ gates run --profile precommit`\n\nThis works, but it is noisier than needed when\
+  \ developing locally.\n\nWe want to keep the existing \u201Csource-first\u201D policy\
+  \ (avoid `uvx --from . ...` for\nloop-scoped command surfaces), while simplifying\
+  \ the preferred local command form\nto `uv run engineeringagent ...`.\n"
+constraints:
+- 'Do not change the PyPI/consumer guidance: keep `uvx engineeringagent ...` usage
+  for no-clone/package workflows.'
+- Do not remove support for `python -m engineeringagent.cli`; this is a preference
+  + docs/config update, not a breaking runtime removal.
+- 'Keep the in-repo source-first policy intact: continue to forbid `uvx --from . engineeringagent
+  ...` in loop-scoped command surfaces.'
+implementation_notes: "Contract/API delta (explicit):\n\n- Surface: local contributor\
+  \ command style.\n  - Old guidance/defaults: `uv run python -m engineeringagent.cli\
+  \ <command>`\n  - New guidance/defaults: `uv run engineeringagent <command>`\n\n\
+  Compatibility policy:\n- Backwards compatible: existing `uv run python -m engineeringagent.cli\
+  \ ...`\n  invocations still work.\n- We will update documentation, default gate\
+  \ config, and harness examples to\n  prefer the shorter form.\n\nNotes:\n- The `engineeringagent`\
+  \ console script is defined in `pyproject.toml`.\n- Verify that `uv run engineeringagent\
+  \ --help` works from a repo checkout.\n"
+acceptance:
+- '`harness/gates.yaml` uses `uv run engineeringagent ...` for engineeringagent CLI
+  invocations (validate/fitness/gates/etc.).'
+- Default gate config in `src/engineeringagent/gates.py` uses `uv run engineeringagent
+  ...` (keeps defaults aligned with harness examples).
+- Agent-facing docs and playbooks that currently recommend `uv run python -m engineeringagent.cli
+  ...` are updated to `uv run engineeringagent ...`.
+- Fitness rule remediation strings that mention `uv run python -m engineeringagent.cli
+  ...` are updated to `uv run engineeringagent ...` to match the new guidance.
+- Tests that assert the old command strings are updated and pass.
+- '`uv run engineeringagent validate` passes.'
+- '`uv run pytest -q` passes.'
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-17T06:18:24Z'

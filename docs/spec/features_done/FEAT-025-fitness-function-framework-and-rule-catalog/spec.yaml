@@ -1,0 +1,96 @@
+id: FEAT-025
+title: Add fitness-function framework and visible rule catalog
+type: feature
+expected_commit_subject: 'feat: add FEAT-025 fitness-function framework and rule catalog'
+planning_tier: planned
+status: done
+priority: high
+objective: 'Implement a fitness-function framework that makes architecture and design
+  constraints executable, discoverable, and reviewable, with a dedicated docs section
+  that lists active rules and includes supporting diagrams.
+
+  '
+context: 'The repository currently encodes many reliability and architecture expectations
+  in prose and ad-hoc checks, but does not have a single extensible place for fitness
+  functions. We want a clear rule system that is easy to extend, keeps loop flow legible,
+  and can evolve toward polyglot repositories where Python remains the orchestration
+  engine while language-native validations can run through a command adapter contract.
+
+  '
+constraints:
+- Keep orchestration in Python and preserve existing CLI contracts unless explicitly
+  extended.
+- 'Introduce a hybrid architecture: in-repo fitness rule registry plus existing validator/gate
+  wiring.'
+- MVP must include an external command adapter contract for non-Python rule execution.
+- Custom user rules must be addable without changes under src/engineeringagent/fitness/.
+- Default custom-rule location must be harness/fitness-functions/rules.yaml.
+- Custom manifest contract must be explicit and versioned (required/optional fields
+  and result envelope contract_version).
+- Rule ID collisions across built-in and custom sources must fail fast with actionable
+  error output.
+- Fitness rules must be side-effect free (read-only checks only) so they are safe
+  to execute in parallel.
+- Rule results must be deterministic and machine-readable for gate consumption.
+- Fitness rule catalog markdown must be generated from implemented rule metadata;
+  manual edits should be treated as non-canonical.
+- Add a dedicated docs section for rule catalog and diagrams; avoid burying rule inventory
+  in AGENTS.md.
+- Preserve current run-loop behavior while adding rule checks.
+implementation_notes: 'Start with a lightweight internal package (for example src/engineeringagent/fitness/)
+  that defines rule metadata, execution contract, and registry lookup. Provide two
+  rule adapters for MVP: Python-native rules and external command-backed rules. Integrate
+  execution through CLI/gates in a way that supports list/view UX and deterministic
+  non-zero exits on violations.
+
+  Built-in rules can remain Python-native in the core package, while custom user-defined
+  rules should be declared in harness/fitness-functions/rules.yaml and executed through
+  the external command adapter contract so polyglot repositories can extend checks
+  without modifying core engine code.
+
+  Runner behavior should execute rules concurrently with configurable worker count
+  (for example --jobs), while producing deterministic output ordering by rule_id and
+  deterministic process exit behavior for gate integration.
+
+  The engine should document that custom rule commands execute with repository trust
+  assumptions (no sandbox guarantee by default); repository owners are responsible
+  for command-level security decisions in their own manifests.
+
+  Seed initial rules: dependency directionality constraints and a guard against direct
+  subprocess calls in loop orchestration modules. Publish a dedicated docs section
+  (for example docs/fitness-functions/) with a human-scannable rule table and architecture
+  diagrams (Mermaid acceptable for MVP).
+
+  Generate the rules catalog markdown directly from registry metadata so documentation
+  remains in sync with actual implemented rules.
+
+  '
+acceptance:
+- A fitness-function framework exists with explicit rule metadata and execution contract.
+- Rule registration is centralized and discoverable (single source of truth for active
+  rules).
+- MVP supports built-in Python-native rule execution and custom command-based rule
+  execution.
+- Custom rule manifest schema/contract is documented with a versioned envelope and
+  concrete examples.
+- Users can add custom rules via harness/fitness-functions/rules.yaml without editing
+  src/engineeringagent/fitness/.
+- Duplicate rule IDs are rejected deterministically across built-in and custom rule
+  sets.
+- 'At least two built-in rules are implemented and enforced: dependency directionality
+  and no direct subprocess usage in loop orchestration file(s).'
+- Fitness runner supports parallel execution with configurable concurrency and deterministic
+  output ordering.
+- Rule definitions require explicit side-effect-free intent suitable for parallel
+  execution.
+- CLI and/or gate integration can execute the rules and fail deterministically on
+  violations.
+- A generated markdown catalog is produced from active built-in and custom-rule metadata
+  and can be freshness-checked in gates.
+- A dedicated docs section exists with a readable rule catalog and at least one architecture
+  diagram.
+- Tests cover registry behavior, adapter behavior, and failure signaling for gate
+  usage.
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-13T10:03:24Z'

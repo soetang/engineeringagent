@@ -1,0 +1,103 @@
+id: FEAT-165
+title: Relocate runtime progress artifacts under hidden .engineeringagent namespace
+type: feature
+expected_commit_subject: 'feat: relocate progress artifacts under hidden engineeringagent
+  namespace'
+planning_tier: planned
+status: done
+priority: high
+objective: Move all runtime progress/state artifacts from `progress/` to `.engineeringagent/progress/`
+  with an immediate contract cut, preserve lazy creation during non-dry execution,
+  and improve default ignore/documentation guidance so new users do not accidentally
+  track runtime artifacts.
+context: 'Current runtime artifacts are written under repo-root `progress/` (runs
+  telemetry,
+
+  feature logs/handoff, reviewer state). This works, but the folder name is generic
+  and
+
+  visually resembles project-owned source artifacts, which can confuse new users about
+
+  whether it should be committed.
+
+
+  Requested direction from user interview:
+
+  - hard cut to the new hidden path (no legacy compatibility layer)
+
+  - move all progress artifacts (runs, feature logs/handoff, reviewer state)
+
+  - improve onboarding and scaffold behavior so ignore intent is obvious
+
+  - verification bar should include full repo phase checks
+
+  '
+constraints:
+- 'Compatibility policy is immediate break: runtime no longer reads or writes repo-root
+  `progress/` artifacts.'
+- 'In scope: relocate all progress surfaces, including reviewer state (`state.json`).'
+- 'In scope: preserve current lazy materialization semantics (create on first non-dry
+  write path, not during dry-run-only loop execution).'
+- 'In scope: scaffold and docs should make ignore behavior explicit; do not add a
+  validator hard-fail policy for tracked artifacts in this feature.'
+- 'Out of scope: automatic migration of existing `progress/` data into the new location.'
+implementation_notes: "Contract change declaration\n\nSurface:\n- Progress path helpers\
+  \ and runtime writers in `src/engineeringagent/progress/*`\n- Loop runtime path\
+  \ creation/telemetry in `src/engineeringagent/loop_runtime/*`\n- Progress CLI helpers\
+  \ in `src/engineeringagent/cli.py` / `src/engineeringagent/cli_typer.py`\n- Reviewer\
+  \ state persistence in `src/engineeringagent/checks/reviewers/engine.py`\n- Validation\
+  \ exclusions in `src/engineeringagent/checks/validate/repo_policy_purge_invariant.py`\n\
+  - User/scaffold docs that reference progress paths (`README.md`, `docs/references/workflow.md`,\
+  \ and scaffolded workflow template)\n- Tests that currently assert `progress/...`\
+  \ paths\n\nOld behavior:\n- Runtime artifacts are written under `progress/`:\n \
+  \ - `progress/runs/runs.jsonl`\n  - `progress/features/<FEATURE_ID>/run.txt`\n \
+  \ - `progress/features/<FEATURE_ID>/handoff.md`\n  - `progress/reviewers/state.json`\n\
+  \nNew behavior:\n- Runtime artifacts are written under `.engineeringagent/progress/`:\n\
+  \  - `.engineeringagent/progress/runs/runs.jsonl`\n  - `.engineeringagent/progress/features/<FEATURE_ID>/run.txt`\n\
+  \  - `.engineeringagent/progress/features/<FEATURE_ID>/handoff.md`\n  - `.engineeringagent/progress/reviewers/state.json`\n\
+  - `engineeringagent run` keeps lazy path creation in non-dry flows.\n- Dry-run flow\
+  \ continues to avoid creating runtime progress artifacts.\n- Init/docs include deterministic\
+  \ ignore guidance for `.engineeringagent/progress/`\n  (scaffold + documentation\
+  \ only; no new tracked-artifact validator failures).\n\nCompatibility policy:\n\
+  - Immediate break from `progress/` to `.engineeringagent/progress/` is intentional.\n\
+  - No dual-read/write and no runtime auto-migration.\n\nMigration plan:\n- One-time\
+  \ implementation migration in source/tests/docs to new canonical path helpers.\n\
+  - Existing repositories may keep legacy `progress/` as historical residue; this\
+  \ feature\n  does not move or consume those artifacts.\n\nDesign choices\n\n1) Canonical\
+  \ path root\n- Keep one canonical constructor in `engineeringagent.progress.paths`\
+  \ and route all\n  runtime writers through it.\n- Preserve repo-relative references\
+  \ in terminal output and telemetry payload fields.\n\n2) Ignore strategy (scaffold\
+  \ + docs only)\n- Add deterministic scaffold behavior that documents or seeds ignore\
+  \ coverage for\n  `.engineeringagent/progress/` without adding validation hard failures.\n\
+  - Keep behavior idempotent across repeated init runs.\n\n3) Runtime semantics\n\
+  - Preserve lazy creation invariants: first non-dry write path creates directories/files,\n\
+  \  dry-run loop paths do not.\n- Preserve append-only behavior for telemetry/handoff\
+  \ sinks.\n\n4) Boundary and policy updates\n- Update validation exclusions and any\
+  \ path-literal fitness checks to the new canonical\n  path while retaining existing\
+  \ locality/write guardrails.\n\nFitness-function impact assessment\n- Rule update\
+  \ required (same rule id, revised path tokens):\n  - `architecture.progress-log-path-locality`\n\
+  \  - Script: `harness/fitness-functions/check_progress_log_locality.py`\n  - Manifest/docs\
+  \ references: `harness/fitness-functions/rules.yaml`, `docs/fitness-functions/rules.md`\n\
+  - Rationale: rule currently encodes legacy `progress/...` path literals; it must\
+  \ enforce\n  the new `.engineeringagent/progress/...` contract while preserving\
+  \ locality protections.\n"
+acceptance:
+- No runtime write path in the codebase uses repo-root `progress/` as the canonical
+  artifact location.
+- Canonical runtime artifacts resolve under `.engineeringagent/progress/` for runs
+  telemetry, feature logs/handoff, and reviewer state.
+- Non-dry loop execution lazily creates required `.engineeringagent/progress/...`
+  artifacts before/while writing runtime outputs.
+- Dry-run loop execution does not create `.engineeringagent/progress/runs/runs.jsonl`.
+- Progress CLI commands (`progress handoff-append`, `progress feature-prune`) operate
+  on `.engineeringagent/progress/features/<FEATURE_ID>/...`.
+- Init/docs make ignore intent explicit for `.engineeringagent/progress/` without
+  adding new validator hard-fail policy for tracked artifacts in this feature.
+- Path references in README/workflow/scaffolded workflow docs are updated to `.engineeringagent/progress/...`
+  examples.
+- Progress-path locality fitness rule and related docs remain aligned with canonical
+  path construction/write-helper enforcement after migration.
+- The feature spec validates with `uv run engineeringagent validate --schema-only`.
+artifacts:
+  plan: plan.md
+updated_at: '2026-03-03T19:11:54Z'

@@ -1,0 +1,69 @@
+id: FEAT-019
+title: Default concise run output with detailed per-feature progress logs
+type: feature
+expected_commit_subject: 'feat: add FEAT-019 concise run output and detailed logs'
+planning_tier: planned
+status: done
+priority: high
+objective: 'Make `engineeringagent run` output short and easy to follow by default,
+  while preserving full implement and gate execution detail in per-feature progress
+  log files.
+
+  '
+context: 'Current run-loop terminal output includes long implement transcripts and
+  gate command output, which makes it hard to follow control flow during normal operation.
+  Operators want concise status lines in the terminal, with detailed debugging evidence
+  persisted to files under `progress/`.
+
+  Scope confirmed with the user: suppress both implement and gate raw output in default
+  run mode, add an explicit `--verbose-output` opt-in to stream full output in terminal,
+  append detailed output to `progress/run-feature-<FEATURE_ID>.txt`, include a `log_path`
+  reference in `progress/runs.jsonl`, and keep direct `engineeringagent gates run`
+  behavior unchanged.
+
+  '
+constraints:
+- Default `engineeringagent run` terminal output is concise and does not stream raw
+  implement/gate stdout or stderr.
+- Add `--verbose-output` on `engineeringagent run` to stream raw implement and gate
+  output to terminal.
+- Detailed output is appended to `progress/run-feature-<FEATURE_ID>.txt` for each
+  non-dry iteration.
+- Each runs telemetry record includes `log_path` for the corresponding iteration output.
+- Failure and stop conditions print short actionable messages and include the detailed
+  log file path.
+- Apply output-concise behavior only to `engineeringagent run`; do not change direct
+  `engineeringagent gates run` output semantics.
+- Ignore new `progress/run-feature-*.txt` artifacts in git status/commit flows.
+- Preserve existing permission-rejection detection and failed-gate semantics.
+implementation_notes: 'Add loop-level output mode plumbing from CLI (`--verbose-output`)
+  to implement and gate execution paths. Introduce a per-feature log writer in loop
+  runtime that appends sectioned output for each attempt (implement, gates, summary,
+  failure detail).
+
+  Refactor gate execution to support optional captured output for loop mode while
+  preserving inherited-stdio behavior for direct `gates run`. Keep concise terminal
+  output as short lifecycle lines (selection, implement status, gate status, summary,
+  and log pointer on failure).
+
+  Extend run telemetry payload in `progress/runs.jsonl` with `log_path`, update docs
+  for the new default behavior and verbose override, and add focused tests for both
+  concise and verbose paths.
+
+  '
+acceptance:
+- Running `engineeringagent run ...` prints concise lifecycle messages and does not
+  emit raw implement/gate output by default.
+- Running `engineeringagent run ... --verbose-output` emits raw implement and gate
+  output in terminal.
+- For each non-dry iteration, detailed output is appended to `progress/run-feature-<FEATURE_ID>.txt`.
+- '`progress/runs.jsonl` includes a `log_path` field that points to the per-feature
+  detailed log file.'
+- On loop failures, terminal output includes a concise failure reason and an explicit
+  detailed-log pointer.
+- '`engineeringagent gates run --profile ...` keeps current output behavior.'
+- New progress log files do not pollute completion commits by default because they
+  are gitignored.
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-13T06:41:39Z'

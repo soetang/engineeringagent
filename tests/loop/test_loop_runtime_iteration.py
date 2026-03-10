@@ -593,14 +593,14 @@ def test_iteration_pipeline_tracks_direct_bundle_feature_progress_metadata(
     assert report.telemetry_inputs.progress_title == "Track direct bundled feature progress"
 
 
-def test_iteration_pipeline_keeps_legacy_subtask_progress_kind_without_unit(
+def test_iteration_pipeline_uses_feature_progress_kind_without_plan_unit(
     tmp_path: Path,
 ) -> None:
     feature_data = base_feature(status="in_progress")
     feature_data["subtasks"] = []
     iteration_inputs = FeatureIterationInputs(
         project_root=tmp_path,
-        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-900.yaml",
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-900" / "spec.yaml",
         attempt=1,
         feedback=None,
         verbose_output=False,
@@ -691,9 +691,9 @@ def test_iteration_pipeline_keeps_legacy_subtask_progress_kind_without_unit(
         ),
     )
 
-    assert report.telemetry_inputs.progress_kind == "subtask"
-    assert report.telemetry_inputs.progress_id is None
-    assert report.telemetry_inputs.progress_title is None
+    assert report.telemetry_inputs.progress_kind == "feature"
+    assert report.telemetry_inputs.progress_id == "FEAT-900"
+    assert report.telemetry_inputs.progress_title == "Feature iteration smoke test"
 
 
 def test_iteration_pipeline_recovers_phase_metadata_from_parseable_invalid_plan_contract(

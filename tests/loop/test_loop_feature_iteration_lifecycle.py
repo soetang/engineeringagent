@@ -76,7 +76,14 @@ def test_run_loop_archives_done_active_feature(
         max_iterations=2,
     )
 
-    archived_path = project_root / "docs" / "spec" / "features_done" / feature_path.name
+    archived_path = (
+        project_root
+        / "docs"
+        / "spec"
+        / "features_done"
+        / feature_path.parent.name
+        / "spec.yaml"
+    )
     assert code == 0
     assert not feature_path.exists()
     assert archived_path.exists()
@@ -170,7 +177,14 @@ def test_run_loop_moves_completed_feature_to_features_done(tmp_path: Path) -> No
             max_iterations=5,
         )
 
-    archived_path = project_root / "docs" / "spec" / "features_done" / feature_path.name
+    archived_path = (
+        project_root
+        / "docs"
+        / "spec"
+        / "features_done"
+        / feature_path.parent.name
+        / "spec.yaml"
+    )
     assert code == 0
     assert not feature_path.exists()
     assert archived_path.exists()
@@ -197,7 +211,14 @@ def test_run_loop_selected_feature_moved_to_features_done_completes_cleanly(
             max_iterations=3,
         )
 
-    archived_path = project_root / "docs" / "spec" / "features_done" / feature_path.name
+    archived_path = (
+        project_root
+        / "docs"
+        / "spec"
+        / "features_done"
+        / feature_path.parent.name
+        / "spec.yaml"
+    )
     output = capsys.readouterr().out
     assert code == 0
     assert not feature_path.exists()
@@ -266,8 +287,9 @@ def test_run_loop_all_selected_feature_moved_to_features_done_continues_to_next(
     second_feature = base_feature(status="backlog")
     second_feature["id"] = "FEAT-901"
     second_feature_path = (
-        project_root / "docs" / "spec" / "features" / "FEAT-901-secondary.yaml"
+        project_root / "docs" / "spec" / "features" / "FEAT-901-secondary" / "spec.yaml"
     )
+    second_feature_path.parent.mkdir(parents=True, exist_ok=True)
     second_feature_path.write_text(
         yaml.safe_dump(second_feature, sort_keys=False),
         encoding="utf-8",
@@ -300,8 +322,22 @@ def test_run_loop_all_selected_feature_moved_to_features_done_continues_to_next(
         max_iterations=5,
     )
 
-    archived_first = project_root / "docs" / "spec" / "features_done" / first_feature_path.name
-    archived_second = project_root / "docs" / "spec" / "features_done" / second_feature_path.name
+    archived_first = (
+        project_root
+        / "docs"
+        / "spec"
+        / "features_done"
+        / first_feature_path.parent.name
+        / "spec.yaml"
+    )
+    archived_second = (
+        project_root
+        / "docs"
+        / "spec"
+        / "features_done"
+        / second_feature_path.parent.name
+        / "spec.yaml"
+    )
     output = capsys.readouterr().out
     assert code == 0
     assert not first_feature_path.exists()
@@ -356,8 +392,14 @@ def test_run_loop_fails_when_preexisting_done_active_feature_trips_validate(
 ) -> None:
     project_root, feature_path = make_project_root(tmp_path, feature_data=base_feature())
     preexisting_done_path = (
-        project_root / "docs" / "spec" / "features" / "FEAT-901-preexisting-done.yaml"
+        project_root
+        / "docs"
+        / "spec"
+        / "features"
+        / "FEAT-901-preexisting-done"
+        / "spec.yaml"
     )
+    preexisting_done_path.parent.mkdir(parents=True, exist_ok=True)
     preexisting_done_feature = base_feature(status="done")
     preexisting_done_feature["id"] = "FEAT-901"
     preexisting_done_path.write_text(
@@ -390,10 +432,20 @@ def test_run_loop_fails_when_preexisting_done_active_feature_trips_validate(
     )
 
     archived_selected_path = (
-        project_root / "docs" / "spec" / "features_done" / feature_path.name
+        project_root
+        / "docs"
+        / "spec"
+        / "features_done"
+        / feature_path.parent.name
+        / "spec.yaml"
     )
     archived_preexisting_done_path = (
-        project_root / "docs" / "spec" / "features_done" / preexisting_done_path.name
+        project_root
+        / "docs"
+        / "spec"
+        / "features_done"
+        / preexisting_done_path.parent.name
+        / "spec.yaml"
     )
 
     assert code == 1
@@ -429,8 +481,8 @@ def test_run_loop_archives_done_feature_before_gate_execution(tmp_path: Path) ->
             "assert_pre_gate_archive": {
                 "run": (
                     f'"{sys.executable}" "{gate_script}" '
-                    "docs/spec/features/FEAT-900-ralph-test.yaml "
-                    "docs/spec/features_done/FEAT-900-ralph-test.yaml"
+                    "docs/spec/features/FEAT-900-ralph-test/spec.yaml "
+                    "docs/spec/features_done/FEAT-900-ralph-test/spec.yaml"
                 )
             }
         },
@@ -456,7 +508,14 @@ def test_run_loop_archives_done_feature_before_gate_execution(tmp_path: Path) ->
             max_iterations=5,
         )
 
-    archived_path = project_root / "docs" / "spec" / "features_done" / feature_path.name
+    archived_path = (
+        project_root
+        / "docs"
+        / "spec"
+        / "features_done"
+        / feature_path.parent.name
+        / "spec.yaml"
+    )
     assert code == 0
     assert not feature_path.exists()
     assert archived_path.exists()
@@ -489,8 +548,8 @@ def test_run_loop_restores_archived_feature_when_gate_fails_after_prearchive(
             "spec_validate": {
                 "run": (
                     f'"{sys.executable}" "{gate_script}" '
-                    "docs/spec/features/FEAT-900-ralph-test.yaml "
-                    "docs/spec/features_done/FEAT-900-ralph-test.yaml"
+                    "docs/spec/features/FEAT-900-ralph-test/spec.yaml "
+                    "docs/spec/features_done/FEAT-900-ralph-test/spec.yaml"
                 )
             }
         },
@@ -516,7 +575,14 @@ def test_run_loop_restores_archived_feature_when_gate_fails_after_prearchive(
             max_iterations=1,
         )
 
-    archived_path = project_root / "docs" / "spec" / "features_done" / feature_path.name
+    archived_path = (
+        project_root
+        / "docs"
+        / "spec"
+        / "features_done"
+        / feature_path.parent.name
+        / "spec.yaml"
+    )
     restored_feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
     runs = read_runs(project_root)
 
@@ -555,7 +621,7 @@ def test_run_loop_spec_validate_no_longer_blocks_done_archive_ordering(
         "profiles": {"loop_fast": ["spec_validate"]},
         "gates": {
             "spec_validate": {
-                "run": f'"{sys.executable}" "{gate_script}" docs/spec/features/FEAT-900-ralph-test.yaml'
+                "run": f'"{sys.executable}" "{gate_script}" docs/spec/features/FEAT-900-ralph-test/spec.yaml'
             }
         },
     }
@@ -580,7 +646,14 @@ def test_run_loop_spec_validate_no_longer_blocks_done_archive_ordering(
             max_iterations=5,
         )
 
-    archived_path = project_root / "docs" / "spec" / "features_done" / feature_path.name
+    archived_path = (
+        project_root
+        / "docs"
+        / "spec"
+        / "features_done"
+        / feature_path.parent.name
+        / "spec.yaml"
+    )
     runs = read_runs(project_root)
 
     assert code == 0
@@ -618,8 +691,8 @@ def test_run_loop_completion_commit_includes_archive_move(tmp_path: Path) -> Non
         "HEAD",
     ).stdout.splitlines()
     expected_rename_suffix = (
-        f"\tdocs/spec/features/{feature_path.name}"
-        f"\tdocs/spec/features_done/{feature_path.name}"
+        f"\tdocs/spec/features/{feature_path.parent.name}/spec.yaml"
+        f"\tdocs/spec/features_done/{feature_path.parent.name}/spec.yaml"
     )
     assert any(
         line.startswith("R") and line.endswith(expected_rename_suffix)
@@ -770,7 +843,14 @@ def test_run_loop_commit_failure_preserves_retryable_feature_path(
     assert len(runs) >= 2
     assert runs[0]["failed_gate"] == "git_commit"
     assert runs[-1]["result"] == "passed"
-    archived_path = project_root / "docs" / "spec" / "features_done" / feature_path.name
+    archived_path = (
+        project_root
+        / "docs"
+        / "spec"
+        / "features_done"
+        / feature_path.parent.name
+        / "spec.yaml"
+    )
     assert archived_path.exists()
     attempted_paths = attempted_paths_path.read_text(encoding="utf-8").splitlines()
     assert attempted_paths

@@ -1,0 +1,105 @@
+id: FEAT-140
+title: Rename legacy ralph_mode terminology to feature_iteration across live surfaces
+type: spec
+expected_commit_subject: 'spec: add FEAT-140 feature iteration naming migration'
+planning_tier: planned
+status: done
+priority: medium
+objective: Replace legacy `ralph_mode` naming with `feature_iteration` across active
+  runtime-adjacent tests and active documentation/spec references so loop terminology
+  is clear and aligned with current feature-level iteration architecture.
+context: '`ralph_mode` started as a label for an alternative feature-level execution
+  path. The current loop architecture is already feature-iteration oriented, and the
+  old term now reads as a stale mode toggle rather than the actual unit-of-work concept.
+
+  The rename should be end-to-end on live surfaces (tests, active specs/docs, and
+  references used by current verification workflows) while preserving behavior.'
+constraints:
+- 'In scope: end-to-end rename of legacy loop-topic naming references on live surfaces,
+  including test modules/symbols and active spec verification commands.'
+- Canonical term is `feature_iteration` (singular for one cycle); plural forms are
+  allowed only for collections/orchestrators.
+- Compatibility policy is immediate break for legacy naming; do not keep temporary
+  aliases or shim names.
+- Preserve runtime behavior and test intent; this feature is naming/contract clarity,
+  not behavior change.
+- 'Out of scope: rewriting historical archival specs under `docs/spec/features_done/`
+  solely for naming consistency.'
+- Update active spec files under `docs/spec/features/` that reference old test paths
+  so verification commands remain executable.
+- Verification baseline for this feature is targeted loop/meta tests plus `uv run
+  engineeringagent validate`.
+implementation_notes: 'Contract change declaration
+
+
+  Surface:
+
+  - Loop-topic test module naming and test identifiers currently using `ralph_mode`
+  terminology.
+
+  - Active feature-spec verification command references under `docs/spec/features/*.yaml`.
+
+  - Active docs/test references that point at the old test filename.
+
+
+  Old behavior:
+
+  - Live surfaces still use `ralph_mode` naming on loop-topic surfaces.
+
+  - Active spec verification commands reference the old test path.
+
+
+  New behavior:
+
+  - Live surfaces use `feature_iteration` naming consistently.
+
+  - Active spec verification commands reference the renamed test path and remain runnable.
+
+  - Historical done specs remain unchanged as archival records.
+
+
+  Compatibility policy:
+
+  - Immediate break of old naming on live surfaces.
+
+  - No dual-name support, alias modules, or deprecation shims.
+
+
+  Migration plan:
+
+  - Rename the loop-topic test module and related identifiers from `ralph_mode` to
+  `feature_iteration`.
+
+  - Update meta/layout tests and active spec verification references to the new path.
+
+  - Run targeted regressions and validate spec schema/contracts.
+
+
+  Verification evidence:
+
+  - Targeted loop/meta tests pass after rename.
+
+  - `uv run engineeringagent validate` passes.
+
+
+  Fitness-function impact assessment:
+
+  - Naming-only change with no intended architecture-policy delta.
+
+  - no fitness-function changes required. Existing fitness rules should remain valid
+  unless a rule/test explicitly encodes old naming and fails.
+
+  '
+acceptance:
+- Live loop-topic naming no longer uses `ralph_mode` on active surfaces.
+- '`tests/loop/test_loop_feature_iteration.py` is present in the active test layout.'
+- Active specs under `docs/spec/features/` no longer reference legacy loop-topic test
+  module paths.
+- Historical archived specs under `docs/spec/features_done/` remain unchanged by this
+  feature.
+- No runtime behavior changes are introduced; only naming and references are updated.
+- Targeted loop/meta regressions pass with the renamed test module.
+- '`uv run engineeringagent validate` passes.'
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-26T14:30:46Z'

@@ -1,0 +1,37 @@
+id: FEAT-009
+title: Remove scripts folder and canonicalize command entrypoints
+type: chore
+expected_commit_subject: 'chore: legacy archived spec metadata backfill'
+planning_tier: planned
+status: done
+priority: high
+objective: Eliminate generic script-wrapper workflows by moving any necessary automation
+  to domain-owned locations and documenting canonical `uvx --from . engineeringagent
+  ...` commands for contributors.
+context: 'The current `scripts/` directory mixes thin wrappers and validation helpers,
+  which makes ownership unclear and command discovery inconsistent. Contributors should
+  run stable CLI entrypoints directly, while any remaining automation should live
+  in purpose-specific locations (not a generic scripts bucket).
+
+  '
+constraints:
+- Do not keep a generic `scripts/` folder for primary developer workflows.
+- Use `uvx --from . engineeringagent ...` as the canonical documented command style.
+- Keep validation explicit as separate lint/test/spec commands (no single mega-wrapper).
+- Remove legacy script paths immediately (no deprecation shims).
+- Ensure docs and CI run the same documented commands.
+implementation_notes: 'Replace wrapper scripts with direct CLI usage and add missing
+  CLI surface where needed so no required workflow depends on path-based wrappers.
+  If shell automation remains necessary, place it under a domain-owned path (for example
+  `harness/` or `ci/`) with clear naming and intent.
+
+  '
+acceptance:
+- No required contributor workflow depends on files under `scripts/`.
+- README and reference docs describe canonical commands without `scripts/...` paths.
+- 'Validation is documented as three explicit checks: lint, test, and spec validation.'
+- Gate/pre-commit/CI invocations use the same documented entrypoints.
+- A command mapping is documented for removed script paths to new entrypoints.
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-12T16:38:22Z'

@@ -11,34 +11,6 @@ from engineeringagent.loop_runtime.feature_state import (
     refresh_feature_after_implement,
     restore_archived_feature,
 )
-from engineeringagent.specs import load_yaml
-
-
-def _write_done_feature(feature_path: Path) -> None:
-    feature_path.parent.mkdir(parents=True, exist_ok=True)
-    feature_path.write_text(
-        "\n".join(
-            [
-                "id: FEAT-001",
-                "title: hello",
-                "type: feature",
-                "expected_commit_subject: 'feat: hello'",
-                "status: done",
-                "priority: high",
-                "objective: hello",
-                "acceptance: ['ok']",
-                "subtasks:",
-                "  - id: ST-001",
-                "    title: sub",
-                "    status: backlog",
-                "    verification: ['true']",
-                "",
-            ]
-        ),
-        encoding="utf-8",
-    )
-
-
 def _write_done_bundled_feature(feature_root: Path) -> tuple[Path, Path]:
     spec_path = feature_root / "spec.yaml"
     plan_path = feature_root / "plan.md"
@@ -101,9 +73,12 @@ def _load_plan_frontmatter(plan_path: Path) -> dict[str, object]:
     return frontmatter
 
 
-def test_archive_completed_feature_marks_subtasks_done(tmp_path: Path) -> None:
-    feature_path = tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml"
-    _write_done_feature(feature_path)
+def test_archive_completed_feature_returns_bundled_done_entrypoint(
+    tmp_path: Path,
+) -> None:
+    feature_path, _plan_path = _write_done_bundled_feature(
+        tmp_path / "docs" / "spec" / "features" / "FEAT-001"
+    )
 
     ok, archived_path, message = archive_completed_feature(
         tmp_path,
@@ -112,11 +87,9 @@ def test_archive_completed_feature_marks_subtasks_done(tmp_path: Path) -> None:
 
     assert ok is True
     assert message == ""
+    assert archived_path == tmp_path / "docs" / "spec" / "features_done" / "FEAT-001" / "spec.yaml"
     assert archived_path is not None
-    archived = load_yaml(archived_path)
-    subtasks = archived.get("subtasks")
-    assert isinstance(subtasks, list)
-    assert subtasks[0]["status"] == "done"
+    assert feature_path.exists() is False
 
 
 def test_archive_completed_feature_marks_bundled_plan_done(tmp_path: Path) -> None:
@@ -164,15 +137,18 @@ def test_archive_completed_feature_falls_back_on_exdev(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    feature_path = tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml"
-    archive_path = tmp_path / "docs" / "spec" / "features_done" / "FEAT-001.yaml"
-    _write_done_feature(feature_path)
+    feature_path, _plan_path = _write_done_bundled_feature(
+        tmp_path / "docs" / "spec" / "features" / "FEAT-001"
+    )
+    archive_path = (
+        tmp_path / "docs" / "spec" / "features_done" / "FEAT-001" / "spec.yaml"
+    )
 
     original_rename = Path.rename
 
     def _raise_exdev_for_archive(self: Path, target: str | Path) -> Path:
         normalized_target = Path(target)
-        if self == feature_path and normalized_target == archive_path:
+        if self == feature_path.parent and normalized_target == archive_path.parent:
             raise OSError(errno.EXDEV, "Invalid cross-device link")
         return original_rename(self, target)
 
@@ -192,15 +168,16 @@ def test_restore_archived_feature_falls_back_on_exdev(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    archived_path = tmp_path / "docs" / "spec" / "features_done" / "FEAT-001.yaml"
-    original_path = tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml"
-    _write_done_feature(archived_path)
+    archived_path, _plan_path = _write_done_bundled_feature(
+        tmp_path / "docs" / "spec" / "features_done" / "FEAT-001"
+    )
+    original_path = tmp_path / "docs" / "spec" / "features" / "FEAT-001" / "spec.yaml"
 
     original_rename = Path.rename
 
     def _raise_exdev_for_restore(self: Path, target: str | Path) -> Path:
         normalized_target = Path(target)
-        if self == archived_path and normalized_target == original_path:
+        if self == archived_path.parent and normalized_target == original_path.parent:
             raise OSError(errno.EXDEV, "Invalid cross-device link")
         return original_rename(self, target)
 

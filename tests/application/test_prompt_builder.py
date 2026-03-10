@@ -200,7 +200,7 @@ def test_loop_runtime_prompt_request_normalizes_legacy_subtask_progress_for_appl
     )
 
     assert request.progress_kind == "feature"
-    assert request.current_progress == "subtask-1 - Example"
+    assert request.current_progress == "FEAT-900 - Feature iteration smoke test"
 
 
 def test_default_prompt_builder_renders_explicit_plan_and_research_paths(

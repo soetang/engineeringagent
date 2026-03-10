@@ -1071,7 +1071,7 @@ def test_feedback_contract_accepts_verification_failure(tmp_path: Path) -> None:
 def test_run_implement_step_uses_injected_prompt_builder(tmp_path: Path) -> None:
     inputs = ImplementStepInputs(
         project_root=tmp_path,
-        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-900.yaml",
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-900" / "spec.yaml",
         feature={"id": "FEAT-900", "title": "Prompt seam", "status": "in_progress"},
         feedback=None,
         verbose_output=False,

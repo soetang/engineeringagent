@@ -1,0 +1,50 @@
+id: FEAT-027
+title: Add AGENTS docs-map integrity validation and align documentation map
+type: feature
+expected_commit_subject: 'feat: add FEAT-027 AGENTS docs-map integrity validation'
+planning_tier: planned
+status: done
+priority: high
+objective: 'Ensure AGENTS documentation map references are reliable by adding strict
+  validation for docs-map entries and updating AGENTS.md to match current repository
+  reality.
+
+  '
+context: 'AGENTS.md currently includes several documentation-path references that
+  do not exist. This causes navigation errors for humans and agents and weakens trust
+  in repository guidance. The validator should enforce only the AGENTS docs-map section
+  (not all path-like tokens in AGENTS), fail on missing literal paths, and fail on
+  glob patterns that resolve to zero matches.
+
+  '
+constraints:
+- Validate only AGENTS docs-map entries from the explicit documentation map section.
+- Missing literal paths must fail validation.
+- Glob references with zero matches must fail validation.
+- Keep validation output deterministic and actionable (include AGENTS line and referenced
+  path/glob).
+- Integrate into existing validate flow; do not introduce a separate mandatory gate
+  command.
+- Update AGENTS.md in the same feature so repository default state passes validation.
+- Do not broaden scope to README/docs-wide path validation in this feature.
+implementation_notes: 'Add a focused AGENTS docs-map checker under the current validator
+  flow and wire it through `engineeringagent validate`. Parse the documentation map
+  section in AGENTS.md, extract explicit docs references, and evaluate literal paths
+  with `Path.exists()` and globs with non-empty matches. Keep issue ordering stable
+  (line/path sorted). Update AGENTS.md documentation map entries to only reflect existing
+  repository structure.
+
+  '
+acceptance:
+- engineeringagent validate fails when AGENTS docs-map includes a missing literal
+  path.
+- engineeringagent validate fails when AGENTS docs-map includes a glob with zero matches.
+- Validation does not flag non-docs-map path-like text in AGENTS (scope-limited parsing).
+- AGENTS docs-map reflects current repository paths and passes validation in default
+  repo state.
+- Existing gate profiles continue to enforce this via spec_validate without adding
+  new gate types.
+- Targeted tests cover pass/fail cases and deterministic diagnostics.
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-13T10:38:43Z'

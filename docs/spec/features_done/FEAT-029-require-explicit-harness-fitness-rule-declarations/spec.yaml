@@ -1,0 +1,93 @@
+id: FEAT-029
+title: Require explicit harness declarations for all runnable fitness rules
+type: feature
+expected_commit_subject: 'feat: add FEAT-029 explicit harness fitness rule declarations'
+planning_tier: planned
+status: done
+priority: high
+objective: 'Make harness declarations the only source of runnable fitness rules so
+  no implicit/default rules execute, and ensure generated fitness docs reflect only
+  declared active rules.
+
+  '
+context: 'Today, fitness execution implicitly activates built-in Python rules from
+  the in-code registry even when harness/fitness-functions/rules.yaml is empty. That
+  creates hidden runtime behavior and allows docs generation to include rules not
+  explicitly declared in harness state.
+
+  User-confirmed scope for this feature: keep FEAT-028 unchanged, enforce immediate
+  hard cutover to explicit declarations, represent existing built-ins as manifest
+  references, seed default declarations in init scaffolding, and make docs generation
+  declaration-driven from harness references rather than implicit registry inventory.
+
+  '
+constraints:
+- Treat harness/fitness-functions/rules.yaml as the canonical single source of truth
+  for active runnable fitness rules.
+- Do not run undeclared fitness rules in any command surface (`fitness list`, `fitness
+  run`, `fitness catalog`, and gate execution that shells into `fitness run`).
+- Keep FEAT-028 scope unchanged; this feature must not pre-implement FEAT-028 command-client
+  refactors or alter its accepted constraints.
+- Represent built-in Python fitness rules in the manifest as explicit references (do
+  not require duplicating built-in metadata blocks in harness files).
+- Preserve support for non-Python custom fitness rules via command adapter entries,
+  including shell-command based rules declared in harness manifest.
+- Retain deterministic ordering and deterministic failure behavior across list/run/catalog.
+- Keep result envelope contract_version stable (`1.0`).
+- Validation must fail on invalid or unknown builtin references declared in the manifest.
+- engineeringagent init must seed explicit declarations for the currently shipped
+  architecture rules.
+- Generated fitness docs must be driven by declared manifest references only, not
+  by implicit global registry defaults.
+- Avoid fallback/deprecation behavior for implicit built-ins; cutover is immediate.
+implementation_notes: 'Adopt a declaration-driven catalog builder where manifest entries
+  explicitly select active rules. Keep a code-level builtin resolver map for implementation
+  lookup by rule_id, but never auto-activate from that map.
+
+  Extend manifest contract to support builtin-reference entries alongside command-backed
+  custom entries. Preserve side-effect-free guarantees and severity/metadata integrity
+  for built-ins by resolving canonical metadata from code for referenced IDs.
+
+  Update CLI and runner paths so list/run/catalog all consume the same declaration-driven
+  active catalog. Gate behavior should inherit this automatically through fitness
+  run.
+
+  For command-adapter regression tests, use tmp_path as an isolated temporary project
+  root with only required harness files (for example harness/fitness-functions/rules.yaml).
+  Do not require git repository initialization for fitness list/run/catalog command
+  tests.
+
+  Add a shell-command fixture pattern that prints a valid JSON envelope through `sh`
+  so non-Python custom rules are covered with minimal dependencies.
+
+  Update validator checks to surface actionable errors for manifest references that
+  cannot be resolved. Ensure diagnostics remain deterministic.
+
+  Update init scaffold defaults to write explicit builtin references into harness/fitness-functions/rules.yaml.
+
+  Keep docs generation unchanged in interface, but source catalog content strictly
+  from declared active references.
+
+  '
+acceptance:
+- '`engineeringagent fitness list` shows only rules declared in harness/fitness-functions/rules.yaml.'
+- '`engineeringagent fitness run` executes only rules declared in harness/fitness-functions/rules.yaml.'
+- '`engineeringagent fitness run` supports manifest-declared shell command rules in
+  a temp project root without requiring git repo initialization.'
+- '`engineeringagent fitness catalog` includes only declared active rules and never
+  emits undeclared built-ins.'
+- Generated docs at docs/fitness-functions/rules.md reflect declared references only,
+  not implicit registry defaults.
+- Existing built-in architecture rules are declared explicitly in harness/fitness-functions/rules.yaml
+  for this repository.
+- New repositories scaffolded with `engineeringagent init` include explicit declarations
+  for the current built-in architecture rules.
+- Validation and runtime fail deterministically when manifest builtin references are
+  unknown or invalid.
+- No implicit builtin fallback remains in registry/runner/CLI code paths.
+- A manifest-declared shell command fitness rule can be listed, executed, and included
+  in generated catalog output without requiring Python adapter implementation.
+- Targeted tests and validation commands pass.
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-13T11:29:19Z'

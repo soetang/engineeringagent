@@ -16,6 +16,7 @@ RULE_ID = "architecture.markdown-locality-reference-coverage"
 _MARKDOWN_ALLOWED_ROOTS = (
     Path("docs"),
     Path("harness/reviewers/prompts"),
+    Path("new_architecture"),
     Path("src/engineeringagent/prompts"),
     Path("src/engineeringagent/scaffold_templates"),
     Path("src/engineeringagent/approach/docs"),
@@ -26,6 +27,7 @@ _SCAFFOLD_TEMPLATE_ROOT = Path("src/engineeringagent/scaffold_templates")
 _MARKDOWN_ALLOWED_ROOT_FILES = (
     Path("README.md"),
     Path("AGENTS.md"),
+    Path("PROMPT.md"),
 )
 _MARKDOWN_REFERENCE_SCAN_SUFFIXES = {
     ".cfg",
@@ -55,10 +57,11 @@ _MARKDOWN_IGNORE_DIRECTORIES = {
 }
 _MARKDOWN_LOCALITY_REMEDIATION = (
     "move markdown files under docs/, harness/reviewers/prompts/, "
-    "src/engineeringagent/prompts/, src/engineeringagent/scaffold_templates/, "
+    "new_architecture/, src/engineeringagent/prompts/, "
+    "src/engineeringagent/scaffold_templates/, "
     "src/engineeringagent/approach/docs/, or "
     "src/engineeringagent/agents/backends/*/scaffold_templates/; "
-    "only repository-root README.md and AGENTS.md are exempt from locality "
+    "only repository-root README.md, AGENTS.md, and PROMPT.md are exempt from locality "
     "restrictions."
 )
 
@@ -113,6 +116,8 @@ def _is_reference_coverage_exempt(relative_path: Path) -> bool:
         relative_path == _SCAFFOLD_TEMPLATE_ROOT
         or _SCAFFOLD_TEMPLATE_ROOT in relative_path.parents
     ):
+        return True
+    if relative_path == Path("new_architecture") or Path("new_architecture") in relative_path.parents:
         return True
     return False
 

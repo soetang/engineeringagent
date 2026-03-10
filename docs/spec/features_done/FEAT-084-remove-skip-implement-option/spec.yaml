@@ -1,0 +1,88 @@
+id: FEAT-084
+title: Remove skip-implement mode and purge all active references
+type: chore
+expected_commit_subject: 'chore: remove skip-implement mode'
+planning_tier: planned
+status: done
+priority: medium
+objective: 'Simplify the `engineeringagent run` contract by removing the `--skip-implement`
+
+  execution mode and purging all non-archived references to skip-implement.
+
+
+  After this change, `run` has only two behaviors:
+
+  - `--dry-run` preview (no mutation), or
+
+  - normal implementation loop (OpenCode + loop gates/review flow).
+
+
+  Operators who want gate execution without loop-state mutation should use
+
+  `engineeringagent gates run --profile <profile>` directly.
+
+  '
+context: 'Today, `--skip-implement` is labeled as gates-only mode but still executes
+  a real,
+
+  non-dry loop iteration that touches feature state (`updated_at`, backlog to
+
+  in_progress transition), writes telemetry, and can archive done features.
+
+
+  This creates overlap/confusion with existing commands:
+
+  - `run --dry-run` for non-mutating preview,
+
+  - `gates run` for explicit gate execution.
+
+
+  Product direction for this change is to allow a breaking simplification and remove
+
+  `--skip-implement` rather than keep a partially overlapping mode inside `run`.
+
+  '
+constraints:
+- Remove `--skip-implement` from `engineeringagent run` CLI surface, help, and runtime
+  wiring.
+- Passing `--skip-implement` must fail as an unknown option with non-zero exit code.
+- '`--dry-run` semantics remain unchanged and stay non-mutating.'
+- Do not add replacement gate-execution behavior inside `run`; gate-only execution
+  remains `engineeringagent gates run`.
+- Remove all *active* (non-archived) references to skip-implement across the repository
+  (docs/examples that mention `--skip-implement`, code/runtime config fields like
+  `skip_implement`, and tests/fixtures/assertions that mention either form).
+- Update docs and references to replace any prior `--skip-implement` guidance with
+  `engineeringagent gates run ...` and/or `engineeringagent run --dry-run`.
+- Do not edit archived specs under `docs/spec/features_done/`; historical references
+  may remain there.
+- Update tests that assert `--skip-implement` behavior, including CLI parsing/help,
+  loop runtime behavior, and docs assertions.
+implementation_notes: "Contract/API delta (explicit):\n\n- Surface: `engineeringagent\
+  \ run` CLI options.\n  - Old behavior: accepts `--skip-implement` to bypass implement\
+  \ and still run one\n    gates-only iteration in loop runtime.\n  - New behavior:\
+  \ `--skip-implement` is removed; `run` either executes `--dry-run`\n    preview\
+  \ or full implementation loop.\n\n- Surface: run-loop lifecycle semantics.\n  -\
+  \ Old behavior: a non-dry gates-only path exists inside `run` and mutates loop\n\
+  \    state.\n  - New behavior: no gates-only path in `run`; gate-only execution\
+  \ is externalized\n    to `engineeringagent gates run`.\n\nCompatibility policy:\n\
+  - Intentional breaking change.\n\nMigration scope:\n- Replace `engineeringagent\
+  \ run ... --skip-implement` with one of:\n  - `engineeringagent run ... --dry-run`\
+  \ for preview/selection checks.\n  - `engineeringagent gates run --profile loop_fast`\
+  \ (or another profile) for\n    gate-only execution.\n"
+acceptance:
+- '`engineeringagent run --help` no longer documents `--skip-implement`.'
+- '`engineeringagent run <feature> --skip-implement` exits non-zero with unknown option
+  style output.'
+- Loop runtime models/facades no longer carry `skip_implement` in run config and iteration
+  inputs.
+- Implement phase helper no longer contains skip branch (`[implement] skipped`).
+- README and active docs replace `run --skip-implement` guidance with `gates run`
+  and/or `run --dry-run` guidance.
+- Repository search for `--skip-implement` and `skip_implement` returns matches only
+  in archived specs under `docs/spec/features_done/` (and intentionally preserved
+  historical snapshots).
+- '`uv run pytest -q` and `uv run python -m engineeringagent.cli validate` pass.'
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-16T11:47:36Z'

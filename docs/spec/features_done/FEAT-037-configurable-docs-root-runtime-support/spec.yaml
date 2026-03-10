@@ -1,0 +1,58 @@
+id: FEAT-037
+title: Make runtime commands honor configurable docs root for specs and archive flow
+type: feature
+expected_commit_subject: 'feat: add FEAT-037 configurable docs root runtime support'
+planning_tier: planned
+status: done
+priority: high
+objective: 'Make runtime behavior fully honor a configurable docs root so `validate`,
+  `run --all`, and done-spec archival work consistently when scaffolding uses a non-default
+  docs directory, with docs-root resolved from TOML configuration before falling back
+  to default `docs`.
+
+  '
+context: 'Current behavior hardcodes `docs/spec/...` in validator and loop runtime
+  paths, while init can scaffold to alternate docs directories. This mismatch makes
+  separate docs scaffolding incomplete in practice. We want one docs-root resolution
+  contract sourced from TOML config: first `engineeringagent.toml`, then `pyproject.toml`
+  (`[tool.engineeringagent]`), then default `docs`. This feature wires the resolver
+  through all spec-path consumers while preserving backward compatibility for repos
+  that do not configure docs-root.
+
+  '
+constraints:
+- 'Resolver precedence is deterministic: `engineeringagent.toml` first, then `pyproject.toml`
+  (`[tool.engineeringagent]`), then default `docs`.'
+- 'Preserve backward compatibility: repositories without explicit docs-root TOML config
+  continue using `docs`.'
+- Use one canonical docs-root resolver shared across CLI, validator, and loop runtime
+  paths.
+- Integrate with init so separate docs mode writes and uses TOML docs-root configuration.
+- Keep migration deterministic and low-friction for existing repositories.
+- Do not broaden into scaffold template redesign or AGENTS architecture changes from
+  FEAT-036.
+implementation_notes: 'Introduce a small docs-root configuration contract with default
+  fallback to `docs`. Implement TOML-backed resolution with precedence `engineeringagent.toml`
+  -> `pyproject.toml:[tool.engineeringagent]` -> default. Update validator path construction,
+  run-all discovery, and archive path derivation to consume this resolved docs root.
+  Ensure init separate-docs mode persists docs-root in TOML so runtime commands work
+  without extra flags. Add targeted tests for default and non-default docs roots and
+  maintain existing behavior for repos that do not opt into custom docs paths.
+
+  '
+acceptance:
+- '`engineeringagent validate` reads schema/features/features_done/potential_features
+  from resolved docs root.'
+- '`engineeringagent run --all` discovers active specs from resolved docs root.'
+- Done-spec archive behavior uses resolved active and done directories under configured
+  docs root.
+- '`engineeringagent init --docs-mode separate` writes TOML docs-root configuration
+  that runtime commands automatically honor.'
+- Existing repositories with no docs-root configuration continue to work with default
+  `docs`.
+- Docs-root resolver precedence is `engineeringagent.toml` then `pyproject.toml` then
+  default `docs`.
+- Regression and targeted tests cover both default and non-default docs-root scenarios.
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-14T09:14:23Z'

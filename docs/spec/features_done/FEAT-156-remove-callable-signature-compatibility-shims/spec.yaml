@@ -1,0 +1,123 @@
+id: FEAT-156
+title: Remove callable-signature compatibility shims in checks and implement runtime
+type: spec
+expected_commit_subject: 'spec: add FEAT-156 remove callable signature compatibility
+  shims'
+planning_tier: planned
+status: done
+priority: high
+objective: 'Remove legacy callable-signature compatibility behavior from checks and
+  loop implement runtime so internal call contracts are explicit, typed, and fail-fast.
+
+  '
+context: "Two compatibility seams are still preserving removed call shapes:\n\n- `checks.api._call_collect_changed_paths`\
+  \ introspects collector signatures and\n  silently falls back to one-arg invocation\
+  \ when `base/head` kwargs are unsupported.\n- `loop_runtime.implement._run_agent_with_structured_output`\
+  \ introspects\n  `run_agent_fn` and falls back to the legacy two-arg form when `output_type`\n\
+  \  is unsupported.\n\nThese branches keep mixed contracts alive, increase indirection,\
+  \ and hide\nintegration errors that should be explicit.\n\nRepository policy for\
+  \ this work is immediate break (no transitional fallback\npaths).\n"
+constraints:
+- 'In scope: remove changed-path collector signature introspection/fallback behavior
+  from `src/engineeringagent/checks/api.py` and require canonical callable contracts.'
+- 'In scope: remove implement runtime run-agent signature introspection/fallback behavior
+  from `src/engineeringagent/loop_runtime/implement.py` and require canonical structured-output
+  call shape.'
+- 'In scope: remove all production callers that rely on removed fallback call shapes,
+  and update wiring to canonical signatures only.'
+- 'In scope: delete or rewrite all tests that only exist to validate removed compatibility
+  call signatures.'
+- 'Out of scope: codex schema/model compatibility behavior (for example in `agents/backends/codex/*`).'
+- 'Out of scope: feedback envelope/plain-text bridge cleanup in prompts renderer.'
+- 'Out of scope: validator legacy done-spec metadata compatibility and duplicate-id
+  opt-out policy.'
+- Compatibility policy is immediate break; do not add temporary migration shims, fallback
+  branches, or deprecation windows.
+implementation_notes: 'Contract change declaration
+
+
+  Surface:
+
+
+  - Checks changed-path collector invocation contract.
+
+  - Loop implement-phase run-agent invocation contract.
+
+
+  Old behavior:
+
+
+  - Checks API attempts to detect collector kwargs support and falls back to one-arg
+  calls.
+
+  - Implement runtime attempts to detect `output_type` support and falls back to legacy
+  two-arg run-agent calls.
+
+
+  New behavior:
+
+
+  - Checks API requires collector callables to accept canonical invocation shape used
+  by orchestration (including `base/head` kwargs when provided).
+
+  - Implement runtime always invokes run-agent with structured-output arguments and
+  no legacy fallback path.
+
+  - All production callers use canonical callable signatures; no runtime compatibility
+  adapters remain.
+
+  - Signature-mismatch integrations fail fast instead of being silently coerced.
+
+
+  Compatibility policy:
+
+
+  - Immediate break for removed fallback call shapes.
+
+  - No dual-support window for legacy callable signatures.
+
+
+  Migration plan:
+
+
+  - Delete signature-introspection helpers and fallback branches in checks/implement
+  runtime.
+
+  - Update or remove production callsites that depended on compatibility behavior.
+
+  - Remove compatibility-only tests and fixtures that asserted legacy fallback behavior.
+
+
+  Verification evidence:
+
+
+  - Targeted checks and loop contract tests pass after shim and caller cleanup.
+
+  - Schema validation passes.
+
+
+  Fitness-function impact assessment:
+
+
+  - no fitness-function changes required.
+
+  - Rationale: the feature tightens internal callable contracts and removes compatibility
+  branches without changing intended architecture boundaries.
+
+  '
+acceptance:
+- '`src/engineeringagent/checks/api.py` no longer contains collector-signature introspection
+  fallback logic for one-arg compatibility invocation.'
+- '`src/engineeringagent/loop_runtime/implement.py` no longer contains run-agent signature
+  introspection fallback logic for legacy two-arg invocation.'
+- No production caller relies on removed fallback invocation behavior; callsites use
+  canonical signatures only.
+- Tests that existed only to validate removed compatibility signatures are deleted
+  or rewritten for canonical/fail-fast behavior.
+- No codex backend schema/model compatibility code is changed as part of this feature.
+- 'Verification command passes: `uv run pytest -q tests/checks/test_run_checks_contract.py
+  tests/loop/test_loop_contracts.py`.'
+- 'Verification command passes: `uv run engineeringagent validate --schema-only`.'
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-27T19:25:33Z'

@@ -1,0 +1,65 @@
+id: FEAT-108
+title: Add pylint as an iteration_end gate (disable module docstring + line length)
+type: chore
+expected_commit_subject: 'chore: add pylint gate to iteration_end checks'
+planning_tier: planned
+status: done
+priority: medium
+objective: 'Add pylint as a first-class repo gate by wiring it into `harness/checks.yaml`
+  (iteration_end). Configure pylint via `pyproject.toml` while explicitly not enforcing
+  module docstrings or line length.
+
+  '
+context: 'This repo currently enforces lint/type/test via `ruff`, `pyright`, and `pytest`
+  checks declared in `harness/checks.yaml`, executed in CI and pre-commit through
+  `engineeringagent checks run --phase iteration_end`.
+
+  We want to add pylint as an additional deterministic gate, but avoid double- enforcing
+  two policies: - module docstrings (do not require them) - line length (already enforced
+  elsewhere; pylint should not own it)
+
+  '
+constraints:
+- 'Add pylint as a `type: command` check in `harness/checks.yaml` for `phase: iteration_end`.'
+- Pylint must run on `src/engineeringagent`, `tests`, and `harness`.
+- Pylint configuration must live in `pyproject.toml` (no `.pylintrc` added).
+- 'Disable only these pylint messages: `missing-module-docstring` (C0114) and `line-too-long`
+  (C0301).'
+- Do not disable any other pylint messages as part of this feature.
+- 'Prefer fixing violations over adding inline suppressions (`# pylint: disable=...`).
+  Inline suppressions must be narrowly scoped and justified if used.'
+- Keep execution uv-native (`uv run ...`) and deterministic.
+- '"no fitness-function changes required" (command check only; configured in `harness/checks.yaml`).'
+implementation_notes: "Contract delta (explicit)\n\nSurface: repo verification checks\
+  \ in `harness/checks.yaml` (iteration_end).\n- Old behavior: iteration_end runs\
+  \ ruff/pyright/pytest (plus fitness).\n- New behavior: iteration_end also runs pylint.\n\
+  \nAdd pylint dependency\n\nAdd `pylint` to `[dependency-groups].dev` in `pyproject.toml`.\n\
+  \nPylint config in pyproject.toml (normative)\n\nAdd these sections to `pyproject.toml`:\n\
+  \n```toml\n[tool.pylint]\n# Presence of this table signals pylint to read pyproject.toml.\n\
+  \n[tool.pylint.\"MESSAGES CONTROL\"]\ndisable = [\n  \"missing-module-docstring\"\
+  , # C0114\n  \"line-too-long\",            # C0301\n]\n```\n\nNotes:\n- Keep this\
+  \ config minimal: only disable the two messages above.\n- Pylint must pick up this\
+  \ config when run from the repository root without needing\n  `--rcfile`.\n\nWire\
+  \ pylint into harness/checks.yaml (normative)\n\nAdd a new check entry to `harness/checks.yaml`\
+  \ (ids can differ, but behavior should match):\n\n```yaml\npylint_validate:\n  type:\
+  \ command\n  command: \"uv run pylint --score=n --reports=n src/engineeringagent\
+  \ tests harness\"\n  when:\n    phase: iteration_end\n    on_change: [\"src/**/*.py\"\
+  , \"tests/**/*.py\", \"harness/**/*.py\"]\n```\n\nRationale for flags:\n- `--score=n`\
+  \ / `--reports=n` reduces noisy output and avoids score-based behavior.\n- The gate\
+  \ is still enforced by pylint's exit code (any remaining messages fail).\n"
+acceptance:
+- '`uv run pylint --score=n --reports=n src/engineeringagent tests harness` runs from
+  repo root and does not report C0114 or C0301.'
+- '`harness/checks.yaml` includes a pylint command check that runs at `iteration_end`
+  and is selected by `when.on_change` for Python changes.'
+- Pylint configuration is read from `pyproject.toml` (no `.pylintrc` in repo and no
+  `--rcfile` required in the gate command).
+- After remediation, pylint passes with no additional global disables beyond C0114/C0301.
+- '`uv run engineeringagent checks run --phase iteration_end` passes locally after
+  changes.'
+- Contributor docs mention how to run pylint directly and via `engineeringagent checks
+  run`.
+- '`uv run pytest -q` passes.'
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-18T17:08:00Z'

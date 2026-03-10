@@ -1,0 +1,69 @@
+id: FEAT-093
+title: Remove brittle reviewer reference doc-content tests and harden no-doc-content-tests
+  fitness rule
+type: test
+expected_commit_subject: 'test: remove doc-content tests and harden guard'
+planning_tier: planned
+status: done
+priority: medium
+objective: 'Remove pytest tests that read repository documentation markdown files
+  and assert
+
+  exact wording, and harden the `architecture.no-doc-content-tests` fitness rule so
+
+  doc-content tests cannot re-enter the suite via wrapper helpers.
+
+  '
+context: 'The repository currently contains `tests/test_reviewer_reference_docs.py`,
+  which
+
+  reads files under `docs/**` and asserts substring presence/absence.
+
+
+  This violates the policy enforced by the fitness rule
+
+  `architecture.no-doc-content-tests` (doc wording is intentionally flexible; tests
+
+  should validate behavior/contracts, not documentation wording).
+
+
+  The current fitness checker failed to detect this module because it only catches
+
+  a narrow set of AST patterns (direct `repo_root / "docs" / ...` path reads and a
+
+  specific helper name), while this module uses a different helper (`_read`) and
+
+  passes doc paths via a variable.
+
+  '
+constraints:
+- 'No runtime behavior change: repository hygiene and guardrail improvements only.'
+- Do not add new doc substring-scanning tests as replacements.
+- Do not introduce repository-wide grep scans over tracked files as a substitute.
+implementation_notes: "Contract/API delta (explicit):\n\n- Surface: test suite contents.\n\
+  \  - Old behavior: pytest included doc-wording assertions in `tests/test_reviewer_reference_docs.py`.\n\
+  \  - New behavior: those tests are removed.\n\n- Surface: fitness enforcement.\n\
+  \  - Old behavior: `architecture.no-doc-content-tests` missed doc reads when routed\n\
+  \    through wrapper helpers like `_read(repo_root, \"docs/...\" )`.\n  - New behavior:\
+  \ the checker detects calls that pass `repo_root` plus a constant\n    docs/README\
+  \ markdown path, regardless of helper function name.\n\nSuggested checker enhancement:\n\
+  - In the AST walker, flag any `ast.Call` with:\n  - first arg `Name(\"repo_root\"\
+  )`\n  - second arg `Constant(str)` that is a banned doc target (`README.md` or `docs/**/*.md`)\n\
+  \  - unless allowlisted (existing allowlist rules still apply).\n\nHow docs stay\
+  \ accurate without doc-content tests:\n- Prefer contract/runtime tests for supported\
+  \ behavior (e.g. reviewers contract parsing,\n  decision enums, and loop enforcement)\
+  \ rather than substring checks in docs.\n- Keep doc-set hygiene enforced via existing\
+  \ fitness rules:\n  - `architecture.docs-allowlist-policy` for docs classification\n\
+  \  - `architecture.scaffold-docs-exact-sync` for synced scaffolded docs\n  - `architecture.markdown-locality-reference-coverage`\
+  \ for markdown locality\n"
+acceptance:
+- '`tests/test_reviewer_reference_docs.py` is removed (or contains no tests that read
+  README/docs markdown and assert substrings).'
+- '`uv run python -m engineeringagent.cli fitness run --format json` reports `architecture.no-doc-content-tests`
+  as pass, and the rule would now fail if a `_read(repo_root, "docs/x.md")`-style
+  test were reintroduced.'
+- '`uv run pytest -q` passes.'
+- '`uv run python -m engineeringagent.cli validate` passes.'
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-17T05:44:06Z'

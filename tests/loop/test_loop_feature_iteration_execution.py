@@ -37,29 +37,40 @@ def test_run_loop_all_discovers_backlog_and_in_progress_only(
 
     backlog_feature = base_feature(status="backlog")
     backlog_feature["id"] = "FEAT-901"
-    yaml.safe_dump(backlog_feature, sort_keys=False)
-    (features_dir / "FEAT-901-backlog.yaml").write_text(
+    (features_dir / "FEAT-901-backlog" / "spec.yaml").parent.mkdir(
+        parents=True, exist_ok=True
+    )
+    (features_dir / "FEAT-901-backlog" / "spec.yaml").write_text(
         yaml.safe_dump(backlog_feature, sort_keys=False),
         encoding="utf-8",
     )
 
     in_progress_feature = base_feature(status="in_progress")
     in_progress_feature["id"] = "FEAT-902"
-    (features_dir / "FEAT-902-in-progress.yaml").write_text(
+    (features_dir / "FEAT-902-in-progress" / "spec.yaml").parent.mkdir(
+        parents=True, exist_ok=True
+    )
+    (features_dir / "FEAT-902-in-progress" / "spec.yaml").write_text(
         yaml.safe_dump(in_progress_feature, sort_keys=False),
         encoding="utf-8",
     )
 
     blocked_feature = base_feature(status="blocked")
     blocked_feature["id"] = "FEAT-903"
-    (features_dir / "FEAT-903-blocked.yaml").write_text(
+    (features_dir / "FEAT-903-blocked" / "spec.yaml").parent.mkdir(
+        parents=True, exist_ok=True
+    )
+    (features_dir / "FEAT-903-blocked" / "spec.yaml").write_text(
         yaml.safe_dump(blocked_feature, sort_keys=False),
         encoding="utf-8",
     )
 
     done_feature = base_feature(status="done")
     done_feature["id"] = "FEAT-904"
-    (features_dir / "FEAT-904-done.yaml").write_text(
+    (features_dir / "FEAT-904-done" / "spec.yaml").parent.mkdir(
+        parents=True, exist_ok=True
+    )
+    (features_dir / "FEAT-904-done" / "spec.yaml").write_text(
         yaml.safe_dump(done_feature, sort_keys=False),
         encoding="utf-8",
     )
@@ -96,22 +107,20 @@ def test_run_all_uses_configured_docs_root(tmp_path: Path, capsys: Any) -> None:
 
     configured_feature = base_feature(status="backlog")
     configured_feature["id"] = "FEAT-910"
-    (configured_features_dir / "FEAT-910-configured-docs-root.yaml").parent.mkdir(
+    (configured_features_dir / "FEAT-910-configured-docs-root" / "spec.yaml").parent.mkdir(
         parents=True, exist_ok=True
     )
-    (
-        configured_features_dir / "FEAT-910-configured-docs-root.yaml"
-    ).write_text(
+    (configured_features_dir / "FEAT-910-configured-docs-root" / "spec.yaml").write_text(
         yaml.safe_dump(configured_feature, sort_keys=False),
         encoding="utf-8",
     )
 
     default_feature = base_feature(status="backlog")
     default_feature["id"] = "FEAT-911"
-    (default_features_dir / "FEAT-911-default-docs-root.yaml").parent.mkdir(
+    (default_features_dir / "FEAT-911-default-docs-root" / "spec.yaml").parent.mkdir(
         parents=True, exist_ok=True
     )
-    (default_features_dir / "FEAT-911-default-docs-root.yaml").write_text(
+    (default_features_dir / "FEAT-911-default-docs-root" / "spec.yaml").write_text(
         yaml.safe_dump(default_feature, sort_keys=False),
         encoding="utf-8",
     )
@@ -138,7 +147,10 @@ def test_run_loop_all_excludes_blocked_and_done_from_startup_snapshot(
 
     blocked_feature = base_feature(status="blocked")
     blocked_feature["id"] = "FEAT-903"
-    (features_dir / "FEAT-903-blocked.yaml").write_text(
+    (features_dir / "FEAT-903-blocked" / "spec.yaml").parent.mkdir(
+        parents=True, exist_ok=True
+    )
+    (features_dir / "FEAT-903-blocked" / "spec.yaml").write_text(
         yaml.safe_dump(blocked_feature, sort_keys=False),
         encoding="utf-8",
     )
@@ -180,7 +192,9 @@ def test_run_loop_all_does_not_include_specs_created_after_startup(
 ) -> None:
     project_root, feature_path = make_project_root(tmp_path, feature_data=base_feature())
     features_dir = project_root / "docs" / "spec" / "features"
-    created_feature_path = features_dir / "FEAT-999-created-after-startup.yaml"
+    created_feature_path = (
+        features_dir / "FEAT-999-created-after-startup" / "spec.yaml"
+    )
     script_path = write_set_done_and_create_feature_script(
         tmp_path.parent / f"{tmp_path.name}-set-done-and-create-feature.py"
     )
@@ -198,7 +212,14 @@ def test_run_loop_all_does_not_include_specs_created_after_startup(
             max_iterations=3,
         )
 
-    archived_path = project_root / "docs" / "spec" / "features_done" / feature_path.name
+    archived_path = (
+        project_root
+        / "docs"
+        / "spec"
+        / "features_done"
+        / feature_path.parent.name
+        / "spec.yaml"
+    )
     runs = read_runs(project_root)
 
     assert code == 0
@@ -289,7 +310,14 @@ def test_run_loop_completes_feature_and_commits(tmp_path: Path) -> None:
     assert runs[-1]["result"] == "passed"
     assert runs[-1]["failed_gate"] is None
 
-    archived_path = project_root / "docs" / "spec" / "features_done" / feature_path.name
+    archived_path = (
+        project_root
+        / "docs"
+        / "spec"
+        / "features_done"
+        / feature_path.parent.name
+        / "spec.yaml"
+    )
     assert not feature_path.exists()
     assert archived_path.exists()
 
@@ -302,7 +330,9 @@ def test_run_loop_completes_feature_and_commits(tmp_path: Path) -> None:
 
 def test_archive_path_uses_configured_docs_root(tmp_path: Path) -> None:
     docs_root = tmp_path / "docs.engineeringagent"
-    feature_path = docs_root / "spec" / "features" / "FEAT-910-configured-archive.yaml"
+    feature_path = (
+        docs_root / "spec" / "features" / "FEAT-910-configured-archive" / "spec.yaml"
+    )
     feature = base_feature(status="backlog")
     feature["id"] = "FEAT-910"
 
@@ -334,7 +364,9 @@ def test_archive_path_uses_configured_docs_root(tmp_path: Path) -> None:
             max_iterations=5,
         )
 
-    archived_path = docs_root / "spec" / "features_done" / "FEAT-910-configured-archive.yaml"
+    archived_path = (
+        docs_root / "spec" / "features_done" / "FEAT-910-configured-archive" / "spec.yaml"
+    )
     assert code == 0
     assert not feature_path.exists()
     assert archived_path.exists()
@@ -646,7 +678,7 @@ def test_run_loop_iteration_output_uses_emoji_contract(
             failed_gate=None,
             attempt=1,
             next_action="continue_same_feature",
-            selected_path="docs/spec/features/FEAT-900.yaml",
+            selected_path="docs/spec/features/FEAT-900/spec.yaml",
             implement_step="opencode run --agent engineeringagent",
         )
     )
@@ -657,7 +689,7 @@ def test_run_loop_iteration_output_uses_emoji_contract(
             failed_gate="spec_validate",
             attempt=2,
             next_action="retry_same_feature",
-            selected_path="docs/spec/features/FEAT-900.yaml",
+            selected_path="docs/spec/features/FEAT-900/spec.yaml",
             implement_step="opencode run --agent engineeringagent",
             log_path=FEATURE_LOG_REF,
         )
@@ -669,15 +701,15 @@ def test_run_loop_iteration_output_uses_emoji_contract(
             failed_gate=None,
             attempt=3,
             next_action="select_next_feature",
-            selected_path="docs/spec/features/FEAT-900.yaml",
+            selected_path="docs/spec/features/FEAT-900/spec.yaml",
             implement_step="opencode run --agent engineeringagent",
-            archived_selection_path="docs/spec/features_done/FEAT-900.yaml",
+            archived_selection_path="docs/spec/features_done/FEAT-900/spec.yaml",
         )
     )
 
     output = capsys.readouterr().out
     assert "🔁 Iteration 1 · FEAT-900" in output
-    assert "🎯 Selected: docs/spec/features/FEAT-900.yaml" in output
+    assert "🎯 Selected: docs/spec/features/FEAT-900/spec.yaml" in output
     assert "🛠 Implement: opencode run --agent engineeringagent" in output
     assert "✅ Passed" in output
     assert "➡️ Next: continue_same_feature" in output

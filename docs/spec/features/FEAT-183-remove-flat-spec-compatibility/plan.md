@@ -8,7 +8,7 @@ planning_tier: researched
 phases:
   - id: P1
     title: Cut the repository over to bundled-only feature contracts
-    status: in_progress
+    status: done
     verification:
       - uv run engineeringagent validate --schema-only
       - uv run pytest -q tests/meta/test_validator.py -k bundled_only
@@ -29,7 +29,7 @@ phases:
       - uv run python docs/spec/features/FEAT-183-remove-flat-spec-compatibility/supporting/check_no_repo_approach_wrappers.py
   - id: P4
     title: Delete flat archived specs and add repo-wide cutover checks
-    status: backlog
+    status: in_progress
     verification:
       - uv run python docs/spec/features/FEAT-183-remove-flat-spec-compatibility/supporting/check_no_flat_feature_specs.py
       - uv run pytest -q tests/fitness/test_fitness_rules_source_first_loop_commands.py

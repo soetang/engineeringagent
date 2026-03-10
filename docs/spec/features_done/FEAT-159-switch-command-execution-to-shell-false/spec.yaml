@@ -1,0 +1,66 @@
+id: FEAT-159
+title: Switch checks and verification command execution to shell false
+type: feature
+expected_commit_subject: 'feat: switch command execution to shell false'
+planning_tier: planned
+status: done
+priority: high
+objective: 'Remove shell-based command execution from loop verification and checks
+  command runners by defaulting to argv execution (`shell=False`) while preserving
+  deterministic pass/fail behavior and actionable error output.
+
+  '
+context: 'The current command runner executes string commands with `shell=True`, which
+  expands the command-injection and quoting risk surface and makes behavior rely on
+  shell semantics.
+
+  Repository command usage is currently compatible with argv-style execution, but
+  the runtime contract still treats commands as shell strings. We want a strict runtime
+  boundary: parse command strings into argv, execute with `shell=False`, and fail
+  deterministically when shell-only syntax is provided.
+
+  '
+constraints:
+- Breaking cleanup is allowed; no compatibility shim is required.
+- Do not reintroduce callable-injection seams for command execution ownership.
+- Preserve deterministic output framing used by checks and verification phases.
+- Keep command contracts as strings for now; do not migrate specs/checks schema to
+  argv lists in this feature.
+- Reject shell-only constructs (for example pipes, redirects, command chaining, subshell
+  syntax) with clear remediation.
+- Include explicit fitness-function impact assessment in this spec.
+implementation_notes: "Contract change declaration (required)\nSurface: - `engineeringagent.process.run_shell_command`\
+  \ execution contract. - Checks command strategy execution path. - Loop verification\
+  \ command execution path.\nOld behavior: - Command strings are executed through\
+  \ `subprocess.run(..., shell=True)`. - Shell parsing/execution semantics are implicitly\
+  \ allowed.\nNew behavior: - Command strings are parsed into argv (deterministically)\
+  \ and executed via\n  `subprocess.run(..., shell=False)`.\n- Shell-only syntax is\
+  \ treated as invalid command input and reported as\n  deterministic command failure\
+  \ output.\n- Missing executable / parse failures are surfaced as structured, actionable\n\
+  \  failure output instead of uncaught runtime exceptions.\n\nCompatibility policy:\
+  \ - Immediate break for shell-expression command strings. - No compatibility shim.\n\
+  Migration plan: - Implement argv parsing/validation in command runner module. -\
+  \ Update checks and verification call paths to use deterministic failure\n  rendering\
+  \ for parse/executable errors.\n- Add tests covering valid argv commands and rejected\
+  \ shell syntax. - Update docs that currently imply generic shell command support.\n\
+  Fitness-function impact assessment: - no fitness-function changes required. - Rationale:\
+  \ this tightens runtime execution safety and aligns with existing\n  subprocess-boundary\
+  \ intent without changing policy scope.\n"
+acceptance:
+- '`src/engineeringagent/process.py` executes commands with `shell=False` and does
+  not use `shell=True`.'
+- Checks command execution still produces deterministic command output blocks and
+  return code semantics for pass/fail.
+- Verification command execution still produces deterministic command output blocks
+  and failure feedback semantics for pass/fail.
+- Shell-only command expressions are rejected with deterministic remediation-oriented
+  error output and do not execute partially.
+- Missing executable and parse-error cases are handled without uncaught exceptions
+  in checks/verification flows.
+- 'Targeted tests pass: `uv run pytest -q tests/checks/test_run_checks_contract.py
+  tests/checks/test_commands_group_port.py tests/loop/test_loop_feature_iteration.py
+  tests/loop/test_loop_phases_coverage.py tests/loop/test_loop_runtime_iteration.py`.'
+- 'Repository validation passes: `uv run engineeringagent validate`.'
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-27T20:49:58Z'

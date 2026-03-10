@@ -1,0 +1,54 @@
+id: FEAT-047
+title: Reduce duplicated validator, CLI, feature-state, and fitness-script plumbing
+type: chore
+expected_commit_subject: 'chore: add FEAT-047 dedupe validator cli feature-state and
+  fitness script plumbing'
+planning_tier: planned
+status: done
+priority: high
+objective: Reduce repeated logic across validator flows, fitness CLI serialization,
+  loop feature-state failure handling, and harness fitness scripts to lower net lines
+  of code while preserving behavior.
+context: A full-repository simplification review identified four low/medium-risk deduplication
+  targets that are the highest-likelihood path to immediate LOC reduction without
+  changing product behavior. These items currently duplicate parse/append patterns,
+  JSON payload generation, failure-outcome construction, and command-rule envelope
+  output across multiple files.
+constraints:
+- Preserve existing user-facing behavior and output contracts for `engineeringagent
+  validate`, `engineeringagent fitness list`, `engineeringagent fitness catalog`,
+  and loop runtime failure semantics.
+- Do not add new CLI flags, command modes, or policy changes.
+- Keep diagnostics deterministic and stable (ordering, message shape, and gate/status
+  semantics).
+- Keep harness fitness scripts executable as standalone commands.
+- Prefer extraction of shared helpers over large architectural redesign.
+- Maintain or improve current test coverage for touched modules.
+implementation_notes: 'Scope includes exactly four refactors in one feature: (1) consolidate
+  repeated YAML load + contract-issue append patterns in `src/engineeringagent/validator.py`;
+  (2) centralize repeated failed-outcome/message construction branches in `src/engineeringagent/loop_runtime/feature_state.py`;
+  (3) deduplicate repeated metadata payload/path-resolution logic used by fitness
+  subcommands in `src/engineeringagent/cli.py`; (4) introduce a shared result-envelope
+  helper used by command fitness scripts under `harness/fitness-functions/`.
+
+  Keep contracts stable and bias toward deleting duplicate blocks rather than adding
+  wrapper layers that preserve duplication.
+
+  '
+acceptance:
+- '`src/engineeringagent/validator.py` uses shared helpers for repeated parse-and-append
+  contract validation flows.'
+- '`src/engineeringagent/loop_runtime/feature_state.py` consolidates repeated failure-outcome
+  and archive-mismatch message construction paths without changing failure semantics.'
+- '`src/engineeringagent/cli.py` fitness list/catalog flows share metadata payload
+  and path-normalization helpers to avoid format drift.'
+- Command fitness scripts in `harness/fitness-functions/` emit result envelopes through
+  a shared helper with deterministic JSON contract output.
+- Net line count across targeted files is reduced compared to the pre-change baseline
+  while preserving behavior.
+- Existing and new targeted tests covering validator, loop feature-state behavior,
+  CLI fitness output, and fitness adapter execution pass.
+- Repository spec validation and loop-fast gate checks pass after integration.
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-14T20:18:00Z'

@@ -1,0 +1,63 @@
+id: FEAT-048
+title: Decompose run_loop orchestration into a runtime controller with integration-first
+  tests
+type: feature
+expected_commit_subject: 'feat: add FEAT-048 loop runtime controller decomposition
+  and integration-first tests'
+planning_tier: planned
+status: done
+priority: high
+objective: Keep `engineeringagent.loop.run_loop` as a stable public facade while moving
+  orchestration sequencing into an internal runtime controller and reducing reliance
+  on internal-control-flow monkeypatch tests.
+context: '`src/engineeringagent/loop.py` currently sits at 607 lines with a hard budget
+  cap of 650 and still carries dense orchestration flow. Existing tests provide strong
+  coverage but include monkeypatch-heavy seams in some control-flow areas. The desired
+  direction is an internal controller split that preserves behavior and compatibility
+  while replacing selected patch-heavy tests with small integration-style tests using
+  temporary repositories.'
+constraints:
+- Preserve `run_loop`, `_run_feature_iteration`, and `run_implement_step` callable
+  signatures and public facade import compatibility.
+- Preserve current user-visible behavior including exit codes, selection flow, dry-run
+  behavior, precondition enforcement, permission precheck outcomes, and summary output
+  semantics.
+- Keep `src/engineeringagent/loop.py` within existing enforced line-budget constraints.
+- Replace selected monkeypatch-heavy tests with integration-style tests where practical
+  in this feature.
+- 'Mocking policy for this feature is boundary-only: allow mocks for external/unstable
+  boundaries (for example OpenCode process execution and hard git failure paths) but
+  avoid new internal control-flow patching.'
+- Do not introduce new CLI flags or alter loop policy contracts.
+- Keep telemetry/log output contracts deterministic and machine-parse-friendly.
+implementation_notes: 'Add a dedicated runtime orchestration controller module (for
+  example `src/engineeringagent/loop_runtime/controller.py`) that encapsulates phase
+  sequencing currently in `run_loop`: target resolution, run-all snapshot handling,
+  dry-run handling, worktree precondition enforcement, permission precheck, and selected-feature
+  iteration loop. Keep `run_loop` as a thin adapter that binds facade inputs and delegates
+  to the controller.
+
+  Include focused test migration: replace a selected subset of monkeypatch-heavy tests
+  with small integration-first tests that create tmp repositories and exercise end-to-end
+  controller flow through stable boundaries. Keep contract tests that assert facade
+  signatures and seam availability, but reduce direct patching of internal sequencing
+  branches where equivalent integration tests can cover behavior.
+
+  '
+acceptance:
+- '`run_loop` remains a stable facade entrypoint and delegates orchestration sequencing
+  to an internal runtime controller.'
+- Facade signature and seam compatibility checks continue to pass for `run_loop`,
+  `_run_feature_iteration`, and `run_implement_step`.
+- Selected loop tests previously relying on internal control-flow monkeypatching are
+  replaced with integration-style tests that verify equivalent behavior through temporary
+  repository fixtures.
+- New or updated tests follow boundary-only mocking policy (external boundaries only),
+  with no new internal-control-flow patch seams introduced.
+- Existing loop behavior remains stable for dry-run, run-all snapshot semantics, worktree/permission
+  preconditions, retry flow, terminal failure handling, and completion conditions.
+- '`src/engineeringagent/loop.py` remains within enforced facade line-budget constraints.'
+- Focused loop, integration, and fitness checks pass after refactor.
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-14T20:48:10Z'

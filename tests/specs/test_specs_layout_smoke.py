@@ -82,3 +82,9 @@ def test_active_features_use_bundled_spec_entrypoints_only(repo_root: Path) -> N
     features_dir = repo_root / "docs" / "spec" / "features"
 
     assert sorted(features_dir.glob("*.yaml")) == []
+
+
+def test_archived_features_use_bundled_spec_entrypoints_only(repo_root: Path) -> None:
+    features_done_dir = repo_root / "docs" / "spec" / "features_done"
+
+    assert sorted(features_done_dir.glob("*.yaml")) == []

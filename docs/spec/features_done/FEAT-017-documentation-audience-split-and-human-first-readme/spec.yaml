@@ -1,0 +1,67 @@
+id: FEAT-017
+title: Establish human-first README and agent-only documentation architecture
+type: docs
+expected_commit_subject: 'docs: establish FEAT-017 human-first README and docs architecture'
+planning_tier: planned
+status: done
+priority: high
+objective: 'Rework repository documentation so humans get a fast, approachable onboarding
+  path in README, while agents follow a strict text-only docs architecture with explicit
+  audience boundaries and linkage from AGENTS.md, centered on the primary user outcome:
+  define an application spec and run the loop.
+
+  '
+context: 'Current documentation mixes operator-facing and agent-facing concerns in
+  ways that increase onboarding friction and make authoring expectations implicit.
+  We need a clear split: README as a human-readable quick start with curated context
+  links, and agent-only guidance that defines documentation principles, ownership,
+  and style boundaries for machine-authored docs.
+
+  The human entrypoint should be purpose-driven: communicate the end-to-end flow (`application
+  spec -> run loop`) first, then point to harness and validation details as supporting
+  mechanics.
+
+  '
+constraints:
+- README.md is rewritten end-to-end as a human-readable quick start with core ideas
+  and clear next links.
+- README.md foregrounds the primary workflow (`application spec -> run loop`) before
+  low-level harness details.
+- README.md explicitly states that users should use agents/specs to implement their
+  harnesses.
+- README.md must include the external reference https://openai.com/index/harness-engineering/
+  plus a small curated external link set.
+- README.md may use expressive human-friendly presentation (for example emoji or ASCII
+  art) when it improves readability.
+- AGENTS.md must link docs/references/docs-architecture.md and state when to use human-readable
+  docs versus agent-only docs.
+- docs/references/docs-architecture.md is agent-focused and text-first (no decorative
+  formatting requirements).
+- README.md must link to deeper CLI details rather than carrying every operational
+  detail inline.
+- Add markdown formatting enforcement with mdformat via repository gate wiring.
+implementation_notes: 'Introduce a documentation architecture that distinguishes audience,
+  purpose, and allowed style for key docs. Keep README concise and navigational: quick
+  start, core mental model, and a clear first-run path focused on shipping via `spec
+  -> run loop`. Link harness/validation mechanics as follow-on depth rather than first-read
+  blocking detail. Add/adjust gate configuration and development dependencies so `mdformat
+  --check` runs as part of quality validation.
+
+  '
+acceptance:
+- README.md is fully rewritten as a human-first quick-start document and includes
+  the OpenAI harness engineering reference link.
+- README.md explicitly presents the purpose-driven path (`application spec -> run
+  loop`) as the main onboarding flow.
+- README.md explicitly instructs users to use agents/specs to implement harnesses.
+- README.md links to a deeper CLI details document for operational command coverage.
+- AGENTS.md links docs/references/docs-architecture.md and explicitly documents human-vs-agent
+  documentation intent.
+- docs/references/docs-architecture.md defines documentation principles, audience
+  split, and authoring expectations for agent-focused docs.
+- Repository quality checks include `mdformat --check` through gate/profile wiring.
+- Documentation updates preserve existing spec validation behavior (`engineeringagent
+  validate` still succeeds).
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-13T05:58:22Z'

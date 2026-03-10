@@ -1,0 +1,64 @@
+id: FEAT-056
+title: Adopt pathspec for deterministic on_change glob matching in gates and reviewers
+type: feature
+expected_commit_subject: 'feat: add FEAT-056 pathspec on_change matching across gates
+  and reviewers'
+planning_tier: planned
+status: done
+priority: medium
+objective: Replace duplicated `Path.match`-based on_change matching with a shared
+  gitignore-style matcher powered by `pathspec` so gate and reviewer planning is more
+  reliable and less custom.
+context: Both gate planning and reviewer planning currently implement local glob matching
+  with duplicated helper functions. This keeps maintenance burden in-repo and can
+  produce edge-case behavior differences from expected gitignore/wildmatch semantics.
+  Adopting `pathspec` lets us outsource matching semantics to a maintained library,
+  remove duplicate logic, and keep planning behavior deterministic.
+constraints:
+- Preserve existing gate and reviewer config contract shape (`on_change` remains a
+  list of glob strings).
+- Keep deterministic run/skip reason envelopes and existing fallback behavior when
+  change discovery fails.
+- Normalize path separators so matching remains stable across platforms.
+- Implement matching through one shared utility used by both `gates` and `reviewers`
+  flows.
+- 'Shared matcher API must accept (path: str, patterns: list[str]) -> bool semantics
+  equivalent to current planner call sites.'
+- Treat `pathspec` as a runtime dependency in `[project.dependencies]` because planning
+  logic executes in the shipped CLI runtime.
+- Do not change profile names, command names, or approval semantics in this feature.
+- Do not add a new fitness rule for this migration; rely on planner/reviewer regression
+  tests.
+- Validation, fitness, and regression tests must pass before completion.
+implementation_notes: 'Introduce a shared matcher utility module that compiles and
+  applies pathspec patterns using gitignore-style semantics, then replace local `_path_matches_any_glob`
+  implementations in `gates.py` and `reviewers.py` with the shared matcher.
+
+  Interface-level compatibility requirement: - Keep `plan_profile(...)` and `plan_reviewers(...)`
+  signatures unchanged. - Keep run/skip reason enum strings unchanged for downstream
+  tooling compatibility.
+
+  Keep existing planning interfaces and decision envelopes unchanged so caller behavior
+  remains stable while internals are simplified.
+
+  Required integration touch points in this feature: - `src/engineeringagent/gates.py`
+  (`_path_matches_any_glob`, `plan_profile`) - `src/engineeringagent/reviewers.py`
+  (`_path_matches_any_glob`, `plan_reviewers`, `evaluate_cached_reviewer_approval`)
+  - a new shared matcher module under `src/engineeringagent/` imported by both planners
+  - tests in `tests/test_gates.py`, `tests/test_reviewers_runtime.py`, and `tests/test_reviewers_state.py`
+
+  Add focused regression tests for nested paths, renamed paths, mixed separators,
+  and no-match cases to ensure deterministic parity with expected behavior.'
+acceptance:
+- '`engineeringagent.gates` and `engineeringagent.reviewers` use one shared pathspec-backed
+  matcher for `on_change` evaluation.'
+- Existing planner reason semantics (`matched_on_change`, `no_on_change_match`, fallback
+  reasons) remain unchanged.
+- Matching behavior is deterministic for nested files, rename old/new paths, and mixed
+  path separators.
+- Repository validation and fitness runs continue to pass after matcher migration.
+- Regression coverage exists for both gate and reviewer planning with pathspec-backed
+  matching.
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-14T23:38:14Z'

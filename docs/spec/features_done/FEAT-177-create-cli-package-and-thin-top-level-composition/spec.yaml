@@ -1,0 +1,130 @@
+id: FEAT-177
+title: Create CLI package and thin top-level command composition
+type: spec
+expected_commit_subject: 'spec: add FEAT-177 cli package composition boundaries'
+planning_tier: planned
+status: done
+priority: high
+objective: Reduce CLI coupling and hotspot size by moving command-family wiring and
+  handlers into `src/engineeringagent/cli/` while preserving all current command names,
+  options, output contracts, and runtime behavior.
+context: '`src/engineeringagent/cli.py` currently acts as a broad composition hub
+  for command handlers, init wiring, checks execution helpers, schema output, progress
+  utilities, and Typer app bootstrap. Prior review and `pydeps` analysis show that
+  the module imports a wide cross-section of the repository (`agents`, `approach`,
+  `checks`, `config`, `git`, `init_service`, `loop`, `progress`, `schema_registry`,
+  and `specs`), which makes navigation and architectural ownership harder than necessary.
+
+  We want the repository to treat CLI concerns as a package with explicit command-family
+  ownership. The top-level CLI entrypoint should become a thin composition seam rather
+  than the place where most command logic lives.'
+constraints:
+- 'In scope: create `src/engineeringagent/cli/` as the canonical CLI package for app
+  bootstrap and command-family modules.'
+- 'In scope: move current command-family logic into package-owned modules for `run`,
+  `validate`, `schema`, `approach`, `checks`, `init`, and `progress`.'
+- 'In scope: use explicit package module names where practical so ownership is obvious,
+  with an initial preferred layout of `cli/__init__.py`, `cli/__main__.py`, `cli/app.py`
+  or `cli/typer.py`, plus command-family modules such as `cli/checks.py`, `cli/init.py`,
+  `cli/schema.py`, `cli/approach.py`, `cli/progress.py`, and `cli/run.py`.'
+- 'In scope: keep Typer/click wiring in the CLI package; do not move framework-specific
+  command registration into domain packages such as `engineeringagent.checks`.'
+- 'In scope: preserve current command names, options, exit codes, output contracts,
+  and overall runtime behavior.'
+- 'In scope: keep `engineeringagent.cli:main` as the published entrypoint, but reduce
+  that surface to thin package composition if possible without compatibility shims.'
+- 'In scope: replace module-global dependency injection patterns touched by this refactor
+  with more explicit package-local adapters or dependency builders when practical.'
+- 'Out of scope: changing checks planning/execution policy, loop runtime behavior,
+  or CLI UX semantics beyond behavior-preserving cleanup.'
+- 'Out of scope: introducing a generic shared CLI helpers bucket that obscures command-family
+  ownership.'
+- no fitness-function changes required; this spec reorganizes CLI ownership while
+  keeping architectural policy changes in a separate enforcement spec.
+implementation_notes: 'Contract change declaration
+
+
+  Surface:
+
+  - Internal CLI module layout under `src/engineeringagent`.
+
+  - The CLI bootstrap/composition path used by `engineeringagent.cli:main`.
+
+
+  Old behavior:
+
+  - `src/engineeringagent/cli.py` is a large mixed-responsibility module that owns
+  app bootstrap plus multiple command-family handlers and helper seams.
+
+  - CLI package boundaries are implicit rather than expressed through filesystem ownership.
+
+
+  New behavior:
+
+  - `src/engineeringagent/cli/` becomes the canonical home for CLI app wiring and
+  command-family modules.
+
+  - Top-level CLI composition is thin and delegates to package-owned command modules.
+
+  - Command-family logic is grouped by responsibility instead of accumulating in one
+  file.
+
+  - The preferred package shape follows existing repo patterns such as `engineeringagent.approach`
+  and `engineeringagent.checks`: explicit facade exports plus focused implementation
+  modules.
+
+
+  Compatibility policy:
+
+  - External command behavior remains unchanged.
+
+  - Internal imports may change; no temporary dual-path shim layer beyond what is
+  required for the published `engineeringagent.cli:main` entrypoint.
+
+
+  Migration plan:
+
+  1) Introduce `src/engineeringagent/cli/` package with a package root, `__main__.py`
+  for `python -m engineeringagent.cli`, and one app/bootstrap module.
+
+  2) Move Typer wiring into `cli/app.py` or `cli/typer.py` and keep command registration
+  in the CLI package.
+
+  3) Move command-family handlers into focused package modules in this order: `checks`,
+  `schema`/`approach`, `progress`, `run`, `init`.
+
+  4) Keep the published script entrypoint stable while reducing top-level glue.
+
+  5) Update targeted tests and any path-sensitive/meta tests that currently assume
+  a single-file `src/engineeringagent/cli.py` layout.
+
+
+  Verification evidence:
+
+  - Targeted CLI tests pass with unchanged behavior.
+
+  - Schema validation passes after spec/doc updates.
+
+  '
+acceptance:
+- '`src/engineeringagent/cli/` exists and is the canonical home for CLI app bootstrap
+  and command-family modules.'
+- '`src/engineeringagent/cli.py` no longer acts as the primary mixed-responsibility
+  handler hub; top-level composition is thin and delegates into the package.'
+- A package root and module-execution path exist so `engineeringagent.cli:main` and
+  `python -m engineeringagent.cli` both remain supported if they are part of current
+  repository behavior.
+- Command-family modules are separated by ownership (`run`, `validate`, `schema`,
+  `approach`, `checks`, `init`, `progress`) instead of remaining co-located in one
+  large file.
+- Typer/click registration stays within the CLI package and does not leak into domain
+  packages like `engineeringagent.checks`.
+- Existing command behavior remains stable for command names, options, exit codes,
+  and user-facing output semantics.
+- Targeted CLI tests cover the new package-owned module boundaries and preserve current
+  supported behavior.
+- 'Verification command passes: `uv run pytest -q tests/cli`.'
+- 'Verification command passes: `uv run engineeringagent validate --schema-only`.'
+artifacts:
+  plan: plan.md
+updated_at: '2026-03-07T09:06:59Z'

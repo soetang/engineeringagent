@@ -1,0 +1,76 @@
+id: FEAT-128
+title: Decompose checks API orchestration into modular internal services
+type: chore
+expected_commit_subject: 'chore: add FEAT-128 checks api orchestration modularization'
+planning_tier: planned
+status: done
+priority: high
+objective: 'Refactor `engineeringagent.checks.api` into smaller internal modules so
+  checks orchestration has clear boundaries (request normalization, config loading,
+  selection, group execution, and result aggregation).
+
+  Primary success target is modularity and maintainability; LOC reduction is desirable
+  but secondary.
+
+  '
+context: '`src/engineeringagent/checks/api.py` currently combines multiple concerns
+  in one large module (request coercion, harness config loading, check-id selection,
+  per-group dispatch, and result rendering).
+
+  This shape increases coupling and slows safe incremental changes in checks behavior.
+
+  FEAT-128 performs broader checks cleanup in the same area (still within checks boundaries)
+  while keeping execution ownership separate per runtime module.
+
+  '
+constraints:
+- Preserve external `engineeringagent.checks.run_checks(...)` signature and behavior.
+- Preserve deterministic failure contracts (`failed_group`, `failed_check_id`, `failed_payload`,
+  `output`, `command_invocations`).
+- Preserve current semantic behavior for key failures (`unknown checks groups`, unknown
+  phase, missing/invalid `harness/checks.yaml`, reviewers `feature_path` requirements,
+  unknown check id selection).
+- Keep command/fitness/reviewer execution ownership in their existing runtime modules;
+  FEAT-128 is orchestration decomposition, not execution unification.
+- Keep checks import-surface compatibility for non-checks production modules (stable
+  top-level checks surface remains unchanged).
+- Broad cleanup is allowed inside checks internals when it improves clarity and stays
+  behavior-preserving.
+- no fitness-function changes required; this feature reorganizes checks internals
+  without changing fitness policy intent or cross-boundary contracts.
+implementation_notes: "Contract change declaration (internal-only)\n\nSurface:\n-\
+  \ Internal orchestration implementation behind `engineeringagent.checks.run_checks(...)`.\n\
+  - Internal helper/function locations in `src/engineeringagent/checks/`.\n\nOld behavior:\n\
+  - `checks/api.py` directly owns request parsing, harness checks-doc loading, selection,\n\
+  \  group dispatch, and aggregate result shaping.\n- Multiple concerns are mixed\
+  \ in one module and one control-flow path.\n\nNew behavior:\n- `checks/api.py` remains\
+  \ the public entrypoint/facade.\n- Internal orchestration responsibilities are split\
+  \ into dedicated internal modules\n  (normalization/request, config+selection, group\
+  \ execution, aggregation).\n- Group runtimes remain responsible for their own execution\
+  \ behavior.\n- Overall run outcomes remain semantically equivalent.\n\nCompatibility\
+  \ policy:\n- No intentional external API changes.\n- Existing CLI behavior through\
+  \ checks API remains semantically stable.\n\nMigration plan:\n- Extract request\
+  \ coercion/normalization first.\n- Extract checks-config + check-id selection path.\n\
+  - Extract group dispatch/execution orchestration.\n- Keep `run_checks(...)` as a\
+  \ thin fa\xE7ade to the new internals.\n- Add/adjust regression tests after each\
+  \ extraction slice.\n\nVerification evidence:\n- Targeted checks contract/runtime\
+  \ and CLI checks tests.\n- Spec validation command.\n"
+acceptance:
+- '`run_checks(...)` remains the public checks entrypoint and returns the same structured
+  result contract.'
+- '`src/engineeringagent/checks/api.py` is reduced to a thin facade (delegating to
+  internal modules instead of owning all orchestration logic directly).'
+- 'Internal modules clearly separate at least these concerns: request normalization,
+  checks-config + selection, group dispatch/execution, result aggregation.'
+- Behavior parity is maintained for deterministic error classes and success/failure
+  decisions across existing checks and CLI contract tests.
+- '`command_invocations` metadata propagation remains intact for command checks.'
+- No execution-ownership shift occurs from runtime modules into shared orchestration
+  internals.
+- '`uv run pytest -q tests/checks/test_run_checks_contract.py tests/checks/test_commands_group_port.py
+  tests/checks/test_fitness_group_port.py tests/checks/test_checks_reviewers_runtime.py
+  tests/cli/test_cli_checks.py tests/cli/test_cli.py` passes.'
+- '`uv run engineeringagent validate` passes.'
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-24T15:21:21Z'

@@ -94,7 +94,7 @@ def test_handoff_envelope_parser_falls_back_for_invalid_payload() -> None:
     assert envelope.completed_work == []
     assert envelope.verification == []
     assert envelope.remaining_work == [
-        "Review latest progress logs and continue the highest-priority open subtask."
+        "Review latest progress logs and continue the highest-priority open implementation step."
     ]
     assert envelope.blockers == []
 

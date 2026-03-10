@@ -1,0 +1,116 @@
+id: FEAT-049
+title: Add change-aware path-scoped gate selection contract with deterministic run
+  or skip decisions
+type: feature
+expected_commit_subject: 'feat: add FEAT-049 change-aware path-scoped gate selection
+  contract'
+planning_tier: planned
+status: done
+priority: high
+objective: Allow gate profiles to execute only relevant gates based on changed paths
+  while preserving deterministic behavior, so spec-only commits can run spec validation
+  without paying for unrelated test and typecheck gates.
+context: Gate profiles currently run every listed gate in declaration order, regardless
+  of what changed. That makes fast, intent-aligned checks difficult (for example spec-only
+  updates still run full test and typecheck suites). We need a strict interface in
+  `harness/gates.yaml` for path-scoped gate selection now, while keeping a forward-compatible
+  contract for future non-command gate runners such as documentation reviewer agents.
+constraints:
+- Preserve backward compatibility for existing `harness/gates.yaml` files where gates
+  only define `run` commands and no change selectors.
+- 'Gate matching must be path-first and deterministic: when `on_change` is set, run
+  the gate when any changed file matches any configured glob.'
+- Omitted `on_change` must mean always run for that gate.
+- Matching input must include added, modified, deleted, and renamed files; rename
+  matching checks both old and new paths.
+- If changed-file discovery fails or no diff baseline can be resolved, fail safe by
+  running all gates and surfacing the reason.
+- Preserve profile declaration order and current fail-fast semantics for gates that
+  are selected to run.
+- Introduce contract fields that keep future runner extensibility explicit (for example
+  command today, agent later) without implementing agent execution in this feature.
+- Keep decision output concise and machine-parse-friendly so later loop telemetry
+  can consume gate run or skip reasons.
+implementation_notes: "Introduce a gate-selection planning step that evaluates each\
+  \ gate in a profile before execution. Extend gate definitions with optional path\
+  \ conditions and normalized runner metadata, while preserving legacy `run: <command>`\
+  \ compatibility via deterministic normalization. Add a planning contract that emits\
+  \ per-gate `decision` (`run` or `skip`) and `reason` so users can see why a gate\
+  \ executed or was skipped.\n\nCLI contract should support explicit change-set inputs\
+  \ (`--base` and `--head`) and safe defaults when omitted. Add a dry decision surface\
+  \ (for example `gates plan` and or `gates run --explain`) that prints deterministic\
+  \ gate decisions without changing execution semantics. Keep command execution unchanged\
+  \ for selected gates.\n\nContract layer (lock v1 shape for `harness/gates.yaml`):\n\
+  \n- Top-level keys:\n  - Optional `contract_version` string; when present it must\
+  \ equal `\"1.0\"`.\n  - Required `profiles` mapping of profile name -> ordered list\
+  \ of gate ids.\n  - Required `gates` mapping of gate id -> gate definition.\n  -\
+  \ Backward compatibility: documents without `contract_version` are treated as `\"\
+  1.0\"`.\n\n- Gate definition:\n  - Optional `on_change`: non-empty list of glob\
+  \ patterns.\n  - Gate is selected when ANY changed path matches ANY `on_change`\
+  \ glob.\n  - Omitted `on_change` means always run.\n  - Exactly one runner form\
+  \ is allowed:\n    - Legacy shorthand `run: <non-empty command string>`, OR\n  \
+  \  - `runner` object with:\n      - `type`: `\"command\"` (only supported v1 type)\n\
+  \      - `command`: non-empty command string\n  - Defining both `run` and `runner`\
+  \ is invalid.\n  - Defining neither `run` nor `runner` is invalid.\n  - Unknown\
+  \ keys in gate definitions are invalid (strict contract).\n\n- Deterministic normalization:\n\
+  \  - `run: \"<cmd>\"` normalizes to `runner.type=\"command\"` + `runner.command=\"\
+  <cmd>\"`.\n  - Planning and execution operate on normalized runner metadata only.\n\
+  \  - This feature does not execute non-command runners; it only reserves schema\
+  \ space.\n\n- Changed-path discovery and matching:\n  - Changed-path input includes\
+  \ added, modified, deleted, and renamed files.\n  - Rename events evaluate both\
+  \ old and new paths for `on_change` matching.\n  - Matching is repository-relative\
+  \ with `/` separators for deterministic behavior.\n  - If change discovery cannot\
+  \ resolve a safe diff baseline, planner fails safe\n    to run-all and emits explicit\
+  \ fallback reason per gate.\n\n- Planner decision envelope (machine-parse friendly):\n\
+  \  - Per gate required fields: `gate`, `decision`, `reason`.\n  - `decision` enum:\
+  \ `run` | `skip`.\n  - Deterministic `reason` enum:\n    - `always_run_no_on_change`\n\
+  \    - `matched_on_change`\n    - `no_on_change_match`\n    - `fallback_run_all_change_discovery_failed`\n\
+  \n- CLI contract:\n  - Add `engineeringagent gates plan --profile <name> [--base\
+  \ <ref>] [--head <ref>]`.\n  - Extend `engineeringagent gates run --profile <name>`\
+  \ with optional\n    `[--base <ref>] [--head <ref>] [--explain]`.\n  - `--explain`\
+  \ prints planner decisions before execution without altering fail-fast behavior\
+  \ for selected gates.\n\nExample `harness/gates.yaml` (copy-pastable):\n\n  contract_version:\
+  \ \"1.0\"\n\n  profiles:\n    precommit:\n      - yaml_validate\n      - spec_validate\n\
+  \      - ruff_validate\n      - pytest_validate\n\n  gates:\n    yaml_validate:\n\
+  \      run: uv run python harness/fitness-functions/validate_yaml.py\n\n    spec_validate:\n\
+  \      runner:\n        type: command\n        command: uv run python -m engineeringagent.cli\
+  \ validate\n      on_change:\n        - \"docs/spec/**/*.yaml\"\n        - \"docs/spec/**/*.yml\"\
+  \n        - \"docs/spec/**/*.json\"\n\n    ruff_validate:\n      run: uv run ruff\
+  \ check src/engineeringagent tests\n      on_change:\n        - \"src/**/*.py\"\n\
+  \        - \"tests/**/*.py\"\n\n    pytest_validate:\n      run: uv run pytest -q\n\
+  \      on_change:\n        - \"src/**/*.py\"\n        - \"tests/**/*.py\"\n"
+acceptance:
+- Gate configuration contract accepts optional path selectors per gate and validates
+  them with strict, deterministic rules.
+- Gate selection runs when any changed path matches any configured selector and skips
+  when no selectors match.
+- Gates with no `on_change` configuration always run.
+- Change discovery includes added, modified, deleted, and renamed files, and rename
+  matching checks both old and new paths.
+- If change discovery cannot determine a safe diff, execution falls back to running
+  all gates with an explicit fallback reason.
+- Gate planning output reports per-gate run or skip decisions with deterministic reason
+  strings.
+- Running a profile executes only planned `run` gates, preserves declaration order,
+  and keeps fail-fast behavior for selected gates.
+- Repository examples demonstrate that spec-only changes can run spec validation without
+  requiring unrelated heavyweight gates.
+- '`harness/gates.yaml` v1 contract explicitly defines top-level keys `contract_version`,
+  `profiles`, and `gates`, and strict validation rejects unknown fields.'
+- 'Gate definitions accept optional `on_change` and exactly one runner form: legacy
+  `run` or structured `runner` (`type: command`, `command`); both-or-neither is invalid.'
+- Documents without `contract_version` remain valid and are interpreted as v1 for
+  backward compatibility.
+- Legacy `run` entries are deterministically normalized to structured runner metadata
+  before planning and execution.
+- Planner emits per-gate machine-parse-friendly envelope with required fields `gate`,
+  `decision`, and `reason`.
+- 'Planner reason values are deterministic enums: `always_run_no_on_change`, `matched_on_change`,
+  `no_on_change_match`, `fallback_run_all_change_discovery_failed`.'
+- CLI contract includes `gates plan --profile [--base] [--head]` and `gates run --profile
+  [--base] [--head] [--explain]`.
+- Repository examples include one always-run gate, one spec-scoped gate, and one code-scoped
+  heavyweight gate.
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-14T21:39:12Z'

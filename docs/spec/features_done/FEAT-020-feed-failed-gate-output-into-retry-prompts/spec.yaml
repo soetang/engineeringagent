@@ -1,0 +1,64 @@
+id: FEAT-020
+title: Feed failed gate output into next retry prompt for selected feature
+type: bug
+expected_commit_subject: 'fix: add FEAT-020 failed gate feedback retry injection'
+planning_tier: planned
+status: done
+priority: high
+objective: 'Ensure loop retries receive actionable gate failure context by feeding
+  failed gate output back into the next implementation prompt for the same selected
+  feature.
+
+  '
+context: 'Today the loop retries after gate failures (including spec validation),
+  but the next implementation prompt usually does not include the failed gate output.
+  This causes repeated failures because the implementer lacks the exact validation/gate
+  evidence that blocked progress.
+
+  Scope confirmed with user interview: create a standalone FEAT-020; capture output
+  from any failed gate in the active gate profile; inject only the latest failure
+  output on retry; keep raw text style with truncation; and require targeted loop
+  tests.
+
+  '
+constraints:
+- Capture retry feedback for any failed gate in the configured run profile (not only
+  commit hooks).
+- Retry prompt includes only the latest failed-gate feedback for the selected feature
+  path.
+- Failed-gate feedback is injected as raw text and truncated before prompt inclusion.
+- Existing commit-hook feedback retry flow remains intact and compatible with gate-feedback
+  flow.
+- Gate-output capture for loop retries must not regress direct `engineeringagent gates
+  run` behavior.
+- Keep telemetry and failed-gate semantics deterministic (`failed_gate` values remain
+  stable).
+implementation_notes: 'Extend gate execution contracts so loop mode can capture failed
+  gate command output (stdout/stderr plus enough context to identify the failing gate)
+  while preserving current inherited-stdio behavior for direct gate execution paths.
+
+  In loop iteration flow, when gate profile execution fails, materialize retry feedback
+  from the failed gate output and store it in the per-feature `hook_feedback_by_path`
+  channel already used for commit-hook retries. Reuse existing truncation behavior
+  when appending this feedback to the next OpenCode prompt.
+
+  Add focused tests proving prompt injection on at least one validation gate failure
+  path and one non-validation gate failure path, and verify latest-only behavior across
+  repeated retries.
+
+  '
+acceptance:
+- When `spec_validate` fails in loop execution, the next implementation prompt includes
+  that failed-gate output context.
+- When a non-validation gate in the selected profile fails, the next implementation
+  prompt includes that failed-gate output context.
+- On repeated failures for the same selected feature, only the latest failed-gate
+  output is carried into the next prompt.
+- Retry feedback injected from gate failures is truncated and does not exceed configured
+  prompt feedback cap.
+- Existing commit/pre-commit retry feedback behavior still works after this change.
+- Direct `engineeringagent gates run --profile ...` behavior remains functionally
+  unchanged.
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-13T06:52:29Z'

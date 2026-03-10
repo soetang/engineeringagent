@@ -24,7 +24,8 @@ REVIEWERS_STATE_FILENAME = "state.json"
 def progress_dir(project_root: Path) -> Path:
     """Return the absolute progress directory for a repo root."""
 
-    return resolve_progress_root(project_root)
+    resolved_project_root = project_root.resolve()
+    return resolve_progress_root(resolved_project_root)
 
 
 def runs_dir(project_root: Path) -> Path:

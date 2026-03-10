@@ -1,0 +1,30 @@
+id: FEAT-002
+title: Human-gated loop runner core
+type: chore
+expected_commit_subject: 'chore: legacy archived spec metadata backfill'
+planning_tier: planned
+status: done
+priority: high
+objective: Implement a Bash-first loop runner that executes one subtask at a time
+  and records deterministic state changes.
+context: 'The loop must be simple, inspectable, and safe. Human triggers each iteration,
+  reviews output, and decides whether to continue.
+
+  '
+constraints:
+- One loop processes at most one subtask.
+- Runner updates only allowed spec fields.
+- No silent status flips to done without verification pass.
+implementation_notes: 'Keep orchestration in Bash for MVP speed, delegate complex
+  checks to Python scripts.
+
+  '
+acceptance:
+- Runner selects one next subtask by order and status.
+- Runner enforces legal state transitions.
+- Runner appends exactly one run record per loop.
+- Runner exits after one loop with concise summary.
+- Loop can execute OpenCode with the build agent and project-defined permissions.
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-12T14:26:14Z'

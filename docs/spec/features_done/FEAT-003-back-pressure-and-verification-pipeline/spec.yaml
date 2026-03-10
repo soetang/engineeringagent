@@ -1,0 +1,53 @@
+id: FEAT-003
+title: Feature-level repeat loop with commit-gated completion
+type: chore
+expected_commit_subject: 'chore: legacy archived spec metadata backfill'
+planning_tier: planned
+status: done
+priority: high
+objective: Run selected feature specs in a repeat loop until each is done, and treat
+  done as complete only after commit hooks pass.
+context: 'The runtime loop is feature-level, not subtask-level. For each selected
+  feature, feed the feature file path to OpenCode, reload the YAML, and repeat if
+  status is not done. When status becomes done, attempt a git commit so pre-commit
+  hooks act as the final quality gate. If hooks fail, feed hook output back into the
+  next OpenCode prompt for the same feature and continue. With multiple input feature
+  files, OpenCode chooses which pending feature to run next until all provided features
+  are done and committed.
+
+  '
+constraints:
+- Implement this feature after FEAT-007 so public commands use engineeringagent path-first
+  run semantics.
+- Runtime loop must not orchestrate subtasks; the agent decides work directly from
+  the feature spec file.
+- CLI accepts one or more feature spec file paths in a single run invocation.
+- If multiple feature files are provided, OpenCode selects the next pending feature
+  to run.
+- Feature completion requires successful commit with pre-commit hooks passing.
+- If commit hooks fail, the feature is not complete and hook feedback must be passed
+  into subsequent OpenCode attempts.
+- Runner must require a clean working tree before starting automated loop/commit flow.
+- Each non-dry iteration records result and failed gate in runs.jsonl.
+implementation_notes: 'Keep control flow deterministic. On selector failure, use deterministic
+  fallback selection from the provided pending set. Add a max-iteration safety cap
+  to avoid infinite retries.
+
+  '
+acceptance:
+- '`engineeringagent run <feature-a.yaml> [feature-b.yaml ...]` accepts multiple feature
+  files in one invocation.'
+- For a selected feature, loop repeats OpenCode execution against that same feature
+  file until YAML status is done.
+- Loop does not require or enforce subtask-by-subtask transitions.
+- When a feature reaches done, runner attempts commit; successful pre-commit hook
+  execution is required to finalize completion.
+- If commit/pre-commit fails, failure output is fed into the next OpenCode attempt
+  for that same feature and loop continues.
+- When one feature completes, runner selects next pending feature from provided inputs
+  and continues until all are done.
+- Loop emits concise per-iteration summary including selected feature, result, failed
+  gate, and next action signal.
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-12T20:30:00Z'

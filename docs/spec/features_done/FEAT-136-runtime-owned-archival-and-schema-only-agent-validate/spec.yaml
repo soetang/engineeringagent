@@ -1,0 +1,109 @@
+id: FEAT-136
+title: Make runtime the single owner of done-spec archival and switch agent self-validation
+  to schema-only
+type: spec
+expected_commit_subject: 'spec: add FEAT-136 runtime-owned archival and schema-only
+  validate'
+planning_tier: planned
+status: done
+priority: high
+objective: Ensure completed feature archival is runtime-owned and deterministic, while
+  still keeping fast agent self-correction by changing implement-prompt validation
+  from full `engineeringagent validate` to `engineeringagent validate --schema-only`.
+context: 'The implementation prompt currently asks the agent to run full `engineeringagent
+  validate`, which can trigger done-spec archival behavior during implement steps.
+  That overlaps with loop/runtime archival logic and keeps archive-fallback branches
+  alive that are primarily compensating for mid-iteration agent moves.
+
+  We want a simpler contract where the loop runtime is the only automatic mover of
+  selected done specs from `docs/spec/features/` to `docs/spec/features_done/`, while
+  the agent still validates schema/shape immediately to catch small YAML mistakes
+  in the same iteration.'
+constraints:
+- Keep an explicit agent-side validation step in the implement prompt, but switch
+  it to `uv run engineeringagent validate --schema-only`.
+- The implement prompt explicitly instructs `uv run engineeringagent validate --schema-only`
+  as the implementation-iteration validation command.
+- Runtime archival remains the only automatic mechanism that moves selected done specs
+  to `docs/spec/features_done/`.
+- Remove or simplify archive-fallback code paths that only exist to tolerate agent-triggered
+  done-spec moves during implement iterations.
+- 'Apply a breaking simplification: delete legacy archival fallback code paths and
+  compatibility branches instead of keeping dual-path behavior.'
+- Preserve deterministic archive rollback semantics when later phase failures require
+  retry on the same selected feature.
+- Keep CLI/manual full validation behavior (`engineeringagent validate` without `--schema-only`)
+  unchanged.
+- Keep prompt text localized to prompt templates and renderer modules.
+implementation_notes: 'Contract change declaration
+
+
+  Surface:
+
+  - Implement prompt contract in `src/engineeringagent/prompts/templates/loop_implementation.md`.
+
+  - Loop runtime feature-load/archive behavior in `src/engineeringagent/loop_runtime/feature_state.py`
+  and `src/engineeringagent/loop_runtime/iteration.py`.
+
+  - Loop/operator messaging and related regression expectations for selected-feature
+  path handling.
+
+
+  Old behavior:
+
+  - Implement prompt directs full `engineeringagent validate`.
+
+  - Agent may move done specs before runtime archival path, requiring archive-fallback
+  handling in runtime.
+
+
+  New behavior:
+
+  - Implement prompt directs `uv run engineeringagent validate --schema-only`.
+
+  - Runtime archival is the single automatic mover for selected done specs.
+
+  - Runtime archive-fallback branches tied to agent-triggered moves are removed, leaving
+  a single runtime-owned archival path.
+
+
+  Compatibility policy:
+
+  - Breaking internal runtime behavior changes are required for this simplification.
+
+  - Legacy fallback branches/shims are removed rather than preserved.
+
+
+  Migration plan:
+
+  - Update prompt template and related prompt tests first.
+
+  - Simplify runtime archive/load paths and remove dead fallback branches.
+
+  - Update/replace loop tests that depended on agent-triggered archive fallback behavior.
+
+
+  Fitness-function impact assessment:
+
+  - Likely affected rules: `architecture.prompt-locality`, `architecture.loop-checks-result-boundary`,
+  `architecture.iteration-pipeline-observer-decoupling`.
+
+  - Decision: no fitness-function changes required; implement within existing rule
+  constraints and keep all active rules green.'
+acceptance:
+- '`src/engineeringagent/prompts/templates/loop_implementation.md` instructs `uv run
+  engineeringagent validate --schema-only` instead of full validate.'
+- '`src/engineeringagent/prompts/templates/loop_implementation.md` defines the implement-step
+  validation command as `uv run engineeringagent validate --schema-only`.'
+- Loop runtime is the only automatic path that moves selected done specs to `docs/spec/features_done/`.
+- Runtime code no longer keeps redundant archive-fallback branches whose only purpose
+  is handling agent-triggered full-validate moves.
+- Legacy archival fallback compatibility branches are deleted, leaving one runtime-owned
+  archival flow.
+- Done-feature archive + rollback behavior remains deterministic across failure/retry
+  paths.
+- CLI/manual `engineeringagent validate` behavior remains unchanged.
+- Targeted loop/prompt regressions and spec validation pass.
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-25T13:35:32Z'

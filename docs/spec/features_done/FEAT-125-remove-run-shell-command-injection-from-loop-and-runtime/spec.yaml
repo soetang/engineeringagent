@@ -1,0 +1,70 @@
+id: FEAT-125
+title: Remove run_shell_command injection from loop orchestration and runtime contracts
+type: feature
+expected_commit_subject: 'feat: remove run_shell_command injection seams'
+planning_tier: planned
+status: done
+priority: high
+objective: 'Eliminate `run_shell_command` as an orchestration/runtime argument across
+  loop and checks command execution paths so command execution ownership stays inside
+  execution modules, not orchestration modules.
+
+  '
+context: 'Current code still threads `run_shell_command` through loop verification
+  and checks command runtime APIs. This leaks execution implementation details into
+  orchestration contracts and increases coupling between loop runtime and subprocess
+  mechanics.
+
+  We want loop and loop_runtime to orchestrate phase flow only, while execution modules
+  own shell-command invocation internally.
+
+  '
+constraints:
+- Immediate breaking cleanup is allowed; no compatibility shim is required.
+- Type stability is not required; dependency models/arguments can be deleted directly.
+- '`src/engineeringagent/loop_runtime/*` must not reference `run_shell_command` as
+  a dependency field or passed argument.'
+- '`run_planned_command_checks(...)` must not accept `run_shell_command` as an argument.'
+- Preserve existing behavior/output semantics (pass/fail decisions, retry feedback
+  shape, structured invocation metadata, verbose output behavior).
+- Include explicit fitness-function impact assessment in this spec.
+implementation_notes: "Contract change declaration (required)\n\nSurface:\n- Loop\
+  \ runtime verification dependency contract.\n- Checks command runtime function signature.\n\
+  - Internal test seams that currently inject/patch `run_shell_command` via orchestration\
+  \ modules.\n\nOld behavior:\n- Loop wiring imports `run_shell_command` and passes\
+  \ it via `VerificationPhaseDependencies`.\n- Verification phase executes through\
+  \ injected `dependencies.run_shell_command(...)`.\n- `run_planned_command_checks(request,\
+  \ run_shell_command=...)` requires caller-supplied runner.\n\nNew behavior:\n- Loop\
+  \ and loop_runtime no longer pass or model `run_shell_command` dependencies.\n-\
+  \ Verification phase resolves command execution internally (module-owned implementation\
+  \ detail).\n- `run_planned_command_checks(...)` no longer accepts runner injection\
+  \ and resolves execution internally.\n- Tests patch module-owned execution seams\
+  \ instead of orchestration argument seams.\n\nCompatibility policy:\n- Immediate\
+  \ break for internal callers/tests relying on runner argument injection.\n- No deprecation\
+  \ period and no compatibility shim.\n\nMigration plan:\n- Remove `VerificationPhaseDependencies`\
+  \ runner field and dependent pipeline wiring.\n- Simplify iteration pipeline verification\
+  \ call shape to avoid dependency threading.\n- Remove runner argument from checks\
+  \ command runtime and update checks API call sites.\n- Rewrite affected tests to\
+  \ use module-level monkeypatch seams aligned with new ownership.\n\nFitness-function\
+  \ impact assessment:\n- no fitness-function changes required.\n- Rationale: this\
+  \ is an ownership/refactor change that reduces callable-injection surface\n  and\
+  \ does not introduce new subprocess patterns beyond existing approved command-runtime\
+  \ behavior.\n"
+acceptance:
+- '`src/engineeringagent/loop.py` does not import or pass `run_shell_command`.'
+- '`src/engineeringagent/loop_runtime/phases.py` and `src/engineeringagent/loop_runtime/iteration.py`
+  do not model or thread `run_shell_command` dependencies.'
+- '`run_planned_command_checks(...)` no longer accepts a `run_shell_command` parameter.'
+- Checks API/runtime still emit deterministic command outputs and structured `command_invocations`
+  metadata.
+- Verification phase behavior remains equivalent for success/failure handling and
+  retry feedback envelopes.
+- 'Targeted regression command passes: `uv run pytest -q tests/loop/test_loop_runtime_iteration.py
+  tests/loop/test_loop_output.py tests/loop/test_loop_phases_coverage.py tests/loop/test_loop_ralph_mode.py
+  tests/checks/test_commands_runtime.py tests/checks/test_commands_group_port.py tests/checks/test_run_checks_contract.py
+  tests/harness/test_checks_runtime.py`'
+- 'Repository-wide verification passes: `uv run pytest -q`'
+- 'Spec validation passes: `uv run engineeringagent validate`'
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-24T11:54:15Z'

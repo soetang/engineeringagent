@@ -1,0 +1,121 @@
+id: FEAT-129
+title: Move checks orchestration to strategy registry with loop-agnostic feedback
+type: spec
+expected_commit_subject: 'spec: add FEAT-129 checks strategy orchestration contract'
+planning_tier: planned
+status: done
+priority: high
+objective: 'Align checks runtime to docs/architecture/checks-orchestration-architecture.md
+  so selection, timing, execution orchestration, and prompt feedback rendering are
+  owned by checks strategies, while loop/runtime consumes one stable checks result
+  contract without branching by check type.
+
+  '
+context: 'Current checks flow in src/engineeringagent/checks/api.py still uses group-specific
+  orchestration and loop runtime in src/engineeringagent/loop_runtime/phases.py still
+  contains check-type aware failure handling and retry feedback shaping.
+
+  This keeps loop coupled to checks internals and blocks the target boundary where
+  loop only reads `ok`, `output`, and `prompt_feedback` from checks.
+
+  FEAT-127 (shared checks config loader) and FEAT-128 (modularization) are unimplemented.
+  FEAT-129 explicitly references FEAT-128 and may change or replace FEAT-128 implementation
+  details when needed to satisfy the checks-orchestration target architecture.
+
+  '
+constraints:
+- 'Core boundary: loop must not branch on check type and must not map check payloads
+  into prompt text.'
+- '`run_checks(project_root, *, phase, dry_run=False, ...)` remains the public checks
+  entrypoint.'
+- Immediate contract break is allowed for checks result shape; remove loop reliance
+  on `failed_group` branching.
+- Add deterministic decision tracing for all eligible checks in both dry-run and non-dry-run
+  paths.
+- 'Dry-run must be side-effect free: no command execution and no reviewer agent execution.'
+- Add dry-run support to API and `engineeringagent checks run` CLI surface.
+- Prompt feedback contract is a plain string using markdown mini-block formatting
+  and returned as `prompt_feedback`.
+- Preserve shared planning reason labels from checks planning policy constants (`always_run_no_on_change`,
+  `matched_on_change`, `no_on_change_match`, `manual`, fallback reason).
+- Do not introduce new pydantic models just to represent checks strategy contracts
+  (context/decision/execution records); keep those contracts lightweight.
+- Keep reviewer runner callable seam unchanged in this feature (do not include POT-017
+  typed reviewer-runner port work).
+- FEAT-129 may modify behavior or internal module boundaries established while implementing
+  FEAT-128 if required to reach the architecture target.
+- Add boundary fitness coverage that blocks loop/checks recoupling and enforces checks-owned
+  prompt feedback shaping.
+- Fitness-function changes are in scope for this feature where needed to enforce the
+  new loop/checks architectural boundary.
+implementation_notes: "Contract change declaration (required)\n\nSurface:\n- `engineeringagent.checks.run_checks(...)`\
+  \ request/result contract.\n- Internal orchestration in `src/engineeringagent/checks/`.\n\
+  - Loop checks-consumption boundary in `src/engineeringagent/loop_runtime/phases.py`.\n\
+  - Checks CLI execution in `src/engineeringagent/cli.py`.\n\nOld behavior:\n- Checks\
+  \ orchestration is group-switched in API internals.\n- Loop branches on failed group\
+  \ kinds and builds retry feedback from payload-specific logic.\n- No explicit dry-run\
+  \ checks contract that returns a full deterministic decision trace.\n\nNew behavior:\n\
+  - `run_checks(...)` builds one shared check context and dispatches through a registry\
+  \ of check strategies keyed by check type.\n- Every run returns deterministic decisions\
+  \ for all eligible checks.\n- `dry_run=True` executes no checks and returns decisions-only\
+  \ output.\n- `dry_run=False` executes only planned `run` decisions in deterministic\
+  \ order and stops on first failing check.\n- Checks result contract includes at\
+  \ least:\n  - `ok`\n  - `dry_run`\n  - `failed_check_id`\n  - `failed_payload`\n\
+  \  - `decisions`\n  - `executions`\n  - `output`\n  - `prompt_feedback` (optional\
+  \ plain string)\n- Loop forwards `prompt_feedback` directly into prompt rendering\
+  \ and no longer needs check-type mapping logic.\n\nCompatibility policy:\n- Immediate\
+  \ break for old `ChecksRunResult` consumers that depend on `failed_group` semantics.\n\
+  - No temporary dual-field compatibility shim.\n\nMigration plan:\n- Reuse FEAT-127\
+  \ shared checks-config loader seam first.\n- Introduce strategy registry + orchestration\
+  \ coordinator.\n- Adapt existing command/fitness/reviewer/validate paths as strategy\
+  \ implementations.\n- Remove loop group-specific retry feedback construction; consume\
+  \ checks `prompt_feedback` directly.\n- Treat FEAT-128 as supporting context only;\
+  \ FEAT-129 may change FEAT-128-produced internals where needed.\n- Add/update fitness\
+  \ rules to protect the new boundary:\n  - architecture.loop-checks-result-boundary\n\
+  \    - Scope: `src/engineeringagent/loop_runtime/**` and related loop entry modules.\n\
+  \    - Intent: loop must not branch on check type/group-specific semantics and must\
+  \ not parse check-specific payload contracts.\n    - Typical disallowed signals:\
+  \ failed_group branching and check-type-specific payload mapping in loop code.\n\
+  \  - architecture.checks-own-prompt-feedback-rendering\n    - Scope: loop runtime\
+  \ and prompt feedback wiring.\n    - Intent: check-specific prompt feedback shaping\
+  \ stays in checks runtime/strategies; loop forwards `prompt_feedback` as-is.\n \
+  \   - Typical disallowed signals: loop-owned calls to command/fitness/reviewer-specific\
+  \ retry feedback builders.\n\nVerification evidence:\n- checks contract/runtime\
+  \ tests for deterministic decisions, dry-run, and first-failure stop behavior.\n\
+  - loop tests proving no check-type branch is required for prompt feedback shaping.\n\
+  - CLI checks tests proving `--dry-run` and deterministic decision output.\n"
+acceptance:
+- Checks orchestration uses a check-type strategy registry instead of loop-aware group
+  branching.
+- '`run_checks(...)` returns a stable architecture-aligned result contract with `decisions`,
+  `executions`, and optional `prompt_feedback` string.'
+- '`prompt_feedback` is checks-owned plain text in markdown mini-block style and is
+  prompt-ready without loop translation.'
+- Loop runtime consumes checks result without branching on check type to shape retry
+  feedback.
+- '`dry_run=True` returns deterministic decisions for eligible checks and performs
+  no side effects.'
+- '`dry_run=False` executes only planned `run` decisions in deterministic order and
+  stops on first failure.'
+- Decision reasons remain stable and reuse shared planning policy values.
+- Checks CLI supports dry-run mode and prints explainable deterministic decision trace
+  output.
+- FEAT-127 shared loader seam is used to avoid re-duplicating checks config load/validation
+  logic.
+- FEAT-129 references FEAT-128 and permits FEAT-128 implementation deltas when required
+  by the architecture contract.
+- Fitness rule `architecture.loop-checks-result-boundary` exists and fails when loop
+  runtime reintroduces check-type/group-specific branching for checks failure handling.
+- Fitness rule `architecture.checks-own-prompt-feedback-rendering` exists and fails
+  when loop/prompt modules reintroduce check-specific retry feedback shaping outside
+  checks runtime.
+- '`uv run pytest -q tests/checks/test_run_checks_contract.py tests/checks/test_commands_group_port.py
+  tests/checks/test_fitness_group_port.py tests/checks/test_checks_reviewers_runtime.py
+  tests/loop/test_loop_phases_coverage.py tests/loop/test_loop_runtime_iteration.py
+  tests/cli/test_cli_checks.py tests/cli/test_cli.py` passes.'
+- '`uv run python -m engineeringagent.cli fitness run --format json` passes with new
+  boundary rules enabled.'
+- '`uv run engineeringagent validate` passes.'
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-25T05:07:41Z'

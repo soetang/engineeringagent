@@ -1,0 +1,99 @@
+id: FEAT-034
+title: Shrink loop facade and extract loop runtime internals into dedicated submodules
+type: feature
+expected_commit_subject: 'feat: add FEAT-034 loop facade extraction and size guardrails'
+planning_tier: planned
+status: done
+priority: high
+objective: 'Make `src/engineeringagent/loop.py` significantly shorter and easier to
+  scan by keeping it as a compatibility/orchestration facade while moving non-control-flow
+  logic into `src/engineeringagent/loop_runtime/`, with explicit guardrails that prevent
+  file-size and signature-readability regression.
+
+  '
+context: "FEAT-032 improved some naming and extraction, but `src/engineeringagent/loop.py`\
+  \ still grew and remains dense for review and maintenance.\nUser-confirmed scope\
+  \ for this feature: - Prioritize this work before FEAT-033. - Keep `src/engineeringagent/loop.py`\
+  \ as the public facade and compatibility seam. - Introduce a dedicated internal\
+  \ folder for loop runtime internals. - Require strong simplification of constructor/signature\
+  \ verbosity around dataclass\n  and helper usage.\n- Add measurable line-count validation:\
+  \ immediate decrease from current baseline and\n  a permanent max-length cap for\
+  \ `loop.py`.\n\nOut of scope: TTY styling/readability output work tracked in FEAT-033.\n"
+constraints:
+- Preserve `engineeringagent.loop` public import surface and `engineeringagent run`
+  CLI behavior.
+- Keep `run_loop`, `_run_feature_iteration`, and `run_implement_step` callable signatures
+  stable.
+- Keep active monkeypatch seams used by loop tests stable on `engineeringagent.loop`
+  symbols.
+- Keep `IterationOutcome` reachable as `engineeringagent.loop.IterationOutcome` for
+  test compatibility.
+- Add explicit contract tests that assert facade signature and seam stability using
+  `inspect.signature` and symbol-presence checks.
+- Do not convert `src/engineeringagent/loop.py` into a package in this feature; keep
+  file-based facade plus internal runtime folder.
+- Keep `src/engineeringagent/loop.py` limited to orchestration flow, seam wrappers,
+  constants, and compatibility re-exports; move lifecycle/telemetry/selection/archive
+  internals to runtime modules.
+- Move non-control-flow internals to `src/engineeringagent/loop_runtime/` modules
+  with intention-revealing names.
+- Preserve behavior for feature selection, retry flow, archive/restore semantics,
+  gate execution, completion commit, and telemetry/log outputs.
+- Keep persisted logs and telemetry machine-parse-friendly and behaviorally equivalent.
+- Keep strict Ruff `PLR0913` guardrails; avoid broad module/file suppressions.
+- Restrict `PLR0913` exceptions to compatibility-boundary facade seams only; do not
+  introduce new `PLR0913` suppressions in `src/engineeringagent/loop_runtime/`.
+- Update architecture fitness checks as needed so new `engineeringagent.loop_runtime`
+  boundaries remain enforceable.
+implementation_notes: "Target runtime module layout:\n- `src/engineeringagent/loop_runtime/models.py`\n\
+  - `src/engineeringagent/loop_runtime/telemetry.py`\n- `src/engineeringagent/loop_runtime/feature_state.py`\n\
+  - `src/engineeringagent/loop_runtime/selection.py`\n- `src/engineeringagent/loop_runtime/implement.py`\n\
+  - `src/engineeringagent/loop_runtime/phases.py`\n- `src/engineeringagent/loop_runtime/iteration.py`\n\
+  \nKeep `src/engineeringagent/loop.py` as a thin facade that:\n1) owns top-level\
+  \ loop control flow,\n2) preserves public/test seams,\n3) delegates internals to\
+  \ runtime modules.\n\nDetailed extraction map:\n- Move dataclasses (`IterationOutcome`,\
+  \ `InitialFeatureLoadOutcome`,\n  `PostImplementFeatureOutcome`, `ImplementStepInputs`,\n\
+  \  `FeatureIterationInputs`, `GatePhaseOutcome`,\n  `CompletionCommitOutcome`, `IterationTelemetryInputs`)\
+  \ to `models.py`.\n- Move telemetry/log helpers (`now_iso`, `append_run`, log-path\
+  \ helpers,\n  truncation helper, telemetry writer) to `telemetry.py`.\n- Move feature/path/archive\
+  \ state helpers (resolve/discover/pending/load-refresh,\n  archive/restore, status\
+  \ touch/update helpers) to `feature_state.py`.\n- Move deterministic/selector parsing\
+  \ helpers to `selection.py`.\n- Move implementation-engine internals to `implement.py`\
+  \ while keeping\n  `run_implement_step` facade seam in `loop.py`.\n- Move gate/completion\
+  \ commit phase internals to `phases.py`.\n- Move iteration-phase pipeline internals\
+  \ to `iteration.py` while keeping\n  `_run_feature_iteration` facade seam in `loop.py`.\n\
+  \nAdd a dedicated fitness rule that enforces `src/engineeringagent/loop.py`\nmax\
+  \ line budget (`<= 650`) and update architecture directionality checks to\naccount\
+  \ for the new `engineeringagent.loop_runtime` namespace.\n\nDirectionality policy\
+  \ for this feature:\n- `engineeringagent.loop` may import `engineeringagent.loop_runtime.*`.\n\
+  - `engineeringagent.cli` must continue importing `engineeringagent.loop` facade\
+  \ only.\n- `engineeringagent.specs`, `engineeringagent.validator`, and\n  `engineeringagent.gates`\
+  \ must not import `engineeringagent.loop_runtime.*`.\n"
+acceptance:
+- '`src/engineeringagent/loop.py` line count is lower than baseline 1436 and is permanently
+  capped at `<= 650` via an automated fitness check.'
+- '`src/engineeringagent/loop.py` reads primarily as orchestration control flow, with
+  non-control-flow internals delegated to `src/engineeringagent/loop_runtime/`.'
+- Internal dataclasses and helper logic are extracted to `loop_runtime` modules and
+  imported/re-exported as needed for compatibility.
+- '`engineeringagent.loop.IterationOutcome` remains available and existing monkeypatch-heavy
+  loop tests continue to patch facade symbols successfully.'
+- Facade contract tests verify `run_loop`, `_run_feature_iteration`, and `run_implement_step`
+  signatures remain stable and seam symbols remain patchable from `engineeringagent.loop`.
+- 'Strong signature/constructor simplification is present: repeated parameter bundles
+  are reduced using cohesive context/result objects and phase helpers rather than
+  wide internal call signatures, and no new `PLR0913` suppressions are added under
+  `src/engineeringagent/loop_runtime/`.'
+- Repetitive archive-fallback branching (including repeated `PostImplementFeatureOutcome`
+  construction) is consolidated into intention-revealing helpers while preserving
+  existing user-facing failure messages and semantics.
+- Existing loop behavior remains stable for selection, retry handling, archive/restore
+  flow, gate execution, completion commit, and telemetry/log outcomes.
+- Dependency-directionality guardrails are updated to prevent architecture drift through
+  `engineeringagent.loop_runtime` imports from blocked modules (`specs`, `validator`,
+  `gates`, and `cli` direct-import bypasses).
+- Focused verification passes, including loop regressions, architecture fitness tests,
+  Ruff PLR0913 checks, and final `loop_fast` gate profile.
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-13T14:26:10Z'

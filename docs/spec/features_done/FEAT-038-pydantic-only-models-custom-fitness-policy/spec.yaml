@@ -1,0 +1,60 @@
+id: FEAT-038
+title: Adopt Pydantic-only models in src and enforce custom no-dataclasses fitness
+  policy
+type: feature
+expected_commit_subject: 'feat: add FEAT-038 pydantic-only models with custom dataclass
+  fitness policy'
+planning_tier: planned
+status: done
+priority: high
+objective: 'Standardize production models on Pydantic v2 BaseModel in src/engineeringagent
+  and enforce a repository-local fitness rule that blocks stdlib dataclasses usage
+  in src code.
+
+  '
+context: 'The codebase currently mixes stdlib dataclasses and Pydantic. This increases
+  model-style drift and review overhead. We want one model contract (Pydantic v2 BaseModel)
+  in production code, with enforcement implemented as a custom harness fitness rule
+  so the policy remains local to this repository and is not forced on downstream users/scaffolds.
+
+  '
+constraints:
+- Enforcement must be implemented as a custom rule under harness/fitness-functions,
+  not as a built-in fitness rule in src/engineeringagent/fitness.
+- Rule scope is src/engineeringagent only (tests, harness, and docs are out of scope
+  for enforcement).
+- Violations must be error severity and fail fitness and gates.
+- 'No exceptions in scoped code: disallow stdlib dataclasses module imports, dataclass
+  decorators, and dataclasses namespace usage.'
+- Standard model pattern in scoped code is Pydantic v2 BaseModel (including ConfigDict
+  and Field as needed).
+- Use fixed custom rule_id architecture.no-stdlib-dataclasses-in-src for deterministic
+  references in checks, docs, and tests.
+- Keep init scaffolding and default framework behavior unchanged so this remains repository-specific
+  policy.
+implementation_notes: 'First migrate existing dataclass-based structures in src/engineeringagent
+  to Pydantic v2 BaseModel equivalents, preserving behavior (immutability, validation,
+  and serialization contracts). Then add a custom command-backed fitness check script
+  under harness/fitness-functions that scans src/engineeringagent (AST-based detection
+  preferred) and fails on stdlib dataclasses usage patterns (imports, decorators,
+  and dataclasses references). Register this rule in harness/fitness-functions/rules.yaml
+  as architecture.no-stdlib-dataclasses-in-src with severity error and remediation
+  guidance to use Pydantic BaseModel. Regenerate fitness catalog docs after manifest
+  updates.
+
+  '
+acceptance:
+- src/engineeringagent no longer uses stdlib dataclasses patterns.
+- A custom fitness check script exists under harness/fitness-functions and is the
+  enforcement mechanism for this policy.
+- Rule is declared in harness/fitness-functions/rules.yaml (custom manifest), not
+  in built-in fitness rule registry.
+- Rule declaration uses rule_id architecture.no-stdlib-dataclasses-in-src.
+- Fitness output reports clear remediation directing contributors to Pydantic v2 BaseModel.
+- Engineeringagent fitness and gate profiles fail when scoped dataclasses usage is
+  introduced.
+- Existing built-in fitness framework contracts and init scaffold defaults remain
+  unchanged.
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-14T09:29:55Z'

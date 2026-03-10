@@ -327,8 +327,10 @@ def test_validate_and_run_all_use_separate_docs_root(tmp_path: Path) -> None:
         / "docs.engineeringagent"
         / "spec"
         / "features"
-        / "FEAT-950-separate-docs-root.yaml"
+        / "FEAT-950-separate-docs-root"
+        / "spec.yaml"
     )
+    feature_path.parent.mkdir(parents=True, exist_ok=True)
     feature_path.write_text(
         yaml.safe_dump(
             {
@@ -336,10 +338,12 @@ def test_validate_and_run_all_use_separate_docs_root(tmp_path: Path) -> None:
                 "title": "Separate docs root runtime smoke test",
                 "type": "feature",
                 "expected_commit_subject": "feat: test separate docs root runtime support",
+                "planning_tier": "direct",
                 "status": "backlog",
                 "priority": "high",
                 "objective": "Validate and run-all consume configured separate docs root.",
                 "acceptance": ["Separate docs root is honored by runtime commands."],
+                "artifacts": {},
             },
             sort_keys=False,
         ),
@@ -358,7 +362,7 @@ def test_validate_and_run_all_use_separate_docs_root(tmp_path: Path) -> None:
     assert "[dry-run] Resolved 1 feature file(s)." in run_result.stdout
     assert "feature=FEAT-950" in run_result.stdout
     assert (
-        "docs.engineeringagent/spec/features/FEAT-950-separate-docs-root.yaml"
+        "docs.engineeringagent/spec/features/FEAT-950-separate-docs-root/spec.yaml"
         in run_result.stdout
     )
 

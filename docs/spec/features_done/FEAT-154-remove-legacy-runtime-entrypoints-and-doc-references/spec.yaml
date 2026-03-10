@@ -1,0 +1,91 @@
+id: FEAT-154
+title: Remove remaining legacy runtime entrypoints and stale docs references
+type: spec
+expected_commit_subject: 'spec: add FEAT-154 remove legacy runtime entrypoints'
+planning_tier: planned
+status: done
+priority: high
+objective: 'Remove the remaining legacy compatibility entrypoints from runtime/CLI/init
+  and align docs so they only describe active command/import surfaces.
+
+  '
+context: "Recent cleanup removed most legacy gates/reviewers/checks seams, but a few\n\
+  compatibility entrypoints still exist in active code paths:\n\n- `engineeringagent\
+  \ fitness run` remains wired as a compatibility CLI surface.\n- Reviewer execution\
+  \ still accepts legacy kwargs-style invocation\n  (`run_reviewer(..., **legacy_request_kwargs)`).\n\
+  - Init scaffold APIs still expose `include_reviewers` as a backward-compatible\n\
+  \  no-op.\n\nThese seams expand API surface area, increase maintenance burden, and\
+  \ preserve\nobsolete patterns that conflict with the current explicit-contract direction.\n\
+  \nIn parallel, docs still reference removed command/import surfaces, which risks\n\
+  sending contributors to unsupported paths.\n"
+constraints:
+- 'In scope: remove `engineeringagent fitness run` compatibility command wiring and
+  related CLI/help expectations.'
+- 'In scope: remove reviewer kwargs compatibility path and require typed request-based
+  invocation for `run_reviewer`.'
+- 'In scope: remove init-scaffold `include_reviewers` backward-compatible no-op inputs
+  from supported APIs/options/tests.'
+- 'In scope: delete compatibility-only tests and dead functions/modules that exist
+  only to support removed legacy seams.'
+- 'In scope: update active docs that still reference removed legacy command/import
+  surfaces.'
+- 'Out of scope: checks emitter alias/export changes (including `emit_result_envelope`);
+  those are handled by FEAT-151.'
+- 'Out of scope: changing checks execution semantics, reviewer decision schema semantics,
+  or fitness envelope payload contract.'
+- Compatibility policy is immediate break for removed legacy seams; do not add shims,
+  aliases, or deprecation windows.
+- Keep deterministic CLI error/help behavior for supported commands.
+implementation_notes: "Contract change declaration\n\nSurface:\n\n- CLI command surface\
+  \ (`engineeringagent fitness run`).\n- Reviewer runtime invocation contract for\
+  \ `run_reviewer`.\n- Init scaffold Python API/options that still expose `include_reviewers`.\n\
+  - Contributor docs that currently point to removed legacy command/import paths.\n\
+  \nOld behavior:\n\n- CLI still registers a dedicated `fitness` compatibility app.\n\
+  - `run_reviewer` accepts both a typed request and legacy kwargs call patterns.\n\
+  - Scaffold manifest builders/options accept `include_reviewers` and ignore it.\n\
+  - Some docs still mention removed `engineeringagent.fitness.*` import and\n  old\
+  \ fitness CLI command shapes.\n\nNew behavior:\n\n- CLI no longer exposes `engineeringagent\
+  \ fitness run`; checks execute via\n  supported `engineeringagent checks run --checks\
+  \ fitness ...` surface.\n- `run_reviewer` uses explicit typed request input only;\
+  \ legacy kwargs entry\n  path is removed from runtime and tests.\n- Init scaffold\
+  \ APIs/options no longer advertise `include_reviewers`.\n- Compatibility-only tests\
+  \ and dead helpers tied solely to removed seams are\n  deleted rather than retained.\n\
+  - Active docs describe only supported command/import surfaces.\n\nCompatibility\
+  \ policy:\n\n- Intentional immediate removal of legacy compatibility seams.\n- No\
+  \ staged dual-support window, warning-only period, or temporary aliases.\n\nMigration\
+  \ plan:\n\n- Remove Typer fitness subapp wiring and compatibility handler path from\
+  \ CLI.\n- Delete CLI compatibility helpers that become unreachable after fitness\
+  \ app\n  removal.\n- Update call sites/tests to pass `ReviewerRunRequest` (or equivalent\
+  \ typed\n  request object) directly into `run_reviewer`.\n- Delete reviewer compatibility\
+  \ coercion helpers that exist only for kwargs\n  back-compat support.\n- Remove\
+  \ `include_reviewers` from scaffold manifest function signatures and\n  related\
+  \ options structures/tests.\n- Delete tests that only asserted legacy-compatibility\
+  \ behavior and no longer\n  represent supported contracts.\n- Update docs that mention\
+  \ removed fitness import/CLI surfaces to current\n  checks-based guidance.\n\nVerification\
+  \ evidence:\n\n- CLI tests confirm `fitness` command is absent and supported surfaces\
+  \ remain.\n- Reviewer tests pass using request-based invocation only.\n- Init scaffold\
+  \ tests pass without `include_reviewers` compatibility args.\n- Checks export tests\
+  \ verify `emit_result_envelope` remains supported.\n- `engineeringagent validate`\
+  \ passes.\n\nFitness-function impact assessment:\n\n- no fitness-function changes\
+  \ required.\n- Rationale: this feature removes legacy runtime/API seams and doc\
+  \ drift\n  without changing active architecture-rule intent or gate policy semantics.\n"
+acceptance:
+- CLI help no longer lists a `fitness` command group.
+- Invocation of `engineeringagent fitness run` fails as unsupported command.
+- Runtime reviewer execution no longer accepts legacy kwargs entrypoints; call sites/tests
+  use typed request invocation.
+- Init scaffold APIs/options no longer expose `include_reviewers` no-op compatibility
+  parameters.
+- Functions/helpers that only supported removed compatibility seams are deleted from
+  production source.
+- Tests that exist only to validate removed compatibility behavior are deleted or
+  replaced with supported-surface assertions.
+- Active docs no longer reference removed `engineeringagent.fitness.*` import paths
+  or removed fitness CLI command forms.
+- 'Verification command passes: `uv run pytest -q tests/cli/test_cli.py tests/cli/test_cli_reviewers.py
+  tests/reviewers/test_reviewers_runtime.py tests/reviewers/test_reviewers_additional_coverage.py
+  tests/cli/test_init_command.py tests/cli/test_init_scaffold.py`.'
+- 'Verification command passes: `uv run engineeringagent validate`.'
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-27T17:47:35Z'

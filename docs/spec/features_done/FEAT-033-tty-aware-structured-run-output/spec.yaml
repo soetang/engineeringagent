@@ -1,0 +1,71 @@
+id: FEAT-033
+title: Improve run-loop terminal readability with TTY-aware structured status output
+type: feature
+expected_commit_subject: 'feat: add FEAT-033 tty-aware structured run output'
+planning_tier: planned
+status: done
+priority: medium
+objective: 'Make `engineeringagent run` output easier to scan in interactive terminals
+  by adding consistent lifecycle structure and light status styling, while keeping
+  redirected output and persisted logs plain and parse-friendly.
+
+  '
+context: 'FEAT-019 made run output concise, but operators still report that repeated
+  lifecycle lines are visually flat and hard to scan during longer loops.
+
+  User-confirmed scope: apply readability improvements to `engineeringagent run` only,
+  use light ANSI styling when attached to a TTY, keep behavior plain when not attached
+  to a TTY, keep `progress/run-feature-*.txt` ANSI-free, and capture this as a standalone
+  feature. Follow-up preference: adopt the emoji-forward iteration style as the canonical
+  run-loop iteration format for this feature.
+
+  '
+constraints:
+- Limit styling/readability changes to `engineeringagent run`; do not change output
+  behavior of other CLI commands.
+- Preserve concise-output semantics from FEAT-019 (raw implement/gate command output
+  still controlled by `--verbose-output`).
+- Terminal styling must be TTY-aware by default and degrade to plain text in non-interactive
+  output contexts.
+- Respect common no-color behavior controls (for example `NO_COLOR` and `TERM=dumb`)
+  so output can be forced plain.
+- Persisted loop logs (`progress/run-feature-*.txt`) and telemetry fields must remain
+  ANSI-free and machine-parse-friendly.
+- Keep lifecycle message meaning stable and deterministic so existing automation can
+  still match key tokens.
+implementation_notes: "Introduce a small run-output presentation helper for lifecycle\
+  \ labels, spacing, and\noptional ANSI token styling. Keep core lifecycle text stable\
+  \ and apply color as a\nnon-semantic layer only when terminal capability checks\
+  \ pass.\n\nCanonical iteration contract (emoji-forward, Style 4):\n\U0001F501 Iteration\
+  \ <N> \xB7 <FEATURE_ID>\n  \U0001F3AF Selected: <feature_path_or_note>\n  \U0001F6E0\
+  \ Implement: <implement_step>\n  \u2705 Passed\n  \u27A1\uFE0F Next: <next_action>\n\
+  \nFailure variant:\n\U0001F501 Iteration <N> \xB7 <FEATURE_ID>\n  \U0001F3AF Selected:\
+  \ <feature_path_or_note>\n  \U0001F6E0 Implement: <implement_step>\n  \u274C Failed:\
+  \ gate=<failed_gate>\n  \U0001F4C4 Log: <progress_log_path>\n  \u27A1\uFE0F Next:\
+  \ <next_action>\n\nArchived-counterpart variant:\n\U0001F501 Iteration <N> \xB7\
+  \ <FEATURE_ID>\n  \u267B\uFE0F Selected archived counterpart:\n     <archived_feature_path>\n\
+  \  \U0001F6E0 Implement: <implement_step>\n  \u2705 Passed\n  \u27A1\uFE0F Next:\
+  \ <next_action>\n\nEnsure file-backed logs and telemetry never receive ANSI control\
+  \ sequences. Add focused\ntests for TTY vs non-TTY rendering and for no-color env\
+  \ overrides, then run existing\nloop regressions and final gate validation.\n"
+acceptance:
+- Running `engineeringagent run ...` in an interactive TTY prints structured lifecycle
+  lines with light status styling that improves scanability.
+- Running `engineeringagent run ...` in non-TTY contexts (captured/redirected output)
+  prints plain, readable, ANSI-free lifecycle lines.
+- Setting `NO_COLOR` (or equivalent no-color condition such as `TERM=dumb`) disables
+  ANSI styling even in TTY contexts.
+- "Iteration output follows the canonical emoji-forward contract for pass/fail/archived-counterpart\
+  \ cases, including the `\U0001F501`, `\U0001F3AF`, `\U0001F6E0`, `\u2705/\u274C\
+  `, `\U0001F4C4`, and `\u27A1\uFE0F` markers."
+- 'Existing concise-output contract remains intact: raw implement/gate output is still
+  hidden by default and shown only with `--verbose-output`.'
+- '`progress/run-feature-<FEATURE_ID>.txt` and `progress/runs.jsonl` remain plain
+  and contain no ANSI escape sequences.'
+- Failure and completion messaging remain explicit and actionable while using the
+  new structured output format.
+- Loop tests covering summary/failure/completion output continue to pass after formatting
+  changes.
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-13T14:39:33Z'

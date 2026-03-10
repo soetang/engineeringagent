@@ -1,0 +1,55 @@
+id: FEAT-013
+title: Add run --all auto-discovery for incomplete active features
+type: chore
+expected_commit_subject: 'chore: legacy archived spec metadata backfill'
+planning_tier: planned
+status: done
+priority: high
+objective: Add a `engineeringagent run --all` mode that automatically snapshots all
+  runnable active feature specs so users can execute loops without manually passing
+  file paths.
+context: 'The current run contract requires one or more explicit feature YAML paths.
+  This is deterministic but adds friction when the operator wants to process the current
+  active backlog as a batch. We need an explicit auto-discovery mode that keeps deterministic
+  behavior by snapshotting candidates once at startup, excludes blocked work, and
+  preserves existing explicit-path semantics.
+
+  '
+constraints:
+- CLI flag is `--all` under `engineeringagent run`.
+- Positional feature paths and `--all` are mutually exclusive; using both fails with
+  clear usage feedback.
+- When `--all` is used, discovery source is `docs/spec/features/*.yaml` only.
+- Discovery for `--all` occurs once at run start; no rescanning during loop execution.
+- Auto-discovered candidates include only feature statuses `backlog` and `in_progress`
+  at snapshot time.
+- Features with status `blocked` or `done` are excluded from the `--all` startup candidate
+  set.
+- If `--all` finds no runnable features, command exits 0 with a clear no-work message.
+- Existing explicit-path run behavior remains unchanged.
+implementation_notes: 'Extend run CLI parsing to support an explicit auto-discovery
+  mode and enforce input-mode validation (either paths or `--all`). Add a loop startup
+  path that resolves a deterministic snapshot of runnable feature files from active
+  specs, then reuse the existing pending selection/execution pipeline against that
+  fixed set. Update dry-run and completion messages to reflect auto-discovery semantics
+  while preserving current deterministic selector fallback behavior.
+
+  '
+acceptance:
+- '`engineeringagent run --all` executes successfully in dry-run and non-dry modes
+  without positional feature paths.'
+- Using `engineeringagent run --all <path>` fails fast with a clear mutually-exclusive
+  input error.
+- Using `engineeringagent run` without paths and without `--all` fails fast with clear
+  input guidance.
+- Startup discovery for `--all` includes only `backlog` and `in_progress` features
+  from `docs/spec/features/*.yaml`.
+- Blocked and done features are excluded from the initial `--all` candidate snapshot.
+- The `--all` candidate set is snapshotted once at startup and is not expanded by
+  new specs created mid-run.
+- When no runnable features are discovered for `--all`, process exits with code 0
+  and an explicit no-work message.
+- Existing explicit-path mode tests continue to pass without behavior changes.
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-12T21:07:31Z'

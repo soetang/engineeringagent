@@ -46,7 +46,9 @@ def _write_bundled_feature(feature_root: Path) -> tuple[Path, dict[str, object]]
     return spec_path, payload
 
 
-def test_feature_progress_kind_tracks_bundled_plan_artifacts(tmp_path: Path) -> None:
+def test_bundled_only_feature_progress_kind_tracks_plan_artifacts(
+    tmp_path: Path,
+) -> None:
     bundled_spec_path, bundled_feature_payload = _write_bundled_feature(
         tmp_path / "docs" / "spec" / "features" / "FEAT-181-bundled-feature-contract"
     )
@@ -57,7 +59,7 @@ def test_feature_progress_kind_tracks_bundled_plan_artifacts(tmp_path: Path) -> 
     )
 
 
-def test_feature_progress_kind_uses_feature_surface_for_direct_bundles(
+def test_bundled_only_feature_progress_kind_uses_feature_surface_for_direct_bundles(
     tmp_path: Path,
 ) -> None:
     feature_root = tmp_path / "docs" / "spec" / "features" / "FEAT-182-direct-bundle"
@@ -163,7 +165,9 @@ def test_bootstrap_spec_contracts_accepts_public_model_contract_hook(
         spec_bundles.bootstrap_spec_contracts()
 
 
-def test_iter_feature_files_returns_only_bundled_specs(tmp_path: Path) -> None:
+def test_bundled_only_iter_feature_files_returns_only_bundled_specs(
+    tmp_path: Path,
+) -> None:
     features_dir = tmp_path / "docs" / "spec" / "features"
     bundled_spec_path, _payload = _write_bundled_feature(
         features_dir / "FEAT-181-example"
@@ -176,7 +180,7 @@ def test_iter_feature_files_returns_only_bundled_specs(tmp_path: Path) -> None:
     assert spec_bundles.iter_feature_files(features_dir) == [bundled_spec_path]
 
 
-def test_feature_storage_root_rejects_flat_entrypoints() -> None:
+def test_bundled_only_feature_storage_root_rejects_flat_entrypoints() -> None:
     with pytest.raises(ValueError, match="bundled spec.yaml"):
         spec_bundles.feature_storage_root(
             Path("docs/spec/features/FEAT-181-example.yaml")

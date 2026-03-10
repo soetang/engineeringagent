@@ -869,7 +869,7 @@ def test_completion_phase_fallback_paths() -> None:
         inputs,
         post_feature=None,
         archived_in_iteration=True,
-        archived_path=Path("docs/spec/features_done/FEAT-001.yaml"),
+        archived_path=Path("docs/spec/features_done/FEAT-001/spec.yaml"),
         dependencies=deps,
     )
     assert missing.result == "failed"
@@ -879,7 +879,7 @@ def test_completion_phase_fallback_paths() -> None:
         inputs,
         post_feature={"id": "FEAT-001"},
         archived_in_iteration=True,
-        archived_path=Path("docs/spec/features_done/FEAT-001.yaml"),
+        archived_path=Path("docs/spec/features_done/FEAT-001/spec.yaml"),
         dependencies=deps,
     )
     assert commit_failed.result == "failed"

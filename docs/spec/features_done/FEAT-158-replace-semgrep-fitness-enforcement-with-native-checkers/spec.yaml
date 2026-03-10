@@ -1,0 +1,100 @@
+id: FEAT-158
+title: Replace Semgrep-backed fitness enforcement with native Python checkers
+type: feature
+expected_commit_subject: 'feat: add FEAT-158 remove semgrep-backed fitness enforcement'
+planning_tier: planned
+status: done
+priority: high
+objective: 'Remove Semgrep from active fitness-rule enforcement by migrating Semgrep-backed
+  rules to native Python checkers while preserving rule strength, stable rule ids,
+  and deterministic fitness envelope contracts, with measurable runtime improvement.
+
+  '
+context: 'The current loop subprocess boundary rule uses an external `semgrep scan`
+  process,
+
+  and this is a top contributor to slow test durations. You requested outright
+
+  Semgrep removal (not cache-first) and asked to avoid weakening enforcement.
+
+
+  Active rule inventory currently indicates `architecture.loop-subprocess-boundary`
+
+  is Semgrep-backed. This feature includes an explicit inventory step to ensure any
+
+  additional active Semgrep-backed rules discovered during implementation are also
+
+  migrated in the same feature.
+
+  '
+constraints:
+- 'In scope: replace Semgrep execution for `architecture.loop-subprocess-boundary`
+  with native Python enforcement.'
+- 'In scope: preserve existing `rule_id` and envelope shape (`contract_version`, `rule_id`,
+  `status`, `severity`, `summary`, `violations`, optional `details`).'
+- 'In scope: preserve blocking severity and allowlist-boundary intent.'
+- 'In scope: replace Semgrep policy file shape with native YAML policy consumed directly
+  by checker code.'
+- 'In scope: migrate any additional active Semgrep-backed rules discovered in `harness/fitness-functions/rules.yaml`.'
+- 'In scope: remove Semgrep dependency and active enforcement/docs wiring once native
+  parity is proven.'
+- 'Out of scope: changing architecture intent or relaxing pass/fail policy for migrated
+  rules.'
+- 'Out of scope: editing archived done specs that reference historical Semgrep work.'
+- 'Compatibility policy: preserve rule ids and fitness envelope contract; violation
+  wording may vary slightly but must remain deterministic and equally strict.'
+implementation_notes: "Contract change declaration\n\nSurface:\n\n- Active fitness\
+  \ enforcement runtime for Semgrep-backed rules.\n- Policy-file contract for subprocess-boundary\
+  \ enforcement.\n- Dev dependency/tooling surface for Semgrep.\n\nOld behavior:\n\
+  \n- `check_loop_subprocess_boundary.py` shells out to `semgrep scan` and maps\n\
+  \  Semgrep JSON findings into the fitness envelope.\n- Rule config points to Semgrep-policy\
+  \ syntax in\n  `policies/loop_subprocess_boundary_semgrep_policy.yaml`.\n- Active\
+  \ enforcement depends on Semgrep being installed and callable.\n\nNew behavior:\n\
+  \n- Native Python checker enforces subprocess boundary policy without Semgrep.\n\
+  - Rule config points to native YAML allowlist policy contract.\n- Active enforcement\
+  \ and tests do not require Semgrep binary/runtime.\n\nNon-weakening guardrails:\n\
+  \n- Native checker must detect all currently enforced forbidden call shapes:\n \
+  \ - `subprocess.run/Popen/call/check_call/check_output(...)`\n  - `alias.run/Popen/call/check_call/check_output(...)`\
+  \ where alias comes from\n    `import subprocess as alias`\n  - `run/Popen/call/check_call/check_output(...)`\
+  \ where names come from\n    `from subprocess import ...` (including alias imports)\n\
+  - Existing allowlisted module paths remain exempt by policy.\n- Violations remain\
+  \ deterministic and sorted.\n- Missing/invalid config continues to produce deterministic\
+  \ `status=error` output.\n\nMigration plan:\n\n1) Inventory active Semgrep-backed\
+  \ rules\n   - Confirm all active Semgrep dependencies from `harness/fitness-functions/rules.yaml`\n\
+  \     and checker scripts.\n\n2) Implement native checker + native YAML policy\n\
+  \   - Replace Semgrep subprocess execution with native AST-based detection logic.\n\
+  \   - Define and validate a native YAML policy schema for allowlisted paths and\n\
+  \     forbidden subprocess symbols/forms.\n\n3) Preserve rule contract and strictness\n\
+  \   - Keep `architecture.loop-subprocess-boundary` id, severity, and fail/pass/error\n\
+  \     semantics.\n   - Keep deterministic sorted violations and stable envelope\
+  \ contract.\n\n4) Remove Semgrep dependency and active references\n   - Remove Semgrep\
+  \ from dependency groups and active runtime/docs wiring.\n   - Update rule catalog\
+  \ docs and tests to reflect native enforcement.\n\n5) Prove parity and speedup\n\
+  \   - Add/adjust tests to prove parity for forbidden and allowlisted scenarios.\n\
+  \   - Capture before/after durations to verify reduced runtime contribution.\n\n\
+  Fitness-function impact assessment:\n\n- fitness-function changes required.\n- Affected\
+  \ active rules/scripts/docs:\n  - `architecture.loop-subprocess-boundary`\n  - `harness/fitness-functions/check_loop_subprocess_boundary.py`\n\
+  \  - `harness/fitness-functions/rules.yaml`\n  - `docs/fitness-functions/rules.md`\n\
+  - If additional active Semgrep-backed rules are discovered, include their rule ids,\n\
+  \  checker scripts, and docs updates within this same feature.\n"
+acceptance:
+- Active fitness enforcement no longer invokes Semgrep for `architecture.loop-subprocess-boundary`.
+- Native checker preserves `architecture.loop-subprocess-boundary` rule id and blocking
+  behavior.
+- Native checker detects module-based subprocess calls, subprocess-alias module calls,
+  and direct imported subprocess calls (including aliases).
+- Allowlisted modules remain exempt and continue to pass when behavior is otherwise
+  identical.
+- Output remains deterministic (stable summary semantics and sorted violations).
+- Invalid or missing native policy config returns deterministic `status=error` envelope
+  output.
+- Any additional active Semgrep-backed rules discovered are migrated in the same feature.
+- Active Semgrep dependency and enforcement references are removed from manifest/deps/docs.
+- 'Verification command passes: `uv run engineeringagent validate`.'
+- 'Verification command passes: `uv run pytest -q tests/fitness/test_fitness_rules_loop_subprocess_boundary.py
+  tests/fitness/test_fitness_registry.py tests/fitness/test_fitness_adapters.py`.'
+- 'Verification evidence includes before/after durations from: `uv run pytest -q --durations=20`,
+  with lower runtime contribution from subprocess-boundary tests.'
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-27T21:25:48Z'

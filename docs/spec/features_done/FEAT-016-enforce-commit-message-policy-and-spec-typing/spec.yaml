@@ -1,0 +1,70 @@
+id: FEAT-016
+title: Enforce commit message policy and spec typing for loop-generated commits
+type: spec
+expected_commit_subject: 'spec: add FEAT-016 commit message policy and spec typing'
+planning_tier: planned
+status: done
+priority: high
+objective: 'Enforce a repository-wide commit subject contract (`type: summary`) in
+  local commit hooks and CI, add required feature-spec typing metadata, and use spec
+  metadata to generate deterministic loop completion commit messages.
+
+  '
+context: 'Commit intent is currently convention-based and not mechanically enforced
+  at commit message time, which allows drift in history quality. Feature specs also
+  do not yet carry a required work-type field that can deterministically drive commit
+  prefixes for automated loop completion commits.
+
+  This feature adds a strict, validated commit message policy and required spec metadata
+  so commit intent is explicit, reviewable, and automatable.
+
+  '
+constraints:
+- 'Commit subject format is required: `type: summary` (single-line subject validation).'
+- 'Allowed commit prefixes are exactly: feat, fix, spec, docs, chore, test.'
+- Validation must run in both local commit-msg hook execution and CI checks.
+- Feature spec top-level `type` is required immediately for active specs; backfill
+  all files in `docs/spec/features/*.yaml`.
+- Add feature spec metadata for expected commit subject and use it in loop completion
+  commit generation.
+- Loop completion uses expected commit subject from selected feature spec when present;
+  fallback behavior remains deterministic and documented.
+- 'Type-to-prefix mapping is explicit: feature->feat, bug->fix, spec->spec, docs->docs,
+  chore->chore, test->test.'
+- AGENTS.md must link `docs/references/spec-writing.md` and explicitly state agents
+  must follow that guide when authoring/updating specs.
+- Spec-writing guide must include a clear checklist for spec creation, including committing
+  with the correct expected commit subject.
+- 'Expected commit message for adding this spec: `spec: add FEAT-016 commit message
+  policy and spec typing`.'
+implementation_notes: 'Extend `docs/spec/schemas/feature.schema.json` and validation
+  logic to require new feature metadata fields (`type` and expected commit subject
+  metadata), enforce allowed enums, and validate commit-subject shape. Add shared
+  commit-message validation logic that can run both as a local commit-msg hook and
+  in CI commit-range checks.
+
+  Update loop completion commit generation to prefer expected commit subject metadata
+  from the selected feature spec. Keep deterministic fallback behavior for safety.
+  Update spec-writing guidance with an explicit checklist and AGENTS policy language
+  that makes the guide mandatory.
+
+  '
+acceptance:
+- Schema requires top-level `type` and expected commit subject metadata for active
+  feature specs.
+- Validator reports clear errors for missing/invalid `type` and invalid expected commit
+  subject format.
+- All active specs in `docs/spec/features/*.yaml` are backfilled with valid `type`
+  and expected commit subject metadata.
+- Local commit-msg validation blocks invalid subjects and allows valid subjects from
+  the approved prefix list.
+- CI fails when commit subjects in scope violate required format or allowed prefixes.
+- Loop completion commit uses the selected feature's expected commit subject metadata
+  when present.
+- AGENTS.md links the spec-writing guide and explicitly says agents must follow it
+  for spec work.
+- Spec-writing guide includes a checklist that explicitly includes committing with
+  the expected commit subject.
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-13T06:20:00Z'

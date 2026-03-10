@@ -1,0 +1,63 @@
+id: FEAT-058
+title: Add Semgrep pilot for loop subprocess boundary fitness enforcement
+type: feature
+expected_commit_subject: 'feat: add FEAT-058 semgrep pilot for loop subprocess fitness
+  rule'
+planning_tier: planned
+status: done
+priority: low
+objective: Introduce a Semgrep-backed pilot for one architecture fitness rule to reduce
+  bespoke AST maintenance while preserving deterministic fitness result contracts.
+context: The current loop subprocess boundary rule is implemented with custom Python
+  AST scanning in builtin fitness code. Semgrep is purpose-built for code-pattern
+  policies and can reduce custom parser logic if we can preserve deterministic rule
+  output and repository gating behavior.
+constraints:
+- Scope this feature to a pilot migration of the loop subprocess boundary rule only.
+- Keep all other builtin architecture rules unchanged in this feature.
+- Preserve the existing rule id (`architecture.loop-subprocess-boundary`) rather than
+  introducing a new architecture rule id.
+- Treat `semgrep` as a dev dependency in `[dependency-groups].dev`, not `[project.dependencies]`,
+  because it is only executed by harness/fitness tooling.
+- Keep the existing fitness JSON envelope contract and deterministic violation ordering.
+- Integrate Semgrep via command adapter wiring in `harness/fitness-functions/rules.yaml`.
+- Adapter interface must run semgrep in local/offline mode and emit one strict fitness
+  result JSON object to stdout.
+- 'Keep loop subprocess boundary enforcement blocking (`severity: error`) because
+  this feature replaces an existing blocking architecture rule.'
+- Preserve immediate gate enforcement via `fitness_validate` in precommit and loop
+  profiles (no warning-only transition).
+- Avoid introducing network-required Semgrep modes; the pilot must run fully local.
+- Validation, fitness, and regression tests must pass before completion.
+implementation_notes: 'Add a Semgrep rule file for loop subprocess boundary checks,
+  then add a small harness adapter script that executes Semgrep and maps findings
+  into the existing fitness result envelope (`contract_version`, `rule_id`, `status`,
+  `summary`, `violations`, optional `details`).
+
+  Adapter command interface contract: - Invocation from rules manifest uses command
+  adapter entry with deterministic arguments. - Exit code 0 for pass, non-zero for
+  fail/error. - Output must contain only one JSON envelope compatible with fitness
+  result parsing.
+
+  Required integration touch points in this feature: - `src/engineeringagent/fitness/builtin_rules.py`
+  (`evaluate_loop_subprocess_boundary`) as migration source/reference - `harness/fitness-functions/rules.yaml`
+  command rule declaration for the pilot - `harness/fitness-functions/` Semgrep rule
+  and adapter script locations - `tests/test_fitness_rules_loop_subprocess_boundary.py`
+  parity expectations - `tests/test_fitness_registry.py` and `tests/test_fitness_adapters.py`
+  for command-adapter behavior'
+acceptance:
+- A Semgrep policy file exists for loop subprocess boundary checks and runs locally.
+- A harness adapter converts Semgrep findings into deterministic fitness envelopes
+  for rule execution.
+- Manifest wiring routes loop subprocess boundary evaluation through the Semgrep-backed
+  command adapter for the pilot.
+- Existing subprocess-boundary pass/fail expectations are preserved by regression
+  tests.
+- Subprocess-boundary violations fail `engineeringagent.cli fitness run` and therefore
+  block configured gate profiles.
+- Active architecture rule catalog coverage is unchanged except for implementation
+  backend migration of loop subprocess boundary evaluation.
+- Other builtin architecture fitness rules remain active and unchanged.
+artifacts:
+  plan: plan.md
+updated_at: '2026-02-15T06:32:23Z'
