@@ -1108,7 +1108,7 @@ def test_run_implement_step_uses_injected_prompt_builder(tmp_path: Path) -> None
             artifacts=PromptArtifactPaths(specification=inputs.feature_path),
             handoff_path=".engineeringagent/progress/features/FEAT-900/handoff.md",
             feedback=None,
-            progress_kind="subtask",
-            current_progress=None,
+            progress_kind="feature",
+            current_progress="FEAT-900 - Prompt seam",
         )
     ]

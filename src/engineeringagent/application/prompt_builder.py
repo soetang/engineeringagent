@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from string import Template
-from typing import Any, Mapping, Protocol, Sequence
+from typing import Any, Literal, Mapping, Protocol, Sequence
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
@@ -26,6 +26,9 @@ class PromptArtifactPaths(BaseModel):
     research: str | None = None
 
 
+PromptProgressKind = Literal["phase", "feature"]
+
+
 class ImplementationPromptRequest(BaseModel):
     """Typed input for implementation prompt rendering."""
 
@@ -35,7 +38,7 @@ class ImplementationPromptRequest(BaseModel):
     artifacts: PromptArtifactPaths
     handoff_path: str
     feedback: str | None
-    progress_kind: str
+    progress_kind: PromptProgressKind
     current_progress: str | None = None
 
 

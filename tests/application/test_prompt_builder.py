@@ -3,6 +3,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
+import pytest
 import yaml
 
 from engineeringagent.adapters.prompts import BundledPromptDefinitionRepository
@@ -156,13 +157,13 @@ def test_default_prompt_builder_uses_explicit_handoff_path_input(
 def test_default_prompt_builder_normalizes_legacy_subtask_progress_to_feature_wording(
     tmp_path: Path,
 ) -> None:
-    """Legacy runtime inputs should not reintroduce wrapper-era prompt guidance."""
+    """The core application contract only accepts bundled progress kinds."""
 
     feature_data = base_feature()
     _, feature_path = make_project_root(tmp_path, feature_data=feature_data)
     feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
 
-    prompt = _prompt_builder().build_implementation_prompt(
+    with pytest.raises(ValueError, match="progress_kind"):
         ImplementationPromptRequest(
             feature=feature,
             artifacts=PromptArtifactPaths(specification=feature_path),
@@ -171,13 +172,32 @@ def test_default_prompt_builder_normalizes_legacy_subtask_progress_to_feature_wo
             progress_kind="subtask",
             current_progress="subtask-1 - Example",
         )
+
+
+def test_compatibility_helper_normalizes_legacy_subtask_progress_for_application(
+    tmp_path: Path,
+) -> None:
+    """Legacy loop state is normalized before it reaches the application builder."""
+
+    feature_data = base_feature(status="in_progress")
+    feature_data["subtasks"] = [
+        {
+            "id": "subtask-1",
+            "title": "Example",
+            "status": "in_progress",
+        }
+    ]
+    _, feature_path = make_project_root(tmp_path, feature_data=feature_data)
+    feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
+
+    request = build_implementation_prompt_request(
+        feature=feature,
+        feature_path=feature_path,
+        feedback=None,
     )
 
-    assert "compatibility-wrapper subtask" not in prompt
-    assert "compatibility wrapper" not in prompt
-    assert "canonical bundled package" not in prompt
-    assert "Identify the most important open implementation step first." in prompt
-    assert "Current implementation step: subtask-1 - Example" in prompt
+    assert request.progress_kind == "feature"
+    assert request.current_progress == "subtask-1 - Example"
 
 
 def test_default_prompt_builder_renders_explicit_plan_and_research_paths(

@@ -1,4 +1,4 @@
-"""Compatibility helpers for assembling implementation prompt requests."""
+"""Adapter helpers for assembling implementation prompt requests."""
 
 from __future__ import annotations
 
@@ -20,6 +20,7 @@ from .prompt_builder import (
     ImplementationPromptRequest,
     PromptBuilder,
     PromptArtifactPaths,
+    PromptProgressKind,
 )
 
 
@@ -33,12 +34,13 @@ def build_implementation_prompt_request(
     """Resolve explicit implementation-prompt inputs from feature state."""
 
     feature_id = str(feature.get("id", "unknown-feature"))
-    progress_kind = feature_progress_kind(feature_path, dict(feature))
+    raw_progress_kind = feature_progress_kind(feature_path, dict(feature))
     progress_unit = current_progress_unit(feature_path, dict(feature))
+    progress_kind = _normalize_prompt_progress_kind(raw_progress_kind)
     current_progress = _current_progress_reference(
         progress_unit=progress_unit,
         feature=feature,
-        progress_kind=progress_kind,
+        progress_kind=raw_progress_kind,
     )
     return ImplementationPromptRequest(
         feature=feature,
@@ -63,7 +65,7 @@ def build_implementation_prompt(
     handoff_path: str | None = None,
     prompt_builder: PromptBuilder,
 ) -> str:
-    """Compatibility helper for rendering implementation prompts."""
+    """Render the implementation prompt via the application prompt builder."""
 
     request = build_implementation_prompt_request(
         feature=feature,
@@ -113,3 +115,9 @@ def _current_progress_reference(
     if progress_title:
         return f"{progress_id} - {progress_title}"
     return progress_id
+
+
+def _normalize_prompt_progress_kind(progress_kind: str) -> PromptProgressKind:
+    if progress_kind == "phase":
+        return "phase"
+    return "feature"
