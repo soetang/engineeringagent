@@ -4,7 +4,10 @@ from pathlib import Path
 from string import Template
 from typing import Any, Mapping, Sequence
 
-from engineeringagent.adapters.prompts import BundledPromptDefinitionRepository
+from engineeringagent.adapters.prompts import (
+    BundledPromptDefinitionRepository,
+    ProjectPromptDefinitionRepository,
+)
 from engineeringagent.application import (
     DefaultPromptBuilder,
     build_implementation_prompt as _build_implementation_prompt,
@@ -13,7 +16,11 @@ from engineeringagent.application import (
 from engineeringagent.ports import PromptDefinitionRepository
 
 
-def _default_prompt_definitions() -> PromptDefinitionRepository:
+def _default_prompt_definitions(
+    project_root: Path | None = None,
+) -> PromptDefinitionRepository:
+    if project_root is not None:
+        return ProjectPromptDefinitionRepository(project_root)
     return BundledPromptDefinitionRepository()
 
 
@@ -24,11 +31,16 @@ def _load_template(
     return Template(prompt_definitions.get(prompt_id).template_text)
 
 
-def build_selector_prompt(pending: Sequence[tuple[Path, Mapping[str, Any]]]) -> str:
+def build_selector_prompt(
+    pending: Sequence[tuple[Path, Mapping[str, Any]]],
+    *,
+    project_root: Path | None = None,
+) -> str:
     """Render selector prompt from template text.
 
     Args:
         pending: Pending feature tuples of path and feature payload.
+        project_root: Repository root used to resolve repo-local prompt overrides.
 
     Returns:
         Rendered selector prompt text.
@@ -41,19 +53,24 @@ def build_selector_prompt(pending: Sequence[tuple[Path, Mapping[str, Any]]]) -> 
         )
 
     selector_template = _load_template(
-        _default_prompt_definitions(),
+        _default_prompt_definitions(project_root),
         "loop_selector",
     )
     return selector_template.substitute(choices="\n".join(choices))
 
 
-def inject_feedback(prompt: str, feedback: str | None) -> str:
+def inject_feedback(
+    prompt: str,
+    feedback: str | None,
+    *,
+    project_root: Path | None = None,
+) -> str:
     """Compatibility facade for application-owned feedback injection."""
 
     return _inject_feedback(
         prompt,
         feedback,
-        prompt_definitions=_default_prompt_definitions(),
+        prompt_definitions=_default_prompt_definitions(project_root),
     )
 
 
@@ -62,6 +79,7 @@ def build_implementation_prompt(
     feature: Mapping[str, Any],
     feature_path: Path,
     feedback: str | None,
+    project_root: Path | None = None,
 ) -> str:
     """Compatibility facade for application-owned implementation prompts."""
 
@@ -69,5 +87,5 @@ def build_implementation_prompt(
         feature=feature,
         feature_path=feature_path,
         feedback=feedback,
-        prompt_builder=DefaultPromptBuilder(_default_prompt_definitions()),
+        prompt_builder=DefaultPromptBuilder(_default_prompt_definitions(project_root)),
     )

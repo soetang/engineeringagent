@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from typing import Any, Protocol
 
-from engineeringagent.adapters.prompts import BundledPromptDefinitionRepository
+from engineeringagent.adapters.prompts import ProjectPromptDefinitionRepository
 from engineeringagent.application import (
     DefaultPromptBuilder,
     PromptBuilder,
@@ -53,7 +53,9 @@ def run_implement_step_from_inputs(
     prompt = _build_implement_prompt(
         implement_inputs,
         prompt_builder=prompt_builder
-        or DefaultPromptBuilder(BundledPromptDefinitionRepository()),
+        or DefaultPromptBuilder(
+            ProjectPromptDefinitionRepository(implement_inputs.project_root)
+        ),
     )
     command = describe_action(
         implement_inputs.project_root,

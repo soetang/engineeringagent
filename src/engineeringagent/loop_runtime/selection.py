@@ -119,7 +119,7 @@ def choose_feature_with_selector(
     if len(pending) == 1:
         return pending[0]
 
-    prompt = build_selector_prompt(pending)
+    prompt = build_selector_prompt(pending, project_root=project_root)
     step_label = describe_action(project_root, action="selector", structured=False)
     print(f"Selector step: {step_label}")
     try:
