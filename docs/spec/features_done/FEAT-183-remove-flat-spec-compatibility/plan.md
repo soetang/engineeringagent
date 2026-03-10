@@ -1,7 +1,7 @@
 ---
 plan_id: FEAT-183
 feature_id: FEAT-183
-status: in_progress
+status: done
 source_spec: spec.yaml
 source_research: research.md
 planning_tier: researched
@@ -15,25 +15,25 @@ phases:
       - uv run pytest -q tests/meta/test_spec_bundles.py -k bundled_only
   - id: P2
     title: Remove runtime wrapper handling and bundled-path fallbacks
-    status: backlog
+    status: done
     verification:
-      - uv run pytest -q tests/loop/test_loop_selection.py -k bundled_only
-      - uv run pytest -q tests/loop/test_loop_feature_iteration_prompt_guidance.py -k bundled_only
-      - uv run pytest -q tests/loop/test_feature_archive_subtasks_done.py -k bundled_only
+      - uv run pytest -q tests/loop/test_loop_selection.py
+      - uv run pytest -q tests/loop/test_loop_feature_iteration_prompt_guidance.py
+      - uv run pytest -q tests/loop/test_feature_archive_subtasks_done.py
+      - uv run python docs/spec/features_done/FEAT-183-remove-flat-spec-compatibility/supporting/check_prompt_surfaces_are_bundled_only.py
   - id: P3
     title: Package `research-session` and `plan-session` docs and rewrite bundled-only guidance
-    status: backlog
+    status: done
     verification:
       - uv run pytest -q tests/cli/test_approach_registry.py
       - uv run pytest -q tests/checks/reviewers/test_reviewer_prompt_bundled_guidance.py
-      - uv run python docs/spec/features/FEAT-183-remove-flat-spec-compatibility/supporting/check_no_repo_approach_wrappers.py
+      - uv run python docs/spec/features_done/FEAT-183-remove-flat-spec-compatibility/supporting/check_no_repo_approach_wrappers.py
   - id: P4
     title: Delete flat archived specs and add repo-wide cutover checks
-    status: in_progress
+    status: done
     verification:
-      - uv run python docs/spec/features/FEAT-183-remove-flat-spec-compatibility/supporting/check_no_flat_feature_specs.py
-      - uv run pytest -q tests/fitness/test_fitness_rules_source_first_loop_commands.py
-      - uv run pytest -q tests/harness/test_real_opencode_smoke.py
+      - uv run python docs/spec/features_done/FEAT-183-remove-flat-spec-compatibility/supporting/check_no_flat_feature_specs.py
+      - uv run pytest -q tests/fitness/test_fitness_rules_source_first_loop_commands.py tests/harness/test_real_opencode_smoke.py tests/checks/reviewers/test_repo_reviewers_config.py tests/checks/test_checks_reviewers_runtime.py
       - uv run engineeringagent checks run --phase feature_done
 ---
 
@@ -85,8 +85,8 @@ def feature_progress_kind(spec_path: Path, feature: dict[str, Any] | None) -> st
 - Start at the contract boundary: remove `FeatureSpec`, `SubtaskSpec`, `FeatureSpecContract` union support for flat specs, and mixed-format `iter_feature_files()` discovery before changing `resolve_feature_paths()`, `parse_selector_output()`, and prompt rendering, so stale flat-path behavior fails in validator/spec-bundle tests first.
 - Centralize the bundled-only path rule in `iter_feature_files()`, `feature_storage_root()`, `resolve_feature_package_paths()`, and `feature_progress_kind()` before updating `src/engineeringagent/prompts/renderer.py`, `harness/reviewers/prompts/intent_integrity_reviewer.md`, `harness/reviewers/prompts/test_reviewer.md`, `harness/fitness-functions/check_source_first_loop_commands.py`, and `harness/fitness-functions/check_real_opencode_hello_world_smoke.py`; this removes repeated flat-path branching.
 - Keep these repo-wide absence and wording checks in feature-local supporting scripts proposed for this feature:
-  - `docs/spec/features/FEAT-183-remove-flat-spec-compatibility/supporting/check_no_flat_feature_specs.py`
-  - `docs/spec/features/FEAT-183-remove-flat-spec-compatibility/supporting/check_no_repo_approach_wrappers.py`
+  - `docs/spec/features_done/FEAT-183-remove-flat-spec-compatibility/supporting/check_no_flat_feature_specs.py`
+  - `docs/spec/features_done/FEAT-183-remove-flat-spec-compatibility/supporting/check_no_repo_approach_wrappers.py`
 - Prefer replacing wrapper-era assertions in `tests/meta/test_spec_bundles.py`, `tests/meta/test_validator.py`, `tests/specs/test_specs_layout_smoke.py`, `tests/loop/test_loop_selection.py`, and `tests/loop/test_feature_archive_subtasks_done.py` with bundled-only behavior checks, instead of adding more shared tests that only scan for deleted strings.
 - Delete archived flat done specs in the same implementation window that removes validator/runtime support so the repo never sits in a mixed state after FEAT-183 is complete.
 
@@ -145,7 +145,7 @@ def test_iter_feature_files_returns_only_bundled_specs(tmp_path: Path) -> None:
   - `uv run pytest -q tests/loop/test_loop_feature_iteration_prompt_guidance.py -k bundled_only`
   - `uv run pytest -q tests/loop/test_feature_archive_subtasks_done.py -k bundled_only`
   - `uv run pytest -q tests/loop/test_selected_feature_load_without_archive_fallback.py`
-  - `uv run python docs/spec/features/FEAT-183-remove-flat-spec-compatibility/supporting/check_prompt_surfaces_are_bundled_only.py`
+  - `uv run python docs/spec/features_done/FEAT-183-remove-flat-spec-compatibility/supporting/check_prompt_surfaces_are_bundled_only.py`
 - Example verification design:
 
 ```python
@@ -159,7 +159,7 @@ def test_resolve_feature_paths_rejects_flat_yaml_target(tmp_path: Path) -> None:
 - Documentation changes:
   - Update compatibility-wrapper wording in `src/engineeringagent/prompts/renderer.py`, specifically the strings emitted by `_progress_update_instruction()`, `_progress_context_instruction()`, and `_progress_unit_prompt_label()`, so they no longer mention `compatibility wrapper`, `canonical bundled package`, or `subtask` progress for active features.
   - Update `harness/reviewers/prompts/intent_integrity_reviewer.md` and `harness/reviewers/prompts/test_reviewer.md` so reviewer fallback instructions reference bundled `docs/spec/features/<feature>/spec.yaml` discovery only and no longer tell reviewers to follow a flat wrapper into another package.
-  - Keep exact wording absence checks in `docs/spec/features/FEAT-183-remove-flat-spec-compatibility/supporting/check_prompt_surfaces_are_bundled_only.py` rather than a permanent unit test.
+  - Keep exact wording absence checks in `docs/spec/features_done/FEAT-183-remove-flat-spec-compatibility/supporting/check_prompt_surfaces_are_bundled_only.py` rather than a permanent unit test.
 
 ### Phase 3: Package `research-session` and `plan-session` docs and rewrite bundled-only guidance
 
@@ -176,7 +176,7 @@ def test_resolve_feature_paths_rejects_flat_yaml_target(tmp_path: Path) -> None:
   - `uv run pytest -q tests/cli/test_cli.py -k approach`
   - `uv run pytest -q tests/checks/reviewers/test_reviewer_prompt_bundled_guidance.py`
   - `uv run pytest -q tests/meta/test_spec_writing_reference_doc.py`
-  - `uv run python docs/spec/features/FEAT-183-remove-flat-spec-compatibility/supporting/check_no_repo_approach_wrappers.py`
+  - `uv run python docs/spec/features_done/FEAT-183-remove-flat-spec-compatibility/supporting/check_no_repo_approach_wrappers.py`
 - Example verification design:
 
 ```python
@@ -211,20 +211,20 @@ def test_intent_reviewer_prompt_mentions_only_bundled_specs() -> None:
 - Progress update (2026-03-10): runtime progress-unit resolution no longer falls back to legacy `subtasks`, archived done-feature refresh only normalizes bundled `plan.md`, and the old archive-fallback/subtask prompt-state tests were removed from the loop regression suite.
 - Progress update (2026-03-10): shared CLI, checks, loop-contract, and coverage-regression tests now use bundled active feature entrypoints (`docs/spec/features/<feature>/spec.yaml`) instead of stale flat `docs/spec/features/<feature>.yaml` fixtures, keeping bundled-only path expectations consistent across contract-level test surfaces.
 - Progress update (2026-03-10): deleted the now-unused `subtasks` mutation helpers from `tests/loop/feature_iteration_support.py` so loop test support no longer keeps dead flat-progress scripts around after the bundled-only runtime cutover.
-- Areas touched: every flat archived file matching `docs/spec/features_done/*.yaml`, `harness/checks.yaml`, `harness/fitness-functions/check_source_first_loop_commands.py`, `harness/fitness-functions/check_real_opencode_hello_world_smoke.py`, `tests/fitness/test_fitness_rules_source_first_loop_commands.py`, `tests/harness/test_real_opencode_smoke.py`, `tests/checks/reviewers/test_repo_reviewers_config.py`, `tests/checks/test_checks_reviewers_runtime.py`, and the three supporting scripts under `docs/spec/features/FEAT-183-remove-flat-spec-compatibility/supporting/`.
+- Areas touched: every flat archived file matching `docs/spec/features_done/*.yaml`, `harness/checks.yaml`, `harness/fitness-functions/check_source_first_loop_commands.py`, `harness/fitness-functions/check_real_opencode_hello_world_smoke.py`, `tests/fitness/test_fitness_rules_source_first_loop_commands.py`, `tests/harness/test_real_opencode_smoke.py`, `tests/checks/reviewers/test_repo_reviewers_config.py`, `tests/checks/test_checks_reviewers_runtime.py`, and the three supporting scripts under `docs/spec/features_done/FEAT-183-remove-flat-spec-compatibility/supporting/`.
 - Interfaces:
   - Delete remaining `docs/spec/features_done/*.yaml` files; if a done feature must stay present, keep it only as `docs/spec/features_done/<feature>/spec.yaml`.
   - Remove flat active-spec globs from `harness/checks.yaml` reviewer `on_change` surfaces.
   - Update `check_source_first_loop_commands.py` to scan bundled `spec.yaml` and bundled `plan.md` verification entries only, and point its approach-doc policy checks at packaged docs under `src/engineeringagent/approach/docs/`.
   - Update `_parse_feature_statuses()` in `harness/fitness-functions/check_real_opencode_hello_world_smoke.py` to stop falling back to flat `subtasks`.
   - Add migration-proof scripts:
-    - `docs/spec/features/FEAT-183-remove-flat-spec-compatibility/supporting/check_no_flat_feature_specs.py` to fail if active or done trees contain flat YAML feature entrypoints or if key docs/prompts still reference `docs/spec/features/*.yaml`.
-    - `docs/spec/features/FEAT-183-remove-flat-spec-compatibility/supporting/check_no_repo_approach_wrappers.py` to fail if `research-session` / `plan-session` still resolve from `docs/spec/features_done/**/supporting/`.
-    - `docs/spec/features/FEAT-183-remove-flat-spec-compatibility/supporting/check_prompt_surfaces_are_bundled_only.py` to scan generated prompt/reviewer guidance for retired wrapper/subtask-era phrases without freezing exact wording in a shared unit test.
+    - `docs/spec/features_done/FEAT-183-remove-flat-spec-compatibility/supporting/check_no_flat_feature_specs.py` to fail if active or done trees contain flat YAML feature entrypoints or if key docs/prompts still reference `docs/spec/features/*.yaml`.
+    - `docs/spec/features_done/FEAT-183-remove-flat-spec-compatibility/supporting/check_no_repo_approach_wrappers.py` to fail if `research-session` / `plan-session` still resolve from `docs/spec/features_done/**/supporting/`.
+    - `docs/spec/features_done/FEAT-183-remove-flat-spec-compatibility/supporting/check_prompt_surfaces_are_bundled_only.py` to scan generated prompt/reviewer guidance for retired wrapper/subtask-era phrases without freezing exact wording in a shared unit test.
 - Refactoring: keep repo-wide absence assertions in `check_no_flat_feature_specs.py`, `check_no_repo_approach_wrappers.py`, and `check_prompt_surfaces_are_bundled_only.py`, while shared tests stay focused on durable behavior in `harness/checks.yaml`, `check_source_first_loop_commands.py`, `check_real_opencode_hello_world_smoke.py`, and their existing pytest coverage.
 - Verification:
-  - `uv run python docs/spec/features/FEAT-183-remove-flat-spec-compatibility/supporting/check_no_flat_feature_specs.py`
-  - `uv run python docs/spec/features/FEAT-183-remove-flat-spec-compatibility/supporting/check_no_repo_approach_wrappers.py`
+  - `uv run python docs/spec/features_done/FEAT-183-remove-flat-spec-compatibility/supporting/check_no_flat_feature_specs.py`
+  - `uv run python docs/spec/features_done/FEAT-183-remove-flat-spec-compatibility/supporting/check_no_repo_approach_wrappers.py`
   - `uv run pytest -q tests/fitness/test_fitness_rules_source_first_loop_commands.py`
   - `uv run pytest -q tests/harness/test_real_opencode_smoke.py`
   - `uv run pytest -q tests/checks/reviewers/test_repo_reviewers_config.py`
@@ -243,9 +243,11 @@ def main() -> int:
     return 0
 ```
 
-- Documentation changes: no additional author docs in this phase; only keep the FEAT-183 supporting-script references in `docs/spec/features/FEAT-183-remove-flat-spec-compatibility/plan.md` aligned with the implemented script names.
+- Documentation changes: no additional author docs in this phase; only keep the FEAT-183 supporting-script references in `docs/spec/features_done/FEAT-183-remove-flat-spec-compatibility/plan.md` aligned with the implemented script names.
 
 ## Verification Strategy
+
+- Progress update (2026-03-10): Phase 2 verification now points at the living bundled-only loop suites and the prompt-surface absence script; the old `-k bundled_only` selectors and deleted archive-fallback test path were removed after the cleanup landed.
 
 - First lock bundled-only schema/discovery in `src/engineeringagent/specs.py`, `src/engineeringagent/spec_bundles.py`, and `src/engineeringagent/checks/validate/repo_validators.py` with `tests/meta/test_validator.py`, `tests/meta/test_spec_bundles.py`, and `tests/specs/test_specs_layout_smoke.py` before changing loop code.
 - Then run `tests/loop/test_loop_selection.py`, `tests/loop/test_loop_feature_iteration_prompt_guidance.py`, `tests/loop/test_feature_archive_subtasks_done.py`, and `tests/loop/test_selected_feature_load_without_archive_fallback.py` so runtime no longer accepts flat inputs even if stale files are reintroduced locally.
@@ -261,8 +263,8 @@ def test_archive_completed_feature_returns_bundled_done_entrypoint(tmp_path: Pat
 ```
 
 ```bash
-uv run python docs/spec/features/FEAT-183-remove-flat-spec-compatibility/supporting/check_no_flat_feature_specs.py
-uv run python docs/spec/features/FEAT-183-remove-flat-spec-compatibility/supporting/check_no_repo_approach_wrappers.py
+uv run python docs/spec/features_done/FEAT-183-remove-flat-spec-compatibility/supporting/check_no_flat_feature_specs.py
+uv run python docs/spec/features_done/FEAT-183-remove-flat-spec-compatibility/supporting/check_no_repo_approach_wrappers.py
 ```
 
 ## Documentation Changes

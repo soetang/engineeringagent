@@ -3,7 +3,7 @@ title: Remove flat-spec compatibility and legacy archived spec files
 type: spec
 expected_commit_subject: "spec: add FEAT-183 flat spec compatibility removal"
 planning_tier: researched
-status: in_progress
+status: done
 priority: high
 objective: >
   Finish the FEAT-181 migration by removing all remaining compatibility logic,
@@ -84,4 +84,4 @@ acceptance:
 artifacts:
   plan: plan.md
   research: research.md
-updated_at: '2026-03-10T21:47:18Z'
+updated_at: '2026-03-10T21:58:48Z'

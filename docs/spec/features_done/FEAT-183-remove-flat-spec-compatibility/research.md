@@ -9,7 +9,7 @@ tags: [research, codebase, specs, approach, reviewers]
 status: complete
 last_updated: 2026-03-10
 last_updated_by: OpenCode
-specification_path: docs/spec/features/FEAT-183-remove-flat-spec-compatibility/
+specification_path: docs/spec/features_done/FEAT-183-remove-flat-spec-compatibility/
 ---
 
 # Research: Implementation research for FEAT-183 remove flat-spec compatibility
@@ -124,4 +124,3 @@ Approach guidance is also split between packaged docs and repo-backed FEAT-owned
 
 ## Open Questions
 - None at this time.
-
