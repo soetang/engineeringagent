@@ -1,5 +1,11 @@
 """Application-layer services and contracts."""
 
+from .checks_service import (
+    ChecksService,
+    DefaultChecksService,
+    RunChecksRequest,
+    RunChecksResult,
+)
 from .guidance_service import (
     DefaultGuidanceService,
     GuidanceInputError,
@@ -20,6 +26,8 @@ from .prompt_builder import (
 )
 
 __all__ = [
+    "ChecksService",
+    "DefaultChecksService",
     "DefaultGuidanceService",
     "DefaultPromptBuilder",
     "GuidanceInputError",
@@ -29,6 +37,8 @@ __all__ = [
     "ImplementationPromptRequest",
     "PromptBuilder",
     "PromptArtifactPaths",
+    "RunChecksRequest",
+    "RunChecksResult",
     "build_implementation_prompt",
     "build_implementation_prompt_request",
     "inject_feedback",

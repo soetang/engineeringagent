@@ -5,6 +5,7 @@ from types import SimpleNamespace
 
 from pydantic import BaseModel, ConfigDict
 
+from ..application import DefaultChecksService, RunChecksRequest
 from .. import checks as checks_domain
 from .output import emit_markdown_output, resolve_optional_path
 
@@ -12,22 +13,7 @@ _HandlerArgs = SimpleNamespace
 HandlerArgs = _HandlerArgs
 HarnessCheckPhase = checks_domain.HarnessCheckPhase
 
-_CHECKS_ALL_PHASES_ORDER: tuple[HarnessCheckPhase, ...] = (
-    HarnessCheckPhase.ITERATION_END,
-    HarnessCheckPhase.FEATURE_DONE,
-    HarnessCheckPhase.MANUAL,
-)
-
-class _ChecksGitRange(BaseModel):
-    """Optional git diff range forwarded to the checks runtime."""
-
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-    base: str | None
-    head: str | None
-
-
-class _ChecksRunInvocation(BaseModel):
+class _ChecksRunArgs(BaseModel):
     """Resolved checks-run inputs shared across one or more phase executions."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -36,8 +22,11 @@ class _ChecksRunInvocation(BaseModel):
     selected_checks: list[str] | None
     check_id: str | None
     feature_path: str | None
+    phase: HarnessCheckPhase
+    all_phases: bool
+    base: str | None
+    head: str | None
     verbose_output: bool
-    git_range: _ChecksGitRange
     dry_run: bool
 
 
@@ -73,103 +62,20 @@ def cmd_checks_catalog(args: _HandlerArgs) -> int:
     )
 
 
-def _resolve_failed_check_type(
-    result: checks_domain.ChecksRunResult,
-) -> str | None:
-    """Resolve failed check type without relying on group metadata."""
-    failed_check_id = result.failed_check_id
-
-    if failed_check_id is not None:
-        for execution in result.executions:
-            if execution.check_id == failed_check_id:
-                return execution.check_type
-        for decision in result.decisions:
-            if decision["check_id"] == failed_check_id:
-                return str(decision["check_type"]).strip() or None
-
-    return None
-
-
-def _checks_run_phases(
-    *,
-    requested_phase: HarnessCheckPhase,
-    all_phases: bool,
-) -> tuple[HarnessCheckPhase, ...]:
-    """Return the deterministic phase execution list for checks run."""
-    return _CHECKS_ALL_PHASES_ORDER if all_phases else (requested_phase,)
-
-
-def _build_checks_run_invocation(args: _HandlerArgs) -> _ChecksRunInvocation:
+def _build_checks_run_args(args: _HandlerArgs) -> _ChecksRunArgs:
     """Resolve checks-run inputs once before phase execution."""
-    return _ChecksRunInvocation(
+    return _ChecksRunArgs(
         project_root=Path(args.project_root).resolve(),
         selected_checks=getattr(args, "checks", None),
         check_id=getattr(args, "check_id", None),
         feature_path=getattr(args, "feature_path", None),
+        phase=getattr(args, "phase", HarnessCheckPhase.ITERATION_END),
+        all_phases=bool(getattr(args, "all_phases", False)),
         verbose_output=bool(getattr(args, "verbose_output", False)),
-        git_range=_ChecksGitRange(
-            base=getattr(args, "base", None),
-            head=getattr(args, "head", None),
-        ),
+        base=getattr(args, "base", None),
+        head=getattr(args, "head", None),
         dry_run=bool(getattr(args, "dry_run", False)),
     )
-
-
-def _run_checks_phases(
-    *,
-    phases: tuple[HarnessCheckPhase, ...],
-    invocation: _ChecksRunInvocation,
-    all_phases: bool,
-) -> tuple[checks_domain.ChecksRunResult, HarnessCheckPhase | None]:
-    """Execute checks for selected phases with deterministic first-failure semantics."""
-
-    result: checks_domain.ChecksRunResult | None = None
-    failed_phase: HarnessCheckPhase | None = None
-    for phase in phases:
-        phase_result = checks_domain.run_checks(
-            invocation.project_root,
-            phase=phase,
-            checks=invocation.selected_checks,
-            check_id=invocation.check_id,
-            feature_path=invocation.feature_path,
-            verbose_output=invocation.verbose_output,
-            base=invocation.git_range.base,
-            head=invocation.git_range.head,
-            dry_run=invocation.dry_run,
-        )
-
-        if all_phases and phase_result.output:
-            print(f"[phase:{phase.value}]")
-            print(phase_result.output)
-        result = phase_result
-        if phase_result.ok:
-            continue
-        failed_phase = phase if all_phases else None
-        break
-
-    assert result is not None
-    return result, failed_phase
-
-
-def _build_checks_failed_runtime_message(
-    *,
-    result: checks_domain.ChecksRunResult,
-    failed_phase: HarnessCheckPhase | None,
-) -> str | None:
-    """Build a stable runtime failure summary for failed checks execution."""
-    if result.ok:
-        return None
-    failed_check_type = _resolve_failed_check_type(result)
-    if failed_check_type is None:
-        return None
-
-    failed_check_id = result.failed_check_id or "unknown"
-    if failed_phase is not None:
-        return (
-            "checks failed: "
-            f"phase={failed_phase.value} type={failed_check_type} check_id={failed_check_id}"
-        )
-    return f"checks failed: type={failed_check_type} check_id={failed_check_id}"
 
 
 def cmd_checks_run(args: _HandlerArgs) -> int:
@@ -179,45 +85,50 @@ def cmd_checks_run(args: _HandlerArgs) -> int:
     want deterministic execution of repo-owned verification without running the
     full feature loop.
     """
-    all_phases = bool(getattr(args, "all_phases", False))
-    requested_phase = getattr(args, "phase", HarnessCheckPhase.ITERATION_END)
-    phases = _checks_run_phases(
-        requested_phase=requested_phase,
-        all_phases=all_phases,
-    )
-    invocation = _build_checks_run_invocation(args)
-
-    if (
-        checks_domain.reviewers_group_selected(invocation.selected_checks)
-        and invocation.feature_path is None
-    ):
-        print("checks input error: feature_path is required when reviewers checks are selected")
-        return 1
+    invocation = _build_checks_run_args(args)
+    service = DefaultChecksService()
 
     try:
-        result, failed_phase = _run_checks_phases(
-            phases=phases,
-            invocation=invocation,
-            all_phases=all_phases,
+        service_result = service.run(
+            RunChecksRequest(
+                project_root=invocation.project_root,
+                selected_checks=invocation.selected_checks,
+                check_id=invocation.check_id,
+                feature_path=invocation.feature_path,
+                phase=invocation.phase,
+                all_phases=invocation.all_phases,
+                base=invocation.base,
+                head=invocation.head,
+                verbose_output=invocation.verbose_output,
+                dry_run=invocation.dry_run,
+            )
         )
     except ValueError as exc:
         print(f"checks input error: {exc}")
         return 1
 
-    failed_runtime_message = _build_checks_failed_runtime_message(
-        result=result,
-        failed_phase=failed_phase,
-    )
+    if invocation.all_phases:
+        _emit_all_phase_outputs(service_result)
 
-    if all_phases and result.ok:
+    result = service_result.result
+    if invocation.all_phases and result.ok:
         status_label = "dry-run" if result.dry_run else "run"
         print(f"checks {status_label}: ok")
         return 0
 
     exit_code = _emit_run_result(result, noun="checks", success_label="ok")
-    if failed_runtime_message is not None:
-        print(failed_runtime_message)
+    if service_result.failed_runtime_message is not None:
+        print(service_result.failed_runtime_message)
     return exit_code
+
+
+def _emit_all_phase_outputs(service_result: object) -> None:
+    """Render per-phase output banners for multi-phase checks runs."""
+    for phase, result in getattr(service_result, "phase_results"):
+        if not result.output:
+            continue
+        print(f"[phase:{phase.value}]")
+        print(result.output)
 
 
 def _resolve_manifest_path(manifest_path: str | None) -> Path | None:
