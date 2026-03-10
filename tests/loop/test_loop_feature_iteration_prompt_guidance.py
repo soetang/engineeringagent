@@ -7,8 +7,8 @@ import yaml
 from engineeringagent.adapters.prompts import (
     BundledPromptDefinitionRepository,
 )
-from engineeringagent.application import DefaultPromptBuilder
-from engineeringagent.loop_runtime.implementation_prompt import (
+from engineeringagent.application import (
+    DefaultPromptBuilder,
     build_implementation_prompt,
 )
 from tests.loop.feature_iteration_support import (

@@ -6,6 +6,10 @@ from .checks_service import (
     RunChecksRequest,
     RunChecksResult,
 )
+from .implementation_prompt import (
+    build_implementation_prompt,
+    build_implementation_prompt_request,
+)
 from .guidance_service import (
     DefaultGuidanceService,
     GuidanceInputError,
@@ -38,6 +42,8 @@ __all__ = [
     "PromptProgressKind",
     "RunChecksRequest",
     "RunChecksResult",
+    "build_implementation_prompt",
+    "build_implementation_prompt_request",
     "build_selector_prompt",
     "inject_feedback",
 ]

@@ -12,11 +12,9 @@ from engineeringagent.application import (
     DefaultPromptBuilder,
     ImplementationPromptRequest,
     PromptArtifactPaths,
-    build_selector_prompt,
-)
-from engineeringagent.loop_runtime.implementation_prompt import (
     build_implementation_prompt,
     build_implementation_prompt_request,
+    build_selector_prompt,
 )
 from tests.loop.feature_iteration_support import (
     base_feature,

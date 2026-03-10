@@ -11,15 +11,13 @@ from engineeringagent.adapters.prompts import ProjectPromptDefinitionRepository
 from engineeringagent.application import (
     DefaultPromptBuilder,
     PromptBuilder,
+    build_implementation_prompt_request,
 )
 from engineeringagent.agents import (
     AgentBackendError,
     AgentOutputValidationError,
     classify_backend_exception,
     describe_action,
-)
-from engineeringagent.loop_runtime.implementation_prompt import (
-    build_implementation_prompt_request,
 )
 from engineeringagent.loop_runtime.models import ImplementStepInputs
 from engineeringagent.loop_runtime.models import ImplementStepResult
