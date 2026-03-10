@@ -1,4 +1,4 @@
-"""Helpers for resolving the active loop progress unit."""
+"""Application-owned helpers for resolving the active progress unit."""
 
 from __future__ import annotations
 
@@ -84,7 +84,7 @@ def current_progress_unit(
     feature_path: Path,
     feature: dict[str, Any] | None,
 ) -> ProgressUnit | None:
-    """Resolve the current execution unit for telemetry and summaries."""
+    """Resolve the current execution unit for telemetry and prompts."""
 
     units = list(iter_progress_units(feature_path, feature))
     if not units:
@@ -121,7 +121,6 @@ def iter_progress_units(
         feature_unit = _feature_progress_unit(feature)
         if feature_unit is not None:
             yield feature_unit
-    return
 
 
 def _feature_progress_unit(feature: dict[str, Any] | None) -> ProgressUnit | None:

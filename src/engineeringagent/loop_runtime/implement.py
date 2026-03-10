@@ -12,6 +12,8 @@ from engineeringagent.application import (
     DefaultPromptBuilder,
     PromptBuilder,
     build_implementation_prompt_request,
+    current_progress_unit,
+    feature_progress_reference,
 )
 from engineeringagent.agents import (
     AgentBackendError,
@@ -21,8 +23,6 @@ from engineeringagent.agents import (
 )
 from engineeringagent.loop_runtime.models import ImplementStepInputs
 from engineeringagent.loop_runtime.models import ImplementStepResult
-from engineeringagent.loop_runtime.progress_units import current_progress_unit
-from engineeringagent.loop_runtime.progress_units import feature_progress_reference
 from engineeringagent.progress import handoff as progress_handoff
 from engineeringagent.progress import logging as progress_logging
 from engineeringagent.progress import paths as progress_paths

@@ -2,21 +2,18 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Any
 
 import yaml
 
 from engineeringagent.loop import _run_feature_iteration
 from engineeringagent.loop_runtime.feature_state import refresh_feature_after_implement
-from engineeringagent.loop_runtime.progress_units import (
-    current_progress_unit,
+from engineeringagent.application import (
     done_transition_verification_commands,
     progress_status_snapshot,
 )
 from tests.loop.feature_iteration_support import (
     base_feature,
     init_git_repo,
-    invoke_cli,
     make_bundled_project_root,
     read_runs,
     run_python_script,
@@ -27,6 +24,8 @@ from tests.loop.feature_iteration_support import (
 
 
 def test_verification_runs_for_newly_done_bundled_plan_phase(tmp_path: Path) -> None:
+    """Run phase verification when the current iteration completes a phase."""
+
     verification_marker = "phase-verification-ran.txt"
     verification_command = (
         f'"{sys.executable}" -c "from pathlib import Path; '
@@ -87,6 +86,8 @@ def test_verification_runs_for_newly_done_bundled_plan_phase(tmp_path: Path) -> 
 def test_phase_verification_runs_duplicate_commands_only_once_per_iteration(
     tmp_path: Path,
 ) -> None:
+    """Deduplicate identical verification commands across newly done phases."""
+
     verification_marker = "deduplicated-phase-verification-ran.txt"
     verification_command = (
         f'"{sys.executable}" -c "from pathlib import Path; '
@@ -165,6 +166,8 @@ def test_phase_verification_runs_duplicate_commands_only_once_per_iteration(
 def test_phase_verification_runs_when_pre_implement_phase_status_is_missing(
     tmp_path: Path,
 ) -> None:
+    """Run verification when the pre-implement snapshot did not include the phase."""
+
     verification_marker = "phase-verification-missing-status-ran.txt"
     verification_command = (
         f'"{sys.executable}" -c "from pathlib import Path; '
@@ -222,6 +225,8 @@ def test_phase_verification_runs_when_pre_implement_phase_status_is_missing(
 def test_refresh_feature_after_implement_marks_completed_bundled_plan_done(
     tmp_path: Path,
 ) -> None:
+    """Mark the feature done when every planned phase is complete."""
+
     feature_data = {
         **base_feature(status="in_progress"),
         "title": "Bundled plan completion sync test",
@@ -269,6 +274,8 @@ def test_refresh_feature_after_implement_marks_completed_bundled_plan_done(
 def test_refresh_feature_after_implement_normalizes_phase_statuses_before_sync(
     tmp_path: Path,
 ) -> None:
+    """Normalize whitespace-padded phase statuses before syncing feature state."""
+
     feature_data = {
         **base_feature(status="in_progress"),
         "title": "Bundled plan whitespace status sync test",
@@ -311,6 +318,8 @@ def test_refresh_feature_after_implement_normalizes_phase_statuses_before_sync(
 def test_refresh_feature_after_implement_keeps_feature_in_progress_when_later_phase_has_no_status(
     tmp_path: Path,
 ) -> None:
+    """Keep the feature active when a later phase lacks a resolved status."""
+
     feature_data = {
         **base_feature(status="in_progress"),
         "title": "Bundled plan later missing-status sync test",
@@ -362,6 +371,8 @@ def test_refresh_feature_after_implement_keeps_feature_in_progress_when_later_ph
 def test_verification_runs_for_newly_done_phase_with_parseable_invalid_plan_contract(
     tmp_path: Path,
 ) -> None:
+    """Use raw frontmatter fallback when the validated plan artifact is unavailable."""
+
     verification_command = (
         f'"{sys.executable}" -c "from pathlib import Path; '
         f"Path('invalid-plan-phase-verification-ran.txt').write_text('ok', encoding='utf-8')\""
@@ -415,6 +426,8 @@ def test_verification_runs_for_newly_done_phase_with_parseable_invalid_plan_cont
 def test_phase_verification_selection_uses_first_post_entry_for_duplicate_phase_ids(
     tmp_path: Path,
 ) -> None:
+    """Use the first post-implement duplicate phase id when collecting commands."""
+
     primary_marker = "phase-verification-primary-ran.txt"
     duplicate_marker = "phase-verification-duplicate-ran.txt"
     primary_verification_command = (
@@ -477,6 +490,8 @@ def test_phase_verification_selection_uses_first_post_entry_for_duplicate_phase_
 def test_phase_verification_selection_uses_first_pre_status_for_duplicate_phase_ids(
     tmp_path: Path,
 ) -> None:
+    """Use the first pre-implement duplicate phase id when detecting transitions."""
+
     verification_marker = "phase-verification-first-pre-status-ran.txt"
     verification_command = (
         f'"{sys.executable}" -c "from pathlib import Path; '

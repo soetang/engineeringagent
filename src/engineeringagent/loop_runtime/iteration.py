@@ -9,6 +9,12 @@ from typing import Any, Callable, TypeVar
 from pydantic import BaseModel, ConfigDict, Field
 
 from engineeringagent.agents import describe_action
+from engineeringagent.application import (
+    current_progress_unit,
+    done_transition_verification_commands,
+    feature_progress_reference,
+    progress_status_snapshot,
+)
 from engineeringagent.progress.handoff import (
     ImplementProgressEnvelope,
 )
@@ -32,12 +38,6 @@ from .phases import (
     CompletionPhaseDependencies,
     GatePhaseDependencies,
     ReviewerPhaseDependencies,
-)
-from .progress_units import (
-    current_progress_unit,
-    done_transition_verification_commands,
-    feature_progress_reference,
-    progress_status_snapshot,
 )
 from .time_format import utc_iso_from_epoch_sec
 

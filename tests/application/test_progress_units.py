@@ -4,7 +4,7 @@ from pathlib import Path
 
 import yaml
 
-from engineeringagent.loop_runtime.progress_units import (
+from engineeringagent.application import (
     current_progress_unit,
     done_transition_verification_commands,
     progress_status_snapshot,
@@ -15,6 +15,8 @@ from tests.loop.feature_iteration_support import base_feature, make_bundled_proj
 def test_valid_bundled_plan_progress_helpers_normalize_phase_metadata(
     tmp_path: Path,
 ) -> None:
+    """Normalize plan-phase ids, titles, statuses, and verification commands."""
+
     verification_command = "uv run pytest -q tests/test_normalized_phase_verification.py"
     feature_data = {
         **base_feature(status="in_progress"),
@@ -68,6 +70,8 @@ def test_valid_bundled_plan_progress_helpers_normalize_phase_metadata(
 def test_direct_bundled_feature_progress_helpers_use_feature_surface(
     tmp_path: Path,
 ) -> None:
+    """Treat direct bundled specs as feature-shaped progress units."""
+
     feature_path = (
         tmp_path / "docs" / "spec" / "features" / "FEAT-901-direct-bundled" / "spec.yaml"
     )
@@ -107,6 +111,8 @@ def test_direct_bundled_feature_progress_helpers_use_feature_surface(
 def test_invalid_bundled_plan_does_not_fall_back_to_feature_progress_unit(
     tmp_path: Path,
 ) -> None:
+    """Keep invalid planned bundles off the feature fallback surface."""
+
     feature_data = {
         **base_feature(status="in_progress"),
         "title": "Bundled feature invalid plan progress helper coverage",
