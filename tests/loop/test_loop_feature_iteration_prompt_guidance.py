@@ -25,7 +25,7 @@ def test_ralph_prompt_includes_feature_file_path(tmp_path: Path) -> None:
     )
 
     expected_interpolated_values = (
-        str(feature_path),
+        f"- specification: {feature_path}",
         ".engineeringagent/progress/features/FEAT-900/handoff.md",
         "feature FEAT-900 (Feature iteration smoke test)",
         f"Objective: {feature_data['objective']}",
@@ -33,6 +33,7 @@ def test_ralph_prompt_includes_feature_file_path(tmp_path: Path) -> None:
     )
     for value in expected_interpolated_values:
         assert value in prompt
+    assert "Read and follow these files:" in prompt
 
 
 def test_ralph_prompt_contract_uses_schema_only_validate_command(
@@ -290,3 +291,36 @@ def test_direct_bundled_ralph_prompt_avoids_legacy_subtask_wording(
     assert "Update progress in the bundled feature package" in prompt
     assert "`spec.yaml` feature status fields and `updated_at`." in prompt
     assert "`plan.md` by setting relevant phase status fields" not in prompt
+
+
+def test_bundled_ralph_prompt_includes_plan_and_research_paths(tmp_path: Path) -> None:
+    feature_root = (
+        tmp_path / "docs" / "spec" / "features" / "FEAT-902-bundled-researched"
+    )
+    feature_path = feature_root / "spec.yaml"
+    plan_path = feature_root / "plan.md"
+    research_path = feature_root / "research.md"
+    feature_root.mkdir(parents=True, exist_ok=True)
+    feature = {
+        **base_feature(status="in_progress"),
+        "id": "FEAT-902",
+        "title": "Researched bundled prompt paths test",
+        "planning_tier": "researched",
+        "artifacts": {"plan": "plan.md", "research": "research.md"},
+    }
+    feature_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding="utf-8")
+    plan_path.write_text(
+        "---\nfeature_id: FEAT-902\nplanning_tier: researched\nsource_spec: spec.yaml\nphases: []\n---\n",
+        encoding="utf-8",
+    )
+    research_path.write_text("# Research\n", encoding="utf-8")
+
+    prompt = build_implementation_prompt(
+        feature=feature,
+        feature_path=feature_path,
+        feedback=None,
+    )
+
+    assert f"- specification: {feature_path}" in prompt
+    assert f"- plan: {plan_path}" in prompt
+    assert f"- research: {research_path}" in prompt

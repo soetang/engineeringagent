@@ -29,6 +29,7 @@ feature_storage_root = _spec_bundles.feature_storage_root
 resolve_feature_package_paths = _spec_bundles.resolve_feature_package_paths
 load_markdown_frontmatter = _spec_bundles.load_markdown_frontmatter
 resolve_feature_plan_path = _spec_bundles.resolve_feature_plan_path
+resolve_feature_research_path = _spec_bundles.resolve_feature_research_path
 load_feature_plan_artifact = _spec_bundles.load_feature_plan_artifact
 feature_progress_kind = _spec_bundles.feature_progress_kind
 progress_kind_label = _spec_bundles.progress_kind_label

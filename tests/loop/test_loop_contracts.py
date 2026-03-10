@@ -1105,6 +1105,8 @@ def test_run_implement_step_uses_injected_prompt_builder(tmp_path: Path) -> None
         ImplementationPromptRequest(
             feature=inputs.feature,
             feature_path=inputs.feature_path,
+            plan_path=None,
+            research_path=None,
             handoff_path=".engineeringagent/progress/features/FEAT-900/handoff.md",
             feedback=None,
         )

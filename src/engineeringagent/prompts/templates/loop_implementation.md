@@ -1,4 +1,4 @@
-Study this specification from disk: $feature_path.
+$artifact_paths
 Before doing new work, read prior handoff context from $handoff_path when the file exists.
 Because handoff is append-only, read from the bottom first (`tail -n 40 ...`) to get the latest iteration.
 Do not write the handoff file directly; loop/runtime owns handoff file appends.

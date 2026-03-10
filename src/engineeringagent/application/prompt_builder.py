@@ -17,7 +17,11 @@ from engineeringagent.prompts.feedback_envelope import (
     serialize_feedback_envelope,
 )
 from engineeringagent.progress import paths as progress_paths
-from engineeringagent.specs import feature_progress_kind
+from engineeringagent.specs import (
+    feature_progress_kind,
+    resolve_feature_plan_path,
+    resolve_feature_research_path,
+)
 
 _TEMPLATE_PACKAGE = "engineeringagent.prompts.templates"
 
@@ -28,6 +32,8 @@ class ImplementationPromptRequest:
 
     feature: Mapping[str, Any]
     feature_path: Path
+    plan_path: str | None
+    research_path: str | None
     handoff_path: str
     feedback: str | None
 
@@ -56,6 +62,7 @@ class DefaultPromptBuilder:
         )
         prompt = implementation_template.substitute(
             feature_path=str(request.feature_path),
+            artifact_paths=_artifact_paths_prompt_block(request),
             feature_id=str(request.feature.get("id", "unknown-feature")),
             handoff_path=request.handoff_path,
             feature_title=str(request.feature.get("title", "")),
@@ -87,6 +94,10 @@ def build_implementation_prompt(
         ImplementationPromptRequest(
             feature=feature,
             feature_path=feature_path,
+            plan_path=_resolved_artifact_reference(feature_path, feature, "plan"),
+            research_path=_resolved_artifact_reference(
+                feature_path, feature, "research"
+            ),
             handoff_path=handoff_path
             or progress_paths.handoff_markdown_reference(Path(), feature_id),
             feedback=feedback,
@@ -125,6 +136,32 @@ def _normalize_feedback(feedback: str) -> str:
         return normalized or ""
 
     return serialize_feedback_envelope(envelope)
+
+
+def _artifact_paths_prompt_block(request: ImplementationPromptRequest) -> str:
+    lines = ["Read and follow these files:", f"- specification: {request.feature_path}"]
+    if request.plan_path:
+        lines.append(f"- plan: {request.plan_path}")
+    if request.research_path:
+        lines.append(f"- research: {request.research_path}")
+    return "\n".join(lines)
+
+
+def _resolved_artifact_reference(
+    feature_path: Path,
+    feature: Mapping[str, Any],
+    artifact_kind: str,
+) -> str | None:
+    feature_payload = dict(feature)
+    resolver = (
+        resolve_feature_plan_path
+        if artifact_kind == "plan"
+        else resolve_feature_research_path
+    )
+    artifact_path = resolver(feature_path, feature_payload)
+    if artifact_path is None:
+        return None
+    return str(artifact_path)
 
 
 def _progress_update_instruction(progress_kind: str) -> str:

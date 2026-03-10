@@ -49,6 +49,8 @@ def test_default_prompt_builder_renders_bundled_phase_prompt(tmp_path: Path) -> 
         ImplementationPromptRequest(
             feature=feature,
             feature_path=feature_path,
+            plan_path=None,
+            research_path=None,
             handoff_path=".engineeringagent/progress/features/FEAT-900/handoff.md",
             feedback=None,
         )
@@ -92,6 +94,8 @@ def test_compatibility_helper_delegates_to_prompt_builder(tmp_path: Path) -> Non
         ImplementationPromptRequest(
             feature=feature,
             feature_path=feature_path,
+            plan_path=str(feature_path.parent / "plan.md"),
+            research_path=None,
             handoff_path=".engineeringagent/progress/features/FEAT-900/handoff.md",
             feedback="",
         )
@@ -119,9 +123,44 @@ def test_default_prompt_builder_uses_explicit_handoff_path_input(
         ImplementationPromptRequest(
             feature=feature,
             feature_path=feature_path,
+            plan_path=None,
+            research_path=None,
             handoff_path="custom/handoff-reference.md",
             feedback=None,
         )
     )
 
     assert "read prior handoff context from custom/handoff-reference.md" in prompt
+
+
+def test_default_prompt_builder_renders_explicit_plan_and_research_paths(
+    tmp_path: Path,
+) -> None:
+    """The application prompt builder renders explicit artifact paths."""
+
+    feature_path = (
+        tmp_path / "docs" / "spec" / "features" / "FEAT-900-bundled-smoke-test" / "spec.yaml"
+    )
+    feature_path.parent.mkdir(parents=True, exist_ok=True)
+    feature = {
+        **base_feature(status="in_progress"),
+        "planning_tier": "researched",
+        "artifacts": {"plan": "plan.md", "research": "research.md"},
+    }
+    feature_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding="utf-8")
+
+    prompt = DefaultPromptBuilder().build_implementation_prompt(
+        ImplementationPromptRequest(
+            feature=feature,
+            feature_path=feature_path,
+            plan_path=str(feature_path.parent / "plan.md"),
+            research_path=str(feature_path.parent / "research.md"),
+            handoff_path=".engineeringagent/progress/features/FEAT-900/handoff.md",
+            feedback=None,
+        )
+    )
+
+    assert "Read and follow these files:" in prompt
+    assert f"- specification: {feature_path}" in prompt
+    assert f"- plan: {feature_path.parent / 'plan.md'}" in prompt
+    assert f"- research: {feature_path.parent / 'research.md'}" in prompt

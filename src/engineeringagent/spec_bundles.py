@@ -520,6 +520,23 @@ def resolve_feature_plan_path(
     return spec_path.parent / plan_ref.strip()
 
 
+def resolve_feature_research_path(
+    spec_path: Path,
+    feature: dict[str, Any] | None,
+) -> Path | None:
+    """Return the bundled research.md path referenced by a feature spec, if any."""
+
+    if feature is None or not is_bundled_feature_spec_path(spec_path):
+        return None
+    artifacts = feature.get("artifacts")
+    if not isinstance(artifacts, dict):
+        return None
+    research_ref = artifacts.get("research")
+    if not isinstance(research_ref, str) or not research_ref.strip():
+        return None
+    return spec_path.parent / research_ref.strip()
+
+
 def load_feature_plan_artifact(
     spec_path: Path,
     feature: dict[str, Any] | None,
