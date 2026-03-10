@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 import yaml
@@ -171,7 +172,7 @@ def test_default_prompt_builder_normalizes_legacy_subtask_progress_to_feature_wo
             artifacts=PromptArtifactPaths(specification=feature_path),
             handoff_path="custom/handoff-reference.md",
             feedback=None,
-            progress_kind="subtask",
+            progress_kind=cast(Any, "subtask"),
             current_progress="subtask-1 - Example",
         )
 

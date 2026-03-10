@@ -1,14 +1,14 @@
 ---
 plan_id: FEAT-183
 feature_id: FEAT-183
-status: backlog
+status: in_progress
 source_spec: spec.yaml
 source_research: research.md
 planning_tier: researched
 phases:
   - id: P1
     title: Cut the repository over to bundled-only feature contracts
-    status: backlog
+    status: in_progress
     verification:
       - uv run engineeringagent validate --schema-only
       - uv run pytest -q tests/meta/test_validator.py -k bundled_only

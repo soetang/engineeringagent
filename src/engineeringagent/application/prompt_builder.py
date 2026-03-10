@@ -75,9 +75,7 @@ class DefaultPromptBuilder:
                 request.progress_kind,
                 request.current_progress,
             ),
-            progress_context_instruction=_progress_context_instruction(
-                request.progress_kind
-            ),
+            progress_context_instruction=_progress_context_instruction(),
             progress_update_instruction=_progress_update_instruction(
                 request.progress_kind
             ),
@@ -183,7 +181,7 @@ def _progress_update_instruction(progress_kind: str) -> str:
     )
 
 
-def _progress_context_instruction(progress_kind: str) -> str:
+def _progress_context_instruction() -> str:
     return (
         "Treat this bundled feature package as canonical: keep lifecycle status "
         "in `spec.yaml` and sequencing in `plan.md` when present."
