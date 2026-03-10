@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from engineeringagent.approach import (
     list_approach_topics,
-    load_topic_content,
     load_topic_body,
+    load_topic_content,
     resolve_approach_topic_id,
 )
 from engineeringagent.ports import GuidanceTopic, GuidanceTopicRepository

@@ -7,8 +7,10 @@ from pathlib import Path
 from engineeringagent.config import resolve_harness_root
 from engineeringagent.ports import PromptDefinition, PromptDefinitionRepository
 
-from .bundled_prompt_definitions import BundledPromptDefinitionRepository
-from .filesystem_prompt_definitions import FilesystemPromptDefinitionRepository
+from .bundled_prompt_definition_repository import BundledPromptDefinitionRepository
+from .filesystem_prompt_definition_repository import (
+    FilesystemPromptDefinitionRepository,
+)
 
 
 class ProjectPromptDefinitionRepository(PromptDefinitionRepository):

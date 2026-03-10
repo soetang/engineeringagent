@@ -1,5 +1,5 @@
 """Guidance topic adapters."""
 
-from .packaged_guidance_topics import PackagedGuidanceTopicRepository
+from .packaged_guidance_topic_repository import PackagedGuidanceTopicRepository
 
 __all__ = ["PackagedGuidanceTopicRepository"]

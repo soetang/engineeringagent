@@ -1,7 +1,7 @@
 """Port contracts for application-facing infrastructure seams."""
 
-from .guidance_topics import GuidanceTopic, GuidanceTopicRepository
-from .prompt_definitions import (
+from .guidance_topic_repository import GuidanceTopic, GuidanceTopicRepository
+from .prompt_definition_repository import (
     PromptDefinition,
     PromptDefinitionRepository,
     PromptInterpolation,
