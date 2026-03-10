@@ -25,6 +25,7 @@ from engineeringagent.progress import handoff as progress_handoff
 from engineeringagent.specs import (
     dump_yaml,
     feature_storage_root,
+    _is_bundled_feature_spec_path,
     iter_feature_files,
     load_yaml,
     resolve_feature_package_paths,
@@ -113,6 +114,11 @@ def resolve_feature_paths(
             raise ValueError(f"feature path does not exist: {raw_path}")
         if not candidate.is_file():
             raise ValueError(f"feature path is not a file: {raw_path}")
+        if not _is_bundled_feature_spec_path(candidate):
+            raise ValueError(
+                "feature specs must use bundled spec.yaml entrypoints: "
+                f"{raw_path}"
+            )
 
         try:
             load_yaml(candidate)

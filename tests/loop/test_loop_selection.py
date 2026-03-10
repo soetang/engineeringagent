@@ -10,15 +10,15 @@ from engineeringagent.loop_runtime import selection
 def _pending_features() -> list[tuple[Path, dict[str, Any]]]:
     return [
         (
-            Path("docs/spec/features/FEAT-200.yaml"),
+            Path("docs/spec/features/FEAT-200-third-feature/spec.yaml"),
             {"id": "FEAT-200", "status": "backlog", "priority": "low"},
         ),
         (
-            Path("docs/spec/features/FEAT-100.yaml"),
+            Path("docs/spec/features/FEAT-100-first-feature/spec.yaml"),
             {"id": "FEAT-100", "status": "in_progress", "priority": "high"},
         ),
         (
-            Path("docs/spec/features/FEAT-150.yaml"),
+            Path("docs/spec/features/FEAT-150-second-feature/spec.yaml"),
             {"id": "FEAT-150", "status": "backlog", "priority": "medium"},
         ),
     ]
@@ -42,7 +42,7 @@ def test_deterministic_feature_choice_prefers_status_then_priority_then_id() -> 
         _pending_features()
     )
 
-    assert chosen_path.name == "FEAT-100.yaml"
+    assert chosen_path == Path("docs/spec/features/FEAT-100-first-feature/spec.yaml")
     assert chosen_feature["id"] == "FEAT-100"
 
 
@@ -50,23 +50,30 @@ def test_parse_selector_output_matches_full_path_fragment() -> None:
     pending = _pending_features()
 
     selected = selection.parse_selector_output(
-        "pick docs/spec/features/FEAT-150.yaml", pending
+        "pick docs/spec/features/FEAT-150-second-feature/spec.yaml", pending
     )
 
-    assert selected == Path("docs/spec/features/FEAT-150.yaml")
+    assert selected == Path("docs/spec/features/FEAT-150-second-feature/spec.yaml")
 
 
-def test_parse_selector_output_uses_unique_file_name_and_id_tokens() -> None:
-    pending = [
-        (Path("docs/spec/features/alpha.yaml"), {"id": "FEAT-300"}),
-        (Path("docs/spec/features/beta.yaml"), {"id": "FEAT-301"}),
-    ]
+def test_parse_selector_output_uses_unique_directory_name_and_id_tokens() -> None:
+    pending = _pending_features()
 
-    selected_by_name = selection.parse_selector_output("`beta.yaml`", pending)
+    selected_by_name = selection.parse_selector_output(
+        "`FEAT-150-second-feature`", pending
+    )
     selected_by_id = selection.parse_selector_output("choose FEAT-300", pending)
 
-    assert selected_by_name == Path("docs/spec/features/beta.yaml")
-    assert selected_by_id == Path("docs/spec/features/alpha.yaml")
+    assert selected_by_name == Path("docs/spec/features/FEAT-150-second-feature/spec.yaml")
+    assert selected_by_id is None
+
+
+def test_parse_selector_output_uses_unique_feature_id_tokens() -> None:
+    pending = _pending_features()
+
+    selected_by_id = selection.parse_selector_output("choose FEAT-150", pending)
+
+    assert selected_by_id == Path("docs/spec/features/FEAT-150-second-feature/spec.yaml")
 
 
 def test_parse_selector_output_uses_unique_bundled_package_directory_tokens() -> None:
@@ -90,19 +97,19 @@ def test_parse_selector_output_normalizes_multiline_punctuated_tokens() -> None:
 
 def test_parse_selector_output_returns_none_for_empty_or_ambiguous_tokens() -> None:
     pending = [
-        (Path("docs/spec/features/dup.yaml"), {"id": "FEAT-401"}),
-        (Path("tmp/dup.yaml"), {"id": "FEAT-402"}),
+        (Path("docs/spec/features/dup-a/spec.yaml"), {"id": "FEAT-401"}),
+        (Path("tmp/dup-b/spec.yaml"), {"id": "FEAT-402"}),
     ]
 
     assert selection.parse_selector_output("", pending) is None
-    assert selection.parse_selector_output("dup.yaml", pending) is None
+    assert selection.parse_selector_output("spec.yaml", pending) is None
     assert selection.parse_selector_output("not-a-feature", pending) is None
 
 
 def test_choose_feature_with_selector_returns_single_pending_without_selector_call() -> (
     None
 ):
-    pending = [(Path("docs/spec/features/solo.yaml"), {"id": "FEAT-999"})]
+    pending = [(Path("docs/spec/features/solo/spec.yaml"), {"id": "FEAT-999"})]
 
     def _should_not_run(*_: Any, **__: Any) -> Any:
         raise AssertionError("selector should not run with one candidate")
@@ -132,7 +139,7 @@ def test_choose_feature_with_selector_uses_selector_output_when_parse_succeeds(
         run_agent_fn=_run_agent,
     )
 
-    assert chosen_path == Path("docs/spec/features/FEAT-150.yaml")
+    assert chosen_path == Path("docs/spec/features/FEAT-150-second-feature/spec.yaml")
     assert chosen_feature["id"] == "FEAT-150"
 
 
@@ -158,7 +165,7 @@ def test_choose_feature_with_selector_falls_back_when_opencode_missing(
     output = capsys.readouterr().out
     assert "Selector step: opencode run --agent engineeringagent" in output
     assert "Selector fallback: agent_missing" in output
-    assert chosen_path == Path("docs/spec/features/FEAT-100.yaml")
+    assert chosen_path == Path("docs/spec/features/FEAT-100-first-feature/spec.yaml")
     assert chosen_feature["id"] == "FEAT-100"
 
 
@@ -192,7 +199,7 @@ def test_choose_feature_with_selector_falls_back_on_parse_or_command_failure(
     output = capsys.readouterr().out
     assert "Selector step: opencode run --agent engineeringagent" in output
     assert "Selector fallback: opencode_build" in output
-    assert chosen_path == Path("docs/spec/features/FEAT-100.yaml")
+    assert chosen_path == Path("docs/spec/features/FEAT-100-first-feature/spec.yaml")
     assert chosen_feature["id"] == "FEAT-100"
 
 
@@ -253,5 +260,5 @@ def test_choose_feature_with_selector_uses_configured_codex_backend(
     output = capsys.readouterr().out
     assert "Selector step: codex run selector" in output
     assert "Selector fallback: codex_build" in output
-    assert chosen_path == Path("docs/spec/features/FEAT-100.yaml")
+    assert chosen_path == Path("docs/spec/features/FEAT-100-first-feature/spec.yaml")
     assert chosen_feature["id"] == "FEAT-100"

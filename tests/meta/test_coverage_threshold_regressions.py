@@ -175,34 +175,50 @@ def test_feature_state_error_paths(tmp_path: Path, monkeypatch: Any) -> None:
     with pytest.raises(ValueError, match="is not a file"):
         feature_state_module.resolve_feature_paths(tmp_path, [directory_path])
 
-    bad_yaml = tmp_path / "bad.yaml"
+    flat_yaml = tmp_path / "flat.yaml"
+    flat_yaml.write_text("id: FEAT-001\nstatus: backlog\n", encoding="utf-8")
+    with pytest.raises(
+        ValueError, match="feature specs must use bundled spec.yaml entrypoints"
+    ):
+        feature_state_module.resolve_feature_paths(tmp_path, [flat_yaml])
+
+    bad_yaml_root = tmp_path / "docs" / "spec" / "features" / "FEAT-000-bad"
+    bad_yaml_root.mkdir(parents=True)
+    bad_yaml = bad_yaml_root / "spec.yaml"
     bad_yaml.write_text("[", encoding="utf-8")
     with pytest.raises(ValueError, match="failed to load feature YAML"):
         feature_state_module.resolve_feature_paths(tmp_path, [bad_yaml])
 
-    good_yaml = tmp_path / "good.yaml"
+    bundled_root = tmp_path / "docs" / "spec" / "features" / "FEAT-001-good"
+    bundled_root.mkdir(parents=True)
+    good_yaml = bundled_root / "spec.yaml"
     good_yaml.write_text("id: FEAT-001\nstatus: backlog\n", encoding="utf-8")
     resolved = feature_state_module.resolve_feature_paths(
         tmp_path,
-        [Path("good.yaml"), good_yaml],
+        [good_yaml.relative_to(tmp_path), good_yaml],
     )
     assert resolved == [good_yaml.resolve()]
 
     features_dir = tmp_path / "docs" / "spec" / "features"
-    features_dir.mkdir(parents=True)
+    features_dir.mkdir(parents=True, exist_ok=True)
     (features_dir / "broken.yaml").write_text("[", encoding="utf-8")
     with pytest.raises(ValueError, match="failed to load feature YAML"):
         feature_state_module.discover_active_feature_paths(tmp_path)
 
+    outside_bundle = tmp_path / "elsewhere" / "FEAT-999-outside" / "spec.yaml"
+    outside_bundle.parent.mkdir(parents=True)
+    outside_bundle.write_text("id: FEAT-999\nstatus: backlog\n", encoding="utf-8")
     with pytest.raises(ValueError, match="must be under docs/spec/features"):
-        feature_state_module._resolve_archive_path(tmp_path, bad_yaml)
+        feature_state_module._resolve_archive_path(tmp_path, outside_bundle)
 
     missing_outside = tmp_path / "missing.yaml"
     loaded, error = feature_state_module._load_selected_feature(missing_outside)
     assert loaded is None
     assert "disappeared during loop iteration" in str(error)
 
-    active_feature_path = features_dir / "FEAT-002.yaml"
+    active_root = features_dir / "FEAT-002-broken"
+    active_root.mkdir(parents=True, exist_ok=True)
+    active_feature_path = active_root / "spec.yaml"
     done_dir = tmp_path / "docs" / "spec" / "features_done"
     done_dir.mkdir(parents=True)
     active_feature_path.write_text("[", encoding="utf-8")
@@ -252,15 +268,16 @@ def test_feature_state_error_paths(tmp_path: Path, monkeypatch: Any) -> None:
     assert archived_path is None
     assert message == "bad archive"
 
-    existing_archive = done_dir / "exists.yaml"
+    existing_archive = done_dir / "exists" / "spec.yaml"
+    existing_archive.parent.mkdir(parents=True, exist_ok=True)
     existing_archive.write_text("id: FEAT-009\n", encoding="utf-8")
-    missing_feature = features_dir / "exists.yaml"
+    missing_feature = features_dir / "exists" / "spec.yaml"
     monkeypatch.setattr(
         "engineeringagent.loop_runtime.feature_state.resolve_feature_package_paths",
         lambda *_args, **_kwargs: SimpleNamespace(
-            active_root=missing_feature,
+            active_root=missing_feature.parent,
             active_spec_path=missing_feature,
-            archive_root=existing_archive,
+            archive_root=existing_archive.parent,
             archive_spec_path=existing_archive,
         ),
     )
@@ -272,7 +289,8 @@ def test_feature_state_error_paths(tmp_path: Path, monkeypatch: Any) -> None:
     assert archived_path is None
     assert "not found" in message
 
-    source_feature = features_dir / "FEAT-010.yaml"
+    source_feature = features_dir / "FEAT-010" / "spec.yaml"
+    source_feature.parent.mkdir(parents=True, exist_ok=True)
     source_feature.write_text("id: FEAT-010\n", encoding="utf-8")
     ok, archived_path, message = feature_state_module.archive_completed_feature(
         tmp_path,
@@ -283,13 +301,15 @@ def test_feature_state_error_paths(tmp_path: Path, monkeypatch: Any) -> None:
     assert "already exists" in message
 
     ok, message = feature_state_module.restore_archived_feature(
-        tmp_path / "not-there.yaml",
-        features_dir / "target.yaml",
+        tmp_path / "not-there" / "spec.yaml",
+        features_dir / "target" / "spec.yaml",
     )
     assert (ok, message) == (True, "")
 
-    archived = done_dir / "restore.yaml"
-    original = features_dir / "restore.yaml"
+    archived = done_dir / "restore" / "spec.yaml"
+    original = features_dir / "restore" / "spec.yaml"
+    archived.parent.mkdir(parents=True, exist_ok=True)
+    original.parent.mkdir(parents=True, exist_ok=True)
     archived.write_text("id: FEAT-011\n", encoding="utf-8")
     original.write_text("id: FEAT-011\n", encoding="utf-8")
     ok, message = feature_state_module.restore_archived_feature(archived, original)
@@ -509,18 +529,19 @@ def test_touch_active_feature_for_iteration_syncs_feature_status_from_blocked_pl
 def _setup_archived_selected_counterpart(
     tmp_path: Path,
     *,
-    feature_file_name: str,
-    archived_lines: list[str],
+    feature_dir_name: str,
+    archived_lines: list[str] | None = None,
 ) -> tuple[Path, Path]:
     features_dir = tmp_path / "docs" / "spec" / "features"
     features_dir.mkdir(parents=True)
     archived_dir = tmp_path / "docs" / "spec" / "features_done"
     archived_dir.mkdir(parents=True)
 
-    active_feature_path = features_dir / feature_file_name
-    archived_feature_path = archived_dir / feature_file_name
+    active_feature_path = features_dir / feature_dir_name / "spec.yaml"
+    archived_feature_path = archived_dir / feature_dir_name / "spec.yaml"
+    archived_feature_path.parent.mkdir(parents=True, exist_ok=True)
     archived_feature_path.write_text(
-        "\n".join([*archived_lines, ""]),
+        "\n".join([*(archived_lines or []), ""]),
         encoding="utf-8",
     )
     return active_feature_path, archived_feature_path
@@ -683,13 +704,10 @@ def test_post_implement_refresh_recovers_selected_archived_done_feature(
 ) -> None:
     active_feature_path, archived_feature_path = _setup_archived_selected_counterpart(
         tmp_path,
-        feature_file_name="FEAT-200.yaml",
+        feature_dir_name="FEAT-200-archived",
         archived_lines=[
             "id: FEAT-200",
             "status: done",
-            "subtasks:",
-            "  - id: ST-001",
-            "    status: backlog",
         ],
     )
 
@@ -711,7 +729,7 @@ def test_post_implement_refresh_rejects_non_done_archived_counterpart(
 ) -> None:
     active_feature_path, _archived_feature_path = _setup_archived_selected_counterpart(
         tmp_path,
-        feature_file_name="FEAT-201.yaml",
+        feature_dir_name="FEAT-201-archived",
         archived_lines=[
             "id: FEAT-201",
             "status: in_progress",
