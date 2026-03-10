@@ -146,7 +146,9 @@ def test_run_help_describes_bundled_feature_entrypoints() -> None:
 
 def test_run_rejects_removed_skip_flag() -> None:
     removed_skip_flag = "--skip-" + "implement"
-    result = _invoke_cli(["run", "docs/spec/features/FEAT-900.yaml", removed_skip_flag])
+    result = _invoke_cli(
+        ["run", "docs/spec/features/FEAT-900/spec.yaml", removed_skip_flag]
+    )
 
     assert result.exit_code != 0
     combined_output = (result.stderr or "") + (result.stdout or "")
@@ -335,7 +337,7 @@ def test_main_run_command_executes_loop_context_via_real_cli(
             "--project-root",
             str(tmp_path),
             "run",
-            "docs/spec/features/FEAT-900.yaml",
+            "docs/spec/features/FEAT-900/spec.yaml",
             "--dry-run",
             "--max-iterations",
             "7",
@@ -348,7 +350,7 @@ def test_main_run_command_executes_loop_context_via_real_cli(
     loop_run = captured["loop_run"]
     assert loop_run.config == RunConfig(
         project_root=tmp_path.resolve(),
-        feature_paths=("docs/spec/features/FEAT-900.yaml",),
+        feature_paths=("docs/spec/features/FEAT-900/spec.yaml",),
         dry_run=True,
         run_all=False,
         max_iterations=7,
@@ -588,7 +590,7 @@ def test_cmd_run_builds_looprun_context_for_loop_entrypoint(
     exit_code = cli_module.cmd_run(
         SimpleNamespace(
             project_root=str(tmp_path),
-            feature_paths=["docs/spec/features/FEAT-078.yaml"],
+            feature_paths=["docs/spec/features/FEAT-078/spec.yaml"],
             run_all=False,
             dry_run=True,
             max_iterations=7,
@@ -602,7 +604,7 @@ def test_cmd_run_builds_looprun_context_for_loop_entrypoint(
     assert isinstance(loop_run, LoopRun)
     assert loop_run.config == RunConfig(
         project_root=tmp_path,
-        feature_paths=("docs/spec/features/FEAT-078.yaml",),
+        feature_paths=("docs/spec/features/FEAT-078/spec.yaml",),
         dry_run=True,
         run_all=False,
         max_iterations=7,

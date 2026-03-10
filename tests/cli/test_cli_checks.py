@@ -301,7 +301,7 @@ def test_cli_checks_run_delegates_to_checks_surface(
             "--check-id",
             "smoke",
             "--feature-path",
-            "docs/spec/features/FEAT-177.yaml",
+            "docs/spec/features/FEAT-177/spec.yaml",
             "--phase",
             "iteration_end",
             "--base",
@@ -322,7 +322,7 @@ def test_cli_checks_run_delegates_to_checks_surface(
     assert phase is not None
     assert checks == ["commands"]
     assert kwargs.get("check_id") == "smoke"
-    assert kwargs.get("feature_path") == "docs/spec/features/FEAT-177.yaml"
+    assert kwargs.get("feature_path") == "docs/spec/features/FEAT-177/spec.yaml"
     assert kwargs.get("base") == "main"
     assert kwargs.get("head") == "HEAD"
     assert kwargs.get("verbose_output") is True
@@ -381,7 +381,7 @@ def test_cli_checks_run_normalizes_feature_path_before_delegating(
             "--checks",
             "reviewers",
             "--feature-path",
-            "  docs/spec/features/FEAT-001.yaml  ",
+            "  docs/spec/features/FEAT-001/spec.yaml  ",
             "--phase",
             "feature_done",
         ],
@@ -389,7 +389,7 @@ def test_cli_checks_run_normalizes_feature_path_before_delegating(
 
     assert result.exit_code == 0
     assert len(calls) == 1
-    assert calls[0].get("feature_path") == "docs/spec/features/FEAT-001.yaml"
+    assert calls[0].get("feature_path") == "docs/spec/features/FEAT-001/spec.yaml"
 
 
 def test_cli_checks_run_dry_run_delegates_and_reports_mode(

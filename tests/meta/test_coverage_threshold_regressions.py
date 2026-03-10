@@ -845,7 +845,7 @@ def test_gate_and_verification_phase_error_paths(
 def test_completion_phase_fallback_paths() -> None:
     inputs = FeatureIterationInputs(
         project_root=Path("."),
-        feature_path=Path("docs/spec/features/FEAT-001.yaml"),
+        feature_path=Path("docs/spec/features/FEAT-001/spec.yaml"),
         attempt=1,
         feedback=None,
         verbose_output=False,

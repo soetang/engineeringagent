@@ -132,7 +132,7 @@ def test_run_planned_reviewer_checks_reuses_cached_approval(tmp_path: Path) -> N
         phase=HarnessCheckPhase.FEATURE_DONE,
         changed_paths=changed_paths,
         feature_id="FEAT-001",
-        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001" / "spec.yaml",
         run_agent_fn=_run_agent,
     )
     planned = plan_reviewer_checks(
@@ -182,7 +182,7 @@ def test_run_planned_reviewer_checks_returns_ok_when_no_checks_planned(
         phase=HarnessCheckPhase.ITERATION_END,
         changed_paths=changed_paths,
         feature_id="FEAT-001",
-        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001" / "spec.yaml",
         run_agent_fn=_run_agent,
     )
     planned = plan_reviewer_checks(
@@ -334,7 +334,7 @@ def test_run_planned_reviewer_checks_manual_phase_returns_empty_output(
         phase=HarnessCheckPhase.MANUAL,
         changed_paths=changed_paths,
         feature_id="FEAT-001",
-        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001" / "spec.yaml",
         run_agent_fn=_run_agent,
     )
     planned = plan_reviewer_checks(
@@ -385,7 +385,7 @@ def test_run_planned_reviewer_checks_handles_non_dict_reviewer_payload(
         phase=HarnessCheckPhase.FEATURE_DONE,
         changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
         feature_id="FEAT-001",
-        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001" / "spec.yaml",
     )
     planned = plan_reviewer_checks(
         request.doc,
@@ -445,7 +445,7 @@ def test_run_planned_reviewer_checks_normalizes_unknown_decision_to_request_chan
         phase=HarnessCheckPhase.FEATURE_DONE,
         changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
         feature_id="FEAT-001",
-        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001" / "spec.yaml",
     )
     planned = plan_reviewer_checks(
         request.doc,
@@ -510,7 +510,7 @@ def test_run_planned_reviewer_checks_verbose_output_surfaces_full_payload(
         phase=HarnessCheckPhase.FEATURE_DONE,
         changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
         feature_id="FEAT-001",
-        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001" / "spec.yaml",
         verbose_output=True,
     )
     planned = plan_reviewer_checks(
@@ -581,7 +581,7 @@ def test_run_planned_reviewer_checks_adds_fallback_remediation_when_actions_miss
         phase=HarnessCheckPhase.FEATURE_DONE,
         changed_paths=ChangedPathsResult(paths=(), run_all=False, reason=None),
         feature_id="FEAT-001",
-        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001" / "spec.yaml",
     )
     planned = plan_reviewer_checks(
         request.doc,

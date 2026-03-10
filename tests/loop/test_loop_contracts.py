@@ -158,7 +158,7 @@ def test_progress_path_references_fall_back_when_not_repo_relative(
 def _stub_run_config() -> RunConfig:
     return RunConfig(
         project_root=Path("/tmp/project"),
-        feature_paths=("docs/spec/features/FEAT-078.yaml",),
+        feature_paths=("docs/spec/features/FEAT-078/spec.yaml",),
         dry_run=False,
     )
 
