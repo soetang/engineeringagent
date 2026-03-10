@@ -66,6 +66,25 @@ def test_progress_paths_contract(tmp_path: Path) -> None:
     )
 
 
+def test_progress_paths_contract_uses_configured_progress_root(tmp_path: Path) -> None:
+    (tmp_path / "engineeringagent.toml").write_text(
+        '[paths]\nprogress_root = "runtime/progress-artifacts"\n',
+        encoding="utf-8",
+    )
+
+    configured_root = tmp_path / "runtime" / "progress-artifacts"
+    assert progress_paths.progress_dir(tmp_path) == configured_root
+    assert progress_paths.runs_jsonl_path(tmp_path) == (
+        configured_root / "runs" / "runs.jsonl"
+    )
+    assert progress_paths.run_feature_log_path(tmp_path, "FEAT-040") == (
+        configured_root / "features" / "FEAT-040" / "run.txt"
+    )
+    assert progress_paths.run_feature_log_reference(tmp_path, "FEAT-040") == (
+        "runtime/progress-artifacts/features/FEAT-040/run.txt"
+    )
+
+
 def test_handoff_paths_contract(tmp_path: Path) -> None:
     assert progress_paths.handoff_markdown_path(tmp_path, "FEAT-040") == (
         _progress_root(tmp_path) / "features" / "FEAT-040" / "handoff.md"

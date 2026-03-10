@@ -19,6 +19,9 @@ _HARNESS_TABLE = "harness"
 _CHECKS_TABLE = "checks"
 _CHECKS_PATH_KEY = "path"
 DEFAULT_HARNESS_CHECKS_PATH = "harness/checks.yaml"
+_PATHS_TABLE = "paths"
+_PROGRESS_ROOT_KEY = "progress_root"
+DEFAULT_PROGRESS_ROOT = ".engineeringagent/progress"
 
 _AGENTS_TABLE = "agents"
 _BACKEND_KEY = "backend"
@@ -284,6 +287,33 @@ def resolve_harness_checks_config_path(project_root: Path) -> Path:
     return project_root / cast(Path, checks_path)
 
 
+def resolve_progress_root(project_root: Path) -> Path:
+    """Resolve progress root from TOML configuration.
+
+    Precedence:
+    - engineeringagent.toml[paths]
+    - pyproject.toml[tool.engineeringagent.paths]
+    - default: .engineeringagent/progress
+
+    Args:
+        project_root: Repository root used as the base for relative path values.
+
+    Returns:
+        Absolute progress root path under project_root.
+
+    Raises:
+        ValueError: If TOML cannot be parsed or the configured value is invalid.
+    """
+
+    progress_root = _resolve_preferred_project_config(
+        project_root,
+        engineeringagent_reader=_progress_root_from_engineeringagent_toml,
+        pyproject_reader=_progress_root_from_pyproject_toml,
+        default=Path(DEFAULT_PROGRESS_ROOT),
+    )
+    return project_root / cast(Path, progress_root)
+
+
 def repo_relative_label(project_root: Path, target_path: Path) -> str:
     """Render target_path relative to project_root when possible."""
     try:
@@ -499,6 +529,19 @@ def _harness_checks_path_from_engineeringagent_toml(path: Path) -> Path | None:
     )
 
 
+def _progress_root_from_engineeringagent_toml(path: Path) -> Path | None:
+    return _normalize_toml_value(
+        path,
+        table_path=(_PATHS_TABLE,),
+        key=_PROGRESS_ROOT_KEY,
+        normalizer=lambda raw_value, source_scope: _normalize_repo_local_path(
+            raw_value,
+            source_path=path,
+            source_scope=source_scope,
+        ),
+    )
+
+
 def _agents_backend_id_from_engineeringagent_toml(path: Path) -> str | None:
     return _normalize_toml_value(
         path,
@@ -567,6 +610,19 @@ def _harness_checks_path_from_pyproject_toml(path: Path) -> Path | None:
         path,
         table_path=(*_PYPROJECT_ENGINEERINGAGENT_TABLE, _HARNESS_TABLE, _CHECKS_TABLE),
         key=_CHECKS_PATH_KEY,
+        normalizer=lambda raw_value, source_scope: _normalize_repo_local_path(
+            raw_value,
+            source_path=path,
+            source_scope=source_scope,
+        ),
+    )
+
+
+def _progress_root_from_pyproject_toml(path: Path) -> Path | None:
+    return _normalize_toml_value(
+        path,
+        table_path=(*_PYPROJECT_ENGINEERINGAGENT_TABLE, _PATHS_TABLE),
+        key=_PROGRESS_ROOT_KEY,
         normalizer=lambda raw_value, source_scope: _normalize_repo_local_path(
             raw_value,
             source_path=path,

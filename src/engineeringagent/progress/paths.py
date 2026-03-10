@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from engineeringagent.config import resolve_progress_root
+
 PROGRESS_DIRNAME = Path(".engineeringagent") / "progress"
 PROGRESS_RUNS_DIRNAME = "runs"
 PROGRESS_FEATURES_DIRNAME = "features"
@@ -22,7 +24,7 @@ REVIEWERS_STATE_FILENAME = "state.json"
 def progress_dir(project_root: Path) -> Path:
     """Return the absolute progress directory for a repo root."""
 
-    return project_root / PROGRESS_DIRNAME
+    return resolve_progress_root(project_root)
 
 
 def runs_dir(project_root: Path) -> Path:
