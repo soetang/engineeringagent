@@ -181,7 +181,7 @@ def test_bundled_ralph_prompt_keeps_phase_wording_with_invalid_plan_frontmatter(
     assert "same feature YAML by setting relevant subtask/feature status fields" not in prompt
 
 
-def test_legacy_ralph_prompt_keeps_yaml_subtask_progress_wording(tmp_path: Path) -> None:
+def test_flat_feature_prompt_avoids_legacy_wrapper_wording(tmp_path: Path) -> None:
     _, feature_path = make_project_root(tmp_path, feature_data=base_feature())
     feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
 
@@ -191,24 +191,17 @@ def test_legacy_ralph_prompt_keeps_yaml_subtask_progress_wording(tmp_path: Path)
         feedback=None,
     )
 
-    assert "Identify the most important open compatibility-wrapper subtask first." in prompt
-    assert (
-        "Then implement the most important compatibility-wrapper subtask, using TDD"
-        in prompt
-    )
-    assert (
-        "Run the chosen compatibility-wrapper subtask's listed verification command(s)"
-        in prompt
-    )
-    assert "Update progress in the same feature YAML" in prompt
-    assert "relevant subtask/feature status fields" in prompt
+    assert "Identify the most important open implementation step first." in prompt
+    assert "Then implement the most important implementation step, using TDD" in prompt
+    assert "Run the chosen implementation step's listed verification command(s)" in prompt
+    assert "Update progress in the bundled feature package" in prompt
     assert "open subtask" not in prompt
     assert "chosen subtask" not in prompt
+    assert "same feature YAML by setting relevant subtask/feature status fields" not in prompt
     assert "plan.md by setting relevant phase status fields" not in prompt
-    assert (
-        "Treat the compatibility wrapper as a temporary shim and follow its "
-        "canonical bundled package references as the source of truth." in prompt
-    )
+    assert "compatibility wrapper" not in prompt
+    assert "canonical bundled package references" not in prompt
+    assert "Current implementation step: subtask-1" not in prompt
 
 
 def test_bundled_ralph_prompt_treats_package_as_canonical_working_set(

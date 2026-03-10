@@ -175,17 +175,12 @@ def _progress_update_instruction(progress_kind: str) -> str:
             "`spec.yaml` feature status fields and `updated_at`."
         )
     return (
-        "Update progress in the same feature YAML by setting relevant "
-        "subtask/feature status fields and `updated_at`."
+        "Update progress in the bundled feature package by setting "
+        "`spec.yaml` feature status fields and `updated_at`."
     )
 
 
 def _progress_context_instruction(progress_kind: str) -> str:
-    if progress_kind == "subtask":
-        return (
-            "Treat the compatibility wrapper as a temporary shim and follow its "
-            "canonical bundled package references as the source of truth."
-        )
     return (
         "Treat this bundled feature package as canonical: keep lifecycle status "
         "in `spec.yaml` and sequencing in `plan.md` when present."
@@ -193,11 +188,11 @@ def _progress_context_instruction(progress_kind: str) -> str:
 
 
 def _progress_unit_prompt_label(progress_kind: str) -> str:
-    if progress_kind == "subtask":
-        return "compatibility-wrapper subtask"
+    if progress_kind == "phase":
+        return "phase"
     if progress_kind == "feature":
         return "implementation step"
-    return progress_kind
+    return "implementation step"
 
 
 def _current_progress_reference_line(
