@@ -8,21 +8,30 @@ from engineeringagent.ports import PromptDefinition, PromptInterpolation
 
 
 def _render(values: Mapping[str, object]) -> str:
+    handoff_path = str(values["handoff_path"]).strip()
     sections = [
         str(values["artifact_paths"]),
-        (
-            "Before doing new work, read prior handoff context from "
-            f"{values['handoff_path']} when the file exists."
-        ),
-        (
-            "Because handoff is append-only, read from the bottom first "
-            "(`tail -n 40 ...`) to get the latest iteration."
-        ),
-        "Do not write the handoff file directly; loop/runtime owns handoff file appends.",
-        "",
-        "If there is feedback, from previous iterations always address that first.",
-        "",
-        "If no feedback is present:",
+    ]
+    if handoff_path:
+        sections.extend(
+            [
+                (
+                    "Before doing new work, read prior handoff context from "
+                    f"{handoff_path}."
+                ),
+                (
+                    "Because handoff is append-only, read from the bottom first "
+                    "(`tail -n 40 ...`) to get the latest iteration."
+                ),
+                "Do not write the handoff file directly; loop/runtime owns handoff file appends.",
+                "",
+            ]
+        )
+    sections.extend(
+        [
+            "If there is feedback, from previous iterations always address that first.",
+            "",
+            "If no feedback is present:",
         (
             "Execute one incremental implementation step for feature "
             f"{values['feature_id']} ({values['feature_title']})."
@@ -69,7 +78,8 @@ def _render(values: Mapping[str, object]) -> str:
             "continue the work. If you discover issues or surprises please "
             "clearly note it in the summary with `ISSUE: description of issue..`"
         ),
-    ]
+        ]
+    )
     return "\n".join(section for section in sections if section != "")
 
 
@@ -91,7 +101,7 @@ PROMPT_DEFINITION = PromptDefinition(
         PromptInterpolation(
             name="handoff_path",
             source="application.handoff_path",
-            required=True,
+            required=False,
             render_as="scalar",
             content_policy="path_only",
             content_bound=None,

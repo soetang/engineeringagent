@@ -56,6 +56,7 @@ rules:
       - engineeringagent.adapters
       - engineeringagent.cli
       - engineeringagent.loop_runtime
+      - engineeringagent.progress
   - module: engineeringagent.application.guidance_service
     blocked_dependencies:
       - engineeringagent.adapters

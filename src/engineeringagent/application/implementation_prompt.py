@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Mapping
 
-from engineeringagent.progress import paths as progress_paths
 from engineeringagent.specs import (
     feature_progress_kind,
     resolve_feature_research_path,
@@ -30,7 +29,6 @@ def build_implementation_prompt_request(
 ) -> ImplementationPromptRequest:
     """Resolve explicit application prompt inputs from feature artifacts."""
 
-    feature_id = str(feature.get("id", "unknown-feature"))
     raw_progress_kind = feature_progress_kind(feature_path, dict(feature))
     progress_unit = current_progress_unit(feature_path, dict(feature))
     progress_kind = _normalize_prompt_progress_kind(raw_progress_kind)
@@ -46,8 +44,7 @@ def build_implementation_prompt_request(
             plan=_resolved_artifact_reference(feature_path, feature, "plan"),
             research=_resolved_artifact_reference(feature_path, feature, "research"),
         ),
-        handoff_path=handoff_path
-        or progress_paths.handoff_markdown_reference(Path(), feature_id),
+        handoff_path=handoff_path,
         feedback=feedback,
         progress_kind=progress_kind,
         current_progress=current_progress,

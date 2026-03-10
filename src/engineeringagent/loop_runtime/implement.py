@@ -226,14 +226,21 @@ def _build_implement_prompt(
     *,
     prompt_builder: PromptBuilder,
 ) -> str:
+    handoff_path = None
+    if progress_paths.handoff_markdown_path(
+        implement_inputs.project_root,
+        _feature_id_for_prompt(implement_inputs.feature),
+    ).is_file():
+        handoff_path = progress_paths.handoff_markdown_reference(
+            implement_inputs.project_root,
+            _feature_id_for_prompt(implement_inputs.feature),
+        )
+
     request = build_implementation_prompt_request(
         feature=implement_inputs.feature,
         feature_path=implement_inputs.feature_path,
         feedback=implement_inputs.feedback,
-        handoff_path=progress_paths.handoff_markdown_reference(
-            implement_inputs.project_root,
-            _feature_id_for_prompt(implement_inputs.feature),
-        ),
+        handoff_path=handoff_path,
     )
     return prompt_builder.build_implementation_prompt(request)
 

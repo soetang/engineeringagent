@@ -1106,9 +1106,85 @@ def test_run_implement_step_uses_injected_prompt_builder(tmp_path: Path) -> None
         ImplementationPromptRequest(
             feature=inputs.feature,
             artifacts=PromptArtifactPaths(specification=inputs.feature_path),
-            handoff_path=".engineeringagent/progress/features/FEAT-900/handoff.md",
+            handoff_path=None,
             feedback=None,
             progress_kind="feature",
             current_progress="FEAT-900 - Prompt seam",
         )
     ]
+
+
+def test_run_implement_step_passes_handoff_path_only_when_persisted(
+    tmp_path: Path,
+) -> None:
+    _, feature_path, _plan_path = make_bundled_project_root(
+        tmp_path,
+        feature_data={
+            "id": "FEAT-900",
+            "title": "Prompt seam",
+            "type": "feature",
+            "expected_commit_subject": "feat: preserve persisted handoff prompt seam",
+            "status": "in_progress",
+            "priority": "high",
+            "objective": "Pass persisted handoff state into prompt assembly.",
+            "acceptance": ["Persisted handoff paths are passed through to prompts."],
+            "planning_tier": "planned",
+            "artifacts": {"plan": "plan.md"},
+        },
+        plan_frontmatter={
+            "plan_id": "FEAT-900",
+            "feature_id": "FEAT-900",
+            "status": "in_progress",
+            "source_spec": "spec.yaml",
+            "planning_tier": "planned",
+            "phases": [{"id": "P1", "title": "Prompt seam", "status": "in_progress"}],
+        },
+    )
+    inputs = ImplementStepInputs(
+        project_root=tmp_path,
+        feature=yaml.safe_load(feature_path.read_text(encoding="utf-8")),
+        feature_path=feature_path,
+        feedback=None,
+        verbose_output=False,
+    )
+    handoff_path = (
+        tmp_path / ".engineeringagent" / "progress" / "features" / "FEAT-900" / "handoff.md"
+    )
+    handoff_path.parent.mkdir(parents=True, exist_ok=True)
+    handoff_path.write_text("# Handoff\n", encoding="utf-8")
+    recorded_requests: list[ImplementationPromptRequest] = []
+
+    class _PromptBuilder:
+        def build_implementation_prompt(
+            self,
+            request: ImplementationPromptRequest,
+        ) -> str:
+            recorded_requests.append(request)
+            return "PROMPT FROM INJECTED BUILDER"
+
+    def _run_agent(
+        project_root: Path,
+        prompt: str,
+        *,
+        output_type: type[ImplementProgressEnvelope],
+    ) -> object:
+        assert project_root == tmp_path
+        assert prompt == "PROMPT FROM INJECTED BUILDER"
+        return fallback_implement_progress_envelope()
+
+    result = run_implement_step_from_inputs(
+        inputs,
+        run_agent_fn=_run_agent,
+        prompt_builder=_PromptBuilder(),
+    )
+
+    assert result[0] is True
+    assert len(recorded_requests) == 1
+    request = recorded_requests[0]
+    assert request.feature == inputs.feature
+    assert request.artifacts.specification == inputs.feature_path
+    assert request.artifacts.plan == str(inputs.feature_path.parent / "plan.md")
+    assert request.handoff_path == ".engineeringagent/progress/features/FEAT-900/handoff.md"
+    assert request.feedback is None
+    assert request.progress_kind == "phase"
+    assert request.current_progress == "P1 - Prompt seam"

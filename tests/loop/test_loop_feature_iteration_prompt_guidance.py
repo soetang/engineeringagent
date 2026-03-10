@@ -37,7 +37,6 @@ def test_ralph_prompt_includes_feature_file_path(tmp_path: Path) -> None:
 
     expected_interpolated_values = (
         f"- specification: {feature_path}",
-        ".engineeringagent/progress/features/FEAT-900/handoff.md",
         "feature FEAT-900 (Feature iteration smoke test)",
         f"Objective: {feature_data['objective']}",
         f"Context: {feature_data['context']}",
@@ -45,7 +44,7 @@ def test_ralph_prompt_includes_feature_file_path(tmp_path: Path) -> None:
     for value in expected_interpolated_values:
         assert value in prompt
     assert "Read and follow these files:" in prompt
-
+    assert "read prior handoff context" not in prompt
 
 def test_ralph_prompt_contract_uses_schema_only_validate_command(
     tmp_path: Path,

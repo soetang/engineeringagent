@@ -163,7 +163,7 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
     _write_module(
         tmp_path,
         "application/implementation_prompt.py",
-        "import engineeringagent.loop_runtime.selection\n",
+        "import engineeringagent.progress.paths\n",
     )
     _write_module(
         tmp_path,
@@ -192,7 +192,7 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
         ),
         (
             "engineeringagent.application.implementation_prompt imports blocked dependency "
-            "engineeringagent.loop_runtime.selection"
+            "engineeringagent.progress.paths"
         ),
         (
             "engineeringagent.application.prompt_builder imports blocked dependency "

@@ -165,6 +165,24 @@ def test_loop_runtime_prompt_helper_delegates_to_prompt_builder(tmp_path: Path) 
     assert via_helper == direct
 
 
+def test_build_implementation_prompt_request_does_not_invent_handoff_path(
+    tmp_path: Path,
+) -> None:
+    """Application prompt requests keep handoff optional until runtime provides one."""
+
+    feature_data = base_feature()
+    _, feature_path = make_project_root(tmp_path, feature_data=feature_data)
+    feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
+
+    request = build_implementation_prompt_request(
+        feature=feature,
+        feature_path=feature_path,
+        feedback=None,
+    )
+
+    assert request.handoff_path is None
+
+
 def test_default_prompt_builder_uses_explicit_handoff_path_input(
     tmp_path: Path,
 ) -> None:
@@ -186,6 +204,30 @@ def test_default_prompt_builder_uses_explicit_handoff_path_input(
     )
 
     assert "read prior handoff context from custom/handoff-reference.md" in prompt
+
+
+def test_default_prompt_builder_omits_handoff_guidance_without_path(
+    tmp_path: Path,
+) -> None:
+    """Bundled implementation prompts mention handoff only when one exists."""
+
+    feature_data = base_feature()
+    _, feature_path = make_project_root(tmp_path, feature_data=feature_data)
+    feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
+
+    prompt = _prompt_builder().build_implementation_prompt(
+        ImplementationPromptRequest(
+            feature=feature,
+            artifacts=PromptArtifactPaths(specification=feature_path),
+            handoff_path=None,
+            feedback=None,
+            progress_kind="feature",
+            current_progress="FEAT-900 - Example",
+        )
+    )
+
+    assert "read prior handoff context" not in prompt
+    assert "tail -n 40" not in prompt
 
 
 def test_default_prompt_builder_prefers_repo_local_templates(

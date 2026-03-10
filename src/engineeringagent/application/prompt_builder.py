@@ -35,7 +35,7 @@ class ImplementationPromptRequest(BaseModel):
 
     feature: Mapping[str, Any]
     artifacts: PromptArtifactPaths
-    handoff_path: str
+    handoff_path: str | None
     feedback: str | None
     progress_kind: PromptProgressKind
     current_progress: str | None = None
@@ -67,7 +67,7 @@ class DefaultPromptBuilder:
                 "objective": str(request.feature.get("objective", "")),
                 "context": str(request.feature.get("context", "")),
                 "artifact_paths": _artifact_paths_prompt_block(request),
-                "handoff_path": request.handoff_path,
+                "handoff_path": request.handoff_path or "",
                 "progress_unit": _progress_unit_prompt_label(request.progress_kind),
                 "current_progress_reference": _current_progress_reference_line(
                     request.progress_kind,
