@@ -1,7 +1,7 @@
 ---
 date: 2026-03-10T10:43:55+00:00
 researcher: OpenCode
-git_commit: d27b32b
+git_commit: e60898d
 branch: master
 repository: engineeringagent
 topic: "Research for FEAT-184 delete legacy and low-value brittle tests"
@@ -19,10 +19,12 @@ Create `research.md` for `docs/spec/features/FEAT-184-delete-low-value-tests/spe
 
 ## Summary
 - The main concentration of low-value tests is in `tests/meta` and `tests/fitness`, not the behavior-facing CLI, git, backend, or full loop-flow suites. Those two areas contain many repo-shape checks, migration guards, wording locks, deleted-path assertions, and checker self-tests that mostly enforce internal structure instead of user-visible behavior.
+- The coverage and verification contract is explicit and must stay unchanged during cleanup: `pyproject.toml:26-27` keeps `--cov=engineeringagent --cov-fail-under=95 -n 2`, `tests/meta/test_validator.py:1781-1790` locks that declaration, and `harness/checks.yaml:30-34` keeps the repository on a full `uv run pytest -q` validation path.
 - High-confidence whole-file deletion candidates are the legacy-shim and migration-guard files, wording-sync and repo-scan files, and several fitness-rule self-tests that only prove removed files stay removed or that repository layout remains encoded exactly (`tests/meta/test_legacy_shim_imports.py:9-39`, `tests/meta/test_no_gate_profile_references.py:18-63`, `tests/meta/test_legacy_checks_import_guard.py:15-109`, `tests/fitness/test_fitness_rules_repo_validators_boundary.py:6-28`, `tests/fitness/test_fitness_rules_test_layout_module_mirroring.py:56-110`, `tests/fitness/test_fitness_rules_no_doc_content_tests.py:40-164`).
 - `tests/meta/test_spec_writing_reference_doc.py` is the clearest brittle wording-lock file. Its lower half asserts exact phrases across approach docs, templates, and examples, while only the early verification-command helper coverage is behavior-adjacent (`tests/meta/test_spec_writing_reference_doc.py:71-127`, `tests/meta/test_spec_writing_reference_doc.py:202-300`).
 - `tests/meta/test_coverage_threshold_regressions.py` and `tests/meta/test_coverage_misc.py` are broad internal-helper coverage padding bundles. They explicitly target private helpers and cover many unrelated edge branches in config, presentation, feature-state, and checker internals rather than a coherent external contract (`tests/meta/test_coverage_threshold_regressions.py:3-4`, `tests/meta/test_coverage_threshold_regressions.py:67-145`, `tests/meta/test_coverage_threshold_regressions.py:873-1002`, `tests/meta/test_coverage_misc.py:3-4`, `tests/meta/test_coverage_misc.py:32-106`).
 - Loop tests should not be deleted wholesale. The low-value loop work is concentrated in test-support/helper files and presentation-label assertions, such as helper-only support modules and exact output wording checks (`tests/loop/test_loop_feature_iteration_support.py:14-68`, `tests/loop/test_loop_feature_phase_progress_helpers.py:15-138`, `tests/loop/test_selected_feature_load_without_archive_fallback.py:11-44`, `tests/loop/test_loop_selection.py:120-251`, `tests/loop/test_loop_output.py:1108-1169`).
+- The strongest retention anchors remain in behavior-facing suites: CLI surfaces in `tests/cli/test_cli.py:53-947`, loop lifecycle/execution/reviewers in `tests/loop/test_loop_feature_iteration_lifecycle.py:33-353`, `tests/loop/test_loop_feature_iteration_execution.py:32-599`, `tests/loop/test_loop_feature_iteration_verification.py:36-505`, `tests/loop/test_loop_reviewers.py:18-295`, checks runtime loading in `tests/checks/test_run_checks_contract_loader.py:14-250`, and git behavior in `tests/git/test_client.py:9-266` and `tests/git/test_git_client.py:18-551`.
 - The suite shape today is: `meta` for migration and repo-policy guards, `fitness` for checker self-tests and architecture policing, `loop` for both behavior anchors and internal helper/presentation coverage, and `cli/git/config` for stronger behavior-facing anchors. FEAT-184 can therefore proceed in ordered deletion waves with a strong bias toward deleting whole files in `meta` and `fitness` first.
 
 ## Detailed Findings
@@ -31,6 +33,12 @@ Create `research.md` for `docs/spec/features/FEAT-184-delete-low-value-tests/spe
 - The targeted directories are large enough that broad deletion can materially reduce maintenance: `tests/meta` has 14 Python files, `tests/fitness` has 39, and `tests/loop` has 26, while the more behavior-facing `tests/git` and `tests/config` areas are much smaller and more focused.
 - The current low-value surface is concentrated in files that scan the repository tree, inspect source ASTs, assert exact documentation strings, or exercise private helper branches. Those patterns recur throughout `tests/meta` and `tests/fitness`.
 - The core behavior anchors described in the spec are still mostly outside this delete set: CLI command behavior, runtime iteration flow, git client behavior, backend seams, and checks runtime orchestration are covered elsewhere in `tests/cli`, `tests/git`, `tests/config`, and the stronger loop flow files.
+
+### Coverage and repository verification invariants
+- `pyproject.toml:26-27` configures pytest with `--cov=engineeringagent --cov-report= --cov-fail-under=95 -n 2`, so FEAT-184 cannot rely on removing tests and then softening the repository gate.
+- `tests/meta/test_validator.py:1781-1790` asserts that `--cov=engineeringagent` and `--cov-fail-under=95` stay in pytest addopts and that the suite does not hide behind a `not integration` default filter.
+- `harness/checks.yaml:30-34` runs `uv run pytest -q` in the normal checks path, so the final implementation must satisfy both direct pytest and checks-driven validation.
+- These three surfaces make full-suite execution and coverage preservation part of the current repository contract, not merely a best-effort implementation preference.
 
 ### High-confidence whole-file deletion candidates in `tests/meta`
 - `tests/meta/test_legacy_shim_imports.py:9-39` only asserts that removed modules remain undiscoverable and raise import failures. This is a pure migration cleanup guard for legacy package names, not a behavior-facing contract.
@@ -78,6 +86,8 @@ Create `research.md` for `docs/spec/features/FEAT-184-delete-low-value-tests/spe
 - The CLI suites still provide user-visible command behavior coverage, including help text, rejected flags, command registration, schema output, and checks command surfaces (`tests/cli/test_cli.py:53-279`, `tests/cli/test_cli.py:569-947`).
 - Git tests remain behavior-facing and should act as anchors for repository-side effects and commit-message rules (`tests/git/test_client.py`, `tests/git/test_git_client.py`, `tests/git/test_commit_message_validation.py`).
 - The stronger loop-flow files that exercise feature iteration lifecycle, execution, verification, feedback, reviewers, and runtime orchestration are much closer to the retained anchor set described by the FEAT-184 spec than the helper-only loop files are.
+- `tests/checks/test_run_checks_contract_loader.py:14-250` is a stronger checks anchor than the fitness rule self-tests because it validates the public checks runtime loading and contract surface rather than a specific repository policy checker implementation.
+- `tests/meta/test_validator.py:30-1802` should remain selectively retained even though it lives under `tests/meta`, because it covers schema/repository validation behavior and explicitly locks the repository coverage contract (`tests/meta/test_validator.py:1781-1790`).
 
 ## Code References
 - `tests/meta/test_legacy_shim_imports.py:9-39` - legacy import and module-discoverability removal guards.
@@ -90,6 +100,9 @@ Create `research.md` for `docs/spec/features/FEAT-184-delete-low-value-tests/spe
 - `tests/meta/test_coverage_threshold_regressions.py:67-145` - private-helper coverage around config and presentation edge paths.
 - `tests/meta/test_coverage_threshold_regressions.py:873-1002` - adapter-private error-path and normalization coverage.
 - `tests/meta/test_coverage_misc.py:32-106` - helper-oriented coverage for path matching, subprocess argument construction, logging, and commit message helpers.
+- `pyproject.toml:26-27` - repository pytest coverage and parallelism contract.
+- `harness/checks.yaml:30-34` - default repo checks path that runs the full pytest suite.
+- `tests/meta/test_validator.py:1781-1790` - regression locking the declared pytest coverage gate.
 - `tests/specs/test_specs_layout_smoke.py:23-90` - repository layout and bundled-plan vocabulary smoke coverage.
 - `tests/fitness/test_fitness_rules_repo_validators_boundary.py:6-28` - removed rule and deleted checker presence guard.
 - `tests/fitness/test_fitness_rules_test_layout_module_mirroring.py:56-110` - repository test-layout mirroring rule self-tests.

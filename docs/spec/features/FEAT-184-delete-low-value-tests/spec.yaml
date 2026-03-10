@@ -2,7 +2,7 @@ id: FEAT-184
 title: Delete legacy and low-value brittle tests
 type: test
 expected_commit_subject: "spec: add FEAT-184 low-value test cleanup"
-planning_tier: direct
+planning_tier: researched
 status: blocked
 priority: high
 objective: >
@@ -76,5 +76,5 @@ acceptance:
   - "Any coverage replaced during the cleanup is narrower and more behavior-oriented than the deleted legacy or brittle tests it supersedes."
   - "Repository guidance and feature artifacts created for this work document the deletion strategy and verification expectations clearly enough for a later implementation session."
 artifacts:
-  research: null
-  plan: null
+  research: research.md
+  plan: plan.md
