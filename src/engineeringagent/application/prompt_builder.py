@@ -9,6 +9,7 @@ from typing import Any, Mapping, Protocol
 
 from pydantic import ValidationError
 
+from engineeringagent.adapters.prompts import BundledPromptDefinitionRepository
 from engineeringagent.loop_runtime.progress_units import current_progress_unit
 from engineeringagent.ports import PromptDefinitionRepository
 from engineeringagent.prompt_feedback import normalize_prompt_feedback
@@ -115,8 +116,6 @@ def inject_feedback(prompt: str, feedback: str | None) -> str:
     normalized_feedback = _normalize_feedback(feedback)
     if not normalized_feedback:
         return prompt
-
-    from engineeringagent.adapters.prompts import BundledPromptDefinitionRepository
 
     feedback_template = _load_template(
         BundledPromptDefinitionRepository(),

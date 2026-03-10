@@ -3,14 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Literal
+from typing import Literal
 
-from engineeringagent.approach import (
-    format_approach_topic_index,
-    load_topic_body,
-    load_topic_content,
-    render_approach_overview,
-)
+from engineeringagent.adapters.guidance import PackagedGuidanceTopicRepository
+from engineeringagent.ports import GuidanceTopic, GuidanceTopicRepository
 
 
 @dataclass(frozen=True)
@@ -46,28 +42,28 @@ class DefaultGuidanceService(GuidanceService):
 
     def __init__(
         self,
-        *,
-        load_topic_content_fn: Callable[[str], str] = load_topic_content,
-        load_topic_body_fn: Callable[[str], str] = load_topic_body,
-        format_topic_index_fn: Callable[[], str] = format_approach_topic_index,
-        render_overview_fn: Callable[[str], str] = render_approach_overview,
+        topic_repository: GuidanceTopicRepository | None = None,
     ) -> None:
-        self._load_topic_content = load_topic_content_fn
-        self._load_topic_body = load_topic_body_fn
-        self._format_topic_index = format_topic_index_fn
-        self._render_overview = render_overview_fn
+        self._topic_repository = (
+            topic_repository
+            if topic_repository is not None
+            else PackagedGuidanceTopicRepository()
+        )
 
     def render(self, query: GuidanceQuery) -> GuidanceResult:
         """Render one guidance response for the requested query kind."""
         if query.kind == "overview":
-            overview = self._load_topic_content("overview")
+            overview = self._require_document(self._topic_repository.load("overview"))
             return GuidanceResult(
-                payload=self._render_overview(overview),
+                payload=_render_overview(overview, self._topic_repository.list_topics()),
                 output_prefix="approach overview written",
             )
 
         if query.kind == "list":
-            rendered = self._format_topic_index() or "No approach topics are available."
+            rendered = (
+                _format_topic_index(self._topic_repository.list_topics())
+                or "No approach topics are available."
+            )
             return GuidanceResult(
                 payload=rendered,
                 output_prefix="approach list written",
@@ -78,7 +74,44 @@ class DefaultGuidanceService(GuidanceService):
             raise GuidanceInputError(
                 "provide a topic id or use `engineeringagent approach list`"
             )
+        topic = self._topic_repository.load(topic_id)
         return GuidanceResult(
-            payload=self._load_topic_body(topic_id),
+            payload=self._require_body(topic),
             output_prefix="approach topic written",
         )
+
+    def _require_body(self, topic: GuidanceTopic) -> str:
+        if topic.body is None:
+            raise ValueError(
+                f"guidance topic body is missing for {topic.canonical_id}"
+            )
+        return topic.body
+
+    def _require_document(self, topic: GuidanceTopic) -> str:
+        if topic.document is None:
+            raise ValueError(
+                f"guidance topic document is missing for {topic.canonical_id}"
+            )
+        return topic.document
+
+
+def _format_topic_index(topics: tuple[GuidanceTopic, ...]) -> str:
+    """Render a deterministic stable-order topic index as markdown payload lines."""
+
+    return "\n".join(
+        (
+            f"{topic.canonical_id}: {topic.title} - {topic.description}"
+            if topic.description
+            else f"{topic.canonical_id}: {topic.title}"
+        )
+        for topic in topics
+    )
+
+
+def _render_overview(overview_payload: str, topics: tuple[GuidanceTopic, ...]) -> str:
+    """Render guidance overview with a deterministic topic index section."""
+
+    return (
+        f"{overview_payload.rstrip()}\n\nAvailable approach topics:\n"
+        f"{_format_topic_index(topics)}"
+    )
