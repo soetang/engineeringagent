@@ -11,6 +11,7 @@ from .handoff import (
 )
 from .paths import (
     FEATURE_HANDOFF_FILENAME,
+    FEATURE_ITERATION_REPORT_FILENAME,
     FEATURE_RUN_LOG_FILENAME,
     PROGRESS_DIRNAME,
     PROGRESS_FEATURES_DIRNAME,
@@ -23,6 +24,8 @@ from .paths import (
     handoff_markdown_path,
     handoff_markdown_reference,
     handoff_markdown_template_reference,
+    iteration_report_path,
+    iteration_report_reference,
     progress_dir,
     reviewers_state_path,
     run_feature_log_filename,
@@ -49,6 +52,7 @@ __all__ = [
     "RUNS_JSONL_FILENAME",
     "FEATURE_RUN_LOG_FILENAME",
     "FEATURE_HANDOFF_FILENAME",
+    "FEATURE_ITERATION_REPORT_FILENAME",
     "REVIEWERS_STATE_FILENAME",
     "progress_dir",
     "runs_dir",
@@ -65,4 +69,6 @@ __all__ = [
     "handoff_markdown_path",
     "handoff_markdown_reference",
     "handoff_markdown_template_reference",
+    "iteration_report_path",
+    "iteration_report_reference",
 ]

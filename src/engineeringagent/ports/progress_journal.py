@@ -28,14 +28,24 @@ class ProgressJournal(Protocol):
         """Append one newline-terminated text block to the feature log."""
         raise NotImplementedError
 
-    def append_handoff_entry(
+    def write_iteration_report(
         self,
         *,
         project_root: Path,
         feature_id: str,
-        entry_lines: Sequence[str],
+        payload: dict[str, Any],
     ) -> None:
-        """Append one rendered handoff entry for a feature."""
+        """Write the latest machine-readable iteration report for a feature."""
+        raise NotImplementedError
+
+    def write_handoff(
+        self,
+        *,
+        project_root: Path,
+        feature_id: str,
+        lines: Sequence[str],
+    ) -> None:
+        """Write the latest rendered handoff artifact for a feature."""
         raise NotImplementedError
 
     def latest_handoff_path(self, *, project_root: Path, feature_id: str) -> Path | None:

@@ -3,6 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, NamedTuple, Sequence
 
+from engineeringagent.adapters.progress import FilesystemProgressJournal
+
 from .adapters.agents import ConfiguredAgentRunner
 from .adapters.vcs.git_cli import (
     add_all,
@@ -67,6 +69,7 @@ from .specs import progress_kind_label
 __all__ = ["run_loop_controller"]
 
 _AGENT_RUNNER = ConfiguredAgentRunner()
+_PROGRESS_JOURNAL = FilesystemProgressJournal()
 
 
 def _print_run_all_snapshot_banner(resolved_paths: Sequence[Path]) -> None:
@@ -337,9 +340,18 @@ def _default_iteration_report_observers() -> tuple[IterationReportObserver, ...]
                     git_head_resolver=git_head_resolver,
                 )
             ),
+            persist_iteration_report=_persist_iteration_report,
             git_head_resolver=git_head_short,
             print_summary=print_summary,
         )
+    )
+
+
+def _persist_iteration_report(report: IterationReport) -> None:
+    _PROGRESS_JOURNAL.write_iteration_report(
+        project_root=report.telemetry_inputs.iteration_inputs.project_root,
+        feature_id=report.feature_id,
+        payload=report.model_dump(mode="json"),
     )
 
 

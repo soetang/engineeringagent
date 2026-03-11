@@ -14,6 +14,7 @@ from engineeringagent.loop_runtime.observers import (
     TelemetryObserverDependencies,
     build_default_iteration_report_observers,
     build_console_observer,
+    build_progress_artifact_observer,
     build_telemetry_observer,
     publish_iteration_report,
 )
@@ -143,6 +144,20 @@ def test_console_observer_prints_summary_and_failed_log_pointer(tmp_path: Path) 
     assert published_report is report
 
 
+def test_progress_artifact_observer_persists_finalized_report(tmp_path: Path) -> None:
+    captured: list[IterationReport] = []
+    report = _build_iteration_report(tmp_path).model_copy(
+        update={"log_path": "progress/run-feature-FEAT-116.txt"}
+    )
+
+    observer = build_progress_artifact_observer(captured.append)
+
+    published_report = observer(report)
+
+    assert captured == [report]
+    assert published_report is report
+
+
 def test_default_observers_publish_telemetry_before_console(tmp_path: Path) -> None:
     calls: list[tuple[str, str]] = []
     summary_log_paths: list[str | None] = []
@@ -160,6 +175,11 @@ def test_default_observers_publish_telemetry_before_console(tmp_path: Path) -> N
                     "progress/run-feature-FEAT-116.txt",
                 )[-1]
             ),
+            persist_iteration_report=(
+                lambda iteration_report: calls.append(
+                    ("progress", iteration_report.log_path or "-")
+                )
+            ),
             git_head_resolver=lambda _project_root: "abc1234",
             print_summary=_record_summary,
         )
@@ -167,6 +187,10 @@ def test_default_observers_publish_telemetry_before_console(tmp_path: Path) -> N
 
     published_report = publish_iteration_report(report, observers)
 
-    assert calls == [("telemetry", "FEAT-116"), ("console", "summary")]
+    assert calls == [
+        ("telemetry", "FEAT-116"),
+        ("progress", "progress/run-feature-FEAT-116.txt"),
+        ("console", "summary"),
+    ]
     assert summary_log_paths == ["progress/run-feature-FEAT-116.txt"]
     assert published_report.log_path == "progress/run-feature-FEAT-116.txt"

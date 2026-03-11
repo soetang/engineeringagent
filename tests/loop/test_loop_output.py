@@ -100,27 +100,25 @@ def test_handoff_envelope_parser_falls_back_for_invalid_payload() -> None:
     assert envelope.blockers == []
 
 
-def test_handoff_markdown_append_creates_file_and_appends_entries(
+def test_handoff_markdown_write_replaces_previous_contents(
     tmp_path: Path,
 ) -> None:
     handoff_path = _progress_root(tmp_path) / "features" / "FEAT-130" / "handoff.md"
-    _PROGRESS_JOURNAL.append_handoff_entry(
+    _PROGRESS_JOURNAL.write_handoff(
         project_root=tmp_path,
         feature_id="FEAT-130",
-        entry_lines=["## Iteration 4 - 2026-02-25T07:00:00Z", "", "Summary: first"],
+        lines=["## Iteration 4 - 2026-02-25T07:00:00Z", "", "Summary: first"],
     )
-    first_size = handoff_path.stat().st_size
-
-    _PROGRESS_JOURNAL.append_handoff_entry(
+    _PROGRESS_JOURNAL.write_handoff(
         project_root=tmp_path,
         feature_id="FEAT-130",
-        entry_lines=["## Iteration 5 - 2026-02-25T07:01:00Z", "", "Summary: second"],
+        lines=["## Iteration 5 - 2026-02-25T07:01:00Z", "", "Summary: second"],
     )
-    second_size = handoff_path.stat().st_size
 
     assert handoff_path.exists()
-    assert first_size > 0
-    assert second_size > first_size
+    assert handoff_path.read_text(encoding="utf-8") == (
+        "## Iteration 5 - 2026-02-25T07:01:00Z\n\nSummary: second\n"
+    )
 
 
 def test_handoff_markdown_entry_omits_empty_and_placeholder_sections() -> None:
@@ -189,7 +187,7 @@ def test_handoff_render_metadata_exposes_pydantic_dump_defaults() -> None:
     }
 
 
-def test_write_iteration_telemetry_appends_handoff_entry_from_envelope(
+def test_write_iteration_telemetry_writes_handoff_snapshot_from_envelope(
     tmp_path: Path,
 ) -> None:
     iteration_inputs = FeatureIterationInputs(
@@ -218,8 +216,8 @@ def test_write_iteration_telemetry_appends_handoff_entry_from_envelope(
         progress_title="Track bundled handoff progress",
         implement_output="",
         implement_handoff_envelope=ImplementProgressEnvelope(
-            summary="Added handoff append wiring to telemetry flow.",
-            completed_work=["Wired markdown append call after JSONL write"],
+            summary="Added handoff snapshot wiring to telemetry flow.",
+            completed_work=["Wired markdown snapshot write after JSONL write"],
             verification=["uv run pytest -q tests/loop/test_loop_output.py -k handoff"],
             remaining_work=["Add integration coverage for loop observer chain"],
             blockers=[],
@@ -249,7 +247,6 @@ def test_write_iteration_telemetry_appends_fallback_handoff_when_missing(
     handoff_path = _progress_root(tmp_path) / "features" / "FEAT-130" / "handoff.md"
     handoff_path.parent.mkdir(parents=True, exist_ok=True)
     handoff_path.write_text("seed-entry\n", encoding="utf-8")
-    baseline_stat = handoff_path.stat()
 
     iteration_inputs = FeatureIterationInputs(
         project_root=tmp_path,
@@ -285,8 +282,7 @@ def test_write_iteration_telemetry_appends_fallback_handoff_when_missing(
     )
 
     assert handoff_path.exists()
-    assert handoff_path.stat().st_size > baseline_stat.st_size
-    assert handoff_path.stat().st_mtime_ns >= baseline_stat.st_mtime_ns
+    assert handoff_path.read_text(encoding="utf-8") != "seed-entry\n"
 
 
 def test_write_iteration_telemetry_uses_phase_wording_for_fallback_handoff(

@@ -9,7 +9,7 @@ from engineeringagent.adapters.progress import FilesystemProgressJournal
 def test_filesystem_progress_journal_writes_all_progress_artifacts(
     tmp_path: Path,
 ) -> None:
-    """Persist run, feature-log, and handoff artifacts through one adapter."""
+    """Persist run, feature-log, report, and handoff artifacts through one adapter."""
     journal = FilesystemProgressJournal()
 
     journal.append_run_record(
@@ -21,10 +21,15 @@ def test_filesystem_progress_journal_writes_all_progress_artifacts(
         feature_id="FEAT-200",
         lines=["entry one", "entry two"],
     )
-    journal.append_handoff_entry(
+    journal.write_iteration_report(
         project_root=tmp_path,
         feature_id="FEAT-200",
-        entry_lines=["## Iteration 1 - 2026-03-10T00:00:00Z", "", "Summary: wired"],
+        payload={"feature_id": "FEAT-200", "attempt": 1, "result": "passed"},
+    )
+    journal.write_handoff(
+        project_root=tmp_path,
+        feature_id="FEAT-200",
+        lines=["# Handoff", "", "- Feature: `FEAT-200`", "- Carryover summary: wired"],
     )
 
     runs_payload = json.loads(
@@ -44,6 +49,22 @@ def test_filesystem_progress_journal_writes_all_progress_artifacts(
     ).read_text(encoding="utf-8")
     assert "entry one\nentry two" in feature_log
 
+    report_payload = json.loads(
+        (
+            tmp_path
+            / ".engineeringagent"
+            / "progress"
+            / "features"
+            / "FEAT-200"
+            / "iteration-report.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert report_payload == {
+        "feature_id": "FEAT-200",
+        "attempt": 1,
+        "result": "passed",
+    }
+
     handoff_path = (
         tmp_path
         / ".engineeringagent"
@@ -52,7 +73,7 @@ def test_filesystem_progress_journal_writes_all_progress_artifacts(
         / "FEAT-200"
         / "handoff.md"
     )
-    assert handoff_path.read_text(encoding="utf-8").startswith("## Iteration 1")
+    assert handoff_path.read_text(encoding="utf-8").startswith("# Handoff")
     assert journal.latest_handoff_path(
         project_root=tmp_path,
         feature_id="FEAT-200",

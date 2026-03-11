@@ -18,6 +18,7 @@ PROGRESS_REVIEWERS_DIRNAME = "reviewers"
 RUNS_JSONL_FILENAME = "runs.jsonl"
 FEATURE_RUN_LOG_FILENAME = "run.txt"
 FEATURE_HANDOFF_FILENAME = "handoff.md"
+FEATURE_ITERATION_REPORT_FILENAME = "iteration-report.json"
 REVIEWERS_STATE_FILENAME = "state.json"
 
 
@@ -138,3 +139,15 @@ def handoff_markdown_template_reference(project_root: Path) -> str:
         project_root,
         features_dir(project_root) / "<FEATURE_ID>" / FEATURE_HANDOFF_FILENAME,
     )
+
+
+def iteration_report_path(project_root: Path, feature_id: str) -> Path:
+    """Return absolute path to the per-feature machine-readable iteration report."""
+
+    return feature_dir_path(project_root, feature_id) / FEATURE_ITERATION_REPORT_FILENAME
+
+
+def iteration_report_reference(project_root: Path, feature_id: str) -> str:
+    """Return repository-relative reference for a feature iteration report path."""
+
+    return _to_reference(project_root, iteration_report_path(project_root, feature_id))

@@ -78,19 +78,32 @@ class FilesystemProgressJournal(ProgressJournal):
         )
         logger.info("\n".join(lines))
 
-    def append_handoff_entry(
+    def write_iteration_report(
         self,
         *,
         project_root: Path,
         feature_id: str,
-        entry_lines: Sequence[str],
+        payload: dict[str, Any],
+    ) -> None:
+        report_path = progress_paths.iteration_report_path(project_root, feature_id)
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(report_path, "w", encoding="utf-8") as report_file:
+            report_file.write(json.dumps(payload, ensure_ascii=True, indent=2) + "\n")
+
+    def write_handoff(
+        self,
+        *,
+        project_root: Path,
+        feature_id: str,
+        lines: Sequence[str],
     ) -> None:
         log_path = progress_paths.handoff_markdown_path(project_root, feature_id)
-        logger = _get_or_create_file_logger(
-            namespace="engineeringagent.progress.feature",
-            log_path=log_path,
-        )
-        logger.info("\n".join(entry_lines))
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        rendered = "\n".join(lines)
+        if rendered and not rendered.endswith("\n"):
+            rendered += "\n"
+        with open(log_path, "w", encoding="utf-8") as handoff_file:
+            handoff_file.write(rendered)
 
     def latest_handoff_path(self, *, project_root: Path, feature_id: str) -> Path | None:
         handoff_path = progress_paths.handoff_markdown_path(project_root, feature_id)

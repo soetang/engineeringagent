@@ -290,7 +290,7 @@ def write_iteration_telemetry(  # noqa: C901
         [_strip_ansi(line) for line in feature_progress_log_lines],
     )
     append_run(project_root, run_payload)
-    _append_feature_handoff_markdown(
+    _write_feature_handoff_markdown(
         telemetry_inputs=telemetry_inputs,
         feature_id=feature_id,
         timestamp=str(run_payload["ts"]),
@@ -299,7 +299,7 @@ def write_iteration_telemetry(  # noqa: C901
     return feature_progress_log_reference
 
 
-def _append_feature_handoff_markdown(
+def _write_feature_handoff_markdown(
     *,
     telemetry_inputs: IterationTelemetryInputs,
     feature_id: str,
@@ -327,8 +327,8 @@ def _append_feature_handoff_markdown(
             progress_title=telemetry_inputs.progress_title,
         ),
     )
-    _PROGRESS_JOURNAL.append_handoff_entry(
+    _PROGRESS_JOURNAL.write_handoff(
         project_root=project_root,
         feature_id=feature_id,
-        entry_lines=entry_lines,
+        lines=entry_lines,
     )

@@ -41,6 +41,7 @@ class DefaultObserverDependencies(BaseModel):
         [IterationTelemetryInputs, Callable[[Path], str | None]],
         str,
     ]
+    persist_iteration_report: Callable[[IterationReport], None]
     git_head_resolver: Callable[[Path], str | None]
     print_summary: PrintSummaryFn
 
@@ -107,10 +108,22 @@ def build_console_observer(
     return _observe
 
 
+def build_progress_artifact_observer(
+    persist_iteration_report: Callable[[IterationReport], None],
+) -> IterationReportObserver:
+    """Build observer that persists the finalized iteration report artifact."""
+
+    def _observe(report: IterationReport) -> IterationReport:
+        persist_iteration_report(report)
+        return report
+
+    return _observe
+
+
 def build_default_iteration_report_observers(
     dependencies: DefaultObserverDependencies,
-) -> tuple[IterationReportObserver, IterationReportObserver]:
-    """Build the default observer chain (telemetry first, then console)."""
+) -> tuple[IterationReportObserver, IterationReportObserver, IterationReportObserver]:
+    """Build the default observer chain (telemetry, progress artifacts, console)."""
 
     telemetry_observer = build_telemetry_observer(
         TelemetryObserverDependencies(
@@ -118,9 +131,12 @@ def build_default_iteration_report_observers(
             git_head_resolver=dependencies.git_head_resolver,
         )
     )
+    progress_observer = build_progress_artifact_observer(
+        dependencies.persist_iteration_report
+    )
     console_observer = build_console_observer(
         ConsoleObserverDependencies(
             print_summary=dependencies.print_summary,
         )
     )
-    return (telemetry_observer, console_observer)
+    return (telemetry_observer, progress_observer, console_observer)
