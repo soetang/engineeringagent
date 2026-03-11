@@ -6,6 +6,7 @@ This file is generated from active manifest-declared fitness rules.
 
 | Rule ID | Severity | Adapter | Source | Scope | Config File | Summary |
 | --- | --- | --- | --- | --- | --- | --- |
+| `architecture.adapter-root-locality` | error | command | custom | `src/engineeringagent/adapters` | - | Keep adapter implementation modules inside focused adapters subpackages. |
 | `architecture.agents-backends-boundary` | error | command | custom | `src/engineeringagent` | - | Forbid direct backend package usage outside the agents boundary. |
 | `architecture.backend-literal-locality-budget` | error | command | custom | `src/engineeringagent excluding src/engineeringagent/agents/** and src/engineeringagent/checks/**` | `harness/fitness_functions/policies/backend_literal_locality_budget.yaml` | Enforce a zero-budget backend literal locality boundary outside allowed packages. |
 | `architecture.checks-import-surface` | error | command | custom | `src/engineeringagent` | - | Enforce a narrow import surface for engineeringagent.checks. |
@@ -35,6 +36,13 @@ This file is generated from active manifest-declared fitness rules.
 | `smoke.opencode-real-hello-world` | error | command | custom | `repository (temp repo)` | - | Validate the real agent loop end-to-end in an isolated temp repository. |
 
 ## Rule Details
+
+### `architecture.adapter-root-locality`
+
+- Name: Adapter root locality
+- Side-effect free: `true`
+- Rationale: Prevents the adapters package root from becoming a mixed implementation bucket and moves adapter code toward the target architecture layout.
+- Remediation: Move root-level adapter implementation files into a focused subpackage under engineeringagent.adapters/.
 
 ### `architecture.agents-backends-boundary`
 
@@ -195,7 +203,7 @@ This file is generated from active manifest-declared fitness rules.
 - Name: Progress log path locality
 - Side-effect free: `true`
 - Rationale: Prevents regressions that reintroduce inline progress/log path literals or direct file writes.
-- Remediation: Construct paths via engineeringagent.progress.paths and write loop log sinks via engineeringagent.progress.logging.
+- Remediation: Construct paths via engineeringagent.adapters.progress.paths and write loop log sinks via engineeringagent.adapters.progress.filesystem_journal.
 
 ### `architecture.prompt-locality`
 

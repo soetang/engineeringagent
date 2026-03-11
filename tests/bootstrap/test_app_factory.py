@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from engineeringagent.adapters import LegacyLoopRunLoopExecutor
 from engineeringagent.adapters.agents import ConfiguredAgentRunner
 from engineeringagent.adapters.checks import (
     ChecksRepositoryValidator,
@@ -12,6 +11,7 @@ from engineeringagent.adapters.documents import (
     ChecksCatalogLoadOptions,
     FilesystemChecksCatalogRepository,
 )
+from engineeringagent.adapters.loop import LegacyLoopRunLoopExecutor
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
 from engineeringagent.adapters.vcs import (

@@ -1,5 +1,19 @@
 contract_version: "1.0"
 rules:
+  - rule_id: architecture.adapter-root-locality
+    name: Adapter root locality
+    summary: Keep adapter implementation modules inside focused adapters subpackages.
+    rationale: Prevents the adapters package root from becoming a mixed implementation bucket and moves adapter code toward the target architecture layout.
+    remediation: Move root-level adapter implementation files into a focused subpackage under engineeringagent.adapters/.
+    scope: src/engineeringagent/adapters
+    severity: error
+    side_effect_free: true
+    adapter: command
+    command:
+      - uv
+      - run
+      - python
+      - harness/fitness_functions/rules/check_adapter_root_locality.py
   - rule_id: architecture.dep-directionality
     name: Dependency directionality
     summary: >-

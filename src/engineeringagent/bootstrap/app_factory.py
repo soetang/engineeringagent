@@ -6,7 +6,6 @@ from importlib import import_module
 from pathlib import Path
 
 from engineeringagent.adapters.agents import ConfiguredAgentRunner
-from engineeringagent.adapters import LegacyLoopRunLoopExecutor
 from engineeringagent.adapters.checks import (
     ChecksRepositoryValidator,
     RuntimeChecksRunner,
@@ -16,6 +15,7 @@ from engineeringagent.adapters.documents import (
     FilesystemChecksCatalogRepository,
 )
 from engineeringagent.adapters.guidance import PackagedGuidanceTopicRepository
+from engineeringagent.adapters.loop import LegacyLoopRunLoopExecutor
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
 from engineeringagent.adapters.vcs import (
