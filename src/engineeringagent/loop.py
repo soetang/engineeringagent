@@ -3,13 +3,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, NamedTuple, Sequence
 
-from .changed_paths import collect_changed_paths
-from .git.client import (
+from .adapters.vcs.git_cli import (
     add_all,
     commit as git_commit,
     head_short as git_head,
     status_porcelain,
 )
+from .changed_paths import collect_changed_paths
 from .agents import preflight, run_agent
 from .loop_runtime.controller import run_loop_controller
 from .loop_runtime.implement import run_implement_step_from_inputs

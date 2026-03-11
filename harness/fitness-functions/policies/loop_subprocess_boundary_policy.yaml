@@ -1,6 +1,6 @@
 allowlisted_modules:
   - src/engineeringagent/checks/fitness/adapters.py
-  - src/engineeringagent/git/client.py
+  - src/engineeringagent/adapters/vcs/git_cli.py
   - src/engineeringagent/process.py
   - src/engineeringagent/agents/backends/opencode/client.py
   - src/engineeringagent/agents/backends/codex/client.py

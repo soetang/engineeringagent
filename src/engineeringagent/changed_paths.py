@@ -4,7 +4,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.git import client as git_client
+from engineeringagent.adapters.vcs import git_cli
 
 
 FALLBACK_CHANGE_DISCOVERY_REASON = "fallback_run_all_change_discovery_failed"
@@ -31,7 +31,7 @@ def collect_changed_paths(
     head: str | None = None,
 ) -> ChangedPathsResult:
     """Collect repository-relative changed paths for on_change matching."""
-    proc = git_client.diff_name_status(cwd, base=base, head=head)
+    proc = git_cli.diff_name_status(cwd, base=base, head=head)
     if proc.returncode != 0:
         return ChangedPathsResult(
             paths=(),

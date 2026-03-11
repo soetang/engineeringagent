@@ -7,13 +7,13 @@ from typing import Callable
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from .adapters.vcs import git_cli
 from .agents import default_backend_id, list_backends
 from .config import (
     DEFAULT_CODEX_PROFILE,
     resolve_agents_backend_id,
     resolve_agents_codex_profile_in_engineeringagent_toml,
 )
-from .git import client as git_client
 from .init_scaffold import AGENTS_LAUNCHER_CHOICES, DEFAULT_AGENTS_LAUNCHER
 from .presentation.terminal import stdout_is_tty
 
@@ -410,7 +410,7 @@ def install_precommit_hooks_best_effort(
             retry_command = f"pre-commit install --hook-type {hook_type}"
 
         try:
-            result = git_client.precommit_install(project_root, hook_type=hook_type)
+            result = git_cli.precommit_install(project_root, hook_type=hook_type)
         except OSError as exc:
             emit(
                 "init warning: pre-commit hook install failed "

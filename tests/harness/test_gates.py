@@ -5,7 +5,7 @@ from types import SimpleNamespace
 from typing import Any
 
 from engineeringagent import changed_paths
-from engineeringagent.git import client as git_client
+from engineeringagent.adapters.vcs import git_cli
 
 
 def test_collect_changed_paths_falls_back_when_git_diff_fails(
@@ -15,7 +15,7 @@ def test_collect_changed_paths_falls_back_when_git_diff_fails(
     def fake_diff(*_args: Any, **_kwargs: Any) -> Any:
         return SimpleNamespace(returncode=1, stdout="", stderr="boom")
 
-    monkeypatch.setattr(git_client, "diff_name_status", fake_diff)
+    monkeypatch.setattr(git_cli, "diff_name_status", fake_diff)
 
     result = changed_paths.collect_changed_paths(tmp_path)
 
@@ -41,7 +41,7 @@ def test_collect_changed_paths_parses_rename_and_normalizes_separators(
     def fake_diff(*_args: Any, **_kwargs: Any) -> Any:
         return SimpleNamespace(returncode=0, stdout=stdout, stderr="")
 
-    monkeypatch.setattr(git_client, "diff_name_status", fake_diff)
+    monkeypatch.setattr(git_cli, "diff_name_status", fake_diff)
 
     result = changed_paths.collect_changed_paths(tmp_path)
 
@@ -66,7 +66,7 @@ def test_collect_changed_paths_includes_base_and_head_when_provided(
         captured["head"] = head
         return SimpleNamespace(returncode=0, stdout="A\tsrc/app.py\n", stderr="")
 
-    monkeypatch.setattr(git_client, "diff_name_status", fake_diff)
+    monkeypatch.setattr(git_cli, "diff_name_status", fake_diff)
 
     result = changed_paths.collect_changed_paths(tmp_path, base="BASE", head="HEAD")
 
@@ -86,7 +86,7 @@ def test_collect_changed_paths_falls_back_on_malformed_diff_output(
     def fake_diff(*_args: Any, **_kwargs: Any) -> Any:
         return SimpleNamespace(returncode=0, stdout=stdout, stderr="")
 
-    monkeypatch.setattr(git_client, "diff_name_status", fake_diff)
+    monkeypatch.setattr(git_cli, "diff_name_status", fake_diff)
 
     result = changed_paths.collect_changed_paths(tmp_path)
 
@@ -104,7 +104,7 @@ def test_collect_changed_paths_falls_back_on_malformed_rename_record(
     def fake_diff(*_args: Any, **_kwargs: Any) -> Any:
         return SimpleNamespace(returncode=0, stdout=stdout, stderr="")
 
-    monkeypatch.setattr(git_client, "diff_name_status", fake_diff)
+    monkeypatch.setattr(git_cli, "diff_name_status", fake_diff)
 
     result = changed_paths.collect_changed_paths(tmp_path)
 

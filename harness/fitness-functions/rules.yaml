@@ -63,7 +63,7 @@ rules:
     summary: Enforce subprocess allowlist boundaries for command adapters/clients.
     rationale: Centralizes command execution paths for consistent control.
     remediation: Move OpenCode command execution to engineeringagent.agents.backends.opencode.client
-      and Git command execution to engineeringagent.git.client.
+      and Git command execution to engineeringagent.adapters.vcs.git_cli.
     scope: src/engineeringagent
     severity: error
     side_effect_free: true

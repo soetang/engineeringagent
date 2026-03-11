@@ -20,7 +20,7 @@ normalize_cli_checks_groups = checks_commands.normalize_cli_checks_groups
 reviewers_group_selected = checks_module.reviewers_group_selected
 
 cmd_init = init_commands.cmd_init
-git_client = init_cli_support_module.git_client
+git_client = init_cli_support_module.git_cli
 shutil = init_cli_support_module.shutil
 
 cmd_run = run_commands.cmd_run

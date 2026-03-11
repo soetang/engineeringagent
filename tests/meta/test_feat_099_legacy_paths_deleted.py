@@ -91,3 +91,19 @@ def test_legacy_application_implementation_prompt_module_path_deleted() -> None:
         "expected legacy application helper module to be deleted: "
         f"{legacy_path.relative_to(repo_root).as_posix()}"
     )
+
+
+def test_legacy_git_module_paths_deleted() -> None:
+    """Legacy top-level git adapter modules stay deleted."""
+    repo_root = Path(__file__).resolve().parents[2]
+    legacy_paths = (
+        repo_root / "src" / "engineeringagent" / "git" / "__init__.py",
+        repo_root / "src" / "engineeringagent" / "git" / "client.py",
+    )
+
+    existing = [
+        path.relative_to(repo_root).as_posix() for path in legacy_paths if path.exists()
+    ]
+    assert existing == [], (
+        "expected legacy git adapter modules to be deleted:\n" + "\n".join(existing)
+    )

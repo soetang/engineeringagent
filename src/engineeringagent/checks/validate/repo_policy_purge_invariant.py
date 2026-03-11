@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from engineeringagent.git import client as git_client
+from engineeringagent.adapters.vcs import git_cli
 
 _EXCLUDED_PREFIXES = (
     "docs/spec/features_done/",
@@ -36,7 +36,7 @@ def append_purge_invariant_issues(messages: list[str], *, project_root: Path) ->
 
 
 def _tracked_project_files(*, project_root: Path, messages: list[str]) -> tuple[str, ...] | None:
-    proc = git_client.ls_files(project_root)
+    proc = git_cli.ls_files(project_root)
     if proc.returncode != 0:
         stderr = (proc.stderr or "").strip()
         detail = f": {stderr}" if stderr else ""

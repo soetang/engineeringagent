@@ -129,7 +129,7 @@ This file is generated from active manifest-declared fitness rules.
 - Config file: `harness/fitness-functions/policies/loop_subprocess_boundary_policy.yaml`
 - Side-effect free: `true`
 - Rationale: Centralizes command execution paths for consistent control.
-- Remediation: Move OpenCode command execution to engineeringagent.agents.backends.opencode.client and Git command execution to engineeringagent.git.client.
+- Remediation: Move OpenCode command execution to engineeringagent.agents.backends.opencode.client and Git command execution to engineeringagent.adapters.vcs.git_cli.
 
 ### `architecture.markdown-locality-reference-coverage`
 

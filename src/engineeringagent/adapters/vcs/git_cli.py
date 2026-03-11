@@ -5,14 +5,7 @@ from pathlib import Path
 
 
 def status_porcelain(project_root: Path) -> subprocess.CompletedProcess[str]:
-    """Return git porcelain status for the repository.
-
-    Args:
-        project_root: Repository root used as command working directory.
-
-    Returns:
-        Completed process from ``git status --porcelain``.
-    """
+    """Return git porcelain status for the repository."""
     return subprocess.run(
         ["git", "status", "--porcelain"],
         cwd=project_root,
@@ -23,14 +16,7 @@ def status_porcelain(project_root: Path) -> subprocess.CompletedProcess[str]:
 
 
 def head_short(project_root: Path) -> subprocess.CompletedProcess[str]:
-    """Return short git HEAD commit hash output.
-
-    Args:
-        project_root: Repository root used as command working directory.
-
-    Returns:
-        Completed process from ``git rev-parse --short HEAD``.
-    """
+    """Return short git HEAD commit hash output."""
     return subprocess.run(
         ["git", "rev-parse", "--short", "HEAD"],
         cwd=project_root,
@@ -41,15 +27,7 @@ def head_short(project_root: Path) -> subprocess.CompletedProcess[str]:
 
 
 def ls_files(project_root: Path) -> subprocess.CompletedProcess[str]:
-    """Return tracked file list output.
-
-    Args:
-        project_root: Repository root used as command working directory.
-
-    Returns:
-        Completed process from ``git ls-files``.
-    """
-
+    """Return tracked file list output."""
     return subprocess.run(
         ["git", "ls-files"],
         cwd=project_root,
@@ -60,14 +38,7 @@ def ls_files(project_root: Path) -> subprocess.CompletedProcess[str]:
 
 
 def add_all(project_root: Path) -> subprocess.CompletedProcess[str]:
-    """Stage repository changes for feature completion commit.
-
-    Args:
-        project_root: Repository root used as command working directory.
-
-    Returns:
-        Completed process from ``git add -A -- .``.
-    """
+    """Stage repository changes for feature completion commit."""
     return subprocess.run(
         ["git", "add", "-A", "--", "."],
         cwd=project_root,
@@ -78,15 +49,7 @@ def add_all(project_root: Path) -> subprocess.CompletedProcess[str]:
 
 
 def commit(project_root: Path, message: str) -> subprocess.CompletedProcess[str]:
-    """Create a deterministic completion commit with fixed local identity.
-
-    Args:
-        project_root: Repository root used as command working directory.
-        message: Commit subject/body passed to ``git commit -m``.
-
-    Returns:
-        Completed process from the git commit invocation.
-    """
+    """Create a deterministic completion commit with fixed local identity."""
     return subprocess.run(
         [
             "git",
@@ -110,15 +73,7 @@ def precommit_install(
     *,
     hook_type: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
-    """Install pre-commit git hooks for the repository.
-
-    Args:
-        project_root: Repository root used as command working directory.
-        hook_type: Optional hook type (e.g. "commit-msg").
-
-    Returns:
-        Completed process from the ``pre-commit install`` invocation.
-    """
+    """Install pre-commit git hooks for the repository."""
     command = ["pre-commit", "install"]
     if hook_type is not None:
         command.extend(["--hook-type", hook_type])
@@ -139,17 +94,7 @@ def diff_name_status(
     base: str | None = None,
     head: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
-    """Return `git diff --name-status` output for changed-path discovery.
-
-    Args:
-        project_root: Repository root used as command working directory.
-        base: Optional base revision passed to `git diff`.
-        head: Optional head revision passed to `git diff`.
-
-    Returns:
-        Completed process from the git diff invocation.
-    """
-
+    """Return `git diff --name-status` output for changed-path discovery."""
     command = [
         "git",
         "diff",

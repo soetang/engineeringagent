@@ -10,7 +10,7 @@ import tomli
 import yaml
 
 from engineeringagent.checks.validate.validator import validate
-from engineeringagent.checks.validate.repo_policy_purge_invariant import git_client
+from engineeringagent.checks.validate.repo_policy_purge_invariant import git_cli
 from tests.meta.validator_support import (
     write_bundled_feature_spec,
     write_plan_artifact,
@@ -277,7 +277,7 @@ def test_validate_reports_git_ls_files_failure(
     (tmp_path / ".git").mkdir(parents=True, exist_ok=True)
 
     monkeypatch.setattr(
-        git_client,
+        git_cli,
         "ls_files",
         lambda _root: SimpleNamespace(returncode=1, stdout="", stderr="boom"),
     )
