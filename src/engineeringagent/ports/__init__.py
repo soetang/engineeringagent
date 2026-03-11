@@ -20,7 +20,11 @@ from .prompt_definition_repository import (
     PromptDefinitionRepository,
     PromptInterpolation,
 )
-from .repository_validator import RepositoryValidator
+from .repository_validator import (
+    RepositoryValidationRequest,
+    RepositoryValidationResult,
+    RepositoryValidator,
+)
 
 __all__ = [
     "AgentRunRequest",
@@ -40,5 +44,7 @@ __all__ = [
     "PromptDefinitionRepository",
     "PromptInterpolation",
     "PromptProgressKind",
+    "RepositoryValidationRequest",
+    "RepositoryValidationResult",
     "RepositoryValidator",
 ]

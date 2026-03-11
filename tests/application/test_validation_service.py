@@ -7,21 +7,23 @@ from engineeringagent.application import (
     ValidationResult,
     ValidationService,
 )
+from engineeringagent.ports import (
+    RepositoryValidationRequest,
+    RepositoryValidationResult,
+)
 
 
 def test_validation_service_returns_ok_when_validator_reports_no_messages() -> None:
     """Service returns a passing result when the validator yields no issues."""
-    calls: list[tuple[Path, bool]] = []
+    calls: list[RepositoryValidationRequest] = []
 
     class _Validator:
         def validate(
             self,
-            project_root: Path,
-            *,
-            schema_only: bool = False,
-        ) -> list[str]:
-            calls.append((project_root, schema_only))
-            return []
+            request: RepositoryValidationRequest,
+        ) -> RepositoryValidationResult:
+            calls.append(request)
+            return RepositoryValidationResult(messages=())
 
     result = ValidationService(_Validator()).run(
         ValidateRepositoryRequest(
@@ -31,7 +33,12 @@ def test_validation_service_returns_ok_when_validator_reports_no_messages() -> N
     )
 
     assert result == ValidationResult(ok=True, messages=())
-    assert calls == [(Path("/tmp/project"), True)]
+    assert calls == [
+        RepositoryValidationRequest(
+            project_root=Path("/tmp/project"),
+            schema_only=True,
+        )
+    ]
 
 
 def test_validation_service_returns_messages_when_validator_fails() -> None:
@@ -39,13 +46,13 @@ def test_validation_service_returns_messages_when_validator_fails() -> None:
     class _Validator:
         def validate(
             self,
-            project_root: Path,
-            *,
-            schema_only: bool = False,
-        ) -> list[str]:
-            assert project_root == Path("/tmp/project")
-            assert schema_only is False
-            return ["first issue", "path/to/spec.yaml: second issue"]
+            request: RepositoryValidationRequest,
+        ) -> RepositoryValidationResult:
+            assert request.project_root == Path("/tmp/project")
+            assert request.schema_only is False
+            return RepositoryValidationResult(
+                messages=("first issue", "path/to/spec.yaml: second issue")
+            )
 
     result = ValidationService(_Validator()).run(
         ValidateRepositoryRequest(project_root=Path("/tmp/project"))

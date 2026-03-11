@@ -6,7 +6,10 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.ports import RepositoryValidator
+from engineeringagent.ports import (
+    RepositoryValidationRequest,
+    RepositoryValidator,
+)
 
 
 class ValidateRepositoryRequest(BaseModel):
@@ -35,13 +38,13 @@ class ValidationService:
 
     def run(self, request: ValidateRepositoryRequest) -> ValidationResult:
         """Run one repository validation request."""
-        messages = tuple(
-            self._validator.validate(
-                request.project_root,
+        port_result = self._validator.validate(
+            RepositoryValidationRequest(
+                project_root=request.project_root,
                 schema_only=request.schema_only,
             )
         )
         return ValidationResult(
-            ok=not messages,
-            messages=messages,
+            ok=not port_result.messages,
+            messages=port_result.messages,
         )

@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from engineeringagent.checks import validate_repository
+from engineeringagent.ports import (
+    RepositoryValidationRequest,
+    RepositoryValidationResult,
+)
 
 
 class ChecksRepositoryValidator:
@@ -12,9 +14,14 @@ class ChecksRepositoryValidator:
 
     def validate(
         self,
-        project_root: Path,
-        *,
-        schema_only: bool = False,
-    ) -> list[str]:
+        request: RepositoryValidationRequest,
+    ) -> RepositoryValidationResult:
         """Return repository validation messages."""
-        return validate_repository(project_root, schema_only=schema_only)
+        return RepositoryValidationResult(
+            messages=tuple(
+                validate_repository(
+                    request.project_root,
+                    schema_only=request.schema_only,
+                )
+            )
+        )
