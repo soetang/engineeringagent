@@ -27,6 +27,7 @@ class RepoArchitectureValidator:
                 modules=_iter_python_modules(src_root),
             )
         )
+        issues.extend(_agent_boundary_issues(project_root=context.project_root, src_root=src_root))
         for module_path in _iter_python_modules(domain_root):
             issues.extend(_domain_module_issues(module_path, project_root=context.project_root))
         for module_path in _iter_python_modules(application_root):
@@ -323,6 +324,169 @@ def _legacy_import_issues(
             )
         )
     return tuple(issues)
+
+
+def _agent_boundary_issues(
+    *,
+    project_root: Path,
+    src_root: Path,
+) -> tuple[ValidationIssue, ...]:
+    issues: list[ValidationIssue] = []
+    opencode_allowed_root = src_root / "agents" / "backends" / "opencode"
+    configured_agent_runner_allowed_roots = (
+        src_root / "bootstrap",
+        src_root / "adapters" / "agents",
+    )
+    agents_root = src_root / "agents"
+    for module_path in _iter_python_modules(src_root):
+        rel_path = module_path.relative_to(project_root).as_posix()
+        module = _parse_module(module_path, rel_path=rel_path)
+        if isinstance(module, ValidationIssue):
+            issues.append(module)
+            continue
+        issues.extend(
+            _start_agent_boundary_issues(
+                module,
+                rel_path=rel_path,
+                module_path=module_path,
+                allowed_root=opencode_allowed_root,
+            )
+        )
+        issues.extend(
+            _configured_agent_runner_boundary_issues(
+                module,
+                rel_path=rel_path,
+                module_path=module_path,
+                allowed_roots=configured_agent_runner_allowed_roots,
+            )
+        )
+        issues.extend(
+            _json_format_boundary_issues(
+                module,
+                rel_path=rel_path,
+                module_path=module_path,
+                allowed_root=agents_root,
+            )
+        )
+    return tuple(issues)
+
+
+def _start_agent_boundary_issues(
+    module: ast.Module,
+    *,
+    rel_path: str,
+    module_path: Path,
+    allowed_root: Path,
+) -> tuple[ValidationIssue, ...]:
+    if _is_under(module_path, allowed_root):
+        return ()
+    issues: list[ValidationIssue] = []
+    for node in ast.walk(module):
+        if isinstance(node, ast.ImportFrom):
+            imported_module = node.module or ""
+            if not _matches_forbidden_module(
+                imported_module,
+                ("engineeringagent.agents.backends.opencode",),
+            ):
+                continue
+            if any(alias.name == "start_agent" for alias in node.names):
+                issues.append(
+                    ValidationIssue(
+                        validator_id="repo.architecture",
+                        scope="repo",
+                        path=rel_path,
+                        message="production modules must not import start_agent outside the opencode backend adapter",
+                        code="repo.architecture.start-agent-boundary",
+                    )
+                )
+        if isinstance(node, ast.Attribute) and node.attr == "start_agent":
+            issues.append(
+                ValidationIssue(
+                    validator_id="repo.architecture",
+                    scope="repo",
+                    path=rel_path,
+                    message="production modules must not reference start_agent outside the opencode backend adapter",
+                    code="repo.architecture.start-agent-boundary",
+                )
+            )
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "start_agent":
+            issues.append(
+                ValidationIssue(
+                    validator_id="repo.architecture",
+                    scope="repo",
+                    path=rel_path,
+                    message="production modules must not call start_agent outside the opencode backend adapter",
+                    code="repo.architecture.start-agent-boundary",
+                )
+            )
+    return tuple(issues)
+
+
+def _configured_agent_runner_boundary_issues(
+    module: ast.Module,
+    *,
+    rel_path: str,
+    module_path: Path,
+    allowed_roots: tuple[Path, ...],
+) -> tuple[ValidationIssue, ...]:
+    if any(_is_under(module_path, allowed_root) for allowed_root in allowed_roots):
+        return ()
+    issues: list[ValidationIssue] = []
+    for node in ast.walk(module):
+        if not isinstance(node, ast.ImportFrom):
+            continue
+        imported_module = node.module or ""
+        if imported_module not in {
+            "engineeringagent.adapters.agents",
+            "engineeringagent.adapters.agents.configured_agent_runner",
+        }:
+            continue
+        if any(alias.name == "ConfiguredAgentRunner" for alias in node.names):
+            issues.append(
+                ValidationIssue(
+                    validator_id="repo.architecture",
+                    scope="repo",
+                    path=rel_path,
+                    message="production modules must not import ConfiguredAgentRunner outside bootstrap or adapters.agents",
+                    code="repo.architecture.configured-agent-runner-boundary",
+                )
+            )
+    return tuple(issues)
+
+
+def _json_format_boundary_issues(
+    module: ast.Module,
+    *,
+    rel_path: str,
+    module_path: Path,
+    allowed_root: Path,
+) -> tuple[ValidationIssue, ...]:
+    if _is_under(module_path, allowed_root):
+        return ()
+    issues: list[ValidationIssue] = []
+    for node in ast.walk(module):
+        if not isinstance(node, ast.Call):
+            continue
+        if any(
+            keyword.arg == "format"
+            and isinstance(keyword.value, ast.Constant)
+            and keyword.value.value == "json"
+            for keyword in node.keywords
+        ):
+            issues.append(
+                ValidationIssue(
+                    validator_id="repo.architecture",
+                    scope="repo",
+                    path=rel_path,
+                    message='production modules must not pass format="json" outside agents modules',
+                    code="repo.architecture.json-format-boundary",
+                )
+            )
+    return tuple(issues)
+
+
+def _is_under(path: Path, parent: Path) -> bool:
+    return path == parent or parent in path.parents
 
 
 def _legacy_import_issues_for_module(

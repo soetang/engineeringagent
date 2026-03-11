@@ -450,3 +450,132 @@ def test_repo_architecture_validator_reports_legacy_imports_in_production_module
             code="repo.architecture.legacy-import",
         ),
     )
+
+
+def test_repo_architecture_validator_reports_start_agent_imports_outside_opencode_backend(
+    tmp_path: Path,
+) -> None:
+    """Only the opencode backend adapter may import the raw start_agent helper."""
+
+    _write_port_module(
+        tmp_path,
+        "src/engineeringagent/adapters/agents/configured_agent_runner.py",
+        "from engineeringagent.agents.backends.opencode.client import start_agent\n",
+    )
+
+    issues = RepoArchitectureValidator().validate(
+        context=ValidationContext(
+            project_root=tmp_path,
+            docs_root=tmp_path / "docs",
+            schema_only=False,
+        )
+    )
+
+    assert issues == (
+        ValidationIssue(
+            validator_id="repo.architecture",
+            scope="repo",
+            path="src/engineeringagent/adapters/agents/configured_agent_runner.py",
+            message=(
+                "production modules must not import start_agent outside the "
+                "opencode backend adapter"
+            ),
+            code="repo.architecture.start-agent-boundary",
+        ),
+    )
+
+
+def test_repo_architecture_validator_reports_start_agent_calls_outside_opencode_backend(
+    tmp_path: Path,
+) -> None:
+    """Direct start_agent calls should stay inside the opencode backend adapter."""
+
+    _write_port_module(
+        tmp_path,
+        "src/engineeringagent/loop.py",
+        "def run() -> None:\n    start_agent('prompt')\n",
+    )
+
+    issues = RepoArchitectureValidator().validate(
+        context=ValidationContext(
+            project_root=tmp_path,
+            docs_root=tmp_path / "docs",
+            schema_only=False,
+        )
+    )
+
+    assert issues == (
+        ValidationIssue(
+            validator_id="repo.architecture",
+            scope="repo",
+            path="src/engineeringagent/loop.py",
+            message=(
+                "production modules must not call start_agent outside the "
+                "opencode backend adapter"
+            ),
+            code="repo.architecture.start-agent-boundary",
+        ),
+    )
+
+
+def test_repo_architecture_validator_reports_json_format_calls_outside_agents(
+    tmp_path: Path,
+) -> None:
+    """Structured backend format flags stay behind the agents boundary."""
+
+    _write_port_module(
+        tmp_path,
+        "src/engineeringagent/application/checks_service.py",
+        "def run() -> None:\n    execute(format='json')\n",
+    )
+
+    issues = RepoArchitectureValidator().validate(
+        context=ValidationContext(
+            project_root=tmp_path,
+            docs_root=tmp_path / "docs",
+            schema_only=False,
+        )
+    )
+
+    assert issues == (
+        ValidationIssue(
+            validator_id="repo.architecture",
+            scope="repo",
+            path="src/engineeringagent/application/checks_service.py",
+            message='production modules must not pass format="json" outside agents modules',
+            code="repo.architecture.json-format-boundary",
+        ),
+    )
+
+
+def test_repo_architecture_validator_reports_configured_agent_runner_imports_outside_allowed_layers(
+    tmp_path: Path,
+) -> None:
+    """ConfiguredAgentRunner imports stay in bootstrap wiring or agent adapters."""
+
+    _write_port_module(
+        tmp_path,
+        "src/engineeringagent/config.py",
+        "from engineeringagent.adapters.agents import ConfiguredAgentRunner\n",
+    )
+
+    issues = RepoArchitectureValidator().validate(
+        context=ValidationContext(
+            project_root=tmp_path,
+            docs_root=tmp_path / "docs",
+            schema_only=False,
+        )
+    )
+
+    assert issues == (
+        ValidationIssue(
+            validator_id="repo.architecture",
+            scope="repo",
+            path="src/engineeringagent/config.py",
+            message=(
+                "production modules must not import ConfiguredAgentRunner "
+                "outside bootstrap or adapters.agents"
+            ),
+            code="repo.architecture.configured-agent-runner-boundary",
+        ),
+    )
