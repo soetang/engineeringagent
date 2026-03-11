@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import subprocess
 import json
-from pathlib import Path
-from typing import Any, Protocol
+from typing import Any
 
+from engineeringagent.adapters.agents import ConfiguredAgentRunner
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
 from engineeringagent.application import (
@@ -26,6 +26,7 @@ from engineeringagent.domain.specification import (
 )
 from engineeringagent.loop_runtime.models import ImplementStepInputs
 from engineeringagent.loop_runtime.models import ImplementStepResult
+from engineeringagent.ports import AgentRunRequest, AgentRunner
 from engineeringagent.progress import handoff as progress_handoff
 from engineeringagent.progress import paths as progress_paths
 from engineeringagent.config import resolve_harness_root
@@ -34,25 +35,14 @@ from engineeringagent.specs import (
 )
 
 
-class StructuredImplementAgentRunner(Protocol):
-    """Canonical implement-phase run-agent contract with structured output."""
-
-    def __call__(
-        self,
-        project_root: Path,
-        prompt: str,
-        *,
-        output_type: type[progress_handoff.ImplementProgressEnvelope],
-    ) -> Any: ...
-
-
 _PROGRESS_JOURNAL = FilesystemProgressJournal()
+_AGENT_RUNNER = ConfiguredAgentRunner()
 
 
 def run_implement_step_from_inputs(
     implement_inputs: ImplementStepInputs,
     *,
-    run_agent_fn: StructuredImplementAgentRunner,
+    agent_runner: AgentRunner,
     prompt_builder: PromptBuilder | None = None,
 ) -> ImplementStepResult:
     """Run the implement phase and coerce structured progress output."""
@@ -76,7 +66,7 @@ def run_implement_step_from_inputs(
     print(f"Implement step: {command}", flush=True)
     try:
         raw_output = _run_agent_with_structured_output(
-            run_agent_fn,
+            agent_runner,
             implement_inputs=implement_inputs,
             prompt=prompt,
         )
@@ -113,15 +103,17 @@ def run_implement_step_from_inputs(
 
 
 def _run_agent_with_structured_output(
-    run_agent_fn: StructuredImplementAgentRunner,
+    agent_runner: AgentRunner,
     *,
     implement_inputs: ImplementStepInputs,
     prompt: str,
 ) -> Any:
-    return run_agent_fn(
-        implement_inputs.project_root,
-        prompt,
-        output_type=progress_handoff.ImplementProgressEnvelope,
+    return agent_runner.run(
+        AgentRunRequest(
+            project_root=implement_inputs.project_root,
+            prompt=prompt,
+            output_type=progress_handoff.ImplementProgressEnvelope,
+        )
     )
 
 

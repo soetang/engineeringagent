@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, NamedTuple, Sequence
 
+from .adapters.agents import ConfiguredAgentRunner
 from .adapters.vcs.git_cli import (
     add_all,
     commit as git_commit,
@@ -64,6 +65,8 @@ from .feature_commit import feature_completion_commit_subject
 from .specs import progress_kind_label
 
 __all__ = ["run_loop_controller"]
+
+_AGENT_RUNNER = ConfiguredAgentRunner()
 
 
 def _print_run_all_snapshot_banner(resolved_paths: Sequence[Path]) -> None:
@@ -132,7 +135,7 @@ def run_implement_step(
     )
     return run_implement_step_from_inputs(
         implement_inputs,
-        run_agent_fn=run_agent,
+        agent_runner=_AGENT_RUNNER,
     )
 
 

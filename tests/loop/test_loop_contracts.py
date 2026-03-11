@@ -6,13 +6,13 @@ import subprocess
 import sys
 from inspect import Parameter
 from pathlib import Path
-from typing import Any, cast
 
 import pytest
 import yaml
 from pydantic import BaseModel, ValidationError
 
 import engineeringagent.loop as loop_module
+from engineeringagent.ports import AgentRunRequest, AgentRunner
 from engineeringagent.loop import (
     _drop_completed_feature_from_snapshot,
     _run_feature_iteration,
@@ -54,6 +54,18 @@ def _materialize_prompt_definitions(tmp_path: Path) -> None:
 
 def _progress_root(project_root: Path) -> Path:
     return project_root.joinpath(*_PROGRESS_ROOT_PARTS)
+
+
+class _StubAgentRunner(AgentRunner):
+    def __init__(self, response: object | Exception) -> None:
+        self._response = response
+        self.requests: list[AgentRunRequest] = []
+
+    def run(self, request: AgentRunRequest) -> object:
+        self.requests.append(request)
+        if isinstance(self._response, Exception):
+            raise self._response
+        return self._response
 
 
 def test_progress_paths_contract(tmp_path: Path) -> None:
@@ -319,9 +331,7 @@ def test_run_implement_step_from_inputs_requires_backend_binary_when_available(
 
     result = run_implement_step_from_inputs(
         inputs,
-        run_agent_fn=lambda *_args, **_kwargs: (_ for _ in ()).throw(
-            FileNotFoundError()
-        ),
+        agent_runner=_StubAgentRunner(FileNotFoundError()),
     )
 
     assert len(result) == 5
@@ -347,33 +357,7 @@ def test_run_implement_step_from_inputs_reraises_unexpected_errors(
     with pytest.raises(RuntimeError, match="boom"):
         run_implement_step_from_inputs(
             inputs,
-            run_agent_fn=lambda *_args, **_kwargs: (_ for _ in ()).throw(
-                RuntimeError("boom")
-            ),
-        )
-
-
-def test_run_implement_step_from_inputs_fails_fast_for_legacy_run_agent_signature(
-    tmp_path: Path,
-) -> None:
-    inputs = ImplementStepInputs(
-        project_root=tmp_path,
-        feature={"id": "FEAT-999"},
-        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-999.yaml",
-        feedback=None,
-        verbose_output=False,
-    )
-
-    def _legacy_run_agent(_project_root: Path, _prompt: str) -> str:
-        return (
-            '{"summary":"ok","completed_work":["done"],'
-            '"verification":["uv run pytest -q"],"remaining_work":["none"]}'
-        )
-
-    with pytest.raises(TypeError, match="output_type"):
-        run_implement_step_from_inputs(
-            inputs,
-            run_agent_fn=cast(Any, _legacy_run_agent),
+            agent_runner=_StubAgentRunner(RuntimeError("boom")),
         )
 
 
@@ -388,11 +372,11 @@ def test_run_implement_step_from_inputs_reraises_non_signature_type_error(
         verbose_output=False,
     )
 
-    def _run_agent_type_error(*_args: object, **_kwargs: object) -> str:
-        raise TypeError("boom")
-
     with pytest.raises(TypeError, match="boom"):
-        run_implement_step_from_inputs(inputs, run_agent_fn=_run_agent_type_error)
+        run_implement_step_from_inputs(
+            inputs,
+            agent_runner=_StubAgentRunner(TypeError("boom")),
+        )
 
 
 def test_run_implement_step_from_inputs_uses_fallback_on_validation_error(
@@ -406,17 +390,16 @@ def test_run_implement_step_from_inputs_uses_fallback_on_validation_error(
         verbose_output=False,
     )
 
-    def _run_agent_validation_error(*_args: object, **_kwargs: object) -> str:
-        raise AgentOutputValidationError(
-            backend="opencode",
-            attempts=2,
-            last_text="raw output",
-            error_summary="missing field",
-        )
-
     result = run_implement_step_from_inputs(
         inputs,
-        run_agent_fn=_run_agent_validation_error,
+        agent_runner=_StubAgentRunner(
+            AgentOutputValidationError(
+                backend="opencode",
+                attempts=2,
+                last_text="raw output",
+                error_summary="missing field",
+            )
+        ),
     )
 
     assert len(result) == 5
@@ -439,17 +422,17 @@ def test_run_implement_step_from_inputs_accepts_structured_envelope_output(
         verbose_output=False,
     )
 
-    def _run_agent_structured(
-        *_args: object, **_kwargs: object
-    ) -> ImplementProgressEnvelope:
-        return ImplementProgressEnvelope(
+    result = run_implement_step_from_inputs(
+        inputs,
+        agent_runner=_StubAgentRunner(
+            ImplementProgressEnvelope(
             summary="done",
             completed_work=["a"],
             verification=["b"],
             remaining_work=["c"],
-        )
-
-    result = run_implement_step_from_inputs(inputs, run_agent_fn=_run_agent_structured)
+            )
+        ),
+    )
 
     assert len(result) == 5
     assert result[0] is True
@@ -495,11 +478,11 @@ def test_run_implement_step_from_inputs_preserves_phase_context_in_fallback_enve
         verbose_output=False,
     )
 
-    def _run_agent_invalid_payload(*_args: object, **_kwargs: object) -> str:
-        return '{"summary":""}'
-
     ok, failed_gate, command_output, envelope, used_fallback = (
-        run_implement_step_from_inputs(inputs, run_agent_fn=_run_agent_invalid_payload)
+        run_implement_step_from_inputs(
+            inputs,
+            agent_runner=_StubAgentRunner('{"summary":""}'),
+        )
     )
 
     assert ok is True
@@ -553,11 +536,11 @@ def test_run_implement_step_from_inputs_uses_raw_phase_context_for_invalid_plan_
         verbose_output=False,
     )
 
-    def _run_agent_invalid_payload(*_args: object, **_kwargs: object) -> str:
-        return '{"summary":""}'
-
     ok, failed_gate, command_output, envelope, used_fallback = (
-        run_implement_step_from_inputs(inputs, run_agent_fn=_run_agent_invalid_payload)
+        run_implement_step_from_inputs(
+            inputs,
+            agent_runner=_StubAgentRunner('{"summary":""}'),
+        )
     )
 
     assert ok is True
@@ -606,11 +589,11 @@ def test_run_implement_step_from_inputs_does_not_project_feature_context_onto_mi
         verbose_output=False,
     )
 
-    def _run_agent_invalid_payload(*_args: object, **_kwargs: object) -> str:
-        return '{"summary":""}'
-
     ok, failed_gate, command_output, envelope, used_fallback = (
-        run_implement_step_from_inputs(inputs, run_agent_fn=_run_agent_invalid_payload)
+        run_implement_step_from_inputs(
+            inputs,
+            agent_runner=_StubAgentRunner('{"summary":""}'),
+        )
     )
 
     assert ok is True
@@ -652,11 +635,11 @@ def test_run_implement_step_from_inputs_preserves_feature_context_in_fallback_en
         verbose_output=False,
     )
 
-    def _run_agent_invalid_payload(*_args: object, **_kwargs: object) -> str:
-        return '{"summary":""}'
-
     ok, failed_gate, command_output, envelope, used_fallback = (
-        run_implement_step_from_inputs(inputs, run_agent_fn=_run_agent_invalid_payload)
+        run_implement_step_from_inputs(
+            inputs,
+            agent_runner=_StubAgentRunner('{"summary":""}'),
+        )
     )
 
     assert ok is True
@@ -1092,23 +1075,22 @@ def test_run_implement_step_uses_injected_prompt_builder(tmp_path: Path) -> None
             recorded_requests.append(request)
             return "PROMPT FROM INJECTED BUILDER"
 
-    def _run_agent(
-        project_root: Path,
-        prompt: str,
-        *,
-        output_type: type[ImplementProgressEnvelope],
-    ) -> object:
-        assert project_root == tmp_path
-        assert prompt == "PROMPT FROM INJECTED BUILDER"
-        return fallback_implement_progress_envelope()
+    agent_runner = _StubAgentRunner(fallback_implement_progress_envelope())
 
     result = run_implement_step_from_inputs(
         inputs,
-        run_agent_fn=_run_agent,
+        agent_runner=agent_runner,
         prompt_builder=_PromptBuilder(),
     )
 
     assert result[0] is True
+    assert agent_runner.requests == [
+        AgentRunRequest(
+            project_root=tmp_path,
+            prompt="PROMPT FROM INJECTED BUILDER",
+            output_type=ImplementProgressEnvelope,
+        )
+    ]
     assert recorded_requests == [
         ImplementationPromptRequest(
             feature=ImplementationPromptFeature(
@@ -1174,23 +1156,22 @@ def test_run_implement_step_passes_handoff_path_only_when_persisted(
             recorded_requests.append(request)
             return "PROMPT FROM INJECTED BUILDER"
 
-    def _run_agent(
-        project_root: Path,
-        prompt: str,
-        *,
-        output_type: type[ImplementProgressEnvelope],
-    ) -> object:
-        assert project_root == tmp_path
-        assert prompt == "PROMPT FROM INJECTED BUILDER"
-        return fallback_implement_progress_envelope()
+    agent_runner = _StubAgentRunner(fallback_implement_progress_envelope())
 
     result = run_implement_step_from_inputs(
         inputs,
-        run_agent_fn=_run_agent,
+        agent_runner=agent_runner,
         prompt_builder=_PromptBuilder(),
     )
 
     assert result[0] is True
+    assert agent_runner.requests == [
+        AgentRunRequest(
+            project_root=tmp_path,
+            prompt="PROMPT FROM INJECTED BUILDER",
+            output_type=ImplementProgressEnvelope,
+        )
+    ]
     assert len(recorded_requests) == 1
     request = recorded_requests[0]
     assert request.feature == ImplementationPromptFeature(
