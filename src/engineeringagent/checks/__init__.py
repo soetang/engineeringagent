@@ -21,6 +21,7 @@ from engineeringagent.domain.quality import (
     normalize_check_groups,
     reviewers_group_selected,
 )
+from engineeringagent.ports import VersionControlGateway
 from .results import ChecksRunResult
 
 if TYPE_CHECKING:
@@ -56,7 +57,8 @@ def collect_changed_paths(
     *,
     base: str | None = None,
     head: str | None = None,
-) -> Any:
+    version_control: VersionControlGateway | None = None,
+) -> ChangedPathsResult:
     """Proxy to checks-owned changed-path discovery."""
 
     changed_paths = import_module("engineeringagent.adapters.quality.changed_paths")
@@ -64,6 +66,7 @@ def collect_changed_paths(
         project_root,
         base=base,
         head=head,
+        version_control=version_control,
     )
 
 

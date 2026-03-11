@@ -1,4 +1,4 @@
-"""Packaged guidance topic repository adapter."""
+"""Filesystem-oriented guidance topic repository adapter."""
 
 from __future__ import annotations
 
@@ -12,11 +12,11 @@ from engineeringagent.domain.guidance import GuidanceTopic
 from engineeringagent.ports import GuidanceTopicRepository
 
 
-class PackagedGuidanceTopicRepository(GuidanceTopicRepository):
-    """Guidance repository backed by packaged approach documents."""
+class FilesystemGuidanceTopicRepository(GuidanceTopicRepository):
+    """Guidance repository backed by local approach documents."""
 
     def list_topics(self) -> tuple[GuidanceTopic, ...]:
-        """Return packaged approach topics in deterministic order."""
+        """Return local guidance topics in deterministic order."""
         return tuple(
             GuidanceTopic(
                 canonical_id=topic.canonical_id,

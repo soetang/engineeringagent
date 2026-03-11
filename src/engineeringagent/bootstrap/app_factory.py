@@ -12,7 +12,7 @@ from engineeringagent.adapters.quality import (
 from engineeringagent.adapters.documents import (
     ChecksCatalogLoadOptions,
     FilesystemChecksCatalogRepository,
-    PackagedGuidanceTopicRepository,
+    FilesystemGuidanceTopicRepository,
 )
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
@@ -89,8 +89,8 @@ class AppFactory:
         )
 
     def build_guidance_service(self) -> GuidanceService:
-        """Create the packaged guidance service."""
-        return GuidanceService(PackagedGuidanceTopicRepository())
+        """Create the default guidance service."""
+        return GuidanceService(FilesystemGuidanceTopicRepository())
 
     def build_validation_service(self) -> ValidationService:
         """Create the default repository validation service."""

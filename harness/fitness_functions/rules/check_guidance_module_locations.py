@@ -13,20 +13,22 @@ from engineeringagent.checks.fitness.contracts import (
 
 RULE_ID = "architecture.guidance-module-locations"
 _REQUIRED_PATHS = (
-    Path("src/engineeringagent/adapters/documents/packaged_guidance_topic_repository.py"),
+    Path("src/engineeringagent/adapters/documents/filesystem_guidance_topic_repository.py"),
     Path("src/engineeringagent/presentation/cli/guidance.py"),
 )
 _LEGACY_PATHS = (
     Path("src/engineeringagent/adapters/guidance/__init__.py"),
     Path(
-        "src/engineeringagent/adapters/guidance/packaged_guidance_topic_repository.py"
+        "src/engineeringagent/adapters/guidance/filesystem_guidance_topic_repository.py"
     ),
+    Path("src/engineeringagent/adapters/documents/packaged_guidance_topic_repository.py"),
     Path("src/engineeringagent/presentation/cli/approach.py"),
 )
 _REMEDIATION = (
-    "keep packaged guidance under engineeringagent.adapters.documents and the CLI "
+    "keep guidance-topic repositories under engineeringagent.adapters.documents and the CLI "
     "surface under engineeringagent.presentation.cli.guidance; do not restore the "
-    "legacy adapters.guidance package or presentation.cli.approach module."
+    "legacy packaged-guidance module, adapters.guidance package, or "
+    "presentation.cli.approach module."
 )
 
 

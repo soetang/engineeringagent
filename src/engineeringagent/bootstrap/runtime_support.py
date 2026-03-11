@@ -22,6 +22,7 @@ class _LoopAgentRunner:
     """Adapter for the legacy implement-step agent execution seam."""
 
     def run(self, request: Any) -> object:
+        """Execute one legacy implement-step agent request."""
         return run_agent(
             request.project_root,
             request.prompt,

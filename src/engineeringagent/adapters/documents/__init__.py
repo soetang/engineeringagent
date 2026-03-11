@@ -7,11 +7,11 @@ from .filesystem_checks_catalog_repository import (
 from .filesystem_feature_specification_repository import (
     FilesystemFeatureSpecificationRepository,
 )
-from .packaged_guidance_topic_repository import PackagedGuidanceTopicRepository
+from .filesystem_guidance_topic_repository import FilesystemGuidanceTopicRepository
 
 __all__ = [
     "ChecksCatalogLoadOptions",
     "FilesystemChecksCatalogRepository",
     "FilesystemFeatureSpecificationRepository",
-    "PackagedGuidanceTopicRepository",
+    "FilesystemGuidanceTopicRepository",
 ]

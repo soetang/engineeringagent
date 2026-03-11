@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from engineeringagent.checks import changed_paths
+from engineeringagent.checks import FALLBACK_CHANGE_DISCOVERY_REASON, collect_changed_paths
 from engineeringagent.ports import (
     CommitRequest,
     CommitResult,
@@ -61,11 +61,11 @@ def test_collect_changed_paths_falls_back_when_git_diff_fails(
     """Fall back to run-all semantics when the diff query fails."""
     gateway = StubVersionControlGateway(error=VersionControlFailure("boom"))
 
-    result = changed_paths.collect_changed_paths(tmp_path, version_control=gateway)
+    result = collect_changed_paths(tmp_path, version_control=gateway)
 
     assert result.paths == ()
     assert result.run_all is True
-    assert result.reason == changed_paths.FALLBACK_CHANGE_DISCOVERY_REASON
+    assert result.reason == FALLBACK_CHANGE_DISCOVERY_REASON
 
 
 def test_collect_changed_paths_parses_rename_and_normalizes_separators(
@@ -84,7 +84,7 @@ def test_collect_changed_paths_parses_rename_and_normalizes_separators(
 
     gateway = StubVersionControlGateway(summary_text=stdout)
 
-    result = changed_paths.collect_changed_paths(tmp_path, version_control=gateway)
+    result = collect_changed_paths(tmp_path, version_control=gateway)
 
     assert result.run_all is False
     assert result.reason is None
@@ -101,7 +101,7 @@ def test_collect_changed_paths_includes_base_and_head_when_provided(
     """Forward the requested revision range to the version-control gateway."""
     gateway = StubVersionControlGateway(summary_text="A\tsrc/app.py\n")
 
-    result = changed_paths.collect_changed_paths(
+    result = collect_changed_paths(
         tmp_path,
         base="BASE",
         head="HEAD",
@@ -120,11 +120,11 @@ def test_collect_changed_paths_falls_back_on_malformed_diff_output(
     stdout = "NOT_A_STATUS_LINE_WITH_TABS\n"
     gateway = StubVersionControlGateway(summary_text=stdout)
 
-    result = changed_paths.collect_changed_paths(tmp_path, version_control=gateway)
+    result = collect_changed_paths(tmp_path, version_control=gateway)
 
     assert result.run_all is True
     assert result.paths == ()
-    assert result.reason == changed_paths.FALLBACK_CHANGE_DISCOVERY_REASON
+    assert result.reason == FALLBACK_CHANGE_DISCOVERY_REASON
 
 
 def test_collect_changed_paths_falls_back_on_malformed_rename_record(
@@ -134,8 +134,8 @@ def test_collect_changed_paths_falls_back_on_malformed_rename_record(
     stdout = "R100\tsrc/old.py\n"
     gateway = StubVersionControlGateway(summary_text=stdout)
 
-    result = changed_paths.collect_changed_paths(tmp_path, version_control=gateway)
+    result = collect_changed_paths(tmp_path, version_control=gateway)
 
     assert result.run_all is True
     assert result.paths == ()
-    assert result.reason == changed_paths.FALLBACK_CHANGE_DISCOVERY_REASON
+    assert result.reason == FALLBACK_CHANGE_DISCOVERY_REASON

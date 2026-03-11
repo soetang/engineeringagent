@@ -68,8 +68,8 @@ rules:
   - rule_id: architecture.guidance-module-locations
     name: Guidance module locations
     summary: Keep guidance adapter and CLI modules in the target architecture paths.
-    rationale: Moves guidance code toward the target documents adapter package and the target presentation CLI module name while preventing the legacy locations from drifting back in.
-    remediation: Keep packaged guidance under engineeringagent.adapters.documents and the CLI surface under engineeringagent.presentation.cli.guidance; do not restore the legacy adapters.guidance package or presentation.cli.approach module.
+    rationale: Moves guidance code toward the target documents adapter package and the target presentation CLI module name while preventing legacy guidance paths from drifting back in.
+    remediation: Keep guidance-topic repositories under engineeringagent.adapters.documents and the CLI surface under engineeringagent.presentation.cli.guidance; do not restore the legacy packaged-guidance module, adapters.guidance package, or presentation.cli.approach module.
     scope: src/engineeringagent guidance adapter and CLI modules
     severity: error
     side_effect_free: true

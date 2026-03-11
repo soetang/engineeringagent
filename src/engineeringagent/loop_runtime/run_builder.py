@@ -5,6 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Callable, NamedTuple, Sequence
 
+from engineeringagent.application.feature_iteration.models import (
+    FeatureIterationInputs,
+    IterationOutcome,
+    IterationSummaryInputs,
+)
 from engineeringagent.agents import preflight, run_agent
 from engineeringagent.ports import VersionControlFailure
 from engineeringagent.presentation.presenters.terminal import RunOutputPresenter
@@ -16,7 +21,6 @@ from .feature_state import (
     pending_features,
     resolve_feature_paths,
 )
-from engineeringagent.application.feature_iteration.models import FeatureIterationInputs, IterationOutcome, IterationSummaryInputs
 from .run_context import LoopRun, RunConfig, RunServices
 from .selection import choose_feature_with_selector, deterministic_feature_choice
 
