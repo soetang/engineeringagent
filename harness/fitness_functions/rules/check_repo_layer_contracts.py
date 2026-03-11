@@ -32,6 +32,9 @@ DELETED_MODULE_PATHS = {
     "src/engineeringagent/ports/guidance_topics.py",
     "src/engineeringagent/ports/prompt_builder.py",
     "src/engineeringagent/ports/prompt_definitions.py",
+    "src/engineeringagent/adapters/checks/__init__.py",
+    "src/engineeringagent/adapters/checks/repository_validator.py",
+    "src/engineeringagent/adapters/checks/runtime_checks_runner.py",
     "src/engineeringagent/adapters/checks/filesystem_checks_catalog_repository.py",
     "src/engineeringagent/adapters/guidance/packaged_guidance_topics.py",
     "src/engineeringagent/adapters/prompts/bundled_prompt_definitions.py",
@@ -62,6 +65,7 @@ DELETED_MODULE_PATHS = {
     "src/engineeringagent/loop_runtime/controller.py",
 }
 DELETED_DIRECTORY_PATHS = {
+    "src/engineeringagent/adapters/checks",
     "src/engineeringagent/application/contracts",
     "src/engineeringagent/application/loop_runtime",
 }

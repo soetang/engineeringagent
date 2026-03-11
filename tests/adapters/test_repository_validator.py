@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from engineeringagent.adapters.checks import ChecksRepositoryValidator
+from engineeringagent.adapters.quality import ChecksRepositoryValidator
 from engineeringagent.ports import RepositoryValidationRequest, RepositoryValidationResult
 
 
@@ -24,7 +24,7 @@ def test_checks_repository_validator_delegates_to_checks_surface(
         return ["issue one", "issue two"]
 
     monkeypatch.setattr(
-        "engineeringagent.adapters.checks.repository_validator.validate",
+        "engineeringagent.adapters.quality.repository_validator.validate",
         _fake_validate,
     )
 

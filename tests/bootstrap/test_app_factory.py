@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from engineeringagent.adapters.agents import ConfiguredAgentRunner
-from engineeringagent.adapters.checks import (
+from engineeringagent.adapters.quality import (
     ChecksRepositoryValidator,
     RuntimeChecksRunner,
 )

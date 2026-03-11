@@ -1,4 +1,4 @@
-"""Checks adapters."""
+"""Quality-system adapters."""
 
 from .repository_validator import ChecksRepositoryValidator
 from .runtime_checks_runner import RuntimeChecksRunner

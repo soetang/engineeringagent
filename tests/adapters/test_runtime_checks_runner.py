@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from engineeringagent.adapters.checks import RuntimeChecksRunner
+from engineeringagent.adapters.quality import RuntimeChecksRunner
 from engineeringagent.domain.quality import ChecksRunResult, HarnessCheckPhase
 from engineeringagent.ports import ChecksRunRequest
 
@@ -42,7 +42,7 @@ def test_runtime_checks_runner_delegates_to_concrete_runtime(
         return expected
 
     monkeypatch.setattr(
-        "engineeringagent.adapters.checks.runtime_checks_runner.run_checks",
+        "engineeringagent.adapters.quality.runtime_checks_runner.run_checks",
         _fake_run_checks,
     )
 
