@@ -675,6 +675,7 @@ def _deleted_module_paths() -> set[str]:
         "src/engineeringagent/ports/guidance_topics.py",
         "src/engineeringagent/ports/prompt_builder.py",
         "src/engineeringagent/ports/prompt_definitions.py",
+        "src/engineeringagent/adapters/checks/filesystem_checks_catalog_repository.py",
         "src/engineeringagent/adapters/guidance/packaged_guidance_topics.py",
         "src/engineeringagent/adapters/prompts/bundled_prompt_definitions.py",
         "src/engineeringagent/adapters/prompts/filesystem_prompt_definitions.py",

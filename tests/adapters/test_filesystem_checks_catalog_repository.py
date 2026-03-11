@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from engineeringagent.adapters.checks import (
+from engineeringagent.adapters.documents import (
     ChecksCatalogLoadOptions,
     FilesystemChecksCatalogRepository,
 )

@@ -481,6 +481,11 @@ def test_repo_architecture_validator_reports_deleted_legacy_module_paths(
     )
     _write_port_module(
         tmp_path,
+        "src/engineeringagent/adapters/checks/filesystem_checks_catalog_repository.py",
+        "value = 1\n",
+    )
+    _write_port_module(
+        tmp_path,
         "src/engineeringagent/prompts/__init__.py",
         "value = 1\n",
     )
@@ -509,6 +514,13 @@ def test_repo_architecture_validator_reports_deleted_legacy_module_paths(
     )
 
     assert issues == (
+        ValidationIssue(
+            validator_id="repo.architecture",
+            scope="repo",
+            path="src/engineeringagent/adapters/checks/filesystem_checks_catalog_repository.py",
+            message="deleted legacy module path must remain absent",
+            code="repo.architecture.deleted-path",
+        ),
         ValidationIssue(
             validator_id="repo.architecture",
             scope="repo",

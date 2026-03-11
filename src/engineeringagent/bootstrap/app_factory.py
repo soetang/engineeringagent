@@ -6,10 +6,12 @@ from pathlib import Path
 
 from engineeringagent.adapters.agents import ConfiguredAgentRunner
 from engineeringagent.adapters.checks import (
-    ChecksCatalogLoadOptions,
     ChecksRepositoryValidator,
-    FilesystemChecksCatalogRepository,
     RuntimeChecksRunner,
+)
+from engineeringagent.adapters.documents import (
+    ChecksCatalogLoadOptions,
+    FilesystemChecksCatalogRepository,
 )
 from engineeringagent.adapters.guidance import PackagedGuidanceTopicRepository
 from engineeringagent.adapters.loop import RuntimeRunLoopExecutor
