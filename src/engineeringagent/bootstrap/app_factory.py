@@ -10,12 +10,17 @@ from engineeringagent.adapters.checks import (
 )
 from engineeringagent.adapters.guidance import PackagedGuidanceTopicRepository
 from engineeringagent.adapters.progress import FilesystemProgressJournal
+from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
 from engineeringagent.application import (
     ChecksService,
+    DefaultPromptBuilder,
     GuidanceService,
     InitWorkspaceService,
+    PromptBuilder,
     ValidationService,
 )
+from engineeringagent.config import resolve_harness_root
+from engineeringagent.ports import PromptDefinitionRepository
 
 
 class AppFactory:
@@ -48,3 +53,13 @@ class AppFactory:
     def build_progress_journal(self) -> FilesystemProgressJournal:
         """Create the default filesystem-backed progress journal."""
         return FilesystemProgressJournal()
+
+    def build_prompt_definition_repository(self) -> PromptDefinitionRepository:
+        """Create the default filesystem-backed prompt-definition repository."""
+        return FilesystemPromptDefinitionRepository(
+            resolve_harness_root(self.project_root) / "prompts"
+        )
+
+    def build_prompt_builder(self) -> PromptBuilder:
+        """Create the default deterministic prompt builder."""
+        return DefaultPromptBuilder(self.build_prompt_definition_repository())

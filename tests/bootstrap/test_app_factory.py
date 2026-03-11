@@ -7,8 +7,10 @@ from engineeringagent.adapters.checks import (
     RuntimeChecksRunner,
 )
 from engineeringagent.adapters.progress import FilesystemProgressJournal
+from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
 from engineeringagent.application import (
     ChecksService,
+    DefaultPromptBuilder,
     GuidanceService,
     InitWorkspaceService,
     ValidationService,
@@ -36,3 +38,26 @@ def test_app_factory_builds_default_application_services(tmp_path: Path) -> None
     assert isinstance(validation_service._validator, ChecksRepositoryValidator)
     assert isinstance(factory.build_init_workspace_service(), InitWorkspaceService)
     assert isinstance(factory.build_progress_journal(), FilesystemProgressJournal)
+    assert isinstance(
+        factory.build_prompt_definition_repository(),
+        FilesystemPromptDefinitionRepository,
+    )
+    assert isinstance(factory.build_prompt_builder(), DefaultPromptBuilder)
+
+
+def test_app_factory_uses_configured_harness_root_for_prompt_definitions(
+    tmp_path: Path,
+) -> None:
+    """Factory prompt wiring respects the effective harness root."""
+    (tmp_path / "engineeringagent.toml").write_text(
+        '[paths]\nharness_root = "custom-harness"\n',
+        encoding="utf-8",
+    )
+    prompts_root = tmp_path / "custom-harness" / "prompts"
+    prompts_root.mkdir(parents=True)
+
+    factory = AppFactory(tmp_path)
+    repository = factory.build_prompt_definition_repository()
+
+    assert isinstance(repository, FilesystemPromptDefinitionRepository)
+    assert repository._prompts_root == prompts_root

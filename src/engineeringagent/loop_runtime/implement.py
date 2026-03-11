@@ -8,9 +8,7 @@ from typing import Any
 
 from engineeringagent.adapters.agents import ConfiguredAgentRunner
 from engineeringagent.adapters.progress import FilesystemProgressJournal
-from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
 from engineeringagent.application import (
-    DefaultPromptBuilder,
     PromptBuilder,
     build_implementation_prompt_request,
 )
@@ -27,9 +25,9 @@ from engineeringagent.domain.specification import (
 from engineeringagent.loop_runtime.models import ImplementStepInputs
 from engineeringagent.loop_runtime.models import ImplementStepResult
 from engineeringagent.ports import AgentRunRequest, AgentRunner
+from engineeringagent.bootstrap import AppFactory
 from engineeringagent.progress import handoff as progress_handoff
 from engineeringagent.progress import paths as progress_paths
-from engineeringagent.config import resolve_harness_root
 from engineeringagent.specs import (
     feature_progress_kind,
 )
@@ -49,11 +47,7 @@ def run_implement_step_from_inputs(
     prompt = _build_implement_prompt(
         implement_inputs,
         prompt_builder=prompt_builder
-        or DefaultPromptBuilder(
-            FilesystemPromptDefinitionRepository(
-                resolve_harness_root(implement_inputs.project_root) / "prompts"
-            )
-        ),
+        or AppFactory(implement_inputs.project_root).build_prompt_builder(),
     )
     command = describe_action(
         implement_inputs.project_root,
