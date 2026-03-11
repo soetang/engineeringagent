@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from engineeringagent.changed_paths import ChangedPathsResult
 from engineeringagent.checks.fitness.runtime import plan_fitness_checks
-from engineeringagent.specs import HarnessCheckPhase, HarnessChecksDocument
+from engineeringagent.domain.quality import HarnessCheckPhase, HarnessChecksDocument
 
 
 def _doc(payload: dict[str, object]) -> HarnessChecksDocument:

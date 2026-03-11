@@ -26,7 +26,8 @@ from engineeringagent.loop_runtime.phases import (
     run_gate_phase,
     run_reviewer_phase,
 )
-from engineeringagent.specs import HarnessCheckPhase, HarnessChecksDocument, load_yaml
+from engineeringagent.domain.quality import HarnessCheckPhase, HarnessChecksDocument
+from engineeringagent.specs import load_yaml
 
 
 def _write_checks_yaml(tmp_path: Path, content: str) -> Path:

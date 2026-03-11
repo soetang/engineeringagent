@@ -246,6 +246,12 @@ def _application_import_issues(
     ) + _forbidden_import_issues(
         module,
         rel_path=rel_path,
+        forbidden_modules=("engineeringagent.specs",),
+        message="ports modules must not import legacy specs modules",
+        code="repo.architecture.ports-legacy-specs-import",
+    ) + _forbidden_import_issues(
+        module,
+        rel_path=rel_path,
         forbidden_modules=("engineeringagent.init_scaffold",),
         message="application and ports modules must not import init_scaffold modules",
         code="repo.architecture.init-scaffold-import",

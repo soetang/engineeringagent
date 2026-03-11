@@ -7,7 +7,7 @@ from typing import Protocol
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.specs import HarnessChecksDocument
+from engineeringagent.domain.quality import HarnessChecksDocument
 
 
 class ChecksCatalogLoadResult(BaseModel):

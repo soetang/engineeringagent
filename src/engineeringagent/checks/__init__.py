@@ -14,6 +14,7 @@ from typing_extensions import Unpack
 
 from engineeringagent.domain.quality import (
     HarnessCheckPhase,
+    HarnessChecksDocument,
     list_check_groups,
     normalize_check_groups,
     reviewers_group_selected,
@@ -22,8 +23,6 @@ from engineeringagent.domain.quality import (
 from .results import ChecksRunResult
 
 if TYPE_CHECKING:
-    from engineeringagent.specs import HarnessChecksDocument
-
     from .api import _RunChecksKwargs
     from .fitness.contracts import FitnessRuleResult
 

@@ -9,7 +9,7 @@ from engineeringagent.checks.commands.runtime import (
 from engineeringagent.checks.contracts import HarnessCheckPhase
 from engineeringagent.checks.fitness.runtime import plan_fitness_checks
 from engineeringagent.checks.reviewers.runtime import plan_reviewer_checks
-from engineeringagent.specs import HarnessChecksDocument
+from engineeringagent.domain.quality import HarnessChecksDocument
 
 
 def _doc(payload: dict[str, object]) -> HarnessChecksDocument:

@@ -9,8 +9,8 @@ from engineeringagent.config import (
     repo_relative_label,
     resolve_harness_checks_config_path,
 )
+from engineeringagent.domain.quality import HarnessChecksDocument
 from engineeringagent.specs import (
-    HarnessChecksDocument,
     checks_contract_issues,
     load_yaml,
 )

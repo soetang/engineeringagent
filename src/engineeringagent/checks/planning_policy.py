@@ -9,7 +9,7 @@ from engineeringagent.changed_paths import (
     FALLBACK_CHANGE_DISCOVERY_REASON,
 )
 from engineeringagent.checks.contracts import HarnessCheckPhase
-from engineeringagent.specs import (
+from engineeringagent.domain.quality import (
     HarnessCheckWhenDefinition,
     HarnessChecksDocument,
 )

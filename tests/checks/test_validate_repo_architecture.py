@@ -134,6 +134,39 @@ def test_repo_architecture_validator_reports_ports_importing_application_modules
     )
 
 
+def test_repo_architecture_validator_reports_ports_importing_legacy_specs_modules(
+    tmp_path: Path,
+) -> None:
+    """Ports modules must not depend on legacy specs contracts."""
+
+    _write_port_module(
+        tmp_path,
+        "src/engineeringagent/ports/checks_catalog_repository.py",
+        "from typing import Protocol\n"
+        "from engineeringagent.specs import HarnessChecksDocument\n\n"
+        "class ChecksCatalogRepository(Protocol):\n"
+        "    def load(self) -> HarnessChecksDocument: ...\n",
+    )
+
+    issues = RepoArchitectureValidator().validate(
+        context=ValidationContext(
+            project_root=tmp_path,
+            docs_root=tmp_path / "docs",
+            schema_only=False,
+        )
+    )
+
+    assert issues == (
+        ValidationIssue(
+            validator_id="repo.architecture",
+            scope="repo",
+            path="src/engineeringagent/ports/checks_catalog_repository.py",
+            message="ports modules must not import legacy specs modules",
+            code="repo.architecture.ports-legacy-specs-import",
+        ),
+    )
+
+
 def test_repo_architecture_validator_reports_application_protocol_contracts(
     tmp_path: Path,
 ) -> None:

@@ -7,7 +7,7 @@ from typing import Any, cast
 import pytest
 
 from engineeringagent.checks import run_checks
-from engineeringagent.specs import HarnessCheckPhase
+from engineeringagent.domain.quality import HarnessCheckPhase
 
 from tests.checks.run_checks_contract_support import write_checks_yaml
 

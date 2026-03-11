@@ -27,10 +27,12 @@ from engineeringagent.checks.reviewers.runtime import (
 )
 from engineeringagent.checks.validate.validator import validate
 from engineeringagent.adapters.shell import run_shell_command
-from engineeringagent.specs import (
+from engineeringagent.domain.quality import (
     HarnessCheckCommandDefinition,
     HarnessCheckFitnessDefinition,
     HarnessChecksDocument,
+)
+from engineeringagent.specs import (
     load_yaml,
 )
 from engineeringagent.checks.planning_policy import ALWAYS_RUN_NO_ON_CHANGE_REASON

@@ -13,7 +13,7 @@ from engineeringagent.checks.request_normalization import (
     HARNESS_GROUPS,
     _NormalizedRunChecksRequest,
 )
-from engineeringagent.specs import (
+from engineeringagent.domain.quality import (
     HarnessCheckCommandDefinition,
     HarnessCheckFitnessDefinition,
     HarnessCheckReviewerDefinition,

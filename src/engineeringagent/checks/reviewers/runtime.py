@@ -25,7 +25,7 @@ from engineeringagent.checks.strategy_contracts import (
     PlannedCheck,
     make_planned_check,
 )
-from engineeringagent.specs import (
+from engineeringagent.domain.quality import (
     HarnessCheckReviewerDefinition,
     HarnessChecksDocument,
 )

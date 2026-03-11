@@ -18,7 +18,8 @@ from engineeringagent.checks.strategy_contracts import (
     strategy_run_decisions,
 )
 from engineeringagent.progress.paths import reviewers_state_path
-from engineeringagent.specs import HarnessCheckPhase, HarnessChecksDocument, load_yaml
+from engineeringagent.domain.quality import HarnessCheckPhase, HarnessChecksDocument
+from engineeringagent.specs import load_yaml
 
 
 def _load_checks_document(checks_path: Path):

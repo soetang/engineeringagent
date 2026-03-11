@@ -19,7 +19,7 @@ from engineeringagent.checks.contracts import (
     CheckExecutionRecord,
     HarnessCheckPhase,
 )
-from engineeringagent.specs import HarnessChecksDocument
+from engineeringagent.domain.quality import HarnessChecksDocument
 
 
 class CheckContext(NamedTuple):
