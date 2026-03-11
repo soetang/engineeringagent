@@ -93,54 +93,6 @@ def _feature_specification(**overrides: object) -> FeatureSpecification:
     payload.update(overrides)
     return FeatureSpecification(**payload)
 
-
-def test_application_selector_prompt_renders_feature_summaries(tmp_path: Path) -> None:
-    """Selector prompt rendering belongs to the application prompt surface."""
-
-    feature_path = tmp_path / "docs" / "spec" / "features" / "FEAT-900" / "spec.yaml"
-    feature_path.parent.mkdir(parents=True, exist_ok=True)
-    prompt = _prompt_builder().build_selector_prompt(
-        [(feature_path, {"id": "FEAT-900", "status": "backlog", "priority": "high"})]
-    )
-
-    assert "id=FEAT-900" in prompt
-    assert f"path={feature_path}" in prompt
-
-
-def test_application_selector_prompt_prefers_repo_local_template(
-    tmp_path: Path,
-) -> None:
-    """Selector prompt rendering should use repository-local overrides."""
-
-    prompts_root = tmp_path / "harness" / "prompts"
-    prompts_root.mkdir(parents=True)
-    _write_prompt_module(
-        prompts_root,
-        "loop_selector",
-        "from pydantic import BaseModel\n"
-        "from engineeringagent.ports import PromptDefinition, PromptInterpolation\n"
-        "class SelectorInput(BaseModel):\n"
-        "    choices: str\n"
-        "PROMPT_DEFINITION = PromptDefinition(\n"
-        "    prompt_id='loop_selector',\n"
-        "    purpose='selector',\n"
-        "    target='operator',\n"
-        "    output_mode='text',\n"
-        "    token_budget_hint=100,\n"
-        "    input_model=SelectorInput,\n"
-        "    body_template='repo selector\\n$choices\\n',\n"
-        "    interpolations=(PromptInterpolation(\n"
-        "        name='choices', source='test', required=True, rationale='test'),),\n"
-        ")\n",
-    )
-
-    prompt = _prompt_builder(prompts_root).build_selector_prompt(
-        [(tmp_path / "feature.yaml", {"id": "FEAT-100", "status": "backlog"})]
-    )
-
-    assert prompt.startswith("repo selector\n")
-
-
 def test_build_implementation_prompt_request_does_not_invent_handoff_path(
     tmp_path: Path,
 ) -> None:
@@ -297,24 +249,6 @@ def test_default_prompt_builder_prefers_repo_local_templates(
         "        PromptInterpolation(name='handoff_path', source='test', required=False, rationale='test'),\n"
         "        PromptInterpolation(name='retry_feedback', source='test', required=False, rationale='test'),\n"
         "    ),\n"
-        ")\n",
-    )
-    _write_prompt_module(
-        prompts_root,
-        "loop_selector",
-        "from pydantic import BaseModel\n"
-        "from engineeringagent.ports import PromptDefinition, PromptInterpolation\n"
-        "class SelectorInput(BaseModel):\n"
-        "    choices: str\n"
-        "PROMPT_DEFINITION = PromptDefinition(\n"
-        "    prompt_id='loop_selector',\n"
-        "    purpose='selector',\n"
-        "    target='operator',\n"
-        "    output_mode='text',\n"
-        "    token_budget_hint=100,\n"
-        "    input_model=SelectorInput,\n"
-        "    body_template='selector\\n$choices\\n',\n"
-        "    interpolations=(PromptInterpolation(name='choices', source='test', required=True, rationale='test'),),\n"
         ")\n",
     )
     feature_path = tmp_path / "docs" / "features" / "spec.yaml"

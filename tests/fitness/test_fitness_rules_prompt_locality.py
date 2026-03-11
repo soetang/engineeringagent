@@ -20,9 +20,6 @@ def _write_module(project_root: Path, relative_path: str, body: str) -> None:
 def _write_prompt_definitions(project_root: Path) -> None:
     definitions_root = project_root / "harness" / "prompts"
     definitions_root.mkdir(parents=True, exist_ok=True)
-    (definitions_root / "loop_selector.py").write_text(
-        "PROMPT_DEFINITION = object()\n", encoding="utf-8"
-    )
     (definitions_root / "implementation_default.py").write_text(
         "PROMPT_DEFINITION = object()\n", encoding="utf-8"
     )
@@ -140,7 +137,7 @@ def test_prompt_locality_rule_fails_on_definition_reads_outside_prompt_modules(
         tmp_path,
         "src/engineeringagent/loop.py",
         "def read_template() -> str:\n"
-        "    with open('harness/prompts/loop_selector.py',"
+        "    with open('harness/prompts/implementation_default.py',"
         " encoding='utf-8') as handle:\n"
         "        return handle.read()\n",
     )
@@ -189,7 +186,7 @@ def test_prompt_locality_rule_passes_for_localized_definitions_and_prompts(
     _write_module(
         tmp_path,
         "harness/prompts/helpers.py",
-        "from loop_selector import PROMPT_DEFINITION\n"
+        "from implementation_default import PROMPT_DEFINITION\n"
         "\n"
         "def load() -> object:\n"
         "    return PROMPT_DEFINITION\n",

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from enum import Enum
 from pathlib import Path
-from typing import Mapping, Sequence, TypeVar
+from typing import Mapping, TypeVar
 
 from engineeringagent.domain.specification.feature_specification import (
     FeatureArtifacts,
@@ -104,26 +104,6 @@ class PromptBuilder:
             handoff_path=handoff_path,
         )
         return self.build_implementation_prompt(request)
-
-    def build_selector_prompt(
-        self,
-        pending: Sequence[tuple[Path, Mapping[str, object]]],
-    ) -> str:
-        """Render the selector prompt from deterministic feature summaries."""
-
-        choices = []
-        for feature_path, feature in pending:
-            choices.append(
-                f"- id={feature.get('id')} status={feature.get('status')} "
-                f"priority={feature.get('priority')} path={feature_path}"
-            )
-
-        selector_definition = self._prompt_definitions.get("loop_selector")
-        return selector_definition.render(
-            {
-                "choices": "\n".join(choices),
-            }
-        )
 
 
 def _resolved_artifact_reference(

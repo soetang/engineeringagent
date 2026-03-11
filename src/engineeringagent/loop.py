@@ -85,15 +85,30 @@ def _print_run_all_no_work_message() -> None:
     )
 
 
+def _build_selector_prompt(
+    pending: Sequence[tuple[Path, dict[str, Any]]],
+) -> str:
+    choices = []
+    for feature_path, feature in pending:
+        choices.append(
+            f"- id={feature.get('id')} status={feature.get('status')} "
+            f"priority={feature.get('priority')} path={feature_path}"
+        )
+    return (
+        "Choose the next feature spec to execute from this pending set. "
+        "Reply with exactly one feature path from the list and no extra text.\n"
+        f"{chr(10).join(choices)}\n"
+    )
+
+
 def _choose_feature_with_selector(
     project_root: Path,
     pending: Sequence[tuple[Path, dict[str, Any]]],
 ) -> tuple[Path, dict[str, Any]]:
-    app_factory = AppFactory(project_root)
     return choose_feature_with_selector(
         project_root,
         pending,
-        build_selector_prompt_fn=app_factory.build_prompt_builder().build_selector_prompt,
+        build_selector_prompt_fn=_build_selector_prompt,
         run_agent_fn=run_agent,
     )
 

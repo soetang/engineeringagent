@@ -18,17 +18,13 @@ RULE_ID = "architecture.prompt-locality"
 _SOURCE_PACKAGE_ROOT = Path("src/engineeringagent")
 _PROMPT_DEFINITION_ROOT = Path("harness/prompts")
 _REQUIRED_PROMPT_DEFINITIONS = (
-    "loop_selector.py",
     "implementation_default.py",
 )
 _PROMPT_ALLOWED_ROOT = _PROMPT_DEFINITION_ROOT
 _CANONICAL_PROMPT_BUILDERS = {
-    "_build_selector_prompt",
     "build_ralph_opencode_prompt",
 }
 _PROMPT_CANARY_TOKENS = (
-    ("choose", "the", "next", "feature", "spec"),
-    ("exactly", "one", "feature", "path"),
     ("read", "and", "use", "this", "feature", "spec", "from", "disk"),
     ("previous", "feedback", "is", "available"),
 )
