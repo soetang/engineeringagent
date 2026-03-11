@@ -108,7 +108,7 @@ def test_repo_architecture_validator_reports_ports_importing_application_modules
 
     _write_port_module(
         tmp_path,
-        "src/engineeringagent/ports/prompt_builder.py",
+        "src/engineeringagent/ports/prompt_contracts.py",
         "from typing import Protocol\n"
         "from engineeringagent.application.prompt_builder import ImplementationPromptRequest\n\n"
         "class PromptBuilder(Protocol):\n"
@@ -127,7 +127,7 @@ def test_repo_architecture_validator_reports_ports_importing_application_modules
         ValidationIssue(
             validator_id="repo.architecture",
             scope="repo",
-            path="src/engineeringagent/ports/prompt_builder.py",
+            path="src/engineeringagent/ports/prompt_contracts.py",
             message="ports modules must not import application modules",
             code="repo.architecture.ports-application-import",
         ),
@@ -288,6 +288,11 @@ def test_repo_architecture_validator_reports_deleted_legacy_module_paths(
         "src/engineeringagent/git/client.py",
         "value = 1\n",
     )
+    _write_port_module(
+        tmp_path,
+        "src/engineeringagent/ports/prompt_builder.py",
+        "value = 1\n",
+    )
 
     issues = RepoArchitectureValidator().validate(
         context=ValidationContext(
@@ -302,6 +307,13 @@ def test_repo_architecture_validator_reports_deleted_legacy_module_paths(
             validator_id="repo.architecture",
             scope="repo",
             path="src/engineeringagent/git/client.py",
+            message="deleted legacy module path must remain absent",
+            code="repo.architecture.deleted-path",
+        ),
+        ValidationIssue(
+            validator_id="repo.architecture",
+            scope="repo",
+            path="src/engineeringagent/ports/prompt_builder.py",
             message="deleted legacy module path must remain absent",
             code="repo.architecture.deleted-path",
         ),

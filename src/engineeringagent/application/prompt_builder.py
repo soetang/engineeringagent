@@ -14,17 +14,17 @@ from engineeringagent.domain.specification import (
     resolve_feature_plan_path,
     resolve_feature_research_path,
 )
-from engineeringagent.ports import (
-    ImplementationPromptFeature,
-    ImplementationPromptRequest,
-    PromptArtifactPaths,
-    PromptBuilder,
-    PromptDefinitionRepository,
-    PromptProgressKind,
-)
 from engineeringagent.prompts.feedback_envelope import (
     parse_feedback_envelope,
     serialize_feedback_envelope,
+)
+from engineeringagent.ports import PromptDefinitionRepository
+
+from .prompt_models import (
+    ImplementationPromptFeature,
+    ImplementationPromptRequest,
+    PromptArtifactPaths,
+    PromptProgressKind,
 )
 
 
@@ -103,7 +103,7 @@ def build_implementation_prompt(
     feature_path: Path,
     feedback: str | None,
     handoff_path: str | None = None,
-    prompt_builder: PromptBuilder,
+    prompt_builder: DefaultPromptBuilder,
 ) -> str:
     """Render the implementation prompt from application-owned inputs."""
 

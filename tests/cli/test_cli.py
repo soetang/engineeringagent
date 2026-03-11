@@ -15,9 +15,11 @@ from engineeringagent.cli import init as cli_init_module
 from engineeringagent.cli import run as cli_run_module
 from engineeringagent.cli import schema as cli_schema_module
 from engineeringagent.cli import validate as cli_validate_module
+from engineeringagent.application import RunChecksResult as ApplicationRunChecksResult
 from engineeringagent.config import (
     resolve_docs_root,
 )
+from engineeringagent.domain.quality import ChecksRunResult
 from engineeringagent.loop_runtime.run_context import LoopRun, RunConfig
 from engineeringagent.schema_registry import list_schema_ids, schema_from_registry
 from tests.cli.approach_fixture_data import (
@@ -397,38 +399,33 @@ def test_main_checks_run_command_invokes_checks_via_real_cli(
 ) -> None:
     observed: dict[str, object] = {}
 
-    def _fake_run_checks(
-        project_root: str | Path,
-        *,
-        phase: str,
-        checks: list[str] | None = None,
-        check_id: str | None = None,
-        feature_path: str | None = None,
-        verbose_output: bool = False,
-        base: str | None = None,
-        head: str | None = None,
-        dry_run: bool = False,
-        **_: object,
-    ) -> Any:
-        observed["project_root"] = str(Path(project_root))
-        observed["checks"] = checks
-        observed["check_id"] = check_id
-        observed["feature_path"] = feature_path
-        observed["phase"] = phase
-        observed["base"] = base
-        observed["head"] = head
-        observed["verbose_output"] = verbose_output
-        observed["dry_run"] = dry_run
-        return SimpleNamespace(
-            ok=True,
-            output="checks ok",
-            dry_run=dry_run,
-            failed_check_id=None,
-            executions=[],
-            decisions=[],
-        )
+    class _FakeChecksService:
+        def run(self, request: object) -> ApplicationRunChecksResult:
+            observed["project_root"] = str(Path(getattr(request, "project_root")))
+            observed["checks"] = getattr(request, "selected_checks")
+            observed["check_id"] = getattr(request, "check_id")
+            observed["feature_path"] = getattr(request, "feature_path")
+            observed["phase"] = getattr(request, "phase").value
+            observed["base"] = getattr(request, "base")
+            observed["head"] = getattr(request, "head")
+            observed["verbose_output"] = getattr(request, "verbose_output")
+            observed["dry_run"] = getattr(request, "dry_run")
+            checks_result = ChecksRunResult(
+                ok=True,
+                output="checks ok",
+                dry_run=bool(getattr(request, "dry_run")),
+            )
+            return ApplicationRunChecksResult(
+                phase_results=((getattr(request, "phase"), checks_result),),
+                result=checks_result,
+                failed_phase=None,
+                failed_runtime_message=None,
+            )
 
-    monkeypatch.setattr(cli_module.checks_module, "run_checks", _fake_run_checks)
+    monkeypatch.setattr(
+        "engineeringagent.cli.checks.AppFactory.build_checks_service",
+        lambda self: _FakeChecksService(),
+    )
 
     result = _invoke_cli(
         [

@@ -5,10 +5,12 @@ from __future__ import annotations
 import subprocess
 import json
 from typing import Any
+from typing import Protocol
 
 from engineeringagent.adapters.agents import ConfiguredAgentRunner
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.application import (
+    ImplementationPromptRequest,
     build_implementation_prompt_request,
 )
 from engineeringagent.agents import (
@@ -23,7 +25,7 @@ from engineeringagent.domain.specification import (
 )
 from engineeringagent.loop_runtime.models import ImplementStepInputs
 from engineeringagent.loop_runtime.models import ImplementStepResult
-from engineeringagent.ports import AgentRunRequest, AgentRunner, PromptBuilder
+from engineeringagent.ports import AgentRunRequest, AgentRunner
 from engineeringagent.bootstrap import AppFactory
 from engineeringagent.progress import handoff as progress_handoff
 from engineeringagent.progress import paths as progress_paths
@@ -36,11 +38,22 @@ _PROGRESS_JOURNAL = FilesystemProgressJournal()
 _AGENT_RUNNER = ConfiguredAgentRunner()
 
 
+class _ImplementationPromptBuilder(Protocol):
+    """Local duck-typed seam for prompt rendering in loop tests."""
+
+    def build_implementation_prompt(
+        self,
+        request: ImplementationPromptRequest,
+    ) -> str:
+        """Render one implementation prompt from normalized request data."""
+        raise NotImplementedError
+
+
 def run_implement_step_from_inputs(
     implement_inputs: ImplementStepInputs,
     *,
     agent_runner: AgentRunner,
-    prompt_builder: PromptBuilder | None = None,
+    prompt_builder: _ImplementationPromptBuilder | None = None,
 ) -> ImplementStepResult:
     """Run the implement phase and coerce structured progress output."""
     prompt = _build_implement_prompt(
@@ -217,7 +230,7 @@ def _format_success_implement_output(command: str, output: str) -> str:
 def _build_implement_prompt(
     implement_inputs: ImplementStepInputs,
     *,
-    prompt_builder: PromptBuilder,
+    prompt_builder: _ImplementationPromptBuilder,
 ) -> str:
     request = build_implementation_prompt_request(
         feature=implement_inputs.feature,

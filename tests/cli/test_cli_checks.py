@@ -5,6 +5,7 @@ import pytest
 from typer.testing import CliRunner
 
 from engineeringagent import cli as cli_module
+from engineeringagent.application import RunChecksResult as ApplicationRunChecksResult
 from engineeringagent.changed_paths import ChangedPathsResult
 from engineeringagent.checks.api import ChecksRunResult
 from engineeringagent.checks.strategy_contracts import CheckExecutionRecord
@@ -274,19 +275,23 @@ def test_cli_checks_run_delegates_to_checks_surface(
         encoding="utf-8",
     )
 
-    calls: list[tuple[Path, object, list[str] | None, dict[str, object]]] = []
+    calls: list[object] = []
 
-    def _fake_run_checks(
-        project_root: str | Path,
-        *,
-        phase: object,
-        checks: list[str] | None = None,
-        **kwargs: object,
-    ) -> ChecksRunResult:
-        calls.append((Path(project_root), phase, checks, dict(kwargs)))
-        return ChecksRunResult(ok=True, output="delegated")
+    class _FakeChecksService:
+        def run(self, request: object) -> ApplicationRunChecksResult:
+            calls.append(request)
+            result = ChecksRunResult(ok=True, output="delegated")
+            return ApplicationRunChecksResult(
+                phase_results=((getattr(request, "phase"), result),),
+                result=result,
+                failed_phase=None,
+                failed_runtime_message=None,
+            )
 
-    monkeypatch.setattr("engineeringagent.checks.run_checks", _fake_run_checks)
+    monkeypatch.setattr(
+        "engineeringagent.cli.checks.AppFactory.build_checks_service",
+        lambda self: _FakeChecksService(),
+    )
 
     runner = CliRunner(mix_stderr=False)
     result = runner.invoke(
@@ -317,18 +322,16 @@ def test_cli_checks_run_delegates_to_checks_surface(
     assert "delegated" in result.stdout
     assert "checks run: ok" in result.stdout
     assert len(calls) == 1
-    project_root, phase, checks, kwargs = calls[0]
-    assert project_root == tmp_path.resolve()
-    assert phase is not None
-    assert checks == ["commands"]
-    assert kwargs.get("check_id") == "smoke"
-    assert kwargs.get("feature_path") == "docs/spec/features/FEAT-177/spec.yaml"
-    assert kwargs.get("base") == "main"
-    assert kwargs.get("head") == "HEAD"
-    assert kwargs.get("verbose_output") is True
-    assert kwargs.get("dry_run") is True
-    assert "start_agent_fn" not in kwargs
-    assert "run_agent_fn" not in kwargs
+    request = calls[0]
+    assert getattr(request, "project_root") == tmp_path.resolve()
+    assert getattr(request, "phase") is not None
+    assert getattr(request, "selected_checks") == ["commands"]
+    assert getattr(request, "check_id") == "smoke"
+    assert getattr(request, "feature_path") == "docs/spec/features/FEAT-177/spec.yaml"
+    assert getattr(request, "base") == "main"
+    assert getattr(request, "head") == "HEAD"
+    assert getattr(request, "verbose_output") is True
+    assert getattr(request, "dry_run") is True
 
 
 def test_cli_checks_run_normalizes_feature_path_before_delegating(
@@ -353,22 +356,23 @@ def test_cli_checks_run_normalizes_feature_path_before_delegating(
         encoding="utf-8",
     )
 
-    calls: list[dict[str, object]] = []
+    calls: list[object] = []
 
-    def _fake_run_checks(
-        project_root: str | Path,
-        *,
-        phase: object,
-        checks: list[str] | None = None,
-        **kwargs: object,
-    ) -> ChecksRunResult:
-        _ = project_root
-        _ = phase
-        _ = checks
-        calls.append(dict(kwargs))
-        return ChecksRunResult(ok=True, output="delegated")
+    class _FakeChecksService:
+        def run(self, request: object) -> ApplicationRunChecksResult:
+            calls.append(request)
+            result = ChecksRunResult(ok=True, output="delegated")
+            return ApplicationRunChecksResult(
+                phase_results=((getattr(request, "phase"), result),),
+                result=result,
+                failed_phase=None,
+                failed_runtime_message=None,
+            )
 
-    monkeypatch.setattr("engineeringagent.checks.run_checks", _fake_run_checks)
+    monkeypatch.setattr(
+        "engineeringagent.cli.checks.AppFactory.build_checks_service",
+        lambda self: _FakeChecksService(),
+    )
 
     runner = CliRunner(mix_stderr=False)
     result = runner.invoke(
@@ -389,7 +393,7 @@ def test_cli_checks_run_normalizes_feature_path_before_delegating(
 
     assert result.exit_code == 0
     assert len(calls) == 1
-    assert calls[0].get("feature_path") == "docs/spec/features/FEAT-001/spec.yaml"
+    assert getattr(calls[0], "feature_path") == "docs/spec/features/FEAT-001/spec.yaml"
 
 
 def test_cli_checks_run_dry_run_delegates_and_reports_mode(
@@ -412,25 +416,27 @@ def test_cli_checks_run_dry_run_delegates_and_reports_mode(
         encoding="utf-8",
     )
 
-    calls: list[dict[str, object]] = []
+    calls: list[object] = []
 
-    def _fake_run_checks(
-        _project_root: str | Path,
-        *,
-        phase: object,
-        checks: list[str] | None = None,
-        **kwargs: object,
-    ) -> ChecksRunResult:
-        _ = phase
-        _ = checks
-        calls.append(dict(kwargs))
-        return ChecksRunResult(
-            ok=True,
-            dry_run=True,
-            output="[decision:smoke] type=command phase=iteration_end decision=run reason=manual",
-        )
+    class _FakeChecksService:
+        def run(self, request: object) -> ApplicationRunChecksResult:
+            calls.append(request)
+            result = ChecksRunResult(
+                ok=True,
+                dry_run=True,
+                output="[decision:smoke] type=command phase=iteration_end decision=run reason=manual",
+            )
+            return ApplicationRunChecksResult(
+                phase_results=((getattr(request, "phase"), result),),
+                result=result,
+                failed_phase=None,
+                failed_runtime_message=None,
+            )
 
-    monkeypatch.setattr("engineeringagent.checks.run_checks", _fake_run_checks)
+    monkeypatch.setattr(
+        "engineeringagent.cli.checks.AppFactory.build_checks_service",
+        lambda self: _FakeChecksService(),
+    )
 
     runner = CliRunner(mix_stderr=False)
     result = runner.invoke(
@@ -452,7 +458,7 @@ def test_cli_checks_run_dry_run_delegates_and_reports_mode(
     assert "[decision:smoke]" in result.stdout
     assert "checks dry-run: ok" in result.stdout
     assert len(calls) == 1
-    assert calls[0].get("dry_run") is True
+    assert getattr(calls[0], "dry_run") is True
 
 
 def test_cli_checks_run_failure_emits_runtime_type_without_failed_group(
@@ -475,30 +481,32 @@ def test_cli_checks_run_failure_emits_runtime_type_without_failed_group(
         encoding="utf-8",
     )
 
-    def _fake_run_checks(
-        _project_root: str | Path,
-        *,
-        phase: object,
-        checks: list[str] | None = None,
-        **kwargs: object,
-    ) -> ChecksRunResult:
-        _ = phase
-        _ = checks
-        _ = kwargs
-        return ChecksRunResult(
-            ok=False,
-            failed_check_id="smoke",
-            executions=(
-                CheckExecutionRecord(
-                    check_id="smoke",
-                    check_type="command",
-                    ok=False,
-                    output="[check:smoke] failed",
+    class _FakeChecksService:
+        def run(self, request: object) -> ApplicationRunChecksResult:
+            _ = request
+            result = ChecksRunResult(
+                ok=False,
+                failed_check_id="smoke",
+                executions=(
+                    CheckExecutionRecord(
+                        check_id="smoke",
+                        check_type="command",
+                        ok=False,
+                        output="[check:smoke] failed",
+                    ),
                 ),
-            ),
-        )
+            )
+            return ApplicationRunChecksResult(
+                phase_results=((cli_module.HarnessCheckPhase.ITERATION_END, result),),
+                result=result,
+                failed_phase=None,
+                failed_runtime_message="checks failed: type=command check_id=smoke",
+            )
 
-    monkeypatch.setattr("engineeringagent.checks.run_checks", _fake_run_checks)
+    monkeypatch.setattr(
+        "engineeringagent.cli.checks.AppFactory.build_checks_service",
+        lambda self: _FakeChecksService(),
+    )
 
     runner = CliRunner(mix_stderr=False)
     result = runner.invoke(

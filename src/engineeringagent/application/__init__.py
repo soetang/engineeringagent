@@ -1,6 +1,6 @@
 """Application-layer services and contracts."""
 
-from engineeringagent.ports import (
+from .prompt_models import (
     ImplementationPromptFeature,
     ImplementationPromptRequest,
     PromptArtifactPaths,

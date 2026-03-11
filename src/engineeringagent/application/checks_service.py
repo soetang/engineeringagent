@@ -67,10 +67,6 @@ class ChecksService:
 
     def run(self, request: RunChecksRequest) -> RunChecksResult:
         """Execute checks with deterministic first-failure semantics."""
-        catalog_preflight = self._load_required_catalog(request)
-        if catalog_preflight is not None:
-            return catalog_preflight
-
         if (
             self._checks_runner.reviewers_group_selected(request.selected_checks)
             and request.feature_path is None
@@ -78,6 +74,10 @@ class ChecksService:
             raise ValueError(
                 "feature_path is required when reviewers checks are selected"
             )
+
+        catalog_preflight = self._load_required_catalog(request)
+        if catalog_preflight is not None:
+            return catalog_preflight
 
         phases = self._resolve_phases(request)
         phase_results: list[

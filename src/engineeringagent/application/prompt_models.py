@@ -1,9 +1,9 @@
-"""Prompt assembly port used by orchestration code."""
+"""Application-owned prompt assembly contracts."""
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal, Protocol
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
@@ -43,13 +43,3 @@ class ImplementationPromptRequest(BaseModel):
     feedback: str | None
     progress_kind: PromptProgressKind
     current_progress: str | None = None
-
-
-class PromptBuilder(Protocol):
-    """Render stable implementation prompts from normalized inputs."""
-
-    def build_implementation_prompt(
-        self, request: ImplementationPromptRequest
-    ) -> str:
-        """Render the implementation prompt for one iteration."""
-        raise NotImplementedError

@@ -20,7 +20,7 @@ from engineeringagent.application import (
     ValidationService,
 )
 from engineeringagent.config import resolve_harness_root
-from engineeringagent.ports import PromptBuilder, PromptDefinitionRepository
+from engineeringagent.ports import PromptDefinitionRepository
 
 
 class AppFactory:
@@ -63,6 +63,6 @@ class AppFactory:
             resolve_harness_root(self.project_root) / "prompts"
         )
 
-    def build_prompt_builder(self) -> PromptBuilder:
+    def build_prompt_builder(self) -> DefaultPromptBuilder:
         """Create the default deterministic prompt builder."""
         return DefaultPromptBuilder(self.build_prompt_definition_repository())

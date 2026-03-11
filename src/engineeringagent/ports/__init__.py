@@ -17,13 +17,6 @@ from .init_workspace import (
     InitWorkspaceDependencies,
 )
 from .progress_journal import ProgressJournal
-from .prompt_builder import (
-    ImplementationPromptFeature,
-    ImplementationPromptRequest,
-    PromptArtifactPaths,
-    PromptBuilder,
-    PromptProgressKind,
-)
 from .prompt_definition_repository import (
     PromptDefinition,
     PromptDefinitionRepository,
@@ -59,17 +52,12 @@ __all__ = [
     "DiffSummary",
     "GuidanceTopicRepository",
     "HarnessCheckPhase",
-    "ImplementationPromptFeature",
-    "ImplementationPromptRequest",
     "InitWorkspaceDependencies",
-    "PromptArtifactPaths",
     "ProgressEvent",
     "ProgressJournal",
-    "PromptBuilder",
     "PromptDefinition",
     "PromptDefinitionRepository",
     "PromptInterpolation",
-    "PromptProgressKind",
     "RepositoryValidationRequest",
     "RepositoryValidationResult",
     "RepositoryValidator",

@@ -18,6 +18,7 @@ class RepoArchitectureValidator:
         application_root = src_root / "application"
         domain_root = src_root / "domain"
         ports_root = context.project_root / "src" / "engineeringagent" / "ports"
+        deleted_paths = _deleted_module_paths()
         issues: list[ValidationIssue] = []
         issues.extend(_deleted_path_issues(project_root=context.project_root))
         issues.extend(
@@ -34,6 +35,8 @@ class RepoArchitectureValidator:
             )
         for module_path in sorted(ports_root.glob("*.py")):
             if module_path.name == "__init__.py":
+                continue
+            if module_path.relative_to(context.project_root).as_posix() in deleted_paths:
                 continue
             issues.extend(_port_protocol_issues(module_path, project_root=context.project_root))
         return _deduplicate_issues(issues)
@@ -374,25 +377,7 @@ def _legacy_from_import_issues(
 
 
 def _deleted_path_issues(*, project_root: Path) -> tuple[ValidationIssue, ...]:
-    deleted_paths = tuple(
-        sorted(
-            (
-        "src/engineeringagent/harness_checks_runtime.py",
-        "src/engineeringagent/validator.py",
-        "src/engineeringagent/ports/guidance_topics.py",
-        "src/engineeringagent/ports/prompt_definitions.py",
-        "src/engineeringagent/adapters/guidance/packaged_guidance_topics.py",
-        "src/engineeringagent/adapters/prompts/bundled_prompt_definitions.py",
-        "src/engineeringagent/adapters/prompts/filesystem_prompt_definitions.py",
-        "src/engineeringagent/adapters/prompts/project_prompt_definitions.py",
-        "src/engineeringagent/application/implementation_prompt.py",
-        "src/engineeringagent/git/__init__.py",
-        "src/engineeringagent/git/client.py",
-        "src/engineeringagent/progress_paths.py",
-        "src/engineeringagent/progress_logging.py",
-            )
-        )
-    )
+    deleted_paths = tuple(sorted(_deleted_module_paths()))
     issues = [
         ValidationIssue(
             validator_id="repo.architecture",
@@ -405,3 +390,22 @@ def _deleted_path_issues(*, project_root: Path) -> tuple[ValidationIssue, ...]:
         if (project_root / relative_path).exists()
     ]
     return tuple(issues)
+
+
+def _deleted_module_paths() -> set[str]:
+    return {
+        "src/engineeringagent/harness_checks_runtime.py",
+        "src/engineeringagent/validator.py",
+        "src/engineeringagent/ports/guidance_topics.py",
+        "src/engineeringagent/ports/prompt_builder.py",
+        "src/engineeringagent/ports/prompt_definitions.py",
+        "src/engineeringagent/adapters/guidance/packaged_guidance_topics.py",
+        "src/engineeringagent/adapters/prompts/bundled_prompt_definitions.py",
+        "src/engineeringagent/adapters/prompts/filesystem_prompt_definitions.py",
+        "src/engineeringagent/adapters/prompts/project_prompt_definitions.py",
+        "src/engineeringagent/application/implementation_prompt.py",
+        "src/engineeringagent/git/__init__.py",
+        "src/engineeringagent/git/client.py",
+        "src/engineeringagent/progress_paths.py",
+        "src/engineeringagent/progress_logging.py",
+    }
