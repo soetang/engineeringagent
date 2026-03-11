@@ -15,7 +15,7 @@ from engineeringagent.adapters.runtime.run_loop_context import (
     RunConfig,
     RunServices,
 )
-from engineeringagent.application.feature_iteration_models import (
+from engineeringagent.domain.audit import (
     CompletionCommitOutcome,
     FeatureIterationInputs,
     GatePhaseOutcome,

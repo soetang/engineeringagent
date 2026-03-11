@@ -7,7 +7,7 @@ from typing import Callable, Sequence
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.application.feature_iteration_models import (
+from engineeringagent.domain.audit import (
     IterationReport,
     IterationSummaryInputs,
     IterationTelemetryInputs,

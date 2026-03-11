@@ -6,7 +6,7 @@ from types import SimpleNamespace
 from typing import Any, get_type_hints
 
 import engineeringagent.adapters.progress.iteration_telemetry as telemetry_module
-import engineeringagent.application.feature_iteration_models as models_module
+import engineeringagent.domain.audit.iteration as models_module
 import engineeringagent.loop_runtime.phases as phases_module
 import engineeringagent.presentation.presenters.terminal as presentation_module
 from engineeringagent.adapters.progress import FilesystemProgressJournal
@@ -26,7 +26,7 @@ from engineeringagent.adapters.progress.iteration_telemetry import (
     _summarize_reviewer_feedback,
     write_iteration_telemetry,
 )
-from engineeringagent.application.feature_iteration_models import (
+from engineeringagent.domain.audit import (
     CommandTiming,
     FeatureIterationInputs,
     IterationSummaryInputs,

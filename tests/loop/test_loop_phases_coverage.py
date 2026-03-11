@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 
-from engineeringagent.application.feature_iteration_models import FeatureIterationInputs
+from engineeringagent.domain.audit import FeatureIterationInputs
 from engineeringagent.checks import ChecksRunResult
 from engineeringagent.domain.quality import ChangedPathsResult, parse_feedback_envelope
 from engineeringagent.loop_runtime.phases import (

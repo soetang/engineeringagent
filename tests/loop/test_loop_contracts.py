@@ -31,7 +31,7 @@ from engineeringagent.adapters.runtime.run_loop_context import (
 )
 from engineeringagent.agents.contracts import AgentOutputValidationError
 from engineeringagent.application import PromptBuilder
-from engineeringagent.application.feature_iteration_models import (
+from engineeringagent.domain.audit import (
     FeatureIterationInputs,
     ImplementStepInputs,
     IterationTelemetryInputs,

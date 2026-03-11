@@ -8,7 +8,7 @@ import pytest
 import yaml
 
 import engineeringagent.loop as loop_module
-from engineeringagent.application.feature_iteration_models import ImplementStepResult
+from engineeringagent.domain.audit import ImplementStepResult
 from engineeringagent.bootstrap import runtime_support as runtime_support_module
 from engineeringagent.loop import _enforce_worktree_precondition
 from engineeringagent.ports import WorktreeStatus

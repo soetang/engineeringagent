@@ -1,4 +1,4 @@
-"""Feature-iteration workflow models."""
+"""Audit-domain iteration report and telemetry models."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from typing import Any, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from engineeringagent.domain.audit import ImplementProgressEnvelope
+from .handoff import ImplementProgressEnvelope
 
 ImplementStepResult: TypeAlias = tuple[
     bool,

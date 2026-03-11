@@ -22,7 +22,7 @@ from engineeringagent.agents import AgentBackendError, AgentBackendFailureDetail
 from engineeringagent.agents.backends.opencode.permissions import (
     PermissionProbeResult,
 )
-from engineeringagent.application.feature_iteration_models import ImplementStepResult
+from engineeringagent.domain.audit import ImplementStepResult
 from engineeringagent.bootstrap.runtime_execution import (
     run_loop_controller as _run_loop,
 )

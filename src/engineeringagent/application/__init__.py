@@ -1,7 +1,6 @@
 """Application-layer services and workflow models."""
 
-from .checks_service import ChecksService, RunChecksRequest, RunChecksResult
-from .feature_iteration_models import (
+from engineeringagent.domain.audit import (
     CommandTiming,
     CompletionCommitOutcome,
     FeatureIterationInputs,
@@ -18,6 +17,8 @@ from .feature_iteration_models import (
     ReviewerPhaseOutcome,
     VerificationPhaseOutcome,
 )
+
+from .checks_service import ChecksService, RunChecksRequest, RunChecksResult
 from .feature_iteration_service import (
     FeatureIterationRequest,
     FeatureIterationResult,

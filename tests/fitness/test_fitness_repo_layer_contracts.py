@@ -80,11 +80,11 @@ def test_repo_layer_contracts_rule_allows_loop_runtime_models_bridge(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Allow the transitional loop-runtime import of application feature-iteration models."""
+    """Allow the loop-runtime import of audit-domain iteration models."""
     loop_runtime_root = tmp_path / "src" / "engineeringagent" / "loop_runtime"
     loop_runtime_root.mkdir(parents=True, exist_ok=True)
     (loop_runtime_root / "iteration.py").write_text(
-        "from engineeringagent.application.feature_iteration_models import IterationReport\n",
+        "from engineeringagent.domain.audit import IterationReport\n",
         encoding="utf-8",
     )
 

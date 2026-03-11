@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from engineeringagent.application.feature_iteration_models import IterationSummaryInputs
+from engineeringagent.domain.audit import IterationSummaryInputs
 from engineeringagent.bootstrap import runtime_support
 
 

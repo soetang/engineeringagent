@@ -8,7 +8,7 @@ from typing import Any
 
 from engineeringagent.adapters.progress import paths as progress_paths
 from engineeringagent.agents import classify_backend_exception, describe_action
-from engineeringagent.application.feature_iteration_models import (
+from engineeringagent.domain.audit import (
     ImplementStepInputs,
     ImplementStepResult,
     IterationSummaryInputs,

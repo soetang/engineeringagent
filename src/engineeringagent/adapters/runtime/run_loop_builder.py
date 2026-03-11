@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Callable, NamedTuple, Sequence
 
 from engineeringagent.agents import preflight, run_agent
-from engineeringagent.application.feature_iteration_models import (
+from engineeringagent.domain.audit import (
     FeatureIterationInputs,
     IterationOutcome,
     IterationSummaryInputs,

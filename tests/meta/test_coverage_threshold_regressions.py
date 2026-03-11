@@ -13,7 +13,7 @@ from pydantic import ValidationError
 import engineeringagent.checks.fitness.adapters as adapters_module
 import engineeringagent.config as config_module
 import engineeringagent.loop_runtime.feature_state as feature_state_module
-from engineeringagent.application.feature_iteration_models import FeatureIterationInputs
+from engineeringagent.domain.audit import FeatureIterationInputs
 from engineeringagent.checks.fitness.contracts import (
     CONTRACT_VERSION,
     FitnessRuleMetadata,

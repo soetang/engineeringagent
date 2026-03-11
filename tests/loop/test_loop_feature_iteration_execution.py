@@ -9,7 +9,7 @@ import yaml
 
 import engineeringagent.loop as loop_module
 import engineeringagent.presentation.presenters.terminal as presentation_module
-from engineeringagent.application.feature_iteration_models import IterationSummaryInputs
+from engineeringagent.domain.audit import IterationSummaryInputs
 from tests.loop.feature_iteration_support import (
     FEATURE_LOG_REF,
     RUNS_LOG_REF,

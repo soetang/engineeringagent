@@ -10,7 +10,7 @@ from typing import Any, Callable
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.application.feature_iteration_models import (
+from engineeringagent.domain.audit import (
     CommandTiming,
     CompletionCommitOutcome,
     FeatureIterationInputs,

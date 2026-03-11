@@ -52,6 +52,7 @@ DELETED_MODULE_PATHS = {
     "src/engineeringagent/application/contracts/run_loop.py",
     "src/engineeringagent/application/contracts/validation.py",
     "src/engineeringagent/application/contracts/workspace_recovery.py",
+    "src/engineeringagent/application/feature_iteration_models.py",
     "src/engineeringagent/application/implementation_prompt.py",
     "src/engineeringagent/application/checks/service.py",
     "src/engineeringagent/application/checks/runtime.py",
@@ -179,9 +180,7 @@ def _forbidden_import_violations(
     return violations
 
 
-_LOOP_RUNTIME_ALLOWED_APPLICATION_IMPORTS = (
-    "engineeringagent.application.feature_iteration_models",
-)
+_LOOP_RUNTIME_ALLOWED_APPLICATION_IMPORTS: tuple[str, ...] = ()
 
 
 def _loop_runtime_violations(path: Path) -> list[str]:
@@ -198,7 +197,7 @@ def _loop_runtime_violations(path: Path) -> list[str]:
             allowed_modules=_LOOP_RUNTIME_ALLOWED_APPLICATION_IMPORTS,
             message=(
                 "loop runtime modules must not import application modules "
-                "outside engineeringagent.application.feature_iteration_models"
+                "outside the application service surface"
             ),
         ),
         *_forbidden_import_violations(

@@ -17,7 +17,7 @@ from engineeringagent.adapters.runtime.run_loop_builder import (
 )
 from engineeringagent.adapters.runtime.run_loop_context import LoopRun
 from engineeringagent.application import FeatureIterationRequest
-from engineeringagent.application.feature_iteration_models import (
+from engineeringagent.domain.audit import (
     FeatureIterationInputs,
     IterationOutcome,
     IterationSummaryInputs,
@@ -150,7 +150,7 @@ class RuntimeFeatureIterationExecutor(FeatureIterationExecutor):
             support=import_module("engineeringagent.bootstrap.runtime_support"),
             feature_state=import_module("engineeringagent.loop_runtime.feature_state"),
             iteration=import_module("engineeringagent.loop_runtime.iteration"),
-            models=import_module("engineeringagent.application.feature_iteration_models"),
+            models=import_module("engineeringagent.domain.audit.iteration"),
             phases=import_module("engineeringagent.loop_runtime.phases"),
         )
 
