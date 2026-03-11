@@ -4,7 +4,36 @@ from __future__ import annotations
 
 from typing import Mapping
 
+from pydantic import BaseModel, ConfigDict, Field
+
 from engineeringagent.ports import PromptDefinition, PromptInterpolation
+
+
+class ImplementationPromptInput(BaseModel):
+    """Typed input contract for the implementation prompt."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    artifact_paths: str
+    handoff_path: str = ""
+    feature_id: str
+    feature_title: str
+    objective: str
+    context: str
+    progress_unit: str
+    current_progress_reference: str
+    progress_context_instruction: str
+    progress_update_instruction: str
+
+
+class ImplementationPromptOutputV1(BaseModel):
+    """Structured implementation-agent response contract."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    summary: str
+    changed_paths: list[str] = Field(default_factory=list)
+    follow_up_notes: list[str] = Field(default_factory=list)
 
 
 def _render(values: Mapping[str, object]) -> str:
@@ -87,6 +116,10 @@ PROMPT_DEFINITION = PromptDefinition(
     prompt_id="loop_implementation",
     purpose="Guide one deterministic implementation step for the active feature.",
     target="implementation",
+    output_mode="structured",
+    token_budget_hint=6000,
+    input_model=ImplementationPromptInput,
+    output_model=ImplementationPromptOutputV1,
     renderer=_render,
     interpolations=(
         PromptInterpolation(

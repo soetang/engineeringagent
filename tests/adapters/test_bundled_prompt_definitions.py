@@ -24,6 +24,9 @@ def test_bundled_prompt_definition_repository_loads_template_text() -> None:
 
     assert prompt.prompt_id == "loop_selector"
     assert prompt.target == "operator"
+    assert prompt.output_mode == "text"
+    assert prompt.token_budget_hint > 0
+    assert prompt.input_model.__name__ == "SelectorPromptInput"
     assert prompt.placeholder_names == ("choices",)
     assert prompt.body_template is None
     assert prompt.render({"choices": "- id=FEAT-100 path=docs/spec.yaml"}).startswith(

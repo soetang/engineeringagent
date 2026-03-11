@@ -56,6 +56,10 @@ class PromptDefinition(BaseModel):
     prompt_id: str
     purpose: str
     target: Literal["implementation", "reviewer", "operator"]
+    output_mode: Literal["text", "structured"]
+    token_budget_hint: int
+    input_model: type[BaseModel]
+    output_model: type[BaseModel] | None = None
     body_template: str | None = None
     renderer: Callable[[Mapping[str, object]], str] | None = None
     interpolations: tuple[PromptInterpolation, ...]
@@ -92,6 +96,16 @@ class PromptDefinition(BaseModel):
                     f"prompt definition {self.prompt_id!r} uses undeclared "
                     f"placeholders: {undeclared_text}"
                 )
+        if self.token_budget_hint <= 0:
+            raise ValueError(
+                f"prompt definition {self.prompt_id!r} must define a positive "
+                "token_budget_hint"
+            )
+        if self.output_mode == "structured" and self.output_model is None:
+            raise ValueError(
+                f"prompt definition {self.prompt_id!r} must define output_model "
+                "when output_mode='structured'"
+            )
         return self
 
     @property
@@ -101,10 +115,17 @@ class PromptDefinition(BaseModel):
             return _template_placeholders(self.body_template)
         return tuple(sorted(item.name for item in self.interpolations))
 
-    def render(self, values: Mapping[str, object]) -> str:
+    def render(self, values: BaseModel | Mapping[str, object]) -> str:
         """Render the template using only declared interpolations."""
+        value_mapping: Mapping[str, object]
+        if isinstance(values, BaseModel):
+            input_data = self.input_model.model_validate(values)
+            value_mapping = input_data.model_dump(mode="python")
+        else:
+            value_mapping = values
+
         declared_names = {item.name for item in self.interpolations}
-        unexpected = sorted(set(values) - declared_names)
+        unexpected = sorted(set(value_mapping) - declared_names)
         if unexpected:
             unexpected_text = ", ".join(unexpected)
             raise ValueError(
@@ -115,7 +136,7 @@ class PromptDefinition(BaseModel):
         missing = sorted(
             item.name
             for item in self.interpolations
-            if item.required and item.name not in values
+            if item.required and item.name not in value_mapping
         )
         if missing:
             missing_text = ", ".join(missing)
@@ -124,8 +145,10 @@ class PromptDefinition(BaseModel):
                 f"interpolations: {missing_text}"
             )
 
+        input_data = self.input_model.model_validate(value_mapping)
+        normalized_values = input_data.model_dump(mode="python")
         substitutions = {
-            item.name: _coerce_prompt_value(values.get(item.name))
+            item.name: _coerce_prompt_value(normalized_values.get(item.name))
             for item in self.interpolations
         }
         if self.renderer is not None:

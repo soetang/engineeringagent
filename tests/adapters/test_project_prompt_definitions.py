@@ -24,11 +24,17 @@ def test_filesystem_prompt_definition_repository_lists_python_modules(
     _write_prompt_module(
         prompts_root,
         "loop_selector",
+        "from pydantic import BaseModel\n"
         "from engineeringagent.ports import PromptDefinition, PromptInterpolation\n"
+        "class SelectorInput(BaseModel):\n"
+        "    choices: str\n"
         "PROMPT_DEFINITION = PromptDefinition(\n"
         "    prompt_id='loop_selector',\n"
         "    purpose='selector',\n"
         "    target='operator',\n"
+        "    output_mode='text',\n"
+        "    token_budget_hint=100,\n"
+        "    input_model=SelectorInput,\n"
         "    body_template='selector: $choices',\n"
         "    interpolations=(PromptInterpolation(\n"
         "        name='choices', source='test', required=True, rationale='test'),),\n"
@@ -37,11 +43,17 @@ def test_filesystem_prompt_definition_repository_lists_python_modules(
     _write_prompt_module(
         prompts_root,
         "loop_feedback",
+        "from pydantic import BaseModel\n"
         "from engineeringagent.ports import PromptDefinition, PromptInterpolation\n"
+        "class FeedbackInput(BaseModel):\n"
+        "    feedback: str\n"
         "PROMPT_DEFINITION = PromptDefinition(\n"
         "    prompt_id='loop_feedback',\n"
         "    purpose='feedback',\n"
         "    target='implementation',\n"
+        "    output_mode='text',\n"
+        "    token_budget_hint=100,\n"
+        "    input_model=FeedbackInput,\n"
         "    body_template='feedback: $feedback',\n"
         "    interpolations=(PromptInterpolation(\n"
         "        name='feedback', source='test', required=True, rationale='test'),),\n"
@@ -63,11 +75,17 @@ def test_filesystem_prompt_definition_repository_loads_template_text(
     _write_prompt_module(
         prompts_root,
         "loop_selector",
+        "from pydantic import BaseModel\n"
         "from engineeringagent.ports import PromptDefinition, PromptInterpolation\n"
+        "class SelectorInput(BaseModel):\n"
+        "    choices: str\n"
         "PROMPT_DEFINITION = PromptDefinition(\n"
         "    prompt_id='loop_selector',\n"
         "    purpose='selector',\n"
         "    target='operator',\n"
+        "    output_mode='text',\n"
+        "    token_budget_hint=100,\n"
+        "    input_model=SelectorInput,\n"
         "    body_template='repo selector',\n"
         "    interpolations=(PromptInterpolation(\n"
         "        name='choices', source='test', required=True, rationale='test'),),\n"
@@ -78,6 +96,7 @@ def test_filesystem_prompt_definition_repository_loads_template_text(
 
     assert prompt.prompt_id == "loop_selector"
     assert prompt.body_template == "repo selector"
+    assert prompt.input_model.__name__ == "SelectorInput"
     assert [item.name for item in prompt.interpolations] == ["choices"]
 
 
@@ -91,11 +110,17 @@ def test_project_prompt_definition_repository_prefers_repo_prompt_templates(
     _write_prompt_module(
         prompts_root,
         "loop_selector",
+        "from pydantic import BaseModel\n"
         "from engineeringagent.ports import PromptDefinition, PromptInterpolation\n"
+        "class SelectorInput(BaseModel):\n"
+        "    choices: str\n"
         "PROMPT_DEFINITION = PromptDefinition(\n"
         "    prompt_id='loop_selector',\n"
         "    purpose='selector',\n"
         "    target='operator',\n"
+        "    output_mode='text',\n"
+        "    token_budget_hint=100,\n"
+        "    input_model=SelectorInput,\n"
         "    body_template='repo override: $choices',\n"
         "    interpolations=(PromptInterpolation(\n"
         "        name='choices', source='test', required=True, rationale='test'),),\n"
@@ -133,11 +158,17 @@ def test_project_prompt_definition_repository_lists_repo_and_bundled_ids(
     _write_prompt_module(
         prompts_root,
         "custom_prompt",
+        "from pydantic import BaseModel\n"
         "from engineeringagent.ports import PromptDefinition\n"
+        "class CustomInput(BaseModel):\n"
+        "    pass\n"
         "PROMPT_DEFINITION = PromptDefinition(\n"
         "    prompt_id='custom_prompt',\n"
         "    purpose='custom',\n"
         "    target='operator',\n"
+        "    output_mode='text',\n"
+        "    token_budget_hint=100,\n"
+        "    input_model=CustomInput,\n"
         "    renderer=lambda values: 'custom',\n"
         "    interpolations=(),\n"
         ")\n",
@@ -174,11 +205,17 @@ def test_prompt_definition_render_rejects_undeclared_interpolations(
     _write_prompt_module(
         prompts_root,
         "loop_selector",
+        "from pydantic import BaseModel\n"
         "from engineeringagent.ports import PromptDefinition, PromptInterpolation\n"
+        "class SelectorInput(BaseModel):\n"
+        "    choices: str\n"
         "PROMPT_DEFINITION = PromptDefinition(\n"
         "    prompt_id='loop_selector',\n"
         "    purpose='selector',\n"
         "    target='operator',\n"
+        "    output_mode='text',\n"
+        "    token_budget_hint=100,\n"
+        "    input_model=SelectorInput,\n"
         "    body_template='$choices',\n"
         "    interpolations=(PromptInterpolation(\n"
         "        name='choices', source='test', required=True, rationale='test'),),\n"
