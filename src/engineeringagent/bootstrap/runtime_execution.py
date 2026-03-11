@@ -8,7 +8,7 @@ from types import SimpleNamespace
 from typing import Any, Callable
 
 from engineeringagent.application import FeatureIterationRequest
-from engineeringagent.application.feature_iteration_service import FeatureIterationService
+from engineeringagent.application.feature_iteration import FeatureIterationService
 from engineeringagent.domain.specification import feature_completion_commit_subject
 from engineeringagent.loop_runtime.models import FeatureIterationInputs, IterationOutcome
 from engineeringagent.loop_runtime.run_builder import (

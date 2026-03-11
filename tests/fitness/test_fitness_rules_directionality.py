@@ -196,12 +196,12 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
     )
     _write_module(
         tmp_path,
-        "application/checks_service.py",
+        "application/checks/service.py",
         "import engineeringagent.checks\n",
     )
     _write_module(
         tmp_path,
-        "application/guidance_service.py",
+        "application/guidance/service.py",
         "import engineeringagent.loop_runtime.selection\n",
     )
     _write_module(
@@ -211,12 +211,12 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
     )
     _write_module(
         tmp_path,
-        "application/init_workspace_service.py",
+        "application/init_workspace/service.py",
         "import engineeringagent.adapters.progress.paths\n",
     )
     _write_module(
         tmp_path,
-        "application/prompt_builder.py",
+        "application/prompts/prompt_builder.py",
         "import engineeringagent.adapters.progress.paths\n"
         "import engineeringagent.presentation.presenters.prompt_feedback\n"
         "import engineeringagent.presentation.presenters.terminal\n"
@@ -224,17 +224,17 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
     )
     _write_module(
         tmp_path,
-        "application/run_loop_service.py",
+        "application/run_loop/service.py",
         "import engineeringagent.loop_runtime.selection\n",
     )
     _write_module(
         tmp_path,
-        "application/validation_service.py",
+        "application/validation/service.py",
         "import engineeringagent.checks\n",
     )
     _write_module(
         tmp_path,
-        "application/workspace_recovery_service.py",
+        "application/workspace_recovery/service.py",
         "import engineeringagent.bootstrap.app_factory\n",
     )
     _write_module(
@@ -275,43 +275,43 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
     assert payload["status"] == "fail"
     assert payload["violations"] == [
         (
-            "engineeringagent.application.checks_service imports blocked dependency "
+            "engineeringagent.application.checks.service imports blocked dependency "
             "engineeringagent.checks"
         ),
         (
-            "engineeringagent.application.guidance_service imports blocked dependency "
+            "engineeringagent.application.guidance.service imports blocked dependency "
             "engineeringagent.loop_runtime.selection"
         ),
         (
-            "engineeringagent.application.init_workspace_service imports blocked "
+            "engineeringagent.application.init_workspace.service imports blocked "
             "dependency engineeringagent.adapters.progress.paths"
         ),
         (
-            "engineeringagent.application.prompt_builder imports blocked dependency "
+            "engineeringagent.application.prompts.prompt_builder imports blocked dependency "
             "engineeringagent.adapters.progress.paths"
         ),
         (
-            "engineeringagent.application.prompt_builder imports blocked dependency "
+            "engineeringagent.application.prompts.prompt_builder imports blocked dependency "
             "engineeringagent.presentation.presenters.prompt_feedback"
         ),
         (
-            "engineeringagent.application.prompt_builder imports blocked dependency "
+            "engineeringagent.application.prompts.prompt_builder imports blocked dependency "
             "engineeringagent.presentation.presenters.terminal"
         ),
         (
-            "engineeringagent.application.prompt_builder imports blocked dependency "
+            "engineeringagent.application.prompts.prompt_builder imports blocked dependency "
             "engineeringagent.specs"
         ),
         (
-            "engineeringagent.application.run_loop_service imports blocked dependency "
+            "engineeringagent.application.run_loop.service imports blocked dependency "
             "engineeringagent.loop_runtime.selection"
         ),
         (
-            "engineeringagent.application.validation_service imports blocked dependency "
+            "engineeringagent.application.validation.service imports blocked dependency "
             "engineeringagent.checks"
         ),
         (
-            "engineeringagent.application.workspace_recovery_service imports blocked "
+            "engineeringagent.application.workspace_recovery.service imports blocked "
             "dependency engineeringagent.bootstrap.app_factory"
         ),
         (

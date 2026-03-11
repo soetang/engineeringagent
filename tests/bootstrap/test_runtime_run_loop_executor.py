@@ -5,7 +5,7 @@ from typing import cast
 
 import engineeringagent.bootstrap.runtime_execution as runtime_executor_module
 from engineeringagent.bootstrap.runtime_execution import RuntimeRunLoopExecutor
-from engineeringagent.application.feature_iteration_service import FeatureIterationService
+from engineeringagent.application.feature_iteration import FeatureIterationService
 from engineeringagent.ports import RunLoopExecutionRequest
 from engineeringagent.ports.version_control import VersionControlGateway
 

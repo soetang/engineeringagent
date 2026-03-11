@@ -56,49 +56,49 @@ rules:
     blocked_dependencies:
       - engineeringagent.adapters
       - engineeringagent.loop_runtime
-  - module: engineeringagent.application.checks_service
+  - module: engineeringagent.application.checks.service
     blocked_dependencies:
       - engineeringagent.bootstrap
       - engineeringagent.adapters
       - engineeringagent.checks
       - engineeringagent.loop_runtime
       - engineeringagent.presentation
-  - module: engineeringagent.application.guidance_service
+  - module: engineeringagent.application.guidance.service
     blocked_dependencies:
       - engineeringagent.adapters
       - engineeringagent.bootstrap
       - engineeringagent.loop_runtime
       - engineeringagent.presentation
-  - module: engineeringagent.application.init_workspace_service
+  - module: engineeringagent.application.init_workspace.service
     blocked_dependencies:
       - engineeringagent.adapters
       - engineeringagent.bootstrap
       - engineeringagent.loop_runtime
       - engineeringagent.presentation
-  - module: engineeringagent.application.prompt_builder
+  - module: engineeringagent.application.prompts.prompt_builder
     blocked_dependencies:
       - engineeringagent.adapters
       - engineeringagent.bootstrap
       - engineeringagent.loop_runtime
       - engineeringagent.presentation.presenters
       - engineeringagent.specs
-  - module: engineeringagent.application.run_loop_service
+  - module: engineeringagent.application.run_loop.service
     blocked_dependencies:
       - engineeringagent.adapters
       - engineeringagent.bootstrap
       - engineeringagent.loop_runtime
-  - module: engineeringagent.application.feature_iteration_service
+  - module: engineeringagent.application.feature_iteration.service
     blocked_dependencies:
       - engineeringagent.adapters
       - engineeringagent.bootstrap
-  - module: engineeringagent.application.validation_service
+  - module: engineeringagent.application.validation.service
     blocked_dependencies:
       - engineeringagent.adapters
       - engineeringagent.bootstrap
       - engineeringagent.checks
       - engineeringagent.loop_runtime
       - engineeringagent.presentation
-  - module: engineeringagent.application.workspace_recovery_service
+  - module: engineeringagent.application.workspace_recovery.service
     blocked_dependencies:
       - engineeringagent.adapters
       - engineeringagent.bootstrap

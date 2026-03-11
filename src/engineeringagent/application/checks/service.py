@@ -79,9 +79,7 @@ class ChecksService:
             return catalog_preflight
 
         phases = self._resolve_phases(request)
-        phase_results: list[
-            tuple[HarnessCheckPhase, ChecksRunResult]
-        ] = []
+        phase_results: list[tuple[HarnessCheckPhase, ChecksRunResult]] = []
         result: ChecksRunResult | None = None
         failed_phase: HarnessCheckPhase | None = None
         for phase in phases:
@@ -125,7 +123,10 @@ class ChecksService:
             request.selected_checks,
             phase=request.phase,
         )
-        if not any(group in {"commands", "fitness", "reviewers"} for group in selected_groups):
+        if not any(
+            group in {"commands", "fitness", "reviewers"}
+            for group in selected_groups
+        ):
             return None
 
         try:

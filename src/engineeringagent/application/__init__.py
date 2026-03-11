@@ -1,30 +1,30 @@
 """Application-layer services and workflow models."""
 
-from .checks_service import ChecksService, RunChecksRequest, RunChecksResult
-from .feature_iteration_service import (
+from .checks import ChecksService, RunChecksRequest, RunChecksResult
+from .feature_iteration import (
     FeatureIterationRequest,
     FeatureIterationResult,
     FeatureIterationService,
 )
-from .guidance_service import (
+from .guidance import (
     GuidanceInputError,
     GuidanceQuery,
     GuidanceResult,
     GuidanceService,
 )
-from .init_workspace_service import (
+from .init_workspace import (
     InitWorkspaceRequest,
     InitWorkspaceResult,
     InitWorkspaceService,
 )
-from .prompt_builder import ImplementationPromptRequest, PromptBuilder
-from .run_loop_service import RunLoopRequest, RunLoopResult, RunLoopService
-from .validation_service import (
+from .prompts import ImplementationPromptRequest, PromptBuilder
+from .run_loop import RunLoopRequest, RunLoopResult, RunLoopService
+from .validation import (
     ValidateRepositoryRequest,
     ValidationResult,
     ValidationService,
 )
-from .workspace_recovery_service import (
+from .workspace_recovery import (
     RecoverWorkspaceRequest,
     RecoverWorkspaceResult,
     WorkspaceRecoveryService,
