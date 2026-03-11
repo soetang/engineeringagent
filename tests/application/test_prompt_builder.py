@@ -275,51 +275,59 @@ def test_default_prompt_builder_omits_handoff_guidance_without_path(
 def test_prompt_builder_private_helpers_cover_invalid_and_blank_inputs(
     tmp_path: Path,
 ) -> None:
-    """Private helper branches stay deterministic for malformed prompt artifacts."""
+    """Prompt requests stay deterministic for blank bundled artifact references."""
 
-    missing_plan = tmp_path / "missing.md"
-    empty_frontmatter = tmp_path / "empty.md"
-    empty_frontmatter.write_text("---\n---\n", encoding="utf-8")
-    missing_footer = tmp_path / "missing-footer.md"
-    missing_footer.write_text("---\nphase: P1\n", encoding="utf-8")
-    non_frontmatter = tmp_path / "plain.md"
-    non_frontmatter.write_text("# Not frontmatter\n", encoding="utf-8")
+    feature_data = base_feature()
+    feature_data["artifacts"] = {"plan": "   ", "research": ""}
+    _, feature_path = make_project_root(tmp_path, feature_data=feature_data)
+    feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
 
     assert prompt_builder_module._normalize_plain_prompt_feedback(None) is None
-    assert prompt_builder_module._normalized_text(3) is None
-    assert prompt_builder_module._resolve_bundled_artifact_path(
-        Path("docs/spec/features/FEAT-1/spec.yaml"),
-        {"artifacts": {"plan": "   "}},
-        artifact_kind="plan",
-    ) is None
-    assert prompt_builder_module._load_markdown_frontmatter(missing_plan) is None
-    assert prompt_builder_module._load_markdown_frontmatter(non_frontmatter) is None
-    assert prompt_builder_module._load_markdown_frontmatter(missing_footer) is None
-    assert prompt_builder_module._load_markdown_frontmatter(empty_frontmatter) is None
-    assert prompt_builder_module._iter_plan_progress_units(non_frontmatter) == ()
-    assert prompt_builder_module._iter_plan_progress_units(
-        tmp_path / "non-list-phases.md"
-    ) == ()
+    request = build_implementation_prompt_request(
+        feature=feature,
+        feature_path=feature_path,
+        feedback=None,
+    )
+
+    assert request.artifacts.plan is None
+    assert request.artifacts.research is None
+    assert request.progress_kind == "feature"
 
 
 def test_prompt_builder_private_helpers_cover_progress_fallback_paths(
     tmp_path: Path,
 ) -> None:
-    """Progress helper fallbacks normalize invalid and partial progress metadata."""
+    """Prompt requests use canonical progress fallback behavior from spec helpers."""
 
-    non_list_phases = tmp_path / "non-list-phases.md"
-    non_list_phases.write_text(
-        "---\nphases: invalid\n---\n# Plan\n",
-        encoding="utf-8",
+    feature_path = (
+        tmp_path / "docs" / "spec" / "features" / "FEAT-900-bundled-smoke-test" / "spec.yaml"
     )
+    feature_path.parent.mkdir(parents=True, exist_ok=True)
+    feature = {
+        **base_feature(status="in_progress"),
+        "planning_tier": "planned",
+        "artifacts": {"plan": "plan.md"},
+    }
+    feature_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding="utf-8")
     mixed_phases = tmp_path / "mixed-phases.md"
     mixed_phases.write_text(
         "---\nphases:\n  - invalid\n  - id: P1\n    title: Phase one\n    status: pending\n---\n# Plan\n",
         encoding="utf-8",
     )
+    (feature_path.parent / "plan.md").write_text(
+        mixed_phases.read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
 
-    assert prompt_builder_module._iter_plan_progress_units(non_list_phases) == ()
-    assert len(prompt_builder_module._iter_plan_progress_units(mixed_phases)) == 1
+    request = build_implementation_prompt_request(
+        feature=feature,
+        feature_path=feature_path,
+        feedback=None,
+    )
+
+    assert request.progress_kind == "phase"
+    assert request.current_progress == "P1 - Phase one"
+    assert request.artifacts.plan == str(feature_path.parent / "plan.md")
     assert (
         prompt_builder_module._current_progress_reference(
             progress_unit=type("Unit", (), {"id": "P1", "title": ""})(),
@@ -343,13 +351,6 @@ def test_prompt_builder_private_helpers_cover_progress_fallback_paths(
             progress_kind="feature",
         )
         == "FEAT-1 - Title"
-    )
-    assert (
-        prompt_builder_module._feature_progress_unit(
-            Path("docs/spec/features/FEAT-1/spec.yaml"),
-            {"title": "Missing id"},
-        )
-        is None
     )
     assert (
         prompt_builder_module._progress_update_instruction("unexpected")

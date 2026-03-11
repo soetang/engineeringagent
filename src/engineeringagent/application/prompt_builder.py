@@ -1,14 +1,18 @@
 """Application service for deterministic prompt assembly."""
 
 from __future__ import annotations
+
 from pathlib import Path
 from typing import Any, Literal, Mapping, Protocol, Sequence
 
 from pydantic import BaseModel, ConfigDict, ValidationError
-import yaml
 
 from engineeringagent.domain.specification import (
+    current_progress_unit,
     feature_progress_reference,
+    feature_progress_kind,
+    resolve_feature_plan_path,
+    resolve_feature_research_path,
 )
 from engineeringagent.ports import PromptDefinitionRepository
 from engineeringagent.prompts.feedback_envelope import (
@@ -109,8 +113,8 @@ def build_implementation_prompt_request(
     """Resolve explicit application prompt inputs from feature artifacts."""
 
     feature_payload = dict(feature)
-    raw_progress_kind = _feature_progress_kind(feature_path, feature_payload)
-    progress_unit = _current_progress_unit(feature_path, feature_payload)
+    raw_progress_kind = feature_progress_kind(feature_path, feature_payload)
+    progress_unit = current_progress_unit(feature_path, feature_payload)
     progress_kind = _normalize_prompt_progress_kind(raw_progress_kind)
     current_progress = _current_progress_reference(
         progress_unit=progress_unit,
@@ -121,12 +125,8 @@ def build_implementation_prompt_request(
         feature=_feature_prompt_context(feature_payload),
         artifacts=PromptArtifactPaths(
             specification=feature_path,
-            plan=_resolved_artifact_reference(feature_path, feature_payload, "plan"),
-            research=_resolved_artifact_reference(
-                feature_path,
-                feature_payload,
-                "research",
-            ),
+            plan=_resolved_plan_reference(feature_path, feature_payload),
+            research=_resolved_research_reference(feature_path, feature_payload),
         ),
         handoff_path=handoff_path,
         feedback=feedback,
@@ -199,16 +199,21 @@ def inject_feedback(
     )
 
 
-def _resolved_artifact_reference(
+def _resolved_plan_reference(
     feature_path: Path,
     feature: Mapping[str, Any],
-    artifact_kind: str,
 ) -> str | None:
-    artifact_path = _resolve_bundled_artifact_path(
-        feature_path,
-        dict(feature),
-        artifact_kind=artifact_kind,
-    )
+    artifact_path = resolve_feature_plan_path(feature_path, dict(feature))
+    if artifact_path is None:
+        return None
+    return str(artifact_path)
+
+
+def _resolved_research_reference(
+    feature_path: Path,
+    feature: Mapping[str, Any],
+) -> str | None:
+    artifact_path = resolve_feature_research_path(feature_path, dict(feature))
     if artifact_path is None:
         return None
     return str(artifact_path)
@@ -266,155 +271,6 @@ def _current_progress_reference(
     if progress_title:
         return f"{progress_id} - {progress_title}"
     return progress_id
-
-
-def _feature_progress_kind(
-    feature_path: Path,
-    feature: Mapping[str, Any],
-) -> str:
-    if _resolve_bundled_artifact_path(feature_path, dict(feature), artifact_kind="plan"):
-        return "phase"
-    return "feature"
-
-
-def _current_progress_unit(
-    feature_path: Path,
-    feature: Mapping[str, Any],
-) -> _PromptProgressUnit | None:
-    progress_units = list(_iter_progress_units(feature_path, feature))
-    if not progress_units:
-        return None
-
-    for unit in progress_units:
-        if unit.status == "in_progress":
-            return unit
-    for unit in progress_units:
-        if unit.status != "done":
-            return unit
-    return progress_units[-1]
-
-
-class _PromptProgressUnit(BaseModel):
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-    kind: str
-    id: str
-    title: str | None = None
-    status: str | None = None
-
-
-def _iter_progress_units(
-    feature_path: Path,
-    feature: Mapping[str, Any],
-) -> Sequence[_PromptProgressUnit]:
-    plan_path = _resolve_bundled_artifact_path(
-        feature_path,
-        dict(feature),
-        artifact_kind="plan",
-    )
-    if plan_path is not None:
-        return tuple(_iter_plan_progress_units(plan_path))
-
-    feature_unit = _feature_progress_unit(feature_path, feature)
-    if feature_unit is None:
-        return ()
-    return (feature_unit,)
-
-
-def _feature_progress_unit(
-    feature_path: Path,
-    feature: Mapping[str, Any],
-) -> _PromptProgressUnit | None:
-    if feature_path.name != "spec.yaml":
-        return None
-
-    progress_id, progress_title = feature_progress_reference(dict(feature))
-    if progress_id is None:
-        return None
-    return _PromptProgressUnit(
-        kind="feature",
-        id=progress_id,
-        title=progress_title,
-        status=_normalized_text(feature.get("status")),
-    )
-
-
-def _iter_plan_progress_units(plan_path: Path) -> Sequence[_PromptProgressUnit]:
-    frontmatter = _load_markdown_frontmatter(plan_path)
-    if frontmatter is None:
-        return ()
-    raw_phases = frontmatter.get("phases")
-    if not isinstance(raw_phases, list):
-        return ()
-
-    progress_units: list[_PromptProgressUnit] = []
-    seen_ids: set[str] = set()
-    for phase in raw_phases:
-        if not isinstance(phase, dict):
-            continue
-        progress_id = _normalized_text(phase.get("id"))
-        if progress_id is None or progress_id in seen_ids:
-            continue
-        seen_ids.add(progress_id)
-        progress_units.append(
-            _PromptProgressUnit(
-                kind="phase",
-                id=progress_id,
-                title=_normalized_text(phase.get("title")),
-                status=_normalized_text(phase.get("status")),
-            )
-        )
-    return tuple(progress_units)
-
-
-def _load_markdown_frontmatter(path: Path) -> dict[str, Any] | None:
-    try:
-        document = path.read_text(encoding="utf-8")
-    except OSError:
-        return None
-    if not document.startswith("---\n"):
-        return None
-
-    frontmatter_end = document.find("\n---", 4)
-    if frontmatter_end < 0:
-        return None
-
-    frontmatter_block = document[4:frontmatter_end].strip()
-    if not frontmatter_block:
-        return None
-
-    try:
-        parsed = yaml.safe_load(frontmatter_block)
-    except yaml.YAMLError:
-        return None
-    return parsed if isinstance(parsed, dict) else None
-
-
-def _resolve_bundled_artifact_path(
-    feature_path: Path,
-    feature: Mapping[str, Any],
-    *,
-    artifact_kind: str,
-) -> Path | None:
-    if feature_path.name != "spec.yaml":
-        return None
-    artifacts = feature.get("artifacts")
-    if not isinstance(artifacts, dict):
-        return None
-    artifact_ref = artifacts.get(artifact_kind)
-    if not isinstance(artifact_ref, str):
-        return None
-    normalized_ref = artifact_ref.strip()
-    if not normalized_ref:
-        return None
-    return feature_path.parent / normalized_ref
-
-
-def _normalized_text(value: Any) -> str | None:
-    if not isinstance(value, str):
-        return None
-    normalized_value = value.strip()
-    return normalized_value or None
 
 
 def _artifact_paths_prompt_block(request: ImplementationPromptRequest) -> str:
