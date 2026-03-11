@@ -14,6 +14,7 @@ Study new_architecture/README.md and ALL files under new_architecture/applicatio
 Move the application towards this architecture one step at a time. Removing files and folders that dont follow that structure on the way.
 Make sure to delete old testschemes and files on the way.
 You can change existing fitness functions. The most important is that we get to the enforcements described in the new_architecture
+Also overtime eliminate all legacy code and checks. 
 
 Rules:
 Do not implement fitness functions as unittest. Architectural constraints should only be implemented as fitness functions. 
