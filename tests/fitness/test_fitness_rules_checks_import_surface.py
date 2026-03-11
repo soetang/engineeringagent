@@ -17,7 +17,11 @@ from engineeringagent.checks.contracts import HarnessCheckPhase as ChecksHarness
 
 def _load_checker_module(repo_root: Path):
     checker_path = (
-        repo_root / "harness" / "fitness_functions" / "check_checks_import_surface.py"
+        repo_root
+        / "harness"
+        / "fitness_functions"
+        / "rules"
+        / "check_checks_import_surface.py"
     )
     spec = importlib.util.spec_from_file_location(
         "engineeringagent_tests.checks_import_surface_checker",

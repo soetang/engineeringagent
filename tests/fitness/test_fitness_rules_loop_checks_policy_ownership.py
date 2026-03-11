@@ -14,6 +14,7 @@ def _script_path(repo_root: Path) -> Path:
         repo_root
         / "harness"
         / "fitness_functions"
+        / "rules"
         / "check_loop_checks_policy_ownership.py"
     )
 
@@ -73,7 +74,7 @@ def test_loop_checks_policy_ownership_rule_configuration() -> None:
         "uv",
         "run",
         "python",
-        "harness/fitness_functions/check_loop_checks_policy_ownership.py",
+        "harness/fitness_functions/rules/check_loop_checks_policy_ownership.py",
     ]
 
 

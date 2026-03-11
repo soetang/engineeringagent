@@ -12,6 +12,7 @@ def _script_path(repo_root: Path) -> Path:
         repo_root
         / "harness"
         / "fitness_functions"
+        / "rules"
         / "check_test_layout_module_mirroring.py"
     )
 

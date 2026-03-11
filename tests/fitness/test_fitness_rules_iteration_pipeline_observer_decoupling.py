@@ -14,6 +14,7 @@ def _script_path(repo_root: Path) -> Path:
         repo_root
         / "harness"
         / "fitness_functions"
+        / "rules"
         / "check_iteration_pipeline_observer_decoupling.py"
     )
 
@@ -64,7 +65,7 @@ def test_iteration_pipeline_observer_decoupling_rule_configuration() -> None:
         "uv",
         "run",
         "python",
-        "harness/fitness_functions/check_iteration_pipeline_observer_decoupling.py",
+        "harness/fitness_functions/rules/check_iteration_pipeline_observer_decoupling.py",
     ]
 
 

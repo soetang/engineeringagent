@@ -40,6 +40,21 @@ def test_harness_command_scripts_live_under_fitness_functions(repo_root: Path) -
         assert (fitness_functions_root / script_name).is_file()
 
 
+def test_fitness_rule_implementations_live_under_rules_subdirectory(
+    repo_root: Path,
+) -> None:
+    fitness_functions_root = repo_root / "harness" / "fitness_functions"
+    rules_root = fitness_functions_root / "rules"
+
+    root_rule_scripts = sorted(
+        path.name for path in fitness_functions_root.glob("check_*.py")
+    )
+    nested_rule_scripts = sorted(path.name for path in rules_root.glob("check_*.py"))
+
+    assert root_rule_scripts == []
+    assert nested_rule_scripts
+
+
 def test_docs_specs_do_not_reference_legacy_harness_root_script_commands(
     repo_root: Path,
 ) -> None:

@@ -26,3 +26,6 @@ def test_repo_validators_boundary_checker_removed() -> None:
     assert not Path(
         "harness/fitness_functions/check_repo_validators_boundary.py"
     ).exists()
+    assert not Path(
+        "harness/fitness_functions/rules/check_repo_validators_boundary.py"
+    ).exists()

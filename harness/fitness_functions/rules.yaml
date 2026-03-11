@@ -22,7 +22,7 @@ rules:
       - uv
       - run
       - python
-      - harness/fitness_functions/check_dependency_directionality.py
+      - harness/fitness_functions/rules/check_dependency_directionality.py
   - rule_id: architecture.module-statement-budget
     name: Module statement budget
     summary: Enforce AST-based non-doc statement caps for Python modules.
@@ -37,7 +37,7 @@ rules:
       - uv
       - run
       - python
-      - harness/fitness_functions/check_module_statement_budget.py
+      - harness/fitness_functions/rules/check_module_statement_budget.py
   - rule_id: architecture.harness-src-import-allowlist
     name: Harness-to-src import allowlist
     summary: Restrict harness fitness functions to a narrow supported engineeringagent surface.
@@ -51,7 +51,7 @@ rules:
       - uv
       - run
       - python
-      - harness/fitness_functions/check_harness_src_import_allowlist.py
+      - harness/fitness_functions/rules/check_harness_src_import_allowlist.py
   - rule_id: architecture.checks-import-surface
     name: Checks import surface
     summary: Enforce a narrow import surface for engineeringagent.checks.
@@ -65,7 +65,7 @@ rules:
       - uv
       - run
       - python
-      - harness/fitness_functions/check_checks_import_surface.py
+      - harness/fitness_functions/rules/check_checks_import_surface.py
   - rule_id: architecture.loop-subprocess-boundary
     name: Loop subprocess boundary
     summary: Enforce subprocess allowlist boundaries for command adapters/clients.
@@ -80,7 +80,7 @@ rules:
       - uv
       - run
       - python
-      - harness/fitness_functions/check_loop_subprocess_boundary.py
+      - harness/fitness_functions/rules/check_loop_subprocess_boundary.py
     config_file: policies/loop_subprocess_boundary_policy.yaml
   - rule_id: architecture.agents-backends-boundary
     name: Agents/backends boundary
@@ -95,7 +95,7 @@ rules:
       - uv
       - run
       - python
-      - harness/fitness_functions/check_agents_backends_boundary.py
+      - harness/fitness_functions/rules/check_agents_backends_boundary.py
   - rule_id: architecture.backend-literal-locality-budget
     name: Backend literal locality budget
     summary: Enforce a zero-budget backend literal locality boundary outside allowed packages.
@@ -110,7 +110,7 @@ rules:
       - uv
       - run
       - python
-      - harness/fitness_functions/check_backend_literal_locality_budget.py
+      - harness/fitness_functions/rules/check_backend_literal_locality_budget.py
   - rule_id: architecture.markdown-locality-reference-coverage
     name: Markdown locality and reference coverage
     summary: Restrict markdown to approved paths and require non-doc markdown files
@@ -129,7 +129,7 @@ rules:
       - uv
       - run
       - python
-      - harness/fitness_functions/check_markdown_locality_reference_coverage.py
+      - harness/fitness_functions/rules/check_markdown_locality_reference_coverage.py
   - rule_id: architecture.no-doc-content-tests
     name: No doc-content tests
     summary: Prevent pytest from asserting exact wording in README/docs markdown.
@@ -143,7 +143,7 @@ rules:
       - uv
       - run
       - python
-      - harness/fitness_functions/check_no_doc_content_tests.py
+      - harness/fitness_functions/rules/check_no_doc_content_tests.py
   - rule_id: architecture.hermetic-fitness-test-isolation
     name: Hermetic fitness test isolation
     summary: Prevent tests/fitness from scanning the live repository checkout.
@@ -158,7 +158,7 @@ rules:
       - uv
       - run
       - python
-      - harness/fitness_functions/check_hermetic_fitness_test_isolation.py
+      - harness/fitness_functions/rules/check_hermetic_fitness_test_isolation.py
   - rule_id: architecture.no-env-key-reads
     name: No env-key reads
     summary: Forbid env-key reads (os.getenv, os.environ.get, os.environ['X'], 'X' in os.environ).
@@ -172,7 +172,7 @@ rules:
       - uv
       - run
       - python
-      - harness/fitness_functions/check_no_env_key_reads.py
+      - harness/fitness_functions/rules/check_no_env_key_reads.py
   - rule_id: architecture.prompt-locality
     name: Prompt locality
     summary: Keep canonical loop prompt content and template reads localized.
@@ -187,7 +187,7 @@ rules:
       - uv
       - run
       - python
-      - harness/fitness_functions/check_prompt_locality.py
+      - harness/fitness_functions/rules/check_prompt_locality.py
   - rule_id: architecture.progress-log-path-locality
     name: Progress log path locality
     summary: Centralize loop progress artifact paths and writes behind approved helpers.
@@ -201,7 +201,7 @@ rules:
       - uv
       - run
       - python
-      - harness/fitness_functions/check_progress_log_locality.py
+      - harness/fitness_functions/rules/check_progress_log_locality.py
   - rule_id: architecture.iteration-pipeline-observer-decoupling
     name: Iteration pipeline observer decoupling
     summary: Keep iteration pipeline free of telemetry and console side effects.
@@ -215,7 +215,7 @@ rules:
       - uv
       - run
       - python
-      - harness/fitness_functions/check_iteration_pipeline_observer_decoupling.py
+      - harness/fitness_functions/rules/check_iteration_pipeline_observer_decoupling.py
   - rule_id: architecture.scaffold-template-locality
     name: Scaffold template locality
     summary: Keep scaffold template payloads in scaffold_templates assets.
@@ -231,7 +231,7 @@ rules:
       - uv
       - run
       - python
-      - harness/fitness_functions/check_scaffold_template_locality.py
+      - harness/fitness_functions/rules/check_scaffold_template_locality.py
   - rule_id: architecture.loop-facade-line-budget
     name: Loop facade line budget
     summary: Enforce a permanent line budget cap for the loop facade.
@@ -245,7 +245,7 @@ rules:
       - uv
       - run
       - python
-      - harness/fitness_functions/check_loop_facade_line_budget.py
+      - harness/fitness_functions/rules/check_loop_facade_line_budget.py
   - rule_id: architecture.loop-checks-result-boundary
     name: Loop/checks result boundary
     summary: Fail when loop runtime branches on checks type/group semantics or parses checks-internal payloads.
@@ -259,7 +259,7 @@ rules:
       - uv
       - run
       - python
-      - harness/fitness_functions/check_loop_checks_result_boundary.py
+      - harness/fitness_functions/rules/check_loop_checks_result_boundary.py
   - rule_id: architecture.loop-checks-policy-ownership
     name: Loop/checks policy ownership
     summary: Fail when loop runtime encodes checks group/timing selection policy.
@@ -273,7 +273,7 @@ rules:
       - uv
       - run
       - python
-      - harness/fitness_functions/check_loop_checks_policy_ownership.py
+      - harness/fitness_functions/rules/check_loop_checks_policy_ownership.py
   - rule_id: architecture.checks-own-prompt-feedback-rendering
     name: Checks-owned prompt feedback rendering
     summary: Fail when loop/prompt code performs checks-specific feedback shaping outside checks strategies.
@@ -287,7 +287,7 @@ rules:
       - uv
       - run
       - python
-      - harness/fitness_functions/check_checks_own_prompt_feedback_rendering.py
+      - harness/fitness_functions/rules/check_checks_own_prompt_feedback_rendering.py
   - rule_id: architecture.no-facade-varargs-shims
     name: No facade varargs shims
     summary: Block facade varargs shims, __signature__ masking, and hidden kwargs dropping.
@@ -301,7 +301,7 @@ rules:
       - uv
       - run
       - python
-      - harness/fitness_functions/check_no_facade_varargs_shims.py
+      - harness/fitness_functions/rules/check_no_facade_varargs_shims.py
   - rule_id: architecture.no-pure-wrapper-functions
     name: No pure wrapper functions
     summary: Block pure pass-through wrappers and keep wrapper exceptions explicit.
@@ -316,7 +316,7 @@ rules:
       - uv
       - run
       - python
-      - harness/fitness_functions/check_no_pure_wrapper_functions.py
+      - harness/fitness_functions/rules/check_no_pure_wrapper_functions.py
   - rule_id: architecture.source-first-loop-command-policy
     name: Source-first loop command policy
     summary: Enforce source-first workspace execution for loop command surfaces.
@@ -333,7 +333,7 @@ rules:
       - uv
       - run
       - python
-      - harness/fitness_functions/check_source_first_loop_commands.py
+      - harness/fitness_functions/rules/check_source_first_loop_commands.py
   - rule_id: architecture.test-layout-module-mirroring
     name: Test layout module mirroring
     summary: Enforce module-mirroring test structure and explicit test-layout exceptions.
@@ -350,7 +350,7 @@ rules:
       - uv
       - run
       - python
-      - harness/fitness_functions/check_test_layout_module_mirroring.py
+      - harness/fitness_functions/rules/check_test_layout_module_mirroring.py
   - rule_id: architecture.harness-root-yaml-only
     name: Harness root YAML-only
     summary: Enforce YAML-only regular files directly under harness root.
@@ -366,7 +366,7 @@ rules:
       - uv
       - run
       - python
-      - harness/fitness_functions/check_harness_root_yaml_only.py
+      - harness/fitness_functions/rules/check_harness_root_yaml_only.py
   - rule_id: architecture.no-stdlib-dataclasses-in-src
     name: No stdlib dataclasses in src
     summary: Block stdlib dataclasses usage in production source models.
@@ -380,7 +380,7 @@ rules:
       - uv
       - run
       - python
-      - harness/fitness_functions/check_no_stdlib_dataclasses_in_src.py
+      - harness/fitness_functions/rules/check_no_stdlib_dataclasses_in_src.py
   - rule_id: architecture.no-non-ignorable-ruff-suppressions
     name: No non-ignorable Ruff suppressions
     summary: Block suppression directives for configured high-value Ruff rules.
@@ -395,7 +395,7 @@ rules:
       - uv
       - run
       - python
-      - harness/fitness_functions/check_non_ignorable_ruff_suppressions.py
+      - harness/fitness_functions/rules/check_non_ignorable_ruff_suppressions.py
     config_file: policies/no_non_ignorable_ruff_suppressions.yaml
   - rule_id: smoke.opencode-real-hello-world
     name: Real OpenCode hello-world smoke
@@ -410,5 +410,5 @@ rules:
       - uv
       - run
       - python
-      - harness/fitness_functions/check_real_opencode_hello_world_smoke.py
+      - harness/fitness_functions/rules/check_real_opencode_hello_world_smoke.py
     timeout_seconds: 900

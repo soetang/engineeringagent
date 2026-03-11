@@ -8,7 +8,11 @@ import sys
 
 def _script_path(repo_root: Path) -> Path:
     return (
-        repo_root / "harness" / "fitness_functions" / "check_harness_root_yaml_only.py"
+        repo_root
+        / "harness"
+        / "fitness_functions"
+        / "rules"
+        / "check_harness_root_yaml_only.py"
     )
 
 

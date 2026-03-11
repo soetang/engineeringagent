@@ -722,7 +722,7 @@ def test_loop_facade_line_budget_rule_configuration() -> None:
         "uv",
         "run",
         "python",
-        "harness/fitness_functions/check_loop_facade_line_budget.py",
+        "harness/fitness_functions/rules/check_loop_facade_line_budget.py",
     ]
 
 
@@ -752,7 +752,7 @@ def test_source_first_loop_command_rule_configuration() -> None:
         "uv",
         "run",
         "python",
-        "harness/fitness_functions/check_source_first_loop_commands.py",
+        "harness/fitness_functions/rules/check_source_first_loop_commands.py",
     ]
 
 
@@ -776,7 +776,7 @@ def test_harness_root_yaml_only_rule_configuration() -> None:
         "uv",
         "run",
         "python",
-        "harness/fitness_functions/check_harness_root_yaml_only.py",
+        "harness/fitness_functions/rules/check_harness_root_yaml_only.py",
     ]
 
 
@@ -800,7 +800,7 @@ def test_progress_log_path_locality_rule_configuration() -> None:
         "uv",
         "run",
         "python",
-        "harness/fitness_functions/check_progress_log_locality.py",
+        "harness/fitness_functions/rules/check_progress_log_locality.py",
     ]
 
 
@@ -822,7 +822,11 @@ def test_progress_log_path_locality_rule_detects_inline_paths(
 
     repo_root = Path(pytestconfig.rootpath)
     script_path = (
-        repo_root / "harness" / "fitness_functions" / "check_progress_log_locality.py"
+        repo_root
+        / "harness"
+        / "fitness_functions"
+        / "rules"
+        / "check_progress_log_locality.py"
     )
     completed = subprocess.run(
         [sys.executable, str(script_path)],
@@ -867,7 +871,11 @@ def write_bad(root):
 
     repo_root = Path(pytestconfig.rootpath)
     script_path = (
-        repo_root / "harness" / "fitness_functions" / "check_progress_log_locality.py"
+        repo_root
+        / "harness"
+        / "fitness_functions"
+        / "rules"
+        / "check_progress_log_locality.py"
     )
     completed = subprocess.run(
         [sys.executable, str(script_path)],

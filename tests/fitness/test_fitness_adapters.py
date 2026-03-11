@@ -70,7 +70,7 @@ def _write_scaffold_templates(project_root: Path) -> None:
 
 
 def _fitness_script(repo_root: Path, filename: str) -> Path:
-    return repo_root / "harness" / "fitness_functions" / filename
+    return repo_root / "harness" / "fitness_functions" / "rules" / filename
 
 
 def _non_ignorable_metadata(rule_id: str) -> FitnessRuleMetadata:

@@ -13,6 +13,7 @@ def _script_path(repo_root: Path) -> Path:
         repo_root
         / "harness"
         / "fitness_functions"
+        / "rules"
         / "check_backend_literal_locality_budget.py"
     )
 
@@ -60,7 +61,7 @@ def test_backend_literal_locality_budget_rule_registered() -> None:
     command = matching[0].get("command")
     assert isinstance(command, list)
     assert (
-        "harness/fitness_functions/check_backend_literal_locality_budget.py" in command
+        "harness/fitness_functions/rules/check_backend_literal_locality_budget.py" in command
     )
 
     assert (
@@ -69,7 +70,7 @@ def test_backend_literal_locality_budget_rule_registered() -> None:
     )
 
     assert Path(
-        "harness/fitness_functions/check_backend_literal_locality_budget.py"
+        "harness/fitness_functions/rules/check_backend_literal_locality_budget.py"
     ).exists()
 
 
@@ -111,7 +112,7 @@ def test_backend_literal_locality_budget_rule_passes_clean_repo() -> None:
     proc = subprocess.run(
         [
             sys.executable,
-            "harness/fitness_functions/check_backend_literal_locality_budget.py",
+            "harness/fitness_functions/rules/check_backend_literal_locality_budget.py",
         ],
         capture_output=True,
         text=True,

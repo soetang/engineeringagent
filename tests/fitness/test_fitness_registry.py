@@ -102,7 +102,7 @@ def test_build_rule_catalog_parses_error_severity_and_command_tuple(
                     "uv",
                     "run",
                     "python",
-                    "harness/fitness_functions/check_loop_subprocess_boundary.py",
+                    "harness/fitness_functions/rules/check_loop_subprocess_boundary.py",
                 ],
             }
         ],
@@ -119,7 +119,7 @@ def test_build_rule_catalog_parses_error_severity_and_command_tuple(
         "uv",
         "run",
         "python",
-        "harness/fitness_functions/check_loop_subprocess_boundary.py",
+        "harness/fitness_functions/rules/check_loop_subprocess_boundary.py",
     )
 
 
@@ -145,7 +145,7 @@ def test_build_rule_catalog_resolves_manifest_config_file_to_absolute_path(
                     "uv",
                     "run",
                     "python",
-                    "harness/fitness_functions/check_loop_subprocess_boundary.py",
+                    "harness/fitness_functions/rules/check_loop_subprocess_boundary.py",
                 ],
                 "config_file": "policies/loop_subprocess_boundary.yaml",
             }
@@ -185,7 +185,7 @@ def test_build_rule_catalog_rejects_config_file_outside_project_root(
                     "uv",
                     "run",
                     "python",
-                    "harness/fitness_functions/check_loop_subprocess_boundary.py",
+                    "harness/fitness_functions/rules/check_loop_subprocess_boundary.py",
                 ],
                 "config_file": "../../../outside.yaml",
             }

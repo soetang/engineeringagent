@@ -10,6 +10,7 @@ def _load_smoke_module(repo_root: Path):
         repo_root
         / "harness"
         / "fitness_functions"
+        / "rules"
         / "check_real_opencode_hello_world_smoke.py"
     )
     spec = importlib.util.spec_from_file_location(
@@ -29,6 +30,7 @@ def _set_smoke_repo_root(*, smoke, repo_root: Path, monkeypatch) -> None:
         repo_root
         / "harness"
         / "fitness_functions"
+        / "rules"
         / "check_real_opencode_hello_world_smoke.py"
     )
     monkeypatch.setattr(smoke, "__file__", str(smoke_path))

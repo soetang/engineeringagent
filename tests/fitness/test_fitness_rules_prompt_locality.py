@@ -8,7 +8,13 @@ from typing import cast
 
 
 def _script_path(repo_root: Path) -> Path:
-    return repo_root / "harness" / "fitness_functions" / "check_prompt_locality.py"
+    return (
+        repo_root
+        / "harness"
+        / "fitness_functions"
+        / "rules"
+        / "check_prompt_locality.py"
+    )
 
 
 def _write_module(project_root: Path, relative_path: str, body: str) -> None:

@@ -12,6 +12,7 @@ def _load_checker_module(repo_root: Path) -> ModuleType:
         repo_root
         / "harness"
         / "fitness_functions"
+        / "rules"
         / "check_scaffold_template_locality.py"
     )
     spec = importlib.util.spec_from_file_location(

@@ -14,6 +14,7 @@ def _script_path(repo_root: Path) -> Path:
         repo_root
         / "harness"
         / "fitness_functions"
+        / "rules"
         / "check_checks_own_prompt_feedback_rendering.py"
     )
 
@@ -78,7 +79,7 @@ def test_checks_owned_prompt_feedback_rule_configuration() -> None:
         "uv",
         "run",
         "python",
-        "harness/fitness_functions/check_checks_own_prompt_feedback_rendering.py",
+        "harness/fitness_functions/rules/check_checks_own_prompt_feedback_rendering.py",
     ]
 
 

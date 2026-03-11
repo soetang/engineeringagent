@@ -11,6 +11,7 @@ def _script_path(repo_root: Path) -> Path:
         repo_root
         / "harness"
         / "fitness_functions"
+        / "rules"
         / "check_loop_subprocess_boundary.py"
     )
 

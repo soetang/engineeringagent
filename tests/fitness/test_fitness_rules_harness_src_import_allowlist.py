@@ -12,6 +12,7 @@ def _load_checker_module(repo_root: Path):
         repo_root
         / "harness"
         / "fitness_functions"
+        / "rules"
         / "check_harness_src_import_allowlist.py"
     )
     spec = importlib.util.spec_from_file_location(
