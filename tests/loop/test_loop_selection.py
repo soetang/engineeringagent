@@ -117,6 +117,7 @@ def test_choose_feature_with_selector_returns_single_pending_without_selector_ca
     chosen_path, chosen_feature = selection.choose_feature_with_selector(
         Path("."),
         pending,
+        build_selector_prompt_fn=lambda _pending: "prompt",
         run_agent_fn=_should_not_run,
     )
 
@@ -125,14 +126,8 @@ def test_choose_feature_with_selector_returns_single_pending_without_selector_ca
 
 
 def test_choose_feature_with_selector_uses_selector_output_when_parse_succeeds(
-    monkeypatch: Any,
 ) -> None:
     pending = _pending_features()
-    monkeypatch.setattr(
-        selection,
-        "build_selector_prompt",
-        lambda _pending, **_kwargs: "prompt",
-    )
 
     def _run_agent(*_: Any, **__: Any) -> str:
         return "FEAT-150"  # token parsed via feature id
@@ -140,6 +135,7 @@ def test_choose_feature_with_selector_uses_selector_output_when_parse_succeeds(
     chosen_path, chosen_feature = selection.choose_feature_with_selector(
         Path("."),
         pending,
+        build_selector_prompt_fn=lambda _pending: "prompt",
         run_agent_fn=_run_agent,
     )
 
@@ -148,17 +144,12 @@ def test_choose_feature_with_selector_uses_selector_output_when_parse_succeeds(
 
 
 def test_choose_feature_with_selector_falls_back_when_opencode_missing(
-    tmp_path: Path, monkeypatch: Any, capsys: Any
+    tmp_path: Path, capsys: Any
 ) -> None:
     pending = _pending_features()
     (tmp_path / "engineeringagent.toml").write_text(
         '[agents]\nbackend = "opencode"\n',
         encoding="utf-8",
-    )
-    monkeypatch.setattr(
-        selection,
-        "build_selector_prompt",
-        lambda _pending, **_kwargs: "prompt",
     )
 
     def _run_agent(*_: Any, **__: Any) -> str:
@@ -167,6 +158,7 @@ def test_choose_feature_with_selector_falls_back_when_opencode_missing(
     chosen_path, chosen_feature = selection.choose_feature_with_selector(
         tmp_path,
         pending,
+        build_selector_prompt_fn=lambda _pending: "prompt",
         run_agent_fn=_run_agent,
     )
 
@@ -178,17 +170,12 @@ def test_choose_feature_with_selector_falls_back_when_opencode_missing(
 
 
 def test_choose_feature_with_selector_falls_back_on_parse_or_command_failure(
-    tmp_path: Path, monkeypatch: Any, capsys: Any
+    tmp_path: Path, capsys: Any
 ) -> None:
     pending = _pending_features()
     (tmp_path / "engineeringagent.toml").write_text(
         '[agents]\nbackend = "opencode"\n',
         encoding="utf-8",
-    )
-    monkeypatch.setattr(
-        selection,
-        "build_selector_prompt",
-        lambda _pending, **_kwargs: "prompt",
     )
 
     def _run_agent(*_: Any, **__: Any) -> str:
@@ -205,6 +192,7 @@ def test_choose_feature_with_selector_falls_back_on_parse_or_command_failure(
     chosen_path, chosen_feature = selection.choose_feature_with_selector(
         tmp_path,
         pending,
+        build_selector_prompt_fn=lambda _pending: "prompt",
         run_agent_fn=_run_agent,
     )
 
@@ -221,11 +209,6 @@ def test_choose_feature_with_selector_logs_backend_agnostic_step_label(
     pending = _pending_features()
     monkeypatch.setattr(
         selection,
-        "build_selector_prompt",
-        lambda _pending, **_kwargs: "prompt",
-    )
-    monkeypatch.setattr(
-        selection,
         "describe_action",
         lambda *_args, **_kwargs: "custom run selector",
         raising=False,
@@ -237,6 +220,7 @@ def test_choose_feature_with_selector_logs_backend_agnostic_step_label(
     selection.choose_feature_with_selector(
         Path("."),
         pending,
+        build_selector_prompt_fn=lambda _pending: "prompt",
         run_agent_fn=_run_agent,
     )
 
@@ -246,18 +230,12 @@ def test_choose_feature_with_selector_logs_backend_agnostic_step_label(
 
 def test_choose_feature_with_selector_uses_configured_codex_backend(
     tmp_path: Path,
-    monkeypatch: Any,
     capsys: Any,
 ) -> None:
     pending = _pending_features()
     (tmp_path / "engineeringagent.toml").write_text(
         '[agents]\nbackend = "codex"\n',
         encoding="utf-8",
-    )
-    monkeypatch.setattr(
-        selection,
-        "build_selector_prompt",
-        lambda _pending, **_kwargs: "prompt",
     )
 
     def _run_agent(*_: Any, **__: Any) -> str:
@@ -274,6 +252,7 @@ def test_choose_feature_with_selector_uses_configured_codex_backend(
     chosen_path, chosen_feature = selection.choose_feature_with_selector(
         tmp_path,
         pending,
+        build_selector_prompt_fn=lambda _pending: "prompt",
         run_agent_fn=_run_agent,
     )
 

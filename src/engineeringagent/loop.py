@@ -93,9 +93,11 @@ def _choose_feature_with_selector(
     project_root: Path,
     pending: Sequence[tuple[Path, dict[str, Any]]],
 ) -> tuple[Path, dict[str, Any]]:
+    app_factory = AppFactory(project_root)
     return choose_feature_with_selector(
         project_root,
         pending,
+        build_selector_prompt_fn=app_factory.build_prompt_builder().build_selector_prompt,
         run_agent_fn=run_agent,
     )
 
@@ -131,6 +133,8 @@ def run_implement_step(
     return run_implement_step_from_inputs(
         implement_inputs,
         agent_runner=app_factory.build_agent_runner(),
+        prompt_builder=app_factory.build_prompt_builder(),
+        progress_journal=app_factory.build_progress_journal(),
     )
 
 

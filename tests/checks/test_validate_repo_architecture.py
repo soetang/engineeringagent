@@ -579,3 +579,33 @@ def test_repo_architecture_validator_reports_configured_agent_runner_imports_out
             code="repo.architecture.configured-agent-runner-boundary",
         ),
     )
+
+
+def test_repo_architecture_validator_reports_loop_runtime_importing_bootstrap(
+    tmp_path: Path,
+) -> None:
+    """Loop runtime wiring must not compose services through bootstrap."""
+
+    _write_port_module(
+        tmp_path,
+        "src/engineeringagent/loop_runtime/selection.py",
+        "from engineeringagent.bootstrap.app_factory import AppFactory\n",
+    )
+
+    issues = RepoArchitectureValidator().validate(
+        context=ValidationContext(
+            project_root=tmp_path,
+            docs_root=tmp_path / "docs",
+            schema_only=False,
+        )
+    )
+
+    assert issues == (
+        ValidationIssue(
+            validator_id="repo.architecture",
+            scope="repo",
+            path="src/engineeringagent/loop_runtime/selection.py",
+            message="loop runtime modules must not import bootstrap modules",
+            code="repo.architecture.loop-runtime-bootstrap-import",
+        ),
+    )

@@ -12,6 +12,9 @@ import yaml
 from pydantic import BaseModel, ValidationError
 
 import engineeringagent.loop as loop_module
+from engineeringagent.adapters.progress import FilesystemProgressJournal
+from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
+from engineeringagent.application import PromptBuilder
 from engineeringagent.ports import AgentRunRequest, AgentRunner
 from engineeringagent.loop import (
     _drop_completed_feature_from_snapshot,
@@ -40,6 +43,7 @@ from engineeringagent.loop_runtime.telemetry import write_iteration_telemetry
 from engineeringagent.progress.handoff import ImplementProgressEnvelope
 from engineeringagent.progress.handoff import fallback_implement_progress_envelope
 from engineeringagent.progress import paths as progress_paths
+from engineeringagent.config import resolve_harness_root
 from tests.loop.feature_iteration_support import copy_canonical_prompts
 from tests.loop.feature_iteration_support import make_bundled_project_root
 
@@ -66,6 +70,12 @@ class _StubAgentRunner(AgentRunner):
         if isinstance(self._response, Exception):
             raise self._response
         return self._response
+
+
+def _loop_prompt_builder(project_root: Path) -> PromptBuilder:
+    return PromptBuilder(
+        FilesystemPromptDefinitionRepository(resolve_harness_root(project_root) / "prompts")
+    )
 
 
 def test_progress_paths_contract(tmp_path: Path) -> None:
@@ -332,6 +342,8 @@ def test_run_implement_step_from_inputs_requires_backend_binary_when_available(
     result = run_implement_step_from_inputs(
         inputs,
         agent_runner=_StubAgentRunner(FileNotFoundError()),
+        prompt_builder=_loop_prompt_builder(inputs.project_root),
+        progress_journal=FilesystemProgressJournal(),
     )
 
     assert len(result) == 5
@@ -358,6 +370,8 @@ def test_run_implement_step_from_inputs_reraises_unexpected_errors(
         run_implement_step_from_inputs(
             inputs,
             agent_runner=_StubAgentRunner(RuntimeError("boom")),
+            prompt_builder=_loop_prompt_builder(inputs.project_root),
+            progress_journal=FilesystemProgressJournal(),
         )
 
 
@@ -376,6 +390,8 @@ def test_run_implement_step_from_inputs_reraises_non_signature_type_error(
         run_implement_step_from_inputs(
             inputs,
             agent_runner=_StubAgentRunner(TypeError("boom")),
+            prompt_builder=_loop_prompt_builder(inputs.project_root),
+            progress_journal=FilesystemProgressJournal(),
         )
 
 
@@ -400,6 +416,8 @@ def test_run_implement_step_from_inputs_uses_fallback_on_validation_error(
                 error_summary="missing field",
             )
         ),
+        prompt_builder=_loop_prompt_builder(inputs.project_root),
+        progress_journal=FilesystemProgressJournal(),
     )
 
     assert len(result) == 5
@@ -432,6 +450,8 @@ def test_run_implement_step_from_inputs_accepts_structured_envelope_output(
             remaining_work=["c"],
             )
         ),
+        prompt_builder=_loop_prompt_builder(inputs.project_root),
+        progress_journal=FilesystemProgressJournal(),
     )
 
     assert len(result) == 5
@@ -482,6 +502,8 @@ def test_run_implement_step_from_inputs_preserves_phase_context_in_fallback_enve
         run_implement_step_from_inputs(
             inputs,
             agent_runner=_StubAgentRunner('{"summary":""}'),
+            prompt_builder=_loop_prompt_builder(inputs.project_root),
+            progress_journal=FilesystemProgressJournal(),
         )
     )
 
@@ -540,6 +562,8 @@ def test_run_implement_step_from_inputs_uses_raw_phase_context_for_invalid_plan_
         run_implement_step_from_inputs(
             inputs,
             agent_runner=_StubAgentRunner('{"summary":""}'),
+            prompt_builder=_loop_prompt_builder(inputs.project_root),
+            progress_journal=FilesystemProgressJournal(),
         )
     )
 
@@ -593,6 +617,8 @@ def test_run_implement_step_from_inputs_does_not_project_feature_context_onto_mi
         run_implement_step_from_inputs(
             inputs,
             agent_runner=_StubAgentRunner('{"summary":""}'),
+            prompt_builder=_loop_prompt_builder(inputs.project_root),
+            progress_journal=FilesystemProgressJournal(),
         )
     )
 
@@ -639,6 +665,8 @@ def test_run_implement_step_from_inputs_preserves_feature_context_in_fallback_en
         run_implement_step_from_inputs(
             inputs,
             agent_runner=_StubAgentRunner('{"summary":""}'),
+            prompt_builder=_loop_prompt_builder(inputs.project_root),
+            progress_journal=FilesystemProgressJournal(),
         )
     )
 
@@ -1105,6 +1133,7 @@ def test_run_implement_step_uses_injected_prompt_builder(tmp_path: Path) -> None
         inputs,
         agent_runner=agent_runner,
         prompt_builder=_PromptBuilder(),
+        progress_journal=FilesystemProgressJournal(),
     )
 
     assert result[0] is True
@@ -1213,6 +1242,7 @@ def test_run_implement_step_passes_handoff_path_only_when_persisted(
         inputs,
         agent_runner=agent_runner,
         prompt_builder=_PromptBuilder(),
+        progress_journal=FilesystemProgressJournal(),
     )
 
     assert result[0] is True

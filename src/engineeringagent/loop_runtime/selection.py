@@ -10,7 +10,6 @@ from engineeringagent.agents import (
     classify_backend_exception,
     describe_action,
 )
-from engineeringagent.bootstrap import AppFactory
 from engineeringagent.specs import feature_sort_key
 
 STATUS_ORDER: dict[str, int] = {
@@ -105,40 +104,34 @@ def choose_feature_with_selector(
     project_root: Path,
     pending: Sequence[tuple[Path, dict[str, Any]]],
     *,
-    run_agent_fn: Callable[[Path, str], str],
-    parse_selector_output_fn: Callable[
-        [str, Sequence[tuple[Path, dict[str, Any]]]],
-        Path | None,
-    ] = parse_selector_output,
-    deterministic_feature_choice_fn: Callable[
+    build_selector_prompt_fn: Callable[
         [Sequence[tuple[Path, dict[str, Any]]]],
-        tuple[Path, dict[str, Any]],
-    ] = deterministic_feature_choice,
+        str,
+    ],
+    run_agent_fn: Callable[[Path, str], str],
 ) -> tuple[Path, dict[str, Any]]:
     """Choose a feature using selector output with deterministic fallback."""
     if len(pending) == 1:
         return pending[0]
 
-    prompt = AppFactory(project_root).build_prompt_builder().build_selector_prompt(
-        pending
-    )
+    prompt = build_selector_prompt_fn(pending)
     step_label = describe_action(project_root, action="selector", structured=False)
     print(f"Selector step: {step_label}")
     try:
         output = run_agent_fn(project_root, prompt)
     except (FileNotFoundError, AgentBackendError) as exc:
         failed_gate, _message = classify_backend_exception(exc)
-        fallback = deterministic_feature_choice_fn(pending)
+        fallback = deterministic_feature_choice(pending)
         print(f"Selector fallback: {failed_gate}; selected {fallback[1].get('id')}")
         return fallback
 
-    chosen_path = parse_selector_output_fn(output, pending)
+    chosen_path = parse_selector_output(output, pending)
     if chosen_path is not None:
         chosen_feature = next(
             feature for path, feature in pending if path == chosen_path
         )
         return (chosen_path, chosen_feature)
 
-    fallback = deterministic_feature_choice_fn(pending)
+    fallback = deterministic_feature_choice(pending)
     print(f"Selector fallback: selector_parse; selected {fallback[1].get('id')}")
     return fallback

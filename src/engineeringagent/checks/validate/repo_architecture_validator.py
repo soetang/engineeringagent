@@ -28,6 +28,12 @@ class RepoArchitectureValidator:
             )
         )
         issues.extend(_agent_boundary_issues(project_root=context.project_root, src_root=src_root))
+        issues.extend(
+            _loop_runtime_bootstrap_issues(
+                project_root=context.project_root,
+                loop_runtime_root=src_root / "loop_runtime",
+            )
+        )
         for module_path in _iter_python_modules(domain_root):
             issues.extend(_domain_module_issues(module_path, project_root=context.project_root))
         for module_path in _iter_python_modules(application_root):
@@ -366,6 +372,30 @@ def _agent_boundary_issues(
                 rel_path=rel_path,
                 module_path=module_path,
                 allowed_root=agents_root,
+            )
+        )
+    return tuple(issues)
+
+
+def _loop_runtime_bootstrap_issues(
+    *,
+    project_root: Path,
+    loop_runtime_root: Path,
+) -> tuple[ValidationIssue, ...]:
+    issues: list[ValidationIssue] = []
+    for module_path in _iter_python_modules(loop_runtime_root):
+        rel_path = module_path.relative_to(project_root).as_posix()
+        module = _parse_module(module_path, rel_path=rel_path)
+        if isinstance(module, ValidationIssue):
+            issues.append(module)
+            continue
+        issues.extend(
+            _forbidden_import_issues(
+                module,
+                rel_path=rel_path,
+                forbidden_modules=("engineeringagent.bootstrap",),
+                message="loop runtime modules must not import bootstrap modules",
+                code="repo.architecture.loop-runtime-bootstrap-import",
             )
         )
     return tuple(issues)

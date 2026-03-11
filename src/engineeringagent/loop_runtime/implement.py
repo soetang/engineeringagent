@@ -24,7 +24,6 @@ from engineeringagent.domain.specification import (
 from engineeringagent.loop_runtime.models import ImplementStepInputs
 from engineeringagent.loop_runtime.models import ImplementStepResult
 from engineeringagent.ports import AgentRunRequest, AgentRunner, ProgressJournal
-from engineeringagent.bootstrap import AppFactory
 from engineeringagent.progress import handoff as progress_handoff
 from engineeringagent.progress import paths as progress_paths
 from engineeringagent.specs import (
@@ -58,14 +57,13 @@ def run_implement_step_from_inputs(
     implement_inputs: ImplementStepInputs,
     *,
     agent_runner: AgentRunner,
-    prompt_builder: _ImplementationPromptBuilder | None = None,
+    prompt_builder: _ImplementationPromptBuilder,
+    progress_journal: ProgressJournal,
 ) -> ImplementStepResult:
     """Run the implement phase and coerce structured progress output."""
-    app_factory = AppFactory(implement_inputs.project_root)
-    progress_journal = app_factory.build_progress_journal()
     prompt = _build_implement_prompt(
         implement_inputs,
-        prompt_builder=prompt_builder or app_factory.build_prompt_builder(),
+        prompt_builder=prompt_builder,
         progress_journal=progress_journal,
     )
     command = describe_action(
