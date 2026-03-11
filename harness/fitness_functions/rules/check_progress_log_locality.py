@@ -16,7 +16,6 @@ RULE_ID = "architecture.progress-log-path-locality"
 
 _SOURCE_PACKAGE_ROOT = Path("src/engineeringagent")
 _PROGRESS_ROOT = (Path(".engineeringagent") / "progress").as_posix()
-_LEGACY_PROGRESS_ROOT = "progress"
 
 _APPROVED_PATH_LITERAL_FILES = {
     _SOURCE_PACKAGE_ROOT / "adapters" / "progress" / "filesystem_journal.py",
@@ -30,9 +29,10 @@ _PROGRESS_PATH_LITERAL_TOKENS = (
     f"{_PROGRESS_ROOT}/reviewers/state.json",
     f"{_PROGRESS_ROOT}/runs/runs.jsonl",
     f"{_PROGRESS_ROOT}/features/",
-    f"{_LEGACY_PROGRESS_ROOT}/runs.jsonl",
-    f"{_LEGACY_PROGRESS_ROOT}/runs/runs.jsonl",
     "progress/runs.jsonl",
+    "progress/runs/runs.jsonl",
+    "progress/features/",
+    "progress/reviewers/state.json",
     "reviewers-state.json",
     "/run.txt",
     "/handoff.md",

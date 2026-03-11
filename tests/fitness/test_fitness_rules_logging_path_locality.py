@@ -103,6 +103,30 @@ def test_logging_path_locality_rule_fails_on_inline_progress_path_literal(
     )
 
 
+def test_logging_path_locality_rule_fails_on_legacy_repo_root_progress_literal(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Fail when legacy repo-root progress literals are restored in source modules."""
+    _write_progress_paths(tmp_path)
+    _write_module(
+        tmp_path,
+        "src/engineeringagent/loop_runtime/telemetry.py",
+        'PATH = "progress/runs/runs.jsonl"\n',
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+    violations = _violations(payload)
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert any(
+        "src/engineeringagent/loop_runtime/telemetry.py:1 contains progress artifact path literal 'progress/runs/runs.jsonl'"
+        in violation
+        for violation in violations
+    )
+
+
 def test_logging_path_locality_rule_fails_on_open_keyword_file_write(
     tmp_path: Path,
     repo_root: Path,
