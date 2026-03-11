@@ -5,14 +5,13 @@ from pathlib import Path
 from engineeringagent.config import resolve_docs_root
 
 from .contracts import ValidationContext, ValidationIssue
-from .repo_architecture_validator import RepoArchitectureValidator
 from .repo_validators import RepoPolicyValidator
 from .registry import ValidationRegistry
 from .strategy_validators import default_strategy_validators
 
 
 def validate(project_root: Path, schema_only: bool = False) -> list[str]:
-    """Validate repository specs and static check-domain contracts."""
+    """Validate repository documents and static check-domain contracts."""
 
     docs_root = resolve_docs_root(project_root)
     context = ValidationContext(
@@ -25,10 +24,10 @@ def validate(project_root: Path, schema_only: bool = False) -> list[str]:
 
 
 def _build_validation_registry() -> ValidationRegistry:
-    """Build deterministic repo + strategy validator composition."""
+    """Build deterministic repo-policy + strategy validator composition."""
 
     return ValidationRegistry(
-        repo_validators=[RepoArchitectureValidator(), RepoPolicyValidator()],
+        repo_validators=[RepoPolicyValidator()],
         strategy_validators=default_strategy_validators(),
     )
 

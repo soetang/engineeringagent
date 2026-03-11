@@ -12,6 +12,7 @@ This file is generated from active manifest-declared fitness rules.
 | `architecture.checks-import-surface` | error | command | custom | `src/engineeringagent` | - | Enforce a narrow import surface for engineeringagent.checks. |
 | `architecture.checks-own-prompt-feedback-rendering` | error | command | custom | `src/engineeringagent/loop_runtime/**, src/engineeringagent/loop.py, and src/engineeringagent/prompts/renderer.py` | - | Fail when loop/prompt code performs checks-specific feedback shaping outside checks strategies. |
 | `architecture.dep-directionality` | error | command | custom | `src/engineeringagent` | `harness/fitness_functions/policies/dependency_directionality.yaml` | Enforce ports-and-adapters dependency direction boundaries across presentation, application, ports, and domain seams. |
+| `architecture.guidance-module-locations` | error | command | custom | `src/engineeringagent guidance adapter and CLI modules` | - | Keep guidance adapter and CLI modules in the target architecture paths. |
 | `architecture.harness-root-yaml-only` | error | command | custom | `harness/ (regular files at root)` | - | Enforce YAML-only regular files directly under harness root. |
 | `architecture.harness-src-import-allowlist` | error | command | custom | `harness/fitness_functions` | - | Restrict harness fitness functions to a narrow supported engineeringagent surface. |
 | `architecture.hermetic-fitness-test-isolation` | error | command | custom | `tests/fitness` | `harness/fitness_functions/policies/hermetic_fitness_test_isolation.yaml` | Prevent tests/fitness from scanning the live repository checkout. |
@@ -31,6 +32,7 @@ This file is generated from active manifest-declared fitness rules.
 | `architecture.no-stdlib-dataclasses-in-src` | error | command | custom | `src/engineeringagent` | - | Block stdlib dataclasses usage in production source models. |
 | `architecture.progress-log-path-locality` | error | command | custom | `src/engineeringagent` | - | Centralize loop progress artifact paths and writes behind approved helpers. |
 | `architecture.prompt-locality` | error | command | custom | `src/engineeringagent` | - | Keep canonical loop prompt content and template reads localized. |
+| `architecture.repo-layer-contracts` | error | command | custom | `src/engineeringagent package structure, legacy path deletions, and agent boundary surfaces` | - | Enforce repository-owned architecture contracts as fitness checks instead of validate-time unit rules. |
 | `architecture.scaffold-template-locality` | error | command | custom | `src/engineeringagent` | - | Keep scaffold template payloads in scaffold_templates assets. |
 | `architecture.shared-kernel-locality` | error | command | custom | `src/engineeringagent/domain/shared plus legacy duplicate-definition surfaces` | - | Localize cross-domain identifiers and enums under engineeringagent.domain.shared. |
 | `architecture.source-first-loop-command-policy` | error | command | custom | `legacy spec verification, bundled plan.md phases/examples, packaged plan-session/research-session guidance, contributor approach docs, loop implementation prompt template, docs/fixtures/real_opencode_hello_world_plan_template.md, and harness/checks.yaml` | - | Enforce source-first workspace execution for loop command surfaces. |
@@ -82,6 +84,13 @@ This file is generated from active manifest-declared fitness rules.
 - Side-effect free: `true`
 - Rationale: Keeps presentation, application, ports, and domain modules aligned with the target architecture while isolating bootstrap and adapters as outer layers.
 - Remediation: Refactor imports to preserve the declared layer boundaries: presentation depends inward, application uses ports/domain only, ports stay contract-only, and domain stays isolated.
+
+### `architecture.guidance-module-locations`
+
+- Name: Guidance module locations
+- Side-effect free: `true`
+- Rationale: Moves guidance code toward the target documents adapter package and the target presentation CLI module name while preventing the legacy locations from drifting back in.
+- Remediation: Keep packaged guidance under engineeringagent.adapters.documents and the CLI surface under engineeringagent.presentation.cli.guidance; do not restore the legacy adapters.guidance package or presentation.cli.approach module.
 
 ### `architecture.harness-root-yaml-only`
 
@@ -220,6 +229,13 @@ This file is generated from active manifest-declared fitness rules.
 - Side-effect free: `true`
 - Rationale: Prevents prompt drift and duplicate canonical wording across modules.
 - Remediation: Move canonical prompt text and template reads to engineeringagent.prompts templates/renderer modules.
+
+### `architecture.repo-layer-contracts`
+
+- Name: Repository layer contracts
+- Side-effect free: `true`
+- Rationale: Keeps structural package and boundary enforcement in the fitness-function system described by the target architecture while leaving validate focused on source documents and static config contracts.
+- Remediation: Refactor the violating module or delete the restored legacy path so repository structure stays aligned with the target ports-and-adapters package layout.
 
 ### `architecture.scaffold-template-locality`
 

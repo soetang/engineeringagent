@@ -17,12 +17,11 @@ from engineeringagent.checks.validate.validator import (
 
 
 def test_build_validation_registry_registers_repo_and_strategy_validators() -> None:
-    """Registry builder composes repo + strategy validators with deterministic IDs."""
+    """Registry builder composes repo-policy + strategy validators with deterministic IDs."""
 
     registry = _build_validation_registry()
 
     assert tuple(validator.validator_id for validator in registry.repo_validators) == (
-        "repo.architecture",
         "repo.policy",
     )
     assert tuple(
