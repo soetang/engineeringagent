@@ -1,4 +1,4 @@
-"""Loop runtime telemetry helpers."""
+"""Progress-adapter telemetry helpers for iteration reporting."""
 
 from __future__ import annotations
 
@@ -7,25 +7,28 @@ import time
 from pathlib import Path
 from typing import Any, Callable, Sequence
 
-from engineeringagent.adapters.progress import FilesystemProgressJournal
+from engineeringagent.application.feature_iteration.models import (
+    CommandTiming,
+    IterationTelemetryInputs,
+    PhaseTiming,
+)
 from engineeringagent.domain.audit import ProgressEvent
-from engineeringagent.adapters.progress import handoff as progress_handoff
-from engineeringagent.adapters.progress import paths as progress_paths
 
-from engineeringagent.application.feature_iteration.models import CommandTiming, IterationTelemetryInputs, PhaseTiming
+from .filesystem_journal import FilesystemProgressJournal
+from . import handoff as progress_handoff
+from . import paths as progress_paths
+
 
 ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 FEEDBACK_CONTEXT_BLOCK_RE = re.compile(
     r"\nfeedback_context:\n.*?(?=\nreviewer '|\Z)",
     re.DOTALL,
 )
+_PROGRESS_JOURNAL = FilesystemProgressJournal()
 
 
 def _strip_feedback_context_blocks(text: str) -> str:
     return FEEDBACK_CONTEXT_BLOCK_RE.sub("", text)
-
-
-_PROGRESS_JOURNAL = FilesystemProgressJournal()
 
 
 def append_run(project_root: Path, payload: dict[str, Any]) -> None:
@@ -124,9 +127,7 @@ def _format_phase_timing_line(timing: PhaseTiming) -> str:
 
 
 def _command_timing_fields_parts(timing: CommandTiming) -> list[str]:
-    parts: list[str] = [
-        f"phase={timing.phase}",
-    ]
+    parts: list[str] = [f"phase={timing.phase}"]
     if timing.gate is not None:
         parts.append(f"gate={timing.gate}")
     if timing.reviewer_id is not None:
@@ -150,8 +151,6 @@ def _slowest_summary_line(telemetry_inputs: IterationTelemetryInputs) -> str | N
     best_duration = -1
     best_line: str | None = None
 
-    # Deterministic tie-breaking: prefer the earliest max-duration candidate in
-    # the combined list (phase timings first, then command timings).
     for timing in telemetry_inputs.phase_timings:
         if timing.duration_sec > best_duration:
             best_duration = timing.duration_sec

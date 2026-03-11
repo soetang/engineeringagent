@@ -86,7 +86,7 @@ def test_logging_path_locality_rule_fails_on_inline_progress_path_literal(
     _write_progress_paths(tmp_path)
     _write_module(
         tmp_path,
-        "src/engineeringagent/loop_runtime/telemetry.py",
+        "src/engineeringagent/adapters/progress/iteration_telemetry.py",
         "PATH = '.engineeringagent/progress/runs/runs.jsonl'\n",
     )
 
@@ -97,7 +97,7 @@ def test_logging_path_locality_rule_fails_on_inline_progress_path_literal(
     assert payload["status"] == "fail"
     assert violations == sorted(violations)
     assert any(
-        "src/engineeringagent/loop_runtime/telemetry.py:1 contains progress artifact path literal '.engineeringagent/progress/runs/runs.jsonl'"
+        "src/engineeringagent/adapters/progress/iteration_telemetry.py:1 contains progress artifact path literal '.engineeringagent/progress/runs/runs.jsonl'"
         in violation
         for violation in violations
     )
@@ -111,7 +111,7 @@ def test_logging_path_locality_rule_fails_on_legacy_repo_root_progress_literal(
     _write_progress_paths(tmp_path)
     _write_module(
         tmp_path,
-        "src/engineeringagent/loop_runtime/telemetry.py",
+        "src/engineeringagent/adapters/progress/iteration_telemetry.py",
         'PATH = "progress/runs/runs.jsonl"\n',
     )
 
@@ -121,7 +121,7 @@ def test_logging_path_locality_rule_fails_on_legacy_repo_root_progress_literal(
     assert proc.returncode == 0
     assert payload["status"] == "fail"
     assert any(
-        "src/engineeringagent/loop_runtime/telemetry.py:1 contains progress artifact path literal 'progress/runs/runs.jsonl'"
+        "src/engineeringagent/adapters/progress/iteration_telemetry.py:1 contains progress artifact path literal 'progress/runs/runs.jsonl'"
         in violation
         for violation in violations
     )
@@ -135,7 +135,7 @@ def test_logging_path_locality_rule_fails_on_open_keyword_file_write(
     _write_progress_paths(tmp_path)
     _write_module(
         tmp_path,
-        "src/engineeringagent/loop_runtime/telemetry.py",
+        "src/engineeringagent/adapters/progress/iteration_telemetry.py",
         "\n".join(
             [
                 "from __future__ import annotations",
@@ -158,7 +158,9 @@ def test_logging_path_locality_rule_fails_on_open_keyword_file_write(
     assert proc.returncode == 0
     assert payload["status"] == "fail"
     assert any(
-        violation.startswith("src/engineeringagent/loop_runtime/telemetry.py:")
+        violation.startswith(
+            "src/engineeringagent/adapters/progress/iteration_telemetry.py:"
+        )
         and "writes to loop log sink via direct file I/O (open)" in violation
         for violation in violations
     )
@@ -172,7 +174,7 @@ def test_logging_path_locality_rule_passes_when_helpers_are_used_without_direct_
     _write_progress_paths(tmp_path)
     _write_module(
         tmp_path,
-        "src/engineeringagent/loop_runtime/telemetry.py",
+        "src/engineeringagent/adapters/progress/iteration_telemetry.py",
         "\n".join(
             [
                 "from __future__ import annotations",

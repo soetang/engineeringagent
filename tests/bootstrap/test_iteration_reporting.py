@@ -8,12 +8,12 @@ from engineeringagent.application.feature_iteration.models import (
     IterationSummaryInputs,
     IterationTelemetryInputs,
 )
-from engineeringagent.loop_runtime.observers import (
+from engineeringagent.bootstrap.iteration_reporting import (
     ConsoleObserverDependencies,
     DefaultObserverDependencies,
     TelemetryObserverDependencies,
-    build_default_iteration_report_observers,
     build_console_observer,
+    build_default_iteration_report_observers,
     build_progress_artifact_observer,
     build_telemetry_observer,
     publish_iteration_report,
@@ -67,6 +67,7 @@ def _build_iteration_report(
 
 
 def test_publish_iteration_report_applies_observers_in_order(tmp_path: Path) -> None:
+    """Apply iteration report observers in deterministic order."""
     observed: list[str] = []
     report = _build_iteration_report(tmp_path)
 
@@ -88,18 +89,17 @@ def test_publish_iteration_report_applies_observers_in_order(tmp_path: Path) -> 
 
 
 def test_telemetry_observer_writes_telemetry_and_sets_log_path(tmp_path: Path) -> None:
+    """Persist telemetry before returning the updated log path."""
     captured: list[IterationTelemetryInputs] = []
     report = _build_iteration_report(tmp_path)
     observer = build_telemetry_observer(
         TelemetryObserverDependencies(
             write_iteration_telemetry=(
-                lambda telemetry_inputs, git_head_resolver: (
+                lambda telemetry_inputs: (
                     captured.append(telemetry_inputs),
-                    git_head_resolver(telemetry_inputs.iteration_inputs.project_root),
                     "progress/run-feature-FEAT-116.txt",
                 )[-1]
-            ),
-            git_head_resolver=lambda _project_root: "abc1234",
+            )
         )
     )
 
@@ -110,6 +110,7 @@ def test_telemetry_observer_writes_telemetry_and_sets_log_path(tmp_path: Path) -
 
 
 def test_console_observer_prints_summary_and_failed_log_pointer(tmp_path: Path) -> None:
+    """Render failed iteration summaries with the published log path."""
     calls: list[IterationSummaryInputs] = []
     report = _build_iteration_report(tmp_path, result="failed").model_copy(
         update={
@@ -128,9 +129,7 @@ def test_console_observer_prints_summary_and_failed_log_pointer(tmp_path: Path) 
         }
     )
     observer = build_console_observer(
-        ConsoleObserverDependencies(
-            print_summary=calls.append,
-        )
+        ConsoleObserverDependencies(print_summary=calls.append)
     )
 
     published_report = observer(report)
@@ -145,6 +144,7 @@ def test_console_observer_prints_summary_and_failed_log_pointer(tmp_path: Path) 
 
 
 def test_progress_artifact_observer_persists_finalized_report(tmp_path: Path) -> None:
+    """Persist the finalized report without mutating it."""
     captured: list[IterationReport] = []
     report = _build_iteration_report(tmp_path).model_copy(
         update={"log_path": "progress/run-feature-FEAT-116.txt"}
@@ -159,6 +159,7 @@ def test_progress_artifact_observer_persists_finalized_report(tmp_path: Path) ->
 
 
 def test_default_observers_publish_telemetry_before_console(tmp_path: Path) -> None:
+    """Publish telemetry and report artifacts before console rendering."""
     calls: list[tuple[str, str]] = []
     summary_log_paths: list[str | None] = []
     report = _build_iteration_report(tmp_path, result="failed")
@@ -170,7 +171,7 @@ def test_default_observers_publish_telemetry_before_console(tmp_path: Path) -> N
     observers = build_default_iteration_report_observers(
         DefaultObserverDependencies(
             write_iteration_telemetry=(
-                lambda telemetry_inputs, _git_head_resolver: (
+                lambda telemetry_inputs: (
                     calls.append(("telemetry", telemetry_inputs.feature_id)),
                     "progress/run-feature-FEAT-116.txt",
                 )[-1]

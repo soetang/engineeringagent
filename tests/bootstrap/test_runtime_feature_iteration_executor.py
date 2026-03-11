@@ -4,6 +4,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Sequence, cast
 
+import engineeringagent.bootstrap.runtime_execution as runtime_execution_module
+from engineeringagent.bootstrap.iteration_reporting import DefaultObserverDependencies
 from engineeringagent.bootstrap.runtime_execution import (
     RuntimeFeatureIterationExecutor,
 )
@@ -139,8 +141,8 @@ def _build_executor(
 
     support_module = SimpleNamespace(
         run_implement_step=object(),
-        git_head_short=object(),
-        print_summary=object(),
+        git_head_short=lambda _project_root: "abc1234",
+        print_summary=lambda _summary: None,
     )
     changed_paths_module = SimpleNamespace(collect_changed_paths=object())
     feature_state_module = SimpleNamespace(
@@ -155,13 +157,13 @@ def _build_executor(
 
     def _fake_write_iteration_telemetry(
         telemetry_inputs: object,
-        *,
-        git_head_resolver: object,
-    ) -> None:
+        **kwargs: object,
+    ) -> str:
         observed["telemetry_call"] = {
             "telemetry_inputs": telemetry_inputs,
-            "git_head_resolver": git_head_resolver,
+            **kwargs,
         }
+        return "progress/run-feature-FEAT-001.txt"
 
     executor = cast(
         Any,
@@ -199,18 +201,15 @@ def _build_executor(
             run_reviewer_phase=object(),
             run_completion_commit_phase=object(),
         ),
-        observers=SimpleNamespace(
-            DefaultObserverDependencies=lambda **kwargs: kwargs,
-            build_default_iteration_report_observers=lambda dependencies: (
-                observed.__setitem__("default_observer_dependencies", dependencies),
-                ("observer",),
-            )[1],
-            publish_iteration_report=_fake_publish_iteration_report,
-        ),
-        telemetry=SimpleNamespace(
-            write_iteration_telemetry=_fake_write_iteration_telemetry
-        ),
     )
+    runtime_execution_module.build_default_iteration_report_observers = (
+        lambda dependencies: (
+            observed.__setitem__("default_observer_dependencies", dependencies),
+            ("observer",),
+        )[1]
+    )
+    runtime_execution_module.publish_iteration_report = _fake_publish_iteration_report
+    runtime_execution_module.write_iteration_telemetry = _fake_write_iteration_telemetry
     return (
         executor,
         executor._version_control_gateway,
@@ -284,21 +283,26 @@ def test_runtime_feature_iteration_executor_executes_runtime_pipeline() -> None:
             allow_empty=False,
         )
     ]
-    observer_dependencies = observed["default_observer_dependencies"]
-    assert isinstance(observer_dependencies, dict)
+    observer_dependencies = cast(
+        DefaultObserverDependencies,
+        observed["default_observer_dependencies"],
+    )
     dependencies = observed["iteration_dependencies"]
     assert isinstance(dependencies, dict)
     assert dependencies["run_implement_step"] is executor._runtime.support.run_implement_step
-    assert observer_dependencies["git_head_resolver"] is executor._runtime.support.git_head_short
-    assert observer_dependencies["print_summary"] is executor._runtime.support.print_summary
-    observer_dependencies["write_iteration_telemetry"]("telemetry-inputs", object())
-    observer_dependencies["persist_iteration_report"](
-        SimpleNamespace(
+    assert observer_dependencies.git_head_resolver is executor._runtime.support.git_head_short
+    assert observer_dependencies.print_summary is executor._runtime.support.print_summary
+    observer_dependencies.write_iteration_telemetry(cast(Any, "telemetry-inputs"))
+    observer_dependencies.persist_iteration_report(
+        cast(
+            Any,
+            SimpleNamespace(
             telemetry_inputs=SimpleNamespace(
                 iteration_inputs=SimpleNamespace(project_root=Path("/tmp/project"))
             ),
             feature_id="FEAT-001",
             model_dump=lambda mode="json": {"result": "failed", "mode": mode},
+            ),
         )
     )
     assert observed["iteration_reports"] == [
@@ -308,6 +312,10 @@ def test_runtime_feature_iteration_executor_executes_runtime_pipeline() -> None:
             "payload": {"result": "failed", "mode": "json"},
         }
     ]
+    assert observed["telemetry_call"] == {
+        "telemetry_inputs": "telemetry-inputs",
+        "git_head_resolver": executor._runtime.support.git_head_short,
+    }
 
 
 def test_runtime_feature_iteration_executor_reports_commit_success() -> None:

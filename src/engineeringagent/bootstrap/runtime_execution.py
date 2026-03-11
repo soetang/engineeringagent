@@ -7,10 +7,16 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Callable
 
+from engineeringagent.adapters.progress import write_iteration_telemetry
 from engineeringagent.application import FeatureIterationRequest
-from engineeringagent.application.feature_iteration import FeatureIterationService
-from engineeringagent.domain.specification import feature_completion_commit_subject
 from engineeringagent.application.feature_iteration.models import FeatureIterationInputs, IterationOutcome
+from engineeringagent.application.feature_iteration import FeatureIterationService
+from engineeringagent.bootstrap.iteration_reporting import (
+    DefaultObserverDependencies,
+    build_default_iteration_report_observers,
+    publish_iteration_report,
+)
+from engineeringagent.domain.specification import feature_completion_commit_subject
 from engineeringagent.loop_runtime.run_builder import (
     RunConfigOptions,
     build_loop_run,
@@ -160,9 +166,7 @@ class _RuntimeModules(SimpleNamespace):
     feature_state: Any
     iteration: Any
     models: Any
-    observers: Any
     phases: Any
-    telemetry: Any
 
 
 class RuntimeFeatureIterationExecutor(FeatureIterationExecutor):
@@ -182,9 +186,7 @@ class RuntimeFeatureIterationExecutor(FeatureIterationExecutor):
             feature_state=import_module("engineeringagent.loop_runtime.feature_state"),
             iteration=import_module("engineeringagent.loop_runtime.iteration"),
             models=import_module("engineeringagent.application.feature_iteration.models"),
-            observers=import_module("engineeringagent.loop_runtime.observers"),
             phases=import_module("engineeringagent.loop_runtime.phases"),
-            telemetry=import_module("engineeringagent.loop_runtime.telemetry"),
         )
 
     def run(
@@ -273,14 +275,12 @@ class RuntimeFeatureIterationExecutor(FeatureIterationExecutor):
                 ),
             ),
         )
-        observers = self._runtime.observers.build_default_iteration_report_observers(
-            self._runtime.observers.DefaultObserverDependencies(
+        observers = build_default_iteration_report_observers(
+            DefaultObserverDependencies(
                 write_iteration_telemetry=(
-                    lambda telemetry_inputs, git_head_resolver: (
-                        self._runtime.telemetry.write_iteration_telemetry(
-                            telemetry_inputs,
-                            git_head_resolver=git_head_resolver,
-                        )
+                    lambda telemetry_inputs: write_iteration_telemetry(
+                        telemetry_inputs,
+                        git_head_resolver=self._runtime.support.git_head_short,
                     )
                 ),
                 persist_iteration_report=_persist_iteration_report,
@@ -288,7 +288,7 @@ class RuntimeFeatureIterationExecutor(FeatureIterationExecutor):
                 print_summary=self._runtime.support.print_summary,
             )
         )
-        outcome = self._runtime.observers.publish_iteration_report(report, observers)
+        outcome = publish_iteration_report(report, observers)
         return FeatureIterationExecutionResult(
             completed=outcome.completed,
             result=outcome.result,

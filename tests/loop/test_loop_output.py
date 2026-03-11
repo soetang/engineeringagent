@@ -5,9 +5,9 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, get_type_hints
 
+import engineeringagent.adapters.progress.iteration_telemetry as telemetry_module
 import engineeringagent.presentation.presenters.terminal as presentation_module
 from engineeringagent.loop import print_summary
-import engineeringagent.loop_runtime.telemetry as telemetry_module
 import engineeringagent.loop_runtime.phases as phases_module
 import engineeringagent.application.feature_iteration.models as models_module
 from engineeringagent.application.feature_iteration.models import (
@@ -20,7 +20,7 @@ from engineeringagent.application.feature_iteration.models import (
 from engineeringagent.loop_runtime.phases import (
     run_verification_phase,
 )
-from engineeringagent.loop_runtime.telemetry import (
+from engineeringagent.adapters.progress.iteration_telemetry import (
     _command_timing_fields_parts,
     _format_command_timing_line,
     _format_phase_timing_fields,

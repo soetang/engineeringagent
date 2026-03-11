@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from engineeringagent.agents import run_agent
 from engineeringagent.loop_runtime.implement import run_implement_step_from_inputs
 from engineeringagent.application.feature_iteration.models import (
     ImplementStepInputs,
@@ -23,7 +22,10 @@ class _LoopAgentRunner:
 
     def run(self, request: Any) -> object:
         """Execute one legacy implement-step agent request."""
-        return run_agent(
+        # Import lazily so legacy loop tests can still monkeypatch the facade seam.
+        from engineeringagent import loop as loop_module
+
+        return loop_module.run_agent(
             request.project_root,
             request.prompt,
             output_type=request.output_type,

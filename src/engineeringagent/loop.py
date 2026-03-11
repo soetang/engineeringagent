@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, NamedTuple, Sequence
 
 from .agents import preflight, run_agent
+from .adapters.progress import write_iteration_telemetry
 from .application import FeatureIterationRequest
 from .application.feature_iteration.models import (
     FeatureIterationInputs,
@@ -12,6 +13,12 @@ from .application.feature_iteration.models import (
     IterationSummaryInputs,
 )
 from .bootstrap import AppFactory
+from .bootstrap.iteration_reporting import (
+    DefaultObserverDependencies,
+    IterationReportObserver,
+    build_default_iteration_report_observers,
+    publish_iteration_report,
+)
 from .bootstrap.runtime_execution import run_loop_controller
 from .bootstrap import runtime_support as _runtime_support
 from .loop_runtime.selection import (
@@ -25,21 +32,18 @@ from .loop_runtime.feature_state import (
     resolve_feature_paths,
 )
 from .loop_runtime.run_context import LoopRun, RunConfig, RunServices
-from .loop_runtime.observers import (
-    DefaultObserverDependencies,
-    IterationReportObserver,
-    build_default_iteration_report_observers,
-    publish_iteration_report,
-)
-from .loop_runtime.telemetry import write_iteration_telemetry
 from .domain.specification import feature_completion_commit_subject
 from .ports import CommitRequest, VersionControlFailure, VersionControlGateway
 
 __all__ = ["run_loop_controller"]
 
-git_head_short = _runtime_support.git_head_short
 print_summary = _runtime_support.print_summary
 run_implement_step = _runtime_support.run_implement_step
+
+
+def git_head_short(project_root: Path) -> str | None:
+    """Return the short git HEAD hash for a repository."""
+    return _build_version_control_gateway(project_root).head_commit(project_root)
 
 
 def _print_run_all_snapshot_banner(resolved_paths: Sequence[Path]) -> None:
@@ -214,9 +218,9 @@ def _default_iteration_report_observers() -> tuple[IterationReportObserver, ...]
     return build_default_iteration_report_observers(
         DefaultObserverDependencies(
             write_iteration_telemetry=(
-                lambda telemetry_inputs, git_head_resolver: write_iteration_telemetry(
+                lambda telemetry_inputs: write_iteration_telemetry(
                     telemetry_inputs,
-                    git_head_resolver=git_head_resolver,
+                    git_head_resolver=git_head_short,
                 )
             ),
             persist_iteration_report=_persist_iteration_report,

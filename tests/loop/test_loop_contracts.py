@@ -14,6 +14,9 @@ from pydantic import BaseModel, ValidationError
 
 import engineeringagent.loop as loop_module
 from engineeringagent.adapters.progress import FilesystemProgressJournal
+from engineeringagent.adapters.progress.iteration_telemetry import (
+    write_iteration_telemetry,
+)
 from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
 from engineeringagent.application import PromptBuilder
 from engineeringagent.domain.specification.feature_specification import (
@@ -40,7 +43,6 @@ from engineeringagent.loop_runtime.run_context import (
     RunServices,
     RunState,
 )
-from engineeringagent.loop_runtime.telemetry import write_iteration_telemetry
 from engineeringagent.adapters.progress.handoff import ImplementProgressEnvelope
 from engineeringagent.adapters.progress.handoff import (
     fallback_implement_progress_envelope,

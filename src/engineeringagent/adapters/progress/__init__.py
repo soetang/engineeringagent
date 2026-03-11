@@ -8,6 +8,10 @@ from .handoff import (
     parse_implement_progress_envelope,
     render_handoff_markdown_entry,
 )
+from .iteration_telemetry import (
+    append_run,
+    write_iteration_telemetry,
+)
 from .paths import (
     FEATURE_HANDOFF_FILENAME,
     FEATURE_ITERATION_REPORT_FILENAME,
@@ -45,6 +49,8 @@ __all__ = [
     "parse_implement_progress_envelope",
     "fallback_implement_progress_envelope",
     "render_handoff_markdown_entry",
+    "append_run",
+    "write_iteration_telemetry",
     "PROGRESS_DIRNAME",
     "PROGRESS_RUNS_DIRNAME",
     "PROGRESS_FEATURES_DIRNAME",

@@ -1,4 +1,4 @@
-"""Iteration report observers for telemetry and console output."""
+"""Bootstrap-owned iteration report publishing helpers."""
 
 from __future__ import annotations
 
@@ -7,9 +7,15 @@ from typing import Callable, Sequence
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.application.feature_iteration.models import IterationReport, IterationSummaryInputs, IterationTelemetryInputs
+from engineeringagent.application.feature_iteration.models import (
+    IterationReport,
+    IterationSummaryInputs,
+    IterationTelemetryInputs,
+)
+
 
 PrintSummaryFn = Callable[[IterationSummaryInputs], None]
+IterationReportObserver = Callable[[IterationReport], IterationReport]
 
 
 class TelemetryObserverDependencies(BaseModel):
@@ -18,10 +24,9 @@ class TelemetryObserverDependencies(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     write_iteration_telemetry: Callable[
-        [IterationTelemetryInputs, Callable[[Path], str | None]],
+        [IterationTelemetryInputs],
         str,
     ]
-    git_head_resolver: Callable[[Path], str | None]
 
 
 class ConsoleObserverDependencies(BaseModel):
@@ -37,16 +42,10 @@ class DefaultObserverDependencies(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    write_iteration_telemetry: Callable[
-        [IterationTelemetryInputs, Callable[[Path], str | None]],
-        str,
-    ]
+    write_iteration_telemetry: Callable[[IterationTelemetryInputs], str]
     persist_iteration_report: Callable[[IterationReport], None]
     git_head_resolver: Callable[[Path], str | None]
     print_summary: PrintSummaryFn
-
-
-IterationReportObserver = Callable[[IterationReport], IterationReport]
 
 
 def publish_iteration_report(
@@ -54,7 +53,6 @@ def publish_iteration_report(
     observers: Sequence[IterationReportObserver],
 ) -> IterationReport:
     """Publish an iteration report to observers in deterministic order."""
-
     published_report = report
     for observer in observers:
         published_report = observer(published_report)
@@ -68,8 +66,7 @@ def build_telemetry_observer(
 
     def _observe(report: IterationReport) -> IterationReport:
         feature_progress_log_reference = dependencies.write_iteration_telemetry(
-            report.telemetry_inputs,
-            dependencies.git_head_resolver,
+            report.telemetry_inputs
         )
         return report.model_copy(update={"log_path": feature_progress_log_reference})
 
@@ -124,19 +121,16 @@ def build_default_iteration_report_observers(
     dependencies: DefaultObserverDependencies,
 ) -> tuple[IterationReportObserver, IterationReportObserver, IterationReportObserver]:
     """Build the default observer chain (telemetry, progress artifacts, console)."""
-
+    _ = dependencies.git_head_resolver
     telemetry_observer = build_telemetry_observer(
         TelemetryObserverDependencies(
             write_iteration_telemetry=dependencies.write_iteration_telemetry,
-            git_head_resolver=dependencies.git_head_resolver,
         )
     )
     progress_observer = build_progress_artifact_observer(
         dependencies.persist_iteration_report
     )
     console_observer = build_console_observer(
-        ConsoleObserverDependencies(
-            print_summary=dependencies.print_summary,
-        )
+        ConsoleObserverDependencies(print_summary=dependencies.print_summary)
     )
     return (telemetry_observer, progress_observer, console_observer)
