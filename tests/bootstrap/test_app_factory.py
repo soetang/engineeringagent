@@ -11,7 +11,7 @@ from engineeringagent.adapters.documents import (
     ChecksCatalogLoadOptions,
     FilesystemChecksCatalogRepository,
 )
-from engineeringagent.adapters.loop import (
+from engineeringagent.bootstrap.runtime_execution import (
     RuntimeFeatureIterationExecutor,
     RuntimeRunLoopExecutor,
 )

@@ -21,7 +21,7 @@ from engineeringagent.agents.backends.opencode.permissions import (
     PermissionProbeResult,
 )
 from engineeringagent.loop import RunConfigOptions, build_loop_run, build_run_config
-from engineeringagent.adapters.loop.runtime_run_loop_executor import (
+from engineeringagent.bootstrap.runtime_execution import (
     run_loop_controller as _run_loop,
 )
 from engineeringagent.loop_runtime.models import ImplementStepResult

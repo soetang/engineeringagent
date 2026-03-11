@@ -59,17 +59,27 @@ def test_legacy_run_loop_bridge_absent_rule_fails_when_paths_return(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Fail when the deleted legacy run-loop bridge module name reappears."""
+    """Fail when the deleted loop adapter package reappears."""
     adapter_path = tmp_path / "src" / "engineeringagent" / "adapters" / "loop"
     adapter_path.mkdir(parents=True, exist_ok=True)
     (adapter_path / "__init__.py").write_text("", encoding="utf-8")
     (adapter_path / "legacy_run_loop_executor.py").write_text("", encoding="utf-8")
+    (adapter_path / "runtime_feature_iteration_executor.py").write_text(
+        "", encoding="utf-8"
+    )
+    (adapter_path / "runtime_run_loop_executor.py").write_text("", encoding="utf-8")
 
     proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
 
     assert proc.returncode == 1
     assert payload["status"] == "fail"
     assert payload["violations"] == [
+        "src/engineeringagent/adapters/loop/__init__.py: deleted legacy run-loop bridge path must remain absent; "
+        "keep runtime loop execution wiring under engineeringagent.bootstrap.runtime_execution and do not restore the deleted engineeringagent.adapters.loop package.",
+        "src/engineeringagent/adapters/loop/runtime_feature_iteration_executor.py: deleted legacy run-loop bridge path must remain absent; "
+        "keep runtime loop execution wiring under engineeringagent.bootstrap.runtime_execution and do not restore the deleted engineeringagent.adapters.loop package.",
         "src/engineeringagent/adapters/loop/legacy_run_loop_executor.py: deleted legacy run-loop bridge path must remain absent; "
-        "keep the canonical run-loop port in engineeringagent.ports.run_loop_executor and the runtime adapter in engineeringagent.adapters.loop.runtime_run_loop_executor; do not restore the legacy bridge module name.",
+        "keep runtime loop execution wiring under engineeringagent.bootstrap.runtime_execution and do not restore the deleted engineeringagent.adapters.loop package.",
+        "src/engineeringagent/adapters/loop/runtime_run_loop_executor.py: deleted legacy run-loop bridge path must remain absent; "
+        "keep runtime loop execution wiring under engineeringagent.bootstrap.runtime_execution and do not restore the deleted engineeringagent.adapters.loop package.",
     ]

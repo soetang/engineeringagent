@@ -81,9 +81,9 @@ rules:
       - harness/fitness_functions/rules/check_guidance_module_locations.py
   - rule_id: architecture.legacy-run-loop-bridge-absent
     name: Legacy run-loop bridge absent
-    summary: Keep removed legacy run-loop bridge source files deleted.
-    rationale: The target architecture keeps legacy loop wiring in bootstrap during migration and does not retain a dedicated run-loop executor port or adapter package.
-    remediation: Keep legacy loop callable wiring in engineeringagent.bootstrap.app_factory and do not restore the deleted run-loop executor port or loop bridge source files under adapters/loop.
+    summary: Keep the deleted loop adapter package removed.
+    rationale: The target architecture keeps runtime loop execution wiring in bootstrap during migration and does not retain a dedicated adapters.loop package.
+    remediation: Keep runtime loop execution wiring under engineeringagent.bootstrap.runtime_execution and do not restore the deleted engineeringagent.adapters.loop package.
     scope: src/engineeringagent/ports/run_loop_executor.py and deleted source files under src/engineeringagent/adapters/loop
     severity: error
     side_effect_free: true

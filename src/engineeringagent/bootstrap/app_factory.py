@@ -14,12 +14,6 @@ from engineeringagent.adapters.documents import (
     FilesystemChecksCatalogRepository,
     PackagedGuidanceTopicRepository,
 )
-from engineeringagent.adapters.loop.runtime_feature_iteration_executor import (
-    RuntimeFeatureIterationExecutor,
-)
-from engineeringagent.adapters.loop.runtime_run_loop_executor import (
-    RuntimeRunLoopExecutor,
-)
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
 from engineeringagent.adapters.vcs import (
@@ -35,6 +29,10 @@ from engineeringagent.application import (
     RunLoopService,
     ValidationService,
     WorkspaceRecoveryService,
+)
+from engineeringagent.bootstrap.runtime_execution import (
+    RuntimeFeatureIterationExecutor,
+    RuntimeRunLoopExecutor,
 )
 from engineeringagent.config import resolve_harness_root
 from engineeringagent.ports import (

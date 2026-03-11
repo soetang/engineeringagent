@@ -3,8 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import cast
 
-import engineeringagent.adapters.loop.runtime_run_loop_executor as runtime_executor_module
-from engineeringagent.adapters.loop import RuntimeRunLoopExecutor
+import engineeringagent.bootstrap.runtime_execution as runtime_executor_module
+from engineeringagent.bootstrap.runtime_execution import RuntimeRunLoopExecutor
 from engineeringagent.application.feature_iteration_service import FeatureIterationService
 from engineeringagent.ports import RunLoopExecutionRequest
 from engineeringagent.ports.version_control import VersionControlGateway
@@ -13,7 +13,7 @@ from engineeringagent.ports.version_control import VersionControlGateway
 def test_runtime_run_loop_executor_uses_runtime_run_builder(
     monkeypatch,
 ) -> None:
-    """The adapter should build run context through loop_runtime support."""
+    """Bootstrap runtime execution should build run context through loop_runtime."""
 
     observed: dict[str, object] = {}
 

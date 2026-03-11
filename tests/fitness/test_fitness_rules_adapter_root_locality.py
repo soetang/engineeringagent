@@ -76,10 +76,10 @@ def test_adapter_root_locality_rule_allows_subpackage_localized_adapters(
 ) -> None:
     """Allow adapter implementations that live under focused adapter subpackages."""
     _write_module(tmp_path, "src/engineeringagent/adapters/__init__.py")
-    _write_module(tmp_path, "src/engineeringagent/adapters/loop/__init__.py")
+    _write_module(tmp_path, "src/engineeringagent/adapters/progress/__init__.py")
     _write_module(
         tmp_path,
-        "src/engineeringagent/adapters/loop/legacy_run_loop_executor.py",
+        "src/engineeringagent/adapters/progress/filesystem_journal.py",
     )
 
     proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))

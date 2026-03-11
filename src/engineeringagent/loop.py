@@ -6,7 +6,7 @@ from typing import Any, NamedTuple, Sequence
 from .agents import preflight, run_agent
 from .application import FeatureIterationRequest
 from .bootstrap import AppFactory
-from .adapters.loop.runtime_run_loop_executor import run_loop_controller
+from .bootstrap.runtime_execution import run_loop_controller
 from .loop_runtime.implement import run_implement_step_from_inputs
 from .loop_runtime.models import (
     FeatureIterationInputs,

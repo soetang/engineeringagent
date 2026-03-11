@@ -13,12 +13,14 @@ from engineeringagent.checks.fitness.contracts import (
 
 RULE_ID = "architecture.legacy-run-loop-bridge-absent"
 _REMOVED_PATHS = (
+    Path("src/engineeringagent/adapters/loop/__init__.py"),
+    Path("src/engineeringagent/adapters/loop/runtime_feature_iteration_executor.py"),
     Path("src/engineeringagent/adapters/loop/legacy_run_loop_executor.py"),
+    Path("src/engineeringagent/adapters/loop/runtime_run_loop_executor.py"),
 )
 _REMEDIATION = (
-    "keep the canonical run-loop port in engineeringagent.ports.run_loop_executor "
-    "and the runtime adapter in engineeringagent.adapters.loop.runtime_run_loop_executor; "
-    "do not restore the legacy bridge module name."
+    "keep runtime loop execution wiring under engineeringagent.bootstrap.runtime_execution "
+    "and do not restore the deleted engineeringagent.adapters.loop package."
 )
 
 
