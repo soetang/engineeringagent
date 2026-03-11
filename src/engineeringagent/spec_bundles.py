@@ -185,8 +185,9 @@ def resolve_feature_package_paths(
     active_spec_path = feature_path.resolve()
     active_root = feature_storage_root(active_spec_path)
     if active_root.parent != active_dir:
+        expected_root = active_dir.as_posix()
         raise ValueError(
-            "completed feature archive source must be under docs/spec/features"
+            f"completed feature archive source must be under {expected_root}"
         )
 
     archive_root = done_dir / active_root.name

@@ -185,3 +185,22 @@ def test_bundled_only_feature_storage_root_rejects_flat_entrypoints() -> None:
         spec_bundles.feature_storage_root(
             Path("docs/spec/features/FEAT-181-example.yaml")
         )
+
+
+def test_resolve_feature_package_paths_reports_configured_active_root(
+    tmp_path: Path,
+) -> None:
+    active_dir = tmp_path / "docs" / "specifications" / "features"
+    done_dir = tmp_path / "docs" / "specifications" / "features_done"
+    outside_spec = tmp_path / "elsewhere" / "FEAT-181-example" / "spec.yaml"
+    outside_spec.parent.mkdir(parents=True)
+    outside_spec.write_text("id: FEAT-181\n", encoding="utf-8")
+
+    with pytest.raises(
+        ValueError,
+        match=(
+            "completed feature archive source must be under "
+            f"{active_dir.as_posix()}"
+        ),
+    ):
+        spec_bundles.resolve_feature_package_paths(active_dir, done_dir, outside_spec)

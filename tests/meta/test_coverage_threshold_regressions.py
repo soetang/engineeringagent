@@ -208,7 +208,10 @@ def test_feature_state_error_paths(tmp_path: Path, monkeypatch: Any) -> None:
     outside_bundle = tmp_path / "elsewhere" / "FEAT-999-outside" / "spec.yaml"
     outside_bundle.parent.mkdir(parents=True)
     outside_bundle.write_text("id: FEAT-999\nstatus: backlog\n", encoding="utf-8")
-    with pytest.raises(ValueError, match="must be under docs/spec/features"):
+    with pytest.raises(
+        ValueError,
+        match=str((tmp_path / "docs" / "spec" / "features").resolve()),
+    ):
         feature_state_module._resolve_archive_path(tmp_path, outside_bundle)
 
     missing_outside = tmp_path / "missing.yaml"
