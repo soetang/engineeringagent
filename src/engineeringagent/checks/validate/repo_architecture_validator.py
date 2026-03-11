@@ -128,6 +128,19 @@ def _application_module_issues(
         return (module,)
 
     issues: list[ValidationIssue] = []
+    if _is_application_service_module(module_path) and _module_declares_base_model(module):
+        issues.append(
+            ValidationIssue(
+                validator_id="repo.architecture",
+                scope="repo",
+                path=rel_path,
+                message=(
+                    "application service modules must keep workflow BaseModel contracts "
+                    "under engineeringagent.application.contracts"
+                ),
+                code="repo.architecture.application-service-contract-locality",
+            )
+        )
     for node in ast.walk(module):
         if isinstance(node, ast.ClassDef) and any(_is_protocol_base(base) for base in node.bases):
             issues.append(
@@ -230,6 +243,13 @@ def _module_declares_protocol(module: ast.Module) -> bool:
     )
 
 
+def _module_declares_base_model(module: ast.Module) -> bool:
+    return any(
+        isinstance(node, ast.ClassDef) and any(_is_base_model_base(base) for base in node.bases)
+        for node in module.body
+    )
+
+
 def _module_declares_port_failure(module: ast.Module) -> bool:
     return any(
         isinstance(node, ast.ClassDef)
@@ -243,6 +263,14 @@ def _is_protocol_base(base: ast.expr) -> bool:
         return base.id == "Protocol"
     if isinstance(base, ast.Attribute):
         return base.attr == "Protocol"
+    return False
+
+
+def _is_base_model_base(base: ast.expr) -> bool:
+    if isinstance(base, ast.Name):
+        return base.id == "BaseModel"
+    if isinstance(base, ast.Attribute):
+        return base.attr == "BaseModel"
     return False
 
 
@@ -569,6 +597,13 @@ def _json_format_boundary_issues(
 
 def _is_under(path: Path, parent: Path) -> bool:
     return path == parent or parent in path.parents
+
+
+def _is_application_service_module(module_path: Path) -> bool:
+    return (
+        module_path.parent.name == "application"
+        and module_path.name not in {"__init__.py"}
+    )
 
 
 def _legacy_import_issues_for_module(

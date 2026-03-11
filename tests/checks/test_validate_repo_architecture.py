@@ -270,6 +270,41 @@ def test_repo_architecture_validator_reports_application_protocol_contracts(
     )
 
 
+def test_repo_architecture_validator_reports_application_service_local_contracts(
+    tmp_path: Path,
+) -> None:
+    """Application services must keep workflow models in application contracts modules."""
+
+    _write_port_module(
+        tmp_path,
+        "src/engineeringagent/application/checks_service.py",
+        "from pydantic import BaseModel\n\n"
+        "class RunChecksRequest(BaseModel):\n"
+        "    project_root: str\n",
+    )
+
+    issues = RepoArchitectureValidator().validate(
+        context=ValidationContext(
+            project_root=tmp_path,
+            docs_root=tmp_path / "docs",
+            schema_only=False,
+        )
+    )
+
+    assert issues == (
+        ValidationIssue(
+            validator_id="repo.architecture",
+            scope="repo",
+            path="src/engineeringagent/application/checks_service.py",
+            message=(
+                "application service modules must keep workflow BaseModel contracts "
+                "under engineeringagent.application.contracts"
+            ),
+            code="repo.architecture.application-service-contract-locality",
+        ),
+    )
+
+
 def test_repo_architecture_validator_reports_application_importing_checks_modules(
     tmp_path: Path,
 ) -> None:
