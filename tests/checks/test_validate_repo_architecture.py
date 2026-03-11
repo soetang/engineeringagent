@@ -134,6 +134,54 @@ def test_repo_architecture_validator_reports_ports_importing_application_modules
     )
 
 
+@pytest.mark.parametrize(
+    "import_line",
+    [
+        "from engineeringagent.adapters.progress import FilesystemProgressJournal\n",
+        "from engineeringagent.agents.runtime import run_agent\n",
+        "from engineeringagent.bootstrap.app_factory import AppFactory\n",
+        "from engineeringagent.cli.app import create_cli\n",
+        "from engineeringagent.presentation.presenters.terminal import TerminalPresenter\n",
+    ],
+)
+def test_repo_architecture_validator_reports_ports_importing_outer_layers(
+    tmp_path: Path,
+    *,
+    import_line: str,
+) -> None:
+    """Ports modules must stay isolated from adapter and presentation layers."""
+
+    _write_port_module(
+        tmp_path,
+        "src/engineeringagent/ports/prompt_contracts.py",
+        "from typing import Protocol\n"
+        f"{import_line}\n"
+        "class PromptBuilder(Protocol):\n"
+        "    def build(self) -> str: ...\n",
+    )
+
+    issues = RepoArchitectureValidator().validate(
+        context=ValidationContext(
+            project_root=tmp_path,
+            docs_root=tmp_path / "docs",
+            schema_only=False,
+        )
+    )
+
+    assert issues == (
+        ValidationIssue(
+            validator_id="repo.architecture",
+            scope="repo",
+            path="src/engineeringagent/ports/prompt_contracts.py",
+            message=(
+                "ports modules must not import adapters, agents, bootstrap, "
+                "cli, or presentation modules"
+            ),
+            code="repo.architecture.ports-outer-layer-import",
+        ),
+    )
+
+
 def test_repo_architecture_validator_reports_ports_importing_legacy_specs_modules(
     tmp_path: Path,
 ) -> None:

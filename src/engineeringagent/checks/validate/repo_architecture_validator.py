@@ -246,6 +246,21 @@ def _application_import_issues(
     ) + _forbidden_import_issues(
         module,
         rel_path=rel_path,
+        forbidden_modules=(
+            "engineeringagent.adapters",
+            "engineeringagent.agents",
+            "engineeringagent.bootstrap",
+            "engineeringagent.cli",
+            "engineeringagent.presentation",
+        ),
+        message=(
+            "ports modules must not import adapters, agents, bootstrap, "
+            "cli, or presentation modules"
+        ),
+        code="repo.architecture.ports-outer-layer-import",
+    ) + _forbidden_import_issues(
+        module,
+        rel_path=rel_path,
         forbidden_modules=("engineeringagent.specs",),
         message="ports modules must not import legacy specs modules",
         code="repo.architecture.ports-legacy-specs-import",
