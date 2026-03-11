@@ -130,6 +130,9 @@ def test_handoff_paths_contract(tmp_path: Path) -> None:
     assert progress_paths.handoff_markdown_template_reference(tmp_path) == (
         ".engineeringagent/progress/features/<FEATURE_ID>/handoff.md"
     )
+    assert progress_paths.iteration_report_reference(tmp_path, "FEAT-040") == (
+        ".engineeringagent/progress/features/FEAT-040/iteration-report.json"
+    )
 
 
 def test_progress_path_references_fall_back_when_not_repo_relative(

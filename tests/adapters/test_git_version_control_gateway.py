@@ -152,6 +152,43 @@ def test_commit_reports_git_add_failure(
     assert result.stderr == "add failed"
 
 
+def test_commit_passes_allow_empty_flag_when_requested(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Append `--allow-empty` only when the normalized request asks for it."""
+    calls: list[list[str]] = []
+
+    def _run(*args, **kwargs):  # type: ignore[no-untyped-def]
+        command = args[0]
+        calls.append(command)
+        if command[:3] == ["git", "add", "-A"]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        if command[:5] == [
+            "git",
+            "-c",
+            "user.name=engineeringagent",
+            "-c",
+            "user.email=engineeringagent@local",
+        ]:
+            return subprocess.CompletedProcess(command, 0, "[main abc123] msg\n", "")
+        if command == ["git", "rev-parse", "--short", "HEAD"]:
+            return subprocess.CompletedProcess(command, 0, "abc123\n", "")
+        raise AssertionError(command)
+
+    monkeypatch.setattr(
+        "engineeringagent.adapters.vcs.git_version_control_gateway.subprocess.run",
+        _run,
+        raising=True,
+    )
+
+    GitCliVersionControlGateway().commit(
+        CommitRequest(workspace_path=tmp_path, message="msg", allow_empty=True)
+    )
+
+    assert calls[1][-1] == "--allow-empty"
+
+
 def test_worktree_status_reports_dirty_state(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
