@@ -33,6 +33,7 @@ from engineeringagent.loop_runtime.run_context import (
     RunServices,
     RunState,
 )
+from engineeringagent.application import ImplementationPromptFeature
 from engineeringagent.application import ImplementationPromptRequest
 from engineeringagent.application import PromptArtifactPaths
 from engineeringagent.loop_runtime.telemetry import write_iteration_telemetry
@@ -1104,7 +1105,12 @@ def test_run_implement_step_uses_injected_prompt_builder(tmp_path: Path) -> None
     assert result[0] is True
     assert recorded_requests == [
         ImplementationPromptRequest(
-            feature=inputs.feature,
+            feature=ImplementationPromptFeature(
+                feature_id="FEAT-900",
+                title="Prompt seam",
+                objective="",
+                context="",
+            ),
             artifacts=PromptArtifactPaths(specification=inputs.feature_path),
             handoff_path=None,
             feedback=None,
@@ -1181,7 +1187,12 @@ def test_run_implement_step_passes_handoff_path_only_when_persisted(
     assert result[0] is True
     assert len(recorded_requests) == 1
     request = recorded_requests[0]
-    assert request.feature == inputs.feature
+    assert request.feature == ImplementationPromptFeature(
+        feature_id="FEAT-900",
+        title="Prompt seam",
+        objective="Pass persisted handoff state into prompt assembly.",
+        context="",
+    )
     assert request.artifacts.specification == inputs.feature_path
     assert request.artifacts.plan == str(inputs.feature_path.parent / "plan.md")
     assert request.handoff_path == ".engineeringagent/progress/features/FEAT-900/handoff.md"

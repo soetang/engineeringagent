@@ -21,6 +21,7 @@ from .validation_service import (
 )
 from .prompt_builder import (
     DefaultPromptBuilder,
+    ImplementationPromptFeature,
     ImplementationPromptRequest,
     PromptBuilder,
     PromptArtifactPaths,
@@ -41,6 +42,7 @@ __all__ = [
     "GuidanceQuery",
     "GuidanceResult",
     "GuidanceService",
+    "ImplementationPromptFeature",
     "ImplementationPromptRequest",
     "PromptBuilder",
     "PromptArtifactPaths",

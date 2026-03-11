@@ -231,31 +231,21 @@ def _build_implement_prompt(
     *,
     prompt_builder: PromptBuilder,
 ) -> str:
-    handoff_path = None
-    feature_id = _feature_id_for_prompt(implement_inputs.feature)
-    if _PROGRESS_JOURNAL.latest_handoff_path(
-        project_root=implement_inputs.project_root,
-        feature_id=feature_id,
-    ):
-        handoff_path = progress_paths.handoff_markdown_reference(
-            implement_inputs.project_root,
-            feature_id,
-        )
-
     request = build_implementation_prompt_request(
         feature=implement_inputs.feature,
         feature_path=implement_inputs.feature_path,
         feedback=implement_inputs.feedback,
-        handoff_path=handoff_path,
     )
+    if _PROGRESS_JOURNAL.latest_handoff_path(
+        project_root=implement_inputs.project_root,
+        feature_id=request.feature.feature_id,
+    ):
+        handoff_path = progress_paths.handoff_markdown_reference(
+            implement_inputs.project_root,
+            request.feature.feature_id,
+        )
+        request = request.model_copy(update={"handoff_path": handoff_path})
     return prompt_builder.build_implementation_prompt(request)
-
-
-def _feature_id_for_prompt(feature: dict[str, Any]) -> str:
-    feature_id = feature.get("id")
-    if isinstance(feature_id, str) and feature_id.strip():
-        return feature_id
-    return "unknown-feature"
 
 
 def _ensure_progress_artifacts(implement_inputs: ImplementStepInputs) -> None:

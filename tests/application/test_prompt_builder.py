@@ -10,6 +10,7 @@ from engineeringagent.adapters.prompts import BundledPromptDefinitionRepository
 from engineeringagent.adapters.prompts import ProjectPromptDefinitionRepository
 from engineeringagent.application import (
     DefaultPromptBuilder,
+    ImplementationPromptFeature,
     ImplementationPromptRequest,
     PromptArtifactPaths,
     build_implementation_prompt,
@@ -62,7 +63,12 @@ def test_default_prompt_builder_renders_bundled_phase_prompt(tmp_path: Path) -> 
 
     prompt = _prompt_builder().build_implementation_prompt(
         ImplementationPromptRequest(
-            feature=feature,
+            feature=ImplementationPromptFeature(
+                feature_id=feature["id"],
+                title=feature["title"],
+                objective=feature["objective"],
+                context=feature.get("context", ""),
+            ),
             artifacts=PromptArtifactPaths(specification=feature_path),
             handoff_path=".engineeringagent/progress/features/FEAT-900/handoff.md",
             feedback=None,
@@ -200,7 +206,12 @@ def test_default_prompt_builder_uses_explicit_handoff_path_input(
 
     prompt = _prompt_builder().build_implementation_prompt(
         ImplementationPromptRequest(
-            feature=feature,
+            feature=ImplementationPromptFeature(
+                feature_id=feature["id"],
+                title=feature["title"],
+                objective=feature["objective"],
+                context=feature.get("context", ""),
+            ),
             artifacts=PromptArtifactPaths(specification=feature_path),
             handoff_path="custom/handoff-reference.md",
             feedback=None,
@@ -223,7 +234,12 @@ def test_default_prompt_builder_omits_handoff_guidance_without_path(
 
     prompt = _prompt_builder().build_implementation_prompt(
         ImplementationPromptRequest(
-            feature=feature,
+            feature=ImplementationPromptFeature(
+                feature_id=feature["id"],
+                title=feature["title"],
+                objective=feature["objective"],
+                context=feature.get("context", ""),
+            ),
             artifacts=PromptArtifactPaths(specification=feature_path),
             handoff_path=None,
             feedback=None,
@@ -311,7 +327,12 @@ def test_default_prompt_builder_prefers_repo_local_templates(
         ProjectPromptDefinitionRepository(tmp_path)
     ).build_implementation_prompt(
         ImplementationPromptRequest(
-            feature={"id": "FEAT-101"},
+            feature=ImplementationPromptFeature(
+                feature_id="FEAT-101",
+                title="",
+                objective="",
+                context="",
+            ),
             artifacts=PromptArtifactPaths(specification=feature_path),
             handoff_path=".engineeringagent/progress/features/FEAT-101/handoff.md",
             feedback="retry",
@@ -335,7 +356,12 @@ def test_default_prompt_builder_normalizes_legacy_subtask_progress_to_feature_wo
 
     with pytest.raises(ValueError, match="progress_kind"):
         ImplementationPromptRequest(
-            feature=feature,
+            feature=ImplementationPromptFeature(
+                feature_id=feature["id"],
+                title=feature["title"],
+                objective=feature["objective"],
+                context=feature.get("context", ""),
+            ),
             artifacts=PromptArtifactPaths(specification=feature_path),
             handoff_path="custom/handoff-reference.md",
             feedback=None,
@@ -388,7 +414,12 @@ def test_default_prompt_builder_renders_explicit_plan_and_research_paths(
 
     prompt = _prompt_builder().build_implementation_prompt(
         ImplementationPromptRequest(
-            feature=feature,
+            feature=ImplementationPromptFeature(
+                feature_id=feature["id"],
+                title=feature["title"],
+                objective=feature["objective"],
+                context=feature.get("context", ""),
+            ),
             artifacts=PromptArtifactPaths(
                 specification=feature_path,
                 plan=str(feature_path.parent / "plan.md"),

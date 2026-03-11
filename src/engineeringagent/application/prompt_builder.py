@@ -37,12 +37,23 @@ class PromptArtifactPaths(BaseModel):
 PromptProgressKind = Literal["phase", "feature"]
 
 
+class ImplementationPromptFeature(BaseModel):
+    """Explicit feature fields allowed into the implementation prompt."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    feature_id: str
+    title: str = ""
+    objective: str = ""
+    context: str = ""
+
+
 class ImplementationPromptRequest(BaseModel):
     """Typed input for implementation prompt rendering."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    feature: Mapping[str, Any]
+    feature: ImplementationPromptFeature
     artifacts: PromptArtifactPaths
     handoff_path: str | None
     feedback: str | None
@@ -71,10 +82,10 @@ class DefaultPromptBuilder:
         )
         prompt = implementation_definition.render(
             {
-                "feature_id": str(request.feature.get("id", "unknown-feature")),
-                "feature_title": str(request.feature.get("title", "")),
-                "objective": str(request.feature.get("objective", "")),
-                "context": str(request.feature.get("context", "")),
+                "feature_id": request.feature.feature_id,
+                "feature_title": request.feature.title,
+                "objective": request.feature.objective,
+                "context": request.feature.context,
                 "artifact_paths": _artifact_paths_prompt_block(request),
                 "handoff_path": request.handoff_path or "",
                 "progress_unit": _progress_unit_prompt_label(request.progress_kind),
@@ -114,7 +125,7 @@ def build_implementation_prompt_request(
         progress_kind=raw_progress_kind,
     )
     return ImplementationPromptRequest(
-        feature=feature,
+        feature=_feature_prompt_context(feature_payload),
         artifacts=PromptArtifactPaths(
             specification=feature_path,
             plan=_resolved_artifact_reference(feature_path, feature_payload, "plan"),
@@ -223,6 +234,17 @@ def _normalize_feedback(feedback: str) -> str:
     return serialize_feedback_envelope(envelope)
 
 
+def _feature_prompt_context(
+    feature: Mapping[str, Any],
+) -> ImplementationPromptFeature:
+    return ImplementationPromptFeature(
+        feature_id=_string_field(feature, "id", fallback="unknown-feature"),
+        title=_string_field(feature, "title"),
+        objective=_string_field(feature, "objective"),
+        context=_string_field(feature, "context"),
+    )
+
+
 def _current_progress_reference(
     *,
     progress_unit: object,
@@ -309,3 +331,15 @@ def _normalize_prompt_progress_kind(progress_kind: str) -> PromptProgressKind:
     if progress_kind == "phase":
         return "phase"
     return "feature"
+
+
+def _string_field(
+    feature: Mapping[str, Any],
+    field_name: str,
+    *,
+    fallback: str = "",
+) -> str:
+    value = feature.get(field_name)
+    if isinstance(value, str):
+        return value
+    return fallback
