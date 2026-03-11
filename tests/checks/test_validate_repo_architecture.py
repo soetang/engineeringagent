@@ -197,6 +197,51 @@ def test_repo_architecture_validator_reports_application_importing_checks_module
 @pytest.mark.parametrize(
     "import_line",
     [
+        "from engineeringagent.adapters.progress import FilesystemProgressJournal\n",
+        "from engineeringagent.agents.runtime import run_agent\n",
+        "from engineeringagent.bootstrap.app_factory import AppFactory\n",
+        "from engineeringagent.cli.app import create_cli\n",
+        "from engineeringagent.presentation.presenters.terminal import TerminalPresenter\n",
+    ],
+)
+def test_repo_architecture_validator_reports_application_importing_outer_layers(
+    tmp_path: Path,
+    *,
+    import_line: str,
+) -> None:
+    """Application modules must depend on ports and domain, not outer layers."""
+
+    _write_port_module(
+        tmp_path,
+        "src/engineeringagent/application/checks_service.py",
+        import_line,
+    )
+
+    issues = RepoArchitectureValidator().validate(
+        context=ValidationContext(
+            project_root=tmp_path,
+            docs_root=tmp_path / "docs",
+            schema_only=False,
+        )
+    )
+
+    assert issues == (
+        ValidationIssue(
+            validator_id="repo.architecture",
+            scope="repo",
+            path="src/engineeringagent/application/checks_service.py",
+            message=(
+                "application modules must not import adapters, agents, bootstrap, "
+                "cli, or presentation modules"
+            ),
+            code="repo.architecture.application-outer-layer-import",
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    "import_line",
+    [
         "from engineeringagent.application.checks_service import ChecksService\n",
         "from engineeringagent.ports.agent_runner import AgentRunner\n",
         "from engineeringagent.adapters.progress import FilesystemProgressJournal\n",
