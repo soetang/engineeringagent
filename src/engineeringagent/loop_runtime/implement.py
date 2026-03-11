@@ -26,6 +26,7 @@ from engineeringagent.loop_runtime.models import ImplementStepResult
 from engineeringagent.ports import AgentRunRequest, AgentRunner, ProgressJournal
 from engineeringagent.adapters.progress import handoff as progress_handoff
 from engineeringagent.adapters.progress import paths as progress_paths
+from engineeringagent.config import repo_relative_label
 from engineeringagent.specs import (
     feature_progress_kind,
 )
@@ -243,15 +244,19 @@ def _build_implement_prompt(
         feature_path=implement_inputs.feature_path,
         feedback=implement_inputs.feedback,
     )
-    if progress_journal.latest_handoff_path(
+    persisted_handoff_path = progress_journal.latest_handoff_path(
         project_root=implement_inputs.project_root,
         feature_id=request.feature.feature_id,
-    ):
-        handoff_path = progress_paths.handoff_markdown_reference(
-            implement_inputs.project_root,
-            request.feature.feature_id,
+    )
+    if persisted_handoff_path is not None:
+        request = request.model_copy(
+            update={
+                "handoff_path": repo_relative_label(
+                    implement_inputs.project_root,
+                    persisted_handoff_path,
+                )
+            }
         )
-        request = request.model_copy(update={"handoff_path": handoff_path})
     return prompt_builder.build_implementation_prompt(request)
 
 

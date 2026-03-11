@@ -6,6 +6,7 @@ import subprocess
 import sys
 from inspect import Parameter
 from pathlib import Path
+from typing import Any, Sequence
 
 import pytest
 import yaml
@@ -1267,3 +1268,131 @@ def test_run_implement_step_passes_handoff_path_only_when_persisted(
     assert request.feedback is None
     assert request.progress_kind == "phase"
     assert request.current_progress == "P1 - Prompt seam"
+
+
+def test_run_implement_step_preserves_non_repo_handoff_path_reference(
+    tmp_path: Path,
+) -> None:
+    _, feature_path, _plan_path = make_bundled_project_root(
+        tmp_path,
+        feature_data={
+            "id": "FEAT-901",
+            "title": "External handoff seam",
+            "type": "feature",
+            "expected_commit_subject": "feat: preserve external handoff references",
+            "status": "in_progress",
+            "priority": "high",
+            "objective": "Keep persisted handoff paths stable when they live outside the repo.",
+            "acceptance": ["Prompt assembly preserves non-repo handoff paths."],
+            "planning_tier": "planned",
+            "artifacts": {"plan": "plan.md"},
+        },
+        plan_frontmatter={
+            "plan_id": "FEAT-901",
+            "feature_id": "FEAT-901",
+            "status": "in_progress",
+            "source_spec": "spec.yaml",
+            "planning_tier": "planned",
+            "phases": [{"id": "P1", "title": "External handoff seam", "status": "in_progress"}],
+        },
+    )
+    inputs = ImplementStepInputs(
+        project_root=tmp_path,
+        feature=yaml.safe_load(feature_path.read_text(encoding="utf-8")),
+        feature_path=feature_path,
+        feedback=None,
+        verbose_output=False,
+    )
+    external_handoff_path = tmp_path.parent / "external-progress" / "FEAT-901" / "handoff.md"
+    recorded_requests: list[ImplementationPromptRequest] = []
+
+    class _PromptBuilder:
+        def build_implementation_prompt_request(
+            self,
+            *,
+            feature: dict[str, object],
+            feature_path: Path,
+            feedback: str | None,
+            handoff_path: str | None = None,
+        ) -> ImplementationPromptRequest:
+            return ImplementationPromptRequest(
+                feature=ImplementationPromptFeature(
+                    feature_id="FEAT-901",
+                    title="External handoff seam",
+                    objective="Keep persisted handoff paths stable when they live outside the repo.",
+                    context="",
+                ),
+                artifacts=PromptArtifactPaths(
+                    specification=inputs.feature_path,
+                    plan=str(inputs.feature_path.parent / "plan.md"),
+                ),
+                handoff_path=handoff_path,
+                feedback=feedback,
+                progress_kind="phase",
+                current_progress="P1 - External handoff seam",
+            )
+
+        def build_implementation_prompt(
+            self,
+            request: ImplementationPromptRequest,
+        ) -> str:
+            recorded_requests.append(request)
+            return "PROMPT FROM INJECTED BUILDER"
+
+    class _ProgressJournal:
+        def append(
+            self,
+            *,
+            project_root: Path,
+            event: Any,
+        ) -> None:
+            raise AssertionError("append should not be called in this test")
+
+        def latest_handoff_path(
+            self, *, project_root: Path, feature_id: str
+        ) -> Path | None:
+            assert project_root == tmp_path
+            assert feature_id == "FEAT-901"
+            return external_handoff_path
+
+        def append_feature_log(
+            self,
+            *,
+            project_root: Path,
+            feature_id: str,
+            lines: Sequence[str],
+        ) -> None:
+            assert project_root == tmp_path
+            assert feature_id == "FEAT-901"
+            assert lines
+
+        def write_iteration_report(
+            self,
+            *,
+            project_root: Path,
+            feature_id: str,
+            payload: dict[str, Any],
+        ) -> None:
+            raise AssertionError("write_iteration_report should not be called in this test")
+
+        def write_handoff(
+            self,
+            *,
+            project_root: Path,
+            feature_id: str,
+            lines: Sequence[str],
+        ) -> None:
+            raise AssertionError("write_handoff should not be called in this test")
+
+    agent_runner = _StubAgentRunner(fallback_implement_progress_envelope())
+
+    result = run_implement_step_from_inputs(
+        inputs,
+        agent_runner=agent_runner,
+        prompt_builder=_PromptBuilder(),
+        progress_journal=_ProgressJournal(),
+    )
+
+    assert result[0] is True
+    assert len(recorded_requests) == 1
+    assert recorded_requests[0].handoff_path == str(external_handoff_path)
