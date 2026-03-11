@@ -9,7 +9,7 @@ from engineeringagent.application import (
     GuidanceInputError,
     GuidanceQuery,
 )
-from engineeringagent.ports import GuidanceTopic
+from engineeringagent.domain.guidance import GuidanceTopic
 from tests.cli.approach_fixture_data import APPROACH_TOPIC_IDS
 
 _APPROACH_TOPIC_ID_PREFIX = re.compile(r"^\s*(?P<topic_id>[A-Za-z0-9-]+):")

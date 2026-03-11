@@ -76,6 +76,26 @@ rules:
       - engineeringagent.checks
       - engineeringagent.cli
       - engineeringagent.loop_runtime
+  - module: engineeringagent.domain
+    blocked_dependencies:
+      - engineeringagent.adapters
+      - engineeringagent.application
+      - engineeringagent.bootstrap
+      - engineeringagent.cli
+      - engineeringagent.loop
+      - engineeringagent.loop_runtime
+      - engineeringagent.ports
+      - engineeringagent.presentation
+  - module: engineeringagent.domain.guidance
+    blocked_dependencies:
+      - engineeringagent.adapters
+      - engineeringagent.application
+      - engineeringagent.bootstrap
+      - engineeringagent.cli
+      - engineeringagent.loop
+      - engineeringagent.loop_runtime
+      - engineeringagent.ports
+      - engineeringagent.presentation
   - module: engineeringagent.loop
     blocked_dependencies:
       - engineeringagent.cli

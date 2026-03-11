@@ -8,7 +8,8 @@ from engineeringagent.approach import (
     load_topic_content,
     resolve_approach_topic_id,
 )
-from engineeringagent.ports import GuidanceTopic, GuidanceTopicRepository
+from engineeringagent.domain.guidance import GuidanceTopic
+from engineeringagent.ports import GuidanceTopicRepository
 
 
 class PackagedGuidanceTopicRepository(GuidanceTopicRepository):

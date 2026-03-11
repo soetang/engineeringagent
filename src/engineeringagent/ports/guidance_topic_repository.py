@@ -4,20 +4,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from pydantic import BaseModel, ConfigDict
-
-
-class GuidanceTopic(BaseModel):
-    """Stable guidance topic content and metadata."""
-
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-    canonical_id: str
-    aliases: tuple[str, ...]
-    title: str
-    description: str | None
-    document: str | None
-    body: str | None
+from engineeringagent.domain.guidance import GuidanceTopic
 
 
 class GuidanceTopicRepository(Protocol):

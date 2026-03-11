@@ -6,7 +6,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.ports import GuidanceTopic, GuidanceTopicRepository
+from engineeringagent.domain.guidance import GuidanceTopic
+from engineeringagent.ports import GuidanceTopicRepository
 
 
 class GuidanceQuery(BaseModel):

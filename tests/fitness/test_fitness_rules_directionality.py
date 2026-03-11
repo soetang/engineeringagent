@@ -26,12 +26,30 @@ def _write_module(project_root: Path, module_path: str, body: str) -> None:
 def _write_directionality_fixture(project_root: Path) -> None:
     _write_module(project_root, "cli.py", "")
     _write_module(project_root, "loop.py", "")
+    _write_module(project_root, "domain/__init__.py", "")
     _write_module(
         project_root,
         "checks/validate/validator.py",
         "from engineeringagent.specs import FeatureSpec\n",
     )
     _write_module(project_root, "specs.py", "")
+
+
+def _write_repo_policy_fixture(project_root: Path) -> None:
+    _write_directionality_fixture(project_root)
+    _write_module(project_root, "domain/guidance/__init__.py", "")
+    _write_module(project_root, "checks/contracts.py", "")
+    _write_module(project_root, "cli/__init__.py", "")
+    _write_module(project_root, "cli/app.py", "")
+    _write_module(project_root, "cli/typer.py", "")
+    _write_module(project_root, "cli/checks.py", "")
+    _write_module(project_root, "cli/approach.py", "")
+    _write_module(project_root, "cli/validate.py", "")
+    _write_module(project_root, "application/__init__.py", "")
+    _write_module(project_root, "application/checks_service.py", "")
+    _write_module(project_root, "application/guidance_service.py", "")
+    _write_module(project_root, "application/prompt_builder.py", "")
+    _write_module(project_root, "application/validation_service.py", "")
 
 
 def _write_policy(project_root: Path, rules: list[dict[str, object]]) -> Path:
@@ -133,7 +151,7 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
     repo_root: Path,
 ) -> None:
     """Honor the checked-in policy for CLI, contracts, and application boundaries."""
-    _write_directionality_fixture(tmp_path)
+    _write_repo_policy_fixture(tmp_path)
     _write_module(
         tmp_path,
         "specs.py",
@@ -365,6 +383,28 @@ def test_directionality_rule_supports_package_modules_from_policy(
     assert payload["status"] == "fail"
     assert payload["violations"] == [
         "engineeringagent.domain imports blocked dependency engineeringagent.cli"
+    ]
+
+
+def test_directionality_rule_uses_repo_policy_for_domain_boundary(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Honor the checked-in policy that keeps domain code inward-only."""
+    _write_repo_policy_fixture(tmp_path)
+    _write_module(
+        tmp_path,
+        "domain/guidance/__init__.py",
+        "import engineeringagent.ports\n",
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["rule_id"] == "architecture.dep-directionality"
+    assert payload["status"] == "fail"
+    assert payload["violations"] == [
+        "engineeringagent.domain.guidance imports blocked dependency engineeringagent.ports"
     ]
 
 
