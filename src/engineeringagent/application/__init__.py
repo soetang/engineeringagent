@@ -1,6 +1,5 @@
 """Application-layer services and workflow models."""
 
-from .checks_service import ChecksService, RunChecksRequest, RunChecksResult
 from .feature_iteration import (
     CommandTiming,
     CompletionCommitOutcome,
@@ -33,12 +32,15 @@ from .init_workspace_service import (
     InitWorkspaceService,
 )
 from .prompt_builder import ImplementationPromptRequest, PromptBuilder
-from .run_loop_service import RunLoopRequest, RunLoopResult, RunLoopService
-from .validation_service import (
+from .quality import (
+    ChecksService,
+    RunChecksRequest,
+    RunChecksResult,
     ValidateRepositoryRequest,
     ValidationResult,
     ValidationService,
 )
+from .run_loop_service import RunLoopRequest, RunLoopResult, RunLoopService
 from .workspace_recovery_service import (
     RecoverWorkspaceRequest,
     RecoverWorkspaceResult,

@@ -196,7 +196,7 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
     )
     _write_module(
         tmp_path,
-        "application/checks_service.py",
+        "application/quality/checks_service.py",
         "import engineeringagent.checks\n",
     )
     _write_module(
@@ -229,7 +229,7 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
     )
     _write_module(
         tmp_path,
-        "application/validation_service.py",
+        "application/quality/validation_service.py",
         "import engineeringagent.checks\n",
     )
     _write_module(
@@ -275,10 +275,6 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
     assert payload["status"] == "fail"
     assert payload["violations"] == [
         (
-            "engineeringagent.application.checks_service imports blocked dependency "
-            "engineeringagent.checks"
-        ),
-        (
             "engineeringagent.application.guidance_service imports blocked dependency "
             "engineeringagent.loop_runtime.selection"
         ),
@@ -303,12 +299,16 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
             "engineeringagent.specs"
         ),
         (
-            "engineeringagent.application.run_loop_service imports blocked dependency "
-            "engineeringagent.loop_runtime.selection"
+            "engineeringagent.application.quality.checks_service imports blocked "
+            "dependency engineeringagent.checks"
         ),
         (
-            "engineeringagent.application.validation_service imports blocked dependency "
-            "engineeringagent.checks"
+            "engineeringagent.application.quality.validation_service imports blocked "
+            "dependency engineeringagent.checks"
+        ),
+        (
+            "engineeringagent.application.run_loop_service imports blocked dependency "
+            "engineeringagent.loop_runtime.selection"
         ),
         (
             "engineeringagent.application.workspace_recovery_service imports blocked "
