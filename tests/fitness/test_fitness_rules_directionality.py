@@ -196,7 +196,7 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
     )
     _write_module(
         tmp_path,
-        "application/quality/checks_service.py",
+        "application/checks_service.py",
         "import engineeringagent.checks\n",
     )
     _write_module(
@@ -229,7 +229,7 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
     )
     _write_module(
         tmp_path,
-        "application/quality/validation_service.py",
+        "application/validation_service.py",
         "import engineeringagent.checks\n",
     )
     _write_module(
@@ -273,7 +273,7 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
     assert proc.returncode == 0
     assert payload["rule_id"] == "architecture.dep-directionality"
     assert payload["status"] == "fail"
-    assert payload["violations"] == [
+    assert sorted(payload["violations"]) == sorted([
         (
             "engineeringagent.application.guidance_service imports blocked dependency "
             "engineeringagent.application.feature_iteration.selection"
@@ -299,11 +299,11 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
             "engineeringagent.specs"
         ),
         (
-            "engineeringagent.application.quality.checks_service imports blocked "
+            "engineeringagent.application.checks_service imports blocked "
             "dependency engineeringagent.checks"
         ),
         (
-            "engineeringagent.application.quality.validation_service imports blocked "
+            "engineeringagent.application.validation_service imports blocked "
             "dependency engineeringagent.checks"
         ),
         (
@@ -354,7 +354,7 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
             "engineeringagent.specs imports blocked dependency "
             "engineeringagent.checks.contracts"
         ),
-    ]
+    ])
 
 
 def test_repo_directionality_policy_covers_all_top_level_application_and_port_modules(

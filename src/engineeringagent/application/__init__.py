@@ -20,6 +20,7 @@ from .feature_iteration import (
     ReviewerPhaseOutcome,
     VerificationPhaseOutcome,
 )
+from .checks_service import ChecksService, RunChecksRequest, RunChecksResult
 from .guidance_service import (
     GuidanceInputError,
     GuidanceQuery,
@@ -32,15 +33,12 @@ from .init_workspace_service import (
     InitWorkspaceService,
 )
 from .prompt_builder import ImplementationPromptRequest, PromptBuilder
-from .quality import (
-    ChecksService,
-    RunChecksRequest,
-    RunChecksResult,
+from .run_loop_service import RunLoopRequest, RunLoopResult, RunLoopService
+from .validation_service import (
     ValidateRepositoryRequest,
     ValidationResult,
     ValidationService,
 )
-from .run_loop_service import RunLoopRequest, RunLoopResult, RunLoopService
 from .workspace_recovery_service import (
     RecoverWorkspaceRequest,
     RecoverWorkspaceResult,
