@@ -16,13 +16,13 @@ from engineeringagent.checks.fitness.contracts import (
 RULE_ID = "architecture.prompt-locality"
 
 _SOURCE_PACKAGE_ROOT = Path("src/engineeringagent")
-_PROMPT_DEFINITION_ROOT = _SOURCE_PACKAGE_ROOT / "prompts" / "definitions"
+_PROMPT_DEFINITION_ROOT = Path("harness/prompts")
 _REQUIRED_PROMPT_DEFINITIONS = (
     "loop_selector.py",
     "loop_implementation.py",
     "loop_feedback.py",
 )
-_PROMPT_ALLOWED_ROOT = _SOURCE_PACKAGE_ROOT / "prompts"
+_PROMPT_ALLOWED_ROOT = _PROMPT_DEFINITION_ROOT
 _CANONICAL_PROMPT_BUILDERS = {
     "_build_selector_prompt",
     "build_ralph_opencode_prompt",
@@ -34,9 +34,8 @@ _PROMPT_CANARY_TOKENS = (
     ("previous", "feedback", "is", "available"),
 )
 _PROMPT_LOCALITY_REMEDIATION = (
-    "move canonical prompt text into "
-    "src/engineeringagent/prompts/definitions and approved modules under "
-    "src/engineeringagent/prompts/."
+    "move canonical prompt text into harness/prompts and keep prompt-building "
+    "logic free of inlined canonical prompt text outside that directory."
 )
 
 
@@ -45,7 +44,7 @@ def _prompt_definition_integrity_violations(project_root: Path) -> list[str]:
     violations: list[str] = []
     if not definitions_root.exists() or not definitions_root.is_dir():
         violations.append(
-            "src/engineeringagent/prompts/definitions:1 missing prompt definition "
+            "harness/prompts:1 missing prompt definition "
             f"directory; {_PROMPT_LOCALITY_REMEDIATION}"
         )
         return violations
@@ -115,6 +114,8 @@ def _call_targets_template_markdown(node: ast.Call) -> bool:
         normalized = value.lower()
         if "prompts/definitions" in normalized and ".py" in normalized:
             return True
+        if "harness/prompts" in normalized and ".py" in normalized:
+            return True
         if "definitions" in normalized and normalized.endswith(".py"):
             return True
     return False
@@ -168,20 +169,16 @@ def _prompt_boundary_violations(file_path: Path, project_root: Path) -> list[str
 
 
 def _prompt_source_locality_violations(project_root: Path) -> list[str]:
-    source_root = project_root / _SOURCE_PACKAGE_ROOT
     violations: list[str] = []
-    if not source_root.exists():
-        violations.append(
-            f"{_SOURCE_PACKAGE_ROOT}:1 missing source package root; "
-            f"{_PROMPT_LOCALITY_REMEDIATION}"
-        )
-        return violations
-
-    for file_path in sorted(source_root.rglob("*.py")):
-        relative = file_path.relative_to(project_root)
-        if _is_prompt_allowed_path(relative):
+    for scan_root in (_SOURCE_PACKAGE_ROOT, Path("harness")):
+        root_path = project_root / scan_root
+        if not root_path.exists():
             continue
-        violations.extend(_prompt_boundary_violations(file_path, project_root))
+        for file_path in sorted(root_path.rglob("*.py")):
+            relative = file_path.relative_to(project_root)
+            if _is_prompt_allowed_path(relative):
+                continue
+            violations.extend(_prompt_boundary_violations(file_path, project_root))
 
     return violations
 

@@ -43,9 +43,7 @@ def _write_file(project_root: Path, relative_path: str, body: str) -> None:
 
 
 def _write_prompt_definitions(project_root: Path) -> None:
-    definition_root = (
-        project_root / "src" / "engineeringagent" / "prompts" / "definitions"
-    )
+    definition_root = project_root / "harness" / "prompts"
     definition_root.mkdir(parents=True, exist_ok=True)
     (definition_root / "loop_selector.py").write_text(
         "PROMPT_DEFINITION = object()\n", encoding="utf-8"
@@ -575,9 +573,8 @@ def test_execute_rule_definition_runs_prompt_locality_adapter(
             summary="Enforce canonical prompt locality boundaries.",
             rationale="Canonical prompt content must stay in approved prompt assets.",
             remediation=(
-                "Move canonical prompt text into "
-                "src/engineeringagent/prompts/definitions and approved modules under "
-                "src/engineeringagent/prompts/."
+                "Move canonical prompt text into harness/prompts and keep "
+                "canonical prompt text out of runtime modules."
             ),
             scope="src/engineeringagent",
             severity=RuleSeverity.ERROR,

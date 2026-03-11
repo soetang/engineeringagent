@@ -1,4 +1,4 @@
-"""Bundled selector prompt definition."""
+"""Repository-local selector prompt definition."""
 
 from __future__ import annotations
 

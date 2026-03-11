@@ -5,13 +5,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Callable, Sequence
 
-from engineeringagent.adapters.prompts import ProjectPromptDefinitionRepository
+from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
 from engineeringagent.agents import (
     AgentBackendError,
     classify_backend_exception,
     describe_action,
 )
 from engineeringagent.application import build_selector_prompt
+from engineeringagent.config import resolve_harness_root
 from engineeringagent.specs import feature_sort_key
 
 STATUS_ORDER: dict[str, int] = {
@@ -122,7 +123,9 @@ def choose_feature_with_selector(
 
     prompt = build_selector_prompt(
         pending,
-        prompt_definitions=ProjectPromptDefinitionRepository(project_root),
+        prompt_definitions=FilesystemPromptDefinitionRepository(
+            resolve_harness_root(project_root) / "prompts"
+        ),
     )
     step_label = describe_action(project_root, action="selector", structured=False)
     print(f"Selector step: {step_label}")

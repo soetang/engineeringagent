@@ -5,7 +5,7 @@ from pathlib import Path
 import yaml
 
 from engineeringagent.adapters.prompts import (
-    BundledPromptDefinitionRepository,
+    FilesystemPromptDefinitionRepository,
 )
 from engineeringagent.application import (
     DefaultPromptBuilder,
@@ -19,7 +19,8 @@ from tests.loop.feature_iteration_support import (
 
 
 def _bundled_prompt_builder() -> DefaultPromptBuilder:
-    return DefaultPromptBuilder(BundledPromptDefinitionRepository())
+    prompts_root = Path(__file__).resolve().parents[2] / "harness" / "prompts"
+    return DefaultPromptBuilder(FilesystemPromptDefinitionRepository(prompts_root))
 
 
 def test_ralph_prompt_includes_feature_file_path(tmp_path: Path) -> None:

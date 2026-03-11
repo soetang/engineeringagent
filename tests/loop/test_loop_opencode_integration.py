@@ -27,6 +27,7 @@ from engineeringagent.agents.backends.opencode.permissions import (
     PermissionProbeResult,
     evaluate_permission_probe,
 )
+from tests.loop.feature_iteration_support import copy_canonical_prompts
 from tests.loop._feedback_envelope import parse_feedback_envelope_from_prompt
 
 
@@ -117,6 +118,7 @@ def _make_project_root(tmp_path: Path) -> tuple[Path, Path]:
             "checks": {},
         },
     )
+    copy_canonical_prompts(project_root)
     _write_yaml(
         feature_path,
         {

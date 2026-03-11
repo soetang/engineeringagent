@@ -6,12 +6,13 @@ from typing import Any, cast
 import pytest
 import yaml
 
-from engineeringagent.adapters.prompts import BundledPromptDefinitionRepository
-from engineeringagent.adapters.prompts import ProjectPromptDefinitionRepository
+from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
+import engineeringagent.application.prompt_builder as prompt_builder_module
 from engineeringagent.application import (
     DefaultPromptBuilder,
     ImplementationPromptFeature,
     ImplementationPromptRequest,
+    PromptBuilder,
     PromptArtifactPaths,
     build_implementation_prompt,
     build_implementation_prompt_request,
@@ -25,7 +26,8 @@ from tests.loop.feature_iteration_support import (
 
 
 def _prompt_builder() -> DefaultPromptBuilder:
-    return DefaultPromptBuilder(BundledPromptDefinitionRepository())
+    prompts_root = Path(__file__).resolve().parents[2] / "harness" / "prompts"
+    return DefaultPromptBuilder(FilesystemPromptDefinitionRepository(prompts_root))
 
 
 def _write_prompt_module(prompts_root: Path, prompt_id: str, body: str) -> None:
@@ -88,7 +90,9 @@ def test_application_selector_prompt_renders_feature_summaries(tmp_path: Path) -
     feature_path.parent.mkdir(parents=True, exist_ok=True)
     prompt = build_selector_prompt(
         [(feature_path, {"id": "FEAT-900", "status": "backlog", "priority": "high"})],
-        prompt_definitions=BundledPromptDefinitionRepository(),
+        prompt_definitions=FilesystemPromptDefinitionRepository(
+            Path(__file__).resolve().parents[2] / "harness" / "prompts"
+        ),
     )
 
     assert "id=FEAT-900" in prompt
@@ -124,7 +128,7 @@ def test_application_selector_prompt_prefers_repo_local_template(
 
     prompt = build_selector_prompt(
         [(tmp_path / "feature.yaml", {"id": "FEAT-100", "status": "backlog"})],
-        prompt_definitions=ProjectPromptDefinitionRepository(tmp_path),
+        prompt_definitions=FilesystemPromptDefinitionRepository(prompts_root),
     )
 
     assert prompt.startswith("repo selector\n")
@@ -175,6 +179,22 @@ def test_loop_runtime_prompt_helper_delegates_to_prompt_builder(tmp_path: Path) 
     )
 
     assert via_helper == direct
+
+
+def test_prompt_builder_protocol_default_method_raises() -> None:
+    """The protocol default stays non-callable without a concrete implementation."""
+
+    with pytest.raises(NotImplementedError):
+        PromptBuilder.build_implementation_prompt(  # type: ignore[misc]
+            cast(Any, object()),
+            ImplementationPromptRequest(
+                feature=ImplementationPromptFeature(feature_id="FEAT-1"),
+                artifacts=PromptArtifactPaths(specification=Path("spec.yaml")),
+                handoff_path=None,
+                feedback=None,
+                progress_kind="feature",
+            ),
+        )
 
 
 def test_build_implementation_prompt_request_does_not_invent_handoff_path(
@@ -252,6 +272,94 @@ def test_default_prompt_builder_omits_handoff_guidance_without_path(
     assert "tail -n 40" not in prompt
 
 
+def test_prompt_builder_private_helpers_cover_invalid_and_blank_inputs(
+    tmp_path: Path,
+) -> None:
+    """Private helper branches stay deterministic for malformed prompt artifacts."""
+
+    missing_plan = tmp_path / "missing.md"
+    empty_frontmatter = tmp_path / "empty.md"
+    empty_frontmatter.write_text("---\n---\n", encoding="utf-8")
+    missing_footer = tmp_path / "missing-footer.md"
+    missing_footer.write_text("---\nphase: P1\n", encoding="utf-8")
+    non_frontmatter = tmp_path / "plain.md"
+    non_frontmatter.write_text("# Not frontmatter\n", encoding="utf-8")
+
+    assert prompt_builder_module._normalize_plain_prompt_feedback(None) is None
+    assert prompt_builder_module._normalized_text(3) is None
+    assert prompt_builder_module._resolve_bundled_artifact_path(
+        Path("docs/spec/features/FEAT-1/spec.yaml"),
+        {"artifacts": {"plan": "   "}},
+        artifact_kind="plan",
+    ) is None
+    assert prompt_builder_module._load_markdown_frontmatter(missing_plan) is None
+    assert prompt_builder_module._load_markdown_frontmatter(non_frontmatter) is None
+    assert prompt_builder_module._load_markdown_frontmatter(missing_footer) is None
+    assert prompt_builder_module._load_markdown_frontmatter(empty_frontmatter) is None
+    assert prompt_builder_module._iter_plan_progress_units(non_frontmatter) == ()
+    assert prompt_builder_module._iter_plan_progress_units(
+        tmp_path / "non-list-phases.md"
+    ) == ()
+
+
+def test_prompt_builder_private_helpers_cover_progress_fallback_paths(
+    tmp_path: Path,
+) -> None:
+    """Progress helper fallbacks normalize invalid and partial progress metadata."""
+
+    non_list_phases = tmp_path / "non-list-phases.md"
+    non_list_phases.write_text(
+        "---\nphases: invalid\n---\n# Plan\n",
+        encoding="utf-8",
+    )
+    mixed_phases = tmp_path / "mixed-phases.md"
+    mixed_phases.write_text(
+        "---\nphases:\n  - invalid\n  - id: P1\n    title: Phase one\n    status: pending\n---\n# Plan\n",
+        encoding="utf-8",
+    )
+
+    assert prompt_builder_module._iter_plan_progress_units(non_list_phases) == ()
+    assert len(prompt_builder_module._iter_plan_progress_units(mixed_phases)) == 1
+    assert (
+        prompt_builder_module._current_progress_reference(
+            progress_unit=type("Unit", (), {"id": "P1", "title": ""})(),
+            feature={},
+            progress_kind="phase",
+        )
+        == "P1"
+    )
+    assert (
+        prompt_builder_module._current_progress_reference(
+            progress_unit=None,
+            feature={"title": "Missing id"},
+            progress_kind="feature",
+        )
+        is None
+    )
+    assert (
+        prompt_builder_module._current_progress_reference(
+            progress_unit=None,
+            feature={"id": "FEAT-1", "title": "Title"},
+            progress_kind="feature",
+        )
+        == "FEAT-1 - Title"
+    )
+    assert (
+        prompt_builder_module._feature_progress_unit(
+            Path("docs/spec/features/FEAT-1/spec.yaml"),
+            {"title": "Missing id"},
+        )
+        is None
+    )
+    assert (
+        prompt_builder_module._progress_update_instruction("unexpected")
+        == "Update progress in the bundled feature package by setting `spec.yaml` feature status fields and `updated_at`."
+    )
+    assert prompt_builder_module._progress_unit_prompt_label("unexpected") == (
+        "implementation step"
+    )
+
+
 def test_default_prompt_builder_prefers_repo_local_templates(
     tmp_path: Path,
 ) -> None:
@@ -324,7 +432,7 @@ def test_default_prompt_builder_prefers_repo_local_templates(
     feature_path.write_text("id: FEAT-101\n", encoding="utf-8")
 
     prompt = DefaultPromptBuilder(
-        ProjectPromptDefinitionRepository(tmp_path)
+        FilesystemPromptDefinitionRepository(prompts_root)
     ).build_implementation_prompt(
         ImplementationPromptRequest(
             feature=ImplementationPromptFeature(

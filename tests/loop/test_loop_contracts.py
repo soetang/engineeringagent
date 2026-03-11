@@ -40,10 +40,16 @@ from engineeringagent.loop_runtime.telemetry import write_iteration_telemetry
 from engineeringagent.progress.handoff import ImplementProgressEnvelope
 from engineeringagent.progress.handoff import fallback_implement_progress_envelope
 from engineeringagent.progress import paths as progress_paths
+from tests.loop.feature_iteration_support import copy_canonical_prompts
 from tests.loop.feature_iteration_support import make_bundled_project_root
 
 
 _PROGRESS_ROOT_PARTS = (".engineeringagent", "progress")
+
+
+@pytest.fixture(autouse=True)
+def _materialize_prompt_definitions(tmp_path: Path) -> None:
+    copy_canonical_prompts(tmp_path)
 
 
 def _progress_root(project_root: Path) -> Path:

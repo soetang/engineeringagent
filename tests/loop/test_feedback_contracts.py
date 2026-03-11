@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
 
-from engineeringagent.adapters.prompts import BundledPromptDefinitionRepository
+from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
 from engineeringagent.prompts.feedback_envelope import (
     build_command_failure_feedback,
     build_fitness_failure_feedback,
@@ -15,7 +16,9 @@ from engineeringagent.prompts.feedback_envelope import (
 )
 from engineeringagent.application import inject_feedback
 
-_PROMPT_DEFINITIONS = BundledPromptDefinitionRepository()
+_PROMPT_DEFINITIONS = FilesystemPromptDefinitionRepository(
+    Path(__file__).resolve().parents[2] / "harness" / "prompts"
+)
 
 
 def test_feedback_contract_accepts_command_failure_envelope() -> None:

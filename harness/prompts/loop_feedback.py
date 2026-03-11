@@ -1,4 +1,4 @@
-"""Bundled feedback prompt definition."""
+"""Repository-local feedback prompt definition."""
 
 from __future__ import annotations
 

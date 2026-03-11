@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import sys
 from contextlib import contextmanager
@@ -148,6 +149,12 @@ def write_yaml(path: Path, payload: dict[str, Any]) -> None:
     path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
 
 
+def copy_canonical_prompts(project_root: Path) -> None:
+    source_root = Path(__file__).resolve().parents[2] / "harness" / "prompts"
+    target_root = project_root / "harness" / "prompts"
+    shutil.copytree(source_root, target_root, dirs_exist_ok=True)
+
+
 def base_feature(status: str = "backlog") -> dict[str, Any]:
     return {
         "id": "FEAT-900",
@@ -202,6 +209,7 @@ def make_project_root(
             "checks": checks,
         },
     )
+    copy_canonical_prompts(project_root)
     write_yaml(feature_path, feature_payload)
     return project_root, feature_path
 
@@ -246,6 +254,7 @@ def make_bundled_project_root(
             "checks": checks,
         },
     )
+    copy_canonical_prompts(project_root)
     write_yaml(feature_path, feature_data)
     plan_path.parent.mkdir(parents=True, exist_ok=True)
     plan_path.write_text(

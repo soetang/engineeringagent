@@ -29,7 +29,7 @@ CONTRIBUTOR_APPROACH_DOC_PATHS = (
     Path("src/engineeringagent/approach/docs/specifications.md"),
 )
 LOOP_IMPLEMENTATION_PROMPT_PATH = Path(
-    "src/engineeringagent/prompts/definitions/loop_implementation.py"
+    "harness/prompts/loop_implementation.py"
 )
 REMEDIATION = (
     "replace with source-first workspace execution; prefer "

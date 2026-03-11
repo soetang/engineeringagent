@@ -14,6 +14,7 @@ from tests.loop.feature_iteration_support import (
     FEATURE_LOG_REF,
     RUNS_LOG_REF,
     base_feature,
+    copy_canonical_prompts,
     init_git_repo,
     make_bundled_project_root,
     make_project_root,
@@ -345,6 +346,7 @@ def test_archive_path_uses_configured_docs_root(tmp_path: Path) -> None:
         yaml.safe_dump({"profiles": {"loop_fast": []}, "gates": {}}, sort_keys=False),
         encoding="utf-8",
     )
+    copy_canonical_prompts(tmp_path)
     feature_path.parent.mkdir(parents=True, exist_ok=True)
     feature_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding="utf-8")
 
