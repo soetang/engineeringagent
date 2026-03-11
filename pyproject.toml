@@ -17,7 +17,7 @@ dependencies = [
 ]
 
 [project.scripts]
-engineeringagent = "engineeringagent.cli:main"
+engineeringagent = "engineeringagent.presentation.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/engineeringagent"]

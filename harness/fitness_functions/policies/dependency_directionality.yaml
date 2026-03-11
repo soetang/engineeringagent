@@ -1,7 +1,6 @@
 rules:
   - module: engineeringagent.specs
     blocked_dependencies:
-      - engineeringagent.cli
       - engineeringagent.presentation.cli
       - engineeringagent.checks.contracts
       - engineeringagent.loop
@@ -9,20 +8,15 @@ rules:
       - engineeringagent.checks.validate.validator
   - module: engineeringagent.checks.validate.validator
     blocked_dependencies:
-      - engineeringagent.cli
       - engineeringagent.presentation.cli
       - engineeringagent.loop
       - engineeringagent.loop_runtime
   - module: engineeringagent.checks.contracts
     blocked_dependencies:
-      - engineeringagent.cli
       - engineeringagent.presentation.cli
       - engineeringagent.loop
       - engineeringagent.loop_runtime
       - engineeringagent.specs
-  - module: engineeringagent.cli
-    blocked_dependencies:
-      - engineeringagent.loop_runtime
   - module: engineeringagent.presentation.cli.run
     blocked_dependencies:
       - engineeringagent.loop
@@ -65,7 +59,6 @@ rules:
   - module: engineeringagent.application.checks_service
     blocked_dependencies:
       - engineeringagent.bootstrap
-      - engineeringagent.cli
       - engineeringagent.adapters
       - engineeringagent.checks
       - engineeringagent.loop_runtime
@@ -74,21 +67,18 @@ rules:
     blocked_dependencies:
       - engineeringagent.adapters
       - engineeringagent.bootstrap
-      - engineeringagent.cli
       - engineeringagent.loop_runtime
       - engineeringagent.presentation
   - module: engineeringagent.application.init_workspace_service
     blocked_dependencies:
       - engineeringagent.adapters
       - engineeringagent.bootstrap
-      - engineeringagent.cli
       - engineeringagent.loop_runtime
       - engineeringagent.presentation
   - module: engineeringagent.application.prompt_builder
     blocked_dependencies:
       - engineeringagent.adapters
       - engineeringagent.bootstrap
-      - engineeringagent.cli
       - engineeringagent.loop_runtime
       - engineeringagent.presentation.presenters
       - engineeringagent.specs
@@ -96,26 +86,22 @@ rules:
     blocked_dependencies:
       - engineeringagent.adapters
       - engineeringagent.bootstrap
-      - engineeringagent.cli
       - engineeringagent.loop_runtime
   - module: engineeringagent.application.feature_iteration_service
     blocked_dependencies:
       - engineeringagent.adapters
       - engineeringagent.bootstrap
-      - engineeringagent.cli
   - module: engineeringagent.application.validation_service
     blocked_dependencies:
       - engineeringagent.adapters
       - engineeringagent.bootstrap
       - engineeringagent.checks
-      - engineeringagent.cli
       - engineeringagent.loop_runtime
       - engineeringagent.presentation
   - module: engineeringagent.application.workspace_recovery_service
     blocked_dependencies:
       - engineeringagent.adapters
       - engineeringagent.bootstrap
-      - engineeringagent.cli
       - engineeringagent.loop_runtime
       - engineeringagent.presentation
   - module: engineeringagent.ports.agent_runner
@@ -124,7 +110,6 @@ rules:
       - engineeringagent.application
       - engineeringagent.bootstrap
       - engineeringagent.checks
-      - engineeringagent.cli
       - engineeringagent.presentation.cli
       - engineeringagent.loop
       - engineeringagent.loop_runtime
@@ -134,7 +119,6 @@ rules:
       - engineeringagent.application
       - engineeringagent.bootstrap
       - engineeringagent.checks
-      - engineeringagent.cli
       - engineeringagent.presentation.cli
       - engineeringagent.loop
       - engineeringagent.loop_runtime
@@ -144,7 +128,6 @@ rules:
       - engineeringagent.application
       - engineeringagent.bootstrap
       - engineeringagent.checks
-      - engineeringagent.cli
       - engineeringagent.presentation.cli
       - engineeringagent.loop
       - engineeringagent.loop_runtime
@@ -154,7 +137,6 @@ rules:
       - engineeringagent.application
       - engineeringagent.bootstrap
       - engineeringagent.checks
-      - engineeringagent.cli
       - engineeringagent.presentation.cli
       - engineeringagent.loop
       - engineeringagent.loop_runtime
@@ -164,7 +146,6 @@ rules:
       - engineeringagent.application
       - engineeringagent.bootstrap
       - engineeringagent.checks
-      - engineeringagent.cli
       - engineeringagent.presentation.cli
       - engineeringagent.loop
       - engineeringagent.loop_runtime
@@ -174,7 +155,6 @@ rules:
       - engineeringagent.application
       - engineeringagent.bootstrap
       - engineeringagent.checks
-      - engineeringagent.cli
       - engineeringagent.presentation.cli
       - engineeringagent.loop
       - engineeringagent.loop_runtime
@@ -184,7 +164,6 @@ rules:
       - engineeringagent.application
       - engineeringagent.bootstrap
       - engineeringagent.checks
-      - engineeringagent.cli
       - engineeringagent.presentation.cli
       - engineeringagent.loop
       - engineeringagent.loop_runtime
@@ -194,7 +173,6 @@ rules:
       - engineeringagent.application
       - engineeringagent.bootstrap
       - engineeringagent.checks
-      - engineeringagent.cli
       - engineeringagent.presentation.cli
       - engineeringagent.loop
       - engineeringagent.loop_runtime
@@ -204,7 +182,6 @@ rules:
       - engineeringagent.application
       - engineeringagent.bootstrap
       - engineeringagent.checks
-      - engineeringagent.cli
       - engineeringagent.presentation.cli
       - engineeringagent.loop
       - engineeringagent.loop_runtime
@@ -214,7 +191,6 @@ rules:
       - engineeringagent.application
       - engineeringagent.bootstrap
       - engineeringagent.checks
-      - engineeringagent.cli
       - engineeringagent.presentation.cli
       - engineeringagent.loop
       - engineeringagent.loop_runtime
@@ -224,7 +200,6 @@ rules:
       - engineeringagent.application
       - engineeringagent.bootstrap
       - engineeringagent.checks
-      - engineeringagent.cli
       - engineeringagent.presentation.cli
       - engineeringagent.loop
       - engineeringagent.loop_runtime
@@ -234,7 +209,6 @@ rules:
       - engineeringagent.application
       - engineeringagent.bootstrap
       - engineeringagent.checks
-      - engineeringagent.cli
       - engineeringagent.presentation.cli
       - engineeringagent.loop
       - engineeringagent.loop_runtime
@@ -244,7 +218,6 @@ rules:
       - engineeringagent.application
       - engineeringagent.bootstrap
       - engineeringagent.checks
-      - engineeringagent.cli
       - engineeringagent.presentation.cli
       - engineeringagent.loop
       - engineeringagent.loop_runtime
@@ -253,7 +226,6 @@ rules:
       - engineeringagent.adapters
       - engineeringagent.application
       - engineeringagent.bootstrap
-      - engineeringagent.cli
       - engineeringagent.loop
       - engineeringagent.loop_runtime
       - engineeringagent.ports
@@ -263,11 +235,7 @@ rules:
       - engineeringagent.adapters
       - engineeringagent.application
       - engineeringagent.bootstrap
-      - engineeringagent.cli
       - engineeringagent.loop
       - engineeringagent.loop_runtime
       - engineeringagent.ports
       - engineeringagent.presentation
-  - module: engineeringagent.loop
-    blocked_dependencies:
-      - engineeringagent.cli

@@ -6,7 +6,7 @@ import sys
 import pytest
 from typer.testing import CliRunner
 
-from engineeringagent import cli as cli_module
+from engineeringagent.presentation import cli as cli_module
 
 
 def test_cli_entrypoints_expose_same_top_level_help(
@@ -18,9 +18,9 @@ def test_cli_entrypoints_expose_same_top_level_help(
 
     assert direct_result.exit_code == 0
 
-    monkeypatch.setattr(sys, "argv", ["engineeringagent.cli", "--help"])
+    monkeypatch.setattr(sys, "argv", ["engineeringagent.presentation.cli", "--help"])
     with pytest.raises(SystemExit) as exc_info:
-        runpy.run_module("engineeringagent.cli.__main__", run_name="__main__")
+        runpy.run_module("engineeringagent.presentation.cli.__main__", run_name="__main__")
 
     assert exc_info.value.code == 0
     module_output = capsys.readouterr().out

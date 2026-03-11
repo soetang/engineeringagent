@@ -7,8 +7,8 @@ from typing import Any
 import pytest
 from typer.testing import CliRunner
 
-from engineeringagent import cli as cli_module
-from engineeringagent.cli import init as cli_init_module
+from engineeringagent.presentation import cli as cli_module
+from engineeringagent.presentation.cli import init as cli_init_module
 from engineeringagent.init_scaffold import AGENTS_LAUNCHER_COMMANDS
 
 if sys.version_info >= (3, 11):

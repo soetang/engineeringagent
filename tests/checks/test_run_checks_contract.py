@@ -5,7 +5,7 @@ from pathlib import Path
 import textwrap
 
 import pytest
-from engineeringagent import cli as cli_module
+from engineeringagent.presentation import cli as cli_module
 from engineeringagent.checks.contracts import HarnessCheckPhase
 from engineeringagent.loop_runtime import phases as loop_phases
 
@@ -92,8 +92,8 @@ def test_cli_and_loop_modules_do_not_depend_on_specs_for_harness_check_phase() -
     """CLI and loop modules should import the checks-owned phase contract directly."""
     repo_root = Path(__file__).resolve().parents[2]
     module_paths = (
-        repo_root / "src/engineeringagent/cli/__init__.py",
-        repo_root / "src/engineeringagent/cli/__main__.py",
+        repo_root / "src/engineeringagent/presentation/cli/__init__.py",
+        repo_root / "src/engineeringagent/presentation/cli/__main__.py",
         repo_root / "src/engineeringagent/loop_runtime/phases.py",
     )
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typer.testing import CliRunner
 
-from engineeringagent import cli as cli_module
+from engineeringagent.presentation import cli as cli_module
 
 
 def test_cli_help_does_not_register_removed_gates_and_reviewers_apps() -> None:

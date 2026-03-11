@@ -5,7 +5,7 @@ import yaml
 import pytest
 from typer.testing import CliRunner
 
-from engineeringagent import cli as cli_module
+from engineeringagent.presentation import cli as cli_module
 import engineeringagent.init_scaffold as init_scaffold_module
 from engineeringagent.init_scaffold import (
     AGENTS_LAUNCHER_CHOICES,

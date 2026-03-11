@@ -25,9 +25,9 @@ def _write_module(project_root: Path, module_path: str, body: str) -> None:
 
 
 def _write_directionality_fixture(project_root: Path) -> None:
-    _write_module(project_root, "cli.py", "")
     _write_module(project_root, "loop.py", "")
     _write_module(project_root, "domain/__init__.py", "")
+    _write_module(project_root, "presentation/cli/__init__.py", "")
     _write_module(
         project_root,
         "checks/validate/validator.py",
@@ -434,15 +434,15 @@ def test_directionality_rule_loads_blocked_boundaries_from_policy(
     _write_module(
         tmp_path,
         "domain.py",
-        "import engineeringagent.cli\n",
+        "import engineeringagent.presentation.cli\n",
     )
-    _write_module(tmp_path, "cli.py", "")
+    _write_module(tmp_path, "presentation/cli/__init__.py", "")
     policy_file = _write_policy(
         tmp_path,
         [
             {
                 "module": "engineeringagent.domain",
-                "blocked_dependencies": ["engineeringagent.cli"],
+                "blocked_dependencies": ["engineeringagent.presentation.cli"],
             }
         ],
     )
@@ -457,7 +457,7 @@ def test_directionality_rule_loads_blocked_boundaries_from_policy(
     assert payload["rule_id"] == "architecture.dep-directionality"
     assert payload["status"] == "fail"
     assert payload["violations"] == [
-        "engineeringagent.domain imports blocked dependency engineeringagent.cli"
+        "engineeringagent.domain imports blocked dependency engineeringagent.presentation.cli"
     ]
 
 
@@ -469,15 +469,15 @@ def test_directionality_rule_supports_package_modules_from_policy(
     _write_module(
         tmp_path,
         "domain/__init__.py",
-        "import engineeringagent.cli\n",
+        "import engineeringagent.presentation.cli\n",
     )
-    _write_module(tmp_path, "cli.py", "")
+    _write_module(tmp_path, "presentation/cli/__init__.py", "")
     policy_file = _write_policy(
         tmp_path,
         [
             {
                 "module": "engineeringagent.domain",
-                "blocked_dependencies": ["engineeringagent.cli"],
+                "blocked_dependencies": ["engineeringagent.presentation.cli"],
             }
         ],
     )
@@ -492,7 +492,7 @@ def test_directionality_rule_supports_package_modules_from_policy(
     assert payload["rule_id"] == "architecture.dep-directionality"
     assert payload["status"] == "fail"
     assert payload["violations"] == [
-        "engineeringagent.domain imports blocked dependency engineeringagent.cli"
+        "engineeringagent.domain imports blocked dependency engineeringagent.presentation.cli"
     ]
 
 
@@ -575,7 +575,7 @@ def test_directionality_rule_errors_when_policy_repeats_module_boundary(
         [
             {
                 "module": "engineeringagent.domain",
-                "blocked_dependencies": ["engineeringagent.cli"],
+                "blocked_dependencies": ["engineeringagent.presentation.cli"],
             },
             {
                 "module": "engineeringagent.domain",

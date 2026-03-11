@@ -10,11 +10,11 @@ import pytest
 import yaml
 from typer.testing import CliRunner
 
-from engineeringagent import cli as cli_module
-from engineeringagent.cli import init as cli_init_module
-from engineeringagent.cli import schema as cli_schema_module
-from engineeringagent.cli import validate as cli_validate_module
-from engineeringagent.cli import workspace as cli_workspace_module
+from engineeringagent.presentation import cli as cli_module
+from engineeringagent.presentation.cli import init as cli_init_module
+from engineeringagent.presentation.cli import schema as cli_schema_module
+from engineeringagent.presentation.cli import validate as cli_validate_module
+from engineeringagent.presentation.cli import workspace as cli_workspace_module
 from engineeringagent.application import (
     RunChecksResult as ApplicationRunChecksResult,
     RunLoopRequest,
@@ -28,7 +28,7 @@ from engineeringagent.presentation.presenters import (
     list_schema_ids,
     schema_from_registry,
 )
-from tests.cli.approach_fixture_data import (
+from tests.presentation.cli.approach_fixture_data import (
     APPROACH_TOPIC_IDS,
 )
 
@@ -348,7 +348,7 @@ def test_main_run_command_executes_loop_context_via_real_cli(
             return RunLoopResult(exit_code=7)
 
     monkeypatch.setattr(
-        "engineeringagent.cli.run.AppFactory.build_run_loop_service",
+        "engineeringagent.presentation.cli.run.AppFactory.build_run_loop_service",
         lambda self: _FakeRunLoopService(),
     )
 
@@ -390,7 +390,7 @@ def test_main_run_command_prints_application_input_errors(
             )
 
     monkeypatch.setattr(
-        "engineeringagent.cli.run.AppFactory.build_run_loop_service",
+        "engineeringagent.presentation.cli.run.AppFactory.build_run_loop_service",
         lambda self: _FakeRunLoopService(),
     )
 
@@ -421,7 +421,7 @@ def test_cmd_run_builds_application_request_for_run_entrypoint(
             return RunLoopResult(exit_code=7)
 
     monkeypatch.setattr(
-        "engineeringagent.cli.run.AppFactory.build_run_loop_service",
+        "engineeringagent.presentation.cli.run.AppFactory.build_run_loop_service",
         lambda self: _FakeRunLoopService(),
     )
 
@@ -460,7 +460,7 @@ def test_cmd_run_builds_application_request_for_run_all_entrypoint(
             return RunLoopResult(exit_code=9)
 
     monkeypatch.setattr(
-        "engineeringagent.cli.run.AppFactory.build_run_loop_service",
+        "engineeringagent.presentation.cli.run.AppFactory.build_run_loop_service",
         lambda self: _FakeRunLoopService(),
     )
 
@@ -498,7 +498,7 @@ def test_cmd_run_prints_service_messages(
             return RunLoopResult(exit_code=1, message="run config error: missing harness/checks.yaml")
 
     monkeypatch.setattr(
-        "engineeringagent.cli.run.AppFactory.build_run_loop_service",
+        "engineeringagent.presentation.cli.run.AppFactory.build_run_loop_service",
         lambda self: _FakeRunLoopService(),
     )
 
@@ -577,7 +577,7 @@ def test_main_checks_run_command_invokes_checks_via_real_cli(
             )
 
     monkeypatch.setattr(
-        "engineeringagent.cli.checks.AppFactory.build_checks_service",
+        "engineeringagent.presentation.cli.checks.AppFactory.build_checks_service",
         lambda self: _FakeChecksService(),
     )
 

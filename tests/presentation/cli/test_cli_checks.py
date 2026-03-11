@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from engineeringagent import cli as cli_module
+from engineeringagent.presentation import cli as cli_module
 from engineeringagent.application import RunChecksResult as ApplicationRunChecksResult
 from engineeringagent.checks.changed_paths import ChangedPathsResult
 from engineeringagent.checks.api import ChecksRunResult
@@ -289,7 +289,7 @@ def test_cli_checks_run_delegates_to_checks_surface(
             )
 
     monkeypatch.setattr(
-        "engineeringagent.cli.checks.AppFactory.build_checks_service",
+        "engineeringagent.presentation.cli.checks.AppFactory.build_checks_service",
         lambda self: _FakeChecksService(),
     )
 
@@ -370,7 +370,7 @@ def test_cli_checks_run_normalizes_feature_path_before_delegating(
             )
 
     monkeypatch.setattr(
-        "engineeringagent.cli.checks.AppFactory.build_checks_service",
+        "engineeringagent.presentation.cli.checks.AppFactory.build_checks_service",
         lambda self: _FakeChecksService(),
     )
 
@@ -434,7 +434,7 @@ def test_cli_checks_run_dry_run_delegates_and_reports_mode(
             )
 
     monkeypatch.setattr(
-        "engineeringagent.cli.checks.AppFactory.build_checks_service",
+        "engineeringagent.presentation.cli.checks.AppFactory.build_checks_service",
         lambda self: _FakeChecksService(),
     )
 
@@ -504,7 +504,7 @@ def test_cli_checks_run_failure_emits_runtime_type_without_failed_group(
             )
 
     monkeypatch.setattr(
-        "engineeringagent.cli.checks.AppFactory.build_checks_service",
+        "engineeringagent.presentation.cli.checks.AppFactory.build_checks_service",
         lambda self: _FakeChecksService(),
     )
 

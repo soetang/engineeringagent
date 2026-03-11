@@ -6,8 +6,8 @@ from types import SimpleNamespace
 import pytest
 from typer.testing import CliRunner
 
-from engineeringagent import cli as cli_module
-from tests.cli.init_command_support import (
+from engineeringagent.presentation import cli as cli_module
+from tests.presentation.cli.init_command_support import (
     UV_RUN_TOKEN,
     UVX_TOKEN,
     invoke_cli,

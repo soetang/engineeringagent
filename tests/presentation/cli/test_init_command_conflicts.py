@@ -5,12 +5,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from engineeringagent import cli as cli_module
-from tests.cli.init_command_support import (
-    DEFAULT_LAUNCHER_ARGS,
+from engineeringagent.presentation import cli as cli_module
+from tests.presentation.cli.init_command_support import (
     ENGINEERINGAGENT_TOKEN,
     UVX_TOKEN,
-    init_args,
     invoke_cli,
 )
 

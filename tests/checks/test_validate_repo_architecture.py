@@ -194,17 +194,17 @@ def test_repo_architecture_validator_reports_ports_importing_outer_layers(
     )
 
     assert issues == (
-        ValidationIssue(
-            validator_id="repo.architecture",
-            scope="repo",
-            path="src/engineeringagent/ports/prompt_contracts.py",
-            message=(
-                "ports modules must not import adapters, agents, bootstrap, "
-                "cli, or presentation modules"
+            ValidationIssue(
+                validator_id="repo.architecture",
+                scope="repo",
+                path="src/engineeringagent/ports/prompt_contracts.py",
+                message=(
+                    "ports modules must not import adapters, agents, bootstrap, "
+                    "or presentation modules"
+                ),
+                code="repo.architecture.ports-outer-layer-import",
             ),
-            code="repo.architecture.ports-outer-layer-import",
-        ),
-    )
+        )
 
 
 def test_repo_architecture_validator_reports_ports_importing_legacy_specs_modules(
@@ -362,17 +362,17 @@ def test_repo_architecture_validator_reports_application_importing_outer_layers(
     )
 
     assert issues == (
-        ValidationIssue(
-            validator_id="repo.architecture",
-            scope="repo",
-            path="src/engineeringagent/application/checks_service.py",
-            message=(
-                "application modules must not import adapters, agents, bootstrap, "
-                "cli, or presentation modules"
+            ValidationIssue(
+                validator_id="repo.architecture",
+                scope="repo",
+                path="src/engineeringagent/application/checks_service.py",
+                message=(
+                    "application modules must not import adapters, agents, bootstrap, "
+                    "or presentation modules"
+                ),
+                code="repo.architecture.application-outer-layer-import",
             ),
-            code="repo.architecture.application-outer-layer-import",
-        ),
-    )
+        )
 
 
 @pytest.mark.parametrize(

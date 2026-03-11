@@ -158,12 +158,11 @@ def _application_module_issues(
                 "engineeringagent.adapters",
                 "engineeringagent.agents",
                 "engineeringagent.bootstrap",
-                "engineeringagent.cli",
                 "engineeringagent.presentation",
             ),
             message=(
                 "application modules must not import adapters, agents, bootstrap, "
-                "cli, or presentation modules"
+                "or presentation modules"
             ),
             code="repo.architecture.application-outer-layer-import",
         )
@@ -273,12 +272,11 @@ def _application_import_issues(
             "engineeringagent.adapters",
             "engineeringagent.agents",
             "engineeringagent.bootstrap",
-            "engineeringagent.cli",
             "engineeringagent.presentation",
         ),
         message=(
             "ports modules must not import adapters, agents, bootstrap, "
-            "cli, or presentation modules"
+            "or presentation modules"
         ),
         code="repo.architecture.ports-outer-layer-import",
     ) + _forbidden_import_issues(

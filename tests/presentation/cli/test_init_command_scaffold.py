@@ -4,7 +4,7 @@ from pathlib import Path
 
 import yaml
 
-from tests.cli.init_command_support import invoke_cli
+from tests.presentation.cli.init_command_support import invoke_cli
 
 
 def test_init_slim_pack_does_not_scaffold_demo_failure(tmp_path: Path) -> None:

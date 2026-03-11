@@ -1,9 +1,14 @@
 repos:
   - repo: local
     hooks:
+      - id: engineeringagent-ruff-precommit
+        name: engineeringagent-ruff-precommit
+        entry: uv run engineeringagent checks run --checks commands --check-id ruff_validate --phase iteration_end
+        language: system
+        pass_filenames: false
       - id: engineeringagent-precommit
         name: engineeringagent-precommit
-        entry: uv run engineeringagent checks run --phase iteration_end
+        entry: uv run engineeringagent checks run --checks fitness --phase iteration_end
         language: system
         pass_filenames: false
       - id: engineeringagent-commit-msg

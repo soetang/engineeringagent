@@ -6,14 +6,14 @@ from typing import Any
 
 import pytest
 
-from engineeringagent import cli as cli_module
-from engineeringagent.cli import init as cli_init_module
+from engineeringagent.presentation import cli as cli_module
+from engineeringagent.presentation.cli import init as cli_init_module
 from engineeringagent.application import (
     InitWorkspaceRequest,
     InitWorkspaceResult,
 )
 from engineeringagent.ports import InitWorkspaceDependencies
-from tests.cli.init_command_support import (
+from tests.presentation.cli.init_command_support import (
     UV_RUN_TOKEN,
     UVX_TOKEN,
     fail_on_input,
@@ -354,7 +354,12 @@ def test_init_writes_precommit_and_empty_gate_profiles(tmp_path: Path) -> None:
         encoding="utf-8"
     )
     assert (
-        "entry: engineeringagent checks run --phase iteration_end" in precommit_config
+        "entry: engineeringagent checks run --checks commands --check-id ruff_validate --phase iteration_end"
+        in precommit_config
+    )
+    assert (
+        "entry: engineeringagent checks run --checks fitness --phase iteration_end"
+        in precommit_config
     )
     assert "uvx --from . engineeringagent" not in precommit_config
     assert "engineeringagent-commit-msg" not in precommit_config
@@ -389,7 +394,12 @@ def test_init_defaults_to_core_language_agnostic_profile(tmp_path: Path) -> None
         encoding="utf-8"
     )
     assert (
-        "entry: engineeringagent checks run --phase iteration_end" in precommit_config
+        "entry: engineeringagent checks run --checks commands --check-id ruff_validate --phase iteration_end"
+        in precommit_config
+    )
+    assert (
+        "entry: engineeringagent checks run --checks fitness --phase iteration_end"
+        in precommit_config
     )
     assert "uvx --from ." not in precommit_config
     assert "engineeringagent-commit-msg" not in precommit_config
@@ -408,7 +418,11 @@ def test_init_python_uv_profile_available(tmp_path: Path) -> None:
         encoding="utf-8"
     )
     assert (
-        "entry: uv run engineeringagent checks run --phase iteration_end"
+        "entry: uv run engineeringagent checks run --checks commands --check-id ruff_validate --phase iteration_end"
+        in precommit_config
+    )
+    assert (
+        "entry: uv run engineeringagent checks run --checks fitness --phase iteration_end"
         in precommit_config
     )
     assert "uvx --from ." not in precommit_config

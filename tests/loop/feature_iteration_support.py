@@ -13,7 +13,7 @@ import pytest
 import yaml
 from typer.testing import CliRunner
 
-from engineeringagent import cli as cli_module
+from engineeringagent.presentation import cli as cli_module
 import engineeringagent.loop as loop_module
 import engineeringagent.agents.helpers as agent_helpers
 from engineeringagent.agents import AgentBackendError, AgentBackendFailureDetails

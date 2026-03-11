@@ -13,7 +13,10 @@ import zipfile
 from pytest import Config
 import pytest
 from engineeringagent.approach import registry, rendering
-from tests.cli.approach_fixture_data import APPROACH_ALIAS_MAP, APPROACH_TOPIC_IDS
+from tests.presentation.cli.approach_fixture_data import (
+    APPROACH_ALIAS_MAP,
+    APPROACH_TOPIC_IDS,
+)
 
 
 _APPROACH_TOPIC_ID_PREFIX = re.compile(r"^\s*(?P<topic_id>[A-Za-z0-9-]+):")
