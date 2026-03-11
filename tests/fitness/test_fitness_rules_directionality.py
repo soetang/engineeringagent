@@ -153,7 +153,7 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Honor the checked-in policy for CLI, contracts, and application boundaries."""
+    """Honor the checked-in policy for current layered CLI, contracts, and application boundaries."""
     _write_repo_policy_fixture(tmp_path)
     _write_module(
         tmp_path,
@@ -266,16 +266,8 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
             "engineeringagent.adapters.guidance.PackagedGuidanceTopicRepository"
         ),
         (
-            "engineeringagent.cli.checks imports blocked dependency "
-            "engineeringagent.application.ChecksService"
-        ),
-        (
             "engineeringagent.cli.typer imports blocked dependency "
             "engineeringagent.checks.reviewers.engine"
-        ),
-        (
-            "engineeringagent.cli.validate imports blocked dependency "
-            "engineeringagent.application.ValidationService"
         ),
         (
             "engineeringagent.ports.checks_runner imports blocked dependency "
@@ -428,6 +420,31 @@ def test_directionality_rule_uses_repo_policy_for_domain_boundary(
     assert payload["violations"] == [
         "engineeringagent.domain.guidance imports blocked dependency engineeringagent.ports"
     ]
+
+
+def test_directionality_rule_allows_cli_modules_to_import_application_services(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Allow presentation modules to depend inward on application services."""
+    _write_repo_policy_fixture(tmp_path)
+    _write_module(
+        tmp_path,
+        "cli/checks.py",
+        "from engineeringagent.application import ChecksService\n",
+    )
+    _write_module(
+        tmp_path,
+        "cli/validate.py",
+        "from engineeringagent.application import ValidationService\n",
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["rule_id"] == "architecture.dep-directionality"
+    assert payload["status"] == "pass"
+    assert payload["violations"] == []
 
 
 def test_directionality_rule_errors_when_policy_is_invalid(

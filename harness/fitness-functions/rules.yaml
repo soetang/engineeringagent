@@ -2,9 +2,17 @@ contract_version: "1.0"
 rules:
   - rule_id: architecture.dep-directionality
     name: Dependency directionality
-    summary: Enforce CLI package and checks-owned contract import direction boundaries.
-    rationale: Keeps CLI composition modules and checks-owned contracts layered for reviewability.
-    remediation: Refactor imports to follow the declared CLI/package and contract-owner boundaries.
+    summary: >-
+      Enforce ports-and-adapters dependency direction boundaries across
+      presentation, application, ports, and domain seams.
+    rationale: >-
+      Keeps presentation, application, ports, and domain modules aligned with
+      the target architecture while isolating bootstrap and adapters as outer
+      layers.
+    remediation: >-
+      Refactor imports to preserve the declared layer boundaries: presentation
+      depends inward, application uses ports/domain only, ports stay
+      contract-only, and domain stays isolated.
     scope: src/engineeringagent
     severity: error
     side_effect_free: true

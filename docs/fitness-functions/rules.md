@@ -10,7 +10,7 @@ This file is generated from active manifest-declared fitness rules.
 | `architecture.backend-literal-locality-budget` | error | command | custom | `src/engineeringagent excluding src/engineeringagent/agents/** and src/engineeringagent/checks/**` | `harness/fitness-functions/policies/backend_literal_locality_budget.yaml` | Enforce a zero-budget backend literal locality boundary outside allowed packages. |
 | `architecture.checks-import-surface` | error | command | custom | `src/engineeringagent` | - | Enforce a narrow import surface for engineeringagent.checks. |
 | `architecture.checks-own-prompt-feedback-rendering` | error | command | custom | `src/engineeringagent/loop_runtime/**, src/engineeringagent/loop.py, and src/engineeringagent/prompts/renderer.py` | - | Fail when loop/prompt code performs checks-specific feedback shaping outside checks strategies. |
-| `architecture.dep-directionality` | error | command | custom | `src/engineeringagent` | `harness/fitness-functions/policies/dependency_directionality.yaml` | Enforce CLI package and checks-owned contract import direction boundaries. |
+| `architecture.dep-directionality` | error | command | custom | `src/engineeringagent` | `harness/fitness-functions/policies/dependency_directionality.yaml` | Enforce ports-and-adapters dependency direction boundaries across presentation, application, ports, and domain seams. |
 | `architecture.harness-root-yaml-only` | error | command | custom | `harness/ (regular files at root)` | - | Enforce YAML-only regular files directly under harness root. |
 | `architecture.harness-src-import-allowlist` | error | command | custom | `harness/fitness-functions` | - | Restrict harness fitness functions to a narrow supported engineeringagent surface. |
 | `architecture.hermetic-fitness-test-isolation` | error | command | custom | `tests/fitness` | `harness/fitness-functions/policies/hermetic_fitness_test_isolation.yaml` | Prevent tests/fitness from scanning the live repository checkout. |
@@ -70,8 +70,8 @@ This file is generated from active manifest-declared fitness rules.
 - Name: Dependency directionality
 - Config file: `harness/fitness-functions/policies/dependency_directionality.yaml`
 - Side-effect free: `true`
-- Rationale: Keeps CLI composition modules and checks-owned contracts layered for reviewability.
-- Remediation: Refactor imports to follow the declared CLI/package and contract-owner boundaries.
+- Rationale: Keeps presentation, application, ports, and domain modules aligned with the target architecture while isolating bootstrap and adapters as outer layers.
+- Remediation: Refactor imports to preserve the declared layer boundaries: presentation depends inward, application uses ports/domain only, ports stay contract-only, and domain stays isolated.
 
 ### `architecture.harness-root-yaml-only`
 

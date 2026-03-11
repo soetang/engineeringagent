@@ -41,21 +41,23 @@ rules:
     blocked_dependencies:
       - engineeringagent.loop
       - engineeringagent.loop_runtime
+      - engineeringagent.adapters
       - engineeringagent.checks.commands
       - engineeringagent.checks.fitness
       - engineeringagent.checks.reviewers
       - engineeringagent.checks.validate
       - engineeringagent.specs
-      - engineeringagent.application.ChecksService
   - module: engineeringagent.cli.approach
     blocked_dependencies:
       - engineeringagent.adapters
-      - engineeringagent.application.GuidanceService
+      - engineeringagent.loop_runtime
   - module: engineeringagent.cli.validate
     blocked_dependencies:
-      - engineeringagent.application.ValidationService
+      - engineeringagent.adapters
+      - engineeringagent.loop_runtime
   - module: engineeringagent.application.checks_service
     blocked_dependencies:
+      - engineeringagent.bootstrap
       - engineeringagent.cli
       - engineeringagent.adapters
       - engineeringagent.checks
@@ -63,11 +65,13 @@ rules:
   - module: engineeringagent.application.guidance_service
     blocked_dependencies:
       - engineeringagent.adapters
+      - engineeringagent.bootstrap
       - engineeringagent.cli
       - engineeringagent.loop_runtime
   - module: engineeringagent.application.prompt_builder
     blocked_dependencies:
       - engineeringagent.adapters
+      - engineeringagent.bootstrap
       - engineeringagent.cli
       - engineeringagent.loop_runtime
       - engineeringagent.progress.paths
@@ -76,12 +80,14 @@ rules:
   - module: engineeringagent.application.validation_service
     blocked_dependencies:
       - engineeringagent.adapters
+      - engineeringagent.bootstrap
       - engineeringagent.checks
       - engineeringagent.cli
       - engineeringagent.loop_runtime
   - module: engineeringagent.ports.checks_runner
     blocked_dependencies:
       - engineeringagent.adapters
+      - engineeringagent.bootstrap
       - engineeringagent.checks
       - engineeringagent.cli
       - engineeringagent.loop
