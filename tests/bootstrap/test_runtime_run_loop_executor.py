@@ -3,9 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import cast
 
-import engineeringagent.bootstrap.runtime_execution as runtime_executor_module
-from engineeringagent.bootstrap.runtime_execution import RuntimeRunLoopExecutor
+import engineeringagent.adapters.runtime.execution as runtime_executor_adapter_module
 from engineeringagent.application.feature_iteration import FeatureIterationService
+from engineeringagent.adapters.runtime import RuntimeRunLoopExecutor
 from engineeringagent.ports import RunLoopExecutionRequest
 from engineeringagent.ports.version_control import VersionControlGateway
 
@@ -43,10 +43,14 @@ def test_runtime_run_loop_executor_uses_runtime_run_builder(
         observed["controller_input"] = loop_run
         return 7
 
-    monkeypatch.setattr(runtime_executor_module, "build_run_config", _build_run_config)
-    monkeypatch.setattr(runtime_executor_module, "build_loop_run", _build_loop_run)
     monkeypatch.setattr(
-        runtime_executor_module,
+        runtime_executor_adapter_module, "build_run_config", _build_run_config
+    )
+    monkeypatch.setattr(
+        runtime_executor_adapter_module, "build_loop_run", _build_loop_run
+    )
+    monkeypatch.setattr(
+        runtime_executor_adapter_module,
         "run_loop_controller",
         _run_loop_controller,
     )
@@ -77,8 +81,8 @@ def test_runtime_run_loop_executor_uses_runtime_run_builder(
     assert config_args[0] == Path("/tmp/project")
     assert config_args[1] == ("docs/spec/features/FEAT-001/spec.yaml",)
     options = config_args[2]
-    assert isinstance(options, runtime_executor_module.RunConfigOptions)
-    assert options == runtime_executor_module.RunConfigOptions(
+    assert isinstance(options, runtime_executor_adapter_module.RunConfigOptions)
+    assert options == runtime_executor_adapter_module.RunConfigOptions(
         dry_run=True,
         run_all=False,
         max_iterations=3,

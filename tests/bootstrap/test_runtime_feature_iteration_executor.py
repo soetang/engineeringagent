@@ -4,11 +4,9 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Sequence, cast
 
-import engineeringagent.bootstrap.runtime_execution as runtime_execution_module
+import engineeringagent.adapters.runtime.execution as runtime_execution_module
 from engineeringagent.bootstrap.iteration_reporting import DefaultObserverDependencies
-from engineeringagent.bootstrap.runtime_execution import (
-    RuntimeFeatureIterationExecutor,
-)
+from engineeringagent.adapters.runtime import RuntimeFeatureIterationExecutor
 from engineeringagent.domain.audit import ProgressEvent
 from engineeringagent.ports import (
     CommitRequest,
@@ -218,7 +216,7 @@ def _build_executor(
 
 
 def test_runtime_feature_iteration_executor_executes_runtime_pipeline() -> None:
-    """Bootstrap runtime execution should isolate the legacy runtime pipeline."""
+    """Runtime adapter should isolate the legacy runtime pipeline."""
     observed: dict[str, object] = {}
     executor, _, _ = _build_executor(
         observed,

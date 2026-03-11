@@ -16,6 +16,10 @@ from engineeringagent.adapters.documents import (
 )
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
+from engineeringagent.adapters.runtime import (
+    RuntimeFeatureIterationExecutor,
+    RuntimeRunLoopExecutor,
+)
 from engineeringagent.adapters.vcs import (
     GitCliVersionControlGateway,
     GitFeatureWorkspaceManager,
@@ -30,10 +34,6 @@ from engineeringagent.application import (
     WorkspaceRecoveryService,
 )
 from engineeringagent.application.checks import ChecksService
-from engineeringagent.bootstrap.runtime_execution import (
-    RuntimeFeatureIterationExecutor,
-    RuntimeRunLoopExecutor,
-)
 from engineeringagent.config import resolve_harness_root
 from engineeringagent.ports import (
     AgentRunner,

@@ -457,7 +457,7 @@ def _bootstrap_runtime_execution_violations(path: Path) -> list[str]:
     if isinstance(module, str):
         return [module]
 
-    return _forbidden_import_violations(
+    violations = _forbidden_import_violations(
         module,
         rel_path=rel_path,
         forbidden_modules=("engineeringagent.loop",),
@@ -466,6 +466,15 @@ def _bootstrap_runtime_execution_violations(path: Path) -> list[str]:
             "use engineeringagent.bootstrap.runtime_support and engineeringagent.loop_runtime modules directly"
         ),
     )
+    executor_classes = {"RuntimeRunLoopExecutor", "RuntimeFeatureIterationExecutor"}
+    for node in module.body:
+        if not isinstance(node, ast.ClassDef) or node.name not in executor_classes:
+            continue
+        violations.append(
+            f"{rel_path}: bootstrap runtime execution must not declare {node.name}; "
+            "move runtime executor implementations under engineeringagent.adapters.runtime"
+        )
+    return violations
 
 
 def _deleted_path_violations() -> list[str]:

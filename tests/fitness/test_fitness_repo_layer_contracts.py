@@ -54,6 +54,28 @@ def test_repo_layer_contracts_rule_blocks_runtime_execution_loop_import(
     ]
 
 
+def test_repo_layer_contracts_rule_blocks_bootstrap_runtime_executor_classes(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Fail when bootstrap runtime execution owns concrete executor classes."""
+    bootstrap_root = tmp_path / "src" / "engineeringagent" / "bootstrap"
+    bootstrap_root.mkdir(parents=True, exist_ok=True)
+    (bootstrap_root / "runtime_execution.py").write_text(
+        "class RuntimeRunLoopExecutor:\n    pass\n",
+        encoding="utf-8",
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert payload["rule_id"] == "architecture.repo-layer-contracts"
+    assert payload["violations"] == [
+        "src/engineeringagent/bootstrap/runtime_execution.py: bootstrap runtime execution must not declare RuntimeRunLoopExecutor; move runtime executor implementations under engineeringagent.adapters.runtime"
+    ]
+
+
 def test_repo_layer_contracts_rule_allows_loop_runtime_models_bridge(
     tmp_path: Path,
     repo_root: Path,
