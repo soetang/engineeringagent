@@ -34,6 +34,7 @@ from .repository_validator import (
     RepositoryValidationResult,
     RepositoryValidator,
 )
+from .shell_runner import CommandResult, ShellRunner
 from .version_control import (
     CommitRequest,
     CommitResult,
@@ -53,6 +54,7 @@ __all__ = [
     "ChecksCatalogLoadResult",
     "ChecksCatalogRepository",
     "ChecksRunner",
+    "CommandResult",
     "DEFAULT_AGENT_MODEL",
     "DiffSummary",
     "GuidanceTopicRepository",
@@ -71,6 +73,7 @@ __all__ = [
     "RepositoryValidationRequest",
     "RepositoryValidationResult",
     "RepositoryValidator",
+    "ShellRunner",
     "VersionControlFailure",
     "VersionControlGateway",
 ]

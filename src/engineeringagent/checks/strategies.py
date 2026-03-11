@@ -26,7 +26,7 @@ from engineeringagent.checks.reviewers.runtime import (
     run_planned_reviewer_checks_from_plan,
 )
 from engineeringagent.checks.validate.validator import validate
-from engineeringagent.process import run_shell_command
+from engineeringagent.adapters.shell import run_shell_command
 from engineeringagent.specs import (
     HarnessCheckCommandDefinition,
     HarnessCheckFitnessDefinition,

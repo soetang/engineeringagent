@@ -16,6 +16,7 @@ from ..checks import (
     HarnessCheckPhase,
     run_checks,
 )
+from ..adapters.shell import run_shell_command
 from ..presentation.prompt_feedback import (
     format_failed_command_feedback_lines,
     resolve_checks_prompt_feedback,
@@ -23,7 +24,6 @@ from ..presentation.prompt_feedback import (
 from ..prompts.feedback_envelope import (
     build_command_failure_feedback,
 )
-from ..process import run_shell_command
 from ..config import repo_relative_label, resolve_harness_checks_config_path
 
 from .models import (
