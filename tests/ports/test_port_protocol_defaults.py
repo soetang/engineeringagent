@@ -13,10 +13,6 @@ from engineeringagent.domain.specification import FeatureArtifacts, FeatureSpeci
 from engineeringagent.ports.agent_runner import AgentRunRequest, AgentRunner
 from engineeringagent.ports.checks_catalog_repository import ChecksCatalogRepository
 from engineeringagent.ports.checks_runner import ChecksRunRequest, ChecksRunner
-from engineeringagent.ports.feature_iteration_executor import (
-    FeatureIterationExecutionRequest,
-    FeatureIterationExecutor,
-)
 from engineeringagent.ports.feature_specification_repository import (
     FeatureSpecificationRepository,
 )
@@ -34,10 +30,6 @@ from engineeringagent.ports.prompt_definition_repository import (
 from engineeringagent.ports.repository_validator import (
     RepositoryValidationRequest,
     RepositoryValidator,
-)
-from engineeringagent.ports.run_loop_executor import (
-    RunLoopExecutionRequest,
-    RunLoopExecutor,
 )
 from engineeringagent.ports.shell_runner import ShellRunner
 from engineeringagent.ports.version_control import CommitRequest, VersionControlGateway
@@ -75,17 +67,6 @@ def test_port_protocol_methods_raise_not_implemented() -> None:
         )
     with pytest.raises(NotImplementedError):
         ChecksRunner.reviewers_group_selected(object(), None)
-    with pytest.raises(NotImplementedError):
-        FeatureIterationExecutor.run(
-            object(),
-            FeatureIterationExecutionRequest(
-                project_root=project_root,
-                feature_path=Path("docs/spec/features/FEAT-001/spec.yaml"),
-                attempt=1,
-                feedback=None,
-                verbose_output=False,
-            ),
-        )
     with pytest.raises(NotImplementedError):
         FeatureSpecificationRepository.list_selection_candidates(object(), project_root)
     with pytest.raises(NotImplementedError):
@@ -161,19 +142,6 @@ def test_port_protocol_methods_raise_not_implemented() -> None:
         RepositoryValidator.validate(
             object(),
             RepositoryValidationRequest(project_root=project_root),
-        )
-    with pytest.raises(NotImplementedError):
-        RunLoopExecutor.run(
-            object(),
-            RunLoopExecutionRequest(
-                project_root=project_root,
-                feature_paths=(),
-                run_all=True,
-                dry_run=False,
-                max_iterations=1,
-                allow_dirty=False,
-                verbose_output=False,
-            ),
         )
     with pytest.raises(NotImplementedError):
         ShellRunner.run(object(), project_root, "uv run pytest")

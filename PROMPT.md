@@ -10,7 +10,13 @@ starts with a fresh context. Your progress lives in the code and git.
 - Commit with a descriptive message
 
 <!-- Add your project-specific instructions below -->
-See the files in new_architecture/README.md and new_architecture/application/*
+Study new_architecture/README.md and ALL files under new_architecture/application/*
 Move the application towards this architecture one step at a time.
 Make sure to delete old testschemes and files on the way.
 You can change existing fitness functions. The most important is that we get to the enforcements described in the new_architecture
+
+Rules:
+Do not implement fitness functions as unittest. Architectural constraints should only be implemented as fitness functions. 
+If pre-commit takes a long time, identify one thing that makes it faster and implement it before commiting.
+A commit must always move the repo towards the folder setup in described in new_architecture
+You can (and probably should) create more subfolder than what is mentioned in the structure

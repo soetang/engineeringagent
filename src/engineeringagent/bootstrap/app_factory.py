@@ -14,10 +14,6 @@ from engineeringagent.adapters.documents import (
     FilesystemChecksCatalogRepository,
 )
 from engineeringagent.adapters.guidance import PackagedGuidanceTopicRepository
-from engineeringagent.adapters.loop import (
-    RuntimeFeatureIterationExecutor,
-    RuntimeRunLoopExecutor,
-)
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
 from engineeringagent.adapters.vcs import (
@@ -69,12 +65,14 @@ class AppFactory:
                     missing_context=" (required for --all)",
                 )
             ),
-            run_loop_executor=RuntimeRunLoopExecutor(),
         )
 
     def build_feature_iteration_service(self) -> FeatureIterationService:
         """Create the default feature-iteration application service."""
-        return FeatureIterationService(RuntimeFeatureIterationExecutor())
+        return FeatureIterationService(
+            version_control_gateway=self.build_version_control_gateway(),
+            progress_journal=self.build_progress_journal(),
+        )
 
     def build_guidance_service(self) -> GuidanceService:
         """Create the packaged guidance service."""

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 
 from engineeringagent.application import (
     RunLoopRequest,
@@ -8,7 +9,7 @@ from engineeringagent.application import (
     RunLoopService,
 )
 from engineeringagent.domain.quality import HarnessChecksDocument
-from engineeringagent.ports import RunLoopExecutionRequest, ValidationFailure
+from engineeringagent.ports import ValidationFailure
 
 
 def _build_request(**overrides: object) -> RunLoopRequest:
@@ -37,28 +38,10 @@ class _FakeChecksCatalogRepository:
         return HarnessChecksDocument(contract_version="1.0", checks={})
 
 
-class _FakeRunLoopExecutor:
-    def __init__(self, exit_code: int = 0) -> None:
-        self._exit_code = exit_code
-        self.requests: list[RunLoopExecutionRequest] = []
-
-    def run(self, request: RunLoopExecutionRequest) -> int:
-        self.requests.append(request)
-        return self._exit_code
-
-
 def test_run_loop_service_rejects_feature_paths_with_run_all() -> None:
     """The service should reject mixed `--all` plus positional feature input."""
-    observed: dict[str, int] = {
-        "execute_calls": 0,
-    }
     repository = _FakeChecksCatalogRepository()
-    executor = _FakeRunLoopExecutor()
-
-    service = RunLoopService(
-        checks_catalog_repository=repository,
-        run_loop_executor=executor,
-    )
+    service = RunLoopService(checks_catalog_repository=repository)
 
     result = service.run(_build_request(run_all=True))
 
@@ -66,23 +49,13 @@ def test_run_loop_service_rejects_feature_paths_with_run_all() -> None:
         exit_code=1,
         message="run input error: positional feature paths cannot be used with --all",
     )
-    assert observed == {"execute_calls": 0}
-    assert executor.requests == []
     assert repository.project_roots == []
 
 
 def test_run_loop_service_requires_paths_when_run_all_is_disabled() -> None:
     """The service should require explicit feature paths without `--all`."""
-    observed: dict[str, int] = {
-        "execute_calls": 0,
-    }
     repository = _FakeChecksCatalogRepository()
-    executor = _FakeRunLoopExecutor()
-
-    service = RunLoopService(
-        checks_catalog_repository=repository,
-        run_loop_executor=executor,
-    )
+    service = RunLoopService(checks_catalog_repository=repository)
 
     result = service.run(_build_request(feature_paths=(), run_all=False))
 
@@ -90,8 +63,6 @@ def test_run_loop_service_requires_paths_when_run_all_is_disabled() -> None:
         exit_code=1,
         message="run input error: provide one or more feature paths, or use --all",
     )
-    assert observed == {"execute_calls": 0}
-    assert executor.requests == []
     assert repository.project_roots == []
 
 
@@ -100,12 +71,7 @@ def test_run_loop_service_preflights_checks_for_run_all_requests() -> None:
     repository = _FakeChecksCatalogRepository(
         error="run config error: missing harness/checks.yaml"
     )
-    executor = _FakeRunLoopExecutor()
-
-    service = RunLoopService(
-        checks_catalog_repository=repository,
-        run_loop_executor=executor,
-    )
+    service = RunLoopService(checks_catalog_repository=repository)
 
     result = service.run(_build_request(feature_paths=(), run_all=True))
 
@@ -113,33 +79,74 @@ def test_run_loop_service_preflights_checks_for_run_all_requests() -> None:
         exit_code=1,
         message="run config error: missing harness/checks.yaml",
     )
-    assert executor.requests == []
     assert repository.project_roots == [Path("/tmp/project")]
 
 
-def test_run_loop_service_executes_loop_after_preflight() -> None:
-    """The service should execute the loop after a successful run-all preflight."""
+def test_run_loop_service_executes_loop_after_preflight(monkeypatch) -> None:
+    """The service should execute the runtime loop after a successful preflight."""
     repository = _FakeChecksCatalogRepository()
-    executor = _FakeRunLoopExecutor(exit_code=7)
+    observed: dict[str, object] = {}
 
-    service = RunLoopService(
-        checks_catalog_repository=repository,
-        run_loop_executor=executor,
+    def _fake_build_run_config(
+        *,
+        project_root: Path,
+        feature_paths: tuple[str | Path, ...],
+        options: object,
+    ) -> str:
+        observed["project_root"] = project_root
+        observed["feature_paths"] = feature_paths
+        observed["options"] = options
+        return "runtime-config"
+
+    def _fake_build_loop_run(config: str) -> str:
+        observed["build_loop_run_config"] = config
+        return "loop-run"
+
+    def _fake_run_loop_controller(loop_run: str) -> int:
+        observed["loop_run"] = loop_run
+        return 7
+
+    class _FakeRunConfigOptions:
+        def __init__(
+            self,
+            dry_run: bool,
+            run_all: bool,
+            max_iterations: int,
+            allow_dirty: bool,
+            verbose_output: bool,
+        ) -> None:
+            observed["run_config_options_args"] = (
+                dry_run,
+                run_all,
+                max_iterations,
+                allow_dirty,
+                verbose_output,
+            )
+
+    def _fake_import_module(name: str) -> SimpleNamespace:
+        if name == "engineeringagent.loop":
+            return SimpleNamespace(
+                build_run_config=_fake_build_run_config,
+                build_loop_run=_fake_build_loop_run,
+                RunConfigOptions=_FakeRunConfigOptions,
+                run_loop_controller=_fake_run_loop_controller,
+            )
+        raise AssertionError(f"unexpected module import: {name}")
+
+    monkeypatch.setattr(
+        "engineeringagent.application.run_loop_service.import_module",
+        _fake_import_module,
     )
+
+    service = RunLoopService(checks_catalog_repository=repository)
 
     request = _build_request(feature_paths=(), run_all=True, dry_run=True)
     result = service.run(request)
 
     assert result == RunLoopResult(exit_code=7, message=None)
-    assert executor.requests == [
-        RunLoopExecutionRequest(
-            project_root=request.project_root,
-            feature_paths=request.feature_paths,
-            run_all=request.run_all,
-            dry_run=request.dry_run,
-            max_iterations=request.max_iterations,
-            allow_dirty=request.allow_dirty,
-            verbose_output=request.verbose_output,
-        )
-    ]
     assert repository.project_roots == [Path("/tmp/project")]
+    assert observed["project_root"] == request.project_root
+    assert observed["feature_paths"] == request.feature_paths
+    assert observed["run_config_options_args"] == (True, True, 5, False, False)
+    assert observed["build_loop_run_config"] == "runtime-config"
+    assert observed["loop_run"] == "loop-run"

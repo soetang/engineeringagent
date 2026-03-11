@@ -103,7 +103,6 @@ rules:
       - engineeringagent.adapters
       - engineeringagent.bootstrap
       - engineeringagent.cli
-      - engineeringagent.loop_runtime
   - module: engineeringagent.application.validation_service
     blocked_dependencies:
       - engineeringagent.adapters
@@ -169,16 +168,6 @@ rules:
       - engineeringagent.presentation.cli
       - engineeringagent.loop
       - engineeringagent.loop_runtime
-  - module: engineeringagent.ports.feature_iteration_executor
-    blocked_dependencies:
-      - engineeringagent.adapters
-      - engineeringagent.application
-      - engineeringagent.bootstrap
-      - engineeringagent.checks
-      - engineeringagent.cli
-      - engineeringagent.presentation.cli
-      - engineeringagent.loop
-      - engineeringagent.loop_runtime
   - module: engineeringagent.ports.feature_workspace_manager
     blocked_dependencies:
       - engineeringagent.adapters
@@ -220,16 +209,6 @@ rules:
       - engineeringagent.loop
       - engineeringagent.loop_runtime
   - module: engineeringagent.ports.prompt_definition_repository
-    blocked_dependencies:
-      - engineeringagent.adapters
-      - engineeringagent.application
-      - engineeringagent.bootstrap
-      - engineeringagent.checks
-      - engineeringagent.cli
-      - engineeringagent.presentation.cli
-      - engineeringagent.loop
-      - engineeringagent.loop_runtime
-  - module: engineeringagent.ports.run_loop_executor
     blocked_dependencies:
       - engineeringagent.adapters
       - engineeringagent.application
