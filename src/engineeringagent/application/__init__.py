@@ -17,7 +17,6 @@ from .contracts import (
     RunChecksResult,
     RunLoopRequest,
     RunLoopResult,
-    RunLoopRuntime,
     ValidateRepositoryRequest,
     ValidationResult,
 )
@@ -46,7 +45,6 @@ __all__ = [
     "PromptBuilder",
     "RunLoopRequest",
     "RunLoopResult",
-    "RunLoopRuntime",
     "RunLoopService",
     "RunChecksRequest",
     "RunChecksResult",

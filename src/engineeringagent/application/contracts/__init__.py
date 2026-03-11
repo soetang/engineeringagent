@@ -9,7 +9,7 @@ from .feature_iteration import (
 from .guidance import GuidanceInputError, GuidanceQuery, GuidanceResult
 from .init_workspace import InitWorkspaceRequest, InitWorkspaceResult
 from .prompt_builder import ImplementationPromptRequest
-from .run_loop import RunLoopRequest, RunLoopResult, RunLoopRuntime
+from .run_loop import RunLoopRequest, RunLoopResult
 from .validation import ValidateRepositoryRequest, ValidationResult
 from .workspace_recovery import RecoverWorkspaceRequest, RecoverWorkspaceResult
 
@@ -29,7 +29,6 @@ __all__ = [
     "RunChecksResult",
     "RunLoopRequest",
     "RunLoopResult",
-    "RunLoopRuntime",
     "ValidateRepositoryRequest",
     "ValidationResult",
 ]

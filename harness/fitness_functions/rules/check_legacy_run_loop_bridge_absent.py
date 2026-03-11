@@ -13,13 +13,12 @@ from engineeringagent.checks.fitness.contracts import (
 
 RULE_ID = "architecture.legacy-run-loop-bridge-absent"
 _REMOVED_PATHS = (
-    Path("src/engineeringagent/ports/run_loop_executor.py"),
-    Path("src/engineeringagent/adapters/loop/__init__.py"),
     Path("src/engineeringagent/adapters/loop/legacy_run_loop_executor.py"),
 )
 _REMEDIATION = (
-    "keep legacy run-loop bridge wiring in engineeringagent.bootstrap.app_factory "
-    "until the run loop is rebuilt on canonical application contracts."
+    "keep the canonical run-loop port in engineeringagent.ports.run_loop_executor "
+    "and the runtime adapter in engineeringagent.adapters.loop.runtime_run_loop_executor; "
+    "do not restore the legacy bridge module name."
 )
 
 
@@ -32,7 +31,7 @@ def main() -> int:
     ]
     status = RuleStatus.PASS if not violations else RuleStatus.FAIL
     summary = (
-        "Legacy run-loop bridge paths remain absent."
+        "Legacy run-loop bridge module names remain absent."
         if status == RuleStatus.PASS
         else f"Detected {len(violations)} legacy run-loop bridge path violation(s)."
     )

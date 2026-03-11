@@ -47,7 +47,7 @@ def test_legacy_run_loop_bridge_absent_rule_passes_when_paths_are_absent(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Pass when the deleted legacy port and adapter source files stay absent."""
+    """Pass when the deleted legacy bridge module name stays absent."""
     proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
 
     assert proc.returncode == 0
@@ -59,10 +59,7 @@ def test_legacy_run_loop_bridge_absent_rule_fails_when_paths_return(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Fail when deleted legacy run-loop bridge source files reappear."""
-    port_path = tmp_path / "src" / "engineeringagent" / "ports"
-    port_path.mkdir(parents=True, exist_ok=True)
-    (port_path / "run_loop_executor.py").write_text("", encoding="utf-8")
+    """Fail when the deleted legacy run-loop bridge module name reappears."""
     adapter_path = tmp_path / "src" / "engineeringagent" / "adapters" / "loop"
     adapter_path.mkdir(parents=True, exist_ok=True)
     (adapter_path / "__init__.py").write_text("", encoding="utf-8")
@@ -73,10 +70,6 @@ def test_legacy_run_loop_bridge_absent_rule_fails_when_paths_return(
     assert proc.returncode == 1
     assert payload["status"] == "fail"
     assert payload["violations"] == [
-        "src/engineeringagent/ports/run_loop_executor.py: deleted legacy run-loop bridge path must remain absent; "
-        "keep legacy run-loop bridge wiring in engineeringagent.bootstrap.app_factory until the run loop is rebuilt on canonical application contracts.",
-        "src/engineeringagent/adapters/loop/__init__.py: deleted legacy run-loop bridge path must remain absent; "
-        "keep legacy run-loop bridge wiring in engineeringagent.bootstrap.app_factory until the run loop is rebuilt on canonical application contracts.",
         "src/engineeringagent/adapters/loop/legacy_run_loop_executor.py: deleted legacy run-loop bridge path must remain absent; "
-        "keep legacy run-loop bridge wiring in engineeringagent.bootstrap.app_factory until the run loop is rebuilt on canonical application contracts.",
+        "keep the canonical run-loop port in engineeringagent.ports.run_loop_executor and the runtime adapter in engineeringagent.adapters.loop.runtime_run_loop_executor; do not restore the legacy bridge module name.",
     ]

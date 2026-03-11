@@ -5,10 +5,11 @@ from __future__ import annotations
 from engineeringagent.application.contracts import (
     RunLoopRequest,
     RunLoopResult,
-    RunLoopRuntime,
 )
 from engineeringagent.ports import (
     ChecksCatalogRepository,
+    RunLoopExecutionRequest,
+    RunLoopExecutor,
     ValidationFailure,
 )
 
@@ -20,10 +21,10 @@ class RunLoopService:
         self,
         *,
         checks_catalog_repository: ChecksCatalogRepository,
-        runtime: RunLoopRuntime,
+        executor: RunLoopExecutor,
     ) -> None:
         self._checks_catalog_repository = checks_catalog_repository
-        self._runtime = runtime
+        self._executor = executor
 
     def run(self, request: RunLoopRequest) -> RunLoopResult:
         """Execute one run-loop request after deterministic preflight."""
@@ -37,7 +38,9 @@ class RunLoopService:
             except ValidationFailure as exc:
                 return RunLoopResult(exit_code=1, message=exc.message)
 
-        return RunLoopResult(exit_code=self._run(request))
+        return RunLoopResult(
+            exit_code=self._executor.run(self._to_execution_request(request))
+        )
 
     def _validate_input(self, request: RunLoopRequest) -> str | None:
         if request.run_all and request.feature_paths:
@@ -46,17 +49,16 @@ class RunLoopService:
             return "run input error: provide one or more feature paths, or use --all"
         return None
 
-    def _run(self, request: RunLoopRequest) -> int:
-        config = self._runtime.build_run_config(
+    def _to_execution_request(
+        self,
+        request: RunLoopRequest,
+    ) -> RunLoopExecutionRequest:
+        return RunLoopExecutionRequest(
             project_root=request.project_root,
             feature_paths=request.feature_paths,
-            options=self._runtime.config_options(
-                request.dry_run,
-                request.run_all,
-                request.max_iterations,
-                request.allow_dirty,
-                request.verbose_output,
-            ),
+            run_all=request.run_all,
+            dry_run=request.dry_run,
+            max_iterations=request.max_iterations,
+            allow_dirty=request.allow_dirty,
+            verbose_output=request.verbose_output,
         )
-        loop_run = self._runtime.build_loop_run(config)
-        return self._runtime.run_loop_controller(loop_run)

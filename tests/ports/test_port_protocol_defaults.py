@@ -31,6 +31,10 @@ from engineeringagent.ports.repository_validator import (
     RepositoryValidationRequest,
     RepositoryValidator,
 )
+from engineeringagent.ports.run_loop_executor import (
+    RunLoopExecutionRequest,
+    RunLoopExecutor,
+)
 from engineeringagent.ports.shell_runner import ShellRunner
 from engineeringagent.ports.version_control import CommitRequest, VersionControlGateway
 
@@ -142,6 +146,19 @@ def test_port_protocol_methods_raise_not_implemented() -> None:
         RepositoryValidator.validate(
             object(),
             RepositoryValidationRequest(project_root=project_root),
+        )
+    with pytest.raises(NotImplementedError):
+        RunLoopExecutor.run(
+            object(),
+            RunLoopExecutionRequest(
+                project_root=project_root,
+                feature_paths=(),
+                run_all=True,
+                dry_run=False,
+                max_iterations=1,
+                allow_dirty=False,
+                verbose_output=False,
+            ),
         )
     with pytest.raises(NotImplementedError):
         ShellRunner.run(object(), project_root, "uv run pytest")
