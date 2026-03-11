@@ -32,6 +32,7 @@ def test_cli_entrypoints_expose_same_top_level_help(
         "schema",
         "checks",
         "init",
+        "workspace",
         "--project-root",
         "--version",
     ):

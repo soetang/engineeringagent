@@ -422,4 +422,39 @@ def build_typer_app(command_module: ModuleType) -> typer.Typer:
             no_precommit_install=no_precommit_install,
         )
 
+    workspace_app = typer.Typer(
+        help="operate on isolated feature workspaces",
+        add_completion=False,
+        no_args_is_help=False,
+    )
+
+    @workspace_app.command(
+        "reset",
+        help="reset one feature workspace to the last accepted commit",
+    )
+    def _workspace_reset_command(
+        ctx: typer.Context,
+        feature_id: str = typer.Argument(
+            ...,
+            help="feature id whose workspace should be reset",
+        ),
+        last_accepted_commit: str = typer.Option(
+            ...,
+            "--last-accepted-commit",
+            help="accepted commit to reset the workspace back to",
+        ),
+    ) -> None:
+        _exit_with_handler_code(
+            command_module.cmd_workspace_reset,
+            ctx=ctx,
+            feature_id=feature_id,
+            last_accepted_commit=last_accepted_commit,
+        )
+
+    app.add_typer(
+        workspace_app,
+        name="workspace",
+        help="operate on isolated feature workspaces",
+    )
+
     return app

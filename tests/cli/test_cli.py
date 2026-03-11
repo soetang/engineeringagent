@@ -15,6 +15,7 @@ from engineeringagent.cli import init as cli_init_module
 from engineeringagent.cli import run as cli_run_module
 from engineeringagent.cli import schema as cli_schema_module
 from engineeringagent.cli import validate as cli_validate_module
+from engineeringagent.cli import workspace as cli_workspace_module
 from engineeringagent.application import RunChecksResult as ApplicationRunChecksResult
 from engineeringagent.config import (
     resolve_docs_root,
@@ -64,6 +65,7 @@ def test_cli_surface_inventory_commands() -> None:
         "schema",
         "checks",
         "init",
+        "workspace",
         "--project-root",
         "--version",
     ):
@@ -106,6 +108,10 @@ def test_cli_surface_inventory_option_spellings() -> None:
         (
             ["init", "--help"],
             ["--force", "--scaffold-profile", "--docs-mode", "--scaffold-docs-dir"],
+        ),
+        (
+            ["workspace", "reset", "--help"],
+            ["--last-accepted-commit"],
         ),
     ]
 
@@ -933,6 +939,88 @@ def test_cmd_schema_rejects_invalid_output_format(capsys: Any) -> None:
 
     assert code == 1
     assert output == "schema input error: --format must be one of: json, yaml\n"
+
+
+def test_cmd_workspace_reset_uses_workspace_recovery_service(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: Any,
+) -> None:
+    recorded: dict[str, object] = {}
+
+    class _FakeWorkspaceRecoveryService:
+        def run(self, request: Any) -> Any:
+            recorded["project_root"] = str(request.project_root)
+            recorded["feature_id"] = request.feature_id
+            recorded["last_accepted_commit"] = request.last_accepted_commit
+            return SimpleNamespace(
+                ok=True,
+                message="workspace reset to last accepted commit abc123",
+            )
+
+    class _FakeAppFactory:
+        def __init__(self, project_root: Path) -> None:
+            recorded["factory_project_root"] = str(project_root)
+
+        def build_workspace_recovery_service(self) -> Any:
+            return _FakeWorkspaceRecoveryService()
+
+    monkeypatch.setattr(
+        cli_workspace_module,
+        "AppFactory",
+        _FakeAppFactory,
+    )
+
+    code = cli_module.cmd_workspace_reset(
+        SimpleNamespace(
+            project_root=str(tmp_path),
+            feature_id="FEAT-100",
+            last_accepted_commit="abc123",
+        )
+    )
+    output = capsys.readouterr().out
+
+    assert code == 0
+    assert output == "workspace reset to last accepted commit abc123\n"
+    assert recorded == {
+        "factory_project_root": str(tmp_path.resolve()),
+        "project_root": str(tmp_path.resolve()),
+        "feature_id": "FEAT-100",
+        "last_accepted_commit": "abc123",
+    }
+
+
+def test_workspace_reset_subcommand_routes_to_handler(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    recorded: dict[str, object] = {}
+
+    def _fake_cmd_workspace_reset(args: Any) -> int:
+        recorded["project_root"] = args.project_root
+        recorded["feature_id"] = args.feature_id
+        recorded["last_accepted_commit"] = args.last_accepted_commit
+        return 0
+
+    monkeypatch.setattr(cli_module, "cmd_workspace_reset", _fake_cmd_workspace_reset)
+    result = _invoke_cli(
+        [
+            "--project-root",
+            str(tmp_path),
+            "workspace",
+            "reset",
+            "FEAT-100",
+            "--last-accepted-commit",
+            "abc123",
+        ]
+    )
+
+    assert result.exit_code == 0
+    assert recorded == {
+        "project_root": str(tmp_path),
+        "feature_id": "FEAT-100",
+        "last_accepted_commit": "abc123",
+    }
 
 
 def test_docs_root_resolver_defaults_to_docs(tmp_path: Path) -> None:

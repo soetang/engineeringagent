@@ -9,6 +9,7 @@ from . import init as init_commands
 from . import run as run_commands
 from . import schema as schema_commands
 from . import validate as validate_commands
+from . import workspace as workspace_commands
 from .. import checks as checks_module
 from .. import init_cli_support as init_cli_support_module
 
@@ -25,6 +26,7 @@ shutil = init_cli_support_module.shutil
 
 cmd_run = run_commands.cmd_run
 cmd_validate = validate_commands.cmd_validate
+cmd_workspace_reset = workspace_commands.cmd_workspace_reset
 
 cmd_approach_list = approach_commands.cmd_approach_list
 cmd_approach_overview = approach_commands.cmd_approach_overview
@@ -47,6 +49,7 @@ __all__ = [
     "shutil",
     "cmd_schema",
     "cmd_schema_list",
+    "cmd_workspace_reset",
     "importlib_metadata",
     "main",
     "normalize_cli_checks_groups",
