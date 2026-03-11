@@ -63,7 +63,7 @@ rules:
       - engineeringagent.checks
       - engineeringagent.loop_runtime
       - engineeringagent.presentation
-  - module: engineeringagent.application.guidance.service
+  - module: engineeringagent.application.guidance_service
     blocked_dependencies:
       - engineeringagent.adapters
       - engineeringagent.bootstrap

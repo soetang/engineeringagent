@@ -201,7 +201,7 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
     )
     _write_module(
         tmp_path,
-        "application/guidance/service.py",
+        "application/guidance_service.py",
         "import engineeringagent.loop_runtime.selection\n",
     )
     _write_module(
@@ -279,7 +279,7 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
             "engineeringagent.checks"
         ),
         (
-            "engineeringagent.application.guidance.service imports blocked dependency "
+            "engineeringagent.application.guidance_service imports blocked dependency "
             "engineeringagent.loop_runtime.selection"
         ),
         (
