@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from engineeringagent.adapters.checks import RuntimeChecksRunner
+from engineeringagent.adapters.checks import (
+    ChecksRepositoryValidator,
+    RuntimeChecksRunner,
+)
 from engineeringagent.adapters.guidance import PackagedGuidanceTopicRepository
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.application import (
@@ -38,7 +41,7 @@ class AppFactory:
 
     def build_validation_service(self) -> ValidationService:
         """Create the default repository validation service."""
-        return DefaultValidationService()
+        return DefaultValidationService(ChecksRepositoryValidator())
 
     def build_progress_journal(self) -> FilesystemProgressJournal:
         """Create the default filesystem-backed progress journal."""

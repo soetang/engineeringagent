@@ -8,6 +8,7 @@ from .prompt_definition_repository import (
     PromptDefinitionRepository,
     PromptInterpolation,
 )
+from .repository_validator import RepositoryValidator
 
 __all__ = [
     "ChecksRunRequest",
@@ -18,4 +19,5 @@ __all__ = [
     "PromptDefinition",
     "PromptDefinitionRepository",
     "PromptInterpolation",
+    "RepositoryValidator",
 ]

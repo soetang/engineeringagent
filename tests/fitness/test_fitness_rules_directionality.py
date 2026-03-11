@@ -177,6 +177,11 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
     )
     _write_module(
         tmp_path,
+        "application/validation_service.py",
+        "import engineeringagent.checks\n",
+    )
+    _write_module(
+        tmp_path,
         "cli/validate.py",
         "from engineeringagent.application import DefaultValidationService\n",
     )
@@ -203,6 +208,10 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
         (
             "engineeringagent.application.prompt_builder imports blocked dependency "
             "engineeringagent.progress.paths"
+        ),
+        (
+            "engineeringagent.application.validation_service imports blocked dependency "
+            "engineeringagent.checks"
         ),
         (
             "engineeringagent.checks.contracts imports blocked dependency "

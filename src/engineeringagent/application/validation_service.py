@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Protocol
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.checks import validate_repository
+from engineeringagent.ports import RepositoryValidator
 
 
 class ValidateRepositoryRequest(BaseModel):
@@ -28,17 +27,6 @@ class ValidationResult(BaseModel):
     messages: tuple[str, ...]
 
 
-class RepositoryValidator(Protocol):
-    """Validation callable used by the application service."""
-
-    def __call__(
-        self,
-        project_root: Path,
-        *,
-        schema_only: bool = False,
-    ) -> list[str]: ...
-
-
 class ValidationService:
     """Owns static repository validation."""
 
@@ -50,16 +38,13 @@ class ValidationService:
 class DefaultValidationService(ValidationService):
     """Application validation service backed by the repository validator."""
 
-    def __init__(
-        self,
-        validator: RepositoryValidator = validate_repository,
-    ) -> None:
+    def __init__(self, validator: RepositoryValidator) -> None:
         self._validator = validator
 
     def run(self, request: ValidateRepositoryRequest) -> ValidationResult:
         """Run one repository validation request."""
         messages = tuple(
-            self._validator(
+            self._validator.validate(
                 request.project_root,
                 schema_only=request.schema_only,
             )
