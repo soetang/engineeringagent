@@ -6,10 +6,10 @@ from engineeringagent.domain.quality import ChecksRunResult
 
 from .agent_runner import AgentRunRequest, AgentRunner
 from .checks_catalog_repository import (
-    ChecksCatalogLoadResult,
     ChecksCatalogRepository,
 )
 from .checks_runner import ChecksRunRequest, ChecksRunner
+from .failures import ExecutionFailure, PortFailure, ValidationFailure, WorkspaceFailure
 from .guidance_topic_repository import GuidanceTopicRepository
 from .init_workspace import (
     BaselineScaffoldOptions,
@@ -51,15 +51,16 @@ __all__ = [
     "CommitResult",
     "ChecksRunRequest",
     "ChecksRunResult",
-    "ChecksCatalogLoadResult",
     "ChecksCatalogRepository",
     "ChecksRunner",
     "CommandResult",
     "DEFAULT_AGENT_MODEL",
     "DiffSummary",
+    "ExecutionFailure",
     "GuidanceTopicRepository",
     "HarnessCheckPhase",
     "InitWorkspaceDependencies",
+    "PortFailure",
     "ProgressEvent",
     "ProgressJournal",
     "PromptDefinition",
@@ -73,7 +74,9 @@ __all__ = [
     "RepositoryValidationResult",
     "RepositoryValidator",
     "ShellRunner",
+    "ValidationFailure",
     "VersionControlFailure",
     "VersionControlGateway",
     "WorktreeStatus",
+    "WorkspaceFailure",
 ]

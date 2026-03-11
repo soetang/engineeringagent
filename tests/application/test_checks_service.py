@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from engineeringagent.application import ChecksService, RunChecksRequest
-from engineeringagent.checks.results import ChecksRunResult
-from engineeringagent.checks.contracts import HarnessCheckPhase
-from engineeringagent.checks.strategy_contracts import CheckExecutionRecord
-from engineeringagent.ports import ChecksCatalogLoadResult
-from engineeringagent.ports import ChecksRunRequest
 import pytest
+
+from engineeringagent.application import ChecksService, RunChecksRequest
+from engineeringagent.checks.contracts import HarnessCheckPhase
+from engineeringagent.checks.results import ChecksRunResult
+from engineeringagent.checks.strategy_contracts import CheckExecutionRecord
+from engineeringagent.domain.quality import HarnessChecksDocument
+from engineeringagent.ports import ChecksRunRequest, ValidationFailure
 
 
 def _build_result(
@@ -80,9 +81,11 @@ class _FakeChecksCatalogRepository:
         self._error = error
         self.project_roots: list[Path] = []
 
-    def load(self, project_root: Path) -> ChecksCatalogLoadResult:
+    def load(self, project_root: Path) -> HarnessChecksDocument:
         self.project_roots.append(project_root)
-        return ChecksCatalogLoadResult(document=None, error=self._error)
+        if self._error is not None:
+            raise ValidationFailure("ChecksCatalogRepository", self._error)
+        return HarnessChecksDocument(contract_version="1.0", checks={})
 
 
 def test_default_checks_service_runs_single_requested_phase() -> None:
@@ -159,12 +162,9 @@ def test_default_checks_service_rejects_reviewers_without_feature_path() -> None
                     HarnessCheckPhase.ITERATION_END: _build_result(ok=True)
                 },
                 reviewers_selected=True,
-            )
-            ,
+            ),
             _FakeChecksCatalogRepository(),
-        ).run(
-            _build_request(selected_checks=["reviewers"])
-        )
+        ).run(_build_request(selected_checks=["reviewers"]))
 
 
 def test_default_checks_service_preflights_catalog_for_harness_groups() -> None:

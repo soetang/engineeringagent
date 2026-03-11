@@ -10,6 +10,7 @@ from engineeringagent.ports import (
     ChecksCatalogRepository,
     RunLoopExecutionRequest,
     RunLoopExecutor,
+    ValidationFailure,
 )
 
 
@@ -55,9 +56,10 @@ class RunLoopService:
             return RunLoopResult(exit_code=1, message=input_error)
 
         if request.run_all:
-            catalog_result = self._checks_catalog_repository.load(request.project_root)
-            if catalog_result.error is not None:
-                return RunLoopResult(exit_code=1, message=catalog_result.error)
+            try:
+                self._checks_catalog_repository.load(request.project_root)
+            except ValidationFailure as exc:
+                return RunLoopResult(exit_code=1, message=exc.message)
 
         return RunLoopResult(
             exit_code=self._run_loop_executor.run(

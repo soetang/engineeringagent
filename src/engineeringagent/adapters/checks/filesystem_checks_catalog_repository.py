@@ -7,7 +7,8 @@ from pathlib import Path
 from pydantic import BaseModel, ConfigDict
 
 from engineeringagent.checks.config_loader import load_harness_checks_document
-from engineeringagent.ports import ChecksCatalogLoadResult, ChecksCatalogRepository
+from engineeringagent.domain.quality import HarnessChecksDocument
+from engineeringagent.ports import ChecksCatalogRepository, ValidationFailure
 
 
 class ChecksCatalogLoadOptions(BaseModel):
@@ -28,14 +29,14 @@ class FilesystemChecksCatalogRepository(ChecksCatalogRepository):
     ) -> None:
         self._options = options or ChecksCatalogLoadOptions()
 
-    def load(self, project_root: Path) -> ChecksCatalogLoadResult:
-        """Return the validated checks catalog or a deterministic load error."""
+    def load(self, project_root: Path) -> HarnessChecksDocument:
+        """Return the validated checks catalog or raise a deterministic load error."""
         document, error = load_harness_checks_document(
             project_root,
             error_prefix=self._options.error_prefix,
             missing_context=self._options.missing_context,
         )
-        return ChecksCatalogLoadResult(
-            document=document,
-            error=error,
-        )
+        if error is not None:
+            raise ValidationFailure("ChecksCatalogRepository", error)
+        assert document is not None
+        return document

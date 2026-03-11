@@ -7,9 +7,14 @@ from typing import Protocol
 
 from pydantic import BaseModel, ConfigDict
 
+from .failures import PortFailure
 
-class VersionControlFailure(Exception):
+
+class VersionControlFailure(PortFailure):
     """Raised when a version-control adapter cannot satisfy a request."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__("VersionControlGateway", message)
 
 
 class CommitRequest(BaseModel):

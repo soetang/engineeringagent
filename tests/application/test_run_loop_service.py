@@ -7,7 +7,8 @@ from engineeringagent.application import (
     RunLoopResult,
     RunLoopService,
 )
-from engineeringagent.ports import ChecksCatalogLoadResult, RunLoopExecutionRequest
+from engineeringagent.domain.quality import HarnessChecksDocument
+from engineeringagent.ports import RunLoopExecutionRequest, ValidationFailure
 
 
 def _build_request(**overrides: object) -> RunLoopRequest:
@@ -25,13 +26,15 @@ def _build_request(**overrides: object) -> RunLoopRequest:
 
 
 class _FakeChecksCatalogRepository:
-    def __init__(self, result: ChecksCatalogLoadResult) -> None:
-        self._result = result
+    def __init__(self, *, error: str | None = None) -> None:
+        self._error = error
         self.project_roots: list[Path] = []
 
-    def load(self, project_root: Path) -> ChecksCatalogLoadResult:
+    def load(self, project_root: Path) -> HarnessChecksDocument:
         self.project_roots.append(project_root)
-        return self._result
+        if self._error is not None:
+            raise ValidationFailure("ChecksCatalogRepository", self._error)
+        return HarnessChecksDocument(contract_version="1.0", checks={})
 
 
 class _FakeRunLoopExecutor:
@@ -49,9 +52,7 @@ def test_run_loop_service_rejects_feature_paths_with_run_all() -> None:
     observed: dict[str, int] = {
         "execute_calls": 0,
     }
-    repository = _FakeChecksCatalogRepository(
-        ChecksCatalogLoadResult(document=None, error=None)
-    )
+    repository = _FakeChecksCatalogRepository()
     executor = _FakeRunLoopExecutor()
 
     service = RunLoopService(
@@ -75,9 +76,7 @@ def test_run_loop_service_requires_paths_when_run_all_is_disabled() -> None:
     observed: dict[str, int] = {
         "execute_calls": 0,
     }
-    repository = _FakeChecksCatalogRepository(
-        ChecksCatalogLoadResult(document=None, error=None)
-    )
+    repository = _FakeChecksCatalogRepository()
     executor = _FakeRunLoopExecutor()
 
     service = RunLoopService(
@@ -99,10 +98,7 @@ def test_run_loop_service_requires_paths_when_run_all_is_disabled() -> None:
 def test_run_loop_service_preflights_checks_for_run_all_requests() -> None:
     """The service should stop before execution when run-all preflight fails."""
     repository = _FakeChecksCatalogRepository(
-        ChecksCatalogLoadResult(
-            document=None,
-            error="run config error: missing harness/checks.yaml",
-        )
+        error="run config error: missing harness/checks.yaml"
     )
     executor = _FakeRunLoopExecutor()
 
@@ -123,9 +119,7 @@ def test_run_loop_service_preflights_checks_for_run_all_requests() -> None:
 
 def test_run_loop_service_executes_loop_after_preflight() -> None:
     """The service should execute the loop after a successful run-all preflight."""
-    repository = _FakeChecksCatalogRepository(
-        ChecksCatalogLoadResult(document=None, error=None)
-    )
+    repository = _FakeChecksCatalogRepository()
     executor = _FakeRunLoopExecutor(exit_code=7)
 
     service = RunLoopService(

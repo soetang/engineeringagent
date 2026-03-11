@@ -59,13 +59,16 @@ def _port_protocol_issues(
     if isinstance(module, ValidationIssue):
         return (module,)
     issues: list[ValidationIssue] = list(_application_import_issues(module, rel_path=rel_path))
-    if not _module_declares_protocol(module):
+    if not _module_declares_port_contract(module):
         issues.append(
             ValidationIssue(
                 validator_id="repo.architecture",
                 scope="repo",
                 path=rel_path,
-                message="ports modules must declare at least one Protocol contract",
+                message=(
+                    "ports modules must declare at least one Protocol contract "
+                    "or shared port failure"
+                ),
                 code="repo.architecture.ports-protocol-contract",
             )
         )
@@ -217,9 +220,21 @@ def _domain_module_issues(
     )
 
 
+def _module_declares_port_contract(module: ast.Module) -> bool:
+    return _module_declares_protocol(module) or _module_declares_port_failure(module)
+
+
 def _module_declares_protocol(module: ast.Module) -> bool:
     return any(
         isinstance(node, ast.ClassDef) and any(_is_protocol_base(base) for base in node.bases)
+        for node in module.body
+    )
+
+
+def _module_declares_port_failure(module: ast.Module) -> bool:
+    return any(
+        isinstance(node, ast.ClassDef)
+        and any(_is_port_failure_base(base) for base in node.bases)
         for node in module.body
     )
 
@@ -229,6 +244,14 @@ def _is_protocol_base(base: ast.expr) -> bool:
         return base.id == "Protocol"
     if isinstance(base, ast.Attribute):
         return base.attr == "Protocol"
+    return False
+
+
+def _is_port_failure_base(base: ast.expr) -> bool:
+    if isinstance(base, ast.Name):
+        return base.id in {"Exception", "PortFailure"}
+    if isinstance(base, ast.Attribute):
+        return base.attr in {"Exception", "PortFailure"}
     return False
 
 

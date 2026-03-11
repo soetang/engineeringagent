@@ -2,10 +2,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from engineeringagent.adapters.checks import (
     ChecksCatalogLoadOptions,
     FilesystemChecksCatalogRepository,
 )
+from engineeringagent.ports import ValidationFailure
 
 from tests.checks.run_checks_contract_support import write_checks_yaml
 
@@ -30,20 +33,18 @@ def test_filesystem_checks_catalog_repository_loads_valid_catalog(
 
     result = FilesystemChecksCatalogRepository().load(tmp_path)
 
-    assert result.error is None
-    assert result.document is not None
-    assert "smoke" in result.document.checks
+    assert "smoke" in result.checks
 
 
 def test_filesystem_checks_catalog_repository_returns_deterministic_error(
     tmp_path: Path,
 ) -> None:
     """The adapter should preserve the shared deterministic missing-file error."""
-    result = FilesystemChecksCatalogRepository().load(tmp_path)
-
-    assert result.document is None
-    assert result.error is not None
-    assert "checks config error: missing harness/checks.yaml" in result.error
+    with pytest.raises(
+        ValidationFailure,
+        match="checks config error: missing harness/checks.yaml",
+    ):
+        FilesystemChecksCatalogRepository().load(tmp_path)
 
 
 def test_filesystem_checks_catalog_repository_supports_custom_error_context(
@@ -57,10 +58,11 @@ def test_filesystem_checks_catalog_repository_supports_custom_error_context(
         )
     )
 
-    result = repository.load(tmp_path)
+    with pytest.raises(ValidationFailure) as exc_info:
+        repository.load(tmp_path)
 
-    assert result.document is None
     assert (
-        result.error == "run config error: missing harness/checks.yaml "
+        exc_info.value.message
+        == "run config error: missing harness/checks.yaml "
         "(required for --all). Remediation: run `engineeringagent init`."
     )

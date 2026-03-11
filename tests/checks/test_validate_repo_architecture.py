@@ -43,6 +43,28 @@ def test_repo_architecture_validator_accepts_ports_modules_with_protocol_contrac
     assert issues == ()
 
 
+def test_repo_architecture_validator_accepts_ports_modules_with_shared_failures(
+    tmp_path: Path,
+) -> None:
+    """Shared port failure modules are allowed without a Protocol declaration."""
+
+    _write_port_module(
+        tmp_path,
+        "src/engineeringagent/ports/failures.py",
+        "class PortFailure(Exception):\n    pass\n",
+    )
+
+    issues = RepoArchitectureValidator().validate(
+        context=ValidationContext(
+            project_root=tmp_path,
+            docs_root=tmp_path / "docs",
+            schema_only=False,
+        )
+    )
+
+    assert issues == ()
+
+
 def test_repo_architecture_validator_reports_ports_modules_without_protocol_contracts(
     tmp_path: Path,
 ) -> None:
@@ -67,7 +89,10 @@ def test_repo_architecture_validator_reports_ports_modules_without_protocol_cont
             validator_id="repo.architecture",
             scope="repo",
             path="src/engineeringagent/ports/agent_runner.py",
-            message="ports modules must declare at least one Protocol contract",
+            message=(
+                "ports modules must declare at least one Protocol contract "
+                "or shared port failure"
+            ),
             code="repo.architecture.ports-protocol-contract",
         ),
     )

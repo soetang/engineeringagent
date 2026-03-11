@@ -15,6 +15,7 @@ from engineeringagent.ports import (
     ChecksCatalogRepository,
     ChecksRunRequest,
     ChecksRunner,
+    ValidationFailure,
 )
 
 
@@ -129,21 +130,21 @@ class ChecksService:
         if not any(group in {"commands", "fitness", "reviewers"} for group in selected_groups):
             return None
 
-        load_result = self._checks_catalog_repository.load(request.project_root)
-        if load_result.error is None:
-            return None
-
-        failed_result = ChecksRunResult(
-            ok=False,
-            dry_run=request.dry_run,
-            output=load_result.error,
-        )
-        return RunChecksResult(
-            phase_results=(),
-            result=failed_result,
-            failed_phase=None,
-            failed_runtime_message=None,
-        )
+        try:
+            self._checks_catalog_repository.load(request.project_root)
+        except ValidationFailure as exc:
+            failed_result = ChecksRunResult(
+                ok=False,
+                dry_run=request.dry_run,
+                output=exc.message,
+            )
+            return RunChecksResult(
+                phase_results=(),
+                result=failed_result,
+                failed_phase=None,
+                failed_runtime_message=None,
+            )
+        return None
 
     def _resolve_phases(
         self,
