@@ -4,7 +4,7 @@ from pathlib import Path
 
 import yaml
 
-from engineeringagent.application import (
+from engineeringagent.domain.specification import (
     current_progress_unit,
     done_transition_verification_commands,
     progress_status_snapshot,

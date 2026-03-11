@@ -9,7 +9,7 @@ from typing import Any, Callable, TypeVar
 from pydantic import BaseModel, ConfigDict, Field
 
 from engineeringagent.agents import describe_action
-from engineeringagent.application import (
+from engineeringagent.domain.specification import (
     current_progress_unit,
     done_transition_verification_commands,
     feature_progress_reference,

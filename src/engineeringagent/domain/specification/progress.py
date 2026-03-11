@@ -1,4 +1,4 @@
-"""Application-owned helpers for resolving the active progress unit."""
+"""Specification progress units derived from bundled feature artifacts."""
 
 from __future__ import annotations
 

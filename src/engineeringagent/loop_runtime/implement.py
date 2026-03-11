@@ -13,14 +13,16 @@ from engineeringagent.application import (
     DefaultPromptBuilder,
     PromptBuilder,
     build_implementation_prompt_request,
-    current_progress_unit,
-    feature_progress_reference,
 )
 from engineeringagent.agents import (
     AgentBackendError,
     AgentOutputValidationError,
     classify_backend_exception,
     describe_action,
+)
+from engineeringagent.domain.specification import (
+    current_progress_unit,
+    feature_progress_reference,
 )
 from engineeringagent.loop_runtime.models import ImplementStepInputs
 from engineeringagent.loop_runtime.models import ImplementStepResult

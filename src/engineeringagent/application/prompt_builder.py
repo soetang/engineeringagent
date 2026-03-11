@@ -13,13 +13,15 @@ from engineeringagent.prompts.feedback_envelope import (
     parse_feedback_envelope,
     serialize_feedback_envelope,
 )
+from engineeringagent.domain.specification import (
+    current_progress_unit,
+    feature_progress_reference,
+)
 from engineeringagent.specs import (
     feature_progress_kind,
     resolve_feature_plan_path,
     resolve_feature_research_path,
 )
-
-from .progress_units import current_progress_unit, feature_progress_reference
 
 
 class PromptArtifactPaths(BaseModel):
