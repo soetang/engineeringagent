@@ -25,9 +25,6 @@ from engineeringagent.checks.validate.repo_policy_feature_ids import (
     FeatureIdInvariantContext,
     append_feature_id_invariant_issues,
 )
-from engineeringagent.checks.validate.repo_policy_purge_invariant import (
-    append_purge_invariant_issues,
-)
 
 DONE_ACTIVE_UNSUPPORTED_FILE = ".allow-done-active.txt"
 _FIELD_SEGMENT_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -35,9 +32,6 @@ _FIELD_SEGMENT_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _ORIGINAL_MESSAGE_PREFIX_CODES: tuple[tuple[str, str], ...] = (
     ("validate: duplicate base feature id", "repo.policy.duplicate-base-id"),
     ("validate: git ls-files failed", "repo.policy.git-ls-files"),
-)
-_MESSAGE_CONTAINS_CODES: tuple[tuple[str, str], ...] = (
-    ("forbidden token present (purge invariant)", "repo.policy.purge-invariant"),
 )
 _MESSAGE_PREFIX_CODES: tuple[tuple[str, str], ...] = (
     ("failed to parse YAML", "repo.policy.parse-yaml"),
@@ -115,10 +109,6 @@ def _repo_issue_code(*, path: str, message: str, original_message: str) -> str:
     """Derive deterministic repo policy issue codes without changing CLI output."""
 
     code = _first_matching_code(original_message, _ORIGINAL_MESSAGE_PREFIX_CODES)
-    if code:
-        return code
-
-    code = _first_contains_code(message, _MESSAGE_CONTAINS_CODES)
     if code:
         return code
 
@@ -225,7 +215,6 @@ def run_repo_validation(
     )
     _append_done_feature_issues(messages, done_files)
     _append_potential_features_issues(messages, potential_features_path)
-    append_purge_invariant_issues(messages, project_root=project_root)
 
 
 def _append_flat_feature_entrypoint_issues(

@@ -243,6 +243,20 @@ rules:
       - run
       - python
       - harness/fitness_functions/rules/check_no_env_key_reads.py
+  - rule_id: quality.purge-invariant
+    name: Purge invariant
+    summary: Keep removed identifiers out of tracked repository files.
+    rationale: Keeps repository cleanup enforcement in the fitness-function system instead of the validate lane so repository-wide scans run through declared quality policy.
+    remediation: Remove the forbidden token from tracked files or delete the restored legacy artifact. Progress artifacts under .engineeringagent/progress/ remain excluded.
+    scope: tracked repository files excluding docs/spec/features_done/ and .engineeringagent/progress/
+    severity: error
+    side_effect_free: true
+    adapter: command
+    command:
+      - uv
+      - run
+      - python
+      - harness/fitness_functions/rules/check_purge_invariant.py
   - rule_id: architecture.prompt-locality
     name: Prompt locality
     summary: Keep canonical loop prompt content and template reads localized.

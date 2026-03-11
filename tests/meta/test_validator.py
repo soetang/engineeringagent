@@ -3,14 +3,12 @@ from __future__ import annotations
 import importlib
 import subprocess
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 import tomli
 import yaml
 
 from engineeringagent.checks.validate.validator import validate
-from engineeringagent.checks.validate.repo_policy_purge_invariant import git_cli
 from tests.meta.validator_support import (
     write_bundled_feature_spec,
     write_plan_artifact,
@@ -270,96 +268,6 @@ def test_validate_reports_reviewer_prompt_with_deprecated_responseformat(
     )
     assert all("missing-token.md" not in message for message in messages)
 
-def test_validate_reports_git_ls_files_failure(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    (tmp_path / ".git").mkdir(parents=True, exist_ok=True)
-
-    monkeypatch.setattr(
-        git_cli,
-        "ls_files",
-        lambda _root: SimpleNamespace(returncode=1, stdout="", stderr="boom"),
-    )
-
-    messages = validate(project_root=tmp_path)
-    assert any("validate: git ls-files failed" in message for message in messages)
-
-
-def test_validate_enforces_purge_invariants_using_git_ls_files(tmp_path: Path) -> None:
-    def _run_git(*args: str) -> None:
-        proc = subprocess.run(
-            ["git", *args],
-            cwd=tmp_path,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        assert proc.returncode == 0, proc.stderr
-
-    _run_git("init")
-
-    removed_reviewer_id = "_".join(["readme", "process"])
-    removed_mode = "_".join(["clean", "room", "readme", "cli"])
-
-    (tmp_path / "active.txt").write_text(
-        f"{removed_reviewer_id}\n{removed_mode}\n",
-        encoding="utf-8",
-    )
-    _run_git("add", "active.txt")
-
-    excluded_dir = tmp_path / ".engineeringagent" / "progress"
-    excluded_dir.mkdir(parents=True, exist_ok=True)
-    (excluded_dir / "excluded.txt").write_text(
-        f"{removed_reviewer_id}\n",
-        encoding="utf-8",
-    )
-    _run_git("add", ".engineeringagent/progress/excluded.txt")
-
-    messages = validate(project_root=tmp_path)
-
-    assert any(
-        "active.txt" in message and "purge invariant" in message for message in messages
-    )
-    assert all(
-        ".engineeringagent/progress/excluded.txt" not in message for message in messages
-    )
-
-
-def test_validate_does_not_exclude_legacy_progress_artifacts_from_purge_scan(
-    tmp_path: Path,
-) -> None:
-    def _run_git(*args: str) -> None:
-        proc = subprocess.run(
-            ["git", *args],
-            cwd=tmp_path,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        assert proc.returncode == 0, proc.stderr
-
-    _run_git("init")
-
-    removed_reviewer_id = "_".join(["readme", "process"])
-
-    legacy_progress_dir = tmp_path / "progress"
-    legacy_progress_dir.mkdir(parents=True, exist_ok=True)
-    legacy_artifact = legacy_progress_dir / "runs" / "runs.jsonl"
-    legacy_artifact.parent.mkdir(parents=True, exist_ok=True)
-    legacy_artifact.write_text(
-        f"artifact marker: {removed_reviewer_id}\n",
-        encoding="utf-8",
-    )
-    _run_git("add", "progress/runs/runs.jsonl")
-
-    messages = validate(project_root=tmp_path)
-    assert any(
-        "progress/runs/runs.jsonl" in message and "purge invariant" in message
-        for message in messages
-    )
-
-
 def test_validate_does_not_enforce_opencode_config_invariant(tmp_path: Path) -> None:
     def _run_git(*args: str) -> None:
         proc = subprocess.run(
@@ -459,7 +367,7 @@ def test_validate_reports_done_feature_left_in_active_directory(
     feature_root = (
         project_root / "docs" / "spec" / "features" / "FEAT-901-preexisting-done"
     )
-    feature_path = write_bundled_feature_spec(
+    write_bundled_feature_spec(
         feature_root,
         feature_id="FEAT-901",
         extra_fields={"status": "done"},
