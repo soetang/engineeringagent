@@ -8,9 +8,6 @@ from pathlib import Path
 from typing import Any
 from typing import Protocol
 
-from engineeringagent.application import (
-    ImplementationPromptRequest,
-)
 from engineeringagent.agents import (
     AgentBackendError,
     AgentOutputValidationError,
@@ -33,22 +30,15 @@ from engineeringagent.specs import (
 class _ImplementationPromptBuilder(Protocol):
     """Local duck-typed seam for prompt rendering in loop tests."""
 
-    def build_implementation_prompt_request(
+    def build_implementation_prompt_from_feature(
         self,
         *,
         feature: dict[str, Any] | FeatureSpecification,
-        specification_path: Path,
+        feature_path: Path,
         feedback: str | None,
         handoff_path: str | None = None,
-    ) -> ImplementationPromptRequest:
-        """Build one implementation prompt request from feature data."""
-        raise NotImplementedError
-
-    def build_implementation_prompt(
-        self,
-        request: ImplementationPromptRequest,
     ) -> str:
-        """Render one implementation prompt from normalized request data."""
+        """Render one implementation prompt from feature data."""
         raise NotImplementedError
 
 
@@ -237,25 +227,22 @@ def _build_implement_prompt(
     prompt_builder: _ImplementationPromptBuilder,
     progress_journal: ProgressJournal,
 ) -> str:
-    request = prompt_builder.build_implementation_prompt_request(
-        feature=implement_inputs.feature,
-        specification_path=implement_inputs.feature_path,
-        feedback=implement_inputs.feedback,
-    )
     persisted_handoff_path = progress_journal.latest_handoff_path(
         project_root=implement_inputs.project_root,
-        feature_id=request.feature_id,
+        feature_id=str(implement_inputs.feature.get("id", "")),
     )
+    handoff_path = None
     if persisted_handoff_path is not None:
-        request = request.model_copy(
-            update={
-                "handoff_path": repo_relative_label(
-                    implement_inputs.project_root,
-                    persisted_handoff_path,
-                )
-            }
+        handoff_path = repo_relative_label(
+            implement_inputs.project_root,
+            persisted_handoff_path,
         )
-    return prompt_builder.build_implementation_prompt(request)
+    return prompt_builder.build_implementation_prompt_from_feature(
+        feature=implement_inputs.feature,
+        feature_path=implement_inputs.feature_path,
+        feedback=implement_inputs.feedback,
+        handoff_path=handoff_path,
+    )
 
 
 def _ensure_progress_artifacts(

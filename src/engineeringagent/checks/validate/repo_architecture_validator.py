@@ -437,6 +437,15 @@ def _loop_runtime_bootstrap_issues(
             _forbidden_import_issues(
                 module,
                 rel_path=rel_path,
+                forbidden_modules=("engineeringagent.application",),
+                message="loop runtime modules must not import application modules",
+                code="repo.architecture.loop-runtime-application-import",
+            )
+        )
+        issues.extend(
+            _forbidden_import_issues(
+                module,
+                rel_path=rel_path,
                 forbidden_modules=("engineeringagent.bootstrap",),
                 message="loop runtime modules must not import bootstrap modules",
                 code="repo.architecture.loop-runtime-bootstrap-import",

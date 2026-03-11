@@ -763,3 +763,33 @@ def test_repo_architecture_validator_reports_loop_runtime_importing_bootstrap(
             code="repo.architecture.loop-runtime-bootstrap-import",
         ),
     )
+
+
+def test_repo_architecture_validator_reports_loop_runtime_importing_application(
+    tmp_path: Path,
+) -> None:
+    """Loop runtime helpers must not depend on application-layer request models."""
+
+    _write_port_module(
+        tmp_path,
+        "src/engineeringagent/loop_runtime/implement.py",
+        "from engineeringagent.application import ImplementationPromptRequest\n",
+    )
+
+    issues = RepoArchitectureValidator().validate(
+        context=ValidationContext(
+            project_root=tmp_path,
+            docs_root=tmp_path / "docs",
+            schema_only=False,
+        )
+    )
+
+    assert issues == (
+        ValidationIssue(
+            validator_id="repo.architecture",
+            scope="repo",
+            path="src/engineeringagent/loop_runtime/implement.py",
+            message="loop runtime modules must not import application modules",
+            code="repo.architecture.loop-runtime-application-import",
+        ),
+    )

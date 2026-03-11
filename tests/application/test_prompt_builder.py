@@ -174,6 +174,28 @@ def test_default_prompt_builder_omits_optional_lines_without_values(
     assert "Retry feedback:" not in prompt
 
 
+def test_build_implementation_prompt_from_feature_includes_handoff_path(
+    tmp_path: Path,
+) -> None:
+    """Feature-based prompt rendering should inject the resolved handoff path directly."""
+
+    feature_path = (
+        tmp_path / "docs" / "spec" / "features" / "FEAT-901-feature-prompt" / "spec.yaml"
+    )
+    feature_path.parent.mkdir(parents=True, exist_ok=True)
+
+    prompt = _prompt_builder().build_implementation_prompt_from_feature(
+        feature=_feature_specification(feature_id="FEAT-901"),
+        feature_path=feature_path,
+        feedback="retry with the persisted handoff",
+        handoff_path=".engineeringagent/progress/features/FEAT-901/handoff.md",
+    )
+
+    assert f"- specification: {feature_path}" in prompt
+    assert "- handoff: .engineeringagent/progress/features/FEAT-901/handoff.md" in prompt
+    assert "retry with the persisted handoff" in prompt
+
+
 def test_prompt_builder_private_helpers_cover_invalid_and_blank_inputs(
     tmp_path: Path,
 ) -> None:
