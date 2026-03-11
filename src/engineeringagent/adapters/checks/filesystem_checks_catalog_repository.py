@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from engineeringagent.checks import load_harness_checks_document
+from engineeringagent.checks.config_loader import load_harness_checks_document
 from engineeringagent.ports import ChecksCatalogLoadResult, ChecksCatalogRepository
 
 

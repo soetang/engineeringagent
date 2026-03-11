@@ -1,17 +1,18 @@
-"""Adapter that executes checks through the stable repository checks surface."""
+"""Adapter that executes checks through the concrete checks runtime."""
 
 from __future__ import annotations
 
-from engineeringagent import checks as checks_domain
+from engineeringagent.checks.api import run_checks
+from engineeringagent.domain.quality import ChecksRunResult, reviewers_group_selected
 from engineeringagent.ports import ChecksRunRequest, ChecksRunner
 
 
 class RuntimeChecksRunner(ChecksRunner):
-    """Run checks through the packaged checks runtime facade."""
+    """Run checks through the packaged checks runtime."""
 
-    def run(self, request: ChecksRunRequest) -> checks_domain.ChecksRunResult:
-        """Execute one checks request through the top-level checks facade."""
-        return checks_domain.run_checks(
+    def run(self, request: ChecksRunRequest) -> ChecksRunResult:
+        """Execute one checks request through the concrete runtime module."""
+        return run_checks(
             request.project_root,
             phase=request.phase,
             checks=request.selected_checks,
@@ -25,4 +26,4 @@ class RuntimeChecksRunner(ChecksRunner):
 
     def reviewers_group_selected(self, selected_checks: list[str] | None) -> bool:
         """Return whether the selected groups require reviewer context."""
-        return checks_domain.reviewers_group_selected(selected_checks)
+        return reviewers_group_selected(selected_checks)

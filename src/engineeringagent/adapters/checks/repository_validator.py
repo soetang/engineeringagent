@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from engineeringagent.checks import validate_repository
+from engineeringagent.checks.validate.validator import validate
 from engineeringagent.ports import (
     RepositoryValidationRequest,
     RepositoryValidationResult,
@@ -19,7 +19,7 @@ class ChecksRepositoryValidator:
         """Return repository validation messages."""
         return RepositoryValidationResult(
             messages=tuple(
-                validate_repository(
+                validate(
                     request.project_root,
                     schema_only=request.schema_only,
                 )

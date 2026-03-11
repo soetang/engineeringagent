@@ -11,10 +11,10 @@ from engineeringagent.ports import RepositoryValidationRequest, RepositoryValida
 def test_checks_repository_validator_delegates_to_checks_surface(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The adapter forwards the typed request to the checks validation surface."""
+    """The adapter forwards the typed request to the concrete validator entrypoint."""
     captured: dict[str, object] = {}
 
-    def _fake_validate_repository(
+    def _fake_validate(
         project_root: Path,
         *,
         schema_only: bool = False,
@@ -24,8 +24,8 @@ def test_checks_repository_validator_delegates_to_checks_surface(
         return ["issue one", "issue two"]
 
     monkeypatch.setattr(
-        "engineeringagent.adapters.checks.repository_validator.validate_repository",
-        _fake_validate_repository,
+        "engineeringagent.adapters.checks.repository_validator.validate",
+        _fake_validate,
     )
 
     result = ChecksRepositoryValidator().validate(
