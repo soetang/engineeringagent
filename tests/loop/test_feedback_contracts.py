@@ -14,11 +14,12 @@ from engineeringagent.domain.quality import (
     parse_feedback_envelope,
     serialize_feedback_envelope,
 )
-from engineeringagent.application import inject_feedback
+from engineeringagent.application import PromptBuilder
 
 _PROMPT_DEFINITIONS = FilesystemPromptDefinitionRepository(
     Path(__file__).resolve().parents[2] / "harness" / "prompts"
 )
+_PROMPT_BUILDER = PromptBuilder(_PROMPT_DEFINITIONS)
 
 
 def test_feedback_contract_accepts_command_failure_envelope() -> None:
@@ -131,11 +132,7 @@ def test_feedback_injection_does_not_truncate_contract_json() -> None:
     serialized = serialize_feedback_envelope(envelope)
     assert len(serialized) > 8_000
 
-    injected = inject_feedback(
-        "BASE\n",
-        serialized,
-        prompt_definitions=_PROMPT_DEFINITIONS,
-    )
+    injected = _PROMPT_BUILDER.inject_feedback("BASE\n", serialized)
 
     assert "-TAIL-MARKER" in injected
     assert "...[truncated]" not in injected
@@ -144,21 +141,13 @@ def test_feedback_injection_does_not_truncate_contract_json() -> None:
 def test_feedback_injection_accepts_plain_markdown_feedback() -> None:
     feedback = "Retry guidance from checks runtime"
 
-    injected = inject_feedback(
-        "BASE\n",
-        feedback,
-        prompt_definitions=_PROMPT_DEFINITIONS,
-    )
+    injected = _PROMPT_BUILDER.inject_feedback("BASE\n", feedback)
 
     assert feedback in injected
 
 
 def test_feedback_injection_ignores_blank_plain_feedback() -> None:
-    injected = inject_feedback(
-        "BASE\n",
-        "   \n\t",
-        prompt_definitions=_PROMPT_DEFINITIONS,
-    )
+    injected = _PROMPT_BUILDER.inject_feedback("BASE\n", "   \n\t")
 
     assert injected == "BASE\n"
 

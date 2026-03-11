@@ -10,7 +10,6 @@ from engineeringagent.agents import (
     classify_backend_exception,
     describe_action,
 )
-from engineeringagent.application import build_selector_prompt
 from engineeringagent.bootstrap import AppFactory
 from engineeringagent.specs import feature_sort_key
 
@@ -120,9 +119,8 @@ def choose_feature_with_selector(
     if len(pending) == 1:
         return pending[0]
 
-    prompt = build_selector_prompt(
-        pending,
-        prompt_definitions=AppFactory(project_root).build_prompt_definition_repository(),
+    prompt = AppFactory(project_root).build_prompt_builder().build_selector_prompt(
+        pending
     )
     step_label = describe_action(project_root, action="selector", structured=False)
     print(f"Selector step: {step_label}")

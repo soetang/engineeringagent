@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import subprocess
 import json
+from pathlib import Path
 from typing import Any
 from typing import Protocol
 
@@ -11,7 +12,6 @@ from engineeringagent.adapters.agents import ConfiguredAgentRunner
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.application import (
     ImplementationPromptRequest,
-    build_implementation_prompt_request,
 )
 from engineeringagent.agents import (
     AgentBackendError,
@@ -40,6 +40,17 @@ _AGENT_RUNNER = ConfiguredAgentRunner()
 
 class _ImplementationPromptBuilder(Protocol):
     """Local duck-typed seam for prompt rendering in loop tests."""
+
+    def build_implementation_prompt_request(
+        self,
+        *,
+        feature: dict[str, Any],
+        feature_path: Path,
+        feedback: str | None,
+        handoff_path: str | None = None,
+    ) -> ImplementationPromptRequest:
+        """Build one implementation prompt request from feature data."""
+        raise NotImplementedError
 
     def build_implementation_prompt(
         self,
@@ -232,7 +243,7 @@ def _build_implement_prompt(
     *,
     prompt_builder: _ImplementationPromptBuilder,
 ) -> str:
-    request = build_implementation_prompt_request(
+    request = prompt_builder.build_implementation_prompt_request(
         feature=implement_inputs.feature,
         feature_path=implement_inputs.feature_path,
         feedback=implement_inputs.feedback,

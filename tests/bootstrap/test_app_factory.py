@@ -11,9 +11,9 @@ from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
 from engineeringagent.application import (
     ChecksService,
-    DefaultPromptBuilder,
     GuidanceService,
     InitWorkspaceService,
+    PromptBuilder,
     ValidationService,
 )
 from engineeringagent.bootstrap import AppFactory
@@ -47,7 +47,7 @@ def test_app_factory_builds_default_application_services(tmp_path: Path) -> None
         factory.build_prompt_definition_repository(),
         FilesystemPromptDefinitionRepository,
     )
-    assert isinstance(factory.build_prompt_builder(), DefaultPromptBuilder)
+    assert isinstance(factory.build_prompt_builder(), PromptBuilder)
 
 
 def test_app_factory_uses_configured_harness_root_for_prompt_definitions(

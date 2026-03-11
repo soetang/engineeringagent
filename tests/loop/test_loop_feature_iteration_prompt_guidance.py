@@ -8,8 +8,7 @@ from engineeringagent.adapters.prompts import (
     FilesystemPromptDefinitionRepository,
 )
 from engineeringagent.application import (
-    DefaultPromptBuilder,
-    build_implementation_prompt,
+    PromptBuilder,
 )
 from tests.loop.feature_iteration_support import (
     base_feature,
@@ -18,9 +17,9 @@ from tests.loop.feature_iteration_support import (
 )
 
 
-def _bundled_prompt_builder() -> DefaultPromptBuilder:
+def _bundled_prompt_builder() -> PromptBuilder:
     prompts_root = Path(__file__).resolve().parents[2] / "harness" / "prompts"
-    return DefaultPromptBuilder(FilesystemPromptDefinitionRepository(prompts_root))
+    return PromptBuilder(FilesystemPromptDefinitionRepository(prompts_root))
 
 
 def test_ralph_prompt_includes_feature_file_path(tmp_path: Path) -> None:
@@ -29,11 +28,10 @@ def test_ralph_prompt_includes_feature_file_path(tmp_path: Path) -> None:
     _, feature_path = make_project_root(tmp_path, feature_data=feature_data)
     feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
 
-    prompt = build_implementation_prompt(
+    prompt = _bundled_prompt_builder().build_implementation_prompt_from_feature(
         feature=feature,
         feature_path=feature_path,
         feedback=None,
-        prompt_builder=_bundled_prompt_builder(),
     )
 
     expected_interpolated_values = (
@@ -53,11 +51,10 @@ def test_ralph_prompt_contract_uses_schema_only_validate_command(
     _, feature_path = make_project_root(tmp_path, feature_data=base_feature())
     feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
 
-    prompt = build_implementation_prompt(
+    prompt = _bundled_prompt_builder().build_implementation_prompt_from_feature(
         feature=feature,
         feature_path=feature_path,
         feedback=None,
-        prompt_builder=_bundled_prompt_builder(),
     )
 
     assert "uv run engineeringagent validate --schema-only" in prompt
@@ -92,11 +89,10 @@ def test_bundled_ralph_prompt_uses_phase_wording(tmp_path: Path) -> None:
     )
     feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
 
-    prompt = build_implementation_prompt(
+    prompt = _bundled_prompt_builder().build_implementation_prompt_from_feature(
         feature=feature,
         feature_path=feature_path,
         feedback=None,
-        prompt_builder=_bundled_prompt_builder(),
     )
 
     assert "Identify the most important open phase first." in prompt
@@ -142,11 +138,10 @@ def test_bundled_ralph_prompt_surfaces_current_phase_reference(tmp_path: Path) -
     )
     feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
 
-    prompt = build_implementation_prompt(
+    prompt = _bundled_prompt_builder().build_implementation_prompt_from_feature(
         feature=feature,
         feature_path=feature_path,
         feedback=None,
-        prompt_builder=_bundled_prompt_builder(),
     )
 
     assert "Current phase: P1 - Track bundled prompt context" in prompt
@@ -184,11 +179,10 @@ def test_bundled_ralph_prompt_keeps_phase_wording_with_invalid_plan_frontmatter(
     plan_path.write_text("---\ninvalid: [\n---\n# Plan\n", encoding="utf-8")
     feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
 
-    prompt = build_implementation_prompt(
+    prompt = _bundled_prompt_builder().build_implementation_prompt_from_feature(
         feature=feature,
         feature_path=feature_path,
         feedback=None,
-        prompt_builder=_bundled_prompt_builder(),
     )
 
     assert "Identify the most important open phase first." in prompt
@@ -200,11 +194,10 @@ def test_flat_feature_prompt_avoids_legacy_wrapper_wording(tmp_path: Path) -> No
     _, feature_path = make_project_root(tmp_path, feature_data=base_feature())
     feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
 
-    prompt = build_implementation_prompt(
+    prompt = _bundled_prompt_builder().build_implementation_prompt_from_feature(
         feature=feature,
         feature_path=feature_path,
         feedback=None,
-        prompt_builder=_bundled_prompt_builder(),
     )
 
     assert "Identify the most important open implementation step first." in prompt
@@ -250,11 +243,10 @@ def test_bundled_ralph_prompt_treats_package_as_canonical_working_set(
     )
     feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
 
-    prompt = build_implementation_prompt(
+    prompt = _bundled_prompt_builder().build_implementation_prompt_from_feature(
         feature=feature,
         feature_path=feature_path,
         feedback=None,
-        prompt_builder=_bundled_prompt_builder(),
     )
 
     assert (
@@ -287,11 +279,10 @@ def test_direct_bundled_ralph_prompt_avoids_legacy_subtask_wording(
     }
     feature_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding="utf-8")
 
-    prompt = build_implementation_prompt(
+    prompt = _bundled_prompt_builder().build_implementation_prompt_from_feature(
         feature=feature,
         feature_path=feature_path,
         feedback=None,
-        prompt_builder=_bundled_prompt_builder(),
     )
 
     assert "Identify the most important open implementation step first." in prompt
@@ -326,11 +317,10 @@ def test_bundled_ralph_prompt_includes_plan_and_research_paths(tmp_path: Path) -
     )
     research_path.write_text("# Research\n", encoding="utf-8")
 
-    prompt = build_implementation_prompt(
+    prompt = _bundled_prompt_builder().build_implementation_prompt_from_feature(
         feature=feature,
         feature_path=feature_path,
         feedback=None,
-        prompt_builder=_bundled_prompt_builder(),
     )
 
     assert f"- specification: {feature_path}" in prompt

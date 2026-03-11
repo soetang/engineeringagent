@@ -9,13 +9,10 @@ import yaml
 from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
 import engineeringagent.application.prompt_builder as prompt_builder_module
 from engineeringagent.application import (
-    DefaultPromptBuilder,
     ImplementationPromptFeature,
     ImplementationPromptRequest,
     PromptArtifactPaths,
-    build_implementation_prompt,
-    build_implementation_prompt_request,
-    build_selector_prompt,
+    PromptBuilder,
 )
 from tests.loop.feature_iteration_support import (
     base_feature,
@@ -24,9 +21,9 @@ from tests.loop.feature_iteration_support import (
 )
 
 
-def _prompt_builder() -> DefaultPromptBuilder:
+def _prompt_builder() -> PromptBuilder:
     prompts_root = Path(__file__).resolve().parents[2] / "harness" / "prompts"
-    return DefaultPromptBuilder(FilesystemPromptDefinitionRepository(prompts_root))
+    return PromptBuilder(FilesystemPromptDefinitionRepository(prompts_root))
 
 
 def _write_prompt_module(prompts_root: Path, prompt_id: str, body: str) -> None:
@@ -87,11 +84,12 @@ def test_application_selector_prompt_renders_feature_summaries(tmp_path: Path) -
 
     feature_path = tmp_path / "docs" / "spec" / "features" / "FEAT-900" / "spec.yaml"
     feature_path.parent.mkdir(parents=True, exist_ok=True)
-    prompt = build_selector_prompt(
-        [(feature_path, {"id": "FEAT-900", "status": "backlog", "priority": "high"})],
-        prompt_definitions=FilesystemPromptDefinitionRepository(
+    prompt = PromptBuilder(
+        FilesystemPromptDefinitionRepository(
             Path(__file__).resolve().parents[2] / "harness" / "prompts"
-        ),
+        )
+    ).build_selector_prompt(
+        [(feature_path, {"id": "FEAT-900", "status": "backlog", "priority": "high"})]
     )
 
     assert "id=FEAT-900" in prompt
@@ -125,59 +123,14 @@ def test_application_selector_prompt_prefers_repo_local_template(
         ")\n",
     )
 
-    prompt = build_selector_prompt(
-        [(tmp_path / "feature.yaml", {"id": "FEAT-100", "status": "backlog"})],
-        prompt_definitions=FilesystemPromptDefinitionRepository(prompts_root),
+    prompt = PromptBuilder(
+        FilesystemPromptDefinitionRepository(prompts_root)
+    ).build_selector_prompt(
+        [(tmp_path / "feature.yaml", {"id": "FEAT-100", "status": "backlog"})]
     )
 
     assert prompt.startswith("repo selector\n")
 
-
-def test_loop_runtime_prompt_helper_delegates_to_prompt_builder(tmp_path: Path) -> None:
-    """Loop runtime prompt assembly delegates rendering to the application builder."""
-
-    feature_data = {
-        **base_feature(status="in_progress"),
-        "planning_tier": "planned",
-        "artifacts": {"plan": "plan.md"},
-    }
-    feature_data.pop("subtasks", None)
-    _, feature_path, _plan_path = make_bundled_project_root(
-        tmp_path,
-        feature_data=feature_data,
-        plan_frontmatter={
-            "plan_id": "FEAT-900",
-            "feature_id": "FEAT-900",
-            "status": "in_progress",
-            "source_spec": "spec.yaml",
-            "planning_tier": "planned",
-            "phases": [
-                {
-                    "id": "P1",
-                    "title": "Build prompt seam",
-                    "status": "pending",
-                }
-            ],
-        },
-    )
-    feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
-    builder = _prompt_builder()
-
-    direct = builder.build_implementation_prompt(
-        build_implementation_prompt_request(
-            feature=feature,
-            feature_path=feature_path,
-            feedback="",
-        )
-    )
-    via_helper = build_implementation_prompt(
-        feature=feature,
-        feature_path=feature_path,
-        feedback="",
-        prompt_builder=builder,
-    )
-
-    assert via_helper == direct
 
 def test_build_implementation_prompt_request_does_not_invent_handoff_path(
     tmp_path: Path,
@@ -188,7 +141,7 @@ def test_build_implementation_prompt_request_does_not_invent_handoff_path(
     _, feature_path = make_project_root(tmp_path, feature_data=feature_data)
     feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
 
-    request = build_implementation_prompt_request(
+    request = _prompt_builder().build_implementation_prompt_request(
         feature=feature,
         feature_path=feature_path,
         feedback=None,
@@ -265,7 +218,7 @@ def test_prompt_builder_private_helpers_cover_invalid_and_blank_inputs(
     feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
 
     assert prompt_builder_module._normalize_plain_prompt_feedback(None) is None
-    request = build_implementation_prompt_request(
+    request = _prompt_builder().build_implementation_prompt_request(
         feature=feature,
         feature_path=feature_path,
         feedback=None,
@@ -301,7 +254,7 @@ def test_prompt_builder_private_helpers_cover_progress_fallback_paths(
         encoding="utf-8",
     )
 
-    request = build_implementation_prompt_request(
+    request = _prompt_builder().build_implementation_prompt_request(
         feature=feature,
         feature_path=feature_path,
         feedback=None,
@@ -414,7 +367,7 @@ def test_default_prompt_builder_prefers_repo_local_templates(
     feature_path.parent.mkdir(parents=True)
     feature_path.write_text("id: FEAT-101\n", encoding="utf-8")
 
-    prompt = DefaultPromptBuilder(
+    prompt = PromptBuilder(
         FilesystemPromptDefinitionRepository(prompts_root)
     ).build_implementation_prompt(
         ImplementationPromptRequest(
@@ -477,7 +430,7 @@ def test_loop_runtime_prompt_request_ignores_legacy_subtasks_for_application(
     _, feature_path = make_project_root(tmp_path, feature_data=feature_data)
     feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
 
-    request = build_implementation_prompt_request(
+    request = _prompt_builder().build_implementation_prompt_request(
         feature=feature,
         feature_path=feature_path,
         feedback=None,

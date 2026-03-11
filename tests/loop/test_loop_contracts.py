@@ -1069,6 +1069,30 @@ def test_run_implement_step_uses_injected_prompt_builder(tmp_path: Path) -> None
     recorded_requests: list[ImplementationPromptRequest] = []
 
     class _PromptBuilder:
+        def build_implementation_prompt_request(
+            self,
+            *,
+            feature: dict[str, object],
+            feature_path: Path,
+            feedback: str | None,
+            handoff_path: str | None = None,
+        ) -> ImplementationPromptRequest:
+            assert feature_path == inputs.feature_path
+            assert feedback is None
+            return ImplementationPromptRequest(
+                feature=ImplementationPromptFeature(
+                    feature_id="FEAT-900",
+                    title="Prompt seam",
+                    objective="",
+                    context="",
+                ),
+                artifacts=PromptArtifactPaths(specification=inputs.feature_path),
+                handoff_path=handoff_path,
+                feedback=feedback,
+                progress_kind="feature",
+                current_progress="FEAT-900 - Prompt seam",
+            )
+
         def build_implementation_prompt(
             self, request: ImplementationPromptRequest
         ) -> str:
@@ -1149,6 +1173,33 @@ def test_run_implement_step_passes_handoff_path_only_when_persisted(
     recorded_requests: list[ImplementationPromptRequest] = []
 
     class _PromptBuilder:
+        def build_implementation_prompt_request(
+            self,
+            *,
+            feature: dict[str, object],
+            feature_path: Path,
+            feedback: str | None,
+            handoff_path: str | None = None,
+        ) -> ImplementationPromptRequest:
+            assert feature_path == inputs.feature_path
+            assert feedback is None
+            return ImplementationPromptRequest(
+                feature=ImplementationPromptFeature(
+                    feature_id="FEAT-900",
+                    title="Prompt seam",
+                    objective="Pass persisted handoff state into prompt assembly.",
+                    context="",
+                ),
+                artifacts=PromptArtifactPaths(
+                    specification=inputs.feature_path,
+                    plan=str(inputs.feature_path.parent / "plan.md"),
+                ),
+                handoff_path=handoff_path,
+                feedback=feedback,
+                progress_kind="phase",
+                current_progress="P1 - Prompt seam",
+            )
+
         def build_implementation_prompt(
             self,
             request: ImplementationPromptRequest,

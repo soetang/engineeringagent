@@ -28,11 +28,43 @@ from .prompt_models import (
 )
 
 
-class DefaultPromptBuilder:
-    """Deterministic prompt builder backed by bundled templates."""
+class PromptBuilder:
+    """Deterministic prompt builder backed by prompt definitions."""
 
     def __init__(self, prompt_definitions: PromptDefinitionRepository) -> None:
         self._prompt_definitions = prompt_definitions
+
+    def build_implementation_prompt_request(
+        self,
+        *,
+        feature: Mapping[str, Any],
+        feature_path: Path,
+        feedback: str | None,
+        handoff_path: str | None = None,
+    ) -> ImplementationPromptRequest:
+        """Resolve explicit application prompt inputs from feature artifacts."""
+
+        feature_payload = dict(feature)
+        raw_progress_kind = feature_progress_kind(feature_path, feature_payload)
+        progress_unit = current_progress_unit(feature_path, feature_payload)
+        progress_kind = _normalize_prompt_progress_kind(raw_progress_kind)
+        current_progress = _current_progress_reference(
+            progress_unit=progress_unit,
+            feature=feature_payload,
+            progress_kind=raw_progress_kind,
+        )
+        return ImplementationPromptRequest(
+            feature=_feature_prompt_context(feature_payload),
+            artifacts=PromptArtifactPaths(
+                specification=feature_path,
+                plan=_resolved_plan_reference(feature_path, feature_payload),
+                research=_resolved_research_reference(feature_path, feature_payload),
+            ),
+            handoff_path=handoff_path,
+            feedback=feedback,
+            progress_kind=progress_kind,
+            current_progress=current_progress,
+        )
 
     def build_implementation_prompt(self, request: ImplementationPromptRequest) -> str:
         """Render the implementation prompt for one iteration."""
@@ -58,107 +90,69 @@ class DefaultPromptBuilder:
                 ),
             }
         )
-        return inject_feedback(
+        return self.inject_feedback(
             prompt,
             request.feedback,
-            prompt_definitions=self._prompt_definitions,
         )
 
+    def build_implementation_prompt_from_feature(
+        self,
+        *,
+        feature: Mapping[str, Any],
+        feature_path: Path,
+        feedback: str | None,
+        handoff_path: str | None = None,
+    ) -> str:
+        """Render the implementation prompt from feature-owned inputs."""
 
-def build_implementation_prompt_request(
-    *,
-    feature: Mapping[str, Any],
-    feature_path: Path,
-    feedback: str | None,
-    handoff_path: str | None = None,
-) -> ImplementationPromptRequest:
-    """Resolve explicit application prompt inputs from feature artifacts."""
+        request = self.build_implementation_prompt_request(
+            feature=feature,
+            feature_path=feature_path,
+            feedback=feedback,
+            handoff_path=handoff_path,
+        )
+        return self.build_implementation_prompt(request)
 
-    feature_payload = dict(feature)
-    raw_progress_kind = feature_progress_kind(feature_path, feature_payload)
-    progress_unit = current_progress_unit(feature_path, feature_payload)
-    progress_kind = _normalize_prompt_progress_kind(raw_progress_kind)
-    current_progress = _current_progress_reference(
-        progress_unit=progress_unit,
-        feature=feature_payload,
-        progress_kind=raw_progress_kind,
-    )
-    return ImplementationPromptRequest(
-        feature=_feature_prompt_context(feature_payload),
-        artifacts=PromptArtifactPaths(
-            specification=feature_path,
-            plan=_resolved_plan_reference(feature_path, feature_payload),
-            research=_resolved_research_reference(feature_path, feature_payload),
-        ),
-        handoff_path=handoff_path,
-        feedback=feedback,
-        progress_kind=progress_kind,
-        current_progress=current_progress,
-    )
+    def build_selector_prompt(
+        self,
+        pending: Sequence[tuple[Path, Mapping[str, Any]]],
+    ) -> str:
+        """Render the selector prompt from deterministic feature summaries."""
 
+        choices = []
+        for feature_path, feature in pending:
+            choices.append(
+                f"- id={feature.get('id')} status={feature.get('status')} "
+                f"priority={feature.get('priority')} path={feature_path}"
+            )
 
-def build_implementation_prompt(
-    *,
-    feature: Mapping[str, Any],
-    feature_path: Path,
-    feedback: str | None,
-    handoff_path: str | None = None,
-    prompt_builder: DefaultPromptBuilder,
-) -> str:
-    """Render the implementation prompt from application-owned inputs."""
-
-    request = build_implementation_prompt_request(
-        feature=feature,
-        feature_path=feature_path,
-        feedback=feedback,
-        handoff_path=handoff_path,
-    )
-    return prompt_builder.build_implementation_prompt(request)
-
-
-def build_selector_prompt(
-    pending: Sequence[tuple[Path, Mapping[str, Any]]],
-    *,
-    prompt_definitions: PromptDefinitionRepository,
-) -> str:
-    """Render the selector prompt from deterministic feature summaries."""
-
-    choices = []
-    for feature_path, feature in pending:
-        choices.append(
-            f"- id={feature.get('id')} status={feature.get('status')} "
-            f"priority={feature.get('priority')} path={feature_path}"
+        selector_definition = self._prompt_definitions.get("loop_selector")
+        return selector_definition.render(
+            {
+                "choices": "\n".join(choices),
+            }
         )
 
-    selector_definition = prompt_definitions.get("loop_selector")
-    return selector_definition.render(
-        {
-            "choices": "\n".join(choices),
-        }
-    )
+    def inject_feedback(
+        self,
+        prompt: str,
+        feedback: str | None,
+    ) -> str:
+        """Append canonical feedback block to a prompt."""
 
+        if not feedback:
+            return prompt
 
-def inject_feedback(
-    prompt: str,
-    feedback: str | None,
-    *,
-    prompt_definitions: PromptDefinitionRepository,
-) -> str:
-    """Append canonical feedback block to a prompt."""
+        normalized_feedback = _normalize_feedback(feedback)
+        if not normalized_feedback:
+            return prompt
 
-    if not feedback:
-        return prompt
-
-    normalized_feedback = _normalize_feedback(feedback)
-    if not normalized_feedback:
-        return prompt
-
-    feedback_definition = prompt_definitions.get("loop_feedback")
-    return prompt + feedback_definition.render(
-        {
-            "feedback": normalized_feedback,
-        }
-    )
+        feedback_definition = self._prompt_definitions.get("loop_feedback")
+        return prompt + feedback_definition.render(
+            {
+                "feedback": normalized_feedback,
+            }
+        )
 
 
 def _resolved_plan_reference(

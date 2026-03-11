@@ -29,16 +29,11 @@ from .validation_service import (
     ValidationService,
 )
 from .prompt_builder import (
-    DefaultPromptBuilder,
-    build_implementation_prompt,
-    build_implementation_prompt_request,
-    build_selector_prompt,
-    inject_feedback,
+    PromptBuilder,
 )
 
 __all__ = [
     "ChecksService",
-    "DefaultPromptBuilder",
     "GuidanceInputError",
     "GuidanceQuery",
     "GuidanceResult",
@@ -49,14 +44,11 @@ __all__ = [
     "ImplementationPromptFeature",
     "ImplementationPromptRequest",
     "PromptArtifactPaths",
+    "PromptBuilder",
     "PromptProgressKind",
     "RunChecksRequest",
     "RunChecksResult",
     "ValidateRepositoryRequest",
     "ValidationResult",
     "ValidationService",
-    "build_implementation_prompt",
-    "build_implementation_prompt_request",
-    "build_selector_prompt",
-    "inject_feedback",
 ]

@@ -14,9 +14,9 @@ from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
 from engineeringagent.application import (
     ChecksService,
-    DefaultPromptBuilder,
     GuidanceService,
     InitWorkspaceService,
+    PromptBuilder,
     ValidationService,
 )
 from engineeringagent.config import resolve_harness_root
@@ -63,6 +63,6 @@ class AppFactory:
             resolve_harness_root(self.project_root) / "prompts"
         )
 
-    def build_prompt_builder(self) -> DefaultPromptBuilder:
+    def build_prompt_builder(self) -> PromptBuilder:
         """Create the default deterministic prompt builder."""
-        return DefaultPromptBuilder(self.build_prompt_definition_repository())
+        return PromptBuilder(self.build_prompt_definition_repository())
