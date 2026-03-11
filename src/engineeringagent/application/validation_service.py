@@ -30,14 +30,6 @@ class ValidationResult(BaseModel):
 class ValidationService:
     """Owns static repository validation."""
 
-    def run(self, request: ValidateRepositoryRequest) -> ValidationResult:
-        """Run one repository validation request."""
-        raise NotImplementedError
-
-
-class DefaultValidationService(ValidationService):
-    """Application validation service backed by the repository validator."""
-
     def __init__(self, validator: RepositoryValidator) -> None:
         self._validator = validator
 

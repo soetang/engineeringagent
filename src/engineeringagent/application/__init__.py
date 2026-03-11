@@ -2,19 +2,16 @@
 
 from .checks_service import (
     ChecksService,
-    DefaultChecksService,
     RunChecksRequest,
     RunChecksResult,
 )
 from .guidance_service import (
-    DefaultGuidanceService,
     GuidanceInputError,
     GuidanceQuery,
     GuidanceResult,
     GuidanceService,
 )
 from .validation_service import (
-    DefaultValidationService,
     ValidateRepositoryRequest,
     ValidationResult,
     ValidationService,
@@ -34,10 +31,7 @@ from .prompt_builder import (
 
 __all__ = [
     "ChecksService",
-    "DefaultChecksService",
-    "DefaultGuidanceService",
     "DefaultPromptBuilder",
-    "DefaultValidationService",
     "GuidanceInputError",
     "GuidanceQuery",
     "GuidanceResult",

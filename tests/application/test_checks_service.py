@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from engineeringagent.application import DefaultChecksService, RunChecksRequest
+from engineeringagent.application import ChecksService, RunChecksRequest
 from engineeringagent.checks.results import ChecksRunResult
 from engineeringagent.checks.contracts import HarnessCheckPhase
 from engineeringagent.checks.strategy_contracts import CheckExecutionRecord
@@ -85,7 +85,7 @@ def test_default_checks_service_runs_single_requested_phase() -> None:
         }
     )
 
-    result = DefaultChecksService(runner).run(_build_request())
+    result = ChecksService(runner).run(_build_request())
 
     assert [request.phase for request in runner.requests] == [
         HarnessCheckPhase.ITERATION_END
@@ -113,7 +113,7 @@ def test_default_checks_service_stops_at_first_failed_phase_in_all_phases_mode()
         }
     )
 
-    result = DefaultChecksService(runner).run(_build_request(all_phases=True))
+    result = ChecksService(runner).run(_build_request(all_phases=True))
 
     assert [request.phase for request in runner.requests] == [
         HarnessCheckPhase.ITERATION_END,
@@ -136,7 +136,7 @@ def test_default_checks_service_rejects_reviewers_without_feature_path() -> None
         ValueError,
         match="feature_path is required when reviewers checks are selected",
     ):
-        DefaultChecksService(
+        ChecksService(
             _FakeChecksRunner(
                 result_by_phase={
                     HarnessCheckPhase.ITERATION_END: _build_result(ok=True)

@@ -209,12 +209,12 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
     _write_module(
         tmp_path,
         "cli/validate.py",
-        "from engineeringagent.application import DefaultValidationService\n",
+        "from engineeringagent.application import ValidationService\n",
     )
     _write_module(
         tmp_path,
         "cli/checks.py",
-        "from engineeringagent.application import DefaultChecksService\n",
+        "from engineeringagent.application import ChecksService\n",
     )
 
     proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
@@ -257,7 +257,7 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
         ),
         (
             "engineeringagent.cli.checks imports blocked dependency "
-            "engineeringagent.application.DefaultChecksService"
+            "engineeringagent.application.ChecksService"
         ),
         (
             "engineeringagent.cli.typer imports blocked dependency "
@@ -265,7 +265,7 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
         ),
         (
             "engineeringagent.cli.validate imports blocked dependency "
-            "engineeringagent.application.DefaultValidationService"
+            "engineeringagent.application.ValidationService"
         ),
         (
             "engineeringagent.ports.checks_runner imports blocked dependency "

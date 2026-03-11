@@ -12,9 +12,6 @@ from engineeringagent.adapters.guidance import PackagedGuidanceTopicRepository
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.application import (
     ChecksService,
-    DefaultChecksService,
-    DefaultGuidanceService,
-    DefaultValidationService,
     GuidanceService,
     ValidationService,
 )
@@ -33,15 +30,15 @@ class AppFactory:
 
     def build_checks_service(self) -> ChecksService:
         """Create the default deterministic checks service."""
-        return DefaultChecksService(RuntimeChecksRunner())
+        return ChecksService(RuntimeChecksRunner())
 
     def build_guidance_service(self) -> GuidanceService:
         """Create the packaged guidance service."""
-        return DefaultGuidanceService(PackagedGuidanceTopicRepository())
+        return GuidanceService(PackagedGuidanceTopicRepository())
 
     def build_validation_service(self) -> ValidationService:
         """Create the default repository validation service."""
-        return DefaultValidationService(ChecksRepositoryValidator())
+        return ValidationService(ChecksRepositoryValidator())
 
     def build_progress_journal(self) -> FilesystemProgressJournal:
         """Create the default filesystem-backed progress journal."""

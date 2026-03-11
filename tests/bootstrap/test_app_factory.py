@@ -8,9 +8,9 @@ from engineeringagent.adapters.checks import (
 )
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.application import (
-    DefaultChecksService,
-    DefaultGuidanceService,
-    DefaultValidationService,
+    ChecksService,
+    GuidanceService,
+    ValidationService,
 )
 from engineeringagent.bootstrap import AppFactory
 
@@ -27,10 +27,10 @@ def test_app_factory_builds_default_application_services(tmp_path: Path) -> None
     factory = AppFactory(tmp_path)
     checks_service = factory.build_checks_service()
 
-    assert isinstance(checks_service, DefaultChecksService)
+    assert isinstance(checks_service, ChecksService)
     assert isinstance(checks_service._checks_runner, RuntimeChecksRunner)
-    assert isinstance(factory.build_guidance_service(), DefaultGuidanceService)
+    assert isinstance(factory.build_guidance_service(), GuidanceService)
     validation_service = factory.build_validation_service()
-    assert isinstance(validation_service, DefaultValidationService)
+    assert isinstance(validation_service, ValidationService)
     assert isinstance(validation_service._validator, ChecksRepositoryValidator)
     assert isinstance(factory.build_progress_journal(), FilesystemProgressJournal)

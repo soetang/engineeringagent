@@ -46,14 +46,14 @@ rules:
       - engineeringagent.checks.reviewers
       - engineeringagent.checks.validate
       - engineeringagent.specs
-      - engineeringagent.application.DefaultChecksService
+      - engineeringagent.application.ChecksService
   - module: engineeringagent.cli.approach
     blocked_dependencies:
       - engineeringagent.adapters
-      - engineeringagent.application.DefaultGuidanceService
+      - engineeringagent.application.GuidanceService
   - module: engineeringagent.cli.validate
     blocked_dependencies:
-      - engineeringagent.application.DefaultValidationService
+      - engineeringagent.application.ValidationService
   - module: engineeringagent.application.checks_service
     blocked_dependencies:
       - engineeringagent.cli

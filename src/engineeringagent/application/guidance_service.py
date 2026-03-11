@@ -35,14 +35,6 @@ class GuidanceInputError(ValueError):
 class GuidanceService:
     """Owns approach topic discovery and rendering."""
 
-    def render(self, query: GuidanceQuery) -> GuidanceResult:
-        """Render one guidance response for the requested query kind."""
-        raise NotImplementedError
-
-
-class DefaultGuidanceService(GuidanceService):
-    """Application guidance service backed by packaged approach docs."""
-
     def __init__(self, topic_repository: GuidanceTopicRepository) -> None:
         self._topic_repository = topic_repository
 

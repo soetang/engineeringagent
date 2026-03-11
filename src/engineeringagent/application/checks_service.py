@@ -43,14 +43,6 @@ class RunChecksResult(BaseModel):
 class ChecksService:
     """Owns deterministic planning and execution of declared checks."""
 
-    def run(self, request: RunChecksRequest) -> RunChecksResult:
-        """Execute one checks request."""
-        raise NotImplementedError
-
-
-class DefaultChecksService(ChecksService):
-    """Default checks application service backed by the checks domain surface."""
-
     _ALL_PHASES_ORDER: tuple[HarnessCheckPhase, ...] = (
         HarnessCheckPhase.ITERATION_END,
         HarnessCheckPhase.FEATURE_DONE,

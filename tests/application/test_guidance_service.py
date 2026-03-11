@@ -5,9 +5,9 @@ import re
 import pytest
 
 from engineeringagent.application import (
-    DefaultGuidanceService,
     GuidanceInputError,
     GuidanceQuery,
+    GuidanceService,
 )
 from engineeringagent.domain.guidance import GuidanceTopic
 from tests.cli.approach_fixture_data import APPROACH_TOPIC_IDS
@@ -63,7 +63,7 @@ def test_default_guidance_service_renders_overview_with_topic_index() -> None:
             ),
         )
     )
-    result = DefaultGuidanceService(repo).render(GuidanceQuery(kind="overview"))
+    result = GuidanceService(repo).render(GuidanceQuery(kind="overview"))
 
     assert result.output_prefix == "approach overview written"
     assert "Available approach topics:" in result.payload
@@ -86,7 +86,7 @@ def test_default_guidance_service_renders_topic_list() -> None:
             for topic_id in APPROACH_TOPIC_IDS
         )
     )
-    result = DefaultGuidanceService(repo).render(GuidanceQuery(kind="list"))
+    result = GuidanceService(repo).render(GuidanceQuery(kind="list"))
 
     assert result.output_prefix == "approach list written"
     assert _parse_approach_topic_ids(result.payload) == APPROACH_TOPIC_IDS
@@ -106,7 +106,7 @@ def test_default_guidance_service_renders_topic_body_without_frontmatter() -> No
             ),
         )
     )
-    result = DefaultGuidanceService(repo).render(
+    result = GuidanceService(repo).render(
         GuidanceQuery(kind="topic", topic_id="spec-writing")
     )
 
@@ -130,7 +130,7 @@ def test_default_guidance_service_rejects_missing_topic_body() -> None:
     )
 
     with pytest.raises(ValueError, match="guidance topic body is missing"):
-        DefaultGuidanceService(repo).render(
+        GuidanceService(repo).render(
             GuidanceQuery(kind="topic", topic_id="spec-writing")
         )
 
@@ -151,12 +151,12 @@ def test_default_guidance_service_rejects_missing_overview_document() -> None:
     )
 
     with pytest.raises(ValueError, match="guidance topic document is missing"):
-        DefaultGuidanceService(repo).render(GuidanceQuery(kind="overview"))
+        GuidanceService(repo).render(GuidanceQuery(kind="overview"))
 
 
 def test_default_guidance_service_rejects_blank_topic_requests() -> None:
     """Blank topic ids are rejected before adapter lookup runs."""
     with pytest.raises(GuidanceInputError):
-        DefaultGuidanceService(_FakeGuidanceRepository(())).render(
+        GuidanceService(_FakeGuidanceRepository(())).render(
             GuidanceQuery(kind="topic", topic_id="  ")
         )
