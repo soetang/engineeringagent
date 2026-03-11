@@ -177,6 +177,31 @@ def test_repo_layer_contracts_rule_blocks_deleted_legacy_checks_service_module(
     ]
 
 
+def test_repo_layer_contracts_rule_blocks_deleted_flat_feature_iteration_service_module(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Fail when the removed flat feature-iteration service module reappears."""
+    legacy_module = (
+        tmp_path
+        / "src"
+        / "engineeringagent"
+        / "application"
+        / "feature_iteration_service.py"
+    )
+    legacy_module.parent.mkdir(parents=True, exist_ok=True)
+    legacy_module.write_text("", encoding="utf-8")
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert payload["rule_id"] == "architecture.repo-layer-contracts"
+    assert payload["violations"] == [
+        "src/engineeringagent/application/feature_iteration_service.py: deleted legacy module path must remain absent"
+    ]
+
+
 def test_repo_layer_contracts_rule_blocks_deleted_guidance_service_package(
     tmp_path: Path,
     repo_root: Path,

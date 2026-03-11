@@ -3,7 +3,22 @@
 from __future__ import annotations
 
 from importlib import import_module
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from .app_factory import AppFactory
+    from .iteration_reporting import (
+        ConsoleObserverDependencies,
+        DefaultObserverDependencies,
+        IterationReportObserver,
+        TelemetryObserverDependencies,
+        build_console_observer,
+        build_default_iteration_report_observers,
+        build_progress_artifact_observer,
+        build_telemetry_observer,
+        publish_iteration_report,
+    )
+    from .runtime_execution import run_loop_controller
 
 __all__ = [
     "AppFactory",
@@ -42,5 +57,7 @@ def __getattr__(name: str) -> Any:
             name,
         )
     if name == "run_loop_controller":
-        return import_module("engineeringagent.bootstrap.runtime_execution").run_loop_controller
+        return import_module(
+            "engineeringagent.bootstrap.runtime_execution"
+        ).run_loop_controller
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

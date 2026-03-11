@@ -5,6 +5,9 @@ from .feature_iteration import (
     CommandTiming,
     CompletionCommitOutcome,
     FeatureIterationInputs,
+    FeatureIterationRequest,
+    FeatureIterationResult,
+    FeatureIterationService,
     GatePhaseOutcome,
     ImplementStepInputs,
     ImplementStepResult,
@@ -17,11 +20,6 @@ from .feature_iteration import (
     PostImplementFeatureOutcome,
     ReviewerPhaseOutcome,
     VerificationPhaseOutcome,
-)
-from .feature_iteration_service import (
-    FeatureIterationRequest,
-    FeatureIterationResult,
-    FeatureIterationService,
 )
 from .guidance_service import (
     GuidanceInputError,

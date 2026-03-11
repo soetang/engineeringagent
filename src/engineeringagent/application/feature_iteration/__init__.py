@@ -1,4 +1,4 @@
-"""Feature-iteration workflow models."""
+"""Feature-iteration workflow contracts and models."""
 
 from .models import (
     CommandTiming,
@@ -17,11 +17,19 @@ from .models import (
     ReviewerPhaseOutcome,
     VerificationPhaseOutcome,
 )
+from .workflow import (
+    FeatureIterationRequest,
+    FeatureIterationResult,
+    FeatureIterationService,
+)
 
 __all__ = [
     "CommandTiming",
     "CompletionCommitOutcome",
     "FeatureIterationInputs",
+    "FeatureIterationRequest",
+    "FeatureIterationResult",
+    "FeatureIterationService",
     "GatePhaseOutcome",
     "ImplementStepInputs",
     "ImplementStepResult",

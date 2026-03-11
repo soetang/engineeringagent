@@ -87,7 +87,7 @@ rules:
       - engineeringagent.adapters
       - engineeringagent.bootstrap
       - engineeringagent.loop_runtime
-  - module: engineeringagent.application.feature_iteration_service
+  - module: engineeringagent.application.feature_iteration.workflow
     blocked_dependencies:
       - engineeringagent.adapters
       - engineeringagent.bootstrap
