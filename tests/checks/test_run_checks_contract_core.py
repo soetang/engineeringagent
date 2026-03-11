@@ -10,12 +10,12 @@ from engineeringagent.changed_paths import ChangedPathsResult
 from engineeringagent.checks import run_checks
 from engineeringagent.checks.api import (
     ChecksRunResult,
-    _RunChecksRequest,
     _call_collect_changed_paths,
     _extract_command_invocation,
     _resolve_changed_paths,
     run_checks as run_checks_impl,
 )
+from engineeringagent.checks.request_normalization import build_run_checks_request
 from engineeringagent.checks.strategy_contracts import (
     CheckDecision,
     CheckExecutionRecord,
@@ -301,20 +301,15 @@ def test_resolve_changed_paths_uses_request_collector_with_base_head(
         calls.append((project_root, base, head))
         return ChangedPathsResult(paths=("src/example.py",), run_all=False, reason=None)
 
-    request = _RunChecksRequest(
+    _, request = build_run_checks_request(
+        tmp_path,
         phase=HarnessCheckPhase.ITERATION_END,
-        ordered_groups=("commands",),
-        check_id=None,
-        feature_path=None,
-        verbose_output=False,
-        base="main",
-        head="feature",
-        run_agent_fn=None,
-        feedback=None,
-        schema_only=False,
-        dry_run=False,
-        collect_changed_paths_fn=_collector,
-        phase_only_policy=False,
+        checks=["commands"],
+        kwargs={
+            "base": "main",
+            "head": "feature",
+            "collect_changed_paths": _collector,
+        },
     )
 
     result = _resolve_changed_paths(tmp_path, request)

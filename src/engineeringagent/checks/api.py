@@ -19,7 +19,7 @@ from engineeringagent.checks.request_normalization import (
     CHECK_GROUP_REVIEWERS,
     CHECK_GROUP_VALIDATE,
     RunChecksKwargs as _RunChecksKwargs,
-    RunChecksRequest as _RunChecksRequest,
+    _NormalizedRunChecksRequest,
     build_run_checks_request,
 )
 from engineeringagent.checks.strategies import (
@@ -41,7 +41,6 @@ from engineeringagent.presentation.presenters.prompt_feedback import (
 __all__ = [
     "ChecksRunResult",
     "run_checks",
-    "_RunChecksRequest",
     "_call_collect_changed_paths",
     "_resolve_changed_paths",
 ]
@@ -91,7 +90,7 @@ def _call_collect_changed_paths(
 
 def _resolve_changed_paths(
     project_root: Path,
-    request: _RunChecksRequest,
+    request: _NormalizedRunChecksRequest,
 ) -> ChangedPathsResult:
     collect_changed_paths_fn = request.collect_changed_paths_fn or collect_changed_paths
     return cast(
@@ -258,7 +257,7 @@ _GROUP_TO_STRATEGY_TYPE = {
 def _build_strategy_registry(
     *,
     doc: Any | None,
-    request: _RunChecksRequest,
+    request: _NormalizedRunChecksRequest,
 ) -> dict[str, CheckStrategy]:
     strategies: list[CheckStrategy] = [
         ValidateCheckStrategy(schema_only=request.schema_only),
@@ -281,7 +280,7 @@ def _append_strategy_result(
     *,
     strategy: CheckStrategy,
     context: CheckContext,
-    request: _RunChecksRequest,
+    request: _NormalizedRunChecksRequest,
     state: _OrchestrationState,
 ) -> tuple[CheckExecutionRecord | None, str | None]:
     strategy_decisions = strategy.plan(context=context)
@@ -310,7 +309,7 @@ def _append_strategy_result(
 def _build_check_context(
     *,
     project_root: Path,
-    request: _RunChecksRequest,
+    request: _NormalizedRunChecksRequest,
 ) -> CheckContext:
     """Build shared checks context from normalized request fields."""
 
@@ -328,7 +327,7 @@ def _build_check_context(
 
 def _ordered_request_strategies(
     *,
-    request: _RunChecksRequest,
+    request: _NormalizedRunChecksRequest,
     strategy_registry: dict[str, CheckStrategy],
 ) -> tuple[CheckStrategy, ...]:
     """Return deterministic strategy order for the selected checks groups."""
@@ -343,7 +342,7 @@ def _execute_with_strategy_orchestration(
     *,
     project_root: Path,
     doc: Any | None,
-    request: _RunChecksRequest,
+    request: _NormalizedRunChecksRequest,
 ) -> ChecksRunResult:
     state = _OrchestrationState()
 

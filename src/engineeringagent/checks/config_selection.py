@@ -11,7 +11,7 @@ from engineeringagent.checks.request_normalization import (
     CHECK_GROUP_FITNESS,
     CHECK_GROUP_REVIEWERS,
     HARNESS_GROUPS,
-    RunChecksRequest,
+    _NormalizedRunChecksRequest,
 )
 from engineeringagent.specs import (
     HarnessCheckCommandDefinition,
@@ -62,7 +62,7 @@ def _filter_doc_to_check_id(
 def load_selected_harness_checks_document(
     project_root: Path,
     *,
-    request: RunChecksRequest,
+    request: _NormalizedRunChecksRequest,
 ) -> tuple[HarnessChecksDocument | None, ChecksConfigSelectionError | None]:
     """Load checks config and apply optional check-id selection."""
     if not needs_harness_checks_document(request.ordered_groups):

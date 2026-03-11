@@ -18,7 +18,7 @@ from engineeringagent.domain.quality import (
     reviewers_group_selected,
 )
 
-class RunChecksRequest(BaseModel):
+class _NormalizedRunChecksRequest(BaseModel):
     """Normalized request consumed by checks orchestration internals."""
 
     model_config = ConfigDict(
@@ -167,7 +167,7 @@ def build_run_checks_request(
     phase: Any,
     checks: list[str] | None,
     kwargs: RunChecksKwargs,
-) -> tuple[Path, RunChecksRequest]:
+) -> tuple[Path, _NormalizedRunChecksRequest]:
     """Build and validate a normalized run request for checks orchestration."""
     root = coerce_project_root(project_root)
     phase_value = coerce_phase(phase)
@@ -211,7 +211,7 @@ def build_run_checks_request(
     if reviewers_group_selected(ordered_groups) and feature_path is None:
         raise ValueError("feature_path is required when reviewers checks are selected")
 
-    request = RunChecksRequest(
+    request = _NormalizedRunChecksRequest(
         phase=phase_value,
         ordered_groups=ordered_groups,
         check_id=check_id,
