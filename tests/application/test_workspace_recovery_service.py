@@ -16,6 +16,7 @@ from engineeringagent.ports import (
     DiffSummary,
     ResetRequest,
     ResetResult,
+    WorktreeStatus,
 )
 
 
@@ -78,6 +79,9 @@ class _FakeVersionControl:
         raise AssertionError((project_root, base_ref, head_ref))
 
     def head_commit(self, project_root: Path) -> str | None:
+        raise AssertionError(project_root)
+
+    def worktree_status(self, project_root: Path) -> WorktreeStatus:
         raise AssertionError(project_root)
 
     def commit(self, request: CommitRequest) -> CommitResult:

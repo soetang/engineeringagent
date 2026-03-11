@@ -36,6 +36,7 @@ from .version_control import (
     ResetResult,
     VersionControlFailure,
     VersionControlGateway,
+    WorktreeStatus,
 )
 
 __all__ = [
@@ -68,4 +69,5 @@ __all__ = [
     "ShellRunner",
     "VersionControlFailure",
     "VersionControlGateway",
+    "WorktreeStatus",
 ]

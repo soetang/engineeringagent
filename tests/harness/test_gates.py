@@ -10,6 +10,7 @@ from engineeringagent.ports import (
     ResetRequest,
     ResetResult,
     VersionControlFailure,
+    WorktreeStatus,
 )
 
 
@@ -42,6 +43,9 @@ class StubVersionControlGateway:
 
     def head_commit(self, project_root: Path) -> str | None:
         return None
+
+    def worktree_status(self, project_root: Path) -> WorktreeStatus:
+        return WorktreeStatus(dirty=False, stdout="", stderr="")
 
     def commit(self, request: CommitRequest) -> CommitResult:
         return CommitResult(

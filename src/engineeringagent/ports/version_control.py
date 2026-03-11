@@ -67,6 +67,16 @@ class DiffSummary(BaseModel):
     summary_text: str
 
 
+class WorktreeStatus(BaseModel):
+    """Stable result envelope for one worktree status query."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    dirty: bool
+    stdout: str
+    stderr: str
+
+
 class VersionControlGateway(Protocol):
     """Provide normalized version-control operations to orchestration code."""
 
@@ -82,6 +92,10 @@ class VersionControlGateway(Protocol):
 
     def head_commit(self, project_root: Path) -> str | None:
         """Return the current short head commit, when available."""
+        raise NotImplementedError
+
+    def worktree_status(self, project_root: Path) -> WorktreeStatus:
+        """Return the current worktree status for precondition checks."""
         raise NotImplementedError
 
     def commit(self, request: CommitRequest) -> CommitResult:

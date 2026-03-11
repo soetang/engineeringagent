@@ -3,8 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, NamedTuple, Sequence
 
-from .adapters.vcs import GitCliVersionControlGateway
-from .adapters.vcs.git_cli import status_porcelain
 from .changed_paths import collect_changed_paths
 from .agents import preflight, run_agent
 from .bootstrap import AppFactory
@@ -58,12 +56,10 @@ from .loop_runtime.observers import (
 from .loop_runtime.telemetry import write_iteration_telemetry
 from .presentation.presenters.terminal import RunOutputPresenter
 from .feature_commit import feature_completion_commit_subject
-from .ports import CommitRequest
+from .ports import CommitRequest, VersionControlFailure, VersionControlGateway
 from .specs import progress_kind_label
 
 __all__ = ["run_loop_controller"]
-
-_VERSION_CONTROL = GitCliVersionControlGateway()
 
 
 def _print_run_all_snapshot_banner(resolved_paths: Sequence[Path]) -> None:
@@ -102,6 +98,10 @@ def _choose_feature_with_selector(
     )
 
 
+def _build_version_control_gateway(project_root: Path) -> VersionControlGateway:
+    return AppFactory(project_root).build_version_control_gateway()
+
+
 def git_head_short(project_root: Path) -> str | None:
     """Return short git HEAD hash for a repository.
 
@@ -111,7 +111,7 @@ def git_head_short(project_root: Path) -> str | None:
     Returns:
         Short commit hash when available, otherwise None.
     """
-    return _VERSION_CONTROL.head_commit(project_root)
+    return _build_version_control_gateway(project_root).head_commit(project_root)
 
 
 def run_implement_step(
@@ -142,7 +142,7 @@ def _commit_feature_completion(
     project_root: Path, feature: dict[str, Any]
 ) -> tuple[bool, str | None, str]:
     message = feature_completion_commit_subject(feature)
-    commit_result = _VERSION_CONTROL.commit(
+    commit_result = _build_version_control_gateway(project_root).commit(
         CommitRequest(
             project_root=project_root,
             message=message,
@@ -437,15 +437,15 @@ def _enforce_worktree_precondition(
     project_root: Path,
     allow_dirty: bool,
 ) -> int | None:
-    proc = status_porcelain(project_root)
-    if proc.returncode != 0:
+    try:
+        status = _build_version_control_gateway(project_root).worktree_status(project_root)
+    except VersionControlFailure:
         reason = "unable to read git status; run inside a git repository"
         print(f"Precondition failed: {reason}")
         print("Hint: run from inside a git repository (try `git init`).")
         return 1
 
-    dirty = bool(proc.stdout.strip())
-    if not dirty:
+    if not status.dirty:
         return None
     if not allow_dirty:
         reason = "working tree must be clean before running automated loop"

@@ -4,17 +4,6 @@ import subprocess
 from pathlib import Path
 
 
-def status_porcelain(project_root: Path) -> subprocess.CompletedProcess[str]:
-    """Return git porcelain status for the repository."""
-    return subprocess.run(
-        ["git", "status", "--porcelain"],
-        cwd=project_root,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-
-
 def ls_files(project_root: Path) -> subprocess.CompletedProcess[str]:
     """Return tracked file list output."""
     return subprocess.run(

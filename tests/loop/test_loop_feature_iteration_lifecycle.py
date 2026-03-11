@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -10,6 +9,7 @@ import yaml
 
 import engineeringagent.loop as loop_module
 from engineeringagent.loop import _enforce_worktree_precondition
+from engineeringagent.ports import WorktreeStatus
 from engineeringagent.loop_runtime.models import ImplementStepResult
 from tests.loop.feature_iteration_support import (
     base_feature,
@@ -18,7 +18,6 @@ from tests.loop.feature_iteration_support import (
     make_project_root,
     move_feature_to_done,
     passing_implement_result,
-    progress_root,
     read_runs,
     run_git,
     run_loop,
@@ -112,23 +111,25 @@ def test_enforce_worktree_precondition_reads_git_status_once(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    calls: list[Path] = []
+    class StubVersionControlGateway:
+        def __init__(self) -> None:
+            self.calls: list[Path] = []
 
-    def fake_status_porcelain(project_root: Path) -> subprocess.CompletedProcess[str]:
-        calls.append(project_root)
-        return subprocess.CompletedProcess(
-            args=["git", "status", "--porcelain"],
-            returncode=0,
-            stdout="",
-            stderr="",
-        )
+        def worktree_status(self, project_root: Path) -> WorktreeStatus:
+            self.calls.append(project_root)
+            return WorktreeStatus(dirty=False, stdout="", stderr="")
 
-    monkeypatch.setattr(loop_module, "status_porcelain", fake_status_porcelain)
+    gateway = StubVersionControlGateway()
+    monkeypatch.setattr(
+        loop_module,
+        "_build_version_control_gateway",
+        lambda _project_root: gateway,
+    )
 
     code = _enforce_worktree_precondition(tmp_path, allow_dirty=False)
 
     assert code is None
-    assert calls == [tmp_path]
+    assert gateway.calls == [tmp_path]
 
 
 def test_run_loop_allows_uncommitted_changes_with_allow_dirty(

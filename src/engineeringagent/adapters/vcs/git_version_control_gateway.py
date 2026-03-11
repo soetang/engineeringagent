@@ -12,6 +12,7 @@ from engineeringagent.ports import (
     ResetRequest,
     ResetResult,
     VersionControlFailure,
+    WorktreeStatus,
 )
 
 
@@ -67,6 +68,25 @@ class GitCliVersionControlGateway:
         if proc.returncode != 0:
             return None
         return (proc.stdout or "").strip() or None
+
+    def worktree_status(self, project_root: Path) -> WorktreeStatus:
+        """Return normalized dirty-state information for the current repository."""
+        proc = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if proc.returncode != 0:
+            detail = (proc.stderr or proc.stdout or "").strip() or "git status failed"
+            raise VersionControlFailure(detail)
+        stdout = proc.stdout or ""
+        return WorktreeStatus(
+            dirty=bool(stdout.strip()),
+            stdout=stdout,
+            stderr=proc.stderr or "",
+        )
 
     def commit(self, request: CommitRequest) -> CommitResult:
         """Stage and commit changes using the deterministic local identity."""

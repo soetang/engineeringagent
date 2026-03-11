@@ -144,6 +144,47 @@ def test_commit_reports_git_add_failure(
     assert result.stderr == "add failed"
 
 
+def test_worktree_status_reports_dirty_state(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Normalize git porcelain output into a deterministic dirty flag."""
+
+    def _run(*args, **kwargs):  # type: ignore[no-untyped-def]
+        return subprocess.CompletedProcess(args[0], 0, " M src/app.py\n", "")
+
+    monkeypatch.setattr(
+        "engineeringagent.adapters.vcs.git_version_control_gateway.subprocess.run",
+        _run,
+        raising=True,
+    )
+
+    result = GitCliVersionControlGateway().worktree_status(tmp_path)
+
+    assert result.dirty is True
+    assert result.stdout == " M src/app.py\n"
+    assert result.stderr == ""
+
+
+def test_worktree_status_raises_on_git_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Surface git status failures through the typed gateway error."""
+
+    def _run(*args, **kwargs):  # type: ignore[no-untyped-def]
+        return subprocess.CompletedProcess(args[0], 128, "", "not a git repository")
+
+    monkeypatch.setattr(
+        "engineeringagent.adapters.vcs.git_version_control_gateway.subprocess.run",
+        _run,
+        raising=True,
+    )
+
+    with pytest.raises(VersionControlFailure, match="not a git repository"):
+        GitCliVersionControlGateway().worktree_status(tmp_path)
+
+
 def test_reset_hard_runs_reset_and_clean_then_reports_head_commit(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
