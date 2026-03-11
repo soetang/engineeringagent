@@ -2,19 +2,12 @@
 
 from __future__ import annotations
 
-from enum import Enum
 from pathlib import Path
-from typing import Mapping, TypeVar
 
 from pydantic import BaseModel, ConfigDict
 
 from engineeringagent.domain.specification.feature_specification import (
-    FeatureArtifacts,
-    FeaturePriority,
     FeatureSpecification,
-    FeatureStatus,
-    FeatureType,
-    PlanningTier,
 )
 from engineeringagent.ports import PromptDefinitionRepository
 
@@ -41,14 +34,13 @@ class PromptBuilder:
     def build_implementation_prompt_request(
         self,
         *,
-        feature: Mapping[str, object] | FeatureSpecification,
+        specification: FeatureSpecification,
         specification_path: Path,
         feedback: str | None,
         handoff_path: str | None = None,
     ) -> ImplementationPromptRequest:
         """Resolve explicit application prompt inputs from feature artifacts."""
 
-        specification = _coerce_feature_specification(feature)
         return ImplementationPromptRequest(
             feature_id=specification.feature_id,
             specification_path=specification_path,
@@ -91,26 +83,8 @@ class PromptBuilder:
         """Render the implementation prompt from typed specification inputs."""
 
         request = self.build_implementation_prompt_request(
-            feature=specification,
+            specification=specification,
             specification_path=specification_path,
-            feedback=feedback,
-            handoff_path=handoff_path,
-        )
-        return self.build_implementation_prompt(request)
-
-    def build_implementation_prompt_from_feature(
-        self,
-        *,
-        feature: Mapping[str, object] | FeatureSpecification,
-        feature_path: Path,
-        feedback: str | None,
-        handoff_path: str | None = None,
-    ) -> str:
-        """Render the implementation prompt from the current feature state."""
-
-        request = self.build_implementation_prompt_request(
-            feature=feature,
-            specification_path=feature_path,
             feedback=feedback,
             handoff_path=handoff_path,
         )
@@ -118,8 +92,7 @@ class PromptBuilder:
 
 
 def _resolved_artifact_reference(
-    specification_path: Path,
-    artifact_reference: str | None,
+    specification_path: Path, artifact_reference: str | None
 ) -> str | None:
     if artifact_reference is None:
         return None
@@ -127,9 +100,6 @@ def _resolved_artifact_reference(
     if not normalized:
         return None
     return str(specification_path.parent / normalized)
-
-
-EnumT = TypeVar("EnumT", bound=Enum)
 
 
 def _normalize_feedback(feedback: str | None) -> str:
@@ -144,108 +114,3 @@ def _normalize_plain_prompt_feedback(value: str | None) -> str | None:
         return None
     normalized = value.strip()
     return normalized or None
-
-
-def _coerce_feature_specification(
-    feature: Mapping[str, object] | FeatureSpecification,
-) -> FeatureSpecification:
-    """Normalize legacy mapping inputs into the canonical specification model."""
-    if isinstance(feature, FeatureSpecification):
-        return feature
-
-    artifacts = feature.get("artifacts")
-    feature_id = _first_non_empty_str(
-        feature,
-        "feature_id",
-        "id",
-        default="unknown-feature",
-    )
-    title = _first_non_empty_str(feature, "title", default=feature_id)
-    return FeatureSpecification(
-        feature_id=feature_id,
-        title=title,
-        feature_type=_coerce_enum(
-            feature.get("feature_type", feature.get("type")),
-            FeatureType,
-            FeatureType.FEATURE,
-        ),
-        expected_commit_subject=_first_non_empty_str(
-            feature,
-            "expected_commit_subject",
-            default="feat: implement unknown-feature",
-        ),
-        planning_tier=_coerce_enum(
-            feature.get("planning_tier"),
-            PlanningTier,
-            PlanningTier.DIRECT,
-        ),
-        status=_coerce_enum(
-            feature.get("status"),
-            FeatureStatus,
-            FeatureStatus.BACKLOG,
-        ),
-        priority=_coerce_enum(
-            feature.get("priority"),
-            FeaturePriority,
-            FeaturePriority.HIGH,
-        ),
-        objective=_first_non_empty_str(feature, "objective", default=title),
-        context=_optional_str(feature.get("context")),
-        constraints=_string_tuple(feature.get("constraints")),
-        implementation_notes=_optional_str(feature.get("implementation_notes")),
-        acceptance=_string_tuple(feature.get("acceptance")),
-        artifacts=_coerce_artifacts(artifacts),
-        updated_at=_optional_str(feature.get("updated_at")),
-    )
-
-
-def _coerce_artifacts(value: object) -> FeatureArtifacts:
-    if not isinstance(value, Mapping):
-        return FeatureArtifacts()
-    return FeatureArtifacts(
-        plan=_optional_str(value.get("plan")),
-        research=_optional_str(value.get("research")),
-        supporting=_string_tuple(value.get("supporting")),
-    )
-
-
-def _optional_str(value: object) -> str | None:
-    if not isinstance(value, str):
-        return None
-    normalized = value.strip()
-    return normalized or None
-
-
-def _first_non_empty_str(
-    values: Mapping[str, object],
-    *keys: str,
-    default: str,
-) -> str:
-    for key in keys:
-        value = _optional_str(values.get(key))
-        if value is not None:
-            return value
-    return default
-
-
-def _string_tuple(value: object) -> tuple[str, ...]:
-    if not isinstance(value, (list, tuple)):
-        return ()
-    return tuple(
-        normalized
-        for item in value
-        if (normalized := _optional_str(item)) is not None
-    )
-
-
-def _coerce_enum(value: object, enum_type: type[EnumT], default: EnumT) -> EnumT:
-    if isinstance(value, enum_type):
-        return value
-    if isinstance(value, str):
-        normalized = value.strip()
-        if normalized:
-            try:
-                return enum_type(normalized)
-            except ValueError:
-                return default
-    return default

@@ -16,7 +16,9 @@ import engineeringagent.loop as loop_module
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
 from engineeringagent.application import PromptBuilder
-from engineeringagent.domain.specification.feature_specification import FeatureSpecification
+from engineeringagent.domain.specification.feature_specification import (
+    FeatureSpecification,
+)
 from engineeringagent.ports import AgentRunRequest, AgentRunner
 from engineeringagent.loop import (
     _drop_completed_feature_from_snapshot,
@@ -40,7 +42,9 @@ from engineeringagent.loop_runtime.run_context import (
 )
 from engineeringagent.loop_runtime.telemetry import write_iteration_telemetry
 from engineeringagent.adapters.progress.handoff import ImplementProgressEnvelope
-from engineeringagent.adapters.progress.handoff import fallback_implement_progress_envelope
+from engineeringagent.adapters.progress.handoff import (
+    fallback_implement_progress_envelope,
+)
 from engineeringagent.adapters.progress import paths as progress_paths
 from engineeringagent.config import resolve_harness_root
 from tests.loop.feature_iteration_support import copy_canonical_prompts
@@ -73,7 +77,9 @@ class _StubAgentRunner(AgentRunner):
 
 def _loop_prompt_builder(project_root: Path) -> PromptBuilder:
     return PromptBuilder(
-        FilesystemPromptDefinitionRepository(resolve_harness_root(project_root) / "prompts")
+        FilesystemPromptDefinitionRepository(
+            resolve_harness_root(project_root) / "prompts"
+        )
     )
 
 
@@ -443,10 +449,10 @@ def test_run_implement_step_from_inputs_accepts_structured_envelope_output(
         inputs,
         agent_runner=_StubAgentRunner(
             ImplementProgressEnvelope(
-            summary="done",
-            completed_work=["a"],
-            verification=["b"],
-            remaining_work=["c"],
+                summary="done",
+                completed_work=["a"],
+                verification=["b"],
+                remaining_work=["c"],
             )
         ),
         prompt_builder=_loop_prompt_builder(inputs.project_root),
@@ -635,7 +641,12 @@ def test_run_implement_step_from_inputs_preserves_feature_context_in_fallback_en
 ) -> None:
     project_root = tmp_path
     feature_path = (
-        project_root / "docs" / "spec" / "features" / "FEAT-998-direct-bundled" / "spec.yaml"
+        project_root
+        / "docs"
+        / "spec"
+        / "features"
+        / "FEAT-998-direct-bundled"
+        / "spec.yaml"
     )
     feature_path.parent.mkdir(parents=True, exist_ok=True)
     feature_data = {
@@ -651,7 +662,9 @@ def test_run_implement_step_from_inputs_preserves_feature_context_in_fallback_en
         "artifacts": {},
         "updated_at": "2026-03-09T00:00:00Z",
     }
-    feature_path.write_text(yaml.safe_dump(feature_data, sort_keys=False), encoding="utf-8")
+    feature_path.write_text(
+        yaml.safe_dump(feature_data, sort_keys=False), encoding="utf-8"
+    )
     inputs = ImplementStepInputs(
         project_root=project_root,
         feature=feature_data,
@@ -1061,9 +1074,7 @@ def test_feedback_contract_accepts_verification_failure(tmp_path: Path) -> None:
     )
 
     run = json.loads(
-        (
-            _progress_root(tmp_path) / "runs" / "runs.jsonl"
-        ).read_text(encoding="utf-8")
+        (_progress_root(tmp_path) / "runs" / "runs.jsonl").read_text(encoding="utf-8")
     )
     assert run["verification_status"] == "failed:uv run pytest -q"
     assert run["verification_failed_command"] == "uv run pytest -q"
@@ -1096,20 +1107,20 @@ def test_run_implement_step_uses_injected_prompt_builder(tmp_path: Path) -> None
     recorded_calls: list[dict[str, object]] = []
 
     class _PromptBuilder:
-        def build_implementation_prompt_from_feature(
+        def build_implementation_prompt_from_specification(
             self,
             *,
-            feature: dict[str, Any] | FeatureSpecification,
-            feature_path: Path,
+            specification: FeatureSpecification,
+            specification_path: Path,
             feedback: str | None,
             handoff_path: str | None = None,
         ) -> str:
-            assert feature_path == inputs.feature_path
+            assert specification_path == inputs.feature_path
             assert feedback is None
             recorded_calls.append(
                 {
-                    "feature": feature,
-                    "feature_path": feature_path,
+                    "feature_id": specification.feature_id,
+                    "specification_path": specification_path,
                     "feedback": feedback,
                     "handoff_path": handoff_path,
                 }
@@ -1135,8 +1146,8 @@ def test_run_implement_step_uses_injected_prompt_builder(tmp_path: Path) -> None
     ]
     assert recorded_calls == [
         {
-            "feature": inputs.feature,
-            "feature_path": inputs.feature_path,
+            "feature_id": "FEAT-900",
+            "specification_path": inputs.feature_path,
             "feedback": None,
             "handoff_path": None,
         }
@@ -1177,27 +1188,32 @@ def test_run_implement_step_passes_handoff_path_only_when_persisted(
         verbose_output=False,
     )
     handoff_path = (
-        tmp_path / ".engineeringagent" / "progress" / "features" / "FEAT-900" / "handoff.md"
+        tmp_path
+        / ".engineeringagent"
+        / "progress"
+        / "features"
+        / "FEAT-900"
+        / "handoff.md"
     )
     handoff_path.parent.mkdir(parents=True, exist_ok=True)
     handoff_path.write_text("# Handoff\n", encoding="utf-8")
     recorded_calls: list[dict[str, object]] = []
 
     class _PromptBuilder:
-        def build_implementation_prompt_from_feature(
+        def build_implementation_prompt_from_specification(
             self,
             *,
-            feature: dict[str, Any] | FeatureSpecification,
-            feature_path: Path,
+            specification: FeatureSpecification,
+            specification_path: Path,
             feedback: str | None,
             handoff_path: str | None = None,
         ) -> str:
-            assert feature_path == inputs.feature_path
+            assert specification_path == inputs.feature_path
             assert feedback is None
             recorded_calls.append(
                 {
-                    "feature": feature,
-                    "feature_path": feature_path,
+                    "feature_id": specification.feature_id,
+                    "specification_path": specification_path,
                     "feedback": feedback,
                     "handoff_path": handoff_path,
                 }
@@ -1223,8 +1239,8 @@ def test_run_implement_step_passes_handoff_path_only_when_persisted(
     ]
     assert recorded_calls == [
         {
-            "feature": inputs.feature,
-            "feature_path": inputs.feature_path,
+            "feature_id": "FEAT-900",
+            "specification_path": inputs.feature_path,
             "feedback": None,
             "handoff_path": ".engineeringagent/progress/features/FEAT-900/handoff.md",
         }
@@ -1254,7 +1270,9 @@ def test_run_implement_step_preserves_non_repo_handoff_path_reference(
             "status": "in_progress",
             "source_spec": "spec.yaml",
             "planning_tier": "planned",
-            "phases": [{"id": "P1", "title": "External handoff seam", "status": "in_progress"}],
+            "phases": [
+                {"id": "P1", "title": "External handoff seam", "status": "in_progress"}
+            ],
         },
     )
     inputs = ImplementStepInputs(
@@ -1264,22 +1282,24 @@ def test_run_implement_step_preserves_non_repo_handoff_path_reference(
         feedback=None,
         verbose_output=False,
     )
-    external_handoff_path = tmp_path.parent / "external-progress" / "FEAT-901" / "handoff.md"
+    external_handoff_path = (
+        tmp_path.parent / "external-progress" / "FEAT-901" / "handoff.md"
+    )
     recorded_calls: list[dict[str, object]] = []
 
     class _PromptBuilder:
-        def build_implementation_prompt_from_feature(
+        def build_implementation_prompt_from_specification(
             self,
             *,
-            feature: dict[str, Any] | FeatureSpecification,
-            feature_path: Path,
+            specification: FeatureSpecification,
+            specification_path: Path,
             feedback: str | None,
             handoff_path: str | None = None,
         ) -> str:
             recorded_calls.append(
                 {
-                    "feature": feature,
-                    "feature_path": feature_path,
+                    "feature_id": specification.feature_id,
+                    "specification_path": specification_path,
                     "feedback": feedback,
                     "handoff_path": handoff_path,
                 }
@@ -1320,7 +1340,9 @@ def test_run_implement_step_preserves_non_repo_handoff_path_reference(
             feature_id: str,
             payload: dict[str, Any],
         ) -> None:
-            raise AssertionError("write_iteration_report should not be called in this test")
+            raise AssertionError(
+                "write_iteration_report should not be called in this test"
+            )
 
         def write_handoff(
             self,
@@ -1343,8 +1365,8 @@ def test_run_implement_step_preserves_non_repo_handoff_path_reference(
     assert result[0] is True
     assert recorded_calls == [
         {
-            "feature": inputs.feature,
-            "feature_path": inputs.feature_path,
+            "feature_id": "FEAT-901",
+            "specification_path": inputs.feature_path,
             "feedback": None,
             "handoff_path": str(external_handoff_path),
         }

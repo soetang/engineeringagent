@@ -4,8 +4,6 @@ import importlib.util
 from pathlib import Path
 from types import ModuleType
 
-import yaml
-
 import engineeringagent.application.prompt_builder as prompt_builder_module
 from engineeringagent.application import (
     ImplementationPromptRequest,
@@ -19,10 +17,6 @@ from engineeringagent.domain.specification import (
     FeatureStatus,
     FeatureType,
     PlanningTier,
-)
-from tests.loop.feature_iteration_support import (
-    base_feature,
-    make_project_root,
 )
 
 
@@ -64,7 +58,9 @@ def _load_prompt_definition(prompt_path: Path) -> PromptDefinition:
     return _prompt_definition_from_module(module, prompt_path.stem)
 
 
-def _prompt_definition_from_module(module: ModuleType, prompt_id: str) -> PromptDefinition:
+def _prompt_definition_from_module(
+    module: ModuleType, prompt_id: str
+) -> PromptDefinition:
     definition = getattr(module, "PROMPT_DEFINITION", None)
     if not isinstance(definition, PromptDefinition):
         raise KeyError(
@@ -93,15 +89,24 @@ def _feature_specification(**overrides: object) -> FeatureSpecification:
     payload.update(overrides)
     return FeatureSpecification(**payload)
 
+
 def test_build_implementation_prompt_request_does_not_invent_handoff_path(
     tmp_path: Path,
 ) -> None:
     """Application prompt requests keep handoff optional until runtime provides one."""
 
-    _, feature_path = make_project_root(tmp_path, feature_data=base_feature())
+    feature_path = (
+        tmp_path
+        / "docs"
+        / "specifications"
+        / "features"
+        / "FEAT-900"
+        / "specification.yaml"
+    )
+    feature_path.parent.mkdir(parents=True, exist_ok=True)
 
     request = _prompt_builder().build_implementation_prompt_request(
-        feature=_feature_specification(),
+        specification=_feature_specification(),
         specification_path=feature_path,
         feedback=None,
     )
@@ -116,19 +121,24 @@ def test_default_prompt_builder_renders_artifact_path_prompt(
     """The default implementation prompt should render canonical artifact paths."""
 
     feature_path = (
-        tmp_path / "docs" / "spec" / "features" / "FEAT-900-bundled-smoke-test" / "spec.yaml"
+        tmp_path
+        / "docs"
+        / "specifications"
+        / "features"
+        / "FEAT-900-bundled-smoke-test"
+        / "specification.yaml"
     )
     feature_path.parent.mkdir(parents=True, exist_ok=True)
-    feature = {
-        **base_feature(status="in_progress"),
-        "planning_tier": "researched",
-        "artifacts": {"plan": "plan.md", "research": "research.md"},
-    }
-    feature_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding="utf-8")
+    specification = _feature_specification(
+        feature_id="FEAT-900-bundled-smoke-test",
+        status=FeatureStatus.IN_PROGRESS,
+        planning_tier=PlanningTier.RESEARCHED,
+        artifacts=FeatureArtifacts(plan="plan.md", research="research.md"),
+    )
 
     prompt = _prompt_builder().build_implementation_prompt(
         ImplementationPromptRequest(
-            feature_id=feature["id"],
+            feature_id=specification.feature_id,
             specification_path=feature_path,
             plan_path=str(feature_path.parent / "plan.md"),
             research_path=str(feature_path.parent / "research.md"),
@@ -137,7 +147,7 @@ def test_default_prompt_builder_renders_artifact_path_prompt(
         )
     )
 
-    assert f"Feature: {feature['id']}" in prompt
+    assert f"Feature: {specification.feature_id}" in prompt
     assert f"- specification: {feature_path}" in prompt
     assert f"- plan: {feature_path.parent / 'plan.md'}" in prompt
     assert f"- research: {feature_path.parent / 'research.md'}" in prompt
@@ -151,8 +161,15 @@ def test_default_prompt_builder_omits_optional_lines_without_values(
 ) -> None:
     """The default implementation prompt should omit empty optional fields."""
 
-    feature_data = base_feature()
-    _, feature_path = make_project_root(tmp_path, feature_data=feature_data)
+    feature_path = (
+        tmp_path
+        / "docs"
+        / "specifications"
+        / "features"
+        / "FEAT-900"
+        / "specification.yaml"
+    )
+    feature_path.parent.mkdir(parents=True, exist_ok=True)
 
     prompt = _prompt_builder().build_implementation_prompt(
         ImplementationPromptRequest(
@@ -168,38 +185,24 @@ def test_default_prompt_builder_omits_optional_lines_without_values(
     assert "Retry feedback:" not in prompt
 
 
-def test_build_implementation_prompt_from_feature_includes_handoff_path(
-    tmp_path: Path,
-) -> None:
-    """Feature-based prompt rendering should inject the resolved handoff path directly."""
-
-    feature_path = (
-        tmp_path / "docs" / "spec" / "features" / "FEAT-901-feature-prompt" / "spec.yaml"
-    )
-    feature_path.parent.mkdir(parents=True, exist_ok=True)
-
-    prompt = _prompt_builder().build_implementation_prompt_from_feature(
-        feature=_feature_specification(feature_id="FEAT-901"),
-        feature_path=feature_path,
-        feedback="retry with the persisted handoff",
-        handoff_path=".engineeringagent/progress/features/FEAT-901/handoff.md",
-    )
-
-    assert f"- specification: {feature_path}" in prompt
-    assert "- handoff: .engineeringagent/progress/features/FEAT-901/handoff.md" in prompt
-    assert "retry with the persisted handoff" in prompt
-
-
 def test_prompt_builder_private_helpers_cover_invalid_and_blank_inputs(
     tmp_path: Path,
 ) -> None:
     """Prompt requests stay deterministic for blank bundled artifact references."""
 
-    _, feature_path = make_project_root(tmp_path, feature_data=base_feature())
+    feature_path = (
+        tmp_path
+        / "docs"
+        / "specifications"
+        / "features"
+        / "FEAT-900"
+        / "specification.yaml"
+    )
+    feature_path.parent.mkdir(parents=True, exist_ok=True)
 
     assert prompt_builder_module._normalize_plain_prompt_feedback(None) is None
     request = _prompt_builder().build_implementation_prompt_request(
-        feature=_feature_specification(
+        specification=_feature_specification(
             artifacts=FeatureArtifacts(plan="   ", research=""),
         ),
         specification_path=feature_path,
