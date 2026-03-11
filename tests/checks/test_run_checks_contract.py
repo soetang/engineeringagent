@@ -93,9 +93,7 @@ def test_cli_and_loop_modules_do_not_depend_on_specs_for_harness_check_phase() -
     repo_root = Path(__file__).resolve().parents[2]
     module_paths = (
         repo_root / "src/engineeringagent/cli/__init__.py",
-        repo_root / "src/engineeringagent/cli/app.py",
-        repo_root / "src/engineeringagent/cli/checks.py",
-        repo_root / "src/engineeringagent/cli/typer.py",
+        repo_root / "src/engineeringagent/cli/__main__.py",
         repo_root / "src/engineeringagent/loop_runtime/phases.py",
     )
 
