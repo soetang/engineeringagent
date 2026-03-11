@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from engineeringagent.adapters.progress import FilesystemProgressJournal
+from engineeringagent.domain.audit import ProgressEvent
 
 
 def test_filesystem_progress_journal_writes_all_progress_artifacts(
@@ -12,9 +13,14 @@ def test_filesystem_progress_journal_writes_all_progress_artifacts(
     """Persist run, feature-log, report, and handoff artifacts through one adapter."""
     journal = FilesystemProgressJournal()
 
-    journal.append_run_record(
+    journal.append(
         project_root=tmp_path,
-        payload={"feature_id": "FEAT-200", "result": "passed"},
+        event=ProgressEvent(
+            timestamp="2026-03-11T00:00:00Z",
+            event_kind="iteration.telemetry",
+            feature_id="FEAT-200",
+            payload={"result": "passed"},
+        ),
     )
     journal.append_feature_log(
         project_root=tmp_path,
@@ -37,7 +43,12 @@ def test_filesystem_progress_journal_writes_all_progress_artifacts(
             tmp_path / ".engineeringagent" / "progress" / "runs" / "runs.jsonl"
         ).read_text(encoding="utf-8")
     )
-    assert runs_payload == {"feature_id": "FEAT-200", "result": "passed"}
+    assert runs_payload == {
+        "result": "passed",
+        "timestamp": "2026-03-11T00:00:00Z",
+        "event_kind": "iteration.telemetry",
+        "feature_id": "FEAT-200",
+    }
 
     feature_log = (
         tmp_path

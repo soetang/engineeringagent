@@ -5,17 +5,19 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Protocol, Sequence
 
+from engineeringagent.domain.audit import ProgressEvent
+
 
 class ProgressJournal(Protocol):
     """Persist loop progress records behind an application-facing seam."""
 
-    def append_run_record(
+    def append(
         self,
         *,
         project_root: Path,
-        payload: dict[str, Any],
+        event: ProgressEvent,
     ) -> None:
-        """Append one JSONL run record."""
+        """Append one audit event."""
         raise NotImplementedError
 
     def append_feature_log(

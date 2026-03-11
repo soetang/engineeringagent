@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Callable, Sequence
 
 from engineeringagent.adapters.progress import FilesystemProgressJournal
+from engineeringagent.domain.audit import ProgressEvent
 from engineeringagent.progress import handoff as progress_handoff
 from engineeringagent.progress import paths as progress_paths
 
@@ -28,8 +29,19 @@ _PROGRESS_JOURNAL = FilesystemProgressJournal()
 
 
 def append_run(project_root: Path, payload: dict[str, Any]) -> None:
-    """Append one loop telemetry record as JSONL."""
-    _PROGRESS_JOURNAL.append_run_record(project_root=project_root, payload=payload)
+    """Append one loop telemetry audit event as JSONL."""
+    event_timestamp = str(payload.get("ts") or progress_handoff.now_iso())
+    feature_id = payload.get("feature_id")
+    normalized_feature_id = feature_id if isinstance(feature_id, str) else None
+    _PROGRESS_JOURNAL.append(
+        project_root=project_root,
+        event=ProgressEvent(
+            timestamp=event_timestamp,
+            event_kind="iteration.telemetry",
+            feature_id=normalized_feature_id,
+            payload=payload,
+        ),
+    )
 
 
 def _append_feature_progress_log(

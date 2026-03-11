@@ -1,5 +1,6 @@
 """Port contracts for application-facing infrastructure seams."""
 
+from engineeringagent.domain.audit import ProgressEvent
 from engineeringagent.domain.quality import HarnessCheckPhase
 from engineeringagent.domain.quality import ChecksRunResult
 
@@ -60,6 +61,7 @@ __all__ = [
     "ImplementationPromptRequest",
     "InitWorkspaceDependencies",
     "PromptArtifactPaths",
+    "ProgressEvent",
     "ProgressJournal",
     "PromptBuilder",
     "PromptDefinition",

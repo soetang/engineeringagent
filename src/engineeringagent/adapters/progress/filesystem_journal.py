@@ -8,6 +8,7 @@ import logging
 from pathlib import Path
 from typing import Any, Sequence
 
+from engineeringagent.domain.audit import ProgressEvent
 from engineeringagent.progress import paths as progress_paths
 from engineeringagent.ports import ProgressJournal
 
@@ -51,18 +52,18 @@ def _get_or_create_file_logger(*, namespace: str, log_path: Path) -> logging.Log
 class FilesystemProgressJournal(ProgressJournal):
     """Persist loop progress artifacts under the configured progress root."""
 
-    def append_run_record(
+    def append(
         self,
         *,
         project_root: Path,
-        payload: dict[str, Any],
+        event: ProgressEvent,
     ) -> None:
         log_path = progress_paths.runs_jsonl_path(project_root)
         logger = _get_or_create_file_logger(
             namespace="engineeringagent.progress.runs",
             log_path=log_path,
         )
-        logger.info(json.dumps(payload, ensure_ascii=True))
+        logger.info(json.dumps(event.to_log_record(), ensure_ascii=True))
 
     def append_feature_log(
         self,
