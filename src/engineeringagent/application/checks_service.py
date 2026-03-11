@@ -6,8 +6,11 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent import checks as checks_api
-from engineeringagent.domain.quality import ChecksRunResult, HarnessCheckPhase
+from engineeringagent.domain.quality import (
+    ChecksRunResult,
+    HarnessCheckPhase,
+    normalize_check_groups,
+)
 from engineeringagent.ports import (
     ChecksCatalogRepository,
     ChecksRunRequest,
@@ -119,7 +122,7 @@ class ChecksService:
         self,
         request: RunChecksRequest,
     ) -> RunChecksResult | None:
-        selected_groups = checks_api.normalize_groups(
+        selected_groups = normalize_check_groups(
             request.selected_checks,
             phase=request.phase,
         )

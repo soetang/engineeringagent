@@ -12,13 +12,14 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from typing_extensions import Unpack
 
-from .contracts import HarnessCheckPhase
-from .results import ChecksRunResult
-from .request_normalization import (
+from engineeringagent.domain.quality import (
+    HarnessCheckPhase,
     list_check_groups,
-    normalize_groups,
+    normalize_check_groups,
     reviewers_group_selected,
 )
+
+from .results import ChecksRunResult
 
 if TYPE_CHECKING:
     from engineeringagent.specs import HarnessChecksDocument
@@ -43,6 +44,8 @@ __all__ = [
     "run_checks",
     "validate_repository",
 ]
+
+normalize_groups = normalize_check_groups
 
 
 def run_checks(

@@ -36,6 +36,34 @@ def test_application_infrastructure_protocols_live_in_ports() -> None:
     assert not violations, "\n".join(violations)
 
 
+def test_application_modules_do_not_import_checks_runtime_surface() -> None:
+    """Application modules must not depend on the concrete checks package."""
+
+    violations: list[str] = []
+
+    for path in _iter_application_modules():
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom):
+                module = node.module or ""
+                if module == "engineeringagent.checks" or module.startswith(
+                    "engineeringagent.checks."
+                ):
+                    violations.append(
+                        f"{path}:{node.lineno}: move checks dependency to domain or ports from {module}"
+                    )
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    if alias.name == "engineeringagent.checks" or alias.name.startswith(
+                        "engineeringagent.checks."
+                    ):
+                        violations.append(
+                            f"{path}:{node.lineno}: move checks dependency to domain or ports from {alias.name}"
+                        )
+
+    assert not violations, "\n".join(violations)
+
+
 def test_ports_modules_do_not_import_application_modules() -> None:
     """Ports must not depend on application-layer modules."""
 
