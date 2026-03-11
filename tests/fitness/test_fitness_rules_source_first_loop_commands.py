@@ -440,14 +440,14 @@ def test_detects_forbidden_uvx_from_dot_in_workflow_approach_doc(
     assert "src/engineeringagent/approach/docs/workflow.md:line 7" in violations[0]
 
 
-def test_detects_forbidden_uvx_from_dot_in_loop_implementation_prompt_definition(
+def test_detects_forbidden_uvx_from_dot_in_default_implementation_prompt_definition(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
     """Fail when the loop implementation prompt regresses to uvx --from ."""
     path = (
         tmp_path
-        / "harness/prompts/loop_implementation.py"
+        / "harness/prompts/implementation_default.py"
     )
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
@@ -462,7 +462,7 @@ def test_detects_forbidden_uvx_from_dot_in_loop_implementation_prompt_definition
     violations = payload["violations"]
     assert isinstance(violations, list)
     assert len(violations) == 1
-    assert "harness/prompts/loop_implementation.py:line 1" in (
+    assert "harness/prompts/implementation_default.py:line 1" in (
         violations[0]
     )
 
@@ -559,7 +559,7 @@ def test_allows_uv_run_source_first_forms(tmp_path: Path, repo_root: Path) -> No
         _smoke_plan_frontmatter("uv run engineeringagent validate --schema-only"),
     )
     prompt_definition_path = (
-        tmp_path / "harness/prompts/loop_implementation.py"
+        tmp_path / "harness/prompts/implementation_default.py"
     )
     prompt_definition_path.parent.mkdir(parents=True, exist_ok=True)
     prompt_definition_path.write_text(

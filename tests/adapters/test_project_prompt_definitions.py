@@ -42,27 +42,31 @@ def test_filesystem_prompt_definition_repository_lists_python_modules(
     )
     _write_prompt_module(
         prompts_root,
-        "loop_feedback",
+        "implementation_default",
         "from pydantic import BaseModel\n"
         "from engineeringagent.ports import PromptDefinition, PromptInterpolation\n"
-        "class FeedbackInput(BaseModel):\n"
-        "    feedback: str\n"
+        "class ImplementationInput(BaseModel):\n"
+        "    feature_id: str\n"
+        "    specification_path: str\n"
         "PROMPT_DEFINITION = PromptDefinition(\n"
-        "    prompt_id='loop_feedback',\n"
-        "    purpose='feedback',\n"
+        "    prompt_id='implementation_default',\n"
+        "    purpose='implementation',\n"
         "    target='implementation',\n"
-        "    output_mode='text',\n"
+        "    output_mode='structured',\n"
         "    token_budget_hint=100,\n"
-        "    input_model=FeedbackInput,\n"
-        "    body_template='feedback: $feedback',\n"
-        "    interpolations=(PromptInterpolation(\n"
-        "        name='feedback', source='test', required=True, rationale='test'),),\n"
+        "    input_model=ImplementationInput,\n"
+        "    output_model=ImplementationInput,\n"
+        "    body_template='implementation: $feature_id $specification_path',\n"
+        "    interpolations=(\n"
+        "        PromptInterpolation(name='feature_id', source='test', required=True, rationale='test'),\n"
+        "        PromptInterpolation(name='specification_path', source='test', required=True, rationale='test'),\n"
+        "    ),\n"
         ")\n",
     )
 
     repository = FilesystemPromptDefinitionRepository(prompts_root)
 
-    assert repository.list_ids() == ["loop_feedback", "loop_selector"]
+    assert repository.list_ids() == ["implementation_default", "loop_selector"]
 
 
 def test_filesystem_prompt_definition_repository_loads_template_text(

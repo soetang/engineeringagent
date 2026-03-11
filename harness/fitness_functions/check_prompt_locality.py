@@ -19,8 +19,7 @@ _SOURCE_PACKAGE_ROOT = Path("src/engineeringagent")
 _PROMPT_DEFINITION_ROOT = Path("harness/prompts")
 _REQUIRED_PROMPT_DEFINITIONS = (
     "loop_selector.py",
-    "loop_implementation.py",
-    "loop_feedback.py",
+    "implementation_default.py",
 )
 _PROMPT_ALLOWED_ROOT = _PROMPT_DEFINITION_ROOT
 _CANONICAL_PROMPT_BUILDERS = {

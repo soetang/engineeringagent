@@ -1,10 +1,7 @@
 """Application-layer services and contracts."""
 
 from .prompt_models import (
-    ImplementationPromptFeature,
     ImplementationPromptRequest,
-    PromptArtifactPaths,
-    PromptProgressKind,
 )
 
 from .checks_service import (
@@ -51,11 +48,8 @@ __all__ = [
     "InitWorkspaceRequest",
     "InitWorkspaceResult",
     "InitWorkspaceService",
-    "ImplementationPromptFeature",
     "ImplementationPromptRequest",
-    "PromptArtifactPaths",
     "PromptBuilder",
-    "PromptProgressKind",
     "RunLoopRequest",
     "RunLoopResult",
     "RunLoopService",

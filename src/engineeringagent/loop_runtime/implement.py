@@ -246,7 +246,7 @@ def _build_implement_prompt(
     )
     persisted_handoff_path = progress_journal.latest_handoff_path(
         project_root=implement_inputs.project_root,
-        feature_id=request.feature.feature_id,
+        feature_id=request.feature_id,
     )
     if persisted_handoff_path is not None:
         request = request.model_copy(

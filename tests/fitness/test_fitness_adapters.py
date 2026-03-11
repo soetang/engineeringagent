@@ -48,10 +48,7 @@ def _write_prompt_definitions(project_root: Path) -> None:
     (definition_root / "loop_selector.py").write_text(
         "PROMPT_DEFINITION = object()\n", encoding="utf-8"
     )
-    (definition_root / "loop_implementation.py").write_text(
-        "PROMPT_DEFINITION = object()\n", encoding="utf-8"
-    )
-    (definition_root / "loop_feedback.py").write_text(
+    (definition_root / "implementation_default.py").write_text(
         "PROMPT_DEFINITION = object()\n", encoding="utf-8"
     )
 

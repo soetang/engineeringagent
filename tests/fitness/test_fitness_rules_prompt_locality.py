@@ -23,10 +23,7 @@ def _write_prompt_definitions(project_root: Path) -> None:
     (definitions_root / "loop_selector.py").write_text(
         "PROMPT_DEFINITION = object()\n", encoding="utf-8"
     )
-    (definitions_root / "loop_implementation.py").write_text(
-        "PROMPT_DEFINITION = object()\n", encoding="utf-8"
-    )
-    (definitions_root / "loop_feedback.py").write_text(
+    (definitions_root / "implementation_default.py").write_text(
         "PROMPT_DEFINITION = object()\n", encoding="utf-8"
     )
 
@@ -93,7 +90,7 @@ def test_prompt_locality_rule_fails_when_required_definition_is_empty(
         tmp_path
         / "harness"
         / "prompts"
-        / "loop_feedback.py"
+        / "implementation_default.py"
     )
     feedback_template.write_text(" \n\t\n", encoding="utf-8")
 
@@ -103,8 +100,8 @@ def test_prompt_locality_rule_fails_when_required_definition_is_empty(
     assert proc.returncode == 0
     assert result["status"] == "fail"
     assert any(
-        "loop_feedback.py:1 required prompt definition "
-        "'loop_feedback.py' is empty" in violation
+        "implementation_default.py:1 required prompt definition "
+        "'implementation_default.py' is empty" in violation
         for violation in violations
     )
 

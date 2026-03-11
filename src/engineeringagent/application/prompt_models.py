@@ -3,33 +3,8 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
-
-
-class PromptArtifactPaths(BaseModel):
-    """Explicit prompt artifact references resolved before rendering."""
-
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-    specification: Path
-    plan: str | None = None
-    research: str | None = None
-
-
-PromptProgressKind = Literal["phase", "feature"]
-
-
-class ImplementationPromptFeature(BaseModel):
-    """Explicit feature fields allowed into the implementation prompt."""
-
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-    feature_id: str
-    title: str = ""
-    objective: str = ""
-    context: str = ""
 
 
 class ImplementationPromptRequest(BaseModel):
@@ -37,9 +12,9 @@ class ImplementationPromptRequest(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    feature: ImplementationPromptFeature
-    artifacts: PromptArtifactPaths
-    handoff_path: str | None
-    feedback: str | None
-    progress_kind: PromptProgressKind
-    current_progress: str | None = None
+    feature_id: str
+    specification_path: Path
+    plan_path: str | None = None
+    research_path: str | None = None
+    handoff_path: str | None = None
+    retry_feedback: str | None = None

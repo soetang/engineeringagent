@@ -5,26 +5,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-from pydantic import ValidationError
-
 from engineeringagent.domain.specification import (
-    current_progress_unit,
-    feature_progress_reference,
-    feature_progress_kind,
     resolve_feature_plan_path,
     resolve_feature_research_path,
-)
-from engineeringagent.domain.quality import (
-    parse_feedback_envelope,
-    serialize_feedback_envelope,
 )
 from engineeringagent.ports import PromptDefinitionRepository
 
 from .prompt_models import (
-    ImplementationPromptFeature,
     ImplementationPromptRequest,
-    PromptArtifactPaths,
-    PromptProgressKind,
 )
 
 
@@ -45,54 +33,29 @@ class PromptBuilder:
         """Resolve explicit application prompt inputs from feature artifacts."""
 
         feature_payload = dict(feature)
-        raw_progress_kind = feature_progress_kind(feature_path, feature_payload)
-        progress_unit = current_progress_unit(feature_path, feature_payload)
-        progress_kind = _normalize_prompt_progress_kind(raw_progress_kind)
-        current_progress = _current_progress_reference(
-            progress_unit=progress_unit,
-            feature=feature_payload,
-            progress_kind=raw_progress_kind,
-        )
         return ImplementationPromptRequest(
-            feature=_feature_prompt_context(feature_payload),
-            artifacts=PromptArtifactPaths(
-                specification=feature_path,
-                plan=_resolved_plan_reference(feature_path, feature_payload),
-                research=_resolved_research_reference(feature_path, feature_payload),
-            ),
+            feature_id=_feature_id(feature_payload),
+            specification_path=feature_path,
+            plan_path=_resolved_plan_reference(feature_path, feature_payload),
+            research_path=_resolved_research_reference(feature_path, feature_payload),
             handoff_path=handoff_path,
-            feedback=feedback,
-            progress_kind=progress_kind,
-            current_progress=current_progress,
+            retry_feedback=_normalize_plain_prompt_feedback(feedback),
         )
 
     def build_implementation_prompt(self, request: ImplementationPromptRequest) -> str:
         """Render the implementation prompt for one iteration."""
         implementation_definition = self._prompt_definitions.get(
-            "loop_implementation"
+            "implementation_default"
         )
-        prompt = implementation_definition.render(
+        return implementation_definition.render(
             {
-                "feature_id": request.feature.feature_id,
-                "feature_title": request.feature.title,
-                "objective": request.feature.objective,
-                "context": request.feature.context,
-                "artifact_paths": _artifact_paths_prompt_block(request),
+                "feature_id": request.feature_id,
+                "specification_path": str(request.specification_path),
+                "plan_path": request.plan_path or "",
+                "research_path": request.research_path or "",
                 "handoff_path": request.handoff_path or "",
-                "progress_unit": _progress_unit_prompt_label(request.progress_kind),
-                "current_progress_reference": _current_progress_reference_line(
-                    request.progress_kind,
-                    request.current_progress,
-                ),
-                "progress_context_instruction": _progress_context_instruction(),
-                "progress_update_instruction": _progress_update_instruction(
-                    request.progress_kind
-                ),
+                "retry_feedback": _normalize_feedback(request.retry_feedback),
             }
-        )
-        return self.inject_feedback(
-            prompt,
-            request.feedback,
         )
 
     def build_implementation_prompt_from_feature(
@@ -133,27 +96,6 @@ class PromptBuilder:
             }
         )
 
-    def inject_feedback(
-        self,
-        prompt: str,
-        feedback: str | None,
-    ) -> str:
-        """Append canonical feedback block to a prompt."""
-
-        if not feedback:
-            return prompt
-
-        normalized_feedback = _normalize_feedback(feedback)
-        if not normalized_feedback:
-            return prompt
-
-        feedback_definition = self._prompt_definitions.get("loop_feedback")
-        return prompt + feedback_definition.render(
-            {
-                "feedback": normalized_feedback,
-            }
-        )
-
 
 def _resolved_plan_reference(
     feature_path: Path,
@@ -175,16 +117,10 @@ def _resolved_research_reference(
     return str(artifact_path)
 
 
-def _normalize_feedback(feedback: str) -> str:
+def _normalize_feedback(feedback: str | None) -> str:
     """Normalize feedback for prompt injection."""
-
-    try:
-        envelope = parse_feedback_envelope(feedback)
-    except ValidationError:
-        normalized = _normalize_plain_prompt_feedback(feedback)
-        return normalized or ""
-
-    return serialize_feedback_envelope(envelope)
+    normalized = _normalize_plain_prompt_feedback(feedback)
+    return normalized or ""
 
 
 def _normalize_plain_prompt_feedback(value: str | None) -> str | None:
@@ -194,112 +130,8 @@ def _normalize_plain_prompt_feedback(value: str | None) -> str | None:
     return normalized or None
 
 
-def _feature_prompt_context(
-    feature: Mapping[str, Any],
-) -> ImplementationPromptFeature:
-    return ImplementationPromptFeature(
-        feature_id=_string_field(feature, "id", fallback="unknown-feature"),
-        title=_string_field(feature, "title"),
-        objective=_string_field(feature, "objective"),
-        context=_string_field(feature, "context"),
-    )
-
-
-def _current_progress_reference(
-    *,
-    progress_unit: object,
-    feature: Mapping[str, Any],
-    progress_kind: str,
-) -> str | None:
-    unit_id = getattr(progress_unit, "id", None)
-    if isinstance(unit_id, str) and unit_id.strip():
-        title = getattr(progress_unit, "title", None)
-        if isinstance(title, str) and title.strip():
-            return f"{unit_id} - {title}"
-        return unit_id
-
-    if progress_kind != "feature":
-        return None
-
-    progress_id, progress_title = feature_progress_reference(dict(feature))
-    if progress_id is None:
-        return None
-    if progress_title:
-        return f"{progress_id} - {progress_title}"
-    return progress_id
-
-
-def _artifact_paths_prompt_block(request: ImplementationPromptRequest) -> str:
-    lines = [
-        "Read and follow these files:",
-        f"- specification: {request.artifacts.specification}",
-    ]
-    if request.artifacts.plan:
-        lines.append(f"- plan: {request.artifacts.plan}")
-    if request.artifacts.research:
-        lines.append(f"- research: {request.artifacts.research}")
-    return "\n".join(lines)
-
-
-def _progress_update_instruction(progress_kind: str) -> str:
-    if progress_kind == "phase":
-        return (
-            "Update progress in the bundled feature package, including "
-            "`plan.md` by setting relevant phase status fields, `spec.yaml` "
-            "feature status fields, and `updated_at`."
-        )
-    if progress_kind == "feature":
-        return (
-            "Update progress in the bundled feature package by setting "
-            "`spec.yaml` feature status fields and `updated_at`."
-        )
-    return (
-        "Update progress in the bundled feature package by setting "
-        "`spec.yaml` feature status fields and `updated_at`."
-    )
-
-
-def _progress_context_instruction() -> str:
-    return (
-        "Treat this bundled feature package as canonical: keep lifecycle status "
-        "in `spec.yaml` and sequencing in `plan.md` when present."
-    )
-
-
-def _progress_unit_prompt_label(progress_kind: str) -> str:
-    if progress_kind == "phase":
-        return "phase"
-    if progress_kind == "feature":
-        return "implementation step"
-    return "implementation step"
-
-
-def _current_progress_reference_line(
-    progress_kind: str,
-    current_progress: str | None,
-) -> str:
-    if not current_progress:
-        return ""
-
-    return (
-        f"Current {_progress_unit_prompt_label(progress_kind)}: "
-        f"{current_progress}\n"
-    )
-
-
-def _normalize_prompt_progress_kind(progress_kind: str) -> PromptProgressKind:
-    if progress_kind == "phase":
-        return "phase"
-    return "feature"
-
-
-def _string_field(
-    feature: Mapping[str, Any],
-    field_name: str,
-    *,
-    fallback: str = "",
-) -> str:
-    value = feature.get(field_name)
-    if isinstance(value, str):
+def _feature_id(feature: Mapping[str, Any]) -> str:
+    value = feature.get("id")
+    if isinstance(value, str) and value.strip():
         return value
-    return fallback
+    return "unknown-feature"

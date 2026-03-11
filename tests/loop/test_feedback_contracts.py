@@ -14,7 +14,7 @@ from engineeringagent.domain.quality import (
     parse_feedback_envelope,
     serialize_feedback_envelope,
 )
-from engineeringagent.application import PromptBuilder
+from engineeringagent.application import ImplementationPromptRequest, PromptBuilder
 
 _PROMPT_DEFINITIONS = FilesystemPromptDefinitionRepository(
     Path(__file__).resolve().parents[2] / "harness" / "prompts"
@@ -109,7 +109,7 @@ def test_feedback_contract_enforces_failed_rules_cap() -> None:
         parse_feedback_envelope(payload)
 
 
-def test_feedback_injection_does_not_truncate_contract_json() -> None:
+def test_feedback_prompt_render_does_not_truncate_contract_json() -> None:
     payload = {
         "kind": "fitness_failure",
         "phase": "gates",
@@ -132,24 +132,42 @@ def test_feedback_injection_does_not_truncate_contract_json() -> None:
     serialized = serialize_feedback_envelope(envelope)
     assert len(serialized) > 8_000
 
-    injected = _PROMPT_BUILDER.inject_feedback("BASE\n", serialized)
+    injected = _PROMPT_BUILDER.build_implementation_prompt(
+        ImplementationPromptRequest(
+            feature_id="FEAT-900",
+            specification_path=Path("docs/spec/features/FEAT-900/spec.yaml"),
+            retry_feedback=serialized,
+        )
+    )
 
     assert "-TAIL-MARKER" in injected
     assert "...[truncated]" not in injected
 
 
-def test_feedback_injection_accepts_plain_markdown_feedback() -> None:
+def test_feedback_prompt_render_accepts_plain_markdown_feedback() -> None:
     feedback = "Retry guidance from checks runtime"
 
-    injected = _PROMPT_BUILDER.inject_feedback("BASE\n", feedback)
+    injected = _PROMPT_BUILDER.build_implementation_prompt(
+        ImplementationPromptRequest(
+            feature_id="FEAT-900",
+            specification_path=Path("docs/spec/features/FEAT-900/spec.yaml"),
+            retry_feedback=feedback,
+        )
+    )
 
     assert feedback in injected
 
 
-def test_feedback_injection_ignores_blank_plain_feedback() -> None:
-    injected = _PROMPT_BUILDER.inject_feedback("BASE\n", "   \n\t")
+def test_feedback_prompt_render_ignores_blank_plain_feedback() -> None:
+    injected = _PROMPT_BUILDER.build_implementation_prompt(
+        ImplementationPromptRequest(
+            feature_id="FEAT-900",
+            specification_path=Path("docs/spec/features/FEAT-900/spec.yaml"),
+            retry_feedback="   \n\t",
+        )
+    )
 
-    assert injected == "BASE\n"
+    assert "Retry feedback:" not in injected
 
 
 def test_build_reviewer_feedback_normalizes_unknown_decision_to_request_changes(
