@@ -11,7 +11,7 @@ starts with a fresh context. Your progress lives in the code and git.
 
 <!-- Add your project-specific instructions below -->
 Study new_architecture/README.md and ALL files under new_architecture/application/*
-Move the application towards this architecture one step at a time.
+Move the application towards this architecture one step at a time. Removing files and folders that dont follow that structure on the way.
 Make sure to delete old testschemes and files on the way.
 You can change existing fitness functions. The most important is that we get to the enforcements described in the new_architecture
 
