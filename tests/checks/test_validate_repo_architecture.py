@@ -270,10 +270,10 @@ def test_repo_architecture_validator_reports_application_protocol_contracts(
     )
 
 
-def test_repo_architecture_validator_reports_application_service_local_contracts(
+def test_repo_architecture_validator_allows_application_service_local_workflow_models(
     tmp_path: Path,
 ) -> None:
-    """Application services must keep workflow models in application contracts modules."""
+    """Application services may colocate workflow models with service behavior."""
 
     _write_port_module(
         tmp_path,
@@ -291,18 +291,7 @@ def test_repo_architecture_validator_reports_application_service_local_contracts
         )
     )
 
-    assert issues == (
-        ValidationIssue(
-            validator_id="repo.architecture",
-            scope="repo",
-            path="src/engineeringagent/application/checks_service.py",
-            message=(
-                "application service modules must keep workflow BaseModel contracts "
-                "under engineeringagent.application.contracts"
-            ),
-            code="repo.architecture.application-service-contract-locality",
-        ),
-    )
+    assert issues == ()
 
 
 def test_repo_architecture_validator_reports_application_importing_checks_modules(

@@ -1,32 +1,35 @@
-"""Application-layer services and contracts."""
+"""Application-layer services and workflow models."""
 
-from .checks_service import ChecksService
-from .contracts import (
+from .checks_service import ChecksService, RunChecksRequest, RunChecksResult
+from .feature_iteration_service import (
     FeatureIterationRequest,
     FeatureIterationResult,
     FeatureIterationRuntime,
+    FeatureIterationService,
+)
+from .guidance_service import (
     GuidanceInputError,
     GuidanceQuery,
     GuidanceResult,
-    ImplementationPromptRequest,
+    GuidanceService,
+)
+from .init_workspace_service import (
     InitWorkspaceRequest,
     InitWorkspaceResult,
-    RecoverWorkspaceRequest,
-    RecoverWorkspaceResult,
-    RunChecksRequest,
-    RunChecksResult,
-    RunLoopRequest,
-    RunLoopResult,
+    InitWorkspaceService,
+)
+from .prompt_builder import ImplementationPromptRequest, PromptBuilder
+from .run_loop_service import RunLoopRequest, RunLoopResult, RunLoopService
+from .validation_service import (
     ValidateRepositoryRequest,
     ValidationResult,
+    ValidationService,
 )
-from .feature_iteration_service import FeatureIterationService
-from .guidance_service import GuidanceService
-from .init_workspace_service import InitWorkspaceService
-from .prompt_builder import PromptBuilder
-from .run_loop_service import RunLoopService
-from .validation_service import ValidationService
-from .workspace_recovery_service import WorkspaceRecoveryService
+from .workspace_recovery_service import (
+    RecoverWorkspaceRequest,
+    RecoverWorkspaceResult,
+    WorkspaceRecoveryService,
+)
 
 __all__ = [
     "ChecksService",

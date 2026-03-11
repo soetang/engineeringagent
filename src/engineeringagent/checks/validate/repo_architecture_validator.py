@@ -128,19 +128,6 @@ def _application_module_issues(
         return (module,)
 
     issues: list[ValidationIssue] = []
-    if _is_application_service_module(module_path) and _module_declares_base_model(module):
-        issues.append(
-            ValidationIssue(
-                validator_id="repo.architecture",
-                scope="repo",
-                path=rel_path,
-                message=(
-                    "application service modules must keep workflow BaseModel contracts "
-                    "under engineeringagent.application.contracts"
-                ),
-                code="repo.architecture.application-service-contract-locality",
-            )
-        )
     for node in ast.walk(module):
         if isinstance(node, ast.ClassDef) and any(_is_protocol_base(base) for base in node.bases):
             issues.append(
@@ -243,13 +230,6 @@ def _module_declares_protocol(module: ast.Module) -> bool:
     )
 
 
-def _module_declares_base_model(module: ast.Module) -> bool:
-    return any(
-        isinstance(node, ast.ClassDef) and any(_is_base_model_base(base) for base in node.bases)
-        for node in module.body
-    )
-
-
 def _module_declares_port_failure(module: ast.Module) -> bool:
     return any(
         isinstance(node, ast.ClassDef)
@@ -263,14 +243,6 @@ def _is_protocol_base(base: ast.expr) -> bool:
         return base.id == "Protocol"
     if isinstance(base, ast.Attribute):
         return base.attr == "Protocol"
-    return False
-
-
-def _is_base_model_base(base: ast.expr) -> bool:
-    if isinstance(base, ast.Name):
-        return base.id == "BaseModel"
-    if isinstance(base, ast.Attribute):
-        return base.attr == "BaseModel"
     return False
 
 
@@ -715,6 +687,15 @@ def _deleted_module_paths() -> set[str]:
         "src/engineeringagent/adapters/prompts/bundled_prompt_definitions.py",
         "src/engineeringagent/adapters/prompts/filesystem_prompt_definitions.py",
         "src/engineeringagent/adapters/prompts/project_prompt_definitions.py",
+        "src/engineeringagent/application/contracts/__init__.py",
+        "src/engineeringagent/application/contracts/checks.py",
+        "src/engineeringagent/application/contracts/feature_iteration.py",
+        "src/engineeringagent/application/contracts/guidance.py",
+        "src/engineeringagent/application/contracts/init_workspace.py",
+        "src/engineeringagent/application/contracts/prompt_builder.py",
+        "src/engineeringagent/application/contracts/run_loop.py",
+        "src/engineeringagent/application/contracts/validation.py",
+        "src/engineeringagent/application/contracts/workspace_recovery.py",
         "src/engineeringagent/application/implementation_prompt.py",
         "src/engineeringagent/feature_commit.py",
         "src/engineeringagent/git/__init__.py",
