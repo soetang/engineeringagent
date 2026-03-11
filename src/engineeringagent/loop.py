@@ -6,12 +6,8 @@ from typing import Any, NamedTuple, Sequence
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 
 from .adapters.agents import ConfiguredAgentRunner
-from .adapters.vcs.git_cli import (
-    add_all,
-    commit as git_commit,
-    head_short as git_head,
-    status_porcelain,
-)
+from .adapters.vcs import GitCliVersionControlGateway
+from .adapters.vcs.git_cli import status_porcelain
 from .changed_paths import collect_changed_paths
 from .agents import preflight, run_agent
 from .loop_runtime.controller import run_loop_controller
@@ -64,12 +60,14 @@ from .loop_runtime.observers import (
 from .loop_runtime.telemetry import write_iteration_telemetry
 from .presentation.terminal import RunOutputPresenter
 from .feature_commit import feature_completion_commit_subject
+from .ports import CommitRequest
 from .specs import progress_kind_label
 
 __all__ = ["run_loop_controller"]
 
 _AGENT_RUNNER = ConfiguredAgentRunner()
 _PROGRESS_JOURNAL = FilesystemProgressJournal()
+_VERSION_CONTROL = GitCliVersionControlGateway()
 
 
 def _print_run_all_snapshot_banner(resolved_paths: Sequence[Path]) -> None:
@@ -115,10 +113,7 @@ def git_head_short(project_root: Path) -> str | None:
     Returns:
         Short commit hash when available, otherwise None.
     """
-    proc = git_head(project_root)
-    if proc.returncode != 0:
-        return None
-    return proc.stdout.strip() or None
+    return _VERSION_CONTROL.head_commit(project_root)
 
 
 def run_implement_step(
@@ -146,17 +141,18 @@ def _commit_feature_completion(
     project_root: Path, feature: dict[str, Any]
 ) -> tuple[bool, str | None, str]:
     message = feature_completion_commit_subject(feature)
-
-    add_proc = add_all(project_root)
-    if add_proc.returncode != 0:
-        output = (add_proc.stdout or "") + (add_proc.stderr or "")
-        return (False, "git_add", output)
-
-    commit_proc = git_commit(project_root, message)
-    output = (commit_proc.stdout or "") + (commit_proc.stderr or "")
-    if commit_proc.returncode == 0:
+    commit_result = _VERSION_CONTROL.commit(
+        CommitRequest(
+            project_root=project_root,
+            message=message,
+            stage_all=True,
+            allow_empty=False,
+        )
+    )
+    output = commit_result.stdout + commit_result.stderr
+    if commit_result.commit_created:
         return (True, None, output)
-    return (False, "git_commit", output)
+    return (False, commit_result.failure_stage, output)
 
 
 def print_summary(summary: IterationSummaryInputs) -> None:

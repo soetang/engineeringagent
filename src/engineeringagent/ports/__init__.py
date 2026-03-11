@@ -25,13 +25,23 @@ from .repository_validator import (
     RepositoryValidationResult,
     RepositoryValidator,
 )
+from .version_control import (
+    CommitRequest,
+    CommitResult,
+    DiffSummary,
+    VersionControlFailure,
+    VersionControlGateway,
+)
 
 __all__ = [
     "AgentRunRequest",
     "AgentRunner",
+    "CommitRequest",
+    "CommitResult",
     "ChecksRunRequest",
     "ChecksRunResult",
     "ChecksRunner",
+    "DiffSummary",
     "GuidanceTopicRepository",
     "HarnessCheckPhase",
     "ImplementationPromptFeature",
@@ -47,4 +57,6 @@ __all__ = [
     "RepositoryValidationRequest",
     "RepositoryValidationResult",
     "RepositoryValidator",
+    "VersionControlFailure",
+    "VersionControlGateway",
 ]

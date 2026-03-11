@@ -1,12 +1,10 @@
 """Version-control adapters."""
 
-from .git_cli import add_all, commit, diff_name_status, head_short, ls_files, precommit_install, status_porcelain
+from .git_cli import ls_files, precommit_install, status_porcelain
+from .git_version_control_gateway import GitCliVersionControlGateway
 
 __all__ = [
-    "add_all",
-    "commit",
-    "diff_name_status",
-    "head_short",
+    "GitCliVersionControlGateway",
     "ls_files",
     "precommit_install",
     "status_porcelain",

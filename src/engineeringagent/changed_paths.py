@@ -4,10 +4,12 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.adapters.vcs import git_cli
+from engineeringagent.adapters.vcs import GitCliVersionControlGateway
+from engineeringagent.ports import VersionControlFailure, VersionControlGateway
 
 
 FALLBACK_CHANGE_DISCOVERY_REASON = "fallback_run_all_change_discovery_failed"
+_DEFAULT_VERSION_CONTROL = GitCliVersionControlGateway()
 
 
 class ChangedPathsResult(BaseModel):
@@ -29,10 +31,17 @@ def collect_changed_paths(
     *,
     base: str | None = None,
     head: str | None = None,
+    version_control: VersionControlGateway | None = None,
 ) -> ChangedPathsResult:
     """Collect repository-relative changed paths for on_change matching."""
-    proc = git_cli.diff_name_status(cwd, base=base, head=head)
-    if proc.returncode != 0:
+    gateway = _DEFAULT_VERSION_CONTROL if version_control is None else version_control
+    try:
+        diff_summary = gateway.diff_against_base(
+            cwd,
+            base_ref=base,
+            head_ref=head,
+        )
+    except VersionControlFailure:
         return ChangedPathsResult(
             paths=(),
             run_all=True,
@@ -40,7 +49,7 @@ def collect_changed_paths(
         )
 
     changed_paths: set[str] = set()
-    for line in proc.stdout.splitlines():
+    for line in diff_summary.summary_text.splitlines():
         if not line.strip():
             continue
         parts = line.split("\t")

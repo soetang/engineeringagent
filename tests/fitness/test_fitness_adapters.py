@@ -478,7 +478,8 @@ def test_execute_rule_definition_runs_loop_subprocess_boundary_adapter(
             rationale="Centralizes command execution paths for consistent control.",
             remediation=(
                 "Move OpenCode command execution to engineeringagent.opencode.client "
-                "and Git command execution to engineeringagent.adapters.vcs.git_cli."
+                "and Git command execution to "
+                "engineeringagent.adapters.vcs.git_version_control_gateway."
             ),
             scope="src/engineeringagent",
             severity=RuleSeverity.ERROR,
