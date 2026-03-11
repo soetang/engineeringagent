@@ -196,7 +196,7 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
     )
     _write_module(
         tmp_path,
-        "application/checks_service.py",
+        "application/checks/service.py",
         "import engineeringagent.checks\n",
     )
     _write_module(
@@ -275,7 +275,7 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
     assert payload["status"] == "fail"
     assert payload["violations"] == [
         (
-            "engineeringagent.application.checks_service imports blocked dependency "
+            "engineeringagent.application.checks.service imports blocked dependency "
             "engineeringagent.checks"
         ),
         (

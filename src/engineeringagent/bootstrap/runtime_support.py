@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from importlib import import_module
 from pathlib import Path
 from typing import Any
 
@@ -22,8 +23,8 @@ class _LoopAgentRunner:
 
     def run(self, request: Any) -> object:
         """Execute one legacy implement-step agent request."""
-        # Import lazily so legacy loop tests can still monkeypatch the facade seam.
-        from engineeringagent import loop as loop_module
+        # Resolve lazily so legacy loop tests can still monkeypatch the facade seam.
+        loop_module = import_module("engineeringagent.loop")
 
         return loop_module.run_agent(
             request.project_root,

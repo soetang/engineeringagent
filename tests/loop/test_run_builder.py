@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable, TypedDict
 
 import engineeringagent.loop_runtime.run_builder as run_builder_module
 from engineeringagent.application.feature_iteration.models import (
@@ -11,6 +11,24 @@ from engineeringagent.application.feature_iteration.models import (
 )
 from engineeringagent.loop_runtime.run_context import LoopRun, RunConfig, RunState
 from engineeringagent.ports import VersionControlFailure, WorktreeStatus
+
+
+class _ConfigOverrides(TypedDict, total=False):
+    run_all: bool
+    dry_run: bool
+    max_iterations: int
+    verbose_output: bool
+
+
+class _OutcomeExtras(TypedDict, total=False):
+    failed_gate: str
+    next_action: str
+    feedback: str
+    log_path: str
+
+
+BuildSelectorPrompt = Callable[[list[tuple[Path, dict[str, Any]]]], str]
+RunAgentFn = Callable[..., object]
 
 
 def _config(
@@ -36,16 +54,16 @@ def _loop_run(
     *,
     resolved_feature_paths: tuple[Path, ...] = (),
     total_iterations: int = 0,
-    config_overrides: dict[str, object] | None = None,
+    config_overrides: _ConfigOverrides | None = None,
 ) -> LoopRun:
     overrides = config_overrides or {}
     return run_builder_module.build_loop_run(
         _config(
             tmp_path,
-            run_all=bool(overrides.get("run_all", False)),
-            dry_run=bool(overrides.get("dry_run", False)),
-            max_iterations=int(overrides.get("max_iterations", 5)),
-            verbose_output=bool(overrides.get("verbose_output", False)),
+            run_all=overrides.get("run_all", False),
+            dry_run=overrides.get("dry_run", False),
+            max_iterations=overrides.get("max_iterations", 5),
+            verbose_output=overrides.get("verbose_output", False),
         ),
         enforce_worktree_precondition_fn=lambda _project_root, _allow_dirty: None,
         run_selected_feature_iterations_fn=lambda _loop_run: 0,
@@ -61,7 +79,7 @@ def _outcome(
     *,
     completed: bool,
     result: str,
-    extras: dict[str, object] | None = None,
+    extras: _OutcomeExtras | None = None,
 ) -> IterationOutcome:
     payload = extras or {}
     return IterationOutcome(
@@ -153,8 +171,8 @@ def test_build_selector_prompt_and_choose_feature_delegate(monkeypatch: Any, tmp
         project_root: Path,
         pending_features: list[tuple[Path, dict[str, Any]]],
         *,
-        build_selector_prompt_fn: object,
-        run_agent_fn: object,
+        build_selector_prompt_fn: BuildSelectorPrompt,
+        run_agent_fn: RunAgentFn,
     ) -> tuple[Path, dict[str, Any]]:
         recorded["project_root"] = project_root
         recorded["prompt"] = build_selector_prompt_fn(pending_features)

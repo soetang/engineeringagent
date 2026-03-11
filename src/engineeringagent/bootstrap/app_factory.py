@@ -21,7 +21,6 @@ from engineeringagent.adapters.vcs import (
     GitFeatureWorkspaceManager,
 )
 from engineeringagent.application import (
-    ChecksService,
     FeatureIterationService,
     GuidanceService,
     InitWorkspaceService,
@@ -30,6 +29,7 @@ from engineeringagent.application import (
     ValidationService,
     WorkspaceRecoveryService,
 )
+from engineeringagent.application.checks import ChecksService
 from engineeringagent.bootstrap.runtime_execution import (
     RuntimeFeatureIterationExecutor,
     RuntimeRunLoopExecutor,
