@@ -219,14 +219,17 @@ def _string_tuple(value: object) -> tuple[str, ...]:
     )
 
 
-def _coerce_enum(value: object, enum_type: type[EnumT], default: EnumT) -> EnumT:
+def _coerce_enum(
+    value: object,
+    enum_type: type[EnumT],
+    default: EnumT,
+) -> EnumT:
     if isinstance(value, enum_type):
         return value
     if isinstance(value, str):
         normalized = value.strip()
         if normalized:
-            try:
-                return enum_type(normalized)
-            except ValueError:
-                return default
+            for member in enum_type:
+                if member.value == normalized:
+                    return member
     return default

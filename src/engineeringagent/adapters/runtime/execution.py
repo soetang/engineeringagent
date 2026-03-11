@@ -9,7 +9,9 @@ from typing import Any, Callable
 
 from engineeringagent.adapters.progress import write_iteration_telemetry
 from engineeringagent.application import FeatureIterationRequest
-from engineeringagent.application.feature_iteration import FeatureIterationService
+from engineeringagent.application.feature_iteration_service import (
+    FeatureIterationService,
+)
 from engineeringagent.application.feature_iteration.models import (
     FeatureIterationInputs,
     IterationOutcome,

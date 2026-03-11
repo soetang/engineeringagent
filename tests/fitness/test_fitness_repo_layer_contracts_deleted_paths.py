@@ -71,17 +71,18 @@ def test_repo_layer_contracts_rule_blocks_deleted_checks_adapter_directory(
     ]
 
 
-def test_repo_layer_contracts_rule_blocks_deleted_flat_application_service_module(
+def test_repo_layer_contracts_rule_blocks_deleted_legacy_run_loop_service_module(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Fail when removed flat application service modules reappear."""
+    """Fail when the removed nested run-loop service module reappears."""
     legacy_module = (
         tmp_path
         / "src"
         / "engineeringagent"
         / "application"
-        / "run_loop_service.py"
+        / "run_loop"
+        / "service.py"
     )
     legacy_module.parent.mkdir(parents=True, exist_ok=True)
     legacy_module.write_text("", encoding="utf-8")
@@ -92,21 +93,23 @@ def test_repo_layer_contracts_rule_blocks_deleted_flat_application_service_modul
     assert payload["status"] == "fail"
     assert payload["rule_id"] == "architecture.repo-layer-contracts"
     assert payload["violations"] == [
-        "src/engineeringagent/application/run_loop_service.py: deleted legacy module path must remain absent"
+        "src/engineeringagent/application/run_loop/service.py: deleted legacy module path must remain absent",
+        "src/engineeringagent/application/run_loop: deleted legacy directory path must remain absent",
     ]
 
 
-def test_repo_layer_contracts_rule_blocks_deleted_flat_checks_service_module(
+def test_repo_layer_contracts_rule_blocks_deleted_legacy_checks_service_module(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Fail when the removed flat checks service module reappears."""
+    """Fail when the removed nested checks service module reappears."""
     legacy_module = (
         tmp_path
         / "src"
         / "engineeringagent"
         / "application"
-        / "checks_service.py"
+        / "checks"
+        / "service.py"
     )
     legacy_module.parent.mkdir(parents=True, exist_ok=True)
     legacy_module.write_text("", encoding="utf-8")
@@ -117,7 +120,7 @@ def test_repo_layer_contracts_rule_blocks_deleted_flat_checks_service_module(
     assert payload["status"] == "fail"
     assert payload["rule_id"] == "architecture.repo-layer-contracts"
     assert payload["violations"] == [
-        "src/engineeringagent/application/checks_service.py: deleted legacy module path must remain absent"
+        "src/engineeringagent/application/checks/service.py: deleted legacy module path must remain absent"
     ]
 
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+from functools import lru_cache
 from pathlib import Path
 
 from engineeringagent.checks import emit_fitness_result
@@ -51,14 +52,18 @@ DELETED_MODULE_PATHS = {
     "src/engineeringagent/application/contracts/run_loop.py",
     "src/engineeringagent/application/contracts/validation.py",
     "src/engineeringagent/application/contracts/workspace_recovery.py",
-    "src/engineeringagent/application/checks_service.py",
-    "src/engineeringagent/application/feature_iteration_service.py",
     "src/engineeringagent/application/implementation_prompt.py",
-    "src/engineeringagent/application/init_workspace_service.py",
-    "src/engineeringagent/application/prompt_builder.py",
-    "src/engineeringagent/application/run_loop_service.py",
-    "src/engineeringagent/application/validation_service.py",
-    "src/engineeringagent/application/workspace_recovery_service.py",
+    "src/engineeringagent/application/checks/service.py",
+    "src/engineeringagent/application/feature_iteration/service.py",
+    "src/engineeringagent/application/init_workspace/service.py",
+    "src/engineeringagent/application/prompts/__init__.py",
+    "src/engineeringagent/application/prompts/prompt_builder.py",
+    "src/engineeringagent/application/run_loop/__init__.py",
+    "src/engineeringagent/application/run_loop/service.py",
+    "src/engineeringagent/application/validation/__init__.py",
+    "src/engineeringagent/application/validation/service.py",
+    "src/engineeringagent/application/workspace_recovery/__init__.py",
+    "src/engineeringagent/application/workspace_recovery/service.py",
     "src/engineeringagent/feature_commit.py",
     "src/engineeringagent/checks/changed_paths.py",
     "src/engineeringagent/git/__init__.py",
@@ -79,7 +84,12 @@ DELETED_DIRECTORY_PATHS = {
     "src/engineeringagent/adapters/checks",
     "src/engineeringagent/application/contracts",
     "src/engineeringagent/application/guidance",
+    "src/engineeringagent/application/init_workspace",
     "src/engineeringagent/application/loop_runtime",
+    "src/engineeringagent/application/prompts",
+    "src/engineeringagent/application/run_loop",
+    "src/engineeringagent/application/validation",
+    "src/engineeringagent/application/workspace_recovery",
 }
 LEGACY_MODULES = (
     "engineeringagent.changed_paths",
@@ -99,6 +109,7 @@ def _iter_python_modules(root: Path) -> tuple[Path, ...]:
     )
 
 
+@lru_cache(maxsize=None)
 def _parse_module(path: Path) -> ast.Module | str:
     rel_path = path.as_posix()
     try:

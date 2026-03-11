@@ -1,5 +1,3 @@
-"""Deterministic checks application service package."""
+"""Checks application helpers that remain package-scoped during migration."""
 
-from .service import ChecksService, RunChecksRequest, RunChecksResult
-
-__all__ = ["ChecksService", "RunChecksRequest", "RunChecksResult"]
+__all__: list[str] = []

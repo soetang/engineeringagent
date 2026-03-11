@@ -4,7 +4,9 @@ from pathlib import Path
 from typing import cast
 
 import engineeringagent.adapters.runtime.execution as runtime_executor_adapter_module
-from engineeringagent.application.feature_iteration import FeatureIterationService
+from engineeringagent.application.feature_iteration_service import (
+    FeatureIterationService,
+)
 from engineeringagent.adapters.runtime import RuntimeRunLoopExecutor
 from engineeringagent.ports import RunLoopExecutionRequest
 from engineeringagent.ports.version_control import VersionControlGateway

@@ -1,10 +1,5 @@
-"""Feature-iteration workflow service exports."""
+"""Feature-iteration workflow models."""
 
-from .service import (
-    FeatureIterationRequest,
-    FeatureIterationResult,
-    FeatureIterationService,
-)
 from .models import (
     CommandTiming,
     CompletionCommitOutcome,
@@ -27,9 +22,6 @@ __all__ = [
     "CommandTiming",
     "CompletionCommitOutcome",
     "FeatureIterationInputs",
-    "FeatureIterationRequest",
-    "FeatureIterationResult",
-    "FeatureIterationService",
     "GatePhaseOutcome",
     "ImplementStepInputs",
     "ImplementStepResult",

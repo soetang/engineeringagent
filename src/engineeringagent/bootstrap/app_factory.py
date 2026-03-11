@@ -25,6 +25,7 @@ from engineeringagent.adapters.vcs import (
     GitFeatureWorkspaceManager,
 )
 from engineeringagent.application import (
+    ChecksService,
     FeatureIterationService,
     GuidanceService,
     InitWorkspaceService,
@@ -33,7 +34,6 @@ from engineeringagent.application import (
     ValidationService,
     WorkspaceRecoveryService,
 )
-from engineeringagent.application.checks import ChecksService
 from engineeringagent.config import resolve_harness_root
 from engineeringagent.ports import (
     AgentRunner,

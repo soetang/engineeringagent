@@ -4,7 +4,7 @@ import importlib.util
 from pathlib import Path
 from types import ModuleType
 
-import engineeringagent.application.prompts.prompt_builder as prompt_builder_module
+import engineeringagent.application.prompt_builder as prompt_builder_module
 from engineeringagent.application import (
     ImplementationPromptRequest,
     PromptBuilder,
