@@ -162,6 +162,17 @@ def _application_module_issues(
         _forbidden_import_issues(
             module,
             rel_path=rel_path,
+            forbidden_modules=("engineeringagent.prompts",),
+            message=(
+                "application modules must not import legacy top-level prompts modules"
+            ),
+            code="repo.architecture.application-legacy-prompts-import",
+        )
+    )
+    issues.extend(
+        _forbidden_import_issues(
+            module,
+            rel_path=rel_path,
             forbidden_modules=("engineeringagent.init_scaffold",),
             message="application and ports modules must not import init_scaffold modules",
             code="repo.architecture.init-scaffold-import",
@@ -426,4 +437,5 @@ def _deleted_module_paths() -> set[str]:
         "src/engineeringagent/git/client.py",
         "src/engineeringagent/progress_paths.py",
         "src/engineeringagent/progress_logging.py",
+        "src/engineeringagent/prompts/feedback_envelope.py",
     }

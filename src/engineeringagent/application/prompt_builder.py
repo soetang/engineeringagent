@@ -14,7 +14,7 @@ from engineeringagent.domain.specification import (
     resolve_feature_plan_path,
     resolve_feature_research_path,
 )
-from engineeringagent.prompts.feedback_envelope import (
+from engineeringagent.domain.quality import (
     parse_feedback_envelope,
     serialize_feedback_envelope,
 )

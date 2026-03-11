@@ -15,7 +15,7 @@ from engineeringagent.loop_runtime.phases import (
     run_reviewer_phase,
     run_verification_phase,
 )
-from engineeringagent.prompts.feedback_envelope import parse_feedback_envelope
+from engineeringagent.domain.quality import parse_feedback_envelope
 
 ACTIVE_FEATURE_PATH = Path("docs/spec/features/FEAT-001/spec.yaml")
 ARCHIVED_FEATURE_PATH = Path("docs/spec/features_done/FEAT-001/spec.yaml")

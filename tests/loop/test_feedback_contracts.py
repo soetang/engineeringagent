@@ -7,7 +7,7 @@ import pytest
 from pydantic import ValidationError
 
 from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
-from engineeringagent.prompts.feedback_envelope import (
+from engineeringagent.domain.quality import (
     build_command_failure_feedback,
     build_fitness_failure_feedback,
     build_reviewer_feedback,

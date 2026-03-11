@@ -129,7 +129,7 @@ def test_checks_owned_prompt_feedback_rule_fails_for_checks_specific_shaping(
             [
                 "from __future__ import annotations",
                 "from engineeringagent.checks import run_checks",
-                "from engineeringagent.prompts.feedback_envelope import build_fitness_failure_feedback",
+                "from engineeringagent.domain.quality import build_fitness_failure_feedback",
                 "",
                 "def run_gate_phase(project_root):",
                 "    result = run_checks(project_root, phase='iteration_end')",
@@ -146,7 +146,7 @@ def test_checks_owned_prompt_feedback_rule_fails_for_checks_specific_shaping(
         renderer_body="\n".join(
             [
                 "from __future__ import annotations",
-                "from engineeringagent.prompts.feedback_envelope import build_reviewer_feedback",
+                "from engineeringagent.domain.quality import build_reviewer_feedback",
                 "",
                 "def inject_feedback(prompt: str, feedback: str | None) -> str:",
                 "    if feedback:",

@@ -21,7 +21,7 @@ from ..presentation.presenters.prompt_feedback import (
     format_failed_command_feedback_lines,
     resolve_checks_prompt_feedback,
 )
-from ..prompts.feedback_envelope import (
+from ..domain.quality import (
     build_command_failure_feedback,
 )
 from ..config import repo_relative_label, resolve_harness_checks_config_path

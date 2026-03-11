@@ -33,7 +33,7 @@ MAX_REQUIRED_ACTIONS = 20
 
 
 class FeedbackModel(BaseModel):
-    """Base model for feedback envelopes emitted by the loop runtime."""
+    """Base model for feedback envelopes emitted by runtime flows."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -126,14 +126,7 @@ _FEEDBACK_ENVELOPE_ADAPTER = TypeAdapter(FeedbackEnvelopeDiscriminated)
 
 
 def parse_feedback_envelope(payload: object) -> FeedbackEnvelope:
-    """Parse and validate a v1 feedback envelope.
-
-    Args:
-        payload: A decoded JSON object or a Python mapping.
-
-    Returns:
-        Validated feedback envelope.
-    """
+    """Parse and validate a v1 feedback envelope."""
     if isinstance(payload, str):
         return _FEEDBACK_ENVELOPE_ADAPTER.validate_json(payload)
 
@@ -141,14 +134,7 @@ def parse_feedback_envelope(payload: object) -> FeedbackEnvelope:
 
 
 def serialize_feedback_envelope(envelope: FeedbackEnvelope) -> str:
-    """Serialize a feedback envelope as strict deterministic JSON.
-
-    The output is intended for prompt injection:
-    - one JSON object
-    - compact (no newlines)
-    - sorted keys for deterministic prompts
-    - ASCII-only
-    """
+    """Serialize a feedback envelope as strict deterministic JSON."""
     payload = envelope.model_dump(mode="json", exclude_none=True)
     return json.dumps(
         payload,
@@ -246,7 +232,6 @@ def build_reviewer_feedback(
     message: str | None = None,
 ) -> str:
     """Build a serialized reviewer_feedback envelope."""
-
     decision_name_raw = decision.get("decision")
     decision_name: ReviewerDecisionName
     if decision_name_raw == "approve":
@@ -259,31 +244,24 @@ def build_reviewer_feedback(
         if isinstance(summary_raw, str) and summary_raw.strip()
         else "(no summary)"
     )
-
-    required_actions_raw = decision.get("required_actions", [])
-    required_actions: list[str] = []
-    if isinstance(required_actions_raw, list):
-        for item in required_actions_raw:
-            if isinstance(item, str) and item.strip():
-                required_actions.append(item.strip())
-            if len(required_actions) >= MAX_REQUIRED_ACTIONS:
-                break
-
     scope_notes_raw = decision.get("scope_notes")
     scope_notes = (
-        scope_notes_raw.strip()
+        scope_notes_raw
         if isinstance(scope_notes_raw, str) and scope_notes_raw.strip()
         else None
     )
-
-    header = message
-    if not header:
-        if decision_name == "approve":
-            header = "Reviewer approved the changes."
-        else:
-            header = (
-                "Reviewer requested changes. Apply required actions before completing."
-            )
+    required_actions: list[str] = []
+    required_actions_raw = decision.get("required_actions", [])
+    if isinstance(required_actions_raw, list):
+        for value in required_actions_raw:
+            if not isinstance(value, str):
+                continue
+            normalized = value.strip()
+            if not normalized:
+                continue
+            required_actions.append(normalized)
+            if len(required_actions) >= MAX_REQUIRED_ACTIONS:
+                break
 
     envelope = ReviewerFeedbackEnvelope(
         kind="reviewer_feedback",
@@ -296,6 +274,12 @@ def build_reviewer_feedback(
             required_actions=required_actions,
             scope_notes=scope_notes,
         ),
-        message=header,
+        message=message or _default_reviewer_message(decision_name),
     )
     return serialize_feedback_envelope(envelope)
+
+
+def _default_reviewer_message(decision_name: ReviewerDecisionName) -> str:
+    if decision_name == "approve":
+        return "Reviewer approved the changes."
+    return "Reviewer requested changes."

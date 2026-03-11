@@ -4,7 +4,7 @@ from typing import cast
 
 from pydantic import ValidationError
 
-from engineeringagent.prompts.feedback_envelope import (
+from engineeringagent.domain.quality import (
     CommandFailureFeedbackEnvelope,
     CommandFailurePhase,
     RerunInstructions,

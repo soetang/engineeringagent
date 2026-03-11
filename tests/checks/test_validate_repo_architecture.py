@@ -194,6 +194,36 @@ def test_repo_architecture_validator_reports_application_importing_checks_module
     )
 
 
+def test_repo_architecture_validator_reports_application_importing_legacy_prompts(
+    tmp_path: Path,
+) -> None:
+    """Application modules must not depend on legacy top-level prompt modules."""
+
+    _write_port_module(
+        tmp_path,
+        "src/engineeringagent/application/prompt_builder.py",
+        "from engineeringagent.prompts.feedback_envelope import parse_feedback_envelope\n",
+    )
+
+    issues = RepoArchitectureValidator().validate(
+        context=ValidationContext(
+            project_root=tmp_path,
+            docs_root=tmp_path / "docs",
+            schema_only=False,
+        )
+    )
+
+    assert issues == (
+        ValidationIssue(
+            validator_id="repo.architecture",
+            scope="repo",
+            path="src/engineeringagent/application/prompt_builder.py",
+            message="application modules must not import legacy top-level prompts modules",
+            code="repo.architecture.application-legacy-prompts-import",
+        ),
+    )
+
+
 @pytest.mark.parametrize(
     "import_line",
     [
@@ -338,6 +368,11 @@ def test_repo_architecture_validator_reports_deleted_legacy_module_paths(
         "src/engineeringagent/ports/prompt_builder.py",
         "value = 1\n",
     )
+    _write_port_module(
+        tmp_path,
+        "src/engineeringagent/prompts/feedback_envelope.py",
+        "value = 1\n",
+    )
 
     issues = RepoArchitectureValidator().validate(
         context=ValidationContext(
@@ -359,6 +394,13 @@ def test_repo_architecture_validator_reports_deleted_legacy_module_paths(
             validator_id="repo.architecture",
             scope="repo",
             path="src/engineeringagent/ports/prompt_builder.py",
+            message="deleted legacy module path must remain absent",
+            code="repo.architecture.deleted-path",
+        ),
+        ValidationIssue(
+            validator_id="repo.architecture",
+            scope="repo",
+            path="src/engineeringagent/prompts/feedback_envelope.py",
             message="deleted legacy module path must remain absent",
             code="repo.architecture.deleted-path",
         ),
