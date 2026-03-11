@@ -7,19 +7,19 @@ from typing import Callable, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from ..application import (
+from ...application import (
     InitWorkspaceRequest,
     InitWorkspaceResult,
     InitWorkspaceService,
 )
-from ..agents import default_backend_id, list_backends
-from ..config import (
+from ...agents import default_backend_id, list_backends
+from ...config import (
     resolve_agents_backend_id,
     resolve_agents_codex_profile_in_engineeringagent_toml,
     write_init_backend_config,
     write_init_docs_root_config,
 )
-from ..init_cli_support import (
+from ...init_cli_support import (
     InitAgentsLauncherResolverDeps,
     InitBackendResolverDeps,
     InitCodexProfileResolverDeps,
@@ -33,14 +33,14 @@ from ..init_cli_support import (
     resolve_init_docs_dir,
     resolve_init_pack,
 )
-from ..init_scaffold import (
+from ...init_scaffold import (
     AGENTS_LAUNCHER_CHOICES,
     DEFAULT_AGENTS_LAUNCHER,
     apply_baseline_scaffold,
     build_agents_merge_followup_spec,
 )
-from ..presentation.presenters.terminal import stdout_is_tty
-from ..ports import DEFAULT_AGENT_MODEL, InitWorkspaceDependencies
+from ...presentation.presenters.terminal import stdout_is_tty
+from ...ports import DEFAULT_AGENT_MODEL, InitWorkspaceDependencies
 
 _HandlerArgs = SimpleNamespace
 _AdapterValue = TypeVar("_AdapterValue")

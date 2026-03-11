@@ -177,21 +177,21 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
         "specs.py",
         "import engineeringagent.checks.contracts\n",
     )
-    _write_module(tmp_path, "cli/checks.py", "")
+    _write_module(tmp_path, "presentation/cli/checks.py", "")
     _write_module(
         tmp_path,
-        "cli/app.py",
+        "presentation/cli/app.py",
         "import engineeringagent.loop_runtime.selection\n",
     )
     _write_module(
         tmp_path,
-        "cli/typer.py",
+        "presentation/cli/typer.py",
         "import engineeringagent.checks.reviewers.engine\n",
     )
     _write_module(
         tmp_path,
         "checks/contracts.py",
-        "import engineeringagent.cli.app\n",
+        "import engineeringagent.presentation.cli.app\n",
     )
     _write_module(
         tmp_path,
@@ -205,7 +205,7 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
     )
     _write_module(
         tmp_path,
-        "cli/approach.py",
+        "presentation/cli/approach.py",
         "from engineeringagent.adapters.guidance import PackagedGuidanceTopicRepository\n",
     )
     _write_module(
@@ -253,21 +253,21 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
     _write_module(
         tmp_path,
         "ports/version_control.py",
-        "import engineeringagent.cli.app\n",
+        "import engineeringagent.presentation.cli.app\n",
     )
     _write_module(
         tmp_path,
-        "cli/validate.py",
+        "presentation/cli/validate.py",
         "from engineeringagent.application import ValidationService\n",
     )
     _write_module(
         tmp_path,
-        "cli/checks.py",
+        "presentation/cli/checks.py",
         "from engineeringagent.application import ChecksService\n",
     )
     _write_module(
         tmp_path,
-        "cli/run.py",
+        "presentation/cli/run.py",
         "import engineeringagent.loop\n",
     )
 
@@ -319,27 +319,7 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
         ),
         (
             "engineeringagent.checks.contracts imports blocked dependency "
-            "engineeringagent.cli.app"
-        ),
-        (
-            "engineeringagent.cli.app imports blocked dependency "
-            "engineeringagent.loop_runtime.selection"
-        ),
-        (
-            "engineeringagent.cli.approach imports blocked dependency "
-            "engineeringagent.adapters.guidance"
-        ),
-        (
-            "engineeringagent.cli.approach imports blocked dependency "
-            "engineeringagent.adapters.guidance.PackagedGuidanceTopicRepository"
-        ),
-        (
-            "engineeringagent.cli.run imports blocked dependency "
-            "engineeringagent.loop"
-        ),
-        (
-            "engineeringagent.cli.typer imports blocked dependency "
-            "engineeringagent.checks.reviewers.engine"
+            "engineeringagent.presentation.cli.app"
         ),
         (
             "engineeringagent.ports.agent_runner imports blocked dependency "
@@ -351,7 +331,27 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
         ),
         (
             "engineeringagent.ports.version_control imports blocked dependency "
-            "engineeringagent.cli.app"
+            "engineeringagent.presentation.cli.app"
+        ),
+        (
+            "engineeringagent.presentation.cli.app imports blocked dependency "
+            "engineeringagent.loop_runtime.selection"
+        ),
+        (
+            "engineeringagent.presentation.cli.approach imports blocked dependency "
+            "engineeringagent.adapters.guidance"
+        ),
+        (
+            "engineeringagent.presentation.cli.approach imports blocked dependency "
+            "engineeringagent.adapters.guidance.PackagedGuidanceTopicRepository"
+        ),
+        (
+            "engineeringagent.presentation.cli.run imports blocked dependency "
+            "engineeringagent.loop"
+        ),
+        (
+            "engineeringagent.presentation.cli.typer imports blocked dependency "
+            "engineeringagent.checks.reviewers.engine"
         ),
         (
             "engineeringagent.specs imports blocked dependency "
@@ -529,12 +529,12 @@ def test_directionality_rule_allows_cli_modules_to_import_application_services(
     _write_repo_policy_fixture(tmp_path, repo_root)
     _write_module(
         tmp_path,
-        "cli/checks.py",
+        "presentation/cli/checks.py",
         "from engineeringagent.application import ChecksService\n",
     )
     _write_module(
         tmp_path,
-        "cli/validate.py",
+        "presentation/cli/validate.py",
         "from engineeringagent.application import ValidationService\n",
     )
 

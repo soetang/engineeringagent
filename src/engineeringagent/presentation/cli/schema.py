@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 import yaml
 
-from ..schema_registry import (
+from ...schema_registry import (
     UnknownSchemaIdError,
     list_schema_ids,
     schema_from_registry,

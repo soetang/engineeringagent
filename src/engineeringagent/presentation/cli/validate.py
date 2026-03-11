@@ -3,8 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 
-from ..application import ValidateRepositoryRequest
-from ..bootstrap import AppFactory
+from ...application import ValidateRepositoryRequest
+from ...bootstrap import AppFactory
 
 _HandlerArgs = SimpleNamespace
 

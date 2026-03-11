@@ -5,7 +5,7 @@ from importlib import metadata as importlib_metadata
 
 import typer
 
-from .. import checks as checks_module
+from ... import checks as checks_module
 from .typer import build_typer_app as _build_typer_app
 
 __all__ = [
@@ -29,7 +29,7 @@ def version_callback(value: bool) -> None:
 
 def build_typer_app() -> typer.Typer:
     """Build the Typer root app with top-level command wiring."""
-    package_name = __package__ or "engineeringagent.cli"
+    package_name = __package__ or "engineeringagent.presentation.cli"
     return _build_typer_app(sys.modules[package_name])
 
 

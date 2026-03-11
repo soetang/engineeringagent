@@ -58,7 +58,7 @@ extend-select = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"src/engineeringagent/cli/typer.py" = [
+"src/engineeringagent/presentation/cli/typer.py" = [
   "PLR0913",
 ]
 "src/engineeringagent/loop.py" = [

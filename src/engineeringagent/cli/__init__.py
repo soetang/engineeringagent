@@ -2,60 +2,98 @@ from __future__ import annotations
 
 import sys
 
-from .app import build_typer_app, importlib_metadata, main, version_callback
-from . import approach as approach_commands
-from . import checks as checks_commands
-from . import init as init_commands
-from . import run as run_commands
-from . import schema as schema_commands
-from . import validate as validate_commands
-from . import workspace as workspace_commands
-from .. import checks as checks_module
-from .. import init_cli_support as init_cli_support_module
+import typer as typer_lib
 
-HarnessCheckPhase = checks_module.HarnessCheckPhase
-_HandlerArgs = checks_commands.HandlerArgs
-cmd_checks_catalog = checks_commands.cmd_checks_catalog
-cmd_checks_run = checks_commands.cmd_checks_run
-normalize_cli_checks_groups = checks_commands.normalize_cli_checks_groups
-reviewers_group_selected = checks_module.reviewers_group_selected
+from ..presentation import cli as presentation_cli
+from ..presentation.cli import approach
+from ..presentation.cli import app
+from ..presentation.cli import checks
+from ..presentation.cli import init
+from ..presentation.cli import output
+from ..presentation.cli import run
+from ..presentation.cli import schema
+from ..presentation.cli import typer
+from ..presentation.cli import validate
+from ..presentation.cli import workspace
 
-cmd_init = init_commands.cmd_init
-git_client = init_cli_support_module.git_cli
-shutil = init_cli_support_module.shutil
-
-cmd_run = run_commands.cmd_run
-cmd_validate = validate_commands.cmd_validate
-cmd_workspace_reset = workspace_commands.cmd_workspace_reset
-
-cmd_approach_list = approach_commands.cmd_approach_list
-cmd_approach_overview = approach_commands.cmd_approach_overview
-cmd_approach_show = approach_commands.cmd_approach_show
-
-cmd_schema = schema_commands.cmd_schema
-cmd_schema_list = schema_commands.cmd_schema_list
+HarnessCheckPhase = presentation_cli.HarnessCheckPhase
+cmd_approach_list = presentation_cli.cmd_approach_list
+cmd_approach_overview = presentation_cli.cmd_approach_overview
+cmd_approach_show = presentation_cli.cmd_approach_show
+cmd_checks_catalog = presentation_cli.cmd_checks_catalog
+cmd_checks_run = presentation_cli.cmd_checks_run
+cmd_init = presentation_cli.cmd_init
+cmd_run = presentation_cli.cmd_run
+cmd_schema = presentation_cli.cmd_schema
+cmd_schema_list = presentation_cli.cmd_schema_list
+cmd_validate = presentation_cli.cmd_validate
+cmd_workspace_reset = presentation_cli.cmd_workspace_reset
+git_client = presentation_cli.git_client
+importlib_metadata = presentation_cli.importlib_metadata
+normalize_cli_checks_groups = presentation_cli.normalize_cli_checks_groups
+reviewers_group_selected = presentation_cli.reviewers_group_selected
+shutil = presentation_cli.shutil
+version_callback = presentation_cli.version_callback
 
 __all__ = [
     "HarnessCheckPhase",
-    "_HandlerArgs",
+    "app",
+    "approach",
     "build_typer_app",
-    "checks_module",
+    "checks",
     "cmd_approach_list",
     "cmd_approach_overview",
     "cmd_approach_show",
     "cmd_checks_catalog",
     "cmd_checks_run",
-    "git_client",
-    "shutil",
+    "cmd_init",
+    "cmd_run",
     "cmd_schema",
     "cmd_schema_list",
+    "cmd_validate",
     "cmd_workspace_reset",
+    "git_client",
     "importlib_metadata",
+    "init",
     "main",
     "normalize_cli_checks_groups",
+    "output",
     "reviewers_group_selected",
+    "run",
+    "schema",
+    "shutil",
+    "typer",
+    "validate",
     "version_callback",
+    "workspace",
 ]
+
+for _name, _module in {
+    "app": app,
+    "approach": approach,
+    "checks": checks,
+    "init": init,
+    "output": output,
+    "run": run,
+    "schema": schema,
+    "typer": typer,
+    "validate": validate,
+    "workspace": workspace,
+}.items():
+    sys.modules[f"{__name__}.{_name}"] = _module
+
+
+def build_typer_app() -> typer_lib.Typer:
+    """Build the published CLI app while dispatching through the facade module."""
+
+    return typer.build_typer_app(sys.modules[__name__])
+
+
+def main(argv: list[str] | None = None) -> None:
+    """Run the published CLI entrypoint with facade-owned command dispatch."""
+
+    app_instance = build_typer_app()
+    app_instance(args=argv, prog_name="engineeringagent")
 
 
 if __name__ == "__main__":

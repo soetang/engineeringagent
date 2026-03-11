@@ -165,7 +165,7 @@ def test_repo_architecture_validator_reports_ports_importing_application_modules
         "from engineeringagent.adapters.progress import FilesystemProgressJournal\n",
         "from engineeringagent.agents.runtime import run_agent\n",
         "from engineeringagent.bootstrap.app_factory import AppFactory\n",
-        "from engineeringagent.cli.app import create_cli\n",
+        "from engineeringagent.presentation.cli.app import create_cli\n",
         "from engineeringagent.presentation.presenters.terminal import TerminalPresenter\n",
     ],
 )
@@ -336,7 +336,7 @@ def test_repo_architecture_validator_reports_application_importing_legacy_prompt
         "from engineeringagent.adapters.progress import FilesystemProgressJournal\n",
         "from engineeringagent.agents.runtime import run_agent\n",
         "from engineeringagent.bootstrap.app_factory import AppFactory\n",
-        "from engineeringagent.cli.app import create_cli\n",
+        "from engineeringagent.presentation.cli.app import create_cli\n",
         "from engineeringagent.presentation.presenters.terminal import TerminalPresenter\n",
     ],
 )

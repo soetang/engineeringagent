@@ -2,6 +2,7 @@ rules:
   - module: engineeringagent.specs
     blocked_dependencies:
       - engineeringagent.cli
+      - engineeringagent.presentation.cli
       - engineeringagent.checks.contracts
       - engineeringagent.loop
       - engineeringagent.loop_runtime
@@ -9,22 +10,24 @@ rules:
   - module: engineeringagent.checks.validate.validator
     blocked_dependencies:
       - engineeringagent.cli
+      - engineeringagent.presentation.cli
       - engineeringagent.loop
       - engineeringagent.loop_runtime
   - module: engineeringagent.checks.contracts
     blocked_dependencies:
       - engineeringagent.cli
+      - engineeringagent.presentation.cli
       - engineeringagent.loop
       - engineeringagent.loop_runtime
       - engineeringagent.specs
   - module: engineeringagent.cli
     blocked_dependencies:
       - engineeringagent.loop_runtime
-  - module: engineeringagent.cli.run
+  - module: engineeringagent.presentation.cli.run
     blocked_dependencies:
       - engineeringagent.loop
       - engineeringagent.loop_runtime
-  - module: engineeringagent.cli.app
+  - module: engineeringagent.presentation.cli.app
     blocked_dependencies:
       - engineeringagent.loop_runtime
       - engineeringagent.checks.commands
@@ -32,7 +35,7 @@ rules:
       - engineeringagent.checks.reviewers
       - engineeringagent.checks.validate
       - engineeringagent.specs
-  - module: engineeringagent.cli.typer
+  - module: engineeringagent.presentation.cli.typer
     blocked_dependencies:
       - engineeringagent.loop
       - engineeringagent.loop_runtime
@@ -41,7 +44,7 @@ rules:
       - engineeringagent.checks.reviewers
       - engineeringagent.checks.validate
       - engineeringagent.specs
-  - module: engineeringagent.cli.checks
+  - module: engineeringagent.presentation.cli.checks
     blocked_dependencies:
       - engineeringagent.loop
       - engineeringagent.loop_runtime
@@ -51,11 +54,11 @@ rules:
       - engineeringagent.checks.reviewers
       - engineeringagent.checks.validate
       - engineeringagent.specs
-  - module: engineeringagent.cli.approach
+  - module: engineeringagent.presentation.cli.approach
     blocked_dependencies:
       - engineeringagent.adapters
       - engineeringagent.loop_runtime
-  - module: engineeringagent.cli.validate
+  - module: engineeringagent.presentation.cli.validate
     blocked_dependencies:
       - engineeringagent.adapters
       - engineeringagent.loop_runtime
@@ -125,6 +128,7 @@ rules:
       - engineeringagent.bootstrap
       - engineeringagent.checks
       - engineeringagent.cli
+      - engineeringagent.presentation.cli
       - engineeringagent.loop
       - engineeringagent.loop_runtime
   - module: engineeringagent.ports.checks_catalog_repository
@@ -134,6 +138,7 @@ rules:
       - engineeringagent.bootstrap
       - engineeringagent.checks
       - engineeringagent.cli
+      - engineeringagent.presentation.cli
       - engineeringagent.loop
       - engineeringagent.loop_runtime
   - module: engineeringagent.ports.checks_runner
@@ -143,6 +148,27 @@ rules:
       - engineeringagent.bootstrap
       - engineeringagent.checks
       - engineeringagent.cli
+      - engineeringagent.presentation.cli
+      - engineeringagent.loop
+      - engineeringagent.loop_runtime
+  - module: engineeringagent.ports.failures
+    blocked_dependencies:
+      - engineeringagent.adapters
+      - engineeringagent.application
+      - engineeringagent.bootstrap
+      - engineeringagent.checks
+      - engineeringagent.cli
+      - engineeringagent.presentation.cli
+      - engineeringagent.loop
+      - engineeringagent.loop_runtime
+  - module: engineeringagent.ports.feature_specification_repository
+    blocked_dependencies:
+      - engineeringagent.adapters
+      - engineeringagent.application
+      - engineeringagent.bootstrap
+      - engineeringagent.checks
+      - engineeringagent.cli
+      - engineeringagent.presentation.cli
       - engineeringagent.loop
       - engineeringagent.loop_runtime
   - module: engineeringagent.ports.feature_workspace_manager
@@ -152,6 +178,7 @@ rules:
       - engineeringagent.bootstrap
       - engineeringagent.checks
       - engineeringagent.cli
+      - engineeringagent.presentation.cli
       - engineeringagent.loop
       - engineeringagent.loop_runtime
   - module: engineeringagent.ports.guidance_topic_repository
@@ -161,6 +188,7 @@ rules:
       - engineeringagent.bootstrap
       - engineeringagent.checks
       - engineeringagent.cli
+      - engineeringagent.presentation.cli
       - engineeringagent.loop
       - engineeringagent.loop_runtime
   - module: engineeringagent.ports.init_workspace
@@ -170,6 +198,7 @@ rules:
       - engineeringagent.bootstrap
       - engineeringagent.checks
       - engineeringagent.cli
+      - engineeringagent.presentation.cli
       - engineeringagent.loop
       - engineeringagent.loop_runtime
   - module: engineeringagent.ports.progress_journal
@@ -179,6 +208,7 @@ rules:
       - engineeringagent.bootstrap
       - engineeringagent.checks
       - engineeringagent.cli
+      - engineeringagent.presentation.cli
       - engineeringagent.loop
       - engineeringagent.loop_runtime
   - module: engineeringagent.ports.prompt_definition_repository
@@ -188,6 +218,7 @@ rules:
       - engineeringagent.bootstrap
       - engineeringagent.checks
       - engineeringagent.cli
+      - engineeringagent.presentation.cli
       - engineeringagent.loop
       - engineeringagent.loop_runtime
   - module: engineeringagent.ports.run_loop_executor
@@ -197,6 +228,7 @@ rules:
       - engineeringagent.bootstrap
       - engineeringagent.checks
       - engineeringagent.cli
+      - engineeringagent.presentation.cli
       - engineeringagent.loop
       - engineeringagent.loop_runtime
   - module: engineeringagent.ports.repository_validator
@@ -206,6 +238,7 @@ rules:
       - engineeringagent.bootstrap
       - engineeringagent.checks
       - engineeringagent.cli
+      - engineeringagent.presentation.cli
       - engineeringagent.loop
       - engineeringagent.loop_runtime
   - module: engineeringagent.ports.shell_runner
@@ -215,6 +248,7 @@ rules:
       - engineeringagent.bootstrap
       - engineeringagent.checks
       - engineeringagent.cli
+      - engineeringagent.presentation.cli
       - engineeringagent.loop
       - engineeringagent.loop_runtime
   - module: engineeringagent.ports.version_control
@@ -224,6 +258,7 @@ rules:
       - engineeringagent.bootstrap
       - engineeringagent.checks
       - engineeringagent.cli
+      - engineeringagent.presentation.cli
       - engineeringagent.loop
       - engineeringagent.loop_runtime
   - module: engineeringagent.domain

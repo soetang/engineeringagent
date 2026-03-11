@@ -3,9 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 
-from ..application import GuidanceInputError, GuidanceQuery
-from ..approach import UnknownApproachIdError
-from ..bootstrap import AppFactory
+from ...application import GuidanceInputError, GuidanceQuery
+from ...approach import UnknownApproachIdError
+from ...bootstrap import AppFactory
 from .output import emit_markdown_output, resolve_optional_path
 
 _HandlerArgs = SimpleNamespace
