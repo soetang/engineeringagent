@@ -104,6 +104,9 @@ rules:
       - engineeringagent.bootstrap
       - engineeringagent.loop_runtime
       - engineeringagent.presentation
+  - module: engineeringagent.adapters.loop.runtime_run_loop_executor
+    blocked_dependencies:
+      - engineeringagent.loop
   - module: engineeringagent.ports.agent_runner
     blocked_dependencies:
       - engineeringagent.adapters

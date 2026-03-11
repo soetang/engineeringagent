@@ -1,59 +1,54 @@
 from __future__ import annotations
 
 from pathlib import Path
-from types import SimpleNamespace
-from typing import Any, cast
 
+import engineeringagent.adapters.loop.runtime_run_loop_executor as runtime_executor_module
 from engineeringagent.adapters.loop import RuntimeRunLoopExecutor
 from engineeringagent.ports import RunLoopExecutionRequest
 
 
-def test_runtime_run_loop_executor_delegates_to_loop_module() -> None:
-    """The adapter should normalize one port request into the legacy loop calls."""
+def test_runtime_run_loop_executor_uses_runtime_run_builder(
+    monkeypatch,
+) -> None:
+    """The adapter should build run context through loop_runtime support."""
 
     observed: dict[str, object] = {}
 
-    class _FakeLoopModule:
-        @staticmethod
-        def RunConfigOptions(
-            dry_run: bool,
-            run_all: bool,
-            max_iterations: int,
-            allow_dirty: bool,
-            verbose_output: bool,
-        ) -> object:
-            observed["options"] = {
-                "dry_run": dry_run,
-                "run_all": run_all,
-                "max_iterations": max_iterations,
-                "allow_dirty": allow_dirty,
-                "verbose_output": verbose_output,
-            }
-            return SimpleNamespace(**observed["options"])
+    def _build_run_config(
+        *,
+        project_root: Path,
+        feature_paths: tuple[str | Path, ...],
+        options: object,
+    ) -> object:
+        observed["config_args"] = (project_root, feature_paths, options)
+        return {"config": "value"}
 
-        @staticmethod
-        def build_run_config(
-            *,
-            project_root: Path,
-            feature_paths: tuple[str | Path, ...],
-            options: object,
-        ) -> object:
-            observed["config"] = (project_root, feature_paths, options)
-            return observed["config"]
+    def _build_loop_run(
+        config: object,
+        *,
+        enforce_worktree_precondition_fn: object,
+        run_selected_feature_iterations_fn: object,
+    ) -> object:
+        observed["loop_run_args"] = (
+            config,
+            enforce_worktree_precondition_fn,
+            run_selected_feature_iterations_fn,
+        )
+        return {"loop_run": config}
 
-        @staticmethod
-        def build_loop_run(config: object) -> object:
-            observed["loop_run"] = {"config": config}
-            return observed["loop_run"]
+    def _run_loop_controller(loop_run: object) -> int:
+        observed["controller_input"] = loop_run
+        return 7
 
-        @staticmethod
-        def run_loop_controller(loop_run: object) -> int:
-            observed["controller_input"] = loop_run
-            return 7
+    monkeypatch.setattr(runtime_executor_module, "build_run_config", _build_run_config)
+    monkeypatch.setattr(runtime_executor_module, "build_loop_run", _build_loop_run)
+    monkeypatch.setattr(
+        runtime_executor_module,
+        "run_loop_controller",
+        _run_loop_controller,
+    )
 
-    executor = cast(Any, RuntimeRunLoopExecutor.__new__(RuntimeRunLoopExecutor))
-    executor._loop_module = _FakeLoopModule()
-
+    executor = RuntimeRunLoopExecutor()
     result = executor.run(
         RunLoopExecutionRequest(
             project_root=Path("/tmp/project"),
@@ -67,18 +62,20 @@ def test_runtime_run_loop_executor_delegates_to_loop_module() -> None:
     )
 
     assert result == 7
-    assert observed["options"] == {
-        "dry_run": True,
-        "run_all": False,
-        "max_iterations": 3,
-        "allow_dirty": False,
-        "verbose_output": True,
-    }
-    config = cast(tuple[Path, tuple[str | Path, ...], object], observed["config"])
-    assert observed["config"] == (
-        Path("/tmp/project"),
-        ("docs/spec/features/FEAT-001/spec.yaml",),
-        config[2],
+    config_args = observed["config_args"]
+    assert isinstance(config_args, tuple)
+    assert config_args[0] == Path("/tmp/project")
+    assert config_args[1] == ("docs/spec/features/FEAT-001/spec.yaml",)
+    options = config_args[2]
+    assert isinstance(options, runtime_executor_module.RunConfigOptions)
+    assert options == runtime_executor_module.RunConfigOptions(
+        dry_run=True,
+        run_all=False,
+        max_iterations=3,
+        allow_dirty=False,
+        verbose_output=True,
     )
-    assert observed["loop_run"] == {"config": observed["config"]}
-    assert observed["controller_input"] == observed["loop_run"]
+    loop_run_args = observed["loop_run_args"]
+    assert isinstance(loop_run_args, tuple)
+    assert loop_run_args[0] == {"config": "value"}
+    assert observed["controller_input"] == {"loop_run": {"config": "value"}}
