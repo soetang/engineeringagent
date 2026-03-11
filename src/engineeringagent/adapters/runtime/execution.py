@@ -20,6 +20,7 @@ from engineeringagent.application import FeatureIterationRequest
 from engineeringagent.application.feature_iteration_models import (
     FeatureIterationInputs,
     IterationOutcome,
+    IterationSummaryInputs,
 )
 from engineeringagent.application.feature_iteration_service import (
     FeatureIterationService,
@@ -72,8 +73,14 @@ class RuntimeRunLoopExecutor(RunLoopExecutor):
             config,
             enforce_worktree_precondition_fn=self._enforce_worktree_precondition,
             run_selected_feature_iterations_fn=self._run_selected_feature_iterations,
+            print_summary_fn=self._runtime_print_summary,
         )
         return run_loop_controller(loop_run)
+
+    @staticmethod
+    def _runtime_print_summary(summary: IterationSummaryInputs) -> None:
+        runtime_support = import_module("engineeringagent.bootstrap.runtime_support")
+        runtime_support.print_summary(summary)
 
     def _enforce_worktree_precondition(
         self,

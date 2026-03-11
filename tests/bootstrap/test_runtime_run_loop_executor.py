@@ -33,11 +33,13 @@ def test_runtime_run_loop_executor_uses_runtime_run_builder(
         *,
         enforce_worktree_precondition_fn: object,
         run_selected_feature_iterations_fn: object,
+        print_summary_fn: object,
     ) -> object:
         observed["loop_run_args"] = (
             config,
             enforce_worktree_precondition_fn,
             run_selected_feature_iterations_fn,
+            print_summary_fn,
         )
         return {"loop_run": config}
 
@@ -94,4 +96,5 @@ def test_runtime_run_loop_executor_uses_runtime_run_builder(
     loop_run_args = observed["loop_run_args"]
     assert isinstance(loop_run_args, tuple)
     assert loop_run_args[0] == {"config": "value"}
+    assert callable(loop_run_args[3])
     assert observed["controller_input"] == {"loop_run": {"config": "value"}}

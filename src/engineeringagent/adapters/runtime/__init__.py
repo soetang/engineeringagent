@@ -6,7 +6,6 @@ from .run_loop_builder import (
     build_loop_run,
     build_run_config,
     enforce_worktree_precondition,
-    print_summary,
     run_selected_feature_iterations,
 )
 from .run_loop_context import LoopRun, RunConfig, RunServices, RunState
@@ -22,6 +21,5 @@ __all__ = [
     "build_loop_run",
     "build_run_config",
     "enforce_worktree_precondition",
-    "print_summary",
     "run_selected_feature_iterations",
 ]

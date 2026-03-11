@@ -21,8 +21,6 @@ from engineeringagent.loop_runtime.feature_state import (
     resolve_feature_paths,
 )
 from engineeringagent.ports import VersionControlFailure
-from engineeringagent.presentation.presenters.terminal import RunOutputPresenter
-from engineeringagent.specs import progress_kind_label
 
 from .feature_selector import choose_feature_with_selector
 from .run_loop_context import LoopRun, RunConfig, RunServices
@@ -35,64 +33,15 @@ def _print_run_all_snapshot_banner(resolved_paths: Sequence[Path]) -> None:
     )
 
 
-def print_summary(summary: IterationSummaryInputs) -> None:
-    """Print a one-line loop summary and optional gate failure."""
-    presenter = RunOutputPresenter.for_current_terminal()
-    if summary.attempt is not None:
-        print(f"🔁 Iteration {summary.attempt} · {summary.feature_id or '-'}")
-        if summary.archived_selection_path:
-            print("  ♻️ Selected archived counterpart:")
-            print(f"     {summary.archived_selection_path}")
-        else:
-            print(f"  🎯 Selected: {summary.selected_path or '-'}")
-        print(f"  🛠 Implement: {summary.implement_step or '-'}")
-        if summary.progress_kind:
-            progress_parts = [
-                part for part in (summary.progress_id, summary.progress_title) if part
-            ]
-            progress_reference = " - ".join(progress_parts) or "-"
-            print(
-                "  📍 Progress: "
-                f"{progress_kind_label(summary.progress_kind)} {progress_reference}"
-            )
-        verification_label = summary.verification_status or "not_run"
-        if (
-            verification_label.startswith("failed:")
-            and summary.verification_failed_command
-        ):
-            verification_label = f"failed ({summary.verification_failed_command})"
-        print(f"  🧪 Verify: {verification_label}")
-        reviewer_label = summary.reviewer_status or "not_run"
-        if summary.reviewer_decision:
-            reviewer_label = f"{reviewer_label} ({summary.reviewer_decision})"
-        if summary.failed_reviewer_id:
-            reviewer_label = f"{reviewer_label} [{summary.failed_reviewer_id}]"
-        print(f"  👀 Reviewer: {reviewer_label}")
-        if summary.result == "passed":
-            print(f"  {presenter.format_iteration_passed_line()}")
-        else:
-            print(f"  {presenter.format_iteration_failed_line(summary.failed_gate)}")
-            if summary.log_path:
-                print(f"  📄 Log: {summary.log_path}")
-        print(f"  ➡️ Next: {summary.next_action}")
-
-    print(
-        "Loop summary: "
-        f"result={summary.result} feature={summary.feature_id or '-'} "
-        f"attempt={summary.attempt if summary.attempt is not None else '-'} "
-        f"next={summary.next_action}"
-        f"{presenter.format_summary_suffix(summary.result)}"
-    )
-    if summary.failed_gate:
-        print(presenter.format_failed_gate_line(summary.failed_gate))
-
-
-def _print_run_all_no_work_message() -> None:
+def _print_run_all_no_work_message(
+    *,
+    print_summary_fn: Callable[[IterationSummaryInputs], None],
+) -> None:
     print(
         "No runnable active features found for --all startup snapshot "
         "(statuses: backlog, in_progress)."
     )
-    print_summary(
+    print_summary_fn(
         IterationSummaryInputs(
             feature_id=None,
             result="no_work",
@@ -208,14 +157,17 @@ def _resolve_run_targets(
 
 
 def _emit_run_all_snapshot_feedback(
-    resolved_paths: Sequence[Path], run_all: bool
+    resolved_paths: Sequence[Path],
+    run_all: bool,
+    *,
+    print_summary_fn: Callable[[IterationSummaryInputs], None],
 ) -> int | None:
     if not run_all:
         return None
     _print_run_all_snapshot_banner(resolved_paths)
     if resolved_paths:
         return None
-    _print_run_all_no_work_message()
+    _print_run_all_no_work_message(print_summary_fn=print_summary_fn)
     return 0
 
 
@@ -223,6 +175,8 @@ def _handle_dry_run(
     resolved_paths: Sequence[Path],
     run_all: bool,
     dry_run: bool,
+    *,
+    print_summary_fn: Callable[[IterationSummaryInputs], None],
 ) -> int | None:
     if not dry_run:
         return None
@@ -230,10 +184,10 @@ def _handle_dry_run(
     pending = pending_features(resolved_paths)
     if not pending:
         if run_all:
-            _print_run_all_no_work_message()
+            _print_run_all_no_work_message(print_summary_fn=print_summary_fn)
         else:
             print("No pending features found in provided paths.")
-            print_summary(
+            print_summary_fn(
                 IterationSummaryInputs(
                     feature_id=None,
                     result="dry_run",
@@ -250,7 +204,7 @@ def _handle_dry_run(
     feature_id = str(feature.get("id", ""))
     print(f"[dry-run] Resolved {len(resolved_paths)} feature file(s).")
     print(f"[dry-run] Selected feature={feature_id} path={feature_path}")
-    print_summary(
+    print_summary_fn(
         IterationSummaryInputs(
             feature_id=feature_id,
             result="dry_run",
@@ -392,12 +346,24 @@ def build_loop_run(
     *,
     enforce_worktree_precondition_fn: Callable[[Path, bool], int | None],
     run_selected_feature_iterations_fn: Callable[[LoopRun], int],
+    print_summary_fn: Callable[[IterationSummaryInputs], None],
 ) -> LoopRun:
     """Build the default loop runtime context from run configuration."""
     services = RunServices(
         resolve_run_targets=_resolve_run_targets,
-        emit_run_all_snapshot_feedback=_emit_run_all_snapshot_feedback,
-        handle_dry_run=_handle_dry_run,
+        emit_run_all_snapshot_feedback=lambda resolved_paths, run_all: (
+            _emit_run_all_snapshot_feedback(
+                resolved_paths,
+                run_all,
+                print_summary_fn=print_summary_fn,
+            )
+        ),
+        handle_dry_run=lambda resolved_paths, run_all, dry_run: _handle_dry_run(
+            resolved_paths,
+            run_all,
+            dry_run,
+            print_summary_fn=print_summary_fn,
+        ),
         enforce_worktree_precondition=enforce_worktree_precondition_fn,
         run_permission_precheck=preflight,
         run_selected_feature_iterations=run_selected_feature_iterations_fn,
