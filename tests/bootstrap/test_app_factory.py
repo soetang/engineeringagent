@@ -20,6 +20,7 @@ from engineeringagent.adapters.vcs import (
 from engineeringagent.application import (
     ChecksService,
     FeatureIterationService,
+    FeatureIterationRuntime,
     GuidanceService,
     InitWorkspaceService,
     PromptBuilder,
@@ -56,6 +57,7 @@ def test_app_factory_builds_default_application_services(tmp_path: Path) -> None
         feature_iteration_service._progress_journal,
         FilesystemProgressJournal,
     )
+    assert isinstance(feature_iteration_service._runtime, FeatureIterationRuntime)
     assert isinstance(
         checks_service._checks_catalog_repository,
         FilesystemChecksCatalogRepository,

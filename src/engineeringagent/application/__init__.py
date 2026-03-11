@@ -13,6 +13,7 @@ from .feature_iteration_service import (
     FeatureIterationRequest,
     FeatureIterationResult,
     FeatureIterationService,
+    FeatureIterationRuntime,
 )
 from .guidance_service import (
     GuidanceInputError,
@@ -46,6 +47,7 @@ __all__ = [
     "FeatureIterationRequest",
     "FeatureIterationResult",
     "FeatureIterationService",
+    "FeatureIterationRuntime",
     "GuidanceInputError",
     "GuidanceQuery",
     "GuidanceResult",

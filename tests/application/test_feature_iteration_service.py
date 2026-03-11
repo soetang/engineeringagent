@@ -8,6 +8,7 @@ from engineeringagent.application import (
     FeatureIterationRequest,
     FeatureIterationResult,
     FeatureIterationService,
+    FeatureIterationRuntime,
 )
 from engineeringagent.domain.audit import ProgressEvent
 from engineeringagent.ports import (
@@ -136,18 +137,7 @@ def _build_runtime_modules(
     *,
     commit_result: CommitResult,
     publish_outcome: object,
-) -> tuple[
-    SimpleNamespace,
-    SimpleNamespace,
-    SimpleNamespace,
-    SimpleNamespace,
-    SimpleNamespace,
-    SimpleNamespace,
-    SimpleNamespace,
-    SimpleNamespace,
-    _FakeVersionControlGateway,
-    _FakeProgressJournal,
-]:
+) -> tuple[FeatureIterationRuntime, _FakeVersionControlGateway, _FakeProgressJournal]:
     def _fake_run_feature_iteration_pipeline(inputs: object, dependencies: object) -> str:
         observed["inputs"] = inputs
         observed["dependencies"] = dependencies
@@ -173,19 +163,6 @@ def _build_runtime_modules(
         archive_completed_feature=object(),
         restore_archived_feature=object(),
     )
-    models_module = SimpleNamespace(
-        FeatureIterationInputs=lambda **kwargs: _FakeFeatureIterationInputs(
-            observed, **kwargs
-        )
-    )
-    observers_module = SimpleNamespace(
-        publish_iteration_report=_fake_publish_iteration_report,
-        build_default_iteration_report_observers=lambda dependencies: (
-            observed.__setitem__("default_observer_dependencies", dependencies),
-            ("observer",),
-        )[1],
-        DefaultObserverDependencies=lambda **kwargs: kwargs,
-    )
 
     def _fake_write_iteration_telemetry(
         telemetry_inputs: object,
@@ -197,47 +174,56 @@ def _build_runtime_modules(
             "git_head_resolver": git_head_resolver,
         }
 
-    telemetry_module = SimpleNamespace(
-        write_iteration_telemetry=_fake_write_iteration_telemetry
-    )
-    iteration_module = SimpleNamespace(
-        run_feature_iteration_pipeline=_fake_run_feature_iteration_pipeline,
-        IterationPipelineDependencies=lambda **kwargs: _FakeIterationPipelineDependencies(
+    runtime = FeatureIterationRuntime(
+        build_inputs=lambda **kwargs: _FakeFeatureIterationInputs(observed, **kwargs),
+        build_iteration_dependencies=lambda **kwargs: _FakeIterationPipelineDependencies(
             observed, **kwargs
         ),
-    )
-    phases_module = SimpleNamespace(
+        run_feature_iteration_pipeline=_fake_run_feature_iteration_pipeline,
+        build_gate_phase_dependencies=lambda **kwargs: _FakeGatePhaseDependencies(
+            observed, **kwargs
+        ),
+        build_reviewer_phase_dependencies=lambda **kwargs: (
+            _FakeReviewerPhaseDependencies(observed, **kwargs)
+        ),
+        build_completion_phase_dependencies=lambda **kwargs: (
+            _FakeCompletionPhaseDependencies(observed, **kwargs)
+        ),
+        build_default_observer_dependencies=lambda **kwargs: kwargs,
+        build_default_iteration_report_observers=lambda dependencies: (
+            observed.__setitem__("default_observer_dependencies", dependencies),
+            ("observer",),
+        )[1],
+        publish_iteration_report=_fake_publish_iteration_report,
+        write_iteration_telemetry=_fake_write_iteration_telemetry,
+        run_implement_step=loop_module.run_implement_step,
+        git_head_resolver=loop_module.git_head_short,
+        print_summary=loop_module.print_summary,
+        evaluate_initial_feature_load=feature_state_module.evaluate_initial_feature_load,
+        ready_for_active_iteration=feature_state_module.ready_for_active_iteration,
+        touch_active_feature_for_iteration=(
+            feature_state_module.touch_active_feature_for_iteration
+        ),
+        refresh_feature_after_implement=(
+            feature_state_module.refresh_feature_after_implement
+        ),
+        should_archive_selected_feature=(
+            feature_state_module.should_archive_selected_feature
+        ),
+        archive_completed_feature=feature_state_module.archive_completed_feature,
+        restore_archived_feature=feature_state_module.restore_archived_feature,
+        collect_changed_paths=changed_paths_module.collect_changed_paths,
         run_gate_phase=object(),
         run_verification_phase=object(),
         run_reviewer_phase=object(),
         run_completion_commit_phase=object(),
-        GatePhaseDependencies=lambda **kwargs: _FakeGatePhaseDependencies(
-            observed, **kwargs
-        ),
-        ReviewerPhaseDependencies=lambda **kwargs: _FakeReviewerPhaseDependencies(
-            observed, **kwargs
-        ),
-        CompletionPhaseDependencies=lambda **kwargs: _FakeCompletionPhaseDependencies(
-            observed, **kwargs
-        ),
     )
     version_control_gateway = _FakeVersionControlGateway(observed, commit_result)
     progress_journal = _FakeProgressJournal(observed)
-    return (
-        loop_module,
-        changed_paths_module,
-        feature_state_module,
-        models_module,
-        observers_module,
-        telemetry_module,
-        iteration_module,
-        phases_module,
-        version_control_gateway,
-        progress_journal,
-    )
+    return (runtime, version_control_gateway, progress_journal)
 
 
-def test_feature_iteration_service_executes_runtime_pipeline(monkeypatch) -> None:
+def test_feature_iteration_service_executes_runtime_pipeline() -> None:
     """The service should build and publish the runtime iteration pipeline."""
     observed: dict[str, object] = {}
     commit_result = CommitResult(
@@ -247,18 +233,7 @@ def test_feature_iteration_service_executes_runtime_pipeline(monkeypatch) -> Non
         commit_sha=None,
         failure_stage="git_commit",
     )
-    (
-        loop_module,
-        changed_paths_module,
-        feature_state_module,
-        models_module,
-        observers_module,
-        telemetry_module,
-        iteration_module,
-        phases_module,
-        version_control_gateway,
-        progress_journal,
-    ) = _build_runtime_modules(
+    runtime, version_control_gateway, progress_journal = _build_runtime_modules(
         observed,
         commit_result=commit_result,
         publish_outcome=SimpleNamespace(
@@ -276,30 +251,10 @@ def test_feature_iteration_service_executes_runtime_pipeline(monkeypatch) -> Non
         ),
     )
 
-    def _fake_import_module(name: str) -> SimpleNamespace:
-        mapping = {
-            "engineeringagent.loop": loop_module,
-            "engineeringagent.checks": changed_paths_module,
-            "engineeringagent.loop_runtime.feature_state": feature_state_module,
-            "engineeringagent.loop_runtime.models": models_module,
-            "engineeringagent.loop_runtime.observers": observers_module,
-            "engineeringagent.loop_runtime.telemetry": telemetry_module,
-            "engineeringagent.loop_runtime.iteration": iteration_module,
-            "engineeringagent.loop_runtime.phases": phases_module,
-        }
-        try:
-            return mapping[name]
-        except KeyError as exc:
-            raise AssertionError(f"unexpected module import: {name}") from exc
-
-    monkeypatch.setattr(
-        "engineeringagent.application.feature_iteration_service.import_module",
-        _fake_import_module,
-    )
-
     result = FeatureIterationService(
         version_control_gateway=version_control_gateway,
         progress_journal=progress_journal,
+        runtime=runtime,
     ).run(_build_request())
 
     assert result == FeatureIterationResult(
@@ -327,12 +282,12 @@ def test_feature_iteration_service_executes_runtime_pipeline(monkeypatch) -> Non
     }
     assert observed["report"] == "iteration-report"
     assert observed["gate_dependencies"] == {
-        "restore_archived_feature": feature_state_module.restore_archived_feature,
-        "collect_changed_paths": changed_paths_module.collect_changed_paths,
+        "restore_archived_feature": runtime.restore_archived_feature,
+        "collect_changed_paths": runtime.collect_changed_paths,
     }
     assert observed["reviewer_dependencies"] == {
-        "collect_changed_paths": changed_paths_module.collect_changed_paths,
-        "restore_archived_feature": feature_state_module.restore_archived_feature,
+        "collect_changed_paths": runtime.collect_changed_paths,
+        "restore_archived_feature": runtime.restore_archived_feature,
     }
     completion_dependencies = observed["completion_dependencies"]
     assert isinstance(completion_dependencies, dict)
@@ -353,11 +308,11 @@ def test_feature_iteration_service_executes_runtime_pipeline(monkeypatch) -> Non
     assert isinstance(observer_dependencies, dict)
     observer_dependencies["write_iteration_telemetry"](
         "telemetry-inputs",
-        loop_module.git_head_short,
+        runtime.git_head_resolver,
     )
     assert observed["telemetry_call"] == {
         "telemetry_inputs": "telemetry-inputs",
-        "git_head_resolver": loop_module.git_head_short,
+        "git_head_resolver": runtime.git_head_resolver,
     }
     observer_dependencies["persist_iteration_report"](
         SimpleNamespace(
@@ -377,21 +332,10 @@ def test_feature_iteration_service_executes_runtime_pipeline(monkeypatch) -> Non
     ]
 
 
-def test_feature_iteration_service_commit_completion_reports_success(monkeypatch) -> None:
+def test_feature_iteration_service_commit_completion_reports_success() -> None:
     """Successful completion commits should return the passing tuple shape."""
     observed: dict[str, object] = {}
-    (
-        loop_module,
-        changed_paths_module,
-        feature_state_module,
-        models_module,
-        observers_module,
-        telemetry_module,
-        iteration_module,
-        phases_module,
-        version_control_gateway,
-        progress_journal,
-    ) = _build_runtime_modules(
+    runtime, version_control_gateway, progress_journal = _build_runtime_modules(
         observed,
         commit_result=CommitResult(
             stdout="ok\n",
@@ -415,30 +359,10 @@ def test_feature_iteration_service_commit_completion_reports_success(monkeypatch
         ),
     )
 
-    def _fake_import_module(name: str) -> SimpleNamespace:
-        mapping = {
-            "engineeringagent.loop": loop_module,
-            "engineeringagent.checks": changed_paths_module,
-            "engineeringagent.loop_runtime.feature_state": feature_state_module,
-            "engineeringagent.loop_runtime.models": models_module,
-            "engineeringagent.loop_runtime.observers": observers_module,
-            "engineeringagent.loop_runtime.telemetry": telemetry_module,
-            "engineeringagent.loop_runtime.iteration": iteration_module,
-            "engineeringagent.loop_runtime.phases": phases_module,
-        }
-        try:
-            return mapping[name]
-        except KeyError as exc:
-            raise AssertionError(f"unexpected module import: {name}") from exc
-
-    monkeypatch.setattr(
-        "engineeringagent.application.feature_iteration_service.import_module",
-        _fake_import_module,
-    )
-
     FeatureIterationService(
         version_control_gateway=version_control_gateway,
         progress_journal=progress_journal,
+        runtime=runtime,
     ).run(_build_request())
 
     completion_dependencies = observed["completion_dependencies"]

@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from importlib import import_module
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from pydantic import BaseModel, ConfigDict
 
@@ -43,6 +42,42 @@ class FeatureIterationResult(BaseModel):
     failed_reviewer_id: str | None = None
 
 
+class FeatureIterationRuntime(BaseModel):  # pylint: disable=too-many-instance-attributes
+    """Legacy runtime collaborators injected by bootstrap for one iteration."""
+
+    model_config = ConfigDict(
+        frozen=True,
+        extra="forbid",
+        arbitrary_types_allowed=True,
+    )
+
+    build_inputs: Callable[..., object]
+    build_iteration_dependencies: Callable[..., object]
+    run_feature_iteration_pipeline: Callable[..., Any]
+    build_gate_phase_dependencies: Callable[..., object]
+    build_reviewer_phase_dependencies: Callable[..., object]
+    build_completion_phase_dependencies: Callable[..., object]
+    build_default_observer_dependencies: Callable[..., object]
+    build_default_iteration_report_observers: Callable[..., object]
+    publish_iteration_report: Callable[..., Any]
+    write_iteration_telemetry: Callable[..., object]
+    run_implement_step: object
+    git_head_resolver: object
+    print_summary: object
+    evaluate_initial_feature_load: object
+    ready_for_active_iteration: object
+    touch_active_feature_for_iteration: object
+    refresh_feature_after_implement: object
+    should_archive_selected_feature: object
+    archive_completed_feature: object
+    restore_archived_feature: object
+    collect_changed_paths: object
+    run_gate_phase: object
+    run_verification_phase: object
+    run_reviewer_phase: object
+    run_completion_commit_phase: object
+
+
 class FeatureIterationService:
     """Own feature-iteration requests behind a stable application contract."""
 
@@ -51,21 +86,14 @@ class FeatureIterationService:
         *,
         version_control_gateway: VersionControlGateway,
         progress_journal: ProgressJournal,
+        runtime: FeatureIterationRuntime,
     ) -> None:
         self._version_control_gateway = version_control_gateway
         self._progress_journal = progress_journal
+        self._runtime = runtime
 
     def run(self, request: FeatureIterationRequest) -> FeatureIterationResult:
         """Execute one feature iteration through the injected runtime boundary."""
-        loop_module = import_module("engineeringagent.loop")
-        checks_module = import_module("engineeringagent.checks")
-        feature_state_module = import_module("engineeringagent.loop_runtime.feature_state")
-        models_module = import_module("engineeringagent.loop_runtime.models")
-        observers_module = import_module("engineeringagent.loop_runtime.observers")
-        telemetry_module = import_module("engineeringagent.loop_runtime.telemetry")
-        iteration_module = import_module("engineeringagent.loop_runtime.iteration")
-        phases_module = import_module("engineeringagent.loop_runtime.phases")
-
         def _commit_feature_completion(
             project_root: Path,
             feature: dict[str, Any],
@@ -91,8 +119,8 @@ class FeatureIterationService:
                 payload=report.model_dump(mode="json"),
             )
 
-        report = iteration_module.run_feature_iteration_pipeline(
-            models_module.FeatureIterationInputs(
+        report = self._runtime.run_feature_iteration_pipeline(
+            self._runtime.build_inputs(
                 project_root=request.project_root,
                 feature_path=request.feature_path,
                 run_all=request.run_all,
@@ -100,58 +128,60 @@ class FeatureIterationService:
                 feedback=request.feedback,
                 verbose_output=request.verbose_output,
             ),
-            iteration_module.IterationPipelineDependencies(
+            self._runtime.build_iteration_dependencies(
                 evaluate_initial_feature_load=(
-                    feature_state_module.evaluate_initial_feature_load
+                    self._runtime.evaluate_initial_feature_load
                 ),
-                ready_for_active_iteration=feature_state_module.ready_for_active_iteration,
+                ready_for_active_iteration=self._runtime.ready_for_active_iteration,
                 touch_active_feature_for_iteration=(
-                    feature_state_module.touch_active_feature_for_iteration
+                    self._runtime.touch_active_feature_for_iteration
                 ),
-                run_implement_step=loop_module.run_implement_step,
+                run_implement_step=self._runtime.run_implement_step,
                 refresh_feature_after_implement=(
-                    feature_state_module.refresh_feature_after_implement
+                    self._runtime.refresh_feature_after_implement
                 ),
                 should_archive_selected_feature=(
-                    feature_state_module.should_archive_selected_feature
+                    self._runtime.should_archive_selected_feature
                 ),
-                archive_completed_feature=feature_state_module.archive_completed_feature,
-                run_gate_phase=phases_module.run_gate_phase,
-                gate_phase_dependencies=phases_module.GatePhaseDependencies(
-                    restore_archived_feature=feature_state_module.restore_archived_feature,
-                    collect_changed_paths=checks_module.collect_changed_paths,
+                archive_completed_feature=self._runtime.archive_completed_feature,
+                run_gate_phase=self._runtime.run_gate_phase,
+                gate_phase_dependencies=self._runtime.build_gate_phase_dependencies(
+                    restore_archived_feature=self._runtime.restore_archived_feature,
+                    collect_changed_paths=self._runtime.collect_changed_paths,
                 ),
-                run_verification_phase=phases_module.run_verification_phase,
-                run_reviewer_phase=phases_module.run_reviewer_phase,
-                reviewer_phase_dependencies=phases_module.ReviewerPhaseDependencies(
-                    collect_changed_paths=checks_module.collect_changed_paths,
-                    restore_archived_feature=feature_state_module.restore_archived_feature,
+                run_verification_phase=self._runtime.run_verification_phase,
+                run_reviewer_phase=self._runtime.run_reviewer_phase,
+                reviewer_phase_dependencies=(
+                    self._runtime.build_reviewer_phase_dependencies(
+                        collect_changed_paths=self._runtime.collect_changed_paths,
+                        restore_archived_feature=self._runtime.restore_archived_feature,
+                    )
                 ),
-                run_completion_commit_phase=phases_module.run_completion_commit_phase,
+                run_completion_commit_phase=self._runtime.run_completion_commit_phase,
                 completion_phase_dependencies=(
-                    phases_module.CompletionPhaseDependencies(
+                    self._runtime.build_completion_phase_dependencies(
                         commit_feature_completion=_commit_feature_completion,
-                        restore_archived_feature=feature_state_module.restore_archived_feature,
+                        restore_archived_feature=self._runtime.restore_archived_feature,
                     )
                 ),
             ),
         )
-        observers = observers_module.build_default_iteration_report_observers(
-            observers_module.DefaultObserverDependencies(
+        observers = self._runtime.build_default_iteration_report_observers(
+            self._runtime.build_default_observer_dependencies(
                 write_iteration_telemetry=(
                     lambda telemetry_inputs, git_head_resolver: (
-                        telemetry_module.write_iteration_telemetry(
+                        self._runtime.write_iteration_telemetry(
                             telemetry_inputs,
                             git_head_resolver=git_head_resolver,
                         )
                     )
                 ),
                 persist_iteration_report=_persist_iteration_report,
-                git_head_resolver=loop_module.git_head_short,
-                print_summary=loop_module.print_summary,
+                git_head_resolver=self._runtime.git_head_resolver,
+                print_summary=self._runtime.print_summary,
             )
         )
-        outcome = observers_module.publish_iteration_report(
+        outcome = self._runtime.publish_iteration_report(
             report,
             observers,
         )
