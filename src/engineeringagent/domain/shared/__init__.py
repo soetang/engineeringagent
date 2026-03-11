@@ -8,6 +8,7 @@ from .enums import (
     ReviewDecision,
 )
 from .ids import CheckId, FeatureId, PhaseId, TopicId
+from .timestamps import utc_iso_from_epoch_sec
 
 __all__ = [
     "BackendId",
@@ -19,4 +20,5 @@ __all__ = [
     "PlanningTier",
     "ReviewDecision",
     "TopicId",
+    "utc_iso_from_epoch_sec",
 ]

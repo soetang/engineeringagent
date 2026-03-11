@@ -35,7 +35,7 @@ from .models import (
     ReviewerPhaseOutcome,
     VerificationPhaseOutcome,
 )
-from .time_format import utc_iso_from_epoch_sec
+from engineeringagent.domain.shared import utc_iso_from_epoch_sec
 
 
 class LoopTriggeredChecksRequest(BaseModel):

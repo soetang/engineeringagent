@@ -39,7 +39,7 @@ from .phases import (
     GatePhaseDependencies,
     ReviewerPhaseDependencies,
 )
-from .time_format import utc_iso_from_epoch_sec
+from engineeringagent.domain.shared import utc_iso_from_epoch_sec
 
 
 class IterationPipelineDependencies(BaseModel):
