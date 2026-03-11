@@ -19,9 +19,6 @@ from engineeringagent.adapters.progress.iteration_telemetry import (
 )
 from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
 from engineeringagent.application import PromptBuilder
-from engineeringagent.domain.specification.feature_specification import (
-    FeatureSpecification,
-)
 from engineeringagent.ports import AgentRunRequest, AgentRunner
 from engineeringagent.loop import (
     _drop_completed_feature_from_snapshot,
@@ -1120,10 +1117,10 @@ def test_run_implement_step_uses_injected_prompt_builder(tmp_path: Path) -> None
     recorded_calls: list[dict[str, object]] = []
 
     class _PromptBuilder:
-        def build_implementation_prompt_from_specification(
+        def build_implementation_prompt_from_feature_document(
             self,
             *,
-            specification: FeatureSpecification,
+            feature: dict[str, object],
             specification_path: Path,
             feedback: str | None,
             handoff_path: str | None = None,
@@ -1132,7 +1129,7 @@ def test_run_implement_step_uses_injected_prompt_builder(tmp_path: Path) -> None
             assert feedback is None
             recorded_calls.append(
                 {
-                    "feature_id": specification.feature_id,
+                    "feature_id": feature["id"],
                     "specification_path": specification_path,
                     "feedback": feedback,
                     "handoff_path": handoff_path,
@@ -1213,10 +1210,10 @@ def test_run_implement_step_passes_handoff_path_only_when_persisted(
     recorded_calls: list[dict[str, object]] = []
 
     class _PromptBuilder:
-        def build_implementation_prompt_from_specification(
+        def build_implementation_prompt_from_feature_document(
             self,
             *,
-            specification: FeatureSpecification,
+            feature: dict[str, object],
             specification_path: Path,
             feedback: str | None,
             handoff_path: str | None = None,
@@ -1225,7 +1222,7 @@ def test_run_implement_step_passes_handoff_path_only_when_persisted(
             assert feedback is None
             recorded_calls.append(
                 {
-                    "feature_id": specification.feature_id,
+                    "feature_id": feature["id"],
                     "specification_path": specification_path,
                     "feedback": feedback,
                     "handoff_path": handoff_path,
@@ -1301,17 +1298,17 @@ def test_run_implement_step_preserves_non_repo_handoff_path_reference(
     recorded_calls: list[dict[str, object]] = []
 
     class _PromptBuilder:
-        def build_implementation_prompt_from_specification(
+        def build_implementation_prompt_from_feature_document(
             self,
             *,
-            specification: FeatureSpecification,
+            feature: dict[str, object],
             specification_path: Path,
             feedback: str | None,
             handoff_path: str | None = None,
         ) -> str:
             recorded_calls.append(
                 {
-                    "feature_id": specification.feature_id,
+                    "feature_id": feature["id"],
                     "specification_path": specification_path,
                     "feedback": feedback,
                     "handoff_path": handoff_path,

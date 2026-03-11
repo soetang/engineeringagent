@@ -214,6 +214,46 @@ def test_prompt_builder_private_helpers_cover_invalid_and_blank_inputs(
     assert request.retry_feedback == "retry here"
 
 
+def test_build_implementation_prompt_from_feature_document_coerces_raw_feature_payload(
+    tmp_path: Path,
+) -> None:
+    """Raw feature documents are coerced in the application prompt layer."""
+
+    feature_path = (
+        tmp_path
+        / "docs"
+        / "specifications"
+        / "features"
+        / "FEAT-901"
+        / "specification.yaml"
+    )
+    feature_path.parent.mkdir(parents=True, exist_ok=True)
+
+    prompt = _prompt_builder().build_implementation_prompt_from_feature_document(
+        feature={
+            "id": "FEAT-901",
+            "title": "Raw feature prompt conversion",
+            "type": "feature",
+            "planning_tier": "researched",
+            "status": "in_progress",
+            "priority": "high",
+            "objective": "Move feature coercion into the application prompt builder.",
+            "acceptance": ["Prompt rendering still resolves feature artifacts."],
+            "artifacts": {"plan": "plan.md", "research": "research.md"},
+        },
+        specification_path=feature_path,
+        feedback="  tighten prompt ownership  ",
+        handoff_path=".engineeringagent/progress/FEAT-901/handoff.md",
+    )
+
+    assert "Feature: FEAT-901" in prompt
+    assert f"- specification: {feature_path}" in prompt
+    assert f"- plan: {feature_path.parent / 'plan.md'}" in prompt
+    assert f"- research: {feature_path.parent / 'research.md'}" in prompt
+    assert "- handoff: .engineeringagent/progress/FEAT-901/handoff.md" in prompt
+    assert "tighten prompt ownership" in prompt
+
+
 def test_default_prompt_builder_prefers_repo_local_templates(
     tmp_path: Path,
 ) -> None:

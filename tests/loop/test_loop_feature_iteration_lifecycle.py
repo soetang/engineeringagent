@@ -8,6 +8,7 @@ import pytest
 import yaml
 
 import engineeringagent.loop as loop_module
+from engineeringagent.bootstrap import runtime_support as runtime_support_module
 from engineeringagent.loop import _enforce_worktree_precondition
 from engineeringagent.ports import WorktreeStatus
 from engineeringagent.application.feature_iteration.models import ImplementStepResult
@@ -312,6 +313,7 @@ def test_run_loop_all_selected_feature_moved_to_features_done_continues_to_next(
         feature_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding="utf-8")
         return passing_implement_result()
 
+    monkeypatch.setattr(runtime_support_module, "run_implement_step", fake_run_implement_step)
     monkeypatch.setattr(loop_module, "run_implement_step", fake_run_implement_step)
     monkeypatch.setattr(loop_module, "preflight", lambda **_: True)
 
@@ -423,6 +425,7 @@ def test_run_loop_fails_when_preexisting_done_active_feature_trips_validate(
             feature_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding="utf-8")
         return passing_implement_result()
 
+    monkeypatch.setattr(runtime_support_module, "run_implement_step", fake_run_implement_step)
     monkeypatch.setattr(loop_module, "run_implement_step", fake_run_implement_step)
     monkeypatch.setattr(loop_module, "preflight", lambda **_: True)
     code = run_loop(

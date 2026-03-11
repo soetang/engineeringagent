@@ -1,0 +1,574 @@
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+import engineeringagent.loop_runtime.run_builder as run_builder_module
+from engineeringagent.application.feature_iteration.models import (
+    FeatureIterationInputs,
+    IterationOutcome,
+    IterationSummaryInputs,
+)
+from engineeringagent.loop_runtime.run_context import LoopRun, RunConfig, RunState
+from engineeringagent.ports import VersionControlFailure, WorktreeStatus
+
+
+def _config(
+    tmp_path: Path,
+    *,
+    run_all: bool = False,
+    dry_run: bool = False,
+    max_iterations: int = 5,
+    verbose_output: bool = False,
+) -> RunConfig:
+    return RunConfig(
+        project_root=tmp_path,
+        feature_paths=(),
+        dry_run=dry_run,
+        run_all=run_all,
+        max_iterations=max_iterations,
+        verbose_output=verbose_output,
+    )
+
+
+def _loop_run(
+    tmp_path: Path,
+    *,
+    resolved_feature_paths: tuple[Path, ...] = (),
+    total_iterations: int = 0,
+    config_overrides: dict[str, object] | None = None,
+) -> LoopRun:
+    overrides = config_overrides or {}
+    return run_builder_module.build_loop_run(
+        _config(
+            tmp_path,
+            run_all=bool(overrides.get("run_all", False)),
+            dry_run=bool(overrides.get("dry_run", False)),
+            max_iterations=int(overrides.get("max_iterations", 5)),
+            verbose_output=bool(overrides.get("verbose_output", False)),
+        ),
+        enforce_worktree_precondition_fn=lambda _project_root, _allow_dirty: None,
+        run_selected_feature_iterations_fn=lambda _loop_run: 0,
+    ).with_state(
+        RunState(
+            total_iterations=total_iterations,
+            resolved_feature_paths=resolved_feature_paths,
+        )
+    )
+
+
+def _outcome(
+    *,
+    completed: bool,
+    result: str,
+    extras: dict[str, object] | None = None,
+) -> IterationOutcome:
+    payload = extras or {}
+    return IterationOutcome(
+        completed=completed,
+        result=result,
+        failed_gate=payload.get("failed_gate"),
+        next_action=str(payload.get("next_action", "continue_same_feature")),
+        feedback=payload.get("feedback"),
+        log_path=payload.get("log_path"),
+    )
+
+
+def test_print_summary_renders_passed_iteration_details(capsys: Any) -> None:
+    """Print the full passed-iteration summary surface."""
+
+    run_builder_module.print_summary(
+        IterationSummaryInputs(
+            feature_id="FEAT-100",
+            result="passed",
+            failed_gate=None,
+            attempt=2,
+            next_action="continue_same_feature",
+            selected_path="docs/spec/features/FEAT-100/spec.yaml",
+            implement_step="opencode run --agent engineeringagent",
+            progress_kind="step",
+            progress_id="P1",
+            progress_title="Wire run builder tests",
+            verification_status="failed:uv run pytest -q",
+            verification_failed_command="uv run pytest -q",
+            reviewer_status="failed",
+            reviewer_decision="request_changes",
+            failed_reviewer_id="architecture-review",
+        )
+    )
+
+    output = capsys.readouterr().out
+    assert "Iteration 2" in output
+    assert "Selected: docs/spec/features/FEAT-100/spec.yaml" in output
+    assert "Implement: opencode run --agent engineeringagent" in output
+    assert "Progress: implementation step P1 - Wire run builder tests" in output
+    assert "Verify: failed (uv run pytest -q)" in output
+    assert "Reviewer: failed (request_changes) [architecture-review]" in output
+    assert "Loop summary: result=passed feature=FEAT-100 attempt=2" in output
+
+
+def test_print_summary_renders_failed_iteration_with_archived_selection(capsys: Any) -> None:
+    """Print archived counterpart and failure details for failed iterations."""
+
+    run_builder_module.print_summary(
+        IterationSummaryInputs(
+            feature_id="FEAT-200",
+            result="failed",
+            failed_gate="git_add",
+            attempt=3,
+            next_action="retry_same_feature",
+            archived_selection_path="docs/spec/features_done/FEAT-200/spec.yaml",
+            implement_step="implement",
+            log_path=".engineeringagent/progress/FEAT-200/run.txt",
+        )
+    )
+
+    output = capsys.readouterr().out
+    assert "Selected archived counterpart:" in output
+    assert "docs/spec/features_done/FEAT-200/spec.yaml" in output
+    assert "Log: .engineeringagent/progress/FEAT-200/run.txt" in output
+    assert "Failed gate: git_add" in output
+
+
+def test_run_all_snapshot_helpers_cover_banner_and_no_work(capsys: Any) -> None:
+    """Render both snapshot banner helpers."""
+
+    run_builder_module._print_run_all_snapshot_banner([Path("a"), Path("b")])
+    run_builder_module._print_run_all_no_work_message()
+
+    output = capsys.readouterr().out
+    assert "Startup snapshot captured 2 runnable feature entrypoint(s)" in output
+    assert "No runnable active features found for --all startup snapshot" in output
+    assert "Loop summary: result=no_work feature=- attempt=- next=stop" in output
+
+
+def test_build_selector_prompt_and_choose_feature_delegate(monkeypatch: Any, tmp_path: Path) -> None:
+    """Build selector text and pass the expected collaborators to selection."""
+
+    feature_path = tmp_path / "docs" / "spec" / "features" / "FEAT-300" / "spec.yaml"
+    pending = [(feature_path, {"id": "FEAT-300", "status": "backlog", "priority": "high"})]
+    recorded: dict[str, object] = {}
+
+    def _choose(
+        project_root: Path,
+        pending_features: list[tuple[Path, dict[str, Any]]],
+        *,
+        build_selector_prompt_fn: object,
+        run_agent_fn: object,
+    ) -> tuple[Path, dict[str, Any]]:
+        recorded["project_root"] = project_root
+        recorded["prompt"] = build_selector_prompt_fn(pending_features)
+        recorded["run_agent_fn"] = run_agent_fn
+        return pending_features[0]
+
+    monkeypatch.setattr(run_builder_module, "choose_feature_with_selector", _choose)
+
+    selected = run_builder_module._choose_feature_with_selector(tmp_path, pending)
+
+    assert selected == pending[0]
+    assert recorded["project_root"] == tmp_path
+    assert "Choose the next feature spec to execute" in str(recorded["prompt"])
+    assert f"path={feature_path}" in str(recorded["prompt"])
+    assert recorded["run_agent_fn"] is run_builder_module.run_agent
+
+
+def test_iteration_cap_helpers_cover_continue_and_stop(capsys: Any) -> None:
+    """Return deterministic cap decisions before and after failures."""
+
+    assert run_builder_module._iteration_cap_reached(1, 2) is False
+    assert run_builder_module._iteration_cap_reached(2, 2) is True
+    assert run_builder_module._iteration_cap_reached_after_failure(
+        _outcome(
+            completed=False,
+            result="failed",
+            extras={"log_path": ".engineeringagent/progress/run.txt"},
+        ),
+        total_iterations=1,
+        max_iterations=2,
+    ) is False
+    assert run_builder_module._iteration_cap_reached_after_failure(
+        _outcome(
+            completed=False,
+            result="failed",
+            extras={"log_path": ".engineeringagent/progress/run.txt"},
+        ),
+        total_iterations=2,
+        max_iterations=2,
+    ) is True
+
+    output = capsys.readouterr().out
+    assert "Reached max iteration cap (2) before completion." in output
+    assert "Detailed log: .engineeringagent/progress/run.txt" in output
+
+
+def test_snapshot_and_candidate_helpers_cover_all_branches(
+    monkeypatch: Any,
+    tmp_path: Path,
+) -> None:
+    """Resolve snapshot removal and runnable candidates deterministically."""
+
+    feature_path = tmp_path / "feature.yaml"
+    other_path = tmp_path / "other.yaml"
+    feature_path.write_text("", encoding="utf-8")
+    other_path.write_text("", encoding="utf-8")
+
+    assert run_builder_module._drop_completed_feature_from_snapshot(
+        [feature_path, other_path],
+        feature_path,
+    ) == [feature_path, other_path]
+
+    feature_path.unlink()
+    assert run_builder_module._drop_completed_feature_from_snapshot(
+        [feature_path, other_path],
+        feature_path,
+    ) == [other_path]
+
+    pending = [(other_path, {"id": "FEAT-301"})]
+    done_pending_archive = [(tmp_path / "archived.yaml", {"id": "FEAT-302"})]
+    monkeypatch.setattr(run_builder_module, "pending_features", lambda _paths: pending)
+    monkeypatch.setattr(
+        run_builder_module,
+        "done_features_pending_archive",
+        lambda _paths: done_pending_archive,
+    )
+    assert run_builder_module._runnable_feature_candidates([other_path]) == pending
+
+    monkeypatch.setattr(run_builder_module, "pending_features", lambda _paths: [])
+    assert (
+        run_builder_module._runnable_feature_candidates([other_path])
+        == done_pending_archive
+    )
+
+    monkeypatch.setattr(
+        run_builder_module,
+        "done_features_pending_archive",
+        lambda _paths: [],
+    )
+    assert run_builder_module._runnable_feature_candidates([other_path]) == []
+
+
+def test_terminal_failure_exit_code_covers_known_failures(capsys: Any) -> None:
+    """Map terminal failure gates to stable exit codes and messaging."""
+
+    assert (
+        run_builder_module._terminal_iteration_failure_exit_code(
+            _outcome(
+                completed=False,
+                result="failed",
+                extras={
+                    "failed_gate": "git_add",
+                    "log_path": ".engineeringagent/progress/git_add.txt",
+                },
+            )
+        )
+        == 1
+    )
+    assert (
+        run_builder_module._terminal_iteration_failure_exit_code(
+            _outcome(
+                completed=False,
+                result="failed",
+                extras={
+                    "failed_gate": "feature_missing",
+                    "feedback": "feature file was deleted",
+                    "log_path": ".engineeringagent/progress/feature_missing.txt",
+                },
+            )
+        )
+        == 1
+    )
+    assert (
+        run_builder_module._terminal_iteration_failure_exit_code(
+            _outcome(
+                completed=False,
+                result="failed",
+                extras={"failed_gate": "reviewers"},
+            )
+        )
+        is None
+    )
+
+    output = capsys.readouterr().out
+    assert "git_add failure requires operator intervention" in output
+    assert "selected feature path is missing and not recoverable" in output
+    assert "Detail: feature file was deleted" in output
+
+
+def test_target_and_snapshot_resolution_helpers(monkeypatch: Any, tmp_path: Path) -> None:
+    """Dispatch snapshot and target resolution through the expected helpers."""
+
+    resolved_paths = [tmp_path / "feature.yaml"]
+    monkeypatch.setattr(
+        run_builder_module,
+        "discover_active_feature_paths",
+        lambda project_root: resolved_paths if project_root == tmp_path else [],
+    )
+    monkeypatch.setattr(
+        run_builder_module,
+        "resolve_feature_paths",
+        lambda project_root, feature_paths: [project_root / str(feature_paths[0])],
+    )
+
+    assert run_builder_module._resolve_run_targets(tmp_path, ("feature.yaml",), True) == resolved_paths
+    assert run_builder_module._resolve_run_targets(tmp_path, ("feature.yaml",), False) == [tmp_path / "feature.yaml"]
+
+    assert run_builder_module._emit_run_all_snapshot_feedback(resolved_paths, False) is None
+    assert run_builder_module._emit_run_all_snapshot_feedback(resolved_paths, True) is None
+    assert run_builder_module._emit_run_all_snapshot_feedback([], True) == 0
+
+
+def test_handle_dry_run_covers_pending_and_empty_paths(
+    monkeypatch: Any,
+    tmp_path: Path,
+    capsys: Any,
+) -> None:
+    """Handle dry-run selection for both empty and pending snapshots."""
+
+    feature_path = tmp_path / "docs" / "spec" / "features" / "FEAT-400" / "spec.yaml"
+    pending = [(feature_path, {"id": "FEAT-400"})]
+
+    monkeypatch.setattr(run_builder_module, "pending_features", lambda _paths: [])
+    assert run_builder_module._handle_dry_run([], False, False) is None
+    assert run_builder_module._handle_dry_run([], False, True) == 0
+    assert run_builder_module._handle_dry_run([], True, True) == 0
+
+    monkeypatch.setattr(run_builder_module, "pending_features", lambda _paths: pending)
+    monkeypatch.setattr(
+        run_builder_module,
+        "deterministic_feature_choice",
+        lambda pending_features: pending_features[0],
+    )
+    assert run_builder_module._handle_dry_run([feature_path], True, True) == 0
+
+    output = capsys.readouterr().out
+    assert "No pending features found in provided paths." in output
+    assert "[dry-run] Selection is taken from the startup snapshot" in output
+    assert "[dry-run] Selected feature=FEAT-400" in output
+
+
+def test_enforce_worktree_precondition_covers_git_failure_and_dirty_modes(
+    tmp_path: Path,
+    capsys: Any,
+) -> None:
+    """Reject unreadable and dirty worktrees unless explicitly overridden."""
+
+    def _raise_failure(_project_root: Path) -> WorktreeStatus:
+        raise VersionControlFailure("git status failed")
+
+    assert (
+        run_builder_module.enforce_worktree_precondition(
+            tmp_path,
+            False,
+            read_worktree_status=_raise_failure,
+        )
+        == 1
+    )
+    assert (
+        run_builder_module.enforce_worktree_precondition(
+            tmp_path,
+            False,
+            read_worktree_status=lambda _project_root: WorktreeStatus(
+                dirty=False,
+                stdout="",
+                stderr="",
+            ),
+        )
+        is None
+    )
+    assert (
+        run_builder_module.enforce_worktree_precondition(
+            tmp_path,
+            False,
+            read_worktree_status=lambda _project_root: WorktreeStatus(
+                dirty=True,
+                stdout="",
+                stderr="",
+            ),
+        )
+        == 1
+    )
+    assert (
+        run_builder_module.enforce_worktree_precondition(
+            tmp_path,
+            True,
+            read_worktree_status=lambda _project_root: WorktreeStatus(
+                dirty=True,
+                stdout="",
+                stderr="",
+            ),
+        )
+        is None
+    )
+
+    output = capsys.readouterr().out
+    assert "unable to read git status; run inside a git repository" in output
+    assert "working tree must be clean before running automated loop" in output
+    assert "Allow-dirty override enabled" in output
+
+
+def test_run_selected_feature_iterations_handles_completion_and_terminal_failure(
+    monkeypatch: Any,
+    tmp_path: Path,
+    capsys: Any,
+) -> None:
+    """Iterate through a completion and stop on a terminal missing-feature failure."""
+
+    first_path = tmp_path / "first.yaml"
+    second_path = tmp_path / "second.yaml"
+    first_path.write_text("", encoding="utf-8")
+    second_path.write_text("", encoding="utf-8")
+    loop_run = _loop_run(
+        tmp_path,
+        resolved_feature_paths=(first_path, second_path),
+        config_overrides={"max_iterations": 5, "verbose_output": True},
+    )
+    pending_sequences = [
+        [(first_path, {"id": "FEAT-500"})],
+        [(second_path, {"id": "FEAT-501"})],
+        [],
+    ]
+
+    monkeypatch.setattr(
+        run_builder_module,
+        "_runnable_feature_candidates",
+        lambda _resolved_paths: pending_sequences.pop(0),
+    )
+    monkeypatch.setattr(
+        run_builder_module,
+        "_choose_feature_with_selector",
+        lambda _project_root, pending: pending[0],
+    )
+
+    seen_inputs: list[FeatureIterationInputs] = []
+
+    def _run_feature_iteration(inputs: FeatureIterationInputs) -> IterationOutcome:
+        seen_inputs.append(inputs)
+        if inputs.feature_path == first_path:
+            first_path.unlink()
+            return _outcome(
+                completed=True,
+                result="passed",
+                extras={"next_action": "continue_same_feature"},
+            )
+        return _outcome(
+            completed=False,
+            result="failed",
+            extras={
+                "failed_gate": "feature_missing",
+                "feedback": "selected path disappeared",
+                "log_path": ".engineeringagent/progress/FEAT-501/run.txt",
+                "next_action": "stop",
+            },
+        )
+
+    assert (
+        run_builder_module.run_selected_feature_iterations(
+            loop_run,
+            run_feature_iteration=_run_feature_iteration,
+        )
+        == 1
+    )
+
+    assert [item.feature_path for item in seen_inputs] == [first_path, second_path]
+    assert seen_inputs[0].attempt == 1
+    assert seen_inputs[1].attempt == 2
+    assert seen_inputs[1].verbose_output is True
+    output = capsys.readouterr().out
+    assert "Selected feature=FEAT-500" in output
+    assert "Selected feature=FEAT-501" in output
+    assert "selected feature path is missing and not recoverable" in output
+
+
+def test_run_selected_feature_iterations_covers_done_and_iteration_cap(
+    monkeypatch: Any,
+    tmp_path: Path,
+    capsys: Any,
+) -> None:
+    """Return early for empty snapshots and when the cap is reached after a failure."""
+
+    empty_loop = _loop_run(
+        tmp_path,
+        resolved_feature_paths=(),
+        config_overrides={"max_iterations": 3},
+    )
+    monkeypatch.setattr(run_builder_module, "_runnable_feature_candidates", lambda _paths: [])
+    assert (
+        run_builder_module.run_selected_feature_iterations(
+            empty_loop,
+            run_feature_iteration=lambda _inputs: _outcome(completed=True, result="passed"),
+        )
+        == 0
+    )
+
+    feature_path = tmp_path / "feature.yaml"
+    feature_path.write_text("", encoding="utf-8")
+    capped_loop = _loop_run(
+        tmp_path,
+        resolved_feature_paths=(feature_path,),
+        total_iterations=1,
+        config_overrides={"max_iterations": 2},
+    )
+    monkeypatch.setattr(
+        run_builder_module,
+        "_runnable_feature_candidates",
+        lambda _paths: [(feature_path, {"id": "FEAT-600"})],
+    )
+    monkeypatch.setattr(
+        run_builder_module,
+        "_choose_feature_with_selector",
+        lambda _project_root, pending: pending[0],
+    )
+    assert (
+        run_builder_module.run_selected_feature_iterations(
+            capped_loop,
+            run_feature_iteration=lambda _inputs: _outcome(
+                completed=False,
+                result="failed",
+                extras={
+                    "failed_gate": "checks",
+                    "log_path": ".engineeringagent/progress/FEAT-600/run.txt",
+                },
+            ),
+        )
+        == 1
+    )
+
+    output = capsys.readouterr().out
+    assert "All provided features are done and committed." in output
+    assert "Reached max iteration cap (2) before completion." in output
+
+
+def test_build_run_config_and_loop_run_wire_default_services(tmp_path: Path) -> None:
+    """Build typed config and loop context from scalar options."""
+
+    config = run_builder_module.build_run_config(
+        project_root=tmp_path,
+        feature_paths=("a.yaml", Path("b.yaml")),
+        options=run_builder_module.RunConfigOptions(
+            dry_run=True,
+            run_all=True,
+            max_iterations=7,
+            allow_dirty=True,
+            verbose_output=True,
+        ),
+    )
+    loop_run = run_builder_module.build_loop_run(
+        config,
+        enforce_worktree_precondition_fn=lambda _project_root, _allow_dirty: None,
+        run_selected_feature_iterations_fn=lambda _loop_run: 0,
+    )
+
+    assert config.feature_paths == ("a.yaml", Path("b.yaml"))
+    assert config.run_all is True
+    assert config.dry_run is True
+    assert config.max_iterations == 7
+    assert config.allow_dirty is True
+    assert config.verbose_output is True
+    assert loop_run.config == config
+    assert loop_run.services.resolve_run_targets is run_builder_module._resolve_run_targets
+    assert (
+        loop_run.services.emit_run_all_snapshot_feedback
+        is run_builder_module._emit_run_all_snapshot_feedback
+    )
+    assert loop_run.services.handle_dry_run is run_builder_module._handle_dry_run
+    assert loop_run.services.run_permission_precheck is run_builder_module.preflight
