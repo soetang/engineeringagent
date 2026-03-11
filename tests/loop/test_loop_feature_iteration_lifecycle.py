@@ -10,7 +10,7 @@ import yaml
 import engineeringagent.loop as loop_module
 from engineeringagent.loop import _enforce_worktree_precondition
 from engineeringagent.ports import WorktreeStatus
-from engineeringagent.loop_runtime.models import ImplementStepResult
+from engineeringagent.application.feature_iteration.models import ImplementStepResult
 from tests.loop.feature_iteration_support import (
     base_feature,
     init_git_repo,

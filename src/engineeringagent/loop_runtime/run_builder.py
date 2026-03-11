@@ -16,7 +16,7 @@ from .feature_state import (
     pending_features,
     resolve_feature_paths,
 )
-from .models import FeatureIterationInputs, IterationOutcome, IterationSummaryInputs
+from engineeringagent.application.feature_iteration.models import FeatureIterationInputs, IterationOutcome, IterationSummaryInputs
 from .run_context import LoopRun, RunConfig, RunServices
 from .selection import choose_feature_with_selector, deterministic_feature_choice
 

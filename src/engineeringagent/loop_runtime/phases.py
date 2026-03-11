@@ -29,7 +29,7 @@ from ..domain.quality import (
 from ..domain.specification import feature_completion_commit_subject
 from ..config import repo_relative_label, resolve_harness_checks_config_path
 
-from .models import (
+from engineeringagent.application.feature_iteration.models import (
     CommandTiming,
     CompletionCommitOutcome,
     FeatureIterationInputs,

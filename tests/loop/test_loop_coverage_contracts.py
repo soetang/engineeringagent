@@ -7,7 +7,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import engineeringagent.loop as loop_module
-from engineeringagent.loop_runtime.models import IterationSummaryInputs
+from engineeringagent.application.feature_iteration.models import IterationSummaryInputs
 
 
 def test_commit_feature_completion_reports_success_output(monkeypatch) -> None:

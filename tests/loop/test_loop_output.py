@@ -9,8 +9,8 @@ import engineeringagent.presentation.presenters.terminal as presentation_module
 from engineeringagent.loop import print_summary
 import engineeringagent.loop_runtime.telemetry as telemetry_module
 import engineeringagent.loop_runtime.phases as phases_module
-import engineeringagent.loop_runtime.models as models_module
-from engineeringagent.loop_runtime.models import (
+import engineeringagent.application.feature_iteration.models as models_module
+from engineeringagent.application.feature_iteration.models import (
     FeatureIterationInputs,
     CommandTiming,
     IterationTelemetryInputs,

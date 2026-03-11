@@ -7,7 +7,7 @@ from typing import Callable, Sequence
 
 from pydantic import BaseModel, ConfigDict
 
-from .models import IterationReport, IterationSummaryInputs, IterationTelemetryInputs
+from engineeringagent.application.feature_iteration.models import IterationReport, IterationSummaryInputs, IterationTelemetryInputs
 
 PrintSummaryFn = Callable[[IterationSummaryInputs], None]
 

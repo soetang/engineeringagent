@@ -7,7 +7,7 @@ from typing import Any
 
 from engineeringagent.agents import run_agent
 from engineeringagent.loop_runtime.implement import run_implement_step_from_inputs
-from engineeringagent.loop_runtime.models import (
+from engineeringagent.application.feature_iteration.models import (
     ImplementStepInputs,
     ImplementStepResult,
     IterationSummaryInputs,

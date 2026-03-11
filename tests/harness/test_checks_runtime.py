@@ -19,7 +19,7 @@ from engineeringagent.checks.fitness.runtime import (
 from engineeringagent.checks.reviewers.runtime import (
     plan_reviewer_checks,
 )
-from engineeringagent.loop_runtime.models import FeatureIterationInputs
+from engineeringagent.application.feature_iteration.models import FeatureIterationInputs
 from engineeringagent.loop_runtime.phases import (
     GatePhaseDependencies,
     ReviewerPhaseDependencies,

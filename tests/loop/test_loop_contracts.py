@@ -25,7 +25,7 @@ from engineeringagent.loop import (
     _run_feature_iteration,
 )
 from engineeringagent.bootstrap.runtime_execution import run_loop_controller
-from engineeringagent.loop_runtime.models import (
+from engineeringagent.application.feature_iteration.models import (
     FeatureIterationInputs,
     ImplementStepInputs,
     IterationTelemetryInputs,

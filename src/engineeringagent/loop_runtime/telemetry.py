@@ -12,7 +12,7 @@ from engineeringagent.domain.audit import ProgressEvent
 from engineeringagent.adapters.progress import handoff as progress_handoff
 from engineeringagent.adapters.progress import paths as progress_paths
 
-from .models import CommandTiming, IterationTelemetryInputs, PhaseTiming
+from engineeringagent.application.feature_iteration.models import CommandTiming, IterationTelemetryInputs, PhaseTiming
 
 ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 FEEDBACK_CONTEXT_BLOCK_RE = re.compile(

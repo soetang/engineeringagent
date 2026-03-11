@@ -119,3 +119,28 @@ def test_repo_layer_contracts_rule_blocks_deleted_checks_changed_paths_module(
     assert payload["violations"] == [
         "src/engineeringagent/checks/changed_paths.py: deleted legacy module path must remain absent"
     ]
+
+
+def test_repo_layer_contracts_rule_blocks_deleted_loop_runtime_models_module(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Fail when the removed loop runtime models module reappears."""
+    legacy_module = (
+        tmp_path
+        / "src"
+        / "engineeringagent"
+        / "loop_runtime"
+        / "models.py"
+    )
+    legacy_module.parent.mkdir(parents=True, exist_ok=True)
+    legacy_module.write_text("", encoding="utf-8")
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert payload["rule_id"] == "architecture.repo-layer-contracts"
+    assert payload["violations"] == [
+        "src/engineeringagent/loop_runtime/models.py: deleted legacy module path must remain absent"
+    ]

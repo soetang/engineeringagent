@@ -1,4 +1,4 @@
-"""Loop runtime data models used by the loop facade."""
+"""Feature-iteration workflow models."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from typing import Any, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from engineeringagent.adapters.progress.handoff import ImplementProgressEnvelope
+from engineeringagent.domain.audit import ImplementProgressEnvelope
 
 ImplementStepResult: TypeAlias = tuple[
     bool,
@@ -36,7 +36,7 @@ class IterationOutcome(BaseModel):
     failed_reviewer_id: str | None = None
 
     @classmethod
-    def from_report(cls, report: IterationReport) -> "IterationOutcome":
+    def from_report(cls, report: "IterationReport") -> "IterationOutcome":
         """Build an outcome view from an iteration report."""
 
         return cls(
@@ -66,7 +66,7 @@ class InitialFeatureLoadOutcome(BaseModel):
 
 
 class PostImplementFeatureOutcome(BaseModel):
-    """Outcome from post-implementation bookkeeping (e.g. archive decisions)."""
+    """Outcome from post-implementation bookkeeping."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -115,7 +115,7 @@ class PhaseTiming(BaseModel):
 
 
 class CommandTiming(BaseModel):
-    """Timing metadata for a single command (or reviewer) invocation."""
+    """Timing metadata for a single command or reviewer invocation."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 

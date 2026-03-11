@@ -23,7 +23,7 @@ from engineeringagent.checks.fitness.contracts import (
     RuleSource,
 )
 from engineeringagent.checks.fitness.registry import FitnessRuleDefinition
-from engineeringagent.loop_runtime.models import FeatureIterationInputs
+from engineeringagent.application.feature_iteration.models import FeatureIterationInputs
 from engineeringagent.domain.quality import ChangedPathsResult
 from engineeringagent.loop_runtime.phases import (
     CompletionPhaseDependencies,

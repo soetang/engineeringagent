@@ -16,12 +16,10 @@ from engineeringagent.domain.specification import (
     feature_progress_reference,
     progress_status_snapshot,
 )
-from engineeringagent.adapters.progress.handoff import (
-    ImplementProgressEnvelope,
-)
+from engineeringagent.domain.audit import ImplementProgressEnvelope
 from engineeringagent.specs import feature_progress_kind
 
-from .models import (
+from engineeringagent.application.feature_iteration.models import (
     CommandTiming,
     CompletionCommitOutcome,
     FeatureIterationInputs,

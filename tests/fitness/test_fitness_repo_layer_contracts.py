@@ -54,6 +54,25 @@ def test_repo_layer_contracts_rule_blocks_runtime_execution_loop_import(
     ]
 
 
+def test_repo_layer_contracts_rule_allows_loop_runtime_models_bridge(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Allow the transitional loop-runtime import of application feature-iteration models."""
+    loop_runtime_root = tmp_path / "src" / "engineeringagent" / "loop_runtime"
+    loop_runtime_root.mkdir(parents=True, exist_ok=True)
+    (loop_runtime_root / "iteration.py").write_text(
+        "from engineeringagent.application.feature_iteration.models import IterationReport\n",
+        encoding="utf-8",
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "pass"
+    assert payload["violations"] == []
+
+
 def test_repo_layer_contracts_rule_blocks_deleted_legacy_directory_paths(
     tmp_path: Path,
     repo_root: Path,

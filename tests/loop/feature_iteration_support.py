@@ -24,7 +24,7 @@ from engineeringagent.loop import RunConfigOptions, build_loop_run, build_run_co
 from engineeringagent.bootstrap.runtime_execution import (
     run_loop_controller as _run_loop,
 )
-from engineeringagent.loop_runtime.models import ImplementStepResult
+from engineeringagent.application.feature_iteration.models import ImplementStepResult
 from engineeringagent.adapters.progress.handoff import fallback_implement_progress_envelope
 
 

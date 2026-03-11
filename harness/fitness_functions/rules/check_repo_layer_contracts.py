@@ -73,6 +73,7 @@ DELETED_MODULE_PATHS = {
     "src/engineeringagent/prompts/feedback_envelope.py",
     "src/engineeringagent/prompts/templates/__init__.py",
     "src/engineeringagent/loop_runtime/controller.py",
+    "src/engineeringagent/loop_runtime/models.py",
 }
 DELETED_DIRECTORY_PATHS = {
     "src/engineeringagent/adapters/checks",
@@ -117,12 +118,23 @@ def _matches_forbidden_module(module_name: str, forbidden_modules: tuple[str, ..
     )
 
 
+def _is_allowed_module(
+    module_name: str,
+    allowed_modules: tuple[str, ...],
+) -> bool:
+    return any(
+        module_name == allowed_module or module_name.startswith(f"{allowed_module}.")
+        for allowed_module in allowed_modules
+    )
+
+
 def _forbidden_import_violations(
     module: ast.Module,
     *,
     rel_path: str,
     forbidden_modules: tuple[str, ...],
     message: str,
+    allowed_modules: tuple[str, ...] = (),
 ) -> list[str]:
     violations: list[str] = []
     for node in ast.walk(module):
@@ -131,6 +143,8 @@ def _forbidden_import_violations(
             imported_module = node.module
         elif isinstance(node, ast.Import):
             for alias in node.names:
+                if _is_allowed_module(alias.name, allowed_modules):
+                    continue
                 if _matches_forbidden_module(alias.name, forbidden_modules):
                     violations.append(f"{rel_path}: {message}")
             continue
@@ -138,9 +152,40 @@ def _forbidden_import_violations(
         if imported_module is not None and _matches_forbidden_module(
             imported_module,
             forbidden_modules,
-        ):
+        ) and not _is_allowed_module(imported_module, allowed_modules):
             violations.append(f"{rel_path}: {message}")
     return violations
+
+
+_LOOP_RUNTIME_ALLOWED_APPLICATION_IMPORTS = (
+    "engineeringagent.application.feature_iteration.models",
+)
+
+
+def _loop_runtime_violations(path: Path) -> list[str]:
+    rel_path = path.as_posix()
+    module = _parse_module(path)
+    if isinstance(module, str):
+        return [module]
+
+    return [
+        *_forbidden_import_violations(
+            module,
+            rel_path=rel_path,
+            forbidden_modules=("engineeringagent.application",),
+            allowed_modules=_LOOP_RUNTIME_ALLOWED_APPLICATION_IMPORTS,
+            message=(
+                "loop runtime modules must not import application modules "
+                "outside engineeringagent.application.feature_iteration.models"
+            ),
+        ),
+        *_forbidden_import_violations(
+            module,
+            rel_path=rel_path,
+            forbidden_modules=("engineeringagent.bootstrap",),
+            message="loop runtime modules must not import bootstrap modules",
+        ),
+    ]
 
 
 def _is_protocol_base(base: ast.expr) -> bool:
@@ -402,28 +447,6 @@ def _json_format_boundary_violations(path: Path) -> list[str]:
                 f'{rel_path}: production modules must not pass format="json" outside agents modules'
             )
     return violations
-
-
-def _loop_runtime_violations(path: Path) -> list[str]:
-    rel_path = path.as_posix()
-    module = _parse_module(path)
-    if isinstance(module, str):
-        return [module]
-
-    return [
-        *_forbidden_import_violations(
-            module,
-            rel_path=rel_path,
-            forbidden_modules=("engineeringagent.application",),
-            message="loop runtime modules must not import application modules",
-        ),
-        *_forbidden_import_violations(
-            module,
-            rel_path=rel_path,
-            forbidden_modules=("engineeringagent.bootstrap",),
-            message="loop runtime modules must not import bootstrap modules",
-        ),
-    ]
 
 
 def _bootstrap_runtime_execution_violations(path: Path) -> list[str]:

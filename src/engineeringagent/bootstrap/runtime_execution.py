@@ -10,7 +10,7 @@ from typing import Any, Callable
 from engineeringagent.application import FeatureIterationRequest
 from engineeringagent.application.feature_iteration import FeatureIterationService
 from engineeringagent.domain.specification import feature_completion_commit_subject
-from engineeringagent.loop_runtime.models import FeatureIterationInputs, IterationOutcome
+from engineeringagent.application.feature_iteration.models import FeatureIterationInputs, IterationOutcome
 from engineeringagent.loop_runtime.run_builder import (
     RunConfigOptions,
     build_loop_run,
@@ -181,7 +181,7 @@ class RuntimeFeatureIterationExecutor(FeatureIterationExecutor):
             support=import_module("engineeringagent.bootstrap.runtime_support"),
             feature_state=import_module("engineeringagent.loop_runtime.feature_state"),
             iteration=import_module("engineeringagent.loop_runtime.iteration"),
-            models=import_module("engineeringagent.loop_runtime.models"),
+            models=import_module("engineeringagent.application.feature_iteration.models"),
             observers=import_module("engineeringagent.loop_runtime.observers"),
             phases=import_module("engineeringagent.loop_runtime.phases"),
             telemetry=import_module("engineeringagent.loop_runtime.telemetry"),

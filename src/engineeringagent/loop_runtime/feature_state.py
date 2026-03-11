@@ -17,7 +17,7 @@ from engineeringagent.loop_runtime.feature_plan_state import (
     sync_active_plan_after_implement,
     touch_active_plan_for_iteration,
 )
-from engineeringagent.loop_runtime.models import (
+from engineeringagent.application.feature_iteration.models import (
     InitialFeatureLoadOutcome,
     PostImplementFeatureOutcome,
 )

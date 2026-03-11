@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 from engineeringagent.domain.quality import ChangedPathsResult
 from engineeringagent.checks import ChecksRunResult
-from engineeringagent.loop_runtime.models import FeatureIterationInputs
+from engineeringagent.application.feature_iteration.models import FeatureIterationInputs
 from engineeringagent.loop_runtime.phases import (
     CompletionPhaseDependencies,
     GatePhaseDependencies,

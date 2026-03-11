@@ -13,7 +13,7 @@ from engineeringagent.loop_runtime.iteration import (
     run_feature_iteration_pipeline,
 )
 from engineeringagent.bootstrap.runtime_execution import run_loop_controller
-from engineeringagent.loop_runtime.models import (
+from engineeringagent.application.feature_iteration.models import (
     CompletionCommitOutcome,
     FeatureIterationInputs,
     GatePhaseOutcome,

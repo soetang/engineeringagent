@@ -5,15 +5,15 @@ from typing import Any, NamedTuple, Sequence
 
 from .agents import preflight, run_agent
 from .application import FeatureIterationRequest
-from .bootstrap import AppFactory
-from .bootstrap.runtime_execution import run_loop_controller
-from .bootstrap import runtime_support as _runtime_support
-from .loop_runtime.models import (
+from .application.feature_iteration.models import (
     FeatureIterationInputs,
     IterationOutcome,
     IterationReport,
     IterationSummaryInputs,
 )
+from .bootstrap import AppFactory
+from .bootstrap.runtime_execution import run_loop_controller
+from .bootstrap import runtime_support as _runtime_support
 from .loop_runtime.selection import (
     choose_feature_with_selector,
     deterministic_feature_choice,

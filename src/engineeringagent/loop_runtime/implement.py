@@ -26,8 +26,8 @@ from engineeringagent.domain.specification.feature_specification import (
     FeatureType,
     PlanningTier,
 )
-from engineeringagent.loop_runtime.models import ImplementStepInputs
-from engineeringagent.loop_runtime.models import ImplementStepResult
+from engineeringagent.application.feature_iteration.models import ImplementStepInputs
+from engineeringagent.application.feature_iteration.models import ImplementStepResult
 from engineeringagent.ports import AgentRunRequest, AgentRunner, ProgressJournal
 from engineeringagent.adapters.progress import handoff as progress_handoff
 from engineeringagent.adapters.progress import paths as progress_paths
