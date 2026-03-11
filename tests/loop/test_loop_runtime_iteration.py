@@ -12,7 +12,7 @@ from engineeringagent.loop_runtime.iteration import (
     _timed_phase,
     run_feature_iteration_pipeline,
 )
-from engineeringagent.loop_runtime.controller import run_loop_controller
+from engineeringagent.adapters.loop.runtime_run_loop_executor import run_loop_controller
 from engineeringagent.loop_runtime.models import (
     CompletionCommitOutcome,
     FeatureIterationInputs,

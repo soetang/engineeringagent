@@ -83,6 +83,7 @@ def _collect_violations(project_root: Path) -> list[str]:
 
 
 def main() -> int:
+    """Report forbidden tracked tokens that must stay purged from the repo."""
     violations = sorted(_collect_violations(PROJECT_ROOT))
     status = RuleStatus.PASS if not violations else RuleStatus.FAIL
     summary = (

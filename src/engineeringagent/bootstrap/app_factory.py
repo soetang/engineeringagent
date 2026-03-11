@@ -14,8 +14,10 @@ from engineeringagent.adapters.documents import (
     FilesystemChecksCatalogRepository,
     PackagedGuidanceTopicRepository,
 )
-from engineeringagent.adapters.loop import (
+from engineeringagent.adapters.loop.runtime_feature_iteration_executor import (
     RuntimeFeatureIterationExecutor,
+)
+from engineeringagent.adapters.loop.runtime_run_loop_executor import (
     RuntimeRunLoopExecutor,
 )
 from engineeringagent.adapters.progress import FilesystemProgressJournal
@@ -69,7 +71,14 @@ class AppFactory:
                     missing_context=" (required for --all)",
                 )
             ),
-            executor=RuntimeRunLoopExecutor(),
+            executor=RuntimeRunLoopExecutor(
+                build_feature_iteration_service=lambda project_root: AppFactory(
+                    project_root
+                ).build_feature_iteration_service(),
+                build_version_control_gateway=lambda project_root: AppFactory(
+                    project_root
+                ).build_version_control_gateway(),
+            ),
         )
 
     def build_feature_iteration_service(self) -> FeatureIterationService:

@@ -10,6 +10,8 @@ from typing import Any, Callable
 
 from pydantic import BaseModel, ConfigDict
 
+from engineeringagent.domain.shared import utc_iso_from_epoch_sec
+
 from ..checks import (
     ChangedPathsResult,
     ChecksRunResult,
@@ -35,7 +37,6 @@ from .models import (
     ReviewerPhaseOutcome,
     VerificationPhaseOutcome,
 )
-from engineeringagent.domain.shared import utc_iso_from_epoch_sec
 
 
 class LoopTriggeredChecksRequest(BaseModel):

@@ -169,45 +169,47 @@ def _build_executor(
     )
     executor._version_control_gateway = _FakeVersionControlGateway(observed, commit_result)
     executor._progress_journal = _FakeProgressJournal(observed)
-    executor._checks_module = changed_paths_module
-    executor._loop_module = loop_module
-    executor._feature_state = feature_state_module
-    executor._models = SimpleNamespace(
-        FeatureIterationInputs=lambda **kwargs: _FakeFeatureIterationInputs(
-            observed, **kwargs
-        )
-    )
-    executor._iteration = SimpleNamespace(
-        IterationPipelineDependencies=lambda **kwargs: _FakeIterationPipelineDependencies(
-            observed, **kwargs
+    executor._runtime = SimpleNamespace(
+        checks=changed_paths_module,
+        loop=loop_module,
+        feature_state=feature_state_module,
+        models=SimpleNamespace(
+            FeatureIterationInputs=lambda **kwargs: _FakeFeatureIterationInputs(
+                observed, **kwargs
+            )
         ),
-        run_feature_iteration_pipeline=_fake_run_feature_iteration_pipeline,
-    )
-    executor._phases = SimpleNamespace(
-        GatePhaseDependencies=lambda **kwargs: _FakeGatePhaseDependencies(
-            observed, **kwargs
+        iteration=SimpleNamespace(
+            IterationPipelineDependencies=lambda **kwargs: (
+                _FakeIterationPipelineDependencies(observed, **kwargs)
+            ),
+            run_feature_iteration_pipeline=_fake_run_feature_iteration_pipeline,
         ),
-        ReviewerPhaseDependencies=lambda **kwargs: _FakeReviewerPhaseDependencies(
-            observed, **kwargs
+        phases=SimpleNamespace(
+            GatePhaseDependencies=lambda **kwargs: _FakeGatePhaseDependencies(
+                observed, **kwargs
+            ),
+            ReviewerPhaseDependencies=lambda **kwargs: _FakeReviewerPhaseDependencies(
+                observed, **kwargs
+            ),
+            CompletionPhaseDependencies=lambda **kwargs: _FakeCompletionPhaseDependencies(
+                observed, **kwargs
+            ),
+            run_gate_phase=object(),
+            run_verification_phase=object(),
+            run_reviewer_phase=object(),
+            run_completion_commit_phase=object(),
         ),
-        CompletionPhaseDependencies=lambda **kwargs: _FakeCompletionPhaseDependencies(
-            observed, **kwargs
+        observers=SimpleNamespace(
+            DefaultObserverDependencies=lambda **kwargs: kwargs,
+            build_default_iteration_report_observers=lambda dependencies: (
+                observed.__setitem__("default_observer_dependencies", dependencies),
+                ("observer",),
+            )[1],
+            publish_iteration_report=_fake_publish_iteration_report,
         ),
-        run_gate_phase=object(),
-        run_verification_phase=object(),
-        run_reviewer_phase=object(),
-        run_completion_commit_phase=object(),
-    )
-    executor._observers = SimpleNamespace(
-        DefaultObserverDependencies=lambda **kwargs: kwargs,
-        build_default_iteration_report_observers=lambda dependencies: (
-            observed.__setitem__("default_observer_dependencies", dependencies),
-            ("observer",),
-        )[1],
-        publish_iteration_report=_fake_publish_iteration_report,
-    )
-    executor._telemetry = SimpleNamespace(
-        write_iteration_telemetry=_fake_write_iteration_telemetry
+        telemetry=SimpleNamespace(
+            write_iteration_telemetry=_fake_write_iteration_telemetry
+        ),
     )
     return (
         executor,

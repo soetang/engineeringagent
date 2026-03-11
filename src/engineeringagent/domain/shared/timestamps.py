@@ -11,4 +11,3 @@ def utc_iso_from_epoch_sec(epoch_sec: int) -> str:
         .isoformat()
         .replace("+00:00", "Z")
     )
-

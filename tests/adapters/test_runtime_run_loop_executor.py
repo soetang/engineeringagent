@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
 import engineeringagent.adapters.loop.runtime_run_loop_executor as runtime_executor_module
 from engineeringagent.adapters.loop import RuntimeRunLoopExecutor
+from engineeringagent.application.feature_iteration_service import FeatureIterationService
 from engineeringagent.ports import RunLoopExecutionRequest
+from engineeringagent.ports.version_control import VersionControlGateway
 
 
 def test_runtime_run_loop_executor_uses_runtime_run_builder(
@@ -48,7 +51,14 @@ def test_runtime_run_loop_executor_uses_runtime_run_builder(
         _run_loop_controller,
     )
 
-    executor = RuntimeRunLoopExecutor()
+    executor = RuntimeRunLoopExecutor(
+        build_feature_iteration_service=lambda _project_root: cast(
+            FeatureIterationService, None
+        ),
+        build_version_control_gateway=lambda _project_root: cast(
+            VersionControlGateway, None
+        ),
+    )
     result = executor.run(
         RunLoopExecutionRequest(
             project_root=Path("/tmp/project"),

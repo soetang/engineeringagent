@@ -54,7 +54,7 @@ checks:
 
   pytest_validate:
     type: command
-    command: "uv run pytest -q -m 'not integration'"
+    command: "uv run pytest -q -m 'not integration' --no-cov"
     when:
       on_change: ["src/**/*.py", "tests/**/*.py", "harness/**/*.py"]
 

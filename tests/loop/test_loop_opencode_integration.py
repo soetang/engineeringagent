@@ -19,7 +19,9 @@ from engineeringagent.loop import (
     build_loop_run,
     build_run_config,
 )
-from engineeringagent.loop_runtime.controller import run_loop_controller as _run_loop
+from engineeringagent.adapters.loop.runtime_run_loop_executor import (
+    run_loop_controller as _run_loop,
+)
 from engineeringagent.adapters.progress import paths as progress_paths
 from engineeringagent.adapters.progress.handoff import ImplementProgressEnvelope
 from engineeringagent.agents.backends.opencode.permissions import (

@@ -1,12 +1,14 @@
-"""Run-loop adapter backed by the loop runtime package."""
+"""Run-loop adapter backed by runtime selection and iteration helpers."""
 
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Callable
 
 from engineeringagent.application import FeatureIterationRequest
+from engineeringagent.application.feature_iteration_service import FeatureIterationService
 from engineeringagent.ports import RunLoopExecutionRequest, RunLoopExecutor
-from engineeringagent.loop_runtime.controller import run_loop_controller
+from engineeringagent.ports.version_control import VersionControlGateway
 from engineeringagent.loop_runtime.models import FeatureIterationInputs, IterationOutcome
 from engineeringagent.loop_runtime.run_context import LoopRun
 from engineeringagent.loop_runtime.run_builder import (
@@ -18,8 +20,65 @@ from engineeringagent.loop_runtime.run_builder import (
 )
 
 
+def run_loop_controller(loop_run: LoopRun) -> int:
+    """Execute run-loop orchestration with adapter-owned side effects."""
+    config = loop_run.config
+    services = loop_run.services
+
+    if config.max_iterations < 1:
+        print("max_iterations must be >= 1")
+        return 1
+
+    try:
+        resolved_paths = services.resolve_run_targets(
+            config.project_root,
+            config.feature_paths,
+            config.run_all,
+        )
+    except ValueError as exc:
+        print(exc)
+        return 1
+
+    run_all_feedback_exit_code = services.emit_run_all_snapshot_feedback(
+        resolved_paths,
+        config.run_all,
+    )
+    if run_all_feedback_exit_code is not None:
+        return run_all_feedback_exit_code
+
+    dry_run_exit_code = services.handle_dry_run(
+        resolved_paths,
+        config.run_all,
+        config.dry_run,
+    )
+    if dry_run_exit_code is not None:
+        return dry_run_exit_code
+
+    worktree_precondition_exit_code = services.enforce_worktree_precondition(
+        config.project_root,
+        config.allow_dirty,
+    )
+    if worktree_precondition_exit_code is not None:
+        return worktree_precondition_exit_code
+
+    if not services.run_permission_precheck(project_root=config.project_root):
+        return 1
+
+    state = loop_run.state.with_resolved_feature_paths(resolved_paths)
+    return services.run_selected_feature_iterations(loop_run.with_state(state))
+
+
 class RuntimeRunLoopExecutor(RunLoopExecutor):
     """Execute run-loop requests through the loop runtime package."""
+
+    def __init__(
+        self,
+        *,
+        build_feature_iteration_service: Callable[[Path], FeatureIterationService],
+        build_version_control_gateway: Callable[[Path], VersionControlGateway],
+    ) -> None:
+        self._build_feature_iteration_service = build_feature_iteration_service
+        self._build_version_control_gateway = build_version_control_gateway
 
     def run(self, request: RunLoopExecutionRequest) -> int:
         """Build loop config and execute the runtime controller."""
@@ -53,10 +112,8 @@ class RuntimeRunLoopExecutor(RunLoopExecutor):
         )
 
     def _read_worktree_status(self, project_root: Path) -> object:
-        from engineeringagent.bootstrap import AppFactory
-
-        return AppFactory(project_root).build_version_control_gateway().worktree_status(
-            project_root
+        return self._build_version_control_gateway(project_root).worktree_status(
+            project_root,
         )
 
     def _run_selected_feature_iterations(self, loop_run: LoopRun) -> int:
@@ -69,11 +126,9 @@ class RuntimeRunLoopExecutor(RunLoopExecutor):
         self,
         iteration_inputs: FeatureIterationInputs,
     ) -> IterationOutcome:
-        from engineeringagent.bootstrap import AppFactory
-
-        result = AppFactory(
+        result = self._build_feature_iteration_service(
             iteration_inputs.project_root
-        ).build_feature_iteration_service().run(
+        ).run(
             FeatureIterationRequest(
                 project_root=iteration_inputs.project_root,
                 feature_path=iteration_inputs.feature_path,

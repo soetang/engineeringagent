@@ -53,4 +53,7 @@ def test_repo_checks_yaml_excludes_integration_tests_from_pytest_gate(
     pytest_validate = checks.get("pytest_validate")
     assert isinstance(pytest_validate, dict)
     assert pytest_validate.get("type") == "command"
-    assert pytest_validate.get("command") == "uv run pytest -q -m 'not integration'"
+    assert (
+        pytest_validate.get("command")
+        == "uv run pytest -q -m 'not integration' --no-cov"
+    )

@@ -9,6 +9,7 @@ from typing import Any, Callable, TypeVar
 from pydantic import BaseModel, ConfigDict, Field
 
 from engineeringagent.agents import describe_action
+from engineeringagent.domain.shared import utc_iso_from_epoch_sec
 from engineeringagent.domain.specification import (
     current_progress_unit,
     done_transition_verification_commands,
@@ -39,7 +40,6 @@ from .phases import (
     GatePhaseDependencies,
     ReviewerPhaseDependencies,
 )
-from engineeringagent.domain.shared import utc_iso_from_epoch_sec
 
 
 class IterationPipelineDependencies(BaseModel):

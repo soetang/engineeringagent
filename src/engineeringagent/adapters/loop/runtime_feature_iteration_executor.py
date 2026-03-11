@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from importlib import import_module
+from types import SimpleNamespace
 from typing import Any
 
 from engineeringagent.domain.specification import feature_completion_commit_subject
@@ -16,6 +17,19 @@ from engineeringagent.ports import (
 )
 
 
+class _RuntimeModules(SimpleNamespace):
+    """Imported runtime modules grouped to keep adapter state compact."""
+
+    checks: Any
+    loop: Any
+    feature_state: Any
+    iteration: Any
+    models: Any
+    observers: Any
+    phases: Any
+    telemetry: Any
+
+
 class RuntimeFeatureIterationExecutor(FeatureIterationExecutor):
     """Execute feature iterations through the existing loop-runtime pipeline."""
 
@@ -27,14 +41,16 @@ class RuntimeFeatureIterationExecutor(FeatureIterationExecutor):
     ) -> None:
         self._version_control_gateway = version_control_gateway
         self._progress_journal = progress_journal
-        self._checks_module = import_module("engineeringagent.checks")
-        self._loop_module = import_module("engineeringagent.loop")
-        self._feature_state = import_module("engineeringagent.loop_runtime.feature_state")
-        self._iteration = import_module("engineeringagent.loop_runtime.iteration")
-        self._models = import_module("engineeringagent.loop_runtime.models")
-        self._observers = import_module("engineeringagent.loop_runtime.observers")
-        self._phases = import_module("engineeringagent.loop_runtime.phases")
-        self._telemetry = import_module("engineeringagent.loop_runtime.telemetry")
+        self._runtime = _RuntimeModules(
+            checks=import_module("engineeringagent.checks"),
+            loop=import_module("engineeringagent.loop"),
+            feature_state=import_module("engineeringagent.loop_runtime.feature_state"),
+            iteration=import_module("engineeringagent.loop_runtime.iteration"),
+            models=import_module("engineeringagent.loop_runtime.models"),
+            observers=import_module("engineeringagent.loop_runtime.observers"),
+            phases=import_module("engineeringagent.loop_runtime.phases"),
+            telemetry=import_module("engineeringagent.loop_runtime.telemetry"),
+        )
 
     def run(
         self,
@@ -67,8 +83,8 @@ class RuntimeFeatureIterationExecutor(FeatureIterationExecutor):
                 payload=report.model_dump(mode="json"),
             )
 
-        report = self._iteration.run_feature_iteration_pipeline(
-            self._models.FeatureIterationInputs(
+        report = self._runtime.iteration.run_feature_iteration_pipeline(
+            self._runtime.models.FeatureIterationInputs(
                 project_root=request.project_root,
                 feature_path=request.feature_path,
                 run_all=request.run_all,
@@ -76,56 +92,68 @@ class RuntimeFeatureIterationExecutor(FeatureIterationExecutor):
                 feedback=request.feedback,
                 verbose_output=request.verbose_output,
             ),
-            self._iteration.IterationPipelineDependencies(
+            self._runtime.iteration.IterationPipelineDependencies(
                 evaluate_initial_feature_load=(
-                    self._feature_state.evaluate_initial_feature_load
+                    self._runtime.feature_state.evaluate_initial_feature_load
                 ),
-                ready_for_active_iteration=self._feature_state.ready_for_active_iteration,
+                ready_for_active_iteration=(
+                    self._runtime.feature_state.ready_for_active_iteration
+                ),
                 touch_active_feature_for_iteration=(
-                    self._feature_state.touch_active_feature_for_iteration
+                    self._runtime.feature_state.touch_active_feature_for_iteration
                 ),
-                run_implement_step=self._loop_module.run_implement_step,
+                run_implement_step=self._runtime.loop.run_implement_step,
                 refresh_feature_after_implement=(
-                    self._feature_state.refresh_feature_after_implement
+                    self._runtime.feature_state.refresh_feature_after_implement
                 ),
                 should_archive_selected_feature=(
-                    self._feature_state.should_archive_selected_feature
+                    self._runtime.feature_state.should_archive_selected_feature
                 ),
-                archive_completed_feature=self._feature_state.archive_completed_feature,
-                run_gate_phase=self._phases.run_gate_phase,
-                gate_phase_dependencies=self._phases.GatePhaseDependencies(
-                    restore_archived_feature=self._feature_state.restore_archived_feature,
-                    collect_changed_paths=self._checks_module.collect_changed_paths,
+                archive_completed_feature=(
+                    self._runtime.feature_state.archive_completed_feature
                 ),
-                run_verification_phase=self._phases.run_verification_phase,
-                run_reviewer_phase=self._phases.run_reviewer_phase,
-                reviewer_phase_dependencies=self._phases.ReviewerPhaseDependencies(
-                    collect_changed_paths=self._checks_module.collect_changed_paths,
-                    restore_archived_feature=self._feature_state.restore_archived_feature,
+                run_gate_phase=self._runtime.phases.run_gate_phase,
+                gate_phase_dependencies=self._runtime.phases.GatePhaseDependencies(
+                    restore_archived_feature=(
+                        self._runtime.feature_state.restore_archived_feature
+                    ),
+                    collect_changed_paths=self._runtime.checks.collect_changed_paths,
                 ),
-                run_completion_commit_phase=self._phases.run_completion_commit_phase,
-                completion_phase_dependencies=self._phases.CompletionPhaseDependencies(
+                run_verification_phase=self._runtime.phases.run_verification_phase,
+                run_reviewer_phase=self._runtime.phases.run_reviewer_phase,
+                reviewer_phase_dependencies=self._runtime.phases.ReviewerPhaseDependencies(
+                    collect_changed_paths=self._runtime.checks.collect_changed_paths,
+                    restore_archived_feature=(
+                        self._runtime.feature_state.restore_archived_feature
+                    ),
+                ),
+                run_completion_commit_phase=(
+                    self._runtime.phases.run_completion_commit_phase
+                ),
+                completion_phase_dependencies=self._runtime.phases.CompletionPhaseDependencies(
                     commit_feature_completion=_commit_feature_completion,
-                    restore_archived_feature=self._feature_state.restore_archived_feature,
+                    restore_archived_feature=(
+                        self._runtime.feature_state.restore_archived_feature
+                    ),
                 ),
             ),
         )
-        observers = self._observers.build_default_iteration_report_observers(
-            self._observers.DefaultObserverDependencies(
+        observers = self._runtime.observers.build_default_iteration_report_observers(
+            self._runtime.observers.DefaultObserverDependencies(
                 write_iteration_telemetry=(
                     lambda telemetry_inputs, git_head_resolver: (
-                        self._telemetry.write_iteration_telemetry(
+                        self._runtime.telemetry.write_iteration_telemetry(
                             telemetry_inputs,
                             git_head_resolver=git_head_resolver,
                         )
                     )
                 ),
                 persist_iteration_report=_persist_iteration_report,
-                git_head_resolver=self._loop_module.git_head_short,
-                print_summary=self._loop_module.print_summary,
+                git_head_resolver=self._runtime.loop.git_head_short,
+                print_summary=self._runtime.loop.print_summary,
             )
         )
-        outcome = self._observers.publish_iteration_report(report, observers)
+        outcome = self._runtime.observers.publish_iteration_report(report, observers)
         return FeatureIterationExecutionResult(
             completed=outcome.completed,
             result=outcome.result,
