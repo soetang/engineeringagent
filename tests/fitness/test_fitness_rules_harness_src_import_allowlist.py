@@ -11,7 +11,7 @@ def _load_checker_module(repo_root: Path):
     checker_path = (
         repo_root
         / "harness"
-        / "fitness-functions"
+        / "fitness_functions"
         / "check_harness_src_import_allowlist.py"
     )
     spec = importlib.util.spec_from_file_location(
@@ -32,7 +32,7 @@ def test_checker_scans_rules_manifest_scripts_not_just_check_prefix(
 ) -> None:
     checker = _load_checker_module(repo_root)
 
-    harness_root = tmp_path / "harness" / "fitness-functions"
+    harness_root = tmp_path / "harness" / "fitness_functions"
     harness_root.mkdir(parents=True)
     (harness_root / "rules.yaml").write_text(
         "\n".join(
@@ -44,7 +44,7 @@ def test_checker_scans_rules_manifest_scripts_not_just_check_prefix(
                 "      - uv",
                 "      - run",
                 "      - python",
-                "      - harness/fitness-functions/validate_custom.py",
+                "      - harness/fitness_functions/validate_custom.py",
                 "",
             ]
         ),
@@ -65,7 +65,7 @@ def test_checker_scans_rules_manifest_scripts_not_just_check_prefix(
 
     violations = checker._collect_violations(tmp_path)
     assert violations == [
-        "harness/fitness-functions/validate_custom.py: imports disallowed module engineeringagent.cli.main (allowed: engineeringagent.checks)"
+        "harness/fitness_functions/validate_custom.py: imports disallowed module engineeringagent.cli.main (allowed: engineeringagent.checks)"
     ]
 
 
@@ -75,7 +75,7 @@ def test_checker_allows_deep_engineeringagent_checks_imports(
 ) -> None:
     checker = _load_checker_module(repo_root)
 
-    harness_root = tmp_path / "harness" / "fitness-functions"
+    harness_root = tmp_path / "harness" / "fitness_functions"
     harness_root.mkdir(parents=True)
     (harness_root / "rules.yaml").write_text(
         "\n".join(
@@ -87,7 +87,7 @@ def test_checker_allows_deep_engineeringagent_checks_imports(
                 "      - uv",
                 "      - run",
                 "      - python",
-                "      - harness/fitness-functions/validate_custom.py",
+                "      - harness/fitness_functions/validate_custom.py",
                 "",
             ]
         ),

@@ -9,7 +9,7 @@ phases:
   title: Remove legacy gates path from subprocess boundary policy assets
   status: done
   verification:
-  - uv run python harness/fitness-functions/check_loop_subprocess_boundary.py
+  - uv run python harness/fitness_functions/check_loop_subprocess_boundary.py
 - id: ST-002
   title: Update fitness fixtures and assertions to stop modeling gates module allowlisting
   status: done

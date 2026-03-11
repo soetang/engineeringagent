@@ -44,7 +44,7 @@ context: 'The primary operator workflow is:
 
   - `harness/reviewers.yaml` (LLM reviewers + triggers + approval + sandbox)
 
-  - `harness/fitness-functions/rules.yaml` (fitness registry; executed indirectly)
+  - `harness/fitness_functions/rules.yaml` (fitness registry; executed indirectly)
 
 
   We want a single, minimal, strict system-of-record (`harness/checks.yaml`) that
@@ -100,7 +100,7 @@ implementation_notes: "Contract/API delta (explicit):\n\n- Surface: harness conf
   \ (advisory/blocking).\n  - New: reviewers are configured as `type: reviewer` checks\
   \ in `harness/checks.yaml`.\n    Reviewer configuration does not include advisory/blocking\
   \ modes, matching FEAT-086.\n\n- Does NOT replace the fitness rule registry metadata.\n\
-  \  - `harness/fitness-functions/rules.yaml` remains the registry/catalog source.\n\
+  \  - `harness/fitness_functions/rules.yaml` remains the registry/catalog source.\n\
   \  - `harness/checks.yaml` can reference fitness execution via `type: fitness`.\n\
   \n- Does NOT replace per-subtask `verification:` commands in feature specs.\n  -\
   \ Spec subtasks may continue to include `verification:` command lists.\n  - `harness/checks.yaml`\

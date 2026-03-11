@@ -11,7 +11,7 @@ objective: 'Make harness declarations the only source of runnable fitness rules 
 
   '
 context: 'Today, fitness execution implicitly activates built-in Python rules from
-  the in-code registry even when harness/fitness-functions/rules.yaml is empty. That
+  the in-code registry even when harness/fitness_functions/rules.yaml is empty. That
   creates hidden runtime behavior and allows docs generation to include rules not
   explicitly declared in harness state.
 
@@ -22,7 +22,7 @@ context: 'Today, fitness execution implicitly activates built-in Python rules fr
 
   '
 constraints:
-- Treat harness/fitness-functions/rules.yaml as the canonical single source of truth
+- Treat harness/fitness_functions/rules.yaml as the canonical single source of truth
   for active runnable fitness rules.
 - Do not run undeclared fitness rules in any command surface (`fitness list`, `fitness
   run`, `fitness catalog`, and gate execution that shells into `fitness run`).
@@ -53,7 +53,7 @@ implementation_notes: 'Adopt a declaration-driven catalog builder where manifest
   run.
 
   For command-adapter regression tests, use tmp_path as an isolated temporary project
-  root with only required harness files (for example harness/fitness-functions/rules.yaml).
+  root with only required harness files (for example harness/fitness_functions/rules.yaml).
   Do not require git repository initialization for fitness list/run/catalog command
   tests.
 
@@ -63,22 +63,22 @@ implementation_notes: 'Adopt a declaration-driven catalog builder where manifest
   Update validator checks to surface actionable errors for manifest references that
   cannot be resolved. Ensure diagnostics remain deterministic.
 
-  Update init scaffold defaults to write explicit builtin references into harness/fitness-functions/rules.yaml.
+  Update init scaffold defaults to write explicit builtin references into harness/fitness_functions/rules.yaml.
 
   Keep docs generation unchanged in interface, but source catalog content strictly
   from declared active references.
 
   '
 acceptance:
-- '`engineeringagent fitness list` shows only rules declared in harness/fitness-functions/rules.yaml.'
-- '`engineeringagent fitness run` executes only rules declared in harness/fitness-functions/rules.yaml.'
+- '`engineeringagent fitness list` shows only rules declared in harness/fitness_functions/rules.yaml.'
+- '`engineeringagent fitness run` executes only rules declared in harness/fitness_functions/rules.yaml.'
 - '`engineeringagent fitness run` supports manifest-declared shell command rules in
   a temp project root without requiring git repo initialization.'
 - '`engineeringagent fitness catalog` includes only declared active rules and never
   emits undeclared built-ins.'
 - Generated docs at docs/fitness-functions/rules.md reflect declared references only,
   not implicit registry defaults.
-- Existing built-in architecture rules are declared explicitly in harness/fitness-functions/rules.yaml
+- Existing built-in architecture rules are declared explicitly in harness/fitness_functions/rules.yaml
   for this repository.
 - New repositories scaffolded with `engineeringagent init` include explicit declarations
   for the current built-in architecture rules.

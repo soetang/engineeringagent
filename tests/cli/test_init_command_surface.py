@@ -369,7 +369,7 @@ def test_init_writes_precommit_and_empty_gate_profiles(tmp_path: Path) -> None:
     assert checks_config["checks"] == {}
 
     fitness_manifest = yaml.safe_load(
-        (tmp_path / "harness" / "fitness-functions" / "rules.yaml").read_text(
+        (tmp_path / "harness" / "fitness_functions" / "rules.yaml").read_text(
             encoding="utf-8"
         )
     )
@@ -413,12 +413,12 @@ def test_init_python_uv_profile_available(tmp_path: Path) -> None:
     assert "uvx --from ." not in precommit_config
     assert "engineeringagent-commit-msg" in precommit_config
     assert (
-        "harness/fitness-functions/validate_commit_messages.py --commit-msg-file"
+        "harness/fitness_functions/validate_commit_messages.py --commit-msg-file"
         in precommit_config
     )
 
     commit_msg_script = (
-        tmp_path / "harness" / "fitness-functions" / "validate_commit_messages.py"
+        tmp_path / "harness" / "fitness_functions" / "validate_commit_messages.py"
     )
     assert commit_msg_script.exists()
     commit_msg_script_text = commit_msg_script.read_text(encoding="utf-8")
@@ -434,7 +434,7 @@ def test_python_uv_commit_msg_validator_avoids_subprocess(tmp_path: Path) -> Non
 
     assert result.exit_code == 0
     commit_msg_script_text = (
-        tmp_path / "harness" / "fitness-functions" / "validate_commit_messages.py"
+        tmp_path / "harness" / "fitness_functions" / "validate_commit_messages.py"
     ).read_text(encoding="utf-8")
     assert "import subprocess" not in commit_msg_script_text
     assert "subprocess." not in commit_msg_script_text
@@ -451,7 +451,7 @@ def test_python_uv_commit_msg_validator_builds_pattern_from_allowed_types(
 
     assert result.exit_code == 0
     commit_msg_script_text = (
-        tmp_path / "harness" / "fitness-functions" / "validate_commit_messages.py"
+        tmp_path / "harness" / "fitness_functions" / "validate_commit_messages.py"
     ).read_text(encoding="utf-8")
     assert "ALLOWED_COMMIT_TYPES" in commit_msg_script_text
     assert "_ALLOWED_TYPES_PATTERN" in commit_msg_script_text

@@ -49,7 +49,7 @@ constraints:
   fitness execution path, such as a dedicated allowlisted module or clearly named
   integration marker.'
 - 'In scope: store explicit integration-test exceptions in a small policy allowlist
-  file under `harness/fitness-functions/policies/`; avoid hardcoding file exceptions
+  file under `harness/fitness_functions/policies/`; avoid hardcoding file exceptions
   inside the checker.'
 - 'In scope: keep FEAT-180 implementation harness-local; do not add new `src/engineeringagent/checks/**`
   modules solely to support this rule.'
@@ -158,7 +158,7 @@ implementation_notes: 'Contract change declaration
 
   - Update violating test modules under `tests/fitness/**` to match the approved pattern.
 
-  - Keep any policy loader/model for this rule inside `harness/fitness-functions/`
+  - Keep any policy loader/model for this rule inside `harness/fitness_functions/`
   rather than adding new checks-owned modules.
 
   Recommended enforcement shape:
@@ -181,7 +181,7 @@ implementation_notes: 'Contract change declaration
   one kwargs or forwarding case reaching a sink; - one allowed script/resource lookup
   case; - one allowlisted integration case;
 
-  - permit `repo_root` when used only to build checker script paths under `harness/fitness-functions/`;
+  - permit `repo_root` when used only to build checker script paths under `harness/fitness_functions/`;
 
   - load allowlisted integration modules from a small policy file (for example a YAML
   list of test-file paths) so exceptions are explicit and reviewable;

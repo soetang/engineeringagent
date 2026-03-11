@@ -6,7 +6,7 @@ from pathlib import Path
 def test_harness_fitness_functions_do_not_depend_on_local_result_envelope_helper(
     repo_root: Path,
 ) -> None:
-    fitness_functions_root = repo_root / "harness" / "fitness-functions"
+    fitness_functions_root = repo_root / "harness" / "fitness_functions"
 
     legacy_helper_path = fitness_functions_root / "result_envelope.py"
     assert not legacy_helper_path.exists(), (

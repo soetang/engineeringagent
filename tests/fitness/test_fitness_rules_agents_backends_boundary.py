@@ -12,7 +12,7 @@ def _script_path(repo_root: Path) -> Path:
     return (
         repo_root
         / "harness"
-        / "fitness-functions"
+        / "fitness_functions"
         / "check_agents_backends_boundary.py"
     )
 
@@ -40,7 +40,7 @@ def _run_checker(
 
 
 def test_agents_backends_boundary_fitness_rule_registered() -> None:
-    manifest_path = Path("harness/fitness-functions/rules.yaml")
+    manifest_path = Path("harness/fitness_functions/rules.yaml")
     manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
     assert isinstance(manifest, dict)
 
@@ -67,16 +67,16 @@ def test_agents_backends_boundary_fitness_rule_registered() -> None:
 
     command = matching[0].get("command")
     assert isinstance(command, list)
-    assert "harness/fitness-functions/check_agents_backends_boundary.py" in command
+    assert "harness/fitness_functions/check_agents_backends_boundary.py" in command
 
-    assert Path("harness/fitness-functions/check_agents_backends_boundary.py").exists()
+    assert Path("harness/fitness_functions/check_agents_backends_boundary.py").exists()
 
 
 def test_agents_backends_boundary_fitness_rule_passes_clean_repo() -> None:
     proc = subprocess.run(
         [
             sys.executable,
-            "harness/fitness-functions/check_agents_backends_boundary.py",
+            "harness/fitness_functions/check_agents_backends_boundary.py",
         ],
         capture_output=True,
         text=True,

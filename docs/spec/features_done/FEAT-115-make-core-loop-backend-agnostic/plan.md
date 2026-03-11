@@ -39,7 +39,7 @@ phases:
   title: Tighten backend-literal locality budget baseline to zero
   status: done
   verification:
-  - uv run python harness/fitness-functions/check_backend_literal_locality_budget.py
+  - uv run python harness/fitness_functions/check_backend_literal_locality_budget.py
   - uv run engineeringagent checks run --checks fitness --phase iteration_end
   - uv run pytest -q
 ---

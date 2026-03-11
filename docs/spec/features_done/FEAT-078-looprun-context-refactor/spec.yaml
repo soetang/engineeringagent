@@ -77,8 +77,8 @@ implementation_notes: "Contract/API delta (explicit):\n\n- Surface: Python modul
   \ but will internally construct and pass a LoopRun object.\n\nFitness-function impact\
   \ assessment (required):\n- New fitness rule expected (or extension of an existing\
   \ one) to block varargs facade shims and hidden kwarg\n  dropping patterns from\
-  \ reappearing.\n- Expected updates:\n  - Add `harness/fitness-functions/check_no_facade_varargs_shims.py`\
-  \ (or similar) and register it in\n    `harness/fitness-functions/rules.yaml`.\n\
+  \ reappearing.\n- Expected updates:\n  - Add `harness/fitness_functions/check_no_facade_varargs_shims.py`\
+  \ (or similar) and register it in\n    `harness/fitness_functions/rules.yaml`.\n\
   \  - Regenerate the fitness rule catalog (`docs/fitness-functions/rules.md`) if\
   \ rule metadata changes.\n"
 acceptance:

@@ -11,7 +11,7 @@ def _script_path(repo_root: Path) -> Path:
     return (
         repo_root
         / "harness"
-        / "fitness-functions"
+        / "fitness_functions"
         / "check_test_layout_module_mirroring.py"
     )
 
@@ -20,7 +20,7 @@ def _policy_path(repo_root: Path) -> Path:
     return (
         repo_root
         / "harness"
-        / "fitness-functions"
+        / "fitness_functions"
         / "policies"
         / "test_layout_module_mirroring.yaml"
     )

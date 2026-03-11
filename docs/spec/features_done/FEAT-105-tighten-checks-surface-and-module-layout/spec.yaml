@@ -107,7 +107,7 @@ implementation_notes: "Guiding principle (this feature): interface -> orchestrat
   \ reviewers depend on the structured result contract (eg `session_id`, `text_payload`)\
   \ and\n    do not implement OpenCode output parsing.\n  - The repository can change\
   \ OpenCode backends/output formats without rewriting checks.\n\nFitness-function\
-  \ impact assessment:\n- Updates required:\n  - `harness/fitness-functions/check_checks_import_surface.py`\
+  \ impact assessment:\n- Updates required:\n  - `harness/fitness_functions/check_checks_import_surface.py`\
   \ must enforce the strict supported\n    `engineeringagent.checks` surface (explicit\
   \ allowed names, not \"whatever checks.__all__ exposes\").\n  - Any harness scripts\
   \ that import moved modules (permission probe, matcher) must be updated.\n"

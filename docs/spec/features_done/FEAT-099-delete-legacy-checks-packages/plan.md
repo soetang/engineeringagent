@@ -94,7 +94,7 @@ Add an automated check (pytest) that scans `src/engineeringagent/**` imports and
 
 Add a harness fitness function that scans Python imports under `src/engineeringagent/**`. Enforce that any module outside `src/engineeringagent/checks/**`: - does not import `engineeringagent.checks.<submodule>` (no submodule imports) - only imports allowed names from `engineeringagent.checks` (e.g. `run_checks`,
   `emit_fitness_result`, `emit_result_envelope`)
-Register the rule in `harness/fitness-functions/rules.yaml`.
+Register the rule in `harness/fitness_functions/rules.yaml`.
 
 ## ST-006 Delete legacy harness_checks_runtime module
 

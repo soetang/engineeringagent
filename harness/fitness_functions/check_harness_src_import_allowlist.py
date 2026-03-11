@@ -80,7 +80,7 @@ def _is_allowed_engineeringagent_import(module_name: str) -> bool:
 
 
 def _iter_harness_fitness_rule_scripts(project_root: Path) -> list[Path]:
-    manifest_path = project_root / "harness" / "fitness-functions" / "rules.yaml"
+    manifest_path = project_root / "harness" / "fitness_functions" / "rules.yaml"
     manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
 
     scripts: set[Path] = set()
@@ -93,7 +93,7 @@ def _iter_harness_fitness_rule_scripts(project_root: Path) -> list[Path]:
         for token in command:
             if not isinstance(token, str):
                 continue
-            if not token.startswith("harness/fitness-functions/"):
+            if not token.startswith("harness/fitness_functions/"):
                 continue
             if not token.endswith(".py"):
                 continue

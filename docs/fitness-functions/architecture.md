@@ -5,7 +5,7 @@ flowchart LR
     A[CLI: checks catalog] --> B[Registry build_rule_catalog]
     X[CLI: checks run --checks fitness] --> F[Runner run_rule_catalog]
     B --> C[Built-in Python rules]
-    B --> D[Custom manifest harness/fitness-functions/rules.yaml]
+    B --> D[Custom manifest harness/fitness_functions/rules.yaml]
     C --> E[Rule metadata + adapter contract]
     D --> E
     E --> F[Runner run_rule_catalog]

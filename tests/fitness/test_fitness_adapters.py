@@ -25,13 +25,13 @@ def _command_definition(command: tuple[str, ...]) -> FitnessRuleDefinition:
             summary="Validate command adapter result parsing.",
             rationale="Custom rules need a stable execution contract.",
             remediation="Fix the external rule command output envelope.",
-            scope="harness/fitness-functions/rules.yaml",
+            scope="harness/fitness_functions/rules.yaml",
             severity=RuleSeverity.WARNING,
             adapter=RuleAdapter.COMMAND,
             source=RuleSource.CUSTOM,
             side_effect_free=True,
         ),
-        origin="custom:harness/fitness-functions/rules.yaml:rules[0]",
+        origin="custom:harness/fitness_functions/rules.yaml:rules[0]",
         command=command,
     )
 
@@ -76,7 +76,7 @@ def _write_scaffold_templates(project_root: Path) -> None:
 
 
 def _fitness_script(repo_root: Path, filename: str) -> Path:
-    return repo_root / "harness" / "fitness-functions" / filename
+    return repo_root / "harness" / "fitness_functions" / filename
 
 
 def _non_ignorable_metadata(rule_id: str) -> FitnessRuleMetadata:
@@ -102,7 +102,7 @@ def _non_ignorable_definition(
 ) -> FitnessRuleDefinition:
     return FitnessRuleDefinition(
         metadata=_non_ignorable_metadata(rule_id),
-        origin="custom:harness/fitness-functions/rules.yaml:rules[0]",
+        origin="custom:harness/fitness_functions/rules.yaml:rules[0]",
         command=(sys.executable, str(script)),
         config_file=config_file,
     )
@@ -112,7 +112,7 @@ def _non_ignorable_cli_definition(script: Path, *argv: str) -> FitnessRuleDefini
     rule_id = "custom.no-non-ignorable-ruff-suppressions"
     return FitnessRuleDefinition(
         metadata=_non_ignorable_metadata(rule_id),
-        origin="custom:harness/fitness-functions/rules.yaml:rules[0]",
+        origin="custom:harness/fitness_functions/rules.yaml:rules[0]",
         command=(sys.executable, str(script), "--rule-id", rule_id, *argv),
     )
 
@@ -487,7 +487,7 @@ def test_execute_rule_definition_runs_loop_subprocess_boundary_adapter(
             source=RuleSource.CUSTOM,
             side_effect_free=True,
         ),
-        origin="custom:harness/fitness-functions/rules.yaml:rules[0]",
+        origin="custom:harness/fitness_functions/rules.yaml:rules[0]",
         command=(
             sys.executable,
             str(rule_script),
@@ -535,7 +535,7 @@ def test_execute_rule_definition_runs_dependency_directionality_adapter(
             source=RuleSource.CUSTOM,
             side_effect_free=True,
         ),
-        origin="custom:harness/fitness-functions/rules.yaml:rules[0]",
+        origin="custom:harness/fitness_functions/rules.yaml:rules[0]",
         command=(
             sys.executable,
             str(script),
@@ -583,7 +583,7 @@ def test_execute_rule_definition_runs_prompt_locality_adapter(
             source=RuleSource.CUSTOM,
             side_effect_free=True,
         ),
-        origin="custom:harness/fitness-functions/rules.yaml:rules[0]",
+        origin="custom:harness/fitness_functions/rules.yaml:rules[0]",
         command=(
             sys.executable,
             str(script),
@@ -632,7 +632,7 @@ def test_execute_rule_definition_runs_scaffold_template_locality_adapter(
             source=RuleSource.CUSTOM,
             side_effect_free=True,
         ),
-        origin="custom:harness/fitness-functions/rules.yaml:rules[0]",
+        origin="custom:harness/fitness_functions/rules.yaml:rules[0]",
         command=(
             sys.executable,
             str(script),
@@ -678,7 +678,7 @@ def test_execute_rule_definition_runs_markdown_locality_reference_adapter(
             source=RuleSource.CUSTOM,
             side_effect_free=True,
         ),
-        origin="custom:harness/fitness-functions/rules.yaml:rules[0]",
+        origin="custom:harness/fitness_functions/rules.yaml:rules[0]",
         command=(
             sys.executable,
             str(script),

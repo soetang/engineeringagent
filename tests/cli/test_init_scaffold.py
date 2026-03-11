@@ -72,7 +72,7 @@ def test_init_rejects_include_reviewers_flag() -> None:
 def test_init_slim_scaffold_has_no_rules_referencing_missing_scripts() -> None:
     manifest = build_init_scaffold_manifest(pack="slim")
 
-    rules_text = manifest["harness/fitness-functions/rules.yaml"]
+    rules_text = manifest["harness/fitness_functions/rules.yaml"]
     payload = yaml.safe_load(rules_text)
 
     assert isinstance(payload, dict)
@@ -90,7 +90,7 @@ def test_init_slim_scaffold_has_no_rules_referencing_missing_scripts() -> None:
         for token in command:
             if not isinstance(token, str):
                 continue
-            if token.startswith("harness/fitness-functions/") and token.endswith(".py"):
+            if token.startswith("harness/fitness_functions/") and token.endswith(".py"):
                 assert token in manifest, (
                     f"slim scaffold rule references missing script: {token}"
                 )

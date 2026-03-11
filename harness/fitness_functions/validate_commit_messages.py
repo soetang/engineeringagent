@@ -10,7 +10,7 @@ from types import ModuleType
 def _load_commit_messages_module() -> ModuleType:
     """Load sibling commit_messages.py via file path.
 
-    This script lives in a non-package directory (harness/fitness-functions), so
+    This script lives in a non-package directory (harness/fitness_functions), so
     importing by module name is not reliable under all tooling (e.g. pylint).
     """
 

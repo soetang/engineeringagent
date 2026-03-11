@@ -7,31 +7,31 @@ This file is generated from active manifest-declared fitness rules.
 | Rule ID | Severity | Adapter | Source | Scope | Config File | Summary |
 | --- | --- | --- | --- | --- | --- | --- |
 | `architecture.agents-backends-boundary` | error | command | custom | `src/engineeringagent` | - | Forbid direct backend package usage outside the agents boundary. |
-| `architecture.backend-literal-locality-budget` | error | command | custom | `src/engineeringagent excluding src/engineeringagent/agents/** and src/engineeringagent/checks/**` | `harness/fitness-functions/policies/backend_literal_locality_budget.yaml` | Enforce a zero-budget backend literal locality boundary outside allowed packages. |
+| `architecture.backend-literal-locality-budget` | error | command | custom | `src/engineeringagent excluding src/engineeringagent/agents/** and src/engineeringagent/checks/**` | `harness/fitness_functions/policies/backend_literal_locality_budget.yaml` | Enforce a zero-budget backend literal locality boundary outside allowed packages. |
 | `architecture.checks-import-surface` | error | command | custom | `src/engineeringagent` | - | Enforce a narrow import surface for engineeringagent.checks. |
 | `architecture.checks-own-prompt-feedback-rendering` | error | command | custom | `src/engineeringagent/loop_runtime/**, src/engineeringagent/loop.py, and src/engineeringagent/prompts/renderer.py` | - | Fail when loop/prompt code performs checks-specific feedback shaping outside checks strategies. |
-| `architecture.dep-directionality` | error | command | custom | `src/engineeringagent` | `harness/fitness-functions/policies/dependency_directionality.yaml` | Enforce ports-and-adapters dependency direction boundaries across presentation, application, ports, and domain seams. |
+| `architecture.dep-directionality` | error | command | custom | `src/engineeringagent` | `harness/fitness_functions/policies/dependency_directionality.yaml` | Enforce ports-and-adapters dependency direction boundaries across presentation, application, ports, and domain seams. |
 | `architecture.harness-root-yaml-only` | error | command | custom | `harness/ (regular files at root)` | - | Enforce YAML-only regular files directly under harness root. |
-| `architecture.harness-src-import-allowlist` | error | command | custom | `harness/fitness-functions` | - | Restrict harness fitness functions to a narrow supported engineeringagent surface. |
-| `architecture.hermetic-fitness-test-isolation` | error | command | custom | `tests/fitness` | `harness/fitness-functions/policies/hermetic_fitness_test_isolation.yaml` | Prevent tests/fitness from scanning the live repository checkout. |
+| `architecture.harness-src-import-allowlist` | error | command | custom | `harness/fitness_functions` | - | Restrict harness fitness functions to a narrow supported engineeringagent surface. |
+| `architecture.hermetic-fitness-test-isolation` | error | command | custom | `tests/fitness` | `harness/fitness_functions/policies/hermetic_fitness_test_isolation.yaml` | Prevent tests/fitness from scanning the live repository checkout. |
 | `architecture.iteration-pipeline-observer-decoupling` | error | command | custom | `src/engineeringagent/loop_runtime/iteration.py` | - | Keep iteration pipeline free of telemetry and console side effects. |
 | `architecture.loop-checks-policy-ownership` | error | command | custom | `src/engineeringagent/loop_runtime/** and src/engineeringagent/loop.py` | - | Fail when loop runtime encodes checks group/timing selection policy. |
 | `architecture.loop-checks-result-boundary` | error | command | custom | `src/engineeringagent/loop_runtime/** and src/engineeringagent/loop.py` | - | Fail when loop runtime branches on checks type/group semantics or parses checks-internal payloads. |
 | `architecture.loop-facade-line-budget` | error | command | custom | `src/engineeringagent/loop.py` | - | Enforce a permanent line budget cap for the loop facade. |
-| `architecture.loop-subprocess-boundary` | error | command | custom | `src/engineeringagent` | `harness/fitness-functions/policies/loop_subprocess_boundary_policy.yaml` | Enforce subprocess allowlist boundaries for command adapters/clients. |
+| `architecture.loop-subprocess-boundary` | error | command | custom | `src/engineeringagent` | `harness/fitness_functions/policies/loop_subprocess_boundary_policy.yaml` | Enforce subprocess allowlist boundaries for command adapters/clients. |
 | `architecture.markdown-locality-reference-coverage` | error | command | custom | `repository markdown (*.md)` | - | Restrict markdown to approved paths and require non-doc markdown files to be referenced in-repo (excluding prompt/scaffold template asset roots). |
-| `architecture.module-statement-budget` | error | command | custom | `src/engineeringagent, harness, and tests` | `harness/fitness-functions/policies/module_statement_budget_policy.yaml` | Enforce AST-based non-doc statement caps for Python modules. |
+| `architecture.module-statement-budget` | error | command | custom | `src/engineeringagent, harness, and tests` | `harness/fitness_functions/policies/module_statement_budget_policy.yaml` | Enforce AST-based non-doc statement caps for Python modules. |
 | `architecture.no-doc-content-tests` | error | command | custom | `tests` | - | Prevent pytest from asserting exact wording in README/docs markdown. |
 | `architecture.no-env-key-reads` | error | command | custom | `src/ harness/ tests/` | - | Forbid env-key reads (os.getenv, os.environ.get, os.environ['X'], 'X' in os.environ). |
 | `architecture.no-facade-varargs-shims` | error | command | custom | `src/engineeringagent` | - | Block facade varargs shims, __signature__ masking, and hidden kwargs dropping. |
-| `architecture.no-non-ignorable-ruff-suppressions` | error | command | custom | `src tests harness` | `harness/fitness-functions/policies/no_non_ignorable_ruff_suppressions.yaml` | Block suppression directives for configured high-value Ruff rules. |
-| `architecture.no-pure-wrapper-functions` | error | command | custom | `src/engineeringagent and harness/fitness-functions` | `harness/fitness-functions/policies/no_pure_wrapper_functions.yaml` | Block pure pass-through wrappers and keep wrapper exceptions explicit. |
+| `architecture.no-non-ignorable-ruff-suppressions` | error | command | custom | `src tests harness` | `harness/fitness_functions/policies/no_non_ignorable_ruff_suppressions.yaml` | Block suppression directives for configured high-value Ruff rules. |
+| `architecture.no-pure-wrapper-functions` | error | command | custom | `src/engineeringagent and harness/fitness_functions` | `harness/fitness_functions/policies/no_pure_wrapper_functions.yaml` | Block pure pass-through wrappers and keep wrapper exceptions explicit. |
 | `architecture.no-stdlib-dataclasses-in-src` | error | command | custom | `src/engineeringagent` | - | Block stdlib dataclasses usage in production source models. |
 | `architecture.progress-log-path-locality` | error | command | custom | `src/engineeringagent` | - | Centralize loop progress artifact paths and writes behind approved helpers. |
 | `architecture.prompt-locality` | error | command | custom | `src/engineeringagent` | - | Keep canonical loop prompt content and template reads localized. |
 | `architecture.scaffold-template-locality` | error | command | custom | `src/engineeringagent` | - | Keep scaffold template payloads in scaffold_templates assets. |
 | `architecture.source-first-loop-command-policy` | error | command | custom | `legacy spec verification, bundled plan.md phases/examples, packaged plan-session/research-session guidance, contributor approach docs, loop implementation prompt template, docs/fixtures/real_opencode_hello_world_plan_template.md, and harness/checks.yaml` | - | Enforce source-first workspace execution for loop command surfaces. |
-| `architecture.test-layout-module-mirroring` | error | command | custom | `tests` | `harness/fitness-functions/policies/test_layout_module_mirroring.yaml` | Enforce module-mirroring test structure and explicit test-layout exceptions. |
+| `architecture.test-layout-module-mirroring` | error | command | custom | `tests` | `harness/fitness_functions/policies/test_layout_module_mirroring.yaml` | Enforce module-mirroring test structure and explicit test-layout exceptions. |
 | `smoke.opencode-real-hello-world` | error | command | custom | `repository (temp repo)` | - | Validate the real agent loop end-to-end in an isolated temp repository. |
 
 ## Rule Details
@@ -46,7 +46,7 @@ This file is generated from active manifest-declared fitness rules.
 ### `architecture.backend-literal-locality-budget`
 
 - Name: Backend literal locality budget
-- Config file: `harness/fitness-functions/policies/backend_literal_locality_budget.yaml`
+- Config file: `harness/fitness_functions/policies/backend_literal_locality_budget.yaml`
 - Side-effect free: `true`
 - Rationale: Keeps backend-coupling tokens localized to backend-owned modules and checks adapters.
 - Remediation: Remove backend-specific literals from core modules or move backend-specific behavior under engineeringagent.agents or engineeringagent.checks.
@@ -68,7 +68,7 @@ This file is generated from active manifest-declared fitness rules.
 ### `architecture.dep-directionality`
 
 - Name: Dependency directionality
-- Config file: `harness/fitness-functions/policies/dependency_directionality.yaml`
+- Config file: `harness/fitness_functions/policies/dependency_directionality.yaml`
 - Side-effect free: `true`
 - Rationale: Keeps presentation, application, ports, and domain modules aligned with the target architecture while isolating bootstrap and adapters as outer layers.
 - Remediation: Refactor imports to preserve the declared layer boundaries: presentation depends inward, application uses ports/domain only, ports stay contract-only, and domain stays isolated.
@@ -78,7 +78,7 @@ This file is generated from active manifest-declared fitness rules.
 - Name: Harness root YAML-only
 - Side-effect free: `true`
 - Rationale: Keeps harness root manifest-only and prevents executable/policy file sprawl at repository root policy surfaces.
-- Remediation: Move non-YAML root files under harness/fitness-functions or another harness subdirectory; keep only *.yaml/*.yml files at harness root.
+- Remediation: Move non-YAML root files under harness/fitness_functions or another harness subdirectory; keep only *.yaml/*.yml files at harness root.
 
 ### `architecture.harness-src-import-allowlist`
 
@@ -90,7 +90,7 @@ This file is generated from active manifest-declared fitness rules.
 ### `architecture.hermetic-fitness-test-isolation`
 
 - Name: Hermetic fitness test isolation
-- Config file: `harness/fitness-functions/policies/hermetic_fitness_test_isolation.yaml`
+- Config file: `harness/fitness_functions/policies/hermetic_fitness_test_isolation.yaml`
 - Side-effect free: `true`
 - Rationale: Keeps pytest focused on synthetic fixture behavior while reserving real-repo compliance for harness and gate execution.
 - Remediation: Pass a synthetic temp fixture as the checker project root/cwd and keep any real-repo cases in the explicit integration allowlist.
@@ -126,7 +126,7 @@ This file is generated from active manifest-declared fitness rules.
 ### `architecture.loop-subprocess-boundary`
 
 - Name: Loop subprocess boundary
-- Config file: `harness/fitness-functions/policies/loop_subprocess_boundary_policy.yaml`
+- Config file: `harness/fitness_functions/policies/loop_subprocess_boundary_policy.yaml`
 - Side-effect free: `true`
 - Rationale: Centralizes command execution paths for consistent control.
 - Remediation: Move OpenCode command execution to engineeringagent.agents.backends.opencode.client and Git command execution to engineeringagent.adapters.vcs.git_cli.
@@ -141,7 +141,7 @@ This file is generated from active manifest-declared fitness rules.
 ### `architecture.module-statement-budget`
 
 - Name: Module statement budget
-- Config file: `harness/fitness-functions/policies/module_statement_budget_policy.yaml`
+- Config file: `harness/fitness_functions/policies/module_statement_budget_policy.yaml`
 - Side-effect free: `true`
 - Rationale: Limits module sprawl using executable structure so review and retrieval stay cohesive as packages evolve.
 - Remediation: Reduce duplicated control-flow before splitting; extract cohesive concerns into existing folders first, or into a clearly named domain subpackage when needed; avoid root-level helper sprawl; for tests, prefer fixtures/builders/parametrization over repeated setup/assertions.
@@ -170,7 +170,7 @@ This file is generated from active manifest-declared fitness rules.
 ### `architecture.no-non-ignorable-ruff-suppressions`
 
 - Name: No non-ignorable Ruff suppressions
-- Config file: `harness/fitness-functions/policies/no_non_ignorable_ruff_suppressions.yaml`
+- Config file: `harness/fitness_functions/policies/no_non_ignorable_ruff_suppressions.yaml`
 - Side-effect free: `true`
 - Rationale: Keep lint policy enforceable by requiring refactor-first remediation.
 - Remediation: Remove inline/file-level ignore directives and refactor; for PLR0913, group related arguments into a NamedTuple or pydantic model.
@@ -178,7 +178,7 @@ This file is generated from active manifest-declared fitness rules.
 ### `architecture.no-pure-wrapper-functions`
 
 - Name: No pure wrapper functions
-- Config file: `harness/fitness-functions/policies/no_pure_wrapper_functions.yaml`
+- Config file: `harness/fitness_functions/policies/no_pure_wrapper_functions.yaml`
 - Side-effect free: `true`
 - Rationale: Keeps architecture boundaries direct by default and prevents seam-only indirection.
 - Remediation: Remove pass-through wrappers, call canonical functions directly, and only add explicit allowlist exceptions with rationale when unavoidable.
@@ -221,7 +221,7 @@ This file is generated from active manifest-declared fitness rules.
 ### `architecture.test-layout-module-mirroring`
 
 - Name: Test layout module mirroring
-- Config file: `harness/fitness-functions/policies/test_layout_module_mirroring.yaml`
+- Config file: `harness/fitness_functions/policies/test_layout_module_mirroring.yaml`
 - Side-effect free: `true`
 - Rationale: Replaces per-topic migration assertions with a single deterministic policy that keeps tests aligned to source ownership boundaries.
 - Remediation: Move tests into mirrored module paths under tests/, or enumerate explicit exceptions for repository-level test policy surfaces.

@@ -63,7 +63,7 @@ acceptance:
 - OpenCode integration test gating uses TOML only; ENGINEERINGAGENT_OPENCODE_INTEGRATION
   is not referenced in code/docs (except historical done-spec archives).
 - Run-loop ANSI behavior is TTY-only; NO_COLOR and TERM env keys are not read.
-- A new fitness function exists and is registered in harness/fitness-functions/rules.yaml
+- A new fitness function exists and is registered in harness/fitness_functions/rules.yaml
   to enforce the env-key read policy.
 - This repository adds engineeringagent.toml enabling the opt-in smoke rule and integration
   tests.

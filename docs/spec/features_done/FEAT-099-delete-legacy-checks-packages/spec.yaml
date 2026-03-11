@@ -57,7 +57,7 @@ implementation_notes: "Contract/API delta (explicit):\n\n- Surface: Python modul
   \ internal refactor: legacy Python import paths are removed.\n- End users should\
   \ be unaffected as long as they use CLI entrypoints; the supported\n  surface is\
   \ `engineeringagent.checks` and the CLI.\n\nFitness-function impact assessment:\n\
-  - Requires updates:\n  - Update `harness/fitness-functions/check_harness_src_import_allowlist.py`\
+  - Requires updates:\n  - Update `harness/fitness_functions/check_harness_src_import_allowlist.py`\
   \ allowlist to\n    permit `engineeringagent.checks.*` (or a narrower prefix such\
   \ as `engineeringagent.checks.fitness.*`).\n  - Update harness fitness-rule scripts\
   \ (if any) that import `engineeringagent.fitness.envelope`\n    to import from `engineeringagent.checks`\

@@ -10,7 +10,7 @@ objective: Make fitness-rule policy configuration declarative and discoverable b
   paths in generated checks catalog output, and migrating long inline rule arguments
   into repository-owned policy YAML files.
 context: 'Current command-backed fitness rules keep policy in two places: code defaults
-  and long command arg lists inside `harness/fitness-functions/rules.yaml`. This is
+  and long command arg lists inside `harness/fitness_functions/rules.yaml`. This is
   hard to review and drifts as backend/policy surfaces evolve. We also have semgrep
   rule YAML adjacent to scripts with naming that does not clearly signal policy ownership.
 
@@ -28,7 +28,7 @@ constraints:
 - Generated catalog outputs must include policy-file location for discoverability
   in both markdown and json formats.
 - Move long inline policy args for `architecture.no-non-ignorable-ruff-suppressions`
-  into a YAML policy file under `harness/fitness-functions/policies/`.
+  into a YAML policy file under `harness/fitness_functions/policies/`.
 - Rename subprocess semgrep rule asset to policy-oriented naming and keep loop subprocess
   behavior unchanged.
 - Keep rule IDs stable in this feature; no boundary-rule merge/removal in this cycle.
@@ -38,7 +38,7 @@ constraints:
 implementation_notes: 'Contract change declaration (required)
 
 
-  Surface: custom fitness manifest schema (`harness/fitness-functions/rules.yaml`),
+  Surface: custom fitness manifest schema (`harness/fitness_functions/rules.yaml`),
   rule-definition runtime model, command adapter invocation contract, and checks catalog
   output contract.
 
@@ -82,7 +82,7 @@ implementation_notes: 'Contract change declaration (required)
 
   Migration plan:
 
-  - Add policy files under `harness/fitness-functions/policies/`.
+  - Add policy files under `harness/fitness_functions/policies/`.
 
   - Update manifest entries to set `config_file` and remove equivalent inline args
   where migrated.
@@ -103,7 +103,7 @@ acceptance:
   with deterministic path resolution.'
 - Command adapter appends `--config-file <path>` only for rules that define `config_file`.
 - '`architecture.no-non-ignorable-ruff-suppressions` policy is defined in YAML under
-  `harness/fitness-functions/policies/` and no longer encoded as long inline arg chains
+  `harness/fitness_functions/policies/` and no longer encoded as long inline arg chains
   in manifest.'
 - Loop subprocess semgrep policy file is renamed to policy-oriented naming and checker
   behavior remains equivalent.

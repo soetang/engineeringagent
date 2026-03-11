@@ -44,7 +44,7 @@ constraints:
   `DEFAULT_OPENCODE_AGENT`, `DEFAULT_OPENCODE_AGENT_MODEL`.'
 - Both new rules must emit deterministic, sorted violation lists containing `path:line:`
   prefixes.
-- 'Fitness-function impact assessment: update `harness/fitness-functions/rules.yaml`
+- 'Fitness-function impact assessment: update `harness/fitness_functions/rules.yaml`
   to register the new rules and add focused pytest coverage under `tests/fitness/`.'
 - 'Recommended sequencing: implement FEAT-112 before FEAT-113, FEAT-114, and FEAT-115.'
 implementation_notes: "Budgeting approach\n\n- The goal is to prevent regressions\
@@ -61,13 +61,13 @@ implementation_notes: "Budgeting approach\n\n- The goal is to prevent regression
   \ (int)\n  - `observed_violation_count` (int)\n  - `tokens` (list[str])\n- The summary\
   \ should include both baseline and observed counts.\n- The rule must never require\
   \ increasing the baseline. Follow-up tightening\n  should only reduce the baseline\
-  \ toward 0.\n\nRecommended filenames (normative)\n\n- `harness/fitness-functions/check_agents_backends_boundary.py`\n\
-  - `harness/fitness-functions/check_backend_literal_locality_budget.py`\n"
+  \ toward 0.\n\nRecommended filenames (normative)\n\n- `harness/fitness_functions/check_agents_backends_boundary.py`\n\
+  - `harness/fitness_functions/check_backend_literal_locality_budget.py`\n"
 acceptance:
-- New fitness rule `architecture.agents-backends-boundary` is registered in `harness/fitness-functions/rules.yaml`
+- New fitness rule `architecture.agents-backends-boundary` is registered in `harness/fitness_functions/rules.yaml`
   and passes on this repository.
 - New fitness rule `architecture.backend-literal-locality-budget` is registered in
-  `harness/fitness-functions/rules.yaml` and passes with a baseline equal to the current
+  `harness/fitness_functions/rules.yaml` and passes with a baseline equal to the current
   violation count.
 - Both rules produce deterministic violation ordering (sorted, stable prefixes).
 - The literal-locality budget rule output includes baseline and observed counts in

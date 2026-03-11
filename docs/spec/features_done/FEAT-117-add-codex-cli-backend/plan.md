@@ -54,7 +54,7 @@ phases:
   title: Update subprocess boundary allowlist for codex backend client
   status: done
   verification:
-  - uv run python harness/fitness-functions/check_loop_subprocess_boundary.py
+  - uv run python harness/fitness_functions/check_loop_subprocess_boundary.py
   - uv run pytest -q tests/fitness
 - id: ST-011
   title: Add end-to-end backend selection test for codex (post FEAT-115)

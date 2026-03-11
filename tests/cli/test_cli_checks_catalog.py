@@ -11,7 +11,7 @@ from tests.helpers.fitness_manifest import write_shell_contract_manifest
 def test_cli_checks_catalog_writes_markdown(tmp_path: Path) -> None:
     manifest_path = write_shell_contract_manifest(tmp_path)
 
-    output_path = tmp_path / "docs" / "fitness-functions" / "rules.md"
+    output_path = tmp_path / "docs" / "fitness_functions" / "rules.md"
     runner = CliRunner(mix_stderr=False)
     result = runner.invoke(
         cli_module.build_typer_app(),

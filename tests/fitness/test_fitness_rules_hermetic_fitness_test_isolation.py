@@ -13,7 +13,7 @@ def _script_path(repo_root: Path) -> Path:
     return (
         repo_root
         / "harness"
-        / "fitness-functions"
+        / "fitness_functions"
         / "check_hermetic_fitness_test_isolation.py"
     )
 
@@ -22,7 +22,7 @@ def _policy_path(repo_root: Path) -> Path:
     return (
         repo_root
         / "harness"
-        / "fitness-functions"
+        / "fitness_functions"
         / "policies"
         / "hermetic_fitness_test_isolation.yaml"
     )
@@ -86,7 +86,7 @@ def test_rule_flags_repo_root_passed_to_run_checker(
                 "    raise NotImplementedError",
                 "",
                 "def _script_path(repo_root: Path) -> Path:",
-                '    return repo_root / "harness" / "fitness-functions" / "check_rule.py"',
+                '    return repo_root / "harness" / "fitness_functions" / "check_rule.py"',
                 "",
                 "def test_violates(repo_root: Path) -> None:",
                 "    _run_checker(repo_root, checker_path=_script_path(repo_root))",
@@ -200,7 +200,7 @@ def test_rule_allows_repo_root_for_checker_script_lookup_only(
                 "    raise NotImplementedError",
                 "",
                 "def _script_path(repo_root: Path) -> Path:",
-                '    return repo_root / "harness" / "fitness-functions" / "check_rule.py"',
+                '    return repo_root / "harness" / "fitness_functions" / "check_rule.py"',
                 "",
                 "def test_allowed(repo_root: Path, tmp_path: Path) -> None:",
                 "    _run_checker(tmp_path, checker_path=_script_path(repo_root))",
@@ -244,7 +244,7 @@ def test_rule_flags_local_helper_forwarding_repo_root_to_run_checker(
                 "    raise NotImplementedError",
                 "",
                 "def _script_path(repo_root: Path) -> Path:",
-                '    return repo_root / "harness" / "fitness-functions" / "check_rule.py"',
+                '    return repo_root / "harness" / "fitness_functions" / "check_rule.py"',
                 "",
                 "def _invoke_checker(project_root: Path, *, checker_path: Path) -> None:",
                 "    _run_checker(project_root, checker_path=checker_path)",

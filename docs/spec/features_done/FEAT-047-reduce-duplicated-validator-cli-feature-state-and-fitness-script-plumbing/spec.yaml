@@ -29,7 +29,7 @@ implementation_notes: 'Scope includes exactly four refactors in one feature: (1)
   (2) centralize repeated failed-outcome/message construction branches in `src/engineeringagent/loop_runtime/feature_state.py`;
   (3) deduplicate repeated metadata payload/path-resolution logic used by fitness
   subcommands in `src/engineeringagent/cli.py`; (4) introduce a shared result-envelope
-  helper used by command fitness scripts under `harness/fitness-functions/`.
+  helper used by command fitness scripts under `harness/fitness_functions/`.
 
   Keep contracts stable and bias toward deleting duplicate blocks rather than adding
   wrapper layers that preserve duplication.
@@ -42,7 +42,7 @@ acceptance:
   and archive-mismatch message construction paths without changing failure semantics.'
 - '`src/engineeringagent/cli.py` fitness list/catalog flows share metadata payload
   and path-normalization helpers to avoid format drift.'
-- Command fitness scripts in `harness/fitness-functions/` emit result envelopes through
+- Command fitness scripts in `harness/fitness_functions/` emit result envelopes through
   a shared helper with deterministic JSON contract output.
 - Net line count across targeted files is reduced compared to the pre-change baseline
   while preserving behavior.

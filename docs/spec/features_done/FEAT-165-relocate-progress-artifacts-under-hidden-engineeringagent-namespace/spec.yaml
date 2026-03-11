@@ -76,8 +76,8 @@ implementation_notes: "Contract change declaration\n\nSurface:\n- Progress path 
   \ path-literal fitness checks to the new canonical\n  path while retaining existing\
   \ locality/write guardrails.\n\nFitness-function impact assessment\n- Rule update\
   \ required (same rule id, revised path tokens):\n  - `architecture.progress-log-path-locality`\n\
-  \  - Script: `harness/fitness-functions/check_progress_log_locality.py`\n  - Manifest/docs\
-  \ references: `harness/fitness-functions/rules.yaml`, `docs/fitness-functions/rules.md`\n\
+  \  - Script: `harness/fitness_functions/check_progress_log_locality.py`\n  - Manifest/docs\
+  \ references: `harness/fitness_functions/rules.yaml`, `docs/fitness-functions/rules.md`\n\
   - Rationale: rule currently encodes legacy `progress/...` path literals; it must\
   \ enforce\n  the new `.engineeringagent/progress/...` contract while preserving\
   \ locality protections.\n"

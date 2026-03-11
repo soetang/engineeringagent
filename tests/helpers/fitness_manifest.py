@@ -21,7 +21,7 @@ def write_shell_contract_manifest(tmp_path: Path) -> Path:
                 "summary": "Verify custom command envelope format.",
                 "rationale": "Keeps custom adapters interoperable.",
                 "remediation": "Update custom command output to the contract.",
-                "scope": "harness/fitness-functions",
+                "scope": "harness/fitness_functions",
                 "severity": "warning",
                 "side_effect_free": True,
                 "adapter": "command",
@@ -31,7 +31,7 @@ def write_shell_contract_manifest(tmp_path: Path) -> Path:
         ],
     }
 
-    manifest_path = tmp_path / "harness" / "fitness-functions" / "rules.yaml"
+    manifest_path = tmp_path / "harness" / "fitness_functions" / "rules.yaml"
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(
         yaml.safe_dump(payload, sort_keys=False, allow_unicode=False),

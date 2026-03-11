@@ -62,7 +62,7 @@ Delete wrapper-style scripts and move any genuinely needed automation to domain-
 
 Notes:
 - Removed the generic `scripts/` directory, including thin wrapper entrypoints and cached bytecode artifacts.
-- Relocated remaining purpose-owned automation to `harness/` (`harness/fitness-functions/validate_yaml.py` and `harness/fitness-functions/permission_probe.py`) and updated gate/pre-commit invocation paths.
+- Relocated remaining purpose-owned automation to `harness/` (`harness/fitness_functions/validate_yaml.py` and `harness/fitness_functions/permission_probe.py`) and updated gate/pre-commit invocation paths.
 
 Attempts: 1
 

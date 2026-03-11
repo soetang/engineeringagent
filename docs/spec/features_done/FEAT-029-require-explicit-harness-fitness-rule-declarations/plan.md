@@ -54,7 +54,7 @@ Generated from the archived flat feature spec during the FEAT-183 bundled-only m
 
 ## ST-001 Extend fitness manifest contract for explicit builtin references
 
-Add contract support for builtin reference entries in harness/fitness-functions/rules.yaml while preserving existing command-rule support.
+Add contract support for builtin reference entries in harness/fitness_functions/rules.yaml while preserving existing command-rule support.
 
 ## ST-002 Remove implicit builtin activation from catalog construction
 

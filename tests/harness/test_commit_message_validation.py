@@ -28,7 +28,7 @@ def _run_git(
 
 def _validator_script(pytestconfig: pytest.Config) -> Path:
     repo_root = _repo_root(pytestconfig)
-    return repo_root / "harness" / "fitness-functions" / "validate_commit_messages.py"
+    return repo_root / "harness" / "fitness_functions" / "validate_commit_messages.py"
 
 
 def _run_validator(
@@ -85,7 +85,7 @@ def test_commit_subject_pattern_generated_from_allowed_types(
     pytestconfig: pytest.Config,
 ) -> None:
     repo_root = _repo_root(pytestconfig)
-    module_path = repo_root / "harness" / "fitness-functions" / "commit_messages.py"
+    module_path = repo_root / "harness" / "fitness_functions" / "commit_messages.py"
     spec = importlib.util.spec_from_file_location(
         "harness_commit_messages", module_path
     )

@@ -729,7 +729,7 @@ def test_run_gate_phase_emits_fitness_failure_feedback_contract(
         + "\n",
     )
     _write_text(
-        tmp_path / "harness" / "fitness-functions" / "rules.yaml",
+        tmp_path / "harness" / "fitness_functions" / "rules.yaml",
         "\n".join(
             [
                 'contract_version: "1.0"',

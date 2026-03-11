@@ -20,7 +20,7 @@ constraints:
 - Treat `semgrep` as a dev dependency in `[dependency-groups].dev`, not `[project.dependencies]`,
   because it is only executed by harness/fitness tooling.
 - Keep the existing fitness JSON envelope contract and deterministic violation ordering.
-- Integrate Semgrep via command adapter wiring in `harness/fitness-functions/rules.yaml`.
+- Integrate Semgrep via command adapter wiring in `harness/fitness_functions/rules.yaml`.
 - Adapter interface must run semgrep in local/offline mode and emit one strict fitness
   result JSON object to stdout.
 - 'Keep loop subprocess boundary enforcement blocking (`severity: error`) because
@@ -40,8 +40,8 @@ implementation_notes: 'Add a Semgrep rule file for loop subprocess boundary chec
   result parsing.
 
   Required integration touch points in this feature: - `src/engineeringagent/fitness/builtin_rules.py`
-  (`evaluate_loop_subprocess_boundary`) as migration source/reference - `harness/fitness-functions/rules.yaml`
-  command rule declaration for the pilot - `harness/fitness-functions/` Semgrep rule
+  (`evaluate_loop_subprocess_boundary`) as migration source/reference - `harness/fitness_functions/rules.yaml`
+  command rule declaration for the pilot - `harness/fitness_functions/` Semgrep rule
   and adapter script locations - `tests/test_fitness_rules_loop_subprocess_boundary.py`
   parity expectations - `tests/test_fitness_registry.py` and `tests/test_fitness_adapters.py`
   for command-adapter behavior'

@@ -13,7 +13,7 @@ def _script_path(repo_root: Path) -> Path:
     return (
         repo_root
         / "harness"
-        / "fitness-functions"
+        / "fitness_functions"
         / "check_loop_checks_result_boundary.py"
     )
 
@@ -54,7 +54,7 @@ def _violations(result: dict[str, object]) -> list[str]:
 
 
 def test_loop_checks_result_boundary_rule_configuration() -> None:
-    manifest_path = Path("harness/fitness-functions/rules.yaml")
+    manifest_path = Path("harness/fitness_functions/rules.yaml")
     manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
 
     rules = manifest["rules"]
@@ -73,7 +73,7 @@ def test_loop_checks_result_boundary_rule_configuration() -> None:
         "uv",
         "run",
         "python",
-        "harness/fitness-functions/check_loop_checks_result_boundary.py",
+        "harness/fitness_functions/check_loop_checks_result_boundary.py",
     ]
 
 

@@ -67,7 +67,7 @@ Update tests that use `Path(__file__).resolve().parents[1]` so they still
 resolve the repository root after being moved one directory deeper.
 Prefer a robust approach that remains correct if additional nesting is
 introduced later (e.g. pytest rootpath fixture or a centralized helper).
-Progress (2026-02-16): updated `tests/loop/test_loop_contracts.py` to resolve `harness/fitness-functions/*` scripts via `pytestconfig.rootpath` instead of `Path(__file__).resolve().parents[1]`.
+Progress (2026-02-16): updated `tests/loop/test_loop_contracts.py` to resolve `harness/fitness_functions/*` scripts via `pytestconfig.rootpath` instead of `Path(__file__).resolve().parents[1]`.
 Progress (2026-02-16): updated `tests/vcs/test_commit_message_validation.py` to resolve the repo root via `pytestconfig.rootpath` instead of `Path(__file__).resolve().parents[1]`.
 Progress (2026-02-16): added a shared `repo_root` fixture in `tests/conftest.py`, updated remaining tests to use `repo_root`/`pytestconfig.rootpath` (including harness fitness-function script path resolution), and added a meta test to prevent reintroducing brittle `parents[1]` repo-root computation.
 
@@ -82,9 +82,9 @@ Update any tests that assert the exact gate runner string.
 
 `uv run ruff check harness` currently fails due to docstring and
 complexity rules applied to harness scripts. Update `pyproject.toml`
-Ruff settings to ignore these rules for `harness/fitness-functions/*.py`
+Ruff settings to ignore these rules for `harness/fitness_functions/*.py`
 (and only for that path), while keeping baseline linting enabled.
-Progress (2026-02-16): restored `tool.ruff.lint.extend-select` so the docstring/complexity rules are actually enabled globally, making the `per-file-ignores` exemption for `harness/fitness-functions/*.py` meaningful.
+Progress (2026-02-16): restored `tool.ruff.lint.extend-select` so the docstring/complexity rules are actually enabled globally, making the `per-file-ignores` exemption for `harness/fitness_functions/*.py` meaningful.
 
 ## ST-005 Update docs referencing Ruff command and run full regression
 

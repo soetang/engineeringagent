@@ -32,7 +32,7 @@ def test_build_rule_catalog_includes_only_manifest_declared_rules_sorted_by_id(
     tmp_path: Path,
 ) -> None:
     """Load only manifest entries and keep deterministic rule-id ordering."""
-    manifest_path = tmp_path / "harness" / "fitness-functions" / "rules.yaml"
+    manifest_path = tmp_path / "harness" / "fitness_functions" / "rules.yaml"
     _write_manifest(
         manifest_path,
         [
@@ -84,7 +84,7 @@ def test_build_rule_catalog_parses_error_severity_and_command_tuple(
     tmp_path: Path,
 ) -> None:
     """Parse error severity and preserve manifest command list ordering."""
-    manifest_path = tmp_path / "harness" / "fitness-functions" / "rules.yaml"
+    manifest_path = tmp_path / "harness" / "fitness_functions" / "rules.yaml"
     _write_manifest(
         manifest_path,
         [
@@ -94,7 +94,7 @@ def test_build_rule_catalog_parses_error_severity_and_command_tuple(
                 "summary": "Prevent loop orchestration subprocess boundaries.",
                 "rationale": "Exercise error-severity parsing for command rules.",
                 "remediation": "Update rule declaration.",
-                "scope": "harness/fitness-functions",
+                "scope": "harness/fitness_functions",
                 "severity": "error",
                 "side_effect_free": True,
                 "adapter": "command",
@@ -102,7 +102,7 @@ def test_build_rule_catalog_parses_error_severity_and_command_tuple(
                     "uv",
                     "run",
                     "python",
-                    "harness/fitness-functions/check_loop_subprocess_boundary.py",
+                    "harness/fitness_functions/check_loop_subprocess_boundary.py",
                 ],
             }
         ],
@@ -119,7 +119,7 @@ def test_build_rule_catalog_parses_error_severity_and_command_tuple(
         "uv",
         "run",
         "python",
-        "harness/fitness-functions/check_loop_subprocess_boundary.py",
+        "harness/fitness_functions/check_loop_subprocess_boundary.py",
     )
 
 
@@ -127,7 +127,7 @@ def test_build_rule_catalog_resolves_manifest_config_file_to_absolute_path(
     tmp_path: Path,
 ) -> None:
     """Resolve config_file entries against the manifest directory."""
-    manifest_path = tmp_path / "harness" / "fitness-functions" / "rules.yaml"
+    manifest_path = tmp_path / "harness" / "fitness_functions" / "rules.yaml"
     _write_manifest(
         manifest_path,
         [
@@ -145,7 +145,7 @@ def test_build_rule_catalog_resolves_manifest_config_file_to_absolute_path(
                     "uv",
                     "run",
                     "python",
-                    "harness/fitness-functions/check_loop_subprocess_boundary.py",
+                    "harness/fitness_functions/check_loop_subprocess_boundary.py",
                 ],
                 "config_file": "policies/loop_subprocess_boundary.yaml",
             }
@@ -167,7 +167,7 @@ def test_build_rule_catalog_rejects_config_file_outside_project_root(
     tmp_path: Path,
 ) -> None:
     """Reject config_file paths that escape the repository root."""
-    manifest_path = tmp_path / "harness" / "fitness-functions" / "rules.yaml"
+    manifest_path = tmp_path / "harness" / "fitness_functions" / "rules.yaml"
     _write_manifest(
         manifest_path,
         [
@@ -185,7 +185,7 @@ def test_build_rule_catalog_rejects_config_file_outside_project_root(
                     "uv",
                     "run",
                     "python",
-                    "harness/fitness-functions/check_loop_subprocess_boundary.py",
+                    "harness/fitness_functions/check_loop_subprocess_boundary.py",
                 ],
                 "config_file": "../../../outside.yaml",
             }

@@ -56,7 +56,7 @@ def _write_manifest(path: Path, rules: list[dict[str, object]]) -> None:
 
 
 def test_run_rule_catalog_parallel_output_is_sorted_by_rule_id(tmp_path: Path) -> None:
-    manifest_path = tmp_path / "harness" / "fitness-functions" / "rules.yaml"
+    manifest_path = tmp_path / "harness" / "fitness_functions" / "rules.yaml"
     _write_manifest(
         manifest_path,
         [
@@ -81,7 +81,7 @@ def test_run_rule_catalog_parallel_output_is_sorted_by_rule_id(tmp_path: Path) -
 
 
 def test_run_rule_catalog_returns_failure_when_rule_fails(tmp_path: Path) -> None:
-    manifest_path = tmp_path / "harness" / "fitness-functions" / "rules.yaml"
+    manifest_path = tmp_path / "harness" / "fitness_functions" / "rules.yaml"
     _write_manifest(
         manifest_path,
         [

@@ -88,7 +88,7 @@ implementation_notes: 'Contract change declaration
 
   - Add rule: `architecture.loop-checks-policy-ownership`.
 
-  - Add script: `harness/fitness-functions/check_loop_checks_policy_ownership.py`.
+  - Add script: `harness/fitness_functions/check_loop_checks_policy_ownership.py`.
 
   - Add tests: `tests/fitness/test_fitness_rules_loop_checks_policy_ownership.py`.
 

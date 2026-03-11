@@ -16,7 +16,7 @@ def test_init_slim_pack_does_not_scaffold_demo_failure(tmp_path: Path) -> None:
     assert not (tmp_path / "harness" / "gates.yaml").exists()
     assert not (tmp_path / "harness" / "reviewers.yaml").exists()
     assert not (
-        tmp_path / "harness" / "fitness-functions" / "demo_always_fail.py"
+        tmp_path / "harness" / "fitness_functions" / "demo_always_fail.py"
     ).exists()
 
     checks_config = yaml.safe_load(
@@ -39,12 +39,12 @@ def test_init_standard_pack_scaffolds_demo_failing_fitness_rule(
     assert not (tmp_path / "harness" / "reviewers.yaml").exists()
 
     demo_script_path = (
-        tmp_path / "harness" / "fitness-functions" / "demo_always_fail.py"
+        tmp_path / "harness" / "fitness_functions" / "demo_always_fail.py"
     )
     assert demo_script_path.exists()
 
     baseline_manifest = yaml.safe_load(
-        (tmp_path / "harness" / "fitness-functions" / "rules.yaml").read_text(
+        (tmp_path / "harness" / "fitness_functions" / "rules.yaml").read_text(
             encoding="utf-8"
         )
     )

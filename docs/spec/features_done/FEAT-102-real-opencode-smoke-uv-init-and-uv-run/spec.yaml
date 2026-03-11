@@ -31,7 +31,7 @@ constraints:
 - Do not switch the loop runner invocation away from source-first forms (keep `uv
   run python -m engineeringagent.cli ...` for init/run).
 - Do not require pip install / uv add / build backends in the temp repo.
-implementation_notes: "Temp repo flow (where uv init happens):\n- In harness/fitness-functions/check_real_opencode_hello_world_smoke.py,\n\
+implementation_notes: "Temp repo flow (where uv init happens):\n- In harness/fitness_functions/check_real_opencode_hello_world_smoke.py,\n\
   \  during temp repo setup:\n  1) Create temp directory.\n  2) Run `git init` in\
   \ the temp directory.\n  3) Configure deterministic git identity (existing behavior).\n\
   \  4) Run `uv init . --package --vcs none --no-readme --no-pin-python` with cwd=temp\n\
@@ -39,7 +39,7 @@ implementation_notes: "Temp repo flow (where uv init happens):\n- In harness/fit
   \ <tmp> init slim --no-precommit-install`.\n  6) Write the hello-world feature spec\
   \ template into <tmp>/docs/spec/features/...\n  7) Create baseline git commit.\n\
   \  8) Run `uv run python -m engineeringagent.cli --project-root <tmp> run <spec>\
-  \ ...`.\n\nFiles to update:\n\n1) harness/fitness-functions/check_real_opencode_hello_world_smoke.py\n\
+  \ ...`.\n\nFiles to update:\n\n1) harness/fitness_functions/check_real_opencode_hello_world_smoke.py\n\
   \   - Insert uv init immediately after `git init` + deterministic git identity config,\n\
   \     and before calling `engineeringagent init slim`.\n     Command (cwd = temp\
   \ repo root):\n     uv init . --package --vcs none --no-readme --no-pin-python\n\
@@ -51,7 +51,7 @@ implementation_notes: "Temp repo flow (where uv init happens):\n- In harness/fit
   \ -c \"from hello_world import hello; assert hello('World') == 'Hello, World!'\"\
   \n     uv run python -c \"import subprocess; out=subprocess.check_output(['uv','run','python','-m','hello_world'],\
   \ text=True); assert out.strip()=='Hello, World!'\"\n   Notes:\n   - Keep existing\
-  \ timeouts/budgets.\n   - Do not add dependencies.\n\n2) harness/fitness-functions/real_opencode_hello_world_feature_template.yaml\n\
+  \ timeouts/budgets.\n   - Do not add dependencies.\n\n2) harness/fitness_functions/real_opencode_hello_world_feature_template.yaml\n\
   \   - Insert `uv run python` in the temp repo feature spec's `subtasks[0].verification`.\n\
   \     Replace the existing `python -c ...` commands with the uv equivalents:\n \
   \    - uv run python -c \"from hello_world import hello; assert hello('World') ==\

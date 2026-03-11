@@ -111,7 +111,7 @@ Add or extend a fitness function that scans `src/engineeringagent` and fails if:
 - loop entrypoints use `*args/**kwargs` facade shims
 - code assigns `__signature__ = ...` to mask varargs signatures
 - code drops unexpected kwargs to bypass binding (unless explicitly allowlisted)
-Register the rule in `harness/fitness-functions/rules.yaml` and ensure it runs under
+Register the rule in `harness/fitness_functions/rules.yaml` and ensure it runs under
 existing gate profiles.
 
 ## ST-006 Remove remaining facade shims from loop.py helpers

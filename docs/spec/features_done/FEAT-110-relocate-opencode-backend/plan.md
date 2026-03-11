@@ -15,7 +15,7 @@ phases:
   status: done
   verification:
   - uv run pytest -q
-  - uv run python harness/fitness-functions/check_agents_opencode_boundary.py
+  - uv run python harness/fitness_functions/check_agents_opencode_boundary.py
 - id: ST-003
   title: Allowlist relocated OpenCode client for subprocess boundary rule
   status: done
@@ -27,14 +27,14 @@ phases:
   status: done
   verification:
   - uv run pytest -q
-  - uv run python harness/fitness-functions/check_agents_opencode_boundary.py
+  - uv run python harness/fitness_functions/check_agents_opencode_boundary.py
 - id: ST-005
   title: Tighten boundary tests and guard relocated start_agent imports
   status: done
   verification:
   - uv run pytest -q tests/fitness/test_fitness_rules_agents_opencode_boundary.py
     tests/meta/test_agent_boundary_guards.py
-  - uv run python harness/fitness-functions/check_agents_opencode_boundary.py
+  - uv run python harness/fitness_functions/check_agents_opencode_boundary.py
 ---
 
 # Archived Plan

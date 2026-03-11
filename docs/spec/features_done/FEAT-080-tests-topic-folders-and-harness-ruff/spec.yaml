@@ -108,7 +108,7 @@ implementation_notes: "Concrete move map (no renames besides directory move):\n\
   \ runs `uv run ruff check src/engineeringagent harness`.\n\nCompatibility policy:\n\
   - This is a tightening of validation for repositories that adopt the default\n \
   \ gate config. To avoid unexpected failures from harness fitness-function\n  scripts,\
-  \ configure Ruff to ignore docstring/complexity policy for\n  `harness/fitness-functions/*.py`\
+  \ configure Ruff to ignore docstring/complexity policy for\n  `harness/fitness_functions/*.py`\
   \ while still linting for baseline errors.\n\nFitness-function impact assessment:\n\
   - no fitness-function changes required; this change is a test layout and lint\n\
   \  gate/config alignment only.\n"

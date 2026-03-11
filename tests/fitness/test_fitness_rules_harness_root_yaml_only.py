@@ -8,7 +8,7 @@ import sys
 
 def _script_path(repo_root: Path) -> Path:
     return (
-        repo_root / "harness" / "fitness-functions" / "check_harness_root_yaml_only.py"
+        repo_root / "harness" / "fitness_functions" / "check_harness_root_yaml_only.py"
     )
 
 
@@ -45,7 +45,7 @@ def test_fails_for_non_yaml_regular_files_at_harness_root(
     _write_file(tmp_path / "harness/validate_yaml.py", "print('bad')\n")
     _write_file(tmp_path / "harness/notes.txt", "bad\n")
     _write_file(
-        tmp_path / "harness/fitness-functions/validate_yaml.py", "print('ok')\n"
+        tmp_path / "harness/fitness_functions/validate_yaml.py", "print('ok')\n"
     )
 
     proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
@@ -57,12 +57,12 @@ def test_fails_for_non_yaml_regular_files_at_harness_root(
     assert payload["violations"] == [
         (
             "harness/notes.txt:1 non-YAML regular file at harness root; "
-            "move executable/policy files under harness/fitness-functions or another "
+            "move executable/policy files under harness/fitness_functions or another "
             "harness subdirectory."
         ),
         (
             "harness/validate_yaml.py:1 non-YAML regular file at harness root; "
-            "move executable/policy files under harness/fitness-functions or another "
+            "move executable/policy files under harness/fitness_functions or another "
             "harness subdirectory."
         ),
     ]
@@ -78,7 +78,7 @@ def test_passes_when_harness_root_contains_only_yaml_files(
     )
     _write_file(tmp_path / "harness/checks.local.yml", "checks: {}\n")
     _write_file(
-        tmp_path / "harness/fitness-functions/validate_yaml.py", "print('ok')\n"
+        tmp_path / "harness/fitness_functions/validate_yaml.py", "print('ok')\n"
     )
 
     proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))

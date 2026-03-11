@@ -12,7 +12,7 @@ def _script_path(repo_root: Path) -> Path:
     return (
         repo_root
         / "harness"
-        / "fitness-functions"
+        / "fitness_functions"
         / "check_source_first_loop_commands.py"
     )
 

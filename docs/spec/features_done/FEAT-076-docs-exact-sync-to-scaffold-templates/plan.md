@@ -41,8 +41,8 @@ phases:
   status: done
   verification:
   - uv run pytest -q tests/test_init_command.py::test_init_writes_precommit_and_empty_gate_profiles
-  - uv run ruff check harness/fitness-functions/check_scaffold_docs_exact_sync.py
-    harness/fitness-functions/check_scaffold_template_agents_doc_links.py
+  - uv run ruff check harness/fitness_functions/check_scaffold_docs_exact_sync.py
+    harness/fitness_functions/check_scaffold_template_agents_doc_links.py
 ---
 
 # Archived Plan
@@ -57,7 +57,7 @@ update init to scaffold it to `${docs_root}/references/spec-writing.md`.
 ## ST-002 Add exact-sync fitness script and manifest entry
 
 Implement a harness script that compares policy-declared docs to scaffold templates and
-declare it in `harness/fitness-functions/rules.yaml`.
+declare it in `harness/fitness_functions/rules.yaml`.
 
 ## ST-003 Link scaffolded references from scaffold AGENTS and enforce with fitness rule
 

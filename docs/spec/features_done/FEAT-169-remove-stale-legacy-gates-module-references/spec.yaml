@@ -54,9 +54,9 @@ implementation_notes: "Contract change declaration\n\nSurface:\n- `architecture.
   \ tighter allowlist accuracy, less false architectural\n  signal, and cleaner long-term\
   \ policy maintenance.\n"
 acceptance:
-- '`harness/fitness-functions/policies/loop_subprocess_boundary_policy.yaml` no longer
+- '`harness/fitness_functions/policies/loop_subprocess_boundary_policy.yaml` no longer
   contains `src/engineeringagent/gates.py`.'
-- '`harness/fitness-functions/policies/loop_subprocess_boundary_semgrep_policy.yaml`
+- '`harness/fitness_functions/policies/loop_subprocess_boundary_semgrep_policy.yaml`
   no longer contains `src/engineeringagent/gates.py`.'
 - Active tests do not create fixtures or assertions that treat `src/engineeringagent/gates.py`
   as an allowlisted/owned module path.

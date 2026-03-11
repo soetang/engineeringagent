@@ -42,7 +42,7 @@ def _load_checks_document(checks_path: Path) -> HarnessChecksDocument:
 
 
 def _write_fitness_manifest(tmp_path: Path, content: str) -> Path:
-    manifest_path = tmp_path / "harness" / "fitness-functions" / "rules.yaml"
+    manifest_path = tmp_path / "harness" / "fitness_functions" / "rules.yaml"
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(content, encoding="utf-8")
     return manifest_path

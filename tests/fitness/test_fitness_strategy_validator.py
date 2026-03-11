@@ -21,7 +21,7 @@ def _context(project_root: Path) -> ValidationContext:
 def test_fitness_strategy_validator_reports_manifest_contract_errors(
     tmp_path: Path,
 ) -> None:
-    manifest_path = tmp_path / "harness" / "fitness-functions" / "rules.yaml"
+    manifest_path = tmp_path / "harness" / "fitness_functions" / "rules.yaml"
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(
         yaml.safe_dump(
@@ -39,14 +39,14 @@ def test_fitness_strategy_validator_reports_manifest_contract_errors(
     assert len(issues) == 1
     assert issues[0].scope == "strategy"
     assert issues[0].validator_id == "fitness.catalog"
-    assert issues[0].path == "harness/fitness-functions/rules.yaml"
+    assert issues[0].path == "harness/fitness_functions/rules.yaml"
     assert "builtin manifest references are no longer supported" in issues[0].message
 
 
 def test_fitness_strategy_validator_returns_no_issues_for_valid_manifest(
     tmp_path: Path,
 ) -> None:
-    manifest_path = tmp_path / "harness" / "fitness-functions" / "rules.yaml"
+    manifest_path = tmp_path / "harness" / "fitness_functions" / "rules.yaml"
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(
         yaml.safe_dump(
@@ -91,6 +91,6 @@ def test_fitness_strategy_validator_reports_manifest_read_failures(
     assert len(issues) == 1
     assert issues[0].scope == "strategy"
     assert issues[0].validator_id == "fitness.catalog"
-    assert issues[0].path == "harness/fitness-functions/rules.yaml"
+    assert issues[0].path == "harness/fitness_functions/rules.yaml"
     assert issues[0].code == "fitness.catalog.read-failure"
     assert "failed to read fitness manifest" in issues[0].message

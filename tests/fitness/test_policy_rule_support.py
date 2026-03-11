@@ -14,7 +14,7 @@ from engineeringagent.checks.fitness.local_support_loader import (
 
 def _load_support_module(repo_root: Path):
     support_path = (
-        repo_root / "harness" / "fitness-functions" / "policy_rule_support.py"
+        repo_root / "harness" / "fitness_functions" / "policy_rule_support.py"
     )
     spec = importlib.util.spec_from_file_location(
         "engineeringagent_tests.policy_rule_support",
@@ -29,7 +29,7 @@ def _load_support_module(repo_root: Path):
 
 
 def _load_checker_module(repo_root: Path, script_name: str):
-    checker_path = repo_root / "harness" / "fitness-functions" / script_name
+    checker_path = repo_root / "harness" / "fitness_functions" / script_name
     spec = importlib.util.spec_from_file_location(
         f"engineeringagent_tests.{script_name.removesuffix('.py')}",
         checker_path,
@@ -72,7 +72,7 @@ def test_shared_local_support_loader_loads_sibling_module_by_caller_path(
     checker_path = (
         repo_root
         / "harness"
-        / "fitness-functions"
+        / "fitness_functions"
         / "check_hermetic_fitness_test_isolation.py"
     )
 

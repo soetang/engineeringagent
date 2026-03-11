@@ -9,7 +9,7 @@ phases:
   title: Define generalized test-layout mirroring policy and exception contract
   status: done
   verification:
-  - uv run python harness/fitness-functions/check_test_layout_module_mirroring.py
+  - uv run python harness/fitness_functions/check_test_layout_module_mirroring.py
 - id: ST-002
   title: Register new fitness rule and add checker regression tests
   status: done
@@ -50,13 +50,13 @@ Generated from the archived flat feature spec during the FEAT-183 bundled-only m
 
 ## ST-001 Define generalized test-layout mirroring policy and exception contract
 
-Implement a single checker script under `harness/fitness-functions/` plus a
+Implement a single checker script under `harness/fitness_functions/` plus a
 policy config file that encodes explicit exception roots. The checker should
 validate current repository layout (not historical move maps).
 
 ## ST-002 Register new fitness rule and add checker regression tests
 
-Add a new `architecture.*` rule entry in `harness/fitness-functions/rules.yaml`,
+Add a new `architecture.*` rule entry in `harness/fitness_functions/rules.yaml`,
 add test coverage in `tests/fitness/`, and refresh generated fitness catalog docs.
 
 ## ST-003 Move alias-root test suites to mirrored module paths

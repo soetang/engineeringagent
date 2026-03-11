@@ -67,9 +67,9 @@ Create a research document for implementing FEAT-183 using the CLI research-sess
 
 ### Checks, fitness rules, and smoke fixtures
 - `harness/checks.yaml` still includes `docs/spec/features/*.yaml` in the `intent_integrity_reviewer` `on_change` globs, so checks configuration still treats flat active feature specs as a normal changed-file surface (`harness/checks.yaml:54`).
-- `check_source_first_loop_commands.py` reimplements mixed-format feature discovery with both flat specs and bundled `spec.yaml` files, then scans flat `subtasks[*].verification` and bundled plan phases in one pass (`harness/fitness-functions/check_source_first_loop_commands.py:130`, `harness/fitness-functions/check_source_first_loop_commands.py:155`, `harness/fitness-functions/check_source_first_loop_commands.py:221`).
-- That same fitness rule hard-codes the FEAT-181 `plan-session` and `research-session` files under `docs/spec/features_done/.../supporting/` as command-policy surfaces, so those repo-backed support docs are part of active verification today (`harness/fitness-functions/check_source_first_loop_commands.py:23`, `harness/fitness-functions/check_source_first_loop_commands.py:275`).
-- The real OpenCode smoke fitness rule now writes a bundled active feature at `docs/spec/features/FEAT-001-hello-world-smoke/spec.yaml`, but `_parse_feature_statuses()` still falls back to legacy flat `subtasks` when no bundled plan phases are present (`harness/fitness-functions/check_real_opencode_hello_world_smoke.py:29`, `harness/fitness-functions/check_real_opencode_hello_world_smoke.py:216`).
+- `check_source_first_loop_commands.py` reimplements mixed-format feature discovery with both flat specs and bundled `spec.yaml` files, then scans flat `subtasks[*].verification` and bundled plan phases in one pass (`harness/fitness_functions/check_source_first_loop_commands.py:130`, `harness/fitness_functions/check_source_first_loop_commands.py:155`, `harness/fitness_functions/check_source_first_loop_commands.py:221`).
+- That same fitness rule hard-codes the FEAT-181 `plan-session` and `research-session` files under `docs/spec/features_done/.../supporting/` as command-policy surfaces, so those repo-backed support docs are part of active verification today (`harness/fitness_functions/check_source_first_loop_commands.py:23`, `harness/fitness_functions/check_source_first_loop_commands.py:275`).
+- The real OpenCode smoke fitness rule now writes a bundled active feature at `docs/spec/features/FEAT-001-hello-world-smoke/spec.yaml`, but `_parse_feature_statuses()` still falls back to legacy flat `subtasks` when no bundled plan phases are present (`harness/fitness_functions/check_real_opencode_hello_world_smoke.py:29`, `harness/fitness_functions/check_real_opencode_hello_world_smoke.py:216`).
 
 ### Test coverage and repository fixtures
 - `tests/meta/test_spec_bundles.py` contains direct legacy-wrapper helpers and fixtures, including `_write_flat_feature()` and tests for wrapper resolution and wrapper-plan mirror parity (`tests/meta/test_spec_bundles.py:13`, `tests/meta/test_spec_bundles.py:197`, `tests/meta/test_spec_bundles.py:226`).
@@ -107,9 +107,9 @@ Create a research document for implementing FEAT-183 using the CLI research-sess
 - `harness/reviewers/prompts/intent_integrity_reviewer.md:11` - reviewer fallback scanning of flat wrappers and bundled specs.
 - `harness/reviewers/prompts/test_reviewer.md:6` - same dual-format reviewer discovery path for test review.
 - `harness/checks.yaml:54` - reviewer config still matching flat active-spec globs.
-- `harness/fitness-functions/check_source_first_loop_commands.py:130` - mixed-format feature-spec scanning in fitness enforcement.
-- `harness/fitness-functions/check_source_first_loop_commands.py:275` - FEAT-181 support docs treated as active approach-command surfaces.
-- `harness/fitness-functions/check_real_opencode_hello_world_smoke.py:216` - smoke rule status parsing that still supports legacy `subtasks` fallback.
+- `harness/fitness_functions/check_source_first_loop_commands.py:130` - mixed-format feature-spec scanning in fitness enforcement.
+- `harness/fitness_functions/check_source_first_loop_commands.py:275` - FEAT-181 support docs treated as active approach-command surfaces.
+- `harness/fitness_functions/check_real_opencode_hello_world_smoke.py:216` - smoke rule status parsing that still supports legacy `subtasks` fallback.
 - `tests/meta/test_spec_bundles.py:13` - flat feature fixture used to verify legacy behavior.
 - `tests/specs/test_specs_layout_smoke.py:85` - smoke assertions that flat wrappers exist and map to bundled specs.
 - `tests/checks/reviewers/test_repo_reviewers_config.py:31` - reviewer-config expectations that include flat feature globs.

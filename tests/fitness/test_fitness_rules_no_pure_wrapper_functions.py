@@ -13,7 +13,7 @@ def _script_path(repo_root: Path) -> Path:
     return (
         repo_root
         / "harness"
-        / "fitness-functions"
+        / "fitness_functions"
         / "check_no_pure_wrapper_functions.py"
     )
 
@@ -49,7 +49,7 @@ def _write_policy(
     project_root: Path,
     *,
     allowlist: list[dict[str, str]] | None = None,
-    scan_roots: tuple[str, ...] = ("src/engineeringagent", "harness/fitness-functions"),
+    scan_roots: tuple[str, ...] = ("src/engineeringagent", "harness/fitness_functions"),
 ) -> Path:
     policy_path = project_root / "policy.yaml"
     payload: dict[str, Any] = {
@@ -82,7 +82,7 @@ def test_no_pure_wrapper_rule_flags_deterministic_sorted_violations(
     )
     _write_file(
         tmp_path,
-        "harness/fitness-functions/wrapper.py",
+        "harness/fitness_functions/wrapper.py",
         "from __future__ import annotations\n\n"
         "async def forward_async(*args: object, **kwargs: object) -> object:\n"
         "    return await canonical(*args, **kwargs)\n",
@@ -102,7 +102,7 @@ def test_no_pure_wrapper_rule_flags_deterministic_sorted_violations(
     assert violations == sorted(violations)
     assert any("src/engineeringagent/a_module.py:6" in item for item in violations)
     assert any("src/engineeringagent/z_module.py:1" in item for item in violations)
-    assert any("harness/fitness-functions/wrapper.py:3" in item for item in violations)
+    assert any("harness/fitness_functions/wrapper.py:3" in item for item in violations)
     assert all("remediation order:" in item for item in violations)
 
 
@@ -110,7 +110,7 @@ def test_no_pure_wrapper_rule_honors_allowlist_exceptions(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    (tmp_path / "harness" / "fitness-functions").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "harness" / "fitness_functions").mkdir(parents=True, exist_ok=True)
     _write_file(
         tmp_path,
         "src/engineeringagent/allowed.py",
@@ -160,7 +160,7 @@ def test_no_pure_wrapper_rule_flags_keyword_identity_forwarding_for_positional_p
     )
     _write_file(
         tmp_path,
-        "harness/fitness-functions/helper.py",
+        "harness/fitness_functions/helper.py",
         "def helper() -> None:\n"
         "    return None\n",
     )
@@ -195,7 +195,7 @@ def test_no_pure_wrapper_rule_passes_when_no_wrappers_found(
     )
     _write_file(
         tmp_path,
-        "harness/fitness-functions/helper.py",
+        "harness/fitness_functions/helper.py",
         "def format_message(value: str) -> str:\n"
         "    return f'hello {value}'\n",
     )

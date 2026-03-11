@@ -72,7 +72,7 @@ implementation_notes: "Introduce a gate-selection planning step that evaluates e
   \ for selected gates.\n\nExample `harness/gates.yaml` (copy-pastable):\n\n  contract_version:\
   \ \"1.0\"\n\n  profiles:\n    precommit:\n      - yaml_validate\n      - spec_validate\n\
   \      - ruff_validate\n      - pytest_validate\n\n  gates:\n    yaml_validate:\n\
-  \      run: uv run python harness/fitness-functions/validate_yaml.py\n\n    spec_validate:\n\
+  \      run: uv run python harness/fitness_functions/validate_yaml.py\n\n    spec_validate:\n\
   \      runner:\n        type: command\n        command: uv run python -m engineeringagent.cli\
   \ validate\n      on_change:\n        - \"docs/spec/**/*.yaml\"\n        - \"docs/spec/**/*.yml\"\
   \n        - \"docs/spec/**/*.json\"\n\n    ruff_validate:\n      run: uv run ruff\

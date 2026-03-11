@@ -16,7 +16,7 @@ context: 'The codebase currently includes multiple single-return wrapper functio
   while still supporting explicit exceptions for rare cases where no better design
   exists.'
 constraints:
-- 'In scope: wrapper policy enforcement for `src/engineeringagent/**` and `harness/fitness-functions/**`.'
+- 'In scope: wrapper policy enforcement for `src/engineeringagent/**` and `harness/fitness_functions/**`.'
 - 'Default policy is strict: pure wrappers are disallowed unless explicitly allowlisted.'
 - Exception mechanism must exist, but default repository posture should be zero exceptions.
 - Breaking changes are allowed in this repository; remove/rename wrapper APIs directly
@@ -28,7 +28,7 @@ constraints:
 - Fitness and test updates must preserve existing checks architecture contracts and
   manifest conventions.
 implementation_notes: "Contract change declaration\n\nSurface:\n- Function-shape architecture\
-  \ policy for wrapper patterns in `src/engineeringagent/**` and\n  `harness/fitness-functions/**`.\n\
+  \ policy for wrapper patterns in `src/engineeringagent/**` and\n  `harness/fitness_functions/**`.\n\
   - Existing wrapper-heavy runtime/helper modules that currently rely on pass-through\
   \ seams.\n- Public/internal helper names where wrappers are removed via direct canonical\
   \ exports.\n\nOld behavior:\n- Pure wrappers are allowed by default.\n- Multiple\
@@ -49,8 +49,8 @@ implementation_notes: "Contract change declaration\n\nSurface:\n- Function-shape
   \nFitness-function impact assessment:\n- This feature intentionally adds a new architecture\
   \ fitness rule and corresponding tests/docs.\n- Chosen path: adjust implementation\
   \ to satisfy the new rule, not weaken the rule baseline.\n- Affected assets include:\n\
-  \  - `harness/fitness-functions/rules.yaml`\n  - new checker script under `harness/fitness-functions/`\n\
-  \  - optional policy/allowlist file under `harness/fitness-functions/policies/`\n\
+  \  - `harness/fitness_functions/rules.yaml`\n  - new checker script under `harness/fitness_functions/`\n\
+  \  - optional policy/allowlist file under `harness/fitness_functions/policies/`\n\
   \  - docs catalog sync output in `docs/fitness-functions/rules.md`\n\nRemediation\
   \ decision tree (ordered, first viable option wins):\n- <u>Option 1: Move logic\
   \ to the canonical domain</u> - if wrapper exists only to bridge domains,\n  relocate\
@@ -65,8 +65,8 @@ implementation_notes: "Contract change declaration\n\nSurface:\n- Function-shape
   \ in allowlist metadata and deterministic follow-up remediation notes.\n"
 acceptance:
 - A new fitness rule `architecture.no-pure-wrapper-functions` is registered and enforced
-  through `harness/fitness-functions/rules.yaml`.
-- The rule scans both `src/engineeringagent/**` and `harness/fitness-functions/**`
+  through `harness/fitness_functions/rules.yaml`.
+- The rule scans both `src/engineeringagent/**` and `harness/fitness_functions/**`
   and reports deterministic sorted path:line violations for pure wrapper functions.
 - The rule supports explicit exceptions, but the default policy state is zero exceptions
   unless a documented unavoidable case remains.

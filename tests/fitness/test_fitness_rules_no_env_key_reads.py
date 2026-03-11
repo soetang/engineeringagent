@@ -8,7 +8,7 @@ from typing import cast
 
 
 def _script_path(repo_root: Path) -> Path:
-    return repo_root / "harness" / "fitness-functions" / "check_no_env_key_reads.py"
+    return repo_root / "harness" / "fitness_functions" / "check_no_env_key_reads.py"
 
 
 def _violations(result: dict[str, object]) -> list[str]:
@@ -100,7 +100,7 @@ def test_checker_flags_environ_subscript_and_membership(
 def test_checker_allows_os_environ_copy(tmp_path: Path, repo_root: Path) -> None:
     _write_module(
         tmp_path,
-        relative_path="harness/fitness-functions/allowed_env_passthrough.py",
+        relative_path="harness/fitness_functions/allowed_env_passthrough.py",
         content="\n".join(
             [
                 "from __future__ import annotations",

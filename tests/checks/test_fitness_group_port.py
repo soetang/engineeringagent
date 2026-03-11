@@ -73,7 +73,7 @@ def test_run_checks_fitness_surfaces_statement_budget_offenders(
             ]
         ),
     )
-    policy_dir = tmp_path / "harness" / "fitness-functions" / "policies"
+    policy_dir = tmp_path / "harness" / "fitness_functions" / "policies"
     policy_dir.mkdir(parents=True, exist_ok=True)
     (policy_dir / "module_statement_budget_policy.yaml").write_text(
         yaml.safe_dump({"budgets": [{"root": "src/engineeringagent", "cap": 1}]}),
@@ -84,7 +84,7 @@ def test_run_checks_fitness_surfaces_statement_budget_offenders(
         "value = 1\nother = 2\n",
         encoding="utf-8",
     )
-    manifest_path = tmp_path / "harness" / "fitness-functions" / "rules.yaml"
+    manifest_path = tmp_path / "harness" / "fitness_functions" / "rules.yaml"
     manifest_path.write_text(
         yaml.safe_dump(
             {
@@ -106,7 +106,7 @@ def test_run_checks_fitness_surfaces_statement_budget_offenders(
                             str(
                                 repo_root
                                 / "harness"
-                                / "fitness-functions"
+                                / "fitness_functions"
                                 / "check_module_statement_budget.py"
                             ),
                         ],

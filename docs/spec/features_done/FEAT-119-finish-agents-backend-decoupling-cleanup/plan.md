@@ -24,19 +24,19 @@ phases:
   title: Remove agents_defaults by internalizing OpenCode default agent id
   status: done
   verification:
-  - uv run python harness/fitness-functions/check_backend_literal_locality_budget.py
+  - uv run python harness/fitness_functions/check_backend_literal_locality_budget.py
   - uv run pytest -q
 - id: ST-005
   title: Restore backend-owned scaffold template markdown and adjust fitness rules
   status: done
   verification:
-  - uv run python harness/fitness-functions/check_markdown_locality_reference_coverage.py
+  - uv run python harness/fitness_functions/check_markdown_locality_reference_coverage.py
   - uv run pytest -q tests/fitness/test_fitness_rules_markdown_locality.py tests/fitness/test_fitness_rules_markdown_references.py
 - id: ST-006
   title: Tighten backend literal-locality budget baseline to zero
   status: done
   verification:
-  - uv run python harness/fitness-functions/check_backend_literal_locality_budget.py
+  - uv run python harness/fitness_functions/check_backend_literal_locality_budget.py
   - uv run engineeringagent checks run --checks fitness --phase iteration_end
 - id: ST-007
   title: Update FEAT-117 spec to match no-backend-override contract

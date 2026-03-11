@@ -19,7 +19,7 @@ context: 'The codebase currently mixes stdlib dataclasses and Pydantic. This inc
 
   '
 constraints:
-- Enforcement must be implemented as a custom rule under harness/fitness-functions,
+- Enforcement must be implemented as a custom rule under harness/fitness_functions,
   not as a built-in fitness rule in src/engineeringagent/fitness.
 - Rule scope is src/engineeringagent only (tests, harness, and docs are out of scope
   for enforcement).
@@ -35,9 +35,9 @@ constraints:
 implementation_notes: 'First migrate existing dataclass-based structures in src/engineeringagent
   to Pydantic v2 BaseModel equivalents, preserving behavior (immutability, validation,
   and serialization contracts). Then add a custom command-backed fitness check script
-  under harness/fitness-functions that scans src/engineeringagent (AST-based detection
+  under harness/fitness_functions that scans src/engineeringagent (AST-based detection
   preferred) and fails on stdlib dataclasses usage patterns (imports, decorators,
-  and dataclasses references). Register this rule in harness/fitness-functions/rules.yaml
+  and dataclasses references). Register this rule in harness/fitness_functions/rules.yaml
   as architecture.no-stdlib-dataclasses-in-src with severity error and remediation
   guidance to use Pydantic BaseModel. Regenerate fitness catalog docs after manifest
   updates.
@@ -45,9 +45,9 @@ implementation_notes: 'First migrate existing dataclass-based structures in src/
   '
 acceptance:
 - src/engineeringagent no longer uses stdlib dataclasses patterns.
-- A custom fitness check script exists under harness/fitness-functions and is the
+- A custom fitness check script exists under harness/fitness_functions and is the
   enforcement mechanism for this policy.
-- Rule is declared in harness/fitness-functions/rules.yaml (custom manifest), not
+- Rule is declared in harness/fitness_functions/rules.yaml (custom manifest), not
   in built-in fitness rule registry.
 - Rule declaration uses rule_id architecture.no-stdlib-dataclasses-in-src.
 - Fitness output reports clear remediation directing contributors to Pydantic v2 BaseModel.

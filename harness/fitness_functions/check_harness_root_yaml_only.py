@@ -15,7 +15,7 @@ RULE_ID = "architecture.harness-root-yaml-only"
 HARNESS_ROOT = Path("harness")
 ALLOWED_EXTENSIONS = {".yaml", ".yml"}
 REMEDIATION = (
-    "move executable/policy files under harness/fitness-functions or another harness "
+    "move executable/policy files under harness/fitness_functions or another harness "
     "subdirectory."
 )
 

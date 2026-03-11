@@ -53,11 +53,11 @@ Generated from the archived flat feature spec during the FEAT-183 bundled-only m
 
 ## ST-001 Add policy-driven AST statement budget checker and config schema
 
-Implement a new checker under `harness/fitness-functions/` that counts non-doc AST statements per Python file and enforces threshold policies by path scope. Add a policy file under `harness/fitness-functions/policies/` with initial caps for `src/engineeringagent`, `tests`, and `harness`. Rule tests must use only synthetic fixture repos for checker execution.
+Implement a new checker under `harness/fitness_functions/` that counts non-doc AST statements per Python file and enforces threshold policies by path scope. Add a policy file under `harness/fitness_functions/policies/` with initial caps for `src/engineeringagent`, `tests`, and `harness`. Rule tests must use only synthetic fixture repos for checker execution.
 
 ## ST-002 Register statement budget rule and refresh fitness catalog docs
 
-Add the new rule to `harness/fitness-functions/rules.yaml`, ensure rule metadata includes canonical remediation guidance once, and regenerate docs catalog output.
+Add the new rule to `harness/fitness_functions/rules.yaml`, ensure rule metadata includes canonical remediation guidance once, and regenerate docs catalog output.
 
 ## ST-003 Migrate dependency directionality checker to policy-configured boundaries
 

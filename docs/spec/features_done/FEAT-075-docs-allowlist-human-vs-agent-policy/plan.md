@@ -39,8 +39,8 @@ Decide which are human vs agent docs.
 
 ## ST-002 Add docs allowlist fitness script and manifest rule entry
 
-Add a stdlib-only harness script (under `harness/fitness-functions/`) that enforces
-the allowlist policy, and declare it in `harness/fitness-functions/rules.yaml`.
+Add a stdlib-only harness script (under `harness/fitness_functions/`) that enforces
+the allowlist policy, and declare it in `harness/fitness_functions/rules.yaml`.
 
 ## ST-003 Update init to create or maintain scaffold_policy.yaml docs_root
 

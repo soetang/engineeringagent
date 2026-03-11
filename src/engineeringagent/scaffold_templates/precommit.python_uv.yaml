@@ -8,6 +8,6 @@ repos:
         pass_filenames: false
       - id: engineeringagent-commit-msg
         name: engineeringagent-commit-msg
-        entry: python harness/fitness-functions/validate_commit_messages.py --commit-msg-file
+        entry: python harness/fitness_functions/validate_commit_messages.py --commit-msg-file
         language: system
         stages: [commit-msg]

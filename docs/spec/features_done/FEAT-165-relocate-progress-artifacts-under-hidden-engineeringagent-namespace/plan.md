@@ -27,7 +27,7 @@ phases:
   status: done
   verification:
   - uv run pytest -q tests/fitness/test_fitness_rules_catalog_docs_sync.py
-  - uv run python harness/fitness-functions/check_progress_log_locality.py
+  - uv run python harness/fitness_functions/check_progress_log_locality.py
 - id: ST-005
   title: Add init scaffold and docs guidance for ignoring runtime artifacts
   status: done

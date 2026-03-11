@@ -25,7 +25,7 @@ phases:
   status: done
   verification:
   - uv run pytest -q tests/test_commit_message_validation.py
-  - uv run python harness/fitness-functions/validate_commit_messages.py --help
+  - uv run python harness/fitness_functions/validate_commit_messages.py --help
 - id: ST-004
   title: Enforce commit message policy in local commit-msg hook
   status: done

@@ -40,7 +40,7 @@ constraints:
 - Preserve side-effect-free execution and compatibility with existing fitness runner/gate
   integration.
 implementation_notes: 'Implement a new command-adapter fitness check script under
-  `harness/fitness-functions/` that scans Python files in `src/`, `tests/`, and `harness/`
+  `harness/fitness_functions/` that scans Python files in `src/`, `tests/`, and `harness/`
   via AST/token-safe parsing and reports deterministic path:line diagnostics when
   configured non-ignorable suppressions are found.
 
@@ -49,7 +49,7 @@ implementation_notes: 'Implement a new command-adapter fitness check script unde
   through manifest command arguments (or an adjacent harness config file referenced
   by command args) so adding future blocked rules does not require code edits.
 
-  Register the new fitness rule in `harness/fitness-functions/rules.yaml` with `severity:
+  Register the new fitness rule in `harness/fitness_functions/rules.yaml` with `severity:
   error` and command execution through `uv run python ...`.
 
   Remove existing `PLR0913` suppression comments from `src/engineeringagent/loop.py`

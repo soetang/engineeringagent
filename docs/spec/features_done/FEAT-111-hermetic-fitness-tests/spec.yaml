@@ -27,7 +27,7 @@ constraints:
 - All tests under `tests/fitness/**` must operate on `tmp_path` project fixtures;
   they must not run a checker with `project_root=repo_root` or otherwise scan the
   real repository tree as the check target.
-- '`repo_root` may be used only to locate checker scripts/resources (e.g. `harness/fitness-functions/*.py`)
+- '`repo_root` may be used only to locate checker scripts/resources (e.g. `harness/fitness_functions/*.py`)
   and must not be used as the project root for a scan.'
 - Semgrep-backed fitness checks may continue to use real semgrep in pytest, but tests
   must consolidate scenarios so semgrep starts as few times as practical (avoid per-scenario

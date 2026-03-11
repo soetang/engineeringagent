@@ -26,15 +26,15 @@ phases:
   status: done
   verification:
   - uv run pytest -q tests/fitness/test_fitness_adapters.py
-  - uv run python harness/fitness-functions/check_non_ignorable_ruff_suppressions.py
-    --config-file harness/fitness-functions/policies/no_non_ignorable_ruff_suppressions.yaml
+  - uv run python harness/fitness_functions/check_non_ignorable_ruff_suppressions.py
+    --config-file harness/fitness_functions/policies/no_non_ignorable_ruff_suppressions.yaml
 - id: ST-005
   title: Rename subprocess semgrep YAML to policy-oriented file name
   status: done
   verification:
   - uv run pytest -q tests/fitness/test_fitness_rules_loop_subprocess_boundary.py
-  - uv run python harness/fitness-functions/check_loop_subprocess_boundary.py --config-file
-    harness/fitness-functions/policies/loop_subprocess_boundary_semgrep_policy.yaml
+  - uv run python harness/fitness_functions/check_loop_subprocess_boundary.py --config-file
+    harness/fitness_functions/policies/loop_subprocess_boundary_semgrep_policy.yaml
 - id: ST-006
   title: Regenerate docs and validate repository contracts
   status: done
@@ -172,7 +172,7 @@ Update catalog serializers/renderers so generated outputs include each rule's co
 
 ## ST-004 Migrate Ruff suppression rule to YAML policy config
 
-Add `harness/fitness-functions/policies/no_non_ignorable_ruff_suppressions.yaml`, teach checker to load it via `--config-file`, and simplify manifest command entry.
+Add `harness/fitness_functions/policies/no_non_ignorable_ruff_suppressions.yaml`, teach checker to load it via `--config-file`, and simplify manifest command entry.
 
 ## ST-005 Rename subprocess semgrep YAML to policy-oriented file name
 

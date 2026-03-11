@@ -15,7 +15,7 @@ def _load_smoke_module(repo_root: Path):
     smoke_path = (
         repo_root
         / "harness"
-        / "fitness-functions"
+        / "fitness_functions"
         / "check_real_opencode_hello_world_smoke.py"
     )
     spec = importlib.util.spec_from_file_location(
@@ -36,7 +36,7 @@ def test_template_verification_commands_use_uv_run(repo_root: Path) -> None:
     template_path = (
         repo_root
         / "harness"
-        / "fitness-functions"
+        / "fitness_functions"
         / "real_opencode_hello_world_feature_template.yaml"
     )
     payload = yaml.safe_load(template_path.read_text(encoding="utf-8"))
@@ -54,7 +54,7 @@ def test_smoke_harness_pins_spark_model_in_init_command(
     spark_template_path = (
         repo_root
         / "harness"
-        / "fitness-functions"
+        / "fitness_functions"
         / "opencode.agent.engineeringagent.spark.md.tmpl"
     )
     assert not spark_template_path.exists()
@@ -223,7 +223,7 @@ def test_smoke_fixture_bundle_detects_unsupported_spec_keys(
     template_path = (
         repo_root
         / "harness"
-        / "fitness-functions"
+        / "fitness_functions"
         / "real_opencode_hello_world_feature_template.yaml"
     )
     payload = yaml.safe_load(template_path.read_text(encoding="utf-8"))

@@ -9,7 +9,7 @@ from typing import cast
 
 def _script_path(repo_root: Path) -> Path:
     return (
-        repo_root / "harness" / "fitness-functions" / "check_progress_log_locality.py"
+        repo_root / "harness" / "fitness_functions" / "check_progress_log_locality.py"
     )
 
 

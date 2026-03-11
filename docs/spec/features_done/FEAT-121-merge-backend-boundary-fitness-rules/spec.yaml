@@ -30,7 +30,7 @@ constraints:
   isolate them as migration-specific checks with explicit scope and deterministic
   sunset criteria.
 - Convert backend literal-locality token enforcement to policy-driven configuration
-  under `harness/fitness-functions/policies/` with support for multiple backends (at
+  under `harness/fitness_functions/policies/` with support for multiple backends (at
   least opencode and codex).
 - Avoid duplicate reporting for the same backend-boundary fault class; one structural
   boundary violation should map to one boundary rule failure.
@@ -41,7 +41,7 @@ constraints:
 implementation_notes: 'Contract change declaration (required)
 
 
-  Surface: fitness rule inventory (`harness/fitness-functions/rules.yaml`), backend-boundary
+  Surface: fitness rule inventory (`harness/fitness_functions/rules.yaml`), backend-boundary
   checker behavior, backend literal-locality checker behavior, generated fitness catalog
   docs, and tests that assert rule inventory/contracts.
 
@@ -100,7 +100,7 @@ implementation_notes: 'Contract change declaration (required)
 
   - Changing runtime backend selection behavior outside fitness enforcement.'
 acceptance:
-- '`harness/fitness-functions/rules.yaml` contains `architecture.agents-backends-boundary`
+- '`harness/fitness_functions/rules.yaml` contains `architecture.agents-backends-boundary`
   and no longer contains `architecture.agents-opencode-boundary`.'
 - Generated catalog output (`docs/fitness-functions/rules.md`) no longer lists `architecture.agents-opencode-boundary`
   and documents the consolidated boundary contract.

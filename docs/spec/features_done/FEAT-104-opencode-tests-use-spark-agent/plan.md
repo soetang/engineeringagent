@@ -47,7 +47,7 @@ Add `--model` to `engineeringagent init` and thread the value into the scaffold 
 
 ## ST-002 Wire spark agent into real opencode smoke harness
 
-Update `harness/fitness-functions/check_real_opencode_hello_world_smoke.py` to call `engineeringagent init` with `--model openai/gpt-5.3-codex-spark` and remove any spark-template override logic.
+Update `harness/fitness_functions/check_real_opencode_hello_world_smoke.py` to call `engineeringagent init` with `--model openai/gpt-5.3-codex-spark` and remove any spark-template override logic.
 
 ## ST-003 Wire spark agent into pytest opencode integration fixture
 
@@ -55,7 +55,7 @@ Update `tests/loop/test_loop_opencode_integration.py` to avoid creating the lega
 
 ## ST-004 Remove spark template and update tests
 
-Delete `harness/fitness-functions/opencode.agent.engineeringagent.spark.md.tmpl` and update/remove any unit tests that referenced helper code for copying that template.
+Delete `harness/fitness_functions/opencode.agent.engineeringagent.spark.md.tmpl` and update/remove any unit tests that referenced helper code for copying that template.
 
 ## ST-005 Document init option in README
 

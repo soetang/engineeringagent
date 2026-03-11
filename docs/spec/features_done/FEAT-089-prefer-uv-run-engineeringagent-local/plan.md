@@ -65,8 +65,8 @@ Notes:
 Update remediation strings so failures recommend the new local command style.
 
 Expected touch points include:
-- `harness/fitness-functions/check_source_first_loop_commands.py` REMEDIATION
-- `harness/fitness-functions/rules.yaml` rule remediation for
+- `harness/fitness_functions/check_source_first_loop_commands.py` REMEDIATION
+- `harness/fitness_functions/rules.yaml` rule remediation for
   `architecture.source-first-loop-command-policy`
 - `docs/fitness-functions/rules.md` (either update directly or regenerate via
   the catalog generator if that is the established workflow)

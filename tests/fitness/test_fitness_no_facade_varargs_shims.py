@@ -23,7 +23,7 @@ setattr(run_loop, name="__signature__", value=None)
     )
 
     script_path = (
-        repo_root / "harness" / "fitness-functions" / "check_no_facade_varargs_shims.py"
+        repo_root / "harness" / "fitness_functions" / "check_no_facade_varargs_shims.py"
     )
     completed = subprocess.run(
         [sys.executable, str(script_path)],

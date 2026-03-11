@@ -93,7 +93,7 @@ implementation_notes: 'Contract change declaration
 
   - Add rule: `architecture.repo-validators-boundary`.
 
-  - Add script: `harness/fitness-functions/check_repo_validators_boundary.py`.
+  - Add script: `harness/fitness_functions/check_repo_validators_boundary.py`.
 
   - Add tests: `tests/fitness/test_fitness_rules_repo_validators_boundary.py`.
 

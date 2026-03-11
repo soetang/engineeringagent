@@ -36,11 +36,11 @@ REFERENCE_CHECKS: dict[str, tuple[str, ...]] = {
         "compatibility wrapper",
     ),
     "harness/checks.yaml": ("docs/spec/features/*.yaml",),
-    "harness/fitness-functions/check_source_first_loop_commands.py": (
+    "harness/fitness_functions/check_source_first_loop_commands.py": (
         "docs/spec/features/*.yaml",
         "subtasks[*].verification",
     ),
-    "harness/fitness-functions/check_real_opencode_hello_world_smoke.py": (
+    "harness/fitness_functions/check_real_opencode_hello_world_smoke.py": (
         'feature.get("subtasks")',
         "subtasks",
     ),

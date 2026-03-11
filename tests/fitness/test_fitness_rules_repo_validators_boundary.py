@@ -5,7 +5,7 @@ import yaml
 
 def test_repo_validators_boundary_fitness_rule_not_registered() -> None:
     """Manifest must not include the removed repo validators boundary rule."""
-    manifest_path = Path("harness/fitness-functions/rules.yaml")
+    manifest_path = Path("harness/fitness_functions/rules.yaml")
     manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
     assert isinstance(manifest, dict)
 
@@ -24,5 +24,5 @@ def test_repo_validators_boundary_fitness_rule_not_registered() -> None:
 def test_repo_validators_boundary_checker_removed() -> None:
     """Removed rule checker script should not remain in harness."""
     assert not Path(
-        "harness/fitness-functions/check_repo_validators_boundary.py"
+        "harness/fitness_functions/check_repo_validators_boundary.py"
     ).exists()

@@ -57,8 +57,8 @@ constraints:
   is missing or the run is not explicitly enabled, the rule must PASS with a deterministic
   ''skipped'' summary.'
 implementation_notes: "Fitness-function impact assessment:\n- fitness-function changes\
-  \ required: add a new harness script under `harness/fitness-functions/` and register\
-  \ it in `harness/fitness-functions/rules.yaml`.\n\nExecution model:\n- The new fitness\
+  \ required: add a new harness script under `harness/fitness_functions/` and register\
+  \ it in `harness/fitness_functions/rules.yaml`.\n\nExecution model:\n- The new fitness\
   \ rule is a command-adapter rule that runs a Python script which:\n  1) Creates\
   \ a temp directory and runs `git init`.\n  2) Runs `uv run python -m engineeringagent.cli\
   \ --project-root <tmp> init slim --no-precommit-install`.\n     - This must create\
@@ -87,7 +87,7 @@ implementation_notes: "Fitness-function impact assessment:\n- fitness-function c
   \ rule's 15-minute budget exists to prevent indefinite hangs; the hello-world spec\
   \ is intentionally minimal to complete quickly in healthy setups.\n"
 acceptance:
-- 'A new fitness rule entry exists in `harness/fitness-functions/rules.yaml` for the
+- 'A new fitness rule entry exists in `harness/fitness_functions/rules.yaml` for the
   real-agent hello-world smoke test with `timeout_seconds: 900`.'
 - The harness script creates an isolated temp git repo, runs `engineeringagent init
   slim --no-precommit-install`, and does not use `engineeringagent reviewers init`.

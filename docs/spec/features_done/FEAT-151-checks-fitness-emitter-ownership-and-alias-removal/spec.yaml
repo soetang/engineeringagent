@@ -74,7 +74,7 @@ acceptance:
 - Canonical emitter implementation is colocated under `src/engineeringagent/checks/fitness/**`
   and `src/engineeringagent/checks/fitness_api.py` is removed.
 - '`engineeringagent.checks` exports `emit_fitness_result` and does not export `emit_result_envelope`.'
-- All harness fitness-function scripts under `harness/fitness-functions/*.py` use
+- All harness fitness-function scripts under `harness/fitness_functions/*.py` use
   `from engineeringagent.checks import emit_fitness_result` (no `emit_result_envelope`
   imports).
 - '`docs/fitness-functions/README.md` documents deterministic emission via `engineeringagent.checks.emit_fitness_result`.'

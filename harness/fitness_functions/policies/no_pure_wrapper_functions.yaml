@@ -1,5 +1,5 @@
 rule_id: architecture.no-pure-wrapper-functions
 scan_roots:
   - src/engineeringagent
-  - harness/fitness-functions
+  - harness/fitness_functions
 allowlist: []

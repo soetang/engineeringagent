@@ -15,7 +15,7 @@ from .contracts import (
     load_custom_rule_manifest,
 )
 
-DEFAULT_CUSTOM_RULE_MANIFEST = Path("harness/fitness-functions/rules.yaml")
+DEFAULT_CUSTOM_RULE_MANIFEST = Path("harness/fitness_functions/rules.yaml")
 
 
 class FitnessRuleDefinition(BaseModel):

@@ -13,7 +13,7 @@ from tests.helpers.fitness_manifest import write_shell_contract_manifest
 def test_fitness_catalog_markdown_generation(tmp_path: Path) -> None:
     write_shell_contract_manifest(tmp_path)
 
-    output_path = tmp_path / "docs" / "fitness-functions" / "rules.md"
+    output_path = tmp_path / "docs" / "fitness_functions" / "rules.md"
     runner = CliRunner(mix_stderr=False)
     result = runner.invoke(
         cli_module.build_typer_app(),
@@ -49,12 +49,12 @@ def test_fitness_catalog_json_generation(tmp_path: Path) -> None:
     assert payload == [
         {
             "adapter": "command",
-            "config_file": "harness/fitness-functions/policies/custom_shell_contract.yaml",
+            "config_file": "harness/fitness_functions/policies/custom_shell_contract.yaml",
             "name": "Custom shell contract",
             "rationale": "Keeps custom adapters interoperable.",
             "remediation": "Update custom command output to the contract.",
             "rule_id": "custom.shell-contract",
-            "scope": "harness/fitness-functions",
+            "scope": "harness/fitness_functions",
             "severity": "warning",
             "side_effect_free": True,
             "source": "custom",
@@ -64,7 +64,7 @@ def test_fitness_catalog_json_generation(tmp_path: Path) -> None:
 
 
 def test_fitness_catalog_json_contract_is_sorted_and_complete(tmp_path: Path) -> None:
-    manifest_path = tmp_path / "harness" / "fitness-functions" / "rules.yaml"
+    manifest_path = tmp_path / "harness" / "fitness_functions" / "rules.yaml"
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(
         "\n".join(
@@ -137,7 +137,7 @@ def test_format_config_file_returns_project_relative_path(tmp_path: Path) -> Non
     config_path = (
         tmp_path
         / "harness"
-        / "fitness-functions"
+        / "fitness_functions"
         / "policies"
         / "custom_shell_contract.yaml"
     )
@@ -146,7 +146,7 @@ def test_format_config_file_returns_project_relative_path(tmp_path: Path) -> Non
 
     assert (
         format_config_file(config_path, project_root=tmp_path)
-        == "harness/fitness-functions/policies/custom_shell_contract.yaml"
+        == "harness/fitness_functions/policies/custom_shell_contract.yaml"
     )
 
 
@@ -167,7 +167,7 @@ def test_repo_fitness_catalog_includes_statement_budget_rule(repo_root: Path) ->
     )
 
     assert statement_budget_rule["config_file"] == (
-        "harness/fitness-functions/policies/module_statement_budget_policy.yaml"
+        "harness/fitness_functions/policies/module_statement_budget_policy.yaml"
     )
     remediation = statement_budget_rule["remediation"]
 
@@ -188,7 +188,7 @@ def test_repo_fitness_catalog_docs_surface_directionality_policy_config(
     )
 
     assert directionality_rule["config_file"] == (
-        "harness/fitness-functions/policies/dependency_directionality.yaml"
+        "harness/fitness_functions/policies/dependency_directionality.yaml"
     )
 
     checked_in_catalog = (repo_root / "docs" / "fitness-functions" / "rules.md").read_text(
@@ -197,7 +197,7 @@ def test_repo_fitness_catalog_docs_surface_directionality_policy_config(
 
     assert "architecture.dep-directionality" in checked_in_catalog
     assert (
-        "harness/fitness-functions/policies/dependency_directionality.yaml"
+        "harness/fitness_functions/policies/dependency_directionality.yaml"
         in checked_in_catalog
     )
 

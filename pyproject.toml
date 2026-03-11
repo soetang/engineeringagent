@@ -67,7 +67,7 @@ extend-select = [
 "src/engineeringagent/opencode/client.py" = [
   "PLR0913",
 ]
-"harness/fitness-functions/*.py" = [
+"harness/fitness_functions/*.py" = [
   "D103",
   "D417",
   "C901",

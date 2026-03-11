@@ -51,7 +51,7 @@ Requirements:
 
 ## ST-002 Implement harness fitness script (temp repo + init slim + run loop + assertions)
 
-Add `harness/fitness-functions/check_real_opencode_hello_world_smoke.py` that:
+Add `harness/fitness_functions/check_real_opencode_hello_world_smoke.py` that:
 - gates execution on `ENGINEERINGAGENT_REAL_OPENCODE_SMOKE=1`
 - skips (PASS) when `opencode` is missing
 - creates temp repo and runs init slim
@@ -65,12 +65,12 @@ Keep imports within the harness allowlist (`engineeringagent.fitness.*` only).
 
 ## ST-003 Register the new rule in the fitness manifest with a 15-minute timeout budget
 
-Add a new rule entry to `harness/fitness-functions/rules.yaml`:
+Add a new rule entry to `harness/fitness_functions/rules.yaml`:
 
 - rule_id: `smoke.opencode-real-hello-world`
 - adapter: command
 - side_effect_free: true
-- command: `uv run python harness/fitness-functions/check_real_opencode_hello_world_smoke.py`
+- command: `uv run python harness/fitness_functions/check_real_opencode_hello_world_smoke.py`
 - timeout_seconds: 900
 
 Ensure `engineeringagent.cli fitness catalog` and `fitness run` remain deterministic.

@@ -50,7 +50,7 @@ constraints:
 - 'Out of scope: lowering statement caps beyond the initial thresholds; future ratchet
   reductions should be separate specs with dedicated remediation plans.'
 implementation_notes: "Contract change declaration\nSurface: - fitness policy surface\
-  \ in `harness/fitness-functions/rules.yaml` and policy configs. - dependency directionality\
+  \ in `harness/fitness_functions/rules.yaml` and policy configs. - dependency directionality\
   \ checker configuration model. - lint policy ownership between pylint and repository\
   \ fitness rules.\nOld behavior: - No generalized statement-budget fitness rule exists\
   \ for Python modules. - `architecture.dep-directionality` embeds blocked import\

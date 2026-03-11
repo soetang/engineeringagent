@@ -20,7 +20,7 @@ constraints:
 - 'Immediate removal policy: do not keep compatibility fallback for builtin manifest
   references.'
 - Preserve current rule IDs where practical so policy lineage remains traceable.
-- Migrate active builtin rules to harness command scripts under harness/fitness-functions.
+- Migrate active builtin rules to harness command scripts under harness/fitness_functions.
 - Remove builtin rule registry plumbing and builtin manifest-entry contract support
   from runtime code.
 - Manifest interface contract after migration allows command rule entries only (rule_id/name/summary/rationale/remediation/scope/severity/side_effect_free/adapter=command/command[]/optional
@@ -34,7 +34,7 @@ constraints:
 - Relocate rule-specific test ownership toward harness-centric test paths under tests
   while preserving pytest discovery.
 implementation_notes: 'Port each currently active builtin rule implementation into
-  dedicated harness command scripts, register all of them as command entries in harness/fitness-functions/rules.yaml,
+  dedicated harness command scripts, register all of them as command entries in harness/fitness_functions/rules.yaml,
   and delete builtin entry resolution paths from fitness contracts/registry.
 
   API/interface changes are explicit and intentional: - Remove builtin manifest reference
@@ -47,7 +47,7 @@ implementation_notes: 'Port each currently active builtin rule implementation in
   Remember to update rules/gates.yaml with the migrated rules and run full validation
   and loop-fast profiles to confirm behavior parity after migration.'
 acceptance:
-- harness/fitness-functions/rules.yaml declares all active architecture and locality
+- harness/fitness_functions/rules.yaml declares all active architecture and locality
   rules as command adapters.
 - Fitness catalog build no longer supports or parses builtin manifest references.
 - Fitness manifest validation fails with actionable error text when a builtin reference

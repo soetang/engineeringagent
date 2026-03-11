@@ -8,7 +8,7 @@ priority: high
 objective: Strengthen architectural enforcement for the planned CLI package split
   and domain-owned contract moves by expanding policy-driven dependency directionality
   rules to cover the new boundaries explicitly.
-context: '`harness/fitness-functions/policies/dependency_directionality.yaml` currently
+context: '`harness/fitness_functions/policies/dependency_directionality.yaml` currently
   enforces only a small set of broad module boundaries. That is helpful, but it is
   not enough to protect the specific seams we want to create for `src/engineeringagent/cli/`
   and domain-owned contracts. Prior analysis and `pydeps` output show broad CLI imports,
@@ -19,7 +19,7 @@ context: '`harness/fitness-functions/policies/dependency_directionality.yaml` cu
   This feature should extend the existing policy-driven directionality mechanism rather
   than introducing a one-off checker.'
 constraints:
-- 'In scope: expand `harness/fitness-functions/policies/dependency_directionality.yaml`
+- 'In scope: expand `harness/fitness_functions/policies/dependency_directionality.yaml`
   with explicit boundaries for the new CLI package and domain-owned contract seams.'
 - 'In scope: encode concrete blocked-dependency policy entries for nested CLI modules
   such as `engineeringagent.cli.main`, `engineeringagent.cli.typer` or `engineeringagent.cli.app`,
@@ -92,7 +92,7 @@ implementation_notes: 'Contract change declaration
 
   - fitness-function changes required.
 
-  - Update policy config: `harness/fitness-functions/policies/dependency_directionality.yaml`.
+  - Update policy config: `harness/fitness_functions/policies/dependency_directionality.yaml`.
 
   - Update/add tests covering the expanded policy in `tests/fitness/test_fitness_rules_directionality.py`.
 

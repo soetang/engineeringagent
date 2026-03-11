@@ -60,7 +60,7 @@ Generated from the archived flat feature spec during the FEAT-183 bundled-only m
 
 ## ST-001 Define backend policy schema/content for literal-locality enforcement
 
-Add policy configuration under `harness/fitness-functions/policies/` for backend token sets keyed by backend id; seed with opencode and codex entries.
+Add policy configuration under `harness/fitness_functions/policies/` for backend token sets keyed by backend id; seed with opencode and codex entries.
 
 ## ST-002 Refactor backend literal-locality checker to load policy config
 

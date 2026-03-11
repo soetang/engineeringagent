@@ -9,14 +9,14 @@ phases:
   title: Add a backend-generic import boundary fitness rule
   status: done
   verification:
-  - uv run python harness/fitness-functions/check_agents_backends_boundary.py
+  - uv run python harness/fitness_functions/check_agents_backends_boundary.py
   - uv run pytest -q
 - id: ST-002
   title: Register the new boundary rule in the fitness manifest
   status: done
   verification:
   - uv run engineeringagent checks run --checks fitness_all --phase iteration_end
-  - uv run python harness/fitness-functions/check_agents_backends_boundary.py
+  - uv run python harness/fitness_functions/check_agents_backends_boundary.py
 - id: ST-003
   title: Add unit tests for the backend import boundary rule
   status: done
@@ -26,14 +26,14 @@ phases:
   title: Add the backend literal-locality budget fitness rule
   status: done
   verification:
-  - uv run python harness/fitness-functions/check_backend_literal_locality_budget.py
+  - uv run python harness/fitness_functions/check_backend_literal_locality_budget.py
   - uv run pytest -q
 - id: ST-005
   title: Register the literal-locality budget rule in the fitness manifest
   status: done
   verification:
   - uv run engineeringagent checks run --checks fitness --phase iteration_end
-  - uv run python harness/fitness-functions/check_backend_literal_locality_budget.py
+  - uv run python harness/fitness_functions/check_backend_literal_locality_budget.py
 - id: ST-006
   title: Add unit tests for the literal-locality budget rule
   status: done
@@ -43,7 +43,7 @@ phases:
   title: Make baseline refresh workflow explicit in rule output
   status: done
   verification:
-  - uv run python harness/fitness-functions/check_backend_literal_locality_budget.py
+  - uv run python harness/fitness_functions/check_backend_literal_locality_budget.py
 - id: ST-008
   title: Address final reviewer feedback and close out feature
   status: done

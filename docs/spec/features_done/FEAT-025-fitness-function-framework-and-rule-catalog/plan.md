@@ -63,7 +63,7 @@ Specify rule identity, severity, scope/target, and pass/fail payload shape so ru
 
 ## ST-002 Implement registry and rule discovery entrypoints
 
-Add a centralized registry that enumerates built-in fitness rules and merges user-defined rules loaded from harness/fitness-functions/rules.yaml so listing and selection behavior reflects the active combined catalog. Reject duplicate rule IDs deterministically with clear diagnostics.
+Add a centralized registry that enumerates built-in fitness rules and merges user-defined rules loaded from harness/fitness_functions/rules.yaml so listing and selection behavior reflects the active combined catalog. Reject duplicate rule IDs deterministically with clear diagnostics.
 
 ## ST-003 Implement command adapter contract for custom polyglot rules
 

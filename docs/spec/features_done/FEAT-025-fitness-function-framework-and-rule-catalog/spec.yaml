@@ -24,7 +24,7 @@ constraints:
   wiring.'
 - MVP must include an external command adapter contract for non-Python rule execution.
 - Custom user rules must be addable without changes under src/engineeringagent/fitness/.
-- Default custom-rule location must be harness/fitness-functions/rules.yaml.
+- Default custom-rule location must be harness/fitness_functions/rules.yaml.
 - Custom manifest contract must be explicit and versioned (required/optional fields
   and result envelope contract_version).
 - Rule ID collisions across built-in and custom sources must fail fast with actionable
@@ -44,7 +44,7 @@ implementation_notes: 'Start with a lightweight internal package (for example sr
   non-zero exits on violations.
 
   Built-in rules can remain Python-native in the core package, while custom user-defined
-  rules should be declared in harness/fitness-functions/rules.yaml and executed through
+  rules should be declared in harness/fitness_functions/rules.yaml and executed through
   the external command adapter contract so polyglot repositories can extend checks
   without modifying core engine code.
 
@@ -73,7 +73,7 @@ acceptance:
   execution.
 - Custom rule manifest schema/contract is documented with a versioned envelope and
   concrete examples.
-- Users can add custom rules via harness/fitness-functions/rules.yaml without editing
+- Users can add custom rules via harness/fitness_functions/rules.yaml without editing
   src/engineeringagent/fitness/.
 - Duplicate rule IDs are rejected deterministically across built-in and custom rule
   sets.

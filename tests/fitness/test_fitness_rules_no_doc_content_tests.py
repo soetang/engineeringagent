@@ -8,7 +8,7 @@ from typing import cast
 
 
 def _script_path(repo_root: Path) -> Path:
-    return repo_root / "harness" / "fitness-functions" / "check_no_doc_content_tests.py"
+    return repo_root / "harness" / "fitness_functions" / "check_no_doc_content_tests.py"
 
 
 def _violations(result: dict[str, object]) -> list[str]:

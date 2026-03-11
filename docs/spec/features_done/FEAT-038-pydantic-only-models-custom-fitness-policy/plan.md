@@ -68,18 +68,18 @@ Notes:
 
 ## ST-003 Add custom no-stdlib-dataclasses fitness checker script under harness
 
-Implement command-backed checker script in harness/fitness-functions that scans only src/engineeringagent and returns deterministic machine-readable violations.
+Implement command-backed checker script in harness/fitness_functions that scans only src/engineeringagent and returns deterministic machine-readable violations.
 
 Notes:
-- Added harness/fitness-functions/check_no_stdlib_dataclasses_in_src.py to scan only src/engineeringagent/**/*.py with AST-based detection.
+- Added harness/fitness_functions/check_no_stdlib_dataclasses_in_src.py to scan only src/engineeringagent/**/*.py with AST-based detection.
 - Checker emits deterministic JSON envelope for rule_id architecture.no-stdlib-dataclasses-in-src, failing on stdlib dataclasses imports, dataclass decorators, and dataclasses namespace usage.
 
 ## ST-004 Register custom rule_id architecture.no-stdlib-dataclasses-in-src in harness manifest
 
-Declare the new command rule in harness/fitness-functions/rules.yaml with rule_id architecture.no-stdlib-dataclasses-in-src, severity error, scope, rationale, and remediation text recommending BaseModel.
+Declare the new command rule in harness/fitness_functions/rules.yaml with rule_id architecture.no-stdlib-dataclasses-in-src, severity error, scope, rationale, and remediation text recommending BaseModel.
 
 Notes:
-- Registered architecture.no-stdlib-dataclasses-in-src as a command-backed custom error rule in harness/fitness-functions/rules.yaml with scope src/engineeringagent and remediation to migrate to pydantic.BaseModel.
+- Registered architecture.no-stdlib-dataclasses-in-src as a command-backed custom error rule in harness/fitness_functions/rules.yaml with scope src/engineeringagent and remediation to migrate to pydantic.BaseModel.
 
 ## ST-005 Regenerate fitness catalog docs and validate gate enforcement
 

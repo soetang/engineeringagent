@@ -20,7 +20,7 @@ phases:
   status: done
   verification:
   - uv run pytest -q tests/test_loop_contracts.py
-  - uv run python harness/fitness-functions/check_loop_facade_line_budget.py
+  - uv run python harness/fitness_functions/check_loop_facade_line_budget.py
 - id: ST-004
   title: Replace selected internal monkeypatch tests with integration-first controller
     tests

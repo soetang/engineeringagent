@@ -11,7 +11,7 @@ def _script_path(repo_root: Path) -> Path:
     return (
         repo_root
         / "harness"
-        / "fitness-functions"
+        / "fitness_functions"
         / "check_markdown_locality_reference_coverage.py"
     )
 

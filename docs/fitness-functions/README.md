@@ -8,7 +8,7 @@ execution architecture.
 
 ## Harness Authoring Surface
 
-Harness fitness-rule scripts under `harness/fitness-functions/` are allowed to
+Harness fitness-rule scripts under `harness/fitness_functions/` are allowed to
 depend on a small, explicit helper surface from `engineeringagent`.
 
 By default, harness scripts may import only:

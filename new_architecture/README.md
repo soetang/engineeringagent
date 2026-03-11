@@ -169,7 +169,7 @@ Those paths are adapter defaults, not domain assumptions.
 - [`05-gateways-and-surfaces.md`](05-gateways-and-surfaces.md): ports, adapters, and presentation
 - [`06-composition-and-operations.md`](06-composition-and-operations.md): bootstrap, runtime sequence, and rollback behavior
 - [`07-specification-model.md`](07-specification-model.md): the canonical feature specification package and planning model
-- [`08-fitness-functions-and-validation.md`](08-fitness-functions-and-validation.md): structural fitness functions, validations, and harness enforcement
+- [`08-fitness_functions-and-validation.md`](08-fitness_functions-and-validation.md): structural fitness functions, validations, and harness enforcement
 - [`09-prompt-architecture.md`](09-prompt-architecture.md): prompt definitions, interpolation contracts, and minimal-context rendering
 - [`10-version-control-and-worktrees.md`](10-version-control-and-worktrees.md): isolated feature workspaces, branch policy, and diff-based review
 - [`11-execution-targets-and-remote-runs.md`](11-execution-targets-and-remote-runs.md): local versus remote execution targets, publishing, and result reconciliation
@@ -189,7 +189,7 @@ Those paths are adapter defaults, not domain assumptions.
 | Protocol-based ports | `01-architecture-principles.md`, `05-gateways-and-surfaces.md`, `14-port-contracts.md` |
 | specification-driven harness model | `07-specification-model.md` |
 | prompt interpolation discipline and structured output | `09-prompt-architecture.md`, `12-harness-contract-examples.md` |
-| validations and fitness functions | `08-fitness-functions-and-validation.md` |
+| validations and fitness functions | `08-fitness_functions-and-validation.md` |
 | worktrees and diff-based review | `10-version-control-and-worktrees.md` |
 | optional future remote execution | `11-execution-targets-and-remote-runs.md` |
 | canonical harness examples | `12-harness-contract-examples.md` |

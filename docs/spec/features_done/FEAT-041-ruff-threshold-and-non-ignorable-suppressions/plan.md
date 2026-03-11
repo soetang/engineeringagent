@@ -61,17 +61,17 @@ Implement a command-backed fitness script that scans `src/`, `tests/`, and `harn
 
 Notes:
 - Cleared the architecture fitness regression by replacing stdlib dataclass usage in `loop_runtime/iteration.py` with a pydantic state model to keep gate runs unblocked while ST-002 implementation continues.
-- Added `harness/fitness-functions/check_non_ignorable_ruff_suppressions.py`, a command-adapter scanner that tokenizes Python comments across configurable scan roots and fails on blocked Ruff suppressions with deterministic location output and refactor-first remediation guidance.
+- Added `harness/fitness_functions/check_non_ignorable_ruff_suppressions.py`, a command-adapter scanner that tokenizes Python comments across configurable scan roots and fails on blocked Ruff suppressions with deterministic location output and refactor-first remediation guidance.
 - Updated suppression scanner command behavior to always emit a JSON result envelope on exit code 0 so command-adapter execution records rule status=fail instead of adapter-level runtime errors when violations are present.
 - Fixed `--scan-root` handling so explicit roots override defaults; command-adapter runs now scan only configured paths instead of implicitly re-adding `src/tests/harness`.
 - Verified adapter and manifest coverage via the listed ST-002 pytest commands.
 
 ## ST-003 Register new fitness rule and seed blocked rule IDs
 
-Declare the new rule in `harness/fitness-functions/rules.yaml` with seeded blocked IDs (`D103`, `PLR0913`) and deterministic command wiring.
+Declare the new rule in `harness/fitness_functions/rules.yaml` with seeded blocked IDs (`D103`, `PLR0913`) and deterministic command wiring.
 
 Notes:
-- Registered `architecture.no-non-ignorable-ruff-suppressions` in `harness/fitness-functions/rules.yaml` with command-adapter wiring, scan roots (`src`, `tests`, `harness`), and seeded blocked IDs (`D103`, `PLR0913`).
+- Registered `architecture.no-non-ignorable-ruff-suppressions` in `harness/fitness_functions/rules.yaml` with command-adapter wiring, scan roots (`src`, `tests`, `harness`), and seeded blocked IDs (`D103`, `PLR0913`).
 
 ## ST-004 Remove existing PLR0913 suppressions via refactor-first remediation
 

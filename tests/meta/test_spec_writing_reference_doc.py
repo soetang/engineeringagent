@@ -101,7 +101,7 @@ def test_bundled_spec_example_uses_plan_artifact_without_subtasks(
     example_path = (
         repo_root
         / "harness"
-        / "fitness-functions"
+        / "fitness_functions"
         / "real_opencode_hello_world_feature_template.yaml"
     )
     example = yaml.safe_load(example_path.read_text(encoding="utf-8"))
@@ -115,7 +115,7 @@ def test_smoke_feature_template_matches_bundled_workflow(repo_root: Path) -> Non
     template_path = (
         repo_root
         / "harness"
-        / "fitness-functions"
+        / "fitness_functions"
         / "real_opencode_hello_world_feature_template.yaml"
     )
     template = yaml.safe_load(template_path.read_text(encoding="utf-8"))

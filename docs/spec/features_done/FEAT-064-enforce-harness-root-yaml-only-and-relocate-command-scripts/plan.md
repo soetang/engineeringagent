@@ -6,13 +6,13 @@ source_spec: spec.yaml
 planning_tier: planned
 phases:
 - id: ST-001
-  title: Relocate harness root scripts into harness fitness-functions and preserve
+  title: Relocate harness root scripts into harness fitness_functions and preserve
     behavior
   status: done
   verification:
-  - uv run python harness/fitness-functions/validate_yaml.py
-  - uv run python harness/fitness-functions/permission_probe.py
-  - uv run python harness/fitness-functions/validate_commit_messages.py --help
+  - uv run python harness/fitness_functions/validate_yaml.py
+  - uv run python harness/fitness_functions/permission_probe.py
+  - uv run python harness/fitness_functions/validate_commit_messages.py --help
 - id: ST-002
   title: Update runtime, CI, pre-commit, and scaffold references to relocated script
     paths
@@ -36,13 +36,13 @@ phases:
 
 Generated from the archived flat feature spec during the FEAT-183 bundled-only migration.
 
-## ST-001 Relocate harness root scripts into harness fitness-functions and preserve behavior
+## ST-001 Relocate harness root scripts into harness fitness_functions and preserve behavior
 
 Move validate_yaml, permission_probe, and validate_commit_messages scripts and update internal project-root resolution as needed.
 
 ## ST-002 Update runtime, CI, pre-commit, and scaffold references to relocated script paths
 
-Replace all harness/*.py command references with harness/fitness-functions/*.py for active execution surfaces.
+Replace all harness/*.py command references with harness/fitness_functions/*.py for active execution surfaces.
 
 ## ST-003 Add blocking fitness rule for YAML-only harness root file locality
 

@@ -32,7 +32,8 @@ def _collect_stale_legacy_script_command_references(
 
 def test_harness_command_scripts_live_under_fitness_functions(repo_root: Path) -> None:
     harness_root = repo_root / "harness"
-    fitness_functions_root = harness_root / "fitness-functions"
+    fitness_functions_root = harness_root / "fitness_functions"
+    assert not (harness_root / "fitness-functions").exists()
 
     for script_name in _HARNESS_COMMAND_SCRIPT_NAMES:
         assert not (harness_root / script_name).exists()

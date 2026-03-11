@@ -883,7 +883,7 @@ def test_validate_allows_single_legacy_agents_line(tmp_path: Path) -> None:
 
 
 def test_validate_rejects_builtin_manifest_references(tmp_path: Path) -> None:
-    manifest_path = tmp_path / "harness" / "fitness-functions" / "rules.yaml"
+    manifest_path = tmp_path / "harness" / "fitness_functions" / "rules.yaml"
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(
         yaml.safe_dump(
@@ -903,7 +903,7 @@ def test_validate_rejects_builtin_manifest_references(tmp_path: Path) -> None:
 
 
 def test_validate_accepts_command_fitness_manifest_references(tmp_path: Path) -> None:
-    manifest_path = tmp_path / "harness" / "fitness-functions" / "rules.yaml"
+    manifest_path = tmp_path / "harness" / "fitness_functions" / "rules.yaml"
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(
         yaml.safe_dump(

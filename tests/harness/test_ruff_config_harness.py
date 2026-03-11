@@ -17,7 +17,7 @@ def test_ruff_per_file_ignores_exempt_harness_fitness_functions(
     lint_extend_select = set(config["tool"]["ruff"]["lint"].get("extend-select", []))
     enabled_rules = lint_select | lint_extend_select
 
-    expected_path = "harness/fitness-functions/*.py"
+    expected_path = "harness/fitness_functions/*.py"
     assert expected_path in per_file_ignores
 
     ignored_rules = set(per_file_ignores[expected_path])

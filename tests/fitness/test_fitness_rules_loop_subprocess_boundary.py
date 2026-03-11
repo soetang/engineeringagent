@@ -10,7 +10,7 @@ def _script_path(repo_root: Path) -> Path:
     return (
         repo_root
         / "harness"
-        / "fitness-functions"
+        / "fitness_functions"
         / "check_loop_subprocess_boundary.py"
     )
 
@@ -19,7 +19,7 @@ def _policy_path(repo_root: Path) -> Path:
     return (
         repo_root
         / "harness"
-        / "fitness-functions"
+        / "fitness_functions"
         / "policies"
         / "loop_subprocess_boundary_policy.yaml"
     )

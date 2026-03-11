@@ -35,7 +35,7 @@ constraints:
 - 'In scope: preserve blocking severity and allowlist-boundary intent.'
 - 'In scope: replace Semgrep policy file shape with native YAML policy consumed directly
   by checker code.'
-- 'In scope: migrate any additional active Semgrep-backed rules discovered in `harness/fitness-functions/rules.yaml`.'
+- 'In scope: migrate any additional active Semgrep-backed rules discovered in `harness/fitness_functions/rules.yaml`.'
 - 'In scope: remove Semgrep dependency and active enforcement/docs wiring once native
   parity is proven.'
 - 'Out of scope: changing architecture intent or relaxing pass/fail policy for migrated
@@ -60,7 +60,7 @@ implementation_notes: "Contract change declaration\n\nSurface:\n\n- Active fitne
   - Existing allowlisted module paths remain exempt by policy.\n- Violations remain\
   \ deterministic and sorted.\n- Missing/invalid config continues to produce deterministic\
   \ `status=error` output.\n\nMigration plan:\n\n1) Inventory active Semgrep-backed\
-  \ rules\n   - Confirm all active Semgrep dependencies from `harness/fitness-functions/rules.yaml`\n\
+  \ rules\n   - Confirm all active Semgrep dependencies from `harness/fitness_functions/rules.yaml`\n\
   \     and checker scripts.\n\n2) Implement native checker + native YAML policy\n\
   \   - Replace Semgrep subprocess execution with native AST-based detection logic.\n\
   \   - Define and validate a native YAML policy schema for allowlisted paths and\n\
@@ -73,8 +73,8 @@ implementation_notes: "Contract change declaration\n\nSurface:\n\n- Active fitne
   \   - Add/adjust tests to prove parity for forbidden and allowlisted scenarios.\n\
   \   - Capture before/after durations to verify reduced runtime contribution.\n\n\
   Fitness-function impact assessment:\n\n- fitness-function changes required.\n- Affected\
-  \ active rules/scripts/docs:\n  - `architecture.loop-subprocess-boundary`\n  - `harness/fitness-functions/check_loop_subprocess_boundary.py`\n\
-  \  - `harness/fitness-functions/rules.yaml`\n  - `docs/fitness-functions/rules.md`\n\
+  \ active rules/scripts/docs:\n  - `architecture.loop-subprocess-boundary`\n  - `harness/fitness_functions/check_loop_subprocess_boundary.py`\n\
+  \  - `harness/fitness_functions/rules.yaml`\n  - `docs/fitness-functions/rules.md`\n\
   - If additional active Semgrep-backed rules are discovered, include their rule ids,\n\
   \  checker scripts, and docs updates within this same feature.\n"
 acceptance:

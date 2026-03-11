@@ -23,7 +23,7 @@ def test_no_gate_profile_references_outside_specs() -> None:
         project_root / "harness",
         project_root / "docs" / "references",
         project_root / "docs" / "principles",
-        project_root / "docs" / "fitness-functions",
+        project_root / "docs" / "fitness_functions",
         project_root / "README.md",
     ]
 

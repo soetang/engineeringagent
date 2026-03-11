@@ -70,7 +70,7 @@ Notes:
 - Tweaked pylint config to reduce mechanical test churn by exempting names matching ^(_|test_) from docstring requirements and raising max module lines to 3500 (keeps global disables limited to C0114/C0301).
 - Raised pylint design thresholds (args/locals/branches/statements/returns/nested blocks, min public methods) to match existing codebase shape and eliminate a large class of non-actionable R09* churn without adding any new disabled messages.
 - Fixed two pylint E-level findings caused by limited inference in tests (E1135, E1126) by adjusting assertions / import order and adding one narrow inline suppression with justification.
-- Fixed pylint import-error in harness/fitness-functions/validate_commit_messages.py by loading sibling commit_messages.py via file path (importlib). Also made a small slice of low-risk pylint hygiene fixes (explicit subprocess.run check flag, reduced protected access usage in two loop tests).
+- Fixed pylint import-error in harness/fitness_functions/validate_commit_messages.py by loading sibling commit_messages.py via file path (importlib). Also made a small slice of low-risk pylint hygiene fixes (explicit subprocess.run check flag, reduced protected access usage in two loop tests).
 - Final remediation slice: removed remaining import-outside-toplevel churn in tests; added narrowly-scoped protected-access suppressions where tests intentionally hit private helpers; added minimal docstrings to harness fitness entrypoints.
 
 ## ST-005 Update docs with pylint gate usage

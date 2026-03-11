@@ -21,7 +21,7 @@ def test_execute_rule_definition_rejects_non_side_effect_free_rules(
         summary="Rule metadata should require side_effect_free=true.",
         rationale="Fitness rules must remain safe for parallel execution.",
         remediation="Update the rule contract declaration to true.",
-        scope="harness/fitness-functions/rules.yaml",
+        scope="harness/fitness_functions/rules.yaml",
         severity=RuleSeverity.WARNING,
         adapter=RuleAdapter.COMMAND,
         source="custom",
@@ -29,7 +29,7 @@ def test_execute_rule_definition_rejects_non_side_effect_free_rules(
     )
     definition = FitnessRuleDefinition(
         metadata=metadata,
-        origin="custom:harness/fitness-functions/rules.yaml:rules[0]",
+        origin="custom:harness/fitness_functions/rules.yaml:rules[0]",
         command=("python", "-c", "print('ignored')"),
     )
 

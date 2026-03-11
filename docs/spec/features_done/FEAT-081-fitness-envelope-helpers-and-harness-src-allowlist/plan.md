@@ -53,15 +53,15 @@ JSON envelopes matching `FitnessRuleResult`, sourcing `CONTRACT_VERSION` from
 ## ST-002 Update harness fitness functions to use src envelope helper
 
 Replace `from result_envelope import emit_result_envelope` imports in
-`harness/fitness-functions/*.py` with `from engineeringagent.fitness.envelope import emit_result_envelope`.
+`harness/fitness_functions/*.py` with `from engineeringagent.fitness.envelope import emit_result_envelope`.
 Remove or retire the harness-local `result_envelope.py`.
 
 ## ST-003 Add harness-to-src import allowlist fitness rule
 
 Add a new harness fitness function that scans imports in
-harness fitness-rule scripts under `harness/fitness-functions/` (e.g. `check_*.py`) and fails if any `engineeringagent.*` import
+harness fitness-rule scripts under `harness/fitness_functions/` (e.g. `check_*.py`) and fails if any `engineeringagent.*` import
 is outside the allowlist (initially allow only `engineeringagent.fitness.*`).
-Register the rule in `harness/fitness-functions/rules.yaml`.
+Register the rule in `harness/fitness_functions/rules.yaml`.
 
 ## ST-004 Document the supported harness helper surface
 

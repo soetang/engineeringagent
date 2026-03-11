@@ -34,7 +34,7 @@ Ensure no other tests depend on it.
 
 ## ST-002 Harden no-doc-content-tests fitness rule to catch wrapper helper calls
 
-Update `harness/fitness-functions/check_no_doc_content_tests.py` to detect
+Update `harness/fitness_functions/check_no_doc_content_tests.py` to detect
 calls like `_read(repo_root, "docs/..." )` (function name agnostic) and emit
 violations for banned markdown targets.
 

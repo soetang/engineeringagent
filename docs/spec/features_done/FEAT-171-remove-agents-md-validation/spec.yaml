@@ -77,8 +77,8 @@ acceptance:
   permissive AGENTS behavior.
 - No remaining validate-focused test asserts exact AGENTS bootstrap snippet lines
   as required policy.
-- '`architecture.repo-validators-boundary` is removed from `harness/fitness-functions/rules.yaml`,
-  and `harness/fitness-functions/check_repo_validators_boundary.py` is removed.'
+- '`architecture.repo-validators-boundary` is removed from `harness/fitness_functions/rules.yaml`,
+  and `harness/fitness_functions/check_repo_validators_boundary.py` is removed.'
 - Tests dedicated to the removed rule are deleted or replaced with broader, non-hardcoded
   coverage.
 - '`uv run pytest -q tests/meta/test_validator.py tests/cli/test_cli.py tests/fitness`

@@ -61,9 +61,9 @@ Extend configuration loading beyond docs-root to include harness/runtime toggles
 
 ## ST-002 Migrate real OpenCode smoke rule enablement from env var to TOML
 
-Update harness/fitness-functions/check_real_opencode_hello_world_smoke.py to read the TOML key [harness.fitness].opencode-real-smoke (with pyproject fallback) instead of ENGINEERINGAGENT_REAL_OPENCODE_SMOKE.
+Update harness/fitness_functions/check_real_opencode_hello_world_smoke.py to read the TOML key [harness.fitness].opencode-real-smoke (with pyproject fallback) instead of ENGINEERINGAGENT_REAL_OPENCODE_SMOKE.
 Contract: - Disabled: PASS with deterministic "skipped (disabled in engineeringagent.toml)" summary. - Enabled + opencode missing: FAIL with remediation to install/configure opencode or disable the key. - Enabled + opencode present: run end-to-end as before.
-Update associated docs/metadata to remove env-var instructions: - harness/fitness-functions/rules.yaml remediation text - docs/fitness-functions/README.md - docs/fitness-functions/rules.md (regen catalog)
+Update associated docs/metadata to remove env-var instructions: - harness/fitness_functions/rules.yaml remediation text - docs/fitness-functions/README.md - docs/fitness-functions/rules.md (regen catalog)
 
 ## ST-003 Migrate opencode integration-test gating from env var to TOML
 
@@ -81,7 +81,7 @@ Enforcement should: - FAIL on direct env reads: os.getenv(...), os.environ.get(.
 - Allow os.environ.copy() usage (and downstream subprocess env pass-through). - Be explicit about scope roots (src/, harness/, tests/) and exclude docs/spec/features_done/
   from any doc-text enforcement to avoid rewriting historical done-specs.
 
-Register the rule in harness/fitness-functions/rules.yaml and regenerate the catalog.
+Register the rule in harness/fitness_functions/rules.yaml and regenerate the catalog.
 
 ## ST-006 Add engineeringagent.toml enabling opt-in smoke + integration in this repo
 

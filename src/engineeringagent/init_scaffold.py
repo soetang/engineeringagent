@@ -174,7 +174,7 @@ def build_baseline_scaffold_manifest(
         f"{docs_dir_normalized}/spec/features/.gitkeep": "",
         f"{docs_dir_normalized}/spec/features_done/.gitkeep": "",
         "harness/checks.yaml": _build_checks_yaml(),
-        "harness/fitness-functions/rules.yaml": yaml.safe_dump(
+        "harness/fitness_functions/rules.yaml": yaml.safe_dump(
             {
                 "contract_version": "1.0",
                 "rules": [],
@@ -186,7 +186,7 @@ def build_baseline_scaffold_manifest(
     }
 
     if is_python_uv:
-        manifest["harness/fitness-functions/validate_commit_messages.py"] = (
+        manifest["harness/fitness_functions/validate_commit_messages.py"] = (
             _render_scaffold_template("fitness.validate_commit_messages.py")
         )
 
@@ -248,10 +248,10 @@ def build_init_scaffold_manifest(
     if selected_pack != "standard":
         return manifest
 
-    demo_script_path = "harness/fitness-functions/demo_always_fail.py"
+    demo_script_path = "harness/fitness_functions/demo_always_fail.py"
     manifest[demo_script_path] = _demo_fail_rule_script()
 
-    manifest["harness/fitness-functions/rules.yaml"] = yaml.safe_dump(
+    manifest["harness/fitness_functions/rules.yaml"] = yaml.safe_dump(
         {
             "contract_version": "1.0",
             "rules": [
@@ -265,7 +265,7 @@ def build_init_scaffold_manifest(
                     ),
                     "remediation": (
                         "Disable the demo by removing rule_id 'demo.always-fail' "
-                        "from harness/fitness-functions/rules.yaml (or re-run: engineeringagent init slim --force)."
+                        "from harness/fitness_functions/rules.yaml (or re-run: engineeringagent init slim --force)."
                     ),
                     "scope": ".",
                     "severity": "error",

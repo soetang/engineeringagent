@@ -21,7 +21,7 @@ from engineeringagent.agents.backends.opencode import client as opencode_client
 
 
 def _load_harness_commit_messages(repo_root: Path) -> ModuleType:
-    policy_path = repo_root / "harness" / "fitness-functions" / "commit_messages.py"
+    policy_path = repo_root / "harness" / "fitness_functions" / "commit_messages.py"
     spec = importlib.util.spec_from_file_location(
         "harness_commit_messages", policy_path
     )

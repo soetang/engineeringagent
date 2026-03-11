@@ -1,5 +1,5 @@
 id: FEAT-083
-title: Relocate commit subject policy validation into harness fitness-functions
+title: Relocate commit subject policy validation into harness fitness_functions
 type: chore
 expected_commit_subject: 'chore: move commit message policy into harness'
 planning_tier: planned
@@ -10,7 +10,7 @@ objective: 'Treat commit subject policy validation as harness-owned policy code 
 
   commit message parsing/validation module out of `src/engineeringagent` and into
 
-  `harness/fitness-functions/`, keeping the policy close to the harness script that
+  `harness/fitness_functions/`, keeping the policy close to the harness script that
 
   enforces it.
 
@@ -18,7 +18,7 @@ objective: 'Treat commit subject policy validation as harness-owned policy code 
 context: 'The commit subject policy module `src/engineeringagent/commit_messages.py`
   is used
 
-  by the harness script `harness/fitness-functions/validate_commit_messages.py` and
+  by the harness script `harness/fitness_functions/validate_commit_messages.py` and
 
   by tests. It is not used by loop runtime or CLI orchestration.
 
@@ -37,12 +37,12 @@ constraints:
 implementation_notes: "Contract/API delta (explicit):\n\n- Surface: internal Python\
   \ import path for commit subject policy.\n  - Old behavior: policy logic imported\
   \ from `engineeringagent.commit_messages`.\n  - New behavior: policy logic imported\
-  \ locally by the harness script from\n    `harness/fitness-functions/commit_messages.py`.\n\
+  \ locally by the harness script from\n    `harness/fitness_functions/commit_messages.py`.\n\
   \nCompatibility policy:\n- No change to CLI behavior.\n- The harness validator script\
   \ remains the supported entrypoint for policy enforcement.\n"
 acceptance:
-- Commit subject policy logic lives at `harness/fitness-functions/commit_messages.py`.
-- '`harness/fitness-functions/validate_commit_messages.py` imports the policy logic
+- Commit subject policy logic lives at `harness/fitness_functions/commit_messages.py`.
+- '`harness/fitness_functions/validate_commit_messages.py` imports the policy logic
   locally and continues to behave the same.'
 - Repository tests validate commit subject policy behavior without importing `engineeringagent.commit_messages`.
 - '`uv run pytest -q` passes and gate wiring referencing `validate_commit_messages.py`

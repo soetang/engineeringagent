@@ -12,7 +12,7 @@ def _script_path(repo_root: Path) -> Path:
     return (
         repo_root
         / "harness"
-        / "fitness-functions"
+        / "fitness_functions"
         / "check_backend_literal_locality_budget.py"
     )
 
@@ -41,7 +41,7 @@ def _run_checker(
 
 
 def test_backend_literal_locality_budget_rule_registered() -> None:
-    manifest_path = Path("harness/fitness-functions/rules.yaml")
+    manifest_path = Path("harness/fitness_functions/rules.yaml")
     manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
     assert isinstance(manifest, dict)
 
@@ -60,7 +60,7 @@ def test_backend_literal_locality_budget_rule_registered() -> None:
     command = matching[0].get("command")
     assert isinstance(command, list)
     assert (
-        "harness/fitness-functions/check_backend_literal_locality_budget.py" in command
+        "harness/fitness_functions/check_backend_literal_locality_budget.py" in command
     )
 
     assert (
@@ -69,13 +69,13 @@ def test_backend_literal_locality_budget_rule_registered() -> None:
     )
 
     assert Path(
-        "harness/fitness-functions/check_backend_literal_locality_budget.py"
+        "harness/fitness_functions/check_backend_literal_locality_budget.py"
     ).exists()
 
 
 def test_backend_literal_locality_budget_policy_defines_backend_tokens() -> None:
     policy_path = Path(
-        "harness/fitness-functions/policies/backend_literal_locality_budget.yaml"
+        "harness/fitness_functions/policies/backend_literal_locality_budget.yaml"
     )
     policy = yaml.safe_load(policy_path.read_text(encoding="utf-8"))
     assert isinstance(policy, dict)
@@ -111,7 +111,7 @@ def test_backend_literal_locality_budget_rule_passes_clean_repo() -> None:
     proc = subprocess.run(
         [
             sys.executable,
-            "harness/fitness-functions/check_backend_literal_locality_budget.py",
+            "harness/fitness_functions/check_backend_literal_locality_budget.py",
         ],
         capture_output=True,
         text=True,

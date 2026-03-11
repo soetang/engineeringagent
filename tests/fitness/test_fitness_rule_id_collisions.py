@@ -23,7 +23,7 @@ def _write_manifest(path: Path, rules: list[dict[str, object]]) -> None:
 
 def test_duplicate_rule_ids_in_manifest_fail_fast(tmp_path: Path) -> None:
     """Raise actionable errors when command manifest IDs collide."""
-    manifest_path = tmp_path / "harness" / "fitness-functions" / "rules.yaml"
+    manifest_path = tmp_path / "harness" / "fitness_functions" / "rules.yaml"
     _write_manifest(
         manifest_path,
         [
@@ -66,7 +66,7 @@ def test_duplicate_rule_ids_in_manifest_fail_fast(tmp_path: Path) -> None:
 
 def test_duplicate_rule_ids_within_custom_manifest_fail_fast(tmp_path: Path) -> None:
     """Raise actionable errors when custom manifest IDs collide."""
-    manifest_path = tmp_path / "harness" / "fitness-functions" / "rules.yaml"
+    manifest_path = tmp_path / "harness" / "fitness_functions" / "rules.yaml"
     _write_manifest(
         manifest_path,
         [

@@ -40,7 +40,7 @@ implementation_notes: Implement a new built-in rule id `architecture.markdown-lo
   (`.py`, `.md`, `.yaml`, `.toml`, `.json`, etc.) and record markdown-path mentions
   with line numbers; references from the markdown file to itself do not count. Phase
   D should return a deterministic result envelope with sorted violations and remediation
-  guidance, then register the rule in built-in registry metadata, declare it in `harness/fitness-functions/rules.yaml`,
+  guidance, then register the rule in built-in registry metadata, declare it in `harness/fitness_functions/rules.yaml`,
   and regenerate fitness catalog docs.
 acceptance:
 - Built-in rule `architecture.markdown-locality-reference-coverage` is implemented
@@ -52,7 +52,7 @@ acceptance:
 - Rule passes when markdown locality and non-doc reference coverage contracts are
   satisfied.
 - Rule output includes deterministic sorted violation messages with clear remediation.
-- Rule declaration appears in `harness/fitness-functions/rules.yaml` and catalog/list
+- Rule declaration appears in `harness/fitness_functions/rules.yaml` and catalog/list
   surfaces.
 - Focused fitness and registry tests cover both locality and reference-coverage pass/fail
   cases.

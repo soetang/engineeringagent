@@ -17,7 +17,7 @@ objective: 'Make fitness-function authoring easier and more consistent by provid
   '
 context: 'Today, harness fitness functions emit results via a local helper
 
-  `harness/fitness-functions/result_envelope.py`, while the canonical schema and
+  `harness/fitness_functions/result_envelope.py`, while the canonical schema and
 
   contract version live under `src/engineeringagent/fitness/contracts.py`.
 
@@ -38,7 +38,7 @@ constraints:
   surrounding text).
 implementation_notes: "Contract/API delta (explicit):\n\n- Surface: harness fitness-function\
   \ scripts' import source for emitting result envelopes.\n  - Old behavior: scripts\
-  \ import `emit_result_envelope` from `harness/fitness-functions/result_envelope.py`.\n\
+  \ import `emit_result_envelope` from `harness/fitness_functions/result_envelope.py`.\n\
   \  - New behavior: scripts import `emit_result_envelope` from `src/engineeringagent/fitness/envelope.py`.\n\
   \n- Surface: allowed harness-to-src dependency surface.\n  - Old behavior: no explicit\
   \ enforcement; harness scripts may import arbitrary `engineeringagent.*` modules.\n\
@@ -46,18 +46,18 @@ implementation_notes: "Contract/API delta (explicit):\n\n- Surface: harness fitn
   \ from an explicit allowlist\n    (initially `engineeringagent.fitness.*`), with\
   \ deterministic diagnostics.\n\nCompatibility policy:\n- CLI behavior is unchanged.\n\
   - Harness scripts remain runnable via the existing command adapter (e.g. `uv run\
-  \ python harness/fitness-functions/...`).\n- This is an intentional internal refactor;\
+  \ python harness/fitness_functions/...`).\n- This is an intentional internal refactor;\
   \ downstream Python imports of harness helpers are not supported.\n"
 acceptance:
 - A new module `src/engineeringagent/fitness/envelope.py` provides a canonical `emit_result_envelope(...)`
   helper that uses `engineeringagent.fitness.contracts.CONTRACT_VERSION`.
 - All harness fitness-function scripts import `emit_result_envelope` from `engineeringagent.fitness.envelope`
   and continue to emit JSON objects that validate as `FitnessRuleResult`.
-- '`harness/fitness-functions/result_envelope.py` is removed or no longer used by
+- '`harness/fitness_functions/result_envelope.py` is removed or no longer used by
   any harness fitness function.'
 - A new harness fitness function enforces a harness-to-src import allowlist for harness
-  fitness-rule scripts under `harness/fitness-functions/` (e.g. `check_*.py`) and
-  is registered in `harness/fitness-functions/rules.yaml`.
+  fitness-rule scripts under `harness/fitness_functions/` (e.g. `check_*.py`) and
+  is registered in `harness/fitness_functions/rules.yaml`.
 - '`uv run python -m engineeringagent.cli fitness run --format json` and `uv run pytest
   -q` pass.'
 artifacts:

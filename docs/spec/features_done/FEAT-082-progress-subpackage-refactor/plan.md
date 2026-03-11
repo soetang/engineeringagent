@@ -46,7 +46,7 @@ to import progress helpers from the new subpackage.
 
 ## ST-003 Update harness progress locality rule for new canonical module path
 
-Update `harness/fitness-functions/check_progress_log_locality.py` to allowlist
+Update `harness/fitness_functions/check_progress_log_locality.py` to allowlist
 `src/engineeringagent/progress/paths.py` and update remediation text to refer to
 `engineeringagent.progress.paths` and `engineeringagent.progress.logging`.
 

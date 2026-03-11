@@ -38,7 +38,7 @@ Generated from the archived flat feature spec during the FEAT-183 bundled-only m
 
 ## ST-001 Define repository policy and explicit allowlist shape for hermetic fitness tests
 
-Translate the FEAT-111 intent into a precise enforceable repository rule covering all of `tests/fitness/**`, with a small explicit integration allowlist for intentional real-repo harness coverage. Define the allowlist as policy data under `harness/fitness-functions/policies/` rather than embedded conditionals. Document that FEAT-180 is complete when the named subtasks and representative scenarios are implemented; it is not an open-ended loophole search.
+Translate the FEAT-111 intent into a precise enforceable repository rule covering all of `tests/fitness/**`, with a small explicit integration allowlist for intentional real-repo harness coverage. Define the allowlist as policy data under `harness/fitness_functions/policies/` rather than embedded conditionals. Document that FEAT-180 is complete when the named subtasks and representative scenarios are implemented; it is not an open-ended loophole search.
 
 ## ST-002 Implement rule 1: repo_root-taint detection for explicit scan-target sinks
 

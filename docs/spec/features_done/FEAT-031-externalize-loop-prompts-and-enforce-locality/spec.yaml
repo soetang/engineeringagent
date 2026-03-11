@@ -69,7 +69,7 @@ implementation_notes: 'Add a dedicated prompt package for loading and rendering 
   format and include remediation that directs authors to move canonical prompt text
   and template reads into approved prompt modules/templates.
 
-  Register the new built-in in fitness registry wiring and declare it in `harness/fitness-functions/rules.yaml`
+  Register the new built-in in fitness registry wiring and declare it in `harness/fitness_functions/rules.yaml`
   so existing gate profiles enforce it.
 
   Prompt template contract for the default implementation prompt should be explicit

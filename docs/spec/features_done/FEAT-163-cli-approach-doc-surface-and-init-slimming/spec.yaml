@@ -57,7 +57,7 @@ implementation_notes: "Contract change declaration\n\nSurface:\n- CLI command su
   \ in `src/engineeringagent/cli_typer.py` and `src/engineeringagent/cli.py`\n- Init\
   \ scaffold behavior in `src/engineeringagent/init_scaffold.py` and init orchestration\n\
   \  in `src/engineeringagent/init_service.py`\n- AGENTS/docs-map validation in `src/engineeringagent/checks/validate/repo_policy_docs_map.py`\n\
-  - Fitness rule manifest and docs in `harness/fitness-functions/rules.yaml` and\n\
+  - Fitness rule manifest and docs in `harness/fitness_functions/rules.yaml` and\n\
   \  `docs/fitness-functions/rules.md`\n\nOld behavior:\n- init writes user-facing\
   \ docs from `src/engineeringagent/scaffold_templates/*.md` to\n  `docs/references/*`\
   \ and `docs/principles/*`.\n- AGENTS docs-map validation expects `docs/*` references\
@@ -143,7 +143,7 @@ implementation_notes: "Contract change declaration\n\nSurface:\n- CLI command su
   \ modules;\n    keep one canonical producer.\n  - add focused tests per boundary\
   \ so refactors remain low-risk.\n\nFiles expected to be edited\n- `src/engineeringagent/cli_typer.py`\
   \ (new `approach` command routing)\n- `src/engineeringagent/cli.py` (handlers for\
-  \ approach list/show/output)\n- `harness/fitness-functions/check_markdown_locality_reference_coverage.py`\
+  \ approach list/show/output)\n- `harness/fitness_functions/check_markdown_locality_reference_coverage.py`\
   \ (allow and\n  validate approach markdown locality under `src/engineeringagent/approach/docs`)\n\
   - `src/engineeringagent/init_scaffold.py` (remove scaffolded user-doc generation)\n\
   - `src/engineeringagent/init_service.py` (align AGENTS patch behavior and init output)\n\
@@ -153,7 +153,7 @@ implementation_notes: "Contract change declaration\n\nSurface:\n- CLI command su
   \ with\n  `engineeringagent approach` bootstrap text)\n- `pyproject.toml` (only\
   \ if needed to guarantee package data inclusion)\n- selected agent-facing guidance\
   \ references (for example scaffolded AGENTS content) to\n  point to approach commands\n\
-  - `harness/fitness-functions/rules.yaml` and `docs/fitness-functions/rules.md`\n\
+  - `harness/fitness_functions/rules.yaml` and `docs/fitness-functions/rules.md`\n\
   \nFiles expected to be added\n- `src/engineeringagent/approach/__init__.py` (stable\
   \ approach domain exports)\n- `src/engineeringagent/approach/registry.py` (topic\
   \ discovery + metadata parsing)\n- `src/engineeringagent/approach/rendering.py`\
@@ -161,8 +161,8 @@ implementation_notes: "Contract change declaration\n\nSurface:\n- CLI command su
   \ (canonical packaged guidance subdocuments)\n- `src/engineeringagent/approach/docs/overview.md`\
   \ (root approach narrative source)\n- CLI tests for approach surface (new test module\
   \ under `tests/cli/`)\n- unit tests for approach registry/metadata parsing (new\
-  \ test module)\n\nFiles expected to be deleted or retired\n- `harness/fitness-functions/check_scaffold_docs_exact_sync.py`\n\
-  - `harness/fitness-functions/check_scaffold_template_agents_doc_links.py`\n- `harness/fitness-functions/check_docs_allowlist_policy.py`\n\
+  \ test module)\n\nFiles expected to be deleted or retired\n- `harness/fitness_functions/check_scaffold_docs_exact_sync.py`\n\
+  - `harness/fitness_functions/check_scaffold_template_agents_doc_links.py`\n- `harness/fitness_functions/check_docs_allowlist_policy.py`\n\
   - `tests/fitness/test_fitness_rules_scaffold_docs_exact_sync.py`\n- `tests/fitness/test_fitness_rules_scaffold_template_agents_doc_links.py`\n\
   - `tests/fitness/test_fitness_rules_docs_allowlist_policy.py`\n- scaffold template\
   \ markdown assets used only for user-doc scaffolding in\n  `src/engineeringagent/scaffold_templates/`\
@@ -180,7 +180,7 @@ implementation_notes: "Contract change declaration\n\nSurface:\n- CLI command su
   4. Remove user-doc scaffold generation from init and related tests.\n5. Retire doc-sync/link/allowlist\
   \ fitness rules/scripts/tests.\n6. Update validators and docs references.\n7. Regenerate\
   \ fitness catalog docs and run full checks.\n\nFitness-function impact assessment\n\
-  - Rules to retire from `harness/fitness-functions/rules.yaml`:\n  - `architecture.scaffold-docs-exact-sync`\n\
+  - Rules to retire from `harness/fitness_functions/rules.yaml`:\n  - `architecture.scaffold-docs-exact-sync`\n\
   \  - `architecture.scaffold-template-agents-doc-links`\n  - `architecture.docs-allowlist-policy`\n\
   - Rationale:\n  - these rules exist primarily to protect file-scaffolded user docs\
   \ and AGENTS file-link\n    discoverability contracts that no longer apply under\

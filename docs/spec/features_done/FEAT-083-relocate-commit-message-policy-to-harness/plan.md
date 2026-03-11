@@ -9,12 +9,12 @@ phases:
   title: Move commit message policy module into harness
   status: done
   verification:
-  - uv run python harness/fitness-functions/validate_commit_messages.py --help
+  - uv run python harness/fitness_functions/validate_commit_messages.py --help
 - id: ST-002
   title: Update harness validator script to import policy locally
   status: done
   verification:
-  - uv run python harness/fitness-functions/validate_commit_messages.py --commit-range
+  - uv run python harness/fitness_functions/validate_commit_messages.py --commit-range
     HEAD~1..HEAD
 - id: ST-003
   title: Update tests to cover harness commit policy entrypoint
@@ -40,11 +40,11 @@ Generated from the archived flat feature spec during the FEAT-183 bundled-only m
 ## ST-001 Move commit message policy module into harness
 
 Move `src/engineeringagent/commit_messages.py` to
-`harness/fitness-functions/commit_messages.py`.
+`harness/fitness_functions/commit_messages.py`.
 
 ## ST-002 Update harness validator script to import policy locally
 
-Update `harness/fitness-functions/validate_commit_messages.py` to import
+Update `harness/fitness_functions/validate_commit_messages.py` to import
 from `commit_messages` in the same directory.
 
 ## ST-003 Update tests to cover harness commit policy entrypoint
@@ -60,4 +60,4 @@ harness rules still pass after the move.
 ## ST-005 Apply reviewer cleanup to harness commit policy
 
 Incorporate small clarity/maintenance simplifications after relocating
-the commit subject policy into the harness fitness-functions zone.
+the commit subject policy into the harness fitness_functions zone.

@@ -18,9 +18,9 @@ context: "Two active fitness rules are currently over-constraining:\n\n1) `archi
   \ generated-doc\n  drift gate. The decision here is to retire that gate, not because\
   \ of duplicates,\n  but because byte-level enforcement is unnecessarily rigid.\n"
 constraints:
-- Remove both rule entries from `harness/fitness-functions/rules.yaml`.
-- Delete `harness/fitness-functions/check_feedback_no_truncation.py`.
-- Delete `harness/fitness-functions/check_fitness_catalog_docs_sync.py`.
+- Remove both rule entries from `harness/fitness_functions/rules.yaml`.
+- Delete `harness/fitness_functions/check_feedback_no_truncation.py`.
+- Delete `harness/fitness_functions/check_fitness_catalog_docs_sync.py`.
 - Remove or update tests dedicated to these removed rules.
 - Regenerate fitness catalog docs after manifest changes.
 - Do not change unrelated fitness rules in this feature.
@@ -37,10 +37,10 @@ implementation_notes: "Contract change declaration\n\nSurface:\n- active custom 
   \ rigid relative to architectural intent and\n  produce maintenance friction disproportionate\
   \ to enforcement value.\n"
 acceptance:
-- '`architecture.feedback-no-truncation` is absent from `harness/fitness-functions/rules.yaml`.'
-- '`architecture.fitness-catalog-docs-sync` is absent from `harness/fitness-functions/rules.yaml`.'
-- '`harness/fitness-functions/check_feedback_no_truncation.py` is removed.'
-- '`harness/fitness-functions/check_fitness_catalog_docs_sync.py` is removed.'
+- '`architecture.feedback-no-truncation` is absent from `harness/fitness_functions/rules.yaml`.'
+- '`architecture.fitness-catalog-docs-sync` is absent from `harness/fitness_functions/rules.yaml`.'
+- '`harness/fitness_functions/check_feedback_no_truncation.py` is removed.'
+- '`harness/fitness_functions/check_fitness_catalog_docs_sync.py` is removed.'
 - Dedicated rule tests are removed or rewritten to avoid asserting retired rule IDs.
 - '`docs/fitness-functions/rules.md` is regenerated and no longer lists retired rule
   IDs.'
