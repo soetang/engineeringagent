@@ -28,6 +28,11 @@ from .validation_service import (
     ValidationResult,
     ValidationService,
 )
+from .workspace_recovery_service import (
+    RecoverWorkspaceRequest,
+    RecoverWorkspaceResult,
+    WorkspaceRecoveryService,
+)
 from .prompt_builder import (
     PromptBuilder,
 )
@@ -51,4 +56,7 @@ __all__ = [
     "ValidateRepositoryRequest",
     "ValidationResult",
     "ValidationService",
+    "RecoverWorkspaceRequest",
+    "RecoverWorkspaceResult",
+    "WorkspaceRecoveryService",
 ]

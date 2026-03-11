@@ -9,6 +9,8 @@ from engineeringagent.ports import (
     CommitRequest,
     CommitResult,
     DiffSummary,
+    ResetRequest,
+    ResetResult,
     VersionControlFailure,
 )
 
@@ -119,5 +121,52 @@ class GitCliVersionControlGateway:
             commit_sha=self.head_commit(request.project_root),
             stdout=commit_proc.stdout or "",
             stderr=commit_proc.stderr or "",
+            failure_stage=None,
+        )
+
+    def reset_hard(self, request: ResetRequest) -> ResetResult:
+        """Reset the repository to one accepted revision and clean untracked files."""
+        reset_proc = subprocess.run(
+            ["git", "reset", "--hard", request.target_ref],
+            cwd=request.project_root,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if reset_proc.returncode != 0:
+            return ResetResult(
+                reset_applied=False,
+                head_commit=None,
+                stdout=reset_proc.stdout or "",
+                stderr=reset_proc.stderr or "",
+                failure_stage="git_reset",
+            )
+
+        clean_stdout = ""
+        clean_stderr = ""
+        if request.clean_untracked:
+            clean_proc = subprocess.run(
+                ["git", "clean", "-fd"],
+                cwd=request.project_root,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            clean_stdout = clean_proc.stdout or ""
+            clean_stderr = clean_proc.stderr or ""
+            if clean_proc.returncode != 0:
+                return ResetResult(
+                    reset_applied=False,
+                    head_commit=None,
+                    stdout=(reset_proc.stdout or "") + clean_stdout,
+                    stderr=(reset_proc.stderr or "") + clean_stderr,
+                    failure_stage="git_clean",
+                )
+
+        return ResetResult(
+            reset_applied=True,
+            head_commit=self.head_commit(request.project_root),
+            stdout=(reset_proc.stdout or "") + clean_stdout,
+            stderr=(reset_proc.stderr or "") + clean_stderr,
             failure_stage=None,
         )

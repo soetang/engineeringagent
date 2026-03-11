@@ -32,6 +32,8 @@ from .version_control import (
     CommitRequest,
     CommitResult,
     DiffSummary,
+    ResetRequest,
+    ResetResult,
     VersionControlFailure,
     VersionControlGateway,
 )
@@ -58,6 +60,8 @@ __all__ = [
     "PromptDefinition",
     "PromptDefinitionRepository",
     "PromptInterpolation",
+    "ResetRequest",
+    "ResetResult",
     "RepositoryValidationRequest",
     "RepositoryValidationResult",
     "RepositoryValidator",

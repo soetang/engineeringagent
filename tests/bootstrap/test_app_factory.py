@@ -10,12 +10,14 @@ from engineeringagent.adapters.checks import (
 from engineeringagent.adapters.agents import ConfiguredAgentRunner
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
+from engineeringagent.adapters.vcs import GitCliVersionControlGateway
 from engineeringagent.application import (
     ChecksService,
     GuidanceService,
     InitWorkspaceService,
     PromptBuilder,
     ValidationService,
+    WorkspaceRecoveryService,
 )
 from engineeringagent.bootstrap import AppFactory
 
@@ -46,10 +48,18 @@ def test_app_factory_builds_default_application_services(tmp_path: Path) -> None
     assert isinstance(factory.build_progress_journal(), FilesystemProgressJournal)
     assert isinstance(factory.build_agent_runner(), ConfiguredAgentRunner)
     assert isinstance(
+        factory.build_version_control_gateway(),
+        GitCliVersionControlGateway,
+    )
+    assert isinstance(
         factory.build_prompt_definition_repository(),
         FilesystemPromptDefinitionRepository,
     )
     assert isinstance(factory.build_prompt_builder(), PromptBuilder)
+    recovery_service = factory.build_workspace_recovery_service()
+    assert isinstance(recovery_service, WorkspaceRecoveryService)
+    assert isinstance(recovery_service._version_control, GitCliVersionControlGateway)
+    assert isinstance(recovery_service._progress_journal, FilesystemProgressJournal)
 
 
 def test_app_factory_uses_configured_harness_root_for_prompt_definitions(

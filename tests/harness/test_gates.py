@@ -3,7 +3,14 @@ from __future__ import annotations
 from pathlib import Path
 
 from engineeringagent import changed_paths
-from engineeringagent.ports import CommitRequest, CommitResult, DiffSummary, VersionControlFailure
+from engineeringagent.ports import (
+    CommitRequest,
+    CommitResult,
+    DiffSummary,
+    ResetRequest,
+    ResetResult,
+    VersionControlFailure,
+)
 
 
 class StubVersionControlGateway:
@@ -43,6 +50,15 @@ class StubVersionControlGateway:
             stdout="",
             stderr="",
             failure_stage="git_commit",
+        )
+
+    def reset_hard(self, request: ResetRequest) -> ResetResult:
+        return ResetResult(
+            reset_applied=True,
+            head_commit=None,
+            stdout="",
+            stderr="",
+            failure_stage=None,
         )
 
 

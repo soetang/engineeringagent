@@ -35,6 +35,28 @@ class CommitResult(BaseModel):
     failure_stage: str | None = None
 
 
+class ResetRequest(BaseModel):
+    """Stable request envelope for one hard-reset attempt."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    project_root: Path
+    target_ref: str
+    clean_untracked: bool = True
+
+
+class ResetResult(BaseModel):
+    """Stable result envelope for one hard-reset attempt."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    reset_applied: bool
+    head_commit: str | None
+    stdout: str
+    stderr: str
+    failure_stage: str | None = None
+
+
 class DiffSummary(BaseModel):
     """Stable result envelope for one version-control diff query."""
 
@@ -64,4 +86,8 @@ class VersionControlGateway(Protocol):
 
     def commit(self, request: CommitRequest) -> CommitResult:
         """Create one deterministic commit and report the outcome."""
+        raise NotImplementedError
+
+    def reset_hard(self, request: ResetRequest) -> ResetResult:
+        """Reset the workspace to one accepted revision."""
         raise NotImplementedError

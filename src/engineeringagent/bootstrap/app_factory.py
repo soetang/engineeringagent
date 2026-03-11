@@ -13,15 +13,21 @@ from engineeringagent.adapters.checks import (
 from engineeringagent.adapters.guidance import PackagedGuidanceTopicRepository
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
+from engineeringagent.adapters.vcs import GitCliVersionControlGateway
 from engineeringagent.application import (
     ChecksService,
     GuidanceService,
     InitWorkspaceService,
     PromptBuilder,
     ValidationService,
+    WorkspaceRecoveryService,
 )
 from engineeringagent.config import resolve_harness_root
-from engineeringagent.ports import AgentRunner, PromptDefinitionRepository
+from engineeringagent.ports import (
+    AgentRunner,
+    PromptDefinitionRepository,
+    VersionControlGateway,
+)
 
 
 class AppFactory:
@@ -62,6 +68,10 @@ class AppFactory:
         """Create the default configured agent-runner adapter."""
         return ConfiguredAgentRunner()
 
+    def build_version_control_gateway(self) -> VersionControlGateway:
+        """Create the default git-backed version-control gateway."""
+        return GitCliVersionControlGateway()
+
     def build_prompt_definition_repository(self) -> PromptDefinitionRepository:
         """Create the default filesystem-backed prompt-definition repository."""
         return FilesystemPromptDefinitionRepository(
@@ -71,3 +81,10 @@ class AppFactory:
     def build_prompt_builder(self) -> PromptBuilder:
         """Create the default deterministic prompt builder."""
         return PromptBuilder(self.build_prompt_definition_repository())
+
+    def build_workspace_recovery_service(self) -> WorkspaceRecoveryService:
+        """Create the default workspace recovery service."""
+        return WorkspaceRecoveryService(
+            self.build_version_control_gateway(),
+            self.build_progress_journal(),
+        )
