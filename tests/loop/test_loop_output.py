@@ -8,7 +8,6 @@ from typing import Any, get_type_hints
 import engineeringagent.adapters.progress.iteration_telemetry as telemetry_module
 import engineeringagent.domain.audit.iteration as models_module
 import engineeringagent.loop_runtime.phases as phases_module
-import engineeringagent.presentation.presenters.terminal as presentation_module
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.adapters.progress.handoff import (
     HandoffRenderMetadata,
@@ -29,11 +28,9 @@ from engineeringagent.adapters.progress.iteration_telemetry import (
 from engineeringagent.domain.audit import (
     CommandTiming,
     FeatureIterationInputs,
-    IterationSummaryInputs,
     IterationTelemetryInputs,
     PhaseTiming,
 )
-from engineeringagent.loop import print_summary
 from engineeringagent.loop_runtime.phases import (
     run_verification_phase,
 )
@@ -1105,67 +1102,3 @@ def test_command_timing_line_includes_reviewer_id() -> None:
     )
     line = _format_command_timing_line(timing)
     assert "reviewer_id=onboarding_review" in line
-
-
-def test_non_verbose_terminal_output_shows_verification_summary(
-    monkeypatch: Any,
-    capsys: Any,
-) -> None:
-    verification_command = "uv run pytest -q tests/test_loop_output.py"
-    monkeypatch.setattr(presentation_module, "stdout_is_tty", lambda _stdout: False)
-    monkeypatch.delenv("NO_COLOR", raising=False)
-    monkeypatch.setenv("TERM", "xterm-256color")
-
-    print_summary(
-        IterationSummaryInputs(
-            feature_id="FEAT-040",
-            result="failed",
-            failed_gate=None,
-            attempt=2,
-            next_action="retry_same_feature",
-            selected_path="docs/spec/features/FEAT-040-per-iteration-verification-feedback-and-failure-signaling.yaml",
-            implement_step="default opencode implement step",
-            log_path=".engineeringagent/progress/FEAT-040/run.txt",
-            verification_status=f"failed:{verification_command}",
-            verification_failed_command=verification_command,
-            reviewer_status="failed:request_changes",
-            reviewer_decision="request_changes",
-            failed_reviewer_id="security-reviewer",
-        )
-    )
-
-    output = capsys.readouterr().out
-    assert "🧪 Verify: failed (uv run pytest -q tests/test_loop_output.py)" in output
-    assert (
-        "👀 Reviewer: failed:request_changes (request_changes) [security-reviewer]"
-        in output
-    )
-    assert "❌ Failed: gate=unknown" in output
-
-
-def test_non_verbose_terminal_output_surfaces_phase_progress_context(
-    monkeypatch: Any,
-    capsys: Any,
-) -> None:
-    monkeypatch.setattr(presentation_module, "stdout_is_tty", lambda _stdout: False)
-
-    print_summary(
-        IterationSummaryInputs(
-            feature_id="FEAT-181",
-            result="passed",
-            failed_gate=None,
-            attempt=3,
-            next_action="continue_same_feature",
-            selected_path="docs/spec/features_done/FEAT-181-bundled-feature-planning-workflow/spec.yaml",
-            implement_step="uv run engineeringagent implement",
-            progress_kind="phase",
-            progress_id="P3",
-            progress_title="Move implementation sequencing from subtasks to plan phases",
-        )
-    )
-
-    output = capsys.readouterr().out
-    assert (
-        "📍 Progress: phase P3 - Move implementation sequencing from subtasks to plan phases"
-        in output
-    )

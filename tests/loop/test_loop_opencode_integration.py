@@ -9,7 +9,7 @@ from typing import Any
 import pytest
 import yaml
 
-import engineeringagent.loop as loop_module
+from engineeringagent.bootstrap import runtime_support as runtime_support_module
 from engineeringagent.agents import AgentBackendError, AgentBackendFailureDetails
 from engineeringagent.checks.pytest.config import (
     resolve_harness_pytest_opencode_integration_enabled,
@@ -229,7 +229,7 @@ def test_loop_runs_opencode_integration(
         "engineeringagent.agents.helpers.run_permission_probe",
         fake_run_permission_probe,
     )
-    monkeypatch.setattr(loop_module, "run_agent", fake_run_agent)
+    monkeypatch.setattr(runtime_support_module.agent_runtime, "run_agent", fake_run_agent)
 
     project_root, feature_path = _make_project_root(tmp_path)
     _init_git_repo(project_root)
@@ -306,7 +306,7 @@ def test_loop_reports_permission_rejection_in_run_telemetry(
         "engineeringagent.agents.helpers.run_permission_probe",
         fake_run_permission_probe,
     )
-    monkeypatch.setattr(loop_module, "run_agent", fake_run_agent)
+    monkeypatch.setattr(runtime_support_module.agent_runtime, "run_agent", fake_run_agent)
 
     code = run_loop(
         project_root=project_root,
@@ -375,7 +375,7 @@ def test_run_loop_creates_progress_artifacts_before_implement_invocation(
         "engineeringagent.agents.helpers.run_permission_probe",
         fake_run_permission_probe,
     )
-    monkeypatch.setattr(loop_module, "run_agent", fake_run_agent)
+    monkeypatch.setattr(runtime_support_module.agent_runtime, "run_agent", fake_run_agent)
 
     code = run_loop(
         project_root=project_root,
@@ -566,7 +566,7 @@ def test_run_loop_permission_precheck_pass_prints_bypass_hint_and_log_locations(
         "engineeringagent.agents.helpers.run_permission_probe",
         fake_run_permission_probe,
     )
-    monkeypatch.setattr(loop_module, "run_agent", fake_run_agent)
+    monkeypatch.setattr(runtime_support_module.agent_runtime, "run_agent", fake_run_agent)
 
     code = run_loop(
         project_root=project_root,
@@ -654,7 +654,7 @@ def test_gate_failure_feedback_round_trips_to_retry_prompt_integration(
     def fake_run_permission_probe(_: Path) -> PermissionProbeResult:
         return PermissionProbeResult(ok=True, reason="ok", returncode=0, output="")
 
-    monkeypatch.setattr(loop_module, "run_agent", fake_start_agent)
+    monkeypatch.setattr(runtime_support_module.agent_runtime, "run_agent", fake_start_agent)
     monkeypatch.setattr(
         "engineeringagent.agents.helpers.run_permission_probe",
         fake_run_permission_probe,
@@ -778,7 +778,7 @@ def test_gate_failure_feedback_replaces_previous_feedback_integration(
     def fake_run_permission_probe(_: Path) -> PermissionProbeResult:
         return PermissionProbeResult(ok=True, reason="ok", returncode=0, output="")
 
-    monkeypatch.setattr(loop_module, "run_agent", fake_start_agent)
+    monkeypatch.setattr(runtime_support_module.agent_runtime, "run_agent", fake_start_agent)
     monkeypatch.setattr(
         "engineeringagent.agents.helpers.run_permission_probe",
         fake_run_permission_probe,
@@ -904,7 +904,7 @@ def test_loop_archived_done_continues_run_all_when_selected_path_disappears(
         "engineeringagent.agents.helpers.run_permission_probe",
         fake_run_permission_probe,
     )
-    monkeypatch.setattr(loop_module, "run_agent", fake_run_agent)
+    monkeypatch.setattr(runtime_support_module.agent_runtime, "run_agent", fake_run_agent)
 
     code = run_loop(
         project_root=project_root,

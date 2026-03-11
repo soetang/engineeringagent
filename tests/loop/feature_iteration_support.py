@@ -14,7 +14,7 @@ import yaml
 from typer.testing import CliRunner
 
 import engineeringagent.agents.helpers as agent_helpers
-import engineeringagent.loop as loop_module
+from engineeringagent.bootstrap import runtime_support as runtime_support_module
 from engineeringagent.adapters.progress.handoff import (
     fallback_implement_progress_envelope,
 )
@@ -123,7 +123,7 @@ def stub_opencode_start_agent(monkeypatch: pytest.MonkeyPatch) -> None:
             )
         return stdout + stderr
 
-    monkeypatch.setattr(loop_module, "run_agent", fake_run_agent)
+    monkeypatch.setattr(runtime_support_module.agent_runtime, "run_agent", fake_run_agent)
 
 
 @pytest.fixture(autouse=True)
@@ -328,7 +328,7 @@ def patch_run_agent_with_fake(
             )
         return output
 
-    monkeypatch.setattr(loop_module, "run_agent", fake_run_agent)
+    monkeypatch.setattr(runtime_support_module.agent_runtime, "run_agent", fake_run_agent)
 
 
 def install_prompt_capture_agent(
