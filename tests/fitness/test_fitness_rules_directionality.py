@@ -35,26 +35,41 @@ def _write_directionality_fixture(project_root: Path) -> None:
     _write_module(project_root, "specs.py", "")
 
 
-def _write_repo_policy_fixture(project_root: Path) -> None:
+def _repo_policy_rules(repo_root: Path) -> list[dict[str, object]]:
+    payload = yaml.safe_load(
+        (
+            repo_root
+            / "harness"
+            / "fitness_functions"
+            / "policies"
+            / "dependency_directionality.yaml"
+        ).read_text(encoding="utf-8")
+    )
+    rules = payload.get("rules")
+    assert isinstance(rules, list)
+    return rules
+
+
+def _policy_module_target_path(repo_root: Path, module_name: str) -> Path:
+    source_root = repo_root / "src" / "engineeringagent"
+    _, _, suffix = module_name.partition("engineeringagent.")
+    relative_path = Path(*suffix.split(".")) if suffix else Path()
+    package_path = source_root / relative_path / "__init__.py"
+    if package_path.is_file():
+        return Path(*suffix.split(".")) / "__init__.py"
+    return Path(*suffix.split(".")).with_suffix(".py")
+
+
+def _write_repo_policy_fixture(project_root: Path, repo_root: Path) -> None:
     _write_directionality_fixture(project_root)
-    _write_module(project_root, "domain/guidance/__init__.py", "")
-    _write_module(project_root, "domain/quality/__init__.py", "")
-    _write_module(project_root, "checks/contracts.py", "")
-    _write_module(project_root, "cli/__init__.py", "")
-    _write_module(project_root, "cli/app.py", "")
-    _write_module(project_root, "cli/typer.py", "")
-    _write_module(project_root, "cli/checks.py", "")
-    _write_module(project_root, "cli/approach.py", "")
-    _write_module(project_root, "cli/validate.py", "")
-    _write_module(project_root, "cli/run.py", "")
-    _write_module(project_root, "application/__init__.py", "")
-    _write_module(project_root, "application/checks_service.py", "")
-    _write_module(project_root, "application/guidance_service.py", "")
-    _write_module(project_root, "application/prompt_builder.py", "")
-    _write_module(project_root, "application/run_loop_service.py", "")
-    _write_module(project_root, "application/validation_service.py", "")
-    _write_module(project_root, "ports/__init__.py", "")
-    _write_module(project_root, "ports/checks_runner.py", "")
+    for rule in _repo_policy_rules(repo_root):
+        module_name = rule.get("module")
+        assert isinstance(module_name, str)
+        _write_module(
+            project_root,
+            str(_policy_module_target_path(repo_root, module_name)),
+            "",
+        )
 
 
 def _write_policy(project_root: Path, rules: list[dict[str, object]]) -> Path:
@@ -156,7 +171,7 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
     repo_root: Path,
 ) -> None:
     """Honor the checked-in policy for current layered CLI, contracts, and application boundaries."""
-    _write_repo_policy_fixture(tmp_path)
+    _write_repo_policy_fixture(tmp_path, repo_root)
     _write_module(
         tmp_path,
         "specs.py",
@@ -195,10 +210,20 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
     )
     _write_module(
         tmp_path,
+        "application/init_workspace_service.py",
+        "import engineeringagent.adapters.progress.paths\n",
+    )
+    _write_module(
+        tmp_path,
         "application/prompt_builder.py",
         "import engineeringagent.adapters.progress.paths\n"
         "import engineeringagent.presentation.presenters.prompt_feedback\n"
         "import engineeringagent.specs\n",
+    )
+    _write_module(
+        tmp_path,
+        "application/prompt_models.py",
+        "import engineeringagent.presentation.presenters.terminal\n",
     )
     _write_module(
         tmp_path,
@@ -212,8 +237,23 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
     )
     _write_module(
         tmp_path,
+        "application/workspace_recovery_service.py",
+        "import engineeringagent.bootstrap.app_factory\n",
+    )
+    _write_module(
+        tmp_path,
+        "ports/agent_runner.py",
+        "import engineeringagent.checks.reviewers.engine\n",
+    )
+    _write_module(
+        tmp_path,
         "ports/checks_runner.py",
         "import engineeringagent.checks\n",
+    )
+    _write_module(
+        tmp_path,
+        "ports/version_control.py",
+        "import engineeringagent.cli.app\n",
     )
     _write_module(
         tmp_path,
@@ -246,6 +286,10 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
             "engineeringagent.loop_runtime.selection"
         ),
         (
+            "engineeringagent.application.init_workspace_service imports blocked "
+            "dependency engineeringagent.adapters.progress.paths"
+        ),
+        (
             "engineeringagent.application.prompt_builder imports blocked dependency "
             "engineeringagent.adapters.progress.paths"
         ),
@@ -258,12 +302,20 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
             "engineeringagent.specs"
         ),
         (
+            "engineeringagent.application.prompt_models imports blocked dependency "
+            "engineeringagent.presentation.presenters.terminal"
+        ),
+        (
             "engineeringagent.application.run_loop_service imports blocked dependency "
             "engineeringagent.loop_runtime.selection"
         ),
         (
             "engineeringagent.application.validation_service imports blocked dependency "
             "engineeringagent.checks"
+        ),
+        (
+            "engineeringagent.application.workspace_recovery_service imports blocked "
+            "dependency engineeringagent.bootstrap.app_factory"
         ),
         (
             "engineeringagent.checks.contracts imports blocked dependency "
@@ -290,14 +342,41 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
             "engineeringagent.checks.reviewers.engine"
         ),
         (
+            "engineeringagent.ports.agent_runner imports blocked dependency "
+            "engineeringagent.checks.reviewers.engine"
+        ),
+        (
             "engineeringagent.ports.checks_runner imports blocked dependency "
             "engineeringagent.checks"
+        ),
+        (
+            "engineeringagent.ports.version_control imports blocked dependency "
+            "engineeringagent.cli.app"
         ),
         (
             "engineeringagent.specs imports blocked dependency "
             "engineeringagent.checks.contracts"
         ),
     ]
+
+
+def test_repo_directionality_policy_covers_all_top_level_application_and_port_modules(
+    repo_root: Path,
+) -> None:
+    """Every top-level application and ports module should carry a directionality rule."""
+
+    modules_with_rules = {
+        cast(str, rule["module"]) for rule in _repo_policy_rules(repo_root)
+    }
+    source_root = repo_root / "src" / "engineeringagent"
+    expected_modules = {
+        f"engineeringagent.{package}.{path.stem}"
+        for package in ("application", "ports")
+        for path in (source_root / package).glob("*.py")
+        if path.name != "__init__.py"
+    }
+
+    assert sorted(expected_modules - modules_with_rules) == []
 
 
 def test_directionality_rule_supports_reverse_direction_specs_contract_boundaries(
@@ -425,7 +504,7 @@ def test_directionality_rule_uses_repo_policy_for_domain_boundary(
     repo_root: Path,
 ) -> None:
     """Honor the checked-in policy that keeps domain code inward-only."""
-    _write_repo_policy_fixture(tmp_path)
+    _write_repo_policy_fixture(tmp_path, repo_root)
     _write_module(
         tmp_path,
         "domain/guidance/__init__.py",
@@ -447,7 +526,7 @@ def test_directionality_rule_allows_cli_modules_to_import_application_services(
     repo_root: Path,
 ) -> None:
     """Allow presentation modules to depend inward on application services."""
-    _write_repo_policy_fixture(tmp_path)
+    _write_repo_policy_fixture(tmp_path, repo_root)
     _write_module(
         tmp_path,
         "cli/checks.py",

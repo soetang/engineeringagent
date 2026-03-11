@@ -66,12 +66,21 @@ rules:
       - engineeringagent.adapters
       - engineeringagent.checks
       - engineeringagent.loop_runtime
+      - engineeringagent.presentation
   - module: engineeringagent.application.guidance_service
     blocked_dependencies:
       - engineeringagent.adapters
       - engineeringagent.bootstrap
       - engineeringagent.cli
       - engineeringagent.loop_runtime
+      - engineeringagent.presentation
+  - module: engineeringagent.application.init_workspace_service
+    blocked_dependencies:
+      - engineeringagent.adapters
+      - engineeringagent.bootstrap
+      - engineeringagent.cli
+      - engineeringagent.loop_runtime
+      - engineeringagent.presentation
   - module: engineeringagent.application.prompt_builder
     blocked_dependencies:
       - engineeringagent.adapters
@@ -79,6 +88,14 @@ rules:
       - engineeringagent.cli
       - engineeringagent.loop_runtime
       - engineeringagent.presentation.presenters
+      - engineeringagent.specs
+  - module: engineeringagent.application.prompt_models
+    blocked_dependencies:
+      - engineeringagent.adapters
+      - engineeringagent.bootstrap
+      - engineeringagent.cli
+      - engineeringagent.loop_runtime
+      - engineeringagent.presentation
       - engineeringagent.specs
   - module: engineeringagent.application.run_loop_service
     blocked_dependencies:
@@ -93,9 +110,99 @@ rules:
       - engineeringagent.checks
       - engineeringagent.cli
       - engineeringagent.loop_runtime
+      - engineeringagent.presentation
+  - module: engineeringagent.application.workspace_recovery_service
+    blocked_dependencies:
+      - engineeringagent.adapters
+      - engineeringagent.bootstrap
+      - engineeringagent.cli
+      - engineeringagent.loop_runtime
+      - engineeringagent.presentation
+  - module: engineeringagent.ports.agent_runner
+    blocked_dependencies:
+      - engineeringagent.adapters
+      - engineeringagent.application
+      - engineeringagent.bootstrap
+      - engineeringagent.checks
+      - engineeringagent.cli
+      - engineeringagent.loop
+      - engineeringagent.loop_runtime
+  - module: engineeringagent.ports.checks_catalog_repository
+    blocked_dependencies:
+      - engineeringagent.adapters
+      - engineeringagent.application
+      - engineeringagent.bootstrap
+      - engineeringagent.checks
+      - engineeringagent.cli
+      - engineeringagent.loop
+      - engineeringagent.loop_runtime
   - module: engineeringagent.ports.checks_runner
     blocked_dependencies:
       - engineeringagent.adapters
+      - engineeringagent.application
+      - engineeringagent.bootstrap
+      - engineeringagent.checks
+      - engineeringagent.cli
+      - engineeringagent.loop
+      - engineeringagent.loop_runtime
+  - module: engineeringagent.ports.guidance_topic_repository
+    blocked_dependencies:
+      - engineeringagent.adapters
+      - engineeringagent.application
+      - engineeringagent.bootstrap
+      - engineeringagent.checks
+      - engineeringagent.cli
+      - engineeringagent.loop
+      - engineeringagent.loop_runtime
+  - module: engineeringagent.ports.init_workspace
+    blocked_dependencies:
+      - engineeringagent.adapters
+      - engineeringagent.application
+      - engineeringagent.bootstrap
+      - engineeringagent.checks
+      - engineeringagent.cli
+      - engineeringagent.loop
+      - engineeringagent.loop_runtime
+  - module: engineeringagent.ports.progress_journal
+    blocked_dependencies:
+      - engineeringagent.adapters
+      - engineeringagent.application
+      - engineeringagent.bootstrap
+      - engineeringagent.checks
+      - engineeringagent.cli
+      - engineeringagent.loop
+      - engineeringagent.loop_runtime
+  - module: engineeringagent.ports.prompt_definition_repository
+    blocked_dependencies:
+      - engineeringagent.adapters
+      - engineeringagent.application
+      - engineeringagent.bootstrap
+      - engineeringagent.checks
+      - engineeringagent.cli
+      - engineeringagent.loop
+      - engineeringagent.loop_runtime
+  - module: engineeringagent.ports.repository_validator
+    blocked_dependencies:
+      - engineeringagent.adapters
+      - engineeringagent.application
+      - engineeringagent.bootstrap
+      - engineeringagent.checks
+      - engineeringagent.cli
+      - engineeringagent.loop
+      - engineeringagent.loop_runtime
+  - module: engineeringagent.ports.shell_runner
+    blocked_dependencies:
+      - engineeringagent.adapters
+      - engineeringagent.application
+      - engineeringagent.bootstrap
+      - engineeringagent.checks
+      - engineeringagent.cli
+      - engineeringagent.loop
+      - engineeringagent.loop_runtime
+  - module: engineeringagent.ports.version_control
+    blocked_dependencies:
+      - engineeringagent.adapters
+      - engineeringagent.application
       - engineeringagent.bootstrap
       - engineeringagent.checks
       - engineeringagent.cli
