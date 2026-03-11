@@ -26,6 +26,7 @@ CONFIGURED_AGENT_RUNNER_ALLOWED_ROOTS = (
 )
 AGENTS_ROOT = SRC_ROOT / "agents"
 BOOTSTRAP_RUNTIME_EXECUTION_PATH = SRC_ROOT / "bootstrap" / "runtime_execution.py"
+APPLICATION_CHECKS_RUNTIME_PATH = APPLICATION_ROOT / "checks" / "runtime.py"
 DELETED_MODULE_PATHS = {
     "src/engineeringagent/changed_paths.py",
     "src/engineeringagent/harness_checks_runtime.py",
@@ -277,14 +278,15 @@ def _application_module_violations(path: Path) -> list[str]:
             )
             break
 
-    violations.extend(
-        _forbidden_import_violations(
-            module,
-            rel_path=rel_path,
-            forbidden_modules=("engineeringagent.checks",),
-            message="application modules must not import checks modules",
+    if path != APPLICATION_CHECKS_RUNTIME_PATH:
+        violations.extend(
+            _forbidden_import_violations(
+                module,
+                rel_path=rel_path,
+                forbidden_modules=("engineeringagent.checks",),
+                message="application modules must not import checks modules",
+            )
         )
-    )
     violations.extend(
         _forbidden_import_violations(
             module,

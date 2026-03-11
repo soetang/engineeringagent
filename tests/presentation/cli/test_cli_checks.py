@@ -6,8 +6,8 @@ from typer.testing import CliRunner
 
 from engineeringagent.presentation import cli as cli_module
 from engineeringagent.application import RunChecksResult as ApplicationRunChecksResult
+from engineeringagent.application.checks.runtime import ChecksRunResult
 from engineeringagent.domain.quality import ChangedPathsResult
-from engineeringagent.checks.api import ChecksRunResult
 from engineeringagent.checks.strategy_contracts import CheckExecutionRecord
 
 
@@ -551,7 +551,7 @@ def test_cli_checks_run_ignores_on_change_for_explicit_phase_execution(
         encoding="utf-8",
     )
     monkeypatch.setattr(
-        "engineeringagent.checks.api.collect_changed_paths",
+        "engineeringagent.application.checks.runtime.collect_changed_paths",
         lambda *_args, **_kwargs: ChangedPathsResult(
             paths=("README.md",),
             run_all=False,

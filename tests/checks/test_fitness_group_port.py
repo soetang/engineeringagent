@@ -31,7 +31,7 @@ def test_run_checks_fitness_does_not_call_legacy_runtime(
 
     # Avoid touching git in tmp_path.
     monkeypatch.setattr(
-        "engineeringagent.checks.api.collect_changed_paths",
+        "engineeringagent.application.checks.runtime.collect_changed_paths",
         lambda *_args, **_kwargs: ChangedPathsResult(
             paths=(),
             run_all=True,

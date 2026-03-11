@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from engineeringagent.checks.api import run_checks
+from engineeringagent.application.checks.runtime import run_checks
 
 
 def test_run_checks_validate_group_delegates_to_checks_validate(

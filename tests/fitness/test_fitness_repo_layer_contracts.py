@@ -73,6 +73,39 @@ def test_repo_layer_contracts_rule_allows_loop_runtime_models_bridge(
     assert payload["violations"] == []
 
 
+def test_repo_layer_contracts_rule_allows_application_checks_runtime_bridge(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Allow the application-owned checks runtime to compose checks internals."""
+    runtime_module = (
+        tmp_path
+        / "src"
+        / "engineeringagent"
+        / "application"
+        / "checks"
+        / "runtime.py"
+    )
+    runtime_module.parent.mkdir(parents=True, exist_ok=True)
+    runtime_module.write_text(
+        "\n".join(
+            [
+                "from engineeringagent.checks.config_selection import load_selected_harness_checks_document",
+                "from engineeringagent.checks.strategies import CommandCheckStrategy",
+                "",
+                "__all__ = ['load_selected_harness_checks_document', 'CommandCheckStrategy']",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "pass"
+    assert payload["violations"] == []
+
+
 def test_repo_layer_contracts_rule_blocks_deleted_legacy_directory_paths(
     tmp_path: Path,
     repo_root: Path,

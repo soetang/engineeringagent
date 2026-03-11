@@ -1,17 +1,20 @@
+"""Application-owned runtime orchestration for deterministic checks."""
+
 from __future__ import annotations
+
 from pathlib import Path
-from typing import Any, Protocol, cast
+from typing import Any, Callable, cast
 
 from typing_extensions import Unpack
 
-from engineeringagent.adapters.quality.changed_paths import collect_changed_paths
+from engineeringagent.checks import collect_changed_paths
+from engineeringagent.checks.config_selection import (
+    load_selected_harness_checks_document,
+)
 from engineeringagent.checks.contracts import (
     CheckDecision,
     CheckExecutionRecord,
     CommandInvocationRecord,
-)
-from engineeringagent.checks.config_selection import (
-    load_selected_harness_checks_document,
 )
 from engineeringagent.checks.request_normalization import (
     CHECK_GROUP_COMMANDS,
@@ -22,6 +25,7 @@ from engineeringagent.checks.request_normalization import (
     _NormalizedRunChecksRequest,
     build_run_checks_request,
 )
+from engineeringagent.checks.results import ChecksRunResult
 from engineeringagent.checks.strategies import (
     CommandCheckStrategy,
     FitnessCheckStrategy,
@@ -33,11 +37,7 @@ from engineeringagent.checks.strategy_contracts import (
     CheckStrategy,
     build_strategy_registry,
 )
-from engineeringagent.checks.results import ChecksRunResult
 from engineeringagent.domain.quality import ChangedPathsResult
-from engineeringagent.presentation.presenters.prompt_feedback import (
-    normalize_checks_contract_prompt_feedback,
-)
 
 __all__ = [
     "ChecksRunResult",
@@ -60,16 +60,16 @@ class _OrchestrationState:
         self.command_invocations = []
 
 
-class ChangedPathsCollector(Protocol):
-    """Canonical changed-path collector contract used by checks orchestration."""
+ChangedPathsCollector = Callable[..., object]
 
-    def __call__(
-        self,
-        project_root: Path,
-        *,
-        base: str | None = None,
-        head: str | None = None,
-    ) -> object: ...
+
+def _normalize_checks_contract_prompt_feedback(value: str | None) -> str | None:
+    if not isinstance(value, str):
+        return None
+    normalized = value.strip()
+    if not normalized:
+        return None
+    return normalized
 
 
 def _call_collect_changed_paths(
@@ -125,7 +125,7 @@ def _finalize_checks_run_result(
     if result_fields is not None:
         fields.update(result_fields)
 
-    fields["prompt_feedback"] = normalize_checks_contract_prompt_feedback(
+    fields["prompt_feedback"] = _normalize_checks_contract_prompt_feedback(
         cast(str | None, fields.get("prompt_feedback")),
     )
     return ChecksRunResult(
@@ -383,29 +383,7 @@ def run_checks(
     checks: list[str] | None = None,
     **kwargs: Unpack[_RunChecksKwargs],
 ) -> ChecksRunResult:
-    """Plan and run deterministic checks.
-
-    Args:
-        project_root: Repository root for the run.
-        phase: Execution phase identifier (used for deterministic policy decisions).
-        checks: Optional list of enabled check groups.
-        **kwargs: Keyword-only options.
-
-            Supported keys:
-            - check_id: Optional single-check selection.
-            - feature_path: Feature spec path required for reviewer execution.
-            - verbose_output: Whether to stream verbose command output.
-            - base: Optional base revision for diff-based checks.
-            - head: Optional head revision for diff-based checks.
-            - run_agent_fn: Optional injected callable to execute reviewers.
-            - feedback: Optional feedback supplied to reviewer checks.
-            - schema_only: Validate-only mode for schema checks.
-            - dry_run: Plan checks without executing commands or reviewers.
-            - collect_changed_paths: Optional changed-paths collector override.
-
-    Returns:
-        Structured result indicating overall success/failure.
-    """
+    """Plan and run deterministic checks."""
     root, request = build_run_checks_request(
         project_root,
         phase=phase,

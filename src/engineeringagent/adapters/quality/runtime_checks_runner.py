@@ -1,8 +1,8 @@
-"""Adapter that executes checks through the concrete checks runtime."""
+"""Adapter that executes checks through the application-owned runtime."""
 
 from __future__ import annotations
 
-from engineeringagent.checks.api import run_checks
+from engineeringagent.application.checks.runtime import run_checks
 from engineeringagent.domain.quality import ChecksRunResult, reviewers_group_selected
 from engineeringagent.ports import ChecksRunRequest, ChecksRunner
 
