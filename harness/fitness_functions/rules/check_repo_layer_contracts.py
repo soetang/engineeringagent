@@ -61,6 +61,10 @@ DELETED_MODULE_PATHS = {
     "src/engineeringagent/prompts/templates/__init__.py",
     "src/engineeringagent/loop_runtime/controller.py",
 }
+DELETED_DIRECTORY_PATHS = {
+    "src/engineeringagent/application/contracts",
+    "src/engineeringagent/application/loop_runtime",
+}
 LEGACY_MODULES = (
     "engineeringagent.changed_paths",
     "engineeringagent.git",
@@ -412,6 +416,10 @@ def _deleted_path_violations() -> list[str]:
     return [
         f"{relative_path}: deleted legacy module path must remain absent"
         for relative_path in sorted(DELETED_MODULE_PATHS)
+        if (PROJECT_ROOT / relative_path).exists()
+    ] + [
+        f"{relative_path}: deleted legacy directory path must remain absent"
+        for relative_path in sorted(DELETED_DIRECTORY_PATHS)
         if (PROJECT_ROOT / relative_path).exists()
     ]
 
