@@ -17,6 +17,11 @@ from .feature_workspace_manager import (
 )
 from .feature_specification_repository import FeatureSpecificationRepository
 from .failures import ExecutionFailure, PortFailure, ValidationFailure, WorkspaceFailure
+from .feature_iteration_executor import (
+    FeatureIterationExecutionRequest,
+    FeatureIterationExecutionResult,
+    FeatureIterationExecutor,
+)
 from .guidance_topic_repository import GuidanceTopicRepository
 from .init_workspace import (
     BaselineScaffoldOptions,
@@ -59,6 +64,9 @@ __all__ = [
     "DEFAULT_AGENT_MODEL",
     "DiffSummary",
     "ExecutionFailure",
+    "FeatureIterationExecutionRequest",
+    "FeatureIterationExecutionResult",
+    "FeatureIterationExecutor",
     "FeatureWorkspaceFailure",
     "FeatureWorkspaceManager",
     "FeatureSpecificationRepository",

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from importlib import import_module
 from pathlib import Path
 
 from engineeringagent.adapters.agents import ConfiguredAgentRunner
@@ -15,7 +14,10 @@ from engineeringagent.adapters.documents import (
     FilesystemChecksCatalogRepository,
     PackagedGuidanceTopicRepository,
 )
-from engineeringagent.adapters.loop import RuntimeRunLoopExecutor
+from engineeringagent.adapters.loop import (
+    RuntimeFeatureIterationExecutor,
+    RuntimeRunLoopExecutor,
+)
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
 from engineeringagent.adapters.vcs import (
@@ -25,7 +27,6 @@ from engineeringagent.adapters.vcs import (
 from engineeringagent.application import (
     ChecksService,
     FeatureIterationService,
-    FeatureIterationRuntime,
     GuidanceService,
     InitWorkspaceService,
     PromptBuilder,
@@ -74,56 +75,10 @@ class AppFactory:
     def build_feature_iteration_service(self) -> FeatureIterationService:
         """Create the default feature-iteration application service."""
         return FeatureIterationService(
-            version_control_gateway=self.build_version_control_gateway(),
-            progress_journal=self.build_progress_journal(),
-            runtime=self.build_feature_iteration_runtime(),
-        )
-
-    def build_feature_iteration_runtime(self) -> FeatureIterationRuntime:
-        """Create the legacy loop-runtime collaborator bundle for the service."""
-        checks_module = import_module("engineeringagent.checks")
-        loop_module = import_module("engineeringagent.loop")
-        feature_state = import_module("engineeringagent.loop_runtime.feature_state")
-        iteration = import_module("engineeringagent.loop_runtime.iteration")
-        models = import_module("engineeringagent.loop_runtime.models")
-        observers = import_module("engineeringagent.loop_runtime.observers")
-        phases = import_module("engineeringagent.loop_runtime.phases")
-        telemetry = import_module("engineeringagent.loop_runtime.telemetry")
-
-        return FeatureIterationRuntime(
-            build_inputs=models.FeatureIterationInputs,
-            build_iteration_dependencies=iteration.IterationPipelineDependencies,
-            run_feature_iteration_pipeline=iteration.run_feature_iteration_pipeline,
-            build_gate_phase_dependencies=phases.GatePhaseDependencies,
-            build_reviewer_phase_dependencies=phases.ReviewerPhaseDependencies,
-            build_completion_phase_dependencies=phases.CompletionPhaseDependencies,
-            build_default_observer_dependencies=observers.DefaultObserverDependencies,
-            build_default_iteration_report_observers=(
-                observers.build_default_iteration_report_observers
+            executor=RuntimeFeatureIterationExecutor(
+                version_control_gateway=self.build_version_control_gateway(),
+                progress_journal=self.build_progress_journal(),
             ),
-            publish_iteration_report=observers.publish_iteration_report,
-            write_iteration_telemetry=telemetry.write_iteration_telemetry,
-            run_implement_step=loop_module.run_implement_step,
-            git_head_resolver=loop_module.git_head_short,
-            print_summary=loop_module.print_summary,
-            evaluate_initial_feature_load=feature_state.evaluate_initial_feature_load,
-            ready_for_active_iteration=feature_state.ready_for_active_iteration,
-            touch_active_feature_for_iteration=(
-                feature_state.touch_active_feature_for_iteration
-            ),
-            refresh_feature_after_implement=(
-                feature_state.refresh_feature_after_implement
-            ),
-            should_archive_selected_feature=(
-                feature_state.should_archive_selected_feature
-            ),
-            archive_completed_feature=feature_state.archive_completed_feature,
-            restore_archived_feature=feature_state.restore_archived_feature,
-            collect_changed_paths=checks_module.collect_changed_paths,
-            run_gate_phase=phases.run_gate_phase,
-            run_verification_phase=phases.run_verification_phase,
-            run_reviewer_phase=phases.run_reviewer_phase,
-            run_completion_commit_phase=phases.run_completion_commit_phase,
         )
 
     def build_guidance_service(self) -> GuidanceService:
