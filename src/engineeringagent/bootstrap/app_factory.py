@@ -6,6 +6,7 @@ from pathlib import Path
 
 from engineeringagent.adapters.checks import (
     ChecksRepositoryValidator,
+    FilesystemChecksCatalogRepository,
     RuntimeChecksRunner,
 )
 from engineeringagent.adapters.guidance import PackagedGuidanceTopicRepository
@@ -35,7 +36,10 @@ class AppFactory:
 
     def build_checks_service(self) -> ChecksService:
         """Create the default deterministic checks service."""
-        return ChecksService(RuntimeChecksRunner())
+        return ChecksService(
+            RuntimeChecksRunner(),
+            FilesystemChecksCatalogRepository(),
+        )
 
     def build_guidance_service(self) -> GuidanceService:
         """Create the packaged guidance service."""

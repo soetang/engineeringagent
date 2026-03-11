@@ -6,6 +6,7 @@ from engineeringagent.application import ChecksService, RunChecksRequest
 from engineeringagent.checks.results import ChecksRunResult
 from engineeringagent.checks.contracts import HarnessCheckPhase
 from engineeringagent.checks.strategy_contracts import CheckExecutionRecord
+from engineeringagent.ports import ChecksCatalogLoadResult
 from engineeringagent.ports import ChecksRunRequest
 import pytest
 
@@ -74,6 +75,16 @@ class _FakeChecksRunner:
         return self._reviewers_selected
 
 
+class _FakeChecksCatalogRepository:
+    def __init__(self, *, error: str | None = None) -> None:
+        self._error = error
+        self.project_roots: list[Path] = []
+
+    def load(self, project_root: Path) -> ChecksCatalogLoadResult:
+        self.project_roots.append(project_root)
+        return ChecksCatalogLoadResult(document=None, error=self._error)
+
+
 def test_default_checks_service_runs_single_requested_phase() -> None:
     """The service should execute only the requested phase by default."""
     runner = _FakeChecksRunner(
@@ -85,7 +96,10 @@ def test_default_checks_service_runs_single_requested_phase() -> None:
         }
     )
 
-    result = ChecksService(runner).run(_build_request())
+    result = ChecksService(
+        runner,
+        _FakeChecksCatalogRepository(),
+    ).run(_build_request())
 
     assert [request.phase for request in runner.requests] == [
         HarnessCheckPhase.ITERATION_END
@@ -113,7 +127,10 @@ def test_default_checks_service_stops_at_first_failed_phase_in_all_phases_mode()
         }
     )
 
-    result = ChecksService(runner).run(_build_request(all_phases=True))
+    result = ChecksService(
+        runner,
+        _FakeChecksCatalogRepository(),
+    ).run(_build_request(all_phases=True))
 
     assert [request.phase for request in runner.requests] == [
         HarnessCheckPhase.ITERATION_END,
@@ -143,6 +160,52 @@ def test_default_checks_service_rejects_reviewers_without_feature_path() -> None
                 },
                 reviewers_selected=True,
             )
+            ,
+            _FakeChecksCatalogRepository(),
         ).run(
             _build_request(selected_checks=["reviewers"])
         )
+
+
+def test_default_checks_service_preflights_catalog_for_harness_groups() -> None:
+    """Harness-backed groups should fail before runner execution when config is missing."""
+    runner = _FakeChecksRunner(
+        result_by_phase={
+            HarnessCheckPhase.ITERATION_END: _build_result(ok=True),
+        }
+    )
+    repository = _FakeChecksCatalogRepository(
+        error="checks config error: missing harness/checks.yaml",
+    )
+
+    result = ChecksService(runner, repository).run(
+        _build_request(selected_checks=["commands"])
+    )
+
+    assert repository.project_roots == [Path("/tmp/project")]
+    assert runner.requests == []
+    assert result.result.ok is False
+    assert result.result.output == "checks config error: missing harness/checks.yaml"
+    assert result.phase_results == ()
+
+
+def test_default_checks_service_skips_catalog_preflight_for_validate_only() -> None:
+    """Validate-only runs should not require loading the harness checks catalog."""
+    runner = _FakeChecksRunner(
+        result_by_phase={
+            HarnessCheckPhase.ITERATION_END: _build_result(ok=True),
+        }
+    )
+    repository = _FakeChecksCatalogRepository(
+        error="checks config error: missing harness/checks.yaml",
+    )
+
+    result = ChecksService(runner, repository).run(
+        _build_request(selected_checks=["validate"])
+    )
+
+    assert repository.project_roots == []
+    assert [request.phase for request in runner.requests] == [
+        HarnessCheckPhase.ITERATION_END
+    ]
+    assert result.result.ok is True

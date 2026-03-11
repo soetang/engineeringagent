@@ -4,6 +4,10 @@ from engineeringagent.domain.quality import HarnessCheckPhase
 from engineeringagent.domain.quality import ChecksRunResult
 
 from .agent_runner import AgentRunRequest, AgentRunner
+from .checks_catalog_repository import (
+    ChecksCatalogLoadResult,
+    ChecksCatalogRepository,
+)
 from .checks_runner import ChecksRunRequest, ChecksRunner
 from .guidance_topic_repository import GuidanceTopicRepository
 from .init_workspace import (
@@ -45,6 +49,8 @@ __all__ = [
     "CommitResult",
     "ChecksRunRequest",
     "ChecksRunResult",
+    "ChecksCatalogLoadResult",
+    "ChecksCatalogRepository",
     "ChecksRunner",
     "DEFAULT_AGENT_MODEL",
     "DiffSummary",

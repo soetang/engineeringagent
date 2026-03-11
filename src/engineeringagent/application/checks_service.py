@@ -6,8 +6,13 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
+from engineeringagent import checks as checks_api
 from engineeringagent.domain.quality import ChecksRunResult, HarnessCheckPhase
-from engineeringagent.ports import ChecksRunRequest, ChecksRunner
+from engineeringagent.ports import (
+    ChecksCatalogRepository,
+    ChecksRunRequest,
+    ChecksRunner,
+)
 
 
 class RunChecksRequest(BaseModel):
@@ -49,11 +54,20 @@ class ChecksService:
         HarnessCheckPhase.MANUAL,
     )
 
-    def __init__(self, checks_runner: ChecksRunner) -> None:
+    def __init__(
+        self,
+        checks_runner: ChecksRunner,
+        checks_catalog_repository: ChecksCatalogRepository,
+    ) -> None:
         self._checks_runner = checks_runner
+        self._checks_catalog_repository = checks_catalog_repository
 
     def run(self, request: RunChecksRequest) -> RunChecksResult:
         """Execute checks with deterministic first-failure semantics."""
+        catalog_preflight = self._load_required_catalog(request)
+        if catalog_preflight is not None:
+            return catalog_preflight
+
         if (
             self._checks_runner.reviewers_group_selected(request.selected_checks)
             and request.feature_path is None
@@ -99,6 +113,33 @@ class ChecksService:
                 result=result,
                 failed_phase=failed_phase,
             ),
+        )
+
+    def _load_required_catalog(
+        self,
+        request: RunChecksRequest,
+    ) -> RunChecksResult | None:
+        selected_groups = checks_api.normalize_groups(
+            request.selected_checks,
+            phase=request.phase,
+        )
+        if not any(group in {"commands", "fitness", "reviewers"} for group in selected_groups):
+            return None
+
+        load_result = self._checks_catalog_repository.load(request.project_root)
+        if load_result.error is None:
+            return None
+
+        failed_result = ChecksRunResult(
+            ok=False,
+            dry_run=request.dry_run,
+            output=load_result.error,
+        )
+        return RunChecksResult(
+            phase_results=(),
+            result=failed_result,
+            failed_phase=None,
+            failed_runtime_message=None,
         )
 
     def _resolve_phases(

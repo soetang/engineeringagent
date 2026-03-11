@@ -4,6 +4,7 @@ from pathlib import Path
 
 from engineeringagent.adapters.checks import (
     ChecksRepositoryValidator,
+    FilesystemChecksCatalogRepository,
     RuntimeChecksRunner,
 )
 from engineeringagent.adapters.progress import FilesystemProgressJournal
@@ -32,6 +33,10 @@ def test_app_factory_builds_default_application_services(tmp_path: Path) -> None
 
     assert isinstance(checks_service, ChecksService)
     assert isinstance(checks_service._checks_runner, RuntimeChecksRunner)
+    assert isinstance(
+        checks_service._checks_catalog_repository,
+        FilesystemChecksCatalogRepository,
+    )
     assert isinstance(factory.build_guidance_service(), GuidanceService)
     validation_service = factory.build_validation_service()
     assert isinstance(validation_service, ValidationService)
