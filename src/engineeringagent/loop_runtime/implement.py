@@ -17,10 +17,8 @@ from engineeringagent.agents import (
     classify_backend_exception,
     describe_action,
 )
-from engineeringagent.domain.specification import (
-    current_progress_unit,
-    feature_progress_reference,
-)
+from engineeringagent.domain.specification import current_progress_unit, feature_progress_reference
+from engineeringagent.domain.specification.feature_specification import FeatureSpecification
 from engineeringagent.loop_runtime.models import ImplementStepInputs
 from engineeringagent.loop_runtime.models import ImplementStepResult
 from engineeringagent.ports import AgentRunRequest, AgentRunner, ProgressJournal
@@ -38,8 +36,8 @@ class _ImplementationPromptBuilder(Protocol):
     def build_implementation_prompt_request(
         self,
         *,
-        feature: dict[str, Any],
-        feature_path: Path,
+        feature: dict[str, Any] | FeatureSpecification,
+        specification_path: Path,
         feedback: str | None,
         handoff_path: str | None = None,
     ) -> ImplementationPromptRequest:
@@ -241,7 +239,7 @@ def _build_implement_prompt(
 ) -> str:
     request = prompt_builder.build_implementation_prompt_request(
         feature=implement_inputs.feature,
-        feature_path=implement_inputs.feature_path,
+        specification_path=implement_inputs.feature_path,
         feedback=implement_inputs.feedback,
     )
     persisted_handoff_path = progress_journal.latest_handoff_path(

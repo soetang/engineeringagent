@@ -16,6 +16,7 @@ import engineeringagent.loop as loop_module
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
 from engineeringagent.application import PromptBuilder
+from engineeringagent.domain.specification.feature_specification import FeatureSpecification
 from engineeringagent.ports import AgentRunRequest, AgentRunner
 from engineeringagent.loop import (
     _drop_completed_feature_from_snapshot,
@@ -1099,12 +1100,12 @@ def test_run_implement_step_uses_injected_prompt_builder(tmp_path: Path) -> None
         def build_implementation_prompt_request(
             self,
             *,
-            feature: dict[str, object],
-            feature_path: Path,
+            feature: dict[str, Any] | FeatureSpecification,
+            specification_path: Path,
             feedback: str | None,
             handoff_path: str | None = None,
         ) -> ImplementationPromptRequest:
-            assert feature_path == inputs.feature_path
+            assert specification_path == inputs.feature_path
             assert feedback is None
             return ImplementationPromptRequest(
                 feature_id="FEAT-900",
@@ -1190,12 +1191,12 @@ def test_run_implement_step_passes_handoff_path_only_when_persisted(
         def build_implementation_prompt_request(
             self,
             *,
-            feature: dict[str, object],
-            feature_path: Path,
+            feature: dict[str, Any] | FeatureSpecification,
+            specification_path: Path,
             feedback: str | None,
             handoff_path: str | None = None,
         ) -> ImplementationPromptRequest:
-            assert feature_path == inputs.feature_path
+            assert specification_path == inputs.feature_path
             assert feedback is None
             return ImplementationPromptRequest(
                 feature_id="FEAT-900",
@@ -1278,8 +1279,8 @@ def test_run_implement_step_preserves_non_repo_handoff_path_reference(
         def build_implementation_prompt_request(
             self,
             *,
-            feature: dict[str, object],
-            feature_path: Path,
+            feature: dict[str, Any] | FeatureSpecification,
+            specification_path: Path,
             feedback: str | None,
             handoff_path: str | None = None,
         ) -> ImplementationPromptRequest:

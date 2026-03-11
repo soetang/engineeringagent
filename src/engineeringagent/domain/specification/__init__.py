@@ -5,7 +5,17 @@ from engineeringagent.spec_bundles import (
     resolve_feature_plan_path,
     resolve_feature_research_path,
 )
+
 from .commit_policy import feature_completion_commit_subject
+from .feature_specification import (
+    FeatureArtifacts,
+    FeaturePriority,
+    FeatureSelectionCandidate,
+    FeatureSpecification,
+    FeatureStatus,
+    FeatureType,
+    PlanningTier,
+)
 
 from .progress import (
     ProgressUnit,
@@ -17,6 +27,13 @@ from .progress import (
 )
 
 __all__ = [
+    "FeatureArtifacts",
+    "FeaturePriority",
+    "FeatureSelectionCandidate",
+    "FeatureSpecification",
+    "FeatureStatus",
+    "FeatureType",
+    "PlanningTier",
     "ProgressUnit",
     "current_progress_unit",
     "done_transition_verification_commands",

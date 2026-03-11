@@ -15,6 +15,7 @@ from .feature_workspace_manager import (
     WorkspaceResetRequest,
     WorkspaceResetResult,
 )
+from .feature_specification_repository import FeatureSpecificationRepository
 from .failures import ExecutionFailure, PortFailure, ValidationFailure, WorkspaceFailure
 from .guidance_topic_repository import GuidanceTopicRepository
 from .init_workspace import (
@@ -63,6 +64,7 @@ __all__ = [
     "ExecutionFailure",
     "FeatureWorkspaceFailure",
     "FeatureWorkspaceManager",
+    "FeatureSpecificationRepository",
     "GuidanceTopicRepository",
     "HarnessCheckPhase",
     "InitWorkspaceDependencies",

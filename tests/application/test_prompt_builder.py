@@ -10,6 +10,14 @@ from engineeringagent.application import (
     ImplementationPromptRequest,
     PromptBuilder,
 )
+from engineeringagent.domain.specification import (
+    FeatureArtifacts,
+    FeaturePriority,
+    FeatureSpecification,
+    FeatureStatus,
+    FeatureType,
+    PlanningTier,
+)
 from tests.loop.feature_iteration_support import (
     base_feature,
     make_project_root,
@@ -25,6 +33,23 @@ def _prompt_builder(prompts_root: Path | None = None) -> PromptBuilder:
 
 def _write_prompt_module(prompts_root: Path, prompt_id: str, body: str) -> None:
     (prompts_root / f"{prompt_id}.py").write_text(body, encoding="utf-8")
+
+
+def _feature_specification(**overrides: object) -> FeatureSpecification:
+    payload = {
+        "feature_id": "FEAT-900",
+        "title": "Feature iteration smoke test",
+        "feature_type": FeatureType.FEATURE,
+        "expected_commit_subject": "feat: complete feat-900 feature iteration smoke test",
+        "planning_tier": PlanningTier.DIRECT,
+        "status": FeatureStatus.BACKLOG,
+        "priority": FeaturePriority.HIGH,
+        "objective": "Verify feature iteration does not require subtask selection.",
+        "acceptance": ("Feature iteration runs as a feature-level unit.",),
+        "artifacts": FeatureArtifacts(),
+    }
+    payload.update(overrides)
+    return FeatureSpecification(**payload)
 
 
 def test_application_selector_prompt_renders_feature_summaries(tmp_path: Path) -> None:
@@ -79,13 +104,11 @@ def test_build_implementation_prompt_request_does_not_invent_handoff_path(
 ) -> None:
     """Application prompt requests keep handoff optional until runtime provides one."""
 
-    feature_data = base_feature()
-    _, feature_path = make_project_root(tmp_path, feature_data=feature_data)
-    feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
+    _, feature_path = make_project_root(tmp_path, feature_data=base_feature())
 
     request = _prompt_builder().build_implementation_prompt_request(
-        feature=feature,
-        feature_path=feature_path,
+        feature=_feature_specification(),
+        specification_path=feature_path,
         feedback=None,
     )
 
@@ -156,15 +179,14 @@ def test_prompt_builder_private_helpers_cover_invalid_and_blank_inputs(
 ) -> None:
     """Prompt requests stay deterministic for blank bundled artifact references."""
 
-    feature_data = base_feature()
-    feature_data["artifacts"] = {"plan": "   ", "research": ""}
-    _, feature_path = make_project_root(tmp_path, feature_data=feature_data)
-    feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
+    _, feature_path = make_project_root(tmp_path, feature_data=base_feature())
 
     assert prompt_builder_module._normalize_plain_prompt_feedback(None) is None
     request = _prompt_builder().build_implementation_prompt_request(
-        feature=feature,
-        feature_path=feature_path,
+        feature=_feature_specification(
+            artifacts=FeatureArtifacts(plan="   ", research=""),
+        ),
+        specification_path=feature_path,
         feedback="  retry here  ",
     )
 
