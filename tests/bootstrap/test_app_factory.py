@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from engineeringagent.adapters import LegacyLoopRunLoopExecutor
 from engineeringagent.adapters.agents import ConfiguredAgentRunner
 from engineeringagent.adapters.checks import (
     ChecksRepositoryValidator,
@@ -66,6 +67,7 @@ def test_app_factory_builds_default_application_services(tmp_path: Path) -> None
         run_loop_service._checks_catalog_repository,
         FilesystemChecksCatalogRepository,
     )
+    assert isinstance(run_loop_service._run_loop_executor, LegacyLoopRunLoopExecutor)
     assert (
         run_loop_service._checks_catalog_repository._options
         == ChecksCatalogLoadOptions(

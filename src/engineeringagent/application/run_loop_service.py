@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from importlib import import_module
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
 from engineeringagent.ports import (
     ChecksCatalogRepository,
+    RunLoopExecutionRequest,
+    RunLoopExecutor,
     ValidationFailure,
 )
 
@@ -43,8 +44,10 @@ class RunLoopService:
         self,
         *,
         checks_catalog_repository: ChecksCatalogRepository,
+        run_loop_executor: RunLoopExecutor,
     ) -> None:
         self._checks_catalog_repository = checks_catalog_repository
+        self._run_loop_executor = run_loop_executor
 
     def run(self, request: RunLoopRequest) -> RunLoopResult:
         """Execute one run-loop request after deterministic preflight."""
@@ -68,18 +71,14 @@ class RunLoopService:
         return None
 
     def _run(self, request: RunLoopRequest) -> int:
-        loop_module = import_module("engineeringagent.loop")
-
-        config = loop_module.build_run_config(
-            project_root=request.project_root,
-            feature_paths=request.feature_paths,
-            options=loop_module.RunConfigOptions(
-                request.dry_run,
-                request.run_all,
-                request.max_iterations,
-                request.allow_dirty,
-                request.verbose_output,
-            ),
+        return self._run_loop_executor.run(
+            RunLoopExecutionRequest(
+                project_root=request.project_root,
+                feature_paths=request.feature_paths,
+                dry_run=request.dry_run,
+                run_all=request.run_all,
+                max_iterations=request.max_iterations,
+                allow_dirty=request.allow_dirty,
+                verbose_output=request.verbose_output,
+            )
         )
-        loop_run = loop_module.build_loop_run(config)
-        return loop_module.run_loop_controller(loop_run)

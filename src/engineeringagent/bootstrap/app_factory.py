@@ -6,6 +6,7 @@ from importlib import import_module
 from pathlib import Path
 
 from engineeringagent.adapters.agents import ConfiguredAgentRunner
+from engineeringagent.adapters import LegacyLoopRunLoopExecutor
 from engineeringagent.adapters.checks import (
     ChecksRepositoryValidator,
     RuntimeChecksRunner,
@@ -67,6 +68,7 @@ class AppFactory:
                     missing_context=" (required for --all)",
                 )
             ),
+            run_loop_executor=LegacyLoopRunLoopExecutor(),
         )
 
     def build_feature_iteration_service(self) -> FeatureIterationService:
