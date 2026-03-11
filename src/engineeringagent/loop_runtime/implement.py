@@ -8,8 +8,6 @@ from pathlib import Path
 from typing import Any
 from typing import Protocol
 
-from engineeringagent.adapters.agents import ConfiguredAgentRunner
-from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.application import (
     ImplementationPromptRequest,
 )
@@ -25,17 +23,13 @@ from engineeringagent.domain.specification import (
 )
 from engineeringagent.loop_runtime.models import ImplementStepInputs
 from engineeringagent.loop_runtime.models import ImplementStepResult
-from engineeringagent.ports import AgentRunRequest, AgentRunner
+from engineeringagent.ports import AgentRunRequest, AgentRunner, ProgressJournal
 from engineeringagent.bootstrap import AppFactory
 from engineeringagent.progress import handoff as progress_handoff
 from engineeringagent.progress import paths as progress_paths
 from engineeringagent.specs import (
     feature_progress_kind,
 )
-
-
-_PROGRESS_JOURNAL = FilesystemProgressJournal()
-_AGENT_RUNNER = ConfiguredAgentRunner()
 
 
 class _ImplementationPromptBuilder(Protocol):
@@ -67,10 +61,12 @@ def run_implement_step_from_inputs(
     prompt_builder: _ImplementationPromptBuilder | None = None,
 ) -> ImplementStepResult:
     """Run the implement phase and coerce structured progress output."""
+    app_factory = AppFactory(implement_inputs.project_root)
+    progress_journal = app_factory.build_progress_journal()
     prompt = _build_implement_prompt(
         implement_inputs,
-        prompt_builder=prompt_builder
-        or AppFactory(implement_inputs.project_root).build_prompt_builder(),
+        prompt_builder=prompt_builder or app_factory.build_prompt_builder(),
+        progress_journal=progress_journal,
     )
     command = describe_action(
         implement_inputs.project_root,
@@ -79,7 +75,7 @@ def run_implement_step_from_inputs(
     )
     fallback_context = _fallback_progress_context(implement_inputs)
 
-    _ensure_progress_artifacts(implement_inputs)
+    _ensure_progress_artifacts(implement_inputs, progress_journal=progress_journal)
     print(f"Implement step: {command}", flush=True)
     try:
         raw_output = _run_agent_with_structured_output(
@@ -242,13 +238,14 @@ def _build_implement_prompt(
     implement_inputs: ImplementStepInputs,
     *,
     prompt_builder: _ImplementationPromptBuilder,
+    progress_journal: ProgressJournal,
 ) -> str:
     request = prompt_builder.build_implementation_prompt_request(
         feature=implement_inputs.feature,
         feature_path=implement_inputs.feature_path,
         feedback=implement_inputs.feedback,
     )
-    if _PROGRESS_JOURNAL.latest_handoff_path(
+    if progress_journal.latest_handoff_path(
         project_root=implement_inputs.project_root,
         feature_id=request.feature.feature_id,
     ):
@@ -260,7 +257,9 @@ def _build_implement_prompt(
     return prompt_builder.build_implementation_prompt(request)
 
 
-def _ensure_progress_artifacts(implement_inputs: ImplementStepInputs) -> None:
+def _ensure_progress_artifacts(
+    implement_inputs: ImplementStepInputs, *, progress_journal: ProgressJournal
+) -> None:
     project_root = implement_inputs.project_root
     feature_id = implement_inputs.feature.get("id")
     if not isinstance(feature_id, str) or not feature_id.strip():
@@ -270,7 +269,7 @@ def _ensure_progress_artifacts(implement_inputs: ImplementStepInputs) -> None:
     progress_paths.runs_jsonl_path(project_root).touch(exist_ok=True)
 
     timestamp = progress_handoff.now_iso()
-    _PROGRESS_JOURNAL.append_feature_log(
+    progress_journal.append_feature_log(
         project_root=project_root,
         feature_id=feature_id,
         lines=[

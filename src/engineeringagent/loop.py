@@ -3,13 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, NamedTuple, Sequence
 
-from engineeringagent.adapters.progress import FilesystemProgressJournal
-
-from .adapters.agents import ConfiguredAgentRunner
 from .adapters.vcs import GitCliVersionControlGateway
 from .adapters.vcs.git_cli import status_porcelain
 from .changed_paths import collect_changed_paths
 from .agents import preflight, run_agent
+from .bootstrap import AppFactory
 from .loop_runtime.controller import run_loop_controller
 from .loop_runtime.implement import run_implement_step_from_inputs
 from .loop_runtime.models import (
@@ -65,8 +63,6 @@ from .specs import progress_kind_label
 
 __all__ = ["run_loop_controller"]
 
-_AGENT_RUNNER = ConfiguredAgentRunner()
-_PROGRESS_JOURNAL = FilesystemProgressJournal()
 _VERSION_CONTROL = GitCliVersionControlGateway()
 
 
@@ -124,6 +120,7 @@ def run_implement_step(
     verbose_output: bool,
 ) -> ImplementStepResult:
     """Run the implement phase for one loop iteration."""
+    app_factory = AppFactory(project_root)
     implement_inputs = ImplementStepInputs(
         project_root=project_root,
         feature=feature,
@@ -133,7 +130,7 @@ def run_implement_step(
     )
     return run_implement_step_from_inputs(
         implement_inputs,
-        agent_runner=_AGENT_RUNNER,
+        agent_runner=app_factory.build_agent_runner(),
     )
 
 
@@ -344,7 +341,9 @@ def _default_iteration_report_observers() -> tuple[IterationReportObserver, ...]
 
 
 def _persist_iteration_report(report: IterationReport) -> None:
-    _PROGRESS_JOURNAL.write_iteration_report(
+    AppFactory(
+        report.telemetry_inputs.iteration_inputs.project_root
+    ).build_progress_journal().write_iteration_report(
         project_root=report.telemetry_inputs.iteration_inputs.project_root,
         feature_id=report.feature_id,
         payload=report.model_dump(mode="json"),

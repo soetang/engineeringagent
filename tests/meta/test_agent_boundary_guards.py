@@ -116,3 +116,40 @@ def test_no_format_json_keyword_argument_outside_agents() -> None:
     assert not violations, 'format="json" bypasses boundary:\n' + _format_violations(
         violations
     )
+
+
+def test_no_configured_agent_runner_imports_outside_bootstrap_or_adapters() -> None:
+    allowed_dirs = (
+        _SRC_ROOT / "bootstrap",
+        _SRC_ROOT / "adapters" / "agents",
+    )
+    violations: list[_Violation] = []
+
+    for path in _iter_python_files(_SRC_ROOT):
+        if any(_is_under(path, allowed) for allowed in allowed_dirs):
+            continue
+
+        tree = _parse_module(path)
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.ImportFrom):
+                continue
+
+            module = node.module or ""
+            if module != "engineeringagent.adapters.agents":
+                continue
+
+            for alias in node.names:
+                if alias.name != "ConfiguredAgentRunner":
+                    continue
+                violations.append(
+                    _Violation(
+                        path=path,
+                        lineno=getattr(node, "lineno", 1),
+                        message="imports ConfiguredAgentRunner outside bootstrap/adapters",
+                    )
+                )
+
+    assert not violations, (
+        "ConfiguredAgentRunner bypasses bootstrap-owned wiring:\n"
+        + _format_violations(violations)
+    )

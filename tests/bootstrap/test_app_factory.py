@@ -7,6 +7,7 @@ from engineeringagent.adapters.checks import (
     FilesystemChecksCatalogRepository,
     RuntimeChecksRunner,
 )
+from engineeringagent.adapters.agents import ConfiguredAgentRunner
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
 from engineeringagent.application import (
@@ -43,6 +44,7 @@ def test_app_factory_builds_default_application_services(tmp_path: Path) -> None
     assert isinstance(validation_service._validator, ChecksRepositoryValidator)
     assert isinstance(factory.build_init_workspace_service(), InitWorkspaceService)
     assert isinstance(factory.build_progress_journal(), FilesystemProgressJournal)
+    assert isinstance(factory.build_agent_runner(), ConfiguredAgentRunner)
     assert isinstance(
         factory.build_prompt_definition_repository(),
         FilesystemPromptDefinitionRepository,

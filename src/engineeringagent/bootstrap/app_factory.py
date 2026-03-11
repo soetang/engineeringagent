@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from engineeringagent.adapters.agents import ConfiguredAgentRunner
 from engineeringagent.adapters.checks import (
     ChecksRepositoryValidator,
     FilesystemChecksCatalogRepository,
@@ -20,7 +21,7 @@ from engineeringagent.application import (
     ValidationService,
 )
 from engineeringagent.config import resolve_harness_root
-from engineeringagent.ports import PromptDefinitionRepository
+from engineeringagent.ports import AgentRunner, PromptDefinitionRepository
 
 
 class AppFactory:
@@ -56,6 +57,10 @@ class AppFactory:
     def build_progress_journal(self) -> FilesystemProgressJournal:
         """Create the default filesystem-backed progress journal."""
         return FilesystemProgressJournal()
+
+    def build_agent_runner(self) -> AgentRunner:
+        """Create the default configured agent-runner adapter."""
+        return ConfiguredAgentRunner()
 
     def build_prompt_definition_repository(self) -> PromptDefinitionRepository:
         """Create the default filesystem-backed prompt-definition repository."""
