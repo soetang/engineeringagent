@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from ..application import (
     InitWorkspaceDependencies,
     InitWorkspaceRequest,
+    InitWorkspaceResult,
     InitWorkspaceService,
 )
 from ..agents import default_backend_id, list_backends
@@ -67,7 +68,7 @@ class InitCliCommandAdapters(BaseModel):
 
     run_init_command_fn: Callable[
         [InitWorkspaceRequest, InitWorkspaceDependencies],
-        int,
+        InitWorkspaceResult,
     ] | None = None
 
 
@@ -180,7 +181,6 @@ def build_init_dependencies(
 ) -> InitWorkspaceDependencies:
     """Assemble dependency implementations for init execution."""
     adapter_bundle = adapters or InitCliAdapters()
-    emit = _coalesce_adapter(adapter_bundle.terminal.emit, print)
     stdout_is_tty_fn = _coalesce_adapter(
         adapter_bundle.terminal.stdout_is_tty_fn, stdout_is_tty
     )
@@ -235,7 +235,6 @@ def build_init_dependencies(
     prompt_context = InitPromptContext(stdout_is_tty_fn=stdout_is_tty_fn)
 
     return InitWorkspaceDependencies(
-        emit=emit,
         resolve_pack=partial(
             resolve_init_pack,
             stdout_is_tty_fn=stdout_is_tty_fn,
@@ -275,11 +274,27 @@ def build_init_dependencies(
         write_init_docs_root_config=write_init_docs_root_config_fn,
         write_init_backend_config=write_init_backend_config_fn,
         build_agents_merge_followup_spec=build_agents_merge_followup_spec_fn,
-        install_precommit_hooks_best_effort=partial(
-            _install_precommit_hooks_best_effort_impl,
-            emit=emit,
+        install_precommit_hooks_best_effort=lambda *, project_root, scaffold_profile: (
+            _collect_precommit_messages(
+                project_root=project_root,
+                scaffold_profile=scaffold_profile,
+            )
         ),
     )
+
+
+def _collect_precommit_messages(
+    *,
+    project_root: Path,
+    scaffold_profile: str,
+) -> tuple[str, ...]:
+    messages: list[str] = []
+    _install_precommit_hooks_best_effort_impl(
+        project_root=project_root,
+        scaffold_profile=scaffold_profile,
+        emit=messages.append,
+    )
+    return tuple(messages)
 
 
 def cmd_init(
@@ -291,8 +306,12 @@ def cmd_init(
     adapter_bundle = adapters or InitCliAdapters()
     request = build_init_request(args)
     deps = build_init_dependencies(adapter_bundle)
+    emit = _coalesce_adapter(adapter_bundle.terminal.emit, print)
     run_init_command_fn = _coalesce_adapter(
         adapter_bundle.command.run_init_command_fn,
         _DEFAULT_INIT_WORKSPACE_RUNNER,
     )
-    return run_init_command_fn(request, deps)
+    result = run_init_command_fn(request, deps)
+    for message in result.messages:
+        emit(message)
+    return result.exit_code

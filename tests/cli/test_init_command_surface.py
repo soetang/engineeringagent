@@ -11,9 +11,9 @@ from engineeringagent.cli import init as cli_init_module
 from engineeringagent.application import (
     InitWorkspaceDependencies,
     InitWorkspaceRequest,
+    InitWorkspaceResult,
 )
 from tests.cli.init_command_support import (
-    DEFAULT_LAUNCHER_ARGS,
     UV_RUN_TOKEN,
     UVX_TOKEN,
     fail_on_input,
@@ -25,6 +25,7 @@ from tests.cli.init_command_support import (
 
 
 def test_scaffold_agents_bootstrap_template_uses_default_launcher_token() -> None:
+    """Verify the default scaffolded AGENTS template prefers the default launcher token."""
     from engineeringagent.init_scaffold import build_scaffold_agents_markdown
 
     template_payload = build_scaffold_agents_markdown()
@@ -51,6 +52,7 @@ def test_init_subcommand_registered(
 
 
 def test_cmd_init_accepts_explicit_cli_overrides(tmp_path: Path) -> None:
+    """Verify explicit init adapters still shape the request and dependency bundle."""
     (tmp_path / "AGENTS.md").write_text("existing agents\n", encoding="utf-8")
     observed = SimpleNamespace(
         request=None,
@@ -80,10 +82,10 @@ def test_cmd_init_accepts_explicit_cli_overrides(tmp_path: Path) -> None:
     def _fake_run_init_command(
         request: InitWorkspaceRequest,
         deps: InitWorkspaceDependencies,
-    ) -> int:
+    ) -> InitWorkspaceResult:
         observed.request = request
         observed.deps = deps
-        return 0
+        return InitWorkspaceResult(exit_code=0, status="completed")
 
     adapters = cli_init_module.InitCliAdapters(
         backend=cli_init_module.InitCliBackendAdapters(

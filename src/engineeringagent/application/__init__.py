@@ -14,6 +14,7 @@ from .guidance_service import (
 from .init_workspace_service import (
     InitWorkspaceDependencies,
     InitWorkspaceRequest,
+    InitWorkspaceResult,
     InitWorkspaceService,
 )
 from .validation_service import (
@@ -43,6 +44,7 @@ __all__ = [
     "GuidanceService",
     "InitWorkspaceDependencies",
     "InitWorkspaceRequest",
+    "InitWorkspaceResult",
     "InitWorkspaceService",
     "ImplementationPromptFeature",
     "ImplementationPromptRequest",

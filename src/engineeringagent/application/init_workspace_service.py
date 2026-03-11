@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Callable, Protocol
+from typing import Callable, Literal, Protocol
 
-from pydantic import BaseModel, ConfigDict, SkipValidation
+from pydantic import BaseModel, ConfigDict, Field, SkipValidation
 
 from engineeringagent.init_scaffold import BaselineScaffoldOptions, DEFAULT_AGENT_MODEL
 
@@ -111,7 +111,7 @@ class InstallPrecommitHooksBestEffort(Protocol):
         *,
         project_root: Path,
         scaffold_profile: str,
-    ) -> None: ...
+    ) -> tuple[str, ...]: ...
 
 
 class InitWorkspaceRequest(BaseModel):  # pylint: disable=too-many-instance-attributes
@@ -137,7 +137,6 @@ class InitWorkspaceDependencies(BaseModel):  # pylint: disable=too-many-instance
 
     model_config = ConfigDict(frozen=True, extra="forbid", arbitrary_types_allowed=True)
 
-    emit: Callable[[str], None]
     resolve_pack: ResolveInitPack
     resolve_backend: SkipValidation[ResolveInitBackend]
     resolve_docs_dir: SkipValidation[ResolveInitDocsDir]
@@ -152,74 +151,94 @@ class InitWorkspaceDependencies(BaseModel):  # pylint: disable=too-many-instance
     install_precommit_hooks_best_effort: SkipValidation[InstallPrecommitHooksBestEffort]
 
 
-def _emit_error_and_fail(
-    dependencies: InitWorkspaceDependencies,
-    error: str | None,
-) -> int:
-    dependencies.emit(str(error))
-    return 1
+class InitWorkspaceResult(BaseModel):
+    """Stable application result for repository initialization."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    exit_code: int
+    status: Literal["completed", "aborted", "failed"]
+    messages: tuple[str, ...] = ()
+    docs_dir: str | None = None
+    created: int = 0
+    skipped: int = 0
+    profile: str | None = None
+    pack: str | None = None
+    agents_launcher: str | None = None
+    agents_mode: str | None = None
+    agents_backup_name: str | None = None
+    merge_spec_output: str | None = None
+    notes: tuple[str, ...] = Field(default_factory=tuple)
+
+
+def _failure_result(error: str | None) -> InitWorkspaceResult:
+    return InitWorkspaceResult(
+        exit_code=1,
+        status="failed",
+        messages=(str(error),),
+    )
 
 
 def _resolve_pack_or_fail(
     request: InitWorkspaceRequest,
     dependencies: InitWorkspaceDependencies,
-) -> tuple[str, int | None]:
+) -> tuple[str, str | None]:
     pack, error = dependencies.resolve_pack(request.pack)
     if error is not None or pack is None:
-        return "", _emit_error_and_fail(dependencies, error)
+        return "", error or "init input error"
     return pack, None
 
 
 def _resolve_backend_or_fail(
     request: InitWorkspaceRequest,
     dependencies: InitWorkspaceDependencies,
-) -> tuple[str, int | None]:
+) -> tuple[str, str | None]:
     selected_backend, error = dependencies.resolve_backend(
         project_root=request.project_root,
         backend=request.backend,
         force=request.force,
     )
     if error is not None or selected_backend is None:
-        return "", _emit_error_and_fail(dependencies, error)
+        return "", error or "init input error"
     return selected_backend, None
 
 
 def _resolve_docs_dir_or_fail(
     request: InitWorkspaceRequest,
     dependencies: InitWorkspaceDependencies,
-) -> tuple[str, int | None]:
+) -> tuple[str, str | None]:
     docs_dir, error = dependencies.resolve_docs_dir(
         project_root=request.project_root,
         docs_mode=request.docs_mode,
         scaffold_docs_dir=request.scaffold_docs_dir,
     )
     if error is not None or docs_dir is None:
-        return "", _emit_error_and_fail(dependencies, error)
+        return "", error or "init input error"
     return docs_dir, None
 
 
 def _resolve_agents_mode_or_fail(
     request: InitWorkspaceRequest,
     dependencies: InitWorkspaceDependencies,
-) -> tuple[str, int | None]:
+) -> tuple[str, str | None]:
     resolved_agents_mode, error = dependencies.resolve_agents_mode(
         project_root=request.project_root,
         agents_mode=request.agents_mode,
     )
     if error is not None or resolved_agents_mode is None:
-        return "", _emit_error_and_fail(dependencies, error)
+        return "", error or "init input error"
     return resolved_agents_mode, None
 
 
 def _resolve_agents_launcher_or_fail(
     request: InitWorkspaceRequest,
     dependencies: InitWorkspaceDependencies,
-) -> tuple[str, int | None]:
+) -> tuple[str, str | None]:
     resolved_agents_launcher, error = dependencies.resolve_agents_launcher(
         agents_launcher=request.agents_launcher,
     )
     if error is not None or resolved_agents_launcher is None:
-        return "", _emit_error_and_fail(dependencies, error)
+        return "", error or "init input error"
     return resolved_agents_launcher, None
 
 
@@ -273,14 +292,14 @@ def _resolve_codex_profile_overwrite_or_fail(
     dependencies: InitWorkspaceDependencies,
     *,
     selected_backend: str,
-) -> tuple[bool, int | None]:
+) -> tuple[bool, str | None]:
     codex_profile_overwrite, error = dependencies.resolve_codex_profile_overwrite(
         project_root=request.project_root,
         selected_backend=selected_backend,
         force=request.force,
     )
     if error is not None:
-        return False, _emit_error_and_fail(dependencies, error)
+        return False, error
     return codex_profile_overwrite, None
 
 
@@ -313,13 +332,13 @@ def _maybe_write_merge_followup_spec(
     return 0, 1, f" merge_spec_skipped={merge_spec_relative}"
 
 
-def _maybe_install_precommit_hooks(
+def _collect_precommit_messages(
     request: InitWorkspaceRequest,
     dependencies: InitWorkspaceDependencies,
-) -> None:
+) -> tuple[str, ...]:
     if request.no_precommit_install:
-        return
-    dependencies.install_precommit_hooks_best_effort(
+        return ()
+    return dependencies.install_precommit_hooks_best_effort(
         project_root=request.project_root,
         scaffold_profile=request.scaffold_profile,
     )
@@ -342,51 +361,58 @@ class InitWorkspaceService:
         self,
         request: InitWorkspaceRequest,
         dependencies: InitWorkspaceDependencies,
-    ) -> int:
-        """Execute init orchestration with injected dependencies and stable CLI semantics."""
-        pack, failure_code = _resolve_pack_or_fail(request, dependencies)
-        if failure_code is not None:
-            return failure_code
+    ) -> InitWorkspaceResult:
+        """Execute init orchestration and return typed application results."""
+        pack, error = _resolve_pack_or_fail(request, dependencies)
+        if error is not None:
+            return _failure_result(error)
 
-        selected_backend, failure_code = _resolve_backend_or_fail(
+        selected_backend, error = _resolve_backend_or_fail(
             request,
             dependencies,
         )
-        if failure_code is not None:
-            return failure_code
+        if error is not None:
+            return _failure_result(error)
 
-        docs_dir, failure_code = _resolve_docs_dir_or_fail(request, dependencies)
-        if failure_code is not None:
-            return failure_code
+        docs_dir, error = _resolve_docs_dir_or_fail(request, dependencies)
+        if error is not None:
+            return _failure_result(error)
 
-        resolved_agents_mode, failure_code = _resolve_agents_mode_or_fail(
+        resolved_agents_mode, error = _resolve_agents_mode_or_fail(
             request,
             dependencies,
         )
-        if failure_code is not None:
-            return failure_code
+        if error is not None:
+            return _failure_result(error)
         if resolved_agents_mode == "abort":
-            dependencies.emit(
-                "init aborted: kept existing AGENTS.md; no scaffold files changed"
+            return InitWorkspaceResult(
+                exit_code=0,
+                status="aborted",
+                messages=(
+                    "init aborted: kept existing AGENTS.md; no scaffold files changed",
+                ),
+                docs_dir=docs_dir,
+                profile=request.scaffold_profile,
+                pack=pack,
+                agents_mode=resolved_agents_mode,
             )
-            return 0
 
-        agents_launcher, failure_code = _resolve_agents_launcher_or_fail(
+        agents_launcher, error = _resolve_agents_launcher_or_fail(
             request,
             dependencies,
         )
-        if failure_code is not None:
-            return failure_code
+        if error is not None:
+            return _failure_result(error)
 
-        codex_profile_overwrite, failure_code = (
+        codex_profile_overwrite, error = (
             _resolve_codex_profile_overwrite_or_fail(
                 request,
                 dependencies,
                 selected_backend=selected_backend,
             )
         )
-        if failure_code is not None:
-            return failure_code
+        if error is not None:
+            return _failure_result(error)
 
         agents_backup_name = _maybe_backup_agents_file(
             request,
@@ -408,8 +434,9 @@ class InitWorkspaceService:
             ),
         )
 
+        notes: list[str] = []
         if pack == "standard":
-            dependencies.emit(
+            notes.append(
                 "init pack standard: wired a demo failing fitness rule into precommit (expected to fail)"
             )
 
@@ -435,13 +462,13 @@ class InitWorkspaceService:
         created += merge_created
         skipped += merge_skipped
 
-        _maybe_install_precommit_hooks(request, dependencies)
+        precommit_messages = _collect_precommit_messages(request, dependencies)
 
         agents_mode_output = _render_agents_mode_output(
             resolved_agents_mode,
             agents_backup_name,
         )
-        dependencies.emit(
+        summary = (
             f"init scaffold complete: docs_dir={docs_dir} "
             f"created={created} skipped={skipped}"
             f" profile={request.scaffold_profile}"
@@ -449,4 +476,18 @@ class InitWorkspaceService:
             f" agents_launcher={agents_launcher}"
             f"{agents_mode_output}{merge_spec_output}"
         )
-        return 0
+        return InitWorkspaceResult(
+            exit_code=0,
+            status="completed",
+            messages=(*precommit_messages, summary),
+            docs_dir=docs_dir,
+            created=created,
+            skipped=skipped,
+            profile=request.scaffold_profile,
+            pack=pack,
+            agents_launcher=agents_launcher,
+            agents_mode=resolved_agents_mode,
+            agents_backup_name=agents_backup_name,
+            merge_spec_output=merge_spec_output.strip() or None,
+            notes=tuple(notes),
+        )

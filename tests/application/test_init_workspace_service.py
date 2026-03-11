@@ -5,6 +5,7 @@ from pathlib import Path
 from engineeringagent.application import (
     InitWorkspaceDependencies,
     InitWorkspaceRequest,
+    InitWorkspaceResult,
     InitWorkspaceService,
 )
 
@@ -29,10 +30,8 @@ def _build_request(tmp_path: Path, **overrides: object) -> InitWorkspaceRequest:
 
 def _build_dependencies(
     tmp_path: Path,
-    emitted: list[str],
 ) -> InitWorkspaceDependencies:
     return InitWorkspaceDependencies(
-        emit=emitted.append,
         resolve_pack=lambda _pack: ("slim", None),
         resolve_backend=lambda **_kwargs: ("codex", None),
         resolve_docs_dir=lambda **_kwargs: ("docs", None),
@@ -44,9 +43,7 @@ def _build_dependencies(
         write_init_docs_root_config=lambda **_kwargs: (4, 5),
         write_init_backend_config=lambda **_kwargs: (6, 7),
         build_agents_merge_followup_spec=lambda backup_name: f"merge {backup_name}",
-        install_precommit_hooks_best_effort=lambda **_kwargs: emitted.append(
-            "precommit-installed"
-        ),
+        install_precommit_hooks_best_effort=lambda **_kwargs: ("precommit-installed",),
     )
 
 
@@ -54,34 +51,52 @@ def test_init_workspace_service_runs_scaffold_flow_and_emits_summary(
     tmp_path: Path,
 ) -> None:
     """The application service should orchestrate scaffold work without CLI output logic."""
-    emitted: list[str] = []
-
     result = InitWorkspaceService().run(
         _build_request(tmp_path),
-        _build_dependencies(tmp_path, emitted),
+        _build_dependencies(tmp_path),
     )
 
-    assert result == 0
-    assert emitted == [
-        "precommit-installed",
-        "init scaffold complete: docs_dir=docs created=12 skipped=15"
-        " profile=python_uv pack=slim agents_launcher=uvx agents_mode=overwrite",
-    ]
+    assert result == InitWorkspaceResult(
+        exit_code=0,
+        status="completed",
+        messages=(
+            "precommit-installed",
+            "init scaffold complete: docs_dir=docs created=12 skipped=15"
+            " profile=python_uv pack=slim agents_launcher=uvx agents_mode=overwrite",
+        ),
+        docs_dir="docs",
+        created=12,
+        skipped=15,
+        profile="python_uv",
+        pack="slim",
+        agents_launcher="uvx",
+        agents_mode="overwrite",
+        notes=(),
+    )
 
 
 def test_init_workspace_service_stops_cleanly_when_agents_preserve_aborts(
     tmp_path: Path,
 ) -> None:
     """Abort mode should return success after emitting the stable user message."""
-    emitted: list[str] = []
     dependencies = InitWorkspaceDependencies(
         **{
-            **_build_dependencies(tmp_path, emitted).model_dump(),
+            **_build_dependencies(tmp_path).model_dump(),
             "resolve_agents_mode": lambda **_kwargs: ("abort", None),
         }
     )
 
     result = InitWorkspaceService().run(_build_request(tmp_path), dependencies)
 
-    assert result == 0
-    assert emitted == ["init aborted: kept existing AGENTS.md; no scaffold files changed"]
+    assert result == InitWorkspaceResult(
+        exit_code=0,
+        status="aborted",
+        messages=(
+            "init aborted: kept existing AGENTS.md; no scaffold files changed",
+        ),
+        docs_dir="docs",
+        profile="python_uv",
+        pack="slim",
+        agents_mode="abort",
+        notes=(),
+    )
