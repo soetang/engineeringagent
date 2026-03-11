@@ -6,6 +6,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Mapping, TypeVar
 
+from pydantic import BaseModel, ConfigDict
+
 from engineeringagent.domain.specification.feature_specification import (
     FeatureArtifacts,
     FeaturePriority,
@@ -16,9 +18,18 @@ from engineeringagent.domain.specification.feature_specification import (
 )
 from engineeringagent.ports import PromptDefinitionRepository
 
-from .prompt_models import (
-    ImplementationPromptRequest,
-)
+
+class ImplementationPromptRequest(BaseModel):
+    """Typed input for implementation prompt rendering."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    feature_id: str
+    specification_path: Path
+    plan_path: str | None = None
+    research_path: str | None = None
+    handoff_path: str | None = None
+    retry_feedback: str | None = None
 
 
 class PromptBuilder:
@@ -128,6 +139,7 @@ def _normalize_feedback(feedback: str | None) -> str:
 
 
 def _normalize_plain_prompt_feedback(value: str | None) -> str | None:
+    """Trim plain retry feedback and collapse blanks to None."""
     if not isinstance(value, str):
         return None
     normalized = value.strip()
@@ -137,6 +149,7 @@ def _normalize_plain_prompt_feedback(value: str | None) -> str | None:
 def _coerce_feature_specification(
     feature: Mapping[str, object] | FeatureSpecification,
 ) -> FeatureSpecification:
+    """Normalize legacy mapping inputs into the canonical specification model."""
     if isinstance(feature, FeatureSpecification):
         return feature
 

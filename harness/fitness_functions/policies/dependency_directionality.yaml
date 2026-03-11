@@ -92,14 +92,6 @@ rules:
       - engineeringagent.loop_runtime
       - engineeringagent.presentation.presenters
       - engineeringagent.specs
-  - module: engineeringagent.application.prompt_models
-    blocked_dependencies:
-      - engineeringagent.adapters
-      - engineeringagent.bootstrap
-      - engineeringagent.cli
-      - engineeringagent.loop_runtime
-      - engineeringagent.presentation
-      - engineeringagent.specs
   - module: engineeringagent.application.run_loop_service
     blocked_dependencies:
       - engineeringagent.adapters

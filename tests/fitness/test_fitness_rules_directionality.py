@@ -218,12 +218,8 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
         "application/prompt_builder.py",
         "import engineeringagent.adapters.progress.paths\n"
         "import engineeringagent.presentation.presenters.prompt_feedback\n"
+        "import engineeringagent.presentation.presenters.terminal\n"
         "import engineeringagent.specs\n",
-    )
-    _write_module(
-        tmp_path,
-        "application/prompt_models.py",
-        "import engineeringagent.presentation.presenters.terminal\n",
     )
     _write_module(
         tmp_path,
@@ -299,11 +295,11 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
         ),
         (
             "engineeringagent.application.prompt_builder imports blocked dependency "
-            "engineeringagent.specs"
+            "engineeringagent.presentation.presenters.terminal"
         ),
         (
-            "engineeringagent.application.prompt_models imports blocked dependency "
-            "engineeringagent.presentation.presenters.terminal"
+            "engineeringagent.application.prompt_builder imports blocked dependency "
+            "engineeringagent.specs"
         ),
         (
             "engineeringagent.application.run_loop_service imports blocked dependency "

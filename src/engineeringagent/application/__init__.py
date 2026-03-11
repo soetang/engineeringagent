@@ -1,13 +1,13 @@
 """Application-layer services and contracts."""
 
-from .prompt_models import (
-    ImplementationPromptRequest,
-)
-
 from .checks_service import (
     ChecksService,
     RunChecksRequest,
     RunChecksResult,
+)
+from .prompt_builder import (
+    ImplementationPromptRequest,
+    PromptBuilder,
 )
 from .feature_iteration_service import (
     FeatureIterationRequest,
@@ -34,9 +34,6 @@ from .workspace_recovery_service import (
     RecoverWorkspaceRequest,
     RecoverWorkspaceResult,
     WorkspaceRecoveryService,
-)
-from .prompt_builder import (
-    PromptBuilder,
 )
 from .run_loop_service import (
     RunLoopRequest,
