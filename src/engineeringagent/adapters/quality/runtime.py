@@ -1,4 +1,4 @@
-"""Quality adapter runtime for deterministic checks orchestration."""
+"""Quality adapters for deterministic checks orchestration."""
 
 from __future__ import annotations
 
@@ -38,14 +38,43 @@ from engineeringagent.checks.strategy_contracts import (
     CheckStrategy,
     build_strategy_registry,
 )
-from engineeringagent.domain.quality import ChangedPathsResult
+from engineeringagent.domain.quality import (
+    ChangedPathsResult,
+    ChecksRunResult as DomainChecksRunResult,
+    HarnessChecksDocument,
+    reviewers_group_selected,
+)
+from engineeringagent.ports import ChecksRunRequest, ChecksRunner
 
 __all__ = [
     "ChecksRunResult",
+    "RuntimeChecksRunner",
     "run_checks",
     "_call_collect_changed_paths",
     "_resolve_changed_paths",
 ]
+
+
+class RuntimeChecksRunner(ChecksRunner):
+    """Run checks through the packaged quality runtime."""
+
+    def run(self, request: ChecksRunRequest) -> DomainChecksRunResult:
+        """Execute one checks request through the concrete runtime module."""
+        return run_checks(
+            request.project_root,
+            phase=request.phase,
+            checks=request.selected_checks,
+            check_id=request.check_id,
+            feature_path=request.feature_path,
+            verbose_output=request.verbose_output,
+            base=request.base,
+            head=request.head,
+            dry_run=request.dry_run,
+        )
+
+    def reviewers_group_selected(self, selected_checks: list[str] | None) -> bool:
+        """Return whether the selected groups require reviewer context."""
+        return reviewers_group_selected(selected_checks)
 
 
 class _OrchestrationState:
@@ -255,7 +284,7 @@ _GROUP_TO_STRATEGY_TYPE = {
 
 
 def _build_strategy_registry(
-    doc: object | None,
+    doc: HarnessChecksDocument | None,
     request: _NormalizedRunChecksRequest,
 ) -> dict[str, CheckStrategy]:
     strategies: list[CheckStrategy] = [

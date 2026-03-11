@@ -18,31 +18,16 @@ def test_runtime_checks_runner_delegates_to_concrete_runtime(
 
     def _fake_run_checks(
         project_root: Path,
-        *,
-        phase: HarnessCheckPhase,
-        checks: list[str] | None = None,
-        check_id: str | None = None,
-        feature_path: str | None = None,
-        verbose_output: bool = False,
-        base: str | None = None,
-        head: str | None = None,
-        dry_run: bool = False,
+        **kwargs: object,
     ) -> ChecksRunResult:
         captured.update(
             project_root=project_root,
-            phase=phase,
-            checks=checks,
-            check_id=check_id,
-            feature_path=feature_path,
-            verbose_output=verbose_output,
-            base=base,
-            head=head,
-            dry_run=dry_run,
+            **kwargs,
         )
         return expected
 
     monkeypatch.setattr(
-        "engineeringagent.adapters.quality.runtime_checks_runner.run_checks",
+        "engineeringagent.adapters.quality.runtime.run_checks",
         _fake_run_checks,
     )
 

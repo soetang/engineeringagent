@@ -26,7 +26,7 @@ def test_configured_agent_runner_delegates_to_canonical_agent_api(
         return "ok"
 
     monkeypatch.setattr(
-        "engineeringagent.adapters.agents.configured_agent_runner.run_agent",
+        "engineeringagent.adapters.agents.run_agent",
         _fake_run_agent,
     )
 
