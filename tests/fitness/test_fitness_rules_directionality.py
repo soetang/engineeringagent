@@ -38,6 +38,7 @@ def _write_directionality_fixture(project_root: Path) -> None:
 def _write_repo_policy_fixture(project_root: Path) -> None:
     _write_directionality_fixture(project_root)
     _write_module(project_root, "domain/guidance/__init__.py", "")
+    _write_module(project_root, "domain/quality/__init__.py", "")
     _write_module(project_root, "checks/contracts.py", "")
     _write_module(project_root, "cli/__init__.py", "")
     _write_module(project_root, "cli/app.py", "")
@@ -50,6 +51,8 @@ def _write_repo_policy_fixture(project_root: Path) -> None:
     _write_module(project_root, "application/guidance_service.py", "")
     _write_module(project_root, "application/prompt_builder.py", "")
     _write_module(project_root, "application/validation_service.py", "")
+    _write_module(project_root, "ports/__init__.py", "")
+    _write_module(project_root, "ports/checks_runner.py", "")
 
 
 def _write_policy(project_root: Path, rules: list[dict[str, object]]) -> Path:
@@ -176,7 +179,7 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
     _write_module(
         tmp_path,
         "application/checks_service.py",
-        "import engineeringagent.adapters.prompts\n",
+        "import engineeringagent.checks\n",
     )
     _write_module(
         tmp_path,
@@ -200,6 +203,11 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
     )
     _write_module(
         tmp_path,
+        "ports/checks_runner.py",
+        "import engineeringagent.checks\n",
+    )
+    _write_module(
+        tmp_path,
         "cli/validate.py",
         "from engineeringagent.application import DefaultValidationService\n",
     )
@@ -217,7 +225,7 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
     assert payload["violations"] == [
         (
             "engineeringagent.application.checks_service imports blocked dependency "
-            "engineeringagent.adapters.prompts"
+            "engineeringagent.checks"
         ),
         (
             "engineeringagent.application.guidance_service imports blocked dependency "
@@ -258,6 +266,10 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
         (
             "engineeringagent.cli.validate imports blocked dependency "
             "engineeringagent.application.DefaultValidationService"
+        ),
+        (
+            "engineeringagent.ports.checks_runner imports blocked dependency "
+            "engineeringagent.checks"
         ),
         (
             "engineeringagent.specs imports blocked dependency "

@@ -7,7 +7,7 @@ from typing import Protocol
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.checks import ChecksRunResult, HarnessCheckPhase
+from engineeringagent.domain.quality import ChecksRunResult, HarnessCheckPhase
 
 
 class ChecksRunRequest(BaseModel):

@@ -12,7 +12,7 @@ from pydantic import (
 )
 from pydantic_core import InitErrorDetails, PydanticCustomError
 
-from engineeringagent.checks import HarnessCheckPhase
+from engineeringagent.domain.quality import HarnessCheckPhase
 from engineeringagent.presentation.json_schema import JSON_SCHEMA_DRAFT_URL
 from engineeringagent import spec_bundles as _spec_bundles
 

@@ -6,7 +6,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.checks import ChecksRunResult, HarnessCheckPhase
+from engineeringagent.domain.quality import ChecksRunResult, HarnessCheckPhase
 from engineeringagent.ports import ChecksRunRequest, ChecksRunner
 
 

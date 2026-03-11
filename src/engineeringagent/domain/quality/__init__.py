@@ -1,18 +1,19 @@
-from __future__ import annotations
+"""Quality-domain models."""
 
-from engineeringagent.domain.quality import (
+from .checks import (
     CheckDecision,
     CheckDecisionAction,
     CheckExecutionRecord,
+    ChecksRunResult,
     CommandInvocationRecord,
     HarnessCheckPhase,
 )
-
 
 __all__ = [
     "CheckDecision",
     "CheckDecisionAction",
     "CheckExecutionRecord",
+    "ChecksRunResult",
     "CommandInvocationRecord",
     "HarnessCheckPhase",
 ]
