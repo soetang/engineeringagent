@@ -1,28 +1,31 @@
-"""Helpers for constructing the legacy loop runtime context."""
+"""Adapter-owned helpers for constructing transitional loop runtime context."""
 
 from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, Callable, NamedTuple, Sequence
 
+from engineeringagent.agents import preflight, run_agent
 from engineeringagent.application.feature_iteration.models import (
     FeatureIterationInputs,
     IterationOutcome,
     IterationSummaryInputs,
 )
-from engineeringagent.agents import preflight, run_agent
-from engineeringagent.ports import VersionControlFailure
-from engineeringagent.presentation.presenters.terminal import RunOutputPresenter
-from engineeringagent.specs import progress_kind_label
-
-from .feature_state import (
+from engineeringagent.loop_runtime.feature_state import (
     discover_active_feature_paths,
     done_features_pending_archive,
     pending_features,
     resolve_feature_paths,
 )
-from .run_context import LoopRun, RunConfig, RunServices
-from .selection import choose_feature_with_selector, deterministic_feature_choice
+from engineeringagent.loop_runtime.selection import (
+    choose_feature_with_selector,
+    deterministic_feature_choice,
+)
+from engineeringagent.ports import VersionControlFailure
+from engineeringagent.presentation.presenters.terminal import RunOutputPresenter
+from engineeringagent.specs import progress_kind_label
+
+from .run_loop_context import LoopRun, RunConfig, RunServices
 
 
 def _print_run_all_snapshot_banner(resolved_paths: Sequence[Path]) -> None:
@@ -34,7 +37,6 @@ def _print_run_all_snapshot_banner(resolved_paths: Sequence[Path]) -> None:
 
 def print_summary(summary: IterationSummaryInputs) -> None:
     """Print a one-line loop summary and optional gate failure."""
-
     presenter = RunOutputPresenter.for_current_terminal()
     if summary.attempt is not None:
         print(f"🔁 Iteration {summary.attempt} · {summary.feature_id or '-'}")

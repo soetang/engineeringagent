@@ -23,14 +23,14 @@ from engineeringagent.bootstrap.iteration_reporting import (
 )
 from engineeringagent.bootstrap.runtime_execution import run_loop_controller
 from engineeringagent.domain.specification import feature_completion_commit_subject
-from engineeringagent.loop_runtime.run_builder import (
+from engineeringagent.adapters.runtime.run_loop_builder import (
     RunConfigOptions,
     build_loop_run,
     build_run_config,
     enforce_worktree_precondition,
     run_selected_feature_iterations,
 )
-from engineeringagent.loop_runtime.run_context import LoopRun
+from engineeringagent.adapters.runtime.run_loop_context import LoopRun
 from engineeringagent.ports import (
     CommitRequest,
     FeatureIterationExecutionRequest,

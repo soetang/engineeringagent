@@ -6,6 +6,11 @@ from typing import Any
 
 import pytest
 
+from engineeringagent.adapters.runtime.run_loop_context import (
+    LoopRun,
+    RunConfig,
+    RunServices,
+)
 import engineeringagent.loop_runtime.iteration as iteration_module
 from engineeringagent.loop_runtime.iteration import (
     IterationPipelineDependencies,
@@ -25,7 +30,6 @@ from engineeringagent.application.feature_iteration.models import (
     ReviewerPhaseOutcome,
     VerificationPhaseOutcome,
 )
-from engineeringagent.loop_runtime.run_context import LoopRun, RunConfig, RunServices
 from engineeringagent.loop_runtime.phases import (
     CompletionPhaseDependencies,
     GatePhaseDependencies,

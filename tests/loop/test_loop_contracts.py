@@ -17,6 +17,12 @@ from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.adapters.progress.iteration_telemetry import (
     write_iteration_telemetry,
 )
+from engineeringagent.adapters.runtime.run_loop_context import (
+    LoopRun,
+    RunConfig,
+    RunServices,
+    RunState,
+)
 from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
 from engineeringagent.application import PromptBuilder
 from engineeringagent.ports import AgentRunRequest, AgentRunner
@@ -33,12 +39,6 @@ from engineeringagent.application.feature_iteration.models import (
 from engineeringagent.agents.contracts import AgentOutputValidationError
 from engineeringagent.loop_runtime.implement import (
     run_implement_step_from_inputs,
-)
-from engineeringagent.loop_runtime.run_context import (
-    LoopRun,
-    RunConfig,
-    RunServices,
-    RunState,
 )
 from engineeringagent.adapters.progress.handoff import ImplementProgressEnvelope
 from engineeringagent.adapters.progress.handoff import (

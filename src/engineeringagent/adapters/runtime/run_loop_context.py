@@ -1,4 +1,4 @@
-"""Typed run-context models for loop orchestration."""
+"""Typed run-context models for adapter-owned loop orchestration."""
 
 from __future__ import annotations
 

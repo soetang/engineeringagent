@@ -31,7 +31,7 @@ from .loop_runtime.feature_state import (
     pending_features,
     resolve_feature_paths,
 )
-from .loop_runtime.run_context import LoopRun, RunConfig, RunServices
+from .adapters.runtime.run_loop_context import LoopRun, RunConfig, RunServices
 from .domain.specification import feature_completion_commit_subject
 from .ports import CommitRequest, VersionControlFailure, VersionControlGateway
 

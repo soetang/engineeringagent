@@ -3,13 +3,17 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Callable, TypedDict
 
-import engineeringagent.loop_runtime.run_builder as run_builder_module
+import engineeringagent.adapters.runtime.run_loop_builder as run_builder_module
+from engineeringagent.adapters.runtime.run_loop_context import (
+    LoopRun,
+    RunConfig,
+    RunState,
+)
 from engineeringagent.application.feature_iteration.models import (
     FeatureIterationInputs,
     IterationOutcome,
     IterationSummaryInputs,
 )
-from engineeringagent.loop_runtime.run_context import LoopRun, RunConfig, RunState
 from engineeringagent.ports import VersionControlFailure, WorktreeStatus
 
 

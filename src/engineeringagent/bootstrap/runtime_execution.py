@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from engineeringagent.loop_runtime.run_context import LoopRun
+from engineeringagent.adapters.runtime.run_loop_context import LoopRun
 
 
 def run_loop_controller(loop_run: LoopRun) -> int:

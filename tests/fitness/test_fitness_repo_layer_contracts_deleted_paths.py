@@ -120,7 +120,8 @@ def test_repo_layer_contracts_rule_blocks_deleted_legacy_checks_service_module(
     assert payload["status"] == "fail"
     assert payload["rule_id"] == "architecture.repo-layer-contracts"
     assert payload["violations"] == [
-        "src/engineeringagent/application/checks/service.py: deleted legacy module path must remain absent"
+        "src/engineeringagent/application/checks/service.py: deleted legacy module path must remain absent",
+        "src/engineeringagent/application/checks: deleted legacy directory path must remain absent",
     ]
 
 
@@ -190,4 +191,54 @@ def test_repo_layer_contracts_rule_blocks_deleted_loop_runtime_models_module(
     assert payload["rule_id"] == "architecture.repo-layer-contracts"
     assert payload["violations"] == [
         "src/engineeringagent/loop_runtime/models.py: deleted legacy module path must remain absent"
+    ]
+
+
+def test_repo_layer_contracts_rule_blocks_deleted_loop_runtime_run_builder_module(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Fail when the removed loop runtime run-builder module reappears."""
+    legacy_module = (
+        tmp_path
+        / "src"
+        / "engineeringagent"
+        / "loop_runtime"
+        / "run_builder.py"
+    )
+    legacy_module.parent.mkdir(parents=True, exist_ok=True)
+    legacy_module.write_text("", encoding="utf-8")
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert payload["rule_id"] == "architecture.repo-layer-contracts"
+    assert payload["violations"] == [
+        "src/engineeringagent/loop_runtime/run_builder.py: deleted legacy module path must remain absent"
+    ]
+
+
+def test_repo_layer_contracts_rule_blocks_deleted_loop_runtime_run_context_module(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Fail when the removed loop runtime run-context module reappears."""
+    legacy_module = (
+        tmp_path
+        / "src"
+        / "engineeringagent"
+        / "loop_runtime"
+        / "run_context.py"
+    )
+    legacy_module.parent.mkdir(parents=True, exist_ok=True)
+    legacy_module.write_text("", encoding="utf-8")
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert payload["rule_id"] == "architecture.repo-layer-contracts"
+    assert payload["violations"] == [
+        "src/engineeringagent/loop_runtime/run_context.py: deleted legacy module path must remain absent"
     ]
