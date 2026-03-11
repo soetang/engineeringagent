@@ -1,5 +1,9 @@
 """Feature-iteration workflow contracts and models."""
 
+from .implement import (
+    ImplementStepRuntimeDependencies,
+    run_implement_step_from_inputs,
+)
 from .models import (
     CommandTiming,
     CompletionCommitOutcome,
@@ -31,6 +35,7 @@ __all__ = [
     "FeatureIterationResult",
     "FeatureIterationService",
     "GatePhaseOutcome",
+    "ImplementStepRuntimeDependencies",
     "ImplementStepInputs",
     "ImplementStepResult",
     "InitialFeatureLoadOutcome",
@@ -42,4 +47,5 @@ __all__ = [
     "PostImplementFeatureOutcome",
     "ReviewerPhaseOutcome",
     "VerificationPhaseOutcome",
+    "run_implement_step_from_inputs",
 ]

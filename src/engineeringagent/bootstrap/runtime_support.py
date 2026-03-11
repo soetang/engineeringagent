@@ -6,12 +6,18 @@ from importlib import import_module
 from pathlib import Path
 from typing import Any
 
-from engineeringagent.loop_runtime.implement import run_implement_step_from_inputs
+from engineeringagent.agents import classify_backend_exception, describe_action
+from engineeringagent.adapters.progress import paths as progress_paths
+from engineeringagent.application.feature_iteration import (
+    ImplementStepRuntimeDependencies,
+    run_implement_step_from_inputs,
+)
 from engineeringagent.application.feature_iteration.models import (
     ImplementStepInputs,
     ImplementStepResult,
     IterationSummaryInputs,
 )
+from engineeringagent.config import repo_relative_label
 from engineeringagent.presentation.presenters.terminal import RunOutputPresenter
 from engineeringagent.specs import progress_kind_label
 
@@ -41,6 +47,20 @@ def git_head_short(project_root: Path) -> str | None:
     return head_commit
 
 
+def build_implement_step_runtime_dependencies() -> ImplementStepRuntimeDependencies:
+    """Build runtime-owned helpers for application implement-step orchestration."""
+
+    return ImplementStepRuntimeDependencies(
+        describe_action=describe_action,
+        classify_backend_exception=classify_backend_exception,
+        ensure_progress_artifacts=_ensure_progress_artifacts,
+        repo_relative_label=lambda project_root, path: repo_relative_label(
+            project_root,
+            path,
+        ),
+    )
+
+
 def run_implement_step(
     project_root: Path,
     feature: dict[str, Any],
@@ -62,7 +82,18 @@ def run_implement_step(
         agent_runner=_LoopAgentRunner(),
         prompt_builder=app_factory.build_prompt_builder(),
         progress_journal=app_factory.build_progress_journal(),
+        runtime_dependencies=build_implement_step_runtime_dependencies(),
     )
+
+
+def _ensure_progress_artifacts(implement_inputs: ImplementStepInputs) -> None:
+    project_root = implement_inputs.project_root
+    feature_id = implement_inputs.feature.get("id")
+    if not isinstance(feature_id, str) or not feature_id.strip():
+        feature_id = "unknown-feature"
+
+    progress_paths.runs_dir(project_root).mkdir(parents=True, exist_ok=True)
+    progress_paths.runs_jsonl_path(project_root).touch(exist_ok=True)
 
 
 def print_summary(summary: IterationSummaryInputs) -> None:

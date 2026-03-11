@@ -31,13 +31,16 @@ from engineeringagent.loop import (
     _run_feature_iteration,
 )
 from engineeringagent.bootstrap.runtime_execution import run_loop_controller
+from engineeringagent.bootstrap.runtime_support import (
+    build_implement_step_runtime_dependencies,
+)
 from engineeringagent.application.feature_iteration.models import (
     FeatureIterationInputs,
     ImplementStepInputs,
     IterationTelemetryInputs,
 )
 from engineeringagent.agents.contracts import AgentOutputValidationError
-from engineeringagent.loop_runtime.implement import (
+from engineeringagent.application.feature_iteration import (
     run_implement_step_from_inputs,
 )
 from engineeringagent.adapters.progress.handoff import ImplementProgressEnvelope
@@ -80,6 +83,10 @@ def _loop_prompt_builder(project_root: Path) -> PromptBuilder:
             resolve_harness_root(project_root) / "prompts"
         )
     )
+
+
+def _runtime_dependencies():
+    return build_implement_step_runtime_dependencies()
 
 
 def test_progress_paths_contract(tmp_path: Path) -> None:
@@ -351,6 +358,7 @@ def test_run_implement_step_from_inputs_requires_backend_binary_when_available(
         agent_runner=_StubAgentRunner(FileNotFoundError()),
         prompt_builder=_loop_prompt_builder(inputs.project_root),
         progress_journal=FilesystemProgressJournal(),
+        runtime_dependencies=_runtime_dependencies(),
     )
 
     assert len(result) == 5
@@ -379,6 +387,7 @@ def test_run_implement_step_from_inputs_reraises_unexpected_errors(
             agent_runner=_StubAgentRunner(RuntimeError("boom")),
             prompt_builder=_loop_prompt_builder(inputs.project_root),
             progress_journal=FilesystemProgressJournal(),
+            runtime_dependencies=_runtime_dependencies(),
         )
 
 
@@ -399,6 +408,7 @@ def test_run_implement_step_from_inputs_reraises_non_signature_type_error(
             agent_runner=_StubAgentRunner(TypeError("boom")),
             prompt_builder=_loop_prompt_builder(inputs.project_root),
             progress_journal=FilesystemProgressJournal(),
+            runtime_dependencies=_runtime_dependencies(),
         )
 
 
@@ -425,6 +435,7 @@ def test_run_implement_step_from_inputs_uses_fallback_on_validation_error(
         ),
         prompt_builder=_loop_prompt_builder(inputs.project_root),
         progress_journal=FilesystemProgressJournal(),
+        runtime_dependencies=_runtime_dependencies(),
     )
 
     assert len(result) == 5
@@ -459,6 +470,7 @@ def test_run_implement_step_from_inputs_accepts_structured_envelope_output(
         ),
         prompt_builder=_loop_prompt_builder(inputs.project_root),
         progress_journal=FilesystemProgressJournal(),
+        runtime_dependencies=_runtime_dependencies(),
     )
 
     assert len(result) == 5
@@ -511,6 +523,7 @@ def test_run_implement_step_from_inputs_preserves_phase_context_in_fallback_enve
             agent_runner=_StubAgentRunner('{"summary":""}'),
             prompt_builder=_loop_prompt_builder(inputs.project_root),
             progress_journal=FilesystemProgressJournal(),
+            runtime_dependencies=_runtime_dependencies(),
         )
     )
 
@@ -571,6 +584,7 @@ def test_run_implement_step_from_inputs_uses_raw_phase_context_for_invalid_plan_
             agent_runner=_StubAgentRunner('{"summary":""}'),
             prompt_builder=_loop_prompt_builder(inputs.project_root),
             progress_journal=FilesystemProgressJournal(),
+            runtime_dependencies=_runtime_dependencies(),
         )
     )
 
@@ -626,6 +640,7 @@ def test_run_implement_step_from_inputs_does_not_project_feature_context_onto_mi
             agent_runner=_StubAgentRunner('{"summary":""}'),
             prompt_builder=_loop_prompt_builder(inputs.project_root),
             progress_journal=FilesystemProgressJournal(),
+            runtime_dependencies=_runtime_dependencies(),
         )
     )
 
@@ -681,6 +696,7 @@ def test_run_implement_step_from_inputs_preserves_feature_context_in_fallback_en
             agent_runner=_StubAgentRunner('{"summary":""}'),
             prompt_builder=_loop_prompt_builder(inputs.project_root),
             progress_journal=FilesystemProgressJournal(),
+            runtime_dependencies=_runtime_dependencies(),
         )
     )
 
@@ -1144,6 +1160,7 @@ def test_run_implement_step_uses_injected_prompt_builder(tmp_path: Path) -> None
         agent_runner=agent_runner,
         prompt_builder=_PromptBuilder(),
         progress_journal=FilesystemProgressJournal(),
+        runtime_dependencies=_runtime_dependencies(),
     )
 
     assert result[0] is True
@@ -1237,6 +1254,7 @@ def test_run_implement_step_passes_handoff_path_only_when_persisted(
         agent_runner=agent_runner,
         prompt_builder=_PromptBuilder(),
         progress_journal=FilesystemProgressJournal(),
+        runtime_dependencies=_runtime_dependencies(),
     )
 
     assert result[0] is True
@@ -1370,6 +1388,7 @@ def test_run_implement_step_preserves_non_repo_handoff_path_reference(
         agent_runner=agent_runner,
         prompt_builder=_PromptBuilder(),
         progress_journal=_ProgressJournal(),
+        runtime_dependencies=_runtime_dependencies(),
     )
 
     assert result[0] is True

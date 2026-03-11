@@ -10,6 +10,7 @@ from .feature_iteration import (
     GatePhaseOutcome,
     ImplementStepInputs,
     ImplementStepResult,
+    ImplementStepRuntimeDependencies,
     InitialFeatureLoadOutcome,
     IterationOutcome,
     IterationReport,
@@ -19,6 +20,7 @@ from .feature_iteration import (
     PostImplementFeatureOutcome,
     ReviewerPhaseOutcome,
     VerificationPhaseOutcome,
+    run_implement_step_from_inputs,
 )
 from .checks_service import ChecksService, RunChecksRequest, RunChecksResult
 from .guidance_service import (
@@ -60,6 +62,7 @@ __all__ = [
     "GuidanceService",
     "ImplementStepInputs",
     "ImplementStepResult",
+    "ImplementStepRuntimeDependencies",
     "InitWorkspaceRequest",
     "InitWorkspaceResult",
     "InitWorkspaceService",
@@ -82,6 +85,7 @@ __all__ = [
     "ValidationResult",
     "ValidationService",
     "VerificationPhaseOutcome",
+    "run_implement_step_from_inputs",
     "RecoverWorkspaceRequest",
     "RecoverWorkspaceResult",
     "WorkspaceRecoveryService",

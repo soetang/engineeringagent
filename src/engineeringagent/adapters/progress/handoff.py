@@ -4,14 +4,18 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.domain.audit import ImplementProgressEnvelope
+from engineeringagent.domain.audit import (
+    ImplementProgressEnvelope,
+    fallback_implement_progress_envelope as _fallback_implement_progress_envelope,
+    parse_implement_progress_envelope as _parse_implement_progress_envelope,
+)
 from engineeringagent.spec_bundles import progress_kind_label
 
-_FALLBACK_SUMMARY = (
-    "Structured handoff output unavailable; recorded deterministic fallback."
-)
+
+fallback_implement_progress_envelope = _fallback_implement_progress_envelope
+parse_implement_progress_envelope = _parse_implement_progress_envelope
 
 
 class HandoffRenderMetadata(BaseModel):
@@ -24,71 +28,6 @@ class HandoffRenderMetadata(BaseModel):
     progress_kind: str | None = None
     progress_id: str | None = None
     progress_title: str | None = None
-
-
-def fallback_implement_progress_envelope(
-    *,
-    progress_kind: str | None = None,
-    progress_id: str | None = None,
-    progress_title: str | None = None,
-) -> ImplementProgressEnvelope:
-    """Return deterministic fallback handoff envelope content."""
-
-    progress_reference = _format_progress_reference(
-        progress_id=progress_id,
-        progress_title=progress_title,
-    )
-    remaining_work = (
-        "Review latest progress logs and continue the highest-priority open "
-        f"{progress_kind_label(progress_kind)}{progress_reference}."
-    )
-
-    return ImplementProgressEnvelope(
-        summary=_FALLBACK_SUMMARY,
-        completed_work=[],
-        verification=[],
-        remaining_work=[remaining_work],
-        blockers=[],
-    )
-
-
-def _format_progress_reference(
-    *,
-    progress_id: str | None,
-    progress_title: str | None,
-) -> str:
-    normalized_id = (progress_id or "").strip()
-    normalized_title = (progress_title or "").strip()
-    if normalized_id and normalized_title:
-        return f" ({normalized_id}: {normalized_title})"
-    if normalized_id:
-        return f" ({normalized_id})"
-    if normalized_title:
-        return f" ({normalized_title})"
-    return ""
-
-
-def parse_implement_progress_envelope(
-    payload: object,
-    *,
-    progress_kind: str | None = None,
-    progress_id: str | None = None,
-    progress_title: str | None = None,
-) -> tuple[ImplementProgressEnvelope, bool]:
-    """Parse structured handoff payload; return deterministic fallback when invalid."""
-
-    try:
-        envelope = ImplementProgressEnvelope.model_validate(payload)
-    except ValidationError:
-        return (
-            fallback_implement_progress_envelope(
-                progress_kind=progress_kind,
-                progress_id=progress_id,
-                progress_title=progress_title,
-            ),
-            True,
-        )
-    return envelope, False
 
 
 def now_iso() -> str:
