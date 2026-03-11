@@ -36,6 +36,11 @@ from .workspace_recovery_service import (
 from .prompt_builder import (
     PromptBuilder,
 )
+from .run_loop_service import (
+    RunLoopRequest,
+    RunLoopResult,
+    RunLoopService,
+)
 
 __all__ = [
     "ChecksService",
@@ -51,6 +56,9 @@ __all__ = [
     "PromptArtifactPaths",
     "PromptBuilder",
     "PromptProgressKind",
+    "RunLoopRequest",
+    "RunLoopResult",
+    "RunLoopService",
     "RunChecksRequest",
     "RunChecksResult",
     "ValidateRepositoryRequest",

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from importlib import import_module
 from pathlib import Path
 
+from engineeringagent import checks as checks_module
 from engineeringagent.adapters.agents import ConfiguredAgentRunner
 from engineeringagent.adapters.checks import (
     ChecksRepositoryValidator,
@@ -19,6 +21,8 @@ from engineeringagent.application import (
     GuidanceService,
     InitWorkspaceService,
     PromptBuilder,
+    RunLoopRequest,
+    RunLoopService,
     ValidationService,
     WorkspaceRecoveryService,
 )
@@ -46,6 +50,13 @@ class AppFactory:
         return ChecksService(
             RuntimeChecksRunner(),
             FilesystemChecksCatalogRepository(),
+        )
+
+    def build_run_loop_service(self) -> RunLoopService:
+        """Create the default run-loop application service."""
+        return RunLoopService(
+            load_harness_checks_document=self._load_run_all_checks_document,
+            execute_run_loop=self._execute_run_loop,
         )
 
     def build_guidance_service(self) -> GuidanceService:
@@ -88,3 +99,31 @@ class AppFactory:
             self.build_version_control_gateway(),
             self.build_progress_journal(),
         )
+
+    def _load_run_all_checks_document(
+        self,
+        project_root: Path,
+    ) -> tuple[object | None, str | None]:
+        return checks_module.load_harness_checks_document(
+            project_root,
+            error_prefix="run config error",
+            missing_context=" (required for --all)",
+        )
+
+    def _execute_run_loop(self, request: RunLoopRequest) -> int:
+        loop_module = import_module("engineeringagent.loop")
+        controller_module = import_module("engineeringagent.loop_runtime.controller")
+
+        config = loop_module.build_run_config(
+            project_root=request.project_root,
+            feature_paths=request.feature_paths,
+            options=loop_module.RunConfigOptions(
+                request.dry_run,
+                request.run_all,
+                request.max_iterations,
+                request.allow_dirty,
+                request.verbose_output,
+            ),
+        )
+        loop_run = loop_module.build_loop_run(config)
+        return controller_module.run_loop_controller(loop_run)

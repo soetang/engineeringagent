@@ -16,6 +16,7 @@ from engineeringagent.application import (
     GuidanceService,
     InitWorkspaceService,
     PromptBuilder,
+    RunLoopService,
     ValidationService,
     WorkspaceRecoveryService,
 )
@@ -33,8 +34,10 @@ def test_app_factory_builds_default_application_services(tmp_path: Path) -> None
     """Factory wires the concrete default services used by the CLI."""
     factory = AppFactory(tmp_path)
     checks_service = factory.build_checks_service()
+    run_loop_service = factory.build_run_loop_service()
 
     assert isinstance(checks_service, ChecksService)
+    assert isinstance(run_loop_service, RunLoopService)
     assert isinstance(checks_service._checks_runner, RuntimeChecksRunner)
     assert isinstance(
         checks_service._checks_catalog_repository,

@@ -12,16 +12,18 @@ from typer.testing import CliRunner
 
 from engineeringagent import cli as cli_module
 from engineeringagent.cli import init as cli_init_module
-from engineeringagent.cli import run as cli_run_module
 from engineeringagent.cli import schema as cli_schema_module
 from engineeringagent.cli import validate as cli_validate_module
 from engineeringagent.cli import workspace as cli_workspace_module
-from engineeringagent.application import RunChecksResult as ApplicationRunChecksResult
+from engineeringagent.application import (
+    RunChecksResult as ApplicationRunChecksResult,
+    RunLoopRequest,
+    RunLoopResult,
+)
 from engineeringagent.config import (
     resolve_docs_root,
 )
 from engineeringagent.domain.quality import ChecksRunResult
-from engineeringagent.loop_runtime.run_context import LoopRun, RunConfig
 from engineeringagent.schema_registry import list_schema_ids, schema_from_registry
 from tests.cli.approach_fixture_data import (
     APPROACH_TOPIC_IDS,
@@ -335,13 +337,17 @@ def test_main_run_command_executes_loop_context_via_real_cli(
     tmp_path: Path,
     monkeypatch: Any,
 ) -> None:
-    captured: dict[str, LoopRun] = {}
+    captured: dict[str, RunLoopRequest] = {}
 
-    def _fake_run_loop(loop_run: LoopRun) -> int:
-        captured["loop_run"] = loop_run
-        return 7
+    class _FakeRunLoopService:
+        def run(self, request: RunLoopRequest) -> RunLoopResult:
+            captured["request"] = request
+            return RunLoopResult(exit_code=7)
 
-    monkeypatch.setattr(cli_run_module, "run_loop_controller", _fake_run_loop)
+    monkeypatch.setattr(
+        "engineeringagent.cli.run.AppFactory.build_run_loop_service",
+        lambda self: _FakeRunLoopService(),
+    )
 
     result = _invoke_cli(
         [
@@ -358,16 +364,155 @@ def test_main_run_command_executes_loop_context_via_real_cli(
     )
 
     assert result.exit_code == 7
-    loop_run = captured["loop_run"]
-    assert loop_run.config == RunConfig(
-        project_root=tmp_path.resolve(),
-        feature_paths=("docs/spec/features/FEAT-900/spec.yaml",),
-        dry_run=True,
-        run_all=False,
-        max_iterations=7,
-        allow_dirty=True,
-        verbose_output=True,
+    request = captured["request"]
+    assert request.project_root == tmp_path.resolve()
+    assert request.feature_paths == ("docs/spec/features/FEAT-900/spec.yaml",)
+    assert request.run_all is False
+    assert request.dry_run is True
+    assert request.max_iterations == 7
+    assert request.allow_dirty is True
+    assert request.verbose_output is True
+
+
+def test_main_run_command_prints_application_input_errors(
+    tmp_path: Path,
+    monkeypatch: Any,
+) -> None:
+    class _FakeRunLoopService:
+        def run(self, request: RunLoopRequest) -> RunLoopResult:
+            assert request.project_root == tmp_path.resolve()
+            return RunLoopResult(
+                exit_code=1,
+                message="run input error: provide one or more feature paths, or use --all",
+            )
+
+    monkeypatch.setattr(
+        "engineeringagent.cli.run.AppFactory.build_run_loop_service",
+        lambda self: _FakeRunLoopService(),
     )
+
+    result = _invoke_cli(
+        [
+            "--project-root",
+            str(tmp_path),
+            "run",
+        ]
+    )
+
+    assert result.exit_code == 1
+    assert (
+        result.stdout
+        == "run input error: provide one or more feature paths, or use --all\n"
+    )
+
+
+def test_cmd_run_builds_application_request_for_run_entrypoint(
+    tmp_path: Path,
+    monkeypatch: Any,
+) -> None:
+    captured: dict[str, RunLoopRequest] = {}
+
+    class _FakeRunLoopService:
+        def run(self, request: RunLoopRequest) -> RunLoopResult:
+            captured["request"] = request
+            return RunLoopResult(exit_code=7)
+
+    monkeypatch.setattr(
+        "engineeringagent.cli.run.AppFactory.build_run_loop_service",
+        lambda self: _FakeRunLoopService(),
+    )
+
+    exit_code = cli_module.cmd_run(
+        SimpleNamespace(
+            project_root=str(tmp_path),
+            feature_paths=["docs/spec/features/FEAT-078/spec.yaml"],
+            run_all=False,
+            dry_run=True,
+            max_iterations=7,
+            allow_dirty=True,
+            verbose_output=True,
+        )
+    )
+
+    assert exit_code == 7
+    request = captured["request"]
+    assert request.project_root == tmp_path.resolve()
+    assert request.feature_paths == ("docs/spec/features/FEAT-078/spec.yaml",)
+    assert request.run_all is False
+    assert request.dry_run is True
+    assert request.max_iterations == 7
+    assert request.allow_dirty is True
+    assert request.verbose_output is True
+
+
+def test_cmd_run_builds_application_request_for_run_all_entrypoint(
+    tmp_path: Path,
+    monkeypatch: Any,
+) -> None:
+    captured: dict[str, RunLoopRequest] = {}
+
+    class _FakeRunLoopService:
+        def run(self, request: RunLoopRequest) -> RunLoopResult:
+            captured["request"] = request
+            return RunLoopResult(exit_code=9)
+
+    monkeypatch.setattr(
+        "engineeringagent.cli.run.AppFactory.build_run_loop_service",
+        lambda self: _FakeRunLoopService(),
+    )
+
+    exit_code = cli_module.cmd_run(
+        SimpleNamespace(
+            project_root=str(tmp_path),
+            feature_paths=[],
+            run_all=True,
+            dry_run=True,
+            max_iterations=5,
+            allow_dirty=False,
+            verbose_output=False,
+        )
+    )
+
+    assert exit_code == 9
+    request = captured["request"]
+    assert request.project_root == tmp_path.resolve()
+    assert request.feature_paths == ()
+    assert request.run_all is True
+    assert request.dry_run is True
+    assert request.max_iterations == 5
+    assert request.allow_dirty is False
+    assert request.verbose_output is False
+
+
+def test_cmd_run_prints_service_messages(
+    tmp_path: Path,
+    monkeypatch: Any,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    class _FakeRunLoopService:
+        def run(self, request: RunLoopRequest) -> RunLoopResult:
+            assert request.project_root == tmp_path.resolve()
+            return RunLoopResult(exit_code=1, message="run config error: missing harness/checks.yaml")
+
+    monkeypatch.setattr(
+        "engineeringagent.cli.run.AppFactory.build_run_loop_service",
+        lambda self: _FakeRunLoopService(),
+    )
+
+    exit_code = cli_module.cmd_run(
+        SimpleNamespace(
+            project_root=str(tmp_path),
+            feature_paths=[],
+            run_all=True,
+            dry_run=True,
+            max_iterations=5,
+            allow_dirty=False,
+            verbose_output=False,
+        )
+    )
+
+    assert exit_code == 1
+    assert capsys.readouterr().out == "run config error: missing harness/checks.yaml\n"
 
 
 def test_main_schema_command_writes_registry_schema_via_real_cli(tmp_path: Path) -> None:
@@ -579,105 +724,6 @@ def test_fitness_command_is_rejected() -> None:
 
     assert result.exit_code != 0
     assert "No such command 'fitness'" in (result.stderr or result.stdout)
-
-
-def test_cmd_run_builds_looprun_context_for_loop_entrypoint(
-    tmp_path: Path,
-    monkeypatch: Any,
-) -> None:
-    captured: dict[str, LoopRun] = {}
-
-    def _fake_run_loop(loop_run: LoopRun) -> int:
-        captured["loop_run"] = loop_run
-        return 7
-
-    monkeypatch.setattr(cli_run_module, "run_loop_controller", _fake_run_loop)
-
-    exit_code = cli_module.cmd_run(
-        SimpleNamespace(
-            project_root=str(tmp_path),
-            feature_paths=["docs/spec/features/FEAT-078/spec.yaml"],
-            run_all=False,
-            dry_run=True,
-            max_iterations=7,
-            allow_dirty=True,
-            verbose_output=True,
-        )
-    )
-
-    assert exit_code == 7
-    loop_run = captured["loop_run"]
-    assert isinstance(loop_run, LoopRun)
-    assert loop_run.config == RunConfig(
-        project_root=tmp_path,
-        feature_paths=("docs/spec/features/FEAT-078/spec.yaml",),
-        dry_run=True,
-        run_all=False,
-        max_iterations=7,
-        allow_dirty=True,
-        verbose_output=True,
-    )
-
-
-def test_cmd_run_builds_looprun_context_for_run_all_entrypoint(
-    tmp_path: Path,
-    monkeypatch: Any,
-) -> None:
-    captured: dict[str, object] = {}
-
-    def _fake_load_checks_document(
-        project_root: Path,
-        *,
-        error_prefix: str,
-        missing_context: str,
-    ) -> tuple[dict[str, object], None]:
-        captured["checks_request"] = {
-            "project_root": project_root,
-            "error_prefix": error_prefix,
-            "missing_context": missing_context,
-        }
-        return {"checks": {}}, None
-
-    def _fake_run_loop(loop_run: LoopRun) -> int:
-        captured["loop_run"] = loop_run
-        return 9
-
-    monkeypatch.setattr(
-        cli_run_module.checks_module,
-        "load_harness_checks_document",
-        _fake_load_checks_document,
-    )
-    monkeypatch.setattr(cli_run_module, "run_loop_controller", _fake_run_loop)
-
-    exit_code = cli_module.cmd_run(
-        SimpleNamespace(
-            project_root=str(tmp_path),
-            feature_paths=[],
-            run_all=True,
-            dry_run=True,
-            max_iterations=5,
-            allow_dirty=False,
-            verbose_output=False,
-        )
-    )
-
-    assert exit_code == 9
-    assert captured["checks_request"] == {
-        "project_root": tmp_path.resolve(),
-        "error_prefix": "run config error",
-        "missing_context": " (required for --all)",
-    }
-    loop_run = captured["loop_run"]
-    assert isinstance(loop_run, LoopRun)
-    assert loop_run.config == RunConfig(
-        project_root=tmp_path.resolve(),
-        feature_paths=(),
-        dry_run=True,
-        run_all=True,
-        max_iterations=5,
-        allow_dirty=False,
-        verbose_output=False,
-    )
 
 
 def test_progress_commands_are_not_listed_in_root_help() -> None:

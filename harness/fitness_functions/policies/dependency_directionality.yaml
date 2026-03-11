@@ -20,6 +20,10 @@ rules:
   - module: engineeringagent.cli
     blocked_dependencies:
       - engineeringagent.loop_runtime
+  - module: engineeringagent.cli.run
+    blocked_dependencies:
+      - engineeringagent.loop
+      - engineeringagent.loop_runtime
   - module: engineeringagent.cli.app
     blocked_dependencies:
       - engineeringagent.loop_runtime
@@ -77,6 +81,12 @@ rules:
       - engineeringagent.progress.paths
       - engineeringagent.presentation.presenters
       - engineeringagent.specs
+  - module: engineeringagent.application.run_loop_service
+    blocked_dependencies:
+      - engineeringagent.adapters
+      - engineeringagent.bootstrap
+      - engineeringagent.cli
+      - engineeringagent.loop_runtime
   - module: engineeringagent.application.validation_service
     blocked_dependencies:
       - engineeringagent.adapters
