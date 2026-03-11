@@ -6,7 +6,6 @@ Feature FEAT-109 will migrate production code to use `run_agent(...)` so that
 backend specifics (OpenCode today, others later) remain encapsulated.
 """
 
-from engineeringagent.agents.api import run_agent
 from engineeringagent.agents.contracts import (
     AgentBackend,
     AgentBackendError,
@@ -19,6 +18,7 @@ from engineeringagent.agents.helpers import (
     describe_action,
     preflight,
 )
+from engineeringagent.agents.runtime import run_agent
 from engineeringagent.agents.registry import (
     build_backend_scaffold_manifest,
     default_backend_id,

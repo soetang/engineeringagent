@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar, overload
 
 from engineeringagent.agents.contracts import (
     AgentRunRequest,
     RequestRunAgentBackend,
 )
 from engineeringagent.agents.registry import get_backend_factory, resolve_backend_id
+
+T = TypeVar("T")
 
 
 def resolve_agent_strategy(
@@ -31,3 +33,50 @@ def run_agent_request(request: AgentRunRequest) -> Any:
 
     backend = resolve_agent_strategy(request.project_root)
     return backend.run_request(request)
+
+
+@overload
+def run_agent(
+    project_root: Path,
+    prompt: str,
+    *,
+    output_type: type[str] = str,
+    max_validation_retries: int = 2,
+) -> str: ...
+
+
+@overload
+def run_agent(
+    project_root: Path,
+    prompt: str,
+    *,
+    output_type: type[T],
+    max_validation_retries: int = 2,
+) -> T: ...
+
+
+@overload
+def run_agent(
+    project_root: Path,
+    prompt: str,
+    *,
+    output_type: Any,
+    max_validation_retries: int = 2,
+) -> Any: ...
+
+
+def run_agent(
+    project_root: Path,
+    prompt: str,
+    *,
+    output_type: Any = str,
+    max_validation_retries: int = 2,
+) -> Any:
+    """Run an agent through the canonical request-based runtime boundary."""
+    request = AgentRunRequest(
+        project_root=project_root,
+        prompt=prompt,
+        output_type=output_type,
+        max_validation_retries=max_validation_retries,
+    )
+    return run_agent_request(request)

@@ -8,10 +8,10 @@ import pytest
 from pydantic import BaseModel
 
 from engineeringagent import agents
-from engineeringagent.agents import api as agents_api_module
 from engineeringagent.agents import registry as registry_module
 from engineeringagent.agents.contracts import AgentRunRequest
 from engineeringagent.agents.runtime import resolve_agent_strategy
+import engineeringagent.agents.runtime as agents_runtime_module
 from engineeringagent.agents.registry import get_backend_factory
 
 
@@ -115,22 +115,27 @@ def _configure_backend(
 
 
 def test_agents_module_exports_run_agent() -> None:
+    """Expose the public run-agent helper from the package root."""
     assert callable(agents.run_agent)
 
 
 def test_agents_module_exports_list_backends() -> None:
+    """Expose backend discovery from the package root."""
     assert callable(agents.list_backends)
 
 
 def test_agents_module_exports_resolve_backend_id() -> None:
+    """Expose backend-id resolution from the package root."""
     assert callable(agents.resolve_backend_id)
 
 
 def test_agents_module_exports_build_backend_scaffold_manifest() -> None:
+    """Expose scaffold manifest generation from the package root."""
     assert callable(agents.build_backend_scaffold_manifest)
 
 
 def test_list_backends_returns_stable_sorted_tuple() -> None:
+    """Return a deterministic backend id listing for callers."""
     backend_ids = agents.list_backends()
     assert isinstance(backend_ids, tuple)
     assert backend_ids == tuple(sorted(backend_ids))
@@ -139,6 +144,7 @@ def test_list_backends_returns_stable_sorted_tuple() -> None:
 
 
 def test_get_backend_factory_constructs_opencode_and_codex_backends() -> None:
+    """Construct both built-in backend adapters from the registry."""
     opencode_factory = get_backend_factory("opencode")
     codex_factory = get_backend_factory("codex")
 
@@ -150,15 +156,18 @@ def test_get_backend_factory_constructs_opencode_and_codex_backends() -> None:
 
 
 def test_get_backend_factory_raises_for_unknown_backend_id() -> None:
+    """Reject unknown backend ids with a stable error."""
     with pytest.raises(ValueError, match=r"unknown agent backend id"):
         get_backend_factory("missing")
 
 
 def test_resolve_backend_id_defaults_to_opencode_when_unset(tmp_path: Path) -> None:
+    """Fall back to the registered default backend when config is absent."""
     assert agents.resolve_backend_id(tmp_path) == "opencode"
 
 
 def test_build_backend_scaffold_manifest_for_opencode() -> None:
+    """Render the bundled scaffold manifest for OpenCode."""
     manifest = agents.build_backend_scaffold_manifest(
         backend_id="opencode",
         agent_model="openai/gpt-5.3-codex-spark",
@@ -174,6 +183,7 @@ def test_build_backend_scaffold_manifest_for_opencode() -> None:
 
 
 def test_build_backend_scaffold_manifest_for_codex() -> None:
+    """Render the bundled scaffold manifest for Codex."""
     manifest = agents.build_backend_scaffold_manifest(
         backend_id="codex",
         agent_model="openai/gpt-5.3-codex-spark",
@@ -186,6 +196,7 @@ def test_build_backend_scaffold_manifest_for_codex() -> None:
 
 
 def test_build_backend_scaffold_manifest_raises_for_unknown_backend() -> None:
+    """Reject scaffold generation for unknown backend ids."""
     with pytest.raises(ValueError, match=r"unknown agent backend id") as excinfo:
         agents.build_backend_scaffold_manifest(
             backend_id="missing",
@@ -200,6 +211,7 @@ def test_build_backend_scaffold_manifest_raises_for_unknown_backend() -> None:
 def test_default_backend_id_raises_when_default_not_registered(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Guard against registry corruption removing the default backend."""
     monkeypatch.setattr(registry_module, "_DEFAULT_BACKEND_ID", "missing")
 
     with pytest.raises(ValueError, match=r"default agent backend id is not registered"):
@@ -209,6 +221,7 @@ def test_default_backend_id_raises_when_default_not_registered(
 def test_resolve_backend_id_prefers_engineeringagent_toml_over_pyproject(
     tmp_path: Path,
 ) -> None:
+    """Prefer dedicated repo config over the pyproject fallback."""
     (tmp_path / "engineeringagent.toml").write_text(
         '[agents]\nbackend = "opencode"\n',
         encoding="utf-8",
@@ -224,6 +237,7 @@ def test_resolve_backend_id_prefers_engineeringagent_toml_over_pyproject(
 def test_run_agent_returns_text_for_str_output_type(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """Return plain text when the request asks for string output."""
     backend = _StubBackend()
     _configure_backend(
         tmp_path=tmp_path,
@@ -237,6 +251,7 @@ def test_run_agent_returns_text_for_str_output_type(
 def test_run_agent_uses_configured_backend_by_default(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """Resolve the backend from dedicated repo config by default."""
     (tmp_path / "engineeringagent.toml").write_text(
         '[agents]\nbackend = "configured"\n',
         encoding="utf-8",
@@ -254,6 +269,7 @@ def test_run_agent_uses_configured_backend_by_default(
 def test_run_agent_uses_pyproject_configured_backend_by_default(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """Resolve the backend from the pyproject fallback when needed."""
     (tmp_path / "pyproject.toml").write_text(
         '[tool.engineeringagent.agents]\nbackend = "configured"\n',
         encoding="utf-8",
@@ -272,6 +288,7 @@ def test_run_agent_delegates_to_runtime_request_for_text_output(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Build the canonical request envelope for text execution."""
     calls: list[AgentRunRequest] = []
 
     def _run_agent_request(request: AgentRunRequest) -> Any:
@@ -279,7 +296,7 @@ def test_run_agent_delegates_to_runtime_request_for_text_output(
         return "echo:hi"
 
     monkeypatch.setattr(
-        agents_api_module,
+        agents_runtime_module,
         "run_agent_request",
         _run_agent_request,
     )
@@ -294,6 +311,7 @@ def test_run_agent_delegates_to_runtime_request_for_structured_output(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Build the canonical request envelope for structured execution."""
     class _Payload(BaseModel):
         value: int
 
@@ -304,7 +322,7 @@ def test_run_agent_delegates_to_runtime_request_for_structured_output(
         return _Payload(value=9)
 
     monkeypatch.setattr(
-        agents_api_module,
+        agents_runtime_module,
         "run_agent_request",
         _run_agent_request,
     )
@@ -334,6 +352,7 @@ def test_resolve_agent_strategy_returns_configured_backend(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Instantiate the configured backend strategy once per request."""
     backend = _SequencedBackend()
     _configure_backend(
         tmp_path=tmp_path,
@@ -347,6 +366,7 @@ def test_resolve_agent_strategy_returns_configured_backend(
 
 
 def test_run_agent_raises_for_unknown_configured_backend(tmp_path: Path) -> None:
+    """Surface unknown configured backend ids to callers."""
     (tmp_path / "engineeringagent.toml").write_text(
         '[agents]\nbackend = "missing"\n',
         encoding="utf-8",
@@ -362,16 +382,19 @@ def test_run_agent_raises_for_unknown_configured_backend(tmp_path: Path) -> None
 
 
 def test_run_agent_rejects_backend_override_argument(tmp_path: Path) -> None:
+    """Keep the public helper on the request-based configuration path."""
     with pytest.raises(TypeError, match=r"backend"):
         agents.run_agent(tmp_path, "hi", backend=object())  # type: ignore[call-arg]
 
 
 def test_run_agent_rejects_negative_max_validation_retries(tmp_path: Path) -> None:
+    """Reject invalid retry budgets before backend execution."""
     with pytest.raises(ValueError, match=r"max_validation_retries must be >= 0"):
         agents.run_agent(tmp_path, "hi", max_validation_retries=-1)
 
 
 def test_agent_output_validation_error_exposes_debug_fields() -> None:
+    """Expose stable debugging fields on validation failures."""
     err = agents.AgentOutputValidationError(
         backend="stub",
         attempts=3,
@@ -387,6 +410,7 @@ def test_agent_output_validation_error_exposes_debug_fields() -> None:
 
 
 def test_agent_backend_error_exposes_failure_details() -> None:
+    """Expose stable process diagnostics on backend failures."""
     details = agents.AgentBackendFailureDetails(
         returncode=2,
         stdout="hello\n",
