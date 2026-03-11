@@ -366,6 +366,7 @@ def test_init_writes_precommit_and_empty_gate_profiles(tmp_path: Path) -> None:
     )
     assert checks_config["contract_version"] == "1.0"
     assert checks_config["defaults"]["when"]["phase"] == "iteration_end"
+    assert checks_config["groups"] == []
     assert checks_config["checks"] == {}
 
     fitness_manifest = yaml.safe_load(

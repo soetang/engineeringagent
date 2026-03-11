@@ -47,6 +47,10 @@ def test_shared_loader_uses_engineeringagent_toml_checks_path(tmp_path: Path) ->
         "\n".join(
             [
                 'contract_version: "1.0"',
+                "groups:",
+                "  - group_id: smoke",
+                "    description: Smoke checks.",
+                "    checks: [smoke]",
                 "checks:",
                 "  smoke:",
                 "    type: command",
@@ -120,12 +124,50 @@ def test_shared_loader_contract_issues_are_rendered_deterministically(
     assert "harness/checks.yaml:contract_version" in error
 
 
+def test_shared_loader_reports_group_membership_contract_issues(
+    tmp_path: Path,
+) -> None:
+    write_checks_yaml(
+        tmp_path,
+        "\n".join(
+            [
+                'contract_version: "1.0"',
+                "groups:",
+                "  - group_id: reviewer",
+                "    description: Reviewer checks.",
+                "    checks: [doc_review]",
+                "checks:",
+                "  doc_review:",
+                "    type: reviewer",
+                "    prompt_file: harness/reviewers/prompts/doc_review.md",
+                "    when:",
+                "      phase: feature_done",
+                "  smoke:",
+                "    type: command",
+                '    command: "echo ok"',
+                "",
+            ]
+        ),
+    )
+
+    doc, error = load_harness_checks_document(tmp_path, error_prefix="checks config error")
+
+    assert doc is None
+    assert error is not None
+    assert "harness/checks.yaml:checks.smoke" in error
+    assert "at least one group" in error
+
+
 def test_shared_loader_returns_document_on_valid_config(tmp_path: Path) -> None:
     write_checks_yaml(
         tmp_path,
         "\n".join(
             [
                 'contract_version: "1.0"',
+                "groups:",
+                "  - group_id: smoke",
+                "    description: Smoke checks.",
+                "    checks: [smoke]",
                 "checks:",
                 "  smoke:",
                 "    type: command",
@@ -151,6 +193,10 @@ def test_shared_loader_model_validation_error_is_deterministic(
         "\n".join(
             [
                 'contract_version: "1.0"',
+                "groups:",
+                "  - group_id: smoke",
+                "    description: Smoke checks.",
+                "    checks: [smoke]",
                 "checks:",
                 "  smoke:",
                 "    type: command",

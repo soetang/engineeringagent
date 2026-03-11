@@ -152,11 +152,20 @@ HarnessCheckDefinition = Annotated[
 ]
 
 
+class HarnessCheckGroupDefinition(StrictContractModel):
+    """A named checks group used by feature quality profiles."""
+
+    group_id: NonEmptyStr
+    description: NonEmptyStr
+    checks: Annotated[list[NonEmptyStr], Field(min_length=1)]
+
+
 class HarnessChecksDocument(StrictContractModel):
     """Top-level schema for harness/checks.yaml."""
 
     contract_version: Literal["1.0"]
     defaults: HarnessCheckDefaultsDefinition | None = None
+    groups: list[HarnessCheckGroupDefinition] = Field(default_factory=list)
     checks: dict[NonEmptyStr, HarnessCheckDefinition]
 
     @model_validator(mode="after")
@@ -178,6 +187,75 @@ class HarnessChecksDocument(StrictContractModel):
                         input_value=phase,
                     )
                 )
+        if errors:
+            raise ValidationError.from_exception_data(self.__class__.__name__, errors)
+        return self
+
+    @model_validator(mode="after")
+    def enforce_group_integrity(self) -> "HarnessChecksDocument":
+        """Require unique groups, valid references, and full check coverage."""
+        if not self.groups:
+            return self
+
+        errors: list[InitErrorDetails] = []
+        seen_group_ids: set[str] = set()
+        referenced_checks: set[str] = set()
+
+        for index, group in enumerate(self.groups):
+            if group.group_id in seen_group_ids:
+                errors.append(
+                    _init_error_detail(
+                        error=PydanticCustomError(
+                            "value_error",
+                            "group_id must be unique",
+                        ),
+                        loc=("groups", index, "group_id"),
+                        input_value=group.group_id,
+                    )
+                )
+            seen_group_ids.add(group.group_id)
+
+            seen_group_checks: set[str] = set()
+            for check_index, check_id in enumerate(group.checks):
+                if check_id in seen_group_checks:
+                    errors.append(
+                        _init_error_detail(
+                            error=PydanticCustomError(
+                                "value_error",
+                                "group checks must not contain duplicates",
+                            ),
+                            loc=("groups", index, "checks", check_index),
+                            input_value=check_id,
+                        )
+                    )
+                seen_group_checks.add(check_id)
+                referenced_checks.add(check_id)
+                if check_id not in self.checks:
+                    errors.append(
+                        _init_error_detail(
+                            error=PydanticCustomError(
+                                "value_error",
+                                "group references unknown check_id",
+                            ),
+                            loc=("groups", index, "checks", check_index),
+                            input_value=check_id,
+                        )
+                    )
+
+        for check_id in self.checks:
+            if check_id in referenced_checks:
+                continue
+            errors.append(
+                _init_error_detail(
+                    error=PydanticCustomError(
+                        "value_error",
+                        "check must belong to at least one group",
+                    ),
+                    loc=("checks", check_id),
+                    input_value=check_id,
+                )
+            )
+
         if errors:
             raise ValidationError.from_exception_data(self.__class__.__name__, errors)
         return self

@@ -23,6 +23,7 @@ def test_init_slim_pack_does_not_scaffold_demo_failure(tmp_path: Path) -> None:
         (tmp_path / "harness" / "checks.yaml").read_text(encoding="utf-8")
     )
     assert checks_config["contract_version"] == "1.0"
+    assert checks_config["groups"] == []
     assert checks_config["checks"] == {}
 
 
@@ -57,4 +58,11 @@ def test_init_standard_pack_scaffolds_demo_failing_fitness_rule(
         (tmp_path / "harness" / "checks.yaml").read_text(encoding="utf-8")
     )
     assert checks_config["contract_version"] == "1.0"
+    assert checks_config["groups"] == [
+        {
+            "group_id": "fitness",
+            "description": "Run all configured fitness functions.",
+            "checks": ["fitness_all"],
+        }
+    ]
     assert checks_config["checks"]["fitness_all"]["type"] == "fitness"

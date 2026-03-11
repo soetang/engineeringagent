@@ -18,6 +18,13 @@ def test_repo_checks_yaml_includes_pylint_gate_contract(repo_root: Path) -> None
 
     checks = document.get("checks", {})
     assert isinstance(checks, dict)
+    groups = document.get("groups", [])
+    assert isinstance(groups, list)
+    assert {
+        "group_id": "lint",
+        "description": "Additional lint coverage that complements Ruff.",
+        "checks": ["pylint_validate"],
+    } in groups
 
     pylint_validate = checks.get("pylint_validate")
     assert isinstance(pylint_validate, dict)

@@ -36,6 +36,7 @@ def _build_checks_yaml() -> str:
         {
             "contract_version": "1.0",
             "defaults": {"when": {"phase": "iteration_end"}},
+            "groups": [],
             "checks": {},
         },
         sort_keys=False,
@@ -282,6 +283,13 @@ def build_init_scaffold_manifest(
         {
             "contract_version": "1.0",
             "defaults": {"when": {"phase": "iteration_end"}},
+            "groups": [
+                {
+                    "group_id": "fitness",
+                    "description": "Run all configured fitness functions.",
+                    "checks": ["fitness_all"],
+                }
+            ],
             "checks": {
                 "fitness_all": {"type": "fitness", "scope": "all"},
             },

@@ -10,6 +10,13 @@ from engineeringagent.specs import checks_contract_issues
 def test_checks_contract_accepts_minimal_command_check() -> None:
     payload = {
         "contract_version": "1.0",
+        "groups": [
+            {
+                "group_id": "style",
+                "description": "Style checks.",
+                "checks": ["ruff"],
+            }
+        ],
         "checks": {
             "ruff": {
                 "type": "command",
@@ -26,6 +33,13 @@ def test_checks_contract_accepts_minimal_command_check() -> None:
 def test_checks_contract_rejects_unknown_fields_in_check_definition() -> None:
     payload = {
         "contract_version": "1.0",
+        "groups": [
+            {
+                "group_id": "style",
+                "description": "Style checks.",
+                "checks": ["ruff"],
+            }
+        ],
         "checks": {
             "ruff": {
                 "type": "command",
@@ -48,6 +62,13 @@ def test_checks_contract_rejects_reviewer_check_with_iteration_end_effective_pha
 ):
     payload = {
         "contract_version": "1.0",
+        "groups": [
+            {
+                "group_id": "reviewer",
+                "description": "Reviewer checks.",
+                "checks": ["doc_review"],
+            }
+        ],
         "checks": {
             "doc_review": {
                 "type": "reviewer",
@@ -67,6 +88,13 @@ def test_checks_contract_rejects_reviewer_check_with_iteration_end_effective_pha
 def test_checks_contract_accepts_reviewer_check_when_phase_feature_done() -> None:
     payload = {
         "contract_version": "1.0",
+        "groups": [
+            {
+                "group_id": "reviewer",
+                "description": "Reviewer checks.",
+                "checks": ["doc_review"],
+            }
+        ],
         "checks": {
             "doc_review": {
                 "type": "reviewer",
@@ -84,6 +112,13 @@ def test_checks_contract_accepts_reviewer_check_when_phase_feature_done() -> Non
 def test_checks_contract_rejects_reviewer_prompt_outside_prompts_dir() -> None:
     payload = {
         "contract_version": "1.0",
+        "groups": [
+            {
+                "group_id": "reviewer",
+                "description": "Reviewer checks.",
+                "checks": ["doc_review"],
+            }
+        ],
         "checks": {
             "doc_review": {
                 "type": "reviewer",
@@ -104,6 +139,13 @@ def test_checks_contract_rejects_reviewer_prompt_outside_prompts_dir() -> None:
 def test_checks_contract_rejects_fitness_check_with_both_scope_and_rule_ids() -> None:
     payload = {
         "contract_version": "1.0",
+        "groups": [
+            {
+                "group_id": "fitness",
+                "description": "Fitness checks.",
+                "checks": ["fitness"],
+            }
+        ],
         "checks": {
             "fitness": {
                 "type": "fitness",
@@ -138,6 +180,13 @@ def test_checks_contract_validates_reviewer_prompt_file_location(
 ) -> None:
     checks_document = {
         "contract_version": "1.0",
+        "groups": [
+            {
+                "group_id": "reviewer",
+                "description": "Reviewer checks.",
+                "checks": ["doc_review"],
+            }
+        ],
         "checks": {
             "doc_review": {
                 "type": "reviewer",
@@ -158,4 +207,58 @@ def test_checks_contract_validates_reviewer_prompt_file_location(
         issue.path == "harness/checks.yaml:checks.doc_review.reviewer"
         and message_fragment in issue.message
         for issue in checks_issues
+    )
+
+
+def test_checks_contract_rejects_groups_that_reference_unknown_checks() -> None:
+    payload = {
+        "contract_version": "1.0",
+        "groups": [
+            {
+                "group_id": "style",
+                "description": "Style checks.",
+                "checks": ["missing_check"],
+            }
+        ],
+        "checks": {},
+    }
+
+    issues = checks_contract_issues(payload, Path("harness/checks.yaml"))
+
+    assert any(
+        issue.path == "harness/checks.yaml:groups[0].checks[0]"
+        and "unknown check_id" in issue.message
+        for issue in issues
+    )
+
+
+def test_checks_contract_rejects_checks_without_group_membership() -> None:
+    payload = {
+        "contract_version": "1.0",
+        "groups": [
+            {
+                "group_id": "reviewer",
+                "description": "Reviewer checks.",
+                "checks": ["doc_review"],
+            }
+        ],
+        "checks": {
+            "doc_review": {
+                "type": "reviewer",
+                "prompt_file": "harness/reviewers/prompts/code_simplifier.md",
+                "when": {"phase": "feature_done"},
+            },
+            "ruff": {
+                "type": "command",
+                "command": "uv run ruff check src/engineeringagent",
+            }
+        },
+    }
+
+    issues = checks_contract_issues(payload, Path("harness/checks.yaml"))
+
+    assert any(
+        issue.path == "harness/checks.yaml:checks.ruff"
+        and "at least one group" in issue.message
+        for issue in issues
     )

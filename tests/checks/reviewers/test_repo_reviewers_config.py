@@ -14,6 +14,18 @@ def test_repo_reviewers_config_excludes_removed_onboarding_reviewer(
 
     removed_reviewer_id = "_".join(["readme", "process"])
 
+    groups = document.get("groups", [])
+    assert isinstance(groups, list)
+    assert {
+        "group_id": "reviewer",
+        "description": "Judgment-based reviewer checks for feature completion.",
+        "checks": [
+            "code_simplifier",
+            "test_reviewer",
+            "intent_integrity_reviewer",
+        ],
+    } in groups
+
     checks = document.get("checks", {})
     assert removed_reviewer_id not in checks
     assert "code_simplifier" in checks

@@ -38,6 +38,13 @@ def test_make_project_root_keeps_only_valid_gate_commands(tmp_path: Path) -> Non
     checks_payload = yaml.safe_load(checks_path.read_text(encoding="utf-8"))
 
     assert feature_path.exists()
+    assert checks_payload["groups"] == [
+        {
+            "group_id": "commands",
+            "description": "Command checks.",
+            "checks": ["good_gate"],
+        }
+    ]
     assert checks_payload["checks"] == {
         "good_gate": {"type": "command", "command": "uv run pytest -q"}
     }

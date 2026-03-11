@@ -4,6 +4,31 @@ defaults:
   when:
     phase: iteration_end
 
+groups:
+  - group_id: style
+    description: Fast style and import hygiene checks for Python sources.
+    checks: [ruff_validate]
+
+  - group_id: typecheck
+    description: Static type-checking for shipped Python code and tests.
+    checks: [pyright_validate]
+
+  - group_id: lint
+    description: Additional lint coverage that complements Ruff.
+    checks: [pylint_validate]
+
+  - group_id: tests
+    description: Repository test suite execution.
+    checks: [pytest_validate]
+
+  - group_id: fitness
+    description: Architectural and repository fitness function enforcement.
+    checks: [fitness_all]
+
+  - group_id: reviewer
+    description: Judgment-based reviewer checks for feature completion.
+    checks: [code_simplifier, test_reviewer, intent_integrity_reviewer]
+
 checks:
   fitness_all:
     type: fitness

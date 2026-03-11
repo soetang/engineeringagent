@@ -206,6 +206,17 @@ def make_project_root(
         {
             "contract_version": "1.0",
             "defaults": {"when": {"phase": "iteration_end"}},
+            "groups": (
+                [
+                    {
+                        "group_id": "commands",
+                        "description": "Command checks.",
+                        "checks": list(checks),
+                    }
+                ]
+                if checks
+                else []
+            ),
             "checks": checks,
         },
     )
