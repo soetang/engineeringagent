@@ -35,13 +35,12 @@ from ..init_cli_support import (
 )
 from ..init_scaffold import (
     AGENTS_LAUNCHER_CHOICES,
-    DEFAULT_AGENT_MODEL,
     DEFAULT_AGENTS_LAUNCHER,
     apply_baseline_scaffold,
     build_agents_merge_followup_spec,
 )
 from ..presentation.terminal import stdout_is_tty
-from ..ports import InitWorkspaceDependencies
+from ..ports import DEFAULT_AGENT_MODEL, InitWorkspaceDependencies
 
 _HandlerArgs = SimpleNamespace
 _AdapterValue = TypeVar("_AdapterValue")

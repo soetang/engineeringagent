@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from importlib.resources import files
 from pathlib import Path
-from typing import NamedTuple
 from string import Template
 
 import yaml
 
+from .ports.init_workspace import BaselineScaffoldOptions, DEFAULT_AGENT_MODEL
 from .agents import build_backend_scaffold_manifest, default_backend_id
 _SCAFFOLD_TEMPLATE_PACKAGE = "engineeringagent.scaffold_templates"
 _SUPPORTED_INIT_PACKS = {"slim", "standard"}
@@ -15,8 +15,6 @@ _PRECOMMIT_TEMPLATES = {
     "python_uv": "precommit.python_uv.yaml",
 }
 _SUPPORTED_SCAFFOLD_PROFILES = frozenset(_PRECOMMIT_TEMPLATES)
-
-DEFAULT_AGENT_MODEL = "openai/gpt-5.3-codex"
 DEFAULT_AGENTS_LAUNCHER = "uvx"
 AGENTS_LAUNCHER_CHOICES: tuple[str, ...] = ("uvx", "uv-run", "engineeringagent")
 AGENTS_LAUNCHER_COMMANDS = {
@@ -293,18 +291,6 @@ def build_init_scaffold_manifest(
     )
 
     return manifest
-
-
-class BaselineScaffoldOptions(NamedTuple):
-    """Options controlling `engineeringagent init` scaffold generation."""
-
-    force: bool = False
-    docs_dir: str = "docs"
-    profile: str = "core"
-    pack: str = "slim"
-    backend_id: str | None = None
-    agents_launcher: str = DEFAULT_AGENTS_LAUNCHER
-    agent_model: str = DEFAULT_AGENT_MODEL
 
 
 def apply_baseline_scaffold(

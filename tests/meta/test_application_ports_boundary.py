@@ -63,3 +63,36 @@ def test_ports_modules_do_not_import_application_modules() -> None:
                         )
 
     assert not violations, "\n".join(violations)
+
+
+def test_application_and_ports_do_not_import_init_scaffold_module() -> None:
+    """Application and ports keep init scaffold implementation behind contracts."""
+
+    roots = (
+        Path("src/engineeringagent/application"),
+        Path("src/engineeringagent/ports"),
+    )
+    violations: list[str] = []
+
+    for root in roots:
+        for path in sorted(root.glob("*.py")):
+            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ImportFrom):
+                    module = node.module or ""
+                    if module == "engineeringagent.init_scaffold" or module.startswith(
+                        "engineeringagent.init_scaffold."
+                    ):
+                        violations.append(
+                            f"{path}:{node.lineno}: move init scaffold dependency behind engineeringagent.ports"
+                        )
+                if isinstance(node, ast.Import):
+                    for alias in node.names:
+                        if alias.name == "engineeringagent.init_scaffold" or alias.name.startswith(
+                            "engineeringagent.init_scaffold."
+                        ):
+                            violations.append(
+                                f"{path}:{node.lineno}: move init scaffold dependency behind engineeringagent.ports"
+                            )
+
+    assert not violations, "\n".join(violations)

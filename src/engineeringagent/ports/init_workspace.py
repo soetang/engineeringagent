@@ -3,11 +3,23 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Callable, Protocol
+from typing import Callable, NamedTuple, Protocol
 
 from pydantic import BaseModel, ConfigDict, SkipValidation
 
-from engineeringagent.init_scaffold import BaselineScaffoldOptions
+DEFAULT_AGENT_MODEL = "openai/gpt-5.3-codex"
+
+
+class BaselineScaffoldOptions(NamedTuple):
+    """Options controlling init scaffold generation."""
+
+    force: bool = False
+    docs_dir: str = "docs"
+    profile: str = "core"
+    pack: str = "slim"
+    backend_id: str | None = None
+    agents_launcher: str = "uvx"
+    agent_model: str = DEFAULT_AGENT_MODEL
 
 ResolveInitPack = Callable[[str | None], tuple[str | None, str | None]]
 

@@ -5,8 +5,11 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from engineeringagent.init_scaffold import BaselineScaffoldOptions, DEFAULT_AGENT_MODEL
-from engineeringagent.ports import InitWorkspaceDependencies
+from engineeringagent.ports import (
+    BaselineScaffoldOptions,
+    DEFAULT_AGENT_MODEL,
+    InitWorkspaceDependencies,
+)
 
 
 class InitWorkspaceRequest(BaseModel):  # pylint: disable=too-many-instance-attributes
