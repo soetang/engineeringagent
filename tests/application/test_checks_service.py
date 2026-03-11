@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from engineeringagent.application import DefaultChecksService, RunChecksRequest
 from engineeringagent.checks.results import ChecksRunResult
 from engineeringagent.checks.contracts import HarnessCheckPhase
 from engineeringagent.checks.strategy_contracts import CheckExecutionRecord
+from engineeringagent.ports import ChecksRunRequest
+import pytest
 
 
 def _build_result(
@@ -54,22 +54,43 @@ def _build_request(**overrides: object) -> RunChecksRequest:
     return RunChecksRequest.model_validate(fields)
 
 
-def test_default_checks_service_runs_single_requested_phase(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+class _FakeChecksRunner:
+    def __init__(
+        self,
+        *,
+        result_by_phase: dict[HarnessCheckPhase, ChecksRunResult],
+        reviewers_selected: bool = False,
+    ) -> None:
+        self._result_by_phase = result_by_phase
+        self._reviewers_selected = reviewers_selected
+        self.requests: list[ChecksRunRequest] = []
+
+    def run(self, request: ChecksRunRequest) -> ChecksRunResult:
+        self.requests.append(request)
+        return self._result_by_phase[request.phase]
+
+    def reviewers_group_selected(self, selected_checks: list[str] | None) -> bool:
+        assert selected_checks is None or isinstance(selected_checks, list)
+        return self._reviewers_selected
+
+
+def test_default_checks_service_runs_single_requested_phase() -> None:
     """The service should execute only the requested phase by default."""
-    calls: list[HarnessCheckPhase] = []
+    runner = _FakeChecksRunner(
+        result_by_phase={
+            HarnessCheckPhase.ITERATION_END: _build_result(
+                ok=True,
+                output="iteration_end:ok",
+            )
+        }
+    )
 
-    def _fake_run_checks(project_root: Path, *, phase: HarnessCheckPhase, **_: object) -> ChecksRunResult:
-        calls.append(phase)
-        assert project_root == Path("/tmp/project")
-        return _build_result(ok=True, output=f"{phase.value}:ok")
+    result = DefaultChecksService(runner).run(_build_request())
 
-    monkeypatch.setattr("engineeringagent.application.checks_service.checks_domain.run_checks", _fake_run_checks)
-
-    result = DefaultChecksService().run(_build_request())
-
-    assert calls == [HarnessCheckPhase.ITERATION_END]
+    assert [request.phase for request in runner.requests] == [
+        HarnessCheckPhase.ITERATION_END
+    ]
+    assert runner.requests[0].project_root == Path("/tmp/project")
     assert result.result.ok is True
     assert result.failed_phase is None
     assert result.phase_results == (
@@ -77,24 +98,24 @@ def test_default_checks_service_runs_single_requested_phase(
     )
 
 
-def test_default_checks_service_stops_at_first_failed_phase_in_all_phases_mode(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_default_checks_service_stops_at_first_failed_phase_in_all_phases_mode() -> None:
     """All-phase execution should stop once one phase fails."""
-    calls: list[HarnessCheckPhase] = []
+    runner = _FakeChecksRunner(
+        result_by_phase={
+            HarnessCheckPhase.ITERATION_END: _build_result(
+                ok=True,
+                output="iteration_end:ok",
+            ),
+            HarnessCheckPhase.FEATURE_DONE: _build_result(
+                ok=False,
+                output="feature_done:failed",
+            ),
+        }
+    )
 
-    def _fake_run_checks(project_root: Path, *, phase: HarnessCheckPhase, **_: object) -> ChecksRunResult:
-        calls.append(phase)
-        assert project_root == Path("/tmp/project")
-        if phase is HarnessCheckPhase.FEATURE_DONE:
-            return _build_result(ok=False, output="feature_done:failed")
-        return _build_result(ok=True, output=f"{phase.value}:ok")
+    result = DefaultChecksService(runner).run(_build_request(all_phases=True))
 
-    monkeypatch.setattr("engineeringagent.application.checks_service.checks_domain.run_checks", _fake_run_checks)
-
-    result = DefaultChecksService().run(_build_request(all_phases=True))
-
-    assert calls == [
+    assert [request.phase for request in runner.requests] == [
         HarnessCheckPhase.ITERATION_END,
         HarnessCheckPhase.FEATURE_DONE,
     ]
@@ -115,6 +136,13 @@ def test_default_checks_service_rejects_reviewers_without_feature_path() -> None
         ValueError,
         match="feature_path is required when reviewers checks are selected",
     ):
-        DefaultChecksService().run(
+        DefaultChecksService(
+            _FakeChecksRunner(
+                result_by_phase={
+                    HarnessCheckPhase.ITERATION_END: _build_result(ok=True)
+                },
+                reviewers_selected=True,
+            )
+        ).run(
             _build_request(selected_checks=["reviewers"])
         )

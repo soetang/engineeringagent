@@ -6,7 +6,8 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent import checks as checks_domain
+from engineeringagent.checks import ChecksRunResult, HarnessCheckPhase
+from engineeringagent.ports import ChecksRunRequest, ChecksRunner
 
 
 class RunChecksRequest(BaseModel):
@@ -18,7 +19,7 @@ class RunChecksRequest(BaseModel):
     selected_checks: list[str] | None
     check_id: str | None
     feature_path: str | None
-    phase: checks_domain.HarnessCheckPhase
+    phase: HarnessCheckPhase
     all_phases: bool
     base: str | None
     head: str | None
@@ -32,10 +33,10 @@ class RunChecksResult(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     phase_results: tuple[
-        tuple[checks_domain.HarnessCheckPhase, checks_domain.ChecksRunResult], ...
+        tuple[HarnessCheckPhase, ChecksRunResult], ...
     ]
-    result: checks_domain.ChecksRunResult
-    failed_phase: checks_domain.HarnessCheckPhase | None
+    result: ChecksRunResult
+    failed_phase: HarnessCheckPhase | None
     failed_runtime_message: str | None
 
 
@@ -50,16 +51,19 @@ class ChecksService:
 class DefaultChecksService(ChecksService):
     """Default checks application service backed by the checks domain surface."""
 
-    _ALL_PHASES_ORDER: tuple[checks_domain.HarnessCheckPhase, ...] = (
-        checks_domain.HarnessCheckPhase.ITERATION_END,
-        checks_domain.HarnessCheckPhase.FEATURE_DONE,
-        checks_domain.HarnessCheckPhase.MANUAL,
+    _ALL_PHASES_ORDER: tuple[HarnessCheckPhase, ...] = (
+        HarnessCheckPhase.ITERATION_END,
+        HarnessCheckPhase.FEATURE_DONE,
+        HarnessCheckPhase.MANUAL,
     )
+
+    def __init__(self, checks_runner: ChecksRunner) -> None:
+        self._checks_runner = checks_runner
 
     def run(self, request: RunChecksRequest) -> RunChecksResult:
         """Execute checks with deterministic first-failure semantics."""
         if (
-            checks_domain.reviewers_group_selected(request.selected_checks)
+            self._checks_runner.reviewers_group_selected(request.selected_checks)
             and request.feature_path is None
         ):
             raise ValueError(
@@ -68,22 +72,24 @@ class DefaultChecksService(ChecksService):
 
         phases = self._resolve_phases(request)
         phase_results: list[
-            tuple[checks_domain.HarnessCheckPhase, checks_domain.ChecksRunResult]
+            tuple[HarnessCheckPhase, ChecksRunResult]
         ] = []
-        result: checks_domain.ChecksRunResult | None = None
-        failed_phase: checks_domain.HarnessCheckPhase | None = None
+        result: ChecksRunResult | None = None
+        failed_phase: HarnessCheckPhase | None = None
         for phase in phases:
             result = self._coerce_result(
-                checks_domain.run_checks(
-                    request.project_root,
-                    phase=phase,
-                    checks=request.selected_checks,
-                    check_id=request.check_id,
-                    feature_path=request.feature_path,
-                    verbose_output=request.verbose_output,
-                    base=request.base,
-                    head=request.head,
-                    dry_run=request.dry_run,
+                self._checks_runner.run(
+                    ChecksRunRequest(
+                        project_root=request.project_root,
+                        selected_checks=request.selected_checks,
+                        check_id=request.check_id,
+                        feature_path=request.feature_path,
+                        phase=phase,
+                        base=request.base,
+                        head=request.head,
+                        verbose_output=request.verbose_output,
+                        dry_run=request.dry_run,
+                    )
                 )
             )
             phase_results.append((phase, result))
@@ -106,7 +112,7 @@ class DefaultChecksService(ChecksService):
     def _resolve_phases(
         self,
         request: RunChecksRequest,
-    ) -> tuple[checks_domain.HarnessCheckPhase, ...]:
+    ) -> tuple[HarnessCheckPhase, ...]:
         if request.all_phases:
             return self._ALL_PHASES_ORDER
         return (request.phase,)
@@ -114,8 +120,8 @@ class DefaultChecksService(ChecksService):
     def _build_failed_runtime_message(
         self,
         *,
-        result: checks_domain.ChecksRunResult,
-        failed_phase: checks_domain.HarnessCheckPhase | None,
+        result: ChecksRunResult,
+        failed_phase: HarnessCheckPhase | None,
     ) -> str | None:
         if result.ok:
             return None
@@ -134,7 +140,7 @@ class DefaultChecksService(ChecksService):
 
     def _resolve_failed_check_type(
         self,
-        result: checks_domain.ChecksRunResult,
+        result: ChecksRunResult,
     ) -> str | None:
         failed_check_id = result.failed_check_id
 
@@ -148,10 +154,10 @@ class DefaultChecksService(ChecksService):
 
         return None
 
-    def _coerce_result(self, result: object) -> checks_domain.ChecksRunResult:
-        if isinstance(result, checks_domain.ChecksRunResult):
+    def _coerce_result(self, result: object) -> ChecksRunResult:
+        if isinstance(result, ChecksRunResult):
             return result
-        return checks_domain.ChecksRunResult.model_validate(
+        return ChecksRunResult.model_validate(
             result,
             from_attributes=True,
         )

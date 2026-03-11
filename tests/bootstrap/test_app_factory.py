@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from engineeringagent.adapters.checks import RuntimeChecksRunner
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.application import (
     DefaultChecksService,
@@ -21,8 +22,10 @@ def test_app_factory_resolves_project_root() -> None:
 def test_app_factory_builds_default_application_services(tmp_path: Path) -> None:
     """Factory wires the concrete default services used by the CLI."""
     factory = AppFactory(tmp_path)
+    checks_service = factory.build_checks_service()
 
-    assert isinstance(factory.build_checks_service(), DefaultChecksService)
+    assert isinstance(checks_service, DefaultChecksService)
+    assert isinstance(checks_service._checks_runner, RuntimeChecksRunner)
     assert isinstance(factory.build_guidance_service(), DefaultGuidanceService)
     assert isinstance(factory.build_validation_service(), DefaultValidationService)
     assert isinstance(factory.build_progress_journal(), FilesystemProgressJournal)

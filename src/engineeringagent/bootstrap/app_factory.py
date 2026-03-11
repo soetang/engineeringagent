@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from engineeringagent.adapters.checks import RuntimeChecksRunner
 from engineeringagent.adapters.guidance import PackagedGuidanceTopicRepository
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.application import (
@@ -29,7 +30,7 @@ class AppFactory:
 
     def build_checks_service(self) -> ChecksService:
         """Create the default deterministic checks service."""
-        return DefaultChecksService()
+        return DefaultChecksService(RuntimeChecksRunner())
 
     def build_guidance_service(self) -> GuidanceService:
         """Create the packaged guidance service."""
