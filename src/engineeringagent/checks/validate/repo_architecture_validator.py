@@ -16,6 +16,7 @@ class RepoArchitectureValidator:
 
         src_root = context.project_root / "src" / "engineeringagent"
         application_root = src_root / "application"
+        domain_root = src_root / "domain"
         ports_root = context.project_root / "src" / "engineeringagent" / "ports"
         issues: list[ValidationIssue] = []
         issues.extend(_deleted_path_issues(project_root=context.project_root))
@@ -25,6 +26,8 @@ class RepoArchitectureValidator:
                 modules=_iter_python_modules(src_root),
             )
         )
+        for module_path in _iter_python_modules(domain_root):
+            issues.extend(_domain_module_issues(module_path, project_root=context.project_root))
         for module_path in _iter_python_modules(application_root):
             issues.extend(
                 _application_module_issues(module_path, project_root=context.project_root)
@@ -144,6 +147,34 @@ def _application_module_issues(
         )
     )
     return tuple(issues)
+
+
+def _domain_module_issues(
+    module_path: Path,
+    *,
+    project_root: Path,
+) -> tuple[ValidationIssue, ...]:
+    rel_path = module_path.relative_to(project_root).as_posix()
+    module = _parse_module(module_path, rel_path=rel_path)
+    if isinstance(module, ValidationIssue):
+        return (module,)
+
+    return _forbidden_import_issues(
+        module,
+        rel_path=rel_path,
+        forbidden_modules=(
+            "engineeringagent.adapters",
+            "engineeringagent.application",
+            "engineeringagent.bootstrap",
+            "engineeringagent.ports",
+            "engineeringagent.presentation",
+        ),
+        message=(
+            "domain modules must not import application, ports, adapters, "
+            "presentation, or bootstrap modules"
+        ),
+        code="repo.architecture.domain-import",
+    )
 
 
 def _module_declares_protocol(module: ast.Module) -> bool:

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from engineeringagent.checks.validate.contracts import ValidationContext, ValidationIssue
 from engineeringagent.checks.validate.repo_architecture_validator import (
     RepoArchitectureValidator,
@@ -188,6 +190,51 @@ def test_repo_architecture_validator_reports_application_importing_checks_module
             path="src/engineeringagent/application/checks_service.py",
             message="application modules must not import checks modules",
             code="repo.architecture.application-checks-import",
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    "import_line",
+    [
+        "from engineeringagent.application.checks_service import ChecksService\n",
+        "from engineeringagent.ports.agent_runner import AgentRunner\n",
+        "from engineeringagent.adapters.progress import FilesystemProgressJournal\n",
+        "from engineeringagent.presentation.terminal import RunOutputPresenter\n",
+        "from engineeringagent.bootstrap.app_factory import AppFactory\n",
+    ],
+)
+def test_repo_architecture_validator_reports_domain_importing_forbidden_layers(
+    tmp_path: Path,
+    *,
+    import_line: str,
+) -> None:
+    """Domain modules must stay isolated from outer-layer implementation modules."""
+
+    _write_port_module(
+        tmp_path,
+        "src/engineeringagent/domain/specification/progress.py",
+        import_line,
+    )
+
+    issues = RepoArchitectureValidator().validate(
+        context=ValidationContext(
+            project_root=tmp_path,
+            docs_root=tmp_path / "docs",
+            schema_only=False,
+        )
+    )
+
+    assert issues == (
+        ValidationIssue(
+            validator_id="repo.architecture",
+            scope="repo",
+            path="src/engineeringagent/domain/specification/progress.py",
+            message=(
+                "domain modules must not import application, ports, adapters, "
+                "presentation, or bootstrap modules"
+            ),
+            code="repo.architecture.domain-import",
         ),
     )
 
