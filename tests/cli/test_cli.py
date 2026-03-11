@@ -24,7 +24,10 @@ from engineeringagent.config import (
     resolve_docs_root,
 )
 from engineeringagent.domain.quality import ChecksRunResult
-from engineeringagent.schema_registry import list_schema_ids, schema_from_registry
+from engineeringagent.presentation.presenters import (
+    list_schema_ids,
+    schema_from_registry,
+)
 from tests.cli.approach_fixture_data import (
     APPROACH_TOPIC_IDS,
 )

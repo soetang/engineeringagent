@@ -14,8 +14,9 @@ from engineeringagent.domain.quality import (
     HarnessCheckPhase as _HarnessCheckPhase,
     HarnessChecksDocument,
 )
-from engineeringagent.presentation.presenters.json_schema import JSON_SCHEMA_DRAFT_URL
 from engineeringagent import spec_bundles as _spec_bundles
+
+JSON_SCHEMA_DRAFT_URL = "https://json-schema.org/draft/2020-12/schema"
 
 PRIORITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 FeaturePackagePaths = _spec_bundles.FeaturePackagePaths

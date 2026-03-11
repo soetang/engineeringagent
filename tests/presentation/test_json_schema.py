@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from engineeringagent.schema_registry import (
+from engineeringagent.presentation.presenters import (
     UnknownSchemaIdError,
     list_schema_ids,
     schema_from_registry,
@@ -10,6 +10,7 @@ from engineeringagent.schema_registry import (
 
 
 def test_schema_registry_lists_expected_ids_in_deterministic_order() -> None:
+    """Supported schema ids should stay stable and ordered."""
     assert list_schema_ids() == (
         "checks.harness",
         "feature.spec",
@@ -20,6 +21,7 @@ def test_schema_registry_lists_expected_ids_in_deterministic_order() -> None:
 
 @pytest.mark.parametrize("schema_id", list_schema_ids())
 def test_schema_registry_returns_model_owned_json_schema(schema_id: str) -> None:
+    """Every registered schema should render a JSON Schema object contract."""
     schema = schema_from_registry(schema_id)
 
     assert schema["$schema"] == "https://json-schema.org/draft/2020-12/schema"
@@ -28,6 +30,7 @@ def test_schema_registry_returns_model_owned_json_schema(schema_id: str) -> None
 
 
 def test_feature_schema_registry_exposes_bundled_feature_contract() -> None:
+    """The feature schema should expose the bundled feature contract fields."""
     schema = schema_from_registry("feature.spec")
 
     assert schema["type"] == "object"
@@ -50,6 +53,7 @@ def test_feature_schema_registry_exposes_bundled_feature_contract() -> None:
 
 
 def test_schema_registry_rejects_unknown_schema_id_with_supported_ids() -> None:
+    """Unknown schema ids should return a deterministic error message."""
     with pytest.raises(UnknownSchemaIdError) as exc_info:
         schema_from_registry("not-real")
 

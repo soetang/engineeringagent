@@ -107,6 +107,7 @@ def test_run_checks_fitness_surfaces_statement_budget_offenders(
                                 repo_root
                                 / "harness"
                                 / "fitness_functions"
+                                / "rules"
                                 / "check_module_statement_budget.py"
                             ),
                         ],

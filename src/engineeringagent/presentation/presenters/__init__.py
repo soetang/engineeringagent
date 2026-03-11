@@ -1,6 +1,11 @@
 """Presentation-layer result renderers and helpers."""
 
-from .json_schema import JSON_SCHEMA_DRAFT_URL
+from .json_schema import (
+    JSON_SCHEMA_DRAFT_URL,
+    UnknownSchemaIdError,
+    list_schema_ids,
+    schema_from_registry,
+)
 from .prompt_feedback import (
     CHECKS_FAILURE_FALLBACK,
     format_command_failure_output_excerpt,
@@ -26,6 +31,9 @@ __all__ = [
     "normalize_prompt_feedback",
     "resolve_checks_prompt_feedback",
     "resolve_prompt_feedback",
+    "UnknownSchemaIdError",
+    "list_schema_ids",
+    "schema_from_registry",
     "stdout_is_tty",
     "tty_supports_ansi",
 ]
