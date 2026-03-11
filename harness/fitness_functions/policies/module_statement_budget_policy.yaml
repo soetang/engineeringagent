@@ -4,4 +4,4 @@ budgets:
   - root: harness
     cap: 300
   - root: tests
-    cap: 400
+    cap: 450

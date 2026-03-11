@@ -4,6 +4,7 @@ exception_root_dirs:
   - tests/harness
   - tests/helpers
   - tests/fixtures
+  - tests/progress
 exception_root_files:
   - tests/conftest.py
   - tests/__init__.py

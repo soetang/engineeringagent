@@ -3,8 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, NamedTuple, Sequence
 
-from .changed_paths import collect_changed_paths
 from .agents import preflight, run_agent
+from .application import FeatureIterationRequest
 from .bootstrap import AppFactory
 from .loop_runtime.controller import run_loop_controller
 from .loop_runtime.implement import run_implement_step_from_inputs
@@ -16,35 +16,15 @@ from .loop_runtime.models import (
     IterationReport,
     IterationSummaryInputs,
 )
-from .loop_runtime.iteration import (
-    IterationPipelineDependencies,
-    run_feature_iteration_pipeline,
-)
-from .loop_runtime.phases import (
-    CompletionPhaseDependencies,
-    GatePhaseDependencies,
-    ReviewerPhaseDependencies,
-    run_completion_commit_phase,
-    run_gate_phase,
-    run_reviewer_phase,
-    run_verification_phase,
-)
 from .loop_runtime.selection import (
     choose_feature_with_selector,
     deterministic_feature_choice,
 )
 from .loop_runtime.feature_state import (
-    archive_completed_feature,
     discover_active_feature_paths,
     done_features_pending_archive,
-    evaluate_initial_feature_load,
     pending_features,
-    ready_for_active_iteration,
-    refresh_feature_after_implement,
     resolve_feature_paths,
-    restore_archived_feature,
-    should_archive_selected_feature,
-    touch_active_feature_for_iteration,
 )
 from .loop_runtime.run_context import LoopRun, RunConfig, RunServices
 from .loop_runtime.observers import (
@@ -60,6 +40,18 @@ from .ports import CommitRequest, VersionControlFailure, VersionControlGateway
 from .specs import progress_kind_label
 
 __all__ = ["run_loop_controller"]
+
+
+class _LoopAgentRunner:
+    """Legacy loop-local agent seam used by the runtime facade."""
+
+    def run(self, request: Any) -> object:
+        """Execute one agent request through the loop module's run-agent seam."""
+        return run_agent(
+            request.project_root,
+            request.prompt,
+            output_type=request.output_type,
+        )
 
 
 def _print_run_all_snapshot_banner(resolved_paths: Sequence[Path]) -> None:
@@ -147,7 +139,7 @@ def run_implement_step(
     )
     return run_implement_step_from_inputs(
         implement_inputs,
-        agent_runner=app_factory.build_agent_runner(),
+        agent_runner=_LoopAgentRunner(),
         prompt_builder=app_factory.build_prompt_builder(),
         progress_journal=app_factory.build_progress_journal(),
     )
@@ -306,41 +298,17 @@ def _run_feature_iteration(
         feedback=feedback,
         verbose_output=verbose_output,
     )
-    return _run_feature_iteration_with_inputs(iteration_inputs)
-
-
-def _run_feature_iteration_with_inputs(
-    iteration_inputs: FeatureIterationInputs,
-) -> IterationOutcome:
-    report = run_feature_iteration_pipeline(
-        iteration_inputs,
-        IterationPipelineDependencies(
-            evaluate_initial_feature_load=evaluate_initial_feature_load,
-            ready_for_active_iteration=ready_for_active_iteration,
-            touch_active_feature_for_iteration=touch_active_feature_for_iteration,
-            run_implement_step=run_implement_step,
-            refresh_feature_after_implement=refresh_feature_after_implement,
-            should_archive_selected_feature=should_archive_selected_feature,
-            archive_completed_feature=archive_completed_feature,
-            run_gate_phase=run_gate_phase,
-            gate_phase_dependencies=GatePhaseDependencies(
-                restore_archived_feature=restore_archived_feature,
-                collect_changed_paths=collect_changed_paths,
-            ),
-            run_verification_phase=run_verification_phase,
-            run_reviewer_phase=run_reviewer_phase,
-            reviewer_phase_dependencies=ReviewerPhaseDependencies(
-                collect_changed_paths=collect_changed_paths,
-                restore_archived_feature=restore_archived_feature,
-            ),
-            run_completion_commit_phase=run_completion_commit_phase,
-            completion_phase_dependencies=CompletionPhaseDependencies(
-                commit_feature_completion=_commit_feature_completion,
-                restore_archived_feature=restore_archived_feature,
-            ),
-        ),
+    result = AppFactory(project_root).build_feature_iteration_service().run(
+        FeatureIterationRequest(
+            project_root=iteration_inputs.project_root,
+            feature_path=iteration_inputs.feature_path,
+            run_all=iteration_inputs.run_all,
+            attempt=iteration_inputs.attempt,
+            feedback=iteration_inputs.feedback,
+            verbose_output=iteration_inputs.verbose_output,
+        )
     )
-    return _publish_iteration_report(report)
+    return IterationOutcome.model_validate(result.model_dump())
 
 
 def _default_iteration_report_observers() -> tuple[IterationReportObserver, ...]:

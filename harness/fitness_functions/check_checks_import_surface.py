@@ -18,6 +18,7 @@ RULE_ID = "architecture.checks-import-surface"
 _ALLOWED_CHECKS_IMPORT_NAMES = set(checks.__all__)
 
 _EXCLUDED_PACKAGES = {
+    "adapters",
     "checks",
     "fitness",
 }

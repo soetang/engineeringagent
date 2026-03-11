@@ -9,6 +9,11 @@ from .checks_service import (
     RunChecksRequest,
     RunChecksResult,
 )
+from .feature_iteration_service import (
+    FeatureIterationRequest,
+    FeatureIterationResult,
+    FeatureIterationService,
+)
 from .guidance_service import (
     GuidanceInputError,
     GuidanceQuery,
@@ -41,6 +46,9 @@ from .run_loop_service import (
 
 __all__ = [
     "ChecksService",
+    "FeatureIterationRequest",
+    "FeatureIterationResult",
+    "FeatureIterationService",
     "GuidanceInputError",
     "GuidanceQuery",
     "GuidanceResult",

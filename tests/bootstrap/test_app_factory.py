@@ -11,7 +11,10 @@ from engineeringagent.adapters.documents import (
     ChecksCatalogLoadOptions,
     FilesystemChecksCatalogRepository,
 )
-from engineeringagent.adapters.loop import RuntimeRunLoopExecutor
+from engineeringagent.adapters.loop import (
+    RuntimeFeatureIterationExecutor,
+    RuntimeRunLoopExecutor,
+)
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
 from engineeringagent.adapters.vcs import (
@@ -20,6 +23,7 @@ from engineeringagent.adapters.vcs import (
 )
 from engineeringagent.application import (
     ChecksService,
+    FeatureIterationService,
     GuidanceService,
     InitWorkspaceService,
     PromptBuilder,
@@ -41,11 +45,17 @@ def test_app_factory_builds_default_application_services(tmp_path: Path) -> None
     """Factory wires the concrete default services used by the CLI."""
     factory = AppFactory(tmp_path)
     checks_service = factory.build_checks_service()
+    feature_iteration_service = factory.build_feature_iteration_service()
     run_loop_service = factory.build_run_loop_service()
 
     assert isinstance(checks_service, ChecksService)
+    assert isinstance(feature_iteration_service, FeatureIterationService)
     assert isinstance(run_loop_service, RunLoopService)
     assert isinstance(checks_service._checks_runner, RuntimeChecksRunner)
+    assert isinstance(
+        feature_iteration_service._feature_iteration_executor,
+        RuntimeFeatureIterationExecutor,
+    )
     assert isinstance(
         checks_service._checks_catalog_repository,
         FilesystemChecksCatalogRepository,

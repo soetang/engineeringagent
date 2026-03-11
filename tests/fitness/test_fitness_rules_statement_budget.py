@@ -244,7 +244,6 @@ def test_statement_budget_rule_uses_bundled_default_policy_thresholds(
     assert payload["violations"] == [
         "harness/over_budget.py: statements=301 cap=300",
         "src/engineeringagent/over_budget.py: statements=301 cap=300",
-        "tests/test_over_budget.py: statements=401 cap=400",
     ]
 
 

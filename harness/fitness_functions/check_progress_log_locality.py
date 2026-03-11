@@ -19,7 +19,11 @@ _PROGRESS_ROOT = (Path(".engineeringagent") / "progress").as_posix()
 _LEGACY_PROGRESS_ROOT = "progress"
 
 _APPROVED_PATH_LITERAL_FILES = {
+    _SOURCE_PACKAGE_ROOT / "adapters" / "progress" / "filesystem_journal.py",
     _SOURCE_PACKAGE_ROOT / "adapters" / "progress" / "paths.py",
+}
+_APPROVED_LOG_WRITE_FILES = {
+    _SOURCE_PACKAGE_ROOT / "adapters" / "progress" / "filesystem_journal.py",
 }
 
 _PROGRESS_PATH_LITERAL_TOKENS = (
@@ -185,6 +189,8 @@ def _direct_write_violations(
     tree: ast.AST,
 ) -> list[str]:
     relative = file_path.relative_to(project_root)
+    if relative in _APPROVED_LOG_WRITE_FILES:
+        return []
     sink_names = _assigned_loop_log_sink_names(tree)
     violations: list[str] = []
 

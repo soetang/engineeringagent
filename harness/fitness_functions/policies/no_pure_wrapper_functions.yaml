@@ -2,4 +2,16 @@ rule_id: architecture.no-pure-wrapper-functions
 scan_roots:
   - src/engineeringagent
   - harness/fitness_functions
-allowlist: []
+allowlist:
+  - path: src/engineeringagent/adapters/shell/subprocess_runner.py
+    function: run_shell_command
+    rationale: Legacy public helper kept until shell adapter consolidation removes the call site.
+    remediation: Prefer SubprocessShellRunner().run at direct call sites and delete this helper once callers are migrated.
+  - path: src/engineeringagent/checks/request_normalization.py
+    function: list_check_groups
+    rationale: Compatibility surface preserved while check-group callers converge on the domain export.
+    remediation: Replace imports with engineeringagent.domain.quality.list_check_groups and remove the wrapper after the checks surface migration.
+  - path: src/engineeringagent/loop.py
+    function: git_head_short
+    rationale: Legacy loop presenter wiring still references a small named helper for git-head lookup.
+    remediation: Inline the version-control lookup into the observer wiring or move it to a shared adapter helper when the loop facade shrinks further.
