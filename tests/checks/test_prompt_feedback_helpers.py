@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from engineeringagent.prompt_feedback import (
+from engineeringagent.presentation.prompt_feedback import (
     format_command_failure_output_excerpt,
     format_command_return_code,
 )

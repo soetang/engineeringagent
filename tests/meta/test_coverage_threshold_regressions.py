@@ -32,7 +32,7 @@ from engineeringagent.loop_runtime.phases import (
     run_gate_phase,
     run_verification_phase,
 )
-from engineeringagent.loop_runtime.presentation import (
+from engineeringagent.presentation.terminal import (
     RunOutputPresenter,
     tty_supports_ansi,
 )

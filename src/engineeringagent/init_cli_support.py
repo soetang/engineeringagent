@@ -15,7 +15,7 @@ from .config import (
 )
 from .git import client as git_client
 from .init_scaffold import AGENTS_LAUNCHER_CHOICES, DEFAULT_AGENTS_LAUNCHER
-from .terminal import stdout_is_tty
+from .presentation.terminal import stdout_is_tty
 
 InputFn = Callable[[str], str]
 

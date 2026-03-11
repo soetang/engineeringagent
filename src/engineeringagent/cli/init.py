@@ -36,7 +36,7 @@ from ..init_scaffold import (
     build_agents_merge_followup_spec,
 )
 from ..init_service import InitDependencies, InitRequest, run_init_command
-from ..terminal import stdout_is_tty
+from ..presentation.terminal import stdout_is_tty
 
 _HandlerArgs = SimpleNamespace
 _AdapterValue = TypeVar("_AdapterValue")

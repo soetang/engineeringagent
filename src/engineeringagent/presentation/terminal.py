@@ -1,4 +1,4 @@
-"""Run-loop terminal presentation helpers."""
+"""Terminal presentation helpers."""
 
 from __future__ import annotations
 
@@ -7,13 +7,23 @@ from typing import TextIO
 
 from pydantic import BaseModel, ConfigDict
 
-from ..terminal import stdout_is_tty
-
 ANSI_RESET = "\x1b[0m"
 ANSI_BOLD = "\x1b[1m"
 ANSI_GREEN = "\x1b[32m"
 ANSI_RED = "\x1b[31m"
 ANSI_YELLOW = "\x1b[33m"
+
+
+def stdout_is_tty(stdout: object | None = None) -> bool:
+    """Return True when stdout looks like an interactive TTY."""
+    active_stdout = stdout if stdout is not None else sys.stdout
+    isatty = getattr(active_stdout, "isatty", None)
+    if not callable(isatty):
+        return False
+    try:
+        return bool(isatty())
+    except (OSError, ValueError, RuntimeError):
+        return False
 
 
 def tty_supports_ansi(

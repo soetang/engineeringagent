@@ -8,7 +8,7 @@ from typing import Any, Literal, Mapping, Protocol, Sequence
 from pydantic import BaseModel, ConfigDict, ValidationError
 
 from engineeringagent.ports import PromptDefinitionRepository
-from engineeringagent.prompt_feedback import normalize_prompt_feedback
+from engineeringagent.presentation.prompt_feedback import normalize_prompt_feedback
 from engineeringagent.prompts.feedback_envelope import (
     parse_feedback_envelope,
     serialize_feedback_envelope,

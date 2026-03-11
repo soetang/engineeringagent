@@ -16,7 +16,7 @@ from ..checks import (
     HarnessCheckPhase,
     run_checks,
 )
-from ..prompt_feedback import (
+from ..presentation.prompt_feedback import (
     format_failed_command_feedback_lines,
     resolve_checks_prompt_feedback,
 )
