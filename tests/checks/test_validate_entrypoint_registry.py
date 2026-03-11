@@ -22,6 +22,7 @@ def test_build_validation_registry_registers_repo_and_strategy_validators() -> N
     registry = _build_validation_registry()
 
     assert tuple(validator.validator_id for validator in registry.repo_validators) == (
+        "repo.architecture",
         "repo.policy",
     )
     assert tuple(

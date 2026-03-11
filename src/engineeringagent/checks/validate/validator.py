@@ -5,6 +5,7 @@ from pathlib import Path
 from engineeringagent.config import resolve_docs_root
 
 from .contracts import ValidationContext, ValidationIssue
+from .repo_architecture_validator import RepoArchitectureValidator
 from .repo_validators import RepoPolicyValidator
 from .registry import ValidationRegistry
 from .strategy_validators import default_strategy_validators
@@ -27,7 +28,7 @@ def _build_validation_registry() -> ValidationRegistry:
     """Build deterministic repo + strategy validator composition."""
 
     return ValidationRegistry(
-        repo_validators=[RepoPolicyValidator()],
+        repo_validators=[RepoArchitectureValidator(), RepoPolicyValidator()],
         strategy_validators=default_strategy_validators(),
     )
 
