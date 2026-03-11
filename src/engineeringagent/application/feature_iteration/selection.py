@@ -1,15 +1,9 @@
-"""Loop runtime feature selection helpers."""
+"""Application-layer helpers for deterministic feature selection."""
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Callable, Sequence
-
-from engineeringagent.agents import (
-    AgentBackendError,
-    classify_backend_exception,
-    describe_action,
-)
+from typing import Any, Sequence
 from engineeringagent.specs import feature_sort_key
 
 STATUS_ORDER: dict[str, int] = {
@@ -98,40 +92,3 @@ def _unique_index_match(
         if len(matches) == 1:
             return matches[0]
     return None
-
-
-def choose_feature_with_selector(
-    project_root: Path,
-    pending: Sequence[tuple[Path, dict[str, Any]]],
-    *,
-    build_selector_prompt_fn: Callable[
-        [Sequence[tuple[Path, dict[str, Any]]]],
-        str,
-    ],
-    run_agent_fn: Callable[[Path, str], str],
-) -> tuple[Path, dict[str, Any]]:
-    """Choose a feature using selector output with deterministic fallback."""
-    if len(pending) == 1:
-        return pending[0]
-
-    prompt = build_selector_prompt_fn(pending)
-    step_label = describe_action(project_root, action="selector", structured=False)
-    print(f"Selector step: {step_label}")
-    try:
-        output = run_agent_fn(project_root, prompt)
-    except (FileNotFoundError, AgentBackendError) as exc:
-        failed_gate, _message = classify_backend_exception(exc)
-        fallback = deterministic_feature_choice(pending)
-        print(f"Selector fallback: {failed_gate}; selected {fallback[1].get('id')}")
-        return fallback
-
-    chosen_path = parse_selector_output(output, pending)
-    if chosen_path is not None:
-        chosen_feature = next(
-            feature for path, feature in pending if path == chosen_path
-        )
-        return (chosen_path, chosen_feature)
-
-    fallback = deterministic_feature_choice(pending)
-    print(f"Selector fallback: selector_parse; selected {fallback[1].get('id')}")
-    return fallback

@@ -11,6 +11,7 @@ rules:
       - engineeringagent.presentation.cli
       - engineeringagent.loop
       - engineeringagent.loop_runtime
+      - engineeringagent.application.feature_iteration
   - module: engineeringagent.checks.contracts
     blocked_dependencies:
       - engineeringagent.presentation.cli
@@ -24,6 +25,7 @@ rules:
   - module: engineeringagent.presentation.cli.app
     blocked_dependencies:
       - engineeringagent.loop_runtime
+      - engineeringagent.application.feature_iteration
       - engineeringagent.checks.commands
       - engineeringagent.checks.fitness
       - engineeringagent.checks.reviewers
@@ -68,6 +70,7 @@ rules:
       - engineeringagent.adapters
       - engineeringagent.bootstrap
       - engineeringagent.loop_runtime
+      - engineeringagent.application.feature_iteration
       - engineeringagent.presentation
   - module: engineeringagent.application.init_workspace_service
     blocked_dependencies:
@@ -87,6 +90,7 @@ rules:
       - engineeringagent.adapters
       - engineeringagent.bootstrap
       - engineeringagent.loop_runtime
+      - engineeringagent.application.feature_iteration
   - module: engineeringagent.application.feature_iteration.workflow
     blocked_dependencies:
       - engineeringagent.adapters

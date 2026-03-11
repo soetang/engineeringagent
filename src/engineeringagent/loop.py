@@ -5,7 +5,9 @@ from typing import Any, NamedTuple, Sequence
 
 from .agents import preflight, run_agent
 from .adapters.progress import write_iteration_telemetry
+from .adapters.runtime.feature_selector import choose_feature_with_selector
 from .application import FeatureIterationRequest
+from .application.feature_iteration.selection import deterministic_feature_choice
 from .application.feature_iteration.models import (
     FeatureIterationInputs,
     IterationOutcome,
@@ -21,10 +23,6 @@ from .bootstrap.iteration_reporting import (
 )
 from .bootstrap.runtime_execution import run_loop_controller
 from .bootstrap import runtime_support as _runtime_support
-from .loop_runtime.selection import (
-    choose_feature_with_selector,
-    deterministic_feature_choice,
-)
 from .loop_runtime.feature_state import (
     discover_active_feature_paths,
     done_features_pending_archive,
