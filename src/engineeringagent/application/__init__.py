@@ -39,6 +39,7 @@ from .workspace_recovery_service import (
 from .run_loop_service import (
     RunLoopRequest,
     RunLoopResult,
+    RunLoopRuntime,
     RunLoopService,
 )
 
@@ -59,6 +60,7 @@ __all__ = [
     "PromptBuilder",
     "RunLoopRequest",
     "RunLoopResult",
+    "RunLoopRuntime",
     "RunLoopService",
     "RunChecksRequest",
     "RunChecksResult",

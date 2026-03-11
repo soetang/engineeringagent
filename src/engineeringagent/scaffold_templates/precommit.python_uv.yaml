@@ -6,11 +6,13 @@ repos:
         entry: uv run engineeringagent checks run --checks commands --check-id ruff_validate --phase iteration_end
         language: system
         pass_filenames: false
+        files: ^(src/engineeringagent/|harness/|tests/|pyproject\.toml|engineeringagent\.toml|\.pre-commit-config\.yaml)
       - id: engineeringagent-precommit
         name: engineeringagent-precommit
         entry: uv run engineeringagent checks run --checks fitness --phase iteration_end
         language: system
         pass_filenames: false
+        files: ^(src/engineeringagent/|harness/|tests/|pyproject\.toml|engineeringagent\.toml|\.pre-commit-config\.yaml)
       - id: engineeringagent-commit-msg
         name: engineeringagent-commit-msg
         entry: python harness/fitness_functions/validate_commit_messages.py --commit-msg-file

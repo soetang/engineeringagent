@@ -15,7 +15,6 @@ from engineeringagent.adapters.documents import (
     FilesystemChecksCatalogRepository,
 )
 from engineeringagent.adapters.guidance import PackagedGuidanceTopicRepository
-from engineeringagent.adapters.loop import LegacyLoopRunLoopExecutor
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
 from engineeringagent.adapters.vcs import (
@@ -30,6 +29,7 @@ from engineeringagent.application import (
     InitWorkspaceService,
     PromptBuilder,
     RunLoopService,
+    RunLoopRuntime,
     ValidationService,
     WorkspaceRecoveryService,
 )
@@ -68,7 +68,17 @@ class AppFactory:
                     missing_context=" (required for --all)",
                 )
             ),
-            run_loop_executor=LegacyLoopRunLoopExecutor(),
+            runtime=self.build_run_loop_runtime(),
+        )
+
+    def build_run_loop_runtime(self) -> RunLoopRuntime:
+        """Create the legacy loop callable bundle owned by bootstrap wiring."""
+        loop_module = import_module("engineeringagent.loop")
+        return RunLoopRuntime(
+            config_options=loop_module.RunConfigOptions,
+            build_run_config=loop_module.build_run_config,
+            build_loop_run=loop_module.build_loop_run,
+            run_loop_controller=loop_module.run_loop_controller,
         )
 
     def build_feature_iteration_service(self) -> FeatureIterationService:

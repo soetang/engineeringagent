@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any, Callable
 
 from pydantic import BaseModel, ConfigDict
 
 from engineeringagent.ports import (
     ChecksCatalogRepository,
-    RunLoopExecutionRequest,
-    RunLoopExecutor,
     ValidationFailure,
 )
 
@@ -37,6 +36,21 @@ class RunLoopResult(BaseModel):
     message: str | None = None
 
 
+class RunLoopRuntime(BaseModel):
+    """Legacy run-loop collaborators injected by bootstrap-owned wiring."""
+
+    model_config = ConfigDict(
+        frozen=True,
+        extra="forbid",
+        arbitrary_types_allowed=True,
+    )
+
+    config_options: Callable[..., Any]
+    build_run_config: Callable[..., Any]
+    build_loop_run: Callable[[Any], Any]
+    run_loop_controller: Callable[[Any], int]
+
+
 class RunLoopService:
     """Owns run-loop input validation and preflight checks."""
 
@@ -44,10 +58,10 @@ class RunLoopService:
         self,
         *,
         checks_catalog_repository: ChecksCatalogRepository,
-        run_loop_executor: RunLoopExecutor,
+        runtime: RunLoopRuntime,
     ) -> None:
         self._checks_catalog_repository = checks_catalog_repository
-        self._run_loop_executor = run_loop_executor
+        self._runtime = runtime
 
     def run(self, request: RunLoopRequest) -> RunLoopResult:
         """Execute one run-loop request after deterministic preflight."""
@@ -71,14 +85,16 @@ class RunLoopService:
         return None
 
     def _run(self, request: RunLoopRequest) -> int:
-        return self._run_loop_executor.run(
-            RunLoopExecutionRequest(
-                project_root=request.project_root,
-                feature_paths=request.feature_paths,
-                dry_run=request.dry_run,
-                run_all=request.run_all,
-                max_iterations=request.max_iterations,
-                allow_dirty=request.allow_dirty,
-                verbose_output=request.verbose_output,
-            )
+        config = self._runtime.build_run_config(
+            project_root=request.project_root,
+            feature_paths=request.feature_paths,
+            options=self._runtime.config_options(
+                request.dry_run,
+                request.run_all,
+                request.max_iterations,
+                request.allow_dirty,
+                request.verbose_output,
+            ),
         )
+        loop_run = self._runtime.build_loop_run(config)
+        return self._runtime.run_loop_controller(loop_run)
