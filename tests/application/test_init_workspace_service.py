@@ -3,11 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 
 from engineeringagent.application import (
-    InitWorkspaceDependencies,
     InitWorkspaceRequest,
     InitWorkspaceResult,
     InitWorkspaceService,
 )
+from engineeringagent.ports import InitWorkspaceDependencies
 
 
 def _build_request(tmp_path: Path, **overrides: object) -> InitWorkspaceRequest:

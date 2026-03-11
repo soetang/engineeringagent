@@ -12,7 +12,6 @@ from .guidance_service import (
     GuidanceService,
 )
 from .init_workspace_service import (
-    InitWorkspaceDependencies,
     InitWorkspaceRequest,
     InitWorkspaceResult,
     InitWorkspaceService,
@@ -42,7 +41,6 @@ __all__ = [
     "GuidanceQuery",
     "GuidanceResult",
     "GuidanceService",
-    "InitWorkspaceDependencies",
     "InitWorkspaceRequest",
     "InitWorkspaceResult",
     "InitWorkspaceService",

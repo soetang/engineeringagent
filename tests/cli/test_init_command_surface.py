@@ -9,10 +9,10 @@ import pytest
 from engineeringagent import cli as cli_module
 from engineeringagent.cli import init as cli_init_module
 from engineeringagent.application import (
-    InitWorkspaceDependencies,
     InitWorkspaceRequest,
     InitWorkspaceResult,
 )
+from engineeringagent.ports import InitWorkspaceDependencies
 from tests.cli.init_command_support import (
     UV_RUN_TOKEN,
     UVX_TOKEN,

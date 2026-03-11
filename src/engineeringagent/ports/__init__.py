@@ -6,6 +6,7 @@ from engineeringagent.domain.quality import ChecksRunResult
 from .agent_runner import AgentRunRequest, AgentRunner
 from .checks_runner import ChecksRunRequest, ChecksRunner
 from .guidance_topic_repository import GuidanceTopicRepository
+from .init_workspace import InitWorkspaceDependencies
 from .progress_journal import ProgressJournal
 from .prompt_definition_repository import (
     PromptDefinition,
@@ -22,6 +23,7 @@ __all__ = [
     "ChecksRunner",
     "GuidanceTopicRepository",
     "HarnessCheckPhase",
+    "InitWorkspaceDependencies",
     "ProgressJournal",
     "PromptDefinition",
     "PromptDefinitionRepository",

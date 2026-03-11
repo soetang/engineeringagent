@@ -8,7 +8,6 @@ from typing import Callable, TypeVar
 from pydantic import BaseModel, ConfigDict, Field
 
 from ..application import (
-    InitWorkspaceDependencies,
     InitWorkspaceRequest,
     InitWorkspaceResult,
     InitWorkspaceService,
@@ -42,6 +41,7 @@ from ..init_scaffold import (
     build_agents_merge_followup_spec,
 )
 from ..presentation.terminal import stdout_is_tty
+from ..ports import InitWorkspaceDependencies
 
 _HandlerArgs = SimpleNamespace
 _AdapterValue = TypeVar("_AdapterValue")
@@ -312,6 +312,8 @@ def cmd_init(
         _DEFAULT_INIT_WORKSPACE_RUNNER,
     )
     result = run_init_command_fn(request, deps)
+    for note in result.notes:
+        emit(note)
     for message in result.messages:
         emit(message)
     return result.exit_code
