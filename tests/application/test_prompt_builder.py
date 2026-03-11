@@ -12,7 +12,6 @@ from engineeringagent.application import (
     DefaultPromptBuilder,
     ImplementationPromptFeature,
     ImplementationPromptRequest,
-    PromptBuilder,
     PromptArtifactPaths,
     build_implementation_prompt,
     build_implementation_prompt_request,
@@ -179,23 +178,6 @@ def test_loop_runtime_prompt_helper_delegates_to_prompt_builder(tmp_path: Path) 
     )
 
     assert via_helper == direct
-
-
-def test_prompt_builder_protocol_default_method_raises() -> None:
-    """The protocol default stays non-callable without a concrete implementation."""
-
-    with pytest.raises(NotImplementedError):
-        PromptBuilder.build_implementation_prompt(  # type: ignore[misc]
-            cast(Any, object()),
-            ImplementationPromptRequest(
-                feature=ImplementationPromptFeature(feature_id="FEAT-1"),
-                artifacts=PromptArtifactPaths(specification=Path("spec.yaml")),
-                handoff_path=None,
-                feedback=None,
-                progress_kind="feature",
-            ),
-        )
-
 
 def test_build_implementation_prompt_request_does_not_invent_handoff_path(
     tmp_path: Path,

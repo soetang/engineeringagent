@@ -8,6 +8,7 @@ from .checks_runner import ChecksRunRequest, ChecksRunner
 from .guidance_topic_repository import GuidanceTopicRepository
 from .init_workspace import InitWorkspaceDependencies
 from .progress_journal import ProgressJournal
+from .prompt_builder import PromptBuilder
 from .prompt_definition_repository import (
     PromptDefinition,
     PromptDefinitionRepository,
@@ -25,6 +26,7 @@ __all__ = [
     "HarnessCheckPhase",
     "InitWorkspaceDependencies",
     "ProgressJournal",
+    "PromptBuilder",
     "PromptDefinition",
     "PromptDefinitionRepository",
     "PromptInterpolation",

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Literal, Mapping, Protocol, Sequence
+from typing import Any, Literal, Mapping, Sequence
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
@@ -14,7 +14,7 @@ from engineeringagent.domain.specification import (
     resolve_feature_plan_path,
     resolve_feature_research_path,
 )
-from engineeringagent.ports import PromptDefinitionRepository
+from engineeringagent.ports import PromptBuilder, PromptDefinitionRepository
 from engineeringagent.prompts.feedback_envelope import (
     parse_feedback_envelope,
     serialize_feedback_envelope,
@@ -56,14 +56,6 @@ class ImplementationPromptRequest(BaseModel):
     feedback: str | None
     progress_kind: PromptProgressKind
     current_progress: str | None = None
-
-
-class PromptBuilder(Protocol):
-    """Application seam for prompt assembly."""
-
-    def build_implementation_prompt(self, request: ImplementationPromptRequest) -> str:
-        """Render the implementation prompt for one iteration."""
-        raise NotImplementedError
 
 
 class DefaultPromptBuilder:

@@ -16,11 +16,10 @@ from engineeringagent.application import (
     DefaultPromptBuilder,
     GuidanceService,
     InitWorkspaceService,
-    PromptBuilder,
     ValidationService,
 )
 from engineeringagent.config import resolve_harness_root
-from engineeringagent.ports import PromptDefinitionRepository
+from engineeringagent.ports import PromptBuilder, PromptDefinitionRepository
 
 
 class AppFactory:

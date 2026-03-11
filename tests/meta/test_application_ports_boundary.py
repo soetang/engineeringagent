@@ -5,9 +5,6 @@ from pathlib import Path
 
 
 _APPLICATION_ROOT = Path("src/engineeringagent/application")
-_ALLOWED_PROTOCOL_MODULES = {
-    _APPLICATION_ROOT / "prompt_builder.py",
-}
 
 
 def _iter_application_modules() -> list[Path]:
@@ -24,12 +21,11 @@ def _inherits_protocol(node: ast.ClassDef) -> bool:
 
 
 def test_application_infrastructure_protocols_live_in_ports() -> None:
+    """Application modules must not declare infrastructure protocols."""
+
     violations: list[str] = []
 
     for path in _iter_application_modules():
-        if path in _ALLOWED_PROTOCOL_MODULES:
-            continue
-
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         for node in ast.walk(tree):
             if isinstance(node, ast.ClassDef) and _inherits_protocol(node):

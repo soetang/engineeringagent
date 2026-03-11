@@ -9,7 +9,6 @@ from typing import Any
 from engineeringagent.adapters.agents import ConfiguredAgentRunner
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.application import (
-    PromptBuilder,
     build_implementation_prompt_request,
 )
 from engineeringagent.agents import (
@@ -24,7 +23,7 @@ from engineeringagent.domain.specification import (
 )
 from engineeringagent.loop_runtime.models import ImplementStepInputs
 from engineeringagent.loop_runtime.models import ImplementStepResult
-from engineeringagent.ports import AgentRunRequest, AgentRunner
+from engineeringagent.ports import AgentRunRequest, AgentRunner, PromptBuilder
 from engineeringagent.bootstrap import AppFactory
 from engineeringagent.progress import handoff as progress_handoff
 from engineeringagent.progress import paths as progress_paths
