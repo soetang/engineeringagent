@@ -15,7 +15,10 @@ from engineeringagent.adapters.guidance import PackagedGuidanceTopicRepository
 from engineeringagent.adapters.loop import RuntimeRunLoopExecutor
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
-from engineeringagent.adapters.vcs import GitCliVersionControlGateway
+from engineeringagent.adapters.vcs import (
+    GitCliVersionControlGateway,
+    GitFeatureWorkspaceManager,
+)
 from engineeringagent.application import (
     ChecksService,
     GuidanceService,
@@ -87,6 +90,10 @@ class AppFactory:
         """Create the default git-backed version-control gateway."""
         return GitCliVersionControlGateway()
 
+    def build_feature_workspace_manager(self) -> GitFeatureWorkspaceManager:
+        """Create the default git-backed feature workspace manager."""
+        return GitFeatureWorkspaceManager()
+
     def build_prompt_definition_repository(self) -> PromptDefinitionRepository:
         """Create the default filesystem-backed prompt-definition repository."""
         return FilesystemPromptDefinitionRepository(
@@ -100,6 +107,6 @@ class AppFactory:
     def build_workspace_recovery_service(self) -> WorkspaceRecoveryService:
         """Create the default workspace recovery service."""
         return WorkspaceRecoveryService(
-            self.build_version_control_gateway(),
+            self.build_feature_workspace_manager(),
             self.build_progress_journal(),
         )

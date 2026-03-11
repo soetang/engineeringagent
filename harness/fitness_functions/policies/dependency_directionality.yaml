@@ -145,6 +145,15 @@ rules:
       - engineeringagent.cli
       - engineeringagent.loop
       - engineeringagent.loop_runtime
+  - module: engineeringagent.ports.feature_workspace_manager
+    blocked_dependencies:
+      - engineeringagent.adapters
+      - engineeringagent.application
+      - engineeringagent.bootstrap
+      - engineeringagent.checks
+      - engineeringagent.cli
+      - engineeringagent.loop
+      - engineeringagent.loop_runtime
   - module: engineeringagent.ports.guidance_topic_repository
     blocked_dependencies:
       - engineeringagent.adapters

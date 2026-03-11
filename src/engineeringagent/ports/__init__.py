@@ -9,6 +9,12 @@ from .checks_catalog_repository import (
     ChecksCatalogRepository,
 )
 from .checks_runner import ChecksRunRequest, ChecksRunner
+from .feature_workspace_manager import (
+    FeatureWorkspaceFailure,
+    FeatureWorkspaceManager,
+    WorkspaceResetRequest,
+    WorkspaceResetResult,
+)
 from .failures import ExecutionFailure, PortFailure, ValidationFailure, WorkspaceFailure
 from .guidance_topic_repository import GuidanceTopicRepository
 from .init_workspace import (
@@ -36,8 +42,6 @@ from .version_control import (
     CommitRequest,
     CommitResult,
     DiffSummary,
-    ResetRequest,
-    ResetResult,
     VersionControlFailure,
     VersionControlGateway,
     WorktreeStatus,
@@ -57,6 +61,8 @@ __all__ = [
     "DEFAULT_AGENT_MODEL",
     "DiffSummary",
     "ExecutionFailure",
+    "FeatureWorkspaceFailure",
+    "FeatureWorkspaceManager",
     "GuidanceTopicRepository",
     "HarnessCheckPhase",
     "InitWorkspaceDependencies",
@@ -68,8 +74,6 @@ __all__ = [
     "PromptInterpolation",
     "RunLoopExecutionRequest",
     "RunLoopExecutor",
-    "ResetRequest",
-    "ResetResult",
     "RepositoryValidationRequest",
     "RepositoryValidationResult",
     "RepositoryValidator",
@@ -77,6 +81,8 @@ __all__ = [
     "ValidationFailure",
     "VersionControlFailure",
     "VersionControlGateway",
+    "WorkspaceResetRequest",
+    "WorkspaceResetResult",
     "WorktreeStatus",
     "WorkspaceFailure",
 ]

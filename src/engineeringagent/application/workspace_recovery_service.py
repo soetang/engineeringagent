@@ -6,7 +6,11 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.ports import ProgressJournal, ResetRequest, VersionControlGateway
+from engineeringagent.ports import (
+    FeatureWorkspaceManager,
+    ProgressJournal,
+    WorkspaceResetRequest,
+)
 
 
 class RecoverWorkspaceRequest(BaseModel):
@@ -36,10 +40,10 @@ class WorkspaceRecoveryService:
 
     def __init__(
         self,
-        version_control: VersionControlGateway,
+        workspace_manager: FeatureWorkspaceManager,
         progress_journal: ProgressJournal,
     ) -> None:
-        self._version_control = version_control
+        self._workspace_manager = workspace_manager
         self._progress_journal = progress_journal
 
     def run(self, request: RecoverWorkspaceRequest) -> RecoverWorkspaceResult:
@@ -59,8 +63,8 @@ class WorkspaceRecoveryService:
                 ),
             )
 
-        reset_result = self._version_control.reset_hard(
-            ResetRequest(
+        reset_result = self._workspace_manager.reset_to_last_accepted(
+            WorkspaceResetRequest(
                 project_root=request.project_root,
                 target_ref=request.last_accepted_commit,
             )

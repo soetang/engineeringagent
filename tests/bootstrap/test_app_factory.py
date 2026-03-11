@@ -12,7 +12,10 @@ from engineeringagent.adapters.agents import ConfiguredAgentRunner
 from engineeringagent.adapters.loop import RuntimeRunLoopExecutor
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
-from engineeringagent.adapters.vcs import GitCliVersionControlGateway
+from engineeringagent.adapters.vcs import (
+    GitCliVersionControlGateway,
+    GitFeatureWorkspaceManager,
+)
 from engineeringagent.application import (
     ChecksService,
     GuidanceService,
@@ -50,9 +53,12 @@ def test_app_factory_builds_default_application_services(tmp_path: Path) -> None
         FilesystemChecksCatalogRepository,
     )
     assert isinstance(run_loop_service._run_loop_executor, RuntimeRunLoopExecutor)
-    assert run_loop_service._checks_catalog_repository._options == ChecksCatalogLoadOptions(
-        error_prefix="run config error",
-        missing_context=" (required for --all)",
+    assert (
+        run_loop_service._checks_catalog_repository._options
+        == ChecksCatalogLoadOptions(
+            error_prefix="run config error",
+            missing_context=" (required for --all)",
+        )
     )
     assert isinstance(factory.build_guidance_service(), GuidanceService)
     validation_service = factory.build_validation_service()
@@ -72,8 +78,11 @@ def test_app_factory_builds_default_application_services(tmp_path: Path) -> None
     assert isinstance(factory.build_prompt_builder(), PromptBuilder)
     recovery_service = factory.build_workspace_recovery_service()
     assert isinstance(recovery_service, WorkspaceRecoveryService)
-    assert isinstance(recovery_service._version_control, GitCliVersionControlGateway)
+    assert isinstance(recovery_service._workspace_manager, GitFeatureWorkspaceManager)
     assert isinstance(recovery_service._progress_journal, FilesystemProgressJournal)
+    assert isinstance(
+        factory.build_feature_workspace_manager(), GitFeatureWorkspaceManager
+    )
 
 
 def test_app_factory_uses_configured_harness_root_for_prompt_definitions(

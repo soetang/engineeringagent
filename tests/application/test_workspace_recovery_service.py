@@ -11,12 +11,8 @@ from engineeringagent.application import (
 )
 from engineeringagent.domain.audit import ProgressEvent
 from engineeringagent.ports import (
-    CommitRequest,
-    CommitResult,
-    DiffSummary,
-    ResetRequest,
-    ResetResult,
-    WorktreeStatus,
+    WorkspaceResetRequest,
+    WorkspaceResetResult,
 )
 
 
@@ -25,7 +21,9 @@ class _FakeProgressJournal:
         self._handoff_path = handoff_path
         self.calls: list[tuple[Path, str]] = []
 
-    def latest_handoff_path(self, *, project_root: Path, feature_id: str) -> Path | None:
+    def latest_handoff_path(
+        self, *, project_root: Path, feature_id: str
+    ) -> Path | None:
         self.calls.append((project_root, feature_id))
         return self._handoff_path
 
@@ -60,39 +58,24 @@ class _FakeProgressJournal:
         raise AssertionError((project_root, feature_id, lines))
 
 
-class _FakeVersionControl:
-    def __init__(self, reset_result: ResetResult) -> None:
+class _FakeWorkspaceManager:
+    def __init__(self, reset_result: WorkspaceResetResult) -> None:
         self._reset_result = reset_result
-        self.requests: list[ResetRequest] = []
+        self.requests: list[WorkspaceResetRequest] = []
 
-    def reset_hard(self, request: ResetRequest) -> ResetResult:
+    def reset_to_last_accepted(
+        self,
+        request: WorkspaceResetRequest,
+    ) -> WorkspaceResetResult:
         self.requests.append(request)
         return self._reset_result
-
-    def diff_against_base(
-        self,
-        project_root: Path,
-        *,
-        base_ref: str | None = None,
-        head_ref: str | None = None,
-    ) -> DiffSummary:
-        raise AssertionError((project_root, base_ref, head_ref))
-
-    def head_commit(self, project_root: Path) -> str | None:
-        raise AssertionError(project_root)
-
-    def worktree_status(self, project_root: Path) -> WorktreeStatus:
-        raise AssertionError(project_root)
-
-    def commit(self, request: CommitRequest) -> CommitResult:
-        raise AssertionError(request)
 
 
 def test_workspace_recovery_requires_handoff_by_default() -> None:
     """Recovery blocks when no persisted handoff exists for the feature."""
     service = WorkspaceRecoveryService(
-        _FakeVersionControl(
-            ResetResult(
+        _FakeWorkspaceManager(
+            WorkspaceResetResult(
                 reset_applied=True,
                 head_commit="abc123",
                 stdout="",
@@ -121,8 +104,8 @@ def test_workspace_recovery_requires_handoff_by_default() -> None:
 def test_workspace_recovery_resets_to_last_accepted_commit() -> None:
     """Recovery should pass the accepted commit through to the reset port."""
     handoff_path = Path(".engineeringagent/progress/features/FEAT-100/handoff.md")
-    version_control = _FakeVersionControl(
-        ResetResult(
+    workspace_manager = _FakeWorkspaceManager(
+        WorkspaceResetResult(
             reset_applied=True,
             head_commit="abc123",
             stdout="reset ok\n",
@@ -131,7 +114,7 @@ def test_workspace_recovery_resets_to_last_accepted_commit() -> None:
     )
     journal = _FakeProgressJournal(handoff_path)
 
-    result = WorkspaceRecoveryService(version_control, journal).run(
+    result = WorkspaceRecoveryService(workspace_manager, journal).run(
         RecoverWorkspaceRequest(
             project_root=Path("/tmp/project"),
             feature_id="FEAT-100",
@@ -140,8 +123,8 @@ def test_workspace_recovery_resets_to_last_accepted_commit() -> None:
     )
 
     assert journal.calls == [(Path("/tmp/project"), "FEAT-100")]
-    assert version_control.requests == [
-        ResetRequest(
+    assert workspace_manager.requests == [
+        WorkspaceResetRequest(
             project_root=Path("/tmp/project"),
             target_ref="abc123",
             clean_untracked=True,
@@ -158,8 +141,8 @@ def test_workspace_recovery_resets_to_last_accepted_commit() -> None:
 def test_workspace_recovery_surfaces_reset_failure() -> None:
     """Gateway failures should become stable application feedback."""
     service = WorkspaceRecoveryService(
-        _FakeVersionControl(
-            ResetResult(
+        _FakeWorkspaceManager(
+            WorkspaceResetResult(
                 reset_applied=False,
                 head_commit=None,
                 stdout="",
@@ -167,7 +150,9 @@ def test_workspace_recovery_surfaces_reset_failure() -> None:
                 failure_stage="git_reset",
             )
         ),
-        _FakeProgressJournal(Path(".engineeringagent/progress/features/FEAT-100/handoff.md")),
+        _FakeProgressJournal(
+            Path(".engineeringagent/progress/features/FEAT-100/handoff.md")
+        ),
     )
 
     result = service.run(
