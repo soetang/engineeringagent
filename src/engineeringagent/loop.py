@@ -151,7 +151,7 @@ def _commit_feature_completion(
     message = feature_completion_commit_subject(feature)
     commit_result = _build_version_control_gateway(project_root).commit(
         CommitRequest(
-            project_root=project_root,
+            workspace_path=project_root,
             message=message,
             stage_all=True,
             allow_empty=False,

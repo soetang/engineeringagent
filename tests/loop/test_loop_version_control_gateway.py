@@ -17,12 +17,12 @@ class StubVersionControlGateway:
         self.commit_result: object | None = None
         self.status_result = WorktreeStatus(dirty=False, stdout="", stderr="")
 
-    def head_commit(self, project_root: Path) -> str | None:
-        self.head_calls.append(project_root)
+    def head_commit(self, workspace_path: Path) -> str | None:
+        self.head_calls.append(workspace_path)
         return self.head_result
 
-    def worktree_status(self, project_root: Path) -> WorktreeStatus:
-        self.status_calls.append(project_root)
+    def worktree_status(self, workspace_path: Path) -> WorktreeStatus:
+        self.status_calls.append(workspace_path)
         return self.status_result
 
     def commit(self, request: object) -> object:
@@ -75,7 +75,7 @@ def test_commit_feature_completion_uses_version_control_gateway(
 
     request = gateway.commit_request
     assert isinstance(request, loop_module.CommitRequest)
-    assert request.project_root == tmp_path
+    assert request.workspace_path == tmp_path
     assert request.stage_all is True
     assert request.allow_empty is False
     assert ok is False

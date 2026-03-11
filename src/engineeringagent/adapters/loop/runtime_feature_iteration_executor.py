@@ -44,7 +44,7 @@ class RuntimeFeatureIterationExecutor:
             message = feature_completion_commit_subject(feature)
             commit_result = self._app_factory(project_root).build_version_control_gateway().commit(
                 CommitRequest(
-                    project_root=project_root,
+                    workspace_path=project_root,
                     message=message,
                     stage_all=True,
                     allow_empty=False,

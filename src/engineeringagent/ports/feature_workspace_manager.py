@@ -22,7 +22,7 @@ class WorkspaceResetRequest(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    project_root: Path
+    workspace_path: Path
     target_ref: str
     clean_untracked: bool = True
 

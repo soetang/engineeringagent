@@ -114,7 +114,7 @@ def test_port_protocol_methods_raise_not_implemented() -> None:
     with pytest.raises(NotImplementedError):
         FeatureWorkspaceManager.reset_to_last_accepted(
             object(),
-            WorkspaceResetRequest(project_root=project_root, target_ref="HEAD"),
+            WorkspaceResetRequest(workspace_path=project_root, target_ref="HEAD"),
         )
     with pytest.raises(NotImplementedError):
         ProgressJournal.append(
@@ -186,7 +186,10 @@ def test_port_protocol_methods_raise_not_implemented() -> None:
     with pytest.raises(NotImplementedError):
         VersionControlGateway.commit(
             object(),
-            CommitRequest(project_root=project_root, message="feat: complete FEAT-001"),
+            CommitRequest(
+                workspace_path=project_root,
+                message="feat: complete FEAT-001",
+            ),
         )
 
 

@@ -22,7 +22,7 @@ class GitFeatureWorkspaceManager(FeatureWorkspaceManager):
         """Reset the repository to one accepted revision and clean untracked files."""
         reset_proc = subprocess.run(
             ["git", "reset", "--hard", request.target_ref],
-            cwd=request.project_root,
+            cwd=request.workspace_path,
             capture_output=True,
             text=True,
             check=False,
@@ -41,7 +41,7 @@ class GitFeatureWorkspaceManager(FeatureWorkspaceManager):
         if request.clean_untracked:
             clean_proc = subprocess.run(
                 ["git", "clean", "-fd"],
-                cwd=request.project_root,
+                cwd=request.workspace_path,
                 capture_output=True,
                 text=True,
                 check=False,
@@ -59,17 +59,17 @@ class GitFeatureWorkspaceManager(FeatureWorkspaceManager):
 
         return WorkspaceResetResult(
             reset_applied=True,
-            head_commit=_head_commit(request.project_root),
+            head_commit=_head_commit(request.workspace_path),
             stdout=(reset_proc.stdout or "") + clean_stdout,
             stderr=(reset_proc.stderr or "") + clean_stderr,
             failure_stage=None,
         )
 
 
-def _head_commit(project_root: Path) -> str | None:
+def _head_commit(workspace_path: Path) -> str | None:
     proc = subprocess.run(
         ["git", "rev-parse", "--short", "HEAD"],
-        cwd=project_root,
+        cwd=workspace_path,
         capture_output=True,
         text=True,
         check=False,

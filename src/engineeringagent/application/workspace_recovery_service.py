@@ -65,7 +65,7 @@ class WorkspaceRecoveryService:
 
         reset_result = self._workspace_manager.reset_to_last_accepted(
             WorkspaceResetRequest(
-                project_root=request.project_root,
+                workspace_path=request.project_root,
                 target_ref=request.last_accepted_commit,
             )
         )

@@ -125,7 +125,7 @@ def test_workspace_recovery_resets_to_last_accepted_commit() -> None:
     assert journal.calls == [(Path("/tmp/project"), "FEAT-100")]
     assert workspace_manager.requests == [
         WorkspaceResetRequest(
-            project_root=Path("/tmp/project"),
+            workspace_path=Path("/tmp/project"),
             target_ref="abc123",
             clean_untracked=True,
         )

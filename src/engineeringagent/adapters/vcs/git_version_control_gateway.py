@@ -19,7 +19,7 @@ class GitCliVersionControlGateway:
 
     def diff_against_base(
         self,
-        project_root: Path,
+        workspace_path: Path,
         *,
         base_ref: str | None = None,
         head_ref: str | None = None,
@@ -39,7 +39,7 @@ class GitCliVersionControlGateway:
 
         proc = subprocess.run(
             command,
-            cwd=project_root,
+            cwd=workspace_path,
             capture_output=True,
             text=True,
             check=False,
@@ -54,11 +54,11 @@ class GitCliVersionControlGateway:
             summary_text=proc.stdout or "",
         )
 
-    def head_commit(self, project_root: Path) -> str | None:
+    def head_commit(self, workspace_path: Path) -> str | None:
         """Return the short head commit hash when git can resolve it."""
         proc = subprocess.run(
             ["git", "rev-parse", "--short", "HEAD"],
-            cwd=project_root,
+            cwd=workspace_path,
             capture_output=True,
             text=True,
             check=False,
@@ -67,11 +67,11 @@ class GitCliVersionControlGateway:
             return None
         return (proc.stdout or "").strip() or None
 
-    def worktree_status(self, project_root: Path) -> WorktreeStatus:
+    def worktree_status(self, workspace_path: Path) -> WorktreeStatus:
         """Return normalized dirty-state information for the current repository."""
         proc = subprocess.run(
             ["git", "status", "--porcelain"],
-            cwd=project_root,
+            cwd=workspace_path,
             capture_output=True,
             text=True,
             check=False,
@@ -91,7 +91,7 @@ class GitCliVersionControlGateway:
         if request.stage_all:
             add_proc = subprocess.run(
                 ["git", "add", "-A", "--", "."],
-                cwd=request.project_root,
+                cwd=request.workspace_path,
                 capture_output=True,
                 text=True,
                 check=False,
@@ -120,7 +120,7 @@ class GitCliVersionControlGateway:
 
         commit_proc = subprocess.run(
             command,
-            cwd=request.project_root,
+            cwd=request.workspace_path,
             capture_output=True,
             text=True,
             check=False,
@@ -136,7 +136,7 @@ class GitCliVersionControlGateway:
 
         return CommitResult(
             commit_created=True,
-            commit_sha=self.head_commit(request.project_root),
+            commit_sha=self.head_commit(request.workspace_path),
             stdout=commit_proc.stdout or "",
             stderr=commit_proc.stderr or "",
             failure_stage=None,

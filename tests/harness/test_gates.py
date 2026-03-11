@@ -25,12 +25,12 @@ class StubVersionControlGateway:
 
     def diff_against_base(
         self,
-        project_root: Path,
+        workspace_path: Path,
         *,
         base_ref: str | None = None,
         head_ref: str | None = None,
     ) -> DiffSummary:
-        self.calls.append((project_root, base_ref, head_ref))
+        self.calls.append((workspace_path, base_ref, head_ref))
         if self.error is not None:
             raise self.error
         return DiffSummary(
@@ -39,10 +39,10 @@ class StubVersionControlGateway:
             summary_text=self.summary_text,
         )
 
-    def head_commit(self, project_root: Path) -> str | None:
+    def head_commit(self, workspace_path: Path) -> str | None:
         return None
 
-    def worktree_status(self, project_root: Path) -> WorktreeStatus:
+    def worktree_status(self, workspace_path: Path) -> WorktreeStatus:
         return WorktreeStatus(dirty=False, stdout="", stderr="")
 
     def commit(self, request: CommitRequest) -> CommitResult:

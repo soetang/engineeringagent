@@ -34,7 +34,7 @@ def collect_changed_paths(
     gateway = _DEFAULT_VERSION_CONTROL if version_control is None else version_control
     try:
         diff_summary = gateway.diff_against_base(
-            cwd,
+            workspace_path=cwd,
             base_ref=base,
             head_ref=head,
         )

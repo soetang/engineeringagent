@@ -103,7 +103,7 @@ def test_commit_stages_and_commits_with_fixed_identity(
     )
 
     result = GitCliVersionControlGateway().commit(
-        CommitRequest(project_root=tmp_path, message="msg")
+        CommitRequest(workspace_path=tmp_path, message="msg")
     )
 
     assert result.commit_created is True
@@ -144,7 +144,7 @@ def test_commit_reports_git_add_failure(
     )
 
     result = GitCliVersionControlGateway().commit(
-        CommitRequest(project_root=tmp_path, message="msg")
+        CommitRequest(workspace_path=tmp_path, message="msg")
     )
 
     assert result.commit_created is False

@@ -22,7 +22,7 @@ class CommitRequest(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    project_root: Path
+    workspace_path: Path
     message: str
     stage_all: bool = True
     allow_empty: bool = False
@@ -65,7 +65,7 @@ class VersionControlGateway(Protocol):
 
     def diff_against_base(
         self,
-        project_root: Path,
+        workspace_path: Path,
         *,
         base_ref: str | None = None,
         head_ref: str | None = None,
@@ -73,11 +73,11 @@ class VersionControlGateway(Protocol):
         """Return a diff summary for the selected revision range."""
         raise NotImplementedError
 
-    def head_commit(self, project_root: Path) -> str | None:
+    def head_commit(self, workspace_path: Path) -> str | None:
         """Return the current short head commit, when available."""
         raise NotImplementedError
 
-    def worktree_status(self, project_root: Path) -> WorktreeStatus:
+    def worktree_status(self, workspace_path: Path) -> WorktreeStatus:
         """Return the current worktree status for precondition checks."""
         raise NotImplementedError
 

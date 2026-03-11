@@ -115,8 +115,8 @@ def test_enforce_worktree_precondition_reads_git_status_once(
         def __init__(self) -> None:
             self.calls: list[Path] = []
 
-        def worktree_status(self, project_root: Path) -> WorktreeStatus:
-            self.calls.append(project_root)
+        def worktree_status(self, workspace_path: Path) -> WorktreeStatus:
+            self.calls.append(workspace_path)
             return WorktreeStatus(dirty=False, stdout="", stderr="")
 
     gateway = StubVersionControlGateway()

@@ -34,7 +34,7 @@ def test_reset_to_last_accepted_runs_reset_and_clean_then_reports_head_commit(
     )
 
     result = GitFeatureWorkspaceManager().reset_to_last_accepted(
-        WorkspaceResetRequest(project_root=tmp_path, target_ref="abc123")
+        WorkspaceResetRequest(workspace_path=tmp_path, target_ref="abc123")
     )
 
     assert result.reset_applied is True
@@ -70,7 +70,7 @@ def test_reset_to_last_accepted_reports_clean_failure_without_resolving_head(
     )
 
     result = GitFeatureWorkspaceManager().reset_to_last_accepted(
-        WorkspaceResetRequest(project_root=tmp_path, target_ref="abc123")
+        WorkspaceResetRequest(workspace_path=tmp_path, target_ref="abc123")
     )
 
     assert result.reset_applied is False

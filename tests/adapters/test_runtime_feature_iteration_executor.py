@@ -244,7 +244,7 @@ def test_runtime_feature_iteration_executor_builds_runtime_pipeline(
     assert commit_outcome == (False, "git_commit", "commit stdout\ncommit stderr\n")
     assert observed["commit_requests"] == [
         CommitRequest(
-            project_root=Path("/tmp/project"),
+            workspace_path=Path("/tmp/project"),
             message="feat: complete FEAT-001",
             stage_all=True,
             allow_empty=False,
