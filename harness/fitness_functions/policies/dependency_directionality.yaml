@@ -48,7 +48,7 @@ rules:
       - engineeringagent.checks.reviewers
       - engineeringagent.checks.validate
       - engineeringagent.specs
-  - module: engineeringagent.presentation.cli.approach
+  - module: engineeringagent.presentation.cli.guidance
     blocked_dependencies:
       - engineeringagent.adapters
       - engineeringagent.loop_runtime

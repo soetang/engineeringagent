@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from ... import checks as checks_module
 from ... import init_cli_support as init_cli_support_module
-from . import approach as approach_commands
 from . import checks as checks_commands
+from . import guidance as approach_commands
 from . import init as init_commands
 from . import run as run_commands
 from . import schema as schema_commands

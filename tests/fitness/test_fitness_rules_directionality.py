@@ -206,8 +206,8 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
     )
     _write_module(
         tmp_path,
-        "presentation/cli/approach.py",
-        "from engineeringagent.adapters.guidance import PackagedGuidanceTopicRepository\n",
+        "presentation/cli/guidance.py",
+        "from engineeringagent.adapters.documents import PackagedGuidanceTopicRepository\n",
     )
     _write_module(
         tmp_path,
@@ -335,12 +335,12 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
             "engineeringagent.loop_runtime.selection"
         ),
         (
-            "engineeringagent.presentation.cli.approach imports blocked dependency "
-            "engineeringagent.adapters.guidance"
+            "engineeringagent.presentation.cli.guidance imports blocked dependency "
+            "engineeringagent.adapters.documents"
         ),
         (
-            "engineeringagent.presentation.cli.approach imports blocked dependency "
-            "engineeringagent.adapters.guidance.PackagedGuidanceTopicRepository"
+            "engineeringagent.presentation.cli.guidance imports blocked dependency "
+            "engineeringagent.adapters.documents.PackagedGuidanceTopicRepository"
         ),
         (
             "engineeringagent.presentation.cli.run imports blocked dependency "
