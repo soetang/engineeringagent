@@ -22,6 +22,10 @@ from .prompt_definition_repository import (
     PromptDefinitionRepository,
     PromptInterpolation,
 )
+from .run_loop_executor import (
+    RunLoopExecutionRequest,
+    RunLoopExecutor,
+)
 from .repository_validator import (
     RepositoryValidationRequest,
     RepositoryValidationResult,
@@ -61,6 +65,8 @@ __all__ = [
     "PromptDefinition",
     "PromptDefinitionRepository",
     "PromptInterpolation",
+    "RunLoopExecutionRequest",
+    "RunLoopExecutor",
     "ResetRequest",
     "ResetResult",
     "RepositoryValidationRequest",

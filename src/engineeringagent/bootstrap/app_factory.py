@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from importlib import import_module
 from pathlib import Path
 
 from engineeringagent.adapters.agents import ConfiguredAgentRunner
@@ -13,6 +12,7 @@ from engineeringagent.adapters.checks import (
     RuntimeChecksRunner,
 )
 from engineeringagent.adapters.guidance import PackagedGuidanceTopicRepository
+from engineeringagent.adapters.loop import RuntimeRunLoopExecutor
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
 from engineeringagent.adapters.vcs import GitCliVersionControlGateway
@@ -21,7 +21,6 @@ from engineeringagent.application import (
     GuidanceService,
     InitWorkspaceService,
     PromptBuilder,
-    RunLoopRequest,
     RunLoopService,
     ValidationService,
     WorkspaceRecoveryService,
@@ -61,7 +60,7 @@ class AppFactory:
                     missing_context=" (required for --all)",
                 )
             ),
-            execute_run_loop=self._execute_run_loop,
+            run_loop_executor=RuntimeRunLoopExecutor(),
         )
 
     def build_guidance_service(self) -> GuidanceService:
@@ -104,21 +103,3 @@ class AppFactory:
             self.build_version_control_gateway(),
             self.build_progress_journal(),
         )
-
-    def _execute_run_loop(self, request: RunLoopRequest) -> int:
-        loop_module = import_module("engineeringagent.loop")
-        controller_module = import_module("engineeringagent.loop_runtime.controller")
-
-        config = loop_module.build_run_config(
-            project_root=request.project_root,
-            feature_paths=request.feature_paths,
-            options=loop_module.RunConfigOptions(
-                request.dry_run,
-                request.run_all,
-                request.max_iterations,
-                request.allow_dirty,
-                request.verbose_output,
-            ),
-        )
-        loop_run = loop_module.build_loop_run(config)
-        return controller_module.run_loop_controller(loop_run)

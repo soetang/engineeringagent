@@ -7,7 +7,7 @@ from engineeringagent.application import (
     RunLoopResult,
     RunLoopService,
 )
-from engineeringagent.ports import ChecksCatalogLoadResult
+from engineeringagent.ports import ChecksCatalogLoadResult, RunLoopExecutionRequest
 
 
 def _build_request(**overrides: object) -> RunLoopRequest:
@@ -34,19 +34,14 @@ class _FakeChecksCatalogRepository:
         return self._result
 
 
-def _increment_and_return_zero(observed: dict[str, int], key: str) -> int:
-    observed[key] += 1
-    return 0
+class _FakeRunLoopExecutor:
+    def __init__(self, exit_code: int = 0) -> None:
+        self._exit_code = exit_code
+        self.requests: list[RunLoopExecutionRequest] = []
 
-
-def _increment_mixed_counter(
-    observed: dict[str, Path | int | None],
-    key: str,
-) -> int:
-    current_value = observed[key]
-    assert isinstance(current_value, int)
-    observed[key] = current_value + 1
-    return 0
+    def run(self, request: RunLoopExecutionRequest) -> int:
+        self.requests.append(request)
+        return self._exit_code
 
 
 def test_run_loop_service_rejects_feature_paths_with_run_all() -> None:
@@ -57,12 +52,11 @@ def test_run_loop_service_rejects_feature_paths_with_run_all() -> None:
     repository = _FakeChecksCatalogRepository(
         ChecksCatalogLoadResult(document=None, error=None)
     )
+    executor = _FakeRunLoopExecutor()
 
     service = RunLoopService(
         checks_catalog_repository=repository,
-        execute_run_loop=lambda _request: _increment_and_return_zero(
-            observed, "execute_calls"
-        ),
+        run_loop_executor=executor,
     )
 
     result = service.run(_build_request(run_all=True))
@@ -72,6 +66,7 @@ def test_run_loop_service_rejects_feature_paths_with_run_all() -> None:
         message="run input error: positional feature paths cannot be used with --all",
     )
     assert observed == {"execute_calls": 0}
+    assert executor.requests == []
     assert repository.project_roots == []
 
 
@@ -83,12 +78,11 @@ def test_run_loop_service_requires_paths_when_run_all_is_disabled() -> None:
     repository = _FakeChecksCatalogRepository(
         ChecksCatalogLoadResult(document=None, error=None)
     )
+    executor = _FakeRunLoopExecutor()
 
     service = RunLoopService(
         checks_catalog_repository=repository,
-        execute_run_loop=lambda _request: _increment_and_return_zero(
-            observed, "execute_calls"
-        ),
+        run_loop_executor=executor,
     )
 
     result = service.run(_build_request(feature_paths=(), run_all=False))
@@ -98,24 +92,23 @@ def test_run_loop_service_requires_paths_when_run_all_is_disabled() -> None:
         message="run input error: provide one or more feature paths, or use --all",
     )
     assert observed == {"execute_calls": 0}
+    assert executor.requests == []
     assert repository.project_roots == []
 
 
 def test_run_loop_service_preflights_checks_for_run_all_requests() -> None:
     """The service should stop before execution when run-all preflight fails."""
-    observed: dict[str, Path | int | None] = {"execute_calls": 0}
     repository = _FakeChecksCatalogRepository(
         ChecksCatalogLoadResult(
             document=None,
             error="run config error: missing harness/checks.yaml",
         )
     )
+    executor = _FakeRunLoopExecutor()
 
     service = RunLoopService(
         checks_catalog_repository=repository,
-        execute_run_loop=lambda _request: _increment_mixed_counter(
-            observed, "execute_calls"
-        ),
+        run_loop_executor=executor,
     )
 
     result = service.run(_build_request(feature_paths=(), run_all=True))
@@ -124,30 +117,35 @@ def test_run_loop_service_preflights_checks_for_run_all_requests() -> None:
         exit_code=1,
         message="run config error: missing harness/checks.yaml",
     )
-    assert observed == {"execute_calls": 0}
+    assert executor.requests == []
     assert repository.project_roots == [Path("/tmp/project")]
 
 
 def test_run_loop_service_executes_loop_after_preflight() -> None:
     """The service should execute the loop after a successful run-all preflight."""
-    observed: dict[str, Path | RunLoopRequest | None] = {
-        "executed_request": None,
-    }
     repository = _FakeChecksCatalogRepository(
         ChecksCatalogLoadResult(document=None, error=None)
     )
+    executor = _FakeRunLoopExecutor(exit_code=7)
 
     service = RunLoopService(
         checks_catalog_repository=repository,
-        execute_run_loop=lambda request: (
-            observed.__setitem__("executed_request", request),
-            7,
-        )[1],
+        run_loop_executor=executor,
     )
 
     request = _build_request(feature_paths=(), run_all=True, dry_run=True)
     result = service.run(request)
 
     assert result == RunLoopResult(exit_code=7, message=None)
-    assert observed == {"executed_request": request}
+    assert executor.requests == [
+        RunLoopExecutionRequest(
+            project_root=request.project_root,
+            feature_paths=request.feature_paths,
+            run_all=request.run_all,
+            dry_run=request.dry_run,
+            max_iterations=request.max_iterations,
+            allow_dirty=request.allow_dirty,
+            verbose_output=request.verbose_output,
+        )
+    ]
     assert repository.project_roots == [Path("/tmp/project")]

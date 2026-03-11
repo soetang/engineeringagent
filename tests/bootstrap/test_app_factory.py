@@ -9,6 +9,7 @@ from engineeringagent.adapters.checks import (
     RuntimeChecksRunner,
 )
 from engineeringagent.adapters.agents import ConfiguredAgentRunner
+from engineeringagent.adapters.loop import RuntimeRunLoopExecutor
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
 from engineeringagent.adapters.vcs import GitCliVersionControlGateway
@@ -48,6 +49,7 @@ def test_app_factory_builds_default_application_services(tmp_path: Path) -> None
         run_loop_service._checks_catalog_repository,
         FilesystemChecksCatalogRepository,
     )
+    assert isinstance(run_loop_service._run_loop_executor, RuntimeRunLoopExecutor)
     assert run_loop_service._checks_catalog_repository._options == ChecksCatalogLoadOptions(
         error_prefix="run config error",
         missing_context=" (required for --all)",

@@ -181,6 +181,15 @@ rules:
       - engineeringagent.cli
       - engineeringagent.loop
       - engineeringagent.loop_runtime
+  - module: engineeringagent.ports.run_loop_executor
+    blocked_dependencies:
+      - engineeringagent.adapters
+      - engineeringagent.application
+      - engineeringagent.bootstrap
+      - engineeringagent.checks
+      - engineeringagent.cli
+      - engineeringagent.loop
+      - engineeringagent.loop_runtime
   - module: engineeringagent.ports.repository_validator
     blocked_dependencies:
       - engineeringagent.adapters

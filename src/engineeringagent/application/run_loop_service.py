@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Callable
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.ports import ChecksCatalogRepository
+from engineeringagent.ports import (
+    ChecksCatalogRepository,
+    RunLoopExecutionRequest,
+    RunLoopExecutor,
+)
 
 
 class RunLoopRequest(BaseModel):
@@ -33,9 +36,6 @@ class RunLoopResult(BaseModel):
     message: str | None = None
 
 
-ExecuteRunLoop = Callable[[RunLoopRequest], int]
-
-
 class RunLoopService:
     """Owns run-loop input validation and preflight checks."""
 
@@ -43,10 +43,10 @@ class RunLoopService:
         self,
         *,
         checks_catalog_repository: ChecksCatalogRepository,
-        execute_run_loop: ExecuteRunLoop,
+        run_loop_executor: RunLoopExecutor,
     ) -> None:
         self._checks_catalog_repository = checks_catalog_repository
-        self._execute_run_loop = execute_run_loop
+        self._run_loop_executor = run_loop_executor
 
     def run(self, request: RunLoopRequest) -> RunLoopResult:
         """Execute one run-loop request after deterministic preflight."""
@@ -59,7 +59,19 @@ class RunLoopService:
             if catalog_result.error is not None:
                 return RunLoopResult(exit_code=1, message=catalog_result.error)
 
-        return RunLoopResult(exit_code=self._execute_run_loop(request))
+        return RunLoopResult(
+            exit_code=self._run_loop_executor.run(
+                RunLoopExecutionRequest(
+                    project_root=request.project_root,
+                    feature_paths=request.feature_paths,
+                    run_all=request.run_all,
+                    dry_run=request.dry_run,
+                    max_iterations=request.max_iterations,
+                    allow_dirty=request.allow_dirty,
+                    verbose_output=request.verbose_output,
+                )
+            )
+        )
 
     def _validate_input(self, request: RunLoopRequest) -> str | None:
         if request.run_all and request.feature_paths:
