@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
+import os
 import time
 from time import monotonic_ns
 from pathlib import Path
@@ -330,8 +332,10 @@ class FitnessCheckStrategy(CheckStrategy):
     ) -> tuple[list[str], list[dict[str, object]]]:
         output_lines = [header]
         failed_rules: list[dict[str, object]] = []
-        for definition in definitions:
-            result = execute_rule_definition(definition, project_root)
+        for definition, result in self._execute_fitness_rules(
+            definitions=definitions,
+            project_root=project_root,
+        ):
             output_lines.append(
                 (
                     f"[fitness:{result.rule_id}] status={result.status.value} "
@@ -353,6 +357,28 @@ class FitnessCheckStrategy(CheckStrategy):
                 }
             )
         return output_lines, failed_rules
+
+    def _execute_fitness_rules(
+        self,
+        *,
+        definitions: list[Any],
+        project_root: Path,
+    ) -> list[tuple[Any, Any]]:
+        jobs = min(len(definitions), os.cpu_count() or 1)
+        if jobs <= 1:
+            return [
+                (definition, execute_rule_definition(definition, project_root))
+                for definition in definitions
+            ]
+
+        with ThreadPoolExecutor(max_workers=jobs) as executor:
+            results = list(
+                executor.map(
+                    lambda definition: execute_rule_definition(definition, project_root),
+                    definitions,
+                )
+            )
+        return list(zip(definitions, results, strict=True))
 
     def render_prompt_feedback(
         self,
