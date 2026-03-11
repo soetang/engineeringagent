@@ -13,6 +13,7 @@ from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.application import (
     ChecksService,
     GuidanceService,
+    InitWorkspaceService,
     ValidationService,
 )
 
@@ -39,6 +40,10 @@ class AppFactory:
     def build_validation_service(self) -> ValidationService:
         """Create the default repository validation service."""
         return ValidationService(ChecksRepositoryValidator())
+
+    def build_init_workspace_service(self) -> InitWorkspaceService:
+        """Create the default workspace initialization service."""
+        return InitWorkspaceService()
 
     def build_progress_journal(self) -> FilesystemProgressJournal:
         """Create the default filesystem-backed progress journal."""

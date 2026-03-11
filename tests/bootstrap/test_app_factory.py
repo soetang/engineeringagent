@@ -10,6 +10,7 @@ from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.application import (
     ChecksService,
     GuidanceService,
+    InitWorkspaceService,
     ValidationService,
 )
 from engineeringagent.bootstrap import AppFactory
@@ -33,4 +34,5 @@ def test_app_factory_builds_default_application_services(tmp_path: Path) -> None
     validation_service = factory.build_validation_service()
     assert isinstance(validation_service, ValidationService)
     assert isinstance(validation_service._validator, ChecksRepositoryValidator)
+    assert isinstance(factory.build_init_workspace_service(), InitWorkspaceService)
     assert isinstance(factory.build_progress_journal(), FilesystemProgressJournal)

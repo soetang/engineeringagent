@@ -8,7 +8,10 @@ import pytest
 
 from engineeringagent import cli as cli_module
 from engineeringagent.cli import init as cli_init_module
-from engineeringagent.init_service import InitDependencies, InitRequest
+from engineeringagent.application import (
+    InitWorkspaceDependencies,
+    InitWorkspaceRequest,
+)
 from tests.cli.init_command_support import (
     DEFAULT_LAUNCHER_ARGS,
     UV_RUN_TOKEN,
@@ -74,7 +77,10 @@ def test_cmd_init_accepts_explicit_cli_overrides(tmp_path: Path) -> None:
         assert scaffold_docs_dir == "docs.custom"
         return "docs.override", None
 
-    def _fake_run_init_command(request: InitRequest, deps: InitDependencies) -> int:
+    def _fake_run_init_command(
+        request: InitWorkspaceRequest,
+        deps: InitWorkspaceDependencies,
+    ) -> int:
         observed.request = request
         observed.deps = deps
         return 0

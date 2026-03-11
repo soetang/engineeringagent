@@ -7,6 +7,11 @@ from typing import Callable, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from ..application import (
+    InitWorkspaceDependencies,
+    InitWorkspaceRequest,
+    InitWorkspaceService,
+)
 from ..agents import default_backend_id, list_backends
 from ..config import (
     resolve_agents_backend_id,
@@ -35,11 +40,11 @@ from ..init_scaffold import (
     apply_baseline_scaffold,
     build_agents_merge_followup_spec,
 )
-from ..init_service import InitDependencies, InitRequest, run_init_command
 from ..presentation.terminal import stdout_is_tty
 
 _HandlerArgs = SimpleNamespace
 _AdapterValue = TypeVar("_AdapterValue")
+_DEFAULT_INIT_WORKSPACE_RUNNER = InitWorkspaceService().run
 
 
 class InitCliTerminalAdapters(BaseModel):
@@ -60,7 +65,10 @@ class InitCliCommandAdapters(BaseModel):
         frozen=True, extra="forbid", arbitrary_types_allowed=True
     )
 
-    run_init_command_fn: Callable[[InitRequest, InitDependencies], int] | None = None
+    run_init_command_fn: Callable[
+        [InitWorkspaceRequest, InitWorkspaceDependencies],
+        int,
+    ] | None = None
 
 
 class InitCliBackendAdapters(BaseModel):
@@ -149,10 +157,10 @@ __all__ = [
 ]
 
 
-def build_init_request(args: _HandlerArgs) -> InitRequest:
+def build_init_request(args: _HandlerArgs) -> InitWorkspaceRequest:
     """Build an immutable init request from CLI arguments."""
 
-    return InitRequest(
+    return InitWorkspaceRequest(
         project_root=Path(args.project_root).resolve(),
         force=bool(args.force),
         scaffold_profile=args.scaffold_profile,
@@ -169,7 +177,7 @@ def build_init_request(args: _HandlerArgs) -> InitRequest:
 
 def build_init_dependencies(
     adapters: InitCliAdapters | None = None,
-) -> InitDependencies:
+) -> InitWorkspaceDependencies:
     """Assemble dependency implementations for init execution."""
     adapter_bundle = adapters or InitCliAdapters()
     emit = _coalesce_adapter(adapter_bundle.terminal.emit, print)
@@ -226,7 +234,7 @@ def build_init_dependencies(
     )
     prompt_context = InitPromptContext(stdout_is_tty_fn=stdout_is_tty_fn)
 
-    return InitDependencies(
+    return InitWorkspaceDependencies(
         emit=emit,
         resolve_pack=partial(
             resolve_init_pack,
@@ -285,6 +293,6 @@ def cmd_init(
     deps = build_init_dependencies(adapter_bundle)
     run_init_command_fn = _coalesce_adapter(
         adapter_bundle.command.run_init_command_fn,
-        run_init_command,
+        _DEFAULT_INIT_WORKSPACE_RUNNER,
     )
     return run_init_command_fn(request, deps)

@@ -5,9 +5,11 @@ from typing import Callable, Protocol
 
 from pydantic import BaseModel, ConfigDict, SkipValidation
 
-from .init_scaffold import BaselineScaffoldOptions, DEFAULT_AGENT_MODEL
+from engineeringagent.init_scaffold import BaselineScaffoldOptions, DEFAULT_AGENT_MODEL
 
 ResolveInitPack = Callable[[str | None], tuple[str | None, str | None]]
+
+
 class ResolveInitBackend(Protocol):
     """Resolve init backend selection and return backend id or error."""
 
@@ -112,7 +114,7 @@ class InstallPrecommitHooksBestEffort(Protocol):
     ) -> None: ...
 
 
-class InitRequest(BaseModel):  # pylint: disable=too-many-instance-attributes
+class InitWorkspaceRequest(BaseModel):  # pylint: disable=too-many-instance-attributes
     """User-provided init command inputs resolved at CLI boundary."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -130,7 +132,7 @@ class InitRequest(BaseModel):  # pylint: disable=too-many-instance-attributes
     no_precommit_install: bool = False
 
 
-class InitDependencies(BaseModel):  # pylint: disable=too-many-instance-attributes
+class InitWorkspaceDependencies(BaseModel):  # pylint: disable=too-many-instance-attributes
     """Injected side-effect operations required by init orchestration."""
 
     model_config = ConfigDict(frozen=True, extra="forbid", arbitrary_types_allowed=True)
@@ -150,82 +152,92 @@ class InitDependencies(BaseModel):  # pylint: disable=too-many-instance-attribut
     install_precommit_hooks_best_effort: SkipValidation[InstallPrecommitHooksBestEffort]
 
 
-def _emit_error_and_fail(deps: InitDependencies, error: str | None) -> int:
-    deps.emit(str(error))
+def _emit_error_and_fail(
+    dependencies: InitWorkspaceDependencies,
+    error: str | None,
+) -> int:
+    dependencies.emit(str(error))
     return 1
 
 
 def _resolve_pack_or_fail(
-    request: InitRequest, deps: InitDependencies
+    request: InitWorkspaceRequest,
+    dependencies: InitWorkspaceDependencies,
 ) -> tuple[str, int | None]:
-    pack, error = deps.resolve_pack(request.pack)
+    pack, error = dependencies.resolve_pack(request.pack)
     if error is not None or pack is None:
-        return "", _emit_error_and_fail(deps, error)
+        return "", _emit_error_and_fail(dependencies, error)
     return pack, None
 
 
 def _resolve_backend_or_fail(
-    request: InitRequest, deps: InitDependencies
+    request: InitWorkspaceRequest,
+    dependencies: InitWorkspaceDependencies,
 ) -> tuple[str, int | None]:
-    selected_backend, error = deps.resolve_backend(
+    selected_backend, error = dependencies.resolve_backend(
         project_root=request.project_root,
         backend=request.backend,
         force=request.force,
     )
     if error is not None or selected_backend is None:
-        return "", _emit_error_and_fail(deps, error)
+        return "", _emit_error_and_fail(dependencies, error)
     return selected_backend, None
 
 
 def _resolve_docs_dir_or_fail(
-    request: InitRequest, deps: InitDependencies
+    request: InitWorkspaceRequest,
+    dependencies: InitWorkspaceDependencies,
 ) -> tuple[str, int | None]:
-    docs_dir, error = deps.resolve_docs_dir(
+    docs_dir, error = dependencies.resolve_docs_dir(
         project_root=request.project_root,
         docs_mode=request.docs_mode,
         scaffold_docs_dir=request.scaffold_docs_dir,
     )
     if error is not None or docs_dir is None:
-        return "", _emit_error_and_fail(deps, error)
+        return "", _emit_error_and_fail(dependencies, error)
     return docs_dir, None
 
 
 def _resolve_agents_mode_or_fail(
-    request: InitRequest, deps: InitDependencies
+    request: InitWorkspaceRequest,
+    dependencies: InitWorkspaceDependencies,
 ) -> tuple[str, int | None]:
-    resolved_agents_mode, error = deps.resolve_agents_mode(
+    resolved_agents_mode, error = dependencies.resolve_agents_mode(
         project_root=request.project_root,
         agents_mode=request.agents_mode,
     )
     if error is not None or resolved_agents_mode is None:
-        return "", _emit_error_and_fail(deps, error)
+        return "", _emit_error_and_fail(dependencies, error)
     return resolved_agents_mode, None
 
 
 def _resolve_agents_launcher_or_fail(
-    request: InitRequest,
-    deps: InitDependencies,
+    request: InitWorkspaceRequest,
+    dependencies: InitWorkspaceDependencies,
 ) -> tuple[str, int | None]:
-    resolved_agents_launcher, error = deps.resolve_agents_launcher(
+    resolved_agents_launcher, error = dependencies.resolve_agents_launcher(
         agents_launcher=request.agents_launcher,
     )
     if error is not None or resolved_agents_launcher is None:
-        return "", _emit_error_and_fail(deps, error)
+        return "", _emit_error_and_fail(dependencies, error)
     return resolved_agents_launcher, None
 
 
 def _maybe_backup_agents_file(
-    request: InitRequest, deps: InitDependencies, resolved_agents_mode: str
+    request: InitWorkspaceRequest,
+    dependencies: InitWorkspaceDependencies,
+    resolved_agents_mode: str,
 ) -> str | None:
     if resolved_agents_mode != "preserve":
         return None
-    agents_backup_path = deps.next_agents_backup_path(request.project_root)
+    agents_backup_path = dependencies.next_agents_backup_path(request.project_root)
     (request.project_root / "AGENTS.md").rename(agents_backup_path)
     return agents_backup_path.name
 
 
 def _maybe_remove_existing_agents_for_overwrite(
-    request: InitRequest, resolved_agents_mode: str
+    request: InitWorkspaceRequest,
+    resolved_agents_mode: str,
 ) -> None:
     if resolved_agents_mode != "overwrite":
         return
@@ -235,19 +247,19 @@ def _maybe_remove_existing_agents_for_overwrite(
 
 
 def _apply_init_config_writes(
-    request: InitRequest,
-    deps: InitDependencies,
+    request: InitWorkspaceRequest,
+    dependencies: InitWorkspaceDependencies,
     *,
     docs_dir: str,
     selected_backend: str,
     codex_profile_overwrite: bool,
 ) -> tuple[int, int]:
-    config_created, config_skipped = deps.write_init_docs_root_config(
+    config_created, config_skipped = dependencies.write_init_docs_root_config(
         project_root=request.project_root,
         docs_dir=docs_dir,
         force=request.force,
     )
-    backend_created, backend_skipped = deps.write_init_backend_config(
+    backend_created, backend_skipped = dependencies.write_init_backend_config(
         project_root=request.project_root,
         backend_id=selected_backend,
         force=request.force,
@@ -257,24 +269,24 @@ def _apply_init_config_writes(
 
 
 def _resolve_codex_profile_overwrite_or_fail(
-    request: InitRequest,
-    deps: InitDependencies,
+    request: InitWorkspaceRequest,
+    dependencies: InitWorkspaceDependencies,
     *,
     selected_backend: str,
 ) -> tuple[bool, int | None]:
-    codex_profile_overwrite, error = deps.resolve_codex_profile_overwrite(
+    codex_profile_overwrite, error = dependencies.resolve_codex_profile_overwrite(
         project_root=request.project_root,
         selected_backend=selected_backend,
         force=request.force,
     )
     if error is not None:
-        return False, _emit_error_and_fail(deps, error)
+        return False, _emit_error_and_fail(dependencies, error)
     return codex_profile_overwrite, None
 
 
 def _maybe_write_merge_followup_spec(
-    request: InitRequest,
-    deps: InitDependencies,
+    request: InitWorkspaceRequest,
+    dependencies: InitWorkspaceDependencies,
     *,
     docs_dir: str,
     resolved_agents_mode: str,
@@ -284,13 +296,16 @@ def _maybe_write_merge_followup_spec(
         return 0, 0, ""
 
     merge_spec_relative = (
-        Path(docs_dir) / "spec" / "features" / "FEAT-900-merge-preserved-agents-guidance.yaml"
+        Path(docs_dir)
+        / "spec"
+        / "features"
+        / "FEAT-900-merge-preserved-agents-guidance.yaml"
     )
     merge_spec_path = request.project_root / merge_spec_relative
     if not merge_spec_path.exists() or request.force:
         merge_spec_path.parent.mkdir(parents=True, exist_ok=True)
         merge_spec_path.write_text(
-            deps.build_agents_merge_followup_spec(agents_backup_name),
+            dependencies.build_agents_merge_followup_spec(agents_backup_name),
             encoding="utf-8",
         )
         return 1, 0, f" merge_spec={merge_spec_relative}"
@@ -298,17 +313,21 @@ def _maybe_write_merge_followup_spec(
     return 0, 1, f" merge_spec_skipped={merge_spec_relative}"
 
 
-def _maybe_install_precommit_hooks(request: InitRequest, deps: InitDependencies) -> None:
+def _maybe_install_precommit_hooks(
+    request: InitWorkspaceRequest,
+    dependencies: InitWorkspaceDependencies,
+) -> None:
     if request.no_precommit_install:
         return
-    deps.install_precommit_hooks_best_effort(
+    dependencies.install_precommit_hooks_best_effort(
         project_root=request.project_root,
         scaffold_profile=request.scaffold_profile,
     )
 
 
 def _render_agents_mode_output(
-    resolved_agents_mode: str, agents_backup_name: str | None
+    resolved_agents_mode: str,
+    agents_backup_name: str | None,
 ) -> str:
     agents_mode_output = f" agents_mode={resolved_agents_mode}"
     if agents_backup_name is not None:
@@ -316,93 +335,118 @@ def _render_agents_mode_output(
     return agents_mode_output
 
 
-def run_init_command(request: InitRequest, deps: InitDependencies) -> int:
-    """Execute init orchestration with injected dependencies and stable CLI semantics."""
-    pack, failure_code = _resolve_pack_or_fail(request, deps)
-    if failure_code is not None:
-        return failure_code
+class InitWorkspaceService:
+    """Owns repository initialization and baseline scaffold setup."""
 
-    selected_backend, failure_code = _resolve_backend_or_fail(request, deps)
-    if failure_code is not None:
-        return failure_code
+    def run(
+        self,
+        request: InitWorkspaceRequest,
+        dependencies: InitWorkspaceDependencies,
+    ) -> int:
+        """Execute init orchestration with injected dependencies and stable CLI semantics."""
+        pack, failure_code = _resolve_pack_or_fail(request, dependencies)
+        if failure_code is not None:
+            return failure_code
 
-    docs_dir, failure_code = _resolve_docs_dir_or_fail(request, deps)
-    if failure_code is not None:
-        return failure_code
+        selected_backend, failure_code = _resolve_backend_or_fail(
+            request,
+            dependencies,
+        )
+        if failure_code is not None:
+            return failure_code
 
-    resolved_agents_mode, failure_code = _resolve_agents_mode_or_fail(request, deps)
-    if failure_code is not None:
-        return failure_code
-    if resolved_agents_mode == "abort":
-        deps.emit("init aborted: kept existing AGENTS.md; no scaffold files changed")
-        return 0
+        docs_dir, failure_code = _resolve_docs_dir_or_fail(request, dependencies)
+        if failure_code is not None:
+            return failure_code
 
-    agents_launcher, failure_code = _resolve_agents_launcher_or_fail(request, deps)
-    if failure_code is not None:
-        return failure_code
+        resolved_agents_mode, failure_code = _resolve_agents_mode_or_fail(
+            request,
+            dependencies,
+        )
+        if failure_code is not None:
+            return failure_code
+        if resolved_agents_mode == "abort":
+            dependencies.emit(
+                "init aborted: kept existing AGENTS.md; no scaffold files changed"
+            )
+            return 0
 
-    codex_profile_overwrite, failure_code = _resolve_codex_profile_overwrite_or_fail(
-        request,
-        deps,
-        selected_backend=selected_backend,
-    )
-    if failure_code is not None:
-        return failure_code
+        agents_launcher, failure_code = _resolve_agents_launcher_or_fail(
+            request,
+            dependencies,
+        )
+        if failure_code is not None:
+            return failure_code
 
-    agents_backup_name = _maybe_backup_agents_file(request, deps, resolved_agents_mode)
-    _maybe_remove_existing_agents_for_overwrite(request, resolved_agents_mode)
+        codex_profile_overwrite, failure_code = (
+            _resolve_codex_profile_overwrite_or_fail(
+                request,
+                dependencies,
+                selected_backend=selected_backend,
+            )
+        )
+        if failure_code is not None:
+            return failure_code
 
-    created, skipped = deps.apply_baseline_scaffold(
-        project_root=request.project_root,
-        options=BaselineScaffoldOptions(
-            force=request.force,
-            docs_dir=docs_dir,
-            profile=request.scaffold_profile,
-            pack=pack,
-            backend_id=selected_backend,
-            agents_launcher=agents_launcher,
-            agent_model=request.model,
-        ),
-    )
+        agents_backup_name = _maybe_backup_agents_file(
+            request,
+            dependencies,
+            resolved_agents_mode,
+        )
+        _maybe_remove_existing_agents_for_overwrite(request, resolved_agents_mode)
 
-    if pack == "standard":
-        deps.emit(
-            "init pack standard: wired a demo failing fitness rule into precommit (expected to fail)"
+        created, skipped = dependencies.apply_baseline_scaffold(
+            project_root=request.project_root,
+            options=BaselineScaffoldOptions(
+                force=request.force,
+                docs_dir=docs_dir,
+                profile=request.scaffold_profile,
+                pack=pack,
+                backend_id=selected_backend,
+                agents_launcher=agents_launcher,
+                agent_model=request.model,
+            ),
         )
 
-    config_created, config_skipped = _apply_init_config_writes(
-        request,
-        deps,
-        docs_dir=docs_dir,
-        selected_backend=selected_backend,
-        codex_profile_overwrite=codex_profile_overwrite,
-    )
-    created += config_created
-    skipped += config_skipped
+        if pack == "standard":
+            dependencies.emit(
+                "init pack standard: wired a demo failing fitness rule into precommit (expected to fail)"
+            )
 
-    merge_created, merge_skipped, merge_spec_output = _maybe_write_merge_followup_spec(
-        request,
-        deps,
-        docs_dir=docs_dir,
-        resolved_agents_mode=resolved_agents_mode,
-        agents_backup_name=agents_backup_name,
-    )
-    created += merge_created
-    skipped += merge_skipped
+        config_created, config_skipped = _apply_init_config_writes(
+            request,
+            dependencies,
+            docs_dir=docs_dir,
+            selected_backend=selected_backend,
+            codex_profile_overwrite=codex_profile_overwrite,
+        )
+        created += config_created
+        skipped += config_skipped
 
-    _maybe_install_precommit_hooks(request, deps)
+        merge_created, merge_skipped, merge_spec_output = (
+            _maybe_write_merge_followup_spec(
+                request,
+                dependencies,
+                docs_dir=docs_dir,
+                resolved_agents_mode=resolved_agents_mode,
+                agents_backup_name=agents_backup_name,
+            )
+        )
+        created += merge_created
+        skipped += merge_skipped
 
-    agents_mode_output = _render_agents_mode_output(
-        resolved_agents_mode,
-        agents_backup_name,
-    )
+        _maybe_install_precommit_hooks(request, dependencies)
 
-    deps.emit(
-        f"init scaffold complete: docs_dir={docs_dir} "
-        f"created={created} skipped={skipped}"
-        f" profile={request.scaffold_profile}"
-        f" pack={pack}"
-        f" agents_launcher={agents_launcher}"
-        f"{agents_mode_output}{merge_spec_output}"
-    )
-    return 0
+        agents_mode_output = _render_agents_mode_output(
+            resolved_agents_mode,
+            agents_backup_name,
+        )
+        dependencies.emit(
+            f"init scaffold complete: docs_dir={docs_dir} "
+            f"created={created} skipped={skipped}"
+            f" profile={request.scaffold_profile}"
+            f" pack={pack}"
+            f" agents_launcher={agents_launcher}"
+            f"{agents_mode_output}{merge_spec_output}"
+        )
+        return 0

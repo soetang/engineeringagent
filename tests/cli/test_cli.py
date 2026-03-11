@@ -715,7 +715,11 @@ def test_main_init_command_uses_typer_handler(monkeypatch: Any, tmp_path: Path) 
         observed["scaffold_docs_dir"] = request.scaffold_docs_dir
         return 0
 
-    monkeypatch.setattr(cli_init_module, "run_init_command", _fake_run_init_command)
+    monkeypatch.setattr(
+        cli_init_module,
+        "_DEFAULT_INIT_WORKSPACE_RUNNER",
+        _fake_run_init_command,
+    )
 
     result = _invoke_cli(
         [
