@@ -6,19 +6,16 @@ from typing import Any
 
 import pytest
 
+import engineeringagent.loop_runtime.iteration as iteration_module
+from engineeringagent.adapters.progress.handoff import (
+    fallback_implement_progress_envelope,
+)
 from engineeringagent.adapters.runtime.run_loop_context import (
     LoopRun,
     RunConfig,
     RunServices,
 )
-import engineeringagent.loop_runtime.iteration as iteration_module
-from engineeringagent.loop_runtime.iteration import (
-    IterationPipelineDependencies,
-    _timed_phase,
-    run_feature_iteration_pipeline,
-)
-from engineeringagent.bootstrap.runtime_execution import run_loop_controller
-from engineeringagent.application.feature_iteration.models import (
+from engineeringagent.application.feature_iteration_models import (
     CompletionCommitOutcome,
     FeatureIterationInputs,
     GatePhaseOutcome,
@@ -30,17 +27,22 @@ from engineeringagent.application.feature_iteration.models import (
     ReviewerPhaseOutcome,
     VerificationPhaseOutcome,
 )
+from engineeringagent.bootstrap.runtime_execution import run_loop_controller
+from engineeringagent.domain.quality import ChangedPathsResult
+from engineeringagent.loop_runtime.feature_state import (
+    archive_completed_feature,
+    restore_archived_feature,
+)
+from engineeringagent.loop_runtime.iteration import (
+    IterationPipelineDependencies,
+    _timed_phase,
+    run_feature_iteration_pipeline,
+)
 from engineeringagent.loop_runtime.phases import (
     CompletionPhaseDependencies,
     GatePhaseDependencies,
     ReviewerPhaseDependencies,
 )
-from engineeringagent.loop_runtime.feature_state import (
-    archive_completed_feature,
-    restore_archived_feature,
-)
-from engineeringagent.domain.quality import ChangedPathsResult
-from engineeringagent.adapters.progress.handoff import fallback_implement_progress_envelope
 from tests.loop.feature_iteration_support import (
     base_feature,
     make_bundled_project_root,

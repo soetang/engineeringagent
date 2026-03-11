@@ -13,19 +13,21 @@ import pytest
 import yaml
 from typer.testing import CliRunner
 
-from engineeringagent.presentation import cli as cli_module
-import engineeringagent.loop as loop_module
 import engineeringagent.agents.helpers as agent_helpers
+import engineeringagent.loop as loop_module
+from engineeringagent.adapters.progress.handoff import (
+    fallback_implement_progress_envelope,
+)
 from engineeringagent.agents import AgentBackendError, AgentBackendFailureDetails
 from engineeringagent.agents.backends.opencode.permissions import (
     PermissionProbeResult,
 )
-from engineeringagent.loop import RunConfigOptions, build_loop_run, build_run_config
+from engineeringagent.application.feature_iteration_models import ImplementStepResult
 from engineeringagent.bootstrap.runtime_execution import (
     run_loop_controller as _run_loop,
 )
-from engineeringagent.application.feature_iteration.models import ImplementStepResult
-from engineeringagent.adapters.progress.handoff import fallback_implement_progress_envelope
+from engineeringagent.loop import RunConfigOptions, build_loop_run, build_run_config
+from engineeringagent.presentation import cli as cli_module
 
 
 def run_loop(

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from engineeringagent.application.feature_iteration.models import (
+from engineeringagent.application.feature_iteration_models import (
     FeatureIterationInputs,
     IterationReport,
     IterationSummaryInputs,

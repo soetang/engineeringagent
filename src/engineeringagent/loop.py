@@ -3,18 +3,20 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, NamedTuple, Sequence
 
-from .agents import preflight, run_agent
 from .adapters.progress import write_iteration_telemetry
 from .adapters.runtime.feature_selector import choose_feature_with_selector
+from .adapters.runtime.run_loop_context import LoopRun, RunConfig, RunServices
+from .agents import preflight, run_agent
 from .application import FeatureIterationRequest
-from .application.feature_iteration.selection import deterministic_feature_choice
-from .application.feature_iteration.models import (
+from .application.feature_iteration_models import (
     FeatureIterationInputs,
     IterationOutcome,
     IterationReport,
     IterationSummaryInputs,
 )
+from .application.feature_selection import deterministic_feature_choice
 from .bootstrap import AppFactory
+from .bootstrap import runtime_support as _runtime_support
 from .bootstrap.iteration_reporting import (
     DefaultObserverDependencies,
     IterationReportObserver,
@@ -22,15 +24,13 @@ from .bootstrap.iteration_reporting import (
     publish_iteration_report,
 )
 from .bootstrap.runtime_execution import run_loop_controller
-from .bootstrap import runtime_support as _runtime_support
+from .domain.specification import feature_completion_commit_subject
 from .loop_runtime.feature_state import (
     discover_active_feature_paths,
     done_features_pending_archive,
     pending_features,
     resolve_feature_paths,
 )
-from .adapters.runtime.run_loop_context import LoopRun, RunConfig, RunServices
-from .domain.specification import feature_completion_commit_subject
 from .ports import CommitRequest, VersionControlFailure, VersionControlGateway
 
 __all__ = ["run_loop_controller"]

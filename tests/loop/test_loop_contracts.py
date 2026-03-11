@@ -14,44 +14,45 @@ from pydantic import BaseModel, ValidationError
 
 import engineeringagent.loop as loop_module
 from engineeringagent.adapters.progress import FilesystemProgressJournal
+from engineeringagent.adapters.progress import paths as progress_paths
+from engineeringagent.adapters.progress.handoff import (
+    ImplementProgressEnvelope,
+    fallback_implement_progress_envelope,
+)
 from engineeringagent.adapters.progress.iteration_telemetry import (
     write_iteration_telemetry,
 )
+from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
 from engineeringagent.adapters.runtime.run_loop_context import (
     LoopRun,
     RunConfig,
     RunServices,
     RunState,
 )
-from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
+from engineeringagent.agents.contracts import AgentOutputValidationError
 from engineeringagent.application import PromptBuilder
-from engineeringagent.ports import AgentRunRequest, AgentRunner
-from engineeringagent.loop import (
-    _drop_completed_feature_from_snapshot,
-    _run_feature_iteration,
+from engineeringagent.application.feature_iteration_models import (
+    FeatureIterationInputs,
+    ImplementStepInputs,
+    IterationTelemetryInputs,
+)
+from engineeringagent.application.implementation_step import (
+    run_implement_step_from_inputs,
 )
 from engineeringagent.bootstrap.runtime_execution import run_loop_controller
 from engineeringagent.bootstrap.runtime_support import (
     build_implement_step_runtime_dependencies,
 )
-from engineeringagent.application.feature_iteration.models import (
-    FeatureIterationInputs,
-    ImplementStepInputs,
-    IterationTelemetryInputs,
-)
-from engineeringagent.agents.contracts import AgentOutputValidationError
-from engineeringagent.application.feature_iteration import (
-    run_implement_step_from_inputs,
-)
-from engineeringagent.adapters.progress.handoff import ImplementProgressEnvelope
-from engineeringagent.adapters.progress.handoff import (
-    fallback_implement_progress_envelope,
-)
-from engineeringagent.adapters.progress import paths as progress_paths
 from engineeringagent.config import resolve_harness_root
-from tests.loop.feature_iteration_support import copy_canonical_prompts
-from tests.loop.feature_iteration_support import make_bundled_project_root
-
+from engineeringagent.loop import (
+    _drop_completed_feature_from_snapshot,
+    _run_feature_iteration,
+)
+from engineeringagent.ports import AgentRunner, AgentRunRequest
+from tests.loop.feature_iteration_support import (
+    copy_canonical_prompts,
+    make_bundled_project_root,
+)
 
 _PROGRESS_ROOT_PARTS = (".engineeringagent", "progress")
 

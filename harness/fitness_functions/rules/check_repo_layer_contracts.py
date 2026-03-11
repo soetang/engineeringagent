@@ -12,7 +12,6 @@ from engineeringagent.checks.fitness.contracts import (
     RuleStatus,
 )
 
-
 RULE_ID = "architecture.repo-layer-contracts"
 PROJECT_ROOT = Path(".")
 SRC_ROOT = PROJECT_ROOT / "src" / "engineeringagent"
@@ -56,7 +55,6 @@ DELETED_MODULE_PATHS = {
     "src/engineeringagent/application/implementation_prompt.py",
     "src/engineeringagent/application/checks/service.py",
     "src/engineeringagent/application/checks/runtime.py",
-    "src/engineeringagent/application/feature_iteration_service.py",
     "src/engineeringagent/application/feature_iteration/service.py",
     "src/engineeringagent/application/init_workspace/service.py",
     "src/engineeringagent/application/quality/__init__.py",
@@ -101,6 +99,7 @@ DELETED_DIRECTORY_PATHS = {
     "src/engineeringagent/application/run_loop",
     "src/engineeringagent/application/validation",
     "src/engineeringagent/application/workspace_recovery",
+    "src/engineeringagent/application/feature_iteration",
 }
 LEGACY_MODULES = (
     "engineeringagent.changed_paths",
@@ -181,7 +180,7 @@ def _forbidden_import_violations(
 
 
 _LOOP_RUNTIME_ALLOWED_APPLICATION_IMPORTS = (
-    "engineeringagent.application.feature_iteration.models",
+    "engineeringagent.application.feature_iteration_models",
 )
 
 
@@ -199,7 +198,7 @@ def _loop_runtime_violations(path: Path) -> list[str]:
             allowed_modules=_LOOP_RUNTIME_ALLOWED_APPLICATION_IMPORTS,
             message=(
                 "loop runtime modules must not import application modules "
-                "outside engineeringagent.application.feature_iteration.models"
+                "outside engineeringagent.application.feature_iteration_models"
             ),
         ),
         *_forbidden_import_violations(

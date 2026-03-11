@@ -3,9 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 
-from engineeringagent.domain.quality import ChangedPathsResult
+from engineeringagent.application.feature_iteration_models import FeatureIterationInputs
 from engineeringagent.checks import ChecksRunResult
-from engineeringagent.application.feature_iteration.models import FeatureIterationInputs
+from engineeringagent.domain.quality import ChangedPathsResult, parse_feedback_envelope
 from engineeringagent.loop_runtime.phases import (
     CompletionPhaseDependencies,
     GatePhaseDependencies,
@@ -15,7 +15,6 @@ from engineeringagent.loop_runtime.phases import (
     run_reviewer_phase,
     run_verification_phase,
 )
-from engineeringagent.domain.quality import parse_feedback_envelope
 
 ACTIVE_FEATURE_PATH = Path("docs/spec/features/FEAT-001/spec.yaml")
 ARCHIVED_FEATURE_PATH = Path("docs/spec/features_done/FEAT-001/spec.yaml")

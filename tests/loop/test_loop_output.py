@@ -6,19 +6,15 @@ from types import SimpleNamespace
 from typing import Any, get_type_hints
 
 import engineeringagent.adapters.progress.iteration_telemetry as telemetry_module
-import engineeringagent.presentation.presenters.terminal as presentation_module
-from engineeringagent.loop import print_summary
+import engineeringagent.application.feature_iteration_models as models_module
 import engineeringagent.loop_runtime.phases as phases_module
-import engineeringagent.application.feature_iteration.models as models_module
-from engineeringagent.application.feature_iteration.models import (
-    FeatureIterationInputs,
-    CommandTiming,
-    IterationTelemetryInputs,
-    IterationSummaryInputs,
-    PhaseTiming,
-)
-from engineeringagent.loop_runtime.phases import (
-    run_verification_phase,
+import engineeringagent.presentation.presenters.terminal as presentation_module
+from engineeringagent.adapters.progress import FilesystemProgressJournal
+from engineeringagent.adapters.progress.handoff import (
+    HandoffRenderMetadata,
+    ImplementProgressEnvelope,
+    parse_implement_progress_envelope,
+    render_handoff_markdown_entry,
 )
 from engineeringagent.adapters.progress.iteration_telemetry import (
     _command_timing_fields_parts,
@@ -30,14 +26,17 @@ from engineeringagent.adapters.progress.iteration_telemetry import (
     _summarize_reviewer_feedback,
     write_iteration_telemetry,
 )
-from engineeringagent.adapters.progress.handoff import (
-    ImplementProgressEnvelope,
-    HandoffRenderMetadata,
-    render_handoff_markdown_entry,
-    parse_implement_progress_envelope,
+from engineeringagent.application.feature_iteration_models import (
+    CommandTiming,
+    FeatureIterationInputs,
+    IterationSummaryInputs,
+    IterationTelemetryInputs,
+    PhaseTiming,
 )
-from engineeringagent.adapters.progress import FilesystemProgressJournal
-
+from engineeringagent.loop import print_summary
+from engineeringagent.loop_runtime.phases import (
+    run_verification_phase,
+)
 
 _PROGRESS_ROOT_PARTS = (".engineeringagent", "progress")
 _PROGRESS_JOURNAL = FilesystemProgressJournal()

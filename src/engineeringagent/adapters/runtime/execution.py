@@ -8,21 +8,6 @@ from types import SimpleNamespace
 from typing import Any, Callable
 
 from engineeringagent.adapters.progress import write_iteration_telemetry
-from engineeringagent.application import FeatureIterationRequest
-from engineeringagent.application.feature_iteration import (
-    FeatureIterationService,
-)
-from engineeringagent.application.feature_iteration.models import (
-    FeatureIterationInputs,
-    IterationOutcome,
-)
-from engineeringagent.bootstrap.iteration_reporting import (
-    DefaultObserverDependencies,
-    build_default_iteration_report_observers,
-    publish_iteration_report,
-)
-from engineeringagent.bootstrap.runtime_execution import run_loop_controller
-from engineeringagent.domain.specification import feature_completion_commit_subject
 from engineeringagent.adapters.runtime.run_loop_builder import (
     RunConfigOptions,
     build_loop_run,
@@ -31,6 +16,21 @@ from engineeringagent.adapters.runtime.run_loop_builder import (
     run_selected_feature_iterations,
 )
 from engineeringagent.adapters.runtime.run_loop_context import LoopRun
+from engineeringagent.application import FeatureIterationRequest
+from engineeringagent.application.feature_iteration_models import (
+    FeatureIterationInputs,
+    IterationOutcome,
+)
+from engineeringagent.application.feature_iteration_service import (
+    FeatureIterationService,
+)
+from engineeringagent.bootstrap.iteration_reporting import (
+    DefaultObserverDependencies,
+    build_default_iteration_report_observers,
+    publish_iteration_report,
+)
+from engineeringagent.bootstrap.runtime_execution import run_loop_controller
+from engineeringagent.domain.specification import feature_completion_commit_subject
 from engineeringagent.ports import (
     CommitRequest,
     FeatureIterationExecutionRequest,
@@ -143,7 +143,7 @@ class RuntimeFeatureIterationExecutor(FeatureIterationExecutor):
             support=import_module("engineeringagent.bootstrap.runtime_support"),
             feature_state=import_module("engineeringagent.loop_runtime.feature_state"),
             iteration=import_module("engineeringagent.loop_runtime.iteration"),
-            models=import_module("engineeringagent.application.feature_iteration.models"),
+            models=import_module("engineeringagent.application.feature_iteration_models"),
             phases=import_module("engineeringagent.loop_runtime.phases"),
         )
 

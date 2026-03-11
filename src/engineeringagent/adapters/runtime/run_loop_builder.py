@@ -6,13 +6,13 @@ from pathlib import Path
 from typing import Any, Callable, NamedTuple, Sequence
 
 from engineeringagent.agents import preflight, run_agent
-from engineeringagent.application.feature_iteration.selection import (
-    deterministic_feature_choice,
-)
-from engineeringagent.application.feature_iteration.models import (
+from engineeringagent.application.feature_iteration_models import (
     FeatureIterationInputs,
     IterationOutcome,
     IterationSummaryInputs,
+)
+from engineeringagent.application.feature_selection import (
+    deterministic_feature_choice,
 )
 from engineeringagent.loop_runtime.feature_state import (
     discover_active_feature_paths,

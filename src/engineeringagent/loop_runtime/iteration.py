@@ -9,17 +9,7 @@ from typing import Any, Callable, TypeVar
 from pydantic import BaseModel, ConfigDict, Field
 
 from engineeringagent.agents import describe_action
-from engineeringagent.domain.shared import utc_iso_from_epoch_sec
-from engineeringagent.domain.specification import (
-    current_progress_unit,
-    done_transition_verification_commands,
-    feature_progress_reference,
-    progress_status_snapshot,
-)
-from engineeringagent.domain.audit import ImplementProgressEnvelope
-from engineeringagent.specs import feature_progress_kind
-
-from engineeringagent.application.feature_iteration.models import (
+from engineeringagent.application.feature_iteration_models import (
     CommandTiming,
     CompletionCommitOutcome,
     FeatureIterationInputs,
@@ -33,6 +23,16 @@ from engineeringagent.application.feature_iteration.models import (
     ReviewerPhaseOutcome,
     VerificationPhaseOutcome,
 )
+from engineeringagent.domain.audit import ImplementProgressEnvelope
+from engineeringagent.domain.shared import utc_iso_from_epoch_sec
+from engineeringagent.domain.specification import (
+    current_progress_unit,
+    done_transition_verification_commands,
+    feature_progress_reference,
+    progress_status_snapshot,
+)
+from engineeringagent.specs import feature_progress_kind
+
 from .phases import (
     CompletionPhaseDependencies,
     GatePhaseDependencies,

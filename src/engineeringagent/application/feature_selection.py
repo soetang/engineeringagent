@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, Sequence
+
 from engineeringagent.specs import feature_sort_key
 
 STATUS_ORDER: dict[str, int] = {

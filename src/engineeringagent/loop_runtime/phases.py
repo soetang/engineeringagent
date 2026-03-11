@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 import shlex
 import sys
 import time
+from pathlib import Path
 from typing import Any, Callable
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.application.feature_iteration.models import (
+from engineeringagent.application.feature_iteration_models import (
     CommandTiming,
     CompletionCommitOutcome,
     FeatureIterationInputs,
@@ -18,18 +18,21 @@ from engineeringagent.application.feature_iteration.models import (
     ReviewerPhaseOutcome,
     VerificationPhaseOutcome,
 )
-from engineeringagent.config import repo_relative_label, resolve_harness_checks_config_path
+from engineeringagent.config import (
+    repo_relative_label,
+    resolve_harness_checks_config_path,
+)
 from engineeringagent.domain.quality import build_command_failure_feedback
 from engineeringagent.domain.shared import utc_iso_from_epoch_sec
 from engineeringagent.domain.specification import feature_completion_commit_subject
 
+from ..adapters.shell import run_shell_command
 from ..checks import (
     ChangedPathsResult,
     ChecksRunResult,
     HarnessCheckPhase,
     run_checks,
 )
-from ..adapters.shell import run_shell_command
 from ..presentation.presenters.prompt_feedback import (
     format_failed_command_feedback_lines,
     resolve_checks_prompt_feedback,

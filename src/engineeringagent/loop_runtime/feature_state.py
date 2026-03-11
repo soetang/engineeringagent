@@ -3,29 +3,31 @@
 from __future__ import annotations
 
 import errno
-from pathlib import Path
 import shutil
+from pathlib import Path
 from typing import Any, Sequence
 
 import yaml
 
+from engineeringagent.adapters.progress import handoff as progress_handoff
+from engineeringagent.application.feature_iteration_models import (
+    InitialFeatureLoadOutcome,
+    PostImplementFeatureOutcome,
+)
 from engineeringagent.config import resolve_docs_root
 from engineeringagent.loop_runtime import feature_plan_state
 from engineeringagent.loop_runtime.feature_plan_state import (
     archived_bundled_feature_is_done as _archived_bundled_feature_is_done,
+)
+from engineeringagent.loop_runtime.feature_plan_state import (
     normalize_done_plan,
     sync_active_plan_after_implement,
     touch_active_plan_for_iteration,
 )
-from engineeringagent.application.feature_iteration.models import (
-    InitialFeatureLoadOutcome,
-    PostImplementFeatureOutcome,
-)
-from engineeringagent.adapters.progress import handoff as progress_handoff
 from engineeringagent.specs import (
+    _is_bundled_feature_spec_path,
     dump_yaml,
     feature_storage_root,
-    _is_bundled_feature_spec_path,
     iter_feature_files,
     load_yaml,
     resolve_feature_package_paths,

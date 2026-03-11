@@ -1,16 +1,13 @@
 """Application-layer services and workflow models."""
 
-from .feature_iteration import (
+from .checks_service import ChecksService, RunChecksRequest, RunChecksResult
+from .feature_iteration_models import (
     CommandTiming,
     CompletionCommitOutcome,
     FeatureIterationInputs,
-    FeatureIterationRequest,
-    FeatureIterationResult,
-    FeatureIterationService,
     GatePhaseOutcome,
     ImplementStepInputs,
     ImplementStepResult,
-    ImplementStepRuntimeDependencies,
     InitialFeatureLoadOutcome,
     IterationOutcome,
     IterationReport,
@@ -20,14 +17,21 @@ from .feature_iteration import (
     PostImplementFeatureOutcome,
     ReviewerPhaseOutcome,
     VerificationPhaseOutcome,
-    run_implement_step_from_inputs,
 )
-from .checks_service import ChecksService, RunChecksRequest, RunChecksResult
+from .feature_iteration_service import (
+    FeatureIterationRequest,
+    FeatureIterationResult,
+    FeatureIterationService,
+)
 from .guidance_service import (
     GuidanceInputError,
     GuidanceQuery,
     GuidanceResult,
     GuidanceService,
+)
+from .implementation_step import (
+    ImplementStepRuntimeDependencies,
+    run_implement_step_from_inputs,
 )
 from .init_workspace_service import (
     InitWorkspaceRequest,

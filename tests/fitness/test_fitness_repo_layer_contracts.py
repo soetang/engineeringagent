@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 import subprocess
 import sys
+from pathlib import Path
 
 
 def _script_path(repo_root: Path) -> Path:
@@ -84,7 +84,7 @@ def test_repo_layer_contracts_rule_allows_loop_runtime_models_bridge(
     loop_runtime_root = tmp_path / "src" / "engineeringagent" / "loop_runtime"
     loop_runtime_root.mkdir(parents=True, exist_ok=True)
     (loop_runtime_root / "iteration.py").write_text(
-        "from engineeringagent.application.feature_iteration.models import IterationReport\n",
+        "from engineeringagent.application.feature_iteration_models import IterationReport\n",
         encoding="utf-8",
     )
 

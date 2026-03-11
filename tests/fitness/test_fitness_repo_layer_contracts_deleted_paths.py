@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 import subprocess
 import sys
+from pathlib import Path
 
 
 def _script_path(repo_root: Path) -> Path:
@@ -197,20 +197,20 @@ def test_repo_layer_contracts_rule_blocks_deleted_application_quality_package(
     ]
 
 
-def test_repo_layer_contracts_rule_blocks_deleted_flat_feature_iteration_service_module(
+def test_repo_layer_contracts_rule_blocks_deleted_legacy_feature_iteration_package(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Fail when the removed flat feature-iteration service module reappears."""
-    legacy_module = (
+    """Fail when the removed nested feature-iteration package reappears."""
+    legacy_root = (
         tmp_path
         / "src"
         / "engineeringagent"
         / "application"
-        / "feature_iteration_service.py"
+        / "feature_iteration"
     )
-    legacy_module.parent.mkdir(parents=True, exist_ok=True)
-    legacy_module.write_text("", encoding="utf-8")
+    legacy_root.mkdir(parents=True, exist_ok=True)
+    (legacy_root / "__init__.py").write_text("", encoding="utf-8")
 
     proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
 
@@ -218,7 +218,7 @@ def test_repo_layer_contracts_rule_blocks_deleted_flat_feature_iteration_service
     assert payload["status"] == "fail"
     assert payload["rule_id"] == "architecture.repo-layer-contracts"
     assert payload["violations"] == [
-        "src/engineeringagent/application/feature_iteration_service.py: deleted legacy module path must remain absent"
+        "src/engineeringagent/application/feature_iteration: deleted legacy directory path must remain absent"
     ]
 
 

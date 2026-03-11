@@ -5,13 +5,15 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from engineeringagent.domain.quality import ChangedPathsResult
+from engineeringagent.application.feature_iteration_models import FeatureIterationInputs
 from engineeringagent.checks import ChecksRunResult
 from engineeringagent.checks.commands.runtime import (
     CommandInvocationRecord,
-    PlannedCheck as CommandPlannedCheck,
     iter_planned_command_check_commands,
     plan_command_checks,
+)
+from engineeringagent.checks.commands.runtime import (
+    PlannedCheck as CommandPlannedCheck,
 )
 from engineeringagent.checks.fitness.runtime import (
     plan_fitness_checks,
@@ -19,14 +21,17 @@ from engineeringagent.checks.fitness.runtime import (
 from engineeringagent.checks.reviewers.runtime import (
     plan_reviewer_checks,
 )
-from engineeringagent.application.feature_iteration.models import FeatureIterationInputs
+from engineeringagent.domain.quality import (
+    ChangedPathsResult,
+    HarnessCheckPhase,
+    HarnessChecksDocument,
+)
 from engineeringagent.loop_runtime.phases import (
     GatePhaseDependencies,
     ReviewerPhaseDependencies,
     run_gate_phase,
     run_reviewer_phase,
 )
-from engineeringagent.domain.quality import HarnessCheckPhase, HarnessChecksDocument
 from engineeringagent.specs import load_yaml
 
 

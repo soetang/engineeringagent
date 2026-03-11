@@ -2,7 +2,6 @@ from __future__ import annotations
 
 # Tests intentionally exercise private helper functions.
 # pylint: disable=protected-access
-
 import subprocess
 from pathlib import Path
 from types import SimpleNamespace
@@ -11,10 +10,10 @@ from typing import Any, cast
 import pytest
 from pydantic import ValidationError
 
-import engineeringagent.config as config_module
 import engineeringagent.checks.fitness.adapters as adapters_module
-from engineeringagent.loop_runtime import feature_plan_state
+import engineeringagent.config as config_module
 import engineeringagent.loop_runtime.feature_state as feature_state_module
+from engineeringagent.application.feature_iteration_models import FeatureIterationInputs
 from engineeringagent.checks.fitness.contracts import (
     CONTRACT_VERSION,
     FitnessRuleMetadata,
@@ -23,8 +22,8 @@ from engineeringagent.checks.fitness.contracts import (
     RuleSource,
 )
 from engineeringagent.checks.fitness.registry import FitnessRuleDefinition
-from engineeringagent.application.feature_iteration.models import FeatureIterationInputs
 from engineeringagent.domain.quality import ChangedPathsResult
+from engineeringagent.loop_runtime import feature_plan_state
 from engineeringagent.loop_runtime.phases import (
     CompletionPhaseDependencies,
     GatePhaseDependencies,

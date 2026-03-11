@@ -7,17 +7,16 @@ import time
 from pathlib import Path
 from typing import Any, Callable, Sequence
 
-from engineeringagent.application.feature_iteration.models import (
+from engineeringagent.application.feature_iteration_models import (
     CommandTiming,
     IterationTelemetryInputs,
     PhaseTiming,
 )
 from engineeringagent.domain.audit import ProgressEvent
 
-from .filesystem_journal import FilesystemProgressJournal
 from . import handoff as progress_handoff
 from . import paths as progress_paths
-
+from .filesystem_journal import FilesystemProgressJournal
 
 ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 FEEDBACK_CONTEXT_BLOCK_RE = re.compile(

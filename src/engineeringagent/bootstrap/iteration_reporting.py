@@ -7,12 +7,11 @@ from typing import Callable, Sequence
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.application.feature_iteration.models import (
+from engineeringagent.application.feature_iteration_models import (
     IterationReport,
     IterationSummaryInputs,
     IterationTelemetryInputs,
 )
-
 
 PrintSummaryFn = Callable[[IterationSummaryInputs], None]
 IterationReportObserver = Callable[[IterationReport], IterationReport]
