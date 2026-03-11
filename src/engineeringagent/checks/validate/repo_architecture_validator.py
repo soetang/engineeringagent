@@ -168,10 +168,11 @@ def _domain_module_issues(
             "engineeringagent.bootstrap",
             "engineeringagent.ports",
             "engineeringagent.presentation",
+            "engineeringagent.specs",
         ),
         message=(
             "domain modules must not import application, ports, adapters, "
-            "presentation, or bootstrap modules"
+            "presentation, bootstrap, or legacy specs modules"
         ),
         code="repo.architecture.domain-import",
     )

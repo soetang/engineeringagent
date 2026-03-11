@@ -1,6 +1,6 @@
 """Specification-domain helpers."""
 
-from engineeringagent.specs import (
+from engineeringagent.spec_bundles import (
     feature_progress_kind,
     resolve_feature_plan_path,
     resolve_feature_research_path,

@@ -202,6 +202,7 @@ def test_repo_architecture_validator_reports_application_importing_checks_module
         "from engineeringagent.adapters.progress import FilesystemProgressJournal\n",
         "from engineeringagent.presentation.presenters.terminal import RunOutputPresenter\n",
         "from engineeringagent.bootstrap.app_factory import AppFactory\n",
+        "from engineeringagent.specs import BundledFeatureSpec\n",
     ],
 )
 def test_repo_architecture_validator_reports_domain_importing_forbidden_layers(
@@ -232,7 +233,7 @@ def test_repo_architecture_validator_reports_domain_importing_forbidden_layers(
             path="src/engineeringagent/domain/specification/progress.py",
             message=(
                 "domain modules must not import application, ports, adapters, "
-                "presentation, or bootstrap modules"
+                "presentation, bootstrap, or legacy specs modules"
             ),
             code="repo.architecture.domain-import",
         ),

@@ -8,8 +8,7 @@ from typing import Any, Iterable
 from pydantic import BaseModel, ConfigDict
 import yaml
 
-from engineeringagent.specs import (
-    FeaturePlanArtifact,
+from engineeringagent.spec_bundles import (
     load_feature_plan_artifact,
     load_markdown_frontmatter,
     resolve_feature_plan_path,
@@ -139,7 +138,7 @@ def _feature_progress_unit(feature: dict[str, Any] | None) -> ProgressUnit | Non
     )
 
 
-def _iter_plan_progress_units(plan: FeaturePlanArtifact) -> Iterable[ProgressUnit]:
+def _iter_plan_progress_units(plan: Any) -> Iterable[ProgressUnit]:
     yield from _iter_mapping_progress_units(
         plan.phases,
         kind="phase",
