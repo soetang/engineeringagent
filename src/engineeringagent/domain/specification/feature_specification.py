@@ -7,17 +7,10 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from engineeringagent.domain.shared import FeatureId, FeatureStatus, PhaseId, PlanningTier
+
 NonEmptyStr = Annotated[str, Field(strict=True, min_length=1)]
 StrictString = Annotated[str, Field(strict=True)]
-
-
-class FeatureStatus(str, Enum):
-    """Lifecycle status for a feature specification."""
-
-    BACKLOG = "backlog"
-    IN_PROGRESS = "in_progress"
-    BLOCKED = "blocked"
-    DONE = "done"
 
 
 class FeaturePriority(str, Enum):
@@ -39,14 +32,6 @@ class FeatureType(str, Enum):
     TEST = "test"
 
 
-class PlanningTier(str, Enum):
-    """Planning depth required by the selected feature."""
-
-    DIRECT = "direct"
-    PLANNED = "planned"
-    RESEARCHED = "researched"
-
-
 class FeatureArtifacts(BaseModel):
     """Artifact references declared by a bundled feature specification."""
 
@@ -62,7 +47,7 @@ class FeatureSpecification(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    feature_id: NonEmptyStr
+    feature_id: FeatureId
     title: NonEmptyStr
     feature_type: FeatureType
     expected_commit_subject: NonEmptyStr
@@ -83,10 +68,10 @@ class FeatureSelectionCandidate(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    feature_id: NonEmptyStr
+    feature_id: FeatureId
     status: FeatureStatus
     priority: FeaturePriority
     planning_tier: PlanningTier
-    next_phase_id: StrictString | None = None
+    next_phase_id: PhaseId | None = None
     phase_dependencies_satisfied: bool
     block_reason_code: StrictString | None = None

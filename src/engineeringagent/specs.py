@@ -10,9 +10,15 @@ from pydantic import (
     ValidationError,
 )
 
+from engineeringagent.domain.shared import FeatureId, FeatureStatus, PlanningTier
 from engineeringagent.domain.quality import (
     HarnessCheckPhase as _HarnessCheckPhase,
     HarnessChecksDocument,
+)
+from engineeringagent.domain.specification.feature_specification import (
+    FeatureArtifacts,
+    FeaturePriority,
+    FeatureType,
 )
 from engineeringagent import spec_bundles as _spec_bundles
 
@@ -36,9 +42,6 @@ _is_bundled_feature_spec_path = _spec_bundles.is_bundled_feature_spec_path
 _bundled_feature_artifact_issues = _spec_bundles.bundled_feature_artifact_issues
 
 
-FeatureId = Annotated[
-    str, Field(strict=True, min_length=1, pattern=r"^FEAT-[0-9]{3,}$")
-]
 NonEmptyStr = Annotated[str, Field(strict=True, min_length=1)]
 StrictString = Annotated[str, Field(strict=True)]
 CommitSubject = Annotated[
@@ -56,34 +59,6 @@ class StrictContractModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-class FeatureStatus(str, Enum):
-    """Lifecycle status for a feature spec."""
-
-    BACKLOG = "backlog"
-    IN_PROGRESS = "in_progress"
-    DONE = "done"
-    BLOCKED = "blocked"
-
-
-class FeaturePriority(str, Enum):
-    """Priority bucket used for feature ordering."""
-
-    HIGH = "high"
-    MEDIUM = "medium"
-    LOW = "low"
-
-
-class FeatureType(str, Enum):
-    """Category of work captured by a feature spec."""
-
-    FEATURE = "feature"
-    BUG = "bug"
-    SPEC = "spec"
-    DOCS = "docs"
-    CHORE = "chore"
-    TEST = "test"
-
-
 class PotentialFeatureStatus(str, Enum):
     """Lifecycle status for a potential feature entry."""
 
@@ -93,14 +68,6 @@ class PotentialFeatureStatus(str, Enum):
 PotentialFeatureId = Annotated[
     str, Field(strict=True, min_length=1, pattern=r"^POT-[0-9]{3,}$")
 ]
-
-
-class PlanningTier(str, Enum):
-    """Explicit planning depth for bundled feature packages."""
-
-    DIRECT = "direct"
-    PLANNED = "planned"
-    RESEARCHED = "researched"
 
 
 class PotentialFeatureSpec(StrictContractModel):
@@ -120,14 +87,6 @@ class PotentialFeaturesDocument(StrictContractModel):
     version: Annotated[int, Field(strict=True, ge=1)]
     description: StrictString | None = None
     potential_features: list[PotentialFeatureSpec] = Field(default_factory=list)
-
-
-class FeatureArtifacts(StrictContractModel):
-    """Deterministic artifact references for bundled feature packages."""
-
-    plan: StrictString | None = None
-    research: StrictString | None = None
-    supporting: list[StrictString] | None = None
 
 
 class BundledFeatureSpec(StrictContractModel):

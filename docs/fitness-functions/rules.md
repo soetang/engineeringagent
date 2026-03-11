@@ -16,6 +16,7 @@ This file is generated from active manifest-declared fitness rules.
 | `architecture.harness-src-import-allowlist` | error | command | custom | `harness/fitness_functions` | - | Restrict harness fitness functions to a narrow supported engineeringagent surface. |
 | `architecture.hermetic-fitness-test-isolation` | error | command | custom | `tests/fitness` | `harness/fitness_functions/policies/hermetic_fitness_test_isolation.yaml` | Prevent tests/fitness from scanning the live repository checkout. |
 | `architecture.iteration-pipeline-observer-decoupling` | error | command | custom | `src/engineeringagent/loop_runtime/iteration.py` | - | Keep iteration pipeline free of telemetry and console side effects. |
+| `architecture.legacy-run-loop-bridge-absent` | error | command | custom | `src/engineeringagent/ports/run_loop_executor.py and deleted source files under src/engineeringagent/adapters/loop` | - | Keep removed legacy run-loop bridge source files deleted. |
 | `architecture.loop-checks-policy-ownership` | error | command | custom | `src/engineeringagent/loop_runtime/** and src/engineeringagent/loop.py` | - | Fail when loop runtime encodes checks group/timing selection policy. |
 | `architecture.loop-checks-result-boundary` | error | command | custom | `src/engineeringagent/loop_runtime/** and src/engineeringagent/loop.py` | - | Fail when loop runtime branches on checks type/group semantics or parses checks-internal payloads. |
 | `architecture.loop-facade-line-budget` | error | command | custom | `src/engineeringagent/loop.py` | - | Enforce a permanent line budget cap for the loop facade. |
@@ -31,6 +32,7 @@ This file is generated from active manifest-declared fitness rules.
 | `architecture.progress-log-path-locality` | error | command | custom | `src/engineeringagent` | - | Centralize loop progress artifact paths and writes behind approved helpers. |
 | `architecture.prompt-locality` | error | command | custom | `src/engineeringagent` | - | Keep canonical loop prompt content and template reads localized. |
 | `architecture.scaffold-template-locality` | error | command | custom | `src/engineeringagent` | - | Keep scaffold template payloads in scaffold_templates assets. |
+| `architecture.shared-kernel-locality` | error | command | custom | `src/engineeringagent/domain/shared plus legacy duplicate-definition surfaces` | - | Localize cross-domain identifiers and enums under engineeringagent.domain.shared. |
 | `architecture.source-first-loop-command-policy` | error | command | custom | `legacy spec verification, bundled plan.md phases/examples, packaged plan-session/research-session guidance, contributor approach docs, loop implementation prompt template, docs/fixtures/real_opencode_hello_world_plan_template.md, and harness/checks.yaml` | - | Enforce source-first workspace execution for loop command surfaces. |
 | `architecture.test-layout-module-mirroring` | error | command | custom | `tests` | `harness/fitness_functions/policies/test_layout_module_mirroring.yaml` | Enforce module-mirroring test structure and explicit test-layout exceptions. |
 | `smoke.opencode-real-hello-world` | error | command | custom | `repository (temp repo)` | - | Validate the real agent loop end-to-end in an isolated temp repository. |
@@ -109,6 +111,13 @@ This file is generated from active manifest-declared fitness rules.
 - Side-effect free: `true`
 - Rationale: Preserves the report-plus-observer split so orchestration remains testable and side effects stay localized.
 - Remediation: Move telemetry and console output calls out of loop_runtime.iteration and into loop-wired observers that consume IterationReport.
+
+### `architecture.legacy-run-loop-bridge-absent`
+
+- Name: Legacy run-loop bridge absent
+- Side-effect free: `true`
+- Rationale: The target architecture keeps legacy loop wiring in bootstrap during migration and does not retain a dedicated run-loop executor port or adapter package.
+- Remediation: Keep legacy loop callable wiring in engineeringagent.bootstrap.app_factory and do not restore the deleted run-loop executor port or loop bridge source files under adapters/loop.
 
 ### `architecture.loop-checks-policy-ownership`
 
@@ -218,6 +227,13 @@ This file is generated from active manifest-declared fitness rules.
 - Side-effect free: `true`
 - Rationale: Prevents init scaffold regressions from drifting back to inline template payloads in source modules.
 - Remediation: Move scaffold template bodies to engineeringagent.scaffold_templates assets and load them via engineeringagent.init_scaffold.
+
+### `architecture.shared-kernel-locality`
+
+- Name: Shared-kernel locality
+- Side-effect free: `true`
+- Rationale: Keeps shared-kernel language in one canonical package instead of duplicating feature and check enums across legacy surfaces.
+- Remediation: Move cross-domain identifiers and enums to engineeringagent.domain.shared and import them from there instead of redefining them elsewhere.
 
 ### `architecture.source-first-loop-command-policy`
 

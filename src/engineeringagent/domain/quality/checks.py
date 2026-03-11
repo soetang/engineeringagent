@@ -2,19 +2,13 @@
 
 from __future__ import annotations
 
-from enum import Enum
 from typing import Any, Mapping, NamedTuple
 
 from pydantic import BaseModel, ConfigDict
 from typing_extensions import Literal, TypedDict
+from engineeringagent.domain.shared import CheckPhase
 
-
-class HarnessCheckPhase(str, Enum):
-    """Execution phase for harness checks."""
-
-    ITERATION_END = "iteration_end"
-    FEATURE_DONE = "feature_done"
-    MANUAL = "manual"
+HarnessCheckPhase = CheckPhase
 
 
 CheckDecisionAction = Literal["run", "skip"]

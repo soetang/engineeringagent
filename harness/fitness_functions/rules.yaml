@@ -37,6 +37,20 @@ rules:
       - run
       - python
       - harness/fitness_functions/rules/check_dependency_directionality.py
+  - rule_id: architecture.shared-kernel-locality
+    name: Shared-kernel locality
+    summary: Localize cross-domain identifiers and enums under engineeringagent.domain.shared.
+    rationale: Keeps shared-kernel language in one canonical package instead of duplicating feature and check enums across legacy surfaces.
+    remediation: Move cross-domain identifiers and enums to engineeringagent.domain.shared and import them from there instead of redefining them elsewhere.
+    scope: src/engineeringagent/domain/shared plus legacy duplicate-definition surfaces
+    severity: error
+    side_effect_free: true
+    adapter: command
+    command:
+      - uv
+      - run
+      - python
+      - harness/fitness_functions/rules/check_shared_kernel_locality.py
   - rule_id: architecture.legacy-run-loop-bridge-absent
     name: Legacy run-loop bridge absent
     summary: Keep removed legacy run-loop bridge source files deleted.

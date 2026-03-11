@@ -1,5 +1,6 @@
 """Specification-domain helpers."""
 
+from engineeringagent.domain.shared import FeatureStatus, PlanningTier
 from engineeringagent.spec_bundles import (
     feature_progress_kind,
     resolve_feature_plan_path,
@@ -12,9 +13,7 @@ from .feature_specification import (
     FeaturePriority,
     FeatureSelectionCandidate,
     FeatureSpecification,
-    FeatureStatus,
     FeatureType,
-    PlanningTier,
 )
 
 from .progress import (
