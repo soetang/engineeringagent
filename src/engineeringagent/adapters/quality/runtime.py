@@ -1,4 +1,4 @@
-"""Application-owned runtime orchestration for deterministic checks."""
+"""Quality adapter runtime for deterministic checks orchestration."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from typing_extensions import Unpack
 
 from engineeringagent.checks import collect_changed_paths
 from engineeringagent.checks.config_selection import (
+    ChecksConfigSelectionError,
     load_selected_harness_checks_document,
 )
 from engineeringagent.checks.contracts import (
@@ -231,20 +232,18 @@ def _render_decision_trace(decisions: list[CheckDecision]) -> str:
 
 
 def _compose_output(
-    *,
     decisions: list[CheckDecision],
     outputs: list[str],
+    *,
     dry_run: bool,
 ) -> str:
     decision_trace = _render_decision_trace(decisions)
     if dry_run:
         return decision_trace
-    execution_output = "\n".join(outputs).strip()
-    if not execution_output:
+    execution_outputs = "\n".join(part for part in outputs if part).strip()
+    if not execution_outputs:
         return decision_trace
-    return "\n".join(
-        part for part in (execution_output, decision_trace) if part
-    ).strip()
+    return "\n".join(part for part in (decision_trace, execution_outputs) if part).strip()
 
 
 _GROUP_TO_STRATEGY_TYPE = {
@@ -256,40 +255,33 @@ _GROUP_TO_STRATEGY_TYPE = {
 
 
 def _build_strategy_registry(
-    *,
-    doc: Any | None,
+    doc: object | None,
     request: _NormalizedRunChecksRequest,
 ) -> dict[str, CheckStrategy]:
     strategies: list[CheckStrategy] = [
         ValidateCheckStrategy(schema_only=request.schema_only),
     ]
-    if doc is not None:
-        strategies.extend(
-            [
-                CommandCheckStrategy(
-                    doc=doc,
-                    verbose_output=request.verbose_output,
-                ),
-                FitnessCheckStrategy(doc=doc),
-                ReviewerCheckStrategy(doc=doc),
-            ]
+    if CHECK_GROUP_COMMANDS in request.ordered_groups and doc is not None:
+        strategies.append(
+            CommandCheckStrategy(doc=doc, verbose_output=request.verbose_output)
         )
+    if CHECK_GROUP_FITNESS in request.ordered_groups and doc is not None:
+        strategies.append(FitnessCheckStrategy(doc=doc))
+    if CHECK_GROUP_REVIEWERS in request.ordered_groups and doc is not None:
+        strategies.append(ReviewerCheckStrategy(doc=doc))
     return build_strategy_registry(strategies)
 
 
 def _append_strategy_result(
-    *,
     strategy: CheckStrategy,
-    context: CheckContext,
     request: _NormalizedRunChecksRequest,
+    context: CheckContext,
     state: _OrchestrationState,
 ) -> tuple[CheckExecutionRecord | None, str | None]:
     strategy_decisions = strategy.plan(context=context)
     state.decisions.extend(strategy_decisions)
-
     if request.dry_run:
-        return None, None
-
+        return (None, None)
     strategy_executions = strategy.execute(
         context=context,
         decisions=strategy_decisions,
@@ -300,20 +292,15 @@ def _append_strategy_result(
             continue
         return (
             record,
-            strategy.render_prompt_feedback(
-                failed_record=record,
-            ),
+            strategy.render_prompt_feedback(failed_record=record),
         )
-    return None, None
+    return (None, None)
 
 
 def _build_check_context(
-    *,
     project_root: Path,
     request: _NormalizedRunChecksRequest,
 ) -> CheckContext:
-    """Build shared checks context from normalized request fields."""
-
     return CheckContext(
         project_root=project_root,
         phase=request.phase,
@@ -327,12 +314,9 @@ def _build_check_context(
 
 
 def _ordered_request_strategies(
-    *,
-    request: _NormalizedRunChecksRequest,
     strategy_registry: dict[str, CheckStrategy],
+    request: _NormalizedRunChecksRequest,
 ) -> tuple[CheckStrategy, ...]:
-    """Return deterministic strategy order for the selected checks groups."""
-
     return tuple(
         strategy_registry[_GROUP_TO_STRATEGY_TYPE[group]]
         for group in request.ordered_groups
@@ -340,35 +324,27 @@ def _ordered_request_strategies(
 
 
 def _execute_with_strategy_orchestration(
-    *,
     project_root: Path,
-    doc: Any | None,
     request: _NormalizedRunChecksRequest,
+    strategy_registry: dict[str, CheckStrategy],
 ) -> ChecksRunResult:
     state = _OrchestrationState()
-
-    strategy_registry = _build_strategy_registry(doc=doc, request=request)
-    context = _build_check_context(project_root=project_root, request=request)
-
-    for strategy in _ordered_request_strategies(
-        request=request,
-        strategy_registry=strategy_registry,
-    ):
+    context = _build_check_context(project_root, request)
+    for strategy in _ordered_request_strategies(strategy_registry, request):
         failed_record, prompt_feedback = _append_strategy_result(
-            strategy=strategy,
-            context=context,
-            request=request,
-            state=state,
+            strategy,
+            request,
+            context,
+            state,
         )
         if failed_record is not None:
             return _finalize_orchestration_result(
                 state=state,
                 ok=False,
-                dry_run=False,
+                dry_run=request.dry_run,
                 failed_record=failed_record,
                 prompt_feedback=prompt_feedback,
             )
-
     return _finalize_orchestration_result(
         state=state,
         ok=True,
@@ -384,30 +360,31 @@ def run_checks(
     **kwargs: Unpack[_RunChecksKwargs],
 ) -> ChecksRunResult:
     """Plan and run deterministic checks."""
+
     root, request = build_run_checks_request(
         project_root,
         phase=phase,
         checks=checks,
-        kwargs=cast(_RunChecksKwargs, kwargs),
+        kwargs=kwargs,
     )
-
-    doc, config_or_selection_error = load_selected_harness_checks_document(
+    doc, config_error = load_selected_harness_checks_document(
         root,
         request=request,
     )
-    if config_or_selection_error is not None:
+    if config_error is not None:
+        error = cast(ChecksConfigSelectionError, config_error)
         return _finalize_checks_run_result(
             ok=False,
             dry_run=request.dry_run,
             result_fields={
-                "output": config_or_selection_error.output,
-                "failed_check_id": config_or_selection_error.check_id,
-                "failed_payload": config_or_selection_error.payload,
+                "failed_check_id": error.check_id,
+                "failed_payload": error.payload,
+                "output": error.output,
             },
         )
-
+    strategy_registry = _build_strategy_registry(doc, request)
     return _execute_with_strategy_orchestration(
-        project_root=root,
-        doc=doc,
-        request=request,
+        root,
+        request,
+        strategy_registry,
     )

@@ -8,7 +8,7 @@ import pytest
 
 from engineeringagent.domain.quality import ChangedPathsResult
 from engineeringagent.checks import run_checks
-from engineeringagent.application.checks.runtime import (
+from engineeringagent.adapters.quality.runtime import (
     ChecksRunResult,
     _call_collect_changed_paths,
     _extract_command_invocation,
@@ -221,7 +221,7 @@ def test_run_checks_group_order_is_deterministic(
         ),
     )
     monkeypatch.setattr(
-        "engineeringagent.application.checks.runtime.collect_changed_paths",
+        "engineeringagent.adapters.quality.runtime.collect_changed_paths",
         lambda *_args, **_kwargs: ChangedPathsResult(
             paths=(),
             run_all=True,

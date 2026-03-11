@@ -95,17 +95,17 @@ def test_repo_layer_contracts_rule_allows_loop_runtime_models_bridge(
     assert payload["violations"] == []
 
 
-def test_repo_layer_contracts_rule_allows_application_checks_runtime_bridge(
+def test_repo_layer_contracts_rule_allows_quality_runtime_bridge(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Allow the application-owned checks runtime to compose checks internals."""
+    """Allow the quality runtime adapter to compose checks internals."""
     runtime_module = (
         tmp_path
         / "src"
         / "engineeringagent"
-        / "application"
-        / "checks"
+        / "adapters"
+        / "quality"
         / "runtime.py"
     )
     runtime_module.parent.mkdir(parents=True, exist_ok=True)
@@ -126,6 +126,33 @@ def test_repo_layer_contracts_rule_allows_application_checks_runtime_bridge(
     assert proc.returncode == 0
     assert payload["status"] == "pass"
     assert payload["violations"] == []
+
+
+def test_repo_layer_contracts_rule_blocks_deleted_application_checks_runtime(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Fail when the removed application checks runtime module reappears."""
+    legacy_runtime = (
+        tmp_path
+        / "src"
+        / "engineeringagent"
+        / "application"
+        / "checks"
+        / "runtime.py"
+    )
+    legacy_runtime.parent.mkdir(parents=True, exist_ok=True)
+    legacy_runtime.write_text("", encoding="utf-8")
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert payload["rule_id"] == "architecture.repo-layer-contracts"
+    assert payload["violations"] == [
+        "src/engineeringagent/application/checks/runtime.py: deleted legacy module path must remain absent",
+        "src/engineeringagent/application/checks: deleted legacy directory path must remain absent",
+    ]
 
 
 def test_repo_layer_contracts_rule_blocks_deleted_legacy_directory_paths(

@@ -1,14 +1,14 @@
-"""Adapter that executes checks through the application-owned runtime."""
+"""Adapter that executes checks through the quality runtime."""
 
 from __future__ import annotations
 
-from engineeringagent.application.checks.runtime import run_checks
+from engineeringagent.adapters.quality.runtime import run_checks
 from engineeringagent.domain.quality import ChecksRunResult, reviewers_group_selected
 from engineeringagent.ports import ChecksRunRequest, ChecksRunner
 
 
 class RuntimeChecksRunner(ChecksRunner):
-    """Run checks through the packaged checks runtime."""
+    """Run checks through the packaged quality runtime."""
 
     def run(self, request: ChecksRunRequest) -> ChecksRunResult:
         """Execute one checks request through the concrete runtime module."""

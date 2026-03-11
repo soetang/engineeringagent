@@ -25,7 +25,7 @@ from engineeringagent.ports import VersionControlGateway
 from .results import ChecksRunResult
 
 if TYPE_CHECKING:
-    from engineeringagent.application.checks.runtime import _RunChecksKwargs
+    from engineeringagent.adapters.quality.runtime import _RunChecksKwargs
     from .fitness.contracts import FitnessRuleResult
 
 __all__ = [
@@ -79,7 +79,7 @@ def run_checks(
 ) -> ChecksRunResult:
     """Proxy to the checks runtime without importing it during package init."""
 
-    runtime = import_module("engineeringagent.application.checks.runtime")
+    runtime = import_module("engineeringagent.adapters.quality.runtime")
     return runtime.run_checks(project_root, phase=phase, checks=checks, **kwargs)
 
 

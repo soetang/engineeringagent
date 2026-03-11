@@ -27,7 +27,6 @@ CONFIGURED_AGENT_RUNNER_ALLOWED_ROOTS = (
 )
 AGENTS_ROOT = SRC_ROOT / "agents"
 BOOTSTRAP_RUNTIME_EXECUTION_PATH = SRC_ROOT / "bootstrap" / "runtime_execution.py"
-APPLICATION_CHECKS_RUNTIME_PATH = APPLICATION_ROOT / "checks" / "runtime.py"
 DELETED_MODULE_PATHS = {
     "src/engineeringagent/changed_paths.py",
     "src/engineeringagent/harness_checks_runtime.py",
@@ -54,6 +53,7 @@ DELETED_MODULE_PATHS = {
     "src/engineeringagent/application/contracts/workspace_recovery.py",
     "src/engineeringagent/application/implementation_prompt.py",
     "src/engineeringagent/application/checks/service.py",
+    "src/engineeringagent/application/checks/runtime.py",
     "src/engineeringagent/application/feature_iteration/service.py",
     "src/engineeringagent/application/init_workspace/service.py",
     "src/engineeringagent/application/prompts/__init__.py",
@@ -82,6 +82,7 @@ DELETED_MODULE_PATHS = {
 }
 DELETED_DIRECTORY_PATHS = {
     "src/engineeringagent/adapters/checks",
+    "src/engineeringagent/application/checks",
     "src/engineeringagent/application/contracts",
     "src/engineeringagent/application/guidance",
     "src/engineeringagent/application/init_workspace",
@@ -289,15 +290,14 @@ def _application_module_violations(path: Path) -> list[str]:
             )
             break
 
-    if path != APPLICATION_CHECKS_RUNTIME_PATH:
-        violations.extend(
-            _forbidden_import_violations(
-                module,
-                rel_path=rel_path,
-                forbidden_modules=("engineeringagent.checks",),
-                message="application modules must not import checks modules",
-            )
+    violations.extend(
+        _forbidden_import_violations(
+            module,
+            rel_path=rel_path,
+            forbidden_modules=("engineeringagent.checks",),
+            message="application modules must not import checks modules",
         )
+    )
     violations.extend(
         _forbidden_import_violations(
             module,
