@@ -137,7 +137,7 @@ def _build_executor(
         observed["observers"] = observers
         return publish_outcome
 
-    loop_module = SimpleNamespace(
+    support_module = SimpleNamespace(
         run_implement_step=object(),
         git_head_short=object(),
         print_summary=object(),
@@ -171,7 +171,7 @@ def _build_executor(
     executor._progress_journal = _FakeProgressJournal(observed)
     executor._runtime = SimpleNamespace(
         checks=changed_paths_module,
-        loop=loop_module,
+        support=support_module,
         feature_state=feature_state_module,
         models=SimpleNamespace(
             FeatureIterationInputs=lambda **kwargs: _FakeFeatureIterationInputs(
@@ -286,6 +286,11 @@ def test_runtime_feature_iteration_executor_executes_runtime_pipeline() -> None:
     ]
     observer_dependencies = observed["default_observer_dependencies"]
     assert isinstance(observer_dependencies, dict)
+    dependencies = observed["iteration_dependencies"]
+    assert isinstance(dependencies, dict)
+    assert dependencies["run_implement_step"] is executor._runtime.support.run_implement_step
+    assert observer_dependencies["git_head_resolver"] is executor._runtime.support.git_head_short
+    assert observer_dependencies["print_summary"] is executor._runtime.support.print_summary
     observer_dependencies["write_iteration_telemetry"]("telemetry-inputs", object())
     observer_dependencies["persist_iteration_report"](
         SimpleNamespace(

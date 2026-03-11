@@ -25,6 +25,7 @@ CONFIGURED_AGENT_RUNNER_ALLOWED_ROOTS = (
     SRC_ROOT / "adapters" / "agents",
 )
 AGENTS_ROOT = SRC_ROOT / "agents"
+BOOTSTRAP_RUNTIME_EXECUTION_PATH = SRC_ROOT / "bootstrap" / "runtime_execution.py"
 DELETED_MODULE_PATHS = {
     "src/engineeringagent/changed_paths.py",
     "src/engineeringagent/harness_checks_runtime.py",
@@ -416,6 +417,23 @@ def _loop_runtime_violations(path: Path) -> list[str]:
     ]
 
 
+def _bootstrap_runtime_execution_violations(path: Path) -> list[str]:
+    rel_path = path.as_posix()
+    module = _parse_module(path)
+    if isinstance(module, str):
+        return [module]
+
+    return _forbidden_import_violations(
+        module,
+        rel_path=rel_path,
+        forbidden_modules=("engineeringagent.loop",),
+        message=(
+            "bootstrap runtime execution must not import the legacy engineeringagent.loop facade; "
+            "use engineeringagent.bootstrap.runtime_support and engineeringagent.loop_runtime modules directly"
+        ),
+    )
+
+
 def _deleted_path_violations() -> list[str]:
     return [
         f"{relative_path}: deleted legacy module path must remain absent"
@@ -453,6 +471,11 @@ def _repo_layer_contract_violations() -> list[str]:
 
     for path in _iter_python_modules(LOOP_RUNTIME_ROOT):
         violations.extend(_loop_runtime_violations(path))
+
+    if BOOTSTRAP_RUNTIME_EXECUTION_PATH.is_file():
+        violations.extend(
+            _bootstrap_runtime_execution_violations(BOOTSTRAP_RUNTIME_EXECUTION_PATH)
+        )
 
     return sorted(set(violations))
 

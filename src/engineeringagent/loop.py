@@ -7,11 +7,9 @@ from .agents import preflight, run_agent
 from .application import FeatureIterationRequest
 from .bootstrap import AppFactory
 from .bootstrap.runtime_execution import run_loop_controller
-from .loop_runtime.implement import run_implement_step_from_inputs
+from .bootstrap import runtime_support as _runtime_support
 from .loop_runtime.models import (
     FeatureIterationInputs,
-    ImplementStepResult,
-    ImplementStepInputs,
     IterationOutcome,
     IterationReport,
     IterationSummaryInputs,
@@ -34,24 +32,14 @@ from .loop_runtime.observers import (
     publish_iteration_report,
 )
 from .loop_runtime.telemetry import write_iteration_telemetry
-from .presentation.presenters.terminal import RunOutputPresenter
 from .domain.specification import feature_completion_commit_subject
 from .ports import CommitRequest, VersionControlFailure, VersionControlGateway
-from .specs import progress_kind_label
 
 __all__ = ["run_loop_controller"]
 
-
-class _LoopAgentRunner:
-    """Legacy loop-local agent seam used by the runtime facade."""
-
-    def run(self, request: Any) -> object:
-        """Execute one agent request through the loop module's run-agent seam."""
-        return run_agent(
-            request.project_root,
-            request.prompt,
-            output_type=request.output_type,
-        )
+git_head_short = _runtime_support.git_head_short
+print_summary = _runtime_support.print_summary
+run_implement_step = _runtime_support.run_implement_step
 
 
 def _print_run_all_snapshot_banner(resolved_paths: Sequence[Path]) -> None:
@@ -109,42 +97,6 @@ def _build_version_control_gateway(project_root: Path) -> VersionControlGateway:
     return AppFactory(project_root).build_version_control_gateway()
 
 
-def git_head_short(project_root: Path) -> str | None:
-    """Return short git HEAD hash for a repository.
-
-    Args:
-        project_root: Repository root used as command cwd.
-
-    Returns:
-        Short commit hash when available, otherwise None.
-    """
-    return _build_version_control_gateway(project_root).head_commit(project_root)
-
-
-def run_implement_step(
-    project_root: Path,
-    feature: dict[str, Any],
-    feature_path: Path,
-    feedback: str | None,
-    verbose_output: bool,
-) -> ImplementStepResult:
-    """Run the implement phase for one loop iteration."""
-    app_factory = AppFactory(project_root)
-    implement_inputs = ImplementStepInputs(
-        project_root=project_root,
-        feature=feature,
-        feature_path=feature_path,
-        feedback=feedback,
-        verbose_output=verbose_output,
-    )
-    return run_implement_step_from_inputs(
-        implement_inputs,
-        agent_runner=_LoopAgentRunner(),
-        prompt_builder=app_factory.build_prompt_builder(),
-        progress_journal=app_factory.build_progress_journal(),
-    )
-
-
 def _commit_feature_completion(
     project_root: Path, feature: dict[str, Any]
 ) -> tuple[bool, str | None, str]:
@@ -161,59 +113,6 @@ def _commit_feature_completion(
     if commit_result.commit_created:
         return (True, None, output)
     return (False, commit_result.failure_stage, output)
-
-
-def print_summary(summary: IterationSummaryInputs) -> None:
-    """Print a one-line loop summary and optional gate failure."""
-
-    presenter = RunOutputPresenter.for_current_terminal()
-    if summary.attempt is not None:
-        print(f"🔁 Iteration {summary.attempt} · {summary.feature_id or '-'}")
-        if summary.archived_selection_path:
-            print("  ♻️ Selected archived counterpart:")
-            print(f"     {summary.archived_selection_path}")
-        else:
-            print(f"  🎯 Selected: {summary.selected_path or '-'}")
-        print(f"  🛠 Implement: {summary.implement_step or '-'}")
-        if summary.progress_kind:
-            progress_parts = [
-                part for part in (summary.progress_id, summary.progress_title) if part
-            ]
-            progress_reference = " - ".join(progress_parts) or "-"
-            print(
-                "  📍 Progress: "
-                f"{progress_kind_label(summary.progress_kind)} {progress_reference}"
-            )
-        verification_label = summary.verification_status or "not_run"
-        if (
-            verification_label.startswith("failed:")
-            and summary.verification_failed_command
-        ):
-            verification_label = f"failed ({summary.verification_failed_command})"
-        print(f"  🧪 Verify: {verification_label}")
-        reviewer_label = summary.reviewer_status or "not_run"
-        if summary.reviewer_decision:
-            reviewer_label = f"{reviewer_label} ({summary.reviewer_decision})"
-        if summary.failed_reviewer_id:
-            reviewer_label = f"{reviewer_label} [{summary.failed_reviewer_id}]"
-        print(f"  👀 Reviewer: {reviewer_label}")
-        if summary.result == "passed":
-            print(f"  {presenter.format_iteration_passed_line()}")
-        else:
-            print(f"  {presenter.format_iteration_failed_line(summary.failed_gate)}")
-            if summary.log_path:
-                print(f"  📄 Log: {summary.log_path}")
-        print(f"  ➡️ Next: {summary.next_action}")
-
-    print(
-        "Loop summary: "
-        f"result={summary.result} feature={summary.feature_id or '-'} "
-        f"attempt={summary.attempt if summary.attempt is not None else '-'} "
-        f"next={summary.next_action}"
-        f"{presenter.format_summary_suffix(summary.result)}"
-    )
-    if summary.failed_gate:
-        print(presenter.format_failed_gate_line(summary.failed_gate))
 
 
 def _iteration_cap_reached(total_iterations: int, max_iterations: int) -> bool:

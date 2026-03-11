@@ -156,7 +156,7 @@ class _RuntimeModules(SimpleNamespace):
     """Imported runtime modules grouped to keep bootstrap state compact."""
 
     checks: Any
-    loop: Any
+    support: Any
     feature_state: Any
     iteration: Any
     models: Any
@@ -178,7 +178,7 @@ class RuntimeFeatureIterationExecutor(FeatureIterationExecutor):
         self._progress_journal = progress_journal
         self._runtime = _RuntimeModules(
             checks=import_module("engineeringagent.checks"),
-            loop=import_module("engineeringagent.loop"),
+            support=import_module("engineeringagent.bootstrap.runtime_support"),
             feature_state=import_module("engineeringagent.loop_runtime.feature_state"),
             iteration=import_module("engineeringagent.loop_runtime.iteration"),
             models=import_module("engineeringagent.loop_runtime.models"),
@@ -237,7 +237,7 @@ class RuntimeFeatureIterationExecutor(FeatureIterationExecutor):
                 touch_active_feature_for_iteration=(
                     self._runtime.feature_state.touch_active_feature_for_iteration
                 ),
-                run_implement_step=self._runtime.loop.run_implement_step,
+                run_implement_step=self._runtime.support.run_implement_step,
                 refresh_feature_after_implement=(
                     self._runtime.feature_state.refresh_feature_after_implement
                 ),
@@ -284,8 +284,8 @@ class RuntimeFeatureIterationExecutor(FeatureIterationExecutor):
                     )
                 ),
                 persist_iteration_report=_persist_iteration_report,
-                git_head_resolver=self._runtime.loop.git_head_short,
-                print_summary=self._runtime.loop.print_summary,
+                git_head_resolver=self._runtime.support.git_head_short,
+                print_summary=self._runtime.support.print_summary,
             )
         )
         outcome = self._runtime.observers.publish_iteration_report(report, observers)
