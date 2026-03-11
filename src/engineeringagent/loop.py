@@ -55,7 +55,7 @@ from .loop_runtime.observers import (
 )
 from .loop_runtime.telemetry import write_iteration_telemetry
 from .presentation.presenters.terminal import RunOutputPresenter
-from .feature_commit import feature_completion_commit_subject
+from .domain.specification import feature_completion_commit_subject
 from .ports import CommitRequest, VersionControlFailure, VersionControlGateway
 from .specs import progress_kind_label
 

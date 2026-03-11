@@ -24,6 +24,7 @@ from ..presentation.presenters.prompt_feedback import (
 from ..domain.quality import (
     build_command_failure_feedback,
 )
+from ..domain.specification import feature_completion_commit_subject
 from ..config import repo_relative_label, resolve_harness_checks_config_path
 
 from .models import (
@@ -35,7 +36,6 @@ from .models import (
     VerificationPhaseOutcome,
 )
 from .time_format import utc_iso_from_epoch_sec
-from ..feature_commit import feature_completion_commit_subject
 
 
 class LoopTriggeredChecksRequest(BaseModel):

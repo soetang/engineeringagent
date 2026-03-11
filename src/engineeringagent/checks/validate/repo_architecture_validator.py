@@ -633,6 +633,7 @@ def _deleted_module_paths() -> set[str]:
         "src/engineeringagent/adapters/prompts/filesystem_prompt_definitions.py",
         "src/engineeringagent/adapters/prompts/project_prompt_definitions.py",
         "src/engineeringagent/application/implementation_prompt.py",
+        "src/engineeringagent/feature_commit.py",
         "src/engineeringagent/git/__init__.py",
         "src/engineeringagent/git/client.py",
         "src/engineeringagent/progress/__init__.py",
