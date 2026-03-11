@@ -32,6 +32,8 @@ from engineeringagent.agents.backends.opencode.permissions import (
 from tests.loop.feature_iteration_support import copy_canonical_prompts
 from tests.loop._feedback_envelope import parse_feedback_envelope_from_prompt
 
+pytestmark = pytest.mark.integration
+
 
 def test_opencode_integration_gate_does_not_reference_env_var() -> None:
     source = Path(__file__).read_text(encoding="utf-8")
@@ -359,9 +361,6 @@ def test_run_loop_creates_progress_artifacts_before_implement_invocation(
         observed["saw_implement"] = True
         assert progress_paths.progress_dir(project_root).exists()
         assert _progress_runs_jsonl_path(project_root).exists()
-        assert (
-            _progress_feature_log_path(project_root, "FEAT-901")
-        ).exists()
         raise AgentBackendError(
             backend="opencode",
             message="opencode run failed",

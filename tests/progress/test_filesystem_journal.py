@@ -54,7 +54,6 @@ def test_filesystem_progress_journal_writes_all_progress_artifacts(
         tmp_path
         / ".engineeringagent"
         / "progress"
-        / "features"
         / "FEAT-200"
         / "run.txt"
     ).read_text(encoding="utf-8")
@@ -65,7 +64,6 @@ def test_filesystem_progress_journal_writes_all_progress_artifacts(
             tmp_path
             / ".engineeringagent"
             / "progress"
-            / "features"
             / "FEAT-200"
             / "iteration-report.json"
         ).read_text(encoding="utf-8")
@@ -80,7 +78,6 @@ def test_filesystem_progress_journal_writes_all_progress_artifacts(
         tmp_path
         / ".engineeringagent"
         / "progress"
-        / "features"
         / "FEAT-200"
         / "handoff.md"
     )
@@ -101,3 +98,28 @@ def test_filesystem_progress_journal_returns_none_without_handoff(
         journal.latest_handoff_path(project_root=tmp_path, feature_id="FEAT-404")
         is None
     )
+
+
+def test_filesystem_progress_journal_reopens_stale_cached_handlers(
+    tmp_path: Path,
+) -> None:
+    """Recreate file handlers when the original progress file has been deleted and recreated."""
+    journal = FilesystemProgressJournal()
+
+    journal.append_feature_log(
+        project_root=tmp_path,
+        feature_id="FEAT-200",
+        lines=["first entry"],
+    )
+
+    log_path = tmp_path / ".engineeringagent" / "progress" / "FEAT-200" / "run.txt"
+    log_path.unlink()
+    log_path.write_text("", encoding="utf-8")
+
+    journal.append_feature_log(
+        project_root=tmp_path,
+        feature_id="FEAT-200",
+        lines=["second entry"],
+    )
+
+    assert log_path.read_text(encoding="utf-8") == "second entry\n"

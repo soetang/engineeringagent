@@ -4,6 +4,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Sequence, cast
 
+import pytest
+
 import engineeringagent.adapters.runtime.execution as runtime_execution_module
 from engineeringagent.bootstrap.iteration_reporting import DefaultObserverDependencies
 from engineeringagent.adapters.runtime import RuntimeFeatureIterationExecutor
@@ -120,6 +122,7 @@ class _FakeProgressJournal:
 def _build_executor(
     observed: dict[str, object],
     *,
+    monkeypatch: pytest.MonkeyPatch,
     commit_result: CommitResult,
     publish_outcome: object,
 ) -> tuple[
@@ -200,14 +203,24 @@ def _build_executor(
             run_completion_commit_phase=object(),
         ),
     )
-    runtime_execution_module.build_default_iteration_report_observers = (
+    monkeypatch.setattr(
+        runtime_execution_module,
+        "build_default_iteration_report_observers",
         lambda dependencies: (
             observed.__setitem__("default_observer_dependencies", dependencies),
             ("observer",),
-        )[1]
+        )[1],
     )
-    runtime_execution_module.publish_iteration_report = _fake_publish_iteration_report
-    runtime_execution_module.write_iteration_telemetry = _fake_write_iteration_telemetry
+    monkeypatch.setattr(
+        runtime_execution_module,
+        "publish_iteration_report",
+        _fake_publish_iteration_report,
+    )
+    monkeypatch.setattr(
+        runtime_execution_module,
+        "write_iteration_telemetry",
+        _fake_write_iteration_telemetry,
+    )
     return (
         executor,
         executor._version_control_gateway,
@@ -215,11 +228,14 @@ def _build_executor(
     )
 
 
-def test_runtime_feature_iteration_executor_executes_runtime_pipeline() -> None:
+def test_runtime_feature_iteration_executor_executes_runtime_pipeline(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Runtime adapter should isolate the legacy runtime pipeline."""
     observed: dict[str, object] = {}
     executor, _, _ = _build_executor(
         observed,
+        monkeypatch=monkeypatch,
         commit_result=CommitResult(
             stdout="commit stdout\n",
             stderr="commit stderr\n",
@@ -316,11 +332,14 @@ def test_runtime_feature_iteration_executor_executes_runtime_pipeline() -> None:
     }
 
 
-def test_runtime_feature_iteration_executor_reports_commit_success() -> None:
+def test_runtime_feature_iteration_executor_reports_commit_success(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Successful completion commits should return the passing tuple shape."""
     observed: dict[str, object] = {}
     executor, _, _ = _build_executor(
         observed,
+        monkeypatch=monkeypatch,
         commit_result=CommitResult(
             stdout="ok\n",
             stderr="",

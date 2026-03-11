@@ -103,7 +103,7 @@ def test_workspace_recovery_requires_handoff_by_default() -> None:
 
 def test_workspace_recovery_resets_to_last_accepted_commit() -> None:
     """Recovery should pass the accepted commit through to the reset port."""
-    handoff_path = Path(".engineeringagent/progress/features/FEAT-100/handoff.md")
+    handoff_path = Path(".engineeringagent/progress/FEAT-100/handoff.md")
     workspace_manager = _FakeWorkspaceManager(
         WorkspaceResetResult(
             reset_applied=True,
@@ -151,7 +151,7 @@ def test_workspace_recovery_surfaces_reset_failure() -> None:
             )
         ),
         _FakeProgressJournal(
-            Path(".engineeringagent/progress/features/FEAT-100/handoff.md")
+            Path(".engineeringagent/progress/FEAT-100/handoff.md")
         ),
     )
 
@@ -167,6 +167,6 @@ def test_workspace_recovery_surfaces_reset_failure() -> None:
     assert result == RecoverWorkspaceResult(
         ok=False,
         head_commit=None,
-        handoff_path=Path(".engineeringagent/progress/features/FEAT-100/handoff.md"),
+        handoff_path=Path(".engineeringagent/progress/FEAT-100/handoff.md"),
         message="workspace recovery failed during git_reset: fatal: bad revision",
     )

@@ -95,16 +95,16 @@ def test_progress_paths_contract(tmp_path: Path) -> None:
         _progress_root(tmp_path) / "runs" / "runs.jsonl"
     )
     assert progress_paths.run_feature_log_path(tmp_path, "FEAT-040") == (
-        _progress_root(tmp_path) / "features" / "FEAT-040" / "run.txt"
+        _progress_root(tmp_path) / "FEAT-040" / "run.txt"
     )
     assert progress_paths.run_feature_log_reference(tmp_path, "FEAT-040") == (
-        ".engineeringagent/progress/features/FEAT-040/run.txt"
+        ".engineeringagent/progress/FEAT-040/run.txt"
     )
     assert progress_paths.run_feature_log_reference(tmp_path, "FEAT 040/../../") == (
-        ".engineeringagent/progress/features/FEAT_040/run.txt"
+        ".engineeringagent/progress/FEAT_040/run.txt"
     )
     assert progress_paths.run_feature_log_reference(tmp_path, "!!!") == (
-        ".engineeringagent/progress/features/unknown-feature/run.txt"
+        ".engineeringagent/progress/unknown-feature/run.txt"
     )
 
 
@@ -120,25 +120,25 @@ def test_progress_paths_contract_uses_configured_progress_root(tmp_path: Path) -
         configured_root / "runs" / "runs.jsonl"
     )
     assert progress_paths.run_feature_log_path(tmp_path, "FEAT-040") == (
-        configured_root / "features" / "FEAT-040" / "run.txt"
+        configured_root / "FEAT-040" / "run.txt"
     )
     assert progress_paths.run_feature_log_reference(tmp_path, "FEAT-040") == (
-        "runtime/progress-artifacts/features/FEAT-040/run.txt"
+        "runtime/progress-artifacts/FEAT-040/run.txt"
     )
 
 
 def test_handoff_paths_contract(tmp_path: Path) -> None:
     assert progress_paths.handoff_markdown_path(tmp_path, "FEAT-040") == (
-        _progress_root(tmp_path) / "features" / "FEAT-040" / "handoff.md"
+        _progress_root(tmp_path) / "FEAT-040" / "handoff.md"
     )
     assert progress_paths.handoff_markdown_reference(tmp_path, "FEAT-040") == (
-        ".engineeringagent/progress/features/FEAT-040/handoff.md"
+        ".engineeringagent/progress/FEAT-040/handoff.md"
     )
     assert progress_paths.handoff_markdown_template_reference(tmp_path) == (
-        ".engineeringagent/progress/features/<FEATURE_ID>/handoff.md"
+        ".engineeringagent/progress/<FEATURE_ID>/handoff.md"
     )
     assert progress_paths.iteration_report_reference(tmp_path, "FEAT-040") == (
-        ".engineeringagent/progress/features/FEAT-040/iteration-report.json"
+        ".engineeringagent/progress/FEAT-040/iteration-report.json"
     )
 
 
@@ -162,7 +162,6 @@ def test_progress_path_references_fall_back_when_not_repo_relative(
 
     log_path = (
         external_progress_root
-        / progress_paths.PROGRESS_FEATURES_DIRNAME
         / "FEAT-1"
         / progress_paths.run_feature_log_filename()
     )
@@ -170,7 +169,6 @@ def test_progress_path_references_fall_back_when_not_repo_relative(
 
     template_path = (
         external_progress_root
-        / progress_paths.PROGRESS_FEATURES_DIRNAME
         / "<FEATURE_ID>"
         / progress_paths.FEATURE_RUN_LOG_FILENAME
     )
@@ -180,7 +178,6 @@ def test_progress_path_references_fall_back_when_not_repo_relative(
 
     handoff_path = (
         external_progress_root
-        / progress_paths.PROGRESS_FEATURES_DIRNAME
         / "FEAT-1"
         / progress_paths.FEATURE_HANDOFF_FILENAME
     )
@@ -190,7 +187,6 @@ def test_progress_path_references_fall_back_when_not_repo_relative(
 
     handoff_template_path = (
         external_progress_root
-        / progress_paths.PROGRESS_FEATURES_DIRNAME
         / "<FEATURE_ID>"
         / progress_paths.FEATURE_HANDOFF_FILENAME
     )
@@ -1110,7 +1106,7 @@ def test_feedback_contract_accepts_verification_failure(tmp_path: Path) -> None:
     assert run["failed_reviewer_id"] == "security-reviewer"
 
     feature_log = (
-        _progress_root(tmp_path) / "features" / "FEAT-040" / "run.txt"
+        _progress_root(tmp_path) / "FEAT-040" / "run.txt"
     ).read_text(encoding="utf-8")
     assert (
         "verification=failed:uv run pytest -q failed_command=uv run pytest -q"
@@ -1219,7 +1215,6 @@ def test_run_implement_step_passes_handoff_path_only_when_persisted(
         tmp_path
         / ".engineeringagent"
         / "progress"
-        / "features"
         / "FEAT-900"
         / "handoff.md"
     )
@@ -1271,7 +1266,7 @@ def test_run_implement_step_passes_handoff_path_only_when_persisted(
             "feature_id": "FEAT-900",
             "specification_path": inputs.feature_path,
             "feedback": None,
-            "handoff_path": ".engineeringagent/progress/features/FEAT-900/handoff.md",
+            "handoff_path": ".engineeringagent/progress/FEAT-900/handoff.md",
         }
     ]
 

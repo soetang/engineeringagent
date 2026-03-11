@@ -28,7 +28,6 @@ _APPROVED_LOG_WRITE_FILES = {
 _PROGRESS_PATH_LITERAL_TOKENS = (
     f"{_PROGRESS_ROOT}/reviewers/state.json",
     f"{_PROGRESS_ROOT}/runs/runs.jsonl",
-    f"{_PROGRESS_ROOT}/features/",
     "progress/runs.jsonl",
     "progress/runs/runs.jsonl",
     "progress/features/",

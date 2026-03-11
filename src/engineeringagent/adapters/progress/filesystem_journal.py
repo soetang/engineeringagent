@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 from pathlib import Path
 from typing import Any, Sequence
 
@@ -35,8 +36,12 @@ def _get_or_create_file_logger(*, namespace: str, log_path: Path) -> logging.Log
     for handler in logger.handlers:
         if not isinstance(handler, logging.FileHandler):
             continue
-        if Path(getattr(handler, "baseFilename", "")).resolve() == resolved:
+        if Path(getattr(handler, "baseFilename", "")).resolve() != resolved:
+            continue
+        if _file_handler_targets_live_path(handler=handler, log_path=log_path):
             return logger
+        logger.removeHandler(handler)
+        handler.close()
 
     log_path.parent.mkdir(parents=True, exist_ok=True)
     file_handler = logging.FileHandler(
@@ -48,6 +53,29 @@ def _get_or_create_file_logger(*, namespace: str, log_path: Path) -> logging.Log
     file_handler.setFormatter(_FORMATTER)
     logger.addHandler(file_handler)
     return logger
+
+
+def _file_handler_targets_live_path(
+    *,
+    handler: logging.FileHandler,
+    log_path: Path,
+) -> bool:
+    """Return whether a cached file handler still points at the live filesystem path."""
+
+    stream = handler.stream
+    if stream is None:
+        return False
+    if not log_path.exists():
+        return False
+    try:
+        handler_stat = os.fstat(stream.fileno())
+        path_stat = log_path.stat()
+    except OSError:
+        return False
+    return (
+        handler_stat.st_dev == path_stat.st_dev
+        and handler_stat.st_ino == path_stat.st_ino
+    )
 
 
 class FilesystemProgressJournal(ProgressJournal):

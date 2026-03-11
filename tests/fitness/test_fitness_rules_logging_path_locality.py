@@ -38,7 +38,7 @@ def _write_progress_paths(project_root: Path) -> None:
                 "    return project_root / '.engineeringagent' / 'progress' / 'runs' / 'runs.jsonl'",
                 "",
                 "def run_feature_log_path(project_root: Path, feature_id: str) -> Path:",
-                "    return project_root / '.engineeringagent' / 'progress' / 'features' / feature_id / 'run.txt'",
+                "    return project_root / '.engineeringagent' / 'progress' / feature_id / 'run.txt'",
             ]
         )
         + "\n",

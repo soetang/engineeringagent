@@ -116,7 +116,7 @@ def test_markdown_locality_rule_ignores_generated_and_cache_directories(
     _write_markdown(tmp_path, ".venv/docs.md")
     _write_markdown(tmp_path, ".pytest_cache/cache.md")
     _write_markdown(tmp_path, "__pycache__/cache.md")
-    _write_markdown(tmp_path, ".engineeringagent/progress/features/FEAT-131/handoff.md")
+    _write_markdown(tmp_path, ".engineeringagent/progress/FEAT-131/handoff.md")
 
     proc, result = _run_checker(tmp_path, checker_path=_script_path(repo_root))
 

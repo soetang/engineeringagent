@@ -54,10 +54,7 @@ def build_implement_step_runtime_dependencies() -> ImplementStepRuntimeDependenc
         describe_action=describe_action,
         classify_backend_exception=classify_backend_exception,
         ensure_progress_artifacts=_ensure_progress_artifacts,
-        repo_relative_label=lambda project_root, path: repo_relative_label(
-            project_root,
-            path,
-        ),
+        repo_relative_label=repo_relative_label,
     )
 
 

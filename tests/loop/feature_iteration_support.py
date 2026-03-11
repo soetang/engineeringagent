@@ -58,8 +58,8 @@ def run_loop(
 OPENCODE_IMPLEMENT = SimpleNamespace(side_effect=None, fake_result=None)
 PROGRESS_ROOT_PARTS = (".engineeringagent", "progress")
 RUNS_LOG_REF = ".engineeringagent/progress/runs/runs.jsonl"
-FEATURE_LOG_REF = ".engineeringagent/progress/features/FEAT-900/run.txt"
-FEATURE_LOG_GLOB_REF = ".engineeringagent/progress/features/*/run.txt"
+FEATURE_LOG_REF = ".engineeringagent/progress/FEAT-900/run.txt"
+FEATURE_LOG_GLOB_REF = ".engineeringagent/progress/*/run.txt"
 
 
 def passing_implement_result(output: str = "") -> ImplementStepResult:

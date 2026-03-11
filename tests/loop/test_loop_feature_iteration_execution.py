@@ -423,7 +423,7 @@ def test_run_loop_writes_per_feature_progress_log(
         )
 
     assert code == 0
-    feature_log_path = progress_root(project_root) / "features" / "FEAT-900" / "run.txt"
+    feature_log_path = progress_root(project_root) / "FEAT-900" / "run.txt"
     assert feature_log_path.exists()
     log_text = feature_log_path.read_text(encoding="utf-8")
     assert "attempt=1" in log_text
@@ -431,7 +431,7 @@ def test_run_loop_writes_per_feature_progress_log(
     assert "result=passed" in log_text
     assert "\x1b[" not in log_text
 
-    handoff_path = progress_root(project_root) / "features" / "FEAT-900" / "handoff.md"
+    handoff_path = progress_root(project_root) / "FEAT-900" / "handoff.md"
     assert handoff_path.exists()
     assert handoff_path.stat().st_size > 0
 
@@ -442,7 +442,7 @@ def test_run_loop_progress_logs_are_gitignored(tmp_path: Path) -> None:
         tmp_path.parent / f"{tmp_path.name}-set-done-progress-log-ignore.py"
     )
     (project_root / ".gitignore").write_text(
-        f"{RUNS_LOG_REF}\n.engineeringagent/progress/features/*/run.txt\n",
+        f"{RUNS_LOG_REF}\n.engineeringagent/progress/*/run.txt\n",
         encoding="utf-8",
     )
     init_git_repo(project_root)
@@ -459,7 +459,7 @@ def test_run_loop_progress_logs_are_gitignored(tmp_path: Path) -> None:
         )
 
     assert code == 0
-    assert (progress_root(project_root) / "features" / "FEAT-900" / "run.txt").exists()
+    assert (progress_root(project_root) / "FEAT-900" / "run.txt").exists()
     status = run_git(project_root, "status", "--short").stdout
     assert RUNS_LOG_REF not in status
     assert FEATURE_LOG_REF not in status
@@ -522,7 +522,7 @@ def test_run_loop_concise_mode_hides_raw_implement_and_gate_output(
     assert implement_stdout_token not in output
     assert gate_stdout_token not in output
 
-    feature_log_path = progress_root(project_root) / "features" / "FEAT-900" / "run.txt"
+    feature_log_path = progress_root(project_root) / "FEAT-900" / "run.txt"
     log_text = feature_log_path.read_text(encoding="utf-8")
     assert implement_stdout_token in log_text
     assert implement_stderr_token in log_text
