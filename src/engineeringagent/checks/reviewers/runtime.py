@@ -6,9 +6,6 @@ from typing import Any, Callable, Iterable
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.checks.changed_paths import (
-    ChangedPathsResult,
-)
 from engineeringagent.checks.contracts import HarnessCheckPhase
 from engineeringagent.checks.reviewers.engine import (
     DECISION_APPROVE,
@@ -26,6 +23,7 @@ from engineeringagent.checks.strategy_contracts import (
     make_planned_check,
 )
 from engineeringagent.domain.quality import (
+    ChangedPathsResult,
     HarnessCheckReviewerDefinition,
     HarnessChecksDocument,
 )

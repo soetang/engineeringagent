@@ -7,7 +7,7 @@ import pytest
 from pydantic import ValidationError
 
 from engineeringagent.agents import AgentBackendError
-from engineeringagent.checks.changed_paths import ChangedPathsResult
+from engineeringagent.domain.quality import ChangedPathsResult
 from engineeringagent.checks.reviewers.engine import (
     DECISION_REQUEST_CHANGES,
     FEATURE_DONE_PHASE,

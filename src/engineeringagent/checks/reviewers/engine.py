@@ -10,7 +10,7 @@ from typing import Any, Callable, Iterator, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
-from engineeringagent.checks.changed_paths import ChangedPathsResult
+from engineeringagent.domain.quality import ChangedPathsResult
 from engineeringagent.presentation.presenters.json_schema import JSON_SCHEMA_DRAFT_URL
 from engineeringagent.agents import (
     AgentBackendError,

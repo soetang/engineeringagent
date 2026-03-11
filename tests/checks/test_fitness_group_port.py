@@ -6,7 +6,7 @@ import sys
 import pytest
 import yaml
 
-from engineeringagent.checks.changed_paths import ChangedPathsResult
+from engineeringagent.domain.quality import ChangedPathsResult
 from engineeringagent.checks import run_checks
 from tests.checks.run_checks_contract_support import write_checks_yaml
 
@@ -31,7 +31,7 @@ def test_run_checks_fitness_does_not_call_legacy_runtime(
 
     # Avoid touching git in tmp_path.
     monkeypatch.setattr(
-        "engineeringagent.checks.changed_paths.collect_changed_paths",
+        "engineeringagent.checks.api.collect_changed_paths",
         lambda *_args, **_kwargs: ChangedPathsResult(
             paths=(),
             run_all=True,

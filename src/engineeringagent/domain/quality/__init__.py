@@ -8,6 +8,10 @@ from .checks import (
     CommandInvocationRecord,
     HarnessCheckPhase,
 )
+from .changed_paths import (
+    ChangedPathsResult,
+    FALLBACK_CHANGE_DISCOVERY_REASON,
+)
 from .checks_catalog import (
     HarnessCheckCommandDefinition,
     HarnessCheckDefaultsDefinition,
@@ -58,6 +62,7 @@ __all__ = [
     "CHECK_GROUP_FITNESS",
     "CHECK_GROUP_REVIEWERS",
     "CHECK_GROUP_VALIDATE",
+    "ChangedPathsResult",
     "CheckDecision",
     "CheckDecisionAction",
     "CheckExecutionRecord",
@@ -66,6 +71,7 @@ __all__ = [
     "CommandFailureFeedbackEnvelope",
     "CommandFailurePhase",
     "CommandInvocationRecord",
+    "FALLBACK_CHANGE_DISCOVERY_REASON",
     "FailedFitnessRule",
     "FeedbackEnvelope",
     "FeedbackModel",

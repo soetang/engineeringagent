@@ -1,25 +1,18 @@
+"""Quality adapter for git-backed changed-path discovery."""
+
 from __future__ import annotations
 
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict
-
 from engineeringagent.adapters.vcs import GitCliVersionControlGateway
+from engineeringagent.domain.quality import (
+    ChangedPathsResult,
+    FALLBACK_CHANGE_DISCOVERY_REASON,
+)
 from engineeringagent.ports import VersionControlFailure, VersionControlGateway
 
 
-FALLBACK_CHANGE_DISCOVERY_REASON = "fallback_run_all_change_discovery_failed"
 _DEFAULT_VERSION_CONTROL = GitCliVersionControlGateway()
-
-
-class ChangedPathsResult(BaseModel):
-    """Deterministic changed-path discovery result."""
-
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-    paths: tuple[str, ...]
-    run_all: bool
-    reason: str | None
 
 
 def collect_changed_paths(

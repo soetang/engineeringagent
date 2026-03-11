@@ -12,14 +12,13 @@ from typing import (
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.checks.changed_paths import ChangedPathsResult
 from engineeringagent.checks.contracts import (
     CheckDecision,
     CheckDecisionAction,
     CheckExecutionRecord,
     HarnessCheckPhase,
 )
-from engineeringagent.domain.quality import HarnessChecksDocument
+from engineeringagent.domain.quality import ChangedPathsResult, HarnessChecksDocument
 
 
 class CheckContext(NamedTuple):

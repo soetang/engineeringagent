@@ -6,7 +6,7 @@ from typer.testing import CliRunner
 
 from engineeringagent.presentation import cli as cli_module
 from engineeringagent.application import RunChecksResult as ApplicationRunChecksResult
-from engineeringagent.checks.changed_paths import ChangedPathsResult
+from engineeringagent.domain.quality import ChangedPathsResult
 from engineeringagent.checks.api import ChecksRunResult
 from engineeringagent.checks.strategy_contracts import CheckExecutionRecord
 

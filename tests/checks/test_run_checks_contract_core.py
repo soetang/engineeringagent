@@ -6,7 +6,7 @@ from typing import Any, cast
 
 import pytest
 
-from engineeringagent.checks.changed_paths import ChangedPathsResult
+from engineeringagent.domain.quality import ChangedPathsResult
 from engineeringagent.checks import run_checks
 from engineeringagent.checks.api import (
     ChecksRunResult,
@@ -221,7 +221,7 @@ def test_run_checks_group_order_is_deterministic(
         ),
     )
     monkeypatch.setattr(
-        "engineeringagent.checks.changed_paths.collect_changed_paths",
+        "engineeringagent.checks.api.collect_changed_paths",
         lambda *_args, **_kwargs: ChangedPathsResult(
             paths=(),
             run_all=True,

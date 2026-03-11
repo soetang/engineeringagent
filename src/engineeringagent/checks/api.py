@@ -4,10 +4,7 @@ from typing import Any, Protocol, cast
 
 from typing_extensions import Unpack
 
-from engineeringagent.checks.changed_paths import (
-    ChangedPathsResult,
-    collect_changed_paths,
-)
+from engineeringagent.adapters.quality.changed_paths import collect_changed_paths
 from engineeringagent.checks.contracts import (
     CheckDecision,
     CheckExecutionRecord,
@@ -37,6 +34,7 @@ from engineeringagent.checks.strategy_contracts import (
     build_strategy_registry,
 )
 from engineeringagent.checks.results import ChecksRunResult
+from engineeringagent.domain.quality import ChangedPathsResult
 from engineeringagent.presentation.presenters.prompt_feedback import (
     normalize_checks_contract_prompt_feedback,
 )

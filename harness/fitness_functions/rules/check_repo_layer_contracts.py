@@ -60,6 +60,7 @@ DELETED_MODULE_PATHS = {
     "src/engineeringagent/application/validation_service.py",
     "src/engineeringagent/application/workspace_recovery_service.py",
     "src/engineeringagent/feature_commit.py",
+    "src/engineeringagent/checks/changed_paths.py",
     "src/engineeringagent/git/__init__.py",
     "src/engineeringagent/git/client.py",
     "src/engineeringagent/progress/__init__.py",

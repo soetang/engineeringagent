@@ -13,14 +13,14 @@ from typing import TYPE_CHECKING, Any, Literal
 from typing_extensions import Unpack
 
 from engineeringagent.domain.quality import (
+    ChangedPathsResult,
+    FALLBACK_CHANGE_DISCOVERY_REASON,
     HarnessCheckPhase,
     HarnessChecksDocument,
     list_check_groups,
     normalize_check_groups,
     reviewers_group_selected,
 )
-
-from .changed_paths import ChangedPathsResult, FALLBACK_CHANGE_DISCOVERY_REASON
 from .results import ChecksRunResult
 
 if TYPE_CHECKING:
@@ -59,7 +59,7 @@ def collect_changed_paths(
 ) -> Any:
     """Proxy to checks-owned changed-path discovery."""
 
-    changed_paths = import_module("engineeringagent.checks.changed_paths")
+    changed_paths = import_module("engineeringagent.adapters.quality.changed_paths")
     return changed_paths.collect_changed_paths(
         project_root,
         base=base,
