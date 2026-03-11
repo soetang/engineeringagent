@@ -19,7 +19,7 @@ _PROGRESS_ROOT = (Path(".engineeringagent") / "progress").as_posix()
 _LEGACY_PROGRESS_ROOT = "progress"
 
 _APPROVED_PATH_LITERAL_FILES = {
-    _SOURCE_PACKAGE_ROOT / "progress" / "paths.py",
+    _SOURCE_PACKAGE_ROOT / "adapters" / "progress" / "paths.py",
 }
 
 _PROGRESS_PATH_LITERAL_TOKENS = (
@@ -42,8 +42,8 @@ _LOOP_LOG_SINK_HELPERS = {
 }
 
 _PATH_HELPER_REMEDIATION = (
-    "construct progress artifact paths via engineeringagent.progress.paths.* and "
-    "write loop log sinks via engineeringagent.progress.logging.*"
+    "construct progress artifact paths via engineeringagent.adapters.progress.paths.* "
+    "and write loop log sinks via engineeringagent.adapters.progress.filesystem_journal"
 )
 
 
@@ -86,7 +86,7 @@ def _progress_path_literal_violations(
             continue
         violations.append(
             f"{relative}:{line} contains progress artifact path literal '{token}' "
-            f"outside engineeringagent.progress.paths; {_PATH_HELPER_REMEDIATION}"
+            f"outside engineeringagent.adapters.progress.paths; {_PATH_HELPER_REMEDIATION}"
         )
     return violations
 

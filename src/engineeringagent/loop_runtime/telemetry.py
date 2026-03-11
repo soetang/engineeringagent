@@ -9,8 +9,8 @@ from typing import Any, Callable, Sequence
 
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.domain.audit import ProgressEvent
-from engineeringagent.progress import handoff as progress_handoff
-from engineeringagent.progress import paths as progress_paths
+from engineeringagent.adapters.progress import handoff as progress_handoff
+from engineeringagent.adapters.progress import paths as progress_paths
 
 from .models import CommandTiming, IterationTelemetryInputs, PhaseTiming
 

@@ -9,8 +9,9 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from engineeringagent.domain.audit import ProgressEvent
-from engineeringagent.progress import paths as progress_paths
 from engineeringagent.ports import ProgressJournal
+
+from . import paths as progress_paths
 
 
 _FORMATTER = logging.Formatter("%(message)s")

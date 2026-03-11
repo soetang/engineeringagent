@@ -40,9 +40,9 @@ from engineeringagent.application import ImplementationPromptFeature
 from engineeringagent.application import ImplementationPromptRequest
 from engineeringagent.application import PromptArtifactPaths
 from engineeringagent.loop_runtime.telemetry import write_iteration_telemetry
-from engineeringagent.progress.handoff import ImplementProgressEnvelope
-from engineeringagent.progress.handoff import fallback_implement_progress_envelope
-from engineeringagent.progress import paths as progress_paths
+from engineeringagent.adapters.progress.handoff import ImplementProgressEnvelope
+from engineeringagent.adapters.progress.handoff import fallback_implement_progress_envelope
+from engineeringagent.adapters.progress import paths as progress_paths
 from engineeringagent.config import resolve_harness_root
 from tests.loop.feature_iteration_support import copy_canonical_prompts
 from tests.loop.feature_iteration_support import make_bundled_project_root
@@ -842,7 +842,7 @@ def test_progress_log_path_locality_rule_detects_direct_writes(
     )
     (source_root / "bad_writes.py").write_text(
         """
-from engineeringagent.progress import paths as progress_paths
+from engineeringagent.adapters.progress import paths as progress_paths
 
 
 def write_bad(root):

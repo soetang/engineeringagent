@@ -23,7 +23,7 @@ from engineeringagent.agents.backends.opencode.permissions import (
 from engineeringagent.loop import RunConfigOptions, build_loop_run, build_run_config
 from engineeringagent.loop_runtime.controller import run_loop_controller as _run_loop
 from engineeringagent.loop_runtime.models import ImplementStepResult
-from engineeringagent.progress.handoff import fallback_implement_progress_envelope
+from engineeringagent.adapters.progress.handoff import fallback_implement_progress_envelope
 
 
 def run_loop(

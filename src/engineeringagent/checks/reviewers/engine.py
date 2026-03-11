@@ -17,7 +17,7 @@ from engineeringagent.agents import (
     AgentOutputValidationError,
     run_agent,
 )
-from engineeringagent.progress import paths as progress_paths
+from engineeringagent.adapters.progress import paths as progress_paths
 
 from ..on_change_matcher import path_matches_any_glob
 

@@ -5,9 +5,9 @@ from __future__ import annotations
 from importlib import import_module
 from pathlib import Path
 
-from engineeringagent import checks as checks_module
 from engineeringagent.adapters.agents import ConfiguredAgentRunner
 from engineeringagent.adapters.checks import (
+    ChecksCatalogLoadOptions,
     ChecksRepositoryValidator,
     FilesystemChecksCatalogRepository,
     RuntimeChecksRunner,
@@ -55,7 +55,12 @@ class AppFactory:
     def build_run_loop_service(self) -> RunLoopService:
         """Create the default run-loop application service."""
         return RunLoopService(
-            load_harness_checks_document=self._load_run_all_checks_document,
+            checks_catalog_repository=FilesystemChecksCatalogRepository(
+                ChecksCatalogLoadOptions(
+                    error_prefix="run config error",
+                    missing_context=" (required for --all)",
+                )
+            ),
             execute_run_loop=self._execute_run_loop,
         )
 
@@ -98,16 +103,6 @@ class AppFactory:
         return WorkspaceRecoveryService(
             self.build_version_control_gateway(),
             self.build_progress_journal(),
-        )
-
-    def _load_run_all_checks_document(
-        self,
-        project_root: Path,
-    ) -> tuple[object | None, str | None]:
-        return checks_module.load_harness_checks_document(
-            project_root,
-            error_prefix="run config error",
-            missing_context=" (required for --all)",
         )
 
     def _execute_run_loop(self, request: RunLoopRequest) -> int:

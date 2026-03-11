@@ -15,7 +15,7 @@ from engineeringagent.domain.specification import (
     feature_progress_reference,
     progress_status_snapshot,
 )
-from engineeringagent.progress.handoff import (
+from engineeringagent.adapters.progress.handoff import (
     ImplementProgressEnvelope,
 )
 from engineeringagent.specs import feature_progress_kind

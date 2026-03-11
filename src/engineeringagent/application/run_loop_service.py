@@ -7,6 +7,8 @@ from typing import Callable
 
 from pydantic import BaseModel, ConfigDict
 
+from engineeringagent.ports import ChecksCatalogRepository
+
 
 class RunLoopRequest(BaseModel):
     """Typed input for one run-loop execution request."""
@@ -31,10 +33,6 @@ class RunLoopResult(BaseModel):
     message: str | None = None
 
 
-LoadHarnessChecksDocument = Callable[
-    [Path],
-    tuple[object | None, str | None],
-]
 ExecuteRunLoop = Callable[[RunLoopRequest], int]
 
 
@@ -44,10 +42,10 @@ class RunLoopService:
     def __init__(
         self,
         *,
-        load_harness_checks_document: LoadHarnessChecksDocument,
+        checks_catalog_repository: ChecksCatalogRepository,
         execute_run_loop: ExecuteRunLoop,
     ) -> None:
-        self._load_harness_checks_document = load_harness_checks_document
+        self._checks_catalog_repository = checks_catalog_repository
         self._execute_run_loop = execute_run_loop
 
     def run(self, request: RunLoopRequest) -> RunLoopResult:
@@ -57,9 +55,9 @@ class RunLoopService:
             return RunLoopResult(exit_code=1, message=input_error)
 
         if request.run_all:
-            _, checks_error = self._load_harness_checks_document(request.project_root)
-            if checks_error is not None:
-                return RunLoopResult(exit_code=1, message=checks_error)
+            catalog_result = self._checks_catalog_repository.load(request.project_root)
+            if catalog_result.error is not None:
+                return RunLoopResult(exit_code=1, message=catalog_result.error)
 
         return RunLoopResult(exit_code=self._execute_run_loop(request))
 

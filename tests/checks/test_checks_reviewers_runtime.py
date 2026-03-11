@@ -17,7 +17,7 @@ from engineeringagent.checks.strategy_contracts import (
     map_planned_checks_to_decisions,
     strategy_run_decisions,
 )
-from engineeringagent.progress.paths import reviewers_state_path
+from engineeringagent.adapters.progress.paths import reviewers_state_path
 from engineeringagent.domain.quality import HarnessCheckPhase, HarnessChecksDocument
 from engineeringagent.specs import load_yaml
 

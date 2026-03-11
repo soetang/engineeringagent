@@ -28,7 +28,7 @@ class HandoffRenderMetadata(BaseModel):
 class ImplementProgressEnvelope(BaseModel):
     """Structured implementation handoff payload emitted by implement runs."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     summary: str
     completed_work: list[str]
@@ -129,12 +129,7 @@ def parse_implement_progress_envelope(
 def now_iso() -> str:
     """Return current UTC timestamp in compact ISO-8601 format."""
 
-    return (
-        datetime.now(timezone.utc)
-        .replace(microsecond=0)
-        .isoformat()
-        .replace("+00:00", "Z")
-    )
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def render_handoff_markdown_entry(
@@ -170,6 +165,8 @@ def render_handoff_markdown_entry(
     for title, items in sections:
         lines.extend(_render_markdown_section(title, items))
     return lines
+
+
 def _render_markdown_section(title: str, items: list[str]) -> list[str]:
     rendered_items = [item for item in items if not _is_placeholder_item(item)]
     if not rendered_items:

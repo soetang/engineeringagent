@@ -7,7 +7,7 @@ from typing import Any, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from engineeringagent.progress.handoff import ImplementProgressEnvelope
+from engineeringagent.adapters.progress.handoff import ImplementProgressEnvelope
 
 ImplementStepResult: TypeAlias = tuple[
     bool,

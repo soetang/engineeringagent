@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from engineeringagent.adapters.checks import (
+    ChecksCatalogLoadOptions,
     ChecksRepositoryValidator,
     FilesystemChecksCatalogRepository,
     RuntimeChecksRunner,
@@ -42,6 +43,14 @@ def test_app_factory_builds_default_application_services(tmp_path: Path) -> None
     assert isinstance(
         checks_service._checks_catalog_repository,
         FilesystemChecksCatalogRepository,
+    )
+    assert isinstance(
+        run_loop_service._checks_catalog_repository,
+        FilesystemChecksCatalogRepository,
+    )
+    assert run_loop_service._checks_catalog_repository._options == ChecksCatalogLoadOptions(
+        error_prefix="run config error",
+        missing_context=" (required for --all)",
     )
     assert isinstance(factory.build_guidance_service(), GuidanceService)
     validation_service = factory.build_validation_service()

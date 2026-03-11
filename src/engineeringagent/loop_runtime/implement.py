@@ -24,8 +24,8 @@ from engineeringagent.domain.specification import (
 from engineeringagent.loop_runtime.models import ImplementStepInputs
 from engineeringagent.loop_runtime.models import ImplementStepResult
 from engineeringagent.ports import AgentRunRequest, AgentRunner, ProgressJournal
-from engineeringagent.progress import handoff as progress_handoff
-from engineeringagent.progress import paths as progress_paths
+from engineeringagent.adapters.progress import handoff as progress_handoff
+from engineeringagent.adapters.progress import paths as progress_paths
 from engineeringagent.specs import (
     feature_progress_kind,
 )

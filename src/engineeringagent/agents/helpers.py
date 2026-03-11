@@ -11,7 +11,7 @@ from engineeringagent.agents.opencode_preflight import (
     run_permission_probe,
 )
 from engineeringagent.agents.registry import resolve_backend_id
-from engineeringagent.progress import paths as progress_paths
+from engineeringagent.adapters.progress import paths as progress_paths
 
 
 def preflight(project_root: Path) -> bool:

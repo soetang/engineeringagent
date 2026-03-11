@@ -21,7 +21,7 @@ from engineeringagent.loop_runtime.models import (
     InitialFeatureLoadOutcome,
     PostImplementFeatureOutcome,
 )
-from engineeringagent.progress import handoff as progress_handoff
+from engineeringagent.adapters.progress import handoff as progress_handoff
 from engineeringagent.specs import (
     dump_yaml,
     feature_storage_root,

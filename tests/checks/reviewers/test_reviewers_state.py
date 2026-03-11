@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from engineeringagent.changed_paths import ChangedPathsResult
-from engineeringagent.progress import paths as progress_paths
+from engineeringagent.adapters.progress import paths as progress_paths
 from engineeringagent.checks.reviewers.engine import (
     FIRST_FEATURE_APPROVAL_INVALIDATED_REASON,
     FIRST_FEATURE_APPROVAL_INVALIDATED_RUN_ALL_REASON,

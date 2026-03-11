@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from engineeringagent.changed_paths import ChangedPathsResult
-from engineeringagent.progress import paths as progress_paths
+from engineeringagent.adapters.progress import paths as progress_paths
 from engineeringagent.checks.reviewers.engine import (
     DECISION_APPROVE,
     FIRST_FEATURE_APPROVAL_INVALIDATED_REASON,

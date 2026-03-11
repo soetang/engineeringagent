@@ -78,7 +78,6 @@ rules:
       - engineeringagent.bootstrap
       - engineeringagent.cli
       - engineeringagent.loop_runtime
-      - engineeringagent.progress.paths
       - engineeringagent.presentation.presenters
       - engineeringagent.specs
   - module: engineeringagent.application.run_loop_service

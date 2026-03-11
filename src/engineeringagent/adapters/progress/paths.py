@@ -1,8 +1,4 @@
-"""Centralized construction for loop progress and state artifact paths.
-
-This module is the canonical source for resolving repository-local paths under the
-`.engineeringagent/progress/` namespace that are used by loop telemetry and reviewer state.
-"""
+"""Centralized construction for progress and state artifact paths."""
 
 from __future__ import annotations
 
@@ -65,20 +61,11 @@ def _to_reference(project_root: Path, path: Path) -> str:
 def reviewers_state_path(project_root: Path) -> Path:
     """Return absolute path to the reviewers state JSON file."""
 
-    return (
-        progress_dir(project_root)
-        / PROGRESS_REVIEWERS_DIRNAME
-        / REVIEWERS_STATE_FILENAME
-    )
+    return progress_dir(project_root) / PROGRESS_REVIEWERS_DIRNAME / REVIEWERS_STATE_FILENAME
 
 
 def sanitize_feature_id_for_log(feature_id: str) -> str:
-    """Return a filename-safe feature identifier for progress logs.
-
-    The output is stable and restricted to ASCII alphanumerics plus '-' and '_'.
-    Any other character is replaced with '_' and leading/trailing '_' are removed.
-    When the result is empty, this function returns 'unknown-feature'.
-    """
+    """Return a filename-safe feature identifier for progress logs."""
 
     sanitized = "".join(
         char if char.isalnum() or char in {"-", "_"} else "_" for char in feature_id

@@ -30,7 +30,7 @@ from engineeringagent.loop_runtime.telemetry import (
     _summarize_reviewer_feedback,
     write_iteration_telemetry,
 )
-from engineeringagent.progress.handoff import (
+from engineeringagent.adapters.progress.handoff import (
     ImplementProgressEnvelope,
     HandoffRenderMetadata,
     render_handoff_markdown_entry,
