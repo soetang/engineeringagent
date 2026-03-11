@@ -9,8 +9,11 @@ import pytest
 
 from engineeringagent import checks
 from engineeringagent.checks import (
+    ChangedPathsResult,
     ChecksRunResult,
+    FALLBACK_CHANGE_DISCOVERY_REASON,
     HarnessCheckPhase,
+    collect_changed_paths,
     custom_rule_manifest_schema_from_model,
     emit_fitness_result,
     iter_feature_files,
@@ -48,11 +51,17 @@ def test_checks_supported_exports_are_importable() -> None:
     assert callable(custom_rule_manifest_schema_from_model)
     assert callable(reviewer_decision_schema_from_model)
     assert callable(validate_repository)
+    assert callable(collect_changed_paths)
     assert ChecksRunResult is not None
+    assert ChangedPathsResult is not None
+    assert FALLBACK_CHANGE_DISCOVERY_REASON == "fallback_run_all_change_discovery_failed"
     assert HarnessCheckPhase.ITERATION_END.value == "iteration_end"
     assert set(checks.__all__) == {
+        "ChangedPathsResult",
         "ChecksRunResult",
+        "FALLBACK_CHANGE_DISCOVERY_REASON",
         "HarnessCheckPhase",
+        "collect_changed_paths",
         "custom_rule_manifest_schema_from_model",
         "emit_fitness_result",
         "iter_feature_files",

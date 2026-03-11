@@ -461,6 +461,11 @@ def test_repo_architecture_validator_reports_deleted_legacy_module_paths(
 
     _write_port_module(
         tmp_path,
+        "src/engineeringagent/changed_paths.py",
+        "value = 1\n",
+    )
+    _write_port_module(
+        tmp_path,
         "src/engineeringagent/validator.py",
         "value = 1\n",
     )
@@ -518,6 +523,13 @@ def test_repo_architecture_validator_reports_deleted_legacy_module_paths(
             validator_id="repo.architecture",
             scope="repo",
             path="src/engineeringagent/adapters/checks/filesystem_checks_catalog_repository.py",
+            message="deleted legacy module path must remain absent",
+            code="repo.architecture.deleted-path",
+        ),
+        ValidationIssue(
+            validator_id="repo.architecture",
+            scope="repo",
+            path="src/engineeringagent/changed_paths.py",
             message="deleted legacy module path must remain absent",
             code="repo.architecture.deleted-path",
         ),
@@ -588,7 +600,7 @@ def test_repo_architecture_validator_reports_legacy_imports_in_production_module
     _write_port_module(
         tmp_path,
         "src/engineeringagent/adapters/progress/filesystem_journal.py",
-        "from engineeringagent import progress_logging\n"
+        "from engineeringagent import changed_paths, progress_logging\n"
         "import engineeringagent.git.client\n",
     )
 
@@ -601,6 +613,13 @@ def test_repo_architecture_validator_reports_legacy_imports_in_production_module
     )
 
     assert issues == (
+        ValidationIssue(
+            validator_id="repo.architecture",
+            scope="repo",
+            path="src/engineeringagent/adapters/progress/filesystem_journal.py",
+            message="production modules must not import deleted legacy member engineeringagent.changed_paths",
+            code="repo.architecture.legacy-import",
+        ),
         ValidationIssue(
             validator_id="repo.architecture",
             scope="repo",

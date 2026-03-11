@@ -4,7 +4,7 @@ from typing import Any, Callable, TypeVar, Sequence
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.changed_paths import (
+from engineeringagent.checks.changed_paths import (
     ChangedPathsResult,
     FALLBACK_CHANGE_DISCOVERY_REASON,
 )

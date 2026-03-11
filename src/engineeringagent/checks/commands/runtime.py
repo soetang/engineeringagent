@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Iterable
 
-from engineeringagent.changed_paths import ChangedPathsResult
+from engineeringagent.checks.changed_paths import ChangedPathsResult
 from engineeringagent.checks.contracts import (
     CommandInvocationRecord,
     HarnessCheckPhase,

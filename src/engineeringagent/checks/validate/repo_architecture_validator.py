@@ -353,12 +353,13 @@ def _legacy_import_issues(
 ) -> tuple[ValidationIssue, ...]:
     issues: list[ValidationIssue] = []
     legacy_modules = (
+        "engineeringagent.changed_paths",
         "engineeringagent.git",
         "engineeringagent.git.client",
         "engineeringagent.progress_paths",
         "engineeringagent.progress_logging",
     )
-    legacy_members = {"git", "progress_paths", "progress_logging"}
+    legacy_members = {"changed_paths", "git", "progress_paths", "progress_logging"}
     for module_path in modules:
         rel_path = module_path.relative_to(project_root).as_posix()
         module = _parse_module(module_path, rel_path=rel_path)
@@ -670,6 +671,7 @@ def _deleted_path_issues(*, project_root: Path) -> tuple[ValidationIssue, ...]:
 
 def _deleted_module_paths() -> set[str]:
     return {
+        "src/engineeringagent/changed_paths.py",
         "src/engineeringagent/harness_checks_runtime.py",
         "src/engineeringagent/validator.py",
         "src/engineeringagent/ports/guidance_topics.py",

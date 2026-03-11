@@ -20,6 +20,7 @@ from engineeringagent.domain.quality import (
     reviewers_group_selected,
 )
 
+from .changed_paths import ChangedPathsResult, FALLBACK_CHANGE_DISCOVERY_REASON
 from .results import ChecksRunResult
 
 if TYPE_CHECKING:
@@ -27,8 +28,11 @@ if TYPE_CHECKING:
     from .fitness.contracts import FitnessRuleResult
 
 __all__ = [
+    "ChangedPathsResult",
     "ChecksRunResult",
+    "FALLBACK_CHANGE_DISCOVERY_REASON",
     "HarnessCheckPhase",
+    "collect_changed_paths",
     "custom_rule_manifest_schema_from_model",
     "emit_fitness_result",
     "iter_feature_files",
@@ -45,6 +49,22 @@ __all__ = [
 ]
 
 normalize_groups = normalize_check_groups
+
+
+def collect_changed_paths(
+    project_root: Path,
+    *,
+    base: str | None = None,
+    head: str | None = None,
+) -> Any:
+    """Proxy to checks-owned changed-path discovery."""
+
+    changed_paths = import_module("engineeringagent.checks.changed_paths")
+    return changed_paths.collect_changed_paths(
+        project_root,
+        base=base,
+        head=head,
+    )
 
 
 def run_checks(

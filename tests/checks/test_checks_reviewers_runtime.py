@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from engineeringagent.changed_paths import ChangedPathsResult
+from engineeringagent.checks.changed_paths import ChangedPathsResult
 from engineeringagent.checks.reviewers.runtime import (
     FALLBACK_REMEDIATION_GUIDANCE,
     RunPlannedReviewerChecksRequest,

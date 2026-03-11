@@ -4,7 +4,10 @@ from typing import Any, Protocol, cast
 
 from typing_extensions import Unpack
 
-from engineeringagent.changed_paths import ChangedPathsResult, collect_changed_paths
+from engineeringagent.checks.changed_paths import (
+    ChangedPathsResult,
+    collect_changed_paths,
+)
 from engineeringagent.checks.contracts import (
     CheckDecision,
     CheckExecutionRecord,

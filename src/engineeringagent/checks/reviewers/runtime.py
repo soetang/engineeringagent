@@ -6,7 +6,7 @@ from typing import Any, Callable, Iterable
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.changed_paths import (
+from engineeringagent.checks.changed_paths import (
     ChangedPathsResult,
 )
 from engineeringagent.checks.contracts import HarnessCheckPhase

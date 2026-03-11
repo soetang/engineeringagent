@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from engineeringagent.changed_paths import ChangedPathsResult
+from engineeringagent.checks.changed_paths import ChangedPathsResult
 from engineeringagent.checks.contracts import HarnessCheckPhase
 from engineeringagent.checks.strategy_contracts import PlannedCheck, make_planned_check
 from engineeringagent.domain.quality import (

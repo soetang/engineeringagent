@@ -13,11 +13,7 @@ _DEFAULT_VERSION_CONTROL = GitCliVersionControlGateway()
 
 
 class ChangedPathsResult(BaseModel):
-    """Deterministic changed-path discovery result.
-
-    This is used to make check planning decisions deterministic when `when.on_change`
-    is present.
-    """
+    """Deterministic changed-path discovery result."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -34,6 +30,7 @@ def collect_changed_paths(
     version_control: VersionControlGateway | None = None,
 ) -> ChangedPathsResult:
     """Collect repository-relative changed paths for on_change matching."""
+
     gateway = _DEFAULT_VERSION_CONTROL if version_control is None else version_control
     try:
         diff_summary = gateway.diff_against_base(

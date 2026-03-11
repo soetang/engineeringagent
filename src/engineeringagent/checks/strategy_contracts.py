@@ -12,7 +12,7 @@ from typing import (
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.changed_paths import ChangedPathsResult
+from engineeringagent.checks.changed_paths import ChangedPathsResult
 from engineeringagent.checks.contracts import (
     CheckDecision,
     CheckDecisionAction,

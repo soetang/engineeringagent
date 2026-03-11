@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from engineeringagent.changed_paths import ChangedPathsResult
+from engineeringagent.checks.changed_paths import ChangedPathsResult
 from engineeringagent.checks.commands.runtime import (
     plan_command_checks,
 )

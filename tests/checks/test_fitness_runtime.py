@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from engineeringagent.changed_paths import ChangedPathsResult
+from engineeringagent.checks.changed_paths import ChangedPathsResult
 from engineeringagent.checks.fitness.runtime import plan_fitness_checks
 from engineeringagent.domain.quality import HarnessCheckPhase, HarnessChecksDocument
 

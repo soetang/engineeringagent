@@ -35,7 +35,7 @@ from engineeringagent.loop_runtime.feature_state import (
     archive_completed_feature,
     restore_archived_feature,
 )
-from engineeringagent.changed_paths import ChangedPathsResult
+from engineeringagent.checks.changed_paths import ChangedPathsResult
 from engineeringagent.adapters.progress.handoff import fallback_implement_progress_envelope
 from tests.loop.feature_iteration_support import (
     base_feature,

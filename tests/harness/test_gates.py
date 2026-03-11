@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from engineeringagent import changed_paths
+from engineeringagent.checks import changed_paths
 from engineeringagent.ports import (
     CommitRequest,
     CommitResult,

@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from engineeringagent.changed_paths import ChangedPathsResult
+from engineeringagent.checks.changed_paths import ChangedPathsResult
 from engineeringagent.adapters.progress import paths as progress_paths
 from engineeringagent.checks.reviewers.engine import (
     FIRST_FEATURE_APPROVAL_INVALIDATED_REASON,

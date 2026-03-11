@@ -5,7 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from engineeringagent.changed_paths import ChangedPathsResult
+from engineeringagent.checks.changed_paths import ChangedPathsResult
 from engineeringagent.checks import ChecksRunResult
 from engineeringagent.checks.commands.runtime import (
     CommandInvocationRecord,

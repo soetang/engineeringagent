@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from engineeringagent.changed_paths import ChangedPathsResult
+from engineeringagent.checks.changed_paths import ChangedPathsResult
 from engineeringagent.checks.planning_policy import plan_run_skip_decision
 from engineeringagent.domain.quality import HarnessCheckPhase
 

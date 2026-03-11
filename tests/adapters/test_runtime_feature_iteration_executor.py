@@ -43,7 +43,7 @@ def _fake_import_module(
 ):
     mapping = {
         "engineeringagent.loop": modules.loop,
-        "engineeringagent.changed_paths": modules.changed_paths,
+        "engineeringagent.checks": modules.changed_paths,
         "engineeringagent.loop_runtime.feature_state": modules.feature_state,
         "engineeringagent.loop_runtime.models": modules.models,
         "engineeringagent.loop_runtime.observers": modules.observers,

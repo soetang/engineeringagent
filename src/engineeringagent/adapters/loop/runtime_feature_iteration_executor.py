@@ -29,7 +29,7 @@ class RuntimeFeatureIterationExecutor:
     ) -> FeatureIterationExecutionResult:
         """Build runtime inputs and execute the current iteration pipeline."""
         loop_module = import_module("engineeringagent.loop")
-        changed_paths_module = import_module("engineeringagent.changed_paths")
+        checks_module = import_module("engineeringagent.checks")
         feature_state_module = import_module("engineeringagent.loop_runtime.feature_state")
         models_module = import_module("engineeringagent.loop_runtime.models")
         observers_module = import_module("engineeringagent.loop_runtime.observers")
@@ -92,12 +92,12 @@ class RuntimeFeatureIterationExecutor:
                 run_gate_phase=phases_module.run_gate_phase,
                 gate_phase_dependencies=phases_module.GatePhaseDependencies(
                     restore_archived_feature=feature_state_module.restore_archived_feature,
-                    collect_changed_paths=changed_paths_module.collect_changed_paths,
+                    collect_changed_paths=checks_module.collect_changed_paths,
                 ),
                 run_verification_phase=phases_module.run_verification_phase,
                 run_reviewer_phase=phases_module.run_reviewer_phase,
                 reviewer_phase_dependencies=phases_module.ReviewerPhaseDependencies(
-                    collect_changed_paths=changed_paths_module.collect_changed_paths,
+                    collect_changed_paths=checks_module.collect_changed_paths,
                     restore_archived_feature=feature_state_module.restore_archived_feature,
                 ),
                 run_completion_commit_phase=phases_module.run_completion_commit_phase,

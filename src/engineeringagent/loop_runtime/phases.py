@@ -10,8 +10,8 @@ from typing import Any, Callable
 
 from pydantic import BaseModel, ConfigDict
 
-from ..changed_paths import ChangedPathsResult
 from ..checks import (
+    ChangedPathsResult,
     ChecksRunResult,
     HarnessCheckPhase,
     run_checks,

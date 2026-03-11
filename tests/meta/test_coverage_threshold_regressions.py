@@ -24,7 +24,7 @@ from engineeringagent.checks.fitness.contracts import (
 )
 from engineeringagent.checks.fitness.registry import FitnessRuleDefinition
 from engineeringagent.loop_runtime.models import FeatureIterationInputs
-from engineeringagent.changed_paths import ChangedPathsResult
+from engineeringagent.checks.changed_paths import ChangedPathsResult
 from engineeringagent.loop_runtime.phases import (
     CompletionPhaseDependencies,
     GatePhaseDependencies,
