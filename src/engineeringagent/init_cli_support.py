@@ -15,7 +15,7 @@ from .config import (
     resolve_agents_codex_profile_in_engineeringagent_toml,
 )
 from .init_scaffold import AGENTS_LAUNCHER_CHOICES, DEFAULT_AGENTS_LAUNCHER
-from .presentation.terminal import stdout_is_tty
+from .presentation.presenters.terminal import stdout_is_tty
 
 InputFn = Callable[[str], str]
 

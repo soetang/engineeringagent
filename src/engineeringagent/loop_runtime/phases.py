@@ -17,7 +17,7 @@ from ..checks import (
     run_checks,
 )
 from ..adapters.shell import run_shell_command
-from ..presentation.prompt_feedback import (
+from ..presentation.presenters.prompt_feedback import (
     format_failed_command_feedback_lines,
     resolve_checks_prompt_feedback,
 )

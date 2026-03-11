@@ -13,7 +13,7 @@ from pydantic import (
 from pydantic_core import InitErrorDetails, PydanticCustomError
 
 from engineeringagent.domain.quality import HarnessCheckPhase
-from engineeringagent.presentation.json_schema import JSON_SCHEMA_DRAFT_URL
+from engineeringagent.presentation.presenters.json_schema import JSON_SCHEMA_DRAFT_URL
 from engineeringagent import spec_bundles as _spec_bundles
 
 PRIORITY_ORDER = {"high": 0, "medium": 1, "low": 2}

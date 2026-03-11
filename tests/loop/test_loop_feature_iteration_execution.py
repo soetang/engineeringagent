@@ -8,7 +8,7 @@ import pytest
 import yaml
 
 import engineeringagent.loop as loop_module
-import engineeringagent.presentation.terminal as presentation_module
+import engineeringagent.presentation.presenters.terminal as presentation_module
 from engineeringagent.loop_runtime.models import IterationSummaryInputs
 from tests.loop.feature_iteration_support import (
     FEATURE_LOG_REF,

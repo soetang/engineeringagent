@@ -22,7 +22,7 @@ from engineeringagent.checks.strategy_contracts import (
     build_strategy_registry,
     strategy_run_decisions,
 )
-from engineeringagent.presentation.prompt_feedback import normalize_prompt_feedback
+from engineeringagent.presentation.presenters.prompt_feedback import normalize_prompt_feedback
 from engineeringagent.specs import HarnessCheckPhase
 
 from tests.checks.run_checks_contract_support import StubStrategy, write_checks_yaml

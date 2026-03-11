@@ -1,7 +1,7 @@
-"""Presentation-layer helpers and presenters."""
+"""Presentation-layer result renderers and helpers."""
 
-from .presenters import JSON_SCHEMA_DRAFT_URL
-from .presenters import (
+from .json_schema import JSON_SCHEMA_DRAFT_URL
+from .prompt_feedback import (
     CHECKS_FAILURE_FALLBACK,
     format_command_failure_output_excerpt,
     format_command_return_code,
@@ -12,7 +12,7 @@ from .presenters import (
     resolve_checks_prompt_feedback,
     resolve_prompt_feedback,
 )
-from .presenters import RunOutputPresenter, stdout_is_tty, tty_supports_ansi
+from .terminal import RunOutputPresenter, stdout_is_tty, tty_supports_ansi
 
 __all__ = [
     "CHECKS_FAILURE_FALLBACK",

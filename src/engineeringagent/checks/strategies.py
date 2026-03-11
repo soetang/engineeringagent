@@ -34,7 +34,7 @@ from engineeringagent.specs import (
     load_yaml,
 )
 from engineeringagent.checks.planning_policy import ALWAYS_RUN_NO_ON_CHANGE_REASON
-from engineeringagent.presentation.prompt_feedback import (
+from engineeringagent.presentation.presenters.prompt_feedback import (
     format_command_return_code,
     format_failed_command_feedback_lines,
 )

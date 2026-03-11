@@ -39,7 +39,7 @@ from ..init_scaffold import (
     apply_baseline_scaffold,
     build_agents_merge_followup_spec,
 )
-from ..presentation.terminal import stdout_is_tty
+from ..presentation.presenters.terminal import stdout_is_tty
 from ..ports import DEFAULT_AGENT_MODEL, InitWorkspaceDependencies
 
 _HandlerArgs = SimpleNamespace

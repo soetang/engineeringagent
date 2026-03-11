@@ -5,7 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, get_type_hints
 
-import engineeringagent.presentation.terminal as presentation_module
+import engineeringagent.presentation.presenters.terminal as presentation_module
 from engineeringagent.loop import print_summary
 import engineeringagent.loop_runtime.telemetry as telemetry_module
 import engineeringagent.loop_runtime.phases as phases_module

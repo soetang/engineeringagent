@@ -34,7 +34,7 @@ from engineeringagent.checks.strategy_contracts import (
     build_strategy_registry,
 )
 from engineeringagent.checks.results import ChecksRunResult
-from engineeringagent.presentation.prompt_feedback import (
+from engineeringagent.presentation.presenters.prompt_feedback import (
     normalize_checks_contract_prompt_feedback,
 )
 

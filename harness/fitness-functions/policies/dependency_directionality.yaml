@@ -71,7 +71,7 @@ rules:
       - engineeringagent.cli
       - engineeringagent.loop_runtime
       - engineeringagent.progress.paths
-      - engineeringagent.presentation
+      - engineeringagent.presentation.presenters
       - engineeringagent.specs
   - module: engineeringagent.application.validation_service
     blocked_dependencies:

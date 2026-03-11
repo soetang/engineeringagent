@@ -200,7 +200,7 @@ def test_repo_architecture_validator_reports_application_importing_checks_module
         "from engineeringagent.application.checks_service import ChecksService\n",
         "from engineeringagent.ports.agent_runner import AgentRunner\n",
         "from engineeringagent.adapters.progress import FilesystemProgressJournal\n",
-        "from engineeringagent.presentation.terminal import RunOutputPresenter\n",
+        "from engineeringagent.presentation.presenters.terminal import RunOutputPresenter\n",
         "from engineeringagent.bootstrap.app_factory import AppFactory\n",
     ],
 )
