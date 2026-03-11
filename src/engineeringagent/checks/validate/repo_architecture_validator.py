@@ -641,5 +641,8 @@ def _deleted_module_paths() -> set[str]:
         "src/engineeringagent/progress/paths.py",
         "src/engineeringagent/progress_paths.py",
         "src/engineeringagent/progress_logging.py",
+        "src/engineeringagent/prompts/__init__.py",
+        "src/engineeringagent/prompts/definitions/__init__.py",
         "src/engineeringagent/prompts/feedback_envelope.py",
+        "src/engineeringagent/prompts/templates/__init__.py",
     }
