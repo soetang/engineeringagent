@@ -97,3 +97,36 @@ def test_repo_architecture_validator_reports_ports_parse_failures(tmp_path: Path
             code="repo.architecture.parse-failure",
         ),
     )
+
+
+def test_repo_architecture_validator_reports_ports_importing_application_modules(
+    tmp_path: Path,
+) -> None:
+    """Ports modules must not import application-layer modules."""
+
+    _write_port_module(
+        tmp_path,
+        "src/engineeringagent/ports/prompt_builder.py",
+        "from typing import Protocol\n"
+        "from engineeringagent.application.prompt_builder import ImplementationPromptRequest\n\n"
+        "class PromptBuilder(Protocol):\n"
+        "    def build(self, request: ImplementationPromptRequest) -> str: ...\n",
+    )
+
+    issues = RepoArchitectureValidator().validate(
+        context=ValidationContext(
+            project_root=tmp_path,
+            docs_root=tmp_path / "docs",
+            schema_only=False,
+        )
+    )
+
+    assert issues == (
+        ValidationIssue(
+            validator_id="repo.architecture",
+            scope="repo",
+            path="src/engineeringagent/ports/prompt_builder.py",
+            message="ports modules must not import application modules",
+            code="repo.architecture.ports-application-import",
+        ),
+    )

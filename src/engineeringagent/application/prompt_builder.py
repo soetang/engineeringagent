@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Literal, Mapping, Sequence
+from typing import Any, Mapping, Sequence
 
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import ValidationError
 
 from engineeringagent.domain.specification import (
     current_progress_unit,
@@ -14,48 +14,18 @@ from engineeringagent.domain.specification import (
     resolve_feature_plan_path,
     resolve_feature_research_path,
 )
-from engineeringagent.ports import PromptBuilder, PromptDefinitionRepository
+from engineeringagent.ports import (
+    ImplementationPromptFeature,
+    ImplementationPromptRequest,
+    PromptArtifactPaths,
+    PromptBuilder,
+    PromptDefinitionRepository,
+    PromptProgressKind,
+)
 from engineeringagent.prompts.feedback_envelope import (
     parse_feedback_envelope,
     serialize_feedback_envelope,
 )
-
-
-class PromptArtifactPaths(BaseModel):
-    """Explicit prompt artifact references resolved before rendering."""
-
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-    specification: Path
-    plan: str | None = None
-    research: str | None = None
-
-
-PromptProgressKind = Literal["phase", "feature"]
-
-
-class ImplementationPromptFeature(BaseModel):
-    """Explicit feature fields allowed into the implementation prompt."""
-
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-    feature_id: str
-    title: str = ""
-    objective: str = ""
-    context: str = ""
-
-
-class ImplementationPromptRequest(BaseModel):
-    """Typed input for implementation prompt rendering."""
-
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-    feature: ImplementationPromptFeature
-    artifacts: PromptArtifactPaths
-    handoff_path: str | None
-    feedback: str | None
-    progress_kind: PromptProgressKind
-    current_progress: str | None = None
 
 
 class DefaultPromptBuilder:

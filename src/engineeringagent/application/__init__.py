@@ -1,5 +1,12 @@
 """Application-layer services and contracts."""
 
+from engineeringagent.ports import (
+    ImplementationPromptFeature,
+    ImplementationPromptRequest,
+    PromptArtifactPaths,
+    PromptProgressKind,
+)
+
 from .checks_service import (
     ChecksService,
     RunChecksRequest,
@@ -23,10 +30,6 @@ from .validation_service import (
 )
 from .prompt_builder import (
     DefaultPromptBuilder,
-    ImplementationPromptFeature,
-    ImplementationPromptRequest,
-    PromptArtifactPaths,
-    PromptProgressKind,
     build_implementation_prompt,
     build_implementation_prompt_request,
     build_selector_prompt,

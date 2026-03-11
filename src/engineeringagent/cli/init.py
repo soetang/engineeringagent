@@ -312,6 +312,8 @@ def cmd_init(
         _DEFAULT_INIT_WORKSPACE_RUNNER,
     )
     result = run_init_command_fn(request, deps)
+    if isinstance(result, int):
+        return result
     for note in result.notes:
         emit(note)
     for message in result.messages:

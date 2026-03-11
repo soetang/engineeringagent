@@ -32,17 +32,18 @@ def _port_protocol_issues(
     module = _parse_module(module_path, rel_path=rel_path)
     if isinstance(module, ValidationIssue):
         return (module,)
-    if _module_declares_protocol(module):
-        return ()
-    return (
-        ValidationIssue(
-            validator_id="repo.architecture",
-            scope="repo",
-            path=rel_path,
-            message="ports modules must declare at least one Protocol contract",
-            code="repo.architecture.ports-protocol-contract",
-        ),
-    )
+    issues: list[ValidationIssue] = list(_application_import_issues(module, rel_path=rel_path))
+    if not _module_declares_protocol(module):
+        issues.append(
+            ValidationIssue(
+                validator_id="repo.architecture",
+                scope="repo",
+                path=rel_path,
+                message="ports modules must declare at least one Protocol contract",
+                code="repo.architecture.ports-protocol-contract",
+            )
+        )
+    return tuple(issues)
 
 
 def _parse_module(module_path: Path, *, rel_path: str) -> ast.Module | ValidationIssue:
@@ -82,3 +83,44 @@ def _is_protocol_base(base: ast.expr) -> bool:
     if isinstance(base, ast.Attribute):
         return base.attr == "Protocol"
     return False
+
+
+def _application_import_issues(
+    module: ast.Module,
+    *,
+    rel_path: str,
+) -> tuple[ValidationIssue, ...]:
+    issues: list[ValidationIssue] = []
+    for node in ast.walk(module):
+        imported_module: str | None = None
+        if isinstance(node, ast.ImportFrom):
+            imported_module = node.module
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name == "engineeringagent.application" or alias.name.startswith(
+                    "engineeringagent.application."
+                ):
+                    issues.append(
+                        ValidationIssue(
+                            validator_id="repo.architecture",
+                            scope="repo",
+                            path=rel_path,
+                            message="ports modules must not import application modules",
+                            code="repo.architecture.ports-application-import",
+                        )
+                    )
+            continue
+
+        if imported_module == "engineeringagent.application" or (
+            imported_module is not None and imported_module.startswith("engineeringagent.application.")
+        ):
+            issues.append(
+                ValidationIssue(
+                    validator_id="repo.architecture",
+                    scope="repo",
+                    path=rel_path,
+                    message="ports modules must not import application modules",
+                    code="repo.architecture.ports-application-import",
+                )
+            )
+    return tuple(issues)

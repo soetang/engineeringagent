@@ -5,12 +5,12 @@ from typing import Any, cast
 
 import pytest
 
-from engineeringagent.application import (
+from engineeringagent.ports import (
     ImplementationPromptFeature,
     ImplementationPromptRequest,
     PromptArtifactPaths,
+    PromptBuilder,
 )
-from engineeringagent.ports import PromptBuilder
 
 
 def test_prompt_builder_protocol_default_method_raises() -> None:

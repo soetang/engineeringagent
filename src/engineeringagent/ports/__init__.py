@@ -8,7 +8,13 @@ from .checks_runner import ChecksRunRequest, ChecksRunner
 from .guidance_topic_repository import GuidanceTopicRepository
 from .init_workspace import InitWorkspaceDependencies
 from .progress_journal import ProgressJournal
-from .prompt_builder import PromptBuilder
+from .prompt_builder import (
+    ImplementationPromptFeature,
+    ImplementationPromptRequest,
+    PromptArtifactPaths,
+    PromptBuilder,
+    PromptProgressKind,
+)
 from .prompt_definition_repository import (
     PromptDefinition,
     PromptDefinitionRepository,
@@ -24,11 +30,15 @@ __all__ = [
     "ChecksRunner",
     "GuidanceTopicRepository",
     "HarnessCheckPhase",
+    "ImplementationPromptFeature",
+    "ImplementationPromptRequest",
     "InitWorkspaceDependencies",
+    "PromptArtifactPaths",
     "ProgressJournal",
     "PromptBuilder",
     "PromptDefinition",
     "PromptDefinitionRepository",
     "PromptInterpolation",
+    "PromptProgressKind",
     "RepositoryValidator",
 ]
