@@ -18,6 +18,7 @@ alias_topic_roots:
   - specs
   - terminal
 forbidden_test_paths:
+  - tests/adapters/test_git_worktree_manager.py
   - tests/application/test_feature_iteration_pipeline.py
   - tests/application/test_implementation_step.py
   - tests/application/guidance/test_service.py
