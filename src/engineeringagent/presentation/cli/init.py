@@ -12,13 +12,6 @@ from ...application import (
     InitWorkspaceResult,
     InitWorkspaceService,
 )
-from ...adapters.config import (
-    resolve_agents_backend_id,
-    resolve_agents_codex_profile_in_engineeringagent_toml,
-    write_init_backend_config,
-    write_init_docs_root_config,
-)
-from ...adapters.agents import default_backend_id, list_backends
 from ...init_cli_support import (
     InitAgentsLauncherResolverDeps,
     InitBackendResolverDeps,
@@ -26,14 +19,20 @@ from ...init_cli_support import (
     InitPromptContext,
     backup_existing_agents_guidance,
     install_precommit_hooks_best_effort as _install_precommit_hooks_best_effort_impl,
+    default_backend_id,
+    list_backends,
     next_agents_backup_path,
     remove_existing_agents_guidance,
+    resolve_agents_backend_id,
+    resolve_agents_codex_profile_in_engineeringagent_toml,
     resolve_init_agents_launcher,
     resolve_init_agents_mode,
     resolve_init_backend,
     resolve_init_codex_profile_overwrite,
     resolve_init_docs_dir,
     resolve_init_pack,
+    write_init_backend_config,
+    write_init_docs_root_config,
     write_agents_merge_followup_spec,
 )
 from ...init_scaffold import (
@@ -272,7 +271,9 @@ def build_init_dependencies(
             resolve_codex_profile_overwrite_fn,
             prompt_context=prompt_context,
             deps=InitCodexProfileResolverDeps(
-                resolve_codex_profile_fn=resolve_agents_codex_profile_in_engineeringagent_toml
+                resolve_codex_profile_fn=(
+                    resolve_agents_codex_profile_in_engineeringagent_toml
+                )
             ),
         ),
         backup_existing_agents_guidance=partial(

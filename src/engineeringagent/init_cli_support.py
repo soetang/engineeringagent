@@ -11,6 +11,8 @@ from .adapters.config import (
     DEFAULT_CODEX_PROFILE,
     resolve_agents_backend_id,
     resolve_agents_codex_profile_in_engineeringagent_toml,
+    write_init_backend_config,
+    write_init_docs_root_config,
 )
 from .adapters.vcs import git_cli
 from .adapters.agents import default_backend_id, list_backends
@@ -25,6 +27,32 @@ InputFn = Callable[[str], str]
 
 _INIT_PACK_DEFAULT = "slim"
 _INIT_PACK_CHOICES: tuple[str, ...] = ("slim", "standard")
+
+__all__ = [
+    "AGENTS_LAUNCHER_CHOICES",
+    "DEFAULT_AGENTS_LAUNCHER",
+    "InitAgentsLauncherResolverDeps",
+    "InitBackendResolverDeps",
+    "InitCodexProfileResolverDeps",
+    "InitPromptContext",
+    "backup_existing_agents_guidance",
+    "default_backend_id",
+    "install_precommit_hooks_best_effort",
+    "list_backends",
+    "next_agents_backup_path",
+    "remove_existing_agents_guidance",
+    "resolve_agents_backend_id",
+    "resolve_agents_codex_profile_in_engineeringagent_toml",
+    "resolve_init_agents_launcher",
+    "resolve_init_agents_mode",
+    "resolve_init_backend",
+    "resolve_init_codex_profile_overwrite",
+    "resolve_init_docs_dir",
+    "resolve_init_pack",
+    "write_agents_merge_followup_spec",
+    "write_init_backend_config",
+    "write_init_docs_root_config",
+]
 
 
 class InitPromptContext(BaseModel):

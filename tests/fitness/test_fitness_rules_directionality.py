@@ -273,9 +273,9 @@ def test_repo_directionality_policy_uses_grouped_sources(repo_root: Path) -> Non
     rules = _repo_policy_rules(repo_root)
     source_counts = [len(cast(list[object], rule["sources"])) for rule in rules]
 
-    assert len(rules) == 9
+    assert len(rules) == 7
     assert max(source_counts) > 1
-    assert sum(source_counts) < 20
+    assert sum(source_counts) < 12
 
 
 def test_directionality_rule_supports_reverse_direction_specs_contract_boundaries(

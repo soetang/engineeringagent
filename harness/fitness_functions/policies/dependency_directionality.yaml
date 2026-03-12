@@ -29,38 +29,20 @@ rules:
       - engineeringagent.ports
       - engineeringagent.presentation
   - sources:
+      - engineeringagent.presentation.cli
+    blocked_dependencies:
+      - engineeringagent.adapters
+      - engineeringagent.loop
+      - engineeringagent.loop_runtime
+      - engineeringagent.specs
+  - sources:
       - engineeringagent.presentation.cli.app
       - engineeringagent.presentation.cli.typer
     blocked_dependencies:
-      - engineeringagent.adapters.quality.validation
       - engineeringagent.checks.commands
       - engineeringagent.checks.fitness
       - engineeringagent.checks.reviewers
       - engineeringagent.domain.specification.selection
-      - engineeringagent.loop_runtime
-      - engineeringagent.specs
-  - sources:
-      - engineeringagent.presentation.cli.checks
-    blocked_dependencies:
-      - engineeringagent.adapters
-      - engineeringagent.adapters.quality.validation
-      - engineeringagent.checks.commands
-      - engineeringagent.checks.fitness
-      - engineeringagent.checks.reviewers
-      - engineeringagent.loop
-      - engineeringagent.loop_runtime
-      - engineeringagent.specs
-  - sources:
-      - engineeringagent.presentation.cli.guidance
-      - engineeringagent.presentation.cli.validate
-    blocked_dependencies:
-      - engineeringagent.adapters
-      - engineeringagent.loop_runtime
-  - sources:
-      - engineeringagent.presentation.cli.run
-    blocked_dependencies:
-      - engineeringagent.loop
-      - engineeringagent.loop_runtime
   - sources:
       - engineeringagent.specs
     blocked_dependencies:
