@@ -11,6 +11,7 @@ from engineeringagent.application.workspace_recovery_service import (
 )
 from engineeringagent.domain.audit import ProgressEvent
 from engineeringagent.ports import (
+    WorkspaceState,
     WorkspaceResetRequest,
     WorkspaceResetResult,
 )
@@ -59,9 +60,24 @@ class _FakeProgressJournal:
 
 
 class _FakeWorkspaceManager:
-    def __init__(self, reset_result: WorkspaceResetResult) -> None:
+    def __init__(
+        self,
+        reset_result: WorkspaceResetResult,
+        *,
+        state: WorkspaceState | None = None,
+    ) -> None:
         self._reset_result = reset_result
+        self._state = state or WorkspaceState(
+            clean=True,
+            changed_paths=(),
+            has_untracked_files=False,
+        )
         self.requests: list[WorkspaceResetRequest] = []
+        self.state_requests: list[Path] = []
+
+    def get_state(self, workspace_path: Path) -> WorkspaceState:
+        self.state_requests.append(workspace_path)
+        return self._state
 
     def reset_to_last_accepted(
         self,
@@ -130,6 +146,7 @@ def test_workspace_recovery_resets_to_last_accepted_commit() -> None:
             clean_untracked=True,
         )
     ]
+    assert workspace_manager.state_requests == [Path("/tmp/project")]
     assert result == RecoverWorkspaceResult(
         ok=True,
         head_commit="abc123",
@@ -169,4 +186,45 @@ def test_workspace_recovery_surfaces_reset_failure() -> None:
         head_commit=None,
         handoff_path=Path(".engineeringagent/progress/FEAT-100/handoff.md"),
         message="workspace recovery failed during git_reset: fatal: bad revision",
+    )
+
+
+def test_workspace_recovery_fails_when_workspace_stays_dirty_after_reset() -> None:
+    """Recovery should not report success when reset still leaves local changes."""
+    service = WorkspaceRecoveryService(
+        _FakeWorkspaceManager(
+            WorkspaceResetResult(
+                reset_applied=True,
+                head_commit="abc123",
+                stdout="reset ok\n",
+                stderr="",
+            ),
+            state=WorkspaceState(
+                clean=False,
+                changed_paths=("docs/specifications/features/FEAT-100/spec.yaml",),
+                has_untracked_files=False,
+            ),
+        ),
+        _FakeProgressJournal(
+            Path(".engineeringagent/progress/FEAT-100/handoff.md")
+        ),
+    )
+
+    result = service.run(
+        RecoverWorkspaceRequest(
+            project_root=Path("/tmp/project"),
+            feature_id="FEAT-100",
+            last_accepted_commit="abc123",
+            require_handoff=False,
+        )
+    )
+
+    assert result == RecoverWorkspaceResult(
+        ok=False,
+        head_commit="abc123",
+        handoff_path=Path(".engineeringagent/progress/FEAT-100/handoff.md"),
+        message=(
+            "workspace recovery left uncommitted changes after reset: "
+            "docs/specifications/features/FEAT-100/spec.yaml"
+        ),
     )

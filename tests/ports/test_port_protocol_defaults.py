@@ -18,6 +18,7 @@ from engineeringagent.ports.feature_specification_repository import (
 from engineeringagent.ports.feature_workspace_manager import (
     FeatureWorkspaceFailure,
     FeatureWorkspaceManager,
+    WorkspaceState,
     WorkspaceResetRequest,
 )
 from engineeringagent.ports.progress_journal import ProgressJournal
@@ -87,6 +88,8 @@ def test_port_protocol_methods_raise_not_implemented() -> None:
         )
     with pytest.raises(NotImplementedError):
         FeatureSpecificationRepository.archive(object(), project_root, "FEAT-001")
+    with pytest.raises(NotImplementedError):
+        FeatureWorkspaceManager.get_state(object(), project_root)
     with pytest.raises(NotImplementedError):
         FeatureWorkspaceManager.reset_to_last_accepted(
             object(),
@@ -175,3 +178,14 @@ def test_feature_workspace_failure_uses_stable_port_name() -> None:
 
     assert error.port_name == "FeatureWorkspaceManager"
     assert error.message == "boom"
+
+
+def test_workspace_state_is_frozen_value_model() -> None:
+    """Workspace state should remain an immutable port contract."""
+    state = WorkspaceState(
+        clean=False,
+        changed_paths=("a.py",),
+        has_untracked_files=True,
+    )
+
+    assert state.changed_paths == ("a.py",)

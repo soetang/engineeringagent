@@ -82,6 +82,19 @@ class WorkspaceRecoveryService:
                 message=message,
             )
 
+        workspace_state = self._workspace_manager.get_state(request.project_root)
+        if not workspace_state.clean:
+            changed = ", ".join(workspace_state.changed_paths) or "unknown paths"
+            return RecoverWorkspaceResult(
+                ok=False,
+                head_commit=reset_result.head_commit,
+                handoff_path=handoff_path,
+                message=(
+                    "workspace recovery left uncommitted changes after reset: "
+                    f"{changed}"
+                ),
+            )
+
         return RecoverWorkspaceResult(
             ok=True,
             head_commit=reset_result.head_commit,

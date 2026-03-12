@@ -39,8 +39,25 @@ class WorkspaceResetResult(BaseModel):
     failure_stage: str | None = None
 
 
+class WorkspaceState(BaseModel):
+    """Stable result envelope for one feature workspace state query."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    clean: bool
+    changed_paths: tuple[str, ...]
+    has_untracked_files: bool
+
+
 class FeatureWorkspaceManager(Protocol):
     """Provide normalized feature workspace lifecycle operations."""
+
+    def get_state(
+        self,
+        workspace_path: Path,
+    ) -> WorkspaceState:
+        """Return normalized dirty/clean state for one workspace."""
+        raise NotImplementedError
 
     def reset_to_last_accepted(
         self,

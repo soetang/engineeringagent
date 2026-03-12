@@ -22,6 +22,7 @@ from .configuration_provider import ConfigurationProvider
 from .feature_workspace_manager import (
     FeatureWorkspaceFailure,
     FeatureWorkspaceManager,
+    WorkspaceState,
     WorkspaceResetRequest,
     WorkspaceResetResult,
 )
@@ -92,6 +93,7 @@ __all__ = [
     "ValidationFailure",
     "VersionControlFailure",
     "VersionControlGateway",
+    "WorkspaceState",
     "WorkspaceResetRequest",
     "WorkspaceResetResult",
     "WorktreeStatus",
