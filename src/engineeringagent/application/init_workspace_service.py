@@ -251,13 +251,12 @@ class InitWorkspaceService:
         )
         if error is not None:
             return _failure_result(error)
+
         if resolved_agents_mode == "abort":
             return InitWorkspaceResult(
                 exit_code=0,
                 status="aborted",
-                messages=(
-                    "init aborted: kept existing AGENTS.md; no scaffold files changed",
-                ),
+                messages=("init aborted: kept existing AGENTS.md; no scaffold files changed",),
                 docs_dir=docs_dir,
                 profile=request.scaffold_profile,
                 pack=pack,
@@ -271,12 +270,10 @@ class InitWorkspaceService:
         if error is not None:
             return _failure_result(error)
 
-        codex_profile_overwrite, error = (
-            _resolve_codex_profile_overwrite_or_fail(
-                request,
-                dependencies,
-                selected_backend=selected_backend,
-            )
+        codex_profile_overwrite, error = _resolve_codex_profile_overwrite_or_fail(
+            request,
+            dependencies,
+            selected_backend=selected_backend,
         )
         if error is not None:
             return _failure_result(error)
@@ -321,32 +318,27 @@ class InitWorkspaceService:
         created += config_created
         skipped += config_skipped
 
-        merge_created, merge_skipped, merge_spec_output = (
-            _maybe_write_merge_followup_spec(
-                request,
-                dependencies,
-                docs_dir=docs_dir,
-                resolved_agents_mode=resolved_agents_mode,
-                agents_backup_name=agents_backup_name,
-            )
+        merge_created, merge_skipped, merge_spec_output = _maybe_write_merge_followup_spec(
+            request,
+            dependencies,
+            docs_dir=docs_dir,
+            resolved_agents_mode=resolved_agents_mode,
+            agents_backup_name=agents_backup_name,
         )
         created += merge_created
         skipped += merge_skipped
 
         precommit_messages = _collect_precommit_messages(request, dependencies)
-
-        agents_mode_output = _render_agents_mode_output(
-            resolved_agents_mode,
-            agents_backup_name,
-        )
         summary = (
             f"init scaffold complete: docs_dir={docs_dir} "
             f"created={created} skipped={skipped}"
             f" profile={request.scaffold_profile}"
             f" pack={pack}"
             f" agents_launcher={agents_launcher}"
-            f"{agents_mode_output}{merge_spec_output}"
+            f"{_render_agents_mode_output(resolved_agents_mode, agents_backup_name)}"
+            f"{merge_spec_output}"
         )
+
         return InitWorkspaceResult(
             exit_code=0,
             status="completed",

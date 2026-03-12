@@ -60,7 +60,7 @@ def test_checker_flags_legacy_flat_application_helper_modules(
     assert payload["rule_id"] == "architecture.application-module-layout"
     assert payload["status"] == "fail"
     assert _violations(payload) == [
-        "src/engineeringagent/application/feature_selection.py: application root may only contain workflow-service modules; move non-service helpers into an explicit subpackage such as engineeringagent.application.feature_iteration or delete the legacy module"
+        "src/engineeringagent/application/feature_selection.py: application root may only contain workflow-service modules; keep only documented workflow-service modules at the application root; move helpers into an explicit subpackage such as engineeringagent.application.feature_iteration or delete the legacy module"
     ]
 
 
@@ -141,11 +141,11 @@ def test_checker_allows_prompt_builder_at_application_root(
     assert _violations(payload) == []
 
 
-def test_checker_flags_workspace_service_modules_restored_at_application_root(
+def test_checker_allows_workspace_service_modules_at_application_root(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Reject workspace services restored at the legacy application root."""
+    """Allow the documented root-level workspace service modules."""
     _write_module(
         tmp_path,
         relative_path="src/engineeringagent/application/init_workspace_service.py",
@@ -160,8 +160,5 @@ def test_checker_flags_workspace_service_modules_restored_at_application_root(
     proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
 
     assert proc.returncode == 0
-    assert payload["status"] == "fail"
-    assert _violations(payload) == [
-        "src/engineeringagent/application/init_workspace_service.py: application root may only contain workflow-service modules; move non-service helpers into an explicit subpackage such as engineeringagent.application.feature_iteration or delete the legacy module",
-        "src/engineeringagent/application/workspace_recovery_service.py: application root may only contain workflow-service modules; move non-service helpers into an explicit subpackage such as engineeringagent.application.feature_iteration or delete the legacy module",
-    ]
+    assert payload["status"] == "pass"
+    assert _violations(payload) == []

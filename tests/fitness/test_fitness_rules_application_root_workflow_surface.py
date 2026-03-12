@@ -142,7 +142,8 @@ def test_checker_flags_feature_iteration_imports_from_application_root(
     assert payload["status"] == "fail"
     assert any(
         "tests/loop/test_boundary_violation.py:1" in violation
-        and "engineeringagent.application.feature_iteration" in violation
+        and "its defining application module instead of engineeringagent.application"
+        in violation
         for violation in _violations(payload)
     )
 
@@ -215,19 +216,20 @@ def test_checker_allows_feature_iteration_imports_from_explicit_subpackage(
     assert _violations(payload) == []
 
 
-def test_checker_flags_workspace_service_re_exports_from_application_root(
+def test_checker_allows_root_workspace_service_exports_from_application_root(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Reject workspace service re-exports from the application root package."""
+    """Allow root-level workspace services on the documented application surface."""
     _write_module(
         tmp_path,
         relative_path="src/engineeringagent/application/__init__.py",
         content="\n".join(
             [
-                "from .workspace import InitWorkspaceService",
+                "from .init_workspace_service import InitWorkspaceService",
+                "from .workspace_recovery_service import WorkspaceRecoveryService",
                 "",
-                '__all__ = ["InitWorkspaceService"]',
+                '__all__ = ["InitWorkspaceService", "WorkspaceRecoveryService"]',
                 "",
             ]
         ),
@@ -236,14 +238,5 @@ def test_checker_flags_workspace_service_re_exports_from_application_root(
     proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
 
     assert proc.returncode == 0
-    assert payload["status"] == "fail"
-    assert any(
-        "src/engineeringagent/application/__init__.py:1" in violation
-        and "InitWorkspaceService" in violation
-        for violation in _violations(payload)
-    )
-    assert any(
-        "src/engineeringagent/application/__init__.py:3" in violation
-        and "InitWorkspaceService" in violation
-        for violation in _violations(payload)
-    )
+    assert payload["status"] == "pass"
+    assert _violations(payload) == []

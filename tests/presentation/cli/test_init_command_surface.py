@@ -8,7 +8,7 @@ import pytest
 
 from engineeringagent.presentation import cli as cli_module
 from engineeringagent.presentation.cli import init as cli_init_module
-from engineeringagent.application.workspace import (
+from engineeringagent.application import (
     InitWorkspaceRequest,
     InitWorkspaceResult,
 )

@@ -36,10 +36,7 @@ from engineeringagent.application.feature_iteration import (
     IterationReport,
     IterationTelemetryInputs,
 )
-from engineeringagent.application.workspace import (
-    InitWorkspaceService,
-    WorkspaceRecoveryService,
-)
+from engineeringagent.application import InitWorkspaceService, WorkspaceRecoveryService
 from engineeringagent.bootstrap import AppFactory
 import engineeringagent.bootstrap.app_factory as app_factory_module
 from engineeringagent.bootstrap.app_factory import (

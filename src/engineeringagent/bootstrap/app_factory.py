@@ -40,7 +40,9 @@ from engineeringagent.application import (
     ChecksService,
     FeatureIterationService,
     GuidanceService,
+    InitWorkspaceService,
     PromptBuilder,
+    WorkspaceRecoveryService,
     RunLoopService,
     ValidationService,
 )
@@ -59,10 +61,6 @@ from engineeringagent.application.feature_iteration import (
     IterationReportPublisher,
     IterationReport,
     run_feature_iteration_pipeline,
-)
-from engineeringagent.application.workspace import (
-    InitWorkspaceService,
-    WorkspaceRecoveryService,
 )
 from engineeringagent.bootstrap import runtime_support
 from engineeringagent.bootstrap.iteration_reporting import (

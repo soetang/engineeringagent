@@ -35,12 +35,6 @@ FORBIDDEN_ROOT_EXPORTS = frozenset(
         "PhaseTiming",
         "ReviewerPhaseOutcome",
         "VerificationPhaseOutcome",
-        "InitWorkspaceRequest",
-        "InitWorkspaceResult",
-        "InitWorkspaceService",
-        "RecoverWorkspaceRequest",
-        "RecoverWorkspaceResult",
-        "WorkspaceRecoveryService",
         "run_feature_iteration_pipeline",
         "run_implement_step_from_inputs",
     }
@@ -136,7 +130,7 @@ def _root_import_violations(path: Path) -> list[str]:
             if alias.name in FORBIDDEN_ROOT_EXPORTS:
                 violations.append(
                     f"{rel_path}:{node.lineno} import {alias.name} from "
-                    "engineeringagent.application.feature_iteration instead of "
+                    "its defining application module instead of "
                     "engineeringagent.application"
                 )
     return violations
