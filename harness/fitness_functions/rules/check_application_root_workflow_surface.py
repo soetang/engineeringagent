@@ -141,6 +141,7 @@ def _application_root_workflow_surface_violations() -> list[str]:
 
 
 def main() -> int:
+    """Emit the application-root-workflow-surface fitness result."""
     violations = _application_root_workflow_surface_violations()
     status = RuleStatus.PASS if not violations else RuleStatus.FAIL
     summary = (
