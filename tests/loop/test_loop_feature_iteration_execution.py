@@ -100,9 +100,9 @@ def test_run_all_uses_configured_docs_root(tmp_path: Path, capsys: Any) -> None:
         'docs-root = "docs.engineeringagent"\n',
         encoding="utf-8",
     )
-    (tmp_path / "harness" / "gates.yaml").parent.mkdir(parents=True, exist_ok=True)
-    (tmp_path / "harness" / "gates.yaml").write_text(
-        yaml.safe_dump({"profiles": {"loop_fast": []}, "gates": {}}, sort_keys=False),
+    (tmp_path / "harness" / "checks.yaml").parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / "harness" / "checks.yaml").write_text(
+        yaml.safe_dump({"contract_version": "1.0", "checks": {}}, sort_keys=False),
         encoding="utf-8",
     )
 

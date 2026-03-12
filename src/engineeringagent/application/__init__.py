@@ -22,6 +22,7 @@ from .checks_service import ChecksService, RunChecksRequest, RunChecksResult
 from .feature_iteration_service import (
     FeatureIterationRequest,
     FeatureIterationResult,
+    FeatureIterationRuntimeDependencies,
     FeatureIterationService,
 )
 from .guidance_service import (
@@ -59,6 +60,7 @@ __all__ = [
     "FeatureIterationInputs",
     "FeatureIterationRequest",
     "FeatureIterationResult",
+    "FeatureIterationRuntimeDependencies",
     "FeatureIterationService",
     "GatePhaseOutcome",
     "GuidanceInputError",

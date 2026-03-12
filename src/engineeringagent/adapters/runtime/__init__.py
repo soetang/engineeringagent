@@ -1,7 +1,6 @@
 """Runtime execution adapters for transitional loop orchestration."""
 
 from .execution import (
-    RuntimeFeatureIterationExecutor,
     RuntimeRunLoopExecutor,
     run_loop_controller,
 )
@@ -34,7 +33,6 @@ __all__ = [
     "CompletionPhaseDependencies",
     "GatePhaseDependencies",
     "ReviewerPhaseDependencies",
-    "RuntimeFeatureIterationExecutor",
     "RuntimeRunLoopExecutor",
     "build_loop_run",
     "build_run_config",

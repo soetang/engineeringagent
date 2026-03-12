@@ -7,10 +7,7 @@ from engineeringagent.adapters.quality import (
     ChecksRepositoryValidator,
     RuntimeChecksRunner,
 )
-from engineeringagent.adapters.runtime import (
-    RuntimeFeatureIterationExecutor,
-    RuntimeRunLoopExecutor,
-)
+from engineeringagent.adapters.runtime import RuntimeRunLoopExecutor
 from engineeringagent.adapters.documents import (
     ChecksCatalogLoadOptions,
     FilesystemChecksCatalogRepository,
@@ -24,6 +21,7 @@ from engineeringagent.adapters.vcs import (
 from engineeringagent.application import (
     ChecksService,
     FeatureIterationService,
+    FeatureIterationRuntimeDependencies,
     GuidanceService,
     InitWorkspaceService,
     PromptBuilder,
@@ -53,7 +51,16 @@ def test_app_factory_builds_default_application_services(tmp_path: Path) -> None
     assert isinstance(run_loop_service, RunLoopService)
     assert isinstance(checks_service._checks_runner, RuntimeChecksRunner)
     assert isinstance(
-        feature_iteration_service._executor, RuntimeFeatureIterationExecutor
+        feature_iteration_service._runtime_dependencies,
+        FeatureIterationRuntimeDependencies,
+    )
+    assert isinstance(
+        feature_iteration_service._version_control_gateway,
+        GitCliVersionControlGateway,
+    )
+    assert isinstance(
+        feature_iteration_service._progress_journal,
+        FilesystemProgressJournal,
     )
     assert isinstance(
         checks_service._checks_catalog_repository,

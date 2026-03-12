@@ -16,10 +16,7 @@ from engineeringagent.adapters.documents import (
 )
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
-from engineeringagent.adapters.runtime import (
-    RuntimeFeatureIterationExecutor,
-    RuntimeRunLoopExecutor,
-)
+from engineeringagent.adapters.runtime import RuntimeRunLoopExecutor
 from engineeringagent.adapters.vcs import (
     GitCliVersionControlGateway,
     GitFeatureWorkspaceManager,
@@ -27,6 +24,7 @@ from engineeringagent.adapters.vcs import (
 from engineeringagent.application import (
     ChecksService,
     FeatureIterationService,
+    FeatureIterationRuntimeDependencies,
     GuidanceService,
     InitWorkspaceService,
     PromptBuilder,
@@ -82,10 +80,9 @@ class AppFactory:
     def build_feature_iteration_service(self) -> FeatureIterationService:
         """Create the default feature-iteration application service."""
         return FeatureIterationService(
-            executor=RuntimeFeatureIterationExecutor(
-                version_control_gateway=self.build_version_control_gateway(),
-                progress_journal=self.build_progress_journal(),
-            ),
+            version_control_gateway=self.build_version_control_gateway(),
+            progress_journal=self.build_progress_journal(),
+            runtime_dependencies=FeatureIterationRuntimeDependencies(),
         )
 
     def build_guidance_service(self) -> GuidanceService:

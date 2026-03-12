@@ -162,15 +162,6 @@ rules:
       - engineeringagent.presentation.cli
       - engineeringagent.loop
       - engineeringagent.loop_runtime
-  - module: engineeringagent.ports.feature_iteration_executor
-    blocked_dependencies:
-      - engineeringagent.adapters
-      - engineeringagent.application
-      - engineeringagent.bootstrap
-      - engineeringagent.checks
-      - engineeringagent.presentation.cli
-      - engineeringagent.loop
-      - engineeringagent.loop_runtime
   - module: engineeringagent.ports.feature_specification_repository
     blocked_dependencies:
       - engineeringagent.adapters
