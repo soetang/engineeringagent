@@ -17,20 +17,14 @@ from engineeringagent.adapters.quality.validation import (
     QualityRepositoryValidator,
 )
 from engineeringagent.adapters.quality.runtime import RuntimeChecksRunner
-from engineeringagent.adapters.runtime import (
-    RuntimeFeatureIterationDependencies,
-    RuntimeFeatureIterationWorkflow,
-    RuntimeRunLoopExecutor,
-)
-from engineeringagent.adapters.runtime.feature_iteration_workflow import (
-    build_iteration_pipeline_dependencies,
-)
+from engineeringagent.adapters.runtime import RuntimeRunLoopExecutor
 from engineeringagent.adapters.vcs import (
     GitCliVersionControlGateway,
     GitFeatureWorkspaceManager,
 )
 from engineeringagent.application import (
     ChecksService,
+    FeatureIterationDependencies,
     FeatureIterationService,
     GuidanceService,
     InitWorkspaceService,
@@ -51,7 +45,6 @@ from engineeringagent.bootstrap.app_factory import (
     _persist_iteration_report,
 )
 from engineeringagent.bootstrap.iteration_reporting import DefaultIterationReportPublisher
-from engineeringagent.ports import CommitRequest, CommitResult
 from engineeringagent.ports import ConfigurationProvider
 
 from tests.application.test_feature_iteration_service import (
@@ -60,7 +53,6 @@ from tests.application.test_feature_iteration_service import (
     _FakeGatePhaseDependencies,
     _FakeProgressJournal,
     _FakeReviewerPhaseDependencies,
-    _FakeVersionControlGateway,
 )
 
 
@@ -82,17 +74,13 @@ def test_app_factory_builds_default_application_services(tmp_path: Path) -> None
     assert isinstance(feature_iteration_service, FeatureIterationService)
     assert isinstance(run_loop_service, RunLoopService)
     assert isinstance(checks_service._checks_runner, RuntimeChecksRunner)
-    assert isinstance(feature_iteration_service._workflow.__self__, RuntimeFeatureIterationWorkflow)
+    assert isinstance(feature_iteration_service._dependencies, FeatureIterationDependencies)
     assert isinstance(
-        feature_iteration_service._workflow.__self__._runtime_dependencies,
-        RuntimeFeatureIterationDependencies,
-    )
-    assert isinstance(
-        feature_iteration_service._workflow.__self__._version_control_gateway,
+        feature_iteration_service._version_control_gateway,
         GitCliVersionControlGateway,
     )
     assert isinstance(
-        feature_iteration_service._workflow.__self__._iteration_report_publisher,
+        feature_iteration_service._iteration_report_publisher,
         DefaultIterationReportPublisher,
     )
     assert isinstance(
@@ -132,7 +120,7 @@ def test_app_factory_builds_default_application_services(tmp_path: Path) -> None
     )
     assert isinstance(factory.build_prompt_builder(), PromptBuilder)
     assert isinstance(
-        feature_iteration_service._workflow.__self__._runtime_dependencies.clock,
+        feature_iteration_service._dependencies.clock,
         SystemClock,
     )
     recovery_service = factory.build_workspace_recovery_service()
@@ -178,8 +166,8 @@ def test_app_factory_uses_configured_implementation_prompt_definition(
 
 def _build_runtime_dependencies(
     observed: dict[str, object],
-) -> RuntimeFeatureIterationDependencies:
-    return RuntimeFeatureIterationDependencies(
+) -> FeatureIterationDependencies:
+    return FeatureIterationDependencies(
         clock=_FakeClock(),
         evaluate_initial_feature_load=lambda _feature_path: None,
         describe_action=lambda project_root, action, structured: (
@@ -209,45 +197,6 @@ def _build_runtime_dependencies(
     )
 
 
-def test_runtime_feature_iteration_commit_wiring_returns_failure_tuple_shape() -> None:
-    """Runtime execution wiring should preserve the pipeline callback contract."""
-    observed: dict[str, object] = {}
-    gateway = _FakeVersionControlGateway(
-        observed,
-        CommitResult(
-            stdout="commit stdout\n",
-            stderr="commit stderr\n",
-            commit_created=False,
-            commit_sha=None,
-            failure_stage="git_commit",
-        ),
-    )
-
-    dependencies = build_iteration_pipeline_dependencies(
-        _build_runtime_dependencies(observed),
-        gateway,
-    )
-    completion_dependencies = dependencies.completion_phase_dependencies
-
-    assert isinstance(completion_dependencies, _FakeCompletionPhaseDependencies)
-    recorded_completion_dependencies = observed["completion_dependencies"]
-    assert isinstance(recorded_completion_dependencies, dict)
-    outcome = recorded_completion_dependencies["commit_feature_completion"](
-        Path("/tmp/project"),
-        {"expected_commit_subject": "feat: complete FEAT-001"},
-    )
-
-    assert outcome == (False, "git_commit", "commit stdout\ncommit stderr\n")
-    assert observed["commit_requests"] == [
-        CommitRequest(
-            workspace_path=Path("/tmp/project"),
-            message="feat: complete FEAT-001",
-            stage_all=True,
-            allow_empty=False,
-        )
-    ]
-
-
 def test_app_factory_persist_iteration_report_writes_json_payload_to_journal() -> None:
     """Bootstrap report persistence should stay on the journal port boundary."""
     observed: dict[str, object] = {}
@@ -272,47 +221,6 @@ def test_app_factory_persist_iteration_report_writes_json_payload_to_journal() -
             "payload": {"result": "failed", "mode": "json"},
         }
     ]
-
-
-def test_app_factory_build_iteration_pipeline_dependencies_wires_completion_commit() -> None:
-    """Bootstrap should assemble the pipeline dependency bundle with commit wiring."""
-    observed: dict[str, object] = {}
-    runtime_dependencies = _build_runtime_dependencies(observed)
-    gateway = _FakeVersionControlGateway(
-        observed,
-        CommitResult(
-            stdout="ok\n",
-            stderr="",
-            commit_created=True,
-            commit_sha="abc1234",
-            failure_stage=None,
-        ),
-    )
-
-    dependencies = build_iteration_pipeline_dependencies(
-        runtime_dependencies,
-        gateway,
-    )
-
-    assert dependencies.describe_action is runtime_dependencies.describe_action
-    completion_dependencies = dependencies.completion_phase_dependencies
-    assert isinstance(completion_dependencies, _FakeCompletionPhaseDependencies)
-    recorded_completion_dependencies = observed["completion_dependencies"]
-    assert isinstance(recorded_completion_dependencies, dict)
-    assert recorded_completion_dependencies["commit_feature_completion"](
-        Path("/tmp/project"),
-        {"expected_commit_subject": "feat: complete FEAT-001"},
-    ) == (True, None, "ok\n")
-    assert observed["commit_requests"] == [
-        CommitRequest(
-            workspace_path=Path("/tmp/project"),
-            message="feat: complete FEAT-001",
-            stage_all=True,
-            allow_empty=False,
-        )
-    ]
-
-
 def test_app_factory_build_iteration_report_publisher_uses_journal_dependency(
     monkeypatch,
 ) -> None:

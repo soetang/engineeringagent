@@ -274,6 +274,32 @@ def test_repo_layer_contracts_rule_blocks_deleted_application_checks_runtime(
     ]
 
 
+def test_repo_layer_contracts_rule_blocks_deleted_runtime_feature_iteration_workflow(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Fail when the deleted adapter-owned feature iteration workflow reappears."""
+    legacy_workflow = (
+        tmp_path
+        / "src"
+        / "engineeringagent"
+        / "adapters"
+        / "runtime"
+        / "feature_iteration_workflow.py"
+    )
+    legacy_workflow.parent.mkdir(parents=True, exist_ok=True)
+    legacy_workflow.write_text("", encoding="utf-8")
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert payload["rule_id"] == "architecture.repo-layer-contracts"
+    assert payload["violations"] == [
+        "src/engineeringagent/adapters/runtime/feature_iteration_workflow.py: deleted legacy module path must remain absent"
+    ]
+
+
 def test_repo_layer_contracts_rule_blocks_prompt_models_in_port_repository_module(
     tmp_path: Path,
     repo_root: Path,

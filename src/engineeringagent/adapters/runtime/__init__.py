@@ -6,11 +6,6 @@ from .execution import (
     RuntimeRunLoopExecutor,
     run_loop_controller,
 )
-from .feature_iteration_workflow import (
-    RuntimeFeatureIterationDependencies,
-    RuntimeFeatureIterationWorkflow,
-    build_iteration_pipeline_dependencies,
-)
 from .iteration_phases import (
     CompletionPhaseDependencies,
     GatePhaseDependencies,
@@ -39,10 +34,7 @@ __all__ = [
     "CompletionPhaseDependencies",
     "GatePhaseDependencies",
     "ReviewerPhaseDependencies",
-    "RuntimeFeatureIterationDependencies",
-    "RuntimeFeatureIterationWorkflow",
     "RuntimeRunLoopExecutor",
-    "build_iteration_pipeline_dependencies",
     "build_loop_run",
     "build_run_config",
     "enforce_worktree_precondition",

@@ -24,8 +24,6 @@ from engineeringagent.adapters.progress import (
 )
 from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
 from engineeringagent.adapters.runtime import (
-    RuntimeFeatureIterationDependencies,
-    RuntimeFeatureIterationWorkflow,
     RuntimeRunLoopExecutor,
 )
 from engineeringagent.adapters.runtime.iteration_phases import (
@@ -43,6 +41,7 @@ from engineeringagent.adapters.vcs import (
 )
 from engineeringagent.application import (
     ChecksService,
+    FeatureIterationDependencies,
     FeatureIterationService,
     GuidanceService,
     InitWorkspaceService,
@@ -104,9 +103,9 @@ def _build_iteration_report_publisher(
 def _build_feature_iteration_dependencies(
     *,
     clock: Clock,
-) -> RuntimeFeatureIterationDependencies:
+) -> FeatureIterationDependencies:
     """Build the default runtime seam bundle for feature iterations."""
-    return RuntimeFeatureIterationDependencies(
+    return FeatureIterationDependencies(
         clock=clock,
         evaluate_initial_feature_load=filesystem_feature_state.evaluate_initial_feature_load,
         describe_action=runtime_support.describe_action,
@@ -178,15 +177,13 @@ class AppFactory:
     def build_feature_iteration_service(self) -> FeatureIterationService:
         """Create the default feature-iteration application service."""
         return FeatureIterationService(
-            workflow=RuntimeFeatureIterationWorkflow(
-                version_control_gateway=self.build_version_control_gateway(),
-                iteration_report_publisher=_build_iteration_report_publisher(
-                    self.build_progress_journal()
-                ),
-                runtime_dependencies=_build_feature_iteration_dependencies(
-                    clock=self.build_clock(),
-                ),
-            ).run,
+            version_control_gateway=self.build_version_control_gateway(),
+            iteration_report_publisher=_build_iteration_report_publisher(
+                self.build_progress_journal()
+            ),
+            dependencies=_build_feature_iteration_dependencies(
+                clock=self.build_clock(),
+            ),
         )
 
     def build_guidance_service(self) -> GuidanceService:

@@ -48,6 +48,7 @@ DELETED_MODULE_PATHS = {
     "src/engineeringagent/adapters/documents/filesystem_feature_selection.py",
     "src/engineeringagent/adapters/agents/configured_agent_runner.py",
     "src/engineeringagent/adapters/quality/runtime_checks_runner.py",
+    "src/engineeringagent/adapters/runtime/feature_iteration_workflow.py",
     "src/engineeringagent/application/contracts/__init__.py",
     "src/engineeringagent/application/contracts/checks.py",
     "src/engineeringagent/application/contracts/feature_iteration.py",
