@@ -336,9 +336,9 @@ def test_spec_validate_gate_helper_builds_expected_patterns() -> None:
     assert _spec_validate_gate("docs") == {
         "run": "engineeringagent validate",
         "on_change": [
-            "docs/spec/**/*.yaml",
-            "docs/spec/**/*.yml",
-            "docs/spec/**/*.json",
+            "docs/specifications/**/*.yaml",
+            "docs/specifications/**/*.yml",
+            "docs/specifications/**/*.json",
         ],
     }
 

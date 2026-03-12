@@ -172,7 +172,9 @@ def test_init_prompts_when_docs_exists(
 
     assert result.exit_code == 0
     assert "docs_dir=docs" in result.stdout
-    assert (tmp_path / "docs" / "spec" / "features" / ".gitkeep").exists()
+    assert (
+        tmp_path / "docs" / "specifications" / "features" / ".gitkeep"
+    ).exists()
 
 
 def test_init_can_use_separate_docs_directory(tmp_path: Path) -> None:
@@ -193,9 +195,13 @@ def test_init_can_use_separate_docs_directory(tmp_path: Path) -> None:
 
     assert result.exit_code == 0
     assert "docs_dir=docs.engineeringagent" in result.stdout
-    assert not (tmp_path / "docs" / "spec").exists()
+    assert not (tmp_path / "docs" / "specifications").exists()
     assert (
-        tmp_path / "docs.engineeringagent" / "spec" / "features" / ".gitkeep"
+        tmp_path
+        / "docs.engineeringagent"
+        / "specifications"
+        / "features"
+        / ".gitkeep"
     ).exists()
 
 
@@ -325,7 +331,7 @@ def test_validate_and_run_all_use_separate_docs_root(tmp_path: Path) -> None:
     feature_path = (
         tmp_path
         / "docs.engineeringagent"
-        / "spec"
+        / "specifications"
         / "features"
         / "FEAT-950-separate-docs-root"
         / "spec.yaml"
@@ -362,7 +368,7 @@ def test_validate_and_run_all_use_separate_docs_root(tmp_path: Path) -> None:
     assert "[dry-run] Resolved 1 feature file(s)." in run_result.stdout
     assert "feature=FEAT-950" in run_result.stdout
     assert (
-        "docs.engineeringagent/spec/features/FEAT-950-separate-docs-root/spec.yaml"
+        "docs.engineeringagent/specifications/features/FEAT-950-separate-docs-root/spec.yaml"
         in run_result.stdout
     )
 

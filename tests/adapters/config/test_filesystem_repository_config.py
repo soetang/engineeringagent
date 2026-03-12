@@ -12,7 +12,7 @@ def test_loader_uses_defaults_when_no_config_files_exist(tmp_path: Path) -> None
     config = load_repository_config(tmp_path)
 
     assert config.paths.docs_root == "docs"
-    assert config.paths.specifications_root == "docs/spec"
+    assert config.paths.specifications_root == "docs/specifications"
     assert config.paths.harness_root == "harness"
     assert config.paths.harness_checks_path == "harness/checks.yaml"
     assert config.agents.backend is None
@@ -69,7 +69,7 @@ def test_loader_derives_specifications_root_from_configured_docs_root(
     config = load_repository_config(tmp_path)
 
     assert config.paths.docs_root == "product-docs"
-    assert config.paths.specifications_root == "product-docs/spec"
+    assert config.paths.specifications_root == "product-docs/specifications"
 
 
 def test_loader_rejects_invalid_backend_values(tmp_path: Path) -> None:

@@ -58,7 +58,7 @@ def load_repository_config(project_root: Path) -> RepositoryConfig:
         paths_payload.setdefault("harness_checks_path", checks_payload[_CHECKS_PATH_KEY])
     if "specifications_root" not in paths_payload and "docs_root" in paths_payload:
         paths_payload["specifications_root"] = (
-            Path(str(paths_payload["docs_root"])) / "spec"
+            Path(str(paths_payload["docs_root"])) / "specifications"
         ).as_posix()
 
     agents_payload = dict(merged_payload.get(_AGENTS_TABLE, {}))

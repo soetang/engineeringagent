@@ -50,9 +50,9 @@ def _spec_validate_gate(docs_dir_normalized: str) -> dict[str, object]:
     return {
         "run": "engineeringagent validate",
         "on_change": [
-            f"{docs_dir_normalized}/spec/**/*.yaml",
-            f"{docs_dir_normalized}/spec/**/*.yml",
-            f"{docs_dir_normalized}/spec/**/*.json",
+            f"{docs_dir_normalized}/specifications/**/*.yaml",
+            f"{docs_dir_normalized}/specifications/**/*.yml",
+            f"{docs_dir_normalized}/specifications/**/*.json",
         ],
     }
 
@@ -172,8 +172,8 @@ def build_baseline_scaffold_manifest(
             backend_id=resolved_backend_id,
             agent_model=agent_model,
         ),
-        f"{docs_dir_normalized}/spec/features/.gitkeep": "",
-        f"{docs_dir_normalized}/spec/features_done/.gitkeep": "",
+        f"{docs_dir_normalized}/specifications/features/.gitkeep": "",
+        f"{docs_dir_normalized}/specifications/features_done/.gitkeep": "",
         "harness/checks.yaml": _build_checks_yaml(),
         "harness/fitness_functions/rules.yaml": yaml.safe_dump(
             {

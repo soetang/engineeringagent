@@ -33,7 +33,7 @@ class RepositoryPaths(BaseModel):
     docs_root: str = "docs"
     harness_root: str = "harness"
     progress_root: str = ".engineeringagent/progress"
-    specifications_root: str = "docs/spec"
+    specifications_root: str = "docs/specifications"
     harness_checks_path: str = "harness/checks.yaml"
 
     @field_validator(

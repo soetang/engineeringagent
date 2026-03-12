@@ -113,12 +113,14 @@ def test_resolve_harness_root_uses_pyproject_tool_engineeringagent(
     assert resolve_harness_root(tmp_path) == (tmp_path / "custom/harness")
 
 
-def test_resolve_specifications_root_defaults_to_legacy_docs_spec(
+def test_resolve_specifications_root_defaults_to_docs_specifications(
     tmp_path: Path,
 ) -> None:
-    """Specifications root falls back to the current bundled feature location."""
+    """Specifications root falls back to the canonical architecture location."""
 
-    assert resolve_specifications_root(tmp_path) == (tmp_path / "docs" / "spec")
+    assert resolve_specifications_root(tmp_path) == (
+        tmp_path / "docs" / "specifications"
+    )
 
 
 def test_resolve_specifications_root_prefers_engineeringagent_toml_over_pyproject(
