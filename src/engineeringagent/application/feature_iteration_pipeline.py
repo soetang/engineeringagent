@@ -1,4 +1,4 @@
-"""Loop runtime iteration pipeline helpers."""
+"""Application-owned feature iteration pipeline helpers."""
 
 from __future__ import annotations
 
@@ -8,8 +8,7 @@ from typing import Any, Callable, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from engineeringagent.agents import describe_action
-from engineeringagent.application import (
+from .feature_iteration_contracts import (
     CommandTiming,
     CompletionCommitOutcome,
     FeatureIterationInputs,
@@ -33,11 +32,13 @@ from engineeringagent.domain.specification import (
 )
 from engineeringagent.specs import feature_progress_kind
 
-from engineeringagent.adapters.runtime.iteration_phases import (
-    CompletionPhaseDependencies,
-    GatePhaseDependencies,
-    ReviewerPhaseDependencies,
-)
+
+def _default_describe_action(project_root: Path, action: str, structured: bool) -> str:
+    """Return a stable fallback action label for injected runtime telemetry."""
+
+    del project_root
+    suffix = " --structured" if structured else ""
+    return f"engineeringagent {action}{suffix}"
 
 
 class IterationPipelineDependencies(BaseModel):
@@ -46,6 +47,7 @@ class IterationPipelineDependencies(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     evaluate_initial_feature_load: Callable[[Path], InitialFeatureLoadOutcome]
+    describe_action: Callable[[Path, str, bool], str] = _default_describe_action
     ready_for_active_iteration: Callable[[str, dict[str, Any] | None], bool]
     touch_active_feature_for_iteration: Callable[[dict[str, Any], Path], None]
     run_implement_step: Callable[
@@ -64,10 +66,10 @@ class IterationPipelineDependencies(BaseModel):
         [Path, Path], tuple[bool, Path | None, str | None]
     ]
     run_gate_phase: Callable[
-        [FeatureIterationInputs, bool, Path | None, GatePhaseDependencies],
+        [FeatureIterationInputs, bool, Path | None, Any],
         GatePhaseOutcome,
     ]
-    gate_phase_dependencies: GatePhaseDependencies
+    gate_phase_dependencies: Any
     run_verification_phase: Callable[
         [FeatureIterationInputs, list[str]],
         VerificationPhaseOutcome,
@@ -78,22 +80,22 @@ class IterationPipelineDependencies(BaseModel):
             dict[str, Any] | None,
             bool,
             Path | None,
-            ReviewerPhaseDependencies,
+            Any,
         ],
         ReviewerPhaseOutcome,
     ]
-    reviewer_phase_dependencies: ReviewerPhaseDependencies
+    reviewer_phase_dependencies: Any
     run_completion_commit_phase: Callable[
         [
             FeatureIterationInputs,
             dict[str, Any] | None,
             bool,
             Path | None,
-            CompletionPhaseDependencies,
+            Any,
         ],
         CompletionCommitOutcome,
     ]
-    completion_phase_dependencies: CompletionPhaseDependencies
+    completion_phase_dependencies: Any
 
 
 class _PipelineState(BaseModel):
@@ -162,6 +164,7 @@ def _timed_phase(
 def _record_implement_timing(
     state: _PipelineState,
     iteration_inputs: FeatureIterationInputs,
+    dependencies: IterationPipelineDependencies,
     started_epoch_sec: int,
     ended_epoch_sec: int,
 ) -> None:
@@ -172,10 +175,10 @@ def _record_implement_timing(
     state.command_timings.append(
         CommandTiming(
             phase="implement",
-            command=describe_action(
+            command=dependencies.describe_action(
                 iteration_inputs.project_root,
-                action="implement",
-                structured=False,
+                "implement",
+                False,
             ),
             started_at=utc_iso_from_epoch_sec(started_epoch_sec),
             ended_at=utc_iso_from_epoch_sec(ended_epoch_sec),
@@ -369,7 +372,7 @@ def _run_gate_phase_if_passed(
     state: _PipelineState,
     iteration_inputs: FeatureIterationInputs,
     dependencies: IterationPipelineDependencies,
-    gate_phase_dependencies: GatePhaseDependencies,
+    gate_phase_dependencies: Any,
 ) -> None:
     should_run_gate = state.result == "passed" or state.verification_failed
     if not should_run_gate:
@@ -399,7 +402,7 @@ def _run_reviewer_phase_if_passed(
     iteration_inputs: FeatureIterationInputs,
     dependencies: IterationPipelineDependencies,
     post_feature: dict[str, Any] | None,
-    reviewer_phase_dependencies: ReviewerPhaseDependencies,
+    reviewer_phase_dependencies: Any,
 ) -> None:
     if state.result != "passed":
         return
@@ -533,6 +536,7 @@ def run_feature_iteration_pipeline(
         _record_implement_timing(
             state,
             iteration_inputs,
+            dependencies,
             started_epoch_sec,
             ended_epoch_sec,
         )
@@ -662,10 +666,10 @@ def run_feature_iteration_pipeline(
         feedback=state.next_feedback,
         completion_output=state.completion_output,
     )
-    implement_step = describe_action(
+    implement_step = dependencies.describe_action(
         iteration_inputs.project_root,
-        action="implement",
-        structured=False,
+        "implement",
+        False,
     )
     return IterationReport(
         completed=state.completed,

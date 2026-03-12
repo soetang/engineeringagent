@@ -127,15 +127,15 @@ def test_repo_layer_contracts_rule_blocks_runtime_support_loop_agent_runner_brid
     ]
 
 
-def test_repo_layer_contracts_rule_allows_loop_runtime_models_bridge(
+def test_repo_layer_contracts_rule_allows_application_iteration_pipeline_contracts(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Allow the loop-runtime import of application-owned iteration models."""
-    loop_runtime_root = tmp_path / "src" / "engineeringagent" / "loop_runtime"
-    loop_runtime_root.mkdir(parents=True, exist_ok=True)
-    (loop_runtime_root / "iteration.py").write_text(
-        "from engineeringagent.application import IterationReport\n",
+    """Allow the application iteration pipeline to import local contracts."""
+    application_root = tmp_path / "src" / "engineeringagent" / "application"
+    application_root.mkdir(parents=True, exist_ok=True)
+    (application_root / "feature_iteration_pipeline.py").write_text(
+        "from .feature_iteration_contracts import IterationReport\n",
         encoding="utf-8",
     )
 

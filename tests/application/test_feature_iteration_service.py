@@ -163,6 +163,9 @@ def _build_service(
         return "progress/run-feature-FEAT-001.txt"
 
     support_module = SimpleNamespace(
+        describe_action=lambda project_root, action, structured: (
+            f"{project_root}:{action}:{structured}"
+        ),
         run_implement_step=object(),
         git_head_short=lambda _project_root: "abc1234",
         print_summary=lambda _summary: None,
@@ -285,6 +288,7 @@ def test_feature_iteration_service_executes_runtime_pipeline() -> None:
     dependencies = observed["iteration_dependencies"]
     assert isinstance(dependencies, dict)
     runtime = service._runtime_dependencies.runtime
+    assert dependencies["describe_action"] is runtime.support.describe_action
     assert dependencies["run_implement_step"] is runtime.support.run_implement_step
     assert observer_dependencies.git_head_resolver is runtime.support.git_head_short
     assert observer_dependencies.print_summary is runtime.support.print_summary

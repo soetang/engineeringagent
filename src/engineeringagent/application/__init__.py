@@ -39,6 +39,10 @@ from .feature_iteration_contracts import (
     ReviewerPhaseOutcome,
     VerificationPhaseOutcome,
 )
+from .feature_iteration_pipeline import (
+    IterationPipelineDependencies,
+    run_feature_iteration_pipeline,
+)
 from .prompt_builder import ImplementationPromptRequest, PromptBuilder
 from .run_loop_service import RunLoopRequest, RunLoopResult, RunLoopService
 from .validation_service import (
@@ -75,6 +79,7 @@ __all__ = [
     "InitialFeatureLoadOutcome",
     "ImplementationPromptRequest",
     "IterationOutcome",
+    "IterationPipelineDependencies",
     "IterationReport",
     "IterationSummaryInputs",
     "IterationTelemetryInputs",
@@ -91,6 +96,7 @@ __all__ = [
     "ValidationResult",
     "ValidationService",
     "VerificationPhaseOutcome",
+    "run_feature_iteration_pipeline",
     "run_implement_step_from_inputs",
     "RecoverWorkspaceRequest",
     "RecoverWorkspaceResult",

@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-import engineeringagent.loop_runtime.iteration as iteration_module
+import engineeringagent.application.feature_iteration_pipeline as iteration_module
 from engineeringagent.adapters.runtime.execution import run_loop_controller
 from engineeringagent.adapters.runtime.loop_run_context import (
     LoopRun,
@@ -31,7 +31,7 @@ from engineeringagent.loop_runtime.feature_state import (
     archive_completed_feature,
     restore_archived_feature,
 )
-from engineeringagent.loop_runtime.iteration import (
+from engineeringagent.application.feature_iteration_pipeline import (
     IterationPipelineDependencies,
     _timed_phase,
     run_feature_iteration_pipeline,
@@ -54,6 +54,7 @@ def _passing_implement_result(output: str = "") -> ImplementStepResult:
 def test_iteration_report_model_captures_pipeline_observer_contract(
     tmp_path: Path,
 ) -> None:
+    """Capture the observer-facing iteration report contract."""
     iteration_inputs = FeatureIterationInputs(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-116.yaml",
@@ -105,6 +106,7 @@ def test_iteration_report_model_captures_pipeline_observer_contract(
 def test_iteration_pipeline_carries_passed_reviewer_feedback_to_continue(
     tmp_path: Path,
 ) -> None:
+    """Forward reviewer approval feedback into continuation guidance."""
     reviewer_feedback = json.dumps(
         {
             "kind": "reviewer_feedback",
@@ -225,6 +227,7 @@ def test_iteration_pipeline_carries_passed_reviewer_feedback_to_continue(
 def test_iteration_pipeline_tracks_bundled_plan_phase_progress_metadata(
     tmp_path: Path,
 ) -> None:
+    """Prefer bundled plan phase metadata when reporting progress."""
     feature_data = {
         **base_feature(status="in_progress"),
         "planning_tier": "planned",
@@ -355,6 +358,7 @@ def test_iteration_pipeline_tracks_bundled_plan_phase_progress_metadata(
 def test_iteration_pipeline_keeps_phase_progress_kind_when_bundled_plan_is_invalid(
     tmp_path: Path,
 ) -> None:
+    """Keep phase progress reporting when the bundled plan is invalid."""
     feature_data = {
         **base_feature(status="in_progress"),
         "planning_tier": "planned",
@@ -481,6 +485,7 @@ def test_iteration_pipeline_keeps_phase_progress_kind_when_bundled_plan_is_inval
 def test_iteration_pipeline_tracks_direct_bundle_feature_progress_metadata(
     tmp_path: Path,
 ) -> None:
+    """Report direct bundled feature progress when no plan exists."""
     project_root = tmp_path
     feature_path = (
         project_root / "docs" / "spec" / "features" / "FEAT-901-direct-bundle" / "spec.yaml"
@@ -600,6 +605,7 @@ def test_iteration_pipeline_tracks_direct_bundle_feature_progress_metadata(
 def test_iteration_pipeline_uses_feature_progress_kind_without_plan_unit(
     tmp_path: Path,
 ) -> None:
+    """Fall back to feature progress when there is no active plan unit."""
     feature_data = base_feature(status="in_progress")
     feature_data["subtasks"] = []
     iteration_inputs = FeatureIterationInputs(
@@ -703,6 +709,7 @@ def test_iteration_pipeline_uses_feature_progress_kind_without_plan_unit(
 def test_iteration_pipeline_recovers_phase_metadata_from_parseable_invalid_plan_contract(
     tmp_path: Path,
 ) -> None:
+    """Recover phase metadata from invalid-but-parseable plan contracts."""
     feature_data = {
         **base_feature(status="in_progress"),
         "planning_tier": "planned",
@@ -830,6 +837,7 @@ def test_iteration_pipeline_recovers_phase_metadata_from_parseable_invalid_plan_
 def test_iteration_pipeline_preserves_phase_metadata_after_bundled_archive(
     tmp_path: Path,
 ) -> None:
+    """Preserve phase metadata when the feature is archived in-iteration."""
     feature_data = {
         **base_feature(status="in_progress"),
         "planning_tier": "planned",
@@ -998,6 +1006,7 @@ def test_iteration_pipeline_preserves_phase_metadata_after_bundled_archive(
 def test_iteration_pipeline_clears_archived_selection_after_reviewer_rollback(
     tmp_path: Path,
 ) -> None:
+    """Clear archived selection state after a reviewer rollback."""
     feature_data = {
         **base_feature(status="in_progress"),
         "planning_tier": "planned",
@@ -1146,6 +1155,7 @@ def test_iteration_pipeline_clears_archived_selection_after_reviewer_rollback(
 def test_iteration_pipeline_clears_archived_selection_after_completion_rollback(
     tmp_path: Path,
 ) -> None:
+    """Clear archived selection state after a completion rollback."""
     iteration_inputs = FeatureIterationInputs(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-999.yaml",
@@ -1254,6 +1264,7 @@ def test_iteration_pipeline_clears_archived_selection_after_completion_rollback(
 def test_iteration_pipeline_archives_before_running_done_transition_verification(
     tmp_path: Path,
 ) -> None:
+    """Run done-transition verification against the archived feature path."""
     iteration_inputs = FeatureIterationInputs(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-078.yaml",
@@ -1434,6 +1445,7 @@ def test_iteration_pipeline_runs_gate_phase_after_verification_failure_cases(
     pre_subtask: dict[str, Any],
     post_subtask: dict[str, Any],
 ) -> None:
+    """Keep gate execution active after verification failures for feedback."""
     iteration_inputs = FeatureIterationInputs(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-137.yaml",
@@ -1548,6 +1560,7 @@ def test_iteration_pipeline_runs_gate_phase_after_verification_failure_cases(
 def test_iteration_pipeline_collects_changed_paths_once_per_iteration(
     tmp_path: Path,
 ) -> None:
+    """Collect changed paths once across gate and reviewer phases."""
     iteration_inputs = FeatureIterationInputs(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-999.yaml",
@@ -1673,6 +1686,7 @@ def test_iteration_pipeline_collects_changed_paths_once_per_iteration(
 def test_iteration_pipeline_records_phase_timings(
     tmp_path: Path, monkeypatch: Any
 ) -> None:
+    """Record timing metadata for each pipeline phase."""
     times = iter(
         [
             1000.0,  # iteration started
@@ -1693,16 +1707,6 @@ def test_iteration_pipeline_records_phase_timings(
         ]
     )
     monkeypatch.setattr(iteration_module.time, "time", lambda: next(times))
-    monkeypatch.setattr(
-        iteration_module,
-        "describe_action",
-        lambda _project_root, *, action, structured: (
-            "backend implement label"
-            if (action, structured) == ("implement", False)
-            else "unexpected"
-        ),
-    )
-
     iteration_inputs = FeatureIterationInputs(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-065.yaml",
@@ -1721,6 +1725,11 @@ def test_iteration_pipeline_records_phase_timings(
                     failed_gate=None,
                     feedback=None,
                 )
+            ),
+            describe_action=lambda _project_root, action, structured: (
+                "backend implement label"
+                if (action, structured) == ("implement", False)
+                else "unexpected"
             ),
             ready_for_active_iteration=lambda *_args, **_kwargs: True,
             touch_active_feature_for_iteration=lambda *_args, **_kwargs: None,
@@ -1829,6 +1838,7 @@ def test_iteration_pipeline_records_phase_timings(
 def test_timed_phase_clamps_ended_at_when_clock_skews_backwards(
     monkeypatch: Any,
 ) -> None:
+    """Clamp phase timing when the clock moves backwards."""
     times = iter([10.0, 9.0])
     monkeypatch.setattr(iteration_module.time, "time", lambda: next(times))
 
@@ -1850,6 +1860,7 @@ def test_timed_phase_clamps_ended_at_when_clock_skews_backwards(
 def test_run_loop_controller_forwards_looprun_with_resolved_snapshot(
     tmp_path: Path,
 ) -> None:
+    """Forward resolved loop-run snapshots into the execution controller."""
     resolved_feature_path = (
         tmp_path / "docs" / "spec" / "features" / "FEAT-078-looprun.yaml"
     )
@@ -1887,6 +1898,7 @@ def test_run_loop_controller_rejects_invalid_max_iterations(
     tmp_path: Path,
     capsys: Any,
 ) -> None:
+    """Reject non-positive max-iteration values in the loop controller."""
     code = run_loop_controller(
         LoopRun(
             config=RunConfig(

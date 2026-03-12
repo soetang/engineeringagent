@@ -21,9 +21,12 @@ from engineeringagent.adapters.runtime.iteration_phases import (
     run_reviewer_phase,
     run_verification_phase,
 )
-from engineeringagent.application import feature_iteration_contracts
+from engineeringagent.application import (
+    feature_iteration_contracts,
+    feature_iteration_pipeline,
+)
 from engineeringagent.bootstrap import runtime_support
-from engineeringagent.loop_runtime import feature_state, iteration
+from engineeringagent.loop_runtime import feature_state
 
 
 def build_feature_iteration_runtime_dependencies() -> (
@@ -34,7 +37,7 @@ def build_feature_iteration_runtime_dependencies() -> (
         checks=SimpleNamespace(collect_changed_paths=collect_changed_paths),
         support=runtime_support,
         feature_state=feature_state,
-        iteration=iteration,
+        iteration=feature_iteration_pipeline,
         models=feature_iteration_contracts,
         phases=SimpleNamespace(
             GatePhaseDependencies=GatePhaseDependencies,

@@ -20,7 +20,10 @@ def _script_path(repo_root: Path) -> Path:
 
 
 def _write_iteration_module(project_root: Path, body: str) -> None:
-    path = project_root / "src/engineeringagent/loop_runtime/iteration.py"
+    path = (
+        project_root
+        / "src/engineeringagent/application/feature_iteration_pipeline.py"
+    )
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(body, encoding="utf-8")
 
@@ -46,6 +49,7 @@ def _violations(result: dict[str, object]) -> list[str]:
 
 
 def test_iteration_pipeline_observer_decoupling_rule_configuration() -> None:
+    """Verify the observer-decoupling rule is registered in the manifest."""
     manifest_path = Path("harness/fitness_functions/rules.yaml")
     manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
 
@@ -73,6 +77,7 @@ def test_iteration_pipeline_observer_decoupling_rule_passes_without_side_effect_
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
+    """Pass when the pipeline module avoids console and telemetry sinks."""
     _write_iteration_module(
         tmp_path,
         "\n".join(
@@ -98,6 +103,7 @@ def test_iteration_pipeline_observer_decoupling_rule_fails_on_console_and_teleme
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
+    """Fail when the pipeline module performs observer side effects directly."""
     _write_iteration_module(
         tmp_path,
         "\n".join(
@@ -120,17 +126,17 @@ def test_iteration_pipeline_observer_decoupling_rule_fails_on_console_and_teleme
     violations = _violations(payload)
     assert len(violations) == 3
     assert any(
-        "src/engineeringagent/loop_runtime/iteration.py:4 invokes console output sink 'print'"
+        "src/engineeringagent/application/feature_iteration_pipeline.py:4 invokes console output sink 'print'"
         in violation
         for violation in violations
     )
     assert any(
-        "src/engineeringagent/loop_runtime/iteration.py:5 invokes console output sink 'print_summary'"
+        "src/engineeringagent/application/feature_iteration_pipeline.py:5 invokes console output sink 'print_summary'"
         in violation
         for violation in violations
     )
     assert any(
-        "src/engineeringagent/loop_runtime/iteration.py:6 invokes telemetry sink 'write_iteration_telemetry'"
+        "src/engineeringagent/application/feature_iteration_pipeline.py:6 invokes telemetry sink 'write_iteration_telemetry'"
         in violation
         for violation in violations
     )

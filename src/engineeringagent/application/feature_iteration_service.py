@@ -117,6 +117,7 @@ class FeatureIterationService:
                 evaluate_initial_feature_load=(
                     runtime.feature_state.evaluate_initial_feature_load
                 ),
+                describe_action=runtime.support.describe_action,
                 ready_for_active_iteration=(
                     runtime.feature_state.ready_for_active_iteration
                 ),
