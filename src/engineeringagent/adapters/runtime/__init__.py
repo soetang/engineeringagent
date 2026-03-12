@@ -1,6 +1,10 @@
 """Runtime execution adapters for transitional loop orchestration."""
 
-from .execution import RuntimeFeatureIterationExecutor, RuntimeRunLoopExecutor
+from .execution import (
+    RuntimeFeatureIterationExecutor,
+    RuntimeRunLoopExecutor,
+    run_loop_controller,
+)
 from .loop_run_builder import (
     RunConfigOptions,
     build_loop_run,
@@ -21,5 +25,6 @@ __all__ = [
     "build_loop_run",
     "build_run_config",
     "enforce_worktree_precondition",
+    "run_loop_controller",
     "run_selected_feature_iterations",
 ]

@@ -25,7 +25,6 @@ CONFIGURED_AGENT_RUNNER_ALLOWED_ROOTS = (
     SRC_ROOT / "adapters" / "agents",
 )
 AGENTS_ROOT = SRC_ROOT / "agents"
-BOOTSTRAP_RUNTIME_EXECUTION_PATH = SRC_ROOT / "bootstrap" / "runtime_execution.py"
 BOOTSTRAP_RUNTIME_SUPPORT_PATH = SRC_ROOT / "bootstrap" / "runtime_support.py"
 DELETED_MODULE_PATHS = {
     "src/engineeringagent/changed_paths.py",
@@ -71,6 +70,7 @@ DELETED_MODULE_PATHS = {
     "src/engineeringagent/application/validation/service.py",
     "src/engineeringagent/application/workspace_recovery/__init__.py",
     "src/engineeringagent/application/workspace_recovery/service.py",
+    "src/engineeringagent/bootstrap/runtime_execution.py",
     "src/engineeringagent/feature_commit.py",
     "src/engineeringagent/checks/changed_paths.py",
     "src/engineeringagent/git/__init__.py",
@@ -472,32 +472,6 @@ def _json_format_boundary_violations(path: Path) -> list[str]:
     return violations
 
 
-def _bootstrap_runtime_execution_violations(path: Path) -> list[str]:
-    rel_path = path.as_posix()
-    module = _parse_module(path)
-    if isinstance(module, str):
-        return [module]
-
-    violations = _forbidden_import_violations(
-        module,
-        rel_path=rel_path,
-        forbidden_modules=("engineeringagent.loop",),
-        message=(
-            "bootstrap runtime execution must not import the legacy engineeringagent.loop facade; "
-            "use engineeringagent.bootstrap.runtime_support and engineeringagent.loop_runtime modules directly"
-        ),
-    )
-    executor_classes = {"RuntimeRunLoopExecutor", "RuntimeFeatureIterationExecutor"}
-    for node in module.body:
-        if not isinstance(node, ast.ClassDef) or node.name not in executor_classes:
-            continue
-        violations.append(
-            f"{rel_path}: bootstrap runtime execution must not declare {node.name}; "
-            "move runtime executor implementations under engineeringagent.adapters.runtime"
-        )
-    return violations
-
-
 def _bootstrap_runtime_support_violations(path: Path) -> list[str]:
     rel_path = path.as_posix()
     module = _parse_module(path)
@@ -561,10 +535,6 @@ def _repo_layer_contract_violations() -> list[str]:
     for path in _iter_python_modules(LOOP_RUNTIME_ROOT):
         violations.extend(_loop_runtime_violations(path))
 
-    if BOOTSTRAP_RUNTIME_EXECUTION_PATH.is_file():
-        violations.extend(
-            _bootstrap_runtime_execution_violations(BOOTSTRAP_RUNTIME_EXECUTION_PATH)
-        )
     if BOOTSTRAP_RUNTIME_SUPPORT_PATH.is_file():
         violations.extend(
             _bootstrap_runtime_support_violations(BOOTSTRAP_RUNTIME_SUPPORT_PATH)

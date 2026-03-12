@@ -15,7 +15,7 @@ from engineeringagent.ports.version_control import VersionControlGateway
 def test_runtime_run_loop_executor_uses_runtime_run_builder(
     monkeypatch,
 ) -> None:
-    """Bootstrap runtime execution should build run context through adapter-owned runtime helpers."""
+    """Runtime execution adapter should build run context through adapter-owned helpers."""
 
     observed: dict[str, object] = {}
 

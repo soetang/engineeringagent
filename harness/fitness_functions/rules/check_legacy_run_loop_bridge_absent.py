@@ -19,7 +19,7 @@ _REMOVED_PATHS = (
     Path("src/engineeringagent/adapters/loop/runtime_run_loop_executor.py"),
 )
 _REMEDIATION = (
-    "keep runtime loop execution wiring under engineeringagent.bootstrap.runtime_execution "
+    "keep runtime loop execution wiring under engineeringagent.adapters.runtime.execution "
     "and do not restore the deleted engineeringagent.adapters.loop package."
 )
 

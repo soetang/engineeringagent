@@ -23,9 +23,7 @@ from engineeringagent.domain.audit import (
     ImplementStepResult,
     fallback_implement_progress_envelope,
 )
-from engineeringagent.bootstrap.runtime_execution import (
-    run_loop_controller as _run_loop,
-)
+from engineeringagent.adapters.runtime.execution import run_loop_controller as _run_loop
 from engineeringagent.loop import RunConfigOptions, build_loop_run, build_run_config
 from engineeringagent.presentation import cli as cli_module
 

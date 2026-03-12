@@ -15,6 +15,7 @@ if TYPE_CHECKING:
         build_loop_run,
         build_run_config,
         enforce_worktree_precondition,
+        run_loop_controller,
         run_selected_feature_iterations,
     )
     from .app_factory import AppFactory
@@ -29,8 +30,6 @@ if TYPE_CHECKING:
         build_telemetry_observer,
         publish_iteration_report,
     )
-    from .runtime_execution import run_loop_controller
-
 __all__ = [
     "AppFactory",
     "ConsoleObserverDependencies",
@@ -91,7 +90,5 @@ def __getattr__(name: str) -> Any:
     if name in _RUN_LOOP_EXPORTS:
         return getattr(import_module("engineeringagent.adapters.runtime"), name)
     if name == "run_loop_controller":
-        return import_module(
-            "engineeringagent.bootstrap.runtime_execution"
-        ).run_loop_controller
+        return import_module("engineeringagent.adapters.runtime").run_loop_controller
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

@@ -39,7 +39,7 @@ from engineeringagent.domain.audit import (
 from engineeringagent.application.implementation_step import (
     run_implement_step_from_inputs,
 )
-from engineeringagent.bootstrap.runtime_execution import run_loop_controller
+from engineeringagent.adapters.runtime.execution import run_loop_controller
 from engineeringagent.bootstrap.runtime_support import (
     build_implement_step_runtime_dependencies,
 )
