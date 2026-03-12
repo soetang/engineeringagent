@@ -8,6 +8,7 @@ This file is generated from active manifest-declared fitness rules.
 | --- | --- | --- | --- | --- | --- | --- |
 | `architecture.adapter-root-locality` | error | command | custom | `src/engineeringagent/adapters` | - | Keep adapter implementation modules inside focused adapters subpackages. |
 | `architecture.agents-backends-boundary` | error | command | custom | `src/engineeringagent` | - | Forbid direct backend package usage outside the agents boundary. |
+| `architecture.application-tests-boundary` | error | command | custom | `tests/application` | - | Keep application tests on application/domain/ports contracts instead of legacy checks internals. |
 | `architecture.backend-literal-locality-budget` | error | command | custom | `src/engineeringagent excluding src/engineeringagent/agents/** and src/engineeringagent/checks/**` | `harness/fitness_functions/policies/backend_literal_locality_budget.yaml` | Enforce a zero-budget backend literal locality boundary outside allowed packages. |
 | `architecture.checks-import-surface` | error | command | custom | `src/engineeringagent` | - | Enforce a narrow import surface for engineeringagent.checks. |
 | `architecture.checks-own-prompt-feedback-rendering` | error | command | custom | `src/engineeringagent/loop_runtime/**, src/engineeringagent/loop.py, and src/engineeringagent/prompts/renderer.py` | - | Fail when loop/prompt code performs checks-specific feedback shaping outside checks strategies. |
@@ -17,7 +18,7 @@ This file is generated from active manifest-declared fitness rules.
 | `architecture.harness-src-import-allowlist` | error | command | custom | `harness/fitness_functions` | - | Restrict harness fitness functions to a narrow supported engineeringagent surface. |
 | `architecture.hermetic-fitness-test-isolation` | error | command | custom | `tests/fitness` | `harness/fitness_functions/policies/hermetic_fitness_test_isolation.yaml` | Prevent tests/fitness from scanning the live repository checkout. |
 | `architecture.iteration-pipeline-observer-decoupling` | error | command | custom | `src/engineeringagent/loop_runtime/iteration.py` | - | Keep iteration pipeline free of telemetry and console side effects. |
-| `architecture.legacy-run-loop-bridge-absent` | error | command | custom | `src/engineeringagent/ports/run_loop_executor.py and deleted source files under src/engineeringagent/adapters/loop` | - | Keep removed legacy run-loop bridge source files deleted. |
+| `architecture.legacy-run-loop-bridge-absent` | error | command | custom | `src/engineeringagent/ports/run_loop_executor.py and deleted source files under src/engineeringagent/adapters/loop` | - | Keep the deleted loop adapter package removed. |
 | `architecture.loop-checks-policy-ownership` | error | command | custom | `src/engineeringagent/loop_runtime/** and src/engineeringagent/loop.py` | - | Fail when loop runtime encodes checks group/timing selection policy. |
 | `architecture.loop-checks-result-boundary` | error | command | custom | `src/engineeringagent/loop_runtime/** and src/engineeringagent/loop.py` | - | Fail when loop runtime branches on checks type/group semantics or parses checks-internal payloads. |
 | `architecture.loop-facade-line-budget` | error | command | custom | `src/engineeringagent/loop.py` | - | Enforce a permanent line budget cap for the loop facade. |
@@ -56,6 +57,13 @@ This file is generated from active manifest-declared fitness rules.
 - Rationale: Keeps backend implementations an internal detail behind engineeringagent.agents.run_agent.
 - Remediation: Replace direct engineeringagent.agents.backends imports with engineeringagent.agents.run_agent.
 
+### `architecture.application-tests-boundary`
+
+- Name: Application tests boundary
+- Side-effect free: `true`
+- Rationale: Application-layer tests should exercise the target architecture seams directly so the migration can delete legacy checks surfaces without preserving test-only coupling.
+- Remediation: Replace engineeringagent.checks imports in tests/application with engineeringagent.application, engineeringagent.domain.quality, and engineeringagent.ports contracts.
+
 ### `architecture.backend-literal-locality-budget`
 
 - Name: Backend literal locality budget
@@ -90,8 +98,8 @@ This file is generated from active manifest-declared fitness rules.
 
 - Name: Guidance module locations
 - Side-effect free: `true`
-- Rationale: Moves guidance code toward the target documents adapter package and the target presentation CLI module name while preventing the legacy locations from drifting back in.
-- Remediation: Keep packaged guidance under engineeringagent.adapters.documents and the CLI surface under engineeringagent.presentation.cli.guidance; do not restore the legacy adapters.guidance package or presentation.cli.approach module.
+- Rationale: Moves guidance code toward the target documents adapter package and the target presentation CLI module name while preventing legacy guidance paths from drifting back in.
+- Remediation: Keep guidance-topic repositories under engineeringagent.adapters.documents and the CLI surface under engineeringagent.presentation.cli.guidance; do not restore the legacy packaged-guidance module, adapters.guidance package, or presentation.cli.approach module.
 
 ### `architecture.harness-root-yaml-only`
 
@@ -126,8 +134,8 @@ This file is generated from active manifest-declared fitness rules.
 
 - Name: Legacy run-loop bridge absent
 - Side-effect free: `true`
-- Rationale: The target architecture keeps legacy loop wiring in bootstrap during migration and does not retain a dedicated run-loop executor port or adapter package.
-- Remediation: Keep legacy loop callable wiring in engineeringagent.bootstrap.app_factory and do not restore the deleted run-loop executor port or loop bridge source files under adapters/loop.
+- Rationale: The target architecture keeps runtime loop execution wiring in bootstrap during migration and does not retain a dedicated adapters.loop package.
+- Remediation: Keep runtime loop execution wiring under engineeringagent.bootstrap.runtime_execution and do not restore the deleted engineeringagent.adapters.loop package.
 
 ### `architecture.loop-checks-policy-ownership`
 

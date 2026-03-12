@@ -5,10 +5,12 @@ from pathlib import Path
 import pytest
 
 from engineeringagent.application import ChecksService, RunChecksRequest
-from engineeringagent.checks.contracts import HarnessCheckPhase
-from engineeringagent.checks.results import ChecksRunResult
-from engineeringagent.checks.strategy_contracts import CheckExecutionRecord
-from engineeringagent.domain.quality import HarnessChecksDocument
+from engineeringagent.domain.quality import (
+    CheckExecutionRecord,
+    ChecksRunResult,
+    HarnessCheckPhase,
+    HarnessChecksDocument,
+)
 from engineeringagent.ports import ChecksRunRequest, ValidationFailure
 
 
