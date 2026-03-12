@@ -6,18 +6,6 @@ from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from engineeringagent.adapters.runtime import (
-        LoopRun,
-        RunConfig,
-        RunConfigOptions,
-        RunServices,
-        RunState,
-        build_loop_run,
-        build_run_config,
-        enforce_worktree_precondition,
-        run_loop_controller,
-        run_selected_feature_iterations,
-    )
     from .app_factory import AppFactory
     from .iteration_reporting import (
         ConsoleObserverDependencies,
@@ -41,16 +29,6 @@ __all__ = [
     "build_progress_artifact_observer",
     "build_telemetry_observer",
     "publish_iteration_report",
-    "LoopRun",
-    "RunConfig",
-    "RunConfigOptions",
-    "RunServices",
-    "RunState",
-    "build_loop_run",
-    "build_run_config",
-    "enforce_worktree_precondition",
-    "run_selected_feature_iterations",
-    "run_loop_controller",
 ]
 
 _ITERATION_REPORTING_EXPORTS = {
@@ -65,18 +43,6 @@ _ITERATION_REPORTING_EXPORTS = {
     "publish_iteration_report",
 }
 
-_RUN_LOOP_EXPORTS = {
-    "LoopRun",
-    "RunConfig",
-    "RunConfigOptions",
-    "RunServices",
-    "RunState",
-    "build_loop_run",
-    "build_run_config",
-    "enforce_worktree_precondition",
-    "run_selected_feature_iterations",
-}
-
 
 def __getattr__(name: str) -> Any:
     """Lazily expose bootstrap helpers without forcing the full composition root."""
@@ -87,8 +53,4 @@ def __getattr__(name: str) -> Any:
             import_module("engineeringagent.bootstrap.iteration_reporting"),
             name,
         )
-    if name in _RUN_LOOP_EXPORTS:
-        return getattr(import_module("engineeringagent.adapters.runtime"), name)
-    if name == "run_loop_controller":
-        return import_module("engineeringagent.adapters.runtime").run_loop_controller
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

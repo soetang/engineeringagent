@@ -164,6 +164,20 @@ rules:
       - run
       - python
       - harness/fitness_functions/rules/check_application_tests_boundary.py
+  - rule_id: architecture.bootstrap-runtime-surface
+    name: Bootstrap runtime surface
+    summary: Keep the bootstrap package from proxying adapter runtime exports.
+    rationale: Bootstrap should expose bootstrap-owned composition helpers only instead of re-exporting adapter runtime internals through a legacy compatibility surface.
+    remediation: Remove adapter-runtime re-exports from engineeringagent.bootstrap.__init__ and import adapter runtime helpers from engineeringagent.adapters.runtime at their true ownership boundary.
+    scope: src/engineeringagent/bootstrap/__init__.py
+    severity: error
+    side_effect_free: true
+    adapter: command
+    command:
+      - uv
+      - run
+      - python
+      - harness/fitness_functions/rules/check_bootstrap_runtime_surface.py
   - rule_id: architecture.application-output-boundary
     name: Application output boundary
     summary: Keep direct terminal output out of application modules.

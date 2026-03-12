@@ -11,6 +11,7 @@ This file is generated from active manifest-declared fitness rules.
 | `architecture.application-output-boundary` | error | command | custom | `src/engineeringagent/application` | - | Keep direct terminal output out of application modules. |
 | `architecture.application-tests-boundary` | error | command | custom | `tests/application` | - | Keep application tests on application/domain/ports contracts instead of legacy checks internals. |
 | `architecture.backend-literal-locality-budget` | error | command | custom | `src/engineeringagent excluding src/engineeringagent/agents/** and src/engineeringagent/checks/**` | `harness/fitness_functions/policies/backend_literal_locality_budget.yaml` | Enforce a zero-budget backend literal locality boundary outside allowed packages. |
+| `architecture.bootstrap-runtime-surface` | error | command | custom | `src/engineeringagent/bootstrap/__init__.py` | - | Keep the bootstrap package from proxying adapter runtime exports. |
 | `architecture.checks-import-surface` | error | command | custom | `src/engineeringagent` | - | Enforce a narrow import surface for engineeringagent.checks. |
 | `architecture.checks-own-prompt-feedback-rendering` | error | command | custom | `src/engineeringagent/loop_runtime/**, src/engineeringagent/adapters/runtime/iteration_phases.py, src/engineeringagent/loop.py, and src/engineeringagent/prompts/renderer.py` | - | Fail when loop/prompt code performs checks-specific feedback shaping outside checks strategies. |
 | `architecture.dep-directionality` | error | command | custom | `src/engineeringagent` | `harness/fitness_functions/policies/dependency_directionality.yaml` | Enforce ports-and-adapters dependency direction boundaries across presentation, application, ports, and domain seams. |
@@ -80,6 +81,13 @@ This file is generated from active manifest-declared fitness rules.
 - Side-effect free: `true`
 - Rationale: Keeps backend-coupling tokens localized to backend-owned modules and checks adapters.
 - Remediation: Remove backend-specific literals from core modules or move backend-specific behavior under engineeringagent.agents or engineeringagent.checks.
+
+### `architecture.bootstrap-runtime-surface`
+
+- Name: Bootstrap runtime surface
+- Side-effect free: `true`
+- Rationale: Bootstrap should expose bootstrap-owned composition helpers only instead of re-exporting adapter runtime internals through a legacy compatibility surface.
+- Remediation: Remove adapter-runtime re-exports from engineeringagent.bootstrap.__init__ and import adapter runtime helpers from engineeringagent.adapters.runtime at their true ownership boundary.
 
 ### `architecture.checks-import-surface`
 
