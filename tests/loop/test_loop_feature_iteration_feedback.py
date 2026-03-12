@@ -9,7 +9,7 @@ from typing import Any
 import pytest
 import yaml
 
-import engineeringagent.loop as loop_module
+import engineeringagent.adapters.runtime.loop_run_builder as loop_run_builder_module
 from tests.loop._feedback_envelope import parse_feedback_envelope_from_prompt
 from tests.loop.feature_iteration_feedback_support import (
     advance_bundled_plan_prompt_state,
@@ -64,7 +64,7 @@ def test_commit_failure_feedback_still_injected_into_next_prompt(
         return subprocess.CompletedProcess(["opencode"], 0, stdout="ok\n", stderr="")
 
     prompts = install_prompt_capture_agent(monkeypatch, prompt_handler)
-    monkeypatch.setattr(loop_module, "preflight", lambda **_: True)
+    monkeypatch.setattr(loop_run_builder_module, "preflight", lambda **_: True)
 
     code = run_loop(
         project_root=project_root,
@@ -130,7 +130,7 @@ def test_bundled_phase_verification_failure_feedback_is_injected_into_next_promp
             prompt_count=prompt_count,
         ),
     )
-    monkeypatch.setattr(loop_module, "preflight", lambda **_: True)
+    monkeypatch.setattr(loop_run_builder_module, "preflight", lambda **_: True)
     install_shell_command_results(
         monkeypatch,
         [
@@ -244,7 +244,7 @@ def test_bundled_phase_verification_failure_feedback_replaces_previous_feedback(
         del command
         return next(verification_results)
 
-    monkeypatch.setattr(loop_module, "preflight", lambda **_: True)
+    monkeypatch.setattr(loop_run_builder_module, "preflight", lambda **_: True)
     monkeypatch.setattr(
         "engineeringagent.adapters.runtime.iteration_phases.run_shell_command",
         fake_run_shell_command,
@@ -361,7 +361,7 @@ def test_bundled_phase_verification_failure_feedback_replaces_previous_command_c
         del command
         return next(verification_results)
 
-    monkeypatch.setattr(loop_module, "preflight", lambda **_: True)
+    monkeypatch.setattr(loop_run_builder_module, "preflight", lambda **_: True)
     monkeypatch.setattr(
         "engineeringagent.adapters.runtime.iteration_phases.run_shell_command",
         fake_run_shell_command,
@@ -428,7 +428,7 @@ def test_gate_failure_feedback_includes_fitness_remediation_guidance(
         monkeypatch,
         lambda _prompt_count: _mark_feature_done(feature_path),
     )
-    monkeypatch.setattr(loop_module, "preflight", lambda **_: True)
+    monkeypatch.setattr(loop_run_builder_module, "preflight", lambda **_: True)
     code = run_loop(
         project_root=project_root,
         feature_paths=[str(feature_path)],
@@ -489,7 +489,7 @@ def test_spec_validate_failure_feedback_round_trips_to_retry_prompt(
         monkeypatch,
         lambda _prompt_count: _mark_feature_done(feature_path),
     )
-    monkeypatch.setattr(loop_module, "preflight", lambda **_: True)
+    monkeypatch.setattr(loop_run_builder_module, "preflight", lambda **_: True)
     code = run_loop(
         project_root=project_root,
         feature_paths=[str(feature_path)],
@@ -549,7 +549,7 @@ def test_non_validation_gate_failure_feedback_round_trips_to_retry_prompt(
         monkeypatch,
         lambda _prompt_count: _mark_feature_done(feature_path),
     )
-    monkeypatch.setattr(loop_module, "preflight", lambda **_: True)
+    monkeypatch.setattr(loop_run_builder_module, "preflight", lambda **_: True)
     code = run_loop(
         project_root=project_root,
         feature_paths=[str(feature_path)],
@@ -663,7 +663,7 @@ def test_gate_failure_feedback_replaces_previous_feedback(
         return real_run(command, check=check, **kwargs)
 
     patch_run_agent_with_fake(monkeypatch, fake_subprocess_run)
-    monkeypatch.setattr(loop_module, "preflight", lambda **_: True)
+    monkeypatch.setattr(loop_run_builder_module, "preflight", lambda **_: True)
     code = run_loop(
         project_root=project_root,
         feature_paths=[str(feature_path)],
@@ -755,7 +755,7 @@ def test_gate_failure_feedback_replaces_previous_output_for_same_command(
         return real_run(command, check=check, **kwargs)
 
     patch_run_agent_with_fake(monkeypatch, fake_subprocess_run)
-    monkeypatch.setattr(loop_module, "preflight", lambda **_: True)
+    monkeypatch.setattr(loop_run_builder_module, "preflight", lambda **_: True)
 
     code = run_loop(
         project_root=project_root,
@@ -843,7 +843,7 @@ def test_gate_failure_feedback_is_truncated_before_prompt_injection(
         return real_run(command, check=check, **kwargs)
 
     patch_run_agent_with_fake(monkeypatch, fake_subprocess_run)
-    monkeypatch.setattr(loop_module, "preflight", lambda **_: True)
+    monkeypatch.setattr(loop_run_builder_module, "preflight", lambda **_: True)
 
     code = run_loop(
         project_root=project_root,

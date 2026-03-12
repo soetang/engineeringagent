@@ -7,7 +7,6 @@ from typing import Any
 import pytest
 import yaml
 
-import engineeringagent.loop as loop_module
 from engineeringagent.adapters.runtime import enforce_worktree_precondition
 import engineeringagent.adapters.runtime.loop_run_builder as loop_run_builder_module
 from engineeringagent.application.feature_iteration import ImplementStepResult
@@ -64,11 +63,11 @@ def test_run_loop_archives_done_active_feature(
     init_git_repo(project_root)
 
     monkeypatch.setattr(
-        loop_module,
+        runtime_support_module,
         "run_implement_step",
         lambda *_args, **_kwargs: passing_implement_result(),
     )
-    monkeypatch.setattr(loop_module, "preflight", lambda **_: True)
+    monkeypatch.setattr(loop_run_builder_module, "preflight", lambda **_: True)
 
     code = run_loop(
         project_root=project_root,
@@ -122,12 +121,6 @@ def test_enforce_worktree_precondition_reads_git_status_once(
             return WorktreeStatus(dirty=False, stdout="", stderr="")
 
     gateway = StubVersionControlGateway()
-    monkeypatch.setattr(
-        loop_module,
-        "_build_version_control_gateway",
-        lambda _project_root: gateway,
-    )
-
     code = enforce_worktree_precondition(
         tmp_path,
         allow_dirty=False,
@@ -259,7 +252,7 @@ def test_run_loop_archived_done_without_completion_commit_fails(
         "_choose_feature_with_selector",
         fake_choose_feature_with_selector,
     )
-    monkeypatch.setattr(loop_module, "preflight", lambda **_: True)
+    monkeypatch.setattr(loop_run_builder_module, "preflight", lambda **_: True)
 
     code = run_loop(
         project_root=project_root,
@@ -324,8 +317,7 @@ def test_run_loop_all_selected_feature_moved_to_features_done_continues_to_next(
         return passing_implement_result()
 
     monkeypatch.setattr(runtime_support_module, "run_implement_step", fake_run_implement_step)
-    monkeypatch.setattr(loop_module, "run_implement_step", fake_run_implement_step)
-    monkeypatch.setattr(loop_module, "preflight", lambda **_: True)
+    monkeypatch.setattr(loop_run_builder_module, "preflight", lambda **_: True)
 
     code = run_loop(
         project_root=project_root,
@@ -436,8 +428,7 @@ def test_run_loop_fails_when_preexisting_done_active_feature_trips_validate(
         return passing_implement_result()
 
     monkeypatch.setattr(runtime_support_module, "run_implement_step", fake_run_implement_step)
-    monkeypatch.setattr(loop_module, "run_implement_step", fake_run_implement_step)
-    monkeypatch.setattr(loop_module, "preflight", lambda **_: True)
+    monkeypatch.setattr(loop_run_builder_module, "preflight", lambda **_: True)
     code = run_loop(
         project_root=project_root,
         feature_paths=[str(feature_path), str(preexisting_done_path)],

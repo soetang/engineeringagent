@@ -5,7 +5,9 @@ from pathlib import Path
 
 import yaml
 
-from engineeringagent.loop import _run_feature_iteration
+from engineeringagent.application import FeatureIterationRequest
+from engineeringagent.application.feature_iteration import IterationOutcome
+from engineeringagent.bootstrap import AppFactory
 from engineeringagent.adapters.documents.filesystem_feature_state import (
     refresh_feature_after_implement,
 )
@@ -23,6 +25,28 @@ from tests.loop.feature_iteration_support import (
     write_set_done_and_duplicate_plan_phase_script,
     write_set_plan_phase_done_script,
 )
+
+
+def _run_feature_iteration(
+    *,
+    project_root: Path,
+    feature_path: Path,
+    run_all: bool,
+    attempt: int,
+    feedback: str | None,
+    verbose_output: bool,
+) -> IterationOutcome:
+    result = AppFactory(project_root).build_feature_iteration_service().run(
+        FeatureIterationRequest(
+            project_root=project_root,
+            feature_path=feature_path,
+            run_all=run_all,
+            attempt=attempt,
+            feedback=feedback,
+            verbose_output=verbose_output,
+        )
+    )
+    return IterationOutcome.model_validate(result.model_dump())
 
 
 def test_verification_runs_for_newly_done_bundled_plan_phase(tmp_path: Path) -> None:

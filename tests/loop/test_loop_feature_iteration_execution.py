@@ -7,9 +7,9 @@ from typing import Any
 import pytest
 import yaml
 
-import engineeringagent.loop as loop_module
 import engineeringagent.presentation.presenters.terminal as presentation_module
 from engineeringagent.application.feature_iteration import IterationSummaryInputs
+from engineeringagent.bootstrap import runtime_support as runtime_support_module
 from tests.loop.feature_iteration_support import (
     FEATURE_LOG_REF,
     RUNS_LOG_REF,
@@ -608,7 +608,7 @@ def test_run_loop_plain_output_when_not_tty(
     monkeypatch.delenv("NO_COLOR", raising=False)
     monkeypatch.setenv("TERM", "xterm-256color")
 
-    loop_module.print_summary(
+    runtime_support_module.print_summary(
         IterationSummaryInputs(
             feature_id="FEAT-900",
             result="passed",
@@ -632,7 +632,7 @@ def test_run_loop_styled_output_when_tty(
     monkeypatch.delenv("NO_COLOR", raising=False)
     monkeypatch.setenv("TERM", "xterm-256color")
 
-    loop_module.print_summary(
+    runtime_support_module.print_summary(
         IterationSummaryInputs(
             feature_id="FEAT-900",
             result="passed",
@@ -656,7 +656,7 @@ def test_run_loop_no_color_env_does_not_disable_styling(
     monkeypatch.setenv("NO_COLOR", "1")
     monkeypatch.setenv("TERM", "xterm-256color")
 
-    loop_module.print_summary(
+    runtime_support_module.print_summary(
         IterationSummaryInputs(
             feature_id="FEAT-900",
             result="failed",
@@ -681,7 +681,7 @@ def test_run_loop_iteration_output_uses_emoji_contract(
     monkeypatch.delenv("NO_COLOR", raising=False)
     monkeypatch.setenv("TERM", "xterm-256color")
 
-    loop_module.print_summary(
+    runtime_support_module.print_summary(
         IterationSummaryInputs(
             feature_id="FEAT-900",
             result="passed",
@@ -692,7 +692,7 @@ def test_run_loop_iteration_output_uses_emoji_contract(
             implement_step="opencode run --agent engineeringagent",
         )
     )
-    loop_module.print_summary(
+    runtime_support_module.print_summary(
         IterationSummaryInputs(
             feature_id="FEAT-900",
             result="failed",
@@ -704,7 +704,7 @@ def test_run_loop_iteration_output_uses_emoji_contract(
             log_path=FEATURE_LOG_REF,
         )
     )
-    loop_module.print_summary(
+    runtime_support_module.print_summary(
         IterationSummaryInputs(
             feature_id="FEAT-900",
             result="passed",

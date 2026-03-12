@@ -19,6 +19,19 @@ MAX_LINE_BUDGET = 650
 def main() -> int:
     """Run the loop facade line-budget fitness rule."""
     loop_path = Path("src/engineeringagent/loop.py")
+    if not loop_path.exists():
+        emit_fitness_result(
+            FitnessRuleResult(
+                contract_version=CONTRACT_VERSION,
+                rule_id=RULE_ID,
+                status=RuleStatus.PASS,
+                severity=RuleSeverity.ERROR,
+                summary="Loop facade is absent; legacy line budget is retired.",
+                violations=[],
+            )
+        )
+        return 0
+
     lines = len(loop_path.read_text(encoding="utf-8").splitlines())
 
     violations: list[str] = []
