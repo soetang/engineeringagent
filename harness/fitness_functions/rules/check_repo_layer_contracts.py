@@ -87,6 +87,7 @@ DELETED_MODULE_PATHS = {
     "src/engineeringagent/prompts/feedback_envelope.py",
     "src/engineeringagent/prompts/templates/__init__.py",
     "src/engineeringagent/config.py",
+    "src/engineeringagent/loop_runtime/__init__.py",
     "src/engineeringagent/loop_runtime/controller.py",
     "src/engineeringagent/loop_runtime/feature_plan_state.py",
     "src/engineeringagent/loop_runtime/implement.py",
@@ -108,6 +109,7 @@ DELETED_DIRECTORY_PATHS = {
     "src/engineeringagent/application/validation",
     "src/engineeringagent/application/workspace_recovery",
     "src/engineeringagent/application/feature_iteration",
+    "src/engineeringagent/loop_runtime",
 }
 LEGACY_MODULES = (
     "engineeringagent.changed_paths",
