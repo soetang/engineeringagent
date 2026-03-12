@@ -42,7 +42,7 @@ def test_preflight_noops_for_non_opencode_backends(
         encoding="utf-8",
     )
     monkeypatch.setattr(
-        "engineeringagent.agents.registry._BACKEND_FACTORIES",
+        "engineeringagent.adapters.agents.registry._BACKEND_FACTORIES",
         {"custom": lambda structured: structured},
     )
 
@@ -71,7 +71,7 @@ def test_describe_action_falls_back_to_backend_and_action_for_unknown_backend(
         encoding="utf-8",
     )
     monkeypatch.setattr(
-        "engineeringagent.agents.registry._BACKEND_FACTORIES",
+        "engineeringagent.adapters.agents.registry._BACKEND_FACTORIES",
         {"custom": lambda structured: structured},
     )
 

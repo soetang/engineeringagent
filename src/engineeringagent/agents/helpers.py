@@ -10,7 +10,7 @@ from engineeringagent.agents.opencode_preflight import (
     output_has_permission_rejection,
     run_permission_probe,
 )
-from engineeringagent.agents.registry import resolve_backend_id
+from engineeringagent.adapters.agents.registry import resolve_backend_id
 from engineeringagent.adapters.progress import paths as progress_paths
 
 

@@ -18,8 +18,8 @@ from engineeringagent.agents.helpers import (
     describe_action,
     preflight,
 )
-from engineeringagent.agents.runtime import run_agent
-from engineeringagent.agents.registry import (
+from engineeringagent.adapters.agents.runtime import run_agent
+from engineeringagent.adapters.agents.registry import (
     build_backend_scaffold_manifest,
     default_backend_id,
     list_backends,

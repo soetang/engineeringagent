@@ -85,7 +85,7 @@ def _build_version_control_gateway(_project_root: Path) -> GitCliVersionControlG
 
 
 def _build_agent_runner(_project_root: Path) -> ConfiguredAgentRunner:
-    return ConfiguredAgentRunner()
+    return ConfiguredAgentRunner(run_agent_fn=agent_runtime.run_agent)
 
 
 def _build_prompt_builder(project_root: Path) -> PromptBuilder:

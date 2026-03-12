@@ -8,11 +8,11 @@ import pytest
 from pydantic import BaseModel
 
 from engineeringagent import agents
-from engineeringagent.agents import registry as registry_module
 from engineeringagent.agents.contracts import AgentRunRequest
-from engineeringagent.agents.runtime import resolve_agent_strategy
-import engineeringagent.agents.runtime as agents_runtime_module
-from engineeringagent.agents.registry import get_backend_factory
+from engineeringagent.adapters.agents import registry as registry_module
+from engineeringagent.adapters.agents.registry import get_backend_factory
+from engineeringagent.adapters.agents.runtime import resolve_agent_strategy
+import engineeringagent.adapters.agents.runtime as agents_runtime_module
 
 
 @dataclass(frozen=True)

@@ -115,6 +115,44 @@ def test_repo_layer_contracts_rule_blocks_deleted_configured_agent_runner_module
     ]
 
 
+def test_repo_layer_contracts_rule_blocks_deleted_agents_registry_module(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Fail when the removed legacy agents registry module reappears."""
+    legacy_module = tmp_path / "src" / "engineeringagent" / "agents" / "registry.py"
+    legacy_module.parent.mkdir(parents=True, exist_ok=True)
+    legacy_module.write_text("", encoding="utf-8")
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert payload["rule_id"] == "architecture.repo-layer-contracts"
+    assert payload["violations"] == [
+        "src/engineeringagent/agents/registry.py: deleted legacy module path must remain absent"
+    ]
+
+
+def test_repo_layer_contracts_rule_blocks_deleted_agents_runtime_module(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Fail when the removed legacy agents runtime module reappears."""
+    legacy_module = tmp_path / "src" / "engineeringagent" / "agents" / "runtime.py"
+    legacy_module.parent.mkdir(parents=True, exist_ok=True)
+    legacy_module.write_text("", encoding="utf-8")
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert payload["rule_id"] == "architecture.repo-layer-contracts"
+    assert payload["violations"] == [
+        "src/engineeringagent/agents/runtime.py: deleted legacy module path must remain absent"
+    ]
+
+
 def test_repo_layer_contracts_rule_blocks_deleted_runtime_checks_runner_module(
     tmp_path: Path,
     repo_root: Path,
@@ -371,31 +409,6 @@ def test_repo_layer_contracts_rule_blocks_deleted_application_quality_package(
     assert payload["violations"] == [
         "src/engineeringagent/application/quality/checks_service.py: deleted legacy module path must remain absent",
         "src/engineeringagent/application/quality: deleted legacy directory path must remain absent",
-    ]
-
-
-def test_repo_layer_contracts_rule_blocks_deleted_legacy_feature_iteration_package(
-    tmp_path: Path,
-    repo_root: Path,
-) -> None:
-    """Fail when the removed nested feature-iteration package reappears."""
-    legacy_root = (
-        tmp_path
-        / "src"
-        / "engineeringagent"
-        / "application"
-        / "feature_iteration"
-    )
-    legacy_root.mkdir(parents=True, exist_ok=True)
-    (legacy_root / "__init__.py").write_text("", encoding="utf-8")
-
-    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
-
-    assert proc.returncode == 0
-    assert payload["status"] == "fail"
-    assert payload["rule_id"] == "architecture.repo-layer-contracts"
-    assert payload["violations"] == [
-        "src/engineeringagent/application/feature_iteration: deleted legacy directory path must remain absent"
     ]
 
 
