@@ -15,4 +15,3 @@ alias_topic_roots:
 forbidden_test_paths:
   - tests/application/test_feature_iteration_pipeline.py
   - tests/application/test_implementation_step.py
-  - tests/application/test_feature_iteration_service.py

@@ -138,23 +138,18 @@ def test_test_layout_module_mirroring_rule_flags_flat_test_for_nested_module(
     ]
 
 
-def test_test_layout_module_mirroring_rule_flags_flat_test_for_nested_service_module(
+def test_test_layout_module_mirroring_rule_allows_root_test_for_root_service_module(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Reject the legacy flat service test once feature-iteration tests are nested."""
+    """Allow a root-level service test when the source workflow module lives at root."""
     _write_file(tmp_path, "tests/application/test_feature_iteration_service.py", "")
     _write_file(tmp_path, "tests/__init__.py", "")
     _write_file(tmp_path, "tests/conftest.py", "")
     _write_file(tmp_path, "src/engineeringagent/application/__init__.py", "")
     _write_file(
         tmp_path,
-        "src/engineeringagent/application/feature_iteration/__init__.py",
-        "",
-    )
-    _write_file(
-        tmp_path,
-        "src/engineeringagent/application/feature_iteration/service_runtime.py",
+        "src/engineeringagent/application/feature_iteration_service.py",
         "",
     )
 
@@ -165,7 +160,5 @@ def test_test_layout_module_mirroring_rule_flags_flat_test_for_nested_service_mo
     )
 
     assert proc.returncode == 0
-    assert result["status"] == "fail"
-    assert _violations(result) == [
-        "tests/application/test_feature_iteration_service.py: legacy flat test path is forbidden; move it under the mirrored application subpackage."
-    ]
+    assert result["status"] == "pass"
+    assert _violations(result) == []
