@@ -6,7 +6,6 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from engineeringagent.adapters.agents import AgentBackendError
 from engineeringagent.domain.quality import ChangedPathsResult
 from engineeringagent.checks.reviewers.engine import (
     DECISION_REQUEST_CHANGES,
@@ -20,6 +19,7 @@ from engineeringagent.checks.reviewers.engine import (
     record_reviewer_approval,
     run_reviewer,
 )
+from engineeringagent.ports import AgentBackendError
 
 
 def test_reviewer_decision_envelope_requires_non_empty_summary() -> None:

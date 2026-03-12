@@ -16,7 +16,7 @@ from engineeringagent.adapters.agents import (
 from engineeringagent.adapters.agents.codex import CodexAgentBackend
 from engineeringagent.adapters.agents.codex import backend as backend_module
 from engineeringagent.adapters.agents.codex import client as client_module
-from engineeringagent.adapters.agents.contracts import AgentRunRequest
+from engineeringagent.ports import AgentRunRequest
 
 
 def _complete_with_output(

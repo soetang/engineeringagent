@@ -6,7 +6,7 @@ from typing import Any
 
 from pydantic import TypeAdapter, ValidationError
 
-from engineeringagent.adapters.agents.contracts import (
+from engineeringagent.ports import (
     AgentBackendError,
     AgentBackendFailureDetails,
     AgentBackendRunResult,

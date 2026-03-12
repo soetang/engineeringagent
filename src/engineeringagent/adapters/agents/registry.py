@@ -6,10 +6,10 @@ from collections.abc import Callable
 from pathlib import Path
 
 from engineeringagent.adapters.config import resolve_agents_backend_id
+from engineeringagent.ports import RequestRunAgentBackend
 
 from .codex import CodexAgentBackend
 from .codex.scaffold import build_codex_scaffold_manifest
-from .contracts import RequestRunAgentBackend
 from .opencode import OpenCodeAgentBackend
 from .opencode.scaffold import build_opencode_scaffold_manifest
 

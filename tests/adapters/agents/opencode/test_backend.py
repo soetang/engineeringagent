@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from engineeringagent.adapters.agents import AgentBackendError
 from engineeringagent.adapters.agents.opencode import OpenCodeAgentBackend
 from engineeringagent.adapters.agents.opencode import client as client_module
-from engineeringagent.adapters.agents.contracts import AgentRunRequest
+from engineeringagent.ports import AgentRunRequest
 
 
 class _Proc:

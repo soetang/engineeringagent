@@ -12,10 +12,7 @@ from engineeringagent.checks.reviewers.engine import (
     ReviewerRunRequest,
     run_reviewer,
 )
-from engineeringagent.adapters.agents import (
-    AgentBackendError,
-    AgentOutputValidationError,
-)
+from engineeringagent.ports import AgentBackendError, AgentOutputValidationError
 
 FEATURE_050_PATH = Path("docs/spec/features/FEAT-050/spec.yaml")
 FEATURE_070_PATH = Path("docs/spec/features/FEAT-070/spec.yaml")

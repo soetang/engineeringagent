@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, TypeVar, overload
 
-from .contracts import AgentRunRequest, RequestRunAgentBackend
+from engineeringagent.ports import AgentRunRequest, RequestRunAgentBackend
 
 from .registry import get_backend_factory, resolve_backend_id
 

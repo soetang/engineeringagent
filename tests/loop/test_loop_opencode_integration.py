@@ -20,11 +20,8 @@ from engineeringagent.adapters.agents.opencode.permissions import (
 from engineeringagent.adapters.progress import paths as progress_paths
 from engineeringagent.bootstrap import AppFactory
 from engineeringagent.bootstrap import runtime_support as runtime_support_module
-from engineeringagent.adapters.agents import (
-    AgentBackendError,
-    AgentBackendFailureDetails,
-)
 from engineeringagent.domain.audit import ImplementProgressEnvelope
+from engineeringagent.ports import AgentBackendError, AgentBackendFailureDetails
 from tests.loop.feature_iteration_support import copy_canonical_prompts
 from tests.loop._feedback_envelope import parse_feedback_envelope_from_prompt
 

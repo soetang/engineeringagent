@@ -1,3 +1,5 @@
+"""Backend-owned agent contracts shared across the canonical ports layer."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -5,44 +7,16 @@ from typing import Any, Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict
 
+from .agent_runner import AgentRunRequest
+
 
 class AgentBackendRunResult(BaseModel):
-    """Backend response used by `run_agent`.
-
-    `session_id` is intentionally not part of the public `run_agent` contract.
-    It exists only so `run_agent` can do bounded same-session followups when a
-    backend supports sessions.
-    """
+    """Backend response used by normalized agent execution."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     text: str
     session_id: str | None = None
-
-
-class AgentRunRequest(BaseModel):
-    """Normalized run-agent request shared by text and structured execution."""
-
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-    project_root: Path
-    prompt: str
-    output_type: Any = str
-    max_validation_retries: int = 2
-
-
-@runtime_checkable
-class RequestRunAgentBackend(Protocol):
-    """Single-path backend contract keyed by `AgentRunRequest`."""
-
-    @property
-    def name(self) -> str:
-        """Return backend identifier used in typed errors."""
-        raise NotImplementedError
-
-    def run_request(self, request: AgentRunRequest) -> Any:
-        """Execute one normalized request and return text or parsed payload."""
-        raise NotImplementedError
 
 
 class AgentBackendFailureDetails(BaseModel):
@@ -54,6 +28,20 @@ class AgentBackendFailureDetails(BaseModel):
     stdout: str | None = None
     stderr: str | None = None
     command_args: list[str] | None = None
+
+
+@runtime_checkable
+class RequestRunAgentBackend(Protocol):
+    """Single-path backend contract keyed by ``AgentRunRequest``."""
+
+    @property
+    def name(self) -> str:
+        """Return backend identifier used in typed errors."""
+        raise NotImplementedError
+
+    def run_request(self, request: AgentRunRequest) -> Any:
+        """Execute one normalized request and return text or parsed payload."""
+        raise NotImplementedError
 
 
 @runtime_checkable

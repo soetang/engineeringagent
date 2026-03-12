@@ -3,13 +3,14 @@
 import importlib
 from collections.abc import Callable
 
-from engineeringagent.ports import AgentRunRequest, AgentRunner
-from .contracts import (
+from engineeringagent.ports import (
     AgentBackend,
     AgentBackendError,
     AgentBackendFailureDetails,
     AgentBackendRunResult,
     AgentOutputValidationError,
+    AgentRunRequest,
+    AgentRunner,
     RequestRunAgentBackend,
 )
 from .helpers import classify_backend_exception, describe_action, preflight

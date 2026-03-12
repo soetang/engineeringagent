@@ -6,8 +6,8 @@ import subprocess
 from pathlib import Path
 
 from engineeringagent.adapters.progress import paths as progress_paths
+from engineeringagent.ports import AgentBackendError
 
-from .contracts import AgentBackendError
 from .opencode.client import DEFAULT_OPENCODE_AGENT
 from .opencode.permissions import (
     PERMISSION_REMEDIATION_HINT,

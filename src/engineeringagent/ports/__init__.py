@@ -4,6 +4,14 @@ from engineeringagent.domain.audit import ProgressEvent
 from engineeringagent.domain.quality import HarnessCheckPhase
 from engineeringagent.domain.quality import ChecksRunResult
 
+from .agent_backend import (
+    AgentBackend,
+    AgentBackendError,
+    AgentBackendFailureDetails,
+    AgentBackendRunResult,
+    AgentOutputValidationError,
+    RequestRunAgentBackend,
+)
 from .agent_runner import AgentRunRequest, AgentRunner
 from .checks_catalog_repository import (
     ChecksCatalogRepository,
@@ -50,6 +58,11 @@ from .version_control import (
 __all__ = [
     "AgentRunRequest",
     "AgentRunner",
+    "AgentBackend",
+    "AgentBackendError",
+    "AgentBackendFailureDetails",
+    "AgentBackendRunResult",
+    "AgentOutputValidationError",
     "BaselineScaffoldOptions",
     "CommitRequest",
     "CommitResult",
@@ -75,6 +88,7 @@ __all__ = [
     "PromptDefinition",
     "PromptDefinitionRepository",
     "PromptInterpolation",
+    "RequestRunAgentBackend",
     "RunLoopExecutionRequest",
     "RunLoopExecutor",
     "RepositoryValidationRequest",

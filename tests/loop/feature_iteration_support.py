@@ -15,10 +15,6 @@ from typer.testing import CliRunner
 
 import engineeringagent.adapters.agents.helpers as agent_helpers
 from engineeringagent.bootstrap import runtime_support as runtime_support_module
-from engineeringagent.adapters.agents import (
-    AgentBackendError,
-    AgentBackendFailureDetails,
-)
 from engineeringagent.adapters.agents import ConfiguredAgentRunner
 from engineeringagent.adapters.agents.opencode.permissions import (
     PermissionProbeResult,
@@ -27,6 +23,7 @@ from engineeringagent.application import RunLoopRequest
 from engineeringagent.application.feature_iteration import ImplementStepResult
 from engineeringagent.bootstrap import AppFactory
 from engineeringagent.domain.audit import fallback_implement_progress_envelope
+from engineeringagent.ports import AgentBackendError, AgentBackendFailureDetails
 from engineeringagent.presentation import cli as cli_module
 
 
