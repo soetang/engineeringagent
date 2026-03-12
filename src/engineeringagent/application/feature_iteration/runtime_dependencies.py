@@ -7,7 +7,10 @@ from typing import Any, Callable
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.ports import Clock
+from engineeringagent.ports import Clock, ProgressJournal, VersionControlGateway
+
+from .contracts import IterationReport
+from .pipeline import IterationPipelineDependencies
 
 
 class FeatureIterationRuntimeDependencies(BaseModel):
@@ -40,5 +43,12 @@ class FeatureIterationRuntimeDependencies(BaseModel):
     print_summary: Callable[[Any], None]
     observer_dependencies_type: Any
     write_iteration_telemetry: Callable[..., str]
-    build_iteration_report_observers: Callable[[Any], Any]
-    publish_iteration_report: Callable[[Any, Any], Any]
+    build_iteration_pipeline_dependencies: Callable[
+        ["FeatureIterationRuntimeDependencies", VersionControlGateway],
+        IterationPipelineDependencies,
+    ]
+    build_iteration_report_observers: Callable[
+        ["FeatureIterationRuntimeDependencies", ProgressJournal],
+        Any,
+    ]
+    publish_iteration_report: Callable[[IterationReport, Any], Any]

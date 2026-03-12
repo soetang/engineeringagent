@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Callable, cast
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from engineeringagent.ports import PromptDefinition, PromptInterpolation
@@ -60,7 +62,7 @@ PROMPT_DEFINITION = PromptDefinition(
     token_budget_hint=6000,
     input_model=ImplementationPromptInput,
     output_model=ImplementationPromptOutputV1,
-    renderer=_render,
+    renderer=cast(Callable[[BaseModel], str], _render),
     interpolations=(
         PromptInterpolation(
             name="feature_id",

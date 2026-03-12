@@ -13,12 +13,13 @@ from engineeringagent.application.feature_iteration import (
     IterationTelemetryInputs,
     IterationPipelineDependencies,
     PhaseTiming,
-    commit_feature_completion,
-    persist_iteration_report,
 )
 from engineeringagent.application import FeatureIterationService
-from engineeringagent.bootstrap.iteration_reporting import DefaultObserverDependencies
-from engineeringagent.domain.audit import ProgressEvent
+from engineeringagent.domain.audit import fallback_implement_progress_envelope, ProgressEvent
+from engineeringagent.domain.specification import (
+    InitialFeatureLoadOutcome,
+    PostImplementFeatureOutcome,
+)
 from engineeringagent.ports import CommitRequest, CommitResult, DiffSummary, WorktreeStatus
 
 
@@ -141,8 +142,37 @@ def _build_service(
         observed["dependencies"] = dependencies
         return "iteration-report"
 
-    def _fake_build_iteration_report_observers(dependencies: object) -> object:
-        observed["default_observer_dependencies"] = dependencies
+    def _fake_build_iteration_pipeline_dependencies(
+        runtime_dependencies: object,
+        version_control_gateway: object,
+    ) -> IterationPipelineDependencies:
+        observed["pipeline_builder_runtime_dependencies"] = runtime_dependencies
+        observed["pipeline_builder_version_control_gateway"] = version_control_gateway
+        return IterationPipelineDependencies(
+            clock=_FakeClock(),
+            evaluate_initial_feature_load=evaluate_initial_feature_load,
+            describe_action=describe_action,
+            ready_for_active_iteration=ready_for_active_iteration,
+            touch_active_feature_for_iteration=touch_active_feature_for_iteration,
+            run_implement_step=run_implement_step,
+            refresh_feature_after_implement=refresh_feature_after_implement,
+            should_archive_selected_feature=should_archive_selected_feature,
+            archive_completed_feature=archive_completed_feature,
+            run_gate_phase=run_gate_phase,
+            gate_phase_dependencies=_FakeGatePhaseDependencies(observed),
+            run_verification_phase=run_verification_phase,
+            run_reviewer_phase=run_reviewer_phase,
+            reviewer_phase_dependencies=_FakeReviewerPhaseDependencies(observed),
+            run_completion_commit_phase=run_completion_commit_phase,
+            completion_phase_dependencies=_FakeCompletionPhaseDependencies(observed),
+        )
+
+    def _fake_build_iteration_report_observers(
+        runtime_dependencies: object,
+        progress_journal: object,
+    ) -> object:
+        observed["observer_builder_runtime_dependencies"] = runtime_dependencies
+        observed["observer_builder_progress_journal"] = progress_journal
         return ("observer",)
 
     def _fake_publish_iteration_report(report: str, observers: object) -> object:
@@ -163,21 +193,39 @@ def _build_service(
     describe_action = lambda project_root, action, structured: (  # noqa: E731
         f"{project_root}:{action}:{structured}"
     )
-    run_implement_step = lambda *args, **kwargs: None  # noqa: E731
+    run_implement_step = lambda *args, **kwargs: (  # noqa: E731
+        True,
+        None,
+        "",
+        fallback_implement_progress_envelope(),
+        False,
+    )
     git_head_short = lambda _project_root: "abc1234"  # noqa: E731
     print_summary = lambda _summary: None  # noqa: E731
     collect_changed_paths = lambda _project_root: None  # noqa: E731
-    evaluate_initial_feature_load = lambda _feature_path: None  # noqa: E731
+    evaluate_initial_feature_load = lambda _feature_path: InitialFeatureLoadOutcome(  # noqa: E731
+        feature=None,
+        result="failed",
+        failed_gate="load",
+        feedback=None,
+    )
     ready_for_active_iteration = lambda _result, _feature: True  # noqa: E731
     touch_active_feature_for_iteration = lambda _feature, _path: None  # noqa: E731
-    refresh_feature_after_implement = lambda _project_root, _feature_path: None  # noqa: E731
+    refresh_feature_after_implement = lambda _project_root, _feature_path: PostImplementFeatureOutcome(  # noqa: E731
+        feature=None,
+        archived_in_iteration=False,
+        archived_path=None,
+        result="failed",
+        failed_gate="refresh",
+        feedback=None,
+    )
     should_archive_selected_feature = lambda _result, _feature: False  # noqa: E731
     archive_completed_feature = lambda _project_root, _feature_path: (False, None, None)  # noqa: E731
     restore_archived_feature = lambda _archived_path, _feature_path: (True, None)  # noqa: E731
-    run_gate_phase = lambda *args, **kwargs: None  # noqa: E731
-    run_verification_phase = lambda *args, **kwargs: None  # noqa: E731
-    run_reviewer_phase = lambda *args, **kwargs: None  # noqa: E731
-    run_completion_commit_phase = lambda *args, **kwargs: None  # noqa: E731
+    run_gate_phase = cast(Any, lambda *args, **kwargs: None)  # noqa: E731
+    run_verification_phase = cast(Any, lambda *args, **kwargs: None)  # noqa: E731
+    run_reviewer_phase = cast(Any, lambda *args, **kwargs: None)  # noqa: E731
+    run_completion_commit_phase = cast(Any, lambda *args, **kwargs: None)  # noqa: E731
     runtime_dependencies = FeatureIterationRuntimeDependencies(
         clock=_FakeClock(),
         evaluate_initial_feature_load=evaluate_initial_feature_load,
@@ -206,10 +254,11 @@ def _build_service(
         ),
         git_head_short=git_head_short,
         print_summary=print_summary,
-        observer_dependencies_type=DefaultObserverDependencies,
+        observer_dependencies_type=object,
         write_iteration_telemetry=_fake_write_iteration_telemetry,
+        build_iteration_pipeline_dependencies=_fake_build_iteration_pipeline_dependencies,
         build_iteration_report_observers=_fake_build_iteration_report_observers,
-        publish_iteration_report=_fake_publish_iteration_report,
+        publish_iteration_report=cast(Any, _fake_publish_iteration_report),
     )
 
     version_control_gateway = _FakeVersionControlGateway(observed, commit_result)
@@ -259,152 +308,17 @@ def test_feature_iteration_service_executes_runtime_pipeline() -> None:
         feedback="fix the failing check",
         verbose_output=True,
     )
-    completion_dependencies = observed["completion_dependencies"]
-    assert isinstance(completion_dependencies, dict)
-    commit_outcome = completion_dependencies["commit_feature_completion"](
-        Path("/tmp/project"),
-        {"expected_commit_subject": "feat: complete FEAT-001"},
-    )
-    assert commit_outcome == (False, "git_commit", "commit stdout\ncommit stderr\n")
-    assert observed["commit_requests"] == [
-        CommitRequest(
-            workspace_path=Path("/tmp/project"),
-            message="feat: complete FEAT-001",
-            stage_all=True,
-            allow_empty=False,
-        )
-    ]
-    observer_dependencies = cast(
-        DefaultObserverDependencies,
-        observed["default_observer_dependencies"],
-    )
     dependencies = cast(IterationPipelineDependencies, observed["dependencies"])
     runtime_dependencies = service._runtime_dependencies
+    assert observed["pipeline_builder_runtime_dependencies"] is runtime_dependencies
+    assert (
+        observed["pipeline_builder_version_control_gateway"]
+        is service._version_control_gateway
+    )
+    assert observed["observer_builder_runtime_dependencies"] is runtime_dependencies
+    assert observed["observer_builder_progress_journal"] is service._progress_journal
     assert dependencies.describe_action is runtime_dependencies.describe_action
     assert dependencies.run_implement_step is runtime_dependencies.run_implement_step
-    assert (
-        observer_dependencies.git_head_resolver
-        is runtime_dependencies.git_head_short
-    )
-    assert observer_dependencies.print_summary is runtime_dependencies.print_summary
-    observer_dependencies.write_iteration_telemetry(cast(Any, "telemetry-inputs"))
-    observer_dependencies.persist_iteration_report(
-        cast(
-            Any,
-            SimpleNamespace(
-                telemetry_inputs=SimpleNamespace(
-                    iteration_inputs=SimpleNamespace(project_root=Path("/tmp/project"))
-                ),
-                feature_id="FEAT-001",
-                model_dump=lambda mode="json": {"result": "failed", "mode": mode},
-            ),
-        )
-    )
-    assert observed["iteration_reports"] == [
-        {
-            "project_root": Path("/tmp/project"),
-            "feature_id": "FEAT-001",
-            "payload": {"result": "failed", "mode": "json"},
-        }
-    ]
-    assert observed["telemetry_call"] == {
-        "telemetry_inputs": "telemetry-inputs",
-        "git_head_resolver": runtime_dependencies.git_head_short,
-    }
-
-
-def test_feature_iteration_service_reports_commit_success() -> None:
-    """Successful completion commits should preserve the canonical tuple shape."""
-    observed: dict[str, object] = {}
-    service, _ = _build_service(
-        observed,
-        commit_result=CommitResult(
-            stdout="ok\n",
-            stderr="",
-            commit_created=True,
-            commit_sha="abc1234",
-            failure_stage=None,
-        ),
-        publish_outcome=SimpleNamespace(
-            completed=True,
-            result="passed",
-            failed_gate=None,
-            next_action="select_next_feature",
-            feedback=None,
-            log_path=None,
-            verification_status="passed",
-            verification_failed_command=None,
-            reviewer_status="passed",
-            reviewer_decision="approved",
-            failed_reviewer_id=None,
-        ),
-    )
-
-    service.run(_build_request())
-
-    completion_dependencies = observed["completion_dependencies"]
-    assert isinstance(completion_dependencies, dict)
-    assert completion_dependencies["commit_feature_completion"](
-        Path("/tmp/project"),
-        {"expected_commit_subject": "feat: complete FEAT-001"},
-    ) == (True, None, "ok\n")
-
-
-def test_commit_feature_completion_returns_failure_tuple_shape() -> None:
-    """Internal commit wiring should preserve the pipeline callback contract."""
-    observed: dict[str, object] = {}
-    gateway = _FakeVersionControlGateway(
-        observed,
-        CommitResult(
-            stdout="commit stdout\n",
-            stderr="commit stderr\n",
-            commit_created=False,
-            commit_sha=None,
-            failure_stage="git_commit",
-        ),
-    )
-
-    outcome = commit_feature_completion(
-        gateway,
-        project_root=Path("/tmp/project"),
-        feature={"expected_commit_subject": "feat: complete FEAT-001"},
-    )
-
-    assert outcome == (False, "git_commit", "commit stdout\ncommit stderr\n")
-    assert observed["commit_requests"] == [
-        CommitRequest(
-            workspace_path=Path("/tmp/project"),
-            message="feat: complete FEAT-001",
-            stage_all=True,
-            allow_empty=False,
-        )
-    ]
-
-
-def test_persist_iteration_report_writes_json_payload_to_journal() -> None:
-    """Internal report persistence should stay on the journal port boundary."""
-    observed: dict[str, object] = {}
-    journal = _FakeProgressJournal(observed)
-    report = cast(
-        IterationReport,
-        SimpleNamespace(
-            telemetry_inputs=SimpleNamespace(
-                iteration_inputs=SimpleNamespace(project_root=Path("/tmp/project"))
-            ),
-            feature_id="FEAT-001",
-            model_dump=lambda mode="json": {"result": "failed", "mode": mode},
-        ),
-    )
-
-    persist_iteration_report(journal, report)
-
-    assert observed["iteration_reports"] == [
-        {
-            "project_root": Path("/tmp/project"),
-            "feature_id": "FEAT-001",
-            "payload": {"result": "failed", "mode": "json"},
-        }
-    ]
 
 
 def test_iteration_outcome_from_report_copies_report_status_fields() -> None:

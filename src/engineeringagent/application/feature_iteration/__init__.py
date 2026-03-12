@@ -24,12 +24,6 @@ from .implementation_step import (
 )
 from .pipeline import IterationPipelineDependencies, run_feature_iteration_pipeline
 from .runtime_dependencies import FeatureIterationRuntimeDependencies
-from .service_runtime import (
-    build_iteration_pipeline_dependencies,
-    build_iteration_report_observers,
-    commit_feature_completion,
-    persist_iteration_report,
-)
 
 __all__ = [
     "CommandTiming",
@@ -51,10 +45,6 @@ __all__ = [
     "PhaseTiming",
     "ReviewerPhaseOutcome",
     "VerificationPhaseOutcome",
-    "build_iteration_pipeline_dependencies",
-    "build_iteration_report_observers",
-    "commit_feature_completion",
-    "persist_iteration_report",
     "run_feature_iteration_pipeline",
     "run_implement_step_from_inputs",
 ]

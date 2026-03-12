@@ -8,8 +8,6 @@ from .feature_iteration import (
     FeatureIterationResult,
     FeatureIterationInputs,
     FeatureIterationRuntimeDependencies,
-    build_iteration_pipeline_dependencies,
-    build_iteration_report_observers,
 )
 
 
@@ -39,14 +37,14 @@ class FeatureIterationService:
                 feedback=request.feedback,
                 verbose_output=request.verbose_output,
             ),
-            build_iteration_pipeline_dependencies(
+            dependencies.build_iteration_pipeline_dependencies(
                 dependencies,
-                version_control_gateway=self._version_control_gateway,
+                self._version_control_gateway,
             ),
         )
-        observers = build_iteration_report_observers(
-            self._runtime_dependencies,
-            progress_journal=self._progress_journal,
+        observers = dependencies.build_iteration_report_observers(
+            dependencies,
+            self._progress_journal,
         )
         outcome = self._runtime_dependencies.publish_iteration_report(report, observers)
         return FeatureIterationResult(
