@@ -4,7 +4,9 @@ from pathlib import Path
 
 import pytest
 
-from engineeringagent.adapters.quality import ChecksRepositoryValidator
+from engineeringagent.adapters.quality.repository_validator import (
+    ChecksRepositoryValidator,
+)
 from engineeringagent.ports import RepositoryValidationRequest, RepositoryValidationResult
 
 

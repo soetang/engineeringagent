@@ -7,10 +7,10 @@ from typing import cast
 from engineeringagent.adapters.agents import ConfiguredAgentRunner
 from engineeringagent.adapters.clock import SystemClock
 from engineeringagent.adapters.config import FilesystemConfigurationProvider
-from engineeringagent.adapters.quality import (
+from engineeringagent.adapters.quality.repository_validator import (
     ChecksRepositoryValidator,
-    RuntimeChecksRunner,
 )
+from engineeringagent.adapters.quality.runtime import RuntimeChecksRunner
 from engineeringagent.adapters.runtime import RuntimeRunLoopExecutor
 from engineeringagent.adapters.documents import (
     ChecksCatalogLoadOptions,

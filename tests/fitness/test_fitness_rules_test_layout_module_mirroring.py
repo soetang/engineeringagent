@@ -274,6 +274,35 @@ def test_test_layout_module_mirroring_rule_allows_mirrored_workspace_tests(
     assert _violations(result) == []
 
 
+def test_test_layout_module_mirroring_rule_allows_namespace_package_dirs(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Allow mirrored tests when the source package directory is a namespace package."""
+    _write_file(tmp_path, "tests/adapters/quality/test_config_selection.py", "")
+    _write_file(tmp_path, "tests/__init__.py", "")
+    _write_file(tmp_path, "tests/conftest.py", "")
+    (tmp_path / "src" / "engineeringagent" / "adapters" / "quality").mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+    _write_file(
+        tmp_path,
+        "src/engineeringagent/adapters/quality/config_selection.py",
+        "",
+    )
+
+    proc, result = _run_checker(
+        tmp_path,
+        checker_path=_script_path(repo_root),
+        config_file=_policy_path(repo_root),
+    )
+
+    assert proc.returncode == 0
+    assert result["status"] == "pass"
+    assert _violations(result) == []
+
+
 def test_test_layout_module_mirroring_rule_flags_legacy_bootstrap_adapter_test_path(
     tmp_path: Path,
     repo_root: Path,

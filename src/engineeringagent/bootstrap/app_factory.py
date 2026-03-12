@@ -8,11 +8,11 @@ from engineeringagent.adapters.agents import ConfiguredAgentRunner
 from engineeringagent.adapters.clock import SystemClock
 from engineeringagent.adapters.config import FilesystemConfigurationProvider
 from engineeringagent.adapters.documents import filesystem_feature_state
-from engineeringagent.adapters.quality import (
-    ChecksRepositoryValidator,
-    RuntimeChecksRunner,
-)
 from engineeringagent.adapters.quality.changed_paths import collect_changed_paths
+from engineeringagent.adapters.quality.repository_validator import (
+    ChecksRepositoryValidator,
+)
+from engineeringagent.adapters.quality.runtime import RuntimeChecksRunner
 from engineeringagent.adapters.documents import (
     ChecksCatalogLoadOptions,
     FilesystemChecksCatalogRepository,

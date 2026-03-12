@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from engineeringagent.adapters.quality import RuntimeChecksRunner
+from engineeringagent.adapters.quality.runtime import RuntimeChecksRunner
 from engineeringagent.domain.quality import ChecksRunResult, HarnessCheckPhase
 from engineeringagent.ports import ChecksRunRequest
 

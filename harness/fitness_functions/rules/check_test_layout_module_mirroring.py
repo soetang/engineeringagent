@@ -178,7 +178,7 @@ def _test_layout_violations(project_root: Path) -> list[str]:
             continue
         if source_target_py.exists() and source_target_py.is_file():
             continue
-        if source_target.is_dir() and (source_target / "__init__.py").is_file():
+        if source_target.is_dir():
             continue
         violations.append(
             f"{rel_path}: not mirrored by src module path "
