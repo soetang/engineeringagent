@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from engineeringagent.checks.reviewers.validator import ReviewerPromptStrategyValidator
-from engineeringagent.checks.validate.contracts import ValidationContext
+from engineeringagent.adapters.quality.validation.contracts import ValidationContext
 
 
 def _context(project_root: Path) -> ValidationContext:

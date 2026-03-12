@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from engineeringagent.checks.fitness.validator import FitnessCatalogStrategyValidator
 from engineeringagent.checks.reviewers.validator import ReviewerPromptStrategyValidator
-from engineeringagent.checks.validate.contracts import StrategyValidator
+from engineeringagent.adapters.quality.validation.contracts import StrategyValidator
 
 _DEFAULT_STRATEGY_VALIDATORS: tuple[StrategyValidator, ...] = (
     ReviewerPromptStrategyValidator(),

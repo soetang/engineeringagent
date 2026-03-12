@@ -5,7 +5,7 @@ from pathlib import Path
 import yaml
 import pytest
 
-from engineeringagent.checks.validate.validator import validate
+from engineeringagent.adapters.quality.validation.validator import validate
 from tests.meta.validator_support import write_bundled_feature_spec, write_plan_artifact
 
 

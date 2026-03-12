@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from engineeringagent.checks.validate.strategy_validators import (
+from engineeringagent.adapters.quality.validation.strategy_validators import (
     default_strategy_validators,
 )
 

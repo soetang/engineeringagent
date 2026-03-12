@@ -4,10 +4,17 @@ from pathlib import Path
 
 from engineeringagent.adapters.config import resolve_specifications_root
 
-from .contracts import ValidationContext, ValidationIssue
-from .repo_validators import RepoPolicyValidator
-from .registry import ValidationRegistry
-from .strategy_validators import default_strategy_validators
+from engineeringagent.adapters.quality.validation.contracts import (
+    ValidationContext,
+    ValidationIssue,
+)
+from engineeringagent.adapters.quality.validation.repo_validators import (
+    RepoPolicyValidator,
+)
+from engineeringagent.adapters.quality.validation.registry import ValidationRegistry
+from engineeringagent.adapters.quality.validation.strategy_validators import (
+    default_strategy_validators,
+)
 
 
 def validate(project_root: Path, schema_only: bool = False) -> list[str]:

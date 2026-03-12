@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from engineeringagent.checks.validate.contracts import ValidationContext, ValidationIssue
+from engineeringagent.adapters.quality.validation.contracts import (
+    ValidationContext,
+    ValidationIssue,
+)
 
 REVIEWER_PROMPTS_DIR = Path("harness") / "reviewers" / "prompts"
 REVIEWER_RESPONSEFORMAT_PLACEHOLDER = "$responseformat"

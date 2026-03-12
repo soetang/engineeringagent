@@ -97,7 +97,7 @@ def test_checker_allows_deep_engineeringagent_checks_imports(
     (harness_root / "validate_custom.py").write_text(
         "\n".join(
             [
-                "from engineeringagent.checks.validate.repo_validators import (",
+                "from engineeringagent.checks import (",
                 "    iter_feature_files,",
                 ")",
                 "",

@@ -1,8 +1,8 @@
-"""Checks-backed repository validation adapter."""
+"""Quality-backed repository validation adapter."""
 
 from __future__ import annotations
 
-from engineeringagent.checks.validate.validator import validate
+from engineeringagent.adapters.quality.validation.validator import validate
 from engineeringagent.ports import (
     RepositoryValidationRequest,
     RepositoryValidationResult,
@@ -10,7 +10,7 @@ from engineeringagent.ports import (
 
 
 class ChecksRepositoryValidator:
-    """Adapter that delegates repository validation to the checks package."""
+    """Adapter that delegates repository validation to the quality validator."""
 
     def validate(
         self,

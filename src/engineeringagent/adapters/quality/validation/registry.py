@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-from engineeringagent.checks.validate.contracts import (
+from engineeringagent.adapters.quality.validation.contracts import (
     RepoValidator,
     StrategyValidator,
     ValidationContext,

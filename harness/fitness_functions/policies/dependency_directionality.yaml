@@ -4,8 +4,8 @@ rules:
       - engineeringagent.presentation.cli
       - engineeringagent.loop
       - engineeringagent.loop_runtime
-      - engineeringagent.checks.validate.validator
-  - module: engineeringagent.checks.validate.validator
+      - engineeringagent.adapters.quality.validation.validator
+  - module: engineeringagent.adapters.quality.validation.validator
     blocked_dependencies:
       - engineeringagent.presentation.cli
       - engineeringagent.loop
@@ -22,7 +22,7 @@ rules:
       - engineeringagent.checks.commands
       - engineeringagent.checks.fitness
       - engineeringagent.checks.reviewers
-      - engineeringagent.checks.validate
+      - engineeringagent.adapters.quality.validation
       - engineeringagent.specs
   - module: engineeringagent.presentation.cli.typer
     blocked_dependencies:
@@ -31,7 +31,7 @@ rules:
       - engineeringagent.checks.commands
       - engineeringagent.checks.fitness
       - engineeringagent.checks.reviewers
-      - engineeringagent.checks.validate
+      - engineeringagent.adapters.quality.validation
       - engineeringagent.specs
   - module: engineeringagent.presentation.cli.checks
     blocked_dependencies:
@@ -41,7 +41,7 @@ rules:
       - engineeringagent.checks.commands
       - engineeringagent.checks.fitness
       - engineeringagent.checks.reviewers
-      - engineeringagent.checks.validate
+      - engineeringagent.adapters.quality.validation
       - engineeringagent.specs
   - module: engineeringagent.presentation.cli.guidance
     blocked_dependencies:

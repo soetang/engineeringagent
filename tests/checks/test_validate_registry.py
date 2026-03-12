@@ -5,7 +5,7 @@ from typing import Any, Literal, cast
 
 import pytest
 
-from engineeringagent.checks.validate import (
+from engineeringagent.adapters.quality.validation import (
     ValidationRegistry,
     ValidationContext,
     ValidationIssue,

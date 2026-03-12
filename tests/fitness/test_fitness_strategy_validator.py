@@ -7,7 +7,7 @@ import yaml
 
 from engineeringagent.checks.fitness import validator as fitness_validator
 from engineeringagent.checks.fitness.validator import FitnessCatalogStrategyValidator
-from engineeringagent.checks.validate.contracts import ValidationContext
+from engineeringagent.adapters.quality.validation.contracts import ValidationContext
 
 
 def _context(project_root: Path) -> ValidationContext:

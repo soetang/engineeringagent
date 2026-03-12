@@ -1,4 +1,4 @@
-"""Checks: spec/setup validation."""
+"""Quality validation package."""
 
 from .contracts import (
     RepoValidator,

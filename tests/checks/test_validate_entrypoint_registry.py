@@ -4,13 +4,16 @@ from pathlib import Path
 
 import pytest
 
-from engineeringagent.checks.validate.contracts import ValidationContext, ValidationIssue
-from engineeringagent.checks.validate.repo_validators import (
+from engineeringagent.adapters.quality.validation.contracts import (
+    ValidationContext,
+    ValidationIssue,
+)
+from engineeringagent.adapters.quality.validation.repo_validators import (
     RepoPolicyValidator,
     _repo_message_to_issue,
     run_repo_validation_messages,
 )
-from engineeringagent.checks.validate.validator import (
+from engineeringagent.adapters.quality.validation.validator import (
     _build_validation_registry,
     validate,
 )
@@ -62,7 +65,7 @@ def test_validate_renders_registry_issues_in_deterministic_order(
             )
 
     monkeypatch.setattr(
-        "engineeringagent.checks.validate.validator._build_validation_registry",
+        "engineeringagent.adapters.quality.validation.validator._build_validation_registry",
         lambda: _FakeRegistry(),
     )
 
@@ -105,7 +108,7 @@ def test_repo_policy_validator_projects_messages_to_validation_issues(
         )
 
     monkeypatch.setattr(
-        "engineeringagent.checks.validate.repo_validators.run_repo_validation",
+        "engineeringagent.adapters.quality.validation.repo_validators.run_repo_validation",
         _fake_run_repo_validation,
     )
 
@@ -157,7 +160,7 @@ def test_repo_policy_validator_derives_semantic_issue_codes(
         )
 
     monkeypatch.setattr(
-        "engineeringagent.checks.validate.repo_validators.run_repo_validation",
+        "engineeringagent.adapters.quality.validation.repo_validators.run_repo_validation",
         _fake_run_repo_validation,
     )
 
@@ -201,7 +204,7 @@ def test_run_repo_validation_messages_returns_deterministic_tuple_in_append_orde
         )
 
     monkeypatch.setattr(
-        "engineeringagent.checks.validate.repo_validators.run_repo_validation",
+        "engineeringagent.adapters.quality.validation.repo_validators.run_repo_validation",
         _fake_run_repo_validation,
     )
 

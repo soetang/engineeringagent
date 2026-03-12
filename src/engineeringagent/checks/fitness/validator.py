@@ -6,7 +6,10 @@ from engineeringagent.checks.fitness.registry import (
     DEFAULT_CUSTOM_RULE_MANIFEST,
     build_rule_catalog,
 )
-from engineeringagent.checks.validate.contracts import ValidationContext, ValidationIssue
+from engineeringagent.adapters.quality.validation.contracts import (
+    ValidationContext,
+    ValidationIssue,
+)
 
 
 class FitnessCatalogStrategyValidator:

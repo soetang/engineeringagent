@@ -17,11 +17,11 @@ from engineeringagent.specs import (
     potential_features_contract_issues,
     resolve_feature_plan_path,
 )
-from engineeringagent.checks.validate.contracts import (
+from engineeringagent.adapters.quality.validation.contracts import (
     ValidationContext,
     ValidationIssue as ValidatorIssue,
 )
-from engineeringagent.checks.validate.repo_policy_feature_ids import (
+from engineeringagent.adapters.quality.validation.repo_policy_feature_ids import (
     FeatureIdInvariantContext,
     append_feature_id_invariant_issues,
 )

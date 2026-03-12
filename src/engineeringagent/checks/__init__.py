@@ -90,7 +90,7 @@ def validate_repository(
 ) -> list[str]:
     """Proxy to repository validation without importing checks internals at init."""
 
-    validator = import_module("engineeringagent.checks.validate.validator")
+    validator = import_module("engineeringagent.adapters.quality.validation.validator")
     return validator.validate(project_root=project_root, schema_only=schema_only)
 
 

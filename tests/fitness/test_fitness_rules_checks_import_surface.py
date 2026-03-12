@@ -4,10 +4,7 @@ from __future__ import annotations
 # pylint: disable=protected-access
 
 import importlib.util
-import os
 from pathlib import Path
-import subprocess
-import sys
 
 import pytest
 from engineeringagent import checks
