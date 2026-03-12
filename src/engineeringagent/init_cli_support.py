@@ -14,7 +14,11 @@ from .adapters.config import (
 )
 from .adapters.vcs import git_cli
 from .adapters.agents import default_backend_id, list_backends
-from .init_scaffold import AGENTS_LAUNCHER_CHOICES, DEFAULT_AGENTS_LAUNCHER
+from .init_scaffold import (
+    AGENTS_LAUNCHER_CHOICES,
+    DEFAULT_AGENTS_LAUNCHER,
+    build_agents_merge_followup_spec,
+)
 from .presentation.presenters.terminal import stdout_is_tty
 
 InputFn = Callable[[str], str]
@@ -363,6 +367,51 @@ def next_agents_backup_path(project_root: Path) -> Path:
         suffix += 1
         candidate = project_root / f"AGENTS.user.{suffix}.md"
     return candidate
+
+
+def backup_existing_agents_guidance(
+    *,
+    project_root: Path,
+    next_backup_path_fn: Callable[[Path], Path] = next_agents_backup_path,
+) -> str:
+    """Backup an existing AGENTS.md file and return the backup filename."""
+    backup_path = next_backup_path_fn(project_root)
+    (project_root / "AGENTS.md").rename(backup_path)
+    return backup_path.name
+
+
+def remove_existing_agents_guidance(*, project_root: Path) -> None:
+    """Remove an existing AGENTS.md file when overwrite mode is selected."""
+    agents_path = project_root / "AGENTS.md"
+    if agents_path.exists():
+        agents_path.unlink()
+
+
+def write_agents_merge_followup_spec(
+    *,
+    project_root: Path,
+    docs_dir: str,
+    agents_backup_name: str,
+    force: bool,
+    render_spec_fn: Callable[[str], str] = build_agents_merge_followup_spec,
+) -> tuple[int, int, str]:
+    """Write the follow-up spec for merging preserved AGENTS guidance."""
+    merge_spec_relative = (
+        Path(docs_dir)
+        / "spec"
+        / "features"
+        / "FEAT-900-merge-preserved-agents-guidance.yaml"
+    )
+    merge_spec_path = project_root / merge_spec_relative
+    if not merge_spec_path.exists() or force:
+        merge_spec_path.parent.mkdir(parents=True, exist_ok=True)
+        merge_spec_path.write_text(
+            render_spec_fn(agents_backup_name),
+            encoding="utf-8",
+        )
+        return 1, 0, f" merge_spec={merge_spec_relative}"
+
+    return 0, 1, f" merge_spec_skipped={merge_spec_relative}"
 
 
 def precommit_remediation_commands(*, scaffold_profile: str) -> list[str]:

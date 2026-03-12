@@ -24,20 +24,22 @@ from ...init_cli_support import (
     InitBackendResolverDeps,
     InitCodexProfileResolverDeps,
     InitPromptContext,
+    backup_existing_agents_guidance,
     install_precommit_hooks_best_effort as _install_precommit_hooks_best_effort_impl,
     next_agents_backup_path,
+    remove_existing_agents_guidance,
     resolve_init_agents_launcher,
     resolve_init_agents_mode,
     resolve_init_backend,
     resolve_init_codex_profile_overwrite,
     resolve_init_docs_dir,
     resolve_init_pack,
+    write_agents_merge_followup_spec,
 )
 from ...init_scaffold import (
     AGENTS_LAUNCHER_CHOICES,
     DEFAULT_AGENTS_LAUNCHER,
     apply_baseline_scaffold,
-    build_agents_merge_followup_spec,
 )
 from ...presentation.presenters.terminal import stdout_is_tty
 from ...ports import DEFAULT_AGENT_MODEL, InitWorkspaceDependencies
@@ -109,8 +111,9 @@ class InitCliScaffoldAdapters(BaseModel):
         frozen=True, extra="forbid", arbitrary_types_allowed=True
     )
 
-    next_agents_backup_path_fn: Callable[[Path], Path] | None = None
-    build_agents_merge_followup_spec_fn: Callable[[str], str] | None = None
+    backup_existing_agents_guidance_fn: Callable[..., str] | None = None
+    remove_existing_agents_guidance_fn: Callable[..., None] | None = None
+    write_agents_merge_followup_spec_fn: Callable[..., tuple[int, int, str]] | None = None
     apply_baseline_scaffold_fn: Callable[..., tuple[int, int]] | None = None
     write_init_docs_root_config_fn: Callable[..., tuple[int, int]] | None = None
     write_init_backend_config_fn: Callable[..., tuple[int, int]] | None = None
@@ -211,13 +214,17 @@ def build_init_dependencies(
         adapter_bundle.selection.resolve_codex_profile_overwrite_fn,
         resolve_init_codex_profile_overwrite,
     )
-    next_agents_backup_path_fn = _coalesce_adapter(
-        adapter_bundle.scaffold.next_agents_backup_path_fn,
-        next_agents_backup_path,
+    backup_existing_agents_guidance_fn = _coalesce_adapter(
+        adapter_bundle.scaffold.backup_existing_agents_guidance_fn,
+        backup_existing_agents_guidance,
     )
-    build_agents_merge_followup_spec_fn = _coalesce_adapter(
-        adapter_bundle.scaffold.build_agents_merge_followup_spec_fn,
-        build_agents_merge_followup_spec,
+    remove_existing_agents_guidance_fn = _coalesce_adapter(
+        adapter_bundle.scaffold.remove_existing_agents_guidance_fn,
+        remove_existing_agents_guidance,
+    )
+    write_agents_merge_followup_spec_fn = _coalesce_adapter(
+        adapter_bundle.scaffold.write_agents_merge_followup_spec_fn,
+        write_agents_merge_followup_spec,
     )
     apply_baseline_scaffold_fn = _coalesce_adapter(
         adapter_bundle.scaffold.apply_baseline_scaffold_fn,
@@ -268,11 +275,15 @@ def build_init_dependencies(
                 resolve_codex_profile_fn=resolve_agents_codex_profile_in_engineeringagent_toml
             ),
         ),
-        next_agents_backup_path=next_agents_backup_path_fn,
+        backup_existing_agents_guidance=partial(
+            backup_existing_agents_guidance_fn,
+            next_backup_path_fn=next_agents_backup_path,
+        ),
+        remove_existing_agents_guidance=remove_existing_agents_guidance_fn,
         apply_baseline_scaffold=apply_baseline_scaffold_fn,
         write_init_docs_root_config=write_init_docs_root_config_fn,
         write_init_backend_config=write_init_backend_config_fn,
-        build_agents_merge_followup_spec=build_agents_merge_followup_spec_fn,
+        write_agents_merge_followup_spec=write_agents_merge_followup_spec_fn,
         install_precommit_hooks_best_effort=lambda *, project_root, scaffold_profile: (
             _collect_precommit_messages(
                 project_root=project_root,

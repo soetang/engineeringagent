@@ -128,6 +128,39 @@ class InstallPrecommitHooksBestEffort(Protocol):
     ) -> tuple[str, ...]: ...
 
 
+class BackupExistingAgentsGuidance(Protocol):
+    """Backup an existing AGENTS.md file and return the backup filename."""
+
+    def __call__(
+        self,
+        *,
+        project_root: Path,
+    ) -> str: ...
+
+
+class RemoveExistingAgentsGuidance(Protocol):
+    """Remove an existing AGENTS.md file when overwrite mode is selected."""
+
+    def __call__(
+        self,
+        *,
+        project_root: Path,
+    ) -> None: ...
+
+
+class WriteAgentsMergeFollowupSpec(Protocol):
+    """Write the preserved-AGENTS merge follow-up spec and report counters."""
+
+    def __call__(
+        self,
+        *,
+        project_root: Path,
+        docs_dir: str,
+        agents_backup_name: str,
+        force: bool,
+    ) -> tuple[int, int, str]: ...
+
+
 class InitWorkspaceDependencies(BaseModel):  # pylint: disable=too-many-instance-attributes
     """Injected side-effect operations required by init orchestration."""
 
@@ -139,9 +172,10 @@ class InitWorkspaceDependencies(BaseModel):  # pylint: disable=too-many-instance
     resolve_agents_mode: SkipValidation[ResolveInitAgentsMode]
     resolve_agents_launcher: SkipValidation[ResolveInitAgentsLauncher]
     resolve_codex_profile_overwrite: SkipValidation[ResolveInitCodexProfileOverwrite]
-    next_agents_backup_path: Callable[[Path], Path]
+    backup_existing_agents_guidance: SkipValidation[BackupExistingAgentsGuidance]
+    remove_existing_agents_guidance: SkipValidation[RemoveExistingAgentsGuidance]
     apply_baseline_scaffold: SkipValidation[ApplyBaselineScaffold]
     write_init_docs_root_config: SkipValidation[WriteInitDocsRootConfig]
     write_init_backend_config: SkipValidation[WriteInitBackendConfig]
-    build_agents_merge_followup_spec: Callable[[str], str]
+    write_agents_merge_followup_spec: SkipValidation[WriteAgentsMergeFollowupSpec]
     install_precommit_hooks_best_effort: SkipValidation[InstallPrecommitHooksBestEffort]

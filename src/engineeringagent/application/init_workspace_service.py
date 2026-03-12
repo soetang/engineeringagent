@@ -128,20 +128,19 @@ def _maybe_backup_agents_file(
 ) -> str | None:
     if resolved_agents_mode != "preserve":
         return None
-    agents_backup_path = dependencies.next_agents_backup_path(request.project_root)
-    (request.project_root / "AGENTS.md").rename(agents_backup_path)
-    return agents_backup_path.name
+    return dependencies.backup_existing_agents_guidance(
+        project_root=request.project_root
+    )
 
 
-def _maybe_remove_existing_agents_for_overwrite(
+def _apply_agents_overwrite_if_needed(
     request: InitWorkspaceRequest,
+    dependencies: InitWorkspaceDependencies,
     resolved_agents_mode: str,
 ) -> None:
     if resolved_agents_mode != "overwrite":
         return
-    agents_path = request.project_root / "AGENTS.md"
-    if agents_path.exists():
-        agents_path.unlink()
+    dependencies.remove_existing_agents_guidance(project_root=request.project_root)
 
 
 def _apply_init_config_writes(
@@ -192,23 +191,12 @@ def _maybe_write_merge_followup_spec(
 ) -> tuple[int, int, str]:
     if resolved_agents_mode != "preserve" or agents_backup_name is None:
         return 0, 0, ""
-
-    merge_spec_relative = (
-        Path(docs_dir)
-        / "spec"
-        / "features"
-        / "FEAT-900-merge-preserved-agents-guidance.yaml"
+    return dependencies.write_agents_merge_followup_spec(
+        project_root=request.project_root,
+        docs_dir=docs_dir,
+        agents_backup_name=agents_backup_name,
+        force=request.force,
     )
-    merge_spec_path = request.project_root / merge_spec_relative
-    if not merge_spec_path.exists() or request.force:
-        merge_spec_path.parent.mkdir(parents=True, exist_ok=True)
-        merge_spec_path.write_text(
-            dependencies.build_agents_merge_followup_spec(agents_backup_name),
-            encoding="utf-8",
-        )
-        return 1, 0, f" merge_spec={merge_spec_relative}"
-
-    return 0, 1, f" merge_spec_skipped={merge_spec_relative}"
 
 
 def _collect_precommit_messages(
@@ -298,7 +286,11 @@ class InitWorkspaceService:
             dependencies,
             resolved_agents_mode,
         )
-        _maybe_remove_existing_agents_for_overwrite(request, resolved_agents_mode)
+        _apply_agents_overwrite_if_needed(
+            request,
+            dependencies,
+            resolved_agents_mode,
+        )
 
         created, skipped = dependencies.apply_baseline_scaffold(
             project_root=request.project_root,
