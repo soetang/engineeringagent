@@ -8,11 +8,13 @@ This file is generated from active manifest-declared fitness rules.
 | --- | --- | --- | --- | --- | --- | --- |
 | `architecture.adapter-root-locality` | error | command | custom | `src/engineeringagent/adapters` | - | Keep adapter implementation modules inside focused adapters subpackages. |
 | `architecture.agents-backends-boundary` | error | command | custom | `src/engineeringagent` | - | Forbid direct backend package usage outside the agents boundary. |
+| `architecture.application-filesystem-boundary` | error | command | custom | `src/engineeringagent/application` | - | Keep direct filesystem mutations out of application modules. |
 | `architecture.application-module-layout` | error | command | custom | `src/engineeringagent/application/*.py` | - | Keep the application package root limited to workflow-service modules. |
 | `architecture.application-output-boundary` | error | command | custom | `src/engineeringagent/application` | - | Keep direct terminal output out of application modules. |
-| `architecture.application-root-workflow-surface` | error | command | custom | `src/engineeringagent/application/__init__.py plus repository imports of engineeringagent.application` | - | Keep engineeringagent.application focused on workflow services instead of feature-iteration internals. |
+| `architecture.application-root-workflow-surface` | error | command | custom | `src/engineeringagent/application/__init__.py, src/engineeringagent/application/feature_iteration/__init__.py, plus repository imports of engineeringagent.application and engineeringagent.application.feature_iteration` | - | Keep engineeringagent.application focused on workflow services and forbid barrel re-exports for feature-iteration internals. |
+| `architecture.application-subprocess-boundary` | error | command | custom | `src/engineeringagent/application` | - | Keep subprocess imports out of application modules. |
 | `architecture.application-tests-boundary` | error | command | custom | `tests/application` | - | Keep application tests on application/domain/ports contracts instead of legacy checks internals. |
-| `architecture.backend-literal-locality-budget` | error | command | custom | `src/engineeringagent excluding src/engineeringagent/agents/** and src/engineeringagent/checks/**` | `harness/fitness_functions/policies/backend_literal_locality_budget.yaml` | Enforce a zero-budget backend literal locality boundary outside allowed packages. |
+| `architecture.backend-literal-locality-budget` | error | command | custom | `src/engineeringagent excluding src/engineeringagent/adapters/agents/** and src/engineeringagent/checks/**` | `harness/fitness_functions/policies/backend_literal_locality_budget.yaml` | Enforce a zero-budget backend literal locality boundary outside allowed packages. |
 | `architecture.bootstrap-runtime-surface` | error | command | custom | `src/engineeringagent/bootstrap/__init__.py` | - | Keep the bootstrap package from proxying adapter runtime exports. |
 | `architecture.checks-import-surface` | error | command | custom | `src/engineeringagent` | - | Enforce a narrow import surface for engineeringagent.checks. |
 | `architecture.checks-own-prompt-feedback-rendering` | error | command | custom | `src/engineeringagent/loop_runtime/**, src/engineeringagent/adapters/runtime/iteration_phases.py, src/engineeringagent/loop.py, and src/engineeringagent/prompts/renderer.py` | - | Fail when loop/prompt code performs checks-specific feedback shaping outside checks strategies. |
@@ -21,7 +23,8 @@ This file is generated from active manifest-declared fitness rules.
 | `architecture.harness-root-yaml-only` | error | command | custom | `harness/ (regular files at root)` | - | Enforce YAML-only regular files directly under harness root. |
 | `architecture.harness-src-import-allowlist` | error | command | custom | `harness/fitness_functions` | - | Restrict harness fitness functions to a narrow supported engineeringagent surface. |
 | `architecture.hermetic-fitness-test-isolation` | error | command | custom | `tests/fitness` | `harness/fitness_functions/policies/hermetic_fitness_test_isolation.yaml` | Prevent tests/fitness from scanning the live repository checkout. |
-| `architecture.iteration-pipeline-observer-decoupling` | error | command | custom | `src/engineeringagent/application/feature_iteration_runtime/pipeline.py` | - | Keep iteration pipeline free of telemetry and console side effects. |
+| `architecture.init-cli-support-location` | error | command | custom | `src/engineeringagent/bootstrap/init_cli_support.py plus deleted root-level CLI helper modules` | - | Keep init CLI support wiring out of the package root. |
+| `architecture.iteration-pipeline-observer-decoupling` | error | command | custom | `src/engineeringagent/application/feature_iteration/pipeline.py` | - | Keep iteration pipeline free of telemetry and console side effects. |
 | `architecture.legacy-run-loop-bridge-absent` | error | command | custom | `src/engineeringagent/ports/run_loop_executor.py and deleted source files under src/engineeringagent/adapters/loop` | - | Keep the deleted loop adapter package removed. |
 | `architecture.loop-checks-policy-ownership` | error | command | custom | `src/engineeringagent/loop_runtime/**, src/engineeringagent/adapters/runtime/iteration_phases.py, and src/engineeringagent/loop.py` | - | Fail when loop runtime encodes checks group/timing selection policy. |
 | `architecture.loop-checks-result-boundary` | error | command | custom | `src/engineeringagent/loop_runtime/**, src/engineeringagent/adapters/runtime/iteration_phases.py, and src/engineeringagent/loop.py` | - | Fail when loop runtime branches on checks type/group semantics or parses checks-internal payloads. |
@@ -41,7 +44,7 @@ This file is generated from active manifest-declared fitness rules.
 | `architecture.repo-layer-contracts` | error | command | custom | `src/engineeringagent package structure, legacy path deletions, and agent boundary surfaces` | - | Enforce repository-owned architecture contracts as fitness checks instead of validate-time unit rules. |
 | `architecture.scaffold-template-locality` | error | command | custom | `src/engineeringagent` | - | Keep scaffold template payloads in scaffold_templates assets. |
 | `architecture.shared-kernel-locality` | error | command | custom | `src/engineeringagent/domain/shared plus legacy duplicate-definition surfaces` | - | Localize cross-domain identifiers and enums under engineeringagent.domain.shared. |
-| `architecture.source-first-loop-command-policy` | error | command | custom | `legacy spec verification, bundled plan.md phases/examples, packaged plan-session/research-session guidance, contributor approach docs, loop implementation prompt template, docs/fixtures/real_opencode_hello_world_plan_template.md, and harness/checks.yaml` | - | Enforce source-first workspace execution for loop command surfaces. |
+| `architecture.source-first-loop-command-policy` | error | command | custom | `feature-package verification under the configured specifications root, bundled plan.md phases/examples, packaged plan-session/research-session guidance, contributor approach docs, loop implementation prompt template, docs/fixtures/real_opencode_hello_world_plan_template.md, and harness/checks.yaml` | - | Enforce source-first workspace execution for loop command surfaces. |
 | `architecture.test-layout-module-mirroring` | error | command | custom | `tests` | `harness/fitness_functions/policies/test_layout_module_mirroring.yaml` | Enforce module-mirroring test structure and explicit test-layout exceptions. |
 | `quality.purge-invariant` | error | command | custom | `tracked repository files excluding docs/specifications/features_done/ and .engineeringagent/progress/` | - | Keep removed identifiers out of tracked repository files. |
 | `smoke.opencode-real-hello-world` | error | command | custom | `repository (temp repo)` | - | Validate the real agent loop end-to-end in an isolated temp repository. |
@@ -59,15 +62,22 @@ This file is generated from active manifest-declared fitness rules.
 
 - Name: Agents/backends boundary
 - Side-effect free: `true`
-- Rationale: Keeps backend implementations an internal detail behind engineeringagent.agents.run_agent.
-- Remediation: Replace direct engineeringagent.adapters.agents imports with engineeringagent.agents.run_agent.
+- Rationale: Keeps backend implementations an internal detail behind engineeringagent.adapters.agents.run_agent.
+- Remediation: Replace direct backend package imports with engineeringagent.adapters.agents.run_agent.
+
+### `architecture.application-filesystem-boundary`
+
+- Name: Application filesystem boundary
+- Side-effect free: `true`
+- Rationale: Application workflows should orchestrate through ports and injected dependencies instead of mutating repository files directly.
+- Remediation: Remove direct Path mutation calls from application modules and push file writes, deletes, renames, and directory creation into adapters or injected dependency callables.
 
 ### `architecture.application-module-layout`
 
 - Name: Application module layout
 - Side-effect free: `true`
 - Rationale: The target architecture keeps orchestration entrypoints at the application root and pushes workflow-specific helpers into explicit subpackages so root-level legacy helper sprawl does not return.
-- Remediation: Delete legacy flat helper modules from engineeringagent.application or move them into an explicit subpackage such as engineeringagent.application.feature_iteration_runtime.
+- Remediation: Delete legacy flat helper modules from engineeringagent.application or move them into an explicit subpackage such as engineeringagent.application.feature_iteration.
 
 ### `architecture.application-output-boundary`
 
@@ -80,8 +90,15 @@ This file is generated from active manifest-declared fitness rules.
 
 - Name: Application root workflow surface
 - Side-effect free: `true`
-- Rationale: The target architecture gives feature-iteration contracts and helpers an explicit subpackage, so the application root should expose service entrypoints only instead of acting as a compatibility facade.
-- Remediation: Import public feature-iteration request/result models from `engineeringagent.application.feature_iteration_service`, keep workflow services on `engineeringagent.application`, and remove runtime-helper re-exports from `engineeringagent.application.__init__`.
+- Rationale: The target architecture gives feature-iteration contracts and helpers explicit owning modules, so neither the application root nor engineeringagent.application.feature_iteration should act as compatibility facades.
+- Remediation: Import public feature-iteration request/result models from engineeringagent.application.feature_iteration_service, import internal workflow helpers from their defining modules, and remove re-exports from engineeringagent.application.__init__ and engineeringagent.application.feature_iteration.__init__.
+
+### `architecture.application-subprocess-boundary`
+
+- Name: Application subprocess boundary
+- Side-effect free: `true`
+- Rationale: Application workflows should orchestrate through ports and injected runtime seams instead of classifying subprocess failures or timeouts directly.
+- Remediation: Remove subprocess imports from engineeringagent.application and move process execution or failure formatting into adapters, ports, or injected runtime helpers.
 
 ### `architecture.application-tests-boundary`
 
@@ -96,7 +113,7 @@ This file is generated from active manifest-declared fitness rules.
 - Config file: `harness/fitness_functions/policies/backend_literal_locality_budget.yaml`
 - Side-effect free: `true`
 - Rationale: Keeps backend-coupling tokens localized to backend-owned modules and checks adapters.
-- Remediation: Remove backend-specific literals from core modules or move backend-specific behavior under engineeringagent.agents or engineeringagent.checks.
+- Remediation: Remove backend-specific literals from core modules or move backend-specific behavior under engineeringagent.adapters.agents or engineeringagent.checks.
 
 ### `architecture.bootstrap-runtime-surface`
 
@@ -156,12 +173,19 @@ This file is generated from active manifest-declared fitness rules.
 - Rationale: Keeps pytest focused on synthetic fixture behavior while reserving real-repo compliance for harness and gate execution.
 - Remediation: Pass a synthetic temp fixture as the checker project root/cwd and keep any real-repo cases in the explicit integration allowlist.
 
+### `architecture.init-cli-support-location`
+
+- Name: Init CLI support location
+- Side-effect free: `true`
+- Rationale: The target architecture keeps adapter-facing CLI support wiring in bootstrap instead of at the package root.
+- Remediation: Keep init CLI support under engineeringagent.bootstrap and do not restore the root-level engineeringagent.init_cli_support module.
+
 ### `architecture.iteration-pipeline-observer-decoupling`
 
 - Name: Iteration pipeline observer decoupling
 - Side-effect free: `true`
 - Rationale: Preserves the report-plus-observer split so orchestration remains testable and side effects stay localized.
-- Remediation: Move telemetry and console output calls out of application.feature_iteration_runtime.pipeline and into loop-wired observers that consume IterationReport.
+- Remediation: Move telemetry and console output calls out of application.feature_iteration.pipeline and into loop-wired observers that consume IterationReport.
 
 ### `architecture.legacy-run-loop-bridge-absent`
 
@@ -291,7 +315,7 @@ This file is generated from active manifest-declared fitness rules.
 - Name: Scaffold template locality
 - Side-effect free: `true`
 - Rationale: Prevents init scaffold regressions from drifting back to inline template payloads in source modules.
-- Remediation: Move scaffold template bodies to engineeringagent.scaffold_templates assets and load them via engineeringagent.init_scaffold.
+- Remediation: Move scaffold template bodies to engineeringagent.scaffold_templates assets and load them via engineeringagent.bootstrap.init_scaffold.
 
 ### `architecture.shared-kernel-locality`
 

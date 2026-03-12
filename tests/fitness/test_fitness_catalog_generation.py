@@ -228,3 +228,35 @@ def test_repo_fitness_catalog_source_first_scope_mentions_bundled_plan_surfaces(
     assert "packaged plan-session/research-session guidance" in checked_in_catalog
     assert "contributor approach docs" in checked_in_catalog
     assert "loop implementation prompt template" in checked_in_catalog
+
+
+def test_repo_fitness_catalog_uses_feature_iteration_package_paths(
+    repo_root: Path,
+) -> None:
+    """Keep checked-in catalog text aligned with the current application package layout."""
+    payload = json.loads(render_fitness_catalog(repo_root, format="json"))
+    observer_rule = next(
+        entry
+        for entry in payload
+        if entry["rule_id"] == "architecture.iteration-pipeline-observer-decoupling"
+    )
+    application_layout_rule = next(
+        entry
+        for entry in payload
+        if entry["rule_id"] == "architecture.application-module-layout"
+    )
+
+    assert (
+        observer_rule["scope"]
+        == "src/engineeringagent/application/feature_iteration/pipeline.py"
+    )
+    assert "engineeringagent.application.feature_iteration" in str(
+        application_layout_rule["remediation"]
+    )
+
+    checked_in_catalog = (repo_root / "docs" / "fitness-functions" / "rules.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert "src/engineeringagent/application/feature_iteration/pipeline.py" in checked_in_catalog
+    assert "engineeringagent.application.feature_iteration_runtime" not in checked_in_catalog
