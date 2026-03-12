@@ -26,7 +26,7 @@ def _write_scope_modules(
     renderer_body: str,
     loop_body: str = "from __future__ import annotations\n",
 ) -> None:
-    phases_path = project_root / "src/engineeringagent/loop_runtime/phases.py"
+    phases_path = project_root / "src/engineeringagent/adapters/runtime/iteration_phases.py"
     phases_path.parent.mkdir(parents=True, exist_ok=True)
     phases_path.write_text(phases_body, encoding="utf-8")
 

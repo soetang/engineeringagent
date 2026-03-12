@@ -349,7 +349,7 @@ rules:
     summary: Fail when loop runtime branches on checks type/group semantics or parses checks-internal payloads.
     rationale: Keeps loop orchestration decoupled from checks internals so check-type-specific behavior stays in checks strategies.
     remediation: Consume only checks run result fields ok/output/prompt_feedback in loop runtime and remove checks-internal decision/payload parsing.
-    scope: src/engineeringagent/loop_runtime/** and src/engineeringagent/loop.py
+    scope: src/engineeringagent/loop_runtime/**, src/engineeringagent/adapters/runtime/iteration_phases.py, and src/engineeringagent/loop.py
     severity: error
     side_effect_free: true
     adapter: command
@@ -363,7 +363,7 @@ rules:
     summary: Fail when loop runtime encodes checks group/timing selection policy.
     rationale: Keeps loop runtime phase-driven while checks owns check-group and timing selection decisions.
     remediation: Remove loop-owned checks group maps/literals and explicit checks policy kwargs; call run_checks with phase context only.
-    scope: src/engineeringagent/loop_runtime/** and src/engineeringagent/loop.py
+    scope: src/engineeringagent/loop_runtime/**, src/engineeringagent/adapters/runtime/iteration_phases.py, and src/engineeringagent/loop.py
     severity: error
     side_effect_free: true
     adapter: command
@@ -377,7 +377,7 @@ rules:
     summary: Fail when loop/prompt code performs checks-specific feedback shaping outside checks strategies.
     rationale: Keeps checks failure feedback rendering owned by checks strategies so loop and prompt wiring only forward prompt_feedback.
     remediation: Remove loop/prompt checks-specific feedback builders and pass run_checks(...).prompt_feedback through unchanged.
-    scope: src/engineeringagent/loop_runtime/**, src/engineeringagent/loop.py, and src/engineeringagent/prompts/renderer.py
+    scope: src/engineeringagent/loop_runtime/**, src/engineeringagent/adapters/runtime/iteration_phases.py, src/engineeringagent/loop.py, and src/engineeringagent/prompts/renderer.py
     severity: error
     side_effect_free: true
     adapter: command

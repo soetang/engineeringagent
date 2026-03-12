@@ -36,7 +36,7 @@ from engineeringagent.loop_runtime.iteration import (
     _timed_phase,
     run_feature_iteration_pipeline,
 )
-from engineeringagent.loop_runtime.phases import (
+from engineeringagent.adapters.runtime.iteration_phases import (
     CompletionPhaseDependencies,
     GatePhaseDependencies,
     ReviewerPhaseDependencies,

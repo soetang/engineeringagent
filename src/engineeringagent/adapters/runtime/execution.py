@@ -198,7 +198,7 @@ class RuntimeFeatureIterationExecutor(FeatureIterationExecutor):
             feature_state=import_module("engineeringagent.loop_runtime.feature_state"),
             iteration=import_module("engineeringagent.loop_runtime.iteration"),
             models=import_module("engineeringagent.domain.audit.iteration"),
-            phases=import_module("engineeringagent.loop_runtime.phases"),
+            phases=import_module("engineeringagent.adapters.runtime.iteration_phases"),
         )
 
     def run(

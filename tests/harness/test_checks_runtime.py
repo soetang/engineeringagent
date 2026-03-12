@@ -26,7 +26,7 @@ from engineeringagent.domain.quality import (
     HarnessCheckPhase,
     HarnessChecksDocument,
 )
-from engineeringagent.loop_runtime.phases import (
+from engineeringagent.adapters.runtime.iteration_phases import (
     GatePhaseDependencies,
     ReviewerPhaseDependencies,
     run_gate_phase,
@@ -262,7 +262,7 @@ def test_run_gate_phase_uses_structured_invocations_for_gate_timings(
         )
 
     monkeypatch.setattr(
-        "engineeringagent.loop_runtime.phases.run_checks", _fake_run_checks
+        "engineeringagent.adapters.runtime.iteration_phases.run_checks", _fake_run_checks
     )
 
     deps = GatePhaseDependencies(

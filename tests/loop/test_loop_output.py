@@ -7,7 +7,7 @@ from typing import Any, get_type_hints
 
 import engineeringagent.adapters.progress.iteration_telemetry as telemetry_module
 import engineeringagent.domain.audit.iteration as models_module
-import engineeringagent.loop_runtime.phases as phases_module
+import engineeringagent.adapters.runtime.iteration_phases as phases_module
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.domain.audit import (
     ImplementProgressEnvelope,
@@ -33,7 +33,7 @@ from engineeringagent.domain.audit import (
     IterationTelemetryInputs,
     PhaseTiming,
 )
-from engineeringagent.loop_runtime.phases import (
+from engineeringagent.adapters.runtime.iteration_phases import (
     run_verification_phase,
 )
 

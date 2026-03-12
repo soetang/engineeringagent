@@ -24,7 +24,7 @@ from engineeringagent.checks.fitness.contracts import (
 from engineeringagent.checks.fitness.registry import FitnessRuleDefinition
 from engineeringagent.domain.quality import ChangedPathsResult
 from engineeringagent.loop_runtime import feature_plan_state
-from engineeringagent.loop_runtime.phases import (
+from engineeringagent.adapters.runtime.iteration_phases import (
     CompletionPhaseDependencies,
     GatePhaseDependencies,
     run_completion_commit_phase,
@@ -830,7 +830,7 @@ def test_gate_and_verification_phase_error_paths(
 
     commands = ["cmd-ok"]
     monkeypatch.setattr(
-        "engineeringagent.loop_runtime.phases.run_shell_command",
+        "engineeringagent.adapters.runtime.iteration_phases.run_shell_command",
         lambda *_args: SimpleNamespace(
             returncode=0,
             stdout="ok-out\n",

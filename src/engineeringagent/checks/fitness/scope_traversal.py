@@ -11,6 +11,7 @@ _AstNodeT = TypeVar("_AstNodeT", bound=ast.AST)
 
 LOOP_RUNTIME_ROOT = Path("src/engineeringagent/loop_runtime")
 LOOP_ENTRY_MODULE = Path("src/engineeringagent/loop.py")
+LOOP_PHASES_MODULE = Path("src/engineeringagent/adapters/runtime/iteration_phases.py")
 PROMPT_RENDERER_MODULE = Path("src/engineeringagent/prompts/renderer.py")
 
 
@@ -79,9 +80,9 @@ def parse_loop_boundary_scope_or_fallback(
 ) -> tuple[list[tuple[Path, ast.AST]], list[str]]:
     """Parse deterministic loop-boundary modules with shared scope paths."""
     standalone_modules: tuple[Path, ...] = (
-        (LOOP_ENTRY_MODULE, PROMPT_RENDERER_MODULE)
+        (LOOP_ENTRY_MODULE, LOOP_PHASES_MODULE, PROMPT_RENDERER_MODULE)
         if include_prompt_renderer
-        else (LOOP_ENTRY_MODULE,)
+        else (LOOP_ENTRY_MODULE, LOOP_PHASES_MODULE)
     )
     return parse_scope_modules_or_fallback(
         project_root,

@@ -33,7 +33,7 @@ from engineeringagent.domain.specification import (
 )
 from engineeringagent.specs import feature_progress_kind
 
-from .phases import (
+from engineeringagent.adapters.runtime.iteration_phases import (
     CompletionPhaseDependencies,
     GatePhaseDependencies,
     ReviewerPhaseDependencies,

@@ -246,7 +246,7 @@ def test_bundled_phase_verification_failure_feedback_replaces_previous_feedback(
 
     monkeypatch.setattr(loop_module, "preflight", lambda **_: True)
     monkeypatch.setattr(
-        "engineeringagent.loop_runtime.phases.run_shell_command",
+        "engineeringagent.adapters.runtime.iteration_phases.run_shell_command",
         fake_run_shell_command,
     )
 
@@ -363,7 +363,7 @@ def test_bundled_phase_verification_failure_feedback_replaces_previous_command_c
 
     monkeypatch.setattr(loop_module, "preflight", lambda **_: True)
     monkeypatch.setattr(
-        "engineeringagent.loop_runtime.phases.run_shell_command",
+        "engineeringagent.adapters.runtime.iteration_phases.run_shell_command",
         fake_run_shell_command,
     )
 

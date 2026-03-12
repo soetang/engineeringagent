@@ -6,7 +6,7 @@ from types import SimpleNamespace
 from engineeringagent.domain.audit import FeatureIterationInputs
 from engineeringagent.checks import ChecksRunResult
 from engineeringagent.domain.quality import ChangedPathsResult, parse_feedback_envelope
-from engineeringagent.loop_runtime.phases import (
+from engineeringagent.adapters.runtime.iteration_phases import (
     CompletionPhaseDependencies,
     GatePhaseDependencies,
     ReviewerPhaseDependencies,
@@ -198,7 +198,7 @@ def test_run_reviewer_phase_forwards_request_changes_feedback_for_run_all(
             prompt_feedback=sentinel_feedback,
         )
 
-    monkeypatch.setattr("engineeringagent.loop_runtime.phases.run_checks", _run_checks)
+    monkeypatch.setattr("engineeringagent.adapters.runtime.iteration_phases.run_checks", _run_checks)
 
     deps = ReviewerPhaseDependencies(
         collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
@@ -256,7 +256,7 @@ def test_run_reviewer_phase_uses_configured_checks_path_presence_precheck(
         recorded_calls.append((kwargs.get("phase"), kwargs.get("feature_path")))
         return ChecksRunResult(ok=True, output="[reviewer:doc_review] decision=approve")
 
-    monkeypatch.setattr("engineeringagent.loop_runtime.phases.run_checks", _run_checks)
+    monkeypatch.setattr("engineeringagent.adapters.runtime.iteration_phases.run_checks", _run_checks)
 
     deps = ReviewerPhaseDependencies(
         collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
@@ -362,7 +362,7 @@ def test_run_gate_phase_emits_command_failure_feedback_contract(
     sentinel_feedback = "GATE_FEEDBACK_SENTINEL"
     raw_output = "GATE_RAW_OUTPUT_SHOULD_NOT_BE_FORWARDED"
     monkeypatch.setattr(
-        "engineeringagent.loop_runtime.phases.run_checks",
+        "engineeringagent.adapters.runtime.iteration_phases.run_checks",
         lambda *_args, **_kwargs: ChecksRunResult(
             ok=False,
             dry_run=False,
@@ -423,7 +423,7 @@ def test_run_gate_phase_uses_generic_feedback_when_prompt_feedback_missing(
 
     raw_output = "RAW_OUTPUT_SHOULD_NOT_BE_FORWARDED"
     monkeypatch.setattr(
-        "engineeringagent.loop_runtime.phases.run_checks",
+        "engineeringagent.adapters.runtime.iteration_phases.run_checks",
         lambda *_args, **_kwargs: ChecksRunResult(
             ok=False,
             dry_run=False,
@@ -493,7 +493,7 @@ def test_run_gate_phase_delegates_policy_selection_to_checks(
         )
         return ChecksRunResult(ok=True, dry_run=False)
 
-    monkeypatch.setattr("engineeringagent.loop_runtime.phases.run_checks", _run_checks)
+    monkeypatch.setattr("engineeringagent.adapters.runtime.iteration_phases.run_checks", _run_checks)
 
     outcome = run_gate_phase(
         inputs,
@@ -623,7 +623,7 @@ def test_run_verification_phase_emits_command_failure_feedback_contract(
     )
 
     monkeypatch.setattr(
-        "engineeringagent.loop_runtime.phases.run_shell_command",
+        "engineeringagent.adapters.runtime.iteration_phases.run_shell_command",
         lambda _root, command: SimpleNamespace(
             returncode=1,
             stdout="",

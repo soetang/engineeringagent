@@ -363,7 +363,7 @@ def install_shell_command_results(
         return next(remaining)
 
     monkeypatch.setattr(
-        "engineeringagent.loop_runtime.phases.run_shell_command",
+        "engineeringagent.adapters.runtime.iteration_phases.run_shell_command",
         fake_run_shell_command,
     )
 

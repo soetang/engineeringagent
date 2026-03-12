@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 from engineeringagent.domain.audit import FeatureIterationInputs
 from engineeringagent.domain.quality import ChangedPathsResult
-from engineeringagent.loop_runtime.phases import (
+from engineeringagent.adapters.runtime.iteration_phases import (
     GatePhaseDependencies,
     ReviewerPhaseDependencies,
     run_gate_phase,
@@ -247,7 +247,7 @@ checks:
     )
 
     monkeypatch.setattr(
-        "engineeringagent.loop_runtime.phases.run_checks",
+        "engineeringagent.adapters.runtime.iteration_phases.run_checks",
         lambda *_args, **_kwargs: SimpleNamespace(
             ok=False,
             dry_run=False,

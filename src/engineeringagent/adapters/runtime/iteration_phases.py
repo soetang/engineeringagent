@@ -1,4 +1,4 @@
-"""Loop runtime gate/completion phase helpers."""
+"""Runtime gate and completion phase helpers."""
 
 from __future__ import annotations
 
@@ -10,6 +10,17 @@ from typing import Any, Callable
 
 from pydantic import BaseModel, ConfigDict
 
+from engineeringagent.adapters.shell import run_shell_command
+from engineeringagent.checks import (
+    ChangedPathsResult,
+    ChecksRunResult,
+    HarnessCheckPhase,
+    run_checks,
+)
+from engineeringagent.config import (
+    repo_relative_label,
+    resolve_harness_checks_config_path,
+)
 from engineeringagent.domain.audit import (
     CommandTiming,
     CompletionCommitOutcome,
@@ -18,22 +29,10 @@ from engineeringagent.domain.audit import (
     ReviewerPhaseOutcome,
     VerificationPhaseOutcome,
 )
-from engineeringagent.config import (
-    repo_relative_label,
-    resolve_harness_checks_config_path,
-)
 from engineeringagent.domain.quality import build_command_failure_feedback
 from engineeringagent.domain.shared import utc_iso_from_epoch_sec
 from engineeringagent.domain.specification import feature_completion_commit_subject
-
-from ..adapters.shell import run_shell_command
-from ..checks import (
-    ChangedPathsResult,
-    ChecksRunResult,
-    HarnessCheckPhase,
-    run_checks,
-)
-from ..presentation.presenters.prompt_feedback import (
+from engineeringagent.presentation.presenters.prompt_feedback import (
     format_failed_command_feedback_lines,
     resolve_checks_prompt_feedback,
 )
