@@ -4,14 +4,8 @@ import json
 from pathlib import Path
 from typing import Literal
 
-from engineeringagent.adapters.quality.fitness.catalog import (
-    format_config_file,
-    render_rule_catalog_markdown,
-)
-from engineeringagent.adapters.quality.fitness.registry import (
-    FitnessRuleDefinition,
-    build_rule_catalog,
-)
+from .catalog import format_config_file, render_rule_catalog_markdown
+from .registry import FitnessRuleDefinition, build_rule_catalog
 
 
 def render_fitness_catalog(
@@ -20,16 +14,7 @@ def render_fitness_catalog(
     manifest_path: Path | None = None,
     format: Literal["markdown", "json"] = "markdown",  # pylint: disable=redefined-builtin
 ) -> str:
-    """Render the active fitness-rule catalog.
-
-    Args:
-        project_root: Repository root used to resolve relative paths.
-        manifest_path: Optional custom manifest override.
-        format: Render format: markdown|json.
-
-    Returns:
-        Rendered catalog content without a trailing newline.
-    """
+    """Render the active fitness-rule catalog."""
 
     catalog = build_rule_catalog(project_root, manifest_path=manifest_path)
     if format == "json":

@@ -149,9 +149,9 @@ def render_fitness_catalog(
     manifest_path: Path | None = None,
     format: Literal["markdown", "json"] = "markdown",  # pylint: disable=redefined-builtin
 ) -> str:
-    """Proxy to catalog rendering without importing the catalog during package init."""
+    """Proxy to adapter-owned catalog rendering without importing it during package init."""
 
-    catalog = import_module("engineeringagent.checks.catalog")
+    catalog = import_module("engineeringagent.adapters.quality.fitness.catalog_runtime")
     return catalog.render_fitness_catalog(
         project_root,
         manifest_path=manifest_path,
