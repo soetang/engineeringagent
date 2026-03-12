@@ -1,4 +1,4 @@
-"""Application-layer services and workflow models."""
+"""Application-layer workflow services."""
 
 from .checks_service import ChecksService, RunChecksRequest, RunChecksResult
 from .feature_iteration_service import (
@@ -18,26 +18,6 @@ from .init_workspace_service import (
     InitWorkspaceResult,
     InitWorkspaceService,
 )
-from .feature_iteration import (
-    CommandTiming,
-    CompletionCommitOutcome,
-    FeatureIterationInputs,
-    GatePhaseOutcome,
-    ImplementStepInputs,
-    ImplementStepOutputDependencies,
-    ImplementStepResult,
-    ImplementStepRuntimeDependencies,
-    IterationOutcome,
-    IterationPipelineDependencies,
-    IterationReport,
-    IterationSummaryInputs,
-    IterationTelemetryInputs,
-    PhaseTiming,
-    ReviewerPhaseOutcome,
-    VerificationPhaseOutcome,
-    run_feature_iteration_pipeline,
-    run_implement_step_from_inputs,
-)
 from .prompt_builder import ImplementationPromptRequest, PromptBuilder
 from .run_loop_service import RunLoopRequest, RunLoopResult, RunLoopService
 from .validation_service import (
@@ -53,34 +33,19 @@ from .workspace_recovery_service import (
 
 __all__ = [
     "ChecksService",
-    "CommandTiming",
-    "CompletionCommitOutcome",
-    "FeatureIterationInputs",
     "FeatureIterationRequest",
     "FeatureIterationResult",
     "FeatureIterationRuntimeDependencies",
     "FeatureIterationService",
-    "GatePhaseOutcome",
     "GuidanceInputError",
     "GuidanceQuery",
     "GuidanceResult",
     "GuidanceService",
-    "ImplementStepInputs",
-    "ImplementStepOutputDependencies",
-    "ImplementStepResult",
-    "ImplementStepRuntimeDependencies",
     "InitWorkspaceRequest",
     "InitWorkspaceResult",
     "InitWorkspaceService",
     "ImplementationPromptRequest",
-    "IterationOutcome",
-    "IterationPipelineDependencies",
-    "IterationReport",
-    "IterationSummaryInputs",
-    "IterationTelemetryInputs",
-    "PhaseTiming",
     "PromptBuilder",
-    "ReviewerPhaseOutcome",
     "RunLoopRequest",
     "RunLoopResult",
     "RunLoopService",
@@ -89,9 +54,6 @@ __all__ = [
     "ValidateRepositoryRequest",
     "ValidationResult",
     "ValidationService",
-    "VerificationPhaseOutcome",
-    "run_feature_iteration_pipeline",
-    "run_implement_step_from_inputs",
     "RecoverWorkspaceRequest",
     "RecoverWorkspaceResult",
     "WorkspaceRecoveryService",

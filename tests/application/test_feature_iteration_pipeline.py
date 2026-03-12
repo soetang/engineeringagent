@@ -9,7 +9,7 @@ import pytest
 from pydantic import BaseModel, ConfigDict
 
 import engineeringagent.application.feature_iteration.pipeline as iteration_module
-from engineeringagent.application import (
+from engineeringagent.application.feature_iteration import (
     CompletionCommitOutcome,
     FeatureIterationInputs,
     GatePhaseOutcome,

@@ -4,18 +4,18 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Sequence, cast
 
-from engineeringagent.application import (
+from engineeringagent.application.feature_iteration import (
     FeatureIterationInputs,
-    FeatureIterationRequest,
-    FeatureIterationRuntimeDependencies,
-    FeatureIterationService,
     IterationOutcome,
     IterationReport,
     IterationTelemetryInputs,
+    IterationPipelineDependencies,
     PhaseTiming,
 )
-from engineeringagent.application.feature_iteration import (
-    IterationPipelineDependencies,
+from engineeringagent.application import (
+    FeatureIterationRequest,
+    FeatureIterationRuntimeDependencies,
+    FeatureIterationService,
 )
 from engineeringagent.bootstrap.iteration_reporting import DefaultObserverDependencies
 from engineeringagent.domain.audit import ProgressEvent

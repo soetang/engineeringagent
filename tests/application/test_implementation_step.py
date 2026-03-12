@@ -4,11 +4,11 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from engineeringagent.application.feature_iteration import (
+    ImplementStepInputs,
     ImplementStepOutputDependencies,
     ImplementStepRuntimeDependencies,
     run_implement_step_from_inputs,
 )
-from engineeringagent.application import ImplementStepInputs
 from engineeringagent.domain.audit import (
     ImplementProgressEnvelope,
     ProgressEvent,

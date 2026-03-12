@@ -13,7 +13,7 @@ from engineeringagent.adapters.documents.filesystem_feature_selection import (
     resolve_feature_paths,
 )
 from engineeringagent.adapters.runtime.feature_selector import choose_feature_with_selector
-from engineeringagent.application import (
+from engineeringagent.application.feature_iteration import (
     FeatureIterationInputs,
     IterationOutcome,
     IterationSummaryInputs,

@@ -21,7 +21,7 @@ from engineeringagent.adapters.config import (
     repo_relative_label,
     resolve_harness_checks_config_path,
 )
-from engineeringagent.application import (
+from engineeringagent.application.feature_iteration import (
     CommandTiming,
     CompletionCommitOutcome,
     FeatureIterationInputs,
