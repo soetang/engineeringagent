@@ -12,7 +12,7 @@ from ...application import (
     InitWorkspaceResult,
     InitWorkspaceService,
 )
-from ...init_cli_support import (
+from ...bootstrap.init_cli_support import (
     InitAgentsLauncherResolverDeps,
     InitBackendResolverDeps,
     InitCodexProfileResolverDeps,

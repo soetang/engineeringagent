@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from engineeringagent.presentation.cli import init as cli_init_module
-from engineeringagent import init_cli_support
+from engineeringagent.bootstrap import init_cli_support
 from tests.presentation.cli.init_command_support import (
     DEFAULT_LAUNCHER_ARGS,
     fail_on_input,

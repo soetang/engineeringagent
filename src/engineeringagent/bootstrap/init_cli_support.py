@@ -7,21 +7,21 @@ from typing import Callable
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .adapters.config import (
+from ..adapters.agents import default_backend_id, list_backends
+from ..adapters.config import (
     DEFAULT_CODEX_PROFILE,
     resolve_agents_backend_id,
     resolve_agents_codex_profile_in_engineeringagent_toml,
     write_init_backend_config,
     write_init_docs_root_config,
 )
-from .adapters.vcs import git_cli
-from .adapters.agents import default_backend_id, list_backends
-from .init_scaffold import (
+from ..adapters.vcs import git_cli
+from ..init_scaffold import (
     AGENTS_LAUNCHER_CHOICES,
     DEFAULT_AGENTS_LAUNCHER,
     build_agents_merge_followup_spec,
 )
-from .presentation.presenters.terminal import stdout_is_tty
+from ..presentation.presenters.terminal import stdout_is_tty
 
 InputFn = Callable[[str], str]
 

@@ -79,6 +79,20 @@ rules:
       - run
       - python
       - harness/fitness_functions/rules/check_guidance_module_locations.py
+  - rule_id: architecture.init-cli-support-location
+    name: Init CLI support location
+    summary: Keep init CLI support wiring out of the package root.
+    rationale: The target architecture keeps adapter-facing CLI support wiring in bootstrap instead of at the package root.
+    remediation: Keep init CLI support under engineeringagent.bootstrap and do not restore the root-level engineeringagent.init_cli_support module.
+    scope: src/engineeringagent/bootstrap/init_cli_support.py plus deleted root-level CLI helper modules
+    severity: error
+    side_effect_free: true
+    adapter: command
+    command:
+      - uv
+      - run
+      - python
+      - harness/fitness_functions/rules/check_presentation_cli_module_locations.py
   - rule_id: architecture.legacy-run-loop-bridge-absent
     name: Legacy run-loop bridge absent
     summary: Keep the deleted loop adapter package removed.
