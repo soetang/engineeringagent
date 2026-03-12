@@ -58,7 +58,9 @@ def _normalize_exception_list(values: list[str], *, strip_tests_prefix: bool) ->
     return normalized
 
 
-def _load_policy(config_file: Path) -> tuple[set[str], set[str], set[str], set[str]]:
+def _load_policy(
+    config_file: Path,
+) -> tuple[set[str], set[str], set[str], set[str], set[str]]:
     try:
         payload = yaml.safe_load(config_file.read_text(encoding="utf-8"))
     except OSError as exc:
@@ -86,10 +88,27 @@ def _load_policy(config_file: Path) -> tuple[set[str], set[str], set[str], set[s
         _require_string_list(payload, "forbidden_test_paths"),
         strip_tests_prefix=False,
     )
+    forbidden_prefixes = _normalize_exception_list(
+        _require_string_list(payload, "forbidden_test_prefixes"),
+        strip_tests_prefix=False,
+    )
     if not alias_roots:
         raise ValueError("alias_topic_roots must contain at least one entry")
 
-    return exception_dirs, exception_files, alias_roots, forbidden_tests
+    return (
+        exception_dirs,
+        exception_files,
+        alias_roots,
+        forbidden_tests,
+        forbidden_prefixes,
+    )
+
+
+def _matches_forbidden_prefix(rel_path: str, forbidden_prefixes: set[str]) -> bool:
+    return any(
+        rel_path == prefix or rel_path.startswith(f"{prefix}/")
+        for prefix in forbidden_prefixes
+    )
 
 
 def _iter_python_test_files(project_root: Path) -> list[Path]:
@@ -101,7 +120,13 @@ def _iter_python_test_files(project_root: Path) -> list[Path]:
 
 def _test_layout_violations(project_root: Path) -> list[str]:
     config = _load_policy(_resolve_config_file(_parse_args().config_file))
-    exception_dirs, exception_files, alias_roots, forbidden_tests = config
+    (
+        exception_dirs,
+        exception_files,
+        alias_roots,
+        forbidden_tests,
+        forbidden_prefixes,
+    ) = config
 
     tests_root = project_root / _TESTS_ROOT
     source_root = project_root / _SOURCE_PACKAGE_ROOT
@@ -119,6 +144,12 @@ def _test_layout_violations(project_root: Path) -> list[str]:
         if rel_path in forbidden_tests:
             violations.append(
                 f"{rel_path}: legacy test path is forbidden; move it under the "
+                "mirrored source module path."
+            )
+            continue
+        if _matches_forbidden_prefix(rel_path, forbidden_prefixes):
+            violations.append(
+                f"{rel_path}: legacy test subtree is forbidden; move it under the "
                 "mirrored source module path."
             )
             continue

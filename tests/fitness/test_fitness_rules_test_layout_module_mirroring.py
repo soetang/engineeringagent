@@ -218,17 +218,13 @@ def test_test_layout_module_mirroring_rule_flags_nested_validation_service_test_
     ]
 
 
-def test_test_layout_module_mirroring_rule_flags_legacy_workspace_service_test_paths(
+def test_test_layout_module_mirroring_rule_flags_legacy_workspace_test_subtree(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Reject workspace tests that keep the pre-subpackage service filenames."""
-    _write_file(tmp_path, "tests/application/workspace/test_init_workspace_service.py", "")
-    _write_file(
-        tmp_path,
-        "tests/application/workspace/test_workspace_recovery_service.py",
-        "",
-    )
+    """Reject any test path kept under the legacy workspace subtree."""
+    _write_file(tmp_path, "tests/application/workspace/test_init.py", "")
+    _write_file(tmp_path, "tests/application/workspace/nested/test_recovery.py", "")
     _write_file(tmp_path, "tests/__init__.py", "")
     _write_file(tmp_path, "tests/conftest.py", "")
     _write_file(tmp_path, "src/engineeringagent/application/__init__.py", "")
@@ -248,8 +244,8 @@ def test_test_layout_module_mirroring_rule_flags_legacy_workspace_service_test_p
     assert proc.returncode == 0
     assert result["status"] == "fail"
     assert _violations(result) == [
-        "tests/application/workspace/test_init_workspace_service.py: legacy test path is forbidden; move it under the mirrored source module path.",
-        "tests/application/workspace/test_workspace_recovery_service.py: legacy test path is forbidden; move it under the mirrored source module path.",
+        "tests/application/workspace/nested/test_recovery.py: legacy test subtree is forbidden; move it under the mirrored source module path.",
+        "tests/application/workspace/test_init.py: legacy test subtree is forbidden; move it under the mirrored source module path.",
     ]
 
 
