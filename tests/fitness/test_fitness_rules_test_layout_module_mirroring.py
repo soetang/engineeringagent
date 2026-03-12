@@ -195,6 +195,31 @@ def test_test_layout_module_mirroring_rule_flags_legacy_guidance_service_test_pa
     ]
 
 
+def test_test_layout_module_mirroring_rule_flags_legacy_validation_service_test_path(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Reject flat validation-service tests after moving the service into a subpackage."""
+    _write_file(tmp_path, "tests/application/test_validation_service.py", "")
+    _write_file(tmp_path, "tests/__init__.py", "")
+    _write_file(tmp_path, "tests/conftest.py", "")
+    _write_file(tmp_path, "src/engineeringagent/application/__init__.py", "")
+    _write_file(tmp_path, "src/engineeringagent/application/validation/__init__.py", "")
+    _write_file(tmp_path, "src/engineeringagent/application/validation/service.py", "")
+
+    proc, result = _run_checker(
+        tmp_path,
+        checker_path=_script_path(repo_root),
+        config_file=_policy_path(repo_root),
+    )
+
+    assert proc.returncode == 0
+    assert result["status"] == "fail"
+    assert _violations(result) == [
+        "tests/application/test_validation_service.py: legacy test path is forbidden; move it under the mirrored source module path."
+    ]
+
+
 def test_test_layout_module_mirroring_rule_flags_legacy_workspace_service_test_paths(
     tmp_path: Path,
     repo_root: Path,

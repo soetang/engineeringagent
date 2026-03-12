@@ -43,6 +43,7 @@ def test_validation_service_returns_ok_when_validator_reports_no_messages() -> N
 
 def test_validation_service_returns_messages_when_validator_fails() -> None:
     """Service preserves validator messages in a stable failing result."""
+
     class _Validator:
         def validate(
             self,

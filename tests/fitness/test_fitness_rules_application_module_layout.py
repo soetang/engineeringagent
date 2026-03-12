@@ -140,6 +140,26 @@ def test_checker_allows_prompt_builder_at_application_root(
     assert _violations(payload) == []
 
 
+def test_checker_flags_legacy_flat_validation_service_module(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Reject the removed flat validation workflow module at the application root."""
+    _write_module(
+        tmp_path,
+        relative_path="src/engineeringagent/application/validation_service.py",
+        content="class ValidationService:\n    pass\n",
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert _violations(payload) == [
+        "src/engineeringagent/application/validation_service.py: application root may only contain workflow-service modules; keep only documented workflow-service modules at the application root; move helpers into an explicit subpackage such as engineeringagent.application.feature_iteration, or delete the legacy module"
+    ]
+
+
 def test_checker_flags_legacy_flat_guidance_service_module(
     tmp_path: Path,
     repo_root: Path,

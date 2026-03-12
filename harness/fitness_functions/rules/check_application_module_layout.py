@@ -22,7 +22,6 @@ ALLOWED_ROOT_MODULES = frozenset(
         "init_workspace_service.py",
         "prompt_builder.py",
         "run_loop_service.py",
-        "validation_service.py",
         "workspace_recovery_service.py",
     }
 )

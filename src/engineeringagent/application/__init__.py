@@ -19,7 +19,7 @@ from .init_workspace_service import (
 )
 from .prompt_builder import ImplementationPromptRequest, PromptBuilder
 from .run_loop_service import RunLoopRequest, RunLoopResult, RunLoopService
-from .validation_service import (
+from .validation import (
     ValidateRepositoryRequest,
     ValidationResult,
     ValidationService,
