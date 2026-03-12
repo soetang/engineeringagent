@@ -160,8 +160,6 @@ def _collect_imports(path: Path, module_name: str) -> set[str]:
             if base is None:
                 continue
             imports.add(base)
-            for alias in node.names:
-                imports.add(f"{base}.{alias.name}")
     return imports
 
 

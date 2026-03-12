@@ -202,12 +202,33 @@ def test_directionality_rule_uses_repo_policy_for_layer_and_cli_boundaries(
                 "engineeringagent.presentation.cli.guidance imports blocked dependency "
                 "engineeringagent.adapters.documents"
             ),
-            (
-                "engineeringagent.presentation.cli.guidance imports blocked dependency "
-                "engineeringagent.adapters.documents.FilesystemGuidanceTopicRepository"
-            ),
         ]
     )
+
+
+def test_directionality_rule_reports_from_import_once_per_blocked_module(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Layer violations should report the blocked module, not duplicate imported members."""
+    _write_repo_policy_fixture(tmp_path, repo_root)
+    _write_module(
+        tmp_path,
+        "presentation/cli/guidance.py",
+        "from engineeringagent.adapters.documents import FilesystemGuidanceTopicRepository\n",
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["rule_id"] == "architecture.dep-directionality"
+    assert payload["status"] == "fail"
+    assert cast(list[str], payload["violations"]) == [
+        (
+            "engineeringagent.presentation.cli.guidance imports blocked dependency "
+            "engineeringagent.adapters.documents"
+        )
+    ]
 
 
 def test_repo_directionality_policy_stays_layer_oriented(repo_root: Path) -> None:
