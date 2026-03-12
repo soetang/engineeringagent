@@ -3,6 +3,8 @@
 from .contracts import (
     CommandTiming,
     CompletionCommitOutcome,
+    FeatureIterationRequest,
+    FeatureIterationResult,
     FeatureIterationInputs,
     GatePhaseOutcome,
     ImplementStepInputs,
@@ -32,6 +34,8 @@ from .service_runtime import (
 __all__ = [
     "CommandTiming",
     "CompletionCommitOutcome",
+    "FeatureIterationRequest",
+    "FeatureIterationResult",
     "FeatureIterationInputs",
     "FeatureIterationRuntimeDependencies",
     "GatePhaseOutcome",
