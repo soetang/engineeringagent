@@ -13,8 +13,8 @@ from engineeringagent.application.feature_iteration_service import (
     ImplementStepResult,
 )
 from engineeringagent.bootstrap import runtime_support as runtime_support_module
-from engineeringagent.ports import WorktreeStatus
-from tests.loop.feature_iteration_support import (
+from engineeringagent.ports import ValidationFailure, WorktreeStatus
+from tests.helpers.feature_iteration_support import (
     base_feature,
     init_git_repo,
     invoke_cli,
@@ -732,7 +732,7 @@ def test_loop_uses_expected_commit_subject(tmp_path: Path) -> None:
     assert subject == "docs: publish FEAT-900 release notes"
 
 
-def test_loop_fails_validation_when_expected_commit_subject_missing(
+def test_loop_blocks_on_startup_validation_when_expected_commit_subject_missing(
     tmp_path: Path,
 ) -> None:
     feature_data = base_feature()
@@ -748,18 +748,16 @@ def test_loop_fails_validation_when_expected_commit_subject_missing(
         run_python_script(script_path, feature_path)
 
     with with_opencode_implement_side_effect(implement_effect):
-        code = run_loop(
-            project_root=project_root,
-            feature_paths=[str(feature_path)],
-            dry_run=False,
-            max_iterations=5,
-        )
+        with pytest.raises(ValidationFailure) as exc_info:
+            run_loop(
+                project_root=project_root,
+                feature_paths=[str(feature_path)],
+                dry_run=False,
+                max_iterations=5,
+            )
 
-    assert code == 1
-    runs = read_runs(project_root)
-    assert len(runs) == 5
-    assert all(run["result"] == "failed" for run in runs)
-    assert all(run["failed_gate"] == "validate" for run in runs)
+    assert "expected_commit_subject: Field required" in str(exc_info.value)
+    assert not (project_root / ".engineeringagent" / "progress" / "runs").exists()
 
 
 def test_git_add_failure_exits_immediately(tmp_path: Path) -> None:

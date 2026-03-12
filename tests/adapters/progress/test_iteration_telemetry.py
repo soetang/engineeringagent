@@ -61,7 +61,7 @@ def test_handoff_envelope_parser_accepts_valid_payload() -> None:
             "summary": "  Added markdown handoff rendering. ",
             "completed_work": [" Added parser helper "],
             "verification": [
-                "uv run pytest -q tests/loop/test_loop_output.py -k handoff"
+                "uv run pytest -q tests/adapters/progress/test_iteration_telemetry.py -k handoff"
             ],
             "remaining_work": ["Wire observer append call"],
             "blockers": ["None"],
@@ -72,7 +72,7 @@ def test_handoff_envelope_parser_accepts_valid_payload() -> None:
     assert envelope == ImplementProgressEnvelope(
         summary="Added markdown handoff rendering.",
         completed_work=["Added parser helper"],
-        verification=["uv run pytest -q tests/loop/test_loop_output.py -k handoff"],
+        verification=["uv run pytest -q tests/adapters/progress/test_iteration_telemetry.py -k handoff"],
         remaining_work=["Wire observer append call"],
         blockers=["None"],
     )
@@ -123,7 +123,7 @@ def test_handoff_markdown_entry_omits_empty_and_placeholder_sections() -> None:
     envelope = ImplementProgressEnvelope(
         summary="Minimizing handoff noise in markdown.",
         completed_work=["Render compact completed-work bullets."],
-        verification=["uv run pytest -q tests/loop/test_loop_output.py -k handoff"],
+        verification=["uv run pytest -q tests/adapters/progress/test_iteration_telemetry.py -k handoff"],
         remaining_work=["(none)", "Continue next subtask."],
         blockers=["(none)"],
     )
@@ -216,7 +216,7 @@ def test_write_iteration_telemetry_writes_handoff_snapshot_from_envelope(
         implement_handoff_envelope=ImplementProgressEnvelope(
             summary="Added handoff snapshot wiring to telemetry flow.",
             completed_work=["Wired markdown snapshot write after JSONL write"],
-            verification=["uv run pytest -q tests/loop/test_loop_output.py -k handoff"],
+            verification=["uv run pytest -q tests/adapters/progress/test_iteration_telemetry.py -k handoff"],
             remaining_work=["Add integration coverage for loop observer chain"],
             blockers=[],
         ),

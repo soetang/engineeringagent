@@ -5,13 +5,12 @@ from typing import Any
 
 import yaml
 
-from tests.loop.feature_iteration_feedback_support import (
+from tests.helpers.feature_iteration_feedback_support import (
     advance_bundled_plan_prompt_state,
 )
-from tests.loop.feature_iteration_support import (
+from tests.helpers.feature_iteration_support import (
     base_feature,
     make_bundled_project_root,
-    make_project_root,
 )
 
 

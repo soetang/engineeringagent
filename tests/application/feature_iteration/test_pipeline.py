@@ -31,7 +31,7 @@ from engineeringagent.application.feature_iteration.pipeline import (
     _timed_phase,
     run_feature_iteration_pipeline,
 )
-from tests.loop.feature_iteration_support import (
+from tests.helpers.feature_iteration_support import (
     base_feature,
     make_bundled_project_root,
 )
@@ -1516,17 +1516,17 @@ def test_iteration_pipeline_archives_before_running_done_transition_verification
     ("verification_status", "failed_command", "pre_subtask", "post_subtask"),
     [
         pytest.param(
-            "failed:uv run pytest -q tests/loop",
-            "uv run pytest -q tests/loop",
+            "failed:uv run pytest -q tests/application",
+            "uv run pytest -q tests/application",
             {
                 "id": "ST-001",
                 "status": "in_progress",
-                "verification": ["uv run pytest -q tests/loop"],
+                "verification": ["uv run pytest -q tests/application"],
             },
             {
                 "id": "ST-001",
                 "status": "done",
-                "verification": ["uv run pytest -q tests/loop"],
+                "verification": ["uv run pytest -q tests/application"],
             },
             id="with-failed-command",
         ),

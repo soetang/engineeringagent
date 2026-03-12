@@ -10,12 +10,12 @@ import pytest
 import yaml
 
 import engineeringagent.adapters.runtime.loop_run_builder as loop_run_builder_module
-from tests.loop._feedback_envelope import parse_feedback_envelope_from_prompt
-from tests.loop.feature_iteration_feedback_support import (
+from tests.helpers.feedback_envelope import parse_feedback_envelope_from_prompt
+from tests.helpers.feature_iteration_feedback_support import (
     advance_bundled_plan_prompt_state,
     install_stateful_prompt_agent,
 )
-from tests.loop.feature_iteration_support import (
+from tests.helpers.feature_iteration_support import (
     base_feature,
     init_git_repo,
     install_prompt_capture_agent,

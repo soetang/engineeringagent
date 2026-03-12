@@ -4,7 +4,7 @@ from pathlib import Path
 
 import yaml
 
-from tests.loop.feature_iteration_support import (
+from tests.helpers.feature_iteration_support import (
     base_feature,
     make_project_root,
     run_python_script,

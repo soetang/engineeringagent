@@ -7,7 +7,7 @@ from typing import Callable
 import pytest
 import yaml
 
-from tests.loop.feature_iteration_support import install_prompt_capture_agent
+from tests.helpers.feature_iteration_support import install_prompt_capture_agent
 
 
 def install_stateful_prompt_agent(

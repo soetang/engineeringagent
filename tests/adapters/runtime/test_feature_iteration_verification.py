@@ -19,7 +19,7 @@ from engineeringagent.domain.specification import (
     done_transition_verification_commands,
     progress_status_snapshot,
 )
-from tests.loop.feature_iteration_support import (
+from tests.helpers.feature_iteration_support import (
     base_feature,
     init_git_repo,
     make_bundled_project_root,

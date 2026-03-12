@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# pylint: disable=missing-function-docstring
+
 from typing import cast
 
 from pydantic import ValidationError

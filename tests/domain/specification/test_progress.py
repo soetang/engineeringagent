@@ -9,7 +9,10 @@ from engineeringagent.domain.specification import (
     done_transition_verification_commands,
     progress_status_snapshot,
 )
-from tests.loop.feature_iteration_support import base_feature, make_bundled_project_root
+from tests.helpers.feature_iteration_support import (
+    base_feature,
+    make_bundled_project_root,
+)
 
 
 def test_valid_bundled_plan_progress_helpers_normalize_phase_metadata(

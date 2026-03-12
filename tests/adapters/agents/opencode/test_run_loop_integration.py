@@ -22,8 +22,8 @@ from engineeringagent.bootstrap import AppFactory
 from engineeringagent.bootstrap import runtime_support as runtime_support_module
 from engineeringagent.domain.audit import ImplementProgressEnvelope
 from engineeringagent.ports import AgentBackendError, AgentBackendFailureDetails
-from tests.loop.feature_iteration_support import copy_canonical_prompts
-from tests.loop._feedback_envelope import parse_feedback_envelope_from_prompt
+from tests.helpers.feature_iteration_support import copy_canonical_prompts
+from tests.helpers.feedback_envelope import parse_feedback_envelope_from_prompt
 
 pytestmark = pytest.mark.integration
 
@@ -172,7 +172,7 @@ def _make_project_root(tmp_path: Path) -> tuple[Path, Path]:
     )
     engineeringagent_path.parent.mkdir(parents=True, exist_ok=True)
 
-    repo_root = Path(__file__).resolve().parents[2]
+    repo_root = Path(__file__).resolve().parents[4]
     engineeringagent_path.write_text(
         _build_test_agent_config(repo_root=repo_root, model=_SPARK_AGENT_MODEL),
         encoding="utf-8",
@@ -240,7 +240,7 @@ def test_loop_runs_opencode_integration(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    repo_root = Path(__file__).resolve().parents[2]
+    repo_root = Path(__file__).resolve().parents[4]
     if not resolve_harness_bool_setting(
         repo_root,
         table="pytest",

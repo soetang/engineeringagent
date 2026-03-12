@@ -12,7 +12,7 @@ from engineeringagent.application.feature_iteration_service import (
     IterationSummaryInputs,
 )
 from engineeringagent.bootstrap import runtime_support as runtime_support_module
-from tests.loop.feature_iteration_support import (
+from tests.helpers.feature_iteration_support import (
     FEATURE_LOG_REF,
     RUNS_LOG_REF,
     base_feature,

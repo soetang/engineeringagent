@@ -254,7 +254,7 @@ def test_phase_runtime_fixture_keeps_fe_181_modules_within_budget(
 ) -> None:
     for relative_path in (
         "src/engineeringagent/adapters/runtime/feature_state.py",
-        "tests/loop/test_loop_feature_iteration_verification.py",
+        "tests/adapters/runtime/test_feature_iteration_verification.py",
     ):
         _copy_file(tmp_path, repo_root, relative_path)
 

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# pylint: disable=missing-function-docstring
+
 import json
 import shutil
 import subprocess
@@ -433,7 +435,7 @@ def install_shell_command_results(
 
 def write_fail_once_script(
     script_path: Path,
-    counter_path: Path,
+    _counter_path: Path,
     message: str,
 ) -> Path:
     script_path.write_text(
