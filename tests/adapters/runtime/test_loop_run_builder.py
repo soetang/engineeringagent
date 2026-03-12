@@ -3,8 +3,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Callable, TypedDict
 
-import engineeringagent.bootstrap.run_loop_builder as run_builder_module
-from engineeringagent.bootstrap.run_loop_context import LoopRun, RunConfig, RunState
+import engineeringagent.adapters.runtime.loop_run_builder as run_builder_module
+from engineeringagent.adapters.runtime.loop_run_context import (
+    LoopRun,
+    RunConfig,
+    RunState,
+)
 from engineeringagent.domain.audit import (
     FeatureIterationInputs,
     IterationOutcome,
@@ -469,7 +473,7 @@ def test_run_selected_feature_iterations_covers_completion_and_failure_paths(
 
 
 def test_build_run_config_and_loop_run_wire_default_services(tmp_path: Path) -> None:
-    """Build typed config and loop services for bootstrap runtime orchestration."""
+    """Build typed config and loop services for runtime orchestration."""
 
     config = run_builder_module.build_run_config(
         project_root=tmp_path,

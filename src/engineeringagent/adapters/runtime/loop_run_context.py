@@ -1,4 +1,4 @@
-"""Typed bootstrap-owned run-loop context models."""
+"""Typed runtime-owned run-loop context models."""
 
 from __future__ import annotations
 

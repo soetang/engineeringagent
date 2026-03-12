@@ -1,4 +1,4 @@
-"""Bootstrap-owned helpers for constructing loop runtime context."""
+"""Runtime-owned helpers for constructing loop execution context."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ from engineeringagent.loop_runtime.feature_state import (
 )
 from engineeringagent.ports import VersionControlFailure
 
-from .run_loop_context import LoopRun, RunConfig, RunServices
+from .loop_run_context import LoopRun, RunConfig, RunServices
 
 
 def _print_run_all_snapshot_banner(resolved_paths: Sequence[Path]) -> None:

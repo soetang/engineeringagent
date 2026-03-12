@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 
 import engineeringagent.loop_runtime.iteration as iteration_module
-from engineeringagent.bootstrap.run_loop_context import (
+from engineeringagent.adapters.runtime.loop_run_context import (
     LoopRun,
     RunConfig,
     RunServices,

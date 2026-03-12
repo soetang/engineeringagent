@@ -23,7 +23,7 @@ from engineeringagent.adapters.progress.iteration_telemetry import (
     write_iteration_telemetry,
 )
 from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
-from engineeringagent.bootstrap.run_loop_context import (
+from engineeringagent.adapters.runtime.loop_run_context import (
     LoopRun,
     RunConfig,
     RunServices,
