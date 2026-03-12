@@ -7,12 +7,12 @@ from pydantic import BaseModel
 
 from engineeringagent.application.feature_iteration import FeatureIterationInputs
 from engineeringagent.checks import ChecksRunResult
-from engineeringagent.checks.commands.runtime import (
+from engineeringagent.adapters.quality.command_checks import (
     CommandInvocationRecord,
     iter_planned_command_check_commands,
     plan_command_checks,
 )
-from engineeringagent.checks.commands.runtime import (
+from engineeringagent.adapters.quality.command_checks import (
     PlannedCheck as CommandPlannedCheck,
 )
 from engineeringagent.adapters.quality.fitness.runtime import (

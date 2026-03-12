@@ -23,6 +23,12 @@ _EXCLUDED_PACKAGES = {
     "fitness",
 }
 
+_ALLOWED_ADAPTER_QUALITY_MODULES = {
+    "engineeringagent.adapters.quality",
+    "engineeringagent.adapters.quality.config_selection",
+    "engineeringagent.adapters.quality.check_strategies",
+}
+
 
 def _iter_python_files(project_root: Path) -> list[Path]:
     src_root = project_root / "src" / "engineeringagent"
@@ -96,6 +102,11 @@ def _collect_violations(project_root: Path) -> list[str]:
             if isinstance(node, ast.Import):
                 for alias in node.names:
                     name = alias.name
+                    if _is_disallowed_adapter_quality_import(name):
+                        violations.add(
+                            f"{relpath}:{node.lineno} imports disallowed adapter-quality module {name}"
+                        )
+                        continue
                     if name == "engineeringagent.checks":
                         continue
                     if name.startswith("engineeringagent.checks."):
@@ -109,6 +120,12 @@ def _collect_violations(project_root: Path) -> list[str]:
 
             base = _resolve_import_from_base(module_name, node)
             if base is None:
+                continue
+
+            if _is_disallowed_adapter_quality_import(base):
+                violations.add(
+                    f"{relpath}:{node.lineno} imports disallowed adapter-quality module {base}"
+                )
                 continue
 
             if base == "engineeringagent.checks":
@@ -136,6 +153,14 @@ def _collect_violations(project_root: Path) -> list[str]:
             + ", ".join(sorted(_ALLOWED_CHECKS_IMPORT_NAMES))
         )
     return sorted(violations)
+
+
+def _is_disallowed_adapter_quality_import(module_name: str) -> bool:
+    if not module_name.startswith("engineeringagent.adapters.quality."):
+        return module_name == "engineeringagent.adapters.quality" and (
+            module_name not in _ALLOWED_ADAPTER_QUALITY_MODULES
+        )
+    return module_name not in _ALLOWED_ADAPTER_QUALITY_MODULES
 
 
 def main() -> int:

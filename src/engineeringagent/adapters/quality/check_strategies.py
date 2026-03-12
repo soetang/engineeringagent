@@ -23,7 +23,7 @@ from engineeringagent.adapters.quality.reviewers.runtime import (
     plan_reviewer_checks,
     run_planned_reviewer_checks_from_plan,
 )
-from engineeringagent.checks.commands.runtime import plan_command_checks
+from engineeringagent.adapters.quality.command_checks import plan_command_checks
 from engineeringagent.domain.quality import (
     ALWAYS_RUN_NO_ON_CHANGE_REASON,
     CheckDecision,

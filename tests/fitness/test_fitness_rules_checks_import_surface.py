@@ -44,10 +44,10 @@ def test_checker_flags_checks_submodule_imports_outside_checks_dir(
     (src_root / "app.py").write_text(
         "\n".join(
             [
-                "from engineeringagent.checks.commands.runtime import run_command_checks",
+                "from engineeringagent.adapters.quality.command_checks import plan_command_checks",
                 "\n",
                 "def run() -> None:",
-                "    _ = validate",
+                "    _ = plan_command_checks",
                 "",
             ]
         ),
@@ -56,7 +56,8 @@ def test_checker_flags_checks_submodule_imports_outside_checks_dir(
 
     violations = checker._collect_violations(tmp_path)
     assert (
-        "src/engineeringagent/app.py:1 imports checks submodule engineeringagent.checks.commands.runtime"
+        "src/engineeringagent/app.py:1 imports disallowed adapter-quality module "
+        "engineeringagent.adapters.quality.command_checks"
         in violations
     )
 

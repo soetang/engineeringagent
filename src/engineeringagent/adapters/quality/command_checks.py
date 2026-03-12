@@ -1,17 +1,17 @@
+"""Command-check planning helpers owned by the quality adapter layer."""
+
 from __future__ import annotations
 
 from typing import Iterable
 
 from engineeringagent.domain.quality import (
-    CommandInvocationRecord,
-    HarnessCheckPhase,
-)
-from engineeringagent.domain.quality import (
     ChangedPathsResult,
+    CommandInvocationRecord,
     HarnessCheckCommandDefinition,
+    HarnessCheckPhase,
     HarnessChecksDocument,
-    PlanningPolicyContext,
     PlannedCheck,
+    PlanningPolicyContext,
     make_planned_check,
     plan_checks_for_definition_type,
 )
@@ -42,7 +42,7 @@ def iter_planned_command_check_commands(
     doc: HarnessChecksDocument,
     planned: Iterable[PlannedCheck],
 ) -> Iterable[tuple[str, str]]:
-    """Yield (check_id, command) pairs for planned command checks."""
+    """Yield ``(check_id, command)`` pairs for planned command checks."""
     by_id = doc.checks
     for entry in planned:
         if entry.decision != "run":
