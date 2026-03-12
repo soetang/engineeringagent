@@ -18,7 +18,7 @@ SRC_ROOT = PROJECT_ROOT / "src" / "engineeringagent"
 APPLICATION_ROOT = SRC_ROOT / "application"
 DOMAIN_ROOT = SRC_ROOT / "domain"
 PORTS_ROOT = SRC_ROOT / "ports"
-LOOP_RUNTIME_ROOT = SRC_ROOT / "loop_runtime"
+ADAPTERS_RUNTIME_ROOT = SRC_ROOT / "adapters" / "runtime"
 OPENCODE_ALLOWED_ROOT = SRC_ROOT / "adapters" / "agents" / "opencode"
 CONFIGURED_AGENT_RUNNER_ALLOWED_ROOTS = (
     SRC_ROOT / "bootstrap",
@@ -280,7 +280,8 @@ def _forbidden_dynamic_import_violations(
 
 
 _LOOP_RUNTIME_ALLOWED_APPLICATION_IMPORTS: tuple[str, ...] = (
-    "engineeringagent.application",
+    "engineeringagent.application.feature_iteration.contracts",
+    "engineeringagent.application.feature_iteration_service",
 )
 
 
@@ -712,7 +713,7 @@ def _repo_layer_contract_violations() -> list[str]:
             continue
         violations.extend(_port_protocol_violations(path))
 
-    for path in _iter_python_modules(LOOP_RUNTIME_ROOT):
+    for path in _iter_python_modules(ADAPTERS_RUNTIME_ROOT):
         violations.extend(_loop_runtime_violations(path))
 
     if BOOTSTRAP_RUNTIME_SUPPORT_PATH.is_file():

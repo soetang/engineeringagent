@@ -6,7 +6,6 @@ from importlib import import_module
 from pathlib import Path
 from typing import Callable
 
-from engineeringagent.application import FeatureIterationService
 from engineeringagent.application.feature_iteration.contracts import (
     FeatureIterationInputs,
     IterationOutcome,
@@ -14,6 +13,7 @@ from engineeringagent.application.feature_iteration.contracts import (
 )
 from engineeringagent.application.feature_iteration_service import (
     FeatureIterationRequest,
+    FeatureIterationService,
 )
 from engineeringagent.ports import (
     RunLoopExecutionRequest,

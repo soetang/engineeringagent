@@ -117,7 +117,7 @@ def test_checker_flags_dynamic_adapter_imports_in_application_tests(
             [
                 "import importlib",
                 "",
-                'MODULE = importlib.import_module("engineeringagent." "adapters.documents.filesystem_feature_state")',
+                'MODULE = importlib.import_module("engineeringagent." "adapters.runtime.feature_state")',
                 "",
                 "def test_placeholder() -> None:",
                 "    assert MODULE is not None",
@@ -133,7 +133,7 @@ def test_checker_flags_dynamic_adapter_imports_in_application_tests(
     assert payload["status"] == "fail"
     assert any(
         "tests/application/test_boundary_violation.py:3" in violation
-        and "engineeringagent.adapters.documents.filesystem_feature_state" in violation
+        and "engineeringagent.adapters.runtime.feature_state" in violation
         for violation in _violations(payload)
     )
 

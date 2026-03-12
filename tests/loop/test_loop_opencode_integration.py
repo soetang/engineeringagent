@@ -122,7 +122,7 @@ def _make_project_root(tmp_path: Path) -> tuple[Path, Path]:
     feature_path = (
         project_root
         / "docs"
-        / "spec"
+        / "specifications"
         / "features"
         / "FEAT-901-opencode-integration"
         / "spec.yaml"
@@ -858,7 +858,12 @@ def test_loop_archived_done_continues_run_all_when_selected_path_disappears(
 
     project_root, feature_path = _make_project_root(tmp_path)
     second_feature_path = (
-        project_root / "docs" / "spec" / "features" / "FEAT-902-follow-on" / "spec.yaml"
+        project_root
+        / "docs"
+        / "specifications"
+        / "features"
+        / "FEAT-902-follow-on"
+        / "spec.yaml"
     )
     _write_yaml(
         second_feature_path,
@@ -886,8 +891,8 @@ def test_loop_archived_done_continues_run_all_when_selected_path_disappears(
                 "import sys",
                 "import yaml",
                 "project_root = Path(sys.argv[1])",
-                "active_dir = project_root / 'docs' / 'spec' / 'features'",
-                "done_dir = project_root / 'docs' / 'spec' / 'features_done'",
+                "active_dir = project_root / 'docs' / 'specifications' / 'features'",
+                "done_dir = project_root / 'docs' / 'specifications' / 'features_done'",
                 "first_path = active_dir / 'FEAT-901-opencode-integration' / 'spec.yaml'",
                 "second_path = active_dir / 'FEAT-902-follow-on' / 'spec.yaml'",
                 "if first_path.exists():",
@@ -969,7 +974,7 @@ def test_loop_archived_done_continues_run_all_when_selected_path_disappears(
     archived_selected = (
         project_root
         / "docs"
-        / "spec"
+        / "specifications"
         / "features_done"
         / feature_path.parent.name
         / "spec.yaml"
@@ -977,7 +982,7 @@ def test_loop_archived_done_continues_run_all_when_selected_path_disappears(
     archived_follow_on = (
         project_root
         / "docs"
-        / "spec"
+        / "specifications"
         / "features_done"
         / second_feature_path.parent.name
         / "spec.yaml"

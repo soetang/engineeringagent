@@ -152,16 +152,14 @@ def test_repo_layer_contracts_rule_allows_application_iteration_pipeline_contrac
     assert payload["violations"] == []
 
 
-def test_repo_layer_contracts_rule_blocks_document_adapters_importing_application(
+def test_repo_layer_contracts_rule_blocks_runtime_adapters_importing_application(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Fail when document adapters depend on application-layer models."""
-    documents_root = (
-        tmp_path / "src" / "engineeringagent" / "adapters" / "documents"
-    )
-    documents_root.mkdir(parents=True, exist_ok=True)
-    (documents_root / "filesystem_feature_state.py").write_text(
+    """Fail when runtime adapters depend on application internals."""
+    runtime_root = tmp_path / "src" / "engineeringagent" / "adapters" / "runtime"
+    runtime_root.mkdir(parents=True, exist_ok=True)
+    (runtime_root / "feature_state.py").write_text(
         "from engineeringagent.application.run_loop_service import RunLoopRequest\n",
         encoding="utf-8",
     )
@@ -172,7 +170,7 @@ def test_repo_layer_contracts_rule_blocks_document_adapters_importing_applicatio
     assert payload["status"] == "fail"
     assert payload["rule_id"] == "architecture.repo-layer-contracts"
     assert payload["violations"] == [
-        "src/engineeringagent/adapters/documents/filesystem_feature_state.py: document adapters must not import application modules"
+        "src/engineeringagent/adapters/runtime/feature_state.py: loop runtime modules must not import application modules outside the application service surface"
     ]
 
 

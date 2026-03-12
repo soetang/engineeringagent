@@ -10,6 +10,7 @@ from engineeringagent.application.feature_iteration.contracts import (
     CompletionCommitOutcome,
     FeatureIterationInputs,
     GatePhaseOutcome,
+    ImplementStepResult,
     IterationOutcome,
     IterationReport,
     IterationTelemetryInputs,
@@ -24,6 +25,7 @@ from engineeringagent.application.feature_iteration_service import (
     FeatureIterationRequest,
 )
 from engineeringagent.domain.audit import ProgressEvent
+from engineeringagent.domain.audit.handoff import ImplementProgressEnvelope
 from engineeringagent.domain.specification import (
     InitialFeatureLoadOutcome,
     PostImplementFeatureOutcome,
@@ -180,12 +182,19 @@ def _build_runtime_dependencies(
         touch_active_feature_for_iteration=lambda feature, path: observed.update(
             {"touched_active_feature": (feature["id"], path)}
         ),
-        run_implement_step=lambda *_args, **_kwargs: (
-            True,
-            None,
-            "implemented",
-            None,
-            False,
+        run_implement_step=lambda *_args, **_kwargs: ImplementStepResult(
+            ok=True,
+            failed_gate=None,
+            command_output="implemented",
+            handoff_envelope=ImplementProgressEnvelope(
+                summary="implemented",
+                completed_work=["updated the selected feature"],
+                verification=[
+                    "uv run pytest tests/application/test_feature_iteration_service.py"
+                ],
+                remaining_work=["rerun focused tests"],
+            ),
+            used_handoff_fallback=False,
         ),
         refresh_feature_after_implement=lambda _project_root, _feature_path: (
             PostImplementFeatureOutcome(

@@ -7,7 +7,6 @@ from pathlib import Path
 from engineeringagent.adapters.agents import ConfiguredAgentRunner
 from engineeringagent.adapters.clock import SystemClock
 from engineeringagent.adapters.config import FilesystemConfigurationProvider
-from engineeringagent.adapters.documents import filesystem_feature_state
 from engineeringagent.adapters.quality.changed_paths import collect_changed_paths
 from engineeringagent.adapters.quality.validation import (
     QualityRepositoryValidator,
@@ -26,6 +25,7 @@ from engineeringagent.adapters.prompts import FilesystemPromptDefinitionReposito
 from engineeringagent.adapters.runtime import (
     RuntimeRunLoopExecutor,
 )
+from engineeringagent.adapters.runtime import feature_state
 from engineeringagent.adapters.runtime.iteration_phases import (
     CompletionPhaseDependencies,
     GatePhaseDependencies,
@@ -111,22 +111,16 @@ def _build_feature_iteration_dependencies(
     """Build the default runtime seam bundle for feature iterations."""
     return FeatureIterationDependencies(
         clock=clock,
-        evaluate_initial_feature_load=filesystem_feature_state.evaluate_initial_feature_load,
+        evaluate_initial_feature_load=feature_state.evaluate_initial_feature_load,
         describe_action=runtime_support.describe_action,
-        ready_for_active_iteration=filesystem_feature_state.ready_for_active_iteration,
-        touch_active_feature_for_iteration=(
-            filesystem_feature_state.touch_active_feature_for_iteration
-        ),
+        ready_for_active_iteration=feature_state.ready_for_active_iteration,
+        touch_active_feature_for_iteration=(feature_state.touch_active_feature_for_iteration),
         run_implement_step=runtime_support.run_implement_step,
-        refresh_feature_after_implement=(
-            filesystem_feature_state.refresh_feature_after_implement
-        ),
-        should_archive_selected_feature=(
-            filesystem_feature_state.should_archive_selected_feature
-        ),
-        archive_completed_feature=filesystem_feature_state.archive_completed_feature,
+        refresh_feature_after_implement=(feature_state.refresh_feature_after_implement),
+        should_archive_selected_feature=(feature_state.should_archive_selected_feature),
+        archive_completed_feature=feature_state.archive_completed_feature,
         collect_changed_paths=collect_changed_paths,
-        restore_archived_feature=filesystem_feature_state.restore_archived_feature,
+        restore_archived_feature=feature_state.restore_archived_feature,
         run_gate_phase=run_gate_phase,
         build_gate_phase_dependencies=GatePhaseDependencies,
         run_verification_phase=run_verification_phase,

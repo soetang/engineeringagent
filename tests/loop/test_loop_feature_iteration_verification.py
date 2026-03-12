@@ -12,7 +12,7 @@ from engineeringagent.application.feature_iteration.contracts import (
     IterationOutcome,
 )
 from engineeringagent.bootstrap import AppFactory
-from engineeringagent.adapters.documents.filesystem_feature_state import (
+from engineeringagent.adapters.runtime.feature_state import (
     refresh_feature_after_implement,
 )
 from engineeringagent.domain.specification import (
