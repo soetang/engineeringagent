@@ -162,18 +162,19 @@ def test_test_layout_module_mirroring_rule_flags_legacy_bootstrap_adapter_test_p
     ]
 
 
-def test_test_layout_module_mirroring_rule_allows_root_test_for_root_service_module(
+def test_test_layout_module_mirroring_rule_allows_mirrored_test_for_nested_service_module(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Allow a root-level service test when the source workflow module lives at root."""
-    _write_file(tmp_path, "tests/application/test_feature_iteration_service.py", "")
+    """Allow a mirrored test path for the nested feature-iteration service module."""
+    _write_file(tmp_path, "tests/application/feature_iteration/test_service.py", "")
     _write_file(tmp_path, "tests/__init__.py", "")
     _write_file(tmp_path, "tests/conftest.py", "")
     _write_file(tmp_path, "src/engineeringagent/application/__init__.py", "")
+    _write_file(tmp_path, "src/engineeringagent/application/feature_iteration/__init__.py", "")
     _write_file(
         tmp_path,
-        "src/engineeringagent/application/feature_iteration_service.py",
+        "src/engineeringagent/application/feature_iteration/service.py",
         "",
     )
 

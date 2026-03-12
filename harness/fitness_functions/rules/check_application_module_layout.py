@@ -18,7 +18,6 @@ ALLOWED_ROOT_MODULES = frozenset(
     {
         "__init__.py",
         "checks_service.py",
-        "feature_iteration_service.py",
         "guidance_service.py",
         "init_workspace_service.py",
         "prompt_builder.py",

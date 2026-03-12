@@ -17,7 +17,7 @@ from engineeringagent.bootstrap.feature_iteration import (
 from engineeringagent.bootstrap.iteration_reporting import DefaultObserverDependencies
 from engineeringagent.ports import CommitRequest, CommitResult
 
-from tests.application.test_feature_iteration_service import (
+from tests.application.feature_iteration.test_service import (
     _FakeClock,
     _FakeCompletionPhaseDependencies,
     _FakeGatePhaseDependencies,

@@ -3,12 +3,9 @@
 from __future__ import annotations
 
 from engineeringagent.ports import ProgressJournal, VersionControlGateway
-from .feature_iteration import (
-    FeatureIterationRequest,
-    FeatureIterationResult,
-    FeatureIterationInputs,
-    FeatureIterationRuntimeDependencies,
-)
+
+from .contracts import FeatureIterationInputs, FeatureIterationRequest, FeatureIterationResult
+from .runtime_dependencies import FeatureIterationRuntimeDependencies
 
 
 class FeatureIterationService:

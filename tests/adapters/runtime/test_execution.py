@@ -12,7 +12,7 @@ from engineeringagent.adapters.runtime.loop_run_context import (
     RunConfig,
     RunServices,
 )
-from engineeringagent.application.feature_iteration_service import (
+from engineeringagent.application.feature_iteration import (
     FeatureIterationService,
 )
 from engineeringagent.ports import RunLoopExecutionRequest

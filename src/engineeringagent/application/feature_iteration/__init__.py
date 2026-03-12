@@ -24,12 +24,14 @@ from .implementation_step import (
 )
 from .pipeline import IterationPipelineDependencies, run_feature_iteration_pipeline
 from .runtime_dependencies import FeatureIterationRuntimeDependencies
+from .service import FeatureIterationService
 
 __all__ = [
     "CommandTiming",
     "CompletionCommitOutcome",
     "FeatureIterationRequest",
     "FeatureIterationResult",
+    "FeatureIterationService",
     "FeatureIterationInputs",
     "FeatureIterationRuntimeDependencies",
     "GatePhaseOutcome",

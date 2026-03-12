@@ -71,11 +71,6 @@ def test_checker_allows_declared_workflow_services_at_application_root(
     """Allow the target application service modules at the package root."""
     _write_module(
         tmp_path,
-        relative_path="src/engineeringagent/application/feature_iteration_service.py",
-        content="class FeatureIterationService:\n    pass\n",
-    )
-    _write_module(
-        tmp_path,
         relative_path="src/engineeringagent/application/run_loop_service.py",
         content="class RunLoopService:\n    pass\n",
     )
@@ -87,6 +82,26 @@ def test_checker_allows_declared_workflow_services_at_application_root(
     assert _violations(payload) == []
 
 
+def test_checker_flags_feature_iteration_service_restored_at_application_root(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Reject the legacy root-level feature iteration service module."""
+    _write_module(
+        tmp_path,
+        relative_path="src/engineeringagent/application/feature_iteration_service.py",
+        content="class FeatureIterationService:\n    pass\n",
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert _violations(payload) == [
+        "src/engineeringagent/application/feature_iteration_service.py: application root may only contain workflow-service modules; move non-service helpers into an explicit subpackage such as engineeringagent.application.feature_iteration or delete the legacy module"
+    ]
+
+
 def test_checker_allows_helper_modules_inside_explicit_application_subpackages(
     tmp_path: Path,
     repo_root: Path,
@@ -96,6 +111,11 @@ def test_checker_allows_helper_modules_inside_explicit_application_subpackages(
         tmp_path,
         relative_path="src/engineeringagent/application/feature_iteration/pipeline.py",
         content="def run_feature_iteration_pipeline() -> None:\n    pass\n",
+    )
+    _write_module(
+        tmp_path,
+        relative_path="src/engineeringagent/application/feature_iteration/service.py",
+        content="class FeatureIterationService:\n    pass\n",
     )
 
     proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))

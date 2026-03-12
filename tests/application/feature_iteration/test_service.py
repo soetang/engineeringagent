@@ -255,12 +255,11 @@ def _build_service(
         git_head_short=git_head_short,
         print_summary=print_summary,
         observer_dependencies_type=object,
-        write_iteration_telemetry=_fake_write_iteration_telemetry,
         build_iteration_pipeline_dependencies=_fake_build_iteration_pipeline_dependencies,
         build_iteration_report_observers=_fake_build_iteration_report_observers,
+        write_iteration_telemetry=_fake_write_iteration_telemetry,
         publish_iteration_report=cast(Any, _fake_publish_iteration_report),
     )
-
     version_control_gateway = _FakeVersionControlGateway(observed, commit_result)
     service = FeatureIterationService(
         version_control_gateway=version_control_gateway,
@@ -319,6 +318,8 @@ def test_feature_iteration_service_executes_runtime_pipeline() -> None:
     assert observed["observer_builder_progress_journal"] is service._progress_journal
     assert dependencies.describe_action is runtime_dependencies.describe_action
     assert dependencies.run_implement_step is runtime_dependencies.run_implement_step
+    assert observed["report"] == "iteration-report"
+    assert observed["observers"] == ("observer",)
 
 
 def test_iteration_outcome_from_report_copies_report_status_fields() -> None:
