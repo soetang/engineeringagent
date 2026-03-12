@@ -20,7 +20,7 @@ from engineeringagent.domain.specification import (
 )
 from engineeringagent.ports import Clock
 
-from .contracts import (
+from engineeringagent.application.feature_iteration.models import (
     CommandTiming,
     CompletionCommitOutcome,
     FeatureIterationInputs,

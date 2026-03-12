@@ -10,7 +10,10 @@ from pydantic import BaseModel, ConfigDict
 from engineeringagent.domain.specification import feature_completion_commit_subject
 from engineeringagent.ports import Clock, CommitRequest, VersionControlGateway
 
-from .contracts import IterationOutcome, IterationReport
+from engineeringagent.application.feature_iteration.models import (
+    IterationOutcome,
+    IterationReport,
+)
 from .pipeline import IterationPipelineDependencies
 
 

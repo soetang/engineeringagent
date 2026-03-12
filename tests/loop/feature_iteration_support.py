@@ -20,7 +20,7 @@ from engineeringagent.adapters.agents.opencode.permissions import (
     PermissionProbeResult,
 )
 from engineeringagent.application.run_loop_service import RunLoopRequest
-from engineeringagent.application.feature_iteration.contracts import (
+from engineeringagent.application.feature_iteration_service import (
     ImplementStepResult,
 )
 from engineeringagent.bootstrap import AppFactory

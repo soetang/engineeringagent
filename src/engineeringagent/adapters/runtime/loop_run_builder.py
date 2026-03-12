@@ -17,7 +17,7 @@ from engineeringagent.adapters.documents.filesystem_feature_specification_reposi
     resolve_feature_paths,
 )
 from engineeringagent.adapters.runtime.feature_selector import choose_feature_with_selector
-from engineeringagent.application.feature_iteration.contracts import (
+from engineeringagent.application.feature_iteration_service import (
     FeatureIterationInputs,
     IterationOutcome,
     IterationSummaryInputs,

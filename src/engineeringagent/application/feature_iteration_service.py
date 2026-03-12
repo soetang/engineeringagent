@@ -3,21 +3,57 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.application.feature_iteration.contracts import (
+from engineeringagent.application.feature_iteration.models import (
+    CommandTiming,
+    CompletionCommitOutcome,
     FeatureIterationInputs,
-)
-from engineeringagent.application.feature_iteration.runtime_dependencies import (
-    FeatureIterationDependencies,
-    IterationReportPublisher,
-    build_feature_iteration_pipeline_dependencies,
+    GatePhaseOutcome,
+    ImplementStepInputs,
+    ImplementStepResult,
+    IterationOutcome,
+    IterationReport,
+    IterationSummaryInputs,
+    IterationTelemetryInputs,
+    PhaseTiming,
+    ReviewerPhaseOutcome,
+    VerificationPhaseOutcome,
 )
 from engineeringagent.application.feature_iteration.pipeline import (
     run_feature_iteration_pipeline,
 )
+from engineeringagent.application.feature_iteration.runtime_dependencies import (
+    build_feature_iteration_pipeline_dependencies,
+)
 from engineeringagent.ports import VersionControlGateway
+
+if TYPE_CHECKING:
+    from engineeringagent.application.feature_iteration.runtime_dependencies import (
+        FeatureIterationDependencies,
+        IterationReportPublisher,
+    )
+
+__all__ = [
+    "CommandTiming",
+    "CompletionCommitOutcome",
+    "FeatureIterationInputs",
+    "FeatureIterationRequest",
+    "FeatureIterationResult",
+    "FeatureIterationService",
+    "GatePhaseOutcome",
+    "ImplementStepInputs",
+    "ImplementStepResult",
+    "IterationOutcome",
+    "IterationReport",
+    "IterationSummaryInputs",
+    "IterationTelemetryInputs",
+    "PhaseTiming",
+    "ReviewerPhaseOutcome",
+    "VerificationPhaseOutcome",
+]
 
 
 class FeatureIterationRequest(BaseModel):

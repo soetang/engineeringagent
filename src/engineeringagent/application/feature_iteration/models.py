@@ -1,4 +1,4 @@
-"""Application-owned feature-iteration workflow contracts."""
+"""Internal typed models for feature-iteration workflow orchestration."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from engineeringagent.domain.audit.handoff import ImplementProgressEnvelope
+
 
 class ImplementStepResult(BaseModel):
     """Typed outcome of one application-owned implementation step."""

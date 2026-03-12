@@ -141,7 +141,7 @@ def test_repo_layer_contracts_rule_allows_application_iteration_pipeline_contrac
     )
     application_root.mkdir(parents=True, exist_ok=True)
     (application_root / "pipeline.py").write_text(
-        "from .contracts import IterationReport\n",
+        "from engineeringagent.application.feature_iteration_service import IterationReport\n",
         encoding="utf-8",
     )
 

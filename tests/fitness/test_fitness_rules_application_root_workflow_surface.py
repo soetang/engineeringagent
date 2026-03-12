@@ -227,7 +227,7 @@ def test_checker_flags_feature_iteration_barrel_re_exports(
         relative_path="src/engineeringagent/application/feature_iteration/__init__.py",
         content="\n".join(
             [
-                "from .contracts import IterationReport",
+                "from engineeringagent.application.feature_iteration_service import IterationReport",
                 "",
                 '__all__ = ["IterationReport"]',
                 "",
@@ -273,5 +273,5 @@ def test_checker_flags_feature_iteration_package_imports(
     assert proc.returncode == 0
     assert payload["status"] == "fail"
     assert _violations(payload) == [
-        "tests/application/test_boundary_violation.py:1 import IterationReport from engineeringagent.application.feature_iteration.contracts instead of engineeringagent.application.feature_iteration"
+        "tests/application/test_boundary_violation.py:1 import IterationReport from engineeringagent.application.feature_iteration_service instead of engineeringagent.application.feature_iteration"
     ]

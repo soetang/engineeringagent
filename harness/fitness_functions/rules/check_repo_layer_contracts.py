@@ -68,6 +68,7 @@ DELETED_MODULE_PATHS = {
     "src/engineeringagent/application/feature_iteration_contracts.py",
     "src/engineeringagent/application/feature_iteration_pipeline.py",
     "src/engineeringagent/application/implementation_step.py",
+    "src/engineeringagent/application/feature_iteration/contracts.py",
     "src/engineeringagent/application/checks/runtime.py",
     "src/engineeringagent/application/init_workspace/service.py",
     "src/engineeringagent/application/quality/__init__.py",
@@ -280,7 +281,6 @@ def _forbidden_dynamic_import_violations(
 
 
 _LOOP_RUNTIME_ALLOWED_APPLICATION_IMPORTS: tuple[str, ...] = (
-    "engineeringagent.application.feature_iteration.contracts",
     "engineeringagent.application.feature_iteration_service",
 )
 

@@ -14,7 +14,7 @@ import engineeringagent.adapters.quality.fitness.adapters as adapters_module
 import engineeringagent.adapters.config.runtime as config_module
 import engineeringagent.adapters.runtime.feature_state as feature_state_module
 import engineeringagent.adapters.documents.filesystem_feature_specification_repository as feature_selection_module
-from engineeringagent.application.feature_iteration.contracts import (
+from engineeringagent.application.feature_iteration_service import (
     FeatureIterationInputs,
 )
 from engineeringagent.adapters.quality.fitness.contracts import (

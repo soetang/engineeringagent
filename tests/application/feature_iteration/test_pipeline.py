@@ -8,7 +8,7 @@ from typing import Any, Callable
 import pytest
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.application.feature_iteration.contracts import (
+from engineeringagent.application.feature_iteration_service import (
     CompletionCommitOutcome,
     FeatureIterationInputs,
     GatePhaseOutcome,

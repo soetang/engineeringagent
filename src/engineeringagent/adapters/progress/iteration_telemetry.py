@@ -7,7 +7,7 @@ import time
 from pathlib import Path
 from typing import Any, Callable, Sequence
 
-from engineeringagent.application.feature_iteration.contracts import (
+from engineeringagent.application.feature_iteration_service import (
     CommandTiming,
     IterationTelemetryInputs,
     PhaseTiming,

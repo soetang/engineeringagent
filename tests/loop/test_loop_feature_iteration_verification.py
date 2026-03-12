@@ -8,7 +8,7 @@ import yaml
 from engineeringagent.application.feature_iteration_service import (
     FeatureIterationRequest,
 )
-from engineeringagent.application.feature_iteration.contracts import (
+from engineeringagent.application.feature_iteration_service import (
     IterationOutcome,
 )
 from engineeringagent.bootstrap import AppFactory

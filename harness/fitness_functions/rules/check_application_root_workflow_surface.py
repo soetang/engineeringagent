@@ -108,18 +108,18 @@ SYMBOL_MODULES = {
     "WorkspaceRecoveryService": "engineeringagent.application.workspace_recovery_service",
 }
 FEATURE_ITERATION_SYMBOL_MODULES = {
-    "CommandTiming": "engineeringagent.application.feature_iteration.contracts",
-    "CompletionCommitOutcome": "engineeringagent.application.feature_iteration.contracts",
-    "FeatureIterationInputs": "engineeringagent.application.feature_iteration.contracts",
-    "GatePhaseOutcome": "engineeringagent.application.feature_iteration.contracts",
-    "ImplementStepInputs": "engineeringagent.application.feature_iteration.contracts",
-    "ImplementStepResult": "engineeringagent.application.feature_iteration.contracts",
-    "IterationOutcome": "engineeringagent.application.feature_iteration.contracts",
-    "IterationReport": "engineeringagent.application.feature_iteration.contracts",
-    "IterationTelemetryInputs": "engineeringagent.application.feature_iteration.contracts",
-    "PhaseTiming": "engineeringagent.application.feature_iteration.contracts",
-    "ReviewerPhaseOutcome": "engineeringagent.application.feature_iteration.contracts",
-    "VerificationPhaseOutcome": "engineeringagent.application.feature_iteration.contracts",
+    "CommandTiming": "engineeringagent.application.feature_iteration_service",
+    "CompletionCommitOutcome": "engineeringagent.application.feature_iteration_service",
+    "FeatureIterationInputs": "engineeringagent.application.feature_iteration_service",
+    "GatePhaseOutcome": "engineeringagent.application.feature_iteration_service",
+    "ImplementStepInputs": "engineeringagent.application.feature_iteration_service",
+    "ImplementStepResult": "engineeringagent.application.feature_iteration_service",
+    "IterationOutcome": "engineeringagent.application.feature_iteration_service",
+    "IterationReport": "engineeringagent.application.feature_iteration_service",
+    "IterationTelemetryInputs": "engineeringagent.application.feature_iteration_service",
+    "PhaseTiming": "engineeringagent.application.feature_iteration_service",
+    "ReviewerPhaseOutcome": "engineeringagent.application.feature_iteration_service",
+    "VerificationPhaseOutcome": "engineeringagent.application.feature_iteration_service",
     "run_feature_iteration_pipeline": "engineeringagent.application.feature_iteration.pipeline",
 }
 
@@ -239,7 +239,7 @@ def _application_root_workflow_surface_violations() -> list[str]:
             )
         )
     for path in _iter_python_files():
-        if path == APPLICATION_ROOT or path == FEATURE_ITERATION_ROOT:
+        if path in {APPLICATION_ROOT, FEATURE_ITERATION_ROOT}:
             continue
         violations.extend(
             _import_violations(

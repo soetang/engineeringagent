@@ -8,7 +8,7 @@ import pytest
 import yaml
 
 import engineeringagent.presentation.presenters.terminal as presentation_module
-from engineeringagent.application.feature_iteration.contracts import (
+from engineeringagent.application.feature_iteration_service import (
     IterationSummaryInputs,
 )
 from engineeringagent.bootstrap import runtime_support as runtime_support_module

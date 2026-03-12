@@ -6,7 +6,7 @@ from typing import Any, Sequence
 from engineeringagent.application.feature_iteration_service import (
     FeatureIterationService,
 )
-from engineeringagent.application.feature_iteration.contracts import (
+from engineeringagent.application.feature_iteration_service import (
     CompletionCommitOutcome,
     FeatureIterationInputs,
     GatePhaseOutcome,

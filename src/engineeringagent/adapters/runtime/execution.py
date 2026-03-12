@@ -6,7 +6,7 @@ from importlib import import_module
 from pathlib import Path
 from typing import Callable
 
-from engineeringagent.application.feature_iteration.contracts import (
+from engineeringagent.application.feature_iteration_service import (
     FeatureIterationInputs,
     IterationOutcome,
     IterationSummaryInputs,
