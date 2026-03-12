@@ -25,7 +25,7 @@ from .bootstrap.iteration_reporting import (
 )
 from .domain.specification import feature_completion_commit_subject
 from .domain.specification import deterministic_feature_choice
-from .adapters.documents.filesystem_feature_state import (
+from .adapters.documents.filesystem_feature_selection import (
     discover_active_feature_paths,
     done_features_pending_archive,
     pending_features,

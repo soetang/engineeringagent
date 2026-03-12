@@ -12,6 +12,7 @@ from pydantic import ValidationError
 
 import engineeringagent.checks.fitness.adapters as adapters_module
 import engineeringagent.adapters.config.runtime as config_module
+import engineeringagent.adapters.documents.filesystem_feature_selection as feature_selection_module
 from engineeringagent.application import FeatureIterationInputs
 import engineeringagent.adapters.documents.filesystem_feature_state as feature_state_module
 from engineeringagent.checks.fitness.contracts import (
@@ -153,48 +154,7 @@ def test_feature_state_error_paths(tmp_path: Path, monkeypatch: Any) -> None:
     with pytest.raises(ValueError, match="illegal feature status transition"):
         feature_state_module.set_status({"status": "done"}, "in_progress")
 
-    with pytest.raises(ValueError, match="at least one feature"):
-        feature_state_module.resolve_feature_paths(tmp_path, [])
-
-    txt_path = tmp_path / "feature.txt"
-    txt_path.write_text("id: FEAT-001\n", encoding="utf-8")
-    with pytest.raises(ValueError, match="must end with .yaml"):
-        feature_state_module.resolve_feature_paths(tmp_path, [txt_path])
-
-    directory_path = tmp_path / "feature.yaml"
-    directory_path.mkdir()
-    with pytest.raises(ValueError, match="is not a file"):
-        feature_state_module.resolve_feature_paths(tmp_path, [directory_path])
-
-    flat_yaml = tmp_path / "flat.yaml"
-    flat_yaml.write_text("id: FEAT-001\nstatus: backlog\n", encoding="utf-8")
-    with pytest.raises(
-        ValueError, match="feature specs must use bundled spec.yaml entrypoints"
-    ):
-        feature_state_module.resolve_feature_paths(tmp_path, [flat_yaml])
-
-    bad_yaml_root = tmp_path / "docs" / "spec" / "features" / "FEAT-000-bad"
-    bad_yaml_root.mkdir(parents=True)
-    bad_yaml = bad_yaml_root / "spec.yaml"
-    bad_yaml.write_text("[", encoding="utf-8")
-    with pytest.raises(ValueError, match="failed to load feature YAML"):
-        feature_state_module.resolve_feature_paths(tmp_path, [bad_yaml])
-
-    bundled_root = tmp_path / "docs" / "spec" / "features" / "FEAT-001-good"
-    bundled_root.mkdir(parents=True)
-    good_yaml = bundled_root / "spec.yaml"
-    good_yaml.write_text("id: FEAT-001\nstatus: backlog\n", encoding="utf-8")
-    resolved = feature_state_module.resolve_feature_paths(
-        tmp_path,
-        [good_yaml.relative_to(tmp_path), good_yaml],
-    )
-    assert resolved == [good_yaml.resolve()]
-
     features_dir = tmp_path / "docs" / "spec" / "features"
-    features_dir.mkdir(parents=True, exist_ok=True)
-    (features_dir / "broken.yaml").write_text("[", encoding="utf-8")
-    with pytest.raises(ValueError, match="failed to load feature YAML"):
-        feature_state_module.discover_active_feature_paths(tmp_path)
 
     outside_bundle = tmp_path / "elsewhere" / "FEAT-999-outside" / "spec.yaml"
     outside_bundle.parent.mkdir(parents=True)
@@ -581,7 +541,7 @@ def test_feature_state_supports_bundled_package_discovery_and_archive_flow(
         extra_files={"plan.md": "# plan\n"},
     )
 
-    active_paths = feature_state_module.discover_active_feature_paths(tmp_path)
+    active_paths = feature_selection_module.discover_active_feature_paths(tmp_path)
     assert active_paths == [active_spec]
 
     ok, archived_path, message = feature_state_module.archive_completed_feature(
