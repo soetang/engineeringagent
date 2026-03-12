@@ -12,9 +12,7 @@ from engineeringagent.adapters.runtime.loop_run_context import (
     RunConfig,
     RunServices,
 )
-from engineeringagent.application.feature_iteration import (
-    FeatureIterationService,
-)
+from engineeringagent.application import FeatureIterationService
 from engineeringagent.ports import RunLoopExecutionRequest
 from engineeringagent.ports.version_control import VersionControlGateway
 

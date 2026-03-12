@@ -2,11 +2,46 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
+from pydantic import BaseModel, ConfigDict
+
 from engineeringagent.ports import VersionControlGateway
 
-from .contracts import FeatureIterationInputs, FeatureIterationRequest, FeatureIterationResult
-from .report_publisher import IterationReportPublisher
-from .runtime_dependencies import FeatureIterationRuntimeDependencies
+from .feature_iteration import FeatureIterationInputs
+from .feature_iteration.report_publisher import IterationReportPublisher
+from .feature_iteration.runtime_dependencies import FeatureIterationRuntimeDependencies
+
+
+class FeatureIterationRequest(BaseModel):
+    """Typed input for one feature-iteration execution request."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    project_root: Path
+    feature_path: Path
+    run_all: bool = False
+    attempt: int
+    feedback: str | None
+    verbose_output: bool
+
+
+class FeatureIterationResult(BaseModel):
+    """Stable application result for one feature-iteration execution."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    completed: bool
+    result: str
+    failed_gate: str | None
+    next_action: str
+    feedback: str | None
+    log_path: str | None
+    verification_status: str = "not_run"
+    verification_failed_command: str | None = None
+    reviewer_status: str = "not_run"
+    reviewer_decision: str | None = None
+    failed_reviewer_id: str | None = None
 
 
 class FeatureIterationService:

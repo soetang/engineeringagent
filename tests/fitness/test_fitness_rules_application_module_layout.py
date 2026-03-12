@@ -82,11 +82,11 @@ def test_checker_allows_declared_workflow_services_at_application_root(
     assert _violations(payload) == []
 
 
-def test_checker_flags_feature_iteration_service_restored_at_application_root(
+def test_checker_allows_feature_iteration_service_at_application_root(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Reject the legacy root-level feature iteration service module."""
+    """Allow the documented root-level feature iteration service module."""
     _write_module(
         tmp_path,
         relative_path="src/engineeringagent/application/feature_iteration_service.py",
@@ -96,10 +96,8 @@ def test_checker_flags_feature_iteration_service_restored_at_application_root(
     proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
 
     assert proc.returncode == 0
-    assert payload["status"] == "fail"
-    assert _violations(payload) == [
-        "src/engineeringagent/application/feature_iteration_service.py: application root may only contain workflow-service modules; move non-service helpers into an explicit subpackage such as engineeringagent.application.feature_iteration or delete the legacy module"
-    ]
+    assert payload["status"] == "pass"
+    assert _violations(payload) == []
 
 
 def test_checker_allows_helper_modules_inside_explicit_application_subpackages(
@@ -114,8 +112,8 @@ def test_checker_allows_helper_modules_inside_explicit_application_subpackages(
     )
     _write_module(
         tmp_path,
-        relative_path="src/engineeringagent/application/feature_iteration/service.py",
-        content="class FeatureIterationService:\n    pass\n",
+        relative_path="src/engineeringagent/application/feature_iteration/runtime_dependencies.py",
+        content="class FeatureIterationRuntimeDependencies:\n    pass\n",
     )
 
     proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))

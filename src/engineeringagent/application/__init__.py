@@ -1,7 +1,9 @@
 """Application-layer workflow services."""
 
 from .checks_service import ChecksService, RunChecksRequest, RunChecksResult
-from .feature_iteration import (
+from .feature_iteration_service import (
+    FeatureIterationRequest,
+    FeatureIterationResult,
     FeatureIterationService,
 )
 from .guidance_service import (
@@ -30,6 +32,8 @@ from .workspace_recovery_service import (
 
 __all__ = [
     "ChecksService",
+    "FeatureIterationRequest",
+    "FeatureIterationResult",
     "FeatureIterationService",
     "GuidanceInputError",
     "GuidanceQuery",

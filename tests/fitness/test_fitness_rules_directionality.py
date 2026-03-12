@@ -147,7 +147,7 @@ def test_directionality_rule_applies_package_level_application_boundary(
     _write_repo_policy_fixture(tmp_path, repo_root)
     _write_module(
         tmp_path,
-        "application/feature_iteration/service.py",
+        "application/feature_iteration_service.py",
         "import engineeringagent.adapters.progress.paths\n",
     )
 
@@ -156,7 +156,7 @@ def test_directionality_rule_applies_package_level_application_boundary(
     assert proc.returncode == 0
     assert payload["status"] == "fail"
     assert (
-        "engineeringagent.application.feature_iteration.service imports blocked dependency "
+        "engineeringagent.application.feature_iteration_service imports blocked dependency "
         "engineeringagent.adapters.progress.paths"
     ) in cast(list[str], payload["violations"])
 

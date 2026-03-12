@@ -4,17 +4,16 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Sequence, cast
 
+from engineeringagent.application import FeatureIterationRequest, FeatureIterationService
 from engineeringagent.application.feature_iteration import (
     FeatureIterationInputs,
-    FeatureIterationRequest,
     FeatureIterationRuntimeDependencies,
     IterationOutcome,
+    IterationPipelineDependencies,
     IterationReport,
     IterationTelemetryInputs,
-    IterationPipelineDependencies,
     PhaseTiming,
 )
-from engineeringagent.application import FeatureIterationService
 from engineeringagent.domain.audit import fallback_implement_progress_envelope, ProgressEvent
 from engineeringagent.domain.specification import (
     InitialFeatureLoadOutcome,

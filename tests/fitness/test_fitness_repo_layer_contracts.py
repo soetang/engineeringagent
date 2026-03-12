@@ -81,11 +81,9 @@ def test_repo_layer_contracts_rule_blocks_application_dynamic_imports_of_adapter
     repo_root: Path,
 ) -> None:
     """Fail when application modules hide forbidden adapter imports behind import_module."""
-    application_root = (
-        tmp_path / "src" / "engineeringagent" / "application" / "feature_iteration"
-    )
+    application_root = tmp_path / "src" / "engineeringagent" / "application"
     application_root.mkdir(parents=True, exist_ok=True)
-    (application_root / "service.py").write_text(
+    (application_root / "feature_iteration_service.py").write_text(
         "\n".join(
             [
                 "from importlib import import_module",
@@ -103,7 +101,7 @@ def test_repo_layer_contracts_rule_blocks_application_dynamic_imports_of_adapter
     assert payload["status"] == "fail"
     assert payload["rule_id"] == "architecture.repo-layer-contracts"
     assert payload["violations"] == [
-        "src/engineeringagent/application/feature_iteration/service.py: application modules must not import adapters, agents, bootstrap, or presentation modules"
+        "src/engineeringagent/application/feature_iteration_service.py: application modules must not import adapters, agents, bootstrap, or presentation modules"
     ]
 
 

@@ -190,21 +190,16 @@ def test_test_layout_module_mirroring_rule_flags_legacy_progress_adapter_test_pa
     ]
 
 
-def test_test_layout_module_mirroring_rule_allows_mirrored_test_for_nested_service_module(
+def test_test_layout_module_mirroring_rule_allows_mirrored_test_for_feature_iteration_service(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Allow a mirrored test path for the nested feature-iteration service module."""
-    _write_file(tmp_path, "tests/application/feature_iteration/test_service.py", "")
+    """Allow a mirrored test path for the root feature-iteration service module."""
+    _write_file(tmp_path, "tests/application/test_feature_iteration_service.py", "")
     _write_file(tmp_path, "tests/__init__.py", "")
     _write_file(tmp_path, "tests/conftest.py", "")
     _write_file(tmp_path, "src/engineeringagent/application/__init__.py", "")
-    _write_file(tmp_path, "src/engineeringagent/application/feature_iteration/__init__.py", "")
-    _write_file(
-        tmp_path,
-        "src/engineeringagent/application/feature_iteration/service.py",
-        "",
-    )
+    _write_file(tmp_path, "src/engineeringagent/application/feature_iteration_service.py", "")
 
     proc, result = _run_checker(
         tmp_path,

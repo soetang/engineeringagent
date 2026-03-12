@@ -50,7 +50,7 @@ from engineeringagent.bootstrap.iteration_reporting import DefaultIterationRepor
 from engineeringagent.ports import CommitRequest, CommitResult
 from engineeringagent.ports import ConfigurationProvider
 
-from tests.application.feature_iteration.test_service import (
+from tests.application.test_feature_iteration_service import (
     _FakeClock,
     _FakeCompletionPhaseDependencies,
     _FakeGatePhaseDependencies,
