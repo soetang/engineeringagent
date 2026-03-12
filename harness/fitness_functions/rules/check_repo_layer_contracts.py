@@ -85,6 +85,8 @@ DELETED_MODULE_PATHS = {
     "src/engineeringagent/bootstrap/feature_iteration.py",
     "src/engineeringagent/bootstrap/runtime_execution.py",
     "src/engineeringagent/domain/audit/iteration.py",
+    "src/engineeringagent/domain/prompting/__init__.py",
+    "src/engineeringagent/domain/prompting/prompt_definition.py",
     "src/engineeringagent/feature_commit.py",
     "src/engineeringagent/agents/registry.py",
     "src/engineeringagent/agents/runtime.py",
@@ -149,6 +151,7 @@ DELETED_DIRECTORY_PATHS = {
     "src/engineeringagent/agents",
     "src/engineeringagent/checks/pytest",
     "src/engineeringagent/checks/reviewers",
+    "src/engineeringagent/domain/prompting",
     "src/engineeringagent/loop_runtime",
 }
 LEGACY_MODULES = (

@@ -25,7 +25,7 @@ def test_filesystem_prompt_definition_repository_lists_python_modules(
         prompts_root,
         "implementation_default",
         "from pydantic import BaseModel\n"
-        "from engineeringagent.domain.prompting import PromptDefinition, PromptInterpolation\n"
+        "from engineeringagent.domain.shared.prompt_definition import PromptDefinition, PromptInterpolation\n"
         "class ImplementationInput(BaseModel):\n"
         "    feature_id: str\n"
         "    specification_path: str\n"
@@ -61,7 +61,7 @@ def test_filesystem_prompt_definition_repository_loads_template_text(
         prompts_root,
         "implementation_default",
         "from pydantic import BaseModel\n"
-        "from engineeringagent.domain.prompting import PromptDefinition, PromptInterpolation\n"
+        "from engineeringagent.domain.shared.prompt_definition import PromptDefinition, PromptInterpolation\n"
         "class ImplementationInput(BaseModel):\n"
         "    feature_id: str\n"
         "    specification_path: str\n"
@@ -150,7 +150,7 @@ def test_prompt_definition_render_rejects_undeclared_interpolations(
         prompts_root,
         "implementation_default",
         "from pydantic import BaseModel\n"
-        "from engineeringagent.domain.prompting import PromptDefinition, PromptInterpolation\n"
+        "from engineeringagent.domain.shared.prompt_definition import PromptDefinition, PromptInterpolation\n"
         "class ImplementationInput(BaseModel):\n"
         "    feature_id: str\n"
         "    specification_path: str\n"

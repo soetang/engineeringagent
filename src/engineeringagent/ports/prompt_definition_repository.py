@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from engineeringagent.domain.prompting import PromptDefinition
+from engineeringagent.domain.shared.prompt_definition import PromptDefinition
 
 
 class PromptDefinitionRepository(Protocol):

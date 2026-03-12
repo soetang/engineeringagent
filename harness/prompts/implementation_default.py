@@ -6,7 +6,10 @@ from typing import Callable, cast
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from engineeringagent.domain.prompting import PromptDefinition, PromptInterpolation
+from engineeringagent.domain.shared.prompt_definition import (
+    PromptDefinition,
+    PromptInterpolation,
+)
 
 
 class ImplementationPromptInput(BaseModel):

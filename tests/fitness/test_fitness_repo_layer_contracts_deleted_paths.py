@@ -69,6 +69,24 @@ def test_repo_layer_contracts_rule_blocks_deleted_loop_runtime_directory(
     ]
 
 
+def test_repo_layer_contracts_rule_blocks_deleted_domain_prompting_directory(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Fail when the removed prompt-domain package reappears."""
+    legacy_root = tmp_path / "src" / "engineeringagent" / "domain" / "prompting"
+    legacy_root.mkdir(parents=True, exist_ok=True)
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert payload["rule_id"] == "architecture.repo-layer-contracts"
+    assert payload["violations"] == [
+        "src/engineeringagent/domain/prompting: deleted legacy directory path must remain absent"
+    ]
+
+
 def test_repo_layer_contracts_rule_allows_application_workspace_directory(
     tmp_path: Path,
     repo_root: Path,
@@ -224,6 +242,33 @@ def test_repo_layer_contracts_rule_blocks_deleted_runtime_checks_runner_module(
     assert payload["rule_id"] == "architecture.repo-layer-contracts"
     assert payload["violations"] == [
         "src/engineeringagent/adapters/quality/runtime_checks_runner.py: deleted legacy module path must remain absent"
+    ]
+
+
+def test_repo_layer_contracts_rule_blocks_deleted_domain_prompt_definition_module(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Fail when the removed prompt-domain model module reappears."""
+    legacy_module = (
+        tmp_path
+        / "src"
+        / "engineeringagent"
+        / "domain"
+        / "prompting"
+        / "prompt_definition.py"
+    )
+    legacy_module.parent.mkdir(parents=True, exist_ok=True)
+    legacy_module.write_text("", encoding="utf-8")
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert payload["rule_id"] == "architecture.repo-layer-contracts"
+    assert payload["violations"] == [
+        "src/engineeringagent/domain/prompting/prompt_definition.py: deleted legacy module path must remain absent",
+        "src/engineeringagent/domain/prompting: deleted legacy directory path must remain absent",
     ]
 
 

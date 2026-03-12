@@ -6,7 +6,7 @@ import importlib.util
 from pathlib import Path
 from types import ModuleType
 
-from engineeringagent.domain.prompting import PromptDefinition
+from engineeringagent.domain.shared.prompt_definition import PromptDefinition
 from engineeringagent.ports import PromptDefinitionRepository
 
 

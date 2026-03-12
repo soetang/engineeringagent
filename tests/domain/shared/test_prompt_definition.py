@@ -3,7 +3,10 @@ from __future__ import annotations
 import pytest
 from pydantic import BaseModel
 
-from engineeringagent.domain.prompting import PromptDefinition, PromptInterpolation
+from engineeringagent.domain.shared.prompt_definition import (
+    PromptDefinition,
+    PromptInterpolation,
+)
 
 
 class _InputModel(BaseModel):
