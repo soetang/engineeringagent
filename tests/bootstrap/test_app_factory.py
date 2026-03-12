@@ -20,7 +20,7 @@ from engineeringagent.adapters.quality.runtime import RuntimeChecksRunner
 from engineeringagent.adapters.runtime import RuntimeRunLoopExecutor
 from engineeringagent.adapters.vcs import (
     GitCliVersionControlGateway,
-    GitFeatureWorkspaceManager,
+    GitWorktreeManager,
 )
 from engineeringagent.application.checks_service import ChecksService
 from engineeringagent.application.feature_iteration_service import (
@@ -129,10 +129,10 @@ def test_app_factory_builds_default_application_services(tmp_path: Path) -> None
     )
     recovery_service = factory.build_workspace_recovery_service()
     assert isinstance(recovery_service, WorkspaceRecoveryService)
-    assert isinstance(recovery_service._workspace_manager, GitFeatureWorkspaceManager)
+    assert isinstance(recovery_service._workspace_manager, GitWorktreeManager)
     assert isinstance(recovery_service._progress_journal, FilesystemProgressJournal)
     assert isinstance(
-        factory.build_feature_workspace_manager(), GitFeatureWorkspaceManager
+        factory.build_feature_workspace_manager(), GitWorktreeManager
     )
 
 

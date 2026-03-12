@@ -1,4 +1,4 @@
-"""Git-backed implementation of feature workspace reset lifecycle."""
+"""Git-backed implementation of worktree reset lifecycle."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from engineeringagent.ports import (
 )
 
 
-class GitFeatureWorkspaceManager(FeatureWorkspaceManager):
+class GitWorktreeManager(FeatureWorkspaceManager):
     """Run git workspace reset commands for recovery workflows."""
 
     def get_state(self, workspace_path: Path) -> WorkspaceState:

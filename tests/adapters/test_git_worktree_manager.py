@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from engineeringagent.adapters.vcs import GitFeatureWorkspaceManager
+from engineeringagent.adapters.vcs import GitWorktreeManager
 from engineeringagent.ports import WorkspaceResetRequest, WorkspaceState
 
 
@@ -28,12 +28,12 @@ def test_reset_to_last_accepted_runs_reset_and_clean_then_reports_head_commit(
         raise AssertionError(command)
 
     monkeypatch.setattr(
-        "engineeringagent.adapters.vcs.git_feature_workspace_manager.subprocess.run",
+        "engineeringagent.adapters.vcs.git_worktree_manager.subprocess.run",
         _run,
         raising=True,
     )
 
-    result = GitFeatureWorkspaceManager().reset_to_last_accepted(
+    result = GitWorktreeManager().reset_to_last_accepted(
         WorkspaceResetRequest(workspace_path=tmp_path, target_ref="abc123")
     )
 
@@ -64,12 +64,12 @@ def test_reset_to_last_accepted_reports_clean_failure_without_resolving_head(
         raise AssertionError(command)
 
     monkeypatch.setattr(
-        "engineeringagent.adapters.vcs.git_feature_workspace_manager.subprocess.run",
+        "engineeringagent.adapters.vcs.git_worktree_manager.subprocess.run",
         _run,
         raising=True,
     )
 
-    result = GitFeatureWorkspaceManager().reset_to_last_accepted(
+    result = GitWorktreeManager().reset_to_last_accepted(
         WorkspaceResetRequest(workspace_path=tmp_path, target_ref="abc123")
     )
 
@@ -102,12 +102,12 @@ def test_get_state_reports_changed_paths_and_untracked_files(
         )
 
     monkeypatch.setattr(
-        "engineeringagent.adapters.vcs.git_feature_workspace_manager.subprocess.run",
+        "engineeringagent.adapters.vcs.git_worktree_manager.subprocess.run",
         _run,
         raising=True,
     )
 
-    result = GitFeatureWorkspaceManager().get_state(tmp_path)
+    result = GitWorktreeManager().get_state(tmp_path)
 
     assert result == WorkspaceState(
         clean=False,
@@ -132,10 +132,10 @@ def test_get_state_raises_when_git_status_fails(
         return subprocess.CompletedProcess(command, 128, "", "fatal: not a git repository")
 
     monkeypatch.setattr(
-        "engineeringagent.adapters.vcs.git_feature_workspace_manager.subprocess.run",
+        "engineeringagent.adapters.vcs.git_worktree_manager.subprocess.run",
         _run,
         raising=True,
     )
 
     with pytest.raises(RuntimeError, match="fatal: not a git repository"):
-        GitFeatureWorkspaceManager().get_state(tmp_path)
+        GitWorktreeManager().get_state(tmp_path)

@@ -37,7 +37,7 @@ from engineeringagent.adapters.runtime.iteration_phases import (
 )
 from engineeringagent.adapters.vcs import (
     GitCliVersionControlGateway,
-    GitFeatureWorkspaceManager,
+    GitWorktreeManager,
 )
 from engineeringagent.application.checks_service import ChecksService
 from engineeringagent.application.feature_iteration_service import (
@@ -214,9 +214,9 @@ class AppFactory:
         """Create the default git-backed version-control gateway."""
         return GitCliVersionControlGateway()
 
-    def build_feature_workspace_manager(self) -> GitFeatureWorkspaceManager:
+    def build_feature_workspace_manager(self) -> GitWorktreeManager:
         """Create the default git-backed feature workspace manager."""
-        return GitFeatureWorkspaceManager()
+        return GitWorktreeManager()
 
     def build_prompt_definition_repository(self) -> PromptDefinitionRepository:
         """Create the default filesystem-backed prompt-definition repository."""

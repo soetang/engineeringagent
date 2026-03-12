@@ -131,6 +131,7 @@ DELETED_MODULE_PATHS = {
     "src/engineeringagent/spec_bundles.py",
     "src/engineeringagent/specs.py",
     "src/engineeringagent/config.py",
+    "src/engineeringagent/adapters/vcs/git_feature_workspace_manager.py",
     "src/engineeringagent/loop_runtime/__init__.py",
     "src/engineeringagent/loop_runtime/controller.py",
     "src/engineeringagent/loop_runtime/feature_plan_state.py",
