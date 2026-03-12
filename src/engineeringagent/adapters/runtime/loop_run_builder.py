@@ -12,8 +12,7 @@ from engineeringagent.adapters.config import (
 )
 from engineeringagent.adapters.documents.filesystem_feature_specification_repository import (
     discover_active_feature_paths,
-    done_features_pending_archive,
-    pending_features,
+    load_selection_candidates,
     resolve_feature_paths,
 )
 from engineeringagent.adapters.runtime.feature_selector import choose_feature_with_selector
@@ -22,7 +21,11 @@ from engineeringagent.application.feature_iteration_service import (
     IterationOutcome,
     IterationSummaryInputs,
 )
-from engineeringagent.domain.specification import deterministic_feature_choice
+from engineeringagent.domain.specification import (
+    FeatureSelectionCandidate,
+    FeatureStatus,
+    deterministic_feature_choice,
+)
 from engineeringagent.ports import VersionControlFailure
 from .context import LoopRun, RunConfig, RunServices
 
@@ -63,13 +66,13 @@ def _print_run_all_no_work_message(
 
 
 def _build_selector_prompt(
-    pending: Sequence[tuple[Path, dict[str, Any]]],
+    pending: Sequence[tuple[Path, FeatureSelectionCandidate]],
 ) -> str:
     choices = []
     for feature_path, feature in pending:
         choices.append(
-            f"- id={feature.get('id')} status={feature.get('status')} "
-            f"priority={feature.get('priority')} path={feature_path}"
+            f"- id={feature.feature_id} status={feature.status.value} "
+            f"priority={feature.priority.value} path={feature_path}"
         )
     return (
         "Choose the next feature spec to execute from this pending set. "
@@ -80,8 +83,8 @@ def _build_selector_prompt(
 
 def _choose_feature_with_selector(
     project_root: Path,
-    pending: Sequence[tuple[Path, dict[str, Any]]],
-) -> tuple[Path, dict[str, Any]]:
+    pending: Sequence[tuple[Path, FeatureSelectionCandidate]],
+) -> tuple[Path, FeatureSelectionCandidate]:
     return choose_feature_with_selector(
         project_root,
         pending,
@@ -126,16 +129,17 @@ def _drop_completed_feature_from_snapshot(
 
 def _runnable_feature_candidates(
     resolved_paths: list[Path],
-) -> list[tuple[Path, dict[str, Any]]]:
-    pending = pending_features(resolved_paths)
+) -> list[tuple[Path, FeatureSelectionCandidate]]:
+    all_candidates = load_selection_candidates(resolved_paths)
+    pending = [
+        item for item in all_candidates if item[1].status != FeatureStatus.DONE
+    ]
     if pending:
         return pending
 
-    done_pending_archive = done_features_pending_archive(resolved_paths)
-    if done_pending_archive:
-        return done_pending_archive
-
-    return []
+    return [
+        item for item in all_candidates if item[1].status == FeatureStatus.DONE
+    ]
 
 
 def _terminal_iteration_failure_exit_code(outcome: IterationOutcome) -> int | None:
@@ -192,7 +196,11 @@ def _handle_dry_run(
     if not dry_run:
         return None
 
-    pending = pending_features(resolved_paths)
+    pending = [
+        item
+        for item in load_selection_candidates(resolved_paths)
+        if item[1].status != FeatureStatus.DONE
+    ]
     if not pending:
         if run_all:
             _print_run_all_no_work_message(print_summary_fn=print_summary_fn)
@@ -212,7 +220,7 @@ def _handle_dry_run(
     if run_all:
         print("[dry-run] Selection is taken from the startup snapshot (no rescan).")
     feature_path, feature = deterministic_feature_choice(pending)
-    feature_id = str(feature.get("id", ""))
+    feature_id = feature.feature_id
     print(f"[dry-run] Resolved {len(resolved_paths)} feature file(s).")
     print(f"[dry-run] Selected feature={feature_id} path={feature_path}")
     print_summary_fn(
@@ -283,7 +291,7 @@ def run_selected_feature_iterations(
             config.project_root,
             pending,
         )
-        selected_feature_id = str(selected_feature.get("id", ""))
+        selected_feature_id = selected_feature.feature_id
         print(f"Selected feature={selected_feature_id} path={selected_feature_path}")
 
         while True:

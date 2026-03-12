@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Callable, Sequence
+from typing import Callable, Sequence
 
 from engineeringagent.adapters.agents import (
     AgentBackendError,
@@ -11,6 +11,7 @@ from engineeringagent.adapters.agents import (
     describe_action,
 )
 from engineeringagent.domain.specification import (
+    FeatureSelectionCandidate,
     deterministic_feature_choice,
     parse_selector_output,
 )
@@ -18,14 +19,14 @@ from engineeringagent.domain.specification import (
 
 def choose_feature_with_selector(
     project_root: Path,
-    pending: Sequence[tuple[Path, dict[str, Any]]],
+    pending: Sequence[tuple[Path, FeatureSelectionCandidate]],
     *,
     build_selector_prompt_fn: Callable[
-        [Sequence[tuple[Path, dict[str, Any]]]],
+        [Sequence[tuple[Path, FeatureSelectionCandidate]]],
         str,
     ],
     run_agent_fn: Callable[[Path, str], str],
-) -> tuple[Path, dict[str, Any]]:
+) -> tuple[Path, FeatureSelectionCandidate]:
     """Choose a feature using selector output with deterministic fallback."""
     if len(pending) == 1:
         return pending[0]
@@ -38,7 +39,7 @@ def choose_feature_with_selector(
     except (FileNotFoundError, AgentBackendError) as exc:
         failed_gate, _message = classify_backend_exception(exc)
         fallback = deterministic_feature_choice(pending)
-        print(f"Selector fallback: {failed_gate}; selected {fallback[1].get('id')}")
+        print(f"Selector fallback: {failed_gate}; selected {fallback[1].feature_id}")
         return fallback
 
     chosen_path = parse_selector_output(output, pending)
@@ -49,5 +50,5 @@ def choose_feature_with_selector(
         return (chosen_path, chosen_feature)
 
     fallback = deterministic_feature_choice(pending)
-    print(f"Selector fallback: selector_parse; selected {fallback[1].get('id')}")
+    print(f"Selector fallback: selector_parse; selected {fallback[1].feature_id}")
     return fallback

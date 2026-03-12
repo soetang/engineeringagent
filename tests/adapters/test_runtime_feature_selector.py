@@ -8,21 +8,54 @@ from engineeringagent.ports import (
     AgentBackendFailureDetails,
 )
 import engineeringagent.adapters.runtime.feature_selector as selector_module
+from engineeringagent.domain.specification import (
+    FeaturePriority,
+    FeatureSelectionCandidate,
+    FeatureStatus,
+    PlanningTier,
+)
 
 
-def _pending_features() -> list[tuple[Path, dict[str, Any]]]:
+def _candidate(
+    feature_id: str,
+    *,
+    status: FeatureStatus,
+    priority: FeaturePriority,
+) -> FeatureSelectionCandidate:
+    return FeatureSelectionCandidate(
+        feature_id=feature_id,
+        status=status,
+        priority=priority,
+        planning_tier=PlanningTier.DIRECT,
+        phase_dependencies_satisfied=True,
+    )
+
+
+def _pending_features() -> list[tuple[Path, FeatureSelectionCandidate]]:
     return [
         (
             Path("docs/specifications/features/FEAT-200-third-feature/spec.yaml"),
-            {"id": "FEAT-200", "status": "backlog", "priority": "low"},
+            _candidate(
+                "FEAT-200",
+                status=FeatureStatus.BACKLOG,
+                priority=FeaturePriority.LOW,
+            ),
         ),
         (
             Path("docs/specifications/features/FEAT-100-first-feature/spec.yaml"),
-            {"id": "FEAT-100", "status": "in_progress", "priority": "high"},
+            _candidate(
+                "FEAT-100",
+                status=FeatureStatus.IN_PROGRESS,
+                priority=FeaturePriority.HIGH,
+            ),
         ),
         (
             Path("docs/specifications/features/FEAT-150-second-feature/spec.yaml"),
-            {"id": "FEAT-150", "status": "backlog", "priority": "medium"},
+            _candidate(
+                "FEAT-150",
+                status=FeatureStatus.BACKLOG,
+                priority=FeaturePriority.MEDIUM,
+            ),
         ),
     ]
 
@@ -31,7 +64,16 @@ def test_choose_feature_with_selector_returns_single_pending_without_selector_ca
     None
 ):
     """Skip selector execution when only one candidate exists."""
-    pending = [(Path("docs/specifications/features/solo/spec.yaml"), {"id": "FEAT-999"})]
+    pending = [
+        (
+            Path("docs/specifications/features/solo/spec.yaml"),
+            _candidate(
+                "FEAT-999",
+                status=FeatureStatus.BACKLOG,
+                priority=FeaturePriority.HIGH,
+            ),
+        )
+    ]
 
     def _should_not_run(*_: Any, **__: Any) -> Any:
         raise AssertionError("selector should not run with one candidate")
@@ -62,7 +104,7 @@ def test_choose_feature_with_selector_uses_selector_output_when_parse_succeeds()
     )
 
     assert chosen_path == Path("docs/specifications/features/FEAT-150-second-feature/spec.yaml")
-    assert chosen_feature["id"] == "FEAT-150"
+    assert chosen_feature.feature_id == "FEAT-150"
 
 
 def test_choose_feature_with_selector_falls_back_when_opencode_missing(
@@ -89,7 +131,7 @@ def test_choose_feature_with_selector_falls_back_when_opencode_missing(
     assert "Selector step: opencode run --agent engineeringagent" in output
     assert "Selector fallback: agent_missing" in output
     assert chosen_path == Path("docs/specifications/features/FEAT-100-first-feature/spec.yaml")
-    assert chosen_feature["id"] == "FEAT-100"
+    assert chosen_feature.feature_id == "FEAT-100"
 
 
 def test_choose_feature_with_selector_falls_back_on_parse_or_command_failure(
@@ -124,7 +166,7 @@ def test_choose_feature_with_selector_falls_back_on_parse_or_command_failure(
     assert "Selector step: opencode run --agent engineeringagent" in output
     assert "Selector fallback: opencode_build" in output
     assert chosen_path == Path("docs/specifications/features/FEAT-100-first-feature/spec.yaml")
-    assert chosen_feature["id"] == "FEAT-100"
+    assert chosen_feature.feature_id == "FEAT-100"
 
 
 def test_choose_feature_with_selector_logs_backend_agnostic_step_label(
@@ -186,4 +228,4 @@ def test_choose_feature_with_selector_uses_configured_codex_backend(
     assert "Selector step: codex run selector" in output
     assert "Selector fallback: codex_build" in output
     assert chosen_path == Path("docs/specifications/features/FEAT-100-first-feature/spec.yaml")
-    assert chosen_feature["id"] == "FEAT-100"
+    assert chosen_feature.feature_id == "FEAT-100"

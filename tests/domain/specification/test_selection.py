@@ -1,37 +1,78 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 import engineeringagent.domain.specification.selection as selection
+from engineeringagent.domain.specification import (
+    FeaturePriority,
+    FeatureSelectionCandidate,
+    FeatureStatus,
+    PlanningTier,
+)
 
 
-def _pending_features() -> list[tuple[Path, dict[str, Any]]]:
+def _candidate(
+    feature_id: str,
+    *,
+    status: FeatureStatus,
+    priority: FeaturePriority,
+    planning_tier: PlanningTier = PlanningTier.DIRECT,
+) -> FeatureSelectionCandidate:
+    return FeatureSelectionCandidate(
+        feature_id=feature_id,
+        status=status,
+        priority=priority,
+        planning_tier=planning_tier,
+        phase_dependencies_satisfied=True,
+    )
+
+
+def _pending_features() -> list[tuple[Path, FeatureSelectionCandidate]]:
     return [
         (
             Path("docs/specifications/features/FEAT-200-third-feature/spec.yaml"),
-            {"id": "FEAT-200", "status": "backlog", "priority": "low"},
+            _candidate(
+                "FEAT-200",
+                status=FeatureStatus.BACKLOG,
+                priority=FeaturePriority.LOW,
+            ),
         ),
         (
             Path("docs/specifications/features/FEAT-100-first-feature/spec.yaml"),
-            {"id": "FEAT-100", "status": "in_progress", "priority": "high"},
+            _candidate(
+                "FEAT-100",
+                status=FeatureStatus.IN_PROGRESS,
+                priority=FeaturePriority.HIGH,
+            ),
         ),
         (
             Path("docs/specifications/features/FEAT-150-second-feature/spec.yaml"),
-            {"id": "FEAT-150", "status": "backlog", "priority": "medium"},
+            _candidate(
+                "FEAT-150",
+                status=FeatureStatus.BACKLOG,
+                priority=FeaturePriority.MEDIUM,
+            ),
         ),
     ]
 
 
-def _bundled_pending_features() -> list[tuple[Path, dict[str, Any]]]:
+def _bundled_pending_features() -> list[tuple[Path, FeatureSelectionCandidate]]:
     return [
         (
             Path("docs/specifications/features/FEAT-320-first-bundle/spec.yaml"),
-            {"id": "FEAT-320", "status": "backlog", "priority": "medium"},
+            _candidate(
+                "FEAT-320",
+                status=FeatureStatus.BACKLOG,
+                priority=FeaturePriority.MEDIUM,
+            ),
         ),
         (
             Path("docs/specifications/features/FEAT-321-second-bundle/spec.yaml"),
-            {"id": "FEAT-321", "status": "in_progress", "priority": "high"},
+            _candidate(
+                "FEAT-321",
+                status=FeatureStatus.IN_PROGRESS,
+                priority=FeaturePriority.HIGH,
+            ),
         ),
     ]
 
@@ -43,7 +84,7 @@ def test_deterministic_feature_choice_prefers_status_then_priority_then_id() -> 
     )
 
     assert chosen_path == Path("docs/specifications/features/FEAT-100-first-feature/spec.yaml")
-    assert chosen_feature["id"] == "FEAT-100"
+    assert chosen_feature.feature_id == "FEAT-100"
 
 
 def test_parse_selector_output_matches_full_path_fragment() -> None:
@@ -103,8 +144,22 @@ def test_parse_selector_output_normalizes_multiline_punctuated_tokens() -> None:
 def test_parse_selector_output_returns_none_for_empty_or_ambiguous_tokens() -> None:
     """Reject empty, ambiguous, or unmatched selector output."""
     pending = [
-        (Path("docs/specifications/features/dup-a/spec.yaml"), {"id": "FEAT-401"}),
-        (Path("tmp/dup-b/spec.yaml"), {"id": "FEAT-402"}),
+        (
+            Path("docs/specifications/features/dup-a/spec.yaml"),
+            _candidate(
+                "FEAT-401",
+                status=FeatureStatus.BACKLOG,
+                priority=FeaturePriority.MEDIUM,
+            ),
+        ),
+        (
+            Path("tmp/dup-b/spec.yaml"),
+            _candidate(
+                "FEAT-402",
+                status=FeatureStatus.BACKLOG,
+                priority=FeaturePriority.MEDIUM,
+            ),
+        ),
     ]
 
     assert selection.parse_selector_output("", pending) is None

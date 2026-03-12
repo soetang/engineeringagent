@@ -8,13 +8,13 @@ import yaml
 from engineeringagent.adapters.documents import FilesystemFeatureSpecificationRepository
 from engineeringagent.adapters.documents.filesystem_feature_specification_repository import (
     discover_active_feature_paths,
-    done_features_pending_archive,
-    pending_features,
+    load_selection_candidates,
     resolve_feature_paths,
 )
 from engineeringagent.domain.specification import (
     FeatureArtifacts,
     FeaturePriority,
+    FeatureSelectionCandidate,
     FeatureSpecification,
     FeatureStatus,
     FeatureType,
@@ -297,20 +297,83 @@ def test_discover_active_feature_paths_surfaces_yaml_load_failures(
         discover_active_feature_paths(tmp_path)
 
 
-def test_pending_and_done_feature_helpers_partition_loaded_specs(
+def test_load_selection_candidates_returns_typed_entries_for_explicit_paths(
     tmp_path: Path,
 ) -> None:
-    """Split loaded specs into pending and done archive candidates."""
-    feature_one = tmp_path / "feature-one.yaml"
-    feature_one.write_text("id: FEAT-010\nstatus: backlog\n", encoding="utf-8")
-    feature_two = tmp_path / "feature-two.yaml"
-    feature_two.write_text("id: FEAT-011\nstatus: done\n", encoding="utf-8")
+    """Load explicit spec paths into typed selection candidates."""
+    feature_one_dir = (
+        tmp_path / "docs" / "specifications" / "features" / "FEAT-010-first"
+    )
+    feature_two_dir = (
+        tmp_path / "docs" / "specifications" / "features" / "FEAT-011-second"
+    )
+    feature_one_dir.mkdir(parents=True)
+    feature_two_dir.mkdir(parents=True)
+    feature_one = feature_one_dir / "spec.yaml"
+    feature_two = feature_two_dir / "spec.yaml"
+    feature_one.write_text(
+        yaml.safe_dump(
+            {
+                "id": "FEAT-010",
+                "title": "First",
+                "type": "feature",
+                "expected_commit_subject": "feat: implement feat-010",
+                "planning_tier": "direct",
+                "status": "backlog",
+                "priority": "high",
+                "objective": "First candidate.",
+                "acceptance": ["First candidate works."],
+                "artifacts": {},
+                "updated_at": "2026-03-12T00:00:00Z",
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+    feature_two.write_text(
+        yaml.safe_dump(
+            {
+                "id": "FEAT-011",
+                "title": "Second",
+                "type": "feature",
+                "expected_commit_subject": "feat: implement feat-011",
+                "planning_tier": "direct",
+                "status": "done",
+                "priority": "medium",
+                "objective": "Second candidate.",
+                "acceptance": ["Second candidate works."],
+                "artifacts": {},
+                "updated_at": "2026-03-12T00:00:00Z",
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
 
-    assert pending_features([feature_one, feature_two]) == [
-        (feature_one, {"id": "FEAT-010", "status": "backlog"})
-    ]
-    assert done_features_pending_archive([feature_one, feature_two]) == [
-        (feature_two, {"id": "FEAT-011", "status": "done"})
+    candidates = load_selection_candidates([feature_one, feature_two])
+
+    assert candidates == [
+        (
+            feature_one,
+            FeatureSelectionCandidate(
+                feature_id="FEAT-010",
+                status=FeatureStatus.BACKLOG,
+                priority=FeaturePriority.HIGH,
+                planning_tier=PlanningTier.DIRECT,
+                phase_dependencies_satisfied=True,
+            ),
+        ),
+        (
+            feature_two,
+            FeatureSelectionCandidate(
+                feature_id="FEAT-011",
+                status=FeatureStatus.DONE,
+                priority=FeaturePriority.MEDIUM,
+                planning_tier=PlanningTier.DIRECT,
+                phase_dependencies_satisfied=True,
+                block_reason_code="feature_done",
+            ),
+        ),
     ]
 
 

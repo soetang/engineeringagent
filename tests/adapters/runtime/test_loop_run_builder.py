@@ -14,6 +14,12 @@ from engineeringagent.application.feature_iteration_service import (
     IterationOutcome,
     IterationSummaryInputs,
 )
+from engineeringagent.domain.specification import (
+    FeaturePriority,
+    FeatureSelectionCandidate,
+    FeatureStatus,
+    PlanningTier,
+)
 from engineeringagent.ports import VersionControlFailure, WorktreeStatus
 
 
@@ -31,8 +37,23 @@ class _OutcomeExtras(TypedDict, total=False):
     log_path: str
 
 
-BuildSelectorPrompt = Callable[[list[tuple[Path, dict[str, Any]]]], str]
+BuildSelectorPrompt = Callable[[list[tuple[Path, FeatureSelectionCandidate]]], str]
 RunAgentFn = Callable[..., object]
+
+
+def _candidate(
+    feature_id: str,
+    *,
+    status: FeatureStatus,
+    priority: FeaturePriority,
+) -> FeatureSelectionCandidate:
+    return FeatureSelectionCandidate(
+        feature_id=feature_id,
+        status=status,
+        priority=priority,
+        planning_tier=PlanningTier.DIRECT,
+        phase_dependencies_satisfied=True,
+    )
 
 
 def _config(
@@ -130,16 +151,25 @@ def test_build_selector_prompt_and_choose_feature_delegate(
     """Build selector text and pass the expected collaborators to selection."""
 
     feature_path = tmp_path / "docs" / "spec" / "features" / "FEAT-300" / "spec.yaml"
-    pending = [(feature_path, {"id": "FEAT-300", "status": "backlog", "priority": "high"})]
+    pending = [
+        (
+            feature_path,
+            _candidate(
+                "FEAT-300",
+                status=FeatureStatus.BACKLOG,
+                priority=FeaturePriority.HIGH,
+            ),
+        )
+    ]
     recorded: dict[str, object] = {}
 
     def _choose(
         project_root: Path,
-        pending_features: list[tuple[Path, dict[str, Any]]],
+        pending_features: list[tuple[Path, FeatureSelectionCandidate]],
         *,
         build_selector_prompt_fn: BuildSelectorPrompt,
         run_agent_fn: RunAgentFn,
-    ) -> tuple[Path, dict[str, Any]]:
+    ) -> tuple[Path, FeatureSelectionCandidate]:
         recorded["project_root"] = project_root
         recorded["prompt"] = build_selector_prompt_fn(pending_features)
         recorded["run_agent_fn"] = run_agent_fn
@@ -207,27 +237,44 @@ def test_snapshot_and_candidate_helpers_cover_all_branches(
         feature_path,
     ) == [other_path]
 
-    pending = [(other_path, {"id": "FEAT-301"})]
-    done_pending_archive = [(tmp_path / "archived.yaml", {"id": "FEAT-302"})]
-    monkeypatch.setattr(run_builder_module, "pending_features", lambda _paths: pending)
+    pending = [
+        (
+            other_path,
+            _candidate(
+                "FEAT-301",
+                status=FeatureStatus.BACKLOG,
+                priority=FeaturePriority.HIGH,
+            ),
+        )
+    ]
+    done_pending_archive = [
+        (
+            tmp_path / "archived.yaml",
+            _candidate(
+                "FEAT-302",
+                status=FeatureStatus.DONE,
+                priority=FeaturePriority.MEDIUM,
+            ),
+        )
+    ]
     monkeypatch.setattr(
         run_builder_module,
-        "done_features_pending_archive",
-        lambda _paths: done_pending_archive,
+        "load_selection_candidates",
+        lambda _paths: pending + done_pending_archive,
     )
     assert run_builder_module._runnable_feature_candidates([other_path]) == pending
 
-    monkeypatch.setattr(run_builder_module, "pending_features", lambda _paths: [])
+    monkeypatch.setattr(
+        run_builder_module,
+        "load_selection_candidates",
+        lambda _paths: done_pending_archive,
+    )
     assert (
         run_builder_module._runnable_feature_candidates([other_path])
         == done_pending_archive
     )
 
-    monkeypatch.setattr(
-        run_builder_module,
-        "done_features_pending_archive",
-        lambda _paths: [],
-    )
+    monkeypatch.setattr(run_builder_module, "load_selection_candidates", lambda _paths: [])
     assert run_builder_module._runnable_feature_candidates([other_path]) == []
 
 
@@ -334,8 +381,21 @@ def test_handle_dry_run_covers_pending_and_empty_cases(
     """Dry-run should stop deterministically with summary output."""
 
     feature_path = tmp_path / "feature.yaml"
-    pending = [(feature_path, {"id": "FEAT-400"})]
-    monkeypatch.setattr(run_builder_module, "pending_features", lambda _paths: pending)
+    pending = [
+        (
+            feature_path,
+            _candidate(
+                "FEAT-400",
+                status=FeatureStatus.BACKLOG,
+                priority=FeaturePriority.HIGH,
+            ),
+        )
+    ]
+    monkeypatch.setattr(
+        run_builder_module,
+        "load_selection_candidates",
+        lambda _paths: pending,
+    )
 
     captured: list[IterationSummaryInputs] = []
     assert (
@@ -350,7 +410,11 @@ def test_handle_dry_run_covers_pending_and_empty_cases(
     assert captured[-1].feature_id == "FEAT-400"
     assert captured[-1].result == "dry_run"
 
-    monkeypatch.setattr(run_builder_module, "pending_features", lambda _paths: [])
+    monkeypatch.setattr(
+        run_builder_module,
+        "load_selection_candidates",
+        lambda _paths: [],
+    )
     assert (
         run_builder_module._handle_dry_run(
             [],
@@ -421,7 +485,11 @@ def test_run_selected_feature_iterations_covers_completion_and_failure_paths(
 
     selected_path = tmp_path / "feature.yaml"
     selected_path.write_text("feature", encoding="utf-8")
-    selected_feature = {"id": "FEAT-500"}
+    selected_feature = _candidate(
+        "FEAT-500",
+        status=FeatureStatus.BACKLOG,
+        priority=FeaturePriority.HIGH,
+    )
 
     monkeypatch.setattr(
         run_builder_module,

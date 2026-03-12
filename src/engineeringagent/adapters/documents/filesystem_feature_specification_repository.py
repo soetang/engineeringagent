@@ -5,7 +5,7 @@ from __future__ import annotations
 import errno
 from pathlib import Path
 import shutil
-from typing import Any, Sequence
+from typing import Sequence
 
 from engineeringagent.adapters.config import resolve_specifications_root
 from engineeringagent.domain.specification import (
@@ -166,30 +166,20 @@ def discover_active_feature_paths(project_root: Path) -> list[Path]:
     return resolved
 
 
-def pending_features(
+def load_selection_candidates(
     feature_paths: Sequence[Path],
-) -> list[tuple[Path, dict[str, Any]]]:
-    """Load non-done feature specs from an explicit path list."""
-    pending: list[tuple[Path, dict[str, Any]]] = []
+) -> list[tuple[Path, FeatureSelectionCandidate]]:
+    """Load typed selection candidates from an explicit spec path list."""
+    candidates: list[tuple[Path, FeatureSelectionCandidate]] = []
     for feature_path in feature_paths:
-        feature = load_yaml(feature_path)
-        if feature.get("status") == FeatureStatus.DONE.value:
-            continue
-        pending.append((feature_path, feature))
-    return pending
-
-
-def done_features_pending_archive(
-    feature_paths: Sequence[Path],
-) -> list[tuple[Path, dict[str, Any]]]:
-    """Load done feature specs that are candidates for archive flow."""
-    done_features: list[tuple[Path, dict[str, Any]]] = []
-    for feature_path in feature_paths:
-        feature = load_yaml(feature_path)
-        if feature.get("status") != FeatureStatus.DONE.value:
-            continue
-        done_features.append((feature_path, feature))
-    return done_features
+        payload = _load_valid_feature_payload(feature_path)
+        candidates.append(
+            (
+                feature_path,
+                _build_selection_candidate(spec_path=feature_path, payload=payload),
+            )
+        )
+    return candidates
 
 
 def resolve_spec_directories(project_root: Path) -> tuple[Path, Path]:

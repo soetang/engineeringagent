@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Sequence
+
+from .feature_specification import FeatureSelectionCandidate
 
 STATUS_ORDER: dict[str, int] = {
     "in_progress": 0,
@@ -15,15 +17,17 @@ PRIORITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 
 
 def deterministic_feature_choice(
-    pending: Sequence[tuple[Path, dict[str, Any]]],
-) -> tuple[Path, dict[str, Any]]:
+    pending: Sequence[tuple[Path, FeatureSelectionCandidate]],
+) -> tuple[Path, FeatureSelectionCandidate]:
     """Choose a deterministic feature when selector output is unavailable."""
 
-    def sort_key(item: tuple[Path, dict[str, Any]]) -> tuple[int, int, str, str]:
+    def sort_key(
+        item: tuple[Path, FeatureSelectionCandidate],
+    ) -> tuple[int, int, str, str]:
         feature_path, feature = item
-        status_rank = STATUS_ORDER.get(str(feature.get("status", "")), 99)
-        priority_rank = PRIORITY_ORDER.get(str(feature.get("priority", "medium")), 1)
-        feature_id = str(feature.get("id", ""))
+        status_rank = STATUS_ORDER.get(feature.status.value, 99)
+        priority_rank = PRIORITY_ORDER.get(feature.priority.value, 1)
+        feature_id = feature.feature_id
         return (status_rank, priority_rank, feature_id, str(feature_path))
 
     return sorted(pending, key=sort_key)[0]
@@ -31,7 +35,7 @@ def deterministic_feature_choice(
 
 def parse_selector_output(
     output: str,
-    pending: Sequence[tuple[Path, dict[str, Any]]],
+    pending: Sequence[tuple[Path, FeatureSelectionCandidate]],
 ) -> Path | None:
     """Parse selector output into one of the pending feature paths."""
     text = output.strip()
@@ -53,7 +57,7 @@ def parse_selector_output(
 
 def _match_selector_path_fragment(
     text: str,
-    pending: Sequence[tuple[Path, dict[str, Any]]],
+    pending: Sequence[tuple[Path, FeatureSelectionCandidate]],
 ) -> Path | None:
     for path, _feature in pending:
         if str(path) in text:
@@ -62,7 +66,7 @@ def _match_selector_path_fragment(
 
 
 def _build_selector_token_indexes(
-    pending: Sequence[tuple[Path, dict[str, Any]]],
+    pending: Sequence[tuple[Path, FeatureSelectionCandidate]],
 ) -> dict[str, dict[str, list[Path]]]:
     by_name: dict[str, list[Path]] = {}
     by_parent_name: dict[str, list[Path]] = {}
@@ -71,7 +75,7 @@ def _build_selector_token_indexes(
         by_name.setdefault(path.name, []).append(path)
         if path.name == "spec.yaml":
             by_parent_name.setdefault(path.parent.name, []).append(path)
-        feature_id = str(feature.get("id", "")).strip()
+        feature_id = feature.feature_id.strip()
         if feature_id:
             by_id.setdefault(feature_id, []).append(path)
     return {
