@@ -270,6 +270,39 @@ def test_repo_layer_contracts_rule_blocks_deleted_application_checks_runtime(
     ]
 
 
+def test_repo_layer_contracts_rule_blocks_prompt_models_in_port_repository_module(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Fail when prompt contract models are reintroduced into the port module."""
+    ports_root = tmp_path / "src" / "engineeringagent" / "ports"
+    ports_root.mkdir(parents=True, exist_ok=True)
+    (ports_root / "prompt_definition_repository.py").write_text(
+        "\n".join(
+            [
+                "from typing import Protocol",
+                "from pydantic import BaseModel",
+                "",
+                "class PromptDefinition(BaseModel):",
+                "    prompt_id: str",
+                "",
+                "class PromptDefinitionRepository(Protocol):",
+                "    def get(self, prompt_id: str) -> PromptDefinition: ...",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert payload["rule_id"] == "architecture.repo-layer-contracts"
+    assert payload["violations"] == [
+        "src/engineeringagent/ports/prompt_definition_repository.py: prompt-definition ports module must declare only the PromptDefinitionRepository Protocol; move prompt models into domain contracts"
+    ]
+
+
 def test_repo_layer_contracts_rule_blocks_deleted_legacy_directory_paths(
     tmp_path: Path,
     repo_root: Path,

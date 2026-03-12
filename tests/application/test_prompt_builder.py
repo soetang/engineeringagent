@@ -9,6 +9,7 @@ from engineeringagent.application import (
     ImplementationPromptRequest,
     PromptBuilder,
 )
+from engineeringagent.domain.prompting import PromptDefinition
 from engineeringagent.domain.specification import (
     FeatureArtifacts,
     FeaturePriority,
@@ -17,7 +18,7 @@ from engineeringagent.domain.specification import (
     FeatureType,
     PlanningTier,
 )
-from engineeringagent.ports import PromptDefinition, PromptDefinitionRepository
+from engineeringagent.ports import PromptDefinitionRepository
 
 
 class LocalPromptDefinitionRepository(PromptDefinitionRepository):
@@ -232,7 +233,7 @@ def test_default_prompt_builder_prefers_repo_local_templates(
         prompts_root,
         "implementation_default",
         "from pydantic import BaseModel\n"
-        "from engineeringagent.ports import PromptDefinition, PromptInterpolation\n"
+        "from engineeringagent.domain.prompting import PromptDefinition, PromptInterpolation\n"
         "class ImplementationInput(BaseModel):\n"
         "    feature_id: str\n"
         "    specification_path: str\n"
@@ -289,7 +290,7 @@ def test_prompt_builder_uses_configured_implementation_prompt_id(
         prompts_root,
         "repo_override",
         "from pydantic import BaseModel\n"
-        "from engineeringagent.ports import PromptDefinition, PromptInterpolation\n"
+        "from engineeringagent.domain.prompting import PromptDefinition, PromptInterpolation\n"
         "class ImplementationInput(BaseModel):\n"
         "    feature_id: str\n"
         "    specification_path: str\n"
@@ -346,7 +347,7 @@ def test_prompt_builder_renders_with_typed_prompt_input_model(
         prompts_root,
         "implementation_default",
         "from pydantic import BaseModel\n"
-        "from engineeringagent.ports import PromptDefinition, PromptInterpolation\n"
+        "from engineeringagent.domain.prompting import PromptDefinition, PromptInterpolation\n"
         "class ImplementationInput(BaseModel):\n"
         "    feature_id: str\n"
         "    specification_path: str\n"

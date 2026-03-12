@@ -34,11 +34,7 @@ from .init_workspace import (
     InitWorkspaceDependencies,
 )
 from .progress_journal import ProgressJournal
-from .prompt_definition_repository import (
-    PromptDefinition,
-    PromptDefinitionRepository,
-    PromptInterpolation,
-)
+from .prompt_definition_repository import PromptDefinitionRepository
 from .run_loop_executor import RunLoopExecutionRequest, RunLoopExecutor
 from .repository_validator import (
     RepositoryValidationRequest,
@@ -85,9 +81,7 @@ __all__ = [
     "PortFailure",
     "ProgressEvent",
     "ProgressJournal",
-    "PromptDefinition",
     "PromptDefinitionRepository",
-    "PromptInterpolation",
     "RequestRunAgentBackend",
     "RunLoopExecutionRequest",
     "RunLoopExecutor",

@@ -373,6 +373,16 @@ def _port_protocol_violations(path: Path) -> list[str]:
         violations.append(
             f"{rel_path}: ports modules must declare at least one Protocol contract or shared port failure"
         )
+    if rel_path == "src/engineeringagent/ports/prompt_definition_repository.py":
+        extra_class_names = sorted(
+            node.name
+            for node in module.body
+            if isinstance(node, ast.ClassDef) and node.name != "PromptDefinitionRepository"
+        )
+        if extra_class_names:
+            violations.append(
+                f"{rel_path}: prompt-definition ports module must declare only the PromptDefinitionRepository Protocol; move prompt models into domain contracts"
+            )
     return violations
 
 
