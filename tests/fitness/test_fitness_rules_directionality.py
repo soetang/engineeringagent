@@ -29,6 +29,7 @@ def _write_directionality_fixture(project_root: Path) -> None:
     _write_module(project_root, "application/__init__.py", "")
     _write_module(project_root, "domain/__init__.py", "")
     _write_module(project_root, "ports/__init__.py", "")
+    _write_module(project_root, "presentation/__init__.py", "")
     _write_module(project_root, "presentation/cli/__init__.py", "")
 
 
@@ -55,7 +56,6 @@ def _layer_target_path(layer_id: str) -> Path:
         "domain": Path("domain/__init__.py"),
         "ports": Path("ports/__init__.py"),
         "presentation": Path("presentation/__init__.py"),
-        "presentation_cli": Path("presentation/cli/__init__.py"),
     }[layer_id]
 
 
@@ -222,7 +222,7 @@ def test_repo_directionality_policy_stays_layer_oriented(repo_root: Path) -> Non
     assert all("blocked_dependencies" not in rule for rule in rules)
     assert blocked_layers == [
         ["adapters", "bootstrap", "presentation"],
-        ["adapters", "application", "bootstrap", "presentation_cli"],
+        ["adapters", "application", "bootstrap", "presentation"],
         ["adapters", "application", "bootstrap", "ports", "presentation"],
         ["adapters"],
     ]
@@ -422,5 +422,5 @@ def test_directionality_rule_errors_when_policy_uses_unknown_layer_id(
         _summary(payload)
         == "Dependency directionality scan failed: unknown source layer id "
         "'domain_model'; expected one of: adapters, application, bootstrap, "
-        "domain, ports, presentation, presentation_cli"
+        "domain, ports, presentation"
     )

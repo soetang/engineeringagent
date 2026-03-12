@@ -11,7 +11,7 @@ rules:
       - adapters
       - application
       - bootstrap
-      - presentation_cli
+      - presentation
   - source_layers:
       - domain
     blocked_layers:
@@ -21,6 +21,6 @@ rules:
       - ports
       - presentation
   - source_layers:
-      - presentation_cli
+      - presentation
     blocked_layers:
       - adapters

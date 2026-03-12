@@ -28,7 +28,6 @@ _LAYER_DIRECTORIES = {
     "domain": Path("domain"),
     "ports": Path("ports"),
     "presentation": Path("presentation"),
-    "presentation_cli": Path("presentation") / "cli",
 }
 _BLOCKED_MODULE_PREFIXES = {
     layer_id: f"engineeringagent.{layer_path.as_posix().replace('/', '.')}"
