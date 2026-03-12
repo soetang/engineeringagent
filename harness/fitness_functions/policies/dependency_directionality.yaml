@@ -58,7 +58,7 @@ rules:
     blocked_dependencies:
       - engineeringagent.adapters
       - engineeringagent.loop_runtime
-  - module: engineeringagent.application.checks.service
+  - module: engineeringagent.application.checks_service
     blocked_dependencies:
       - engineeringagent.bootstrap
       - engineeringagent.adapters

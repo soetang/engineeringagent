@@ -200,20 +200,36 @@ def test_repo_layer_contracts_rule_blocks_deleted_application_feature_plan_progr
     ]
 
 
-def test_repo_layer_contracts_rule_blocks_deleted_legacy_checks_service_module(
+def test_repo_layer_contracts_rule_allows_canonical_checks_service_module(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Fail when the removed flat checks service module reappears."""
-    legacy_module = (
+    """Allow the flat checks service module required by the target architecture."""
+    canonical_module = (
         tmp_path
         / "src"
         / "engineeringagent"
         / "application"
         / "checks_service.py"
     )
-    legacy_module.parent.mkdir(parents=True, exist_ok=True)
-    legacy_module.write_text("", encoding="utf-8")
+    canonical_module.parent.mkdir(parents=True, exist_ok=True)
+    canonical_module.write_text("", encoding="utf-8")
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "pass"
+    assert payload["violations"] == []
+
+
+def test_repo_layer_contracts_rule_blocks_deleted_application_checks_package(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Fail when the removed nested application checks package returns."""
+    legacy_root = tmp_path / "src" / "engineeringagent" / "application" / "checks"
+    legacy_root.mkdir(parents=True, exist_ok=True)
+    (legacy_root / "__init__.py").write_text("", encoding="utf-8")
 
     proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
 
@@ -221,7 +237,7 @@ def test_repo_layer_contracts_rule_blocks_deleted_legacy_checks_service_module(
     assert payload["status"] == "fail"
     assert payload["rule_id"] == "architecture.repo-layer-contracts"
     assert payload["violations"] == [
-        "src/engineeringagent/application/checks_service.py: deleted legacy module path must remain absent",
+        "src/engineeringagent/application/checks: deleted legacy directory path must remain absent"
     ]
 
 

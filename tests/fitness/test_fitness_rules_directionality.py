@@ -197,7 +197,7 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
     )
     _write_module(
         tmp_path,
-        "application/checks/service.py",
+        "application/checks_service.py",
         "import engineeringagent.checks\n",
     )
     _write_module(
@@ -300,7 +300,7 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
             "engineeringagent.specs"
         ),
         (
-            "engineeringagent.application.checks.service imports blocked "
+            "engineeringagent.application.checks_service imports blocked "
             "dependency engineeringagent.checks"
         ),
         (
