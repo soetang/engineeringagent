@@ -91,7 +91,6 @@ class _FakeChecksCatalogRepository:
 
 
 def test_default_checks_service_runs_single_requested_phase() -> None:
-    """The service should execute only the requested phase by default."""
     runner = _FakeChecksRunner(
         result_by_phase={
             HarnessCheckPhase.ITERATION_END: _build_result(
@@ -118,7 +117,6 @@ def test_default_checks_service_runs_single_requested_phase() -> None:
 
 
 def test_default_checks_service_stops_at_first_failed_phase_in_all_phases_mode() -> None:
-    """All-phase execution should stop once one phase fails."""
     runner = _FakeChecksRunner(
         result_by_phase={
             HarnessCheckPhase.ITERATION_END: _build_result(
@@ -153,7 +151,6 @@ def test_default_checks_service_stops_at_first_failed_phase_in_all_phases_mode()
 
 
 def test_default_checks_service_rejects_reviewers_without_feature_path() -> None:
-    """Reviewer runs require an explicit feature path before execution starts."""
     with pytest.raises(
         ValueError,
         match="feature_path is required when reviewers checks are selected",
@@ -170,7 +167,6 @@ def test_default_checks_service_rejects_reviewers_without_feature_path() -> None
 
 
 def test_default_checks_service_preflights_catalog_for_harness_groups() -> None:
-    """Harness-backed groups should fail before runner execution when config is missing."""
     runner = _FakeChecksRunner(
         result_by_phase={
             HarnessCheckPhase.ITERATION_END: _build_result(ok=True),
@@ -192,7 +188,6 @@ def test_default_checks_service_preflights_catalog_for_harness_groups() -> None:
 
 
 def test_default_checks_service_skips_catalog_preflight_for_validate_only() -> None:
-    """Validate-only runs should not require loading the harness checks catalog."""
     runner = _FakeChecksRunner(
         result_by_phase={
             HarnessCheckPhase.ITERATION_END: _build_result(ok=True),

@@ -221,7 +221,6 @@ def test_repo_layer_contracts_rule_blocks_deleted_application_checks_runtime(
     assert payload["rule_id"] == "architecture.repo-layer-contracts"
     assert payload["violations"] == [
         "src/engineeringagent/application/checks/runtime.py: deleted legacy module path must remain absent",
-        "src/engineeringagent/application/checks: deleted legacy directory path must remain absent",
     ]
 
 
