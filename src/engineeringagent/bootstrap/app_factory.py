@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from engineeringagent.adapters.agents import ConfiguredAgentRunner
+from engineeringagent.adapters.config import load_repository_config
 from engineeringagent.adapters.quality import (
     ChecksRepositoryValidator,
     RuntimeChecksRunner,
@@ -31,7 +32,6 @@ from engineeringagent.application import (
     ValidationService,
     WorkspaceRecoveryService,
 )
-from engineeringagent.config import resolve_harness_root
 from engineeringagent.ports import (
     AgentRunner,
     PromptDefinitionRepository,
@@ -118,8 +118,9 @@ class AppFactory:
 
     def build_prompt_definition_repository(self) -> PromptDefinitionRepository:
         """Create the default filesystem-backed prompt-definition repository."""
+        config = load_repository_config(self.project_root)
         return FilesystemPromptDefinitionRepository(
-            resolve_harness_root(self.project_root) / "prompts"
+            self.project_root / config.paths.harness_root / "prompts"
         )
 
     def build_prompt_builder(self) -> PromptBuilder:

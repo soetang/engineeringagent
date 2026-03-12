@@ -6,6 +6,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any, TypeVar, cast
 
+from engineeringagent.adapters.config import load_repository_config
+
 if sys.version_info >= (3, 11):
     import tomllib
 else:  # pragma: no cover - Python < 3.11 fallback
@@ -208,13 +210,8 @@ def resolve_docs_root(project_root: Path) -> Path:
     Raises:
         ValueError: If TOML cannot be parsed or docs-root value is invalid.
     """
-    docs_root_value = _resolve_preferred_project_config(
-        project_root,
-        engineeringagent_reader=_docs_root_from_engineeringagent_toml,
-        pyproject_reader=_docs_root_from_pyproject_toml,
-        default=Path(DEFAULT_DOCS_ROOT),
-    )
-    return project_root / cast(Path, docs_root_value)
+    config = load_repository_config(project_root)
+    return project_root / config.paths.docs_root
 
 
 def resolve_harness_bool_setting(
@@ -308,13 +305,8 @@ def resolve_progress_root(project_root: Path) -> Path:
         ValueError: If TOML cannot be parsed or the configured value is invalid.
     """
 
-    progress_root = _resolve_preferred_project_config(
-        project_root,
-        engineeringagent_reader=_progress_root_from_engineeringagent_toml,
-        pyproject_reader=_progress_root_from_pyproject_toml,
-        default=Path(DEFAULT_PROGRESS_ROOT),
-    )
-    return project_root / cast(Path, progress_root)
+    config = load_repository_config(project_root)
+    return project_root / config.paths.progress_root
 
 
 def resolve_specifications_root(project_root: Path) -> Path:
@@ -335,13 +327,8 @@ def resolve_specifications_root(project_root: Path) -> Path:
         ValueError: If TOML cannot be parsed or the configured value is invalid.
     """
 
-    specifications_root = _resolve_preferred_project_config(
-        project_root,
-        engineeringagent_reader=_specifications_root_from_engineeringagent_toml,
-        pyproject_reader=_specifications_root_from_pyproject_toml,
-        default=resolve_docs_root(project_root) / "spec",
-    )
-    return project_root / cast(Path, specifications_root)
+    config = load_repository_config(project_root)
+    return project_root / config.paths.specifications_root
 
 
 def resolve_harness_root(project_root: Path) -> Path:
@@ -362,13 +349,8 @@ def resolve_harness_root(project_root: Path) -> Path:
         ValueError: If TOML cannot be parsed or the configured value is invalid.
     """
 
-    harness_root = _resolve_preferred_project_config(
-        project_root,
-        engineeringagent_reader=_harness_root_from_engineeringagent_toml,
-        pyproject_reader=_harness_root_from_pyproject_toml,
-        default=Path(DEFAULT_HARNESS_ROOT),
-    )
-    return project_root / cast(Path, harness_root)
+    config = load_repository_config(project_root)
+    return project_root / config.paths.harness_root
 
 
 def repo_relative_label(project_root: Path, target_path: Path) -> str:
@@ -397,12 +379,7 @@ def resolve_agents_backend_id(project_root: Path) -> str | None:
         ValueError: If TOML cannot be parsed or the configured value is invalid.
     """
 
-    return _resolve_preferred_project_config(
-        project_root,
-        engineeringagent_reader=_agents_backend_id_from_engineeringagent_toml,
-        pyproject_reader=_agents_backend_id_from_pyproject_toml,
-        default=None,
-    )
+    return load_repository_config(project_root).agents.backend
 
 
 def resolve_agents_codex_profile(project_root: Path) -> str | None:
@@ -414,18 +391,7 @@ def resolve_agents_codex_profile(project_root: Path) -> str | None:
     - default: unset (None)
     """
 
-    return _resolve_preferred_project_config(
-        project_root,
-        engineeringagent_reader=lambda path: _agents_codex_option_from_engineeringagent_toml(
-            path,
-            key=_CODEX_PROFILE_KEY,
-        ),
-        pyproject_reader=lambda path: _agents_codex_option_from_pyproject_toml(
-            path,
-            key=_CODEX_PROFILE_KEY,
-        ),
-        default=None,
-    )
+    return load_repository_config(project_root).agents.codex.profile
 
 
 def resolve_agents_codex_profile_in_engineeringagent_toml(
@@ -434,9 +400,17 @@ def resolve_agents_codex_profile_in_engineeringagent_toml(
     """Resolve Codex profile configured only in engineeringagent.toml."""
 
     engineeringagent_toml = project_root / "engineeringagent.toml"
-    return _agents_codex_option_from_engineeringagent_toml(
-        engineeringagent_toml,
-        key=_CODEX_PROFILE_KEY,
+    if not engineeringagent_toml.exists():
+        return None
+    document = _read_engineeringagent_document(engineeringagent_toml)
+    codex_table = _table_at_path(document, (_AGENTS_TABLE, _CODEX_TABLE))
+    if codex_table is None:
+        return None
+    return _normalize_nonempty_string(
+        codex_table.get(_CODEX_PROFILE_KEY),
+        key_name=_CODEX_PROFILE_KEY,
+        source_path=engineeringagent_toml,
+        source_scope=_toml_scope((_AGENTS_TABLE, _CODEX_TABLE)),
     )
 
 
@@ -449,18 +423,7 @@ def resolve_agents_codex_model(project_root: Path) -> str | None:
     - default: unset (None)
     """
 
-    return _resolve_preferred_project_config(
-        project_root,
-        engineeringagent_reader=lambda path: _agents_codex_option_from_engineeringagent_toml(
-            path,
-            key=_CODEX_MODEL_KEY,
-        ),
-        pyproject_reader=lambda path: _agents_codex_option_from_pyproject_toml(
-            path,
-            key=_CODEX_MODEL_KEY,
-        ),
-        default=None,
-    )
+    return load_repository_config(project_root).agents.codex.model
 
 
 def _resolve_preferred_project_config(
@@ -520,6 +483,13 @@ def _read_toml_value(
         table = document
 
     return table.get(key), _toml_scope(table_path, default=top_level_scope)
+
+
+def _read_engineeringagent_document(path: Path) -> dict[str, Any]:
+    document = _load_toml(path)
+    if document is None:
+        return {}
+    return document
 
 
 def _normalize_toml_value(
@@ -586,76 +556,6 @@ def _harness_checks_path_from_engineeringagent_toml(path: Path) -> Path | None:
     )
 
 
-def _progress_root_from_engineeringagent_toml(path: Path) -> Path | None:
-    return _normalize_toml_value(
-        path,
-        table_path=(_PATHS_TABLE,),
-        key=_PROGRESS_ROOT_KEY,
-        normalizer=lambda raw_value, source_scope: _normalize_repo_local_path(
-            raw_value,
-            source_path=path,
-            source_scope=source_scope,
-        ),
-    )
-
-
-def _harness_root_from_engineeringagent_toml(path: Path) -> Path | None:
-    return _normalize_toml_value(
-        path,
-        table_path=(_PATHS_TABLE,),
-        key=_HARNESS_ROOT_KEY,
-        normalizer=lambda raw_value, source_scope: _normalize_repo_local_path(
-            raw_value,
-            source_path=path,
-            source_scope=source_scope,
-        ),
-    )
-
-
-def _specifications_root_from_engineeringagent_toml(path: Path) -> Path | None:
-    return _normalize_toml_value(
-        path,
-        table_path=(_PATHS_TABLE,),
-        key=_SPECIFICATIONS_ROOT_KEY,
-        normalizer=lambda raw_value, source_scope: _normalize_repo_local_path(
-            raw_value,
-            source_path=path,
-            source_scope=source_scope,
-        ),
-    )
-
-
-def _agents_backend_id_from_engineeringagent_toml(path: Path) -> str | None:
-    return _normalize_toml_value(
-        path,
-        table_path=(_AGENTS_TABLE,),
-        key=_BACKEND_KEY,
-        normalizer=lambda raw_value, source_scope: _normalize_backend_id(
-            raw_value,
-            source_path=path,
-            source_scope=source_scope,
-        ),
-    )
-
-
-def _agents_codex_option_from_engineeringagent_toml(
-    path: Path,
-    *,
-    key: str,
-) -> str | None:
-    return _normalize_toml_value(
-        path,
-        table_path=(_AGENTS_TABLE, _CODEX_TABLE),
-        key=key,
-        normalizer=lambda raw_value, source_scope: _normalize_nonempty_string(
-            raw_value,
-            key_name=key,
-            source_path=path,
-            source_scope=source_scope,
-        ),
-    )
-
-
 def _docs_root_from_pyproject_toml(path: Path) -> Path | None:
     return _normalize_toml_value(
         path,
@@ -695,76 +595,6 @@ def _harness_checks_path_from_pyproject_toml(path: Path) -> Path | None:
         key=_CHECKS_PATH_KEY,
         normalizer=lambda raw_value, source_scope: _normalize_repo_local_path(
             raw_value,
-            source_path=path,
-            source_scope=source_scope,
-        ),
-    )
-
-
-def _progress_root_from_pyproject_toml(path: Path) -> Path | None:
-    return _normalize_toml_value(
-        path,
-        table_path=(*_PYPROJECT_ENGINEERINGAGENT_TABLE, _PATHS_TABLE),
-        key=_PROGRESS_ROOT_KEY,
-        normalizer=lambda raw_value, source_scope: _normalize_repo_local_path(
-            raw_value,
-            source_path=path,
-            source_scope=source_scope,
-        ),
-    )
-
-
-def _harness_root_from_pyproject_toml(path: Path) -> Path | None:
-    return _normalize_toml_value(
-        path,
-        table_path=(*_PYPROJECT_ENGINEERINGAGENT_TABLE, _PATHS_TABLE),
-        key=_HARNESS_ROOT_KEY,
-        normalizer=lambda raw_value, source_scope: _normalize_repo_local_path(
-            raw_value,
-            source_path=path,
-            source_scope=source_scope,
-        ),
-    )
-
-
-def _specifications_root_from_pyproject_toml(path: Path) -> Path | None:
-    return _normalize_toml_value(
-        path,
-        table_path=(*_PYPROJECT_ENGINEERINGAGENT_TABLE, _PATHS_TABLE),
-        key=_SPECIFICATIONS_ROOT_KEY,
-        normalizer=lambda raw_value, source_scope: _normalize_repo_local_path(
-            raw_value,
-            source_path=path,
-            source_scope=source_scope,
-        ),
-    )
-
-
-def _agents_backend_id_from_pyproject_toml(path: Path) -> str | None:
-    return _normalize_toml_value(
-        path,
-        table_path=(*_PYPROJECT_ENGINEERINGAGENT_TABLE, _AGENTS_TABLE),
-        key=_BACKEND_KEY,
-        normalizer=lambda raw_value, source_scope: _normalize_backend_id(
-            raw_value,
-            source_path=path,
-            source_scope=source_scope,
-        ),
-    )
-
-
-def _agents_codex_option_from_pyproject_toml(
-    path: Path,
-    *,
-    key: str,
-) -> str | None:
-    return _normalize_toml_value(
-        path,
-        table_path=(*_PYPROJECT_ENGINEERINGAGENT_TABLE, _AGENTS_TABLE, _CODEX_TABLE),
-        key=key,
-        normalizer=lambda raw_value, source_scope: _normalize_nonempty_string(
-            raw_value,
-            key_name=key,
             source_path=path,
             source_scope=source_scope,
         ),
