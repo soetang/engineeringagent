@@ -3,6 +3,8 @@
 from .contracts import (
     CommandTiming,
     CompletionCommitOutcome,
+    FeatureIterationRequest,
+    FeatureIterationResult,
     FeatureIterationInputs,
     GatePhaseOutcome,
     ImplementStepInputs,
@@ -26,6 +28,8 @@ from .pipeline import IterationPipelineDependencies, run_feature_iteration_pipel
 __all__ = [
     "CommandTiming",
     "CompletionCommitOutcome",
+    "FeatureIterationRequest",
+    "FeatureIterationResult",
     "FeatureIterationInputs",
     "ImplementStepFailureDependencies",
     "GatePhaseOutcome",

@@ -530,7 +530,12 @@ def test_run_gate_phase_iteration_end_validate_enforces_bundled_phase_alignment(
         + "\n",
     )
     _write_text(
-        tmp_path / "docs" / "spec" / "features" / "FEAT-001-invalid-status" / "spec.yaml",
+        tmp_path
+        / "docs"
+        / "specifications"
+        / "features"
+        / "FEAT-001-invalid-status"
+        / "spec.yaml",
         "\n".join(
             [
                 "id: FEAT-001",
@@ -550,7 +555,12 @@ def test_run_gate_phase_iteration_end_validate_enforces_bundled_phase_alignment(
         ),
     )
     _write_text(
-        tmp_path / "docs" / "spec" / "features" / "FEAT-001-invalid-status" / "plan.md",
+        tmp_path
+        / "docs"
+        / "specifications"
+        / "features"
+        / "FEAT-001-invalid-status"
+        / "plan.md",
         "\n".join(
             [
                 "---",
@@ -577,7 +587,7 @@ def test_run_gate_phase_iteration_end_validate_enforces_bundled_phase_alignment(
         project_root=tmp_path,
         feature_path=tmp_path
         / "docs"
-        / "spec"
+        / "specifications"
         / "features"
         / "FEAT-001-invalid-status"
         / "spec.yaml",

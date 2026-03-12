@@ -426,7 +426,7 @@ def write_agents_merge_followup_spec(
     """Write the follow-up spec for merging preserved AGENTS guidance."""
     merge_spec_relative = (
         Path(docs_dir)
-        / "spec"
+        / "specifications"
         / "features"
         / "FEAT-900-merge-preserved-agents-guidance.yaml"
     )

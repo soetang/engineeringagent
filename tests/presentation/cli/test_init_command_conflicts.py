@@ -89,7 +89,7 @@ def test_init_agents_conflict_preserve_and_create_merge_spec(
     merge_spec_path = (
         tmp_path
         / "docs"
-        / "spec"
+        / "specifications"
         / "features"
         / "FEAT-900-merge-preserved-agents-guidance.yaml"
     )

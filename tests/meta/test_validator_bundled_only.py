@@ -15,7 +15,7 @@ def test_bundled_only_validate_rejects_flat_feature_entrypoints(
     suffix: str,
 ) -> None:
     project_root = tmp_path
-    features_dir = project_root / "docs" / "spec" / "features"
+    features_dir = project_root / "docs" / "specifications" / "features"
     features_dir.mkdir(parents=True, exist_ok=True)
 
     feature_path = features_dir / f"FEAT-903-contract-errors{suffix}"
@@ -46,7 +46,11 @@ def test_bundled_only_validate_rejects_flat_feature_entrypoints(
 def test_validate_reports_bundled_contract_errors(tmp_path: Path) -> None:
     project_root = tmp_path
     feature_root = (
-        project_root / "docs" / "spec" / "features" / "FEAT-903-contract-errors"
+        project_root
+        / "docs"
+        / "specifications"
+        / "features"
+        / "FEAT-903-contract-errors"
     )
     write_bundled_feature_spec(
         feature_root,
@@ -74,7 +78,7 @@ def test_bundled_only_validate_rejects_flat_feature_multiline_fixture_by_entrypo
     tmp_path: Path,
 ) -> None:
     project_root = tmp_path
-    features_dir = project_root / "docs" / "spec" / "features"
+    features_dir = project_root / "docs" / "specifications" / "features"
     features_dir.mkdir(parents=True, exist_ok=True)
 
     feature_path = features_dir / "FEAT-920-multiline-verification.yaml"
@@ -107,7 +111,7 @@ def test_validate_allows_multiline_verification_commands_in_done_specs(
     tmp_path: Path,
 ) -> None:
     project_root = tmp_path
-    features_done_dir = project_root / "docs" / "spec" / "features_done"
+    features_done_dir = project_root / "docs" / "specifications" / "features_done"
     feature_root = features_done_dir / "FEAT-921-multiline-verification-done"
     write_bundled_feature_spec(
         feature_root,
@@ -154,7 +158,7 @@ def test_bundled_only_validate_rejects_flat_done_feature_entrypoints(
     suffix: str,
 ) -> None:
     project_root = tmp_path
-    features_done_dir = project_root / "docs" / "spec" / "features_done"
+    features_done_dir = project_root / "docs" / "specifications" / "features_done"
     features_done_dir.mkdir(parents=True, exist_ok=True)
 
     done_path = features_done_dir / f"FEAT-921-flat-done{suffix}"
@@ -191,7 +195,7 @@ def test_validate_rejects_multiline_bundled_plan_phase_verification_commands(
     feature_root = (
         project_root
         / "docs"
-        / "spec"
+        / "specifications"
         / "features"
         / "FEAT-922-multiline-bundled-phase-verification"
     )

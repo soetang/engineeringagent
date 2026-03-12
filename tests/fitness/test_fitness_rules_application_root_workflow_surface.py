@@ -183,6 +183,44 @@ def test_checker_flags_feature_iteration_request_from_application_root(
     assert _violations(payload) == []
 
 
+def test_checker_allows_feature_iteration_request_re_exported_from_subpackage(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Allow the public request/result contracts to come from the subpackage."""
+    _write_module(
+        tmp_path,
+        relative_path="src/engineeringagent/application/__init__.py",
+        content="\n".join(
+            [
+                "from .feature_iteration import FeatureIterationRequest, FeatureIterationResult",
+                "",
+                '__all__ = ["FeatureIterationRequest", "FeatureIterationResult"]',
+                "",
+            ]
+        ),
+    )
+    _write_module(
+        tmp_path,
+        relative_path="src/engineeringagent/adapters/runtime/execution.py",
+        content="\n".join(
+            [
+                "from engineeringagent.application import FeatureIterationRequest, FeatureIterationResult",
+                "",
+                "REQUEST = FeatureIterationRequest",
+                "RESULT = FeatureIterationResult",
+                "",
+            ]
+        ),
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "pass"
+    assert _violations(payload) == []
+
+
 def test_checker_allows_feature_iteration_imports_from_explicit_subpackage(
     tmp_path: Path,
     repo_root: Path,

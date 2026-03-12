@@ -399,7 +399,7 @@ def test_run_loop_fails_when_preexisting_done_active_feature_trips_validate(
     preexisting_done_path = (
         project_root
         / "docs"
-        / "spec"
+        / "specifications"
         / "features"
         / "FEAT-901-preexisting-done"
         / "spec.yaml"
@@ -439,7 +439,7 @@ def test_run_loop_fails_when_preexisting_done_active_feature_trips_validate(
     archived_selected_path = (
         project_root
         / "docs"
-        / "spec"
+        / "specifications"
         / "features_done"
         / feature_path.parent.name
         / "spec.yaml"
@@ -447,7 +447,7 @@ def test_run_loop_fails_when_preexisting_done_active_feature_trips_validate(
     archived_preexisting_done_path = (
         project_root
         / "docs"
-        / "spec"
+        / "specifications"
         / "features_done"
         / preexisting_done_path.parent.name
         / "spec.yaml"
@@ -753,11 +753,11 @@ def test_loop_fails_validation_when_expected_commit_subject_missing(
             max_iterations=5,
         )
 
-    assert code == 0
+    assert code == 1
     runs = read_runs(project_root)
-    assert len(runs) == 1
-    assert runs[0]["result"] == "passed"
-    assert runs[0]["failed_gate"] is None
+    assert len(runs) == 5
+    assert all(run["result"] == "failed" for run in runs)
+    assert all(run["failed_gate"] == "validate" for run in runs)
 
 
 def test_git_add_failure_exits_immediately(tmp_path: Path) -> None:

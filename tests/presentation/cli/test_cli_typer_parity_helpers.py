@@ -141,7 +141,7 @@ def test_init_preserve_mode_reports_skipped_merge_spec(
     merge_spec_path = (
         tmp_path
         / "docs"
-        / "spec"
+        / "specifications"
         / "features"
         / "FEAT-900-merge-preserved-agents-guidance.yaml"
     )
