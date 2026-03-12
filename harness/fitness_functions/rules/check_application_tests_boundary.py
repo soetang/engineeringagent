@@ -15,7 +15,10 @@ from engineeringagent.checks.fitness.contracts import (
 RULE_ID = "architecture.application-tests-boundary"
 PROJECT_ROOT = Path(".")
 APPLICATION_TESTS_ROOT = PROJECT_ROOT / "tests" / "application"
-FORBIDDEN_MODULE = "engineeringagent.checks"
+FORBIDDEN_MODULE_PREFIXES = (
+    "engineeringagent.adapters",
+    "engineeringagent.checks",
+)
 
 
 def _iter_application_test_files(root: Path) -> tuple[Path, ...]:
@@ -41,28 +44,79 @@ def _scan_file(path: Path) -> list[str]:
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
-                module_name = alias.name
-                if module_name == FORBIDDEN_MODULE or module_name.startswith(
-                    f"{FORBIDDEN_MODULE}."
-                ):
-                    violations.append(
-                        f"{rel_path}:{node.lineno} application tests must use "
-                        "application/domain/ports contracts instead of "
-                        f"{module_name}"
-                    )
+                _append_forbidden_module_violation(
+                    violations,
+                    rel_path=rel_path,
+                    lineno=node.lineno,
+                    module_name=alias.name,
+                )
         elif isinstance(node, ast.ImportFrom):
             module_name = node.module
             if module_name is None:
                 continue
-            if module_name == FORBIDDEN_MODULE or module_name.startswith(
-                f"{FORBIDDEN_MODULE}."
-            ):
-                violations.append(
-                    f"{rel_path}:{node.lineno} application tests must use "
-                    "application/domain/ports contracts instead of "
-                    f"{module_name}"
-                )
+            _append_forbidden_module_violation(
+                violations,
+                rel_path=rel_path,
+                lineno=node.lineno,
+                module_name=module_name,
+            )
+        elif _is_dynamic_module_import(node):
+            module_name = _literal_string_arg(node)
+            if module_name is None:
+                continue
+            _append_forbidden_module_violation(
+                violations,
+                rel_path=rel_path,
+                lineno=node.lineno,
+                module_name=module_name,
+            )
     return violations
+
+
+def _append_forbidden_module_violation(
+    violations: list[str],
+    *,
+    rel_path: str,
+    lineno: int,
+    module_name: str,
+) -> None:
+    if not _is_forbidden_module(module_name):
+        return
+    violations.append(
+        f"{rel_path}:{lineno} application tests must use "
+        "application/domain/ports contracts instead of "
+        f"{module_name}"
+    )
+
+
+def _is_forbidden_module(module_name: str) -> bool:
+    return any(
+        module_name == prefix or module_name.startswith(f"{prefix}.")
+        for prefix in FORBIDDEN_MODULE_PREFIXES
+    )
+
+
+def _is_dynamic_module_import(node: ast.AST) -> bool:
+    if not isinstance(node, ast.Call):
+        return False
+    if isinstance(node.func, ast.Name):
+        return node.func.id in {"__import__", "import_module"}
+    if isinstance(node.func, ast.Attribute):
+        return (
+            isinstance(node.func.value, ast.Name)
+            and node.func.value.id == "importlib"
+            and node.func.attr == "import_module"
+        )
+    return False
+
+
+def _literal_string_arg(node: ast.Call) -> str | None:
+    if not node.args:
+        return None
+    literal = node.args[0]
+    if isinstance(literal, ast.Constant) and isinstance(literal.value, str):
+        return literal.value
+    return None
 
 
 def _application_test_boundary_violations(project_root: Path) -> list[str]:

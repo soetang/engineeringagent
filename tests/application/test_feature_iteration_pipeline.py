@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-import importlib
+import shutil
 from pathlib import Path
 from typing import Any, Callable
 
@@ -35,12 +35,6 @@ from tests.loop.feature_iteration_support import (
     make_bundled_project_root,
 )
 
-_feature_state_module = importlib.import_module(
-    "engineeringagent." "adapters.documents.filesystem_feature_state"
-)
-archive_completed_feature = _feature_state_module.archive_completed_feature
-restore_archived_feature = _feature_state_module.restore_archived_feature
-
 
 class _GatePhaseDependencies(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -68,6 +62,66 @@ class _CompletionPhaseDependencies(BaseModel):
 
 def _passing_implement_result(output: str = "") -> ImplementStepResult:
     return (True, None, output, fallback_implement_progress_envelope(), True)
+
+
+def archive_completed_feature(
+    _project_root: Path,
+    feature_path: Path,
+) -> tuple[bool, Path | None, str]:
+    """Archive a bundled feature package without reaching into adapters."""
+    if not feature_path.exists():
+        return (False, None, f"completed feature spec not found: {feature_path}")
+
+    archive_path = _remap_feature_path(feature_path, source="features", dest="features_done")
+    if archive_path is None:
+        return (False, None, f"unsupported feature archive path: {feature_path}")
+    if archive_path.parent.exists():
+        return (False, None, f"archive destination already exists: {archive_path}")
+
+    archive_path.parent.parent.mkdir(parents=True, exist_ok=True)
+    shutil.move(str(feature_path.parent), str(archive_path.parent))
+    return (True, archive_path, "")
+
+
+def restore_archived_feature(
+    archived_path: Path,
+    original_feature_path: Path,
+) -> tuple[bool, str | None]:
+    """Restore a bundled archived feature package for rollback tests."""
+    if not archived_path.exists():
+        return (True, "")
+
+    restored_path = _remap_feature_path(
+        archived_path,
+        source="features_done",
+        dest="features",
+    )
+    if restored_path is None:
+        return (False, f"unsupported feature restore path: {archived_path}")
+    if restored_path.parent.exists():
+        return (
+            False,
+            "cannot restore archived feature path because source already exists",
+        )
+
+    restored_path.parent.parent.mkdir(parents=True, exist_ok=True)
+    shutil.move(str(archived_path.parent), str(restored_path.parent))
+    return (True, "")
+
+
+def _remap_feature_path(
+    feature_path: Path,
+    *,
+    source: str,
+    dest: str,
+) -> Path | None:
+    parts = list(feature_path.parts)
+    if source not in parts:
+        return None
+    source_index = parts.index(source)
+    remapped_parts = parts[:]
+    remapped_parts[source_index] = dest
+    return Path(*remapped_parts)
 
 
 def test_iteration_report_model_captures_pipeline_observer_contract(
