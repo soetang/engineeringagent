@@ -16,7 +16,7 @@ from engineeringagent.adapters.config import (
 )
 from engineeringagent.adapters.quality.runtime import run_checks
 from engineeringagent.adapters.shell import run_shell_command
-from engineeringagent.application.feature_iteration_service import (
+from engineeringagent.domain.audit.iteration_records import (
     CommandTiming,
     CompletionCommitOutcome,
     FeatureIterationInputs,

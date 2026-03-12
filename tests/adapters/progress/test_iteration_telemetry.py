@@ -9,7 +9,7 @@ import engineeringagent.adapters.progress.iteration_telemetry as telemetry_modul
 import engineeringagent.adapters.runtime.iteration_phases as phases_module
 import engineeringagent.domain.audit.iteration_records as iteration_records_module
 from engineeringagent.adapters.progress import FilesystemProgressJournal
-from engineeringagent.application.feature_iteration_service import (
+from engineeringagent.domain.audit.iteration_records import (
     CommandTiming,
     FeatureIterationInputs,
     IterationTelemetryInputs,

@@ -14,9 +14,6 @@ import engineeringagent.adapters.quality.fitness.adapters as adapters_module
 import engineeringagent.adapters.config.runtime as config_module
 import engineeringagent.adapters.runtime.feature_state as feature_state_module
 import engineeringagent.adapters.documents.filesystem_feature_specification_repository as feature_selection_module
-from engineeringagent.application.feature_iteration_service import (
-    FeatureIterationInputs,
-)
 from engineeringagent.adapters.quality.fitness.contracts import (
     CONTRACT_VERSION,
     FitnessRuleMetadata,
@@ -25,6 +22,7 @@ from engineeringagent.adapters.quality.fitness.contracts import (
     RuleSource,
 )
 from engineeringagent.adapters.quality.fitness.registry import FitnessRuleDefinition
+from engineeringagent.domain.audit.iteration_records import FeatureIterationInputs
 from engineeringagent.domain.quality import ChangedPathsResult
 from engineeringagent.adapters.runtime.iteration_phases import (
     CompletionPhaseDependencies,

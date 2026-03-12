@@ -7,13 +7,13 @@ from pathlib import Path
 from typing import Callable
 
 from engineeringagent.application.feature_iteration_service import (
+    FeatureIterationRequest,
+    FeatureIterationService,
+)
+from engineeringagent.domain.audit.iteration_records import (
     FeatureIterationInputs,
     IterationOutcome,
     IterationSummaryInputs,
-)
-from engineeringagent.application.feature_iteration_service import (
-    FeatureIterationRequest,
-    FeatureIterationService,
 )
 from engineeringagent.ports import (
     RunLoopExecutionRequest,

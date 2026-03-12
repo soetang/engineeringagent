@@ -6,9 +6,6 @@ from typing import Any, Sequence
 import pytest
 
 from engineeringagent.application.prompt_builder import PromptBuilder
-from engineeringagent.application.feature_iteration_service import (
-    ImplementStepInputs,
-)
 from engineeringagent.application.feature_iteration.implementation_step import (
     ImplementStepFailureDependencies,
     ImplementStepOutputDependencies,
@@ -19,6 +16,7 @@ from engineeringagent.domain.audit import (
     ImplementProgressEnvelope,
     ProgressEvent,
 )
+from engineeringagent.domain.audit.iteration_records import ImplementStepInputs
 from engineeringagent.ports import AgentRunRequest
 
 

@@ -8,13 +8,11 @@ import yaml
 from engineeringagent.application.feature_iteration_service import (
     FeatureIterationRequest,
 )
-from engineeringagent.application.feature_iteration_service import (
-    IterationOutcome,
-)
 from engineeringagent.bootstrap import AppFactory
 from engineeringagent.adapters.runtime.feature_state import (
     refresh_feature_after_implement,
 )
+from engineeringagent.domain.audit.iteration_records import IterationOutcome
 from engineeringagent.domain.specification import (
     done_transition_verification_commands,
     progress_status_snapshot,

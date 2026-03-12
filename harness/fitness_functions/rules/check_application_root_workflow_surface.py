@@ -21,6 +21,9 @@ FEATURE_ITERATION_ROOT = (
 SCAN_ROOTS = (PROJECT_ROOT / "src", PROJECT_ROOT / "tests")
 SKIP_DIR_NAMES = {"__pycache__", ".venv"}
 FEATURE_ITERATION_PACKAGE = "engineeringagent.application.feature_iteration"
+FEATURE_ITERATION_SERVICE_MODULE = (
+    "engineeringagent.application.feature_iteration_service"
+)
 FORBIDDEN_ROOT_EXPORTS = frozenset(
     {
         "ChecksService",
@@ -108,18 +111,19 @@ SYMBOL_MODULES = {
     "WorkspaceRecoveryService": "engineeringagent.application.workspace_recovery_service",
 }
 FEATURE_ITERATION_SYMBOL_MODULES = {
-    "CommandTiming": "engineeringagent.application.feature_iteration_service",
-    "CompletionCommitOutcome": "engineeringagent.application.feature_iteration_service",
-    "FeatureIterationInputs": "engineeringagent.application.feature_iteration_service",
-    "GatePhaseOutcome": "engineeringagent.application.feature_iteration_service",
-    "ImplementStepInputs": "engineeringagent.application.feature_iteration_service",
-    "ImplementStepResult": "engineeringagent.application.feature_iteration_service",
-    "IterationOutcome": "engineeringagent.application.feature_iteration_service",
-    "IterationReport": "engineeringagent.application.feature_iteration_service",
-    "IterationTelemetryInputs": "engineeringagent.application.feature_iteration_service",
-    "PhaseTiming": "engineeringagent.application.feature_iteration_service",
-    "ReviewerPhaseOutcome": "engineeringagent.application.feature_iteration_service",
-    "VerificationPhaseOutcome": "engineeringagent.application.feature_iteration_service",
+    "CommandTiming": "engineeringagent.domain.audit.iteration_records",
+    "CompletionCommitOutcome": "engineeringagent.domain.audit.iteration_records",
+    "FeatureIterationInputs": "engineeringagent.domain.audit.iteration_records",
+    "GatePhaseOutcome": "engineeringagent.domain.audit.iteration_records",
+    "ImplementStepInputs": "engineeringagent.domain.audit.iteration_records",
+    "ImplementStepResult": "engineeringagent.domain.audit.iteration_records",
+    "IterationOutcome": "engineeringagent.domain.audit.iteration_records",
+    "IterationReport": "engineeringagent.domain.audit.iteration_records",
+    "IterationTelemetryInputs": "engineeringagent.domain.audit.iteration_records",
+    "IterationSummaryInputs": "engineeringagent.domain.audit.iteration_records",
+    "PhaseTiming": "engineeringagent.domain.audit.iteration_records",
+    "ReviewerPhaseOutcome": "engineeringagent.domain.audit.iteration_records",
+    "VerificationPhaseOutcome": "engineeringagent.domain.audit.iteration_records",
     "run_feature_iteration_pipeline": "engineeringagent.application.feature_iteration.pipeline",
 }
 
@@ -252,6 +256,13 @@ def _application_root_workflow_surface_violations() -> list[str]:
             _import_violations(
                 path,
                 package_name=FEATURE_ITERATION_PACKAGE,
+                symbol_modules=FEATURE_ITERATION_SYMBOL_MODULES,
+            )
+        )
+        violations.extend(
+            _import_violations(
+                path,
+                package_name=FEATURE_ITERATION_SERVICE_MODULE,
                 symbol_modules=FEATURE_ITERATION_SYMBOL_MODULES,
             )
         )

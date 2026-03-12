@@ -9,10 +9,8 @@ import yaml
 
 from engineeringagent.adapters.runtime import enforce_worktree_precondition
 import engineeringagent.adapters.runtime.loop_run_builder as loop_run_builder_module
-from engineeringagent.application.feature_iteration_service import (
-    ImplementStepResult,
-)
 from engineeringagent.bootstrap import runtime_support as runtime_support_module
+from engineeringagent.domain.audit.iteration_records import ImplementStepResult
 from engineeringagent.ports import ValidationFailure, WorktreeStatus
 from tests.helpers.feature_iteration_support import (
     base_feature,

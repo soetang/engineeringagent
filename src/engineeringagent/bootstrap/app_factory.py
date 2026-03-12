@@ -59,9 +59,6 @@ from engineeringagent.ports import (
     ProgressJournal,
     VersionControlGateway,
 )
-from engineeringagent.application.feature_iteration_service import (
-    IterationReport,
-)
 from engineeringagent.application.feature_iteration.runtime_dependencies import (
     FeatureIterationDependencies,
 )
@@ -71,6 +68,7 @@ from engineeringagent.bootstrap.iteration_reporting import (
     DefaultIterationReportPublisher,
     IterationReportPublisher,
 )
+from engineeringagent.domain.audit.iteration_records import IterationReport
 
 
 def _persist_iteration_report(

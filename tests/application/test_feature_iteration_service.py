@@ -4,9 +4,10 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from engineeringagent.application.feature_iteration_service import (
+    FeatureIterationRequest,
     FeatureIterationService,
 )
-from engineeringagent.application.feature_iteration_service import (
+from engineeringagent.domain.audit.iteration_records import (
     CompletionCommitOutcome,
     FeatureIterationInputs,
     GatePhaseOutcome,
@@ -20,9 +21,6 @@ from engineeringagent.application.feature_iteration_service import (
 )
 from engineeringagent.application.feature_iteration.runtime_dependencies import (
     FeatureIterationDependencies,
-)
-from engineeringagent.application.feature_iteration_service import (
-    FeatureIterationRequest,
 )
 from engineeringagent.domain.audit import ProgressEvent
 from engineeringagent.domain.audit.handoff import ImplementProgressEnvelope

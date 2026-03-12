@@ -34,7 +34,7 @@ from engineeringagent.application.validation_service import ValidationService
 from engineeringagent.application.workspace_recovery_service import (
     WorkspaceRecoveryService,
 )
-from engineeringagent.application.feature_iteration_service import (
+from engineeringagent.domain.audit.iteration_records import (
     FeatureIterationInputs,
     IterationReport,
     IterationTelemetryInputs,

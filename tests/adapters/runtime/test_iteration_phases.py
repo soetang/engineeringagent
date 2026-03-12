@@ -12,10 +12,8 @@ from engineeringagent.adapters.runtime.iteration_phases import (
     run_gate_phase,
     run_reviewer_phase,
 )
-from engineeringagent.application.feature_iteration_service import (
-    FeatureIterationInputs,
-)
 from engineeringagent.checks import ChecksRunResult
+from engineeringagent.domain.audit.iteration_records import FeatureIterationInputs
 from engineeringagent.domain.quality import ChangedPathsResult
 
 

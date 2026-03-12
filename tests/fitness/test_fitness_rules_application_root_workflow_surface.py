@@ -273,5 +273,37 @@ def test_checker_flags_feature_iteration_package_imports(
     assert proc.returncode == 0
     assert payload["status"] == "fail"
     assert _violations(payload) == [
-        "tests/application/test_boundary_violation.py:1 import IterationReport from engineeringagent.application.feature_iteration_service instead of engineeringagent.application.feature_iteration"
+        "tests/application/test_boundary_violation.py:1 import IterationReport from engineeringagent.domain.audit.iteration_records instead of engineeringagent.application.feature_iteration"
+    ]
+
+
+def test_checker_flags_domain_iteration_records_imported_through_service_module(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Fail when callers import domain-owned iteration records via the service module."""
+    _write_module(
+        tmp_path,
+        relative_path="src/engineeringagent/application/feature_iteration_service.py",
+        content="class FeatureIterationService:\n    pass\n",
+    )
+    _write_module(
+        tmp_path,
+        relative_path="tests/bootstrap/test_boundary_violation.py",
+        content="\n".join(
+            [
+                "from engineeringagent.application.feature_iteration_service import IterationReport",
+                "",
+                "REPORT = IterationReport",
+                "",
+            ]
+        ),
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert _violations(payload) == [
+        "tests/bootstrap/test_boundary_violation.py:1 import IterationReport from engineeringagent.domain.audit.iteration_records instead of engineeringagent.application.feature_iteration_service"
     ]
