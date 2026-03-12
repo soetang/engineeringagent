@@ -1,12 +1,13 @@
-"""Bootstrap-owned assembly for feature-iteration runtime dependencies."""
+"""Bootstrap-owned assembly for explicit feature-iteration dependencies."""
 
 from __future__ import annotations
-
-from types import SimpleNamespace
 
 from engineeringagent.adapters.documents import filesystem_feature_state
 from engineeringagent.adapters.progress import write_iteration_telemetry
 from engineeringagent.application import FeatureIterationRuntimeDependencies
+from engineeringagent.application.feature_iteration_pipeline import (
+    run_feature_iteration_pipeline,
+)
 from engineeringagent.bootstrap.iteration_reporting import (
     DefaultObserverDependencies,
     build_default_iteration_report_observers,
@@ -22,7 +23,6 @@ from engineeringagent.adapters.runtime.iteration_phases import (
     run_reviewer_phase,
     run_verification_phase,
 )
-from engineeringagent.application import feature_iteration_contracts, feature_iteration_pipeline
 from engineeringagent.bootstrap import runtime_support
 
 
@@ -30,26 +30,35 @@ def build_feature_iteration_runtime_dependencies() -> (
     FeatureIterationRuntimeDependencies
 ):
     """Build the default runtime seam bundle for feature iterations."""
-    runtime = SimpleNamespace(
-        checks=SimpleNamespace(collect_changed_paths=collect_changed_paths),
-        support=runtime_support,
-        feature_state=filesystem_feature_state,
-        iteration=feature_iteration_pipeline,
-        models=feature_iteration_contracts,
-        phases=SimpleNamespace(
-            GatePhaseDependencies=GatePhaseDependencies,
-            ReviewerPhaseDependencies=ReviewerPhaseDependencies,
-            CompletionPhaseDependencies=CompletionPhaseDependencies,
-            run_gate_phase=run_gate_phase,
-            run_verification_phase=run_verification_phase,
-            run_reviewer_phase=run_reviewer_phase,
-            run_completion_commit_phase=run_completion_commit_phase,
-        ),
-    )
     return FeatureIterationRuntimeDependencies(
-        runtime=runtime,
+        evaluate_initial_feature_load=filesystem_feature_state.evaluate_initial_feature_load,
+        describe_action=runtime_support.describe_action,
+        ready_for_active_iteration=filesystem_feature_state.ready_for_active_iteration,
+        touch_active_feature_for_iteration=(
+            filesystem_feature_state.touch_active_feature_for_iteration
+        ),
+        run_implement_step=runtime_support.run_implement_step,
+        refresh_feature_after_implement=(
+            filesystem_feature_state.refresh_feature_after_implement
+        ),
+        should_archive_selected_feature=(
+            filesystem_feature_state.should_archive_selected_feature
+        ),
+        archive_completed_feature=filesystem_feature_state.archive_completed_feature,
+        collect_changed_paths=collect_changed_paths,
+        restore_archived_feature=filesystem_feature_state.restore_archived_feature,
+        run_feature_iteration_pipeline=run_feature_iteration_pipeline,
+        run_gate_phase=run_gate_phase,
+        build_gate_phase_dependencies=GatePhaseDependencies,
+        run_verification_phase=run_verification_phase,
+        run_reviewer_phase=run_reviewer_phase,
+        build_reviewer_phase_dependencies=ReviewerPhaseDependencies,
+        run_completion_commit_phase=run_completion_commit_phase,
+        build_completion_phase_dependencies=CompletionPhaseDependencies,
+        git_head_short=runtime_support.git_head_short,
+        print_summary=runtime_support.print_summary,
         observer_dependencies_type=DefaultObserverDependencies,
-        write_iteration_telemetry_fn=write_iteration_telemetry,
-        build_iteration_report_observers_fn=build_default_iteration_report_observers,
-        publish_iteration_report_fn=publish_iteration_report,
+        write_iteration_telemetry=write_iteration_telemetry,
+        build_iteration_report_observers=build_default_iteration_report_observers,
+        publish_iteration_report=publish_iteration_report,
     )

@@ -14,19 +14,12 @@ from engineeringagent.application import (
     IterationTelemetryInputs,
     PhaseTiming,
 )
+from engineeringagent.application.feature_iteration_pipeline import (
+    IterationPipelineDependencies,
+)
 from engineeringagent.bootstrap.iteration_reporting import DefaultObserverDependencies
 from engineeringagent.domain.audit import ProgressEvent
 from engineeringagent.ports import CommitRequest, CommitResult, DiffSummary, WorktreeStatus
-
-
-class _FakeFeatureIterationInputs:
-    def __init__(self, observed: dict[str, object], **kwargs: object) -> None:
-        observed["feature_iteration_inputs"] = kwargs
-
-
-class _FakeIterationPipelineDependencies:
-    def __init__(self, observed: dict[str, object], **kwargs: object) -> None:
-        observed["iteration_dependencies"] = kwargs
 
 
 class _FakeGatePhaseDependencies:
@@ -162,59 +155,55 @@ def _build_service(
         }
         return "progress/run-feature-FEAT-001.txt"
 
-    support_module = SimpleNamespace(
-        describe_action=lambda project_root, action, structured: (
-            f"{project_root}:{action}:{structured}"
-        ),
-        run_implement_step=object(),
-        git_head_short=lambda _project_root: "abc1234",
-        print_summary=lambda _summary: None,
+    describe_action = lambda project_root, action, structured: (  # noqa: E731
+        f"{project_root}:{action}:{structured}"
     )
-    runtime = SimpleNamespace(
-        checks=SimpleNamespace(collect_changed_paths=object()),
-        support=support_module,
-        feature_state=SimpleNamespace(
-            evaluate_initial_feature_load=object(),
-            ready_for_active_iteration=object(),
-            touch_active_feature_for_iteration=object(),
-            refresh_feature_after_implement=object(),
-            should_archive_selected_feature=object(),
-            archive_completed_feature=object(),
-            restore_archived_feature=object(),
-        ),
-        models=SimpleNamespace(
-            FeatureIterationInputs=lambda **kwargs: _FakeFeatureIterationInputs(
-                observed, **kwargs
-            )
-        ),
-        iteration=SimpleNamespace(
-            IterationPipelineDependencies=lambda **kwargs: (
-                _FakeIterationPipelineDependencies(observed, **kwargs)
-            ),
-            run_feature_iteration_pipeline=_fake_run_feature_iteration_pipeline,
-        ),
-        phases=SimpleNamespace(
-            GatePhaseDependencies=lambda **kwargs: _FakeGatePhaseDependencies(
-                observed, **kwargs
-            ),
-            ReviewerPhaseDependencies=lambda **kwargs: _FakeReviewerPhaseDependencies(
-                observed, **kwargs
-            ),
-            CompletionPhaseDependencies=lambda **kwargs: _FakeCompletionPhaseDependencies(
-                observed, **kwargs
-            ),
-            run_gate_phase=object(),
-            run_verification_phase=object(),
-            run_reviewer_phase=object(),
-            run_completion_commit_phase=object(),
-        ),
-    )
+    run_implement_step = lambda *args, **kwargs: None  # noqa: E731
+    git_head_short = lambda _project_root: "abc1234"  # noqa: E731
+    print_summary = lambda _summary: None  # noqa: E731
+    collect_changed_paths = lambda _project_root: None  # noqa: E731
+    evaluate_initial_feature_load = lambda _feature_path: None  # noqa: E731
+    ready_for_active_iteration = lambda _result, _feature: True  # noqa: E731
+    touch_active_feature_for_iteration = lambda _feature, _path: None  # noqa: E731
+    refresh_feature_after_implement = lambda _project_root, _feature_path: None  # noqa: E731
+    should_archive_selected_feature = lambda _result, _feature: False  # noqa: E731
+    archive_completed_feature = lambda _project_root, _feature_path: (False, None, None)  # noqa: E731
+    restore_archived_feature = lambda _archived_path, _feature_path: (True, None)  # noqa: E731
+    run_gate_phase = lambda *args, **kwargs: None  # noqa: E731
+    run_verification_phase = lambda *args, **kwargs: None  # noqa: E731
+    run_reviewer_phase = lambda *args, **kwargs: None  # noqa: E731
+    run_completion_commit_phase = lambda *args, **kwargs: None  # noqa: E731
     runtime_dependencies = FeatureIterationRuntimeDependencies(
-        runtime=runtime,
+        evaluate_initial_feature_load=evaluate_initial_feature_load,
+        describe_action=describe_action,
+        ready_for_active_iteration=ready_for_active_iteration,
+        touch_active_feature_for_iteration=touch_active_feature_for_iteration,
+        run_implement_step=run_implement_step,
+        refresh_feature_after_implement=refresh_feature_after_implement,
+        should_archive_selected_feature=should_archive_selected_feature,
+        archive_completed_feature=archive_completed_feature,
+        collect_changed_paths=collect_changed_paths,
+        restore_archived_feature=restore_archived_feature,
+        run_feature_iteration_pipeline=_fake_run_feature_iteration_pipeline,
+        run_gate_phase=run_gate_phase,
+        build_gate_phase_dependencies=lambda **kwargs: _FakeGatePhaseDependencies(
+            observed, **kwargs
+        ),
+        run_verification_phase=run_verification_phase,
+        run_reviewer_phase=run_reviewer_phase,
+        build_reviewer_phase_dependencies=(
+            lambda **kwargs: _FakeReviewerPhaseDependencies(observed, **kwargs)
+        ),
+        run_completion_commit_phase=run_completion_commit_phase,
+        build_completion_phase_dependencies=(
+            lambda **kwargs: _FakeCompletionPhaseDependencies(observed, **kwargs)
+        ),
+        git_head_short=git_head_short,
+        print_summary=print_summary,
         observer_dependencies_type=DefaultObserverDependencies,
-        write_iteration_telemetry_fn=_fake_write_iteration_telemetry,
-        build_iteration_report_observers_fn=_fake_build_iteration_report_observers,
-        publish_iteration_report_fn=_fake_publish_iteration_report,
+        write_iteration_telemetry=_fake_write_iteration_telemetry,
+        build_iteration_report_observers=_fake_build_iteration_report_observers,
+        publish_iteration_report=_fake_publish_iteration_report,
     )
 
     version_control_gateway = _FakeVersionControlGateway(observed, commit_result)
@@ -256,16 +245,14 @@ def test_feature_iteration_service_executes_runtime_pipeline() -> None:
     result = service.run(_build_request())
 
     assert result.result == "failed"
-    assert observed["feature_iteration_inputs"] == {
-        "project_root": Path("/tmp/project"),
-        "feature_path": Path(
-            "docs/specifications/features/FEAT-001/specification.yaml"
-        ),
-        "run_all": False,
-        "attempt": 3,
-        "feedback": "fix the failing check",
-        "verbose_output": True,
-    }
+    assert observed["inputs"] == FeatureIterationInputs(
+        project_root=Path("/tmp/project"),
+        feature_path=Path("docs/specifications/features/FEAT-001/specification.yaml"),
+        run_all=False,
+        attempt=3,
+        feedback="fix the failing check",
+        verbose_output=True,
+    )
     completion_dependencies = observed["completion_dependencies"]
     assert isinstance(completion_dependencies, dict)
     commit_outcome = completion_dependencies["commit_feature_completion"](
@@ -285,13 +272,15 @@ def test_feature_iteration_service_executes_runtime_pipeline() -> None:
         DefaultObserverDependencies,
         observed["default_observer_dependencies"],
     )
-    dependencies = observed["iteration_dependencies"]
-    assert isinstance(dependencies, dict)
-    runtime = service._runtime_dependencies.runtime
-    assert dependencies["describe_action"] is runtime.support.describe_action
-    assert dependencies["run_implement_step"] is runtime.support.run_implement_step
-    assert observer_dependencies.git_head_resolver is runtime.support.git_head_short
-    assert observer_dependencies.print_summary is runtime.support.print_summary
+    dependencies = cast(IterationPipelineDependencies, observed["dependencies"])
+    runtime_dependencies = service._runtime_dependencies
+    assert dependencies.describe_action is runtime_dependencies.describe_action
+    assert dependencies.run_implement_step is runtime_dependencies.run_implement_step
+    assert (
+        observer_dependencies.git_head_resolver
+        is runtime_dependencies.git_head_short
+    )
+    assert observer_dependencies.print_summary is runtime_dependencies.print_summary
     observer_dependencies.write_iteration_telemetry(cast(Any, "telemetry-inputs"))
     observer_dependencies.persist_iteration_report(
         cast(
@@ -314,7 +303,7 @@ def test_feature_iteration_service_executes_runtime_pipeline() -> None:
     ]
     assert observed["telemetry_call"] == {
         "telemetry_inputs": "telemetry-inputs",
-        "git_head_resolver": runtime.support.git_head_short,
+        "git_head_resolver": runtime_dependencies.git_head_short,
     }
 
 
