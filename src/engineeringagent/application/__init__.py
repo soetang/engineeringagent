@@ -6,7 +6,7 @@ from .feature_iteration_service import (
     FeatureIterationResult,
     FeatureIterationService,
 )
-from .guidance import (
+from .guidance_service import (
     GuidanceInputError,
     GuidanceQuery,
     GuidanceResult,
@@ -19,7 +19,7 @@ from .init_workspace_service import (
 )
 from .prompt_builder import ImplementationPromptRequest, PromptBuilder
 from .run_loop_service import RunLoopRequest, RunLoopResult, RunLoopService
-from .validation import (
+from .validation_service import (
     ValidateRepositoryRequest,
     ValidationResult,
     ValidationService,
