@@ -251,7 +251,7 @@ def test_run_checks_exposes_structured_command_invocations(
         return SimpleNamespace(returncode=0, stdout="hi\n", stderr="")
 
     monkeypatch.setattr(
-        "engineeringagent.checks.strategies.run_shell_command",
+        "engineeringagent.adapters.quality.check_strategies.run_shell_command",
         run_shell_command,
         raising=True,
     )
@@ -289,7 +289,7 @@ def test_run_checks_dry_run_is_decisions_only_and_side_effect_free(
         raise AssertionError("command execution must not happen in dry-run")
 
     monkeypatch.setattr(
-        "engineeringagent.checks.strategies.run_shell_command",
+        "engineeringagent.adapters.quality.check_strategies.run_shell_command",
         should_not_run,
         raising=True,
     )

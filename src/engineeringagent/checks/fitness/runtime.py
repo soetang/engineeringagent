@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from engineeringagent.checks.strategy_contracts import PlannedCheck, make_planned_check
 from engineeringagent.domain.quality import (
     ChangedPathsResult,
     HarnessCheckPhase,
     HarnessCheckFitnessDefinition,
     HarnessChecksDocument,
     PlanningPolicyContext,
+    PlannedCheck,
+    make_planned_check,
     plan_checks_for_definition_type,
 )
 

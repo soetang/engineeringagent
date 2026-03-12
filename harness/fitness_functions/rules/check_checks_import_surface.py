@@ -22,9 +22,6 @@ _EXCLUDED_PACKAGES = {
     "checks",
     "fitness",
 }
-_ALLOWED_CHECKS_INTERNAL_CONSUMERS = {
-    "engineeringagent.application.checks.runtime",
-}
 
 
 def _iter_python_files(project_root: Path) -> list[Path]:
@@ -101,11 +98,6 @@ def _collect_violations(project_root: Path) -> list[str]:
                     name = alias.name
                     if name == "engineeringagent.checks":
                         continue
-                    if (
-                        module_name in _ALLOWED_CHECKS_INTERNAL_CONSUMERS
-                        and name.startswith("engineeringagent.checks.")
-                    ):
-                        continue
                     if name.startswith("engineeringagent.checks."):
                         violations.add(
                             f"{relpath}:{node.lineno} imports checks submodule {name}"
@@ -132,12 +124,6 @@ def _collect_violations(project_root: Path) -> list[str]:
                         )
                 continue
 
-            if (
-                module_name in _ALLOWED_CHECKS_INTERNAL_CONSUMERS
-                and base.startswith("engineeringagent.checks.")
-            ):
-                continue
-
             if base.startswith("engineeringagent.checks."):
                 violations.add(
                     f"{relpath}:{node.lineno} imports checks submodule {base}"
@@ -148,7 +134,6 @@ def _collect_violations(project_root: Path) -> list[str]:
         violations.add(
             "remediation: outside checks/, only import from engineeringagent.checks: "
             + ", ".join(sorted(_ALLOWED_CHECKS_IMPORT_NAMES))
-            + "; exception: engineeringagent.application.checks.runtime may compose checks internals during the migration"
         )
     return sorted(violations)
 

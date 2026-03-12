@@ -6,19 +6,20 @@ from pathlib import Path
 import pytest
 
 from engineeringagent.domain.quality import ChangedPathsResult
+from engineeringagent.adapters.quality.check_strategies import strategy_run_decisions
 from engineeringagent.checks.reviewers.runtime import (
     FALLBACK_REMEDIATION_GUIDANCE,
     RunPlannedReviewerChecksRequest,
     plan_reviewer_checks,
     run_planned_reviewer_checks_from_plan,
 )
-from engineeringagent.checks.strategy_contracts import (
+from engineeringagent.adapters.progress.paths import reviewers_state_path
+from engineeringagent.domain.quality import (
+    HarnessCheckPhase,
+    HarnessChecksDocument,
     PlannedCheck,
     map_planned_checks_to_decisions,
-    strategy_run_decisions,
 )
-from engineeringagent.adapters.progress.paths import reviewers_state_path
-from engineeringagent.domain.quality import HarnessCheckPhase, HarnessChecksDocument
 from engineeringagent.specs import load_yaml
 
 

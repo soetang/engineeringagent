@@ -1,23 +1,19 @@
+"""Quality-adapter strategy contracts and concrete checks execution strategies."""
+
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 import os
+from pathlib import Path
 import time
 from time import monotonic_ns
-from pathlib import Path
-from typing import Any
+from typing import Any, Iterable, NamedTuple, Protocol
 
 import yaml
 
-from engineeringagent.checks.commands.runtime import (
-    plan_command_checks,
-)
-from engineeringagent.domain.quality import (
-    ALWAYS_RUN_NO_ON_CHANGE_REASON,
-    CheckDecision,
-    CheckExecutionRecord,
-    CommandInvocationRecord,
-)
+from engineeringagent.adapters.quality.validation.validator import validate
+from engineeringagent.adapters.shell import run_shell_command
+from engineeringagent.checks.commands.runtime import plan_command_checks
 from engineeringagent.checks.fitness.adapters import execute_rule_definition
 from engineeringagent.checks.fitness.contracts import RuleStatus
 from engineeringagent.checks.fitness.registry import build_rule_catalog
@@ -28,28 +24,120 @@ from engineeringagent.checks.reviewers.runtime import (
     plan_reviewer_checks,
     run_planned_reviewer_checks_from_plan,
 )
-from engineeringagent.adapters.quality.validation.validator import validate
-from engineeringagent.adapters.shell import run_shell_command
 from engineeringagent.domain.quality import (
+    ALWAYS_RUN_NO_ON_CHANGE_REASON,
+    CheckDecision,
+    CheckExecutionRecord,
+    ChangedPathsResult,
+    CommandInvocationRecord,
     HarnessCheckCommandDefinition,
     HarnessCheckFitnessDefinition,
+    HarnessCheckPhase,
     HarnessChecksDocument,
 )
-from engineeringagent.specs import (
-    load_yaml,
+from engineeringagent.domain.quality.check_planning import (
+    ChecksPlanner,
+    make_check_decision,
+    map_planned_checks_to_decisions,
 )
 from engineeringagent.presentation.presenters.prompt_feedback import (
     format_command_return_code,
     format_failed_command_feedback_lines,
 )
+from engineeringagent.specs import load_yaml
 
-from .strategy_contracts import (
-    CheckContext,
-    CheckStrategy,
-    make_check_decision,
-    plan_doc_strategy_decisions,
-    strategy_run_decisions,
-)
+
+class CheckContext(NamedTuple):
+    """Shared planning/execution context passed to checks strategies."""
+
+    project_root: Path
+    phase: HarnessCheckPhase
+    changed_paths: ChangedPathsResult
+    feature_path: Path | None = None
+    feedback: str | None = None
+    run_agent_fn: Any | None = None
+    verbose_output: bool = False
+    phase_only_policy: bool = False
+
+
+def plan_doc_strategy_decisions(
+    *,
+    context: CheckContext,
+    check_type: str,
+    doc: HarnessChecksDocument,
+    planner: ChecksPlanner,
+) -> tuple[CheckDecision, ...]:
+    """Plan deterministic strategy decisions via a doc-backed planner."""
+
+    return map_planned_checks_to_decisions(
+        entries=planner(
+            doc,
+            phase=context.phase,
+            changed_paths=context.changed_paths,
+            phase_only_policy=context.phase_only_policy,
+        ),
+        check_type=check_type,
+        phase=context.phase,
+    )
+
+
+def strategy_run_decisions(
+    decisions: Iterable[CheckDecision],
+) -> tuple[CheckDecision, ...]:
+    """Return deterministic run decisions in input order."""
+
+    return tuple(
+        decision
+        for decision in decisions
+        if decision["decision"] == "run"
+    )
+
+
+class CheckStrategy(Protocol):
+    """Strategy contract keyed by check type in the orchestrator registry."""
+
+    check_type: str
+
+    def plan(
+        self,
+        *,
+        context: CheckContext,
+    ) -> tuple[CheckDecision, ...]:
+        """Return deterministic run/skip decisions owned by the strategy."""
+        raise NotImplementedError
+
+    def execute(
+        self,
+        *,
+        context: CheckContext,
+        decisions: tuple[CheckDecision, ...],
+    ) -> tuple[CheckExecutionRecord, ...]:
+        """Execute planned run decisions in deterministic order."""
+        raise NotImplementedError
+
+    def render_prompt_feedback(
+        self,
+        *,
+        failed_record: CheckExecutionRecord,
+    ) -> str | None:
+        """Render prompt-ready feedback for a failing execution."""
+        raise NotImplementedError
+
+
+def build_strategy_registry(
+    strategies: Iterable[CheckStrategy],
+) -> dict[str, CheckStrategy]:
+    """Build a deterministic check-type registry from strategy instances."""
+
+    registry: dict[str, CheckStrategy] = {}
+    for strategy in strategies:
+        check_type = strategy.check_type.strip()
+        if not check_type:
+            raise ValueError("check strategy check_type must be non-empty")
+        if check_type in registry:
+            raise ValueError(f"duplicate check strategy registration: {check_type}")
+        registry[check_type] = strategy
+    return registry
 
 
 def _checks_failure_header_lines(*, check_id: str, check_type: str) -> list[str]:
@@ -213,9 +301,7 @@ class FitnessCheckStrategy(CheckStrategy):
         records: list[CheckExecutionRecord] = []
         catalog = None
 
-        for decision in strategy_run_decisions(
-            decisions,
-        ):
+        for decision in strategy_run_decisions(decisions):
             record, catalog = self._execute_decision(
                 context=context,
                 decision=decision,
@@ -337,15 +423,10 @@ class FitnessCheckStrategy(CheckStrategy):
             project_root=project_root,
         ):
             output_lines.append(
-                (
-                    f"[fitness:{result.rule_id}] status={result.status.value} "
-                    f"summary={result.summary}"
-                )
+                f"[fitness:{result.rule_id}] status={result.status.value} summary={result.summary}"
             )
             for violation in result.violations:
-                output_lines.append(
-                    f"[fitness:{result.rule_id}] violation={violation}"
-                )
+                output_lines.append(f"[fitness:{result.rule_id}] violation={violation}")
             if result.status not in {RuleStatus.FAIL, RuleStatus.ERROR}:
                 continue
             failed_rules.append(
@@ -474,7 +555,7 @@ class ValidateCheckStrategy(CheckStrategy):
 
 
 class ReviewerCheckStrategy(CheckStrategy):
-    """Plan and execute reviewer checks with checks-owned feedback rendering."""
+    """Plan and execute reviewer checks with quality-adapter feedback rendering."""
 
     check_type = "reviewer"
 
@@ -600,3 +681,16 @@ class ReviewerCheckStrategy(CheckStrategy):
             return None, "feature spec is missing required id"
         feature_id = str(feature_payload.get("id", "")).strip()
         return feature_id or None, None
+
+
+__all__ = [
+    "CheckContext",
+    "CheckStrategy",
+    "CommandCheckStrategy",
+    "FitnessCheckStrategy",
+    "ReviewerCheckStrategy",
+    "ValidateCheckStrategy",
+    "build_strategy_registry",
+    "plan_doc_strategy_decisions",
+    "strategy_run_decisions",
+]

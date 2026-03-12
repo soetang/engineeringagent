@@ -253,6 +253,40 @@ def test_repo_layer_contracts_rule_blocks_deleted_checks_planning_modules(
     ]
 
 
+def test_repo_layer_contracts_rule_blocks_deleted_checks_strategy_modules(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Fail when deleted checks strategies reappear under the legacy package."""
+    strategies_module = (
+        tmp_path
+        / "src"
+        / "engineeringagent"
+        / "checks"
+        / "strategies.py"
+    )
+    strategies_module.parent.mkdir(parents=True, exist_ok=True)
+    strategies_module.write_text("", encoding="utf-8")
+    strategy_contracts_module = (
+        tmp_path
+        / "src"
+        / "engineeringagent"
+        / "checks"
+        / "strategy_contracts.py"
+    )
+    strategy_contracts_module.write_text("", encoding="utf-8")
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert payload["rule_id"] == "architecture.repo-layer-contracts"
+    assert payload["violations"] == [
+        "src/engineeringagent/checks/strategies.py: deleted legacy module path must remain absent",
+        "src/engineeringagent/checks/strategy_contracts.py: deleted legacy module path must remain absent",
+    ]
+
+
 def test_repo_layer_contracts_rule_blocks_deleted_legacy_run_loop_service_module(
     tmp_path: Path,
     repo_root: Path,

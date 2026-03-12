@@ -228,7 +228,7 @@ def test_repo_layer_contracts_rule_allows_quality_runtime_bridge(
         "\n".join(
             [
                 "from engineeringagent.checks.config_selection import load_selected_harness_checks_document",
-                "from engineeringagent.checks.strategies import CommandCheckStrategy",
+                "from engineeringagent.adapters.quality.check_strategies import CommandCheckStrategy",
                 "",
                 "__all__ = ['load_selected_harness_checks_document', 'CommandCheckStrategy']",
             ]

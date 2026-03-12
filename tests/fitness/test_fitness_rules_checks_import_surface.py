@@ -86,19 +86,19 @@ def test_checker_allows_importing_allowed_top_level_names(
     assert not checker._collect_violations(tmp_path)
 
 
-def test_checker_allows_application_checks_runtime_to_compose_checks_internals(
+def test_checker_ignores_adapter_quality_runtime_when_it_composes_checks_internals(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
     checker = _load_checker_module(repo_root)
 
-    src_root = tmp_path / "src" / "engineeringagent" / "application" / "checks"
+    src_root = tmp_path / "src" / "engineeringagent" / "adapters" / "quality"
     src_root.mkdir(parents=True)
     (tmp_path / "src" / "engineeringagent" / "__init__.py").write_text(
         "",
         encoding="utf-8",
     )
-    (tmp_path / "src" / "engineeringagent" / "application" / "__init__.py").write_text(
+    (tmp_path / "src" / "engineeringagent" / "adapters" / "__init__.py").write_text(
         "",
         encoding="utf-8",
     )
@@ -107,7 +107,7 @@ def test_checker_allows_application_checks_runtime_to_compose_checks_internals(
         "\n".join(
             [
                 "from engineeringagent.checks.config_selection import load_selected_harness_checks_document",
-                "from engineeringagent.checks.strategies import CommandCheckStrategy",
+                "from engineeringagent.adapters.quality.check_strategies import CommandCheckStrategy",
                 "",
                 "__all__ = ['load_selected_harness_checks_document', 'CommandCheckStrategy']",
                 "",

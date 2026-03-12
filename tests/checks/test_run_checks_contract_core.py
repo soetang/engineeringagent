@@ -15,13 +15,12 @@ from engineeringagent.adapters.quality.runtime import (
     _resolve_changed_paths,
     run_checks as run_checks_impl,
 )
-from engineeringagent.checks.request_normalization import build_run_checks_request
-from engineeringagent.checks.strategy_contracts import (
-    CheckDecision,
-    CheckExecutionRecord,
+from engineeringagent.adapters.quality.check_strategies import (
     build_strategy_registry,
     strategy_run_decisions,
 )
+from engineeringagent.checks.request_normalization import build_run_checks_request
+from engineeringagent.domain.quality import CheckDecision, CheckExecutionRecord
 from engineeringagent.presentation.presenters.prompt_feedback import normalize_prompt_feedback
 from engineeringagent.domain.quality import HarnessCheckPhase
 
@@ -230,7 +229,7 @@ def test_run_checks_group_order_is_deterministic(
         raising=True,
     )
     monkeypatch.setattr(
-        "engineeringagent.checks.strategies.run_shell_command",
+        "engineeringagent.adapters.quality.check_strategies.run_shell_command",
         lambda *_args, **_kwargs: SimpleNamespace(returncode=0, stdout="ok\n", stderr=""),
         raising=True,
     )

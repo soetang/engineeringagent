@@ -6,12 +6,13 @@ from engineeringagent.domain.quality import (
     CommandInvocationRecord,
     HarnessCheckPhase,
 )
-from engineeringagent.checks.strategy_contracts import PlannedCheck, make_planned_check
 from engineeringagent.domain.quality import (
     ChangedPathsResult,
     HarnessCheckCommandDefinition,
     HarnessChecksDocument,
     PlanningPolicyContext,
+    PlannedCheck,
+    make_planned_check,
     plan_checks_for_definition_type,
 )
 

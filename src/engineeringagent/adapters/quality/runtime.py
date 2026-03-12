@@ -21,13 +21,11 @@ from engineeringagent.checks.request_normalization import (
     _NormalizedRunChecksRequest,
     build_run_checks_request,
 )
-from engineeringagent.checks.strategies import (
+from engineeringagent.adapters.quality.check_strategies import (
     CommandCheckStrategy,
     FitnessCheckStrategy,
     ReviewerCheckStrategy,
     ValidateCheckStrategy,
-)
-from engineeringagent.checks.strategy_contracts import (
     CheckContext,
     CheckStrategy,
     build_strategy_registry,

@@ -91,6 +91,8 @@ DELETED_MODULE_PATHS = {
     "src/engineeringagent/checks/planning_policy.py",
     "src/engineeringagent/checks/pytest/config.py",
     "src/engineeringagent/checks/results.py",
+    "src/engineeringagent/checks/strategies.py",
+    "src/engineeringagent/checks/strategy_contracts.py",
     "src/engineeringagent/git/__init__.py",
     "src/engineeringagent/git/client.py",
     "src/engineeringagent/progress/__init__.py",

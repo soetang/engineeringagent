@@ -8,7 +8,7 @@ from engineeringagent.presentation import cli as cli_module
 from engineeringagent.application import RunChecksResult as ApplicationRunChecksResult
 from engineeringagent.adapters.quality.runtime import ChecksRunResult
 from engineeringagent.domain.quality import ChangedPathsResult
-from engineeringagent.checks.strategy_contracts import CheckExecutionRecord
+from engineeringagent.domain.quality import CheckExecutionRecord
 
 
 def test_cli_checks_run_requires_checks_yaml(tmp_path: Path) -> None:

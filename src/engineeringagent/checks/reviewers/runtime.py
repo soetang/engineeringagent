@@ -16,17 +16,15 @@ from engineeringagent.checks.reviewers.engine import (
     run_reviewer,
     save_reviewers_state,
 )
-from engineeringagent.checks.strategy_contracts import (
-    CheckDecision,
-    PlannedCheck,
-    make_planned_check,
-)
 from engineeringagent.domain.quality import (
+    CheckDecision,
     ChangedPathsResult,
     HarnessCheckPhase,
     HarnessCheckReviewerDefinition,
     HarnessChecksDocument,
+    PlannedCheck,
     PlanningPolicyContext,
+    make_planned_check,
     plan_checks_for_definition_type,
 )
 

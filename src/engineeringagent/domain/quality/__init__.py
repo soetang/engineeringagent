@@ -68,6 +68,14 @@ from .planning_policy import (
     plan_checks_for_definition_type,
     plan_run_skip_decision,
 )
+from .check_planning import (
+    ChecksPlanner,
+    PlannedCheck,
+    PlannedCheckRecord,
+    make_check_decision,
+    make_planned_check,
+    map_planned_checks_to_decisions,
+)
 
 __all__ = [
     "ALWAYS_RUN_NO_ON_CHANGE_REASON",
@@ -102,7 +110,10 @@ __all__ = [
     "MANUAL_SKIP_REASON",
     "MATCHED_ON_CHANGE_REASON",
     "NO_ON_CHANGE_MATCH_REASON",
+    "ChecksPlanner",
     "PHASE_ONLY_POLICY_REASON",
+    "PlannedCheck",
+    "PlannedCheckRecord",
     "PlanningPolicyContext",
     "ReviewerApprovalDefinition",
     "ReviewerDecisionName",
@@ -118,6 +129,9 @@ __all__ = [
     "effective_check_phase",
     "effective_default_check_phase",
     "list_check_groups",
+    "make_check_decision",
+    "make_planned_check",
+    "map_planned_checks_to_decisions",
     "normalize_check_groups",
     "path_matches_any_glob",
     "plan_check_when_decision",
