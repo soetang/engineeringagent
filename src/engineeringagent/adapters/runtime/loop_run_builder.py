@@ -6,6 +6,10 @@ from pathlib import Path
 from typing import Any, Callable, NamedTuple, Sequence
 
 from engineeringagent.adapters.agents import preflight, run_agent
+from engineeringagent.adapters.config import (
+    repo_relative_label,
+    resolve_specifications_root,
+)
 from engineeringagent.adapters.documents.filesystem_feature_selection import (
     discover_active_feature_paths,
     done_features_pending_archive,
@@ -24,10 +28,19 @@ from engineeringagent.ports import VersionControlFailure
 from .loop_run_context import LoopRun, RunConfig, RunServices
 
 
-def _print_run_all_snapshot_banner(resolved_paths: Sequence[Path]) -> None:
+def _specifications_features_label(project_root: Path) -> str:
+    features_root = resolve_specifications_root(project_root) / "features"
+    return f"{repo_relative_label(project_root, features_root)}/"
+
+
+def _print_run_all_snapshot_banner(
+    project_root: Path,
+    resolved_paths: Sequence[Path],
+) -> None:
     print(
         "[run --all] Startup snapshot captured "
-        f"{len(resolved_paths)} runnable feature entrypoint(s) from docs/spec/features/."
+        f"{len(resolved_paths)} runnable feature entrypoint(s) from "
+        f"{_specifications_features_label(project_root)}."
     )
 
 
@@ -155,6 +168,7 @@ def _resolve_run_targets(
 
 
 def _emit_run_all_snapshot_feedback(
+    project_root: Path,
     resolved_paths: Sequence[Path],
     run_all: bool,
     *,
@@ -162,7 +176,7 @@ def _emit_run_all_snapshot_feedback(
 ) -> int | None:
     if not run_all:
         return None
-    _print_run_all_snapshot_banner(resolved_paths)
+    _print_run_all_snapshot_banner(project_root, resolved_paths)
     if resolved_paths:
         return None
     _print_run_all_no_work_message(print_summary_fn=print_summary_fn)
@@ -351,6 +365,7 @@ def build_loop_run(
         resolve_run_targets=_resolve_run_targets,
         emit_run_all_snapshot_feedback=lambda resolved_paths, run_all: (
             _emit_run_all_snapshot_feedback(
+                config.project_root,
                 resolved_paths,
                 run_all,
                 print_summary_fn=print_summary_fn,

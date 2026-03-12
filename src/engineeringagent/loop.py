@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, NamedTuple, Sequence
 
+from .adapters.config import repo_relative_label, resolve_specifications_root
 from .adapters.progress import write_iteration_telemetry
 from .adapters.runtime.execution import run_loop_controller
 from .adapters.runtime.loop_run_context import LoopRun, RunConfig, RunServices
@@ -44,10 +45,19 @@ def git_head_short(project_root: Path) -> str | None:
     return _build_version_control_gateway(project_root).head_commit(project_root)
 
 
-def _print_run_all_snapshot_banner(resolved_paths: Sequence[Path]) -> None:
+def _specifications_features_label(project_root: Path) -> str:
+    features_root = resolve_specifications_root(project_root) / "features"
+    return f"{repo_relative_label(project_root, features_root)}/"
+
+
+def _print_run_all_snapshot_banner(
+    project_root: Path,
+    resolved_paths: Sequence[Path],
+) -> None:
     print(
         "[run --all] Startup snapshot captured "
-        f"{len(resolved_paths)} runnable feature entrypoint(s) from docs/spec/features/."
+        f"{len(resolved_paths)} runnable feature entrypoint(s) from "
+        f"{_specifications_features_label(project_root)}."
     )
 
 
@@ -263,11 +273,13 @@ def _resolve_run_targets(
 
 
 def _emit_run_all_snapshot_feedback(
-    resolved_paths: Sequence[Path], run_all: bool
+    project_root: Path,
+    resolved_paths: Sequence[Path],
+    run_all: bool,
 ) -> int | None:
     if not run_all:
         return None
-    _print_run_all_snapshot_banner(resolved_paths)
+    _print_run_all_snapshot_banner(project_root, resolved_paths)
     if resolved_paths:
         return None
     _print_run_all_no_work_message()
@@ -447,7 +459,13 @@ def build_loop_run(config: RunConfig) -> LoopRun:
     """Build the default loop runtime context from run configuration."""
     services = RunServices(
         resolve_run_targets=_resolve_run_targets,
-        emit_run_all_snapshot_feedback=_emit_run_all_snapshot_feedback,
+        emit_run_all_snapshot_feedback=lambda resolved_paths, run_all: (
+            _emit_run_all_snapshot_feedback(
+                config.project_root,
+                resolved_paths,
+                run_all,
+            )
+        ),
         handle_dry_run=_handle_dry_run,
         enforce_worktree_precondition=_enforce_worktree_precondition,
         run_permission_precheck=preflight,

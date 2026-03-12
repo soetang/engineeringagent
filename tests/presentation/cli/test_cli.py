@@ -151,7 +151,7 @@ def test_run_help_describes_bundled_feature_entrypoints() -> None:
     )
     assert "feature spec.yaml entrypoint paths" in normalized_output
     assert "auto-discover active feature entrypoints" in normalized_output
-    assert "under docs/spec/features" in normalized_output
+    assert "under docs/specifications/features" in normalized_output
     assert (
         "auto-discover active feature specs under docs/spec/features"
         not in normalized_output

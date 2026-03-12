@@ -24,7 +24,7 @@ Create a grounded `plan.md` for a feature package. The plan should explain the i
 ### Required Output Location
 - Produce a `plan.md` file.
 - The file must live in the same folder as the feature `spec.yaml`.
-- This is typically `docs/spec/features/FEAT-XXX-some-header/plan.md`.
+- This is typically `docs/specifications/features/FEAT-XXX-some-header/plan.md`.
 
 ### Planning Process
 

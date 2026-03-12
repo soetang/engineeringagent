@@ -283,7 +283,7 @@ def test_run_loop_all_snapshot_banner_mentions_feature_entrypoints_for_bundles(
 
     output = capsys.readouterr().out
     assert code == 0
-    assert "runnable feature entrypoint(s) from docs/spec/features/" in output
+    assert "runnable feature entrypoint(s) from docs/specifications/features/" in output
     assert "docs/spec/features/*.yaml" not in output
     assert "Selection is taken from the startup snapshot" in output
 

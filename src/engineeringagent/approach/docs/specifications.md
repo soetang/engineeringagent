@@ -11,7 +11,7 @@ approach_id: specifications
 
 ## Hard Rule
 
-- Do not draft a new feature package under `docs/spec/features/FEAT-XXX-some-header/` until you complete a user interview and the user confirms scope.
+- Do not draft a new feature package under `docs/specifications/features/FEAT-XXX-some-header/` until you complete a user interview and the user confirms scope.
 - If the feature changes any API/contract behavior, explicit contract-delta documentation is mandatory and high priority in the spec (old behavior -> new behavior, compatibility policy, migration/rollout expectation).
 
 ## Mandatory Interview Flow
@@ -42,7 +42,7 @@ approach_id: specifications
 - Emit and follow the feature contract schema exactly:
   - `uv run engineeringagent schema feature.spec --format yaml`
   - Use `uv run engineeringagent schema list` to discover available schema ids.
-- Create a bundled feature package rooted at `docs/spec/features/FEAT-XXX-some-header/spec.yaml`.
+- Create a bundled feature package rooted at `docs/specifications/features/FEAT-XXX-some-header/spec.yaml`.
 - Bundled `spec.yaml` packages are the only supported active feature layout.
 - Treat `spec.yaml` as the canonical source for feature identity, status, and acceptance.
 - Keep active bundled `spec.yaml` files outcome-oriented. Sequencing belongs in `plan.md` phases, not in spec `subtasks`.
@@ -84,9 +84,9 @@ After creating or updating a bundled feature package, commit it in the same loop
 1. Validate specs before commit:
    - `uv run engineeringagent validate --schema-only`
 2. Stage only the intended spec/doc files:
-   - `git add docs/spec/features/FEAT-XXX-some-header/spec.yaml`
-   - `git add docs/spec/features/FEAT-XXX-some-header/plan.md`
-   - `git add docs/spec/features/FEAT-XXX-some-header/research.md`
+   - `git add docs/specifications/features/FEAT-XXX-some-header/spec.yaml`
+   - `git add docs/specifications/features/FEAT-XXX-some-header/plan.md`
+   - `git add docs/specifications/features/FEAT-XXX-some-header/research.md`
    - Add related doc updates when applicable.
 3. Use a clear commit message focused on intent:
    - Example: `spec: add FEAT-007 path-first run CLI`

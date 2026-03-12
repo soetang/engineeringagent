@@ -35,7 +35,7 @@ _PRIORITY_ORDER = {
 
 
 class FilesystemFeatureSpecificationRepository(FeatureSpecificationRepository):
-    """Persist bundled `docs/spec/features/*/spec.yaml` feature packages."""
+    """Persist bundled `docs/specifications/features/*/spec.yaml` feature packages."""
 
     def list_selection_candidates(
         self,
@@ -81,7 +81,7 @@ class FilesystemFeatureSpecificationRepository(FeatureSpecificationRepository):
         dump_yaml(spec_path, _serialize_feature_specification(specification))
 
     def archive(self, project_root: Path, feature_id: str) -> None:
-        """Move one active feature package into docs/spec/features_done."""
+        """Move one active feature package into docs/specifications/features_done."""
         spec_path = _find_feature_spec_path(project_root, feature_id, active_only=True)
         package_paths = resolve_feature_package_paths(
             _active_features_root(project_root),

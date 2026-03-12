@@ -24,7 +24,7 @@ Conduct codebase research based on a user-provided specification and produce a `
 ### Required Output Location
 - The research phase must produce a `research.md` file.
 - The file must live in the same folder as the specification.
-- This is typically `docs/spec/features/FEAT-XXX-some-header/`.
+- This is typically `docs/specifications/features/FEAT-XXX-some-header/`.
 - If multiple specification files are provided, use the directory of the primary specification the user is asking about.
 - If the specification path is unclear, determine and state the assumed specification path in `research.md`.
 

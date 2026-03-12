@@ -97,15 +97,26 @@ def _outcome(
     )
 
 
-def test_run_all_snapshot_helpers_cover_banner_and_no_work(capsys: Any) -> None:
+def test_run_all_snapshot_helpers_cover_banner_and_no_work(
+    tmp_path: Path,
+    capsys: Any,
+) -> None:
     """Render both snapshot banner helpers."""
 
-    run_builder_module._print_run_all_snapshot_banner([Path("a"), Path("b")])
+    (tmp_path / "engineeringagent.toml").write_text(
+        '[paths]\nspecifications_root = "docs/specifications"\n',
+        encoding="utf-8",
+    )
+    run_builder_module._print_run_all_snapshot_banner(
+        tmp_path,
+        [Path("a"), Path("b")],
+    )
     captured: list[IterationSummaryInputs] = []
     run_builder_module._print_run_all_no_work_message(print_summary_fn=captured.append)
 
     output = capsys.readouterr().out
     assert "Startup snapshot captured 2 runnable feature entrypoint(s)" in output
+    assert "docs/specifications/features/" in output
     assert "No runnable active features found for --all startup snapshot" in output
     assert len(captured) == 1
     assert captured[0].result == "no_work"
@@ -287,6 +298,7 @@ def test_resolve_run_targets_and_run_all_feedback(monkeypatch: Any, tmp_path: Pa
     captured: list[IterationSummaryInputs] = []
     assert (
         run_builder_module._emit_run_all_snapshot_feedback(
+            tmp_path,
             active_paths,
             True,
             print_summary_fn=captured.append,
@@ -295,6 +307,7 @@ def test_resolve_run_targets_and_run_all_feedback(monkeypatch: Any, tmp_path: Pa
     )
     assert (
         run_builder_module._emit_run_all_snapshot_feedback(
+            tmp_path,
             [],
             False,
             print_summary_fn=captured.append,
@@ -303,6 +316,7 @@ def test_resolve_run_targets_and_run_all_feedback(monkeypatch: Any, tmp_path: Pa
     )
     assert (
         run_builder_module._emit_run_all_snapshot_feedback(
+            tmp_path,
             [],
             True,
             print_summary_fn=captured.append,

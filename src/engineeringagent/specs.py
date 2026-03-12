@@ -90,7 +90,7 @@ class PotentialFeaturesDocument(StrictContractModel):
 
 
 class BundledFeatureSpec(StrictContractModel):
-    """Top-level schema for bundled docs/spec/features/<feature>/spec.yaml."""
+    """Top-level schema for bundled docs/specifications/features/<feature>/spec.yaml."""
 
     model_config = ConfigDict(extra="forbid", title="Agent Harness Bundled Feature")
 

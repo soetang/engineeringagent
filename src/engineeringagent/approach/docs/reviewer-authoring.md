@@ -51,7 +51,7 @@ Keep prompt text specific to what the reviewer should evaluate:
 When reviewer scope depends on the active feature, anchor that guidance to the bundled
 feature-package layout:
 
-- Treat bundled entrypoints under `docs/spec/features/**/spec.yaml` as the canonical
+- Treat bundled entrypoints under `docs/specifications/features/**/spec.yaml` as the canonical
   review surface.
 - Tell the reviewer whether `plan.md` phases, `research.md`, or other supporting
   artifacts are in scope for the review.

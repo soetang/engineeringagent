@@ -261,7 +261,10 @@ def build_typer_app(command_module: ModuleType) -> typer.Typer:
         run_all: bool = typer.Option(
             False,
             "--all",
-            help="auto-discover active feature entrypoints under docs/spec/features",
+            help=(
+                "auto-discover active feature entrypoints under "
+                "docs/specifications/features"
+            ),
         ),
         dry_run: bool = typer.Option(False, "--dry-run"),
         max_iterations: int = typer.Option(

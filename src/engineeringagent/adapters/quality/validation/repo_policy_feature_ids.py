@@ -152,11 +152,11 @@ def _duplicate_base_id_message_active(
         return (
             f"validate: duplicate base feature id {base_id_text} found across active and done specs; "
             f"active: {active_labels}; done: {done_labels}; "
-            "remediation: rename/re-id active feature specs under docs/spec/features/ to make ids globally unique"
+            "remediation: rename/re-id active feature specs under docs/specifications/features/ to make ids globally unique"
         )
     return (
         f"validate: duplicate base feature id {base_id_text} found in active specs: {active_labels}; "
-        "remediation: rename/re-id active feature specs under docs/spec/features/ to make ids globally unique"
+        "remediation: rename/re-id active feature specs under docs/specifications/features/ to make ids globally unique"
     )
 
 
