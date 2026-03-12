@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict
 
 from engineeringagent.domain.audit import ImplementProgressEnvelope
 from engineeringagent.domain.shared import utc_now_iso
-from engineeringagent.spec_bundles import progress_kind_label
+from engineeringagent.domain.specification import progress_kind_label
 
 
 class HandoffRenderMetadata(BaseModel):

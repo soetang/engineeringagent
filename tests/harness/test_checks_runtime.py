@@ -32,7 +32,7 @@ from engineeringagent.adapters.runtime.iteration_phases import (
     run_gate_phase,
     run_reviewer_phase,
 )
-from engineeringagent.specs import load_yaml
+from engineeringagent.domain.specification import load_yaml
 
 
 def _write_checks_yaml(tmp_path: Path, content: str) -> Path:

@@ -164,22 +164,22 @@ def resolve_feature_plan_path(
 ) -> Path | None:
     """Proxy to bundled plan-path resolution without widening harness imports."""
 
-    spec_bundles = import_module("engineeringagent.spec_bundles")
-    return spec_bundles.resolve_feature_plan_path(spec_path, feature)
+    specification = import_module("engineeringagent.domain.specification")
+    return specification.resolve_feature_plan_path(spec_path, feature)
 
 
 def iter_feature_files(features_root: Path) -> tuple[Path, ...]:
     """Proxy to bundled feature entrypoint discovery for harness code."""
 
-    spec_bundles = import_module("engineeringagent.spec_bundles")
-    return tuple(spec_bundles.iter_feature_files(features_root))
+    specification = import_module("engineeringagent.domain.specification")
+    return tuple(specification.iter_feature_files(features_root))
 
 
 def load_markdown_frontmatter(path: Path) -> dict[str, Any]:
     """Proxy to bundled markdown frontmatter loading for harness code."""
 
-    spec_bundles = import_module("engineeringagent.spec_bundles")
-    return spec_bundles.load_markdown_frontmatter(path)
+    specification = import_module("engineeringagent.domain.specification")
+    return specification.load_markdown_frontmatter(path)
 
 
 def reviewer_decision_schema_from_model() -> dict[str, Any]:

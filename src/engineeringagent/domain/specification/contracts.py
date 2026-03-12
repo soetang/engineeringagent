@@ -2,45 +2,18 @@ from __future__ import annotations
 
 from enum import Enum
 from pathlib import Path
-from typing import Any, Annotated
-from pydantic import (
-    BaseModel,
-    ConfigDict,
-    Field,
-    ValidationError,
-)
+from typing import Annotated, Any
 
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
+
+from engineeringagent.domain.quality import HarnessChecksDocument
 from engineeringagent.domain.shared import FeatureId, FeatureStatus, PlanningTier
-from engineeringagent.domain.quality import (
-    HarnessCheckPhase as _HarnessCheckPhase,
-    HarnessChecksDocument,
-)
-from engineeringagent.domain.specification.feature_specification import (
-    FeatureArtifacts,
-    FeaturePriority,
-    FeatureType,
-)
-from engineeringagent import spec_bundles as _spec_bundles
+
+from .feature_specification import FeatureArtifacts, FeaturePriority, FeatureType
 
 JSON_SCHEMA_DRAFT_URL = "https://json-schema.org/draft/2020-12/schema"
 
 PRIORITY_ORDER = {"high": 0, "medium": 1, "low": 2}
-FeaturePackagePaths = _spec_bundles.FeaturePackagePaths
-HarnessCheckPhase = _HarnessCheckPhase
-load_yaml = _spec_bundles.load_yaml
-dump_yaml = _spec_bundles.dump_yaml
-iter_feature_files = _spec_bundles.iter_feature_files
-feature_storage_root = _spec_bundles.feature_storage_root
-resolve_feature_package_paths = _spec_bundles.resolve_feature_package_paths
-load_markdown_frontmatter = _spec_bundles.load_markdown_frontmatter
-resolve_feature_plan_path = _spec_bundles.resolve_feature_plan_path
-resolve_feature_research_path = _spec_bundles.resolve_feature_research_path
-load_feature_plan_artifact = _spec_bundles.load_feature_plan_artifact
-feature_progress_kind = _spec_bundles.feature_progress_kind
-progress_kind_label = _spec_bundles.progress_kind_label
-_is_bundled_feature_spec_path = _spec_bundles.is_bundled_feature_spec_path
-_bundled_feature_artifact_issues = _spec_bundles.bundled_feature_artifact_issues
-
 
 NonEmptyStr = Annotated[str, Field(strict=True, min_length=1)]
 StrictString = Annotated[str, Field(strict=True)]
@@ -168,59 +141,7 @@ def _path_from_pydantic_loc(loc: tuple[Any, ...]) -> str:
     return ".".join(parts).replace(".[", "[")
 
 
-def feature_contract_issues(
-    feature: dict[str, Any], file_path: Path
-) -> list[ValidationIssue]:
-    """Collect strict contract validation issues for one feature document.
-
-    Args:
-        feature: Feature mapping to validate.
-        file_path: Source path used in issue reporting.
-
-    Returns:
-        Validation issues produced by strict Pydantic contract checks.
-    """
-    if not _is_bundled_feature_spec_path(file_path):
-        return [
-            ValidationIssue(
-                path=str(file_path),
-                message="feature specs must use bundled spec.yaml entrypoints",
-            )
-        ]
-
-    issues = _model_contract_issues(
-        model_type=BundledFeatureSpec,
-        payload=feature,
-        file_path=file_path,
-    )
-    if issues:
-        return issues
-    return [*issues, *_bundled_feature_artifact_issues(feature, file_path)]
-
-
-def potential_features_contract_issues(
-    document: dict[str, Any], file_path: Path
-) -> list[ValidationIssue]:
-    """Collect strict contract issues for potential features backlog YAML."""
-    return _model_contract_issues(
-        model_type=PotentialFeaturesDocument,
-        payload=document,
-        file_path=file_path,
-    )
-
-
-def checks_contract_issues(
-    document: dict[str, Any], file_path: Path
-) -> list[ValidationIssue]:
-    """Collect strict contract issues for harness/checks.yaml."""
-    return _model_contract_issues(
-        model_type=HarnessChecksDocument,
-        payload=document,
-        file_path=file_path,
-    )
-
-
-def _model_contract_issues(
+def model_contract_issues(
     model_type: type[BaseModel],
     payload: dict[str, Any],
     file_path: Path,
@@ -246,22 +167,41 @@ def _model_contract_issues(
     return []
 
 
-_spec_bundles.configure_spec_contracts(
-    planning_tier=PlanningTier,
-    build_validation_issue=ValidationIssue,
-    feature_plan_artifact=FeaturePlanArtifact,
-    model_contract_issues=_model_contract_issues,
-)
+def feature_model_contract_issues(
+    feature: dict[str, Any],
+    file_path: Path,
+) -> list[ValidationIssue]:
+    """Collect strict model-only contract validation issues for one feature document."""
+    return model_contract_issues(
+        model_type=BundledFeatureSpec,
+        payload=feature,
+        file_path=file_path,
+    )
+
+
+def potential_features_contract_issues(
+    document: dict[str, Any], file_path: Path
+) -> list[ValidationIssue]:
+    """Collect strict contract issues for potential features backlog YAML."""
+    return model_contract_issues(
+        model_type=PotentialFeaturesDocument,
+        payload=document,
+        file_path=file_path,
+    )
+
+
+def checks_contract_issues(
+    document: dict[str, Any], file_path: Path
+) -> list[ValidationIssue]:
+    """Collect strict contract issues for harness/checks.yaml."""
+    return model_contract_issues(
+        model_type=HarnessChecksDocument,
+        payload=document,
+        file_path=file_path,
+    )
 
 
 def feature_sort_key(feature: dict[str, Any]) -> tuple[int, str]:
-    """Build a deterministic sort key for feature priority.
-
-    Args:
-        feature: Feature mapping with priority and id fields.
-
-    Returns:
-        Tuple used for ascending priority and id ordering.
-    """
+    """Build a deterministic sort key for feature priority."""
     priority = feature.get("priority", "medium")
     return (PRIORITY_ORDER.get(priority, 1), str(feature.get("id", "")))

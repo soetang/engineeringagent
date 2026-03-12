@@ -33,7 +33,7 @@ from engineeringagent.adapters.config import (
     resolve_harness_root,
 )
 from engineeringagent.presentation.presenters.terminal import RunOutputPresenter
-from engineeringagent.specs import progress_kind_label
+from engineeringagent.domain.specification import progress_kind_label
 
 __all__ = ["agent_runtime"]
 

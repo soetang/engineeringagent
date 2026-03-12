@@ -13,12 +13,12 @@ from engineeringagent.domain.specification import (
     current_progress_unit,
     done_transition_verification_commands,
     feature_progress_reference,
+    feature_progress_kind,
     InitialFeatureLoadOutcome,
     PostImplementFeatureOutcome,
     progress_status_snapshot,
 )
 from engineeringagent.ports import Clock
-from engineeringagent.specs import feature_progress_kind
 
 from .contracts import (
     CommandTiming,

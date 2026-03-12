@@ -139,7 +139,7 @@ def test_bundled_spec_helpers_remain_available_from_package_facade(
     }
 
 
-def test_checks_run_result_remains_importable_after_specs_import(
+def test_checks_run_result_remains_importable_after_specification_import(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
@@ -158,7 +158,7 @@ def test_checks_run_result_remains_importable_after_specs_import(
             sys.executable,
             "-c",
             (
-                "import engineeringagent.specs; "
+                "import engineeringagent.domain.specification; "
                 "from engineeringagent.checks import ChecksRunResult; "
                 "result = ChecksRunResult.model_validate({"
                 "'ok': True, "
@@ -180,11 +180,11 @@ def test_checks_run_result_remains_importable_after_specs_import(
     assert result.returncode == 0, result.stderr
 
 
-def test_checks_supported_contracts_remain_usable_after_specs_import(
+def test_checks_supported_contracts_remain_usable_after_specification_import(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Specs imports should not break checks-owned public contracts."""
+    """Specification imports should not break checks-owned public contracts."""
     env = os.environ.copy()
     src_path = str(repo_root / "src")
     existing_pythonpath = env.get("PYTHONPATH")
@@ -199,7 +199,7 @@ def test_checks_supported_contracts_remain_usable_after_specs_import(
             sys.executable,
             "-c",
             (
-                "import engineeringagent.specs; "
+                "import engineeringagent.domain.specification; "
                 "from engineeringagent.checks import HarnessCheckPhase, normalize_groups; "
                 "assert HarnessCheckPhase.ITERATION_END.value == 'iteration_end'; "
                 "assert normalize_groups(['fitness', 'commands']) == ('commands', 'fitness')"

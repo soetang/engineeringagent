@@ -20,7 +20,7 @@ from engineeringagent.domain.quality import (
     PlannedCheck,
     map_planned_checks_to_decisions,
 )
-from engineeringagent.specs import load_yaml
+from engineeringagent.domain.specification import load_yaml
 
 
 def _load_checks_document(checks_path: Path):

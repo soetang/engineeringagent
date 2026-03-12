@@ -8,7 +8,10 @@ from engineeringagent.checks import (
     custom_rule_manifest_schema_from_model,
     reviewer_decision_schema_from_model,
 )
-from engineeringagent.specs import checks_schema_from_model, feature_schema_from_model
+from engineeringagent.domain.specification import (
+    checks_schema_from_model,
+    feature_schema_from_model,
+)
 
 JSON_SCHEMA_DRAFT_URL = "https://json-schema.org/draft/2020-12/schema"
 

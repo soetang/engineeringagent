@@ -104,6 +104,8 @@ DELETED_MODULE_PATHS = {
     "src/engineeringagent/prompts/definitions/__init__.py",
     "src/engineeringagent/prompts/feedback_envelope.py",
     "src/engineeringagent/prompts/templates/__init__.py",
+    "src/engineeringagent/spec_bundles.py",
+    "src/engineeringagent/specs.py",
     "src/engineeringagent/config.py",
     "src/engineeringagent/loop_runtime/__init__.py",
     "src/engineeringagent/loop_runtime/controller.py",
@@ -137,8 +139,17 @@ LEGACY_MODULES = (
     "engineeringagent.git.client",
     "engineeringagent.progress_paths",
     "engineeringagent.progress_logging",
+    "engineeringagent.spec_bundles",
+    "engineeringagent.specs",
 )
-LEGACY_MEMBERS = {"changed_paths", "git", "progress_paths", "progress_logging"}
+LEGACY_MEMBERS = {
+    "changed_paths",
+    "git",
+    "progress_paths",
+    "progress_logging",
+    "spec_bundles",
+    "specs",
+}
 
 
 def _iter_python_modules(root: Path) -> tuple[Path, ...]:

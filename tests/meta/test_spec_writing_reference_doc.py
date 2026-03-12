@@ -5,7 +5,10 @@ from typing import Any
 
 import yaml
 from engineeringagent.adapters.documents import guidance_topic_catalog
-from engineeringagent.spec_bundles import iter_feature_files, load_markdown_frontmatter
+from engineeringagent.domain.specification import (
+    iter_feature_files,
+    load_markdown_frontmatter,
+)
 
 
 def _feature_verification_commands(features_dir: Path) -> list[str]:

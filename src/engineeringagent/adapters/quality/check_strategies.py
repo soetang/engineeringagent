@@ -44,7 +44,7 @@ from engineeringagent.presentation.presenters.prompt_feedback import (
     format_command_return_code,
     format_failed_command_feedback_lines,
 )
-from engineeringagent.specs import load_yaml
+from engineeringagent.domain.specification import load_yaml
 
 
 class CheckContext(NamedTuple):

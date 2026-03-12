@@ -12,7 +12,7 @@ from engineeringagent.adapters.config import (
     resolve_harness_checks_config_path,
 )
 from engineeringagent.domain.quality import HarnessChecksDocument
-from engineeringagent.specs import checks_contract_issues, load_yaml
+from engineeringagent.domain.specification import checks_contract_issues, load_yaml
 
 
 def load_harness_checks_document(

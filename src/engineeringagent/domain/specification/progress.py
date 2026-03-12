@@ -8,7 +8,7 @@ from typing import Any, Iterable
 from pydantic import BaseModel, ConfigDict
 import yaml
 
-from engineeringagent.spec_bundles import (
+from engineeringagent.domain.specification.bundles import (
     load_feature_plan_artifact,
     load_markdown_frontmatter,
     resolve_feature_plan_path,

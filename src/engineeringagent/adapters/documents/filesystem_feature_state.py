@@ -16,9 +16,6 @@ from engineeringagent.adapters.documents.filesystem_feature_selection import (
 from engineeringagent.domain.specification import (
     InitialFeatureLoadOutcome,
     PostImplementFeatureOutcome,
-)
-from engineeringagent.domain.shared import utc_now_iso
-from engineeringagent.specs import (
     dump_yaml,
     feature_storage_root,
     load_markdown_frontmatter,
@@ -26,6 +23,7 @@ from engineeringagent.specs import (
     resolve_feature_package_paths,
     resolve_feature_plan_path,
 )
+from engineeringagent.domain.shared import utc_now_iso
 
 FEATURE_TRANSITIONS: dict[str, set[str]] = {
     "backlog": {"backlog", "in_progress", "done"},

@@ -6,7 +6,11 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from engineeringagent.adapters.config import resolve_specifications_root
-from engineeringagent.specs import _is_bundled_feature_spec_path, iter_feature_files, load_yaml
+from engineeringagent.domain.specification import (
+    iter_feature_files,
+    load_yaml,
+)
+from engineeringagent.domain.specification.bundles import is_bundled_feature_spec_path
 
 RUN_ALL_RUNNABLE_STATUSES: set[str] = {"backlog", "in_progress"}
 
@@ -33,7 +37,7 @@ def resolve_feature_paths(
             raise ValueError(f"feature path does not exist: {raw_path}")
         if not candidate.is_file():
             raise ValueError(f"feature path is not a file: {raw_path}")
-        if not _is_bundled_feature_spec_path(candidate):
+        if not is_bundled_feature_spec_path(candidate):
             raise ValueError(
                 "feature specs must use bundled spec.yaml entrypoints: "
                 f"{raw_path}"

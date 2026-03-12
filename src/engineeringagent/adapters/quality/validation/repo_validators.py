@@ -7,7 +7,7 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.specs import (
+from engineeringagent.domain.specification import (
     ValidationIssue,
     feature_contract_issues,
     feature_storage_root,

@@ -6,7 +6,7 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.specs import load_yaml
+from engineeringagent.domain.specification import load_yaml
 
 _SPEC_ID_PATTERN = re.compile(r"^(?P<prefix>[A-Z]+)-(?P<num>[0-9]+)$")
 

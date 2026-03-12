@@ -8,8 +8,6 @@ from pathlib import Path
 
 import pytest
 from engineeringagent import checks
-from engineeringagent import specs
-from engineeringagent.checks import HarnessCheckPhase as ChecksHarnessCheckPhase
 
 
 def _load_checker_module(repo_root: Path):
@@ -311,65 +309,6 @@ def test_cli_production_module_uses_checks_top_level_surface_only(
     ]
 
     assert cli_violations == []
-
-
-def test_specs_production_module_reuses_checks_owned_harness_check_phase(
-    repo_root: Path,
-) -> None:
-    assert specs.HarnessCheckPhase is ChecksHarnessCheckPhase
-
-
-def test_checker_allows_specs_module_to_import_checks_top_level_surface(
-    tmp_path: Path,
-    repo_root: Path,
-) -> None:
-    checker = _load_checker_module(repo_root)
-
-    src_root = tmp_path / "src" / "engineeringagent"
-    src_root.mkdir(parents=True)
-    (src_root / "__init__.py").write_text("", encoding="utf-8")
-    (src_root / "specs.py").write_text(
-        "\n".join(
-            [
-                "from engineeringagent.checks import HarnessCheckPhase",
-                "",
-                "PHASE = HarnessCheckPhase.ITERATION_END",
-                "",
-            ]
-        ),
-        encoding="utf-8",
-    )
-
-    violations = checker._collect_violations(tmp_path)
-    assert violations == []
-
-
-def test_checker_flags_specs_module_importing_checks_strategy_submodule(
-    tmp_path: Path,
-    repo_root: Path,
-) -> None:
-    checker = _load_checker_module(repo_root)
-
-    src_root = tmp_path / "src" / "engineeringagent"
-    src_root.mkdir(parents=True)
-    (src_root / "__init__.py").write_text("", encoding="utf-8")
-    (src_root / "specs.py").write_text(
-        "\n".join(
-            [
-                "from engineeringagent.checks.strategy_contracts import CheckDecision",
-                "",
-                "VALUE = CheckDecision",
-                "",
-            ]
-        ),
-        encoding="utf-8",
-    )
-
-    violations = checker._collect_violations(tmp_path)
-    assert (
-        "src/engineeringagent/specs.py:1 imports checks submodule engineeringagent.checks.strategy_contracts"
-        in violations
-    )
 
 
 def test_checker_still_flags_non_specs_checks_strategy_imports(

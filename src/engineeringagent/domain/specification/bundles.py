@@ -1,31 +1,21 @@
-"""Bundled feature package helpers shared by specs and runtime."""
+"""Bundled feature package helpers shared by specification workflows."""
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from importlib import import_module
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import yaml
 from pydantic import BaseModel, ConfigDict, ValidationError
 
-if TYPE_CHECKING:
-    from .specs import ValidationIssue
+from engineeringagent.domain.shared import PlanningTier
 
-
-class _SpecContracts:
-    """Mutable registry used to avoid a specs/spec_bundles import cycle."""
-
-    planning_tier: Any = None
-    feature_plan_artifact: Any = None
-    build_validation_issue: Callable[..., "ValidationIssue"] | None = None
-    model_contract_issues: (
-        Callable[[type[BaseModel], dict[str, Any], Path], list["ValidationIssue"]] | None
-    ) = None
-
-
-_SPEC_CONTRACTS = _SpecContracts()
+from .contracts import (
+    FeaturePlanArtifact,
+    ValidationIssue,
+    feature_model_contract_issues,
+    model_contract_issues,
+)
 
 
 class FeaturePackagePaths(BaseModel):
@@ -39,109 +29,11 @@ class FeaturePackagePaths(BaseModel):
     archive_spec_path: Path
 
 
-def configure_spec_contracts(
-    *,
-    planning_tier: Any,
-    build_validation_issue: Callable[..., "ValidationIssue"],
-    feature_plan_artifact: Any,
-    model_contract_issues: Callable[
-        [type[BaseModel], dict[str, Any], Path], list["ValidationIssue"]
-    ],
-) -> None:
-    """Register spec-contract types used by bundled helpers."""
-
-    _SPEC_CONTRACTS.planning_tier = planning_tier
-    _SPEC_CONTRACTS.build_validation_issue = build_validation_issue
-    _SPEC_CONTRACTS.feature_plan_artifact = feature_plan_artifact
-    _SPEC_CONTRACTS.model_contract_issues = model_contract_issues
-
-
-def reset_spec_contracts_for_testing() -> None:
-    """Clear configured contract hooks for focused tests."""
-
-    _SPEC_CONTRACTS.planning_tier = None
-    _SPEC_CONTRACTS.build_validation_issue = None
-    _SPEC_CONTRACTS.feature_plan_artifact = None
-    _SPEC_CONTRACTS.model_contract_issues = None
-
-
-def _require_spec_contract(name: str, value: Any) -> Any:
-    """Return a configured contract object or raise a deterministic error."""
-
-    if value is None:
-        _bootstrap_spec_contracts()
-        value = getattr(_SPEC_CONTRACTS, name, None)
-    if value is None:
-        raise RuntimeError(f"bundled spec contract not configured: {name}")
-    return value
-
-
-def _bootstrap_spec_contracts() -> None:
-    """Import the spec contract module on demand when helpers run standalone."""
-
-    if (
-        _SPEC_CONTRACTS.planning_tier is not None
-        and _SPEC_CONTRACTS.feature_plan_artifact is not None
-        and _SPEC_CONTRACTS.build_validation_issue is not None
-        and _SPEC_CONTRACTS.model_contract_issues is not None
-    ):
-        return
-    specs_module = import_module("engineeringagent.specs")
-    model_contract_issues = getattr(specs_module, "model_contract_issues", None)
-    if model_contract_issues is None:
-        model_contract_issues = getattr(specs_module, "_model_contract_issues", None)
-    build_validation_issue = getattr(specs_module, "build_validation_issue", None)
-    if build_validation_issue is None and hasattr(specs_module, "ValidationIssue"):
-        build_validation_issue = specs_module.ValidationIssue
-    if (
-        _SPEC_CONTRACTS.planning_tier is None
-        and hasattr(specs_module, "PlanningTier")
-        and hasattr(specs_module, "FeaturePlanArtifact")
-        and build_validation_issue is not None
-        and model_contract_issues is not None
-    ):
-        configure_spec_contracts(
-            planning_tier=specs_module.PlanningTier,
-            build_validation_issue=build_validation_issue,
-            feature_plan_artifact=specs_module.FeaturePlanArtifact,
-            model_contract_issues=model_contract_issues,
-        )
-
-
-def bootstrap_spec_contracts() -> None:
-    """Expose contract bootstrap for focused tests and standalone callers."""
-
-    _bootstrap_spec_contracts()
-
-
-def _validation_issue_instance(*, path: str, message: str) -> "ValidationIssue":
-    """Create a configured ValidationIssue instance."""
-
-    build_issue = _require_spec_contract(
-        "build_validation_issue", _SPEC_CONTRACTS.build_validation_issue
-    )
-    return build_issue(path=path, message=message)
-
-
-def model_contract_issues_for_bundle(
-    *,
-    model_type: type[BaseModel],
-    payload: dict[str, Any],
-    file_path: Path,
-) -> list["ValidationIssue"]:
-    """Call the configured model-contract validation helper."""
-
-    issue_fn = _require_spec_contract(
-        "model_contract_issues", _SPEC_CONTRACTS.model_contract_issues
-    )
-    return issue_fn(model_type, payload, file_path)
-
-
 def load_yaml(path: Path) -> dict[str, Any]:
     """Load a YAML mapping from disk."""
 
-    with path.open("r", encoding="utf-8") as f:
-        data = yaml.safe_load(f)
+    with path.open("r", encoding="utf-8") as handle:
+        data = yaml.safe_load(handle)
     if not isinstance(data, dict):
         raise ValueError(f"{path} must contain a YAML mapping at top level")
     return data
@@ -150,8 +42,8 @@ def load_yaml(path: Path) -> dict[str, Any]:
 def dump_yaml(path: Path, data: dict[str, Any]) -> None:
     """Write a YAML mapping to disk."""
 
-    with path.open("w", encoding="utf-8") as f:
-        yaml.safe_dump(data, f, sort_keys=False, allow_unicode=False)
+    with path.open("w", encoding="utf-8") as handle:
+        yaml.safe_dump(data, handle, sort_keys=False, allow_unicode=False)
 
 
 def iter_feature_files(features_dir: Path) -> list[Path]:
@@ -207,32 +99,49 @@ def is_bundled_feature_spec_path(file_path: Path) -> bool:
     return file_path.name == "spec.yaml"
 
 
+def feature_contract_issues(
+    feature: dict[str, Any],
+    file_path: Path,
+) -> list[ValidationIssue]:
+    """Collect bundled feature contract issues, including artifact linkage checks."""
+
+    if not is_bundled_feature_spec_path(file_path):
+        return [
+            ValidationIssue(
+                path=str(file_path),
+                message="feature specs must use bundled spec.yaml entrypoints",
+            )
+        ]
+
+    issues = feature_model_contract_issues(feature, file_path)
+    if issues:
+        return issues
+    return bundled_feature_artifact_issues(feature, file_path)
+
+
 def bundled_feature_artifact_issues(
     feature: dict[str, Any],
     file_path: Path,
-) -> list["ValidationIssue"]:
+) -> list[ValidationIssue]:
     """Validate tier-specific artifact requirements for bundled feature specs."""
 
-    planning_tier_enum = _require_spec_contract(
-        "planning_tier", _SPEC_CONTRACTS.planning_tier
-    )
-    issues: list["ValidationIssue"] = []
+    issues: list[ValidationIssue] = []
     planning_tier = feature.get("planning_tier")
     artifacts = feature.get("artifacts")
     if not isinstance(planning_tier, str) or not isinstance(artifacts, dict):
         return issues
 
     required_artifacts = {
-        planning_tier_enum.DIRECT.value: (),
-        planning_tier_enum.PLANNED.value: ("plan",),
-        planning_tier_enum.RESEARCHED.value: ("plan", "research"),
+        PlanningTier.DIRECT.value: (),
+        PlanningTier.PLANNED.value: ("plan",),
+        PlanningTier.RESEARCHED.value: ("plan", "research"),
     }.get(planning_tier, ())
 
     for artifact_key in required_artifacts:
         artifact_value = artifacts.get(artifact_key)
         if not isinstance(artifact_value, str) or not artifact_value.strip():
             issues.append(
-                _validation_issue_instance(
+                ValidationIssue(
                     path=f"{file_path}:artifacts.{artifact_key}",
                     message=(
                         f"planning_tier {planning_tier} requires artifacts.{artifact_key}"
@@ -243,7 +152,7 @@ def bundled_feature_artifact_issues(
         artifact_path = file_path.parent / artifact_value
         if not artifact_path.is_file():
             issues.append(
-                _validation_issue_instance(
+                ValidationIssue(
                     path=f"{file_path}:artifacts.{artifact_key}",
                     message=f"artifact path does not exist: {artifact_value}",
                 )
@@ -260,12 +169,9 @@ def plan_artifact_issues(
     spec_path: Path,
     feature: dict[str, Any],
     plan_ref: str,
-) -> list["ValidationIssue"]:
+) -> list[ValidationIssue]:
     """Validate bundled plan.md frontmatter and spec linkage."""
 
-    feature_plan_artifact = _require_spec_contract(
-        "feature_plan_artifact", _SPEC_CONTRACTS.feature_plan_artifact
-    )
     plan_path = spec_path.parent / plan_ref
     if not plan_path.is_file():
         return []
@@ -273,10 +179,10 @@ def plan_artifact_issues(
     try:
         frontmatter = load_markdown_frontmatter(plan_path)
     except ValueError as exc:
-        return [_validation_issue_instance(path=str(plan_path), message=str(exc))]
+        return [ValidationIssue(path=str(plan_path), message=str(exc))]
 
-    issues = model_contract_issues_for_bundle(
-        model_type=feature_plan_artifact,
+    issues = model_contract_issues(
+        model_type=FeaturePlanArtifact,
         payload=frontmatter,
         file_path=plan_path,
     )
@@ -286,7 +192,7 @@ def plan_artifact_issues(
     feature_id = feature.get("id")
     if frontmatter.get("feature_id") != feature_id:
         issues.append(
-            _validation_issue_instance(
+            ValidationIssue(
                 path=f"{plan_path}:feature_id",
                 message=f"plan feature_id must match spec id {feature_id}",
             )
@@ -294,14 +200,14 @@ def plan_artifact_issues(
     planning_tier = feature.get("planning_tier")
     if frontmatter.get("planning_tier") != planning_tier:
         issues.append(
-            _validation_issue_instance(
+            ValidationIssue(
                 path=f"{plan_path}:planning_tier",
                 message=f"plan planning_tier must match spec planning_tier {planning_tier}",
             )
         )
     if frontmatter.get("source_spec") != spec_path.name:
         issues.append(
-            _validation_issue_instance(
+            ValidationIssue(
                 path=f"{plan_path}:source_spec",
                 message=f"plan source_spec must reference {spec_path.name}",
             )
@@ -323,7 +229,7 @@ def _plan_phase_status_alignment_issues(
     feature: dict[str, Any],
     plan_path: Path,
     frontmatter: dict[str, Any],
-) -> list["ValidationIssue"]:
+) -> list[ValidationIssue]:
     """Validate feature/plan progress alignment for bundled plan phases."""
 
     feature_status = feature.get("status")
@@ -336,13 +242,13 @@ def _plan_phase_status_alignment_issues(
         for phase in raw_phases
         if isinstance(phase, dict) and isinstance(phase.get("status"), str)
     ]
-    issues: list["ValidationIssue"] = []
+    issues: list[ValidationIssue] = []
 
     if any(status == "in_progress" for status in phase_statuses) and (
         feature_status != "in_progress"
     ):
         issues.append(
-            _validation_issue_instance(
+            ValidationIssue(
                 path=f"{spec_path}:status",
                 message="feature with in_progress phase must be in_progress",
             )
@@ -352,7 +258,7 @@ def _plan_phase_status_alignment_issues(
         feature_status != "blocked"
     ):
         issues.append(
-            _validation_issue_instance(
+            ValidationIssue(
                 path=f"{spec_path}:status",
                 message="feature with blocked phase must be blocked",
             )
@@ -362,7 +268,7 @@ def _plan_phase_status_alignment_issues(
         status != "done" for status in phase_statuses
     ):
         issues.append(
-            _validation_issue_instance(
+            ValidationIssue(
                 path=f"{plan_path}:phases",
                 message="feature status done requires all plan phases done",
             )
@@ -429,18 +335,15 @@ def resolve_feature_research_path(
 def load_feature_plan_artifact(
     spec_path: Path,
     feature: dict[str, Any] | None,
-):
+) -> FeaturePlanArtifact | None:
     """Load bundled plan.md frontmatter as a validated plan artifact."""
 
-    feature_plan_artifact = _require_spec_contract(
-        "feature_plan_artifact", _SPEC_CONTRACTS.feature_plan_artifact
-    )
     plan_path = resolve_feature_plan_path(spec_path, feature)
     if plan_path is None or not plan_path.is_file():
         return None
     try:
         frontmatter = load_markdown_frontmatter(plan_path)
-        return feature_plan_artifact.model_validate(frontmatter)
+        return FeaturePlanArtifact.model_validate(frontmatter)
     except (ValidationError, ValueError, yaml.YAMLError):
         return None
 

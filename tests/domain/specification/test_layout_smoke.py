@@ -4,7 +4,8 @@ from pathlib import Path
 
 import pytest
 import yaml
-from engineeringagent.specs import iter_feature_files
+
+from engineeringagent.domain.specification import iter_feature_files
 
 
 def _has_feature_entrypoints(features_dir: Path) -> bool:

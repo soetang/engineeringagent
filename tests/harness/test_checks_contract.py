@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from engineeringagent.specs import checks_contract_issues
+from engineeringagent.domain.specification import checks_contract_issues
 
 
 def test_checks_contract_accepts_minimal_command_check() -> None:

@@ -15,9 +15,6 @@ from engineeringagent.domain.specification import (
     FeatureStatus,
     FeatureType,
     PlanningTier,
-)
-from engineeringagent.ports import FeatureSpecificationRepository, ValidationFailure
-from engineeringagent.specs import (
     dump_yaml,
     feature_contract_issues,
     iter_feature_files,
@@ -25,6 +22,7 @@ from engineeringagent.specs import (
     load_yaml,
     resolve_feature_package_paths,
 )
+from engineeringagent.ports import FeatureSpecificationRepository, ValidationFailure
 
 _PORT_NAME = "FeatureSpecificationRepository"
 _PRIORITY_ORDER = {
