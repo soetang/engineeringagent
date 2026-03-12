@@ -1,9 +1,90 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
+from unittest.mock import sentinel
 
+from engineeringagent.adapters.progress.handoff import (
+    fallback_implement_progress_envelope,
+)
+from engineeringagent.ports import AgentRunner
 from engineeringagent.domain.audit import IterationSummaryInputs
 from engineeringagent.bootstrap import runtime_support
+
+
+class _StubAgentRunner(AgentRunner):
+    def __init__(self) -> None:
+        self.requests: list[object] = []
+
+    def run(self, request: object) -> object:
+        self.requests.append(request)
+        return fallback_implement_progress_envelope()
+
+
+def test_run_implement_step_uses_app_factory_agent_runner(
+    tmp_path: Path,
+    monkeypatch: Any,
+) -> None:
+    """Route implement-step execution through the configured agent-runner adapter."""
+
+    captured: dict[str, object] = {}
+    stub_agent_runner = _StubAgentRunner()
+
+    class _StubAppFactory:
+        def __init__(self, project_root: Path) -> None:
+            captured["project_root"] = project_root
+
+        def build_agent_runner(self) -> AgentRunner:
+            captured["agent_runner_requested"] = True
+            return stub_agent_runner
+
+        def build_prompt_builder(self) -> object:
+            return sentinel.prompt_builder
+
+        def build_progress_journal(self) -> object:
+            return sentinel.progress_journal
+
+    def _fake_run_implement_step_from_inputs(
+        implement_inputs: object,
+        *,
+        agent_runner: object,
+        prompt_builder: object,
+        progress_journal: object,
+        runtime_dependencies: object,
+    ) -> object:
+        captured["implement_inputs"] = implement_inputs
+        captured["agent_runner"] = agent_runner
+        captured["prompt_builder"] = prompt_builder
+        captured["progress_journal"] = progress_journal
+        captured["runtime_dependencies"] = runtime_dependencies
+        return sentinel.result
+
+    monkeypatch.setattr(runtime_support, "AppFactory", _StubAppFactory)
+    monkeypatch.setattr(
+        runtime_support,
+        "run_implement_step_from_inputs",
+        _fake_run_implement_step_from_inputs,
+    )
+
+    result = runtime_support.run_implement_step(
+        project_root=tmp_path,
+        feature={"id": "FEAT-200"},
+        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-200" / "spec.yaml",
+        feedback="retry",
+        verbose_output=True,
+    )
+
+    assert result is sentinel.result
+    assert captured["project_root"] == tmp_path
+    assert captured["agent_runner_requested"] is True
+    assert captured["agent_runner"] is stub_agent_runner
+    assert captured["prompt_builder"] is sentinel.prompt_builder
+    assert captured["progress_journal"] is sentinel.progress_journal
+    runtime_dependencies = captured["runtime_dependencies"]
+    assert hasattr(runtime_dependencies, "describe_action")
+    assert hasattr(runtime_dependencies, "classify_backend_exception")
+    assert hasattr(runtime_dependencies, "ensure_progress_artifacts")
+    assert hasattr(runtime_dependencies, "repo_relative_label")
 
 
 def test_print_summary_renders_passed_iteration_details(capsys: Any) -> None:

@@ -504,7 +504,7 @@ def _bootstrap_runtime_support_violations(path: Path) -> list[str]:
     if isinstance(module, str):
         return [module]
 
-    return _forbidden_import_violations(
+    violations = _forbidden_import_violations(
         module,
         rel_path=rel_path,
         forbidden_modules=("engineeringagent.loop",),
@@ -513,6 +513,14 @@ def _bootstrap_runtime_support_violations(path: Path) -> list[str]:
             "call the canonical engineeringagent.agents boundary directly"
         ),
     )
+    for node in module.body:
+        if not isinstance(node, ast.ClassDef) or node.name != "_LoopAgentRunner":
+            continue
+        violations.append(
+            f"{rel_path}: bootstrap runtime support must not declare _LoopAgentRunner; "
+            "use AppFactory.build_agent_runner() and the adapters.agents boundary"
+        )
+    return violations
 
 
 def _deleted_path_violations() -> list[str]:

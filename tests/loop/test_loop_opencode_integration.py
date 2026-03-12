@@ -281,9 +281,11 @@ def test_loop_reports_permission_rejection_in_run_telemetry(
         prompt: str,
         *,
         output_type: type[Any],
+        max_validation_retries: int = 2,
     ) -> str:
         del project_root
         del prompt
+        del max_validation_retries
         assert output_type is ImplementProgressEnvelope
         raise AgentBackendError(
             backend="opencode",
@@ -355,8 +357,10 @@ def test_run_loop_creates_progress_artifacts_before_implement_invocation(
         prompt: str,
         *,
         output_type: type[Any],
+        max_validation_retries: int = 2,
     ) -> str:
         del prompt
+        del max_validation_retries
         assert output_type is ImplementProgressEnvelope
         observed["saw_implement"] = True
         assert progress_paths.progress_dir(project_root).exists()
@@ -636,11 +640,12 @@ def test_gate_failure_feedback_round_trips_to_retry_prompt_integration(
         prompt: str,
         *,
         output_type: type[Any],
+        max_validation_retries: int = 2,
         agent: str = "build",
         capture_output: bool = True,
         text: bool = True,
     ) -> str:
-        del project_root, agent, capture_output, text
+        del project_root, max_validation_retries, agent, capture_output, text
         assert output_type is ImplementProgressEnvelope
         prompts.append(prompt)
         subprocess.run(
@@ -745,11 +750,12 @@ def test_gate_failure_feedback_replaces_previous_feedback_integration(
         prompt: str,
         *,
         output_type: type[Any],
+        max_validation_retries: int = 2,
         agent: str = "build",
         capture_output: bool = True,
         text: bool = True,
     ) -> str:
-        del project_root, agent, capture_output, text
+        del project_root, max_validation_retries, agent, capture_output, text
         assert output_type is ImplementProgressEnvelope
         prompts.append(prompt)
         if len(prompts) == 2:
@@ -887,7 +893,9 @@ def test_loop_archived_done_continues_run_all_when_selected_path_disappears(
         prompt: str,
         *,
         output_type: type[Any] | None = None,
+        max_validation_retries: int = 2,
     ) -> str:
+        del max_validation_retries
         if "Choose the next feature spec to execute" in prompt:
             return str(feature_path)
 

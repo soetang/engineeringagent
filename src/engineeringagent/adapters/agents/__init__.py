@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from engineeringagent.agents import run_agent
+import engineeringagent.agents as agent_runtime
 from engineeringagent.ports import AgentRunRequest, AgentRunner
 
 
@@ -11,7 +11,7 @@ class ConfiguredAgentRunner(AgentRunner):
 
     def run(self, request: AgentRunRequest) -> object:
         """Execute one configured agent request."""
-        return run_agent(
+        return agent_runtime.run_agent(
             request.project_root,
             request.prompt,
             output_type=request.output_type,

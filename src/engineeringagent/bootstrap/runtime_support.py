@@ -23,17 +23,8 @@ from engineeringagent.specs import progress_kind_label
 
 from .app_factory import AppFactory
 
-
-class _LoopAgentRunner:
-    """Adapter for the legacy implement-step agent execution seam."""
-
-    def run(self, request: Any) -> object:
-        """Execute one legacy implement-step agent request."""
-        return agent_runtime.run_agent(
-            request.project_root,
-            request.prompt,
-            output_type=request.output_type,
-        )
+# Retained as a legacy monkeypatch seam while loop-contract tests migrate.
+_AGENT_RUNTIME_COMPAT = agent_runtime
 
 
 def git_head_short(project_root: Path) -> str | None:
@@ -73,7 +64,7 @@ def run_implement_step(
     )
     return run_implement_step_from_inputs(
         implement_inputs,
-        agent_runner=_LoopAgentRunner(),
+        agent_runner=app_factory.build_agent_runner(),
         prompt_builder=app_factory.build_prompt_builder(),
         progress_journal=app_factory.build_progress_journal(),
         runtime_dependencies=build_implement_step_runtime_dependencies(),
