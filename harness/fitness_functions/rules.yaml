@@ -140,7 +140,7 @@ rules:
     name: Harness-to-src import allowlist
     summary: Restrict harness fitness functions to a narrow supported engineeringagent surface.
     rationale: Prevents harness scripts from depending on orchestration/runtime internals that are not part of the supported authoring API.
-    remediation: Replace forbidden imports with the supported helpers under engineeringagent.checks.*.
+    remediation: Replace forbidden imports with owning helpers under engineeringagent.domain.specification, engineeringagent.adapters.config, or engineeringagent.adapters.quality.fitness.
     scope: harness/fitness_functions
     severity: error
     side_effect_free: true
@@ -150,6 +150,20 @@ rules:
       - run
       - python
       - harness/fitness_functions/rules/check_harness_src_import_allowlist.py
+  - rule_id: architecture.harness-fitness-helper-surface
+    name: Harness fitness helper surface
+    summary: Keep harness fitness rules on adapter-owned fitness helpers instead of the legacy checks facade.
+    rationale: Moves repository architecture enforcement toward the target quality adapter layout and removes legacy harness coupling to the top-level engineeringagent.checks facade.
+    remediation: Use engineeringagent.adapters.quality.fitness.emit_fitness_result and adapter-owned helpers; do not restore harness/fitness_functions/result_envelope.py or engineeringagent.checks imports in harness fitness scripts.
+    scope: harness/fitness_functions
+    severity: error
+    side_effect_free: true
+    adapter: command
+    command:
+      - uv
+      - run
+      - python
+      - harness/fitness_functions/rules/check_harness_fitness_helper_surface.py
   - rule_id: architecture.checks-import-surface
     name: Checks import surface
     summary: Enforce a narrow import surface for engineeringagent.checks.

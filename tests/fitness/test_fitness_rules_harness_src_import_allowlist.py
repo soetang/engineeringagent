@@ -67,7 +67,7 @@ def test_checker_scans_rules_manifest_scripts_not_just_check_prefix(
 
     violations = checker._collect_violations(tmp_path)
     assert violations == [
-        "harness/fitness_functions/validate_custom.py: imports disallowed module engineeringagent.cli.main (allowed: engineeringagent.checks, engineeringagent.domain.specification, engineeringagent.adapters.config, engineeringagent.adapters.quality.fitness)"
+        "harness/fitness_functions/validate_custom.py: imports disallowed module engineeringagent.cli.main (allowed: engineeringagent.domain.specification, engineeringagent.adapters.config, engineeringagent.adapters.quality.fitness)"
     ]
 
 

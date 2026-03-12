@@ -3,8 +3,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from engineeringagent import checks
-from engineeringagent.checks import emit_fitness_result
+from engineeringagent.adapters.quality.fitness import emit_fitness_result
 from engineeringagent.adapters.quality.fitness.contracts import (
     CONTRACT_VERSION,
     FitnessRuleResult,
@@ -15,7 +14,23 @@ from engineeringagent.adapters.quality.fitness.contracts import (
 
 RULE_ID = "architecture.checks-import-surface"
 
-_ALLOWED_CHECKS_IMPORT_NAMES = set(checks.__all__)
+_ALLOWED_CHECKS_IMPORT_NAMES = {
+    "ChangedPathsResult",
+    "ChecksRunResult",
+    "FALLBACK_CHANGE_DISCOVERY_REASON",
+    "HarnessCheckPhase",
+    "collect_changed_paths",
+    "custom_rule_manifest_schema_from_model",
+    "emit_fitness_result",
+    "list_check_groups",
+    "load_harness_checks_document",
+    "normalize_groups",
+    "render_fitness_catalog",
+    "reviewer_decision_schema_from_model",
+    "reviewers_group_selected",
+    "run_checks",
+    "validate_repository",
+}
 
 _EXCLUDED_PACKAGES = {
     "checks",

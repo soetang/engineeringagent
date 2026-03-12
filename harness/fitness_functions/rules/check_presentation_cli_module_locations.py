@@ -8,7 +8,7 @@ from engineeringagent.adapters.quality.fitness.contracts import (
     RuleSeverity,
     RuleStatus,
 )
-from engineeringagent.checks import emit_fitness_result
+from engineeringagent.adapters.quality.fitness import emit_fitness_result
 
 
 RULE_ID = "architecture.init-cli-support-location"

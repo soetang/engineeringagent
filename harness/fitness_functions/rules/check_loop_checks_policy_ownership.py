@@ -3,7 +3,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from engineeringagent.checks import emit_fitness_result
+from engineeringagent.adapters.quality.fitness import emit_fitness_result
 from engineeringagent.adapters.quality.fitness.boundary_reporting import (
     build_boundary_rule_result,
 )

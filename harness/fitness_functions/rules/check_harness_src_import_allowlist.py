@@ -5,7 +5,7 @@ from pathlib import Path
 
 import yaml
 
-from engineeringagent.checks import emit_fitness_result
+from engineeringagent.adapters.quality.fitness import emit_fitness_result
 from engineeringagent.adapters.quality.fitness.contracts import (
     CONTRACT_VERSION,
     FitnessRuleResult,
@@ -17,7 +17,6 @@ from engineeringagent.adapters.quality.fitness.contracts import (
 RULE_ID = "architecture.harness-src-import-allowlist"
 
 _ALLOWED_ENGINEERINGAGENT_IMPORT_PREFIXES: tuple[str, ...] = (
-    "engineeringagent.checks",
     "engineeringagent.domain.specification",
     "engineeringagent.adapters.config",
     "engineeringagent.adapters.quality.fitness",

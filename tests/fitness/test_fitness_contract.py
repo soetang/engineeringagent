@@ -66,6 +66,7 @@ def test_rule_result_rejects_missing_contract_version() -> None:
 def test_emit_fitness_result_is_deterministic_and_validates(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
+    """Emit deterministic JSON that still validates against the result model."""
     emit_fitness_result(
         FitnessRuleResult(
             contract_version=CONTRACT_VERSION,
@@ -96,6 +97,7 @@ def test_emit_fitness_result_is_deterministic_and_validates(
 def test_emit_fitness_result_includes_details_when_provided(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
+    """Preserve optional details fields in the emitted fitness envelope."""
     emit_fitness_result(
         FitnessRuleResult(
             contract_version=CONTRACT_VERSION,

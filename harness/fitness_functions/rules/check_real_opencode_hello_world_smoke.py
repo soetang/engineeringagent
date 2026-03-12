@@ -11,8 +11,8 @@ import yaml
 
 from engineeringagent.domain.specification import iter_feature_files
 from engineeringagent.domain.specification import load_markdown_frontmatter
-from engineeringagent.checks import emit_fitness_result
-from engineeringagent.checks import resolve_harness_bool_setting
+from engineeringagent.adapters.quality.fitness import emit_fitness_result
+from engineeringagent.adapters.config import resolve_harness_bool_setting
 from engineeringagent.adapters.quality.fitness.contracts import (
     CONTRACT_VERSION,
     FitnessRuleResult,

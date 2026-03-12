@@ -4,7 +4,7 @@ import ast
 from functools import lru_cache
 from pathlib import Path
 
-from engineeringagent.checks import emit_fitness_result
+from engineeringagent.adapters.quality.fitness import emit_fitness_result
 from engineeringagent.adapters.quality.fitness.contracts import (
     CONTRACT_VERSION,
     FitnessRuleResult,

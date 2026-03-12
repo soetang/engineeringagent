@@ -7,7 +7,7 @@ from typing import NamedTuple
 
 import yaml
 
-from engineeringagent.checks import emit_fitness_result
+from engineeringagent.adapters.quality.fitness import emit_fitness_result
 from engineeringagent.adapters.quality.fitness.local_support_loader import load_local_support_module
 from engineeringagent.adapters.quality.fitness.contracts import (
     CONTRACT_VERSION,
