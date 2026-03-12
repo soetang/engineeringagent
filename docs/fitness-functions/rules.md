@@ -21,7 +21,7 @@ This file is generated from active manifest-declared fitness rules.
 | `architecture.harness-root-yaml-only` | error | command | custom | `harness/ (regular files at root)` | - | Enforce YAML-only regular files directly under harness root. |
 | `architecture.harness-src-import-allowlist` | error | command | custom | `harness/fitness_functions` | - | Restrict harness fitness functions to a narrow supported engineeringagent surface. |
 | `architecture.hermetic-fitness-test-isolation` | error | command | custom | `tests/fitness` | `harness/fitness_functions/policies/hermetic_fitness_test_isolation.yaml` | Prevent tests/fitness from scanning the live repository checkout. |
-| `architecture.iteration-pipeline-observer-decoupling` | error | command | custom | `src/engineeringagent/application/feature_iteration/pipeline.py` | - | Keep iteration pipeline free of telemetry and console side effects. |
+| `architecture.iteration-pipeline-observer-decoupling` | error | command | custom | `src/engineeringagent/application/feature_iteration_runtime/pipeline.py` | - | Keep iteration pipeline free of telemetry and console side effects. |
 | `architecture.legacy-run-loop-bridge-absent` | error | command | custom | `src/engineeringagent/ports/run_loop_executor.py and deleted source files under src/engineeringagent/adapters/loop` | - | Keep the deleted loop adapter package removed. |
 | `architecture.loop-checks-policy-ownership` | error | command | custom | `src/engineeringagent/loop_runtime/**, src/engineeringagent/adapters/runtime/iteration_phases.py, and src/engineeringagent/loop.py` | - | Fail when loop runtime encodes checks group/timing selection policy. |
 | `architecture.loop-checks-result-boundary` | error | command | custom | `src/engineeringagent/loop_runtime/**, src/engineeringagent/adapters/runtime/iteration_phases.py, and src/engineeringagent/loop.py` | - | Fail when loop runtime branches on checks type/group semantics or parses checks-internal payloads. |
@@ -67,7 +67,7 @@ This file is generated from active manifest-declared fitness rules.
 - Name: Application module layout
 - Side-effect free: `true`
 - Rationale: The target architecture keeps orchestration entrypoints at the application root and pushes workflow-specific helpers into explicit subpackages so root-level legacy helper sprawl does not return.
-- Remediation: Delete legacy flat helper modules from engineeringagent.application or move them into an explicit subpackage such as engineeringagent.application.feature_iteration.
+- Remediation: Delete legacy flat helper modules from engineeringagent.application or move them into an explicit subpackage such as engineeringagent.application.feature_iteration_runtime.
 
 ### `architecture.application-output-boundary`
 
@@ -81,7 +81,7 @@ This file is generated from active manifest-declared fitness rules.
 - Name: Application root workflow surface
 - Side-effect free: `true`
 - Rationale: The target architecture gives feature-iteration contracts and helpers an explicit subpackage, so the application root should expose service entrypoints only instead of acting as a compatibility facade.
-- Remediation: Import feature-iteration contracts from engineeringagent.application.feature_iteration and remove any matching re-exports from engineeringagent.application.__init__.
+- Remediation: Import feature-iteration contracts from engineeringagent.application.feature_iteration_runtime and remove any matching re-exports from engineeringagent.application.__init__.
 
 ### `architecture.application-tests-boundary`
 
@@ -161,7 +161,7 @@ This file is generated from active manifest-declared fitness rules.
 - Name: Iteration pipeline observer decoupling
 - Side-effect free: `true`
 - Rationale: Preserves the report-plus-observer split so orchestration remains testable and side effects stay localized.
-- Remediation: Move telemetry and console output calls out of application.feature_iteration.pipeline and into loop-wired observers that consume IterationReport.
+- Remediation: Move telemetry and console output calls out of application.feature_iteration_runtime.pipeline and into loop-wired observers that consume IterationReport.
 
 ### `architecture.legacy-run-loop-bridge-absent`
 

@@ -30,7 +30,7 @@ from engineeringagent.application import (
     ValidationService,
     WorkspaceRecoveryService,
 )
-from engineeringagent.application.feature_iteration import (
+from engineeringagent.application.feature_iteration_runtime import (
     FeatureIterationRuntimeDependencies,
 )
 from engineeringagent.bootstrap import AppFactory

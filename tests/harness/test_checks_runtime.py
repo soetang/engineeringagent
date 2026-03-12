@@ -5,7 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from engineeringagent.application.feature_iteration import FeatureIterationInputs
+from engineeringagent.application.feature_iteration_runtime import FeatureIterationInputs
 from engineeringagent.checks import ChecksRunResult
 from engineeringagent.checks.commands.runtime import (
     CommandInvocationRecord,

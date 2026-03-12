@@ -24,7 +24,7 @@ from engineeringagent.adapters.agents.opencode.permissions import (
     PermissionProbeResult,
 )
 from engineeringagent.application import RunLoopRequest
-from engineeringagent.application.feature_iteration import ImplementStepResult
+from engineeringagent.application.feature_iteration_runtime import ImplementStepResult
 from engineeringagent.bootstrap import AppFactory
 from engineeringagent.domain.audit import fallback_implement_progress_envelope
 from engineeringagent.presentation import cli as cli_module

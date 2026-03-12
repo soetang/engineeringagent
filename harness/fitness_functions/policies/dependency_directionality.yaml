@@ -88,13 +88,13 @@ rules:
     blocked_dependencies:
       - engineeringagent.adapters
       - engineeringagent.bootstrap
-  - module: engineeringagent.application.feature_iteration.contracts
+  - module: engineeringagent.application.feature_iteration_runtime.contracts
     blocked_dependencies:
       - engineeringagent.adapters
       - engineeringagent.bootstrap
       - engineeringagent.loop_runtime
       - engineeringagent.presentation
-  - module: engineeringagent.application.feature_iteration.pipeline
+  - module: engineeringagent.application.feature_iteration_runtime.pipeline
     blocked_dependencies:
       - engineeringagent.adapters
       - engineeringagent.bootstrap
@@ -106,7 +106,7 @@ rules:
       - engineeringagent.bootstrap
       - engineeringagent.loop_runtime
       - engineeringagent.presentation
-  - module: engineeringagent.application.feature_iteration.implementation_step
+  - module: engineeringagent.application.feature_iteration_runtime.implementation_step
     blocked_dependencies:
       - engineeringagent.adapters
       - engineeringagent.bootstrap

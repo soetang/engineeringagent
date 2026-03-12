@@ -41,7 +41,7 @@ def _application_module_layout_violations() -> list[str]:
         violations.append(
             f"{rel_path}: application root may only contain workflow-service modules; "
             "move non-service helpers into an explicit subpackage such as "
-            "engineeringagent.application.feature_iteration or delete the legacy module"
+            "engineeringagent.application.feature_iteration_runtime or delete the legacy module"
         )
     return violations
 

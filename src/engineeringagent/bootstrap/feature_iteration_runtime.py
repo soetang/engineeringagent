@@ -6,7 +6,7 @@ from pathlib import Path
 
 from engineeringagent.adapters.documents import filesystem_feature_state
 from engineeringagent.adapters.progress import write_iteration_telemetry
-from engineeringagent.application.feature_iteration import (
+from engineeringagent.application.feature_iteration_runtime import (
     FeatureIterationRuntimeDependencies,
     IterationPipelineDependencies,
     IterationReport,
