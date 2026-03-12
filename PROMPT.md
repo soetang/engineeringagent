@@ -21,3 +21,4 @@ Do not implement fitness functions as unittest. Architectural constraints should
 If pre-commit takes a long time, identify one thing that makes it faster and implement it before commiting.
 A commit must always move the repo towards the folder setup in described in new_architecture
 You can (and probably should) create more subfolder than what is mentioned in the structure
+Could the depency diretionality test/config become simpler? Do we need to check for full paths for that many modules?
