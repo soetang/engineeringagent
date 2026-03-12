@@ -15,10 +15,10 @@ from engineeringagent.presentation.cli import init as cli_init_module
 from engineeringagent.presentation.cli import schema as cli_schema_module
 from engineeringagent.presentation.cli import validate as cli_validate_module
 from engineeringagent.presentation.cli import workspace as cli_workspace_module
-from engineeringagent.application.checks_service import (
+from engineeringagent.application.contracts.checks import (
     RunChecksResult as ApplicationRunChecksResult,
 )
-from engineeringagent.application.run_loop_service import (
+from engineeringagent.application.contracts.run_loop import (
     RunLoopRequest,
     RunLoopResult,
 )

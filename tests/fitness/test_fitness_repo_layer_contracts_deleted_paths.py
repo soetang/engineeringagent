@@ -32,23 +32,21 @@ def _run_checker(
     return proc, payload
 
 
-def test_repo_layer_contracts_rule_blocks_deleted_legacy_directory_paths(
+def test_repo_layer_contracts_rule_allows_application_contracts_directory(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Fail when a deleted legacy package directory reappears."""
-    legacy_root = tmp_path / "src" / "engineeringagent" / "application" / "contracts"
-    legacy_root.mkdir(parents=True, exist_ok=True)
-    (legacy_root / "__pycache__").mkdir()
+    """Allow the application contracts package introduced by the target architecture."""
+    contracts_root = tmp_path / "src" / "engineeringagent" / "application" / "contracts"
+    contracts_root.mkdir(parents=True, exist_ok=True)
+    (contracts_root / "__init__.py").write_text("", encoding="utf-8")
+    (contracts_root / "checks.py").write_text("class RunChecksRequest:\n    pass\n", encoding="utf-8")
 
     proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
 
     assert proc.returncode == 0
-    assert payload["status"] == "fail"
-    assert payload["rule_id"] == "architecture.repo-layer-contracts"
-    assert payload["violations"] == [
-        "src/engineeringagent/application/contracts: deleted legacy directory path must remain absent"
-    ]
+    assert payload["status"] == "pass"
+    assert payload["violations"] == []
 
 
 def test_repo_layer_contracts_rule_blocks_deleted_loop_runtime_directory(

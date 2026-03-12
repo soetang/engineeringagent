@@ -214,7 +214,7 @@ def test_checker_flags_run_loop_request_from_application_root(
         relative_path="src/engineeringagent/application/__init__.py",
         content="\n".join(
             [
-                "from .run_loop_service import RunLoopRequest",
+                "from .contracts.run_loop import RunLoopRequest",
                 "",
                 '__all__ = ["RunLoopRequest"]',
                 "",
@@ -223,7 +223,7 @@ def test_checker_flags_run_loop_request_from_application_root(
     )
     _write_module(
         tmp_path,
-        relative_path="src/engineeringagent/application/run_loop_service.py",
+        relative_path="src/engineeringagent/application/contracts/run_loop.py",
         content="class RunLoopRequest:\n    pass\n",
     )
     _write_module(
@@ -255,7 +255,7 @@ def test_checker_flags_run_loop_request_from_application_root(
     )
     assert any(
         "src/engineeringagent/presentation/cli/run.py:1" in violation
-        and "engineeringagent.application.run_loop_service" in violation
+        and "engineeringagent.application.contracts.run_loop" in violation
         for violation in _violations(payload)
     )
 
@@ -270,7 +270,7 @@ def test_checker_flags_checks_request_from_application_root(
         relative_path="src/engineeringagent/application/__init__.py",
         content="\n".join(
             [
-                "from .checks_service import RunChecksRequest",
+                "from .contracts.checks import RunChecksRequest",
                 "",
                 '__all__ = ["RunChecksRequest"]',
                 "",
@@ -279,7 +279,7 @@ def test_checker_flags_checks_request_from_application_root(
     )
     _write_module(
         tmp_path,
-        relative_path="src/engineeringagent/application/checks_service.py",
+        relative_path="src/engineeringagent/application/contracts/checks.py",
         content="class RunChecksRequest:\n    pass\n",
     )
     _write_module(
@@ -306,9 +306,67 @@ def test_checker_flags_checks_request_from_application_root(
     )
     assert any(
         "src/engineeringagent/presentation/cli/checks.py:1" in violation
-        and "engineeringagent.application.checks_service" in violation
+        and "engineeringagent.application.contracts.checks" in violation
         for violation in _violations(payload)
     )
+
+
+def test_checker_flags_run_loop_request_imported_from_service_module(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Reject direct imports of workflow contracts from service modules."""
+    _write_module(
+        tmp_path,
+        relative_path="src/engineeringagent/application/__init__.py",
+        content='__all__ = ["RunLoopService"]\n',
+    )
+    _write_module(
+        tmp_path,
+        relative_path="src/engineeringagent/presentation/cli/run.py",
+        content="\n".join(
+            [
+                "from engineeringagent.application.run_loop_service import RunLoopRequest",
+                "",
+                "REQUEST = RunLoopRequest",
+                "",
+            ]
+        ),
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert _violations(payload) == [
+        "src/engineeringagent/presentation/cli/run.py:1 import RunLoopRequest from engineeringagent.application.contracts.run_loop instead of engineeringagent.application.run_loop_service"
+    ]
+
+
+def test_checker_flags_service_module_contract_definitions(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Reject restoring workflow request/result models to service modules."""
+    _write_module(
+        tmp_path,
+        relative_path="src/engineeringagent/application/__init__.py",
+        content='__all__ = ["ChecksService"]\n',
+    )
+    _write_module(
+        tmp_path,
+        relative_path="src/engineeringagent/application/checks_service.py",
+        content="class RunChecksRequest:\n    pass\nclass RunChecksResult:\n    pass\n",
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert _violations(payload) == [
+        "src/engineeringagent/application/checks_service.py:1 workflow request/result contracts must live under engineeringagent.application.contracts, not service modules",
+        "src/engineeringagent/application/checks_service.py:3 workflow request/result contracts must live under engineeringagent.application.contracts, not service modules",
+    ]
 
 
 def test_checker_allows_feature_iteration_request_from_service_module(

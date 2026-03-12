@@ -4,6 +4,7 @@ import io
 from pathlib import Path
 
 import pytest
+import tomli
 
 from engineeringagent.presentation.cli import init as cli_init_module
 from engineeringagent.bootstrap import init_cli_support
@@ -14,13 +15,12 @@ from tests.presentation.cli.init_command_support import (
     invoke_cli,
     patch_non_tty,
     patch_tty,
-    tomllib,
 )
 
 
 def load_engineeringagent_config(project_root: Path) -> dict[str, object]:
     """Parse the persisted engineeringagent.toml for behavior-level assertions."""
-    return tomllib.loads(
+    return tomli.loads(
         (project_root / "engineeringagent.toml").read_text(encoding="utf-8")
     )
 
@@ -387,7 +387,7 @@ def test_init_with_codex_backend_scaffolds_codex_profile_config(
     )
 
     assert result.exit_code == 0
-    parsed_toml = tomllib.loads(
+    parsed_toml = tomli.loads(
         (tmp_path / "engineeringagent.toml").read_text(encoding="utf-8")
     )
     assert parsed_toml["agents"]["backend"] == "codex"
@@ -433,7 +433,7 @@ def test_init_with_codex_backend_profile_conflict_prompts_for_keep_or_overwrite(
     assert result.exit_code == 0
     assert prompts
     assert any("keep/overwrite" in prompt.lower() for prompt in prompts)
-    persisted = tomllib.loads(
+    persisted = tomli.loads(
         (tmp_path / "engineeringagent.toml").read_text(encoding="utf-8")
     )
     assert persisted["agents"]["backend"] == "codex"
@@ -459,7 +459,7 @@ def test_init_with_codex_backend_profile_conflict_invalid_input_fails_and_preser
 
     assert result.exit_code == 1
     assert "codex profile handling must be 'keep' or 'overwrite'" in result.stdout
-    persisted = tomllib.loads(config_path.read_text(encoding="utf-8"))
+    persisted = tomli.loads(config_path.read_text(encoding="utf-8"))
     assert persisted["agents"]["codex"]["profile"] == "custom"
     assert not (tmp_path / "AGENTS.md").exists()
     assert not (tmp_path / "docs" / "spec").exists()
@@ -493,7 +493,7 @@ def test_init_with_codex_backend_profile_conflict_non_interactive_keeps_existing
     )
 
     assert result.exit_code == 0
-    persisted = tomllib.loads(
+    persisted = tomli.loads(
         (tmp_path / "engineeringagent.toml").read_text(encoding="utf-8")
     )
     assert persisted["agents"]["backend"] == "codex"

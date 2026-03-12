@@ -5,7 +5,7 @@ from pathlib import Path
 from engineeringagent.application import (
     RunLoopService,
 )
-from engineeringagent.application.run_loop_service import (
+from engineeringagent.application.contracts.run_loop import (
     RunLoopRequest,
     RunLoopResult,
 )

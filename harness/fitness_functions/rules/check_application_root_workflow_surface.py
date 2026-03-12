@@ -20,6 +20,12 @@ FEATURE_ITERATION_ROOT = (
 )
 FORBIDDEN_EXPORT_MODULES = {
     "checks_service",
+    "contracts.checks",
+    "contracts.guidance",
+    "contracts.init_workspace",
+    "contracts.run_loop",
+    "contracts.validation",
+    "contracts.workspace_recovery",
     "feature_iteration",
     "feature_iteration_service",
     "guidance_service",
@@ -111,6 +117,62 @@ FORBIDDEN_FEATURE_ITERATION_EXPORTS = frozenset(
         "run_implement_step_from_inputs",
     }
 )
+SERVICE_CONTRACT_MODULES = {
+    "engineeringagent.application.checks_service": frozenset(
+        {"RunChecksRequest", "RunChecksResult"}
+    ),
+    "engineeringagent.application.guidance_service": frozenset(
+        {"GuidanceQuery", "GuidanceResult"}
+    ),
+    "engineeringagent.application.init_workspace_service": frozenset(
+        {"InitWorkspaceRequest", "InitWorkspaceResult"}
+    ),
+    "engineeringagent.application.run_loop_service": frozenset(
+        {"RunLoopRequest", "RunLoopResult"}
+    ),
+    "engineeringagent.application.validation_service": frozenset(
+        {"ValidateRepositoryRequest", "ValidationResult"}
+    ),
+    "engineeringagent.application.workspace_recovery_service": frozenset(
+        {"RecoverWorkspaceRequest", "RecoverWorkspaceResult"}
+    ),
+}
+SERVICE_CONTRACT_FILES = {
+    PROJECT_ROOT / "src" / "engineeringagent" / "application" / "checks_service.py": frozenset(
+        {"RunChecksRequest", "RunChecksResult"}
+    ),
+    PROJECT_ROOT
+    / "src"
+    / "engineeringagent"
+    / "application"
+    / "guidance_service.py": frozenset({"GuidanceQuery", "GuidanceResult"}),
+    PROJECT_ROOT
+    / "src"
+    / "engineeringagent"
+    / "application"
+    / "init_workspace_service.py": frozenset(
+        {"InitWorkspaceRequest", "InitWorkspaceResult"}
+    ),
+    PROJECT_ROOT
+    / "src"
+    / "engineeringagent"
+    / "application"
+    / "run_loop_service.py": frozenset({"RunLoopRequest", "RunLoopResult"}),
+    PROJECT_ROOT
+    / "src"
+    / "engineeringagent"
+    / "application"
+    / "validation_service.py": frozenset(
+        {"ValidateRepositoryRequest", "ValidationResult"}
+    ),
+    PROJECT_ROOT
+    / "src"
+    / "engineeringagent"
+    / "application"
+    / "workspace_recovery_service.py": frozenset(
+        {"RecoverWorkspaceRequest", "RecoverWorkspaceResult"}
+    ),
+}
 
 
 def _iter_python_files() -> tuple[Path, ...]:
@@ -203,6 +265,49 @@ def _root_import_violations(path: Path) -> list[str]:
     return violations
 
 
+def _direct_service_contract_import_violations(path: Path) -> list[str]:
+    tree, parse_errors = _parse_file(path)
+    if tree is None:
+        return parse_errors
+
+    rel_path = path.relative_to(PROJECT_ROOT).as_posix()
+    violations: list[str] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.ImportFrom):
+            continue
+        module_name = node.module
+        if module_name not in SERVICE_CONTRACT_MODULES:
+            continue
+        for alias in node.names:
+            if alias.name not in SERVICE_CONTRACT_MODULES[module_name]:
+                continue
+            violations.append(
+                f"{rel_path}:{node.lineno} import {alias.name} from "
+                f"{_defining_module_for(alias.name)} instead of {module_name}"
+            )
+    return violations
+
+
+def _service_contract_definition_violations(path: Path) -> list[str]:
+    forbidden_names = SERVICE_CONTRACT_FILES.get(path)
+    if forbidden_names is None:
+        return []
+
+    tree, parse_errors = _parse_file(path)
+    if tree is None:
+        return parse_errors
+
+    rel_path = path.relative_to(PROJECT_ROOT).as_posix()
+    violations: list[str] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ClassDef) and node.name in forbidden_names:
+            violations.append(
+                f"{rel_path}:{node.lineno} workflow request/result contracts must live "
+                "under engineeringagent.application.contracts, not service modules"
+            )
+    return violations
+
+
 def _feature_iteration_export_violations(path: Path) -> list[str]:
     tree, parse_errors = _parse_file(path)
     if tree is None:
@@ -268,22 +373,22 @@ def _defining_module_for(symbol_name: str) -> str:
         return "engineeringagent.application.feature_iteration_service"
     if symbol_name in {
         "GuidanceInputError",
-        "GuidanceQuery",
-        "GuidanceResult",
     }:
         return "engineeringagent.application.guidance_service"
+    if symbol_name in {"GuidanceQuery", "GuidanceResult"}:
+        return "engineeringagent.application.contracts.guidance"
     if symbol_name == "ImplementationPromptRequest":
         return "engineeringagent.application.prompt_builder"
     if symbol_name in {"InitWorkspaceRequest", "InitWorkspaceResult"}:
-        return "engineeringagent.application.init_workspace_service"
+        return "engineeringagent.application.contracts.init_workspace"
     if symbol_name in {"RecoverWorkspaceRequest", "RecoverWorkspaceResult"}:
-        return "engineeringagent.application.workspace_recovery_service"
+        return "engineeringagent.application.contracts.workspace_recovery"
     if symbol_name in {"RunChecksRequest", "RunChecksResult"}:
-        return "engineeringagent.application.checks_service"
+        return "engineeringagent.application.contracts.checks"
     if symbol_name in {"RunLoopRequest", "RunLoopResult"}:
-        return "engineeringagent.application.run_loop_service"
+        return "engineeringagent.application.contracts.run_loop"
     if symbol_name in {"ValidateRepositoryRequest", "ValidationResult"}:
-        return "engineeringagent.application.validation_service"
+        return "engineeringagent.application.contracts.validation"
     return "its defining application module"
 
 
@@ -332,7 +437,9 @@ def _application_root_workflow_surface_violations() -> list[str]:
     for path in _iter_python_files():
         if path == APPLICATION_ROOT:
             continue
+        violations.extend(_service_contract_definition_violations(path))
         violations.extend(_root_import_violations(path))
+        violations.extend(_direct_service_contract_import_violations(path))
         if path != FEATURE_ITERATION_ROOT:
             violations.extend(_feature_iteration_import_violations(path))
     return sorted(set(violations))

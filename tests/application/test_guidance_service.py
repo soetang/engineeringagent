@@ -7,10 +7,10 @@ import pytest
 from engineeringagent.application import (
     GuidanceService,
 )
-from engineeringagent.application.guidance_service import (
-    GuidanceInputError,
+from engineeringagent.application.contracts.guidance import (
     GuidanceQuery,
 )
+from engineeringagent.application.guidance_service import GuidanceInputError
 from engineeringagent.domain.guidance import GuidanceTopic
 from tests.presentation.cli.approach_fixture_data import APPROACH_TOPIC_IDS
 

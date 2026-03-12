@@ -5,7 +5,7 @@ import pytest
 from typer.testing import CliRunner
 
 from engineeringagent.presentation import cli as cli_module
-from engineeringagent.application.checks_service import (
+from engineeringagent.application.contracts.checks import (
     RunChecksResult as ApplicationRunChecksResult,
 )
 from engineeringagent.adapters.quality.runtime import ChecksRunResult

@@ -3,7 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 
-from ...application.guidance_service import GuidanceInputError, GuidanceQuery
+from ...application.contracts.guidance import GuidanceQuery
+from ...application.guidance_service import GuidanceInputError
 from ...bootstrap import AppFactory
 from ...domain.guidance import UnknownGuidanceTopicIdError
 from .output import emit_markdown_output, resolve_optional_path

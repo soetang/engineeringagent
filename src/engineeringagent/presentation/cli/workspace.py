@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 
-from ...application.workspace_recovery_service import RecoverWorkspaceRequest
+from ...application.contracts.workspace_recovery import RecoverWorkspaceRequest
 from ...bootstrap import AppFactory
 
 _HandlerArgs = SimpleNamespace

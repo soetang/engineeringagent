@@ -4,6 +4,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+import tomli
 from typer.testing import CliRunner
 
 from engineeringagent.presentation import cli as cli_module
@@ -13,7 +14,6 @@ from tests.presentation.cli.init_command_support import (
     invoke_cli,
     patch_non_tty,
     patch_tty,
-    tomllib,
 )
 from tests.helpers.fitness_manifest import write_shell_contract_manifest
 
@@ -211,7 +211,7 @@ def test_cmd_init_uses_cli_resolvers_for_backend_and_launcher_prompts(
     )
 
     assert result == 0
-    assert tomllib.loads(
+    assert tomli.loads(
         (tmp_path / "engineeringagent.toml").read_text(encoding="utf-8")
     ) == {"agents": {"backend": "opencode"}}
 

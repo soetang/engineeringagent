@@ -5,7 +5,7 @@ from pathlib import Path
 from engineeringagent.application import (
     InitWorkspaceService,
 )
-from engineeringagent.application.init_workspace_service import (
+from engineeringagent.application.contracts.init_workspace import (
     InitWorkspaceRequest,
     InitWorkspaceResult,
 )
