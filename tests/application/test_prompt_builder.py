@@ -333,3 +333,59 @@ def test_prompt_builder_uses_configured_implementation_prompt_id(
         "override:FEAT-900:"
         f"{tmp_path / 'docs/specifications/features/FEAT-900/specification.yaml'}"
     )
+
+
+def test_prompt_builder_renders_with_typed_prompt_input_model(
+    tmp_path: Path,
+) -> None:
+    """Repository prompt renderers should receive validated typed input models."""
+
+    prompts_root = tmp_path / "harness" / "prompts"
+    prompts_root.mkdir(parents=True)
+    _write_prompt_module(
+        prompts_root,
+        "implementation_default",
+        "from pydantic import BaseModel\n"
+        "from engineeringagent.ports import PromptDefinition, PromptInterpolation\n"
+        "class ImplementationInput(BaseModel):\n"
+        "    feature_id: str\n"
+        "    specification_path: str\n"
+        "    plan_path: str = ''\n"
+        "    research_path: str = ''\n"
+        "    handoff_path: str = ''\n"
+        "    retry_feedback: str = ''\n"
+        "class ImplementationOutput(BaseModel):\n"
+        "    summary: str\n"
+        "def _render(values: ImplementationInput) -> str:\n"
+        "    return f'{values.__class__.__name__}:{values.feature_id}:{values.specification_path}'\n"
+        "PROMPT_DEFINITION = PromptDefinition(\n"
+        "    prompt_id='implementation_default',\n"
+        "    purpose='implementation',\n"
+        "    target='implementation',\n"
+        "    output_mode='structured',\n"
+        "    token_budget_hint=100,\n"
+        "    input_model=ImplementationInput,\n"
+        "    output_model=ImplementationOutput,\n"
+        "    renderer=_render,\n"
+        "    interpolations=(\n"
+        "        PromptInterpolation(name='feature_id', source='test', required=True, rationale='test'),\n"
+        "        PromptInterpolation(name='specification_path', source='test', required=True, rationale='test'),\n"
+        "        PromptInterpolation(name='plan_path', source='test', required=False, rationale='test'),\n"
+        "        PromptInterpolation(name='research_path', source='test', required=False, rationale='test'),\n"
+        "        PromptInterpolation(name='handoff_path', source='test', required=False, rationale='test'),\n"
+        "        PromptInterpolation(name='retry_feedback', source='test', required=False, rationale='test'),\n"
+        "    ),\n"
+        ")\n",
+    )
+
+    prompt = _prompt_builder(prompts_root).build_implementation_prompt(
+        ImplementationPromptRequest(
+            feature_id="FEAT-900",
+            specification_path=tmp_path / "docs/specifications/features/FEAT-900/specification.yaml",
+        )
+    )
+
+    assert prompt == (
+        "ImplementationInput:FEAT-900:"
+        f"{tmp_path / 'docs/specifications/features/FEAT-900/specification.yaml'}"
+    )

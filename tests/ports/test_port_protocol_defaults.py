@@ -227,7 +227,7 @@ def test_prompt_definition_validation_branches_are_explicit() -> None:
             token_budget_hint=1,
             input_model=_InputModel,
             body_template="${required_value}",
-            renderer=lambda values: str(values["required_value"]),
+            renderer=lambda values: str(values.model_dump()["required_value"]),
             interpolations=(interpolation,),
         )
 

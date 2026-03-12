@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Mapping
-
 from pydantic import BaseModel, ConfigDict, Field
 
 from engineeringagent.ports import PromptDefinition, PromptInterpolation
@@ -32,16 +30,16 @@ class ImplementationPromptOutputV1(BaseModel):
     follow_up_notes: list[str] = Field(default_factory=list)
 
 
-def _render(values: Mapping[str, object]) -> str:
+def _render(values: ImplementationPromptInput) -> str:
     sections = [
-        f"Feature: {values['feature_id']}",
+        f"Feature: {values.feature_id}",
         "Read and follow these files:",
-        f"- specification: {values['specification_path']}",
+        f"- specification: {values.specification_path}",
     ]
-    plan_path = str(values["plan_path"]).strip()
-    research_path = str(values["research_path"]).strip()
-    handoff_path = str(values["handoff_path"]).strip()
-    retry_feedback = str(values["retry_feedback"]).strip()
+    plan_path = values.plan_path.strip()
+    research_path = values.research_path.strip()
+    handoff_path = values.handoff_path.strip()
+    retry_feedback = values.retry_feedback.strip()
 
     if plan_path:
         sections.append(f"- plan: {plan_path}")

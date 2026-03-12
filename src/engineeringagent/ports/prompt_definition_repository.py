@@ -61,7 +61,7 @@ class PromptDefinition(BaseModel):
     input_model: type[BaseModel]
     output_model: type[BaseModel] | None = None
     body_template: str | None = None
-    renderer: Callable[[Mapping[str, object]], str] | None = None
+    renderer: Callable[[BaseModel], str] | None = None
     interpolations: tuple[PromptInterpolation, ...]
 
     @model_validator(mode="after")
@@ -119,8 +119,7 @@ class PromptDefinition(BaseModel):
         """Render the template using only declared interpolations."""
         value_mapping: Mapping[str, object]
         if isinstance(values, BaseModel):
-            input_data = self.input_model.model_validate(values)
-            value_mapping = input_data.model_dump(mode="python")
+            value_mapping = values.model_dump(mode="python")
         else:
             value_mapping = values
 
@@ -147,12 +146,12 @@ class PromptDefinition(BaseModel):
 
         input_data = self.input_model.model_validate(value_mapping)
         normalized_values = input_data.model_dump(mode="python")
+        if self.renderer is not None:
+            return self.renderer(input_data)
         substitutions = {
             item.name: _coerce_prompt_value(normalized_values.get(item.name))
             for item in self.interpolations
         }
-        if self.renderer is not None:
-            return self.renderer(substitutions)
         assert self.body_template is not None
         return Template(self.body_template).substitute(substitutions)
 

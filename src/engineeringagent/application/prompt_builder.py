@@ -66,14 +66,15 @@ class PromptBuilder:
             self._implementation_prompt_id
         )
         return implementation_definition.render(
-            {
-                "feature_id": request.feature_id,
-                "specification_path": str(request.specification_path),
-                "plan_path": request.plan_path or "",
-                "research_path": request.research_path or "",
-                "handoff_path": request.handoff_path or "",
-                "retry_feedback": _normalize_feedback(request.retry_feedback),
-            }
+            request.model_copy(
+                update={
+                    "specification_path": str(request.specification_path),
+                    "plan_path": request.plan_path or "",
+                    "research_path": request.research_path or "",
+                    "handoff_path": request.handoff_path or "",
+                    "retry_feedback": _normalize_feedback(request.retry_feedback),
+                }
+            )
         )
 
     def build_implementation_prompt_from_specification(
