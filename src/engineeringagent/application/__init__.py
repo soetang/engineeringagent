@@ -22,7 +22,7 @@ from .init_workspace_service import (
     InitWorkspaceResult,
     InitWorkspaceService,
 )
-from .iteration_models import (
+from .feature_iteration_contracts import (
     CommandTiming,
     CompletionCommitOutcome,
     FeatureIterationInputs,

@@ -5,9 +5,14 @@ from types import SimpleNamespace
 from typing import Any, Sequence, cast
 
 from engineeringagent.application import (
+    FeatureIterationInputs,
     FeatureIterationRequest,
     FeatureIterationRuntimeDependencies,
     FeatureIterationService,
+    IterationOutcome,
+    IterationReport,
+    IterationTelemetryInputs,
+    PhaseTiming,
 )
 from engineeringagent.bootstrap.iteration_reporting import DefaultObserverDependencies
 from engineeringagent.domain.audit import ProgressEvent
@@ -344,3 +349,76 @@ def test_feature_iteration_service_reports_commit_success() -> None:
         Path("/tmp/project"),
         {"expected_commit_subject": "feat: complete FEAT-001"},
     ) == (True, None, "ok\n")
+
+
+def test_iteration_outcome_from_report_copies_report_status_fields() -> None:
+    """Feature-iteration contracts should expose a stable summary view."""
+
+    telemetry_inputs = IterationTelemetryInputs(
+        iteration_inputs=FeatureIterationInputs(
+            project_root=Path("/tmp/project"),
+            feature_path=Path(
+                "docs/specifications/features/FEAT-001/specification.yaml"
+            ),
+            run_all=False,
+            attempt=1,
+            feedback="ship it",
+            verbose_output=True,
+        ),
+        started=1.0,
+        phase_timings=[
+            PhaseTiming(
+                phase="implement",
+                started_at="2026-03-12T00:00:00Z",
+                ended_at="2026-03-12T00:00:01Z",
+                duration_sec=1,
+            )
+        ],
+        command_timings=[],
+        feature_id="FEAT-001",
+        result="completed",
+        failed_gate=None,
+        next_action="archive_feature",
+        implement_status="ok",
+        gate_status="ok",
+        verification_status="passed",
+        verification_failed_command=None,
+        implement_output="implemented",
+        gate_output="gates ok",
+        verification_output="verification ok",
+        feedback="ship it",
+    )
+    report = IterationReport(
+        completed=True,
+        result="completed",
+        failed_gate=None,
+        next_action="archive_feature",
+        feedback="ship it",
+        feature_id="FEAT-001",
+        attempt=1,
+        selected_feature_path="docs/specifications/features/FEAT-001/specification.yaml",
+        implement_step="implement",
+        verification_status="passed",
+        verification_failed_command=None,
+        reviewer_status="approved",
+        reviewer_decision="approve",
+        failed_reviewer_id=None,
+        telemetry_inputs=telemetry_inputs,
+        log_path=".engineeringagent/progress/FEAT-001/iteration-report.json",
+    )
+
+    outcome = IterationOutcome.from_report(report)
+
+    assert outcome == IterationOutcome(
+        completed=True,
+        result="completed",
+        failed_gate=None,
+        next_action="archive_feature",
+        feedback="ship it",
+        log_path=".engineeringagent/progress/FEAT-001/iteration-report.json",
+        verification_status="passed",
+        verification_failed_command=None,
+        reviewer_status="approved",
+        reviewer_decision="approve",
+        failed_reviewer_id=None,
+    )

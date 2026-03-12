@@ -52,7 +52,7 @@ DELETED_MODULE_PATHS = {
     "src/engineeringagent/application/contracts/run_loop.py",
     "src/engineeringagent/application/contracts/validation.py",
     "src/engineeringagent/application/contracts/workspace_recovery.py",
-    "src/engineeringagent/application/feature_iteration_models.py",
+    "src/engineeringagent/application/iteration_models.py",
     "src/engineeringagent/application/implementation_prompt.py",
     "src/engineeringagent/application/feature_selection.py",
     "src/engineeringagent/application/checks/service.py",

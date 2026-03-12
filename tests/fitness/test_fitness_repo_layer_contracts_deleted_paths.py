@@ -247,17 +247,17 @@ def test_repo_layer_contracts_rule_blocks_deleted_legacy_feature_iteration_packa
     ]
 
 
-def test_repo_layer_contracts_rule_blocks_deleted_feature_iteration_models_module(
+def test_repo_layer_contracts_rule_blocks_deleted_iteration_models_module(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Fail when the removed application feature-iteration models module reappears."""
+    """Fail when the removed generic iteration-models module reappears."""
     legacy_module = (
         tmp_path
         / "src"
         / "engineeringagent"
         / "application"
-        / "feature_iteration_models.py"
+        / "iteration_models.py"
     )
     legacy_module.parent.mkdir(parents=True, exist_ok=True)
     legacy_module.write_text("", encoding="utf-8")
@@ -268,7 +268,7 @@ def test_repo_layer_contracts_rule_blocks_deleted_feature_iteration_models_modul
     assert payload["status"] == "fail"
     assert payload["rule_id"] == "architecture.repo-layer-contracts"
     assert payload["violations"] == [
-        "src/engineeringagent/application/feature_iteration_models.py: deleted legacy module path must remain absent"
+        "src/engineeringagent/application/iteration_models.py: deleted legacy module path must remain absent"
     ]
 
 

@@ -1,4 +1,4 @@
-"""Application-owned workflow models for feature iteration."""
+"""Application-owned workflow contracts for feature iteration."""
 
 from __future__ import annotations
 
