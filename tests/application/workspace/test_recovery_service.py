@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from engineeringagent.application import (
+from engineeringagent.application.workspace import (
     RecoverWorkspaceRequest,
     RecoverWorkspaceResult,
     WorkspaceRecoveryService,
