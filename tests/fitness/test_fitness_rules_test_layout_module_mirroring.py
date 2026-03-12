@@ -134,7 +134,31 @@ def test_test_layout_module_mirroring_rule_flags_flat_test_for_nested_module(
     assert proc.returncode == 0
     assert result["status"] == "fail"
     assert _violations(result) == [
-        "tests/application/test_feature_iteration_pipeline.py: legacy flat test path is forbidden; move it under the mirrored application subpackage."
+        "tests/application/test_feature_iteration_pipeline.py: legacy test path is forbidden; move it under the mirrored source module path."
+    ]
+
+
+def test_test_layout_module_mirroring_rule_flags_legacy_bootstrap_adapter_test_path(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Reject adapter runtime tests kept under the legacy bootstrap topic."""
+    _write_file(tmp_path, "tests/bootstrap/test_runtime_run_loop_executor.py", "")
+    _write_file(tmp_path, "tests/__init__.py", "")
+    _write_file(tmp_path, "tests/conftest.py", "")
+    _write_file(tmp_path, "src/engineeringagent/bootstrap/__init__.py", "")
+    _write_file(tmp_path, "src/engineeringagent/adapters/runtime/execution.py", "")
+
+    proc, result = _run_checker(
+        tmp_path,
+        checker_path=_script_path(repo_root),
+        config_file=_policy_path(repo_root),
+    )
+
+    assert proc.returncode == 0
+    assert result["status"] == "fail"
+    assert _violations(result) == [
+        "tests/bootstrap/test_runtime_run_loop_executor.py: legacy test path is forbidden; move it under the mirrored source module path."
     ]
 
 

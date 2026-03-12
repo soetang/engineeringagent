@@ -118,8 +118,8 @@ def _test_layout_violations(project_root: Path) -> list[str]:
 
         if rel_path in forbidden_tests:
             violations.append(
-                f"{rel_path}: legacy flat test path is forbidden; move it under the "
-                "mirrored application subpackage."
+                f"{rel_path}: legacy test path is forbidden; move it under the "
+                "mirrored source module path."
             )
             continue
 
