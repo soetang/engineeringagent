@@ -10,7 +10,7 @@ from typing import Any, Callable, Sequence
 from pydantic import BaseModel, ConfigDict
 import yaml
 
-from engineeringagent.adapters.documents.filesystem_feature_selection import (
+from engineeringagent.adapters.documents.filesystem_feature_specification_repository import (
     resolve_spec_directories,
 )
 from engineeringagent.domain.specification import (

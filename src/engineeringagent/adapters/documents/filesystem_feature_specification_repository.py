@@ -5,6 +5,7 @@ from __future__ import annotations
 import errno
 from pathlib import Path
 import shutil
+from typing import Any, Sequence
 
 from engineeringagent.adapters.config import resolve_specifications_root
 from engineeringagent.domain.specification import (
@@ -22,6 +23,7 @@ from engineeringagent.domain.specification import (
     load_yaml,
     resolve_feature_package_paths,
 )
+from engineeringagent.domain.specification.bundles import is_bundled_feature_spec_path
 from engineeringagent.ports import FeatureSpecificationRepository, ValidationFailure
 
 _PORT_NAME = "FeatureSpecificationRepository"
@@ -30,6 +32,12 @@ _PRIORITY_ORDER = {
     FeaturePriority.MEDIUM: 1,
     FeaturePriority.LOW: 2,
 }
+RUN_ALL_RUNNABLE_STATUSES = frozenset(
+    {
+        FeatureStatus.BACKLOG.value,
+        FeatureStatus.IN_PROGRESS.value,
+    }
+)
 
 
 class FilesystemFeatureSpecificationRepository(FeatureSpecificationRepository):
@@ -96,6 +104,100 @@ class FilesystemFeatureSpecificationRepository(FeatureSpecificationRepository):
             )
         package_paths.archive_root.parent.mkdir(parents=True, exist_ok=True)
         _move_path(package_paths.active_root, package_paths.archive_root)
+
+
+def resolve_feature_paths(
+    project_root: Path, feature_paths: Sequence[str | Path]
+) -> list[Path]:
+    """Resolve and validate user-supplied bundled feature specification paths."""
+    if not feature_paths:
+        raise ValueError("at least one feature spec path is required")
+
+    resolved: list[Path] = []
+    seen: set[Path] = set()
+    for raw_path in feature_paths:
+        candidate = Path(raw_path)
+        if not candidate.is_absolute():
+            candidate = (project_root / candidate).resolve()
+        else:
+            candidate = candidate.resolve()
+
+        if candidate.suffix not in {".yaml", ".yml"}:
+            raise ValueError(f"feature path must end with .yaml or .yml: {raw_path}")
+        if not candidate.exists():
+            raise ValueError(f"feature path does not exist: {raw_path}")
+        if not candidate.is_file():
+            raise ValueError(f"feature path is not a file: {raw_path}")
+        if not is_bundled_feature_spec_path(candidate):
+            raise ValueError(
+                "feature specs must use bundled spec.yaml entrypoints: "
+                f"{raw_path}"
+            )
+
+        try:
+            load_yaml(candidate)
+        except Exception as exc:  # noqa: BLE001
+            raise ValueError(
+                f"failed to load feature YAML at {raw_path}: {exc}"
+            ) from exc
+
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        resolved.append(candidate)
+
+    return resolved
+
+
+def discover_active_feature_paths(project_root: Path) -> list[Path]:
+    """Return runnable active bundled feature specs from the configured root."""
+    resolved: list[Path] = []
+    for feature_path in iter_feature_files(_active_features_root(project_root)):
+        try:
+            feature = load_yaml(feature_path)
+        except Exception as exc:  # noqa: BLE001
+            raise ValueError(
+                f"failed to load feature YAML at {feature_path}: {exc}"
+            ) from exc
+
+        if str(feature.get("status", "")) in RUN_ALL_RUNNABLE_STATUSES:
+            resolved.append(feature_path)
+
+    return resolved
+
+
+def pending_features(
+    feature_paths: Sequence[Path],
+) -> list[tuple[Path, dict[str, Any]]]:
+    """Load non-done feature specs from an explicit path list."""
+    pending: list[tuple[Path, dict[str, Any]]] = []
+    for feature_path in feature_paths:
+        feature = load_yaml(feature_path)
+        if feature.get("status") == FeatureStatus.DONE.value:
+            continue
+        pending.append((feature_path, feature))
+    return pending
+
+
+def done_features_pending_archive(
+    feature_paths: Sequence[Path],
+) -> list[tuple[Path, dict[str, Any]]]:
+    """Load done feature specs that are candidates for archive flow."""
+    done_features: list[tuple[Path, dict[str, Any]]] = []
+    for feature_path in feature_paths:
+        feature = load_yaml(feature_path)
+        if feature.get("status") != FeatureStatus.DONE.value:
+            continue
+        done_features.append((feature_path, feature))
+    return done_features
+
+
+def resolve_spec_directories(project_root: Path) -> tuple[Path, Path]:
+    """Resolve active and archived bundled feature package roots."""
+    return (
+        _active_features_root(project_root).resolve(),
+        _archived_features_root(project_root).resolve(),
+    )
 
 
 def _active_features_root(project_root: Path) -> Path:

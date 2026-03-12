@@ -10,7 +10,7 @@ from engineeringagent.adapters.config import (
     repo_relative_label,
     resolve_specifications_root,
 )
-from engineeringagent.adapters.documents.filesystem_feature_selection import (
+from engineeringagent.adapters.documents.filesystem_feature_specification_repository import (
     discover_active_feature_paths,
     done_features_pending_archive,
     pending_features,
