@@ -9,6 +9,7 @@ from typing import Callable
 from engineeringagent.application import (
     FeatureIterationRequest,
     FeatureIterationService,
+    LoopRun,
 )
 from engineeringagent.application.feature_iteration import (
     FeatureIterationInputs,
@@ -27,8 +28,6 @@ from .loop_run_builder import (
     enforce_worktree_precondition,
     run_selected_feature_iterations,
 )
-from .loop_run_context import LoopRun
-
 
 def run_loop_controller(loop_run: LoopRun) -> int:
     """Execute run-loop orchestration through the runtime adapter boundary."""

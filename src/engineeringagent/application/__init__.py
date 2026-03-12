@@ -18,6 +18,7 @@ from .init_workspace_service import (
     InitWorkspaceService,
 )
 from .prompt_builder import ImplementationPromptRequest, PromptBuilder
+from .run_loop import LoopRun, RunConfig, RunServices, RunState
 from .run_loop_service import RunLoopRequest, RunLoopResult, RunLoopService
 from .validation_service import (
     ValidateRepositoryRequest,
@@ -43,12 +44,16 @@ __all__ = [
     "InitWorkspaceResult",
     "InitWorkspaceService",
     "ImplementationPromptRequest",
+    "LoopRun",
     "PromptBuilder",
     "RecoverWorkspaceRequest",
     "RecoverWorkspaceResult",
+    "RunConfig",
     "RunLoopRequest",
     "RunLoopResult",
     "RunLoopService",
+    "RunServices",
+    "RunState",
     "RunChecksRequest",
     "RunChecksResult",
     "ValidateRepositoryRequest",

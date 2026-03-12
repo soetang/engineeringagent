@@ -22,10 +22,9 @@ from engineeringagent.application.feature_iteration import (
     IterationOutcome,
     IterationSummaryInputs,
 )
+from engineeringagent.application.run_loop import LoopRun, RunConfig, RunServices
 from engineeringagent.domain.specification import deterministic_feature_choice
 from engineeringagent.ports import VersionControlFailure
-
-from .loop_run_context import LoopRun, RunConfig, RunServices
 
 
 def _specifications_features_label(project_root: Path) -> str:

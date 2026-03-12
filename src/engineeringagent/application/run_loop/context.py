@@ -1,4 +1,4 @@
-"""Typed runtime-owned run-loop context models."""
+"""Typed run-loop context models owned by the application layer."""
 
 from __future__ import annotations
 

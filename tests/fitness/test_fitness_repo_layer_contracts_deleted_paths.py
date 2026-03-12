@@ -458,8 +458,7 @@ def test_repo_layer_contracts_rule_blocks_deleted_legacy_run_loop_service_module
     assert payload["status"] == "fail"
     assert payload["rule_id"] == "architecture.repo-layer-contracts"
     assert payload["violations"] == [
-        "src/engineeringagent/application/run_loop/service.py: deleted legacy module path must remain absent",
-        "src/engineeringagent/application/run_loop: deleted legacy directory path must remain absent",
+        "src/engineeringagent/application/run_loop/service.py: deleted legacy module path must remain absent"
     ]
 
 

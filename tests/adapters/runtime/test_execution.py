@@ -7,7 +7,7 @@ from typing import cast
 import engineeringagent.adapters.runtime.execution as runtime_executor_adapter_module
 from engineeringagent.adapters.runtime import RuntimeRunLoopExecutor
 from engineeringagent.adapters.runtime.execution import run_loop_controller
-from engineeringagent.adapters.runtime.loop_run_context import (
+from engineeringagent.application.run_loop import (
     LoopRun,
     RunConfig,
     RunServices,

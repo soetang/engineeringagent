@@ -1,5 +1,7 @@
 """Runtime execution adapters for transitional loop orchestration."""
 
+from engineeringagent.application.run_loop import LoopRun, RunConfig, RunServices, RunState
+
 from .execution import (
     RuntimeRunLoopExecutor,
     run_loop_controller,
@@ -21,7 +23,6 @@ from .loop_run_builder import (
     enforce_worktree_precondition,
     run_selected_feature_iterations,
 )
-from .loop_run_context import LoopRun, RunConfig, RunServices, RunState
 
 __all__ = [
     "LoopRun",

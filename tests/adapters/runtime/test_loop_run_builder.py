@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any, Callable, TypedDict
 
 import engineeringagent.adapters.runtime.loop_run_builder as run_builder_module
-from engineeringagent.adapters.runtime.loop_run_context import (
+from engineeringagent.application.run_loop import (
     LoopRun,
     RunConfig,
     RunState,
