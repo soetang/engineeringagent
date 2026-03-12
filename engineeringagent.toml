@@ -1,18 +1,33 @@
+version = 1
+
 [paths]
 docs_root = "docs"
 harness_root = "harness"
 progress_root = ".engineeringagent/progress"
 specifications_root = "docs/specifications"
+worktree_root = ".engineeringagent/worktrees"
 harness_checks_path = "harness/checks.yaml"
 
 [agents.implementation]
+backend = "codex"
+model = "gpt-5"
 prompt_definition = "implementation_default"
+
+[agents.reviewer]
+backend = "codex"
+model = "gpt-5-mini"
 
 [agents]
 backend = "codex"
 
 [agents.codex]
 profile = "engineeringagent"
+
+[vcs]
+integration_branch = "main"
+
+[execution]
+mode = "local_worktree"
 
 [harness.fitness]
 opencode-real-smoke = false

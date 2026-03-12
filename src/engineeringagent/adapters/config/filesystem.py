@@ -16,6 +16,8 @@ else:  # pragma: no cover - Python < 3.11 fallback
 _PYPROJECT_ENGINEERINGAGENT_TABLE = ("tool", "engineeringagent")
 _PATHS_TABLE = "paths"
 _AGENTS_TABLE = "agents"
+_VCS_TABLE = "vcs"
+_EXECUTION_TABLE = "execution"
 _CODEX_TABLE = "codex"
 _HARNESS_TABLE = "harness"
 _CHECKS_TABLE = "checks"
@@ -66,11 +68,19 @@ def load_repository_config(project_root: Path) -> RepositoryConfig:
         codex_payload = _nested_table(merged_payload, (_AGENTS_TABLE, _CODEX_TABLE))
         if codex_payload:
             agents_payload[_CODEX_TABLE] = codex_payload
+    vcs_payload = dict(merged_payload.get(_VCS_TABLE, {}))
+    execution_payload = dict(merged_payload.get(_EXECUTION_TABLE, {}))
 
     return RepositoryConfig.model_validate(
         {
+            "version": merged_payload.get("version", defaults_payload["version"]),
             "paths": {**defaults_payload["paths"], **paths_payload},
             "agents": {**defaults_payload["agents"], **agents_payload},
+            "vcs": {**defaults_payload["vcs"], **vcs_payload},
+            "execution": {
+                **defaults_payload["execution"],
+                **execution_payload,
+            },
         }
     )
 

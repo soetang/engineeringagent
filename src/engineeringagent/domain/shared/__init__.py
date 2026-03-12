@@ -10,9 +10,13 @@ from .enums import (
 from .ids import CheckId, FeatureId, PhaseId, TopicId
 from .repository_config import (
     CodexRepositoryConfig,
+    ImplementationAgentConfig,
+    RepositoryExecutionConfig,
     RepositoryAgentsConfig,
     RepositoryConfig,
     RepositoryPaths,
+    RepositoryVcsConfig,
+    ReviewerAgentConfig,
 )
 from .timestamps import utc_iso_from_epoch_sec, utc_now_iso
 
@@ -23,12 +27,16 @@ __all__ = [
     "CodexRepositoryConfig",
     "FeatureId",
     "FeatureStatus",
+    "ImplementationAgentConfig",
     "PhaseId",
     "PlanningTier",
+    "RepositoryExecutionConfig",
     "RepositoryAgentsConfig",
     "RepositoryConfig",
     "RepositoryPaths",
+    "RepositoryVcsConfig",
     "ReviewDecision",
+    "ReviewerAgentConfig",
     "TopicId",
     "utc_iso_from_epoch_sec",
     "utc_now_iso",

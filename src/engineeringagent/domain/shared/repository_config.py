@@ -34,6 +34,7 @@ class RepositoryPaths(BaseModel):
     harness_root: str = "harness"
     progress_root: str = ".engineeringagent/progress"
     specifications_root: str = "docs/specifications"
+    worktree_root: str = ".engineeringagent/worktrees"
     harness_checks_path: str = "harness/checks.yaml"
 
     @field_validator(
@@ -41,6 +42,7 @@ class RepositoryPaths(BaseModel):
         "harness_root",
         "progress_root",
         "specifications_root",
+        "worktree_root",
         "harness_checks_path",
         mode="before",
     )
@@ -77,16 +79,42 @@ class ImplementationAgentConfig(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
+    backend: str | None = None
+    model: str | None = None
     prompt_definition: str = "implementation_default"
 
-    @field_validator("prompt_definition", mode="before")
+    @field_validator("backend", "model", "prompt_definition", mode="before")
     @classmethod
-    def _validate_prompt_definition(cls, value: Any) -> str:
+    def _validate_string_field(cls, value: Any, info: Any) -> str | None:
+        field_name = f"agents.implementation.{info.field_name}"
+        if info.field_name in {"backend", "model"} and value is None:
+            return None
         if not isinstance(value, str):
-            raise ValueError("agents.implementation.prompt_definition must be a string")
+            raise ValueError(f"{field_name} must be a string")
         normalized = value.strip()
         if not normalized:
-            raise ValueError("agents.implementation.prompt_definition cannot be empty")
+            raise ValueError(f"{field_name} cannot be empty")
+        return normalized
+
+
+class ReviewerAgentConfig(BaseModel):
+    """Reviewer-agent defaults owned by repository configuration."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    backend: str | None = None
+    model: str | None = None
+
+    @field_validator("backend", "model", mode="before")
+    @classmethod
+    def _validate_optional_string(cls, value: Any, info: Any) -> str | None:
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            raise ValueError(f"agents.reviewer.{info.field_name} must be a string")
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError(f"agents.reviewer.{info.field_name} cannot be empty")
         return normalized
 
 
@@ -100,6 +128,7 @@ class RepositoryAgentsConfig(BaseModel):
     implementation: ImplementationAgentConfig = Field(
         default_factory=ImplementationAgentConfig
     )
+    reviewer: ReviewerAgentConfig = Field(default_factory=ReviewerAgentConfig)
 
     @field_validator("backend", mode="before")
     @classmethod
@@ -119,5 +148,55 @@ class RepositoryConfig(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
+    version: int = 1
     paths: RepositoryPaths = Field(default_factory=RepositoryPaths)
     agents: RepositoryAgentsConfig = Field(default_factory=RepositoryAgentsConfig)
+    vcs: "RepositoryVcsConfig" = Field(default_factory=lambda: RepositoryVcsConfig())
+    execution: "RepositoryExecutionConfig" = Field(
+        default_factory=lambda: RepositoryExecutionConfig()
+    )
+
+    @field_validator("version", mode="before")
+    @classmethod
+    def _validate_version(cls, value: Any) -> int:
+        if not isinstance(value, int):
+            raise ValueError("version must be an integer")
+        if value != 1:
+            raise ValueError("version must be 1")
+        return value
+
+
+class RepositoryVcsConfig(BaseModel):
+    """Version-control defaults owned by repository configuration."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    integration_branch: str = "main"
+
+    @field_validator("integration_branch", mode="before")
+    @classmethod
+    def _validate_integration_branch(cls, value: Any) -> str:
+        if not isinstance(value, str):
+            raise ValueError("vcs.integration_branch must be a string")
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("vcs.integration_branch cannot be empty")
+        return normalized
+
+
+class RepositoryExecutionConfig(BaseModel):
+    """Execution-mode defaults owned by repository configuration."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    mode: str = "local_worktree"
+
+    @field_validator("mode", mode="before")
+    @classmethod
+    def _validate_mode(cls, value: Any) -> str:
+        if not isinstance(value, str):
+            raise ValueError("execution.mode must be a string")
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("execution.mode cannot be empty")
+        return normalized
