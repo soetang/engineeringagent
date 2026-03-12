@@ -12,13 +12,13 @@ from engineeringagent.application import (
     IterationOutcome,
     IterationSummaryInputs,
 )
-from engineeringagent.domain.specification import deterministic_feature_choice
-from engineeringagent.loop_runtime.feature_state import (
+from engineeringagent.application.feature_state import (
     discover_active_feature_paths,
     done_features_pending_archive,
     pending_features,
     resolve_feature_paths,
 )
+from engineeringagent.domain.specification import deterministic_feature_choice
 from engineeringagent.ports import VersionControlFailure
 
 from .loop_run_context import LoopRun, RunConfig, RunServices

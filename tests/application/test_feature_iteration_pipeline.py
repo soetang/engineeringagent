@@ -2,17 +2,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import pytest
+from pydantic import BaseModel, ConfigDict
 
 import engineeringagent.application.feature_iteration_pipeline as iteration_module
-from engineeringagent.adapters.runtime.execution import run_loop_controller
-from engineeringagent.adapters.runtime.loop_run_context import (
-    LoopRun,
-    RunConfig,
-    RunServices,
-)
 from engineeringagent.application import (
     CompletionCommitOutcome,
     FeatureIterationInputs,
@@ -25,26 +20,45 @@ from engineeringagent.application import (
     ReviewerPhaseOutcome,
     VerificationPhaseOutcome,
 )
-from engineeringagent.domain.audit import fallback_implement_progress_envelope
-from engineeringagent.domain.quality import ChangedPathsResult
-from engineeringagent.loop_runtime.feature_state import (
+from engineeringagent.application.feature_state import (
     archive_completed_feature,
     restore_archived_feature,
 )
+from engineeringagent.domain.audit import fallback_implement_progress_envelope
+from engineeringagent.domain.quality import ChangedPathsResult
 from engineeringagent.application.feature_iteration_pipeline import (
     IterationPipelineDependencies,
     _timed_phase,
     run_feature_iteration_pipeline,
 )
-from engineeringagent.adapters.runtime.iteration_phases import (
-    CompletionPhaseDependencies,
-    GatePhaseDependencies,
-    ReviewerPhaseDependencies,
-)
 from tests.loop.feature_iteration_support import (
     base_feature,
     make_bundled_project_root,
 )
+
+
+class _GatePhaseDependencies(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    restore_archived_feature: Callable[[Path, Path], tuple[bool, str | None]]
+    collect_changed_paths: Callable[[Path], ChangedPathsResult]
+
+
+class _ReviewerPhaseDependencies(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    collect_changed_paths: Callable[..., Any]
+    restore_archived_feature: Callable[[Path, Path], tuple[bool, str | None]]
+    run_agent_fn: Callable[..., Any] | None = None
+
+
+class _CompletionPhaseDependencies(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    commit_feature_completion: Callable[
+        [Path, dict[str, Any]], tuple[bool, str | None, str]
+    ]
+    restore_archived_feature: Callable[[Path, Path], tuple[bool, str | None]]
 
 
 def _passing_implement_result(output: str = "") -> ImplementStepResult:
@@ -168,7 +182,7 @@ def test_iteration_pipeline_carries_passed_reviewer_feedback_to_continue(
                     feedback=None,
                 )
             ),
-            gate_phase_dependencies=GatePhaseDependencies(
+            gate_phase_dependencies=_GatePhaseDependencies(
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
                 collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
                     paths=(),
@@ -196,7 +210,7 @@ def test_iteration_pipeline_carries_passed_reviewer_feedback_to_continue(
                     feedback=reviewer_feedback,
                 )
             ),
-            reviewer_phase_dependencies=ReviewerPhaseDependencies(
+            reviewer_phase_dependencies=_ReviewerPhaseDependencies(
                 collect_changed_paths=lambda *_args, **_kwargs: None,
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
                 run_agent_fn=lambda *_args, **_kwargs: None,
@@ -211,7 +225,7 @@ def test_iteration_pipeline_carries_passed_reviewer_feedback_to_continue(
                     feedback=None,
                 )
             ),
-            completion_phase_dependencies=CompletionPhaseDependencies(
+            completion_phase_dependencies=_CompletionPhaseDependencies(
                 commit_feature_completion=lambda *_args, **_kwargs: (True, None, ""),
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
             ),
@@ -300,7 +314,7 @@ def test_iteration_pipeline_tracks_bundled_plan_phase_progress_metadata(
                     feedback=None,
                 )
             ),
-            gate_phase_dependencies=GatePhaseDependencies(
+            gate_phase_dependencies=_GatePhaseDependencies(
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
                 collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
                     paths=(),
@@ -328,7 +342,7 @@ def test_iteration_pipeline_tracks_bundled_plan_phase_progress_metadata(
                     feedback=None,
                 )
             ),
-            reviewer_phase_dependencies=ReviewerPhaseDependencies(
+            reviewer_phase_dependencies=_ReviewerPhaseDependencies(
                 collect_changed_paths=lambda *_args, **_kwargs: None,
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
                 run_agent_fn=lambda *_args, **_kwargs: None,
@@ -343,7 +357,7 @@ def test_iteration_pipeline_tracks_bundled_plan_phase_progress_metadata(
                     feedback=None,
                 )
             ),
-            completion_phase_dependencies=CompletionPhaseDependencies(
+            completion_phase_dependencies=_CompletionPhaseDependencies(
                 commit_feature_completion=lambda *_args, **_kwargs: (True, None, ""),
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
             ),
@@ -427,7 +441,7 @@ def test_iteration_pipeline_keeps_phase_progress_kind_when_bundled_plan_is_inval
                     feedback=None,
                 )
             ),
-            gate_phase_dependencies=GatePhaseDependencies(
+            gate_phase_dependencies=_GatePhaseDependencies(
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
                 collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
                     paths=(),
@@ -455,7 +469,7 @@ def test_iteration_pipeline_keeps_phase_progress_kind_when_bundled_plan_is_inval
                     feedback=None,
                 )
             ),
-            reviewer_phase_dependencies=ReviewerPhaseDependencies(
+            reviewer_phase_dependencies=_ReviewerPhaseDependencies(
                 collect_changed_paths=lambda *_args, **_kwargs: None,
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
                 run_agent_fn=lambda *_args, **_kwargs: None,
@@ -470,7 +484,7 @@ def test_iteration_pipeline_keeps_phase_progress_kind_when_bundled_plan_is_inval
                     feedback=None,
                 )
             ),
-            completion_phase_dependencies=CompletionPhaseDependencies(
+            completion_phase_dependencies=_CompletionPhaseDependencies(
                 commit_feature_completion=lambda *_args, **_kwargs: (True, None, ""),
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
             ),
@@ -547,7 +561,7 @@ def test_iteration_pipeline_tracks_direct_bundle_feature_progress_metadata(
                     feedback=None,
                 )
             ),
-            gate_phase_dependencies=GatePhaseDependencies(
+            gate_phase_dependencies=_GatePhaseDependencies(
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
                 collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
                     paths=(),
@@ -575,7 +589,7 @@ def test_iteration_pipeline_tracks_direct_bundle_feature_progress_metadata(
                     feedback=None,
                 )
             ),
-            reviewer_phase_dependencies=ReviewerPhaseDependencies(
+            reviewer_phase_dependencies=_ReviewerPhaseDependencies(
                 collect_changed_paths=lambda *_args, **_kwargs: None,
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
                 run_agent_fn=lambda *_args, **_kwargs: None,
@@ -590,7 +604,7 @@ def test_iteration_pipeline_tracks_direct_bundle_feature_progress_metadata(
                     feedback=None,
                 )
             ),
-            completion_phase_dependencies=CompletionPhaseDependencies(
+            completion_phase_dependencies=_CompletionPhaseDependencies(
                 commit_feature_completion=lambda *_args, **_kwargs: (True, None, ""),
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
             ),
@@ -651,7 +665,7 @@ def test_iteration_pipeline_uses_feature_progress_kind_without_plan_unit(
                     feedback=None,
                 )
             ),
-            gate_phase_dependencies=GatePhaseDependencies(
+            gate_phase_dependencies=_GatePhaseDependencies(
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
                 collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
                     paths=(),
@@ -679,7 +693,7 @@ def test_iteration_pipeline_uses_feature_progress_kind_without_plan_unit(
                     feedback=None,
                 )
             ),
-            reviewer_phase_dependencies=ReviewerPhaseDependencies(
+            reviewer_phase_dependencies=_ReviewerPhaseDependencies(
                 collect_changed_paths=lambda *_args, **_kwargs: None,
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
                 run_agent_fn=lambda *_args, **_kwargs: None,
@@ -694,7 +708,7 @@ def test_iteration_pipeline_uses_feature_progress_kind_without_plan_unit(
                     feedback=None,
                 )
             ),
-            completion_phase_dependencies=CompletionPhaseDependencies(
+            completion_phase_dependencies=_CompletionPhaseDependencies(
                 commit_feature_completion=lambda *_args, **_kwargs: (True, None, ""),
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
             ),
@@ -776,7 +790,7 @@ def test_iteration_pipeline_recovers_phase_metadata_from_parseable_invalid_plan_
                     feedback=None,
                 )
             ),
-            gate_phase_dependencies=GatePhaseDependencies(
+            gate_phase_dependencies=_GatePhaseDependencies(
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
                 collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
                     paths=(),
@@ -804,7 +818,7 @@ def test_iteration_pipeline_recovers_phase_metadata_from_parseable_invalid_plan_
                     feedback=None,
                 )
             ),
-            reviewer_phase_dependencies=ReviewerPhaseDependencies(
+            reviewer_phase_dependencies=_ReviewerPhaseDependencies(
                 collect_changed_paths=lambda *_args, **_kwargs: None,
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
                 run_agent_fn=lambda *_args, **_kwargs: None,
@@ -819,7 +833,7 @@ def test_iteration_pipeline_recovers_phase_metadata_from_parseable_invalid_plan_
                     feedback=None,
                 )
             ),
-            completion_phase_dependencies=CompletionPhaseDependencies(
+            completion_phase_dependencies=_CompletionPhaseDependencies(
                 commit_feature_completion=lambda *_args, **_kwargs: (True, None, ""),
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
             ),
@@ -896,7 +910,7 @@ def test_iteration_pipeline_preserves_phase_metadata_after_bundled_archive(
         _feature: dict[str, Any] | None,
         _archived_in_iteration: bool,
         archived_path: Path | None,
-        _deps: ReviewerPhaseDependencies,
+        _deps: Any,
     ) -> ReviewerPhaseOutcome:
         if archived_path is not None:
             restore_archived_feature(archived_path, feature_path)
@@ -937,7 +951,7 @@ def test_iteration_pipeline_preserves_phase_metadata_after_bundled_archive(
                     feedback=None,
                 )
             ),
-            gate_phase_dependencies=GatePhaseDependencies(
+            gate_phase_dependencies=_GatePhaseDependencies(
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
                 collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
                     paths=(),
@@ -965,7 +979,7 @@ def test_iteration_pipeline_preserves_phase_metadata_after_bundled_archive(
                     feedback=None,
                 )
             ),
-            reviewer_phase_dependencies=ReviewerPhaseDependencies(
+            reviewer_phase_dependencies=_ReviewerPhaseDependencies(
                 collect_changed_paths=lambda *_args, **_kwargs: None,
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
                 run_agent_fn=lambda *_args, **_kwargs: None,
@@ -980,7 +994,7 @@ def test_iteration_pipeline_preserves_phase_metadata_after_bundled_archive(
                     feedback=None,
                 )
             ),
-            completion_phase_dependencies=CompletionPhaseDependencies(
+            completion_phase_dependencies=_CompletionPhaseDependencies(
                 commit_feature_completion=lambda *_args, **_kwargs: (True, None, ""),
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
             ),
@@ -1065,7 +1079,7 @@ def test_iteration_pipeline_clears_archived_selection_after_reviewer_rollback(
         _feature: dict[str, Any] | None,
         _archived_in_iteration: bool,
         archived_path: Path | None,
-        _deps: ReviewerPhaseDependencies,
+        _deps: Any,
     ) -> ReviewerPhaseOutcome:
         if archived_path is not None:
             restore_archived_feature(archived_path, feature_path)
@@ -1106,7 +1120,7 @@ def test_iteration_pipeline_clears_archived_selection_after_reviewer_rollback(
                     feedback=None,
                 )
             ),
-            gate_phase_dependencies=GatePhaseDependencies(
+            gate_phase_dependencies=_GatePhaseDependencies(
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
                 collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
                     paths=(),
@@ -1124,7 +1138,7 @@ def test_iteration_pipeline_clears_archived_selection_after_reviewer_rollback(
                 )
             ),
             run_reviewer_phase=_run_reviewer_phase,
-            reviewer_phase_dependencies=ReviewerPhaseDependencies(
+            reviewer_phase_dependencies=_ReviewerPhaseDependencies(
                 collect_changed_paths=lambda *_args, **_kwargs: None,
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
                 run_agent_fn=lambda *_args, **_kwargs: None,
@@ -1139,7 +1153,7 @@ def test_iteration_pipeline_clears_archived_selection_after_reviewer_rollback(
                     feedback=None,
                 )
             ),
-            completion_phase_dependencies=CompletionPhaseDependencies(
+            completion_phase_dependencies=_CompletionPhaseDependencies(
                 commit_feature_completion=lambda *_args, **_kwargs: (True, None, ""),
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
             ),
@@ -1205,7 +1219,7 @@ def test_iteration_pipeline_clears_archived_selection_after_completion_rollback(
                     feedback=None,
                 )
             ),
-            gate_phase_dependencies=GatePhaseDependencies(
+            gate_phase_dependencies=_GatePhaseDependencies(
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
                 collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
                     paths=(),
@@ -1233,7 +1247,7 @@ def test_iteration_pipeline_clears_archived_selection_after_completion_rollback(
                     feedback=None,
                 )
             ),
-            reviewer_phase_dependencies=ReviewerPhaseDependencies(
+            reviewer_phase_dependencies=_ReviewerPhaseDependencies(
                 collect_changed_paths=lambda *_args, **_kwargs: None,
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
                 run_agent_fn=lambda *_args, **_kwargs: None,
@@ -1249,7 +1263,7 @@ def test_iteration_pipeline_clears_archived_selection_after_completion_rollback(
                     archived_rolled_back=True,
                 )
             ),
-            completion_phase_dependencies=CompletionPhaseDependencies(
+            completion_phase_dependencies=_CompletionPhaseDependencies(
                 commit_feature_completion=lambda *_args, **_kwargs: (True, None, ""),
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
             ),
@@ -1366,7 +1380,7 @@ def test_iteration_pipeline_archives_before_running_done_transition_verification
                     feedback=None,
                 )
             ),
-            gate_phase_dependencies=GatePhaseDependencies(
+            gate_phase_dependencies=_GatePhaseDependencies(
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
                 collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
                     paths=(),
@@ -1386,7 +1400,7 @@ def test_iteration_pipeline_archives_before_running_done_transition_verification
                     feedback=None,
                 )
             ),
-            reviewer_phase_dependencies=ReviewerPhaseDependencies(
+            reviewer_phase_dependencies=_ReviewerPhaseDependencies(
                 collect_changed_paths=lambda *_args, **_kwargs: None,
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
                 run_agent_fn=lambda *_args, **_kwargs: None,
@@ -1401,7 +1415,7 @@ def test_iteration_pipeline_archives_before_running_done_transition_verification
                     feedback=None,
                 )
             ),
-            completion_phase_dependencies=CompletionPhaseDependencies(
+            completion_phase_dependencies=_CompletionPhaseDependencies(
                 commit_feature_completion=lambda *_args, **_kwargs: (True, None, ""),
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
             ),
@@ -1502,7 +1516,7 @@ def test_iteration_pipeline_runs_gate_phase_after_verification_failure_cases(
             should_archive_selected_feature=lambda *_args, **_kwargs: False,
             archive_completed_feature=lambda *_args, **_kwargs: (True, None, None),
             run_gate_phase=_run_gate_phase,
-            gate_phase_dependencies=GatePhaseDependencies(
+            gate_phase_dependencies=_GatePhaseDependencies(
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
                 collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
                     paths=(),
@@ -1530,7 +1544,7 @@ def test_iteration_pipeline_runs_gate_phase_after_verification_failure_cases(
                     feedback=None,
                 )
             ),
-            reviewer_phase_dependencies=ReviewerPhaseDependencies(
+            reviewer_phase_dependencies=_ReviewerPhaseDependencies(
                 collect_changed_paths=lambda *_args, **_kwargs: None,
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
                 run_agent_fn=lambda *_args, **_kwargs: None,
@@ -1545,7 +1559,7 @@ def test_iteration_pipeline_runs_gate_phase_after_verification_failure_cases(
                     feedback="verification failed",
                 )
             ),
-            completion_phase_dependencies=CompletionPhaseDependencies(
+            completion_phase_dependencies=_CompletionPhaseDependencies(
                 commit_feature_completion=lambda *_args, **_kwargs: (True, None, ""),
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
             ),
@@ -1579,7 +1593,7 @@ def test_iteration_pipeline_collects_changed_paths_once_per_iteration(
         iteration_inputs: FeatureIterationInputs,
         _archived_in_iteration: bool,
         _archived_path: Path | None,
-        deps: GatePhaseDependencies,
+        deps: Any,
     ) -> GatePhaseOutcome:
         deps.collect_changed_paths(iteration_inputs.project_root)
         return GatePhaseOutcome(
@@ -1595,7 +1609,7 @@ def test_iteration_pipeline_collects_changed_paths_once_per_iteration(
         _feature: dict[str, Any] | None,
         _archived_in_iteration: bool,
         _archived_path: Path | None,
-        deps: ReviewerPhaseDependencies,
+        deps: Any,
     ) -> ReviewerPhaseOutcome:
         deps.collect_changed_paths(iteration_inputs.project_root)
         return ReviewerPhaseOutcome(
@@ -1643,7 +1657,7 @@ def test_iteration_pipeline_collects_changed_paths_once_per_iteration(
             should_archive_selected_feature=lambda *_args, **_kwargs: False,
             archive_completed_feature=lambda *_args, **_kwargs: (True, None, None),
             run_gate_phase=_run_gate_phase,
-            gate_phase_dependencies=GatePhaseDependencies(
+            gate_phase_dependencies=_GatePhaseDependencies(
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
                 collect_changed_paths=_collect_changed_paths,
             ),
@@ -1657,7 +1671,7 @@ def test_iteration_pipeline_collects_changed_paths_once_per_iteration(
                 )
             ),
             run_reviewer_phase=_run_reviewer_phase,
-            reviewer_phase_dependencies=ReviewerPhaseDependencies(
+            reviewer_phase_dependencies=_ReviewerPhaseDependencies(
                 collect_changed_paths=_collect_changed_paths,
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
                 run_agent_fn=lambda *_args, **_kwargs: None,
@@ -1672,7 +1686,7 @@ def test_iteration_pipeline_collects_changed_paths_once_per_iteration(
                     feedback=None,
                 )
             ),
-            completion_phase_dependencies=CompletionPhaseDependencies(
+            completion_phase_dependencies=_CompletionPhaseDependencies(
                 commit_feature_completion=lambda *_args, **_kwargs: (True, None, ""),
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
             ),
@@ -1755,7 +1769,7 @@ def test_iteration_pipeline_records_phase_timings(
                     feedback=None,
                 )
             ),
-            gate_phase_dependencies=GatePhaseDependencies(
+            gate_phase_dependencies=_GatePhaseDependencies(
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
                 collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
                     paths=(),
@@ -1783,7 +1797,7 @@ def test_iteration_pipeline_records_phase_timings(
                     feedback=None,
                 )
             ),
-            reviewer_phase_dependencies=ReviewerPhaseDependencies(
+            reviewer_phase_dependencies=_ReviewerPhaseDependencies(
                 collect_changed_paths=lambda *_args, **_kwargs: None,
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
                 run_agent_fn=lambda *_args, **_kwargs: None,
@@ -1798,7 +1812,7 @@ def test_iteration_pipeline_records_phase_timings(
                     feedback=None,
                 )
             ),
-            completion_phase_dependencies=CompletionPhaseDependencies(
+            completion_phase_dependencies=_CompletionPhaseDependencies(
                 commit_feature_completion=lambda *_args, **_kwargs: (True, None, ""),
                 restore_archived_feature=lambda *_args, **_kwargs: (True, None),
             ),
@@ -1855,70 +1869,3 @@ def test_timed_phase_clamps_ended_at_when_clock_skews_backwards(
     assert timing.started_at == "1970-01-01T00:00:10Z"
     assert timing.ended_at == "1970-01-01T00:00:10Z"
     assert timing.duration_sec == 0
-
-
-def test_run_loop_controller_forwards_looprun_with_resolved_snapshot(
-    tmp_path: Path,
-) -> None:
-    """Forward resolved loop-run snapshots into the execution controller."""
-    resolved_feature_path = (
-        tmp_path / "docs" / "spec" / "features" / "FEAT-078-looprun.yaml"
-    )
-    captured: dict[str, LoopRun] = {}
-
-    def _run_selected_feature_iterations(loop_run: LoopRun) -> int:
-        captured["loop_run"] = loop_run
-        return 0
-
-    code = run_loop_controller(
-        LoopRun(
-            config=RunConfig(
-                project_root=tmp_path,
-                feature_paths=(resolved_feature_path,),
-                dry_run=False,
-            ),
-            services=RunServices(
-                resolve_run_targets=lambda *_args, **_kwargs: [resolved_feature_path],
-                emit_run_all_snapshot_feedback=lambda *_args, **_kwargs: None,
-                handle_dry_run=lambda *_args, **_kwargs: None,
-                enforce_worktree_precondition=lambda *_args, **_kwargs: None,
-                run_permission_precheck=lambda **_kwargs: True,
-                run_selected_feature_iterations=_run_selected_feature_iterations,
-            ),
-        )
-    )
-
-    assert code == 0
-    forwarded_loop_run = captured["loop_run"]
-    assert forwarded_loop_run.state.resolved_feature_paths == (resolved_feature_path,)
-    assert forwarded_loop_run.state.total_iterations == 0
-
-
-def test_run_loop_controller_rejects_invalid_max_iterations(
-    tmp_path: Path,
-    capsys: Any,
-) -> None:
-    """Reject non-positive max-iteration values in the loop controller."""
-    code = run_loop_controller(
-        LoopRun(
-            config=RunConfig(
-                project_root=tmp_path,
-                feature_paths=(
-                    tmp_path / "docs" / "spec" / "features" / "FEAT-079-looprun.yaml",
-                ),
-                dry_run=False,
-                max_iterations=0,
-            ),
-            services=RunServices(
-                resolve_run_targets=lambda *_args, **_kwargs: [],
-                emit_run_all_snapshot_feedback=lambda *_args, **_kwargs: None,
-                handle_dry_run=lambda *_args, **_kwargs: None,
-                enforce_worktree_precondition=lambda *_args, **_kwargs: None,
-                run_permission_precheck=lambda **_kwargs: True,
-                run_selected_feature_iterations=lambda *_args, **_kwargs: 0,
-            ),
-        )
-    )
-
-    assert code == 1
-    assert "max_iterations must be >= 1" in capsys.readouterr().out

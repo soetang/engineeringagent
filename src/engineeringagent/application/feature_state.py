@@ -1,4 +1,4 @@
-"""Loop runtime feature state helpers."""
+"""Application-owned feature state helpers."""
 
 from __future__ import annotations
 
@@ -9,21 +9,8 @@ from typing import Any, Sequence
 
 import yaml
 
-from engineeringagent.application import (
-    InitialFeatureLoadOutcome,
-    PostImplementFeatureOutcome,
-)
-from engineeringagent.application import feature_plan_progress
-from engineeringagent.application.feature_plan_progress import (
-    archived_bundled_feature_is_done as _archived_bundled_feature_is_done,
-)
-from engineeringagent.application.feature_plan_progress import (
-    normalize_done_plan,
-    sync_active_plan_after_implement,
-    touch_active_plan_for_iteration,
-)
-from engineeringagent.domain.shared import utc_now_iso
 from engineeringagent.config import resolve_docs_root
+from engineeringagent.domain.shared import utc_now_iso
 from engineeringagent.specs import (
     _is_bundled_feature_spec_path,
     dump_yaml,
@@ -31,6 +18,20 @@ from engineeringagent.specs import (
     iter_feature_files,
     load_yaml,
     resolve_feature_package_paths,
+)
+
+from . import feature_plan_progress
+from .feature_iteration_contracts import (
+    InitialFeatureLoadOutcome,
+    PostImplementFeatureOutcome,
+)
+from .feature_plan_progress import (
+    archived_bundled_feature_is_done as _archived_bundled_feature_is_done,
+)
+from .feature_plan_progress import (
+    normalize_done_plan,
+    sync_active_plan_after_implement,
+    touch_active_plan_for_iteration,
 )
 
 FEATURE_TRANSITIONS: dict[str, set[str]] = {
@@ -42,8 +43,6 @@ FEATURE_TRANSITIONS: dict[str, set[str]] = {
 
 RUN_ALL_RUNNABLE_STATUSES: set[str] = {"backlog", "in_progress"}
 
-# Keep the extracted bundled-plan loader available on this module for tests and
-# any remaining compatibility callers.
 _load_plan_document_and_frontmatter = (
     feature_plan_progress.load_plan_document_and_frontmatter
 )

@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from engineeringagent.loop_runtime.feature_state import (
+from engineeringagent.application.feature_state import (
     archive_completed_feature,
     refresh_feature_after_implement,
     restore_archived_feature,
@@ -76,6 +76,7 @@ def _load_plan_frontmatter(plan_path: Path) -> dict[str, object]:
 def test_archive_completed_feature_returns_bundled_done_entrypoint(
     tmp_path: Path,
 ) -> None:
+    """Archive returns the bundled spec entrypoint under features_done."""
     feature_path, _plan_path = _write_done_bundled_feature(
         tmp_path / "docs" / "spec" / "features" / "FEAT-001"
     )
@@ -93,6 +94,7 @@ def test_archive_completed_feature_returns_bundled_done_entrypoint(
 
 
 def test_archive_completed_feature_marks_bundled_plan_done(tmp_path: Path) -> None:
+    """Archive normalizes bundled plan frontmatter to done."""
     feature_path, _plan_path = _write_done_bundled_feature(
         tmp_path / "docs" / "spec" / "features" / "FEAT-001"
     )
@@ -113,6 +115,7 @@ def test_archive_completed_feature_marks_bundled_plan_done(tmp_path: Path) -> No
 
 
 def test_refresh_archived_bundled_feature_marks_plan_done(tmp_path: Path) -> None:
+    """Post-implement refresh loads an archived bundled feature as done."""
     active_spec_path = tmp_path / "docs" / "spec" / "features" / "FEAT-001" / "spec.yaml"
     archived_spec_path, _plan_path = _write_done_bundled_feature(
         tmp_path / "docs" / "spec" / "features_done" / "FEAT-001"
@@ -137,6 +140,7 @@ def test_archive_completed_feature_falls_back_on_exdev(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Archive falls back to a cross-device-safe move when rename cannot work."""
     feature_path, _plan_path = _write_done_bundled_feature(
         tmp_path / "docs" / "spec" / "features" / "FEAT-001"
     )
@@ -168,6 +172,7 @@ def test_restore_archived_feature_falls_back_on_exdev(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Restore falls back to a cross-device-safe move when rename cannot work."""
     archived_path, _plan_path = _write_done_bundled_feature(
         tmp_path / "docs" / "spec" / "features_done" / "FEAT-001"
     )

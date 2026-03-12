@@ -24,9 +24,9 @@ from engineeringagent.adapters.runtime.iteration_phases import (
 from engineeringagent.application import (
     feature_iteration_contracts,
     feature_iteration_pipeline,
+    feature_state,
 )
 from engineeringagent.bootstrap import runtime_support
-from engineeringagent.loop_runtime import feature_state
 
 
 def build_feature_iteration_runtime_dependencies() -> (
