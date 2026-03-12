@@ -13,7 +13,13 @@ from engineeringagent.ports import (
     AgentRunner,
     RequestRunAgentBackend,
 )
-from .helpers import classify_backend_exception, describe_action, preflight
+from .helpers import (
+    classify_backend_exception,
+    describe_action,
+    format_failed_backend_output,
+    preflight,
+    should_handle_backend_exception,
+)
 from .registry import (
     build_backend_scaffold_manifest,
     default_backend_id,
@@ -62,10 +68,12 @@ __all__ = [
     "classify_backend_exception",
     "default_backend_id",
     "describe_action",
+    "format_failed_backend_output",
     "list_backends",
     "preflight",
     "resolve_agent_strategy",
     "resolve_backend_id",
     "run_agent",
     "run_agent_request",
+    "should_handle_backend_exception",
 ]

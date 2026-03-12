@@ -16,6 +16,7 @@ from .contracts import (
     VerificationPhaseOutcome,
 )
 from .implementation_step import (
+    ImplementStepFailureDependencies,
     ImplementStepOutputDependencies,
     ImplementStepRuntimeDependencies,
     run_implement_step_from_inputs,
@@ -29,6 +30,7 @@ __all__ = [
     "CompletionCommitOutcome",
     "FeatureIterationInputs",
     "FeatureIterationRuntimeDependencies",
+    "ImplementStepFailureDependencies",
     "GatePhaseOutcome",
     "ImplementStepInputs",
     "ImplementStepOutputDependencies",

@@ -96,7 +96,10 @@ def test_run_implement_step_uses_bootstrap_builders(
         ImplementStepRuntimeDependencies, captured["runtime_dependencies"]
     )
     assert hasattr(runtime_dependencies, "describe_action")
-    assert hasattr(runtime_dependencies, "classify_backend_exception")
+    assert hasattr(runtime_dependencies, "failure")
+    assert hasattr(runtime_dependencies.failure, "classify_backend_exception")
+    assert hasattr(runtime_dependencies.failure, "should_handle_backend_exception")
+    assert hasattr(runtime_dependencies.failure, "format_failed_backend_output")
     assert hasattr(runtime_dependencies, "ensure_progress_artifacts")
     assert hasattr(runtime_dependencies, "repo_relative_label")
     assert hasattr(runtime_dependencies, "output")

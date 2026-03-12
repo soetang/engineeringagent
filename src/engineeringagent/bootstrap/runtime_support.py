@@ -10,12 +10,15 @@ from engineeringagent.adapters.agents import (
     ConfiguredAgentRunner,
     classify_backend_exception,
     describe_action,
+    format_failed_backend_output,
+    should_handle_backend_exception,
 )
 from engineeringagent.adapters.progress import paths as progress_paths
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
 from engineeringagent.adapters.vcs import GitCliVersionControlGateway
 from engineeringagent.application.feature_iteration import (
+    ImplementStepFailureDependencies,
     ImplementStepInputs,
     ImplementStepResult,
     ImplementStepOutputDependencies,
@@ -47,7 +50,11 @@ def build_implement_step_runtime_dependencies() -> ImplementStepRuntimeDependenc
 
     return ImplementStepRuntimeDependencies(
         describe_action=describe_action,
-        classify_backend_exception=classify_backend_exception,
+        failure_dependencies=ImplementStepFailureDependencies(
+            classify_backend_exception=classify_backend_exception,
+            should_handle_backend_exception=should_handle_backend_exception,
+            format_failed_backend_output=format_failed_backend_output,
+        ),
         ensure_progress_artifacts=_ensure_progress_artifacts,
         repo_relative_label=repo_relative_label,
         output_dependencies=ImplementStepOutputDependencies(

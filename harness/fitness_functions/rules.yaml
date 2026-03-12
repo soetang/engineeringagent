@@ -220,6 +220,20 @@ rules:
       - run
       - python
       - harness/fitness_functions/rules/check_application_output_boundary.py
+  - rule_id: architecture.application-subprocess-boundary
+    name: Application subprocess boundary
+    summary: Keep subprocess imports out of application modules.
+    rationale: Application workflows should orchestrate through ports and injected runtime seams instead of classifying subprocess failures or timeouts directly.
+    remediation: Remove subprocess imports from engineeringagent.application and move process execution or failure formatting into adapters, ports, or injected runtime helpers.
+    scope: src/engineeringagent/application
+    severity: error
+    side_effect_free: true
+    adapter: command
+    command:
+      - uv
+      - run
+      - python
+      - harness/fitness_functions/rules/check_application_subprocess_boundary.py
   - rule_id: architecture.application-filesystem-boundary
     name: Application filesystem boundary
     summary: Keep direct filesystem mutations out of application modules.

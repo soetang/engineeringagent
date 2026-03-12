@@ -86,3 +86,39 @@ def classify_backend_exception(exc: Exception) -> tuple[str, str]:
 
     message = str(exc).strip() or exc.__class__.__name__
     return ("agent_error", message)
+
+
+def should_handle_backend_exception(exc: Exception) -> bool:
+    """Return whether implement-step orchestration should handle the exception."""
+    if isinstance(exc, (FileNotFoundError, subprocess.TimeoutExpired)):
+        return True
+    return exc.__class__.__name__ in {
+        "AgentBackendError",
+        "AgentOutputValidationError",
+    }
+
+
+def format_failed_backend_output(command: str, exc: Exception, message: str) -> str:
+    """Render deterministic implement-step output for handled backend failures."""
+    if isinstance(exc, FileNotFoundError):
+        return message
+
+    if isinstance(exc, subprocess.TimeoutExpired):
+        return (
+            f"[implement] command={command}\n"
+            "[implement] error=timeout\n"
+            f"{message}.\n"
+            "[implement] hint: interrupt stuck runs and investigate backend credentials/config.\n"
+            "[implement] hint: for a non-mutating preview use `engineeringagent run --dry-run`.\n"
+        )
+
+    if isinstance(exc, AgentBackendError):
+        details = exc.output.strip() or message
+        returncode = exc.returncode if isinstance(exc.returncode, int) else 1
+        return (
+            f"[implement] command={command}\n"
+            f"[implement] returncode={returncode}\n"
+            f"{details}"
+        )
+
+    return f"[implement] command={command}\n[implement] error={message}"

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import subprocess
 from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, TypeVar
@@ -32,6 +31,8 @@ from engineeringagent.ports import AgentRunner, AgentRunRequest, ProgressJournal
 ImplementationPromptBuilder = Any
 DescribeImplementAction = Any
 ClassifyImplementFailure = Callable[[Exception], tuple[str, str]]
+ShouldHandleImplementFailure = Callable[[Exception], bool]
+FormatImplementFailureOutput = Callable[[str, Exception, str], str]
 EnsureProgressArtifacts = Callable[[ImplementStepInputs], None]
 RepoRelativePathLabeler = Callable[[Path, Path], str]
 EmitImplementStepStart = Callable[[str], None]
@@ -52,6 +53,21 @@ class ImplementStepOutputDependencies:
         self.emit_output = emit_output
 
 
+class ImplementStepFailureDependencies:
+    """Runtime-owned backend-failure policy for implement-step orchestration."""
+
+    def __init__(
+        self,
+        *,
+        classify_backend_exception: ClassifyImplementFailure,
+        should_handle_backend_exception: ShouldHandleImplementFailure,
+        format_failed_backend_output: FormatImplementFailureOutput,
+    ) -> None:
+        self.classify_backend_exception = classify_backend_exception
+        self.should_handle_backend_exception = should_handle_backend_exception
+        self.format_failed_backend_output = format_failed_backend_output
+
+
 class ImplementStepRuntimeDependencies:
     """Runtime-owned helpers injected into implementation orchestration."""
 
@@ -59,13 +75,13 @@ class ImplementStepRuntimeDependencies:
         self,
         *,
         describe_action: DescribeImplementAction,
-        classify_backend_exception: ClassifyImplementFailure,
+        failure_dependencies: ImplementStepFailureDependencies,
         ensure_progress_artifacts: EnsureProgressArtifacts,
         repo_relative_label: RepoRelativePathLabeler,
         output_dependencies: ImplementStepOutputDependencies,
     ) -> None:
         self.describe_action = describe_action
-        self.classify_backend_exception = classify_backend_exception
+        self.failure = failure_dependencies
         self.ensure_progress_artifacts = ensure_progress_artifacts
         self.repo_relative_label = repo_relative_label
         self.output = output_dependencies
@@ -102,7 +118,7 @@ def run_implement_step_from_inputs(
             prompt=prompt,
         )
     except Exception as exc:  # pylint: disable=broad-exception-caught
-        if _should_reraise_implement_exception(exc):
+        if not runtime_dependencies.failure.should_handle_backend_exception(exc):
             raise
         if exc.__class__.__name__ == "AgentOutputValidationError":
             fallback_envelope = fallback_implement_progress_envelope(**fallback_context)
@@ -114,11 +130,13 @@ def run_implement_step_from_inputs(
             )
             command_output = _format_success_implement_output(command, output)
             return (True, None, command_output, fallback_envelope, True)
-        failed_gate, message = runtime_dependencies.classify_backend_exception(exc)
-        command_output = _format_failed_implement_output(
-            command=command,
-            exc=exc,
-            message=message,
+        failed_gate, message = runtime_dependencies.failure.classify_backend_exception(
+            exc
+        )
+        command_output = runtime_dependencies.failure.format_failed_backend_output(
+            command,
+            exc,
+            message,
         )
         return (
             False,
@@ -154,15 +172,6 @@ def _run_agent_with_structured_output(
             output_type=ImplementProgressEnvelope,
         )
     )
-
-
-def _should_reraise_implement_exception(exc: Exception) -> bool:
-    if isinstance(exc, (FileNotFoundError, subprocess.TimeoutExpired)):
-        return False
-    return exc.__class__.__name__ not in {
-        "AgentBackendError",
-        "AgentOutputValidationError",
-    }
 
 
 def _coerce_implement_output(
@@ -245,36 +254,6 @@ def _format_structured_output_validation_failure(exc: Exception) -> str:
     if isinstance(last_text, str) and last_text:
         lines.append(f"[implement] last_output={last_text}")
     return "\n".join(lines)
-
-
-def _format_failed_implement_output(
-    *, command: str, exc: Exception, message: str
-) -> str:
-    if isinstance(exc, FileNotFoundError):
-        return message
-
-    if isinstance(exc, subprocess.TimeoutExpired):
-        return (
-            f"[implement] command={command}\n"
-            "[implement] error=timeout\n"
-            f"{message}.\n"
-            "[implement] hint: interrupt stuck runs and investigate backend credentials/config.\n"
-            "[implement] hint: for a non-mutating preview use `engineeringagent run --dry-run`.\n"
-        )
-
-    if exc.__class__.__name__ == "AgentBackendError":
-        output = str(getattr(exc, "output", "")).strip()
-        details = output or message
-        returncode = getattr(exc, "returncode", None)
-        if not isinstance(returncode, int):
-            returncode = 1
-        return (
-            f"[implement] command={command}\n"
-            f"[implement] returncode={returncode}\n"
-            f"{details}"
-        )
-
-    return f"[implement] command={command}\n[implement] error={message}"
 
 
 def _format_success_implement_output(command: str, output: str) -> str:

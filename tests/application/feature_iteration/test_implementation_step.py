@@ -3,7 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Sequence
 
+import pytest
+
 from engineeringagent.application.feature_iteration import (
+    ImplementStepFailureDependencies,
     ImplementStepInputs,
     ImplementStepOutputDependencies,
     ImplementStepRuntimeDependencies,
@@ -25,6 +28,8 @@ class _FakeAgentRunner:
     def run(self, request: AgentRunRequest) -> object:
         """Record the request and return the prepared result."""
         self.requests.append(request)
+        if isinstance(self._result, Exception):
+            raise self._result
         return self._result
 
 
@@ -121,7 +126,13 @@ def _runtime_dependencies(observed: dict[str, object]) -> ImplementStepRuntimeDe
     """Build implement-step runtime dependencies with captured output callbacks."""
     return ImplementStepRuntimeDependencies(
         describe_action=lambda _project_root, **_kwargs: "uv run engineeringagent implement",
-        classify_backend_exception=lambda exc: ("implement", str(exc)),
+        failure_dependencies=ImplementStepFailureDependencies(
+            classify_backend_exception=lambda exc: ("implement", str(exc)),
+            should_handle_backend_exception=lambda _exc: True,
+            format_failed_backend_output=lambda command, _exc, message: (
+                f"[implement] command={command}\n[implement] error={message}"
+            ),
+        ),
         ensure_progress_artifacts=lambda inputs: _ensure_progress_artifacts(
             observed, inputs
         ),
@@ -199,3 +210,44 @@ def test_run_implement_step_skips_output_callback_when_verbose_is_disabled() -> 
     assert progress_journal.handoff_calls == [(Path("/tmp/project"), "FEAT-300")]
     assert observed["commands"] == ["uv run engineeringagent implement"]
     assert observed.get("outputs") is None
+
+
+def test_run_implement_step_reraises_unhandled_backend_exception() -> None:
+    """Reraise exceptions that runtime policy does not classify as handled."""
+
+    class _UnhandledFailure(Exception):
+        pass
+
+    observed: dict[str, Any] = {}
+    progress_journal = _FakeProgressJournal()
+
+    with pytest.raises(_UnhandledFailure, match="boom"):
+        run_implement_step_from_inputs(
+            _implement_inputs(),
+            agent_runner=_FakeAgentRunner(_UnhandledFailure("boom")),
+            prompt_builder=_FakePromptBuilder(),
+            progress_journal=progress_journal,
+            runtime_dependencies=ImplementStepRuntimeDependencies(
+                describe_action=lambda _project_root, **_kwargs: (
+                    "uv run engineeringagent implement"
+                ),
+                failure_dependencies=ImplementStepFailureDependencies(
+                    classify_backend_exception=lambda exc: ("implement", str(exc)),
+                    should_handle_backend_exception=lambda _exc: False,
+                    format_failed_backend_output=lambda command, _exc, message: (
+                        f"[implement] command={command}\n[implement] error={message}"
+                    ),
+                ),
+                ensure_progress_artifacts=lambda inputs: _ensure_progress_artifacts(
+                    observed, inputs
+                ),
+                repo_relative_label=lambda _project_root, path: str(path),
+                output_dependencies=ImplementStepOutputDependencies(
+                    emit_step_start=lambda command: _capture_command(observed, command),
+                    emit_output=lambda output: _capture_output(observed, output),
+                ),
+            ),
+        )
+
+    assert progress_journal.handoff_calls == [(Path("/tmp/project"), "FEAT-300")]
+    assert observed["commands"] == ["uv run engineeringagent implement"]
