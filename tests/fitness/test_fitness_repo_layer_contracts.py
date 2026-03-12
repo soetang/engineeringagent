@@ -162,7 +162,7 @@ def test_repo_layer_contracts_rule_blocks_document_adapters_importing_applicatio
     )
     documents_root.mkdir(parents=True, exist_ok=True)
     (documents_root / "filesystem_feature_state.py").write_text(
-        "from engineeringagent.application.contracts.run_loop import RunLoopRequest\n",
+        "from engineeringagent.application.run_loop_service import RunLoopRequest\n",
         encoding="utf-8",
     )
 
@@ -333,11 +333,11 @@ def test_repo_layer_contracts_rule_blocks_prompt_models_in_port_repository_modul
     ]
 
 
-def test_repo_layer_contracts_rule_allows_application_contracts_directory(
+def test_repo_layer_contracts_rule_blocks_deleted_application_contracts_directory(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Allow the application contracts package introduced by the target architecture."""
+    """Fail when the removed application contracts package reappears."""
     contracts_root = tmp_path / "src" / "engineeringagent" / "application" / "contracts"
     contracts_root.mkdir(parents=True, exist_ok=True)
     (contracts_root / "__init__.py").write_text("", encoding="utf-8")
@@ -346,5 +346,9 @@ def test_repo_layer_contracts_rule_allows_application_contracts_directory(
     proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
 
     assert proc.returncode == 0
-    assert payload["status"] == "pass"
-    assert payload["violations"] == []
+    assert payload["status"] == "fail"
+    assert payload["violations"] == [
+        "src/engineeringagent/application/contracts/__init__.py: deleted legacy module path must remain absent",
+        "src/engineeringagent/application/contracts/run_loop.py: deleted legacy module path must remain absent",
+        "src/engineeringagent/application/contracts: deleted legacy directory path must remain absent",
+    ]

@@ -19,7 +19,7 @@ from engineeringagent.adapters.agents import ConfiguredAgentRunner
 from engineeringagent.adapters.agents.opencode.permissions import (
     PermissionProbeResult,
 )
-from engineeringagent.application.contracts.run_loop import RunLoopRequest
+from engineeringagent.application.run_loop_service import RunLoopRequest
 from engineeringagent.application.feature_iteration.contracts import (
     ImplementStepResult,
 )

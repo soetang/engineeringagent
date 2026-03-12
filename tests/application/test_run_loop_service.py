@@ -5,10 +5,7 @@ from pathlib import Path
 from engineeringagent.application import (
     RunLoopService,
 )
-from engineeringagent.application.contracts.run_loop import (
-    RunLoopRequest,
-    RunLoopResult,
-)
+from engineeringagent.application.run_loop_service import RunLoopRequest, RunLoopResult
 from engineeringagent.domain.quality import HarnessChecksDocument
 from engineeringagent.ports import RunLoopExecutionRequest, ValidationFailure
 

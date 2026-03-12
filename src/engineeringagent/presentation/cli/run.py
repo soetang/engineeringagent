@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import NamedTuple, Sequence, cast
 
-from engineeringagent.application.contracts.run_loop import RunLoopRequest
+from engineeringagent.application.run_loop_service import RunLoopRequest
 from engineeringagent.bootstrap import AppFactory
 
 

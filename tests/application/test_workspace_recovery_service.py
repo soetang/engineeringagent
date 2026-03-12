@@ -7,7 +7,7 @@ from typing import Any
 from engineeringagent.application import (
     WorkspaceRecoveryService,
 )
-from engineeringagent.application.contracts.workspace_recovery import (
+from engineeringagent.application.workspace_recovery_service import (
     RecoverWorkspaceRequest,
     RecoverWorkspaceResult,
 )

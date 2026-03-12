@@ -5,7 +5,7 @@ from pathlib import Path
 from engineeringagent.application import (
     ValidationService,
 )
-from engineeringagent.application.contracts.validation import (
+from engineeringagent.application.validation_service import (
     ValidateRepositoryRequest,
     ValidationResult,
 )

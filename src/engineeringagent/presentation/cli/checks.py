@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 from pydantic import BaseModel, ConfigDict
 
-from ...application.contracts.checks import RunChecksRequest
+from ...application.checks_service import RunChecksRequest
 from ...bootstrap import AppFactory
 from ... import checks as checks_domain
 from .output import emit_markdown_output, resolve_optional_path

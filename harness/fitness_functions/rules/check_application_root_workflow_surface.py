@@ -3,13 +3,13 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from engineeringagent.checks import emit_fitness_result
 from engineeringagent.adapters.quality.fitness.contracts import (
     CONTRACT_VERSION,
     FitnessRuleResult,
     RuleSeverity,
     RuleStatus,
 )
+from engineeringagent.checks import emit_fitness_result
 
 
 RULE_ID = "architecture.application-root-workflow-surface"
@@ -18,160 +18,93 @@ APPLICATION_ROOT = PROJECT_ROOT / "src" / "engineeringagent" / "application" / "
 FEATURE_ITERATION_ROOT = (
     PROJECT_ROOT / "src" / "engineeringagent" / "application" / "feature_iteration" / "__init__.py"
 )
-FORBIDDEN_EXPORT_MODULES = {
-    "checks_service",
-    "contracts.checks",
-    "contracts.guidance",
-    "contracts.init_workspace",
-    "contracts.run_loop",
-    "contracts.validation",
-    "contracts.workspace_recovery",
-    "feature_iteration",
-    "feature_iteration_service",
-    "guidance_service",
-    "init_workspace_service",
-    "prompt_builder",
-    "run_loop",
-    "run_loop_service",
-    "validation_service",
-    "workspace_recovery_service",
-}
+SCAN_ROOTS = (PROJECT_ROOT / "src", PROJECT_ROOT / "tests")
+SKIP_DIR_NAMES = {"__pycache__", ".venv"}
+FEATURE_ITERATION_PACKAGE = "engineeringagent.application.feature_iteration"
 FORBIDDEN_ROOT_EXPORTS = frozenset(
     {
         "CommandTiming",
         "CompletionCommitOutcome",
         "FeatureIterationDependencies",
+        "FeatureIterationInputs",
         "FeatureIterationRequest",
         "FeatureIterationResult",
-        "FeatureIterationInputs",
+        "GatePhaseOutcome",
         "GuidanceInputError",
         "GuidanceQuery",
         "GuidanceResult",
-        "GatePhaseOutcome",
         "ImplementationPromptRequest",
         "ImplementStepInputs",
-        "ImplementStepOutputDependencies",
         "ImplementStepResult",
-        "ImplementStepRuntimeDependencies",
         "InitWorkspaceRequest",
         "InitWorkspaceResult",
         "IterationOutcome",
-        "IterationPipelineDependencies",
         "IterationReport",
-        "IterationSummaryInputs",
         "IterationTelemetryInputs",
         "PhaseTiming",
-        "ReviewerPhaseOutcome",
-        "LoopRun",
         "RecoverWorkspaceRequest",
         "RecoverWorkspaceResult",
-        "RunConfig",
         "RunChecksRequest",
         "RunChecksResult",
         "RunLoopRequest",
         "RunLoopResult",
-        "RunServices",
-        "RunState",
         "ValidateRepositoryRequest",
         "ValidationResult",
         "VerificationPhaseOutcome",
+        "ReviewerPhaseOutcome",
         "run_feature_iteration_pipeline",
-        "run_implement_step_from_inputs",
     }
 )
-SCAN_ROOTS = (
-    PROJECT_ROOT / "src",
-    PROJECT_ROOT / "tests",
-)
-SKIP_DIR_NAMES = {"__pycache__", ".venv"}
-FEATURE_ITERATION_PACKAGE = "engineeringagent.application.feature_iteration"
-FORBIDDEN_FEATURE_ITERATION_EXPORT_MODULES = {
-    "contracts",
-    "implementation_step",
-    "pipeline",
-    "runtime_dependencies",
-}
 FORBIDDEN_FEATURE_ITERATION_EXPORTS = frozenset(
     {
         "CommandTiming",
         "CompletionCommitOutcome",
-        "FeatureIterationDependencies",
         "FeatureIterationInputs",
         "GatePhaseOutcome",
-        "ImplementStepFailureDependencies",
         "ImplementStepInputs",
-        "ImplementStepOutputDependencies",
         "ImplementStepResult",
-        "ImplementStepRuntimeDependencies",
         "IterationOutcome",
-        "IterationPipelineDependencies",
         "IterationReport",
-        "IterationReportPublisher",
-        "IterationSummaryInputs",
         "IterationTelemetryInputs",
         "PhaseTiming",
         "ReviewerPhaseOutcome",
         "VerificationPhaseOutcome",
-        "build_feature_iteration_pipeline_dependencies",
         "run_feature_iteration_pipeline",
-        "run_implement_step_from_inputs",
     }
 )
-SERVICE_CONTRACT_MODULES = {
-    "engineeringagent.application.checks_service": frozenset(
-        {"RunChecksRequest", "RunChecksResult"}
-    ),
-    "engineeringagent.application.guidance_service": frozenset(
-        {"GuidanceQuery", "GuidanceResult"}
-    ),
-    "engineeringagent.application.init_workspace_service": frozenset(
-        {"InitWorkspaceRequest", "InitWorkspaceResult"}
-    ),
-    "engineeringagent.application.run_loop_service": frozenset(
-        {"RunLoopRequest", "RunLoopResult"}
-    ),
-    "engineeringagent.application.validation_service": frozenset(
-        {"ValidateRepositoryRequest", "ValidationResult"}
-    ),
-    "engineeringagent.application.workspace_recovery_service": frozenset(
-        {"RecoverWorkspaceRequest", "RecoverWorkspaceResult"}
-    ),
+SYMBOL_MODULES = {
+    "FeatureIterationDependencies": "engineeringagent.application.feature_iteration_service",
+    "FeatureIterationRequest": "engineeringagent.application.feature_iteration_service",
+    "FeatureIterationResult": "engineeringagent.application.feature_iteration_service",
+    "GuidanceInputError": "engineeringagent.application.guidance_service",
+    "GuidanceQuery": "engineeringagent.application.guidance_service",
+    "GuidanceResult": "engineeringagent.application.guidance_service",
+    "ImplementationPromptRequest": "engineeringagent.application.prompt_builder",
+    "InitWorkspaceRequest": "engineeringagent.application.init_workspace_service",
+    "InitWorkspaceResult": "engineeringagent.application.init_workspace_service",
+    "RecoverWorkspaceRequest": "engineeringagent.application.workspace_recovery_service",
+    "RecoverWorkspaceResult": "engineeringagent.application.workspace_recovery_service",
+    "RunChecksRequest": "engineeringagent.application.checks_service",
+    "RunChecksResult": "engineeringagent.application.checks_service",
+    "RunLoopRequest": "engineeringagent.application.run_loop_service",
+    "RunLoopResult": "engineeringagent.application.run_loop_service",
+    "ValidateRepositoryRequest": "engineeringagent.application.validation_service",
+    "ValidationResult": "engineeringagent.application.validation_service",
 }
-SERVICE_CONTRACT_FILES = {
-    PROJECT_ROOT / "src" / "engineeringagent" / "application" / "checks_service.py": frozenset(
-        {"RunChecksRequest", "RunChecksResult"}
-    ),
-    PROJECT_ROOT
-    / "src"
-    / "engineeringagent"
-    / "application"
-    / "guidance_service.py": frozenset({"GuidanceQuery", "GuidanceResult"}),
-    PROJECT_ROOT
-    / "src"
-    / "engineeringagent"
-    / "application"
-    / "init_workspace_service.py": frozenset(
-        {"InitWorkspaceRequest", "InitWorkspaceResult"}
-    ),
-    PROJECT_ROOT
-    / "src"
-    / "engineeringagent"
-    / "application"
-    / "run_loop_service.py": frozenset({"RunLoopRequest", "RunLoopResult"}),
-    PROJECT_ROOT
-    / "src"
-    / "engineeringagent"
-    / "application"
-    / "validation_service.py": frozenset(
-        {"ValidateRepositoryRequest", "ValidationResult"}
-    ),
-    PROJECT_ROOT
-    / "src"
-    / "engineeringagent"
-    / "application"
-    / "workspace_recovery_service.py": frozenset(
-        {"RecoverWorkspaceRequest", "RecoverWorkspaceResult"}
-    ),
+FEATURE_ITERATION_SYMBOL_MODULES = {
+    "CommandTiming": "engineeringagent.application.feature_iteration.contracts",
+    "CompletionCommitOutcome": "engineeringagent.application.feature_iteration.contracts",
+    "FeatureIterationInputs": "engineeringagent.application.feature_iteration.contracts",
+    "GatePhaseOutcome": "engineeringagent.application.feature_iteration.contracts",
+    "ImplementStepInputs": "engineeringagent.application.feature_iteration.contracts",
+    "ImplementStepResult": "engineeringagent.application.feature_iteration.contracts",
+    "IterationOutcome": "engineeringagent.application.feature_iteration.contracts",
+    "IterationReport": "engineeringagent.application.feature_iteration.contracts",
+    "IterationTelemetryInputs": "engineeringagent.application.feature_iteration.contracts",
+    "PhaseTiming": "engineeringagent.application.feature_iteration.contracts",
+    "ReviewerPhaseOutcome": "engineeringagent.application.feature_iteration.contracts",
+    "VerificationPhaseOutcome": "engineeringagent.application.feature_iteration.contracts",
+    "run_feature_iteration_pipeline": "engineeringagent.application.feature_iteration.pipeline",
 }
 
 
@@ -200,39 +133,6 @@ def _parse_file(path: Path) -> tuple[ast.AST | None, list[str]]:
         return None, [f"{rel_path}:{exc.lineno or 1} failed to parse: {detail}"]
 
 
-def _root_export_violations(path: Path) -> list[str]:
-    tree, parse_errors = _parse_file(path)
-    if tree is None:
-        return parse_errors
-
-    rel_path = path.relative_to(PROJECT_ROOT).as_posix()
-    violations: list[str] = []
-    for node in ast.walk(tree):
-        if (
-            isinstance(node, ast.ImportFrom)
-            and node.module in FORBIDDEN_EXPORT_MODULES
-        ):
-            for alias in node.names:
-                if alias.name in FORBIDDEN_ROOT_EXPORTS:
-                    violations.append(
-                        f"{rel_path}:{node.lineno} application root must not re-export "
-                        f"{node.module} symbol {alias.name}"
-                    )
-        elif isinstance(node, ast.Assign):
-            if not any(
-                isinstance(target, ast.Name) and target.id == "__all__"
-                for target in node.targets
-            ):
-                continue
-            for exported_name in _string_list_members(node.value):
-                if exported_name in FORBIDDEN_ROOT_EXPORTS:
-                    violations.append(
-                        f"{rel_path}:{node.lineno} application root __all__ must not include "
-                        f"internal workflow symbol {exported_name}"
-                    )
-    return violations
-
-
 def _string_list_members(node: ast.AST) -> tuple[str, ...]:
     if not isinstance(node, (ast.List, ast.Tuple)):
         return ()
@@ -243,7 +143,12 @@ def _string_list_members(node: ast.AST) -> tuple[str, ...]:
     return tuple(names)
 
 
-def _root_import_violations(path: Path) -> list[str]:
+def _package_export_violations(
+    path: Path,
+    *,
+    forbidden_names: frozenset[str],
+    package_label: str,
+) -> list[str]:
     tree, parse_errors = _parse_file(path)
     if tree is None:
         return parse_errors
@@ -251,81 +156,12 @@ def _root_import_violations(path: Path) -> list[str]:
     rel_path = path.relative_to(PROJECT_ROOT).as_posix()
     violations: list[str] = []
     for node in ast.walk(tree):
-        if not isinstance(node, ast.ImportFrom):
-            continue
-        if node.module != "engineeringagent.application":
-            continue
-        for alias in node.names:
-            if alias.name in FORBIDDEN_ROOT_EXPORTS:
-                defining_module = _defining_module_for(alias.name)
-                violations.append(
-                    f"{rel_path}:{node.lineno} import {alias.name} from "
-                    f"{defining_module} instead of engineeringagent.application"
-                )
-    return violations
-
-
-def _direct_service_contract_import_violations(path: Path) -> list[str]:
-    tree, parse_errors = _parse_file(path)
-    if tree is None:
-        return parse_errors
-
-    rel_path = path.relative_to(PROJECT_ROOT).as_posix()
-    violations: list[str] = []
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.ImportFrom):
-            continue
-        module_name = node.module
-        if module_name not in SERVICE_CONTRACT_MODULES:
-            continue
-        for alias in node.names:
-            if alias.name not in SERVICE_CONTRACT_MODULES[module_name]:
-                continue
-            violations.append(
-                f"{rel_path}:{node.lineno} import {alias.name} from "
-                f"{_defining_module_for(alias.name)} instead of {module_name}"
-            )
-    return violations
-
-
-def _service_contract_definition_violations(path: Path) -> list[str]:
-    forbidden_names = SERVICE_CONTRACT_FILES.get(path)
-    if forbidden_names is None:
-        return []
-
-    tree, parse_errors = _parse_file(path)
-    if tree is None:
-        return parse_errors
-
-    rel_path = path.relative_to(PROJECT_ROOT).as_posix()
-    violations: list[str] = []
-    for node in ast.walk(tree):
-        if isinstance(node, ast.ClassDef) and node.name in forbidden_names:
-            violations.append(
-                f"{rel_path}:{node.lineno} workflow request/result contracts must live "
-                "under engineeringagent.application.contracts, not service modules"
-            )
-    return violations
-
-
-def _feature_iteration_export_violations(path: Path) -> list[str]:
-    tree, parse_errors = _parse_file(path)
-    if tree is None:
-        return parse_errors
-
-    rel_path = path.relative_to(PROJECT_ROOT).as_posix()
-    violations: list[str] = []
-    for node in ast.walk(tree):
-        if (
-            isinstance(node, ast.ImportFrom)
-            and node.level == 1
-            and node.module in FORBIDDEN_FEATURE_ITERATION_EXPORT_MODULES
-        ):
+        if isinstance(node, ast.ImportFrom):
             for alias in node.names:
-                if alias.name in FORBIDDEN_FEATURE_ITERATION_EXPORTS:
+                if alias.name in forbidden_names:
                     violations.append(
-                        f"{rel_path}:{node.lineno} feature_iteration package must not "
-                        f"re-export internal workflow symbol {alias.name}"
+                        f"{rel_path}:{node.lineno} {package_label} must not re-export "
+                        f"internal workflow symbol {alias.name}"
                     )
         elif isinstance(node, ast.Assign):
             if not any(
@@ -334,15 +170,20 @@ def _feature_iteration_export_violations(path: Path) -> list[str]:
             ):
                 continue
             for exported_name in _string_list_members(node.value):
-                if exported_name in FORBIDDEN_FEATURE_ITERATION_EXPORTS:
+                if exported_name in forbidden_names:
                     violations.append(
-                        f"{rel_path}:{node.lineno} feature_iteration package __all__ "
-                        f"must not include internal workflow symbol {exported_name}"
+                        f"{rel_path}:{node.lineno} {package_label} __all__ must not "
+                        f"include internal workflow symbol {exported_name}"
                     )
     return violations
 
 
-def _feature_iteration_import_violations(path: Path) -> list[str]:
+def _import_violations(
+    path: Path,
+    *,
+    package_name: str,
+    symbol_modules: dict[str, str],
+) -> list[str]:
     tree, parse_errors = _parse_file(path)
     if tree is None:
         return parse_errors
@@ -350,98 +191,54 @@ def _feature_iteration_import_violations(path: Path) -> list[str]:
     rel_path = path.relative_to(PROJECT_ROOT).as_posix()
     violations: list[str] = []
     for node in ast.walk(tree):
-        if not isinstance(node, ast.ImportFrom):
-            continue
-        if node.module != FEATURE_ITERATION_PACKAGE:
+        if not isinstance(node, ast.ImportFrom) or node.module != package_name:
             continue
         for alias in node.names:
-            if alias.name in FORBIDDEN_FEATURE_ITERATION_EXPORTS:
-                defining_module = _feature_iteration_defining_module_for(alias.name)
-                violations.append(
-                    f"{rel_path}:{node.lineno} import {alias.name} from "
-                    f"{defining_module} instead of {FEATURE_ITERATION_PACKAGE}"
-                )
+            defining_module = symbol_modules.get(alias.name)
+            if defining_module is None:
+                continue
+            violations.append(
+                f"{rel_path}:{node.lineno} import {alias.name} from "
+                f"{defining_module} instead of {package_name}"
+            )
     return violations
 
 
-def _defining_module_for(symbol_name: str) -> str:
-    if symbol_name in {
-        "FeatureIterationDependencies",
-        "FeatureIterationRequest",
-        "FeatureIterationResult",
-    }:
-        return "engineeringagent.application.feature_iteration_service"
-    if symbol_name in {
-        "GuidanceInputError",
-    }:
-        return "engineeringagent.application.guidance_service"
-    if symbol_name in {"GuidanceQuery", "GuidanceResult"}:
-        return "engineeringagent.application.contracts.guidance"
-    if symbol_name == "ImplementationPromptRequest":
-        return "engineeringagent.application.prompt_builder"
-    if symbol_name in {"InitWorkspaceRequest", "InitWorkspaceResult"}:
-        return "engineeringagent.application.contracts.init_workspace"
-    if symbol_name in {"RecoverWorkspaceRequest", "RecoverWorkspaceResult"}:
-        return "engineeringagent.application.contracts.workspace_recovery"
-    if symbol_name in {"RunChecksRequest", "RunChecksResult"}:
-        return "engineeringagent.application.contracts.checks"
-    if symbol_name in {"RunLoopRequest", "RunLoopResult"}:
-        return "engineeringagent.application.contracts.run_loop"
-    if symbol_name in {"ValidateRepositoryRequest", "ValidationResult"}:
-        return "engineeringagent.application.contracts.validation"
-    return "its defining application module"
-
-
-def _feature_iteration_defining_module_for(symbol_name: str) -> str:
-    if symbol_name in {
-        "CommandTiming",
-        "CompletionCommitOutcome",
-        "FeatureIterationInputs",
-        "GatePhaseOutcome",
-        "ImplementStepInputs",
-        "ImplementStepResult",
-        "IterationOutcome",
-        "IterationReport",
-        "IterationSummaryInputs",
-        "IterationTelemetryInputs",
-        "PhaseTiming",
-        "ReviewerPhaseOutcome",
-        "VerificationPhaseOutcome",
-    }:
-        return "engineeringagent.application.feature_iteration.contracts"
-    if symbol_name in {
-        "ImplementStepFailureDependencies",
-        "ImplementStepOutputDependencies",
-        "ImplementStepRuntimeDependencies",
-        "run_implement_step_from_inputs",
-    }:
-        return "engineeringagent.application.feature_iteration.implementation_step"
-    if symbol_name in {
-        "IterationPipelineDependencies",
-        "run_feature_iteration_pipeline",
-    }:
-        return "engineeringagent.application.feature_iteration.pipeline"
-    if symbol_name in {
-        "FeatureIterationDependencies",
-        "IterationReportPublisher",
-        "build_feature_iteration_pipeline_dependencies",
-    }:
-        return "engineeringagent.application.feature_iteration.runtime_dependencies"
-    return "its defining feature-iteration module"
-
-
 def _application_root_workflow_surface_violations() -> list[str]:
-    violations = _root_export_violations(APPLICATION_ROOT)
+    violations: list[str] = []
+    if APPLICATION_ROOT.exists():
+        violations.extend(
+            _package_export_violations(
+                APPLICATION_ROOT,
+                forbidden_names=FORBIDDEN_ROOT_EXPORTS,
+                package_label="application root",
+            )
+        )
     if FEATURE_ITERATION_ROOT.exists():
-        violations.extend(_feature_iteration_export_violations(FEATURE_ITERATION_ROOT))
+        violations.extend(
+            _package_export_violations(
+                FEATURE_ITERATION_ROOT,
+                forbidden_names=FORBIDDEN_FEATURE_ITERATION_EXPORTS,
+                package_label="feature_iteration package",
+            )
+        )
     for path in _iter_python_files():
-        if path == APPLICATION_ROOT:
+        if path == APPLICATION_ROOT or path == FEATURE_ITERATION_ROOT:
             continue
-        violations.extend(_service_contract_definition_violations(path))
-        violations.extend(_root_import_violations(path))
-        violations.extend(_direct_service_contract_import_violations(path))
-        if path != FEATURE_ITERATION_ROOT:
-            violations.extend(_feature_iteration_import_violations(path))
+        violations.extend(
+            _import_violations(
+                path,
+                package_name="engineeringagent.application",
+                symbol_modules=SYMBOL_MODULES,
+            )
+        )
+        violations.extend(
+            _import_violations(
+                path,
+                package_name=FEATURE_ITERATION_PACKAGE,
+                symbol_modules=FEATURE_ITERATION_SYMBOL_MODULES,
+            )
+        )
     return sorted(set(violations))
 
 

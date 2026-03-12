@@ -2,12 +2,28 @@
 
 from __future__ import annotations
 
-from engineeringagent.application.contracts.guidance import (
-    GuidanceQuery,
-    GuidanceResult,
-)
+from pydantic import BaseModel, ConfigDict
+
 from engineeringagent.domain.guidance import GuidanceTopic
 from engineeringagent.ports import GuidanceTopicRepository
+
+
+class GuidanceQuery(BaseModel):
+    """Typed input for one guidance request."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    kind: str
+    topic_id: str | None = None
+
+
+class GuidanceResult(BaseModel):
+    """Stable application result for guidance rendering."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    payload: str
+    output_prefix: str
 
 
 class GuidanceInputError(ValueError):
