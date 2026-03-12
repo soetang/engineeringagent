@@ -9,8 +9,7 @@ from pydantic import BaseModel, ConfigDict
 
 from engineeringagent.domain.specification import feature_completion_commit_subject
 from engineeringagent.ports import CommitRequest, ProgressJournal, VersionControlGateway
-from .feature_iteration_contracts import FeatureIterationInputs
-from .feature_iteration_pipeline import IterationPipelineDependencies
+from .feature_iteration import FeatureIterationInputs, IterationPipelineDependencies
 
 
 class FeatureIterationRequest(BaseModel):

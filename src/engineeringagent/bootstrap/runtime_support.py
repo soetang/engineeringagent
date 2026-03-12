@@ -18,7 +18,7 @@ from engineeringagent.application import (
     IterationSummaryInputs,
     PromptBuilder,
 )
-from engineeringagent.application.implementation_step import (
+from engineeringagent.application.feature_iteration import (
     ImplementStepOutputDependencies,
     ImplementStepRuntimeDependencies,
     run_implement_step_from_inputs,

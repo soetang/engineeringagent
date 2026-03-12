@@ -5,7 +5,7 @@ from __future__ import annotations
 from engineeringagent.adapters.documents import filesystem_feature_state
 from engineeringagent.adapters.progress import write_iteration_telemetry
 from engineeringagent.application import FeatureIterationRuntimeDependencies
-from engineeringagent.application.feature_iteration_pipeline import (
+from engineeringagent.application.feature_iteration import (
     run_feature_iteration_pipeline,
 )
 from engineeringagent.bootstrap.iteration_reporting import (

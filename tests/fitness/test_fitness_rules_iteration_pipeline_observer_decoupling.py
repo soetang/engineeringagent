@@ -22,7 +22,7 @@ def _script_path(repo_root: Path) -> Path:
 def _write_iteration_module(project_root: Path, body: str) -> None:
     path = (
         project_root
-        / "src/engineeringagent/application/feature_iteration_pipeline.py"
+        / "src/engineeringagent/application/feature_iteration/pipeline.py"
     )
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(body, encoding="utf-8")
@@ -126,17 +126,17 @@ def test_iteration_pipeline_observer_decoupling_rule_fails_on_console_and_teleme
     violations = _violations(payload)
     assert len(violations) == 3
     assert any(
-        "src/engineeringagent/application/feature_iteration_pipeline.py:4 invokes console output sink 'print'"
+        "src/engineeringagent/application/feature_iteration/pipeline.py:4 invokes console output sink 'print'"
         in violation
         for violation in violations
     )
     assert any(
-        "src/engineeringagent/application/feature_iteration_pipeline.py:5 invokes console output sink 'print_summary'"
+        "src/engineeringagent/application/feature_iteration/pipeline.py:5 invokes console output sink 'print_summary'"
         in violation
         for violation in violations
     )
     assert any(
-        "src/engineeringagent/application/feature_iteration_pipeline.py:6 invokes telemetry sink 'write_iteration_telemetry'"
+        "src/engineeringagent/application/feature_iteration/pipeline.py:6 invokes telemetry sink 'write_iteration_telemetry'"
         in violation
         for violation in violations
     )

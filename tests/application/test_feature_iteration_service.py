@@ -14,7 +14,7 @@ from engineeringagent.application import (
     IterationTelemetryInputs,
     PhaseTiming,
 )
-from engineeringagent.application.feature_iteration_pipeline import (
+from engineeringagent.application.feature_iteration import (
     IterationPipelineDependencies,
 )
 from engineeringagent.bootstrap.iteration_reporting import DefaultObserverDependencies

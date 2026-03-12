@@ -132,10 +132,12 @@ def test_repo_layer_contracts_rule_allows_application_iteration_pipeline_contrac
     repo_root: Path,
 ) -> None:
     """Allow the application iteration pipeline to import local contracts."""
-    application_root = tmp_path / "src" / "engineeringagent" / "application"
+    application_root = (
+        tmp_path / "src" / "engineeringagent" / "application" / "feature_iteration"
+    )
     application_root.mkdir(parents=True, exist_ok=True)
-    (application_root / "feature_iteration_pipeline.py").write_text(
-        "from .feature_iteration_contracts import IterationReport\n",
+    (application_root / "pipeline.py").write_text(
+        "from .contracts import IterationReport\n",
         encoding="utf-8",
     )
 

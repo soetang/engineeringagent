@@ -8,7 +8,7 @@ from typing import Any, Callable
 import pytest
 from pydantic import BaseModel, ConfigDict
 
-import engineeringagent.application.feature_iteration_pipeline as iteration_module
+import engineeringagent.application.feature_iteration.pipeline as iteration_module
 from engineeringagent.application import (
     CompletionCommitOutcome,
     FeatureIterationInputs,
@@ -25,8 +25,8 @@ from engineeringagent.domain.specification import (
     InitialFeatureLoadOutcome,
     PostImplementFeatureOutcome,
 )
-from engineeringagent.application.feature_iteration_pipeline import (
-    IterationPipelineDependencies,
+from engineeringagent.application.feature_iteration import IterationPipelineDependencies
+from engineeringagent.application.feature_iteration.pipeline import (
     _timed_phase,
     run_feature_iteration_pipeline,
 )

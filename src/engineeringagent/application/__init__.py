@@ -13,33 +13,30 @@ from .guidance_service import (
     GuidanceResult,
     GuidanceService,
 )
-from .implementation_step import (
-    ImplementStepRuntimeDependencies,
-    run_implement_step_from_inputs,
-)
 from .init_workspace_service import (
     InitWorkspaceRequest,
     InitWorkspaceResult,
     InitWorkspaceService,
 )
-from .feature_iteration_contracts import (
+from .feature_iteration import (
     CommandTiming,
     CompletionCommitOutcome,
     FeatureIterationInputs,
     GatePhaseOutcome,
     ImplementStepInputs,
+    ImplementStepOutputDependencies,
     ImplementStepResult,
+    ImplementStepRuntimeDependencies,
     IterationOutcome,
+    IterationPipelineDependencies,
     IterationReport,
     IterationSummaryInputs,
     IterationTelemetryInputs,
     PhaseTiming,
     ReviewerPhaseOutcome,
     VerificationPhaseOutcome,
-)
-from .feature_iteration_pipeline import (
-    IterationPipelineDependencies,
     run_feature_iteration_pipeline,
+    run_implement_step_from_inputs,
 )
 from .prompt_builder import ImplementationPromptRequest, PromptBuilder
 from .run_loop_service import RunLoopRequest, RunLoopResult, RunLoopService
@@ -69,6 +66,7 @@ __all__ = [
     "GuidanceResult",
     "GuidanceService",
     "ImplementStepInputs",
+    "ImplementStepOutputDependencies",
     "ImplementStepResult",
     "ImplementStepRuntimeDependencies",
     "InitWorkspaceRequest",

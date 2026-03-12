@@ -20,7 +20,7 @@ from engineeringagent.domain.specification import (
 )
 from engineeringagent.specs import feature_progress_kind
 
-from .feature_iteration_contracts import (
+from .contracts import (
     CommandTiming,
     CompletionCommitOutcome,
     FeatureIterationInputs,

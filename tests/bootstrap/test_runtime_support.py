@@ -8,7 +8,7 @@ from engineeringagent.application import IterationSummaryInputs
 from engineeringagent.ports import AgentRunner
 from engineeringagent.domain.audit import fallback_implement_progress_envelope
 from engineeringagent.bootstrap import runtime_support
-from engineeringagent.application.implementation_step import (
+from engineeringagent.application.feature_iteration import (
     ImplementStepRuntimeDependencies,
 )
 
