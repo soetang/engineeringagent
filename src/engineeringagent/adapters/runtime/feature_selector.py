@@ -5,11 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Callable, Sequence
 
-from engineeringagent.agents.helpers import (
+from engineeringagent.agents import (
+    AgentBackendError,
     classify_backend_exception,
     describe_action,
 )
-from engineeringagent.agents.contracts import AgentBackendError
 from engineeringagent.domain.specification import (
     deterministic_feature_choice,
     parse_selector_output,
