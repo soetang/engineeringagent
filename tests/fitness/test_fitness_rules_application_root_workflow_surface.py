@@ -240,3 +240,37 @@ def test_checker_allows_workspace_service_exports_from_application_root(
     assert proc.returncode == 0
     assert payload["status"] == "pass"
     assert _violations(payload) == []
+
+
+def test_checker_flags_runtime_loop_context_exports_from_application_root(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Reject runtime loop context leaking through the application root package."""
+    _write_module(
+        tmp_path,
+        relative_path="src/engineeringagent/application/__init__.py",
+        content="\n".join(
+            [
+                "from .run_loop import RunConfig",
+                "",
+                '__all__ = ["RunConfig"]',
+                "",
+            ]
+        ),
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert any(
+        "src/engineeringagent/application/__init__.py:1" in violation
+        and "RunConfig" in violation
+        for violation in _violations(payload)
+    )
+    assert any(
+        "src/engineeringagent/application/__init__.py:3" in violation
+        and "RunConfig" in violation
+        for violation in _violations(payload)
+    )

@@ -1,4 +1,4 @@
-"""Typed run-loop context models owned by the application layer."""
+"""Runtime-owned loop orchestration context models."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class RunConfig(BaseModel):
-    """Immutable run configuration carried through orchestration."""
+    """Immutable run configuration carried through runtime orchestration."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -36,7 +36,7 @@ class RunServices(BaseModel):
 
 
 class RunState(BaseModel):
-    """Copy-on-write loop state tracked across iterations."""
+    """Copy-on-write loop state tracked across runtime iterations."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 

@@ -143,29 +143,6 @@ class RepositoryAgentsConfig(BaseModel):
         return normalized
 
 
-class RepositoryConfig(BaseModel):
-    """Effective repository configuration after precedence resolution."""
-
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-    version: int = 1
-    paths: RepositoryPaths = Field(default_factory=RepositoryPaths)
-    agents: RepositoryAgentsConfig = Field(default_factory=RepositoryAgentsConfig)
-    vcs: "RepositoryVcsConfig" = Field(default_factory=lambda: RepositoryVcsConfig())
-    execution: "RepositoryExecutionConfig" = Field(
-        default_factory=lambda: RepositoryExecutionConfig()
-    )
-
-    @field_validator("version", mode="before")
-    @classmethod
-    def _validate_version(cls, value: Any) -> int:
-        if not isinstance(value, int):
-            raise ValueError("version must be an integer")
-        if value != 1:
-            raise ValueError("version must be 1")
-        return value
-
-
 class RepositoryVcsConfig(BaseModel):
     """Version-control defaults owned by repository configuration."""
 
@@ -200,3 +177,26 @@ class RepositoryExecutionConfig(BaseModel):
         if not normalized:
             raise ValueError("execution.mode cannot be empty")
         return normalized
+
+
+class RepositoryConfig(BaseModel):
+    """Effective repository configuration after precedence resolution."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    version: int = 1
+    paths: RepositoryPaths = Field(default_factory=RepositoryPaths)
+    agents: RepositoryAgentsConfig = Field(default_factory=RepositoryAgentsConfig)
+    vcs: RepositoryVcsConfig = Field(default_factory=RepositoryVcsConfig)
+    execution: RepositoryExecutionConfig = Field(
+        default_factory=RepositoryExecutionConfig
+    )
+
+    @field_validator("version", mode="before")
+    @classmethod
+    def _validate_version(cls, value: Any) -> int:
+        if not isinstance(value, int):
+            raise ValueError("version must be an integer")
+        if value != 1:
+            raise ValueError("version must be 1")
+        return value

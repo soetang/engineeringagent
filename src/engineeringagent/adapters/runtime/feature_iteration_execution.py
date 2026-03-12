@@ -14,6 +14,7 @@ from engineeringagent.application.feature_iteration import (
     IterationReport,
     run_feature_iteration_pipeline,
 )
+from engineeringagent.domain.specification import feature_completion_commit_subject
 from engineeringagent.ports import (
     Clock,
     CommitRequest,
@@ -58,8 +59,6 @@ def _commit_feature_completion(
     feature: dict[str, object],
 ) -> tuple[bool, str | None, str]:
     """Create the accepted iteration commit for a completed feature."""
-    from engineeringagent.domain.specification import feature_completion_commit_subject
-
     message = feature_completion_commit_subject(feature)
     commit_result = version_control_gateway.commit(
         CommitRequest(

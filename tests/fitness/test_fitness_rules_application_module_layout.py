@@ -242,3 +242,23 @@ def test_checker_flags_extra_workspace_modules_inside_workspace_subpackage(
     assert _violations(payload) == [
         "src/engineeringagent/application/workspace: legacy workspace application package must remain absent; promote workspace workflow services to root-level application modules such as init_workspace_service.py and workspace_recovery_service.py"
     ]
+
+
+def test_checker_flags_legacy_run_loop_application_package(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Reject runtime loop context restored under the application layer."""
+    _write_module(
+        tmp_path,
+        relative_path="src/engineeringagent/application/run_loop/context.py",
+        content="class RunConfig:\n    pass\n",
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert _violations(payload) == [
+        "src/engineeringagent/application/run_loop: runtime loop context belongs in engineeringagent.adapters.runtime; keep application focused on workflow services and move loop context models to a runtime adapter module"
+    ]

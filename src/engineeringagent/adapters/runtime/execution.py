@@ -9,7 +9,6 @@ from typing import Callable
 from engineeringagent.application import (
     FeatureIterationRequest,
     FeatureIterationService,
-    LoopRun,
 )
 from engineeringagent.application.feature_iteration import (
     FeatureIterationInputs,
@@ -21,6 +20,7 @@ from engineeringagent.ports import (
     RunLoopExecutor,
     VersionControlGateway,
 )
+from .context import LoopRun
 from .loop_run_builder import (
     RunConfigOptions,
     build_loop_run,

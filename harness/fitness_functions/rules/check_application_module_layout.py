@@ -28,6 +28,7 @@ ALLOWED_ROOT_MODULES = frozenset(
     }
 )
 WORKSPACE_ROOT = APPLICATION_ROOT / "workspace"
+RUN_LOOP_ROOT = APPLICATION_ROOT / "run_loop"
 
 
 def _application_module_layout_violations() -> list[str]:
@@ -51,6 +52,13 @@ def _application_module_layout_violations() -> list[str]:
             f"{rel_path}: legacy workspace application package must remain absent; "
             "promote workspace workflow services to root-level application modules "
             "such as init_workspace_service.py and workspace_recovery_service.py"
+        )
+    if RUN_LOOP_ROOT.exists():
+        rel_path = RUN_LOOP_ROOT.relative_to(PROJECT_ROOT).as_posix()
+        violations.append(
+            f"{rel_path}: runtime loop context belongs in engineeringagent.adapters.runtime; "
+            "keep application focused on workflow services and move loop context models "
+            "to a runtime adapter module"
         )
     return violations
 

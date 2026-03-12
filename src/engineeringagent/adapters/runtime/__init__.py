@@ -1,6 +1,6 @@
 """Runtime execution adapters for transitional loop orchestration."""
 
-from engineeringagent.application.run_loop import LoopRun, RunConfig, RunServices, RunState
+from .context import LoopRun, RunConfig, RunServices, RunState
 
 from .execution import (
     RuntimeRunLoopExecutor,
