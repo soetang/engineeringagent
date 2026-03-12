@@ -20,19 +20,14 @@ ALLOWED_ROOT_MODULES = frozenset(
         "checks_service.py",
         "feature_iteration_service.py",
         "guidance_service.py",
+        "init_workspace_service.py",
         "prompt_builder.py",
         "run_loop_service.py",
         "validation_service.py",
+        "workspace_recovery_service.py",
     }
 )
 WORKSPACE_ROOT = APPLICATION_ROOT / "workspace"
-ALLOWED_WORKSPACE_MODULES = frozenset(
-    {
-        "__init__.py",
-        "init_service.py",
-        "recovery_service.py",
-    }
-)
 
 
 def _application_module_layout_violations() -> list[str]:
@@ -51,16 +46,12 @@ def _application_module_layout_violations() -> list[str]:
             "engineeringagent.application.feature_iteration, or delete the legacy module"
         )
     if WORKSPACE_ROOT.exists():
-        for path in sorted(WORKSPACE_ROOT.rglob("*.py")):
-            if path.name in ALLOWED_WORKSPACE_MODULES:
-                continue
-            rel_path = path.relative_to(PROJECT_ROOT).as_posix()
-            violations.append(
-                f"{rel_path}: workspace application package may only contain the "
-                "documented workspace workflow-service modules; keep "
-                "engineeringagent.application.workspace limited to init_service.py, "
-                "recovery_service.py, and __init__.py"
-            )
+        rel_path = WORKSPACE_ROOT.relative_to(PROJECT_ROOT).as_posix()
+        violations.append(
+            f"{rel_path}: legacy workspace application package must remain absent; "
+            "promote workspace workflow services to root-level application modules "
+            "such as init_workspace_service.py and workspace_recovery_service.py"
+        )
     return violations
 
 

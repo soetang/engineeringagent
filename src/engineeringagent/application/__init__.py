@@ -12,6 +12,11 @@ from .guidance_service import (
     GuidanceResult,
     GuidanceService,
 )
+from .init_workspace_service import (
+    InitWorkspaceRequest,
+    InitWorkspaceResult,
+    InitWorkspaceService,
+)
 from .prompt_builder import ImplementationPromptRequest, PromptBuilder
 from .run_loop_service import RunLoopRequest, RunLoopResult, RunLoopService
 from .validation_service import (
@@ -19,10 +24,7 @@ from .validation_service import (
     ValidationResult,
     ValidationService,
 )
-from .workspace import (
-    InitWorkspaceRequest,
-    InitWorkspaceResult,
-    InitWorkspaceService,
+from .workspace_recovery_service import (
     RecoverWorkspaceRequest,
     RecoverWorkspaceResult,
     WorkspaceRecoveryService,

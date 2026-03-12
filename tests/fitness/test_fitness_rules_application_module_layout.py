@@ -180,7 +180,7 @@ def test_checker_allows_workspace_service_modules_in_workspace_subpackage(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Allow workspace workflow services in the documented workspace package."""
+    """Reject the removed workspace application subpackage."""
     _write_module(
         tmp_path,
         relative_path="src/engineeringagent/application/workspace/init_service.py",
@@ -195,15 +195,17 @@ def test_checker_allows_workspace_service_modules_in_workspace_subpackage(
     proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
 
     assert proc.returncode == 0
-    assert payload["status"] == "pass"
-    assert _violations(payload) == []
+    assert payload["status"] == "fail"
+    assert _violations(payload) == [
+        "src/engineeringagent/application/workspace: legacy workspace application package must remain absent; promote workspace workflow services to root-level application modules such as init_workspace_service.py and workspace_recovery_service.py"
+    ]
 
 
 def test_checker_flags_legacy_root_workspace_service_modules(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Reject the removed flat workspace service modules."""
+    """Allow the target root-level workspace service modules."""
     _write_module(
         tmp_path,
         relative_path="src/engineeringagent/application/init_workspace_service.py",
@@ -218,18 +220,15 @@ def test_checker_flags_legacy_root_workspace_service_modules(
     proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
 
     assert proc.returncode == 0
-    assert payload["status"] == "fail"
-    assert _violations(payload) == [
-        "src/engineeringagent/application/init_workspace_service.py: application root may only contain workflow-service modules; keep only documented workflow-service modules at the application root; move helpers into an explicit subpackage such as engineeringagent.application.feature_iteration, or delete the legacy module",
-        "src/engineeringagent/application/workspace_recovery_service.py: application root may only contain workflow-service modules; keep only documented workflow-service modules at the application root; move helpers into an explicit subpackage such as engineeringagent.application.feature_iteration, or delete the legacy module",
-    ]
+    assert payload["status"] == "pass"
+    assert _violations(payload) == []
 
 
 def test_checker_flags_extra_workspace_modules_inside_workspace_subpackage(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Reject undocumented helpers under the workspace application package."""
+    """Reject the legacy workspace package even when it only contains helpers."""
     _write_module(
         tmp_path,
         relative_path="src/engineeringagent/application/workspace/helpers.py",
@@ -241,5 +240,5 @@ def test_checker_flags_extra_workspace_modules_inside_workspace_subpackage(
     assert proc.returncode == 0
     assert payload["status"] == "fail"
     assert _violations(payload) == [
-        "src/engineeringagent/application/workspace/helpers.py: workspace application package may only contain the documented workspace workflow-service modules; keep engineeringagent.application.workspace limited to init_service.py, recovery_service.py, and __init__.py"
+        "src/engineeringagent/application/workspace: legacy workspace application package must remain absent; promote workspace workflow services to root-level application modules such as init_workspace_service.py and workspace_recovery_service.py"
     ]

@@ -87,11 +87,11 @@ def test_repo_layer_contracts_rule_blocks_deleted_domain_prompting_directory(
     ]
 
 
-def test_repo_layer_contracts_rule_allows_application_workspace_directory(
+def test_repo_layer_contracts_rule_blocks_deleted_application_workspace_directory(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Allow the canonical application workspace package."""
+    """Fail when the removed application workspace package reappears."""
     workspace_root = tmp_path / "src" / "engineeringagent" / "application" / "workspace"
     workspace_root.mkdir(parents=True, exist_ok=True)
     (workspace_root / "__init__.py").write_text("", encoding="utf-8")
@@ -101,9 +101,11 @@ def test_repo_layer_contracts_rule_allows_application_workspace_directory(
     proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
 
     assert proc.returncode == 0
-    assert payload["status"] == "pass"
+    assert payload["status"] == "fail"
     assert payload["rule_id"] == "architecture.repo-layer-contracts"
-    assert payload["violations"] == []
+    assert payload["violations"] == [
+        "src/engineeringagent/application/workspace: deleted legacy directory path must remain absent"
+    ]
 
 
 def test_repo_layer_contracts_rule_blocks_deleted_nested_validation_service_module(
@@ -732,45 +734,60 @@ def test_repo_layer_contracts_rule_blocks_deleted_nested_guidance_service_module
     ]
 
 
-def test_repo_layer_contracts_rule_blocks_deleted_flat_init_workspace_service_module(
+def test_repo_layer_contracts_rule_allows_root_init_workspace_service_module(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Fail when the removed flat init workspace service returns."""
-    legacy_module = (
+    """Allow the canonical root init workspace service module."""
+    module_path = (
         tmp_path
         / "src"
         / "engineeringagent"
         / "application"
         / "init_workspace_service.py"
     )
-    legacy_module.parent.mkdir(parents=True, exist_ok=True)
-    legacy_module.write_text("", encoding="utf-8")
+    module_path.parent.mkdir(parents=True, exist_ok=True)
+    module_path.write_text("", encoding="utf-8")
 
     proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
 
     assert proc.returncode == 0
-    assert payload["status"] == "fail"
+    assert payload["status"] == "pass"
     assert payload["rule_id"] == "architecture.repo-layer-contracts"
-    assert payload["violations"] == [
-        "src/engineeringagent/application/init_workspace_service.py: deleted legacy module path must remain absent"
-    ]
+    assert payload["violations"] == []
 
 
-def test_repo_layer_contracts_rule_blocks_deleted_flat_workspace_recovery_service_module(
+def test_repo_layer_contracts_rule_allows_root_workspace_recovery_service_module(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Fail when the removed flat workspace recovery service returns."""
-    legacy_module = (
+    """Allow the canonical root workspace recovery service module."""
+    module_path = (
         tmp_path
         / "src"
         / "engineeringagent"
         / "application"
         / "workspace_recovery_service.py"
     )
-    legacy_module.parent.mkdir(parents=True, exist_ok=True)
-    legacy_module.write_text("", encoding="utf-8")
+    module_path.parent.mkdir(parents=True, exist_ok=True)
+    module_path.write_text("", encoding="utf-8")
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "pass"
+    assert payload["rule_id"] == "architecture.repo-layer-contracts"
+    assert payload["violations"] == []
+
+
+def test_repo_layer_contracts_rule_blocks_deleted_workspace_application_package(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Fail when the removed application workspace package reappears."""
+    legacy_root = tmp_path / "src" / "engineeringagent" / "application" / "workspace"
+    legacy_root.mkdir(parents=True, exist_ok=True)
+    (legacy_root / "__init__.py").write_text("", encoding="utf-8")
 
     proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
 
@@ -778,7 +795,7 @@ def test_repo_layer_contracts_rule_blocks_deleted_flat_workspace_recovery_servic
     assert payload["status"] == "fail"
     assert payload["rule_id"] == "architecture.repo-layer-contracts"
     assert payload["violations"] == [
-        "src/engineeringagent/application/workspace_recovery_service.py: deleted legacy module path must remain absent"
+        "src/engineeringagent/application/workspace: deleted legacy directory path must remain absent",
     ]
 
 

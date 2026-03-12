@@ -222,18 +222,18 @@ def test_test_layout_module_mirroring_rule_flags_legacy_flat_workspace_test_path
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Reject root-level workspace-service tests after moving to mirrored subpackage paths."""
-    _write_file(tmp_path, "tests/application/test_init_workspace_service.py", "")
-    _write_file(tmp_path, "tests/application/test_workspace_recovery_service.py", "")
+    """Reject workspace-subpackage tests after moving services to root modules."""
+    _write_file(tmp_path, "tests/application/workspace/test_init_service.py", "")
+    _write_file(tmp_path, "tests/application/workspace/test_recovery_service.py", "")
     _write_file(tmp_path, "tests/__init__.py", "")
     _write_file(tmp_path, "tests/conftest.py", "")
     _write_file(tmp_path, "src/engineeringagent/application/__init__.py", "")
+    _write_file(tmp_path, "src/engineeringagent/application/init_workspace_service.py", "")
     _write_file(
         tmp_path,
-        "src/engineeringagent/application/workspace/init_service.py",
+        "src/engineeringagent/application/workspace_recovery_service.py",
         "",
     )
-    _write_file(tmp_path, "src/engineeringagent/application/workspace/recovery_service.py", "")
 
     proc, result = _run_checker(
         tmp_path,
@@ -244,8 +244,8 @@ def test_test_layout_module_mirroring_rule_flags_legacy_flat_workspace_test_path
     assert proc.returncode == 0
     assert result["status"] == "fail"
     assert _violations(result) == [
-        "tests/application/test_init_workspace_service.py: legacy test path is forbidden; move it under the mirrored source module path.",
-        "tests/application/test_workspace_recovery_service.py: legacy test path is forbidden; move it under the mirrored source module path.",
+        "tests/application/workspace/test_init_service.py: not mirrored by src module path src/engineeringagent/application/workspace",
+        "tests/application/workspace/test_recovery_service.py: not mirrored by src module path src/engineeringagent/application/workspace",
     ]
 
 
@@ -253,15 +253,18 @@ def test_test_layout_module_mirroring_rule_allows_mirrored_workspace_tests(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Allow mirrored workspace service tests under the workspace subpackage."""
-    _write_file(tmp_path, "tests/application/workspace/test_init_service.py", "")
-    _write_file(tmp_path, "tests/application/workspace/test_recovery_service.py", "")
+    """Allow mirrored tests for root-level workspace service modules."""
+    _write_file(tmp_path, "tests/application/test_init_workspace_service.py", "")
+    _write_file(tmp_path, "tests/application/test_workspace_recovery_service.py", "")
     _write_file(tmp_path, "tests/__init__.py", "")
     _write_file(tmp_path, "tests/conftest.py", "")
     _write_file(tmp_path, "src/engineeringagent/application/__init__.py", "")
-    _write_file(tmp_path, "src/engineeringagent/application/workspace/__init__.py", "")
-    _write_file(tmp_path, "src/engineeringagent/application/workspace/init_service.py", "")
-    _write_file(tmp_path, "src/engineeringagent/application/workspace/recovery_service.py", "")
+    _write_file(tmp_path, "src/engineeringagent/application/init_workspace_service.py", "")
+    _write_file(
+        tmp_path,
+        "src/engineeringagent/application/workspace_recovery_service.py",
+        "",
+    )
 
     proc, result = _run_checker(
         tmp_path,

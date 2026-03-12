@@ -47,8 +47,7 @@ def test_checker_flags_direct_filesystem_mutations_in_application_modules(
         / "src"
         / "engineeringagent"
         / "application"
-        / "workspace"
-        / "init_service.py"
+        / "init_workspace_service.py"
     )
     module_path.parent.mkdir(parents=True, exist_ok=True)
     module_path.write_text(
@@ -70,7 +69,7 @@ def test_checker_flags_direct_filesystem_mutations_in_application_modules(
     assert payload["rule_id"] == "architecture.application-filesystem-boundary"
     assert payload["status"] == "fail"
     assert _violations(payload) == [
-        "src/engineeringagent/application/workspace/init_service.py:4 application modules must delegate filesystem mutations through ports or injected dependencies; found `rename()`"
+        "src/engineeringagent/application/init_workspace_service.py:4 application modules must delegate filesystem mutations through ports or injected dependencies; found `rename()`"
     ]
 
 
