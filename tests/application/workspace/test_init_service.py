@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from engineeringagent.application import (
+from engineeringagent.application.workspace import (
     InitWorkspaceRequest,
     InitWorkspaceResult,
     InitWorkspaceService,

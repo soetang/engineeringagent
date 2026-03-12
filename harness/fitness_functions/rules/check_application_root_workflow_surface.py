@@ -15,6 +15,7 @@ from engineeringagent.checks.fitness.contracts import (
 RULE_ID = "architecture.application-root-workflow-surface"
 PROJECT_ROOT = Path(".")
 APPLICATION_ROOT = PROJECT_ROOT / "src" / "engineeringagent" / "application" / "__init__.py"
+FORBIDDEN_EXPORT_MODULES = {"feature_iteration", "workspace"}
 FORBIDDEN_ROOT_EXPORTS = frozenset(
     {
         "CommandTiming",
@@ -34,6 +35,12 @@ FORBIDDEN_ROOT_EXPORTS = frozenset(
         "PhaseTiming",
         "ReviewerPhaseOutcome",
         "VerificationPhaseOutcome",
+        "InitWorkspaceRequest",
+        "InitWorkspaceResult",
+        "InitWorkspaceService",
+        "RecoverWorkspaceRequest",
+        "RecoverWorkspaceResult",
+        "WorkspaceRecoveryService",
         "run_feature_iteration_pipeline",
         "run_implement_step_from_inputs",
     }
@@ -78,12 +85,15 @@ def _root_export_violations(path: Path) -> list[str]:
     rel_path = path.relative_to(PROJECT_ROOT).as_posix()
     violations: list[str] = []
     for node in ast.walk(tree):
-        if isinstance(node, ast.ImportFrom) and node.module == "feature_iteration":
+        if (
+            isinstance(node, ast.ImportFrom)
+            and node.module in FORBIDDEN_EXPORT_MODULES
+        ):
             for alias in node.names:
                 if alias.name in FORBIDDEN_ROOT_EXPORTS:
                     violations.append(
                         f"{rel_path}:{node.lineno} application root must not re-export "
-                        f"feature_iteration symbol {alias.name}"
+                        f"{node.module} symbol {alias.name}"
                     )
         elif isinstance(node, ast.Assign):
             if not any(

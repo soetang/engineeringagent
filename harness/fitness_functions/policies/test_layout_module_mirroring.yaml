@@ -14,5 +14,7 @@ alias_topic_roots:
 forbidden_test_paths:
   - tests/application/test_feature_iteration_pipeline.py
   - tests/application/test_implementation_step.py
+  - tests/application/test_init_workspace_service.py
+  - tests/application/test_workspace_recovery_service.py
   - tests/bootstrap/test_runtime_run_loop_executor.py
   - tests/progress/test_filesystem_journal.py

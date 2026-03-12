@@ -26,17 +26,19 @@ from engineeringagent.application import (
     ChecksService,
     FeatureIterationService,
     GuidanceService,
-    InitWorkspaceService,
     PromptBuilder,
     RunLoopService,
     ValidationService,
-    WorkspaceRecoveryService,
 )
 from engineeringagent.application.feature_iteration import (
     FeatureIterationRuntimeDependencies,
     FeatureIterationInputs,
     IterationReport,
     IterationTelemetryInputs,
+)
+from engineeringagent.application.workspace import (
+    InitWorkspaceService,
+    WorkspaceRecoveryService,
 )
 from engineeringagent.bootstrap import AppFactory
 import engineeringagent.bootstrap.app_factory as app_factory_module

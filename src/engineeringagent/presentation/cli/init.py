@@ -7,7 +7,7 @@ from typing import Callable, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from ...application import (
+from ...application.workspace import (
     InitWorkspaceRequest,
     InitWorkspaceResult,
     InitWorkspaceService,

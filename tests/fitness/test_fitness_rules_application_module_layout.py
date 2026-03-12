@@ -139,3 +139,29 @@ def test_checker_allows_prompt_builder_at_application_root(
     assert proc.returncode == 0
     assert payload["status"] == "pass"
     assert _violations(payload) == []
+
+
+def test_checker_flags_workspace_service_modules_restored_at_application_root(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Reject workspace services restored at the legacy application root."""
+    _write_module(
+        tmp_path,
+        relative_path="src/engineeringagent/application/init_workspace_service.py",
+        content="class InitWorkspaceService:\n    pass\n",
+    )
+    _write_module(
+        tmp_path,
+        relative_path="src/engineeringagent/application/workspace_recovery_service.py",
+        content="class WorkspaceRecoveryService:\n    pass\n",
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert _violations(payload) == [
+        "src/engineeringagent/application/init_workspace_service.py: application root may only contain workflow-service modules; move non-service helpers into an explicit subpackage such as engineeringagent.application.feature_iteration or delete the legacy module",
+        "src/engineeringagent/application/workspace_recovery_service.py: application root may only contain workflow-service modules; move non-service helpers into an explicit subpackage such as engineeringagent.application.feature_iteration or delete the legacy module",
+    ]
