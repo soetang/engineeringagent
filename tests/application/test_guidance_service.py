@@ -160,3 +160,16 @@ def test_default_guidance_service_rejects_blank_topic_requests() -> None:
         GuidanceService(_FakeGuidanceRepository(())).render(
             GuidanceQuery(kind="topic", topic_id="  ")
         )
+
+
+def test_guidance_topic_rejects_blank_canonical_id() -> None:
+    """Guidance topics should validate canonical ids through the shared kernel."""
+    with pytest.raises(ValueError, match="String should have at least 1 character"):
+        GuidanceTopic(
+            canonical_id="",
+            aliases=(),
+            title="Overview",
+            description=None,
+            document="# Overview\n",
+            body="# Overview\n",
+        )

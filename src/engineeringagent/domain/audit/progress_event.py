@@ -6,6 +6,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from engineeringagent.domain.shared import FeatureId
+
 
 class ProgressEvent(BaseModel):
     """One append-only operational event emitted by runtime flows."""
@@ -14,7 +16,7 @@ class ProgressEvent(BaseModel):
 
     timestamp: str
     event_kind: str
-    feature_id: str | None = None
+    feature_id: FeatureId | None = None
     payload: dict[str, Any] = Field(default_factory=dict)
 
     def to_log_record(self) -> dict[str, Any]:

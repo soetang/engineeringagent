@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict
 import yaml
 
 from engineeringagent.domain.guidance import UnknownGuidanceTopicIdError
+from engineeringagent.domain.shared import TopicId
 
 
 _APPROACH_TOPIC_ALIASES: dict[str, tuple[str, ...]] = {
@@ -39,7 +40,7 @@ class PackagedGuidanceTopic(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    canonical_id: str
+    canonical_id: TopicId
     aliases: tuple[str, ...]
     title: str
     filename: str
@@ -162,7 +163,7 @@ def list_packaged_guidance_topics() -> tuple[PackagedGuidanceTopic, ...]:
     return tuple(topics)
 
 
-def resolve_guidance_topic_id(topic_id: str) -> str:
+def resolve_guidance_topic_id(topic_id: str) -> TopicId:
     """Resolve a canonical id or alias to the canonical topic id."""
     return _resolve_topic(topic_id).canonical_id
 

@@ -41,7 +41,11 @@ def append_run(project_root: Path, payload: dict[str, Any]) -> None:
     """Append one loop telemetry audit event as JSONL."""
     event_timestamp = str(payload.get("ts") or utc_now_iso())
     feature_id = payload.get("feature_id")
-    normalized_feature_id = feature_id if isinstance(feature_id, str) else None
+    normalized_feature_id = (
+        feature_id.strip()
+        if isinstance(feature_id, str) and feature_id.strip()
+        else None
+    )
     _PROGRESS_JOURNAL.append(
         project_root=project_root,
         event=ProgressEvent(

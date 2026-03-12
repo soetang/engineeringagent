@@ -30,6 +30,14 @@ LOCAL_DEFINITION_TARGETS = {
         "assign": set(),
     },
 }
+REQUIRED_FIELD_ANNOTATIONS = {
+    "src/engineeringagent/domain/audit/progress_event.py": {
+        "feature_id": "FeatureId",
+    },
+    "src/engineeringagent/domain/guidance/topic.py": {
+        "canonical_id": "TopicId",
+    },
+}
 
 
 def _parse(path: Path) -> ast.AST:
@@ -85,6 +93,43 @@ def _local_redefinition_violations(path: Path, *, forbidden: dict[str, set[str]]
     return violations
 
 
+def _annotation_names(node: ast.AST) -> set[str]:
+    return {
+        child.id for child in ast.walk(node) if isinstance(child, ast.Name)
+    }
+
+
+def _required_field_annotation_violations(
+    path: Path,
+    *,
+    required_annotations: dict[str, str],
+) -> list[str]:
+    tree = _parse(path)
+    annotated_fields: dict[str, set[str]] = {}
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.AnnAssign):
+            continue
+        if not isinstance(node.target, ast.Name):
+            continue
+        annotated_fields[node.target.id] = _annotation_names(node.annotation)
+
+    violations: list[str] = []
+    for field_name, required_name in sorted(required_annotations.items()):
+        if field_name not in annotated_fields:
+            violations.append(
+                f"{path.as_posix()}:1 missing shared-kernel field annotation for {field_name}; "
+                f"annotate it with {required_name} from engineeringagent.domain.shared."
+            )
+            continue
+        if required_name in annotated_fields[field_name]:
+            continue
+        violations.append(
+            f"{path.as_posix()}:1 field {field_name} must use shared-kernel type {required_name}; "
+            "import shared identifiers from engineeringagent.domain.shared instead of raw strings."
+        )
+    return violations
+
+
 def main() -> int:
     """Run the shared-kernel locality fitness rule."""
     violations = [
@@ -103,6 +148,17 @@ def main() -> int:
         if not path.is_file():
             continue
         violations.extend(_local_redefinition_violations(path, forbidden=forbidden))
+
+    for relpath, required_annotations in sorted(REQUIRED_FIELD_ANNOTATIONS.items()):
+        path = PROJECT_ROOT / relpath
+        if not path.is_file():
+            continue
+        violations.extend(
+            _required_field_annotation_violations(
+                path,
+                required_annotations=required_annotations,
+            )
+        )
 
     status = RuleStatus.PASS if not violations else RuleStatus.FAIL
     summary = (
