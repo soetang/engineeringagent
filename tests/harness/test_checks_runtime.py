@@ -18,7 +18,7 @@ from engineeringagent.checks.commands.runtime import (
 from engineeringagent.adapters.quality.fitness.runtime import (
     plan_fitness_checks,
 )
-from engineeringagent.checks.reviewers.runtime import (
+from engineeringagent.adapters.quality.reviewers.runtime import (
     plan_reviewer_checks,
 )
 from engineeringagent.domain.quality import (

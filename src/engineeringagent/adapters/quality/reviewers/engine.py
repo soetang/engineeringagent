@@ -11,10 +11,10 @@ from typing import Any, Callable, Iterator, Literal
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from engineeringagent.adapters.agents import run_agent
+from engineeringagent.adapters.progress import paths as progress_paths
 from engineeringagent.domain.quality import ChangedPathsResult, path_matches_any_glob
 from engineeringagent.ports import AgentBackendError, AgentOutputValidationError
 from engineeringagent.presentation.presenters.json_schema import JSON_SCHEMA_DRAFT_URL
-from engineeringagent.adapters.progress import paths as progress_paths
 
 
 FALLBACK_CHANGE_DISCOVERY_REASON = "fallback_run_all_change_discovery_failed"

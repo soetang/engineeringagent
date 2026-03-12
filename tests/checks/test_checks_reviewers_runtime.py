@@ -7,7 +7,7 @@ import pytest
 
 from engineeringagent.domain.quality import ChangedPathsResult
 from engineeringagent.adapters.quality.check_strategies import strategy_run_decisions
-from engineeringagent.checks.reviewers.runtime import (
+from engineeringagent.adapters.quality.reviewers.runtime import (
     FALLBACK_REMEDIATION_GUIDANCE,
     RunPlannedReviewerChecksRequest,
     plan_reviewer_checks,
@@ -376,7 +376,7 @@ def test_run_planned_reviewer_checks_handles_non_dict_reviewer_payload(
     doc = _load_checks_document(checks_path)
 
     monkeypatch.setattr(
-        "engineeringagent.checks.reviewers.runtime.run_reviewer",
+        "engineeringagent.adapters.quality.reviewers.runtime.run_reviewer",
         lambda *_args, **_kwargs: "invalid-payload",
         raising=True,
     )
@@ -432,7 +432,7 @@ def test_run_planned_reviewer_checks_normalizes_unknown_decision_to_request_chan
     doc = _load_checks_document(checks_path)
 
     monkeypatch.setattr(
-        "engineeringagent.checks.reviewers.runtime.run_reviewer",
+        "engineeringagent.adapters.quality.reviewers.runtime.run_reviewer",
         lambda *_args, **_kwargs: {
             "decision": "not_a_real_decision",
             "summary": "needs follow-up",
@@ -496,7 +496,7 @@ def test_run_planned_reviewer_checks_verbose_output_surfaces_full_payload(
     doc = _load_checks_document(checks_path)
 
     monkeypatch.setattr(
-        "engineeringagent.checks.reviewers.runtime.run_reviewer",
+        "engineeringagent.adapters.quality.reviewers.runtime.run_reviewer",
         lambda *_args, **_kwargs: {
             "decision": "request_changes",
             "summary": "needs follow-up",
@@ -567,7 +567,7 @@ def test_run_planned_reviewer_checks_adds_fallback_remediation_when_actions_miss
     doc = _load_checks_document(checks_path)
 
     monkeypatch.setattr(
-        "engineeringagent.checks.reviewers.runtime.run_reviewer",
+        "engineeringagent.adapters.quality.reviewers.runtime.run_reviewer",
         lambda *_args, **_kwargs: {
             "decision": "request_changes",
             "summary": "needs follow-up",

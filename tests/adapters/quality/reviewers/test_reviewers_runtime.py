@@ -6,7 +6,7 @@ from typing import Any, cast
 import pytest
 
 from engineeringagent.domain.quality import ChangedPathsResult
-from engineeringagent.checks.reviewers.engine import (
+from engineeringagent.adapters.quality.reviewers.engine import (
     PARSER_FAILURE_SUMMARY_PREFIX,
     ReviewerDecisionEnvelope,
     ReviewerRunRequest,
@@ -52,7 +52,7 @@ def test_run_reviewer_loads_harness_prompt_and_parses_decision(tmp_path) -> None
             feature_id="FEAT-050",
             feature_path=tmp_path / FEATURE_050_PATH,
             changed_paths=ChangedPathsResult(
-                paths=("src/engineeringagent/checks/reviewers/engine.py",),
+                paths=("src/engineeringagent/adapters/quality/reviewers/engine.py",),
                 run_all=False,
                 reason=None,
             ),

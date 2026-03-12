@@ -193,5 +193,5 @@ def load_markdown_frontmatter(path: Path) -> dict[str, Any]:
 def reviewer_decision_schema_from_model() -> dict[str, Any]:
     """Proxy to the reviewer decision schema producer lazily."""
 
-    engine = import_module("engineeringagent.checks.reviewers.engine")
+    engine = import_module("engineeringagent.adapters.quality.reviewers.engine")
     return engine.reviewer_decision_schema_from_model()

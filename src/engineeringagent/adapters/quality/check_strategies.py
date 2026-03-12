@@ -13,17 +13,17 @@ import yaml
 
 from engineeringagent.adapters.quality.validation.validator import validate
 from engineeringagent.adapters.shell import run_shell_command
-from engineeringagent.checks.commands.runtime import plan_command_checks
 from engineeringagent.adapters.quality.fitness.adapters import execute_rule_definition
 from engineeringagent.adapters.quality.fitness.contracts import RuleStatus
 from engineeringagent.adapters.quality.fitness.registry import build_rule_catalog
 from engineeringagent.adapters.quality.fitness.runtime import plan_fitness_checks
-from engineeringagent.checks.reviewers.runtime import (
+from engineeringagent.adapters.quality.reviewers.runtime import (
     FALLBACK_REMEDIATION_GUIDANCE,
     RunPlannedReviewerChecksRequest,
     plan_reviewer_checks,
     run_planned_reviewer_checks_from_plan,
 )
+from engineeringagent.checks.commands.runtime import plan_command_checks
 from engineeringagent.domain.quality import (
     ALWAYS_RUN_NO_ON_CHANGE_REASON,
     CheckDecision,

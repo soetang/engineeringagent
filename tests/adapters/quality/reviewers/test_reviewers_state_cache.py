@@ -6,7 +6,7 @@ from typing import Any
 
 from engineeringagent.domain.quality import ChangedPathsResult
 from engineeringagent.adapters.progress import paths as progress_paths
-from engineeringagent.checks.reviewers.engine import (
+from engineeringagent.adapters.quality.reviewers.engine import (
     DECISION_APPROVE,
     FIRST_FEATURE_APPROVAL_INVALIDATED_REASON,
     FIRST_FEATURE_APPROVAL_INVALIDATED_RUN_ALL_REASON,

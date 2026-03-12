@@ -5,7 +5,7 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from engineeringagent.checks import run_checks
-from engineeringagent.checks.reviewers.runtime import FALLBACK_REMEDIATION_GUIDANCE
+from engineeringagent.adapters.quality.reviewers.runtime import FALLBACK_REMEDIATION_GUIDANCE
 
 from tests.checks.run_checks_contract_support import write_reviewer_fixture
 

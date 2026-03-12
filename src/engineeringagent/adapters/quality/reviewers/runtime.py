@@ -6,16 +6,6 @@ from typing import Any, Callable, Iterable
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.checks.reviewers.engine import (
-    DECISION_APPROVE,
-    DECISION_REQUEST_CHANGES,
-    ReviewerRunRequest,
-    evaluate_cached_reviewer_approval,
-    load_reviewers_state,
-    record_reviewer_approval,
-    run_reviewer,
-    save_reviewers_state,
-)
 from engineeringagent.domain.quality import (
     CheckDecision,
     ChangedPathsResult,
@@ -26,6 +16,17 @@ from engineeringagent.domain.quality import (
     PlanningPolicyContext,
     make_planned_check,
     plan_checks_for_definition_type,
+)
+
+from .engine import (
+    DECISION_APPROVE,
+    DECISION_REQUEST_CHANGES,
+    ReviewerRunRequest,
+    evaluate_cached_reviewer_approval,
+    load_reviewers_state,
+    record_reviewer_approval,
+    run_reviewer,
+    save_reviewers_state,
 )
 
 FALLBACK_REMEDIATION_GUIDANCE = (

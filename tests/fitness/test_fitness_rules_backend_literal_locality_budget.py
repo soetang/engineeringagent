@@ -88,6 +88,7 @@ def test_backend_literal_locality_budget_policy_defines_backend_tokens() -> None
     assert allowed_roots == [
         "src/engineeringagent/agents",
         "src/engineeringagent/adapters/agents",
+        "src/engineeringagent/adapters/quality/reviewers",
         "src/engineeringagent/checks",
     ]
 

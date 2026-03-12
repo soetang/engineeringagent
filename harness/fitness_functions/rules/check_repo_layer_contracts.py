@@ -107,6 +107,8 @@ DELETED_MODULE_PATHS = {
     "src/engineeringagent/checks/strategy_contracts.py",
     "src/engineeringagent/checks/fitness/runtime.py",
     "src/engineeringagent/checks/fitness/scope_traversal.py",
+    "src/engineeringagent/checks/reviewers/engine.py",
+    "src/engineeringagent/checks/reviewers/runtime.py",
     "src/engineeringagent/git/__init__.py",
     "src/engineeringagent/git/client.py",
     "src/engineeringagent/progress/__init__.py",
@@ -146,6 +148,7 @@ DELETED_DIRECTORY_PATHS = {
     "src/engineeringagent/application/workspace_recovery",
     "src/engineeringagent/agents",
     "src/engineeringagent/checks/pytest",
+    "src/engineeringagent/checks/reviewers",
     "src/engineeringagent/loop_runtime",
 }
 LEGACY_MODULES = (

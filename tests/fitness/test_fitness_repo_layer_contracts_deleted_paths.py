@@ -333,6 +333,36 @@ def test_repo_layer_contracts_rule_blocks_deleted_checks_strategy_modules(
     ]
 
 
+def test_repo_layer_contracts_rule_blocks_deleted_checks_reviewer_modules(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Fail when reviewer execution helpers reappear under the legacy checks package."""
+    engine_module = (
+        tmp_path
+        / "src"
+        / "engineeringagent"
+        / "checks"
+        / "reviewers"
+        / "engine.py"
+    )
+    engine_module.parent.mkdir(parents=True, exist_ok=True)
+    engine_module.write_text("", encoding="utf-8")
+    runtime_module = engine_module.parent / "runtime.py"
+    runtime_module.write_text("", encoding="utf-8")
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert payload["rule_id"] == "architecture.repo-layer-contracts"
+    assert payload["violations"] == [
+        "src/engineeringagent/checks/reviewers/engine.py: deleted legacy module path must remain absent",
+        "src/engineeringagent/checks/reviewers/runtime.py: deleted legacy module path must remain absent",
+        "src/engineeringagent/checks/reviewers: deleted legacy directory path must remain absent",
+    ]
+
+
 def test_repo_layer_contracts_rule_blocks_deleted_legacy_run_loop_service_module(
     tmp_path: Path,
     repo_root: Path,

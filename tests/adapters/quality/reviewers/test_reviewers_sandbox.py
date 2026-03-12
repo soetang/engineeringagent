@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from engineeringagent.domain.quality import ChangedPathsResult
-from engineeringagent.checks.reviewers.engine import (
+from engineeringagent.adapters.quality.reviewers.engine import (
     PARSER_FAILURE_SUMMARY_PREFIX,
     ReviewerDecisionEnvelope,
     ReviewerRunRequest,
@@ -299,7 +299,7 @@ def test_run_reviewer_returns_request_changes_when_snapshot_setup_fails(
         raise OSError("copy failure")
 
     monkeypatch.setattr(
-        "engineeringagent.checks.reviewers.engine.shutil.copytree",
+        "engineeringagent.adapters.quality.reviewers.engine.shutil.copytree",
         _raise_copytree,
     )
 
