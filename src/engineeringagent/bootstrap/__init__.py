@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from .iteration_reporting import (
         ConsoleObserverDependencies,
         DefaultObserverDependencies,
+        IterationReportPublisher,
         IterationReportObserver,
         TelemetryObserverDependencies,
         build_console_observer,
@@ -22,6 +23,7 @@ __all__ = [
     "AppFactory",
     "ConsoleObserverDependencies",
     "DefaultObserverDependencies",
+    "IterationReportPublisher",
     "IterationReportObserver",
     "TelemetryObserverDependencies",
     "build_console_observer",
@@ -34,6 +36,7 @@ __all__ = [
 _ITERATION_REPORTING_EXPORTS = {
     "ConsoleObserverDependencies",
     "DefaultObserverDependencies",
+    "IterationReportPublisher",
     "IterationReportObserver",
     "TelemetryObserverDependencies",
     "build_console_observer",

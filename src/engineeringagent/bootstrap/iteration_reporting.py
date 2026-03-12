@@ -16,6 +16,7 @@ from engineeringagent.application.feature_iteration import (
 
 PrintSummaryFn = Callable[[IterationSummaryInputs], None]
 IterationReportObserver = Callable[[IterationReport], IterationReport]
+IterationReportPublisher = Callable[[IterationReport], IterationOutcome]
 
 
 class TelemetryObserverDependencies(BaseModel):

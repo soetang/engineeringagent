@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Callable
 
 from pydantic import BaseModel, ConfigDict
 
 from engineeringagent.ports import VersionControlGateway
 
-from .feature_iteration import FeatureIterationInputs
-from .feature_iteration.report_publisher import IterationReportPublisher
+from .feature_iteration import FeatureIterationInputs, IterationOutcome, IterationReport
 from .feature_iteration.runtime_dependencies import FeatureIterationRuntimeDependencies
 
 
@@ -51,7 +51,7 @@ class FeatureIterationService:
         self,
         *,
         version_control_gateway: VersionControlGateway,
-        iteration_report_publisher: IterationReportPublisher,
+        iteration_report_publisher: Callable[[IterationReport], IterationOutcome],
         runtime_dependencies: FeatureIterationRuntimeDependencies,
     ) -> None:
         self._version_control_gateway = version_control_gateway

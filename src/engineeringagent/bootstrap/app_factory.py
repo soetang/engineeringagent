@@ -58,7 +58,6 @@ from engineeringagent.ports import (
 from engineeringagent.application.feature_iteration import (
     FeatureIterationRuntimeDependencies,
     IterationPipelineDependencies,
-    IterationReportPublisher,
     IterationReport,
     run_feature_iteration_pipeline,
 )
@@ -66,6 +65,7 @@ from engineeringagent.bootstrap import runtime_support
 from engineeringagent.bootstrap.iteration_reporting import (
     DefaultObserverDependencies,
     DefaultIterationReportPublisher,
+    IterationReportPublisher,
 )
 from engineeringagent.checks import collect_changed_paths
 from engineeringagent.domain.specification import feature_completion_commit_subject
