@@ -65,13 +65,15 @@ def _policy_module_target_path(repo_root: Path, module_name: str) -> Path:
 def _write_repo_policy_fixture(project_root: Path, repo_root: Path) -> None:
     _write_directionality_fixture(project_root)
     for rule in _repo_policy_rules(repo_root):
-        module_name = rule.get("module")
-        assert isinstance(module_name, str)
-        _write_module(
-            project_root,
-            str(_policy_module_target_path(repo_root, module_name)),
-            "",
-        )
+        sources = rule.get("sources")
+        assert isinstance(sources, list)
+        for module_name in sources:
+            assert isinstance(module_name, str)
+            _write_module(
+                project_root,
+                str(_policy_module_target_path(repo_root, module_name)),
+                "",
+            )
 
 
 def _write_policy(project_root: Path, rules: list[dict[str, object]]) -> Path:
@@ -168,13 +170,34 @@ def test_directionality_rule_reports_blocked_loop_runtime_import(
     )
 
 
-def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
+def test_directionality_rule_applies_package_level_application_boundary(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Honor the checked-in policy for current layered CLI, contracts, and application boundaries."""
+    """Package rules should scan nested modules instead of requiring explicit entries."""
     _write_repo_policy_fixture(tmp_path, repo_root)
-    _write_module(tmp_path, "presentation/cli/checks.py", "")
+    _write_module(
+        tmp_path,
+        "application/feature_iteration/service.py",
+        "import engineeringagent.adapters.progress.paths\n",
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert (
+        "engineeringagent.application.feature_iteration.service imports blocked dependency "
+        "engineeringagent.adapters.progress.paths"
+    ) in cast(list[str], payload["violations"])
+
+
+def test_directionality_rule_uses_repo_policy_for_layer_and_cli_boundaries(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Honor the checked-in policy for current layer and CLI boundaries."""
+    _write_repo_policy_fixture(tmp_path, repo_root)
     _write_module(
         tmp_path,
         "presentation/cli/app.py",
@@ -187,56 +210,13 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
     )
     _write_module(
         tmp_path,
-        "application/checks_service.py",
-        "import engineeringagent.checks\n",
-    )
-    _write_module(
-        tmp_path,
-        "application/guidance_service.py",
-        "import engineeringagent.domain.specification.selection\n",
-    )
-    _write_module(
-        tmp_path,
         "presentation/cli/guidance.py",
         "from engineeringagent.adapters.documents import FilesystemGuidanceTopicRepository\n",
     )
     _write_module(
         tmp_path,
-        "application/init_workspace_service.py",
-        "import engineeringagent.adapters.progress.paths\n",
-    )
-    _write_module(
-        tmp_path,
-        "application/prompt_builder.py",
-        "import engineeringagent.adapters.progress.paths\n"
-        "import engineeringagent.presentation.presenters.prompt_feedback\n"
-        "import engineeringagent.presentation.presenters.terminal\n"
-        "import engineeringagent.specs\n",
-    )
-    _write_module(
-        tmp_path,
-        "application/run_loop_service.py",
-        "import engineeringagent.domain.specification.selection\n",
-    )
-    _write_module(
-        tmp_path,
-        "application/validation_service.py",
-        "import engineeringagent.checks\n",
-    )
-    _write_module(
-        tmp_path,
-        "application/workspace_recovery_service.py",
-        "import engineeringagent.bootstrap.app_factory\n",
-    )
-    _write_module(
-        tmp_path,
-        "ports/agent_runner.py",
-        "import engineeringagent.checks.reviewers.engine\n",
-    )
-    _write_module(
-        tmp_path,
-        "ports/checks_runner.py",
-        "import engineeringagent.checks\n",
+        "presentation/cli/run.py",
+        "import engineeringagent.loop\n",
     )
     _write_module(
         tmp_path,
@@ -245,18 +225,8 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
     )
     _write_module(
         tmp_path,
-        "presentation/cli/validate.py",
-        "from engineeringagent.application import ValidationService\n",
-    )
-    _write_module(
-        tmp_path,
-        "presentation/cli/checks.py",
-        "from engineeringagent.application import ChecksService\n",
-    )
-    _write_module(
-        tmp_path,
-        "presentation/cli/run.py",
-        "import engineeringagent.loop\n",
+        "domain/specification/feature_specification.py",
+        "import engineeringagent.ports.version_control\n",
     )
 
     proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
@@ -264,99 +234,48 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
     assert proc.returncode == 0
     assert payload["rule_id"] == "architecture.dep-directionality"
     assert payload["status"] == "fail"
-    assert sorted(cast(list[str], payload["violations"])) == sorted([
-        (
-            "engineeringagent.application.guidance_service imports blocked dependency "
-            "engineeringagent.domain.specification.selection"
-        ),
-        (
-            "engineeringagent.application.init_workspace_service imports blocked "
-            "dependency engineeringagent.adapters.progress.paths"
-        ),
-        (
-            "engineeringagent.application.prompt_builder imports blocked dependency "
-            "engineeringagent.adapters.progress.paths"
-        ),
-        (
-            "engineeringagent.application.prompt_builder imports blocked dependency "
-            "engineeringagent.presentation.presenters.prompt_feedback"
-        ),
-        (
-            "engineeringagent.application.prompt_builder imports blocked dependency "
-            "engineeringagent.presentation.presenters.terminal"
-        ),
-        (
-            "engineeringagent.application.prompt_builder imports blocked dependency "
-            "engineeringagent.specs"
-        ),
-        (
-            "engineeringagent.application.checks_service imports blocked "
-            "dependency engineeringagent.checks"
-        ),
-        (
-            "engineeringagent.application.validation_service imports blocked "
-            "dependency engineeringagent.checks"
-        ),
-        (
-            "engineeringagent.application.run_loop_service imports blocked dependency "
-            "engineeringagent.domain.specification.selection"
-        ),
-        (
-            "engineeringagent.application.workspace_recovery_service imports blocked "
-            "dependency engineeringagent.bootstrap.app_factory"
-        ),
-        (
-            "engineeringagent.ports.agent_runner imports blocked dependency "
-            "engineeringagent.checks.reviewers.engine"
-        ),
-        (
-            "engineeringagent.ports.checks_runner imports blocked dependency "
-            "engineeringagent.checks"
-        ),
-        (
-            "engineeringagent.ports.version_control imports blocked dependency "
-            "engineeringagent.presentation.cli.app"
-        ),
-        (
-            "engineeringagent.presentation.cli.app imports blocked dependency "
-            "engineeringagent.domain.specification.selection"
-        ),
-        (
-            "engineeringagent.presentation.cli.guidance imports blocked dependency "
-            "engineeringagent.adapters.documents"
-        ),
-        (
-            "engineeringagent.presentation.cli.guidance imports blocked dependency "
-            "engineeringagent.adapters.documents.FilesystemGuidanceTopicRepository"
-        ),
-        (
-            "engineeringagent.presentation.cli.run imports blocked dependency "
-            "engineeringagent.loop"
-        ),
-        (
-            "engineeringagent.presentation.cli.typer imports blocked dependency "
-            "engineeringagent.checks.reviewers.engine"
-        ),
-    ])
+    assert sorted(cast(list[str], payload["violations"])) == sorted(
+        [
+            (
+                "engineeringagent.domain.specification.feature_specification imports blocked dependency "
+                "engineeringagent.ports.version_control"
+            ),
+            (
+                "engineeringagent.ports.version_control imports blocked dependency "
+                "engineeringagent.presentation.cli.app"
+            ),
+            (
+                "engineeringagent.presentation.cli.app imports blocked dependency "
+                "engineeringagent.domain.specification.selection"
+            ),
+            (
+                "engineeringagent.presentation.cli.guidance imports blocked dependency "
+                "engineeringagent.adapters.documents"
+            ),
+            (
+                "engineeringagent.presentation.cli.guidance imports blocked dependency "
+                "engineeringagent.adapters.documents.FilesystemGuidanceTopicRepository"
+            ),
+            (
+                "engineeringagent.presentation.cli.run imports blocked dependency "
+                "engineeringagent.loop"
+            ),
+            (
+                "engineeringagent.presentation.cli.typer imports blocked dependency "
+                "engineeringagent.checks.reviewers.engine"
+            ),
+        ]
+    )
 
 
-def test_repo_directionality_policy_covers_all_top_level_application_and_port_modules(
-    repo_root: Path,
-) -> None:
-    """Every top-level application and ports module should carry a directionality rule."""
+def test_repo_directionality_policy_uses_grouped_sources(repo_root: Path) -> None:
+    """The checked-in policy should stay package-oriented instead of per-file enumerated."""
+    rules = _repo_policy_rules(repo_root)
+    source_counts = [len(cast(list[object], rule["sources"])) for rule in rules]
 
-    modules_with_rules = {
-        cast(str, rule["module"]) for rule in _repo_policy_rules(repo_root)
-    }
-    source_root = repo_root / "src" / "engineeringagent"
-    expected_modules = {
-        f"engineeringagent.{package}.{path.stem}"
-        for package in ("application", "ports")
-        for path in (source_root / package).glob("*.py")
-        if path.name != "__init__.py"
-    }
-
-    assert sorted(expected_modules - modules_with_rules) == []
+    assert len(rules) == 9
+    assert max(source_counts) > 1
+    assert sum(source_counts) < 20
 
 
 def test_directionality_rule_supports_reverse_direction_specs_contract_boundaries(
@@ -378,11 +297,11 @@ def test_directionality_rule_supports_reverse_direction_specs_contract_boundarie
         tmp_path,
         [
             {
-                "module": "engineeringagent.specs",
+                "sources": ["engineeringagent.specs"],
                 "blocked_dependencies": ["engineeringagent.checks.contracts"],
             },
             {
-                "module": "engineeringagent.checks.contracts",
+                "sources": ["engineeringagent.checks.contracts"],
                 "blocked_dependencies": ["engineeringagent.specs"],
             },
         ],
@@ -424,7 +343,7 @@ def test_directionality_rule_loads_blocked_boundaries_from_policy(
         tmp_path,
         [
             {
-                "module": "engineeringagent.domain",
+                "sources": ["engineeringagent.domain"],
                 "blocked_dependencies": ["engineeringagent.presentation.cli"],
             }
         ],
@@ -448,10 +367,11 @@ def test_directionality_rule_supports_package_modules_from_policy(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Resolve package modules declared in policy to their __init__ file."""
+    """Resolve package rules to nested modules under the package root."""
+    _write_module(tmp_path, "domain/__init__.py", "")
     _write_module(
         tmp_path,
-        "domain/__init__.py",
+        "domain/guidance/topic.py",
         "import engineeringagent.presentation.cli\n",
     )
     _write_module(tmp_path, "presentation/cli/__init__.py", "")
@@ -459,7 +379,7 @@ def test_directionality_rule_supports_package_modules_from_policy(
         tmp_path,
         [
             {
-                "module": "engineeringagent.domain",
+                "sources": ["engineeringagent.domain"],
                 "blocked_dependencies": ["engineeringagent.presentation.cli"],
             }
         ],
@@ -475,7 +395,7 @@ def test_directionality_rule_supports_package_modules_from_policy(
     assert payload["rule_id"] == "architecture.dep-directionality"
     assert payload["status"] == "fail"
     assert payload["violations"] == [
-        "engineeringagent.domain imports blocked dependency engineeringagent.presentation.cli"
+        "engineeringagent.domain.guidance.topic imports blocked dependency engineeringagent.presentation.cli"
     ]
 
 
@@ -551,17 +471,17 @@ def test_directionality_rule_errors_when_policy_repeats_module_boundary(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Return an error result when the policy duplicates one protected module."""
+    """Return an error result when the policy duplicates one protected source."""
     _write_module(tmp_path, "domain.py", "")
     duplicate_policy = _write_policy(
         tmp_path,
         [
             {
-                "module": "engineeringagent.domain",
+                "sources": ["engineeringagent.domain"],
                 "blocked_dependencies": ["engineeringagent.presentation.cli"],
             },
             {
-                "module": "engineeringagent.domain",
+                "sources": ["engineeringagent.domain"],
                 "blocked_dependencies": ["engineeringagent.loop"],
             },
         ],
