@@ -57,7 +57,7 @@ from engineeringagent.ports import (
     ProgressJournal,
     VersionControlGateway,
 )
-from engineeringagent.application.feature_iteration_runtime import (
+from engineeringagent.application.feature_iteration import (
     FeatureIterationDependencies,
     IterationReport,
 )

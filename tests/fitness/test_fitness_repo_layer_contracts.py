@@ -137,7 +137,7 @@ def test_repo_layer_contracts_rule_allows_application_iteration_pipeline_contrac
         / "src"
         / "engineeringagent"
         / "application"
-        / "feature_iteration_runtime"
+        / "feature_iteration"
     )
     application_root.mkdir(parents=True, exist_ok=True)
     (application_root / "pipeline.py").write_text(

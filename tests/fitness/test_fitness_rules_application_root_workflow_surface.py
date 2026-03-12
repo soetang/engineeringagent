@@ -53,7 +53,7 @@ def test_checker_flags_feature_iteration_re_exports_from_application_root(
         relative_path="src/engineeringagent/application/__init__.py",
         content="\n".join(
             [
-                "from .feature_iteration_runtime import FeatureIterationInputs",
+                "from .feature_iteration import FeatureIterationInputs",
                 "",
                 '__all__ = ["FeatureIterationInputs"]',
                 "",
@@ -88,9 +88,9 @@ def test_checker_flags_feature_iteration_dependencies_on_application_root(
         relative_path="src/engineeringagent/application/__init__.py",
         content="\n".join(
             [
-                "from .feature_iteration_runtime import FeatureIterationRuntimeDependencies",
+                "from .feature_iteration import FeatureIterationDependencies",
                 "",
-                '__all__ = ["FeatureIterationRuntimeDependencies"]',
+                '__all__ = ["FeatureIterationDependencies"]',
                 "",
             ]
         ),
@@ -102,12 +102,12 @@ def test_checker_flags_feature_iteration_dependencies_on_application_root(
     assert payload["status"] == "fail"
     assert any(
         "src/engineeringagent/application/__init__.py:1" in violation
-        and "FeatureIterationRuntimeDependencies" in violation
+        and "FeatureIterationDependencies" in violation
         for violation in _violations(payload)
     )
     assert any(
         "src/engineeringagent/application/__init__.py:3" in violation
-        and "FeatureIterationRuntimeDependencies" in violation
+        and "FeatureIterationDependencies" in violation
         for violation in _violations(payload)
     )
 
@@ -368,7 +368,7 @@ def test_checker_allows_feature_iteration_imports_from_explicit_subpackage(
         content="\n".join(
             [
                 "from engineeringagent.application import RunLoopService",
-                "from engineeringagent.application.feature_iteration_runtime import FeatureIterationInputs",
+                "from engineeringagent.application.feature_iteration import FeatureIterationInputs",
                 "",
                 "def test_placeholder() -> None:",
                 "    assert RunLoopService is not None",

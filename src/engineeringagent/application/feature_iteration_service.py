@@ -6,7 +6,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.application.feature_iteration_runtime import (
+from engineeringagent.application.feature_iteration import (
     FeatureIterationDependencies,
     FeatureIterationInputs,
     IterationReportPublisher,

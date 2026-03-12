@@ -17,7 +17,7 @@ PROJECT_ROOT = Path(".")
 APPLICATION_ROOT = PROJECT_ROOT / "src" / "engineeringagent" / "application" / "__init__.py"
 FORBIDDEN_EXPORT_MODULES = {
     "checks_service",
-    "feature_iteration_runtime",
+    "feature_iteration",
     "feature_iteration_service",
     "guidance_service",
     "init_workspace_service",
@@ -35,7 +35,6 @@ FORBIDDEN_ROOT_EXPORTS = frozenset(
         "FeatureIterationRequest",
         "FeatureIterationResult",
         "FeatureIterationInputs",
-        "FeatureIterationRuntimeDependencies",
         "GuidanceInputError",
         "GuidanceQuery",
         "GuidanceResult",

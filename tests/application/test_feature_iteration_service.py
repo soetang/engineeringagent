@@ -6,13 +6,13 @@ from typing import Any, Sequence
 from engineeringagent.application import (
     FeatureIterationService,
 )
-from engineeringagent.application.feature_iteration_runtime import (
+from engineeringagent.application.feature_iteration import (
     FeatureIterationDependencies,
 )
 from engineeringagent.application.feature_iteration_service import (
     FeatureIterationRequest,
 )
-from engineeringagent.application.feature_iteration_runtime import (
+from engineeringagent.application.feature_iteration import (
     CompletionCommitOutcome,
     FeatureIterationInputs,
     GatePhaseOutcome,

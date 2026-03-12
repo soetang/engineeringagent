@@ -154,8 +154,8 @@ def test_test_layout_module_mirroring_rule_flags_flat_test_for_nested_module(
     _write_file(tmp_path, "tests/__init__.py", "")
     _write_file(tmp_path, "tests/conftest.py", "")
     _write_file(tmp_path, "src/engineeringagent/application/__init__.py", "")
-    _write_file(tmp_path, "src/engineeringagent/application/feature_iteration_runtime/__init__.py", "")
-    _write_file(tmp_path, "src/engineeringagent/application/feature_iteration_runtime/pipeline.py", "")
+    _write_file(tmp_path, "src/engineeringagent/application/feature_iteration/__init__.py", "")
+    _write_file(tmp_path, "src/engineeringagent/application/feature_iteration/pipeline.py", "")
 
     proc, result = _run_checker(
         tmp_path,

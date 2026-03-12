@@ -10,7 +10,7 @@ from engineeringagent.application import FeatureIterationService
 from engineeringagent.application.feature_iteration_service import (
     FeatureIterationRequest,
 )
-from engineeringagent.application.feature_iteration_runtime import (
+from engineeringagent.application.feature_iteration import (
     FeatureIterationInputs,
     IterationOutcome,
     IterationSummaryInputs,
