@@ -12,7 +12,7 @@ from engineeringagent.application import (
     IterationOutcome,
     IterationSummaryInputs,
 )
-from engineeringagent.application.feature_state import (
+from engineeringagent.adapters.documents.filesystem_feature_state import (
     discover_active_feature_paths,
     done_features_pending_archive,
     pending_features,

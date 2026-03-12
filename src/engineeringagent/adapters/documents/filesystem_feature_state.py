@@ -1,4 +1,4 @@
-"""Application-owned feature state helpers."""
+"""Filesystem-backed feature state helpers for loop runtime coordination."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from typing import Any, Callable, Sequence
 from pydantic import BaseModel, ConfigDict
 import yaml
 
+from engineeringagent.adapters.config import resolve_specifications_root
 from engineeringagent.domain.shared import utc_now_iso
 from engineeringagent.specs import (
     _is_bundled_feature_spec_path,
@@ -21,7 +22,7 @@ from engineeringagent.specs import (
     resolve_feature_package_paths,
     resolve_feature_plan_path,
 )
-from .feature_iteration_contracts import (
+from engineeringagent.application.feature_iteration_contracts import (
     InitialFeatureLoadOutcome,
     PostImplementFeatureOutcome,
 )
@@ -406,7 +407,7 @@ def _resolve_archive_path(project_root: Path, feature_path: Path) -> Path:
 
 
 def _resolve_spec_directories(project_root: Path) -> tuple[Path, Path]:
-    spec_root = (project_root / "docs" / "spec").resolve()
+    spec_root = resolve_specifications_root(project_root)
     return (
         (spec_root / "features").resolve(),
         (spec_root / "features_done").resolve(),

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import importlib
 from pathlib import Path
 from typing import Any, Callable
 
@@ -20,10 +21,6 @@ from engineeringagent.application import (
     ReviewerPhaseOutcome,
     VerificationPhaseOutcome,
 )
-from engineeringagent.application.feature_state import (
-    archive_completed_feature,
-    restore_archived_feature,
-)
 from engineeringagent.domain.audit import fallback_implement_progress_envelope
 from engineeringagent.domain.quality import ChangedPathsResult
 from engineeringagent.application.feature_iteration_pipeline import (
@@ -35,6 +32,12 @@ from tests.loop.feature_iteration_support import (
     base_feature,
     make_bundled_project_root,
 )
+
+_feature_state_module = importlib.import_module(
+    "engineeringagent." "adapters.documents.filesystem_feature_state"
+)
+archive_completed_feature = _feature_state_module.archive_completed_feature
+restore_archived_feature = _feature_state_module.restore_archived_feature
 
 
 class _GatePhaseDependencies(BaseModel):

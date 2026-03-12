@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from engineeringagent.application.feature_state import (
+from engineeringagent.adapters.documents.filesystem_feature_state import (
     archive_completed_feature,
     refresh_feature_after_implement,
     restore_archived_feature,

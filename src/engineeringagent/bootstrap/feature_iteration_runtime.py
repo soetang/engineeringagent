@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+from engineeringagent.adapters.documents import filesystem_feature_state
 from engineeringagent.adapters.progress import write_iteration_telemetry
 from engineeringagent.application import FeatureIterationRuntimeDependencies
 from engineeringagent.bootstrap.iteration_reporting import (
@@ -21,11 +22,7 @@ from engineeringagent.adapters.runtime.iteration_phases import (
     run_reviewer_phase,
     run_verification_phase,
 )
-from engineeringagent.application import (
-    feature_iteration_contracts,
-    feature_iteration_pipeline,
-    feature_state,
-)
+from engineeringagent.application import feature_iteration_contracts, feature_iteration_pipeline
 from engineeringagent.bootstrap import runtime_support
 
 
@@ -36,7 +33,7 @@ def build_feature_iteration_runtime_dependencies() -> (
     runtime = SimpleNamespace(
         checks=SimpleNamespace(collect_changed_paths=collect_changed_paths),
         support=runtime_support,
-        feature_state=feature_state,
+        feature_state=filesystem_feature_state,
         iteration=feature_iteration_pipeline,
         models=feature_iteration_contracts,
         phases=SimpleNamespace(

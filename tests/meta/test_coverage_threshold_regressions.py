@@ -13,7 +13,7 @@ from pydantic import ValidationError
 import engineeringagent.checks.fitness.adapters as adapters_module
 import engineeringagent.adapters.config.runtime as config_module
 from engineeringagent.application import FeatureIterationInputs
-import engineeringagent.application.feature_state as feature_state_module
+import engineeringagent.adapters.documents.filesystem_feature_state as feature_state_module
 from engineeringagent.checks.fitness.contracts import (
     CONTRACT_VERSION,
     FitnessRuleMetadata,
@@ -251,7 +251,7 @@ def test_feature_state_error_paths(tmp_path: Path, monkeypatch: Any) -> None:
     assert post_outcome.failed_gate is None
 
     monkeypatch.setattr(
-        "engineeringagent.application.feature_state.resolve_feature_package_paths",
+        "engineeringagent.adapters.documents.filesystem_feature_state.resolve_feature_package_paths",
         lambda *_args, **_kwargs: (_ for _ in ()).throw(ValueError("bad archive")),
     )
     ok, archived_path, message = feature_state_module.archive_completed_feature(
@@ -267,7 +267,7 @@ def test_feature_state_error_paths(tmp_path: Path, monkeypatch: Any) -> None:
     existing_archive.write_text("id: FEAT-009\n", encoding="utf-8")
     missing_feature = features_dir / "exists" / "spec.yaml"
     monkeypatch.setattr(
-        "engineeringagent.application.feature_state.resolve_feature_package_paths",
+        "engineeringagent.adapters.documents.filesystem_feature_state.resolve_feature_package_paths",
         lambda *_args, **_kwargs: SimpleNamespace(
             active_root=missing_feature.parent,
             active_spec_path=missing_feature,

@@ -6,7 +6,9 @@ from pathlib import Path
 import yaml
 
 from engineeringagent.loop import _run_feature_iteration
-from engineeringagent.application.feature_state import refresh_feature_after_implement
+from engineeringagent.adapters.documents.filesystem_feature_state import (
+    refresh_feature_after_implement,
+)
 from engineeringagent.domain.specification import (
     done_transition_verification_commands,
     progress_status_snapshot,
