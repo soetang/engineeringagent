@@ -1,17 +1,16 @@
 from __future__ import annotations
 
-from typing import Any, Callable, TypeVar, Sequence
+from typing import Any, Callable, Sequence, TypeVar
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.domain.quality import (
-    ChangedPathsResult,
-    FALLBACK_CHANGE_DISCOVERY_REASON,
-    HarnessCheckPhase,
+from .changed_paths import ChangedPathsResult, FALLBACK_CHANGE_DISCOVERY_REASON
+from .checks import HarnessCheckPhase
+from .checks_catalog import (
     HarnessCheckWhenDefinition,
     HarnessChecksDocument,
+    effective_check_phase,
 )
-
 from .on_change_matcher import path_matches_any_glob
 
 ALWAYS_RUN_NO_ON_CHANGE_REASON = "always_run_no_on_change"
@@ -33,26 +32,6 @@ class PlanningPolicyContext(BaseModel):
     changed_paths: ChangedPathsResult
     phase_only_policy: bool = False
     path_matcher: Callable[[str, Sequence[str]], bool] = path_matches_any_glob
-
-
-def effective_default_phase(doc: HarnessChecksDocument) -> HarnessCheckPhase:
-    """Return the effective default phase for checks in a document."""
-    defaults = doc.defaults
-    if defaults is None or defaults.when is None or defaults.when.phase is None:
-        return HarnessCheckPhase.ITERATION_END
-    return defaults.when.phase
-
-
-def effective_check_phase(
-    *,
-    doc: HarnessChecksDocument,
-    check_when: Any,
-) -> HarnessCheckPhase:
-    """Return the effective phase for a check-like object with optional `phase`."""
-    default_phase = effective_default_phase(doc)
-    if check_when is None or getattr(check_when, "phase", None) is None:
-        return default_phase
-    return check_when.phase
 
 
 def plan_run_skip_decision(

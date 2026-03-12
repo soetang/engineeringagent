@@ -219,6 +219,40 @@ def test_repo_layer_contracts_rule_blocks_deleted_harness_toggle_shim_modules(
     ]
 
 
+def test_repo_layer_contracts_rule_blocks_deleted_checks_planning_modules(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Fail when deleted checks planning helpers reappear under the legacy package."""
+    matcher_module = (
+        tmp_path
+        / "src"
+        / "engineeringagent"
+        / "checks"
+        / "on_change_matcher.py"
+    )
+    matcher_module.parent.mkdir(parents=True, exist_ok=True)
+    matcher_module.write_text("", encoding="utf-8")
+    planning_module = (
+        tmp_path
+        / "src"
+        / "engineeringagent"
+        / "checks"
+        / "planning_policy.py"
+    )
+    planning_module.write_text("", encoding="utf-8")
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert payload["rule_id"] == "architecture.repo-layer-contracts"
+    assert payload["violations"] == [
+        "src/engineeringagent/checks/on_change_matcher.py: deleted legacy module path must remain absent",
+        "src/engineeringagent/checks/planning_policy.py: deleted legacy module path must remain absent",
+    ]
+
+
 def test_repo_layer_contracts_rule_blocks_deleted_legacy_run_loop_service_module(
     tmp_path: Path,
     repo_root: Path,

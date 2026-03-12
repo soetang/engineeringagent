@@ -13,6 +13,7 @@ from engineeringagent.checks.commands.runtime import (
     plan_command_checks,
 )
 from engineeringagent.domain.quality import (
+    ALWAYS_RUN_NO_ON_CHANGE_REASON,
     CheckDecision,
     CheckExecutionRecord,
     CommandInvocationRecord,
@@ -37,7 +38,6 @@ from engineeringagent.domain.quality import (
 from engineeringagent.specs import (
     load_yaml,
 )
-from engineeringagent.checks.planning_policy import ALWAYS_RUN_NO_ON_CHANGE_REASON
 from engineeringagent.presentation.presenters.prompt_feedback import (
     format_command_return_code,
     format_failed_command_feedback_lines,

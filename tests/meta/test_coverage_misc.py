@@ -16,7 +16,6 @@ from engineeringagent.adapters.progress.filesystem_journal import (
     _get_or_create_file_logger,
     _logger_name_for_path,
 )
-from engineeringagent.checks import on_change_matcher
 from engineeringagent.adapters.agents.opencode import client as opencode_client
 
 
@@ -31,19 +30,11 @@ def _load_harness_commit_messages(repo_root: Path) -> ModuleType:
     spec.loader.exec_module(module)
     return module
 
-
-def test_path_matches_any_glob_normalizes_dot_slash_prefix() -> None:
-    assert on_change_matcher.path_matches_any_glob("./README.md", ["README.md"]) is True
-
-
-def test_path_matches_any_glob_empty_patterns_returns_false() -> None:
-    assert on_change_matcher.path_matches_any_glob("README.md", []) is False
-
-
 def test_opencode_start_agent_includes_optional_session_and_format(
     tmp_path: Path,
     monkeypatch: Any,
 ) -> None:
+    """OpenCode startup should forward optional session and format arguments."""
     captured: dict[str, Any] = {}
 
     def _fake_run(*args: Any, **kwargs: Any) -> subprocess.CompletedProcess[str]:
@@ -71,6 +62,7 @@ def test_opencode_start_agent_includes_optional_session_and_format(
 
 
 def test_progress_logging_skips_non_file_handlers(tmp_path: Path) -> None:
+    """File logger setup should replace non-file handlers when needed."""
     log_path = tmp_path / "progress" / "runs.jsonl"
     namespace = "engineeringagent.progress.runs"
     logger_name = _logger_name_for_path(
@@ -90,6 +82,7 @@ def test_progress_logging_skips_non_file_handlers(tmp_path: Path) -> None:
 
 
 def test_validate_commit_subject_rejects_multiline_subject(repo_root: Path) -> None:
+    """Commit policy helper should reject multiline subjects."""
     commit_messages = _load_harness_commit_messages(repo_root)
     assert commit_messages.validate_commit_subject("feat: ok\nmore") == (
         "subject must be a single line"
@@ -100,6 +93,7 @@ def test_subject_from_commit_message_file_errors_when_missing_subject(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
+    """Commit message parsing should fail when no subject line exists."""
     message_file = tmp_path / "COMMIT_EDITMSG"
     message_file.write_text("# comment\n\n# another\n", encoding="utf-8")
 

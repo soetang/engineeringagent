@@ -26,9 +26,6 @@ from engineeringagent.domain.quality import (
     HarnessCheckPhase,
     HarnessCheckReviewerDefinition,
     HarnessChecksDocument,
-)
-
-from ..planning_policy import (
     PlanningPolicyContext,
     plan_checks_for_definition_type,
 )
