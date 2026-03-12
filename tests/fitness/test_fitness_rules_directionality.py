@@ -26,15 +26,10 @@ def _write_module(project_root: Path, module_path: str, body: str) -> None:
 
 
 def _write_directionality_fixture(project_root: Path) -> None:
-    _write_module(project_root, "loop.py", "")
+    _write_module(project_root, "application/__init__.py", "")
     _write_module(project_root, "domain/__init__.py", "")
+    _write_module(project_root, "ports/__init__.py", "")
     _write_module(project_root, "presentation/cli/__init__.py", "")
-    _write_module(
-        project_root,
-        "adapters/quality/validation/validator.py",
-        "from engineeringagent.specs import FeatureSpec\n",
-    )
-    _write_module(project_root, "specs.py", "")
 
 
 def _repo_policy_rules(repo_root: Path) -> list[dict[str, object]]:
@@ -125,9 +120,13 @@ def test_directionality_rule_reports_blocked_import(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Fail when a protected module imports a blocked dependency."""
+    """Fail when a policy source imports one of its blocked dependencies."""
     _write_directionality_fixture(tmp_path)
-    _write_module(tmp_path, "specs.py", "import engineeringagent.loop\n")
+    _write_module(
+        tmp_path,
+        "application/service.py",
+        "import engineeringagent.adapters.progress.paths\n",
+    )
 
     proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
     violations = payload["violations"]
@@ -136,7 +135,8 @@ def test_directionality_rule_reports_blocked_import(
     assert payload["status"] == "fail"
     assert isinstance(violations, list)
     assert any(
-        "engineeringagent.specs imports blocked dependency engineeringagent.loop"
+        "engineeringagent.application.service imports blocked dependency "
+        "engineeringagent.adapters.progress.paths"
         in violation
         for violation in violations
     )
@@ -146,15 +146,29 @@ def test_directionality_rule_reports_blocked_loop_runtime_import(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Fail when protected modules import selection helpers outside allowed layers."""
-    _write_directionality_fixture(tmp_path)
+    """Fail when a custom policy guards a specific module path."""
     _write_module(
         tmp_path,
         "adapters/quality/validation/validator.py",
         "import engineeringagent.domain.specification.selection\n",
     )
+    policy_file = _write_policy(
+        tmp_path,
+        [
+            {
+                "sources": ["engineeringagent.adapters.quality.validation.validator"],
+                "blocked_dependencies": [
+                    "engineeringagent.domain.specification.selection"
+                ],
+            }
+        ],
+    )
 
-    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+    proc, payload = _run_checker(
+        tmp_path,
+        checker_path=_script_path(repo_root),
+        config_file=policy_file,
+    )
     violations = payload["violations"]
 
     assert proc.returncode == 0
@@ -196,27 +210,12 @@ def test_directionality_rule_uses_repo_policy_for_layer_and_cli_boundaries(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Honor the checked-in policy for current layer and CLI boundaries."""
+    """Honor the checked-in layer boundaries from the architecture policy."""
     _write_repo_policy_fixture(tmp_path, repo_root)
-    _write_module(
-        tmp_path,
-        "presentation/cli/app.py",
-        "import engineeringagent.domain.specification.selection\n",
-    )
-    _write_module(
-        tmp_path,
-        "presentation/cli/typer.py",
-        "import engineeringagent.checks.reviewers.engine\n",
-    )
     _write_module(
         tmp_path,
         "presentation/cli/guidance.py",
         "from engineeringagent.adapters.documents import FilesystemGuidanceTopicRepository\n",
-    )
-    _write_module(
-        tmp_path,
-        "presentation/cli/run.py",
-        "import engineeringagent.loop\n",
     )
     _write_module(
         tmp_path,
@@ -245,10 +244,6 @@ def test_directionality_rule_uses_repo_policy_for_layer_and_cli_boundaries(
                 "engineeringagent.presentation.cli.app"
             ),
             (
-                "engineeringagent.presentation.cli.app imports blocked dependency "
-                "engineeringagent.domain.specification.selection"
-            ),
-            (
                 "engineeringagent.presentation.cli.guidance imports blocked dependency "
                 "engineeringagent.adapters.documents"
             ),
@@ -256,26 +251,17 @@ def test_directionality_rule_uses_repo_policy_for_layer_and_cli_boundaries(
                 "engineeringagent.presentation.cli.guidance imports blocked dependency "
                 "engineeringagent.adapters.documents.FilesystemGuidanceTopicRepository"
             ),
-            (
-                "engineeringagent.presentation.cli.run imports blocked dependency "
-                "engineeringagent.loop"
-            ),
-            (
-                "engineeringagent.presentation.cli.typer imports blocked dependency "
-                "engineeringagent.checks.reviewers.engine"
-            ),
         ]
     )
 
 
-def test_repo_directionality_policy_uses_grouped_sources(repo_root: Path) -> None:
-    """The checked-in policy should stay package-oriented instead of per-file enumerated."""
+def test_repo_directionality_policy_stays_layer_oriented(repo_root: Path) -> None:
+    """The checked-in policy should stay focused on architecture layers."""
     rules = _repo_policy_rules(repo_root)
     source_counts = [len(cast(list[object], rule["sources"])) for rule in rules]
 
-    assert len(rules) == 7
-    assert max(source_counts) > 1
-    assert sum(source_counts) < 12
+    assert len(rules) == 4
+    assert source_counts == [1, 1, 1, 1]
 
 
 def test_directionality_rule_supports_reverse_direction_specs_contract_boundaries(

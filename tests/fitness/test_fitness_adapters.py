@@ -500,15 +500,12 @@ def test_execute_rule_definition_runs_dependency_directionality_adapter(
     repo_root: Path,
 ) -> None:
     """Surface fail status from the migrated dependency-directionality adapter."""
-    _write_file(tmp_path, "src/engineeringagent/cli.py", "")
-    _write_file(tmp_path, "src/engineeringagent/loop.py", "")
+    _write_file(tmp_path, "src/engineeringagent/application/__init__.py", "")
+    _write_file(tmp_path, "src/engineeringagent/adapters/__init__.py", "")
     _write_file(
         tmp_path,
-        "src/engineeringagent/validator.py",
-        "from .specs import FeatureSpec\n",
-    )
-    _write_file(
-        tmp_path, "src/engineeringagent/specs.py", "import engineeringagent.loop\n"
+        "src/engineeringagent/application/service.py",
+        "import engineeringagent.adapters.progress.paths\n",
     )
 
     script = _fitness_script(repo_root, "check_dependency_directionality.py")
@@ -541,7 +538,8 @@ def test_execute_rule_definition_runs_dependency_directionality_adapter(
     assert result.status == RuleStatus.FAIL
     assert result.severity == RuleSeverity.ERROR
     assert any(
-        "engineeringagent.specs imports blocked dependency engineeringagent.loop"
+        "engineeringagent.application.service imports blocked dependency "
+        "engineeringagent.adapters.progress.paths"
         in violation
         for violation in result.violations
     )
