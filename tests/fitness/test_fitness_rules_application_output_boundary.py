@@ -69,7 +69,12 @@ def test_checker_allows_application_modules_without_direct_print_calls(
 ) -> None:
     """Pass when application modules only return data and avoid print calls."""
     module_path = (
-        tmp_path / "src" / "engineeringagent" / "application" / "prompt_builder.py"
+        tmp_path
+        / "src"
+        / "engineeringagent"
+        / "application"
+        / "prompting"
+        / "prompt_builder.py"
     )
     module_path.parent.mkdir(parents=True, exist_ok=True)
     module_path.write_text(

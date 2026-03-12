@@ -103,3 +103,23 @@ def test_checker_allows_helper_modules_inside_explicit_application_subpackages(
     assert proc.returncode == 0
     assert payload["status"] == "pass"
     assert _violations(payload) == []
+
+
+def test_checker_flags_prompt_builder_left_at_application_root(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Reject root-level prompt builders once they move into an explicit subpackage."""
+    _write_module(
+        tmp_path,
+        relative_path="src/engineeringagent/application/prompt_builder.py",
+        content="class PromptBuilder:\n    pass\n",
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert _violations(payload) == [
+        "src/engineeringagent/application/prompt_builder.py: application root may only contain workflow-service modules; move implementation helpers into an explicit subpackage such as engineeringagent.application.feature_iteration or delete the legacy module"
+    ]

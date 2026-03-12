@@ -17,7 +17,7 @@ from .init_workspace_service import (
     InitWorkspaceResult,
     InitWorkspaceService,
 )
-from .prompt_builder import ImplementationPromptRequest, PromptBuilder
+from .prompting import ImplementationPromptRequest, PromptBuilder
 from .run_loop_service import RunLoopRequest, RunLoopResult, RunLoopService
 from .validation_service import (
     ValidateRepositoryRequest,

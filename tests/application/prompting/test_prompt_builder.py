@@ -4,12 +4,11 @@ import importlib.util
 from pathlib import Path
 from types import ModuleType
 
-import engineeringagent.application.prompt_builder as prompt_builder_module
+import engineeringagent.application.prompting.prompt_builder as prompt_builder_module
 from engineeringagent.application import (
     ImplementationPromptRequest,
     PromptBuilder,
 )
-from engineeringagent.ports import PromptDefinition, PromptDefinitionRepository
 from engineeringagent.domain.specification import (
     FeatureArtifacts,
     FeaturePriority,
@@ -18,6 +17,7 @@ from engineeringagent.domain.specification import (
     FeatureType,
     PlanningTier,
 )
+from engineeringagent.ports import PromptDefinition, PromptDefinitionRepository
 
 
 class LocalPromptDefinitionRepository(PromptDefinitionRepository):
@@ -47,7 +47,7 @@ def _prompt_builder(
     implementation_prompt_id: str = "implementation_default",
 ) -> PromptBuilder:
     resolved_prompts_root = prompts_root or (
-        Path(__file__).resolve().parents[2] / "harness" / "prompts"
+        Path(__file__).resolve().parents[3] / "harness" / "prompts"
     )
     return PromptBuilder(
         LocalPromptDefinitionRepository(resolved_prompts_root),
@@ -261,32 +261,33 @@ def test_default_prompt_builder_prefers_repo_local_templates(
         "    ),\n"
         ")\n",
     )
-    feature_path = tmp_path / "docs" / "features" / "spec.yaml"
-    feature_path.parent.mkdir(parents=True)
-    feature_path.write_text("id: FEAT-101\n", encoding="utf-8")
 
     prompt = _prompt_builder(prompts_root).build_implementation_prompt(
         ImplementationPromptRequest(
-            feature_id="FEAT-101",
-            specification_path=feature_path,
-            retry_feedback="retry",
+            feature_id="FEAT-900",
+            specification_path=tmp_path / "docs/specifications/features/FEAT-900/specification.yaml",
+            retry_feedback="retry this",
         )
     )
 
-    assert prompt.startswith("repo implementation\nFEAT-101\n")
-    assert prompt.rstrip().endswith("retry")
+    assert prompt == (
+        "repo implementation\n"
+        "FEAT-900\n"
+        f"{tmp_path / 'docs/specifications/features/FEAT-900/specification.yaml'}\n"
+        "retry this\n"
+    )
 
 
 def test_prompt_builder_uses_configured_implementation_prompt_id(
     tmp_path: Path,
 ) -> None:
-    """Implementation prompt rendering should load the configured prompt id."""
+    """The builder should respect the configured prompt-definition id."""
 
     prompts_root = tmp_path / "harness" / "prompts"
     prompts_root.mkdir(parents=True)
     _write_prompt_module(
         prompts_root,
-        "custom_prompt",
+        "repo_override",
         "from pydantic import BaseModel\n"
         "from engineeringagent.ports import PromptDefinition, PromptInterpolation\n"
         "class ImplementationInput(BaseModel):\n"
@@ -299,14 +300,14 @@ def test_prompt_builder_uses_configured_implementation_prompt_id(
         "class ImplementationOutput(BaseModel):\n"
         "    summary: str\n"
         "PROMPT_DEFINITION = PromptDefinition(\n"
-        "    prompt_id='custom_prompt',\n"
+        "    prompt_id='repo_override',\n"
         "    purpose='implementation',\n"
         "    target='implementation',\n"
         "    output_mode='structured',\n"
         "    token_budget_hint=100,\n"
         "    input_model=ImplementationInput,\n"
         "    output_model=ImplementationOutput,\n"
-        "    body_template='custom implementation\\n$feature_id\\n',\n"
+        "    body_template='override:$feature_id:$specification_path',\n"
         "    interpolations=(\n"
         "        PromptInterpolation(name='feature_id', source='test', required=True, rationale='test'),\n"
         "        PromptInterpolation(name='specification_path', source='test', required=True, rationale='test'),\n"
@@ -317,17 +318,18 @@ def test_prompt_builder_uses_configured_implementation_prompt_id(
         "    ),\n"
         ")\n",
     )
-    feature_path = tmp_path / "docs" / "features" / "spec.yaml"
-    feature_path.parent.mkdir(parents=True)
 
     prompt = _prompt_builder(
         prompts_root,
-        implementation_prompt_id="custom_prompt",
+        implementation_prompt_id="repo_override",
     ).build_implementation_prompt(
         ImplementationPromptRequest(
-            feature_id="FEAT-101",
-            specification_path=feature_path,
+            feature_id="FEAT-900",
+            specification_path=tmp_path / "docs/specifications/features/FEAT-900/specification.yaml",
         )
     )
 
-    assert prompt == "custom implementation\nFEAT-101\n"
+    assert prompt == (
+        "override:FEAT-900:"
+        f"{tmp_path / 'docs/specifications/features/FEAT-900/specification.yaml'}"
+    )
