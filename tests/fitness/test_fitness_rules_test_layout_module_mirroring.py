@@ -152,11 +152,10 @@ def test_test_layout_module_mirroring_rule_flags_legacy_workspace_service_test_p
     _write_file(tmp_path, "tests/__init__.py", "")
     _write_file(tmp_path, "tests/conftest.py", "")
     _write_file(tmp_path, "src/engineeringagent/application/__init__.py", "")
-    _write_file(tmp_path, "src/engineeringagent/application/workspace/__init__.py", "")
-    _write_file(tmp_path, "src/engineeringagent/application/workspace/init_service.py", "")
+    _write_file(tmp_path, "src/engineeringagent/application/init_workspace_service.py", "")
     _write_file(
         tmp_path,
-        "src/engineeringagent/application/workspace/recovery_service.py",
+        "src/engineeringagent/application/workspace_recovery_service.py",
         "",
     )
 
