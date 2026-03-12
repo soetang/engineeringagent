@@ -1086,7 +1086,7 @@ def test_iteration_pipeline_preserves_phase_metadata_after_bundled_archive(
     assert (
         project_root
         / "docs"
-        / "spec"
+        / "specifications"
         / "features_done"
         / "FEAT-900-bundled-smoke-test"
         / "spec.yaml"

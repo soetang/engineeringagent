@@ -147,6 +147,41 @@ def test_checker_flags_feature_iteration_imports_from_application_root(
     )
 
 
+def test_checker_flags_feature_iteration_request_from_application_root(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Reject callers importing feature-iteration requests from the root package."""
+    _write_module(
+        tmp_path,
+        relative_path="src/engineeringagent/application/__init__.py",
+        content='__all__ = ["FeatureIterationService"]\n',
+    )
+    _write_module(
+        tmp_path,
+        relative_path="src/engineeringagent/adapters/runtime/execution.py",
+        content="\n".join(
+            [
+                "from engineeringagent.application import FeatureIterationRequest",
+                "",
+                "REQUEST = FeatureIterationRequest",
+                "",
+            ]
+        ),
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert any(
+        "src/engineeringagent/adapters/runtime/execution.py:1" in violation
+        and "FeatureIterationRequest" in violation
+        and "engineeringagent.application.feature_iteration" in violation
+        for violation in _violations(payload)
+    )
+
+
 def test_checker_allows_feature_iteration_imports_from_explicit_subpackage(
     tmp_path: Path,
     repo_root: Path,

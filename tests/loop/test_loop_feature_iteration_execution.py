@@ -34,7 +34,7 @@ def test_run_loop_all_discovers_backlog_and_in_progress_only(
     tmp_path: Path, capsys: Any
 ) -> None:
     project_root, _ = make_project_root(tmp_path, feature_data=base_feature())
-    features_dir = project_root / "docs" / "spec" / "features"
+    features_dir = project_root / "docs" / "specifications" / "features"
 
     backlog_feature = base_feature(status="backlog")
     backlog_feature["id"] = "FEAT-901"
@@ -93,8 +93,8 @@ def test_run_loop_all_discovers_backlog_and_in_progress_only(
 
 def test_run_all_uses_configured_docs_root(tmp_path: Path, capsys: Any) -> None:
     configured_docs_root = tmp_path / "docs.engineeringagent"
-    configured_features_dir = configured_docs_root / "spec" / "features"
-    default_features_dir = tmp_path / "docs" / "spec" / "features"
+    configured_features_dir = configured_docs_root / "specifications" / "features"
+    default_features_dir = tmp_path / "docs" / "specifications" / "features"
 
     (tmp_path / "engineeringagent.toml").write_text(
         'docs-root = "docs.engineeringagent"\n',
@@ -144,7 +144,7 @@ def test_run_loop_all_excludes_blocked_and_done_from_startup_snapshot(
     tmp_path: Path, capsys: Any
 ) -> None:
     project_root, _ = make_project_root(tmp_path, feature_data=base_feature(status="done"))
-    features_dir = project_root / "docs" / "spec" / "features"
+    features_dir = project_root / "docs" / "specifications" / "features"
 
     blocked_feature = base_feature(status="blocked")
     blocked_feature["id"] = "FEAT-903"
@@ -192,7 +192,7 @@ def test_run_loop_all_does_not_include_specs_created_after_startup(
     tmp_path: Path,
 ) -> None:
     project_root, feature_path = make_project_root(tmp_path, feature_data=base_feature())
-    features_dir = project_root / "docs" / "spec" / "features"
+    features_dir = project_root / "docs" / "specifications" / "features"
     created_feature_path = (
         features_dir / "FEAT-999-created-after-startup" / "spec.yaml"
     )
@@ -216,7 +216,7 @@ def test_run_loop_all_does_not_include_specs_created_after_startup(
     archived_path = (
         project_root
         / "docs"
-        / "spec"
+        / "specifications"
         / "features_done"
         / feature_path.parent.name
         / "spec.yaml"
@@ -314,7 +314,7 @@ def test_run_loop_completes_feature_and_commits(tmp_path: Path) -> None:
     archived_path = (
         project_root
         / "docs"
-        / "spec"
+        / "specifications"
         / "features_done"
         / feature_path.parent.name
         / "spec.yaml"
@@ -332,7 +332,11 @@ def test_run_loop_completes_feature_and_commits(tmp_path: Path) -> None:
 def test_archive_path_uses_configured_docs_root(tmp_path: Path) -> None:
     docs_root = tmp_path / "docs.engineeringagent"
     feature_path = (
-        docs_root / "spec" / "features" / "FEAT-910-configured-archive" / "spec.yaml"
+        docs_root
+        / "specifications"
+        / "features"
+        / "FEAT-910-configured-archive"
+        / "spec.yaml"
     )
     feature = base_feature(status="backlog")
     feature["id"] = "FEAT-910"
@@ -367,7 +371,11 @@ def test_archive_path_uses_configured_docs_root(tmp_path: Path) -> None:
         )
 
     archived_path = (
-        docs_root / "spec" / "features_done" / "FEAT-910-configured-archive" / "spec.yaml"
+        docs_root
+        / "specifications"
+        / "features_done"
+        / "FEAT-910-configured-archive"
+        / "spec.yaml"
     )
     assert code == 0
     assert not feature_path.exists()

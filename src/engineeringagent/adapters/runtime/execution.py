@@ -6,12 +6,12 @@ from importlib import import_module
 from pathlib import Path
 from typing import Callable
 
-from engineeringagent.application import FeatureIterationRequest
 from engineeringagent.application.feature_iteration_service import (
     FeatureIterationService,
 )
 from engineeringagent.application.feature_iteration import (
     FeatureIterationInputs,
+    FeatureIterationRequest,
     IterationOutcome,
     IterationSummaryInputs,
 )

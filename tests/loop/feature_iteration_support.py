@@ -205,7 +205,12 @@ def make_project_root(
 ) -> tuple[Path, Path]:
     project_root = tmp_path
     feature_path = (
-        project_root / "docs" / "spec" / "features" / "FEAT-900-ralph-test" / "spec.yaml"
+        project_root
+        / "docs"
+        / "specifications"
+        / "features"
+        / "FEAT-900-ralph-test"
+        / "spec.yaml"
     )
     feature_payload = dict(feature_data)
     feature_payload.setdefault("planning_tier", "direct")
@@ -262,7 +267,11 @@ def make_bundled_project_root(
 ) -> tuple[Path, Path, Path]:
     project_root = tmp_path
     feature_root = (
-        project_root / "docs" / "spec" / "features" / "FEAT-900-bundled-smoke-test"
+        project_root
+        / "docs"
+        / "specifications"
+        / "features"
+        / "FEAT-900-bundled-smoke-test"
     )
     feature_path = feature_root / "spec.yaml"
     plan_path = feature_root / "plan.md"
@@ -609,7 +618,7 @@ def write_move_to_done_script(script_path: Path) -> Path:
                 "feature = yaml.safe_load(feature_path.read_text(encoding='utf-8'))",
                 "feature['status'] = 'done'",
                 "feature_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding='utf-8')",
-                "done_root = project_root / 'docs' / 'spec' / 'features_done' / feature_path.parent.name",
+                "done_root = project_root / 'docs' / 'specifications' / 'features_done' / feature_path.parent.name",
                 "done_root.parent.mkdir(parents=True, exist_ok=True)",
                 "shutil.move(str(feature_path.parent), str(done_root))",
             ]
@@ -640,6 +649,12 @@ def move_feature_to_done(project_root: Path, feature_path: Path) -> None:
     feature = yaml.safe_load(feature_path.read_text(encoding="utf-8"))
     feature["status"] = "done"
     feature_path.write_text(yaml.safe_dump(feature, sort_keys=False), encoding="utf-8")
-    done_root = project_root / "docs" / "spec" / "features_done" / feature_path.parent.name
+    done_root = (
+        project_root
+        / "docs"
+        / "specifications"
+        / "features_done"
+        / feature_path.parent.name
+    )
     done_root.parent.mkdir(parents=True, exist_ok=True)
     feature_path.parent.rename(done_root)

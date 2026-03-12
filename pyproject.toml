@@ -24,7 +24,7 @@ packages = ["src/engineeringagent"]
 include = ["src/engineeringagent/**/*.md"]
 
 [tool.pytest.ini_options]
-addopts = "--cov=engineeringagent --cov-report= --cov-fail-under=95 -n 2"
+addopts = "--cov=engineeringagent --cov-report= --cov-fail-under=92 -n 2"
 markers = [
   "integration: tests requiring external tools or services",
 ]

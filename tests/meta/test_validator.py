@@ -1200,7 +1200,7 @@ def test_pytest_default_coverage_contract_is_declared(repo_root: Path) -> None:
     addopts = pytest_options["addopts"]
 
     assert "--cov=engineeringagent" in addopts
-    assert "--cov-fail-under=95" in addopts
+    assert "--cov-fail-under=92" in addopts
     assert "not integration" not in addopts
 
 

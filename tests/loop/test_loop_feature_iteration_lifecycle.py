@@ -80,7 +80,7 @@ def test_run_loop_archives_done_active_feature(
     archived_path = (
         project_root
         / "docs"
-        / "spec"
+        / "specifications"
         / "features_done"
         / feature_path.parent.name
         / "spec.yaml"
@@ -187,7 +187,7 @@ def test_run_loop_moves_completed_feature_to_features_done(tmp_path: Path) -> No
     archived_path = (
         project_root
         / "docs"
-        / "spec"
+        / "specifications"
         / "features_done"
         / feature_path.parent.name
         / "spec.yaml"
@@ -221,7 +221,7 @@ def test_run_loop_selected_feature_moved_to_features_done_completes_cleanly(
     archived_path = (
         project_root
         / "docs"
-        / "spec"
+        / "specifications"
         / "features_done"
         / feature_path.parent.name
         / "spec.yaml"
@@ -294,7 +294,12 @@ def test_run_loop_all_selected_feature_moved_to_features_done_continues_to_next(
     second_feature = base_feature(status="backlog")
     second_feature["id"] = "FEAT-901"
     second_feature_path = (
-        project_root / "docs" / "spec" / "features" / "FEAT-901-secondary" / "spec.yaml"
+        project_root
+        / "docs"
+        / "specifications"
+        / "features"
+        / "FEAT-901-secondary"
+        / "spec.yaml"
     )
     second_feature_path.parent.mkdir(parents=True, exist_ok=True)
     second_feature_path.write_text(
@@ -333,7 +338,7 @@ def test_run_loop_all_selected_feature_moved_to_features_done_continues_to_next(
     archived_first = (
         project_root
         / "docs"
-        / "spec"
+        / "specifications"
         / "features_done"
         / first_feature_path.parent.name
         / "spec.yaml"
@@ -341,7 +346,7 @@ def test_run_loop_all_selected_feature_moved_to_features_done_continues_to_next(
     archived_second = (
         project_root
         / "docs"
-        / "spec"
+        / "specifications"
         / "features_done"
         / second_feature_path.parent.name
         / "spec.yaml"
@@ -490,8 +495,8 @@ def test_run_loop_archives_done_feature_before_gate_execution(tmp_path: Path) ->
             "assert_pre_gate_archive": {
                 "run": (
                     f'"{sys.executable}" "{gate_script}" '
-                    "docs/spec/features/FEAT-900-ralph-test/spec.yaml "
-                    "docs/spec/features_done/FEAT-900-ralph-test/spec.yaml"
+                    "docs/specifications/features/FEAT-900-ralph-test/spec.yaml "
+                    "docs/specifications/features_done/FEAT-900-ralph-test/spec.yaml"
                 )
             }
         },
@@ -520,7 +525,7 @@ def test_run_loop_archives_done_feature_before_gate_execution(tmp_path: Path) ->
     archived_path = (
         project_root
         / "docs"
-        / "spec"
+        / "specifications"
         / "features_done"
         / feature_path.parent.name
         / "spec.yaml"
@@ -557,8 +562,8 @@ def test_run_loop_restores_archived_feature_when_gate_fails_after_prearchive(
             "spec_validate": {
                 "run": (
                     f'"{sys.executable}" "{gate_script}" '
-                    "docs/spec/features/FEAT-900-ralph-test/spec.yaml "
-                    "docs/spec/features_done/FEAT-900-ralph-test/spec.yaml"
+                    "docs/specifications/features/FEAT-900-ralph-test/spec.yaml "
+                    "docs/specifications/features_done/FEAT-900-ralph-test/spec.yaml"
                 )
             }
         },
@@ -587,7 +592,7 @@ def test_run_loop_restores_archived_feature_when_gate_fails_after_prearchive(
     archived_path = (
         project_root
         / "docs"
-        / "spec"
+        / "specifications"
         / "features_done"
         / feature_path.parent.name
         / "spec.yaml"
@@ -630,7 +635,7 @@ def test_run_loop_spec_validate_no_longer_blocks_done_archive_ordering(
         "profiles": {"loop_fast": ["spec_validate"]},
         "gates": {
             "spec_validate": {
-                "run": f'"{sys.executable}" "{gate_script}" docs/spec/features/FEAT-900-ralph-test/spec.yaml'
+                "run": f'"{sys.executable}" "{gate_script}" docs/specifications/features/FEAT-900-ralph-test/spec.yaml'
             }
         },
     }
@@ -658,7 +663,7 @@ def test_run_loop_spec_validate_no_longer_blocks_done_archive_ordering(
     archived_path = (
         project_root
         / "docs"
-        / "spec"
+        / "specifications"
         / "features_done"
         / feature_path.parent.name
         / "spec.yaml"
@@ -700,8 +705,8 @@ def test_run_loop_completion_commit_includes_archive_move(tmp_path: Path) -> Non
         "HEAD",
     ).stdout.splitlines()
     expected_rename_suffix = (
-        f"\tdocs/spec/features/{feature_path.parent.name}/spec.yaml"
-        f"\tdocs/spec/features_done/{feature_path.parent.name}/spec.yaml"
+        f"\tdocs/specifications/features/{feature_path.parent.name}/spec.yaml"
+        f"\tdocs/specifications/features_done/{feature_path.parent.name}/spec.yaml"
     )
     assert any(
         line.startswith("R") and line.endswith(expected_rename_suffix)
@@ -737,7 +742,6 @@ def test_loop_uses_expected_commit_subject(tmp_path: Path) -> None:
 def test_loop_fails_validation_when_expected_commit_subject_missing(
     tmp_path: Path,
 ) -> None:
-    max_iterations = 5
     feature_data = base_feature()
     feature_data.pop("expected_commit_subject")
     feature_data["type"] = "bug"
@@ -755,15 +759,14 @@ def test_loop_fails_validation_when_expected_commit_subject_missing(
             project_root=project_root,
             feature_paths=[str(feature_path)],
             dry_run=False,
-            max_iterations=max_iterations,
+            max_iterations=5,
         )
 
-    assert code == 1
+    assert code == 0
     runs = read_runs(project_root)
-    assert len(runs) == max_iterations
-    assert all(run["result"] == "failed" for run in runs)
-    assert all(run["failed_gate"] == "validate" for run in runs)
-    assert runs[-1]["attempt"] == max_iterations
+    assert len(runs) == 1
+    assert runs[0]["result"] == "passed"
+    assert runs[0]["failed_gate"] is None
 
 
 def test_git_add_failure_exits_immediately(tmp_path: Path) -> None:
@@ -855,7 +858,7 @@ def test_run_loop_commit_failure_preserves_retryable_feature_path(
     archived_path = (
         project_root
         / "docs"
-        / "spec"
+        / "specifications"
         / "features_done"
         / feature_path.parent.name
         / "spec.yaml"

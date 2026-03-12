@@ -154,14 +154,14 @@ def test_feature_state_error_paths(tmp_path: Path, monkeypatch: Any) -> None:
     with pytest.raises(ValueError, match="illegal feature status transition"):
         feature_state_module.set_status({"status": "done"}, "in_progress")
 
-    features_dir = tmp_path / "docs" / "spec" / "features"
+    features_dir = tmp_path / "docs" / "specifications" / "features"
 
     outside_bundle = tmp_path / "elsewhere" / "FEAT-999-outside" / "spec.yaml"
     outside_bundle.parent.mkdir(parents=True)
     outside_bundle.write_text("id: FEAT-999\nstatus: backlog\n", encoding="utf-8")
     with pytest.raises(
         ValueError,
-        match=str((tmp_path / "docs" / "spec" / "features").resolve()),
+        match=str((tmp_path / "docs" / "specifications" / "features").resolve()),
     ):
         feature_state_module._resolve_archive_path(tmp_path, outside_bundle)
 
@@ -173,7 +173,7 @@ def test_feature_state_error_paths(tmp_path: Path, monkeypatch: Any) -> None:
     active_root = features_dir / "FEAT-002-broken"
     active_root.mkdir(parents=True, exist_ok=True)
     active_feature_path = active_root / "spec.yaml"
-    done_dir = tmp_path / "docs" / "spec" / "features_done"
+    done_dir = tmp_path / "docs" / "specifications" / "features_done"
     done_dir.mkdir(parents=True)
     active_feature_path.write_text("[", encoding="utf-8")
     loaded, error = feature_state_module._load_selected_feature(active_feature_path)
@@ -274,7 +274,9 @@ def test_feature_state_error_paths(tmp_path: Path, monkeypatch: Any) -> None:
 def test_touch_active_feature_for_iteration_promotes_bundled_plan_phase_statuses(
     tmp_path: Path,
 ) -> None:
-    feature_root = tmp_path / "docs" / "spec" / "features" / "FEAT-330-bundled-touch"
+    feature_root = (
+        tmp_path / "docs" / "specifications" / "features" / "FEAT-330-bundled-touch"
+    )
     feature_root.mkdir(parents=True)
     feature_path = feature_root / "spec.yaml"
     feature_path.write_text(
@@ -345,7 +347,9 @@ def test_touch_active_feature_for_iteration_promotes_bundled_plan_phase_statuses
 def test_touch_active_feature_for_iteration_preserves_blocked_bundled_plan_phase(
     tmp_path: Path,
 ) -> None:
-    feature_root = tmp_path / "docs" / "spec" / "features" / "FEAT-331-bundled-touch"
+    feature_root = (
+        tmp_path / "docs" / "specifications" / "features" / "FEAT-331-bundled-touch"
+    )
     feature_root.mkdir(parents=True)
     feature_path = feature_root / "spec.yaml"
     feature_path.write_text(
@@ -414,7 +418,9 @@ def test_touch_active_feature_for_iteration_preserves_blocked_bundled_plan_phase
 def test_touch_active_feature_for_iteration_syncs_feature_status_from_blocked_plan(
     tmp_path: Path,
 ) -> None:
-    feature_root = tmp_path / "docs" / "spec" / "features" / "FEAT-332-bundled-touch"
+    feature_root = (
+        tmp_path / "docs" / "specifications" / "features" / "FEAT-332-bundled-touch"
+    )
     feature_root.mkdir(parents=True)
     feature_path = feature_root / "spec.yaml"
     feature_path.write_text(
@@ -486,9 +492,9 @@ def _setup_archived_selected_counterpart(
     feature_dir_name: str,
     archived_lines: list[str] | None = None,
 ) -> tuple[Path, Path]:
-    features_dir = tmp_path / "docs" / "spec" / "features"
+    features_dir = tmp_path / "docs" / "specifications" / "features"
     features_dir.mkdir(parents=True)
-    archived_dir = tmp_path / "docs" / "spec" / "features_done"
+    archived_dir = tmp_path / "docs" / "specifications" / "features_done"
     archived_dir.mkdir(parents=True)
 
     active_feature_path = features_dir / feature_dir_name / "spec.yaml"
@@ -530,7 +536,7 @@ def _write_bundled_feature_package(
 def test_feature_state_supports_bundled_package_discovery_and_archive_flow(
     tmp_path: Path,
 ) -> None:
-    features_dir = tmp_path / "docs" / "spec" / "features"
+    features_dir = tmp_path / "docs" / "specifications" / "features"
     active_spec = _write_bundled_feature_package(
         features_dir / "FEAT-320-active-bundle",
         status="backlog",
@@ -553,7 +559,7 @@ def test_feature_state_supports_bundled_package_discovery_and_archive_flow(
     assert archived_path == (
         tmp_path
         / "docs"
-        / "spec"
+        / "specifications"
         / "features_done"
         / "FEAT-321-done-bundle"
         / "spec.yaml"
@@ -567,10 +573,14 @@ def test_feature_state_supports_bundled_package_discovery_and_archive_flow(
 def test_feature_state_refresh_and_restore_support_bundled_archives(
     tmp_path: Path,
 ) -> None:
-    features_dir = tmp_path / "docs" / "spec" / "features"
+    features_dir = tmp_path / "docs" / "specifications" / "features"
     active_spec = features_dir / "FEAT-322-refresh-bundle" / "spec.yaml"
     archived_spec = _write_bundled_feature_package(
-        tmp_path / "docs" / "spec" / "features_done" / "FEAT-322-refresh-bundle",
+        tmp_path
+        / "docs"
+        / "specifications"
+        / "features_done"
+        / "FEAT-322-refresh-bundle",
         status="done",
         extra_files={"plan.md": "# archived plan\n"},
     )
@@ -598,10 +608,14 @@ def test_feature_state_refresh_and_restore_support_bundled_archives(
 def test_post_implement_refresh_rejects_archived_bundles_with_open_plan_phases(
     tmp_path: Path,
 ) -> None:
-    features_dir = tmp_path / "docs" / "spec" / "features"
+    features_dir = tmp_path / "docs" / "specifications" / "features"
     active_spec = features_dir / "FEAT-323-refresh-bundle" / "spec.yaml"
     archived_root = (
-        tmp_path / "docs" / "spec" / "features_done" / "FEAT-323-refresh-bundle"
+        tmp_path
+        / "docs"
+        / "specifications"
+        / "features_done"
+        / "FEAT-323-refresh-bundle"
     )
     archived_spec = archived_root / "spec.yaml"
     archived_root.mkdir(parents=True, exist_ok=True)
@@ -704,9 +718,9 @@ def test_post_implement_refresh_rejects_non_done_archived_counterpart(
 def test_post_implement_refresh_does_not_fallback_to_non_matching_archived_feature(
     tmp_path: Path,
 ) -> None:
-    features_dir = tmp_path / "docs" / "spec" / "features"
+    features_dir = tmp_path / "docs" / "specifications" / "features"
     features_dir.mkdir(parents=True)
-    archived_dir = tmp_path / "docs" / "spec" / "features_done"
+    archived_dir = tmp_path / "docs" / "specifications" / "features_done"
     archived_dir.mkdir(parents=True)
 
     active_feature_path = features_dir / "FEAT-202.yaml"
@@ -756,7 +770,7 @@ def test_gate_and_verification_phase_error_paths(
 
     inputs = FeatureIterationInputs(
         project_root=tmp_path,
-        feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-001.yaml",
+        feature_path=tmp_path / "docs" / "specifications" / "features" / "FEAT-001.yaml",
         run_all=True,
         attempt=1,
         feedback=None,
@@ -774,7 +788,11 @@ def test_gate_and_verification_phase_error_paths(
     gate_outcome = run_gate_phase(
         inputs,
         archived_in_iteration=True,
-        archived_path=tmp_path / "docs" / "spec" / "features_done" / "FEAT-001.yaml",
+        archived_path=tmp_path
+        / "docs"
+        / "specifications"
+        / "features_done"
+        / "FEAT-001.yaml",
         dependencies=gate_deps,
     )
     assert gate_outcome.result == "failed"
@@ -799,7 +817,7 @@ def test_gate_and_verification_phase_error_paths(
 def test_completion_phase_fallback_paths() -> None:
     inputs = FeatureIterationInputs(
         project_root=Path("."),
-        feature_path=Path("docs/spec/features/FEAT-001/spec.yaml"),
+        feature_path=Path("docs/specifications/features/FEAT-001/spec.yaml"),
         attempt=1,
         feedback=None,
         verbose_output=False,
@@ -823,7 +841,7 @@ def test_completion_phase_fallback_paths() -> None:
         inputs,
         post_feature=None,
         archived_in_iteration=True,
-        archived_path=Path("docs/spec/features_done/FEAT-001/spec.yaml"),
+        archived_path=Path("docs/specifications/features_done/FEAT-001/spec.yaml"),
         dependencies=deps,
     )
     assert missing.result == "failed"
@@ -833,7 +851,7 @@ def test_completion_phase_fallback_paths() -> None:
         inputs,
         post_feature={"id": "FEAT-001"},
         archived_in_iteration=True,
-        archived_path=Path("docs/spec/features_done/FEAT-001/spec.yaml"),
+        archived_path=Path("docs/specifications/features_done/FEAT-001/spec.yaml"),
         dependencies=deps,
     )
     assert commit_failed.result == "failed"

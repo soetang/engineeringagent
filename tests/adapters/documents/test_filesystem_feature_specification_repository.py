@@ -112,7 +112,7 @@ def test_filesystem_feature_specification_repository_loads_and_saves_feature(
         (
             tmp_path
             / "docs"
-            / "spec"
+            / "specifications"
             / "features"
             / "FEAT-300-save"
             / "spec.yaml"
@@ -139,10 +139,15 @@ def test_filesystem_feature_specification_repository_archives_feature_package(
     repository.archive(tmp_path, "FEAT-400")
 
     assert not (
-        tmp_path / "docs" / "spec" / "features" / "FEAT-400-archive"
+        tmp_path / "docs" / "specifications" / "features" / "FEAT-400-archive"
     ).exists()
     assert (
-        tmp_path / "docs" / "spec" / "features_done" / "FEAT-400-archive" / "spec.yaml"
+        tmp_path
+        / "docs"
+        / "specifications"
+        / "features_done"
+        / "FEAT-400-archive"
+        / "spec.yaml"
     ).is_file()
 
 
@@ -151,7 +156,9 @@ def test_filesystem_feature_specification_repository_rejects_invalid_feature_pac
 ) -> None:
     """The adapter should fail deterministically on invalid bundled feature specs."""
 
-    invalid_dir = tmp_path / "docs" / "spec" / "features" / "FEAT-500-invalid"
+    invalid_dir = (
+        tmp_path / "docs" / "specifications" / "features" / "FEAT-500-invalid"
+    )
     invalid_dir.mkdir(parents=True, exist_ok=True)
     (invalid_dir / "spec.yaml").write_text("id: FEAT-500\n", encoding="utf-8")
 
@@ -211,7 +218,9 @@ def _write_feature_package(
 ) -> None:
     directory_name = str(payload["directory_name"])
     feature_id = str(payload["feature_id"])
-    feature_dir = project_root / "docs" / "spec" / "features" / directory_name
+    feature_dir = (
+        project_root / "docs" / "specifications" / "features" / directory_name
+    )
     feature_dir.mkdir(parents=True, exist_ok=True)
     feature_payload = {
         "id": feature_id,
@@ -233,5 +242,12 @@ def _write_feature_package(
 
 
 def _write_plan(project_root: Path, *, directory_name: str, body: str) -> None:
-    plan_path = project_root / "docs" / "spec" / "features" / directory_name / "plan.md"
+    plan_path = (
+        project_root
+        / "docs"
+        / "specifications"
+        / "features"
+        / directory_name
+        / "plan.md"
+    )
     plan_path.write_text(body, encoding="utf-8")

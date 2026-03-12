@@ -6,6 +6,7 @@ from typing import Any, Sequence, cast
 
 from engineeringagent.application.feature_iteration import (
     FeatureIterationInputs,
+    FeatureIterationRequest,
     FeatureIterationRuntimeDependencies,
     IterationOutcome,
     IterationReport,
@@ -15,10 +16,7 @@ from engineeringagent.application.feature_iteration import (
     commit_feature_completion,
     persist_iteration_report,
 )
-from engineeringagent.application import (
-    FeatureIterationRequest,
-    FeatureIterationService,
-)
+from engineeringagent.application import FeatureIterationService
 from engineeringagent.bootstrap.iteration_reporting import DefaultObserverDependencies
 from engineeringagent.domain.audit import ProgressEvent
 from engineeringagent.ports import CommitRequest, CommitResult, DiffSummary, WorktreeStatus

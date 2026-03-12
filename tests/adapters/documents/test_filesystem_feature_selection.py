@@ -60,7 +60,7 @@ def test_discover_active_feature_paths_filters_to_runnable_statuses(
     tmp_path: Path,
 ) -> None:
     """Return only backlog and in-progress feature specs."""
-    features_dir = tmp_path / "docs" / "spec" / "features"
+    features_dir = tmp_path / "docs" / "specifications" / "features"
     backlog_spec = features_dir / "FEAT-001" / "spec.yaml"
     backlog_spec.parent.mkdir(parents=True, exist_ok=True)
     backlog_spec.write_text("id: FEAT-001\nstatus: backlog\n", encoding="utf-8")
@@ -77,7 +77,12 @@ def test_discover_active_feature_paths_surfaces_yaml_load_failures(
 ) -> None:
     """Surface invalid YAML while scanning the active feature root."""
     broken_spec = (
-        tmp_path / "docs" / "spec" / "features" / "FEAT-999-broken" / "spec.yaml"
+        tmp_path
+        / "docs"
+        / "specifications"
+        / "features"
+        / "FEAT-999-broken"
+        / "spec.yaml"
     )
     broken_spec.parent.mkdir(parents=True, exist_ok=True)
     broken_spec.write_text("[", encoding="utf-8")

@@ -130,7 +130,8 @@ def test_repo_layer_contracts_rule_blocks_deleted_agents_registry_module(
     assert payload["status"] == "fail"
     assert payload["rule_id"] == "architecture.repo-layer-contracts"
     assert payload["violations"] == [
-        "src/engineeringagent/agents/registry.py: deleted legacy module path must remain absent"
+        "src/engineeringagent/agents/registry.py: deleted legacy module path must remain absent",
+        "src/engineeringagent/agents: deleted legacy directory path must remain absent",
     ]
 
 
@@ -149,7 +150,8 @@ def test_repo_layer_contracts_rule_blocks_deleted_agents_runtime_module(
     assert payload["status"] == "fail"
     assert payload["rule_id"] == "architecture.repo-layer-contracts"
     assert payload["violations"] == [
-        "src/engineeringagent/agents/runtime.py: deleted legacy module path must remain absent"
+        "src/engineeringagent/agents/runtime.py: deleted legacy module path must remain absent",
+        "src/engineeringagent/agents: deleted legacy directory path must remain absent",
     ]
 
 
