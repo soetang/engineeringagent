@@ -6,7 +6,7 @@ import errno
 from pathlib import Path
 import shutil
 
-from engineeringagent.config import resolve_docs_root
+from engineeringagent.config import resolve_specifications_root
 from engineeringagent.domain.specification import (
     FeatureArtifacts,
     FeaturePriority,
@@ -27,8 +27,6 @@ from engineeringagent.specs import (
 )
 
 _PORT_NAME = "FeatureSpecificationRepository"
-_FEATURES_DIR = ("spec", "features")
-_FEATURES_DONE_DIR = ("spec", "features_done")
 _PRIORITY_ORDER = {
     FeaturePriority.HIGH: 0,
     FeaturePriority.MEDIUM: 1,
@@ -103,11 +101,11 @@ class FilesystemFeatureSpecificationRepository(FeatureSpecificationRepository):
 
 
 def _active_features_root(project_root: Path) -> Path:
-    return resolve_docs_root(project_root).joinpath(*_FEATURES_DIR)
+    return resolve_specifications_root(project_root).joinpath("features")
 
 
 def _archived_features_root(project_root: Path) -> Path:
-    return resolve_docs_root(project_root).joinpath(*_FEATURES_DONE_DIR)
+    return resolve_specifications_root(project_root).joinpath("features_done")
 
 
 def _find_feature_spec_path(

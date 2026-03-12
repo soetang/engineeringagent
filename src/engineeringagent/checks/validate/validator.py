@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from engineeringagent.config import resolve_docs_root
+from engineeringagent.config import resolve_specifications_root
 
 from .contracts import ValidationContext, ValidationIssue
 from .repo_validators import RepoPolicyValidator
@@ -13,7 +13,8 @@ from .strategy_validators import default_strategy_validators
 def validate(project_root: Path, schema_only: bool = False) -> list[str]:
     """Validate repository documents and static check-domain contracts."""
 
-    docs_root = resolve_docs_root(project_root)
+    specifications_root = resolve_specifications_root(project_root)
+    docs_root = specifications_root.parent
     context = ValidationContext(
         project_root=project_root,
         docs_root=docs_root,

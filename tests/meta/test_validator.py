@@ -145,6 +145,27 @@ def test_validate_requires_expected_commit_subject(tmp_path: Path) -> None:
     )
 
 
+def test_validate_uses_configured_specifications_root(tmp_path: Path) -> None:
+    project_root = tmp_path
+    (project_root / "engineeringagent.toml").write_text(
+        '[paths]\nspecifications_root = "docs/specifications"\n',
+        encoding="utf-8",
+    )
+    feature_root = (
+        project_root
+        / "docs"
+        / "specifications"
+        / "features"
+        / "FEAT-915-configured-specifications-root"
+    )
+    write_bundled_feature_spec(feature_root, feature_id="FEAT-915")
+    write_plan_artifact(feature_root, feature_id="FEAT-915")
+
+    messages = validate(project_root=project_root)
+
+    assert messages == []
+
+
 def test_validate_reports_invalid_potential_features_contract(tmp_path: Path) -> None:
     project_root = tmp_path
     potential_features_path = project_root / "docs" / "spec" / "potential_features.yaml"

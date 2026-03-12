@@ -162,6 +162,49 @@ def test_filesystem_feature_specification_repository_rejects_invalid_feature_pac
         FilesystemFeatureSpecificationRepository().list_selection_candidates(tmp_path)
 
 
+def test_filesystem_feature_specification_repository_uses_configured_specifications_root(
+    tmp_path: Path,
+) -> None:
+    """The adapter should load features from the configured specifications root."""
+
+    (tmp_path / "engineeringagent.toml").write_text(
+        '[paths]\nspecifications_root = "docs/specifications"\n',
+        encoding="utf-8",
+    )
+    feature_dir = (
+        tmp_path
+        / "docs"
+        / "specifications"
+        / "features"
+        / "FEAT-600-configured-root"
+    )
+    feature_dir.mkdir(parents=True, exist_ok=True)
+    (feature_dir / "spec.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "id": "FEAT-600",
+                "title": "Configured specifications root",
+                "type": "feature",
+                "expected_commit_subject": "feat: implement feat-600",
+                "planning_tier": "direct",
+                "status": "backlog",
+                "priority": "high",
+                "objective": "Load from docs/specifications.",
+                "acceptance": ["Configured root works."],
+                "artifacts": {},
+                "updated_at": "2026-03-12T00:00:00Z",
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    loaded = FilesystemFeatureSpecificationRepository().load(tmp_path, "FEAT-600")
+
+    assert loaded.feature_id == "FEAT-600"
+    assert loaded.title == "Configured specifications root"
+
+
 def _write_feature_package(
     project_root: Path,
     payload: dict[str, object],

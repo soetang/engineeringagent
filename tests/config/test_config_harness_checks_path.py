@@ -9,6 +9,7 @@ from engineeringagent.config import (
     repo_relative_label,
     resolve_harness_root,
     resolve_progress_root,
+    resolve_specifications_root,
     resolve_harness_checks_config_path,
 )
 
@@ -110,6 +111,48 @@ def test_resolve_harness_root_uses_pyproject_tool_engineeringagent(
     )
 
     assert resolve_harness_root(tmp_path) == (tmp_path / "custom/harness")
+
+
+def test_resolve_specifications_root_defaults_to_legacy_docs_spec(
+    tmp_path: Path,
+) -> None:
+    """Specifications root falls back to the current bundled feature location."""
+
+    assert resolve_specifications_root(tmp_path) == (tmp_path / "docs" / "spec")
+
+
+def test_resolve_specifications_root_prefers_engineeringagent_toml_over_pyproject(
+    tmp_path: Path,
+) -> None:
+    """Specifications root prefers engineeringagent.toml over pyproject."""
+
+    (tmp_path / "engineeringagent.toml").write_text(
+        '[paths]\nspecifications_root = "docs/specifications"\n',
+        encoding="utf-8",
+    )
+    (tmp_path / "pyproject.toml").write_text(
+        '[tool.engineeringagent.paths]\nspecifications_root = "docs/from-pyproject"\n',
+        encoding="utf-8",
+    )
+
+    assert resolve_specifications_root(tmp_path) == (
+        tmp_path / "docs" / "specifications"
+    )
+
+
+def test_resolve_specifications_root_uses_pyproject_tool_engineeringagent(
+    tmp_path: Path,
+) -> None:
+    """Specifications root reads pyproject fallback when repo config is absent."""
+
+    (tmp_path / "pyproject.toml").write_text(
+        '[tool.engineeringagent.paths]\nspecifications_root = "docs/specifications"\n',
+        encoding="utf-8",
+    )
+
+    assert resolve_specifications_root(tmp_path) == (
+        tmp_path / "docs" / "specifications"
+    )
 
 
 def test_repo_relative_label_prefers_project_relative_path(tmp_path: Path) -> None:
