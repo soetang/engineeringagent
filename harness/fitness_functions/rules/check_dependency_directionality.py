@@ -38,23 +38,7 @@ def _read_module_list(
     alias_field_name: str,
     item_label: str,
 ) -> list[str]:
-    module_values = rule.get(field_name)
     layer_values = rule.get(alias_field_name)
-    if module_values is not None and layer_values is not None:
-        raise ValueError(
-            f"policy rules must not define both '{field_name}' and "
-            f"'{alias_field_name}'"
-        )
-    if module_values is not None:
-        if not isinstance(module_values, list) or not module_values:
-            raise ValueError(
-                f"policy {field_name} must be a non-empty list of module paths"
-            )
-        if not all(isinstance(value, str) and value for value in module_values):
-            raise ValueError(
-                f"policy {field_name} must contain only non-empty strings"
-            )
-        return list(module_values)
     if layer_values is not None:
         if not isinstance(layer_values, list) or not layer_values:
             raise ValueError(
@@ -75,9 +59,12 @@ def _read_module_list(
                 )
             expanded_values.extend(layer_modules)
         return expanded_values
-    raise ValueError(
-        f"policy rules must define either '{field_name}' or '{alias_field_name}'"
-    )
+    if rule.get(field_name) is not None:
+        raise ValueError(
+            "dependency directionality policy no longer accepts module-path "
+            f"field '{field_name}'; use '{alias_field_name}' layer ids instead"
+        )
+    raise ValueError(f"policy rules must define '{alias_field_name}'")
 
 
 def _load_policy(config_file: Path) -> dict[str, tuple[str, ...]]:
@@ -91,22 +78,17 @@ def _load_policy(config_file: Path) -> dict[str, tuple[str, ...]]:
         if not isinstance(rule, dict):
             raise ValueError(f"policy rules[{index}] must be a mapping")
 
-        sources = rule.get("sources")
-        module = rule.get("module")
-        if sources is None and rule.get("source_layers") is None:
-            if not isinstance(module, str) or not module:
-                raise ValueError(
-                    f"policy rules[{index}] must define either non-empty "
-                    "'sources', 'source_layers', or 'module'"
-                )
-            source_modules = [module]
-        else:
-            source_modules = _read_module_list(
-                rule,
-                field_name="sources",
-                alias_field_name="source_layers",
-                item_label="source",
+        if rule.get("module") is not None:
+            raise ValueError(
+                "dependency directionality policy no longer accepts module-path "
+                "field 'module'; use 'source_layers' instead"
             )
+        source_modules = _read_module_list(
+            rule,
+            field_name="sources",
+            alias_field_name="source_layers",
+            item_label="source",
+        )
 
         blocked_dependencies = _read_module_list(
             rule,
