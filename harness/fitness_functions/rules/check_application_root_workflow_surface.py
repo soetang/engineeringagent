@@ -15,11 +15,17 @@ from engineeringagent.adapters.quality.fitness.contracts import (
 RULE_ID = "architecture.application-root-workflow-surface"
 PROJECT_ROOT = Path(".")
 APPLICATION_ROOT = PROJECT_ROOT / "src" / "engineeringagent" / "application" / "__init__.py"
-FORBIDDEN_EXPORT_MODULES = {"feature_iteration_runtime", "run_loop"}
+FORBIDDEN_EXPORT_MODULES = {
+    "feature_iteration_runtime",
+    "feature_iteration_service",
+    "run_loop",
+}
 FORBIDDEN_ROOT_EXPORTS = frozenset(
     {
         "CommandTiming",
         "CompletionCommitOutcome",
+        "FeatureIterationRequest",
+        "FeatureIterationResult",
         "FeatureIterationInputs",
         "FeatureIterationRuntimeDependencies",
         "GatePhaseOutcome",
@@ -132,10 +138,14 @@ def _root_import_violations(path: Path) -> list[str]:
             continue
         for alias in node.names:
             if alias.name in FORBIDDEN_ROOT_EXPORTS:
+                defining_module = (
+                    "engineeringagent.application.feature_iteration_service"
+                    if alias.name in {"FeatureIterationRequest", "FeatureIterationResult"}
+                    else "its defining application module"
+                )
                 violations.append(
                     f"{rel_path}:{node.lineno} import {alias.name} from "
-                    "its defining application module instead of "
-                    "engineeringagent.application"
+                    f"{defining_module} instead of engineeringagent.application"
                 )
     return violations
 

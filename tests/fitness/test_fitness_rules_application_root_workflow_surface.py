@@ -152,11 +152,18 @@ def test_checker_flags_feature_iteration_request_from_application_root(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Allow callers importing the public feature-iteration request from the root package."""
+    """Reject callers importing feature-iteration contracts from the root package."""
     _write_module(
         tmp_path,
         relative_path="src/engineeringagent/application/__init__.py",
-        content="class FeatureIterationRequest:\n    pass\n",
+        content="\n".join(
+            [
+                "from .feature_iteration_service import FeatureIterationRequest",
+                "",
+                '__all__ = ["FeatureIterationRequest"]',
+                "",
+            ]
+        ),
     )
     _write_module(
         tmp_path,
@@ -179,24 +186,41 @@ def test_checker_flags_feature_iteration_request_from_application_root(
     proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
 
     assert proc.returncode == 0
-    assert payload["status"] == "pass"
-    assert _violations(payload) == []
+    assert payload["status"] == "fail"
+    assert any(
+        "src/engineeringagent/application/__init__.py:1" in violation
+        and "FeatureIterationRequest" in violation
+        for violation in _violations(payload)
+    )
+    assert any(
+        "src/engineeringagent/application/__init__.py:3" in violation
+        and "FeatureIterationRequest" in violation
+        for violation in _violations(payload)
+    )
+    assert any(
+        "src/engineeringagent/adapters/runtime/execution.py:1" in violation
+        and "engineeringagent.application.feature_iteration_service" in violation
+        for violation in _violations(payload)
+    )
 
 
-def test_checker_allows_feature_iteration_request_re_exported_from_subpackage(
+def test_checker_allows_feature_iteration_request_from_service_module(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Allow the public request/result contracts to come from the subpackage."""
+    """Allow the public request/result contracts to come from the service module."""
     _write_module(
         tmp_path,
         relative_path="src/engineeringagent/application/__init__.py",
+        content='__all__ = ["FeatureIterationService"]\n',
+    )
+    _write_module(
+        tmp_path,
+        relative_path="src/engineeringagent/application/feature_iteration_service.py",
         content="\n".join(
             [
-                "from .feature_iteration_runtime import FeatureIterationRequest, FeatureIterationResult",
-                "",
-                '__all__ = ["FeatureIterationRequest", "FeatureIterationResult"]',
-                "",
+                "class FeatureIterationRequest:\n    pass\n",
+                "class FeatureIterationResult:\n    pass\n",
             ]
         ),
     )
@@ -205,7 +229,7 @@ def test_checker_allows_feature_iteration_request_re_exported_from_subpackage(
         relative_path="src/engineeringagent/adapters/runtime/execution.py",
         content="\n".join(
             [
-                "from engineeringagent.application import FeatureIterationRequest, FeatureIterationResult",
+                "from engineeringagent.application.feature_iteration_service import FeatureIterationRequest, FeatureIterationResult",
                 "",
                 "REQUEST = FeatureIterationRequest",
                 "RESULT = FeatureIterationResult",

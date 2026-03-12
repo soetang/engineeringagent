@@ -3,7 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Sequence
 
-from engineeringagent.application import FeatureIterationRequest, FeatureIterationService
+from engineeringagent.application import FeatureIterationService
+from engineeringagent.application.feature_iteration_service import (
+    FeatureIterationRequest,
+    FeatureIterationResult,
+)
 from engineeringagent.application.feature_iteration_runtime import (
     FeatureIterationInputs,
     IterationOutcome,
@@ -131,10 +135,12 @@ def _build_request(**overrides: object) -> FeatureIterationRequest:
 def _build_service(
     observed: dict[str, object],
     *,
-    workflow_result: IterationOutcome,
+    workflow_result: FeatureIterationResult,
 ) -> FeatureIterationService:
     class _FakeFeatureIterationWorkflow:
-        def __call__(self, request: FeatureIterationRequest) -> IterationOutcome:
+        def __call__(
+            self, request: FeatureIterationRequest
+        ) -> FeatureIterationResult:
             observed["workflow_request"] = request
             return workflow_result
 
@@ -146,7 +152,7 @@ def test_feature_iteration_service_executes_runtime_pipeline() -> None:
     observed: dict[str, object] = {}
     service = _build_service(
         observed,
-        workflow_result=IterationOutcome(
+        workflow_result=FeatureIterationResult(
             completed=False,
             result="failed",
             failed_gate="tests",

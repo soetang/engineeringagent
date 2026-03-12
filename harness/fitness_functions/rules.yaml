@@ -182,7 +182,7 @@ rules:
     name: Application root workflow surface
     summary: Keep engineeringagent.application focused on workflow services instead of feature-iteration internals.
     rationale: The target architecture gives feature-iteration contracts and helpers an explicit subpackage, so the application root should expose service entrypoints only instead of acting as a compatibility facade.
-    remediation: Import feature-iteration contracts from engineeringagent.application.feature_iteration_runtime and remove any matching re-exports from engineeringagent.application.__init__.
+    remediation: Import public feature-iteration request/result models from engineeringagent.application.feature_iteration_service, keep workflow services on engineeringagent.application, and remove runtime-helper re-exports from engineeringagent.application.__init__.
     scope: src/engineeringagent/application/__init__.py plus repository imports of engineeringagent.application
     severity: error
     side_effect_free: true

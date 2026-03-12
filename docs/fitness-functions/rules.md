@@ -81,7 +81,7 @@ This file is generated from active manifest-declared fitness rules.
 - Name: Application root workflow surface
 - Side-effect free: `true`
 - Rationale: The target architecture gives feature-iteration contracts and helpers an explicit subpackage, so the application root should expose service entrypoints only instead of acting as a compatibility facade.
-- Remediation: Import feature-iteration contracts from engineeringagent.application.feature_iteration_runtime and remove any matching re-exports from engineeringagent.application.__init__.
+- Remediation: Import public feature-iteration request/result models from `engineeringagent.application.feature_iteration_service`, keep workflow services on `engineeringagent.application`, and remove runtime-helper re-exports from `engineeringagent.application.__init__`.
 
 ### `architecture.application-tests-boundary`
 

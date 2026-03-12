@@ -7,10 +7,12 @@ from typing import Any, Callable
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.application.feature_iteration_runtime import (
-    FeatureIterationInputs,
+from engineeringagent.application.feature_iteration_service import (
     FeatureIterationRequest,
     FeatureIterationResult,
+)
+from engineeringagent.application.feature_iteration_runtime import (
+    FeatureIterationInputs,
     IterationOutcome,
     IterationPipelineDependencies,
     IterationReport,
