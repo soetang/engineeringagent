@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from engineeringagent.checks.reviewers.validator import ReviewerPromptStrategyValidator
-from engineeringagent.adapters.quality.validation.contracts import ValidationContext
+from engineeringagent.adapters.quality.validation import (
+    ReviewerPromptStrategyValidator,
+    ValidationContext,
+)
 
 
 def _context(project_root: Path) -> ValidationContext:
@@ -17,6 +19,8 @@ def _context(project_root: Path) -> ValidationContext:
 def test_reviewer_strategy_validator_reports_deprecated_responseformat(
     tmp_path: Path,
 ) -> None:
+    """Reject reviewer prompts that still use the deprecated placeholder."""
+
     prompts_dir = tmp_path / "harness" / "reviewers" / "prompts"
     prompts_dir.mkdir(parents=True, exist_ok=True)
     prompt_path = prompts_dir / "deprecated.md"
@@ -34,6 +38,8 @@ def test_reviewer_strategy_validator_reports_deprecated_responseformat(
 def test_reviewer_strategy_validator_ignores_prompts_without_deprecated_token(
     tmp_path: Path,
 ) -> None:
+    """Ignore reviewer prompts that do not use the deprecated placeholder."""
+
     prompts_dir = tmp_path / "harness" / "reviewers" / "prompts"
     prompts_dir.mkdir(parents=True, exist_ok=True)
     (prompts_dir / "ok.md").write_text("Return strict JSON.\n", encoding="utf-8")

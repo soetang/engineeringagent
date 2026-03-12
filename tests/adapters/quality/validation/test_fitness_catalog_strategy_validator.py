@@ -5,9 +5,11 @@ from pathlib import Path
 import pytest
 import yaml
 
-from engineeringagent.checks.fitness import validator as fitness_validator
-from engineeringagent.checks.fitness.validator import FitnessCatalogStrategyValidator
-from engineeringagent.adapters.quality.validation.contracts import ValidationContext
+import engineeringagent.adapters.quality.validation.fitness_catalog_validator as fitness_validator
+from engineeringagent.adapters.quality.validation import (
+    FitnessCatalogStrategyValidator,
+    ValidationContext,
+)
 
 
 def _context(project_root: Path) -> ValidationContext:
@@ -21,6 +23,8 @@ def _context(project_root: Path) -> ValidationContext:
 def test_fitness_strategy_validator_reports_manifest_contract_errors(
     tmp_path: Path,
 ) -> None:
+    """Report manifest schema violations as strategy issues."""
+
     manifest_path = tmp_path / "harness" / "fitness_functions" / "rules.yaml"
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(
@@ -46,6 +50,8 @@ def test_fitness_strategy_validator_reports_manifest_contract_errors(
 def test_fitness_strategy_validator_returns_no_issues_for_valid_manifest(
     tmp_path: Path,
 ) -> None:
+    """Accept valid manifest documents without emitting issues."""
+
     manifest_path = tmp_path / "harness" / "fitness_functions" / "rules.yaml"
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(
@@ -81,6 +87,8 @@ def test_fitness_strategy_validator_reports_manifest_read_failures(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Convert manifest read failures into stable strategy issues."""
+
     def _raise_read_failure(_project_root: Path) -> list[object]:
         raise OSError("permission denied")
 
