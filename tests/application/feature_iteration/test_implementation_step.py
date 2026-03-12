@@ -152,7 +152,9 @@ def test_run_implement_step_emits_start_and_output_through_runtime_callbacks() -
         ImplementProgressEnvelope(
             summary="updated implementation step",
             completed_work=["moved implement-step status output to callbacks"],
-            verification=["uv run pytest tests/application/test_implementation_step.py"],
+            verification=[
+                "uv run pytest tests/application/feature_iteration/test_implementation_step.py"
+            ],
             remaining_work=["run the full checks phase"],
         )
     )
@@ -169,7 +171,7 @@ def test_run_implement_step_emits_start_and_output_through_runtime_callbacks() -
     assert progress_journal.handoff_calls == [(Path("/tmp/project"), "FEAT-300")]
     assert observed["commands"] == ["uv run engineeringagent implement"]
     assert observed["outputs"] == [
-        '{"blockers": [], "completed_work": ["moved implement-step status output to callbacks"], "remaining_work": ["run the full checks phase"], "summary": "updated implementation step", "verification": ["uv run pytest tests/application/test_implementation_step.py"]}'
+        '{"blockers": [], "completed_work": ["moved implement-step status output to callbacks"], "remaining_work": ["run the full checks phase"], "summary": "updated implementation step", "verification": ["uv run pytest tests/application/feature_iteration/test_implementation_step.py"]}'
     ]
     assert runner.requests[0].prompt == "implement prompt"
 

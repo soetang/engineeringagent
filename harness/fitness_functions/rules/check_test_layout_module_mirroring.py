@@ -58,7 +58,7 @@ def _normalize_exception_list(values: list[str], *, strip_tests_prefix: bool) ->
     return normalized
 
 
-def _load_policy(config_file: Path) -> tuple[set[str], set[str], set[str]]:
+def _load_policy(config_file: Path) -> tuple[set[str], set[str], set[str], set[str]]:
     try:
         payload = yaml.safe_load(config_file.read_text(encoding="utf-8"))
     except OSError as exc:
@@ -82,10 +82,14 @@ def _load_policy(config_file: Path) -> tuple[set[str], set[str], set[str]]:
         for item in _require_string_list(payload, "alias_topic_roots")
         if item.strip()
     )
+    forbidden_tests = _normalize_exception_list(
+        _require_string_list(payload, "forbidden_test_paths"),
+        strip_tests_prefix=False,
+    )
     if not alias_roots:
         raise ValueError("alias_topic_roots must contain at least one entry")
 
-    return exception_dirs, exception_files, alias_roots
+    return exception_dirs, exception_files, alias_roots, forbidden_tests
 
 
 def _iter_python_test_files(project_root: Path) -> list[Path]:
@@ -97,7 +101,7 @@ def _iter_python_test_files(project_root: Path) -> list[Path]:
 
 def _test_layout_violations(project_root: Path) -> list[str]:
     config = _load_policy(_resolve_config_file(_parse_args().config_file))
-    exception_dirs, exception_files, alias_roots = config
+    exception_dirs, exception_files, alias_roots, forbidden_tests = config
 
     tests_root = project_root / _TESTS_ROOT
     source_root = project_root / _SOURCE_PACKAGE_ROOT
@@ -111,6 +115,13 @@ def _test_layout_violations(project_root: Path) -> list[str]:
         rel_path = path.relative_to(project_root).as_posix()
         rel_test = path.relative_to(tests_root).as_posix()
         rel_parts = rel_test.split("/")
+
+        if rel_path in forbidden_tests:
+            violations.append(
+                f"{rel_path}: legacy flat test path is forbidden; move it under the "
+                "mirrored application subpackage."
+            )
+            continue
 
         if len(rel_parts) == 1:
             if rel_test not in exception_files:
