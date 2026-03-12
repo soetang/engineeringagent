@@ -15,7 +15,7 @@ from engineeringagent.adapters.progress import paths as progress_paths
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
 from engineeringagent.adapters.vcs import GitCliVersionControlGateway
-from engineeringagent.application.feature_iteration_runtime import (
+from engineeringagent.application.feature_iteration import (
     ImplementStepInputs,
     ImplementStepResult,
     ImplementStepOutputDependencies,

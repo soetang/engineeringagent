@@ -9,8 +9,8 @@ from .adapters.runtime.execution import run_loop_controller
 from .adapters.runtime.loop_run_context import LoopRun, RunConfig, RunServices
 from .adapters.runtime.feature_selector import choose_feature_with_selector
 from .adapters.agents import preflight, run_agent
-from .application.feature_iteration_runtime import FeatureIterationRequest
-from .application.feature_iteration_runtime import (
+from .application.feature_iteration import FeatureIterationRequest
+from .application.feature_iteration import (
     FeatureIterationInputs,
     IterationOutcome,
     IterationReport,

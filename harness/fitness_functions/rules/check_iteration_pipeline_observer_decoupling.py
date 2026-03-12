@@ -14,7 +14,7 @@ from engineeringagent.checks.fitness.contracts import (
 
 RULE_ID = "architecture.iteration-pipeline-observer-decoupling"
 _ITERATION_PIPELINE_PATH = Path(
-    "src/engineeringagent/application/feature_iteration_runtime/pipeline.py"
+    "src/engineeringagent/application/feature_iteration/pipeline.py"
 )
 _TELEMETRY_SINKS = {"write_iteration_telemetry"}
 _CONSOLE_SINKS = {"print", "print_summary", "print_line"}

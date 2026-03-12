@@ -6,7 +6,7 @@ from pathlib import Path
 
 from engineeringagent.adapters.documents import filesystem_feature_state
 from engineeringagent.adapters.progress import write_iteration_telemetry
-from engineeringagent.application.feature_iteration_runtime import (
+from engineeringagent.application.feature_iteration import (
     FeatureIterationRuntimeDependencies,
     IterationPipelineDependencies,
     IterationReport,
@@ -142,7 +142,7 @@ def _build_iteration_report_observers(
     return build_default_iteration_report_observers(observer_dependencies)
 
 
-def build_feature_iteration_runtime_dependencies(
+def build_feature_iteration_dependencies(
     *,
     clock: Clock,
 ) -> FeatureIterationRuntimeDependencies:

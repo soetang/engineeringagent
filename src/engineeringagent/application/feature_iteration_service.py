@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from engineeringagent.ports import ProgressJournal, VersionControlGateway
-from .feature_iteration_runtime import (
+from .feature_iteration import (
     FeatureIterationRequest,
     FeatureIterationResult,
     FeatureIterationInputs,

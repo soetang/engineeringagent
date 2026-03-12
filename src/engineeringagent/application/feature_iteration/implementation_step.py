@@ -8,7 +8,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, TypeVar
 
-from engineeringagent.application.feature_iteration_runtime.contracts import (
+from engineeringagent.application.feature_iteration.contracts import (
     ImplementStepInputs,
     ImplementStepResult,
 )

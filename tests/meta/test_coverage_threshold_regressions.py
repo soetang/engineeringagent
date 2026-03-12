@@ -14,7 +14,7 @@ import engineeringagent.checks.fitness.adapters as adapters_module
 import engineeringagent.adapters.config.runtime as config_module
 import engineeringagent.adapters.documents.filesystem_feature_state as feature_state_module
 import engineeringagent.adapters.documents.filesystem_feature_selection as feature_selection_module
-from engineeringagent.application.feature_iteration_runtime import FeatureIterationInputs
+from engineeringagent.application.feature_iteration import FeatureIterationInputs
 from engineeringagent.checks.fitness.contracts import (
     CONTRACT_VERSION,
     FitnessRuleMetadata,

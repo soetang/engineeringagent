@@ -4,7 +4,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Sequence, cast
 
-from engineeringagent.application.feature_iteration_runtime import (
+from engineeringagent.application.feature_iteration import (
     FeatureIterationInputs,
     FeatureIterationRequest,
     FeatureIterationRuntimeDependencies,

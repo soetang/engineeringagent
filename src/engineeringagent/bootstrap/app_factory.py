@@ -85,14 +85,14 @@ class AppFactory:
 
     def build_feature_iteration_service(self) -> FeatureIterationService:
         """Create the default feature-iteration application service."""
-        from engineeringagent.bootstrap.feature_iteration_runtime import (  # pylint: disable=import-outside-toplevel
-            build_feature_iteration_runtime_dependencies,
+        from engineeringagent.bootstrap.feature_iteration import (  # pylint: disable=import-outside-toplevel
+            build_feature_iteration_dependencies,
         )
 
         return FeatureIterationService(
             version_control_gateway=self.build_version_control_gateway(),
             progress_journal=self.build_progress_journal(),
-            runtime_dependencies=build_feature_iteration_runtime_dependencies(
+            runtime_dependencies=build_feature_iteration_dependencies(
                 clock=self.build_clock(),
             ),
         )

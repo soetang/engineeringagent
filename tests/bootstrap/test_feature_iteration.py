@@ -4,11 +4,11 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, cast
 
-from engineeringagent.application.feature_iteration_runtime import (
+from engineeringagent.application.feature_iteration import (
     FeatureIterationRuntimeDependencies,
     IterationReport,
 )
-from engineeringagent.bootstrap.feature_iteration_runtime import (
+from engineeringagent.bootstrap.feature_iteration import (
     _build_iteration_pipeline_dependencies,
     _build_iteration_report_observers,
     _commit_feature_completion,

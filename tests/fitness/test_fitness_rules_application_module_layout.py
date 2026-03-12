@@ -60,7 +60,7 @@ def test_checker_flags_legacy_flat_application_helper_modules(
     assert payload["rule_id"] == "architecture.application-module-layout"
     assert payload["status"] == "fail"
     assert _violations(payload) == [
-        "src/engineeringagent/application/feature_selection.py: application root may only contain workflow-service modules; move non-service helpers into an explicit subpackage such as engineeringagent.application.feature_iteration_runtime or delete the legacy module"
+        "src/engineeringagent/application/feature_selection.py: application root may only contain workflow-service modules; move non-service helpers into an explicit subpackage such as engineeringagent.application.feature_iteration or delete the legacy module"
     ]
 
 
@@ -94,7 +94,7 @@ def test_checker_allows_helper_modules_inside_explicit_application_subpackages(
     """Allow helper modules to live in explicit application subpackages."""
     _write_module(
         tmp_path,
-        relative_path="src/engineeringagent/application/feature_iteration_runtime/pipeline.py",
+        relative_path="src/engineeringagent/application/feature_iteration/pipeline.py",
         content="def run_feature_iteration_pipeline() -> None:\n    pass\n",
     )
 

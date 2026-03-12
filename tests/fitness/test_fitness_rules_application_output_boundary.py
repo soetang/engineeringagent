@@ -47,7 +47,7 @@ def test_checker_flags_direct_print_calls_in_application_modules(
         / "src"
         / "engineeringagent"
         / "application"
-        / "feature_iteration_runtime"
+        / "feature_iteration"
         / "implementation_step.py"
     )
     module_path.parent.mkdir(parents=True, exist_ok=True)
@@ -59,7 +59,7 @@ def test_checker_flags_direct_print_calls_in_application_modules(
     assert payload["rule_id"] == "architecture.application-output-boundary"
     assert payload["status"] == "fail"
     assert _violations(payload) == [
-        "src/engineeringagent/application/feature_iteration_runtime/implementation_step.py:1 application modules must not print directly; return data or emit through injected runtime/presentation callbacks"
+        "src/engineeringagent/application/feature_iteration/implementation_step.py:1 application modules must not print directly; return data or emit through injected runtime/presentation callbacks"
     ]
 
 

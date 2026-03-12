@@ -80,12 +80,12 @@ def _root_export_violations(path: Path) -> list[str]:
     rel_path = path.relative_to(PROJECT_ROOT).as_posix()
     violations: list[str] = []
     for node in ast.walk(tree):
-        if isinstance(node, ast.ImportFrom) and node.module == "feature_iteration_runtime":
+        if isinstance(node, ast.ImportFrom) and node.module == "feature_iteration":
             for alias in node.names:
                 if alias.name in FORBIDDEN_ROOT_EXPORTS:
                     violations.append(
                         f"{rel_path}:{node.lineno} application root must not re-export "
-                        f"feature_iteration_runtime symbol {alias.name}"
+                        f"feature_iteration symbol {alias.name}"
                     )
         elif isinstance(node, ast.Assign):
             if not any(
@@ -97,7 +97,7 @@ def _root_export_violations(path: Path) -> list[str]:
                 if exported_name in FORBIDDEN_ROOT_EXPORTS:
                     violations.append(
                         f"{rel_path}:{node.lineno} application root __all__ must not include "
-                        f"feature_iteration_runtime symbol {exported_name}"
+                        f"feature_iteration symbol {exported_name}"
                     )
     return violations
 
@@ -128,7 +128,7 @@ def _root_import_violations(path: Path) -> list[str]:
             if alias.name in FORBIDDEN_ROOT_EXPORTS:
                 violations.append(
                     f"{rel_path}:{node.lineno} import {alias.name} from "
-                    "engineeringagent.application.feature_iteration_runtime instead of "
+                    "engineeringagent.application.feature_iteration instead of "
                     "engineeringagent.application"
                 )
     return violations
