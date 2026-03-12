@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from engineeringagent.ports import ProgressJournal, VersionControlGateway
+from engineeringagent.ports import VersionControlGateway
 
 from .contracts import FeatureIterationInputs, FeatureIterationRequest, FeatureIterationResult
+from .report_publisher import IterationReportPublisher
 from .runtime_dependencies import FeatureIterationRuntimeDependencies
 
 
@@ -15,11 +16,11 @@ class FeatureIterationService:
         self,
         *,
         version_control_gateway: VersionControlGateway,
-        progress_journal: ProgressJournal,
+        iteration_report_publisher: IterationReportPublisher,
         runtime_dependencies: FeatureIterationRuntimeDependencies,
     ) -> None:
         self._version_control_gateway = version_control_gateway
-        self._progress_journal = progress_journal
+        self._iteration_report_publisher = iteration_report_publisher
         self._runtime_dependencies = runtime_dependencies
 
     def run(self, request: FeatureIterationRequest) -> FeatureIterationResult:
@@ -39,11 +40,7 @@ class FeatureIterationService:
                 self._version_control_gateway,
             ),
         )
-        observers = dependencies.build_iteration_report_observers(
-            dependencies,
-            self._progress_journal,
-        )
-        outcome = self._runtime_dependencies.publish_iteration_report(report, observers)
+        outcome = self._iteration_report_publisher(report)
         return FeatureIterationResult(
             completed=outcome.completed,
             result=outcome.result,

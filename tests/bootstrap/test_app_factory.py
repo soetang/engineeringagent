@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, cast
+from typing import cast
 
 from engineeringagent.adapters.agents import ConfiguredAgentRunner
 from engineeringagent.adapters.clock import SystemClock
@@ -34,16 +34,19 @@ from engineeringagent.application import (
 )
 from engineeringagent.application.feature_iteration import (
     FeatureIterationRuntimeDependencies,
+    FeatureIterationInputs,
     IterationReport,
+    IterationTelemetryInputs,
 )
 from engineeringagent.bootstrap import AppFactory
+import engineeringagent.bootstrap.app_factory as app_factory_module
 from engineeringagent.bootstrap.app_factory import (
     _build_iteration_pipeline_dependencies,
-    _build_iteration_report_observers,
+    _build_iteration_report_publisher,
     _commit_feature_completion,
     _persist_iteration_report,
 )
-from engineeringagent.bootstrap.iteration_reporting import DefaultObserverDependencies
+from engineeringagent.bootstrap.iteration_reporting import DefaultIterationReportPublisher
 from engineeringagent.ports import CommitRequest, CommitResult
 from engineeringagent.ports import ConfigurationProvider
 
@@ -84,8 +87,8 @@ def test_app_factory_builds_default_application_services(tmp_path: Path) -> None
         GitCliVersionControlGateway,
     )
     assert isinstance(
-        feature_iteration_service._progress_journal,
-        FilesystemProgressJournal,
+        feature_iteration_service._iteration_report_publisher,
+        DefaultIterationReportPublisher,
     )
     assert isinstance(
         checks_service._checks_catalog_repository,
@@ -168,21 +171,6 @@ def test_app_factory_uses_configured_implementation_prompt_definition(
 def _build_runtime_dependencies(
     observed: dict[str, object],
 ) -> FeatureIterationRuntimeDependencies:
-    def _fake_write_iteration_telemetry(
-        telemetry_inputs: object,
-        **kwargs: object,
-    ) -> str:
-        observed["telemetry_call"] = {
-            "telemetry_inputs": telemetry_inputs,
-            **kwargs,
-        }
-        return "progress/run-feature-FEAT-001.txt"
-
-    def _fake_observer_dependencies_type(**kwargs: object) -> DefaultObserverDependencies:
-        dependencies = DefaultObserverDependencies.model_validate(kwargs)
-        observed["default_observer_dependencies"] = dependencies
-        return dependencies
-
     return FeatureIterationRuntimeDependencies(
         clock=_FakeClock(),
         evaluate_initial_feature_load=lambda _feature_path: None,
@@ -211,13 +199,7 @@ def _build_runtime_dependencies(
         build_completion_phase_dependencies=lambda **kwargs: _FakeCompletionPhaseDependencies(
             observed, **kwargs
         ),
-        git_head_short=lambda _project_root: "abc1234",
-        print_summary=lambda _summary: None,
-        observer_dependencies_type=_fake_observer_dependencies_type,
-        write_iteration_telemetry=_fake_write_iteration_telemetry,
         build_iteration_pipeline_dependencies=_build_iteration_pipeline_dependencies,
-        build_iteration_report_observers=_build_iteration_report_observers,
-        publish_iteration_report=lambda report, _observers: report,
     )
 
 
@@ -315,41 +297,100 @@ def test_app_factory_build_iteration_pipeline_dependencies_wires_completion_comm
     ]
 
 
-def test_app_factory_build_iteration_report_observers_uses_runtime_and_journal_dependencies() -> None:
-    """Bootstrap should assemble default observers from runtime and journal seams."""
+def test_app_factory_build_iteration_report_publisher_uses_journal_dependency(
+    monkeypatch,
+) -> None:
+    """Bootstrap should assemble the default report publisher from journal seams."""
     observed: dict[str, object] = {}
-    runtime_dependencies = _build_runtime_dependencies(observed)
     journal = _FakeProgressJournal(observed)
-
-    _build_iteration_report_observers(runtime_dependencies, journal)
-
-    observer_dependencies = cast(
-        DefaultObserverDependencies,
-        observed["default_observer_dependencies"],
-    )
-    assert observer_dependencies.git_head_resolver is runtime_dependencies.git_head_short
-    assert observer_dependencies.print_summary is runtime_dependencies.print_summary
-    observer_dependencies.write_iteration_telemetry(cast(Any, "telemetry-inputs"))
-    observer_dependencies.persist_iteration_report(
-        cast(
-            Any,
-            SimpleNamespace(
-                telemetry_inputs=SimpleNamespace(
-                    iteration_inputs=SimpleNamespace(project_root=Path("/tmp/project"))
-                ),
-                feature_id="FEAT-001",
-                model_dump=lambda mode="json": {"result": "failed", "mode": mode},
+    monkeypatch.setattr(
+        app_factory_module,
+        "write_iteration_telemetry",
+        lambda telemetry_inputs, git_head_resolver: (
+            observed.setdefault(
+                "telemetry_call",
+                {
+                    "telemetry_inputs": telemetry_inputs,
+                    "git_head_resolver": git_head_resolver,
+                },
             ),
-        )
+            "progress/run-feature-FEAT-001.txt",
+        )[-1],
     )
+    monkeypatch.setattr(
+        app_factory_module.runtime_support,
+        "git_head_short",
+        lambda _project_root: "abc1234",
+    )
+    monkeypatch.setattr(
+        app_factory_module.runtime_support,
+        "print_summary",
+        lambda summary: observed.setdefault("summary", summary),
+    )
+
+    publisher = _build_iteration_report_publisher(journal)
+    report = IterationReport(
+        completed=False,
+        result="failed",
+        failed_gate="tests",
+        next_action="retry_same_feature",
+        feedback="rerun",
+        feature_id="FEAT-001",
+        attempt=1,
+        selected_feature_path="docs/specifications/features/FEAT-001/specification.yaml",
+        implement_step="engineeringagent implement",
+        verification_status="failed:tests",
+        verification_failed_command="uv run pytest",
+        reviewer_status="not_run",
+        reviewer_decision=None,
+        failed_reviewer_id=None,
+        telemetry_inputs=IterationTelemetryInputs(
+            iteration_inputs=FeatureIterationInputs(
+                project_root=Path("/tmp/project"),
+                feature_path=Path(
+                    "docs/specifications/features/FEAT-001/specification.yaml"
+                ),
+                run_all=False,
+                attempt=1,
+                feedback="rerun",
+                verbose_output=False,
+            ),
+            started=1.0,
+            feature_id="FEAT-001",
+            result="failed",
+            failed_gate="tests",
+            next_action="retry_same_feature",
+            implement_status="passed",
+            gate_status="failed:tests",
+            verification_status="failed:tests",
+            verification_failed_command="uv run pytest",
+            reviewer_status="not_run",
+            reviewer_decision=None,
+            failed_reviewer_id=None,
+            implement_output="implemented",
+            gate_output="tests failed",
+            verification_output="pytest failed",
+            reviewer_output="",
+            feedback="rerun",
+        ),
+    )
+
+    outcome = publisher.publish(report)
+
+    assert outcome.result == "failed"
     assert observed["telemetry_call"] == {
-        "telemetry_inputs": "telemetry-inputs",
-        "git_head_resolver": runtime_dependencies.git_head_short,
+        "telemetry_inputs": report.telemetry_inputs,
+        "git_head_resolver": app_factory_module.runtime_support.git_head_short,
     }
-    assert observed["iteration_reports"] == [
+    persisted_reports = observed["iteration_reports"]
+    assert isinstance(persisted_reports, list)
+    assert persisted_reports == [
         {
             "project_root": Path("/tmp/project"),
             "feature_id": "FEAT-001",
-            "payload": {"result": "failed", "mode": "json"},
+            "payload": {
+                **report.model_dump(mode="json"),
+                "log_path": "progress/run-feature-FEAT-001.txt",
+            },
         }
     ]

@@ -8,6 +8,7 @@ from typing import Callable, Sequence
 from pydantic import BaseModel, ConfigDict
 
 from engineeringagent.application.feature_iteration import (
+    IterationOutcome,
     IterationReport,
     IterationSummaryInputs,
     IterationTelemetryInputs,
@@ -45,6 +46,22 @@ class DefaultObserverDependencies(BaseModel):
     persist_iteration_report: Callable[[IterationReport], None]
     git_head_resolver: Callable[[Path], str | None]
     print_summary: PrintSummaryFn
+
+
+class DefaultIterationReportPublisher:
+    """Publish iteration reports through the default observer chain."""
+
+    def __init__(self, dependencies: DefaultObserverDependencies) -> None:
+        self._observers = build_default_iteration_report_observers(dependencies)
+
+    def publish(self, report: IterationReport) -> IterationOutcome:
+        """Publish one report through the default observer chain."""
+        published_report = publish_iteration_report(report, self._observers)
+        return IterationOutcome.from_report(published_report)
+
+    def __call__(self, report: IterationReport) -> IterationOutcome:
+        """Publish one report through the default observer chain."""
+        return self.publish(report)
 
 
 def publish_iteration_report(

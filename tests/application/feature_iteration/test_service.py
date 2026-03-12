@@ -167,28 +167,10 @@ def _build_service(
             completion_phase_dependencies=_FakeCompletionPhaseDependencies(observed),
         )
 
-    def _fake_build_iteration_report_observers(
-        runtime_dependencies: object,
-        progress_journal: object,
-    ) -> object:
-        observed["observer_builder_runtime_dependencies"] = runtime_dependencies
-        observed["observer_builder_progress_journal"] = progress_journal
-        return ("observer",)
-
-    def _fake_publish_iteration_report(report: str, observers: object) -> object:
-        observed["report"] = report
-        observed["observers"] = observers
-        return publish_outcome
-
-    def _fake_write_iteration_telemetry(
-        telemetry_inputs: object,
-        **kwargs: object,
-    ) -> str:
-        observed["telemetry_call"] = {
-            "telemetry_inputs": telemetry_inputs,
-            **kwargs,
-        }
-        return "progress/run-feature-FEAT-001.txt"
+    class _FakeIterationReportPublisher:
+        def __call__(self, report: IterationReport) -> IterationOutcome:
+            observed["report"] = report
+            return cast(IterationOutcome, publish_outcome)
 
     describe_action = lambda project_root, action, structured: (  # noqa: E731
         f"{project_root}:{action}:{structured}"
@@ -200,8 +182,6 @@ def _build_service(
         fallback_implement_progress_envelope(),
         False,
     )
-    git_head_short = lambda _project_root: "abc1234"  # noqa: E731
-    print_summary = lambda _summary: None  # noqa: E731
     collect_changed_paths = lambda _project_root: None  # noqa: E731
     evaluate_initial_feature_load = lambda _feature_path: InitialFeatureLoadOutcome(  # noqa: E731
         feature=None,
@@ -252,18 +232,12 @@ def _build_service(
         build_completion_phase_dependencies=(
             lambda **kwargs: _FakeCompletionPhaseDependencies(observed, **kwargs)
         ),
-        git_head_short=git_head_short,
-        print_summary=print_summary,
-        observer_dependencies_type=object,
         build_iteration_pipeline_dependencies=_fake_build_iteration_pipeline_dependencies,
-        build_iteration_report_observers=_fake_build_iteration_report_observers,
-        write_iteration_telemetry=_fake_write_iteration_telemetry,
-        publish_iteration_report=cast(Any, _fake_publish_iteration_report),
     )
     version_control_gateway = _FakeVersionControlGateway(observed, commit_result)
     service = FeatureIterationService(
         version_control_gateway=version_control_gateway,
-        progress_journal=_FakeProgressJournal(observed),
+        iteration_report_publisher=_FakeIterationReportPublisher(),
         runtime_dependencies=runtime_dependencies,
     )
     return service, version_control_gateway
@@ -314,12 +288,9 @@ def test_feature_iteration_service_executes_runtime_pipeline() -> None:
         observed["pipeline_builder_version_control_gateway"]
         is service._version_control_gateway
     )
-    assert observed["observer_builder_runtime_dependencies"] is runtime_dependencies
-    assert observed["observer_builder_progress_journal"] is service._progress_journal
     assert dependencies.describe_action is runtime_dependencies.describe_action
     assert dependencies.run_implement_step is runtime_dependencies.run_implement_step
     assert observed["report"] == "iteration-report"
-    assert observed["observers"] == ("observer",)
 
 
 def test_iteration_outcome_from_report_copies_report_status_fields() -> None:

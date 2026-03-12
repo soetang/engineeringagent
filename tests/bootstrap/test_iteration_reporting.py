@@ -11,6 +11,7 @@ from engineeringagent.application.feature_iteration import (
 from engineeringagent.bootstrap.iteration_reporting import (
     ConsoleObserverDependencies,
     DefaultObserverDependencies,
+    DefaultIterationReportPublisher,
     TelemetryObserverDependencies,
     build_console_observer,
     build_default_iteration_report_observers,
@@ -195,3 +196,38 @@ def test_default_observers_publish_telemetry_before_console(tmp_path: Path) -> N
     ]
     assert summary_log_paths == ["progress/run-feature-FEAT-116.txt"]
     assert published_report.log_path == "progress/run-feature-FEAT-116.txt"
+
+
+def test_default_iteration_report_publisher_returns_outcome_from_published_report(
+    tmp_path: Path,
+) -> None:
+    """Publish the report through the default observer chain and return its outcome."""
+    calls: list[tuple[str, str]] = []
+    report = _build_iteration_report(tmp_path, result="failed")
+    publisher = DefaultIterationReportPublisher(
+        DefaultObserverDependencies(
+            write_iteration_telemetry=(
+                lambda telemetry_inputs: (
+                    calls.append(("telemetry", telemetry_inputs.feature_id)),
+                    "progress/run-feature-FEAT-116.txt",
+                )[-1]
+            ),
+            persist_iteration_report=(
+                lambda iteration_report: calls.append(
+                    ("progress", iteration_report.feature_id)
+                )
+            ),
+            git_head_resolver=lambda _project_root: "abc1234",
+            print_summary=lambda summary: calls.append(("console", summary.feature_id or "")),
+        )
+    )
+
+    outcome = publisher.publish(report)
+
+    assert calls == [
+        ("telemetry", "FEAT-116"),
+        ("progress", "FEAT-116"),
+        ("console", "FEAT-116"),
+    ]
+    assert outcome.result == "failed"
+    assert outcome.log_path == "progress/run-feature-FEAT-116.txt"

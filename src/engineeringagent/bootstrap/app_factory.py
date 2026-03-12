@@ -58,14 +58,14 @@ from engineeringagent.ports import (
 from engineeringagent.application.feature_iteration import (
     FeatureIterationRuntimeDependencies,
     IterationPipelineDependencies,
+    IterationReportPublisher,
     IterationReport,
     run_feature_iteration_pipeline,
 )
 from engineeringagent.bootstrap import runtime_support
 from engineeringagent.bootstrap.iteration_reporting import (
     DefaultObserverDependencies,
-    build_default_iteration_report_observers,
-    publish_iteration_report,
+    DefaultIterationReportPublisher,
 )
 from engineeringagent.checks import collect_changed_paths
 from engineeringagent.domain.specification import feature_completion_commit_subject
@@ -155,25 +155,25 @@ def _build_iteration_pipeline_dependencies(
     )
 
 
-def _build_iteration_report_observers(
-    runtime_dependencies: FeatureIterationRuntimeDependencies,
+def _build_iteration_report_publisher(
     progress_journal: ProgressJournal,
-) -> object:
-    """Build the default iteration-report observers from bootstrap seams."""
-    observer_dependencies = runtime_dependencies.observer_dependencies_type(
-        write_iteration_telemetry=(
-            lambda telemetry_inputs: runtime_dependencies.write_iteration_telemetry(
-                telemetry_inputs,
-                git_head_resolver=runtime_dependencies.git_head_short,
-            )
-        ),
-        persist_iteration_report=(
-            lambda report: _persist_iteration_report(progress_journal, report)
-        ),
-        git_head_resolver=runtime_dependencies.git_head_short,
-        print_summary=runtime_dependencies.print_summary,
+) -> IterationReportPublisher:
+    """Build the default iteration-report publisher from bootstrap seams."""
+    return DefaultIterationReportPublisher(
+        DefaultObserverDependencies(
+            write_iteration_telemetry=(
+                lambda telemetry_inputs: write_iteration_telemetry(
+                    telemetry_inputs,
+                    git_head_resolver=runtime_support.git_head_short,
+                )
+            ),
+            persist_iteration_report=(
+                lambda report: _persist_iteration_report(progress_journal, report)
+            ),
+            git_head_resolver=runtime_support.git_head_short,
+            print_summary=runtime_support.print_summary,
+        )
     )
-    return build_default_iteration_report_observers(observer_dependencies)
 
 
 def _build_feature_iteration_dependencies(
@@ -207,13 +207,7 @@ def _build_feature_iteration_dependencies(
         build_reviewer_phase_dependencies=ReviewerPhaseDependencies,
         run_completion_commit_phase=run_completion_commit_phase,
         build_completion_phase_dependencies=CompletionPhaseDependencies,
-        git_head_short=runtime_support.git_head_short,
-        print_summary=runtime_support.print_summary,
-        observer_dependencies_type=DefaultObserverDependencies,
-        write_iteration_telemetry=write_iteration_telemetry,
         build_iteration_pipeline_dependencies=_build_iteration_pipeline_dependencies,
-        build_iteration_report_observers=_build_iteration_report_observers,
-        publish_iteration_report=publish_iteration_report,
     )
 
 
@@ -262,7 +256,9 @@ class AppFactory:
         """Create the default feature-iteration application service."""
         return FeatureIterationService(
             version_control_gateway=self.build_version_control_gateway(),
-            progress_journal=self.build_progress_journal(),
+            iteration_report_publisher=_build_iteration_report_publisher(
+                self.build_progress_journal()
+            ),
             runtime_dependencies=_build_feature_iteration_dependencies(
                 clock=self.build_clock(),
             ),
