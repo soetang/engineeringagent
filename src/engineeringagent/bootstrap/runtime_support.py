@@ -27,8 +27,7 @@ from engineeringagent.adapters.config import repo_relative_label, resolve_harnes
 from engineeringagent.presentation.presenters.terminal import RunOutputPresenter
 from engineeringagent.specs import progress_kind_label
 
-# Retained as a legacy monkeypatch seam while loop-contract tests migrate.
-_AGENT_RUNTIME_COMPAT = agent_runtime
+__all__ = ["agent_runtime"]
 
 
 def git_head_short(project_root: Path) -> str | None:
