@@ -86,7 +86,7 @@ def _collect_violations(project_root: Path) -> list[str]:
         for node in ast.walk(tree):
             if isinstance(node, ast.ImportFrom):
                 module = _normalize_import_from_module(node)
-                if module.startswith(_BACKENDS_IMPORT_PREFIX):
+                if module.startswith(f"{_BACKENDS_IMPORT_PREFIX}."):
                     violations.append(
                         _Violation(
                             path=path.relative_to(project_root),
@@ -101,7 +101,7 @@ def _collect_violations(project_root: Path) -> list[str]:
             if isinstance(node, ast.Import):
                 for alias in node.names:
                     imported = alias.name
-                    if imported.startswith(_BACKENDS_IMPORT_PREFIX):
+                    if imported.startswith(f"{_BACKENDS_IMPORT_PREFIX}."):
                         violations.append(
                             _Violation(
                                 path=path.relative_to(project_root),

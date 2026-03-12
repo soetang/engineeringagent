@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Callable, NamedTuple, Sequence
 
-from engineeringagent.agents import preflight, run_agent
+from engineeringagent.adapters.agents import preflight, run_agent
 from engineeringagent.adapters.documents.filesystem_feature_selection import (
     discover_active_feature_paths,
     done_features_pending_archive,

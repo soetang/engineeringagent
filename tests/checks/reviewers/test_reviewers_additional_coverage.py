@@ -6,7 +6,7 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from engineeringagent.agents import AgentBackendError
+from engineeringagent.adapters.agents import AgentBackendError
 from engineeringagent.domain.quality import ChangedPathsResult
 from engineeringagent.checks.reviewers.engine import (
     DECISION_REQUEST_CHANGES,

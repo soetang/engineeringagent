@@ -7,10 +7,10 @@ from typing import Any
 import pytest
 from pydantic import BaseModel
 
-from engineeringagent.agents import AgentBackendError
+from engineeringagent.adapters.agents import AgentBackendError
 from engineeringagent.adapters.agents.opencode import OpenCodeAgentBackend
 from engineeringagent.adapters.agents.opencode import client as client_module
-from engineeringagent.agents.contracts import AgentRunRequest
+from engineeringagent.adapters.agents.contracts import AgentRunRequest
 
 
 class _Proc:

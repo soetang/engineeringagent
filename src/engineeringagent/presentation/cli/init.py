@@ -18,7 +18,7 @@ from ...adapters.config import (
     write_init_backend_config,
     write_init_docs_root_config,
 )
-from ...agents import default_backend_id, list_backends
+from ...adapters.agents import default_backend_id, list_backends
 from ...init_cli_support import (
     InitAgentsLauncherResolverDeps,
     InitBackendResolverDeps,

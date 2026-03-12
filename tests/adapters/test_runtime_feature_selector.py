@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from engineeringagent.agents.contracts import (
+from engineeringagent.adapters.agents.contracts import (
     AgentBackendError,
     AgentBackendFailureDetails,
 )

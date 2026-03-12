@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Callable, Sequence
 
-from engineeringagent.agents import (
+from engineeringagent.adapters.agents import (
     AgentBackendError,
     classify_backend_exception,
     describe_action,

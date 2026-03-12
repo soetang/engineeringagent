@@ -75,6 +75,10 @@ DELETED_MODULE_PATHS = {
     "src/engineeringagent/application/validation/service.py",
     "src/engineeringagent/application/workspace_recovery/__init__.py",
     "src/engineeringagent/application/workspace_recovery/service.py",
+    "src/engineeringagent/agents/__init__.py",
+    "src/engineeringagent/agents/contracts.py",
+    "src/engineeringagent/agents/helpers.py",
+    "src/engineeringagent/agents/opencode_preflight.py",
     "src/engineeringagent/bootstrap/runtime_execution.py",
     "src/engineeringagent/domain/audit/iteration.py",
     "src/engineeringagent/feature_commit.py",
@@ -119,6 +123,7 @@ DELETED_DIRECTORY_PATHS = {
     "src/engineeringagent/application/run_loop",
     "src/engineeringagent/application/validation",
     "src/engineeringagent/application/workspace_recovery",
+    "src/engineeringagent/agents",
     "src/engineeringagent/checks/pytest",
     "src/engineeringagent/loop_runtime",
 }
@@ -607,7 +612,7 @@ def _bootstrap_runtime_support_violations(path: Path) -> list[str]:
         forbidden_modules=("engineeringagent.loop",),
         message=(
             "bootstrap runtime support must not import the legacy engineeringagent.loop facade; "
-            "call the canonical engineeringagent.agents boundary directly"
+            "call the canonical engineeringagent.adapters.agents boundary directly"
         ),
     )
     for node in module.body:

@@ -13,9 +13,12 @@ import pytest
 import yaml
 from typer.testing import CliRunner
 
-import engineeringagent.agents.helpers as agent_helpers
+import engineeringagent.adapters.agents.helpers as agent_helpers
 from engineeringagent.bootstrap import runtime_support as runtime_support_module
-from engineeringagent.agents import AgentBackendError, AgentBackendFailureDetails
+from engineeringagent.adapters.agents import (
+    AgentBackendError,
+    AgentBackendFailureDetails,
+)
 from engineeringagent.adapters.agents import ConfiguredAgentRunner
 from engineeringagent.adapters.agents.opencode.permissions import (
     PermissionProbeResult,

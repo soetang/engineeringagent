@@ -1,6 +1,6 @@
 """OpenCode backend implementation details.
 
-This package is internal to `engineeringagent.agents.run_agent`.
+This package is internal to `engineeringagent.adapters.agents.run_agent`.
 """
 
 from .backend import OpenCodeAgentBackend

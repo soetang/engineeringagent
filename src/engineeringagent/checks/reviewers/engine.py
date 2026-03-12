@@ -12,7 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 
 from engineeringagent.domain.quality import ChangedPathsResult
 from engineeringagent.presentation.presenters.json_schema import JSON_SCHEMA_DRAFT_URL
-from engineeringagent.agents import (
+from engineeringagent.adapters.agents import (
     AgentBackendError,
     AgentOutputValidationError,
     run_agent,

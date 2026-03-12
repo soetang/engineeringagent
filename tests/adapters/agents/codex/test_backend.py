@@ -9,11 +9,14 @@ from typing import Any
 import pytest
 from pydantic import BaseModel, ConfigDict, Field
 
-from engineeringagent.agents import AgentBackendError, AgentOutputValidationError
+from engineeringagent.adapters.agents import (
+    AgentBackendError,
+    AgentOutputValidationError,
+)
 from engineeringagent.adapters.agents.codex import CodexAgentBackend
 from engineeringagent.adapters.agents.codex import backend as backend_module
 from engineeringagent.adapters.agents.codex import client as client_module
-from engineeringagent.agents.contracts import AgentRunRequest
+from engineeringagent.adapters.agents.contracts import AgentRunRequest
 
 
 def _complete_with_output(

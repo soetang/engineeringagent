@@ -7,7 +7,7 @@ from string import Template
 import yaml
 
 from .ports.init_workspace import BaselineScaffoldOptions, DEFAULT_AGENT_MODEL
-from .agents import build_backend_scaffold_manifest, default_backend_id
+from .adapters.agents import build_backend_scaffold_manifest, default_backend_id
 _SCAFFOLD_TEMPLATE_PACKAGE = "engineeringagent.scaffold_templates"
 _SUPPORTED_INIT_PACKS = {"slim", "standard"}
 _PRECOMMIT_TEMPLATES = {

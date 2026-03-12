@@ -128,3 +128,28 @@ def test_agents_backends_boundary_reports_deterministic_import_violations(
         and "outside adapters.agents boundary" in violation
         for violation in violations
     ), violations
+
+
+def test_agents_backends_boundary_allows_direct_boundary_imports(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    _write_module(
+        tmp_path,
+        "src/engineeringagent/foo.py",
+        "\n".join(
+            [
+                "from engineeringagent.adapters.agents import run_agent",
+                "",
+                "def noop() -> None:",
+                "    _ = run_agent",
+            ]
+        ),
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["rule_id"] == "architecture.agents-backends-boundary"
+    assert payload["status"] == "pass"
+    assert payload["violations"] == []

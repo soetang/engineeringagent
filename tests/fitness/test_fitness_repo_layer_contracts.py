@@ -72,7 +72,7 @@ def test_repo_layer_contracts_rule_blocks_runtime_support_loop_import(
     assert payload["status"] == "fail"
     assert payload["rule_id"] == "architecture.repo-layer-contracts"
     assert payload["violations"] == [
-        "src/engineeringagent/bootstrap/runtime_support.py: bootstrap runtime support must not import the legacy engineeringagent.loop facade; call the canonical engineeringagent.agents boundary directly"
+        "src/engineeringagent/bootstrap/runtime_support.py: bootstrap runtime support must not import the legacy engineeringagent.loop facade; call the canonical engineeringagent.adapters.agents boundary directly"
     ]
 
 

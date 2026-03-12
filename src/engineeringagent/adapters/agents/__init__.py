@@ -1,9 +1,25 @@
-"""Agent execution adapters."""
+"""Agent execution adapters and their direct import surface."""
 
 import importlib
 from collections.abc import Callable
 
 from engineeringagent.ports import AgentRunRequest, AgentRunner
+from .contracts import (
+    AgentBackend,
+    AgentBackendError,
+    AgentBackendFailureDetails,
+    AgentBackendRunResult,
+    AgentOutputValidationError,
+    RequestRunAgentBackend,
+)
+from .helpers import classify_backend_exception, describe_action, preflight
+from .registry import (
+    build_backend_scaffold_manifest,
+    default_backend_id,
+    list_backends,
+    resolve_backend_id,
+)
+from .runtime import resolve_agent_strategy, run_agent, run_agent_request
 
 
 class ConfiguredAgentRunner(AgentRunner):
@@ -33,4 +49,22 @@ def _default_run_agent(*args: object, **kwargs: object) -> object:
     runtime = importlib.import_module("engineeringagent.adapters.agents.runtime")
     return runtime.run_agent(*args, **kwargs)
 
-__all__ = ["ConfiguredAgentRunner"]
+__all__ = [
+    "AgentBackend",
+    "AgentBackendError",
+    "AgentBackendFailureDetails",
+    "AgentBackendRunResult",
+    "AgentOutputValidationError",
+    "ConfiguredAgentRunner",
+    "RequestRunAgentBackend",
+    "build_backend_scaffold_manifest",
+    "classify_backend_exception",
+    "default_backend_id",
+    "describe_action",
+    "list_backends",
+    "preflight",
+    "resolve_agent_strategy",
+    "resolve_backend_id",
+    "run_agent",
+    "run_agent_request",
+]

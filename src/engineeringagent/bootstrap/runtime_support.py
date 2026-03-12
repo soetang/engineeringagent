@@ -5,13 +5,16 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-import engineeringagent.agents as agent_runtime
-from engineeringagent.adapters.agents import ConfiguredAgentRunner
+import engineeringagent.adapters.agents as agent_runtime
+from engineeringagent.adapters.agents import (
+    ConfiguredAgentRunner,
+    classify_backend_exception,
+    describe_action,
+)
 from engineeringagent.adapters.progress import paths as progress_paths
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
 from engineeringagent.adapters.vcs import GitCliVersionControlGateway
-from engineeringagent.agents import classify_backend_exception, describe_action
 from engineeringagent.application.feature_iteration import (
     ImplementStepInputs,
     ImplementStepResult,
