@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from engineeringagent.checks.fitness.contracts import (
+from engineeringagent.adapters.quality.fitness.contracts import (
     CONTRACT_VERSION,
     CustomRuleManifest,
     CustomRuleManifestEntry,

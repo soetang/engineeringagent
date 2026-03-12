@@ -74,7 +74,7 @@ Port spec/setup validation execution into `checks/validate/**` so that `engineer
 Port command/fitness planning and execution (currently in harness_checks_runtime) into `checks/commands/**` and `checks/fitness/**`, preserving deterministic output and failure signaling. Add parity tests against known harness/checks.yaml fixtures.
 
 Notes:
-- Port fitness check execution to `engineeringagent.checks.fitness.runtime` and stop dispatching to `engineeringagent.harness_checks_runtime.run_planned_fitness_checks`.
+- Port fitness check execution to `engineeringagent.adapters.quality.fitness.runtime` and stop dispatching to `engineeringagent.harness_checks_runtime.run_planned_fitness_checks`.
 
 ## ST-005 Implement reviewers execution under checks without OpenCode logic
 

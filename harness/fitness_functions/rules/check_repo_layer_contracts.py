@@ -5,7 +5,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from engineeringagent.checks import emit_fitness_result
-from engineeringagent.checks.fitness.contracts import (
+from engineeringagent.adapters.quality.fitness.contracts import (
     CONTRACT_VERSION,
     FitnessRuleResult,
     RuleSeverity,
@@ -86,13 +86,24 @@ DELETED_MODULE_PATHS = {
     "src/engineeringagent/agents/runtime.py",
     "src/engineeringagent/checks/changed_paths.py",
     "src/engineeringagent/checks/contracts.py",
+    "src/engineeringagent/checks/fitness/__init__.py",
+    "src/engineeringagent/checks/fitness/adapters.py",
+    "src/engineeringagent/checks/fitness/boundary_reporting.py",
+    "src/engineeringagent/checks/fitness/catalog.py",
     "src/engineeringagent/checks/fitness/config.py",
+    "src/engineeringagent/checks/fitness/contracts.py",
+    "src/engineeringagent/checks/fitness/envelope.py",
+    "src/engineeringagent/checks/fitness/local_support_loader.py",
     "src/engineeringagent/checks/on_change_matcher.py",
     "src/engineeringagent/checks/planning_policy.py",
     "src/engineeringagent/checks/pytest/config.py",
+    "src/engineeringagent/checks/fitness/registry.py",
     "src/engineeringagent/checks/results.py",
+    "src/engineeringagent/checks/fitness/runner.py",
     "src/engineeringagent/checks/strategies.py",
     "src/engineeringagent/checks/strategy_contracts.py",
+    "src/engineeringagent/checks/fitness/runtime.py",
+    "src/engineeringagent/checks/fitness/scope_traversal.py",
     "src/engineeringagent/git/__init__.py",
     "src/engineeringagent/git/client.py",
     "src/engineeringagent/progress/__init__.py",

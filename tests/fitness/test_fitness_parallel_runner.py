@@ -5,8 +5,8 @@ import sys
 
 import yaml
 
-from engineeringagent.checks.fitness.contracts import CONTRACT_VERSION
-from engineeringagent.checks.fitness.runner import run_rule_catalog
+from engineeringagent.adapters.quality.fitness.contracts import CONTRACT_VERSION
+from engineeringagent.adapters.quality.fitness.runner import run_rule_catalog
 
 
 def _command_rule(

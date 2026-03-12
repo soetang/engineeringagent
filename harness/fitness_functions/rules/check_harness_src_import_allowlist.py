@@ -6,7 +6,7 @@ from pathlib import Path
 import yaml
 
 from engineeringagent.checks import emit_fitness_result
-from engineeringagent.checks.fitness.contracts import (
+from engineeringagent.adapters.quality.fitness.contracts import (
     CONTRACT_VERSION,
     FitnessRuleResult,
     RuleSeverity,
@@ -18,6 +18,7 @@ RULE_ID = "architecture.harness-src-import-allowlist"
 
 _ALLOWED_ENGINEERINGAGENT_IMPORT_PREFIXES: tuple[str, ...] = (
     "engineeringagent.checks",
+    "engineeringagent.adapters.quality.fitness",
 )
 
 _ALLOWED_ENGINEERINGAGENT_IMPORT_PREFIXES_WITH_DOT = tuple(

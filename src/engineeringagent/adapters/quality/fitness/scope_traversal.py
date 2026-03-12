@@ -167,7 +167,7 @@ def collect_node_violations(
     node_type: type[_AstNodeT],
     violation_for_node: Callable[[_AstNodeT], str | Collection[str] | None],
 ) -> list[tuple[int, str]]:
-    """Collect unsorted ``(line, message)`` violations for one AST node type."""
+    """Collect unsorted ``(lineno, message)`` violations for one AST node type."""
 
     violations: list[tuple[int, str]] = []
     for node in iter_nodes(tree, node_type):
@@ -240,7 +240,7 @@ def collect_import_from_symbol_violations(
         tree,
         node_type=ast.ImportFrom,
         violation_for_node=lambda node: [
-            message_builder(int(getattr(node, "lineno", 0)), alias.name)
+            message_builder(int(node.lineno), alias.name)
             for alias in node.names
             if alias.name in forbidden_symbols
         ],

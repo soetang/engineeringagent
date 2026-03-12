@@ -5,7 +5,7 @@ import posixpath
 from pathlib import Path
 
 from engineeringagent.checks import emit_fitness_result
-from engineeringagent.checks.fitness.contracts import (
+from engineeringagent.adapters.quality.fitness.contracts import (
     CONTRACT_VERSION,
     FitnessRuleResult,
     RuleSeverity,

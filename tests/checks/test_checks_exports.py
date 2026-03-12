@@ -28,7 +28,7 @@ from engineeringagent.checks import (
     run_checks,
     validate_repository,
 )
-from engineeringagent.checks.fitness.contracts import (
+from engineeringagent.adapters.quality.fitness.contracts import (
     CONTRACT_VERSION,
     FitnessRuleResult,
     RuleSeverity,

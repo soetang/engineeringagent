@@ -3,9 +3,9 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from engineeringagent.checks.fitness.scope_traversal import (
-    collect_symbol_call_locations,
+from engineeringagent.adapters.quality.fitness.scope_traversal import (
     call_symbol,
+    collect_symbol_call_locations,
     iter_function_defs,
     iter_nodes,
     iter_python_scope_files,

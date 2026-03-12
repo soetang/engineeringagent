@@ -101,15 +101,15 @@ implementation_notes: 'Contract change declaration
   Candidate policy entries to drive implementation:
 
   ```yaml - module: engineeringagent.cli.main blocked_dependencies: - engineeringagent.loop_runtime
-  - engineeringagent.checks.commands - engineeringagent.checks.fitness - engineeringagent.checks.reviewers
+  - engineeringagent.checks.commands - engineeringagent.adapters.quality.fitness - engineeringagent.checks.reviewers
   - engineeringagent.checks.validate - engineeringagent.specs
 
   - module: engineeringagent.cli.typer blocked_dependencies: - engineeringagent.loop
-  - engineeringagent.loop_runtime - engineeringagent.checks.commands - engineeringagent.checks.fitness
+  - engineeringagent.loop_runtime - engineeringagent.checks.commands - engineeringagent.adapters.quality.fitness
   - engineeringagent.checks.reviewers - engineeringagent.checks.validate - engineeringagent.specs
 
   - module: engineeringagent.cli.checks blocked_dependencies: - engineeringagent.loop
-  - engineeringagent.loop_runtime - engineeringagent.checks.commands - engineeringagent.checks.fitness
+  - engineeringagent.loop_runtime - engineeringagent.checks.commands - engineeringagent.adapters.quality.fitness
   - engineeringagent.checks.reviewers - engineeringagent.checks.validate - engineeringagent.specs
 
   - module: engineeringagent.checks.contracts blocked_dependencies: - engineeringagent.cli

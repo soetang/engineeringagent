@@ -4,10 +4,10 @@ import ast
 from pathlib import Path
 
 from engineeringagent.checks import emit_fitness_result
-from engineeringagent.checks.fitness.boundary_reporting import (
+from engineeringagent.adapters.quality.fitness.boundary_reporting import (
     build_boundary_rule_result,
 )
-from engineeringagent.checks.fitness.scope_traversal import (
+from engineeringagent.adapters.quality.fitness.scope_traversal import (
     call_symbol,
     collect_loop_boundary_rule_violations,
     collect_node_violations,

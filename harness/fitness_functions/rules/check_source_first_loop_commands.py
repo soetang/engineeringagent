@@ -8,7 +8,7 @@ import yaml
 
 from engineeringagent.checks import emit_fitness_result
 from engineeringagent.checks import resolve_feature_plan_path
-from engineeringagent.checks.fitness.contracts import (
+from engineeringagent.adapters.quality.fitness.contracts import (
     CONTRACT_VERSION,
     FitnessRuleResult,
     RuleSeverity,

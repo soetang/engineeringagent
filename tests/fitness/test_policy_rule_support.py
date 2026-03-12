@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from engineeringagent.checks.fitness.local_support_loader import (
+from engineeringagent.adapters.quality.fitness.local_support_loader import (
     load_local_support_module,
 )
 

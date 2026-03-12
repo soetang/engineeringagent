@@ -42,7 +42,7 @@ Generated from the archived flat feature spec during the FEAT-183 bundled-only m
 
 ## ST-001 Remove confirmed-dead source helpers with explicit symbol list
 
-Remove exactly these symbols unless new usage is found: `engineeringagent.checks.fitness.catalog.write_rule_catalog_markdown` in `src/engineeringagent/checks/fitness/catalog.py`, `engineeringagent.checks.validate.validator._append_gate_config_issues` and `engineeringagent.checks.validate.validator._append_reviewer_config_issues` in `src/engineeringagent/checks/validate/validator.py`, and `engineeringagent.specs.find_subtask` in `src/engineeringagent/specs.py`. Preserve behavior and rollback any symbol if usage is discovered.
+Remove exactly these symbols unless new usage is found: `engineeringagent.adapters.quality.fitness.catalog.write_rule_catalog_markdown` in `src/engineeringagent/checks/fitness/catalog.py`, `engineeringagent.checks.validate.validator._append_gate_config_issues` and `engineeringagent.checks.validate.validator._append_reviewer_config_issues` in `src/engineeringagent/checks/validate/validator.py`, and `engineeringagent.specs.find_subtask` in `src/engineeringagent/specs.py`. Preserve behavior and rollback any symbol if usage is discovered.
 
 ## ST-002 Remove likely-dead facade signature constants with rollback guard
 

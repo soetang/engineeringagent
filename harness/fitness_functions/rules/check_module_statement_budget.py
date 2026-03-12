@@ -3,7 +3,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from engineeringagent.checks.fitness.local_support_loader import load_local_support_module
+from engineeringagent.adapters.quality.fitness.local_support_loader import load_local_support_module
 
 
 _SUPPORT_MODULE = load_local_support_module(

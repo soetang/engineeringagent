@@ -6,7 +6,7 @@ from engineeringagent.adapters.quality.validation.contracts import (
     ValidationContext,
     ValidationIssue,
 )
-from engineeringagent.checks.fitness.registry import (
+from engineeringagent.adapters.quality.fitness.registry import (
     DEFAULT_CUSTOM_RULE_MANIFEST,
     build_rule_catalog,
 )

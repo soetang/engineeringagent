@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from engineeringagent.checks.fitness.contracts import (
+from engineeringagent.adapters.quality.fitness.contracts import (
     CONTRACT_VERSION,
     FitnessRuleResult,
 )

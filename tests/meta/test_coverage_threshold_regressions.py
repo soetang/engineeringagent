@@ -10,19 +10,19 @@ from typing import Any, cast
 import pytest
 from pydantic import ValidationError
 
-import engineeringagent.checks.fitness.adapters as adapters_module
+import engineeringagent.adapters.quality.fitness.adapters as adapters_module
 import engineeringagent.adapters.config.runtime as config_module
 import engineeringagent.adapters.documents.filesystem_feature_state as feature_state_module
 import engineeringagent.adapters.documents.filesystem_feature_selection as feature_selection_module
 from engineeringagent.application.feature_iteration import FeatureIterationInputs
-from engineeringagent.checks.fitness.contracts import (
+from engineeringagent.adapters.quality.fitness.contracts import (
     CONTRACT_VERSION,
     FitnessRuleMetadata,
     RuleAdapter,
     RuleSeverity,
     RuleSource,
 )
-from engineeringagent.checks.fitness.registry import FitnessRuleDefinition
+from engineeringagent.adapters.quality.fitness.registry import FitnessRuleDefinition
 from engineeringagent.domain.quality import ChangedPathsResult
 from engineeringagent.adapters.runtime.iteration_phases import (
     CompletionPhaseDependencies,

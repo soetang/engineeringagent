@@ -3,10 +3,10 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from engineeringagent.checks.fitness.boundary_reporting import (
+from engineeringagent.adapters.quality.fitness.boundary_reporting import (
     build_boundary_rule_result,
 )
-from engineeringagent.checks.fitness.scope_traversal import (
+from engineeringagent.adapters.quality.fitness.scope_traversal import (
     LOOP_ENTRY_MODULE,
     LOOP_RUNTIME_ROOT,
     PROMPT_RENDERER_MODULE,

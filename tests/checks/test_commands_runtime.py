@@ -7,7 +7,7 @@ from engineeringagent.domain.quality import HarnessCheckPhase
 from engineeringagent.checks.commands.runtime import (
     plan_command_checks,
 )
-from engineeringagent.checks.fitness.runtime import plan_fitness_checks
+from engineeringagent.adapters.quality.fitness.runtime import plan_fitness_checks
 from engineeringagent.checks.reviewers.runtime import plan_reviewer_checks
 from engineeringagent.domain.quality import HarnessChecksDocument
 

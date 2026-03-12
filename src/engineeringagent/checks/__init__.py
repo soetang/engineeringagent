@@ -26,7 +26,7 @@ from engineeringagent.ports import VersionControlGateway
 
 if TYPE_CHECKING:
     from engineeringagent.adapters.quality.runtime import _RunChecksKwargs
-    from .fitness.contracts import FitnessRuleResult
+    from engineeringagent.adapters.quality.fitness.contracts import FitnessRuleResult
 
 __all__ = [
     "ChangedPathsResult",
@@ -131,14 +131,14 @@ def resolve_harness_bool_setting(
 def emit_fitness_result(result: FitnessRuleResult) -> None:
     """Proxy to the fitness envelope helper without loading it during package init."""
 
-    envelope = import_module("engineeringagent.checks.fitness.envelope")
+    envelope = import_module("engineeringagent.adapters.quality.fitness.envelope")
     envelope.emit_fitness_result(result)
 
 
 def custom_rule_manifest_schema_from_model() -> dict[str, Any]:
     """Proxy to the custom fitness manifest schema producer lazily."""
 
-    contracts = import_module("engineeringagent.checks.fitness.contracts")
+    contracts = import_module("engineeringagent.adapters.quality.fitness.contracts")
     return contracts.custom_rule_manifest_schema_from_model()
 
 

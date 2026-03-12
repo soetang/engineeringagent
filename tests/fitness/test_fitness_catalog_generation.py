@@ -6,7 +6,7 @@ from typer.testing import CliRunner
 
 from engineeringagent.presentation import cli as cli_module
 from engineeringagent.checks import render_fitness_catalog
-from engineeringagent.checks.fitness.catalog import format_config_file
+from engineeringagent.adapters.quality.fitness.catalog import format_config_file
 from tests.helpers.fitness_manifest import write_shell_contract_manifest
 
 

@@ -59,7 +59,7 @@ implementation_notes: "Contract/API delta (explicit):\n\n- Surface: Python modul
   \ `engineeringagent.checks` and the CLI.\n\nFitness-function impact assessment:\n\
   - Requires updates:\n  - Update `harness/fitness_functions/check_harness_src_import_allowlist.py`\
   \ allowlist to\n    permit `engineeringagent.checks.*` (or a narrower prefix such\
-  \ as `engineeringagent.checks.fitness.*`).\n  - Update harness fitness-rule scripts\
+  \ as `engineeringagent.adapters.quality.fitness.*`).\n  - Update harness fitness-rule scripts\
   \ (if any) that import `engineeringagent.fitness.envelope`\n    to import from `engineeringagent.checks`\
   \ instead.\n  - Add a new harness fitness function enforcing that `src/engineeringagent/**`\
   \ modules outside\n    `src/engineeringagent/checks/**` only import the supported\

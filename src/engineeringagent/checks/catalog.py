@@ -4,8 +4,14 @@ import json
 from pathlib import Path
 from typing import Literal
 
-from .fitness.catalog import format_config_file, render_rule_catalog_markdown
-from .fitness.registry import FitnessRuleDefinition, build_rule_catalog
+from engineeringagent.adapters.quality.fitness.catalog import (
+    format_config_file,
+    render_rule_catalog_markdown,
+)
+from engineeringagent.adapters.quality.fitness.registry import (
+    FitnessRuleDefinition,
+    build_rule_catalog,
+)
 
 
 def render_fitness_catalog(

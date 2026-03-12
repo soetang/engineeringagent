@@ -5,8 +5,8 @@ from pathlib import Path
 
 import yaml
 
-from engineeringagent.checks.fitness.adapters import execute_rule_definition
-from engineeringagent.checks.fitness.contracts import (
+from engineeringagent.adapters.quality.fitness.adapters import execute_rule_definition
+from engineeringagent.adapters.quality.fitness.contracts import (
     CONTRACT_VERSION,
     FitnessRuleMetadata,
     RuleAdapter,
@@ -14,7 +14,7 @@ from engineeringagent.checks.fitness.contracts import (
     RuleSource,
     RuleStatus,
 )
-from engineeringagent.checks.fitness.registry import FitnessRuleDefinition
+from engineeringagent.adapters.quality.fitness.registry import FitnessRuleDefinition
 
 
 def _command_definition(command: tuple[str, ...]) -> FitnessRuleDefinition:

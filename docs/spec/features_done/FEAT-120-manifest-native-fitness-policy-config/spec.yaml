@@ -97,9 +97,9 @@ implementation_notes: 'Contract change declaration (required)
 
   - General backend-literal policy refactor beyond introducing config-file plumbing.'
 acceptance:
-- '`engineeringagent.checks.fitness.contracts.CustomRuleManifestEntry` accepts optional
+- '`engineeringagent.adapters.quality.fitness.contracts.CustomRuleManifestEntry` accepts optional
   `config_file` and rejects invalid types/empty values.'
-- '`engineeringagent.checks.fitness.registry` carries `config_file` into rule definitions
+- '`engineeringagent.adapters.quality.fitness.registry` carries `config_file` into rule definitions
   with deterministic path resolution.'
 - Command adapter appends `--config-file <path>` only for rules that define `config_file`.
 - '`architecture.no-non-ignorable-ruff-suppressions` policy is defined in YAML under

@@ -5,12 +5,12 @@ from pathlib import Path
 import pytest
 import yaml
 
-from engineeringagent.checks.fitness.contracts import (
+from engineeringagent.adapters.quality.fitness.contracts import (
     CONTRACT_VERSION,
     RuleAdapter,
     RuleSeverity,
 )
-from engineeringagent.checks.fitness.registry import build_rule_catalog
+from engineeringagent.adapters.quality.fitness.registry import build_rule_catalog
 
 
 def _write_manifest(path: Path, rules: list[dict[str, object]]) -> None:
