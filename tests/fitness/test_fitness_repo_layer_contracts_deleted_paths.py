@@ -551,14 +551,20 @@ def test_repo_layer_contracts_rule_blocks_deleted_iteration_models_module(
     ]
 
 
-def test_repo_layer_contracts_rule_blocks_deleted_guidance_service_package(
+def test_repo_layer_contracts_rule_blocks_deleted_flat_guidance_service_module(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Fail when the removed guidance service package reappears."""
-    legacy_root = tmp_path / "src" / "engineeringagent" / "application" / "guidance"
-    legacy_root.mkdir(parents=True, exist_ok=True)
-    (legacy_root / "service.py").write_text("", encoding="utf-8")
+    """Fail when the removed flat guidance workflow module reappears."""
+    legacy_module = (
+        tmp_path
+        / "src"
+        / "engineeringagent"
+        / "application"
+        / "guidance_service.py"
+    )
+    legacy_module.parent.mkdir(parents=True, exist_ok=True)
+    legacy_module.write_text("", encoding="utf-8")
 
     proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
 
@@ -566,7 +572,7 @@ def test_repo_layer_contracts_rule_blocks_deleted_guidance_service_package(
     assert payload["status"] == "fail"
     assert payload["rule_id"] == "architecture.repo-layer-contracts"
     assert payload["violations"] == [
-        "src/engineeringagent/application/guidance: deleted legacy directory path must remain absent"
+        "src/engineeringagent/application/guidance_service.py: deleted legacy module path must remain absent"
     ]
 
 

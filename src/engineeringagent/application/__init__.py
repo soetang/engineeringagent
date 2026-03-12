@@ -6,7 +6,7 @@ from .feature_iteration_service import (
     FeatureIterationResult,
     FeatureIterationService,
 )
-from .guidance_service import (
+from .guidance import (
     GuidanceInputError,
     GuidanceQuery,
     GuidanceResult,
