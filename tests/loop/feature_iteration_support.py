@@ -15,14 +15,14 @@ from typer.testing import CliRunner
 
 import engineeringagent.agents.helpers as agent_helpers
 from engineeringagent.bootstrap import runtime_support as runtime_support_module
-from engineeringagent.adapters.progress.handoff import (
-    fallback_implement_progress_envelope,
-)
 from engineeringagent.agents import AgentBackendError, AgentBackendFailureDetails
 from engineeringagent.agents.backends.opencode.permissions import (
     PermissionProbeResult,
 )
-from engineeringagent.domain.audit import ImplementStepResult
+from engineeringagent.domain.audit import (
+    ImplementStepResult,
+    fallback_implement_progress_envelope,
+)
 from engineeringagent.bootstrap.runtime_execution import (
     run_loop_controller as _run_loop,
 )

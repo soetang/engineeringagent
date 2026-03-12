@@ -7,9 +7,6 @@ from typing import Any
 import pytest
 
 import engineeringagent.loop_runtime.iteration as iteration_module
-from engineeringagent.adapters.progress.handoff import (
-    fallback_implement_progress_envelope,
-)
 from engineeringagent.bootstrap.run_loop_context import (
     LoopRun,
     RunConfig,
@@ -26,6 +23,7 @@ from engineeringagent.domain.audit import (
     PostImplementFeatureOutcome,
     ReviewerPhaseOutcome,
     VerificationPhaseOutcome,
+    fallback_implement_progress_envelope,
 )
 from engineeringagent.bootstrap.runtime_execution import run_loop_controller
 from engineeringagent.domain.quality import ChangedPathsResult

@@ -1,21 +1,12 @@
-"""Structured handoff envelope parsing and markdown rendering helpers."""
+"""Markdown presentation helpers."""
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.domain.audit import (
-    ImplementProgressEnvelope,
-    fallback_implement_progress_envelope as _fallback_implement_progress_envelope,
-    parse_implement_progress_envelope as _parse_implement_progress_envelope,
-)
+from engineeringagent.domain.audit import ImplementProgressEnvelope
+from engineeringagent.domain.shared import utc_now_iso
 from engineeringagent.spec_bundles import progress_kind_label
-
-
-fallback_implement_progress_envelope = _fallback_implement_progress_envelope
-parse_implement_progress_envelope = _parse_implement_progress_envelope
 
 
 class HandoffRenderMetadata(BaseModel):
@@ -30,22 +21,16 @@ class HandoffRenderMetadata(BaseModel):
     progress_title: str | None = None
 
 
-def now_iso() -> str:
-    """Return current UTC timestamp in compact ISO-8601 format."""
-
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
-
-
 def render_handoff_markdown_entry(
     *,
     attempt: int,
     envelope: ImplementProgressEnvelope,
     metadata: HandoffRenderMetadata | None = None,
 ) -> list[str]:
-    """Render deterministic markdown lines for one append-only handoff entry."""
+    """Render deterministic markdown lines for one handoff artifact snapshot."""
 
     render_metadata = metadata or HandoffRenderMetadata()
-    entry_timestamp = render_metadata.timestamp or now_iso()
+    entry_timestamp = render_metadata.timestamp or utc_now_iso()
     lines = [
         f"## Iteration {attempt} - {entry_timestamp}",
         "",
@@ -79,8 +64,6 @@ def _render_markdown_section(title: str, items: list[str]) -> list[str]:
 
 
 def _is_placeholder_item(item: str) -> bool:
-    """Return True for items that represent synthetic placeholder bullets."""
-
     return item.strip() == "(none)"
 
 
@@ -90,8 +73,6 @@ def _render_progress_context_line(
     progress_id: str | None,
     progress_title: str | None,
 ) -> str | None:
-    """Return a deterministic handoff line naming the active progress unit."""
-
     reference = _render_progress_reference_label(
         progress_id=progress_id,
         progress_title=progress_title,
@@ -106,8 +87,6 @@ def _render_progress_reference_label(
     progress_id: str | None,
     progress_title: str | None,
 ) -> str | None:
-    """Return a compact progress-unit label for markdown handoff entries."""
-
     normalized_id = (progress_id or "").strip()
     normalized_title = (progress_title or "").strip()
     if normalized_id and normalized_title:

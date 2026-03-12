@@ -1,13 +1,7 @@
 """Filesystem-backed progress journal adapter."""
 
-from . import handoff, paths
+from . import paths
 from .filesystem_journal import FilesystemProgressJournal
-from .handoff import (
-    ImplementProgressEnvelope,
-    fallback_implement_progress_envelope,
-    parse_implement_progress_envelope,
-    render_handoff_markdown_entry,
-)
 from .iteration_telemetry import (
     append_run,
     write_iteration_telemetry,
@@ -40,13 +34,8 @@ from .paths import (
 )
 
 __all__ = [
-    "handoff",
     "paths",
     "FilesystemProgressJournal",
-    "ImplementProgressEnvelope",
-    "parse_implement_progress_envelope",
-    "fallback_implement_progress_envelope",
-    "render_handoff_markdown_entry",
     "append_run",
     "write_iteration_telemetry",
     "PROGRESS_DIRNAME",

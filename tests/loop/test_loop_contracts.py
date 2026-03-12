@@ -15,7 +15,7 @@ from pydantic import BaseModel, ValidationError
 import engineeringagent.loop as loop_module
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.adapters.progress import paths as progress_paths
-from engineeringagent.adapters.progress.handoff import (
+from engineeringagent.domain.audit import (
     ImplementProgressEnvelope,
     fallback_implement_progress_envelope,
 )

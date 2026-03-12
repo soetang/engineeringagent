@@ -3,6 +3,13 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 
+def utc_now_iso() -> str:
+    """Return the current RFC3339 UTC timestamp with second precision."""
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace(
+        "+00:00", "Z"
+    )
+
+
 def utc_iso_from_epoch_sec(epoch_sec: int) -> str:
     """Return an RFC3339 UTC timestamp with second precision."""
     return (

@@ -4,11 +4,11 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import sentinel
 
-from engineeringagent.adapters.progress.handoff import (
+from engineeringagent.ports import AgentRunner
+from engineeringagent.domain.audit import (
+    IterationSummaryInputs,
     fallback_implement_progress_envelope,
 )
-from engineeringagent.ports import AgentRunner
-from engineeringagent.domain.audit import IterationSummaryInputs
 from engineeringagent.bootstrap import runtime_support
 
 

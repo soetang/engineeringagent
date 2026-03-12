@@ -9,11 +9,11 @@ from typing import Any, Sequence
 
 import yaml
 
-from engineeringagent.adapters.progress import handoff as progress_handoff
 from engineeringagent.domain.audit import (
     InitialFeatureLoadOutcome,
     PostImplementFeatureOutcome,
 )
+from engineeringagent.domain.shared import utc_now_iso
 from engineeringagent.config import resolve_docs_root
 from engineeringagent.loop_runtime import feature_plan_state
 from engineeringagent.loop_runtime.feature_plan_state import (
@@ -399,6 +399,6 @@ def touch_active_feature_for_iteration(
     """Apply status/timestamp updates before iteration work."""
     if feature.get("status") == "backlog":
         set_status(feature, "in_progress")
-    feature["updated_at"] = progress_handoff.now_iso()
+    feature["updated_at"] = utc_now_iso()
     dump_yaml(feature_path, feature)
     touch_active_plan_for_iteration(feature, feature_path, FEATURE_TRANSITIONS)

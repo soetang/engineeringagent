@@ -23,12 +23,12 @@ from engineeringagent.bootstrap.runtime_execution import (
     run_loop_controller as _run_loop,
 )
 from engineeringagent.adapters.progress import paths as progress_paths
-from engineeringagent.adapters.progress.handoff import ImplementProgressEnvelope
 from engineeringagent.agents.backends.opencode.permissions import (
     PERMISSION_REMEDIATION_HINT,
     PermissionProbeResult,
     evaluate_permission_probe,
 )
+from engineeringagent.domain.audit import ImplementProgressEnvelope
 from tests.loop.feature_iteration_support import copy_canonical_prompts
 from tests.loop._feedback_envelope import parse_feedback_envelope_from_prompt
 

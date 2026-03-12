@@ -9,10 +9,12 @@ import engineeringagent.adapters.progress.iteration_telemetry as telemetry_modul
 import engineeringagent.domain.audit.iteration as models_module
 import engineeringagent.loop_runtime.phases as phases_module
 from engineeringagent.adapters.progress import FilesystemProgressJournal
-from engineeringagent.adapters.progress.handoff import (
-    HandoffRenderMetadata,
+from engineeringagent.domain.audit import (
     ImplementProgressEnvelope,
     parse_implement_progress_envelope,
+)
+from engineeringagent.presentation.presenters.markdown import (
+    HandoffRenderMetadata,
     render_handoff_markdown_entry,
 )
 from engineeringagent.adapters.progress.iteration_telemetry import (
@@ -663,8 +665,8 @@ def test_progress_log_strips_ansi_only_at_write_time(
 
 def test_progress_log_records_phase_timings(tmp_path: Path, monkeypatch: Any) -> None:
     monkeypatch.setattr(
-        telemetry_module.progress_handoff,
-        "now_iso",
+        telemetry_module,
+        "utc_now_iso",
         lambda: "1970-01-01T00:00:10Z",
     )
     monkeypatch.setattr(telemetry_module.time, "time", lambda: 0.0)
@@ -734,8 +736,8 @@ def test_progress_log_records_verification_command_timings(
     monkeypatch: Any,
 ) -> None:
     monkeypatch.setattr(
-        telemetry_module.progress_handoff,
-        "now_iso",
+        telemetry_module,
+        "utc_now_iso",
         lambda: "1970-01-01T00:00:20Z",
     )
 

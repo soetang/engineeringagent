@@ -9,12 +9,17 @@ from typing import Any, Callable, Sequence
 
 from engineeringagent.domain.audit import (
     CommandTiming,
+    fallback_implement_progress_envelope,
     IterationTelemetryInputs,
     PhaseTiming,
 )
 from engineeringagent.domain.audit import ProgressEvent
+from engineeringagent.domain.shared import utc_now_iso
+from engineeringagent.presentation.presenters import (
+    HandoffRenderMetadata,
+    render_handoff_markdown_entry,
+)
 
-from . import handoff as progress_handoff
 from . import paths as progress_paths
 from .filesystem_journal import FilesystemProgressJournal
 
@@ -32,7 +37,7 @@ def _strip_feedback_context_blocks(text: str) -> str:
 
 def append_run(project_root: Path, payload: dict[str, Any]) -> None:
     """Append one loop telemetry audit event as JSONL."""
-    event_timestamp = str(payload.get("ts") or progress_handoff.now_iso())
+    event_timestamp = str(payload.get("ts") or utc_now_iso())
     feature_id = payload.get("feature_id")
     normalized_feature_id = feature_id if isinstance(feature_id, str) else None
     _PROGRESS_JOURNAL.append(
@@ -178,7 +183,7 @@ def write_iteration_telemetry(  # noqa: C901
     )
 
     run_payload: dict[str, Any] = {
-        "ts": progress_handoff.now_iso(),
+        "ts": utc_now_iso(),
         "feature_id": telemetry_inputs.feature_id,
         "progress_kind": telemetry_inputs.progress_kind,
         "progress_id": telemetry_inputs.progress_id,
@@ -319,17 +324,17 @@ def _write_feature_handoff_markdown(
     envelope = telemetry_inputs.implement_handoff_envelope
     used_fallback = telemetry_inputs.implement_handoff_used_fallback
     if envelope is None or used_fallback:
-        envelope = progress_handoff.fallback_implement_progress_envelope(
+        envelope = fallback_implement_progress_envelope(
             progress_kind=telemetry_inputs.progress_kind,
             progress_id=telemetry_inputs.progress_id,
             progress_title=telemetry_inputs.progress_title,
         )
         used_fallback = True
 
-    entry_lines = progress_handoff.render_handoff_markdown_entry(
+    entry_lines = render_handoff_markdown_entry(
         attempt=telemetry_inputs.iteration_inputs.attempt,
         envelope=envelope,
-        metadata=progress_handoff.HandoffRenderMetadata(
+        metadata=HandoffRenderMetadata(
             timestamp=timestamp,
             used_fallback=used_fallback,
             progress_kind=telemetry_inputs.progress_kind,
