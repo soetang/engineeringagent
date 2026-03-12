@@ -7,6 +7,7 @@ import pytest
 from pydantic import ValidationError
 
 from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
+from engineeringagent.application import ImplementationPromptRequest, PromptBuilder
 from engineeringagent.domain.quality import (
     build_command_failure_feedback,
     build_fitness_failure_feedback,
@@ -14,15 +15,15 @@ from engineeringagent.domain.quality import (
     parse_feedback_envelope,
     serialize_feedback_envelope,
 )
-from engineeringagent.application import ImplementationPromptRequest, PromptBuilder
 
 _PROMPT_DEFINITIONS = FilesystemPromptDefinitionRepository(
-    Path(__file__).resolve().parents[2] / "harness" / "prompts"
+    Path(__file__).resolve().parents[3] / "harness" / "prompts"
 )
 _PROMPT_BUILDER = PromptBuilder(_PROMPT_DEFINITIONS)
 
 
 def test_feedback_contract_accepts_command_failure_envelope() -> None:
+    """Accept a valid command-failure envelope."""
     payload = {
         "kind": "command_failure",
         "phase": "gates",
@@ -45,6 +46,7 @@ def test_feedback_contract_accepts_command_failure_envelope() -> None:
 
 
 def test_feedback_contract_rejects_unknown_fields() -> None:
+    """Reject envelopes with unknown fields."""
     payload = {
         "kind": "command_failure",
         "phase": "verification",
@@ -62,6 +64,7 @@ def test_feedback_contract_rejects_unknown_fields() -> None:
 
 
 def test_feedback_serialization_is_sorted_and_compact() -> None:
+    """Serialize envelopes as stable compact JSON."""
     payload = {
         "kind": "reviewer_feedback",
         "phase": "reviewers",
@@ -87,6 +90,7 @@ def test_feedback_serialization_is_sorted_and_compact() -> None:
 
 
 def test_feedback_contract_enforces_failed_rules_cap() -> None:
+    """Reject envelopes that exceed the failed-rule cap."""
     payload = {
         "kind": "fitness_failure",
         "phase": "gates",
@@ -110,6 +114,7 @@ def test_feedback_contract_enforces_failed_rules_cap() -> None:
 
 
 def test_feedback_prompt_render_does_not_truncate_contract_json() -> None:
+    """Keep serialized feedback intact when rendering prompts."""
     payload = {
         "kind": "fitness_failure",
         "phase": "gates",
@@ -145,6 +150,7 @@ def test_feedback_prompt_render_does_not_truncate_contract_json() -> None:
 
 
 def test_feedback_prompt_render_accepts_plain_markdown_feedback() -> None:
+    """Render plain markdown retry feedback as-is."""
     feedback = "Retry guidance from checks runtime"
 
     injected = _PROMPT_BUILDER.build_implementation_prompt(
@@ -159,6 +165,7 @@ def test_feedback_prompt_render_accepts_plain_markdown_feedback() -> None:
 
 
 def test_feedback_prompt_render_ignores_blank_plain_feedback() -> None:
+    """Drop blank retry feedback from rendered prompts."""
     injected = _PROMPT_BUILDER.build_implementation_prompt(
         ImplementationPromptRequest(
             feature_id="FEAT-900",
@@ -170,8 +177,8 @@ def test_feedback_prompt_render_ignores_blank_plain_feedback() -> None:
     assert "Retry feedback:" not in injected
 
 
-def test_build_reviewer_feedback_normalizes_unknown_decision_to_request_changes(
-) -> None:
+def test_build_reviewer_feedback_normalizes_unknown_decision_to_request_changes() -> None:
+    """Normalize invalid feature-done reviewer decisions."""
     serialized = build_reviewer_feedback(
         reviewer_id="code_simplifier",
         reviewer_phase="feature_done",
@@ -191,6 +198,7 @@ def test_build_reviewer_feedback_normalizes_unknown_decision_to_request_changes(
 
 
 def test_build_reviewer_feedback_normalizes_unknown_decision() -> None:
+    """Normalize invalid iteration-end reviewer decisions."""
     serialized = build_reviewer_feedback(
         reviewer_id="code_simplifier",
         reviewer_phase="iteration_end",
@@ -208,6 +216,7 @@ def test_build_reviewer_feedback_normalizes_unknown_decision() -> None:
 
 
 def test_build_reviewer_feedback_accepts_approve_decision() -> None:
+    """Preserve explicit approval reviewer decisions."""
     serialized = build_reviewer_feedback(
         reviewer_id="code_simplifier",
         reviewer_phase="feature_done",
@@ -225,6 +234,7 @@ def test_build_reviewer_feedback_accepts_approve_decision() -> None:
 
 
 def test_build_command_failure_feedback_uses_custom_message() -> None:
+    """Honor custom command-failure messages."""
     serialized = build_command_failure_feedback(
         phase="gates",
         gate="ruff",
@@ -242,6 +252,7 @@ def test_build_command_failure_feedback_uses_custom_message() -> None:
 
 
 def test_build_fitness_failure_feedback_normalizes_rules_and_details() -> None:
+    """Keep only valid failed-rule entries and normalized details."""
     serialized = build_fitness_failure_feedback(
         gate="fitness_validate",
         command="uv run engineeringagent checks run --checks fitness --phase iteration_end",
@@ -266,6 +277,7 @@ def test_build_fitness_failure_feedback_normalizes_rules_and_details() -> None:
 
 
 def test_build_fitness_failure_feedback_caps_rules_and_violations() -> None:
+    """Cap serialized failed rules and per-rule violations."""
     failed_rules: list[dict[str, object]] = []
     for idx in range(30):
         violations = [f"path/to/file.md:{line} broken" for line in range(100)]
@@ -292,6 +304,7 @@ def test_build_fitness_failure_feedback_caps_rules_and_violations() -> None:
 
 
 def test_build_reviewer_feedback_caps_required_actions() -> None:
+    """Cap reviewer required actions during serialization."""
     serialized = build_reviewer_feedback(
         reviewer_id="code_simplifier",
         reviewer_phase="feature_done",
@@ -308,9 +321,8 @@ def test_build_reviewer_feedback_caps_required_actions() -> None:
     assert envelope.decision.required_actions[0] == "action-0"
 
 
-def test_build_reviewer_feedback_honors_message_and_scope_notes() -> (
-    None
-):
+def test_build_reviewer_feedback_honors_message_and_scope_notes() -> None:
+    """Preserve reviewer message and scope notes."""
     serialized = build_reviewer_feedback(
         reviewer_id="code_simplifier",
         reviewer_phase="feature_done",

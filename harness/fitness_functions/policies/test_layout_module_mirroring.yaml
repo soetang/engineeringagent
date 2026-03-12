@@ -25,5 +25,6 @@ forbidden_test_paths:
   - tests/application/validation/test_service.py
   - tests/bootstrap/test_runtime_run_loop_executor.py
   - tests/harness/test_checks_runtime.py
+  - tests/loop/test_feedback_contracts.py
   - tests/progress/test_filesystem_journal.py
 forbidden_test_prefixes: []
