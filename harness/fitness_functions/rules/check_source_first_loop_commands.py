@@ -6,10 +6,10 @@ import re
 
 import yaml
 
+from engineeringagent.adapters.config import resolve_specifications_root
+from engineeringagent.domain.specification import iter_feature_files
+from engineeringagent.domain.specification import resolve_feature_plan_path
 from engineeringagent.checks import emit_fitness_result
-from engineeringagent.checks import iter_feature_files
-from engineeringagent.checks import resolve_feature_plan_path
-from engineeringagent.checks import resolve_specifications_root
 from engineeringagent.adapters.quality.fitness.contracts import (
     CONTRACT_VERSION,
     FitnessRuleResult,

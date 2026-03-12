@@ -36,13 +36,9 @@ __all__ = [
     "collect_changed_paths",
     "custom_rule_manifest_schema_from_model",
     "emit_fitness_result",
-    "iter_feature_files",
     "list_check_groups",
-    "load_markdown_frontmatter",
     "load_harness_checks_document",
     "normalize_groups",
-    "resolve_feature_plan_path",
-    "resolve_specifications_root",
     "render_fitness_catalog",
     "reviewer_decision_schema_from_model",
     "reviewers_group_selected",
@@ -157,37 +153,6 @@ def render_fitness_catalog(
         manifest_path=manifest_path,
         format=format,
     )
-
-
-def resolve_feature_plan_path(
-    spec_path: Path,
-    feature: dict[str, Any],
-) -> Path | None:
-    """Proxy to bundled plan-path resolution without widening harness imports."""
-
-    specification = import_module("engineeringagent.domain.specification")
-    return specification.resolve_feature_plan_path(spec_path, feature)
-
-
-def resolve_specifications_root(project_root: Path) -> Path:
-    """Proxy to repository specifications-root resolution for harness code."""
-
-    config_runtime = import_module("engineeringagent.adapters.config")
-    return config_runtime.resolve_specifications_root(project_root)
-
-
-def iter_feature_files(features_root: Path) -> tuple[Path, ...]:
-    """Proxy to bundled feature entrypoint discovery for harness code."""
-
-    specification = import_module("engineeringagent.domain.specification")
-    return tuple(specification.iter_feature_files(features_root))
-
-
-def load_markdown_frontmatter(path: Path) -> dict[str, Any]:
-    """Proxy to bundled markdown frontmatter loading for harness code."""
-
-    specification = import_module("engineeringagent.domain.specification")
-    return specification.load_markdown_frontmatter(path)
 
 
 def reviewer_decision_schema_from_model() -> dict[str, Any]:

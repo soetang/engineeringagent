@@ -31,6 +31,7 @@ def test_checker_scans_rules_manifest_scripts_not_just_check_prefix(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
+    """Scan manifest-declared harness scripts, not only check_* filenames."""
     checker = _load_checker_module(repo_root)
 
     harness_root = tmp_path / "harness" / "fitness_functions"
@@ -66,14 +67,15 @@ def test_checker_scans_rules_manifest_scripts_not_just_check_prefix(
 
     violations = checker._collect_violations(tmp_path)
     assert violations == [
-        "harness/fitness_functions/validate_custom.py: imports disallowed module engineeringagent.cli.main (allowed: engineeringagent.checks, engineeringagent.adapters.quality.fitness)"
+        "harness/fitness_functions/validate_custom.py: imports disallowed module engineeringagent.cli.main (allowed: engineeringagent.checks, engineeringagent.domain.specification, engineeringagent.adapters.config, engineeringagent.adapters.quality.fitness)"
     ]
 
 
-def test_checker_allows_deep_engineeringagent_checks_imports(
+def test_checker_allows_domain_and_config_imports_for_harness_rules(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
+    """Allow harness rules to import spec and config helpers from owning modules."""
     checker = _load_checker_module(repo_root)
 
     harness_root = tmp_path / "harness" / "fitness_functions"
@@ -97,12 +99,14 @@ def test_checker_allows_deep_engineeringagent_checks_imports(
     (harness_root / "validate_custom.py").write_text(
         "\n".join(
             [
-                "from engineeringagent.checks import (",
+                "from engineeringagent.adapters.config import resolve_specifications_root",
+                "from engineeringagent.domain.specification import (",
                 "    iter_feature_files,",
                 ")",
                 "",
                 "def run() -> None:",
                 "    _ = iter_feature_files",
+                "    _ = resolve_specifications_root",
                 "",
             ]
         ),

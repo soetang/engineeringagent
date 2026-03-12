@@ -18,6 +18,8 @@ RULE_ID = "architecture.harness-src-import-allowlist"
 
 _ALLOWED_ENGINEERINGAGENT_IMPORT_PREFIXES: tuple[str, ...] = (
     "engineeringagent.checks",
+    "engineeringagent.domain.specification",
+    "engineeringagent.adapters.config",
     "engineeringagent.adapters.quality.fitness",
 )
 
