@@ -13,6 +13,7 @@ from pydantic import ValidationError
 import engineeringagent.checks.fitness.adapters as adapters_module
 import engineeringagent.config as config_module
 import engineeringagent.loop_runtime.feature_state as feature_state_module
+from engineeringagent.application import feature_plan_progress
 from engineeringagent.application import FeatureIterationInputs
 from engineeringagent.checks.fitness.contracts import (
     CONTRACT_VERSION,
@@ -23,7 +24,6 @@ from engineeringagent.checks.fitness.contracts import (
 )
 from engineeringagent.checks.fitness.registry import FitnessRuleDefinition
 from engineeringagent.domain.quality import ChangedPathsResult
-from engineeringagent.loop_runtime import feature_plan_state
 from engineeringagent.adapters.runtime.iteration_phases import (
     CompletionPhaseDependencies,
     GatePhaseDependencies,
@@ -138,12 +138,12 @@ def test_presentation_ignores_env_keys_for_ansi_decision(
 def test_feature_state_plan_loader_compatibility_shim() -> None:
     assert (
         feature_state_module._load_plan_document_and_frontmatter
-        is feature_plan_state.load_plan_document_and_frontmatter
+        is feature_plan_progress.load_plan_document_and_frontmatter
     )
 
 
 def test_feature_plan_progress_update_config_uses_pydantic_model_boundary() -> None:
-    config = feature_plan_state._PlanProgressUpdateConfig(
+    config = feature_plan_progress._PlanProgressUpdateConfig(
         allow_done_feature=False,
         feature_transitions={"in_progress": {"done"}},
         mutate_frontmatter=lambda _frontmatter: False,

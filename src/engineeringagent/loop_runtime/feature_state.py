@@ -13,17 +13,17 @@ from engineeringagent.application import (
     InitialFeatureLoadOutcome,
     PostImplementFeatureOutcome,
 )
-from engineeringagent.domain.shared import utc_now_iso
-from engineeringagent.config import resolve_docs_root
-from engineeringagent.loop_runtime import feature_plan_state
-from engineeringagent.loop_runtime.feature_plan_state import (
+from engineeringagent.application import feature_plan_progress
+from engineeringagent.application.feature_plan_progress import (
     archived_bundled_feature_is_done as _archived_bundled_feature_is_done,
 )
-from engineeringagent.loop_runtime.feature_plan_state import (
+from engineeringagent.application.feature_plan_progress import (
     normalize_done_plan,
     sync_active_plan_after_implement,
     touch_active_plan_for_iteration,
 )
+from engineeringagent.domain.shared import utc_now_iso
+from engineeringagent.config import resolve_docs_root
 from engineeringagent.specs import (
     _is_bundled_feature_spec_path,
     dump_yaml,
@@ -45,7 +45,7 @@ RUN_ALL_RUNNABLE_STATUSES: set[str] = {"backlog", "in_progress"}
 # Keep the extracted bundled-plan loader available on this module for tests and
 # any remaining compatibility callers.
 _load_plan_document_and_frontmatter = (
-    feature_plan_state.load_plan_document_and_frontmatter
+    feature_plan_progress.load_plan_document_and_frontmatter
 )
 
 

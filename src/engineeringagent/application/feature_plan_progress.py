@@ -1,4 +1,4 @@
-"""Bundled plan.md mutation helpers used by loop runtime feature-state flows."""
+"""Application-owned bundled plan progress mutation helpers."""
 
 from __future__ import annotations
 

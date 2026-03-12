@@ -177,8 +177,8 @@ def _record_implement_timing(
             phase="implement",
             command=dependencies.describe_action(
                 iteration_inputs.project_root,
-                "implement",
-                False,
+                action="implement",
+                structured=False,
             ),
             started_at=utc_iso_from_epoch_sec(started_epoch_sec),
             ended_at=utc_iso_from_epoch_sec(ended_epoch_sec),
@@ -668,8 +668,8 @@ def run_feature_iteration_pipeline(
     )
     implement_step = dependencies.describe_action(
         iteration_inputs.project_root,
-        "implement",
-        False,
+        action="implement",
+        structured=False,
     )
     return IterationReport(
         completed=state.completed,
