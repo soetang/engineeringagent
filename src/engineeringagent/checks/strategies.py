@@ -12,7 +12,7 @@ import yaml
 from engineeringagent.checks.commands.runtime import (
     plan_command_checks,
 )
-from engineeringagent.checks.contracts import (
+from engineeringagent.domain.quality import (
     CheckDecision,
     CheckExecutionRecord,
     CommandInvocationRecord,

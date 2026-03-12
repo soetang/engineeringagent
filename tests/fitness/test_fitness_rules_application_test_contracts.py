@@ -53,7 +53,7 @@ def test_checker_flags_legacy_checks_imports_in_application_tests(
         relative_path="tests/application/test_boundary_violation.py",
         content="\n".join(
             [
-                "from engineeringagent.checks.contracts import HarnessCheckPhase",
+                "from engineeringagent.checks import HarnessCheckPhase",
                 "",
                 "def test_placeholder() -> None:",
                 "    assert HarnessCheckPhase.ITERATION_END.value == 'iteration_end'",
@@ -69,7 +69,7 @@ def test_checker_flags_legacy_checks_imports_in_application_tests(
     assert payload["status"] == "fail"
     assert any(
         "tests/application/test_boundary_violation.py:1" in violation
-        and "engineeringagent.checks.contracts" in violation
+        and "engineeringagent.checks" in violation
         for violation in _violations(payload)
     )
 

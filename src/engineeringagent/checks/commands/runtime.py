@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Iterable
 
-from engineeringagent.checks.contracts import (
+from engineeringagent.domain.quality import (
     CommandInvocationRecord,
     HarnessCheckPhase,
 )

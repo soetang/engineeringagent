@@ -12,7 +12,7 @@ import sys
 import pytest
 from engineeringagent import checks
 from engineeringagent import specs
-from engineeringagent.checks.contracts import HarnessCheckPhase as ChecksHarnessCheckPhase
+from engineeringagent.checks import HarnessCheckPhase as ChecksHarnessCheckPhase
 
 
 def _load_checker_module(repo_root: Path):
@@ -347,7 +347,7 @@ def test_checker_allows_specs_module_to_import_checks_top_level_surface(
     assert violations == []
 
 
-def test_checker_flags_specs_module_importing_checks_contracts_submodule(
+def test_checker_flags_specs_module_importing_checks_strategy_submodule(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
@@ -359,9 +359,9 @@ def test_checker_flags_specs_module_importing_checks_contracts_submodule(
     (src_root / "specs.py").write_text(
         "\n".join(
             [
-                "from engineeringagent.checks.contracts import HarnessCheckPhase",
+                "from engineeringagent.checks.strategy_contracts import CheckDecision",
                 "",
-                "PHASE = HarnessCheckPhase.ITERATION_END",
+                "VALUE = CheckDecision",
                 "",
             ]
         ),
@@ -370,12 +370,12 @@ def test_checker_flags_specs_module_importing_checks_contracts_submodule(
 
     violations = checker._collect_violations(tmp_path)
     assert (
-        "src/engineeringagent/specs.py:1 imports checks submodule engineeringagent.checks.contracts"
+        "src/engineeringagent/specs.py:1 imports checks submodule engineeringagent.checks.strategy_contracts"
         in violations
     )
 
 
-def test_checker_still_flags_non_specs_checks_contracts_imports(
+def test_checker_still_flags_non_specs_checks_strategy_imports(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
@@ -387,9 +387,9 @@ def test_checker_still_flags_non_specs_checks_contracts_imports(
     (src_root / "bad.py").write_text(
         "\n".join(
             [
-                "from engineeringagent.checks.contracts import HarnessCheckPhase",
+                "from engineeringagent.checks.strategy_contracts import CheckDecision",
                 "",
-                "PHASE = HarnessCheckPhase.ITERATION_END",
+                "VALUE = CheckDecision",
                 "",
             ]
         ),
@@ -398,6 +398,6 @@ def test_checker_still_flags_non_specs_checks_contracts_imports(
 
     violations = checker._collect_violations(tmp_path)
     assert (
-        "src/engineeringagent/bad.py:1 imports checks submodule engineeringagent.checks.contracts"
+        "src/engineeringagent/bad.py:1 imports checks submodule engineeringagent.checks.strategy_contracts"
         in violations
     )

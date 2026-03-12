@@ -12,7 +12,7 @@ from typing import (
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.checks.contracts import (
+from engineeringagent.domain.quality import (
     CheckDecision,
     CheckDecisionAction,
     CheckExecutionRecord,

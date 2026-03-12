@@ -12,11 +12,6 @@ from engineeringagent.checks.config_selection import (
     ChecksConfigSelectionError,
     load_selected_harness_checks_document,
 )
-from engineeringagent.checks.contracts import (
-    CheckDecision,
-    CheckExecutionRecord,
-    CommandInvocationRecord,
-)
 from engineeringagent.checks.request_normalization import (
     CHECK_GROUP_COMMANDS,
     CHECK_GROUP_FITNESS,
@@ -26,7 +21,6 @@ from engineeringagent.checks.request_normalization import (
     _NormalizedRunChecksRequest,
     build_run_checks_request,
 )
-from engineeringagent.checks.results import ChecksRunResult
 from engineeringagent.checks.strategies import (
     CommandCheckStrategy,
     FitnessCheckStrategy,
@@ -39,15 +33,18 @@ from engineeringagent.checks.strategy_contracts import (
     build_strategy_registry,
 )
 from engineeringagent.domain.quality import (
-    ChangedPathsResult,
+    CheckDecision,
+    CheckExecutionRecord,
+    ChecksRunResult,
     ChecksRunResult as DomainChecksRunResult,
+    ChangedPathsResult,
+    CommandInvocationRecord,
     HarnessChecksDocument,
     reviewers_group_selected,
 )
 from engineeringagent.ports import ChecksRunRequest, ChecksRunner
 
 __all__ = [
-    "ChecksRunResult",
     "RuntimeChecksRunner",
     "run_checks",
     "_call_collect_changed_paths",

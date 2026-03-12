@@ -2,7 +2,6 @@ rules:
   - module: engineeringagent.specs
     blocked_dependencies:
       - engineeringagent.presentation.cli
-      - engineeringagent.checks.contracts
       - engineeringagent.loop
       - engineeringagent.loop_runtime
       - engineeringagent.checks.validate.validator
@@ -12,12 +11,6 @@ rules:
       - engineeringagent.loop
       - engineeringagent.loop_runtime
       - engineeringagent.domain.specification.selection
-  - module: engineeringagent.checks.contracts
-    blocked_dependencies:
-      - engineeringagent.presentation.cli
-      - engineeringagent.loop
-      - engineeringagent.loop_runtime
-      - engineeringagent.specs
   - module: engineeringagent.presentation.cli.run
     blocked_dependencies:
       - engineeringagent.loop

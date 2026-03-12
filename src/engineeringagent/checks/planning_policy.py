@@ -4,10 +4,10 @@ from typing import Any, Callable, TypeVar, Sequence
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.checks.contracts import HarnessCheckPhase
 from engineeringagent.domain.quality import (
     ChangedPathsResult,
     FALLBACK_CHANGE_DISCOVERY_REASON,
+    HarnessCheckPhase,
     HarnessCheckWhenDefinition,
     HarnessChecksDocument,
 )

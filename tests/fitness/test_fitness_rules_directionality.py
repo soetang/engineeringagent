@@ -174,11 +174,6 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
 ) -> None:
     """Honor the checked-in policy for current layered CLI, contracts, and application boundaries."""
     _write_repo_policy_fixture(tmp_path, repo_root)
-    _write_module(
-        tmp_path,
-        "specs.py",
-        "import engineeringagent.checks.contracts\n",
-    )
     _write_module(tmp_path, "presentation/cli/checks.py", "")
     _write_module(
         tmp_path,
@@ -189,11 +184,6 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
         tmp_path,
         "presentation/cli/typer.py",
         "import engineeringagent.checks.reviewers.engine\n",
-    )
-    _write_module(
-        tmp_path,
-        "checks/contracts.py",
-        "import engineeringagent.presentation.cli.app\n",
     )
     _write_module(
         tmp_path,
@@ -316,10 +306,6 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
             "dependency engineeringagent.bootstrap.app_factory"
         ),
         (
-            "engineeringagent.checks.contracts imports blocked dependency "
-            "engineeringagent.presentation.cli.app"
-        ),
-        (
             "engineeringagent.ports.agent_runner imports blocked dependency "
             "engineeringagent.checks.reviewers.engine"
         ),
@@ -350,10 +336,6 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
         (
             "engineeringagent.presentation.cli.typer imports blocked dependency "
             "engineeringagent.checks.reviewers.engine"
-        ),
-        (
-            "engineeringagent.specs imports blocked dependency "
-            "engineeringagent.checks.contracts"
         ),
     ])
 

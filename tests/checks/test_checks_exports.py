@@ -28,7 +28,6 @@ from engineeringagent.checks import (
     run_checks,
     validate_repository,
 )
-from engineeringagent.checks.results import ChecksRunResult as ChecksRunResultModel
 from engineeringagent.checks.fitness.contracts import (
     CONTRACT_VERSION,
     FitnessRuleResult,
@@ -144,7 +143,7 @@ def test_checks_run_result_remains_importable_after_specs_import(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Checks run-result export should preserve the moved public contract."""
+    """Checks run-result export should preserve the public package contract."""
     env = os.environ.copy()
     src_path = str(repo_root / "src")
     existing_pythonpath = env.get("PYTHONPATH")
@@ -161,8 +160,6 @@ def test_checks_run_result_remains_importable_after_specs_import(
             (
                 "import engineeringagent.specs; "
                 "from engineeringagent.checks import ChecksRunResult; "
-                "from engineeringagent.checks.results import ChecksRunResult as ResultsChecksRunResult; "
-                "assert ChecksRunResult is ResultsChecksRunResult; "
                 "result = ChecksRunResult.model_validate({"
                 "'ok': True, "
                 "'decisions': ({'check_id': 'smoke', 'check_type': 'command', 'phase': 'iteration_end', 'decision': 'run', 'reason': 'selected'},), "
@@ -236,7 +233,7 @@ def test_checks_group_helpers_cover_public_behavior() -> None:
 
 def test_checks_run_result_model_validation_preserves_runtime_data() -> None:
     """Run-result validation should preserve runtime data on nested records."""
-    result = ChecksRunResultModel.model_validate(
+    result = ChecksRunResult.model_validate(
         {
             "ok": True,
             "decisions": (

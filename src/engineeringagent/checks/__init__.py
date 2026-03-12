@@ -14,6 +14,7 @@ from typing_extensions import Unpack
 
 from engineeringagent.domain.quality import (
     ChangedPathsResult,
+    ChecksRunResult,
     FALLBACK_CHANGE_DISCOVERY_REASON,
     HarnessCheckPhase,
     HarnessChecksDocument,
@@ -22,7 +23,6 @@ from engineeringagent.domain.quality import (
     reviewers_group_selected,
 )
 from engineeringagent.ports import VersionControlGateway
-from .results import ChecksRunResult
 
 if TYPE_CHECKING:
     from engineeringagent.adapters.quality.runtime import _RunChecksKwargs

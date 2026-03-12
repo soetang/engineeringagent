@@ -6,7 +6,7 @@ import textwrap
 
 import pytest
 from engineeringagent.presentation import cli as cli_module
-from engineeringagent.checks.contracts import HarnessCheckPhase
+from engineeringagent.checks import HarnessCheckPhase
 from engineeringagent.adapters.runtime import iteration_phases as loop_phases
 
 
