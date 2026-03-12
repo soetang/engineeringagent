@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -9,12 +8,7 @@ from typer.testing import CliRunner
 
 from engineeringagent.presentation import cli as cli_module
 from engineeringagent.presentation.cli import init as cli_init_module
-from engineeringagent.init_scaffold import AGENTS_LAUNCHER_COMMANDS
-
-if sys.version_info >= (3, 11):
-    import tomllib
-else:  # pragma: no cover - Python < 3.11 fallback
-    import tomli as tomllib
+from engineeringagent.bootstrap.init_scaffold import AGENTS_LAUNCHER_COMMANDS
 
 UVX_TOKEN = AGENTS_LAUNCHER_COMMANDS["uvx"]
 UV_RUN_TOKEN = AGENTS_LAUNCHER_COMMANDS["uv-run"]

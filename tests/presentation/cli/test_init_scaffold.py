@@ -6,8 +6,8 @@ import pytest
 from typer.testing import CliRunner
 
 from engineeringagent.presentation import cli as cli_module
-import engineeringagent.init_scaffold as init_scaffold_module
-from engineeringagent.init_scaffold import (
+import engineeringagent.bootstrap.init_scaffold as init_scaffold_module
+from engineeringagent.bootstrap.init_scaffold import (
     AGENTS_LAUNCHER_CHOICES,
     AGENTS_LAUNCHER_COMMANDS,
     DEFAULT_AGENTS_LAUNCHER,

@@ -16,7 +16,7 @@ from ..adapters.config import (
     write_init_docs_root_config,
 )
 from ..adapters.vcs import git_cli
-from ..init_scaffold import (
+from ..bootstrap.init_scaffold import (
     AGENTS_LAUNCHER_CHOICES,
     DEFAULT_AGENTS_LAUNCHER,
     build_agents_merge_followup_spec,

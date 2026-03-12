@@ -8,8 +8,8 @@ import click
 import typer
 
 from ... import checks as checks_module
+from ...bootstrap.init_scaffold import AGENTS_LAUNCHER_CHOICES
 from ...ports import DEFAULT_AGENT_MODEL
-from ...init_scaffold import AGENTS_LAUNCHER_CHOICES
 _HandlerArgs = SimpleNamespace
 HarnessCheckPhase = checks_module.HarnessCheckPhase
 

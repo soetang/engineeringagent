@@ -6,8 +6,9 @@ from string import Template
 
 import yaml
 
-from .ports.init_workspace import BaselineScaffoldOptions, DEFAULT_AGENT_MODEL
-from .adapters.agents import build_backend_scaffold_manifest, default_backend_id
+from ..adapters.agents import build_backend_scaffold_manifest, default_backend_id
+from ..ports.init_workspace import BaselineScaffoldOptions, DEFAULT_AGENT_MODEL
+
 _SCAFFOLD_TEMPLATE_PACKAGE = "engineeringagent.scaffold_templates"
 _SUPPORTED_INIT_PACKS = {"slim", "standard"}
 _PRECOMMIT_TEMPLATES = {
@@ -25,12 +26,7 @@ AGENTS_LAUNCHER_COMMANDS = {
 
 
 def _build_checks_yaml() -> str:
-    """Build a minimal harness/checks.yaml scaffold.
-
-    Notes:
-    - The checks contract is repo-owned and is required for `engineeringagent run --all`.
-    - Keep the default scaffold empty and language-agnostic.
-    """
+    """Build a minimal harness/checks.yaml scaffold."""
 
     return yaml.safe_dump(
         {
@@ -111,14 +107,7 @@ def _render_template(
 
 
 def build_agents_merge_followup_spec(backup_agents_name: str) -> str:
-    """Build follow-up feature spec content for AGENTS merge work.
-
-    Args:
-        backup_agents_name: Backup AGENTS filename that should be merged.
-
-    Returns:
-        YAML text for a follow-up feature spec.
-    """
+    """Build follow-up feature spec content for AGENTS merge work."""
     return yaml.safe_dump(
         {
             "id": "FEAT-900",
@@ -147,18 +136,7 @@ def build_baseline_scaffold_manifest(
     agents_launcher: str = DEFAULT_AGENTS_LAUNCHER,
     agent_model: str = DEFAULT_AGENT_MODEL,
 ) -> dict[str, str]:
-    """Build the baseline scaffold manifest for a docs root.
-
-    Args:
-        docs_dir: Docs root directory where spec files should be scaffolded.
-        profile: Scaffold profile that determines language/tool defaults.
-        backend_id: Optional backend id for backend-contributed scaffold assets.
-        agents_launcher: Launcher wording used for scaffolded AGENTS command examples.
-        agent_model: Agent model id passed to backend-contributed scaffold assets.
-
-    Returns:
-        Mapping of relative file paths to scaffolded file contents.
-    """
+    """Build the baseline scaffold manifest for a docs root."""
     if profile not in _SUPPORTED_SCAFFOLD_PROFILES:
         raise ValueError(f"unsupported scaffold profile: {profile}")
     resolved_backend_id = backend_id or default_backend_id()
@@ -224,12 +202,7 @@ def build_init_scaffold_manifest(
     pack: str | None = None,
     options: BaselineScaffoldOptions | None = None,
 ) -> dict[str, str]:
-    """Build init scaffold manifest for the selected pack.
-
-    Packs:
-    - slim: safe default that runs spec validation
-    - standard: scaffolds an always-failing demo fitness rule for `run --all`
-    """
+    """Build init scaffold manifest for the selected pack."""
     resolved_options = options or BaselineScaffoldOptions()
     if pack is not None:
         resolved_options = resolved_options._replace(pack=pack)
@@ -306,15 +279,7 @@ def apply_baseline_scaffold(
     *,
     options: BaselineScaffoldOptions = BaselineScaffoldOptions(),
 ) -> tuple[int, int]:
-    """Write the init scaffold manifest to disk.
-
-    Args:
-        project_root: Repository root where scaffold files should be created.
-        options: Baseline scaffold write options.
-
-    Returns:
-        Tuple of (created_count, skipped_count).
-    """
+    """Write the init scaffold manifest to disk."""
     created = 0
     skipped = 0
 

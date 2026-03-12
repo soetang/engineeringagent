@@ -39,7 +39,7 @@ _SCAFFOLD_TEMPLATE_CANARY_TOKENS = (
 _SCAFFOLD_TEMPLATE_LOCALITY_REMEDIATION = (
     "move scaffold template content into "
     "src/engineeringagent/scaffold_templates and keep scaffold content reads "
-    "inside engineeringagent.init_scaffold."
+    "inside engineeringagent.bootstrap.init_scaffold."
 )
 
 

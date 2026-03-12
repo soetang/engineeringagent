@@ -68,7 +68,7 @@ def test_markdown_reference_coverage_passes_for_reviewer_prompt_with_reference(
     _write_file(tmp_path, "harness/reviewers/prompts/code_simplifier.md")
     _write_file(
         tmp_path,
-        "src/engineeringagent/init_scaffold.py",
+        "src/engineeringagent/bootstrap/init_scaffold.py",
         'PROMPT_PATH = "harness/reviewers/prompts/code_simplifier.md"\n',
     )
 

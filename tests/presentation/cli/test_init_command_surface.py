@@ -26,7 +26,7 @@ from tests.presentation.cli.init_command_support import (
 
 def test_scaffold_agents_bootstrap_template_uses_default_launcher_token() -> None:
     """Verify the default scaffolded AGENTS template prefers the default launcher token."""
-    from engineeringagent.init_scaffold import build_scaffold_agents_markdown
+    from engineeringagent.bootstrap.init_scaffold import build_scaffold_agents_markdown
 
     template_payload = build_scaffold_agents_markdown()
 
@@ -331,7 +331,7 @@ def test_init_agents_launcher_prompt_invalid_input_returns_deterministic_error(
 
 def test_spec_validate_gate_helper_builds_expected_patterns() -> None:
     """Verify init scaffold shares a single spec_validate gate shape."""
-    from engineeringagent.init_scaffold import _spec_validate_gate
+    from engineeringagent.bootstrap.init_scaffold import _spec_validate_gate
 
     assert _spec_validate_gate("docs") == {
         "run": "engineeringagent validate",
@@ -506,7 +506,7 @@ def test_init_renders_scaffold_from_template_files(tmp_path: Path) -> None:
 
 def test_init_template_rendering_is_deterministic() -> None:
     """Verify scaffold template rendering is deterministic across repeated calls."""
-    from engineeringagent.init_scaffold import build_baseline_scaffold_manifest
+    from engineeringagent.bootstrap.init_scaffold import build_baseline_scaffold_manifest
 
     first = build_baseline_scaffold_manifest(
         docs_dir="docs.engineeringagent",

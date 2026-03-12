@@ -616,7 +616,7 @@ def test_execute_rule_definition_runs_scaffold_template_locality_adapter(
             remediation=(
                 "Move scaffold template content into "
                 "src/engineeringagent/scaffold_templates and keep scaffold content "
-                "reads inside engineeringagent.init_scaffold."
+                "reads inside engineeringagent.bootstrap.init_scaffold."
             ),
             scope="src/engineeringagent",
             severity=RuleSeverity.ERROR,

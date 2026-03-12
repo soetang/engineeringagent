@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from engineeringagent.presentation import cli as cli_module
-from engineeringagent.init_scaffold import AGENTS_LAUNCHER_COMMANDS
+from engineeringagent.bootstrap.init_scaffold import AGENTS_LAUNCHER_COMMANDS
 from typer.testing import CliRunner
 
 

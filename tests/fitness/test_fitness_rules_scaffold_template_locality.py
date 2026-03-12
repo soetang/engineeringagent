@@ -177,7 +177,7 @@ def test_scaffold_template_locality_rule_passes_for_localized_templates(
     _write_templates(tmp_path, template_a="alpha canary\n", template_b="beta canary\n")
     _write_module(
         tmp_path,
-        "src/engineeringagent/init_scaffold.py",
+        "src/engineeringagent/bootstrap/init_scaffold.py",
         "def render() -> str:\n    return 'ok'\n",
     )
 

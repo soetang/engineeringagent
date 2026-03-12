@@ -432,7 +432,7 @@ rules:
     rationale: Prevents init scaffold regressions from drifting back to inline template
       payloads in source modules.
     remediation: Move scaffold template bodies to engineeringagent.scaffold_templates
-      assets and load them via engineeringagent.init_scaffold.
+      assets and load them via engineeringagent.bootstrap.init_scaffold.
     scope: src/engineeringagent
     severity: error
     side_effect_free: true

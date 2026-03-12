@@ -92,6 +92,7 @@ DELETED_MODULE_PATHS = {
     "src/engineeringagent/feature_commit.py",
     "src/engineeringagent/agents/registry.py",
     "src/engineeringagent/agents/runtime.py",
+    "src/engineeringagent/init_scaffold.py",
     "src/engineeringagent/checks/changed_paths.py",
     "src/engineeringagent/checks/contracts.py",
     "src/engineeringagent/checks/fitness/__init__.py",

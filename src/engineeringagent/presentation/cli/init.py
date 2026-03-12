@@ -35,7 +35,7 @@ from ...bootstrap.init_cli_support import (
     write_init_docs_root_config,
     write_agents_merge_followup_spec,
 )
-from ...init_scaffold import (
+from ...bootstrap.init_scaffold import (
     AGENTS_LAUNCHER_CHOICES,
     DEFAULT_AGENTS_LAUNCHER,
     apply_baseline_scaffold,
