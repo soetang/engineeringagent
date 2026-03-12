@@ -78,6 +78,40 @@ def test_checker_flags_feature_iteration_re_exports_from_application_root(
     )
 
 
+def test_checker_flags_feature_iteration_runtime_dependencies_on_application_root(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Reject runtime wiring helpers on the application root surface."""
+    _write_module(
+        tmp_path,
+        relative_path="src/engineeringagent/application/__init__.py",
+        content="\n".join(
+            [
+                "from .feature_iteration import FeatureIterationRuntimeDependencies",
+                "",
+                '__all__ = ["FeatureIterationRuntimeDependencies"]',
+                "",
+            ]
+        ),
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert any(
+        "src/engineeringagent/application/__init__.py:1" in violation
+        and "FeatureIterationRuntimeDependencies" in violation
+        for violation in _violations(payload)
+    )
+    assert any(
+        "src/engineeringagent/application/__init__.py:3" in violation
+        and "FeatureIterationRuntimeDependencies" in violation
+        for violation in _violations(payload)
+    )
+
+
 def test_checker_flags_feature_iteration_imports_from_application_root(
     tmp_path: Path,
     repo_root: Path,

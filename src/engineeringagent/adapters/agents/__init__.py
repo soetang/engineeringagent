@@ -4,8 +4,6 @@ from collections.abc import Callable
 
 from engineeringagent.ports import AgentRunRequest, AgentRunner
 
-from .runtime import run_agent
-
 
 class ConfiguredAgentRunner(AgentRunner):
     """Delegate agent execution to the configured adapter runtime."""
@@ -15,7 +13,12 @@ class ConfiguredAgentRunner(AgentRunner):
         *,
         run_agent_fn: Callable[..., object] | None = None,
     ) -> None:
-        self._run_agent_fn = run_agent if run_agent_fn is None else run_agent_fn
+        if run_agent_fn is None:
+            from .runtime import run_agent  # Defer to avoid package import cycles.
+
+            self._run_agent_fn = run_agent
+        else:
+            self._run_agent_fn = run_agent_fn
 
     def run(self, request: AgentRunRequest) -> object:
         """Execute one configured agent request."""

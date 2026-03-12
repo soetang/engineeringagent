@@ -20,6 +20,7 @@ FORBIDDEN_ROOT_EXPORTS = frozenset(
         "CommandTiming",
         "CompletionCommitOutcome",
         "FeatureIterationInputs",
+        "FeatureIterationRuntimeDependencies",
         "GatePhaseOutcome",
         "ImplementStepInputs",
         "ImplementStepOutputDependencies",

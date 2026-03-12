@@ -22,13 +22,15 @@ from engineeringagent.adapters.vcs import (
 from engineeringagent.application import (
     ChecksService,
     FeatureIterationService,
-    FeatureIterationRuntimeDependencies,
     GuidanceService,
     InitWorkspaceService,
     PromptBuilder,
     RunLoopService,
     ValidationService,
     WorkspaceRecoveryService,
+)
+from engineeringagent.application.feature_iteration import (
+    FeatureIterationRuntimeDependencies,
 )
 from engineeringagent.bootstrap import AppFactory
 from engineeringagent.ports import ConfigurationProvider

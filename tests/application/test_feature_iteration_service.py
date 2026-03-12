@@ -6,6 +6,7 @@ from typing import Any, Sequence, cast
 
 from engineeringagent.application.feature_iteration import (
     FeatureIterationInputs,
+    FeatureIterationRuntimeDependencies,
     IterationOutcome,
     IterationReport,
     IterationTelemetryInputs,
@@ -14,7 +15,6 @@ from engineeringagent.application.feature_iteration import (
 )
 from engineeringagent.application import (
     FeatureIterationRequest,
-    FeatureIterationRuntimeDependencies,
     FeatureIterationService,
 )
 from engineeringagent.bootstrap.iteration_reporting import DefaultObserverDependencies
