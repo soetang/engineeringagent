@@ -141,6 +141,44 @@ def test_repo_layer_contracts_rule_blocks_deleted_runtime_checks_runner_module(
     ]
 
 
+def test_repo_layer_contracts_rule_blocks_deleted_harness_toggle_shim_modules(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Fail when removed legacy harness toggle shims reappear."""
+    legacy_fitness_module = (
+        tmp_path
+        / "src"
+        / "engineeringagent"
+        / "checks"
+        / "fitness"
+        / "config.py"
+    )
+    legacy_fitness_module.parent.mkdir(parents=True, exist_ok=True)
+    legacy_fitness_module.write_text("", encoding="utf-8")
+    legacy_pytest_module = (
+        tmp_path
+        / "src"
+        / "engineeringagent"
+        / "checks"
+        / "pytest"
+        / "config.py"
+    )
+    legacy_pytest_module.parent.mkdir(parents=True, exist_ok=True)
+    legacy_pytest_module.write_text("", encoding="utf-8")
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert payload["rule_id"] == "architecture.repo-layer-contracts"
+    assert payload["violations"] == [
+        "src/engineeringagent/checks/fitness/config.py: deleted legacy module path must remain absent",
+        "src/engineeringagent/checks/pytest/config.py: deleted legacy module path must remain absent",
+        "src/engineeringagent/checks/pytest: deleted legacy directory path must remain absent",
+    ]
+
+
 def test_repo_layer_contracts_rule_blocks_deleted_legacy_run_loop_service_module(
     tmp_path: Path,
     repo_root: Path,

@@ -12,14 +12,12 @@ import yaml
 from engineeringagent.checks import emit_fitness_result
 from engineeringagent.checks import iter_feature_files
 from engineeringagent.checks import load_markdown_frontmatter
+from engineeringagent.checks import resolve_harness_bool_setting
 from engineeringagent.checks.fitness.contracts import (
     CONTRACT_VERSION,
     FitnessRuleResult,
     RuleSeverity,
     RuleStatus,
-)
-from engineeringagent.checks.fitness.config import (
-    resolve_harness_fitness_opencode_real_smoke_enabled,
 )
 
 
@@ -304,7 +302,12 @@ def main() -> int:
     """Run a real OpenCode hello-world smoke loop when enabled."""
     repo_root = Path(__file__).resolve().parents[3]
     try:
-        enabled = resolve_harness_fitness_opencode_real_smoke_enabled(repo_root)
+        enabled = resolve_harness_bool_setting(
+            repo_root,
+            table="fitness",
+            key="opencode-real-smoke",
+            default=False,
+        )
     except ValueError as exc:
         emit_fitness_result(
             _result(

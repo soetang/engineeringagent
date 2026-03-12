@@ -10,18 +10,16 @@ import pytest
 import yaml
 
 from engineeringagent.application import RunLoopRequest
-from engineeringagent.bootstrap import AppFactory
-from engineeringagent.bootstrap import runtime_support as runtime_support_module
-from engineeringagent.agents import AgentBackendError, AgentBackendFailureDetails
-from engineeringagent.checks.pytest.config import (
-    resolve_harness_pytest_opencode_integration_enabled,
-)
-from engineeringagent.adapters.progress import paths as progress_paths
+from engineeringagent.adapters.config import resolve_harness_bool_setting
 from engineeringagent.adapters.agents.opencode.permissions import (
     PERMISSION_REMEDIATION_HINT,
     PermissionProbeResult,
     evaluate_permission_probe,
 )
+from engineeringagent.adapters.progress import paths as progress_paths
+from engineeringagent.bootstrap import AppFactory
+from engineeringagent.bootstrap import runtime_support as runtime_support_module
+from engineeringagent.agents import AgentBackendError, AgentBackendFailureDetails
 from engineeringagent.domain.audit import ImplementProgressEnvelope
 from tests.loop.feature_iteration_support import copy_canonical_prompts
 from tests.loop._feedback_envelope import parse_feedback_envelope_from_prompt
@@ -208,7 +206,11 @@ def test_loop_runs_opencode_integration(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     repo_root = Path(__file__).resolve().parents[2]
-    if not resolve_harness_pytest_opencode_integration_enabled(repo_root):
+    if not resolve_harness_bool_setting(
+        repo_root,
+        table="pytest",
+        key="opencode-integration",
+    ):
         pytest.skip(
             "set [harness.pytest].opencode-integration = true in engineeringagent.toml to run"
         )

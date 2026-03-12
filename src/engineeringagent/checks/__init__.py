@@ -41,6 +41,7 @@ __all__ = [
     "load_markdown_frontmatter",
     "load_harness_checks_document",
     "normalize_groups",
+    "resolve_harness_bool_setting",
     "resolve_feature_plan_path",
     "render_fitness_catalog",
     "reviewer_decision_schema_from_model",
@@ -107,6 +108,24 @@ def load_harness_checks_document(
         project_root,
         error_prefix=error_prefix,
         missing_context=missing_context,
+    )
+
+
+def resolve_harness_bool_setting(
+    project_root: Path,
+    *,
+    table: str,
+    key: str,
+    default: bool = False,
+) -> bool:
+    """Proxy to generic harness-bool config loading for harness-owned code."""
+
+    config_runtime = import_module("engineeringagent.adapters.config")
+    return config_runtime.resolve_harness_bool_setting(
+        project_root,
+        table=table,
+        key=key,
+        default=default,
     )
 
 
