@@ -60,9 +60,20 @@ def _policy_module_target_path(repo_root: Path, module_name: str) -> Path:
 def _write_repo_policy_fixture(project_root: Path, repo_root: Path) -> None:
     _write_directionality_fixture(project_root)
     for rule in _repo_policy_rules(repo_root):
-        sources = rule.get("sources")
-        assert isinstance(sources, list)
-        for module_name in sources:
+        module_names = cast(list[str] | None, rule.get("sources"))
+        if module_names is None:
+            source_layers = cast(list[str] | None, rule.get("source_layers"))
+            assert isinstance(source_layers, list)
+            module_names = [
+                {
+                    "application": "engineeringagent.application",
+                    "domain": "engineeringagent.domain",
+                    "ports": "engineeringagent.ports",
+                    "presentation_cli": "engineeringagent.presentation.cli",
+                }[layer_id]
+                for layer_id in source_layers
+            ]
+        for module_name in module_names:
             assert isinstance(module_name, str)
             _write_module(
                 project_root,
@@ -258,10 +269,19 @@ def test_directionality_rule_uses_repo_policy_for_layer_and_cli_boundaries(
 def test_repo_directionality_policy_stays_layer_oriented(repo_root: Path) -> None:
     """The checked-in policy should stay focused on architecture layers."""
     rules = _repo_policy_rules(repo_root)
-    source_counts = [len(cast(list[object], rule["sources"])) for rule in rules]
+    source_counts = [len(cast(list[object], rule["source_layers"])) for rule in rules]
+    blocked_layers = [cast(list[object], rule["blocked_layers"]) for rule in rules]
 
     assert len(rules) == 4
     assert source_counts == [1, 1, 1, 1]
+    assert all("sources" not in rule for rule in rules)
+    assert all("blocked_dependencies" not in rule for rule in rules)
+    assert blocked_layers == [
+        ["adapters", "bootstrap", "presentation"],
+        ["adapters", "application", "bootstrap", "presentation_cli"],
+        ["adapters", "application", "bootstrap", "ports", "presentation"],
+        ["adapters"],
+    ]
 
 
 def test_directionality_rule_supports_reverse_direction_specs_contract_boundaries(
@@ -385,6 +405,40 @@ def test_directionality_rule_supports_package_modules_from_policy(
     ]
 
 
+def test_directionality_rule_supports_layer_alias_policies(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Allow canonical layer ids in policy files instead of full package paths."""
+    _write_module(tmp_path, "domain/__init__.py", "")
+    _write_module(
+        tmp_path,
+        "domain/specification/feature_specification.py",
+        "import engineeringagent.presentation.presenters.terminal\n",
+    )
+    _write_module(tmp_path, "presentation/presenters/terminal.py", "")
+    policy_file = _write_policy(
+        tmp_path,
+        [{"source_layers": ["domain"], "blocked_layers": ["presentation"]}],
+    )
+
+    proc, payload = _run_checker(
+        tmp_path,
+        checker_path=_script_path(repo_root),
+        config_file=policy_file,
+    )
+
+    assert proc.returncode == 0
+    assert payload["rule_id"] == "architecture.dep-directionality"
+    assert payload["status"] == "fail"
+    assert payload["violations"] == [
+        (
+            "engineeringagent.domain.specification.feature_specification imports "
+            "blocked dependency engineeringagent.presentation.presenters.terminal"
+        )
+    ]
+
+
 def test_directionality_rule_uses_repo_policy_for_domain_boundary(
     tmp_path: Path,
     repo_root: Path,
@@ -487,4 +541,32 @@ def test_directionality_rule_errors_when_policy_repeats_module_boundary(
         _summary(payload)
         == "Dependency directionality scan failed: duplicate policy module: "
         "engineeringagent.domain"
+    )
+
+
+def test_directionality_rule_errors_when_policy_uses_unknown_layer_id(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Return an error result when a policy references an unknown layer alias."""
+    invalid_policy = _write_policy(
+        tmp_path,
+        [{"source_layers": ["domain_model"], "blocked_layers": ["presentation"]}],
+    )
+
+    proc, payload = _run_checker(
+        tmp_path,
+        checker_path=_script_path(repo_root),
+        config_file=invalid_policy,
+    )
+
+    assert proc.returncode == 0
+    assert payload["rule_id"] == "architecture.dep-directionality"
+    assert payload["status"] == "error"
+    assert payload["violations"] == []
+    assert (
+        _summary(payload)
+        == "Dependency directionality scan failed: unknown source layer id "
+        "'domain_model'; expected one of: adapters, application, bootstrap, "
+        "domain, ports, presentation, presentation_cli"
     )

@@ -20,6 +20,64 @@ _DEFAULT_POLICY = (
     / "policies"
     / "dependency_directionality.yaml"
 )
+_LAYER_MODULES = {
+    "adapters": ("engineeringagent.adapters",),
+    "application": ("engineeringagent.application",),
+    "bootstrap": ("engineeringagent.bootstrap",),
+    "domain": ("engineeringagent.domain",),
+    "ports": ("engineeringagent.ports",),
+    "presentation": ("engineeringagent.presentation",),
+    "presentation_cli": ("engineeringagent.presentation.cli",),
+}
+
+
+def _read_module_list(
+    rule: dict[str, object],
+    *,
+    field_name: str,
+    alias_field_name: str,
+    item_label: str,
+) -> list[str]:
+    module_values = rule.get(field_name)
+    layer_values = rule.get(alias_field_name)
+    if module_values is not None and layer_values is not None:
+        raise ValueError(
+            f"policy rules must not define both '{field_name}' and "
+            f"'{alias_field_name}'"
+        )
+    if module_values is not None:
+        if not isinstance(module_values, list) or not module_values:
+            raise ValueError(
+                f"policy {field_name} must be a non-empty list of module paths"
+            )
+        if not all(isinstance(value, str) and value for value in module_values):
+            raise ValueError(
+                f"policy {field_name} must contain only non-empty strings"
+            )
+        return list(module_values)
+    if layer_values is not None:
+        if not isinstance(layer_values, list) or not layer_values:
+            raise ValueError(
+                f"policy {alias_field_name} must be a non-empty list of layer ids"
+            )
+        expanded_values: list[str] = []
+        for layer_id in layer_values:
+            if not isinstance(layer_id, str) or not layer_id:
+                raise ValueError(
+                    f"policy {alias_field_name} must contain only non-empty strings"
+                )
+            layer_modules = _LAYER_MODULES.get(layer_id)
+            if layer_modules is None:
+                known_layers = ", ".join(sorted(_LAYER_MODULES))
+                raise ValueError(
+                    f"unknown {item_label} layer id '{layer_id}'; expected one of: "
+                    f"{known_layers}"
+                )
+            expanded_values.extend(layer_modules)
+        return expanded_values
+    raise ValueError(
+        f"policy rules must define either '{field_name}' or '{alias_field_name}'"
+    )
 
 
 def _load_policy(config_file: Path) -> dict[str, tuple[str, ...]]:
@@ -35,37 +93,27 @@ def _load_policy(config_file: Path) -> dict[str, tuple[str, ...]]:
 
         sources = rule.get("sources")
         module = rule.get("module")
-        blocked_dependencies = rule.get("blocked_dependencies")
-        if sources is None:
+        if sources is None and rule.get("source_layers") is None:
             if not isinstance(module, str) or not module:
                 raise ValueError(
                     f"policy rules[{index}] must define either non-empty "
-                    "'sources' or 'module'"
+                    "'sources', 'source_layers', or 'module'"
                 )
             source_modules = [module]
         else:
-            if not isinstance(sources, list) or not sources:
-                raise ValueError(
-                    f"policy rules[{index}].sources must be a non-empty list"
-                )
-            if not all(isinstance(source, str) and source for source in sources):
-                raise ValueError(
-                    f"policy rules[{index}].sources must contain only non-empty strings"
-                )
-            source_modules = sources
+            source_modules = _read_module_list(
+                rule,
+                field_name="sources",
+                alias_field_name="source_layers",
+                item_label="source",
+            )
 
-        if not isinstance(blocked_dependencies, list) or not blocked_dependencies:
-            raise ValueError(
-                f"policy rules[{index}].blocked_dependencies must be a non-empty list"
-            )
-        if not all(
-            isinstance(dependency, str) and dependency
-            for dependency in blocked_dependencies
-        ):
-            raise ValueError(
-                f"policy rules[{index}].blocked_dependencies must contain only "
-                "non-empty strings"
-            )
+        blocked_dependencies = _read_module_list(
+            rule,
+            field_name="blocked_dependencies",
+            alias_field_name="blocked_layers",
+            item_label="blocked dependency",
+        )
         for source_module in source_modules:
             if source_module in disallowed_imports:
                 raise ValueError(f"duplicate policy module: {source_module}")

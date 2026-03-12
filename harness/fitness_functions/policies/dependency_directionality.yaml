@@ -1,26 +1,26 @@
 rules:
-  - sources:
-      - engineeringagent.application
-    blocked_dependencies:
-      - engineeringagent.adapters
-      - engineeringagent.bootstrap
-      - engineeringagent.presentation
-  - sources:
-      - engineeringagent.ports
-    blocked_dependencies:
-      - engineeringagent.adapters
-      - engineeringagent.application
-      - engineeringagent.bootstrap
-      - engineeringagent.presentation.cli
-  - sources:
-      - engineeringagent.domain
-    blocked_dependencies:
-      - engineeringagent.adapters
-      - engineeringagent.application
-      - engineeringagent.bootstrap
-      - engineeringagent.ports
-      - engineeringagent.presentation
-  - sources:
-      - engineeringagent.presentation.cli
-    blocked_dependencies:
-      - engineeringagent.adapters
+  - source_layers:
+      - application
+    blocked_layers:
+      - adapters
+      - bootstrap
+      - presentation
+  - source_layers:
+      - ports
+    blocked_layers:
+      - adapters
+      - application
+      - bootstrap
+      - presentation_cli
+  - source_layers:
+      - domain
+    blocked_layers:
+      - adapters
+      - application
+      - bootstrap
+      - ports
+      - presentation
+  - source_layers:
+      - presentation_cli
+    blocked_layers:
+      - adapters
