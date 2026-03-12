@@ -22,6 +22,7 @@ from engineeringagent.adapters.runtime.iteration_phases import (
     run_verification_phase,
 )
 from engineeringagent.domain.audit import iteration as iteration_models
+from engineeringagent.bootstrap import runtime_support
 from engineeringagent.loop_runtime import feature_state, iteration
 
 
@@ -29,8 +30,6 @@ def build_feature_iteration_runtime_dependencies() -> (
     FeatureIterationRuntimeDependencies
 ):
     """Build the default runtime seam bundle for feature iterations."""
-    from engineeringagent.bootstrap import runtime_support
-
     runtime = SimpleNamespace(
         checks=SimpleNamespace(collect_changed_paths=collect_changed_paths),
         support=runtime_support,

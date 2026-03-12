@@ -150,6 +150,20 @@ rules:
       - run
       - python
       - harness/fitness_functions/rules/check_application_tests_boundary.py
+  - rule_id: architecture.application-output-boundary
+    name: Application output boundary
+    summary: Keep direct terminal output out of application modules.
+    rationale: Application workflows should return typed data and leave terminal rendering to bootstrap or presentation-owned callbacks.
+    remediation: Remove direct print calls from application modules and route output through injected runtime or presentation callbacks.
+    scope: src/engineeringagent/application
+    severity: error
+    side_effect_free: true
+    adapter: command
+    command:
+      - uv
+      - run
+      - python
+      - harness/fitness_functions/rules/check_application_output_boundary.py
   - rule_id: architecture.loop-subprocess-boundary
     name: Loop subprocess boundary
     summary: Enforce subprocess allowlist boundaries for command adapters/clients.

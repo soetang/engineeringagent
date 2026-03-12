@@ -31,9 +31,6 @@ from engineeringagent.application import (
     ValidationService,
     WorkspaceRecoveryService,
 )
-from engineeringagent.bootstrap.feature_iteration_runtime import (
-    build_feature_iteration_runtime_dependencies,
-)
 from engineeringagent.config import resolve_harness_root
 from engineeringagent.ports import (
     AgentRunner,
@@ -81,6 +78,10 @@ class AppFactory:
 
     def build_feature_iteration_service(self) -> FeatureIterationService:
         """Create the default feature-iteration application service."""
+        from engineeringagent.bootstrap.feature_iteration_runtime import (  # pylint: disable=import-outside-toplevel
+            build_feature_iteration_runtime_dependencies,
+        )
+
         return FeatureIterationService(
             version_control_gateway=self.build_version_control_gateway(),
             progress_journal=self.build_progress_journal(),

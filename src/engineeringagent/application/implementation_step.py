@@ -27,6 +27,21 @@ DescribeImplementAction = Any
 ClassifyImplementFailure = Callable[[Exception], tuple[str, str]]
 EnsureProgressArtifacts = Callable[[ImplementStepInputs], None]
 RepoRelativePathLabeler = Callable[[Path, Path], str]
+EmitImplementStepStart = Callable[[str], None]
+EmitImplementOutput = Callable[[str], None]
+
+
+class ImplementStepOutputDependencies:
+    """Runtime-owned output callbacks for implement-step status emission."""
+
+    def __init__(
+        self,
+        *,
+        emit_step_start: EmitImplementStepStart,
+        emit_output: EmitImplementOutput,
+    ) -> None:
+        self.emit_step_start = emit_step_start
+        self.emit_output = emit_output
 
 
 class ImplementStepRuntimeDependencies:
@@ -39,11 +54,13 @@ class ImplementStepRuntimeDependencies:
         classify_backend_exception: ClassifyImplementFailure,
         ensure_progress_artifacts: EnsureProgressArtifacts,
         repo_relative_label: RepoRelativePathLabeler,
+        output_dependencies: ImplementStepOutputDependencies,
     ) -> None:
         self.describe_action = describe_action
         self.classify_backend_exception = classify_backend_exception
         self.ensure_progress_artifacts = ensure_progress_artifacts
         self.repo_relative_label = repo_relative_label
+        self.output = output_dependencies
 
 
 def run_implement_step_from_inputs(
@@ -69,7 +86,7 @@ def run_implement_step_from_inputs(
     fallback_context = _fallback_progress_context(implement_inputs)
 
     runtime_dependencies.ensure_progress_artifacts(implement_inputs)
-    print(f"Implement step: {command}", flush=True)
+    runtime_dependencies.output.emit_step_start(command)
     try:
         raw_output = _run_agent_with_structured_output(
             agent_runner,
@@ -82,7 +99,11 @@ def run_implement_step_from_inputs(
         if exc.__class__.__name__ == "AgentOutputValidationError":
             fallback_envelope = fallback_implement_progress_envelope(**fallback_context)
             output = _format_structured_output_validation_failure(exc)
-            _print_agent_output(output, verbose_output=implement_inputs.verbose_output)
+            _emit_agent_output(
+                output,
+                verbose_output=implement_inputs.verbose_output,
+                emit_output=runtime_dependencies.output.emit_output,
+            )
             command_output = _format_success_implement_output(command, output)
             return (True, None, command_output, fallback_envelope, True)
         failed_gate, message = runtime_dependencies.classify_backend_exception(exc)
@@ -103,7 +124,11 @@ def run_implement_step_from_inputs(
         raw_output,
         fallback_context=fallback_context,
     )
-    _print_agent_output(output, verbose_output=implement_inputs.verbose_output)
+    _emit_agent_output(
+        output,
+        verbose_output=implement_inputs.verbose_output,
+        emit_output=runtime_dependencies.output.emit_output,
+    )
     command_output = _format_success_implement_output(command, output)
     return (True, None, command_output, envelope, used_fallback)
 
@@ -273,7 +298,12 @@ def _build_implement_prompt(
     )
 
 
-def _print_agent_output(output: str, *, verbose_output: bool) -> None:
+def _emit_agent_output(
+    output: str,
+    *,
+    verbose_output: bool,
+    emit_output: EmitImplementOutput,
+) -> None:
     if not verbose_output or not output:
         return
-    print(output, end="" if output.endswith("\n") else "\n")
+    emit_output(output)

@@ -6,22 +6,26 @@ from pathlib import Path
 from typing import Any
 
 import engineeringagent.agents as agent_runtime
+from engineeringagent.adapters.agents import ConfiguredAgentRunner
 from engineeringagent.adapters.progress import paths as progress_paths
+from engineeringagent.adapters.progress import FilesystemProgressJournal
+from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
+from engineeringagent.adapters.vcs import GitCliVersionControlGateway
 from engineeringagent.agents import classify_backend_exception, describe_action
+from engineeringagent.application import PromptBuilder
 from engineeringagent.domain.audit import (
     ImplementStepInputs,
     ImplementStepResult,
     IterationSummaryInputs,
 )
 from engineeringagent.application.implementation_step import (
+    ImplementStepOutputDependencies,
     ImplementStepRuntimeDependencies,
     run_implement_step_from_inputs,
 )
-from engineeringagent.config import repo_relative_label
+from engineeringagent.config import repo_relative_label, resolve_harness_root
 from engineeringagent.presentation.presenters.terminal import RunOutputPresenter
 from engineeringagent.specs import progress_kind_label
-
-from .app_factory import AppFactory
 
 # Retained as a legacy monkeypatch seam while loop-contract tests migrate.
 _AGENT_RUNTIME_COMPAT = agent_runtime
@@ -29,8 +33,7 @@ _AGENT_RUNTIME_COMPAT = agent_runtime
 
 def git_head_short(project_root: Path) -> str | None:
     """Return the short git HEAD hash for a repository."""
-    app_factory = AppFactory(project_root)
-    version_control_gateway = app_factory.build_version_control_gateway()
+    version_control_gateway = _build_version_control_gateway(project_root)
     head_commit = version_control_gateway.head_commit(project_root)
     return head_commit
 
@@ -43,6 +46,10 @@ def build_implement_step_runtime_dependencies() -> ImplementStepRuntimeDependenc
         classify_backend_exception=classify_backend_exception,
         ensure_progress_artifacts=_ensure_progress_artifacts,
         repo_relative_label=repo_relative_label,
+        output_dependencies=ImplementStepOutputDependencies(
+            emit_step_start=_emit_implement_step_start,
+            emit_output=_emit_implement_output,
+        ),
     )
 
 
@@ -54,7 +61,6 @@ def run_implement_step(
     verbose_output: bool,
 ) -> ImplementStepResult:
     """Run the implement phase for one loop iteration."""
-    app_factory = AppFactory(project_root)
     implement_inputs = ImplementStepInputs(
         project_root=project_root,
         feature=feature,
@@ -64,11 +70,30 @@ def run_implement_step(
     )
     return run_implement_step_from_inputs(
         implement_inputs,
-        agent_runner=app_factory.build_agent_runner(),
-        prompt_builder=app_factory.build_prompt_builder(),
-        progress_journal=app_factory.build_progress_journal(),
+        agent_runner=_build_agent_runner(project_root),
+        prompt_builder=_build_prompt_builder(project_root),
+        progress_journal=_build_progress_journal(project_root),
         runtime_dependencies=build_implement_step_runtime_dependencies(),
     )
+
+
+def _build_version_control_gateway(_project_root: Path) -> GitCliVersionControlGateway:
+    return GitCliVersionControlGateway()
+
+
+def _build_agent_runner(_project_root: Path) -> ConfiguredAgentRunner:
+    return ConfiguredAgentRunner()
+
+
+def _build_prompt_builder(project_root: Path) -> PromptBuilder:
+    prompt_repository = FilesystemPromptDefinitionRepository(
+        resolve_harness_root(project_root) / "prompts"
+    )
+    return PromptBuilder(prompt_repository)
+
+
+def _build_progress_journal(_project_root: Path) -> FilesystemProgressJournal:
+    return FilesystemProgressJournal()
 
 
 def _ensure_progress_artifacts(implement_inputs: ImplementStepInputs) -> None:
@@ -79,6 +104,14 @@ def _ensure_progress_artifacts(implement_inputs: ImplementStepInputs) -> None:
 
     progress_paths.runs_dir(project_root).mkdir(parents=True, exist_ok=True)
     progress_paths.runs_jsonl_path(project_root).touch(exist_ok=True)
+
+
+def _emit_implement_step_start(command: str) -> None:
+    print(f"Implement step: {command}", flush=True)
+
+
+def _emit_implement_output(output: str) -> None:
+    print(output, end="" if output.endswith("\n") else "\n")
 
 
 def print_summary(summary: IterationSummaryInputs) -> None:
