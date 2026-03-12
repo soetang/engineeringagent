@@ -2,20 +2,11 @@
 
 from __future__ import annotations
 
-from enum import Enum
 from pathlib import Path
-from typing import Mapping, TypeVar
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.domain.specification.feature_specification import (
-    FeatureArtifacts,
-    FeaturePriority,
-    FeatureSpecification,
-    FeatureStatus,
-    FeatureType,
-    PlanningTier,
-)
+from engineeringagent.domain.specification.feature_specification import FeatureSpecification
 from engineeringagent.ports import PromptDefinitionRepository
 
 
@@ -121,98 +112,3 @@ def _normalize_plain_prompt_feedback(value: str | None) -> str | None:
         return None
     normalized = value.strip()
     return normalized or None
-
-
-EnumT = TypeVar("EnumT", bound=Enum)
-
-
-def _coerce_feature_specification(
-    feature: Mapping[str, object],
-) -> FeatureSpecification:
-    artifacts = feature.get("artifacts")
-    feature_id = _optional_str(feature.get("feature_id"))
-    if feature_id is None:
-        feature_id = _optional_str(feature.get("id")) or "unknown-feature"
-    title = _optional_str(feature.get("title")) or feature_id
-    return FeatureSpecification(
-        feature_id=feature_id,
-        title=title,
-        feature_type=_coerce_enum(
-            feature.get("feature_type", feature.get("type")),
-            FeatureType,
-            FeatureType.FEATURE,
-        ),
-        expected_commit_subject=_first_non_empty_str(
-            feature,
-            "expected_commit_subject",
-            default="feat: implement unknown-feature",
-        ),
-        planning_tier=_coerce_enum(
-            feature.get("planning_tier"),
-            PlanningTier,
-            PlanningTier.DIRECT,
-        ),
-        status=_coerce_enum(
-            feature.get("status"),
-            FeatureStatus,
-            FeatureStatus.BACKLOG,
-        ),
-        priority=_coerce_enum(
-            feature.get("priority"),
-            FeaturePriority,
-            FeaturePriority.HIGH,
-        ),
-        objective=_first_non_empty_str(feature, "objective", default=title),
-        context=_optional_str(feature.get("context")),
-        constraints=_string_tuple(feature.get("constraints")),
-        implementation_notes=_optional_str(feature.get("implementation_notes")),
-        acceptance=_string_tuple(feature.get("acceptance")),
-        artifacts=_coerce_artifacts(artifacts),
-        updated_at=_optional_str(feature.get("updated_at")),
-    )
-
-
-def _coerce_artifacts(value: object) -> FeatureArtifacts:
-    if not isinstance(value, Mapping):
-        return FeatureArtifacts()
-    return FeatureArtifacts(
-        plan=_optional_str(value.get("plan")),
-        research=_optional_str(value.get("research")),
-        supporting=_string_tuple(value.get("supporting")),
-    )
-
-
-def _optional_str(value: object) -> str | None:
-    if not isinstance(value, str):
-        return None
-    normalized = value.strip()
-    return normalized or None
-
-
-def _first_non_empty_str(values: Mapping[str, object], key: str, default: str) -> str:
-    value = _optional_str(values.get(key))
-    return value or default
-
-
-def _string_tuple(value: object) -> tuple[str, ...]:
-    if not isinstance(value, (list, tuple)):
-        return ()
-    return tuple(
-        normalized for item in value if (normalized := _optional_str(item)) is not None
-    )
-
-
-def _coerce_enum(
-    value: object,
-    enum_type: type[EnumT],
-    default: EnumT,
-) -> EnumT:
-    if isinstance(value, enum_type):
-        return value
-    if isinstance(value, str):
-        normalized = value.strip()
-        if normalized:
-            for member in enum_type:
-                if member.value == normalized:
-                    return member
-    return default
