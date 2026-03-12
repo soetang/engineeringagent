@@ -1,5 +1,6 @@
 """Filesystem-backed repository configuration adapters."""
 
+from .filesystem_configuration_provider import FilesystemConfigurationProvider
 from .filesystem import load_repository_config
 from .runtime import (
     DEFAULT_CODEX_PROFILE,
@@ -28,6 +29,7 @@ __all__ = [
     "DEFAULT_HARNESS_CHECKS_PATH",
     "DEFAULT_HARNESS_ROOT",
     "DEFAULT_PROGRESS_ROOT",
+    "FilesystemConfigurationProvider",
     "load_repository_config",
     "repo_relative_label",
     "resolve_agents_backend_id",

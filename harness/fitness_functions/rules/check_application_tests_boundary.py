@@ -60,7 +60,7 @@ def _scan_file(path: Path) -> list[str]:
                 lineno=node.lineno,
                 module_name=module_name,
             )
-        elif _is_dynamic_module_import(node):
+        elif isinstance(node, ast.Call) and _is_dynamic_module_import(node):
             module_name = _literal_string_arg(node)
             if module_name is None:
                 continue

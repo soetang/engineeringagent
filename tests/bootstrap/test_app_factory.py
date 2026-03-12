@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from engineeringagent.adapters.agents import ConfiguredAgentRunner
+from engineeringagent.adapters.config import FilesystemConfigurationProvider
 from engineeringagent.adapters.quality import (
     ChecksRepositoryValidator,
     RuntimeChecksRunner,
@@ -30,6 +31,7 @@ from engineeringagent.application import (
     WorkspaceRecoveryService,
 )
 from engineeringagent.bootstrap import AppFactory
+from engineeringagent.ports import ConfigurationProvider
 
 
 def test_app_factory_resolves_project_root() -> None:
@@ -85,6 +87,9 @@ def test_app_factory_builds_default_application_services(tmp_path: Path) -> None
     assert isinstance(factory.build_init_workspace_service(), InitWorkspaceService)
     assert isinstance(factory.build_progress_journal(), FilesystemProgressJournal)
     assert isinstance(factory.build_agent_runner(), ConfiguredAgentRunner)
+    configuration_provider = factory.build_configuration_provider()
+    assert isinstance(configuration_provider, FilesystemConfigurationProvider)
+    assert isinstance(configuration_provider, ConfigurationProvider)
     assert isinstance(
         factory.build_version_control_gateway(),
         GitCliVersionControlGateway,

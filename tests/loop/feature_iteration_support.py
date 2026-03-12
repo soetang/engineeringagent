@@ -16,6 +16,7 @@ from typer.testing import CliRunner
 import engineeringagent.agents.helpers as agent_helpers
 from engineeringagent.bootstrap import runtime_support as runtime_support_module
 from engineeringagent.agents import AgentBackendError, AgentBackendFailureDetails
+from engineeringagent.adapters.agents import ConfiguredAgentRunner
 from engineeringagent.adapters.agents.opencode.permissions import (
     PermissionProbeResult,
 )
@@ -88,14 +89,7 @@ def with_opencode_implement_result(
 
 @pytest.fixture(autouse=True)
 def stub_opencode_start_agent(monkeypatch: pytest.MonkeyPatch) -> None:
-    def fake_run_agent(
-        _project_root: Path,
-        _prompt: str,
-        *,
-        output_type: Any | None = None,
-        **_unused_kwargs: Any,
-    ) -> str:
-        is_implement_call = output_type is not None
+    def _resolve_stubbed_result(is_implement_call: bool) -> tuple[int, str, str]:
         if is_implement_call:
             effect = OPENCODE_IMPLEMENT.side_effect
             if effect is not None:
@@ -104,8 +98,33 @@ def stub_opencode_start_agent(monkeypatch: pytest.MonkeyPatch) -> None:
         override = OPENCODE_IMPLEMENT.fake_result if is_implement_call else None
         if override is None:
             override = (0, "ok\n", "")
+        return override
 
-        returncode, stdout, stderr = override
+    def fake_run_agent(
+        _project_root: Path,
+        _prompt: str,
+        *,
+        output_type: Any | None = None,
+        **_unused_kwargs: Any,
+    ) -> str:
+        is_implement_call = output_type is not None
+
+        returncode, stdout, stderr = _resolve_stubbed_result(is_implement_call)
+        if returncode != 0:
+            raise AgentBackendError(
+                backend="opencode",
+                message="opencode run failed",
+                process=AgentBackendFailureDetails(
+                    returncode=returncode,
+                    stdout=stdout,
+                    stderr=stderr,
+                ),
+            )
+        return stdout + stderr
+
+    def fake_configured_agent_run(_self: ConfiguredAgentRunner, request: Any) -> Any:
+        is_implement_call = getattr(request, "output_type", None) is not None
+        returncode, stdout, stderr = _resolve_stubbed_result(is_implement_call)
         if returncode != 0:
             raise AgentBackendError(
                 backend="opencode",
@@ -119,6 +138,11 @@ def stub_opencode_start_agent(monkeypatch: pytest.MonkeyPatch) -> None:
         return stdout + stderr
 
     monkeypatch.setattr(runtime_support_module.agent_runtime, "run_agent", fake_run_agent)
+    monkeypatch.setattr(
+        ConfiguredAgentRunner,
+        "run",
+        fake_configured_agent_run,
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -323,7 +347,31 @@ def patch_run_agent_with_fake(
             )
         return output
 
+    def fake_configured_agent_run(
+        _self: ConfiguredAgentRunner,
+        request: Any,
+    ) -> str:
+        prompt = getattr(request, "prompt")
+        proc = fake_subprocess_run(["opencode", "run", "--agent", "build", prompt])
+        output = (proc.stdout or "") + (proc.stderr or "")
+        if proc.returncode != 0:
+            raise AgentBackendError(
+                backend="opencode",
+                message="opencode run failed",
+                process=AgentBackendFailureDetails(
+                    returncode=int(proc.returncode),
+                    stdout=proc.stdout,
+                    stderr=proc.stderr,
+                ),
+            )
+        return output
+
     monkeypatch.setattr(runtime_support_module.agent_runtime, "run_agent", fake_run_agent)
+    monkeypatch.setattr(
+        ConfiguredAgentRunner,
+        "run",
+        fake_configured_agent_run,
+    )
 
 
 def install_prompt_capture_agent(

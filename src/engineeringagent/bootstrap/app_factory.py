@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from engineeringagent.adapters.agents import ConfiguredAgentRunner
-from engineeringagent.adapters.config import load_repository_config
+from engineeringagent.adapters.config import FilesystemConfigurationProvider
 from engineeringagent.adapters.quality import (
     ChecksRepositoryValidator,
     RuntimeChecksRunner,
@@ -34,6 +34,7 @@ from engineeringagent.application import (
 )
 from engineeringagent.ports import (
     AgentRunner,
+    ConfigurationProvider,
     PromptDefinitionRepository,
     VersionControlGateway,
 )
@@ -49,6 +50,10 @@ class AppFactory:
     def project_root(self) -> Path:
         """Return the repository root used for factory-scoped resolution."""
         return self._project_root
+
+    def build_configuration_provider(self) -> ConfigurationProvider:
+        """Create the default repository-configuration provider."""
+        return FilesystemConfigurationProvider(self.project_root)
 
     def build_checks_service(self) -> ChecksService:
         """Create the default deterministic checks service."""
@@ -118,14 +123,14 @@ class AppFactory:
 
     def build_prompt_definition_repository(self) -> PromptDefinitionRepository:
         """Create the default filesystem-backed prompt-definition repository."""
-        config = load_repository_config(self.project_root)
+        config = self.build_configuration_provider().load()
         return FilesystemPromptDefinitionRepository(
             self.project_root / config.paths.harness_root / "prompts"
         )
 
     def build_prompt_builder(self) -> PromptBuilder:
         """Create the default deterministic prompt builder."""
-        config = load_repository_config(self.project_root)
+        config = self.build_configuration_provider().load()
         return PromptBuilder(
             self.build_prompt_definition_repository(),
             implementation_prompt_id=config.agents.implementation.prompt_definition,

@@ -41,7 +41,6 @@ __all__ = [
     "load_markdown_frontmatter",
     "load_harness_checks_document",
     "normalize_groups",
-    "resolve_harness_bool_setting",
     "resolve_feature_plan_path",
     "render_fitness_catalog",
     "reviewer_decision_schema_from_model",

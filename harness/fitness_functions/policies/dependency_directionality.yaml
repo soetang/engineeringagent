@@ -134,6 +134,15 @@ rules:
       - engineeringagent.presentation.cli
       - engineeringagent.loop
       - engineeringagent.loop_runtime
+  - module: engineeringagent.ports.configuration_provider
+    blocked_dependencies:
+      - engineeringagent.adapters
+      - engineeringagent.application
+      - engineeringagent.bootstrap
+      - engineeringagent.checks
+      - engineeringagent.presentation.cli
+      - engineeringagent.loop
+      - engineeringagent.loop_runtime
   - module: engineeringagent.ports.checks_catalog_repository
     blocked_dependencies:
       - engineeringagent.adapters
