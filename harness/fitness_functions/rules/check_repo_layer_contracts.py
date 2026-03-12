@@ -144,7 +144,6 @@ DELETED_DIRECTORY_PATHS = {
     "src/engineeringagent/application/prompts",
     "src/engineeringagent/application/run_loop",
     "src/engineeringagent/application/validation",
-    "src/engineeringagent/application/workspace",
     "src/engineeringagent/application/workspace_recovery",
     "src/engineeringagent/agents",
     "src/engineeringagent/checks/pytest",
