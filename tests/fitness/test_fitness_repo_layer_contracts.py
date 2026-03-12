@@ -76,6 +76,35 @@ def test_repo_layer_contracts_rule_blocks_runtime_support_loop_import(
     ]
 
 
+def test_repo_layer_contracts_rule_blocks_application_dynamic_imports_of_adapters(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Fail when application modules hide forbidden adapter imports behind import_module."""
+    application_root = tmp_path / "src" / "engineeringagent" / "application"
+    application_root.mkdir(parents=True, exist_ok=True)
+    (application_root / "feature_iteration_service.py").write_text(
+        "\n".join(
+            [
+                "from importlib import import_module",
+                "",
+                'runtime = import_module("engineeringagent.adapters.progress")',
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert payload["rule_id"] == "architecture.repo-layer-contracts"
+    assert payload["violations"] == [
+        "src/engineeringagent/application/feature_iteration_service.py: application modules must not import adapters, agents, bootstrap, or presentation modules"
+    ]
+
+
 def test_repo_layer_contracts_rule_blocks_runtime_support_loop_agent_runner_bridge(
     tmp_path: Path,
     repo_root: Path,

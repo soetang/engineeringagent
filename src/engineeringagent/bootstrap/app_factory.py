@@ -24,13 +24,15 @@ from engineeringagent.adapters.vcs import (
 from engineeringagent.application import (
     ChecksService,
     FeatureIterationService,
-    FeatureIterationRuntimeDependencies,
     GuidanceService,
     InitWorkspaceService,
     PromptBuilder,
     RunLoopService,
     ValidationService,
     WorkspaceRecoveryService,
+)
+from engineeringagent.bootstrap.feature_iteration_runtime import (
+    build_feature_iteration_runtime_dependencies,
 )
 from engineeringagent.config import resolve_harness_root
 from engineeringagent.ports import (
@@ -82,7 +84,7 @@ class AppFactory:
         return FeatureIterationService(
             version_control_gateway=self.build_version_control_gateway(),
             progress_journal=self.build_progress_journal(),
-            runtime_dependencies=FeatureIterationRuntimeDependencies(),
+            runtime_dependencies=build_feature_iteration_runtime_dependencies(),
         )
 
     def build_guidance_service(self) -> GuidanceService:

@@ -162,12 +162,7 @@ def _build_service(
         git_head_short=lambda _project_root: "abc1234",
         print_summary=lambda _summary: None,
     )
-    runtime_dependencies = FeatureIterationRuntimeDependencies(
-        write_iteration_telemetry_fn=_fake_write_iteration_telemetry,
-        build_iteration_report_observers_fn=_fake_build_iteration_report_observers,
-        publish_iteration_report_fn=_fake_publish_iteration_report,
-    )
-    cast(Any, runtime_dependencies).runtime = SimpleNamespace(
+    runtime = SimpleNamespace(
         checks=SimpleNamespace(collect_changed_paths=object()),
         support=support_module,
         feature_state=SimpleNamespace(
@@ -205,6 +200,13 @@ def _build_service(
             run_reviewer_phase=object(),
             run_completion_commit_phase=object(),
         ),
+    )
+    runtime_dependencies = FeatureIterationRuntimeDependencies(
+        runtime=runtime,
+        observer_dependencies_type=DefaultObserverDependencies,
+        write_iteration_telemetry_fn=_fake_write_iteration_telemetry,
+        build_iteration_report_observers_fn=_fake_build_iteration_report_observers,
+        publish_iteration_report_fn=_fake_publish_iteration_report,
     )
 
     version_control_gateway = _FakeVersionControlGateway(observed, commit_result)

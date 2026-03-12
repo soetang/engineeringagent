@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-from importlib import import_module
 from pathlib import Path
-from types import SimpleNamespace
-from typing import Any
+from typing import Any, Callable
 
 from pydantic import BaseModel, ConfigDict
 
@@ -44,50 +42,23 @@ class FeatureIterationResult(BaseModel):
     failed_reviewer_id: str | None = None
 
 
-class _RuntimeModules(SimpleNamespace):
-    """Imported runtime modules grouped to keep service wiring compact."""
-
-    checks: Any
-    support: Any
-    feature_state: Any
-    iteration: Any
-    models: Any
-    phases: Any
-
-
 class FeatureIterationRuntimeDependencies:
     """Application-owned runtime seams for the transitional iteration pipeline."""
 
     def __init__(
         self,
         *,
-        write_iteration_telemetry_fn: Any | None = None,
-        build_iteration_report_observers_fn: Any | None = None,
-        publish_iteration_report_fn: Any | None = None,
+        runtime: Any,
+        observer_dependencies_type: Any,
+        write_iteration_telemetry_fn: Callable[..., str],
+        build_iteration_report_observers_fn: Callable[[Any], Any],
+        publish_iteration_report_fn: Callable[[Any, Any], Any],
     ) -> None:
-        iteration_reporting = import_module(
-            "engineeringagent.bootstrap.iteration_reporting"
-        )
-        progress_adapter = import_module("engineeringagent.adapters.progress")
-        self.write_iteration_telemetry = (
-            write_iteration_telemetry_fn or progress_adapter.write_iteration_telemetry
-        )
-        self.build_iteration_report_observers = (
-            build_iteration_report_observers_fn
-            or iteration_reporting.build_default_iteration_report_observers
-        )
-        self.publish_iteration_report = (
-            publish_iteration_report_fn or iteration_reporting.publish_iteration_report
-        )
-        self.observer_dependencies_type = iteration_reporting.DefaultObserverDependencies
-        self.runtime = _RuntimeModules(
-            checks=import_module("engineeringagent.checks"),
-            support=import_module("engineeringagent.bootstrap.runtime_support"),
-            feature_state=import_module("engineeringagent.loop_runtime.feature_state"),
-            iteration=import_module("engineeringagent.loop_runtime.iteration"),
-            models=import_module("engineeringagent.domain.audit.iteration"),
-            phases=import_module("engineeringagent.adapters.runtime.iteration_phases"),
-        )
+        self.runtime = runtime
+        self.observer_dependencies_type = observer_dependencies_type
+        self.write_iteration_telemetry = write_iteration_telemetry_fn
+        self.build_iteration_report_observers = build_iteration_report_observers_fn
+        self.publish_iteration_report = publish_iteration_report_fn
 
 
 class FeatureIterationService:
@@ -98,13 +69,11 @@ class FeatureIterationService:
         *,
         version_control_gateway: VersionControlGateway,
         progress_journal: ProgressJournal,
-        runtime_dependencies: FeatureIterationRuntimeDependencies | None = None,
+        runtime_dependencies: FeatureIterationRuntimeDependencies,
     ) -> None:
         self._version_control_gateway = version_control_gateway
         self._progress_journal = progress_journal
-        self._runtime_dependencies = (
-            runtime_dependencies or FeatureIterationRuntimeDependencies()
-        )
+        self._runtime_dependencies = runtime_dependencies
 
     def run(self, request: FeatureIterationRequest) -> FeatureIterationResult:
         """Execute one feature iteration through the runtime pipeline."""

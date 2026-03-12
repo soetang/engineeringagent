@@ -182,6 +182,41 @@ def _forbidden_import_violations(
     return violations
 
 
+def _import_call_target_name(call: ast.Call) -> str | None:
+    func = call.func
+    if isinstance(func, ast.Name):
+        return func.id
+    if isinstance(func, ast.Attribute):
+        if isinstance(func.value, ast.Name):
+            return f"{func.value.id}.{func.attr}"
+    return None
+
+
+def _forbidden_dynamic_import_violations(
+    module: ast.Module,
+    *,
+    rel_path: str,
+    forbidden_modules: tuple[str, ...],
+    message: str,
+    allowed_modules: tuple[str, ...] = (),
+) -> list[str]:
+    violations: list[str] = []
+    for node in ast.walk(module):
+        if not isinstance(node, ast.Call) or not node.args:
+            continue
+        target_name = _import_call_target_name(node)
+        if target_name not in {"import_module", "importlib.import_module", "__import__"}:
+            continue
+        module_name = node.args[0]
+        if not isinstance(module_name, ast.Constant) or not isinstance(module_name.value, str):
+            continue
+        if _is_allowed_module(module_name.value, allowed_modules):
+            continue
+        if _matches_forbidden_module(module_name.value, forbidden_modules):
+            violations.append(f"{rel_path}: {message}")
+    return violations
+
+
 _LOOP_RUNTIME_ALLOWED_APPLICATION_IMPORTS: tuple[str, ...] = ()
 
 
@@ -309,7 +344,28 @@ def _application_module_violations(path: Path) -> list[str]:
         )
     )
     violations.extend(
+        _forbidden_dynamic_import_violations(
+            module,
+            rel_path=rel_path,
+            forbidden_modules=("engineeringagent.checks",),
+            message="application modules must not import checks modules",
+        )
+    )
+    violations.extend(
         _forbidden_import_violations(
+            module,
+            rel_path=rel_path,
+            forbidden_modules=(
+                "engineeringagent.adapters",
+                "engineeringagent.agents",
+                "engineeringagent.bootstrap",
+                "engineeringagent.presentation",
+            ),
+            message="application modules must not import adapters, agents, bootstrap, or presentation modules",
+        )
+    )
+    violations.extend(
+        _forbidden_dynamic_import_violations(
             module,
             rel_path=rel_path,
             forbidden_modules=(
@@ -330,7 +386,23 @@ def _application_module_violations(path: Path) -> list[str]:
         )
     )
     violations.extend(
+        _forbidden_dynamic_import_violations(
+            module,
+            rel_path=rel_path,
+            forbidden_modules=("engineeringagent.prompts",),
+            message="application modules must not import legacy top-level prompts modules",
+        )
+    )
+    violations.extend(
         _forbidden_import_violations(
+            module,
+            rel_path=rel_path,
+            forbidden_modules=("engineeringagent.init_scaffold",),
+            message="application and ports modules must not import init_scaffold modules",
+        )
+    )
+    violations.extend(
+        _forbidden_dynamic_import_violations(
             module,
             rel_path=rel_path,
             forbidden_modules=("engineeringagent.init_scaffold",),
