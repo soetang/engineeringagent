@@ -19,12 +19,12 @@ from engineeringagent.agents import AgentBackendError, AgentBackendFailureDetail
 from engineeringagent.agents.backends.opencode.permissions import (
     PermissionProbeResult,
 )
+from engineeringagent.application import RunLoopRequest
+from engineeringagent.bootstrap import AppFactory
 from engineeringagent.domain.audit import (
     ImplementStepResult,
     fallback_implement_progress_envelope,
 )
-from engineeringagent.adapters.runtime.execution import run_loop_controller as _run_loop
-from engineeringagent.loop import RunConfigOptions, build_loop_run, build_run_config
 from engineeringagent.presentation import cli as cli_module
 
 
@@ -38,19 +38,19 @@ def run_loop(
     allow_dirty: bool = False,
     verbose_output: bool = False,
 ) -> int:
-    """Run loop controller through the canonical run-config pipeline."""
-    config = build_run_config(
-        project_root=project_root,
-        feature_paths=feature_paths,
-        options=RunConfigOptions(
-            dry_run,
-            run_all,
-            max_iterations,
-            allow_dirty,
-            verbose_output,
-        ),
+    """Run the loop through the application service boundary."""
+    result = AppFactory(project_root).build_run_loop_service().run(
+        RunLoopRequest(
+            project_root=project_root,
+            feature_paths=tuple(feature_paths),
+            run_all=run_all,
+            dry_run=dry_run,
+            max_iterations=max_iterations,
+            allow_dirty=allow_dirty,
+            verbose_output=verbose_output,
+        )
     )
-    return _run_loop(build_loop_run(config))
+    return result.exit_code
 
 
 OPENCODE_IMPLEMENT = SimpleNamespace(side_effect=None, fake_result=None)

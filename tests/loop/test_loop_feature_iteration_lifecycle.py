@@ -8,9 +8,10 @@ import pytest
 import yaml
 
 import engineeringagent.loop as loop_module
+from engineeringagent.adapters.runtime import enforce_worktree_precondition
+import engineeringagent.adapters.runtime.loop_run_builder as loop_run_builder_module
 from engineeringagent.domain.audit import ImplementStepResult
 from engineeringagent.bootstrap import runtime_support as runtime_support_module
-from engineeringagent.loop import _enforce_worktree_precondition
 from engineeringagent.ports import WorktreeStatus
 from tests.loop.feature_iteration_support import (
     base_feature,
@@ -127,7 +128,11 @@ def test_enforce_worktree_precondition_reads_git_status_once(
         lambda _project_root: gateway,
     )
 
-    code = _enforce_worktree_precondition(tmp_path, allow_dirty=False)
+    code = enforce_worktree_precondition(
+        tmp_path,
+        allow_dirty=False,
+        read_worktree_status=gateway.worktree_status,
+    )
 
     assert code is None
     assert gateway.calls == [tmp_path]
@@ -250,7 +255,7 @@ def test_run_loop_archived_done_without_completion_commit_fails(
         return chosen_path, chosen_feature
 
     monkeypatch.setattr(
-        loop_module,
+        loop_run_builder_module,
         "_choose_feature_with_selector",
         fake_choose_feature_with_selector,
     )
