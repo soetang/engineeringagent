@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 from pydantic import BaseModel, ConfigDict
 
-from ...application import RunChecksRequest
+from ...application.checks_service import RunChecksRequest
 from ...bootstrap import AppFactory
 from ... import checks as checks_domain
 from .output import emit_markdown_output, resolve_optional_path
@@ -13,6 +13,7 @@ from .output import emit_markdown_output, resolve_optional_path
 _HandlerArgs = SimpleNamespace
 HandlerArgs = _HandlerArgs
 HarnessCheckPhase = checks_domain.HarnessCheckPhase
+
 
 class _ChecksRunArgs(BaseModel):
     """Resolved checks-run inputs shared across one or more phase executions."""

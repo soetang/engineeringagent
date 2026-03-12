@@ -7,10 +7,10 @@ from typing import Callable, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from ...application import (
+from ...application import InitWorkspaceService
+from ...application.init_workspace_service import (
     InitWorkspaceRequest,
     InitWorkspaceResult,
-    InitWorkspaceService,
 )
 from ...bootstrap.init_cli_support import (
     InitAgentsLauncherResolverDeps,

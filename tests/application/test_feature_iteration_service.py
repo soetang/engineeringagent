@@ -4,10 +4,10 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from engineeringagent.application import (
-    FeatureIterationDependencies,
     FeatureIterationService,
 )
 from engineeringagent.application.feature_iteration_service import (
+    FeatureIterationDependencies,
     FeatureIterationRequest,
     build_feature_iteration_pipeline_dependencies,
 )

@@ -16,23 +16,37 @@ RULE_ID = "architecture.application-root-workflow-surface"
 PROJECT_ROOT = Path(".")
 APPLICATION_ROOT = PROJECT_ROOT / "src" / "engineeringagent" / "application" / "__init__.py"
 FORBIDDEN_EXPORT_MODULES = {
+    "checks_service",
     "feature_iteration_runtime",
     "feature_iteration_service",
+    "guidance_service",
+    "init_workspace_service",
+    "prompt_builder",
     "run_loop",
+    "run_loop_service",
+    "validation_service",
+    "workspace_recovery_service",
 }
 FORBIDDEN_ROOT_EXPORTS = frozenset(
     {
         "CommandTiming",
         "CompletionCommitOutcome",
+        "FeatureIterationDependencies",
         "FeatureIterationRequest",
         "FeatureIterationResult",
         "FeatureIterationInputs",
         "FeatureIterationRuntimeDependencies",
+        "GuidanceInputError",
+        "GuidanceQuery",
+        "GuidanceResult",
         "GatePhaseOutcome",
+        "ImplementationPromptRequest",
         "ImplementStepInputs",
         "ImplementStepOutputDependencies",
         "ImplementStepResult",
         "ImplementStepRuntimeDependencies",
+        "InitWorkspaceRequest",
+        "InitWorkspaceResult",
         "IterationOutcome",
         "IterationPipelineDependencies",
         "IterationReport",
@@ -41,9 +55,17 @@ FORBIDDEN_ROOT_EXPORTS = frozenset(
         "PhaseTiming",
         "ReviewerPhaseOutcome",
         "LoopRun",
+        "RecoverWorkspaceRequest",
+        "RecoverWorkspaceResult",
         "RunConfig",
+        "RunChecksRequest",
+        "RunChecksResult",
+        "RunLoopRequest",
+        "RunLoopResult",
         "RunServices",
         "RunState",
+        "ValidateRepositoryRequest",
+        "ValidationResult",
         "VerificationPhaseOutcome",
         "run_feature_iteration_pipeline",
         "run_implement_step_from_inputs",
@@ -138,16 +160,40 @@ def _root_import_violations(path: Path) -> list[str]:
             continue
         for alias in node.names:
             if alias.name in FORBIDDEN_ROOT_EXPORTS:
-                defining_module = (
-                    "engineeringagent.application.feature_iteration_service"
-                    if alias.name in {"FeatureIterationRequest", "FeatureIterationResult"}
-                    else "its defining application module"
-                )
+                defining_module = _defining_module_for(alias.name)
                 violations.append(
                     f"{rel_path}:{node.lineno} import {alias.name} from "
                     f"{defining_module} instead of engineeringagent.application"
                 )
     return violations
+
+
+def _defining_module_for(symbol_name: str) -> str:
+    if symbol_name in {
+        "FeatureIterationDependencies",
+        "FeatureIterationRequest",
+        "FeatureIterationResult",
+    }:
+        return "engineeringagent.application.feature_iteration_service"
+    if symbol_name in {
+        "GuidanceInputError",
+        "GuidanceQuery",
+        "GuidanceResult",
+    }:
+        return "engineeringagent.application.guidance_service"
+    if symbol_name == "ImplementationPromptRequest":
+        return "engineeringagent.application.prompt_builder"
+    if symbol_name in {"InitWorkspaceRequest", "InitWorkspaceResult"}:
+        return "engineeringagent.application.init_workspace_service"
+    if symbol_name in {"RecoverWorkspaceRequest", "RecoverWorkspaceResult"}:
+        return "engineeringagent.application.workspace_recovery_service"
+    if symbol_name in {"RunChecksRequest", "RunChecksResult"}:
+        return "engineeringagent.application.checks_service"
+    if symbol_name in {"RunLoopRequest", "RunLoopResult"}:
+        return "engineeringagent.application.run_loop_service"
+    if symbol_name in {"ValidateRepositoryRequest", "ValidationResult"}:
+        return "engineeringagent.application.validation_service"
+    return "its defining application module"
 
 
 def _application_root_workflow_surface_violations() -> list[str]:

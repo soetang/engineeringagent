@@ -5,7 +5,9 @@ import pytest
 from typer.testing import CliRunner
 
 from engineeringagent.presentation import cli as cli_module
-from engineeringagent.application import RunChecksResult as ApplicationRunChecksResult
+from engineeringagent.application.checks_service import (
+    RunChecksResult as ApplicationRunChecksResult,
+)
 from engineeringagent.adapters.quality.runtime import ChecksRunResult
 from engineeringagent.domain.quality import ChangedPathsResult
 from engineeringagent.domain.quality import CheckExecutionRecord

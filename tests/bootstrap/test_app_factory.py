@@ -24,7 +24,6 @@ from engineeringagent.adapters.vcs import (
 )
 from engineeringagent.application import (
     ChecksService,
-    FeatureIterationDependencies,
     FeatureIterationService,
     GuidanceService,
     InitWorkspaceService,
@@ -32,6 +31,9 @@ from engineeringagent.application import (
     RunLoopService,
     ValidationService,
     WorkspaceRecoveryService,
+)
+from engineeringagent.application.feature_iteration_service import (
+    FeatureIterationDependencies,
 )
 from engineeringagent.application.feature_iteration_runtime import (
     FeatureIterationInputs,

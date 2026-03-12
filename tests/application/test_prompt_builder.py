@@ -6,9 +6,9 @@ from types import ModuleType
 
 import engineeringagent.application.prompt_builder as prompt_builder_module
 from engineeringagent.application import (
-    ImplementationPromptRequest,
     PromptBuilder,
 )
+from engineeringagent.application.prompt_builder import ImplementationPromptRequest
 from engineeringagent.domain.shared.prompt_definition import PromptDefinition
 from engineeringagent.domain.specification import (
     FeatureArtifacts,

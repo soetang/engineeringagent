@@ -204,6 +204,113 @@ def test_checker_flags_feature_iteration_request_from_application_root(
     )
 
 
+def test_checker_flags_run_loop_request_from_application_root(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Reject callers importing run-loop contracts from the root package."""
+    _write_module(
+        tmp_path,
+        relative_path="src/engineeringagent/application/__init__.py",
+        content="\n".join(
+            [
+                "from .run_loop_service import RunLoopRequest",
+                "",
+                '__all__ = ["RunLoopRequest"]',
+                "",
+            ]
+        ),
+    )
+    _write_module(
+        tmp_path,
+        relative_path="src/engineeringagent/application/run_loop_service.py",
+        content="class RunLoopRequest:\n    pass\n",
+    )
+    _write_module(
+        tmp_path,
+        relative_path="src/engineeringagent/presentation/cli/run.py",
+        content="\n".join(
+            [
+                "from engineeringagent.application import RunLoopRequest",
+                "",
+                "REQUEST = RunLoopRequest",
+                "",
+            ]
+        ),
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert any(
+        "src/engineeringagent/application/__init__.py:1" in violation
+        and "RunLoopRequest" in violation
+        for violation in _violations(payload)
+    )
+    assert any(
+        "src/engineeringagent/application/__init__.py:3" in violation
+        and "RunLoopRequest" in violation
+        for violation in _violations(payload)
+    )
+    assert any(
+        "src/engineeringagent/presentation/cli/run.py:1" in violation
+        and "engineeringagent.application.run_loop_service" in violation
+        for violation in _violations(payload)
+    )
+
+
+def test_checker_flags_checks_request_from_application_root(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Reject callers importing checks contracts from the root package."""
+    _write_module(
+        tmp_path,
+        relative_path="src/engineeringagent/application/__init__.py",
+        content="\n".join(
+            [
+                "from .checks_service import RunChecksRequest",
+                "",
+                '__all__ = ["RunChecksRequest"]',
+                "",
+            ]
+        ),
+    )
+    _write_module(
+        tmp_path,
+        relative_path="src/engineeringagent/application/checks_service.py",
+        content="class RunChecksRequest:\n    pass\n",
+    )
+    _write_module(
+        tmp_path,
+        relative_path="src/engineeringagent/presentation/cli/checks.py",
+        content="\n".join(
+            [
+                "from engineeringagent.application import RunChecksRequest",
+                "",
+                "REQUEST = RunChecksRequest",
+                "",
+            ]
+        ),
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert any(
+        "src/engineeringagent/application/__init__.py:1" in violation
+        and "RunChecksRequest" in violation
+        for violation in _violations(payload)
+    )
+    assert any(
+        "src/engineeringagent/presentation/cli/checks.py:1" in violation
+        and "engineeringagent.application.checks_service" in violation
+        for violation in _violations(payload)
+    )
+
+
 def test_checker_allows_feature_iteration_request_from_service_module(
     tmp_path: Path,
     repo_root: Path,

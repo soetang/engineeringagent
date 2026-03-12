@@ -3,9 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 
 from engineeringagent.application import (
+    RunLoopService,
+)
+from engineeringagent.application.run_loop_service import (
     RunLoopRequest,
     RunLoopResult,
-    RunLoopService,
 )
 from engineeringagent.domain.quality import HarnessChecksDocument
 from engineeringagent.ports import RunLoopExecutionRequest, ValidationFailure

@@ -9,7 +9,7 @@ from typing import Any
 import pytest
 import yaml
 
-from engineeringagent.application import RunLoopRequest
+from engineeringagent.application.run_loop_service import RunLoopRequest
 from engineeringagent.adapters.agents import ConfiguredAgentRunner
 from engineeringagent.adapters.config import resolve_harness_bool_setting
 from engineeringagent.adapters.agents.opencode.permissions import (

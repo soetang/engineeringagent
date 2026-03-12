@@ -148,7 +148,7 @@ def test_checker_allows_application_tests_on_domain_and_ports_contracts(
         relative_path="tests/application/test_boundary_ok.py",
         content="\n".join(
             [
-                "from engineeringagent.application import RunChecksRequest",
+                "from engineeringagent.application.checks_service import RunChecksRequest",
                 "from engineeringagent.domain.quality import HarnessCheckPhase",
                 "from engineeringagent.ports import ChecksRunRequest",
                 "",

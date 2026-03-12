@@ -162,7 +162,7 @@ def test_repo_layer_contracts_rule_blocks_document_adapters_importing_applicatio
     )
     documents_root.mkdir(parents=True, exist_ok=True)
     (documents_root / "filesystem_feature_state.py").write_text(
-        "from engineeringagent.application import RunLoopRequest\n",
+        "from engineeringagent.application.run_loop_service import RunLoopRequest\n",
         encoding="utf-8",
     )
 
