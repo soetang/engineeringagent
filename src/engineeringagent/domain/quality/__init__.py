@@ -68,6 +68,7 @@ from .planning_policy import (
     plan_checks_for_definition_type,
     plan_run_skip_decision,
 )
+from .validation import ValidationIssue
 from .check_planning import (
     ChecksPlanner,
     PlannedCheck,
@@ -123,6 +124,7 @@ __all__ = [
     "ReviewerSandboxDefinition",
     "ReviewerSandboxMode",
     "SelectionProfile",
+    "ValidationIssue",
     "build_command_failure_feedback",
     "build_fitness_failure_feedback",
     "build_reviewer_feedback",

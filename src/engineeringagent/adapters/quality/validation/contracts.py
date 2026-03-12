@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Mapping, NamedTuple, Protocol
 
-from typing_extensions import Literal
+from engineeringagent.domain.quality import ValidationIssue
 
 
 class ValidationContext(NamedTuple):
@@ -14,16 +14,6 @@ class ValidationContext(NamedTuple):
     schema_only: bool
     selected_groups: tuple[str, ...] | None = None
     docs_map_config: Mapping[str, str] | None = None
-
-
-class ValidationIssue(NamedTuple):
-    """Canonical validation issue model produced by repo/strategy validators."""
-
-    validator_id: str
-    scope: Literal["repo", "strategy"]
-    path: str
-    message: str
-    code: str
 
 
 class RepoValidator(Protocol):
