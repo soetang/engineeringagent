@@ -16,9 +16,9 @@ def test_diff_against_base_includes_requested_refs(
     """Pass the selected diff refs through to git."""
     captured: dict[str, object] = {}
 
-    def _run(*args, **kwargs):  # type: ignore[no-untyped-def]
+    def _run(*args, **_kwargs):  # type: ignore[no-untyped-def]
         captured["args"] = args
-        captured["kwargs"] = kwargs
+        captured["kwargs"] = _kwargs
         return subprocess.CompletedProcess(args[0], 0, "A\tsrc/app.py\n", "")
 
     monkeypatch.setattr(
@@ -59,7 +59,7 @@ def test_diff_against_base_raises_on_git_failure(
 ) -> None:
     """Raise a typed gateway failure when git diff exits non-zero."""
 
-    def _run(*args, **kwargs):  # type: ignore[no-untyped-def]
+    def _run(*args, **_kwargs):  # type: ignore[no-untyped-def]
         return subprocess.CompletedProcess(args[0], 1, "", "boom")
 
     monkeypatch.setattr(
@@ -79,7 +79,7 @@ def test_commit_stages_and_commits_with_fixed_identity(
     """Stage all files before committing with the deterministic identity."""
     calls: list[list[str]] = []
 
-    def _run(*args, **kwargs):  # type: ignore[no-untyped-def]
+    def _run(*args, **_kwargs):  # type: ignore[no-untyped-def]
         command = args[0]
         calls.append(command)
         if command[:3] == ["git", "add", "-A"]:
@@ -131,7 +131,7 @@ def test_commit_reports_git_add_failure(
 ) -> None:
     """Return a staged failure result when `git add` fails."""
 
-    def _run(*args, **kwargs):  # type: ignore[no-untyped-def]
+    def _run(*args, **_kwargs):  # type: ignore[no-untyped-def]
         command = args[0]
         if command[:3] == ["git", "add", "-A"]:
             return subprocess.CompletedProcess(command, 1, "", "add failed")
@@ -159,7 +159,7 @@ def test_commit_passes_allow_empty_flag_when_requested(
     """Append `--allow-empty` only when the normalized request asks for it."""
     calls: list[list[str]] = []
 
-    def _run(*args, **kwargs):  # type: ignore[no-untyped-def]
+    def _run(*args, **_kwargs):  # type: ignore[no-untyped-def]
         command = args[0]
         calls.append(command)
         if command[:3] == ["git", "add", "-A"]:
@@ -195,7 +195,7 @@ def test_worktree_status_reports_dirty_state(
 ) -> None:
     """Normalize git porcelain output into a deterministic dirty flag."""
 
-    def _run(*args, **kwargs):  # type: ignore[no-untyped-def]
+    def _run(*args, **_kwargs):  # type: ignore[no-untyped-def]
         return subprocess.CompletedProcess(args[0], 0, " M src/app.py\n", "")
 
     monkeypatch.setattr(
@@ -217,7 +217,7 @@ def test_worktree_status_raises_on_git_failure(
 ) -> None:
     """Surface git status failures through the typed gateway error."""
 
-    def _run(*args, **kwargs):  # type: ignore[no-untyped-def]
+    def _run(*args, **_kwargs):  # type: ignore[no-untyped-def]
         return subprocess.CompletedProcess(args[0], 128, "", "not a git repository")
 
     monkeypatch.setattr(

@@ -12,7 +12,6 @@ from pydantic import ValidationError
 
 import engineeringagent.checks.fitness.adapters as adapters_module
 import engineeringagent.config as config_module
-from engineeringagent.application import feature_plan_progress
 from engineeringagent.application import FeatureIterationInputs
 import engineeringagent.application.feature_state as feature_state_module
 from engineeringagent.checks.fitness.contracts import (
@@ -135,15 +134,8 @@ def test_presentation_ignores_env_keys_for_ansi_decision(
     assert tty_supports_ansi(stdout=cast(Any, _Tty())) is True
 
 
-def test_feature_state_plan_loader_compatibility_shim() -> None:
-    assert (
-        feature_state_module._load_plan_document_and_frontmatter
-        is feature_plan_progress.load_plan_document_and_frontmatter
-    )
-
-
-def test_feature_plan_progress_update_config_uses_pydantic_model_boundary() -> None:
-    config = feature_plan_progress._PlanProgressUpdateConfig(
+def test_feature_state_plan_progress_update_config_uses_pydantic_model_boundary() -> None:
+    config = feature_state_module._PlanProgressUpdateConfig(
         allow_done_feature=False,
         feature_transitions={"in_progress": {"done"}},
         mutate_frontmatter=lambda _frontmatter: False,
@@ -381,7 +373,7 @@ def test_touch_active_feature_for_iteration_promotes_bundled_plan_phase_statuses
     assert refreshed_feature["status"] == "in_progress"
     assert refreshed_feature["updated_at"] != "2026-03-09T00:00:00Z"
 
-    loaded_plan = feature_state_module._load_plan_document_and_frontmatter(plan_path)
+    loaded_plan = feature_state_module.load_plan_document_and_frontmatter(plan_path)
     assert loaded_plan is not None
     _, frontmatter = loaded_plan
     assert frontmatter["status"] == "in_progress"
@@ -450,7 +442,7 @@ def test_touch_active_feature_for_iteration_preserves_blocked_bundled_plan_phase
     assert refreshed_feature["status"] == "blocked"
     assert refreshed_feature["updated_at"] != "2026-03-09T00:00:00Z"
 
-    loaded_plan = feature_state_module._load_plan_document_and_frontmatter(plan_path)
+    loaded_plan = feature_state_module.load_plan_document_and_frontmatter(plan_path)
     assert loaded_plan is not None
     _, frontmatter = loaded_plan
     assert frontmatter["status"] == "blocked"
@@ -519,7 +511,7 @@ def test_touch_active_feature_for_iteration_syncs_feature_status_from_blocked_pl
     assert refreshed_feature["status"] == "blocked"
     assert refreshed_feature["updated_at"] != "2026-03-09T00:00:00Z"
 
-    loaded_plan = feature_state_module._load_plan_document_and_frontmatter(plan_path)
+    loaded_plan = feature_state_module.load_plan_document_and_frontmatter(plan_path)
     assert loaded_plan is not None
     _, frontmatter = loaded_plan
     assert frontmatter["status"] == "blocked"

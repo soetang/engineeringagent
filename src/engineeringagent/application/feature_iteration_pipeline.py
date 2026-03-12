@@ -8,6 +8,16 @@ from typing import Any, Callable, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from engineeringagent.domain.audit import ImplementProgressEnvelope
+from engineeringagent.domain.shared import utc_iso_from_epoch_sec
+from engineeringagent.domain.specification import (
+    current_progress_unit,
+    done_transition_verification_commands,
+    feature_progress_reference,
+    progress_status_snapshot,
+)
+from engineeringagent.specs import feature_progress_kind
+
 from .feature_iteration_contracts import (
     CommandTiming,
     CompletionCommitOutcome,
@@ -22,15 +32,6 @@ from .feature_iteration_contracts import (
     ReviewerPhaseOutcome,
     VerificationPhaseOutcome,
 )
-from engineeringagent.domain.audit import ImplementProgressEnvelope
-from engineeringagent.domain.shared import utc_iso_from_epoch_sec
-from engineeringagent.domain.specification import (
-    current_progress_unit,
-    done_transition_verification_commands,
-    feature_progress_reference,
-    progress_status_snapshot,
-)
-from engineeringagent.specs import feature_progress_kind
 
 
 def _default_describe_action(project_root: Path, action: str, structured: bool) -> str:
@@ -47,7 +48,7 @@ class IterationPipelineDependencies(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     evaluate_initial_feature_load: Callable[[Path], InitialFeatureLoadOutcome]
-    describe_action: Callable[[Path, str, bool], str] = _default_describe_action
+    describe_action: Callable[..., str] = _default_describe_action
     ready_for_active_iteration: Callable[[str, dict[str, Any] | None], bool]
     touch_active_feature_for_iteration: Callable[[dict[str, Any], Path], None]
     run_implement_step: Callable[

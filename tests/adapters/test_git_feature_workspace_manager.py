@@ -16,7 +16,7 @@ def test_reset_to_last_accepted_runs_reset_and_clean_then_reports_head_commit(
     """Workspace reset should clean the tree and return the resolved head commit."""
     calls: list[list[str]] = []
 
-    def _run(*args, **kwargs):  # type: ignore[no-untyped-def]
+    def _run(*args, **_kwargs):  # type: ignore[no-untyped-def]
         command = args[0]
         calls.append(command)
         if command[:3] == ["git", "reset", "--hard"]:
@@ -54,7 +54,7 @@ def test_reset_to_last_accepted_reports_clean_failure_without_resolving_head(
     """A failed clean step should surface a deterministic workspace failure."""
     calls: list[list[str]] = []
 
-    def _run(*args, **kwargs):  # type: ignore[no-untyped-def]
+    def _run(*args, **_kwargs):  # type: ignore[no-untyped-def]
         command = args[0]
         calls.append(command)
         if command[:3] == ["git", "reset", "--hard"]:
