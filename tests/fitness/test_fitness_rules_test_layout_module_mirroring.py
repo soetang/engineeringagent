@@ -113,6 +113,38 @@ def test_test_layout_module_mirroring_rule_flags_root_alias_and_unmirrored_paths
     ]
 
 
+def test_test_layout_module_mirroring_rule_flags_legacy_test_topic_roots(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Reject legacy top-level test schemes that bypass module mirroring."""
+    _write_file(tmp_path, "tests/config/test_repo_engineeringagent_toml.py", "")
+    _write_file(tmp_path, "tests/progress/test_progress_exports.py", "")
+    _write_file(tmp_path, "tests/specification/test_progress.py", "")
+    _write_file(tmp_path, "tests/terminal/test_terminal.py", "")
+    _write_file(tmp_path, "tests/__init__.py", "")
+    _write_file(tmp_path, "tests/conftest.py", "")
+    _write_file(tmp_path, "src/engineeringagent/adapters/config/repository_config.py", "")
+    _write_file(tmp_path, "src/engineeringagent/adapters/progress/filesystem_journal.py", "")
+    _write_file(tmp_path, "src/engineeringagent/domain/specification/progress.py", "")
+    _write_file(tmp_path, "src/engineeringagent/presentation/presenters/terminal.py", "")
+
+    proc, result = _run_checker(
+        tmp_path,
+        checker_path=_script_path(repo_root),
+        config_file=_policy_path(repo_root),
+    )
+
+    assert proc.returncode == 0
+    assert result["status"] == "fail"
+    assert _violations(result) == [
+        "tests/config/test_repo_engineeringagent_toml.py: disallowed alias topic root 'config/'; use module-mirrored path.",
+        "tests/progress/test_progress_exports.py: disallowed alias topic root 'progress/'; use module-mirrored path.",
+        "tests/specification/test_progress.py: disallowed alias topic root 'specification/'; use module-mirrored path.",
+        "tests/terminal/test_terminal.py: disallowed alias topic root 'terminal/'; use module-mirrored path.",
+    ]
+
+
 def test_test_layout_module_mirroring_rule_flags_flat_test_for_nested_module(
     tmp_path: Path,
     repo_root: Path,

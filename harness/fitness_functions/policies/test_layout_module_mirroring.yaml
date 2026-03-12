@@ -9,9 +9,15 @@ exception_root_files:
   - tests/conftest.py
   - tests/__init__.py
 alias_topic_roots:
+  - config
+  - git
   - vcs
+  - progress
   - opencode
   - reviewers
+  - specification
+  - specs
+  - terminal
 forbidden_test_paths:
   - tests/application/test_feature_iteration_pipeline.py
   - tests/application/test_implementation_step.py
