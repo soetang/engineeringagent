@@ -79,6 +79,7 @@ DELETED_MODULE_PATHS = {
     "src/engineeringagent/agents/contracts.py",
     "src/engineeringagent/agents/helpers.py",
     "src/engineeringagent/agents/opencode_preflight.py",
+    "src/engineeringagent/bootstrap/feature_iteration.py",
     "src/engineeringagent/bootstrap/runtime_execution.py",
     "src/engineeringagent/domain/audit/iteration.py",
     "src/engineeringagent/feature_commit.py",
