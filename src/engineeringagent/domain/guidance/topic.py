@@ -16,3 +16,7 @@ class GuidanceTopic(BaseModel):
     description: str | None
     document: str | None
     body: str | None
+
+
+class UnknownGuidanceTopicIdError(ValueError):
+    """Raised when a guidance topic id or alias cannot be resolved."""

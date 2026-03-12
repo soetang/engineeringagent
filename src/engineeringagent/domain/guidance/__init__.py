@@ -1,5 +1,5 @@
 """Guidance-domain models."""
 
-from .topic import GuidanceTopic
+from .topic import GuidanceTopic, UnknownGuidanceTopicIdError
 
-__all__ = ["GuidanceTopic"]
+__all__ = ["GuidanceTopic", "UnknownGuidanceTopicIdError"]

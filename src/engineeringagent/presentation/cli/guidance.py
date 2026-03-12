@@ -4,8 +4,8 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from ...application import GuidanceInputError, GuidanceQuery
-from ...approach import UnknownApproachIdError
 from ...bootstrap import AppFactory
+from ...domain.guidance import UnknownGuidanceTopicIdError
 from .output import emit_markdown_output, resolve_optional_path
 
 _HandlerArgs = SimpleNamespace
@@ -22,7 +22,7 @@ def cmd_approach_overview(args: _HandlerArgs) -> int:
         result = AppFactory(project_root).build_guidance_service().render(
             GuidanceQuery(kind="overview")
         )
-    except UnknownApproachIdError as exc:
+    except UnknownGuidanceTopicIdError as exc:
         print(f"approach input error: {exc}")
         return 1
     except ValueError as exc:
@@ -70,7 +70,7 @@ def cmd_approach_show(args: _HandlerArgs) -> int:
     except GuidanceInputError as exc:
         print(f"approach input error: {exc}")
         return 1
-    except UnknownApproachIdError as exc:
+    except UnknownGuidanceTopicIdError as exc:
         print(f"approach input error: {exc}; use `engineeringagent approach list`")
         return 1
     except ValueError as exc:

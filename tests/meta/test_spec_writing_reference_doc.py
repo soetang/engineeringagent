@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from engineeringagent.approach import registry
+from engineeringagent.adapters.documents import guidance_topic_catalog
 from engineeringagent.spec_bundles import iter_feature_files, load_markdown_frontmatter
 
 
@@ -43,6 +43,7 @@ def _load_plan_phases(frontmatter: dict[str, object]) -> list[dict[str, Any]]:
 def test_feature_verification_commands_include_bundled_plan_phases(
     tmp_path: Path,
 ) -> None:
+    """Read verification commands from bundled plan phases."""
     features_dir = tmp_path / "docs" / "spec" / "features"
     features_dir.mkdir(parents=True)
     bundled_dir = features_dir / "FEAT-002-bundled"
@@ -98,6 +99,7 @@ def test_active_feature_verification_commands_do_not_require_ripgrep(
 def test_bundled_spec_example_uses_plan_artifact_without_subtasks(
     repo_root: Path,
 ) -> None:
+    """Keep the hello-world feature template on bundled plan artifacts only."""
     example_path = (
         repo_root
         / "harness"
@@ -112,6 +114,7 @@ def test_bundled_spec_example_uses_plan_artifact_without_subtasks(
 
 
 def test_smoke_feature_template_matches_bundled_workflow(repo_root: Path) -> None:
+    """Keep the smoke template aligned with the bundled feature workflow."""
     template_path = (
         repo_root
         / "harness"
@@ -126,10 +129,11 @@ def test_smoke_feature_template_matches_bundled_workflow(repo_root: Path) -> Non
 
 
 def test_bundled_plan_templates_use_runtime_status_vocabulary(repo_root: Path) -> None:
+    """Keep guidance and fixtures on the active runtime status vocabulary."""
     smoke_frontmatter = load_markdown_frontmatter(
         repo_root / "docs" / "fixtures" / "real_opencode_hello_world_plan_template.md"
     )
-    plan_session_doc = registry.load_topic_body("plan-session")
+    plan_session_doc = guidance_topic_catalog.load_guidance_topic_body("plan-session")
     smoke_phases = _load_plan_phases(smoke_frontmatter)
 
     assert smoke_frontmatter["status"] == "backlog"
@@ -143,7 +147,8 @@ def test_bundled_plan_templates_use_runtime_status_vocabulary(repo_root: Path) -
 
 def test_research_session_approach_uses_bundled_research_tracking_language(
 ) -> None:
-    research_session_doc = registry.load_topic_body("research-session")
+    """Keep research guidance aligned with bundled artifact language."""
+    research_session_doc = guidance_topic_catalog.load_guidance_topic_body("research-session")
 
     assert "TodoWrite" not in research_session_doc
     assert "track all subtasks" not in research_session_doc
@@ -154,6 +159,7 @@ def test_research_session_approach_uses_bundled_research_tracking_language(
 def test_approach_docs_use_bundled_phase_language_and_uv_run_commands(
     repo_root: Path,
 ) -> None:
+    """Keep packaged approach docs aligned with the bundled workflow contract."""
     workflow_doc = (
         repo_root / "src" / "engineeringagent" / "approach" / "docs" / "workflow.md"
     ).read_text(encoding="utf-8")
@@ -210,6 +216,7 @@ def test_approach_docs_use_bundled_phase_language_and_uv_run_commands(
 def test_specifications_doc_requires_bundled_spec_packages_only(
     repo_root: Path,
 ) -> None:
+    """Keep the specifications guidance on bundled spec packages only."""
     specifications_doc = (
         repo_root / "src" / "engineeringagent" / "approach" / "docs" / "specifications.md"
     ).read_text(encoding="utf-8")
@@ -223,6 +230,7 @@ def test_specifications_doc_requires_bundled_spec_packages_only(
 def test_specifications_doc_keeps_spec_yaml_canonical_and_plan_phase_owned(
     repo_root: Path,
 ) -> None:
+    """Keep the specifications guidance explicit about spec and plan ownership."""
     specifications_doc = (
         repo_root / "src" / "engineeringagent" / "approach" / "docs" / "specifications.md"
     ).read_text(encoding="utf-8")
@@ -235,6 +243,7 @@ def test_specifications_doc_keeps_spec_yaml_canonical_and_plan_phase_owned(
 def test_reviewer_authoring_doc_covers_bundled_feature_review_context(
     repo_root: Path,
 ) -> None:
+    """Keep reviewer guidance aligned with bundled feature review inputs."""
     reviewer_authoring_doc = (
         repo_root
         / "src"

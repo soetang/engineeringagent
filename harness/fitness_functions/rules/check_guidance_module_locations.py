@@ -17,6 +17,9 @@ _REQUIRED_PATHS = (
     Path("src/engineeringagent/presentation/cli/guidance.py"),
 )
 _LEGACY_PATHS = (
+    Path("src/engineeringagent/approach/__init__.py"),
+    Path("src/engineeringagent/approach/registry.py"),
+    Path("src/engineeringagent/approach/rendering.py"),
     Path("src/engineeringagent/adapters/guidance/__init__.py"),
     Path(
         "src/engineeringagent/adapters/guidance/filesystem_guidance_topic_repository.py"
@@ -27,8 +30,8 @@ _LEGACY_PATHS = (
 _REMEDIATION = (
     "keep guidance-topic repositories under engineeringagent.adapters.documents and the CLI "
     "surface under engineeringagent.presentation.cli.guidance; do not restore the "
-    "legacy packaged-guidance module, adapters.guidance package, or "
-    "presentation.cli.approach module."
+    "legacy engineeringagent.approach package, packaged-guidance module, "
+    "adapters.guidance package, or presentation.cli.approach module."
 )
 
 

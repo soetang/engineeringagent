@@ -81,6 +81,7 @@ def test_guidance_module_locations_rule_fails_for_legacy_paths(
         tmp_path,
         "src/engineeringagent/adapters/documents/packaged_guidance_topic_repository.py",
     )
+    _write_file(tmp_path, "src/engineeringagent/approach/registry.py")
     _write_file(
         tmp_path,
         "src/engineeringagent/adapters/guidance/filesystem_guidance_topic_repository.py",
@@ -92,19 +93,24 @@ def test_guidance_module_locations_rule_fails_for_legacy_paths(
     assert proc.returncode == 1
     assert payload["status"] == "fail"
     assert payload["violations"] == [
+        "src/engineeringagent/approach/registry.py: legacy guidance architecture path is not allowed; "
+        "keep guidance-topic repositories under engineeringagent.adapters.documents and the CLI "
+        "surface under engineeringagent.presentation.cli.guidance; do not restore the "
+        "legacy engineeringagent.approach package, packaged-guidance module, "
+        "adapters.guidance package, or presentation.cli.approach module.",
         "src/engineeringagent/adapters/guidance/filesystem_guidance_topic_repository.py: legacy guidance architecture path is not allowed; "
         "keep guidance-topic repositories under engineeringagent.adapters.documents and the CLI "
         "surface under engineeringagent.presentation.cli.guidance; do not restore the "
-        "legacy packaged-guidance module, adapters.guidance package, or "
-        "presentation.cli.approach module.",
+        "legacy engineeringagent.approach package, packaged-guidance module, "
+        "adapters.guidance package, or presentation.cli.approach module.",
         "src/engineeringagent/adapters/documents/packaged_guidance_topic_repository.py: legacy guidance architecture path is not allowed; "
         "keep guidance-topic repositories under engineeringagent.adapters.documents and the CLI "
         "surface under engineeringagent.presentation.cli.guidance; do not restore the "
-        "legacy packaged-guidance module, adapters.guidance package, or "
-        "presentation.cli.approach module.",
+        "legacy engineeringagent.approach package, packaged-guidance module, "
+        "adapters.guidance package, or presentation.cli.approach module.",
         "src/engineeringagent/presentation/cli/approach.py: legacy guidance architecture path is not allowed; "
         "keep guidance-topic repositories under engineeringagent.adapters.documents and the CLI "
         "surface under engineeringagent.presentation.cli.guidance; do not restore the "
-        "legacy packaged-guidance module, adapters.guidance package, or "
-        "presentation.cli.approach module.",
+        "legacy engineeringagent.approach package, packaged-guidance module, "
+        "adapters.guidance package, or presentation.cli.approach module.",
     ]
