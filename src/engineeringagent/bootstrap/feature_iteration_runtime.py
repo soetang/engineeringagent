@@ -21,7 +21,7 @@ from engineeringagent.adapters.runtime.iteration_phases import (
     run_reviewer_phase,
     run_verification_phase,
 )
-from engineeringagent.domain.audit import iteration as iteration_models
+from engineeringagent.application import iteration_models
 from engineeringagent.bootstrap import runtime_support
 from engineeringagent.loop_runtime import feature_state, iteration
 

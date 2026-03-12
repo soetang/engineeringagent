@@ -4,11 +4,9 @@ from pathlib import Path
 from typing import Any, cast
 from unittest.mock import sentinel
 
+from engineeringagent.application import IterationSummaryInputs
 from engineeringagent.ports import AgentRunner
-from engineeringagent.domain.audit import (
-    IterationSummaryInputs,
-    fallback_implement_progress_envelope,
-)
+from engineeringagent.domain.audit import fallback_implement_progress_envelope
 from engineeringagent.bootstrap import runtime_support
 from engineeringagent.application.implementation_step import (
     ImplementStepRuntimeDependencies,

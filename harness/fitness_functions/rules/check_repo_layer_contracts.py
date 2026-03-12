@@ -71,6 +71,7 @@ DELETED_MODULE_PATHS = {
     "src/engineeringagent/application/workspace_recovery/__init__.py",
     "src/engineeringagent/application/workspace_recovery/service.py",
     "src/engineeringagent/bootstrap/runtime_execution.py",
+    "src/engineeringagent/domain/audit/iteration.py",
     "src/engineeringagent/feature_commit.py",
     "src/engineeringagent/checks/changed_paths.py",
     "src/engineeringagent/git/__init__.py",
@@ -217,7 +218,9 @@ def _forbidden_dynamic_import_violations(
     return violations
 
 
-_LOOP_RUNTIME_ALLOWED_APPLICATION_IMPORTS: tuple[str, ...] = ()
+_LOOP_RUNTIME_ALLOWED_APPLICATION_IMPORTS: tuple[str, ...] = (
+    "engineeringagent.application",
+)
 
 
 def _loop_runtime_violations(path: Path) -> list[str]:

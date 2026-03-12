@@ -7,7 +7,7 @@ import subprocess
 from pathlib import Path
 from typing import Any, Callable
 
-from engineeringagent.domain.audit import (
+from engineeringagent.application.iteration_models import (
     ImplementStepInputs,
     ImplementStepResult,
 )

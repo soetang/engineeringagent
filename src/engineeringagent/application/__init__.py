@@ -1,23 +1,5 @@
 """Application-layer services and workflow models."""
 
-from engineeringagent.domain.audit import (
-    CommandTiming,
-    CompletionCommitOutcome,
-    FeatureIterationInputs,
-    GatePhaseOutcome,
-    ImplementStepInputs,
-    ImplementStepResult,
-    InitialFeatureLoadOutcome,
-    IterationOutcome,
-    IterationReport,
-    IterationSummaryInputs,
-    IterationTelemetryInputs,
-    PhaseTiming,
-    PostImplementFeatureOutcome,
-    ReviewerPhaseOutcome,
-    VerificationPhaseOutcome,
-)
-
 from .checks_service import ChecksService, RunChecksRequest, RunChecksResult
 from .feature_iteration_service import (
     FeatureIterationRequest,
@@ -39,6 +21,23 @@ from .init_workspace_service import (
     InitWorkspaceRequest,
     InitWorkspaceResult,
     InitWorkspaceService,
+)
+from .iteration_models import (
+    CommandTiming,
+    CompletionCommitOutcome,
+    FeatureIterationInputs,
+    GatePhaseOutcome,
+    ImplementStepInputs,
+    ImplementStepResult,
+    InitialFeatureLoadOutcome,
+    IterationOutcome,
+    IterationReport,
+    IterationSummaryInputs,
+    IterationTelemetryInputs,
+    PhaseTiming,
+    PostImplementFeatureOutcome,
+    ReviewerPhaseOutcome,
+    VerificationPhaseOutcome,
 )
 from .prompt_builder import ImplementationPromptRequest, PromptBuilder
 from .run_loop_service import RunLoopRequest, RunLoopResult, RunLoopService

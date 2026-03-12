@@ -13,7 +13,7 @@ from engineeringagent.adapters.runtime.loop_run_context import (
     RunConfig,
     RunServices,
 )
-from engineeringagent.domain.audit import (
+from engineeringagent.application import (
     CompletionCommitOutcome,
     FeatureIterationInputs,
     GatePhaseOutcome,
@@ -24,8 +24,8 @@ from engineeringagent.domain.audit import (
     PostImplementFeatureOutcome,
     ReviewerPhaseOutcome,
     VerificationPhaseOutcome,
-    fallback_implement_progress_envelope,
 )
+from engineeringagent.domain.audit import fallback_implement_progress_envelope
 from engineeringagent.domain.quality import ChangedPathsResult
 from engineeringagent.loop_runtime.feature_state import (
     archive_completed_feature,

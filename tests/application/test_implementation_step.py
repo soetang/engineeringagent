@@ -8,9 +8,9 @@ from engineeringagent.application.implementation_step import (
     ImplementStepRuntimeDependencies,
     run_implement_step_from_inputs,
 )
+from engineeringagent.application import ImplementStepInputs
 from engineeringagent.domain.audit import (
     ImplementProgressEnvelope,
-    ImplementStepInputs,
     ProgressEvent,
 )
 from engineeringagent.ports import AgentRunRequest

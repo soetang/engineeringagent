@@ -9,7 +9,7 @@ from engineeringagent.adapters.runtime.loop_run_context import (
     RunConfig,
     RunState,
 )
-from engineeringagent.domain.audit import (
+from engineeringagent.application import (
     FeatureIterationInputs,
     IterationOutcome,
     IterationSummaryInputs,

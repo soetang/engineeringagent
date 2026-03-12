@@ -7,7 +7,7 @@ from typing import Any, Callable, NamedTuple, Sequence
 
 from engineeringagent.agents import preflight, run_agent
 from engineeringagent.adapters.runtime.feature_selector import choose_feature_with_selector
-from engineeringagent.domain.audit import (
+from engineeringagent.application import (
     FeatureIterationInputs,
     IterationOutcome,
     IterationSummaryInputs,

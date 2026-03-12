@@ -19,12 +19,9 @@ from engineeringagent.agents import AgentBackendError, AgentBackendFailureDetail
 from engineeringagent.agents.backends.opencode.permissions import (
     PermissionProbeResult,
 )
-from engineeringagent.application import RunLoopRequest
+from engineeringagent.application import ImplementStepResult, RunLoopRequest
 from engineeringagent.bootstrap import AppFactory
-from engineeringagent.domain.audit import (
-    ImplementStepResult,
-    fallback_implement_progress_envelope,
-)
+from engineeringagent.domain.audit import fallback_implement_progress_envelope
 from engineeringagent.presentation import cli as cli_module
 
 

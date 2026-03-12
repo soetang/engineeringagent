@@ -21,7 +21,7 @@ from engineeringagent.config import (
     repo_relative_label,
     resolve_harness_checks_config_path,
 )
-from engineeringagent.domain.audit import (
+from engineeringagent.application import (
     CommandTiming,
     CompletionCommitOutcome,
     FeatureIterationInputs,

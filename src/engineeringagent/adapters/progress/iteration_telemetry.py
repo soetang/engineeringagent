@@ -7,13 +7,15 @@ import time
 from pathlib import Path
 from typing import Any, Callable, Sequence
 
-from engineeringagent.domain.audit import (
+from engineeringagent.application import (
     CommandTiming,
-    fallback_implement_progress_envelope,
     IterationTelemetryInputs,
     PhaseTiming,
 )
-from engineeringagent.domain.audit import ProgressEvent
+from engineeringagent.domain.audit import (
+    ProgressEvent,
+    fallback_implement_progress_envelope,
+)
 from engineeringagent.domain.shared import utc_now_iso
 from engineeringagent.presentation.presenters import (
     HandoffRenderMetadata,

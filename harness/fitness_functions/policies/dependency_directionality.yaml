@@ -95,7 +95,7 @@ rules:
     blocked_dependencies:
       - engineeringagent.adapters
       - engineeringagent.bootstrap
-  - module: engineeringagent.domain.audit.iteration
+  - module: engineeringagent.application.iteration_models
     blocked_dependencies:
       - engineeringagent.adapters
       - engineeringagent.bootstrap

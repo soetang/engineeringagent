@@ -131,11 +131,11 @@ def test_repo_layer_contracts_rule_allows_loop_runtime_models_bridge(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Allow the loop-runtime import of audit-domain iteration models."""
+    """Allow the loop-runtime import of application-owned iteration models."""
     loop_runtime_root = tmp_path / "src" / "engineeringagent" / "loop_runtime"
     loop_runtime_root.mkdir(parents=True, exist_ok=True)
     (loop_runtime_root / "iteration.py").write_text(
-        "from engineeringagent.domain.audit import IterationReport\n",
+        "from engineeringagent.application import IterationReport\n",
         encoding="utf-8",
     )
 
@@ -144,6 +144,25 @@ def test_repo_layer_contracts_rule_allows_loop_runtime_models_bridge(
     assert proc.returncode == 0
     assert payload["status"] == "pass"
     assert payload["violations"] == []
+
+
+def test_repo_layer_contracts_rule_blocks_deleted_audit_iteration_module(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Fail when the removed audit iteration module reappears."""
+    audit_root = tmp_path / "src" / "engineeringagent" / "domain" / "audit"
+    audit_root.mkdir(parents=True, exist_ok=True)
+    (audit_root / "iteration.py").write_text("", encoding="utf-8")
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert payload["rule_id"] == "architecture.repo-layer-contracts"
+    assert payload["violations"] == [
+        "src/engineeringagent/domain/audit/iteration.py: deleted legacy module path must remain absent"
+    ]
 
 
 def test_repo_layer_contracts_rule_allows_quality_runtime_bridge(

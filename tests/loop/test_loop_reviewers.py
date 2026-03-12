@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 from pydantic import BaseModel
 
-from engineeringagent.domain.audit import FeatureIterationInputs
+from engineeringagent.application import FeatureIterationInputs
 from engineeringagent.domain.quality import ChangedPathsResult
 from engineeringagent.adapters.runtime.iteration_phases import (
     GatePhaseDependencies,

@@ -12,11 +12,11 @@ from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
 from engineeringagent.adapters.vcs import GitCliVersionControlGateway
 from engineeringagent.agents import classify_backend_exception, describe_action
-from engineeringagent.application import PromptBuilder
-from engineeringagent.domain.audit import (
+from engineeringagent.application import (
     ImplementStepInputs,
     ImplementStepResult,
     IterationSummaryInputs,
+    PromptBuilder,
 )
 from engineeringagent.application.implementation_step import (
     ImplementStepOutputDependencies,
