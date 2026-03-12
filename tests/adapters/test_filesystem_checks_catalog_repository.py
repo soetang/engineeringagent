@@ -310,6 +310,8 @@ def test_load_harness_checks_document_model_validation_error_is_deterministic(
     )
 
     class ValidationProbe(BaseModel):
+        """Trigger a stable Pydantic validation failure for the loader test."""
+
         value: int
 
     validation_error: ValidationError | None = None

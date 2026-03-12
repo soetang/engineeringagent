@@ -4,7 +4,7 @@ import importlib.util
 from pathlib import Path
 from types import ModuleType
 
-import engineeringagent.application.prompting.prompt_builder as prompt_builder_module
+import engineeringagent.application.prompt_builder as prompt_builder_module
 from engineeringagent.application import (
     ImplementationPromptRequest,
     PromptBuilder,
@@ -47,7 +47,7 @@ def _prompt_builder(
     implementation_prompt_id: str = "implementation_default",
 ) -> PromptBuilder:
     resolved_prompts_root = prompts_root or (
-        Path(__file__).resolve().parents[3] / "harness" / "prompts"
+        Path(__file__).resolve().parents[2] / "harness" / "prompts"
     )
     return PromptBuilder(
         LocalPromptDefinitionRepository(resolved_prompts_root),

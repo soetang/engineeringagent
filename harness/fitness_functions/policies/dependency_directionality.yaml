@@ -71,7 +71,7 @@ rules:
       - engineeringagent.bootstrap
       - engineeringagent.loop_runtime
       - engineeringagent.presentation
-  - module: engineeringagent.application.prompting.prompt_builder
+  - module: engineeringagent.application.prompt_builder
     blocked_dependencies:
       - engineeringagent.adapters
       - engineeringagent.bootstrap

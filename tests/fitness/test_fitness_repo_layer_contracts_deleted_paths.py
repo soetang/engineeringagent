@@ -367,7 +367,6 @@ def test_repo_layer_contracts_rule_blocks_raw_feature_document_prompt_builder_en
         / "src"
         / "engineeringagent"
         / "application"
-        / "prompting"
         / "prompt_builder.py"
     )
     prompt_builder_path.parent.mkdir(parents=True, exist_ok=True)
@@ -389,7 +388,7 @@ def test_repo_layer_contracts_rule_blocks_raw_feature_document_prompt_builder_en
     assert payload["status"] == "fail"
     assert payload["rule_id"] == "architecture.repo-layer-contracts"
     assert payload["violations"] == [
-        "src/engineeringagent/application/prompting/prompt_builder.py: prompt builder must not expose raw feature-document compatibility entrypoints"
+        "src/engineeringagent/application/prompt_builder.py: prompt builder must not expose raw feature-document compatibility entrypoints"
     ]
 
 

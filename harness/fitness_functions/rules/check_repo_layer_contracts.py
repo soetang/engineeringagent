@@ -56,7 +56,6 @@ DELETED_MODULE_PATHS = {
     "src/engineeringagent/application/contracts/workspace_recovery.py",
     "src/engineeringagent/application/iteration_models.py",
     "src/engineeringagent/application/implementation_prompt.py",
-    "src/engineeringagent/application/prompt_builder.py",
     "src/engineeringagent/application/feature_plan_progress.py",
     "src/engineeringagent/application/feature_selection.py",
     "src/engineeringagent/application/feature_iteration_contracts.py",
@@ -115,6 +114,7 @@ DELETED_DIRECTORY_PATHS = {
     "src/engineeringagent/application/init_workspace",
     "src/engineeringagent/application/quality",
     "src/engineeringagent/application/loop_runtime",
+    "src/engineeringagent/application/prompting",
     "src/engineeringagent/application/prompts",
     "src/engineeringagent/application/run_loop",
     "src/engineeringagent/application/validation",
@@ -429,7 +429,7 @@ def _application_module_violations(path: Path) -> list[str]:
             message="application and ports modules must not import init_scaffold modules",
         )
     )
-    if rel_path == "src/engineeringagent/application/prompting/prompt_builder.py":
+    if rel_path == "src/engineeringagent/application/prompt_builder.py":
         for node in ast.walk(module):
             if isinstance(node, ast.FunctionDef) and (
                 node.name == "build_implementation_prompt_from_feature_document"

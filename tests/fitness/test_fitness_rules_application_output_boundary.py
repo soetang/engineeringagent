@@ -73,7 +73,6 @@ def test_checker_allows_application_modules_without_direct_print_calls(
         / "src"
         / "engineeringagent"
         / "application"
-        / "prompting"
         / "prompt_builder.py"
     )
     module_path.parent.mkdir(parents=True, exist_ok=True)
