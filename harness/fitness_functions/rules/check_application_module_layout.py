@@ -20,10 +20,15 @@ ALLOWED_ROOT_MODULES = frozenset(
         "checks_service.py",
         "feature_iteration_service.py",
         "guidance_service.py",
+        "init_workspace_service.py",
         "prompt_builder.py",
         "run_loop_service.py",
         "validation_service.py",
+        "workspace_recovery_service.py",
     }
+)
+LEGACY_APPLICATION_SUBPACKAGES = (
+    APPLICATION_ROOT / "workspace",
 )
 
 
@@ -42,6 +47,16 @@ def _application_module_layout_violations() -> list[str]:
             "move helpers into an explicit subpackage such as "
             "engineeringagent.application.feature_iteration, or delete the legacy module"
         )
+    for subpackage_root in LEGACY_APPLICATION_SUBPACKAGES:
+        if not subpackage_root.exists():
+            continue
+        for path in sorted(subpackage_root.rglob("*.py")):
+            rel_path = path.relative_to(PROJECT_ROOT).as_posix()
+            violations.append(
+                f"{rel_path}: legacy application subpackage is forbidden; "
+                "move documented workflow services back to engineeringagent.application "
+                "root modules and delete the obsolete package"
+            )
     return violations
 
 

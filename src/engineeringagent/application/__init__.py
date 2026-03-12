@@ -12,10 +12,12 @@ from .guidance_service import (
     GuidanceResult,
     GuidanceService,
 )
-from .workspace import (
+from .init_workspace_service import (
     InitWorkspaceRequest,
     InitWorkspaceResult,
     InitWorkspaceService,
+)
+from .workspace_recovery_service import (
     RecoverWorkspaceRequest,
     RecoverWorkspaceResult,
     WorkspaceRecoveryService,
