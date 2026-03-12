@@ -29,16 +29,16 @@ class _FakeAgentRunner:
 
 
 class _FakePromptBuilder:
-    def build_implementation_prompt_from_feature_document(
+    def build_implementation_prompt_from_specification(
         self,
         *,
-        feature: dict[str, object],
+        specification: object,
         specification_path: Path,
         feedback: str | None,
         handoff_path: str | None = None,
     ) -> str:
         """Return a deterministic prompt while asserting expected inputs."""
-        assert feature["id"] == "FEAT-300"
+        assert getattr(specification, "feature_id") == "FEAT-300"
         assert specification_path.name == "spec.yaml"
         assert feedback == "retry"
         assert handoff_path is None

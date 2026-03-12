@@ -202,6 +202,41 @@ def test_repo_layer_contracts_rule_blocks_deleted_legacy_checks_service_module(
     ]
 
 
+def test_repo_layer_contracts_rule_blocks_raw_feature_document_prompt_builder_entrypoint(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Fail when the application prompt builder restores raw feature-document input."""
+    prompt_builder_path = (
+        tmp_path
+        / "src"
+        / "engineeringagent"
+        / "application"
+        / "prompt_builder.py"
+    )
+    prompt_builder_path.parent.mkdir(parents=True, exist_ok=True)
+    prompt_builder_path.write_text(
+        "\n".join(
+            [
+                "class PromptBuilder:",
+                "    def build_implementation_prompt_from_feature_document(self) -> str:",
+                "        return 'legacy'",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert payload["rule_id"] == "architecture.repo-layer-contracts"
+    assert payload["violations"] == [
+        "src/engineeringagent/application/prompt_builder.py: prompt builder must not expose raw feature-document compatibility entrypoints"
+    ]
+
+
 def test_repo_layer_contracts_rule_blocks_deleted_application_quality_package(
     tmp_path: Path,
     repo_root: Path,

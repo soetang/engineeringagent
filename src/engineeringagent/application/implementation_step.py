@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import json
 import subprocess
+from enum import Enum
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, TypeVar
 
 from engineeringagent.application.feature_iteration_contracts import (
     ImplementStepInputs,
@@ -17,6 +18,12 @@ from engineeringagent.domain.audit import (
     parse_implement_progress_envelope,
 )
 from engineeringagent.domain.specification import (
+    FeatureArtifacts,
+    FeaturePriority,
+    FeatureSpecification,
+    FeatureStatus,
+    FeatureType,
+    PlanningTier,
     current_progress_unit,
     feature_progress_reference,
 )
@@ -29,6 +36,7 @@ EnsureProgressArtifacts = Callable[[ImplementStepInputs], None]
 RepoRelativePathLabeler = Callable[[Path, Path], str]
 EmitImplementStepStart = Callable[[str], None]
 EmitImplementOutput = Callable[[str], None]
+EnumT = TypeVar("EnumT", bound=Enum)
 
 
 class ImplementStepOutputDependencies:
@@ -290,12 +298,105 @@ def _build_implement_prompt(
             implement_inputs.project_root,
             persisted_handoff_path,
         )
-    return prompt_builder.build_implementation_prompt_from_feature_document(
-        feature=implement_inputs.feature,
+    return prompt_builder.build_implementation_prompt_from_specification(
+        specification=_coerce_feature_specification(implement_inputs.feature),
         specification_path=implement_inputs.feature_path,
         feedback=implement_inputs.feedback,
         handoff_path=handoff_path,
     )
+
+
+def _coerce_feature_specification(
+    feature: dict[str, object],
+) -> FeatureSpecification:
+    artifacts = feature.get("artifacts")
+    feature_id = _optional_str(feature.get("feature_id"))
+    if feature_id is None:
+        feature_id = _optional_str(feature.get("id")) or "unknown-feature"
+    title = _optional_str(feature.get("title")) or feature_id
+    return FeatureSpecification(
+        feature_id=feature_id,
+        title=title,
+        feature_type=_coerce_enum(
+            feature.get("feature_type", feature.get("type")),
+            FeatureType,
+            FeatureType.FEATURE,
+        ),
+        expected_commit_subject=_first_non_empty_str(
+            feature,
+            "expected_commit_subject",
+            default="feat: implement unknown-feature",
+        ),
+        planning_tier=_coerce_enum(
+            feature.get("planning_tier"),
+            PlanningTier,
+            PlanningTier.DIRECT,
+        ),
+        status=_coerce_enum(
+            feature.get("status"),
+            FeatureStatus,
+            FeatureStatus.BACKLOG,
+        ),
+        priority=_coerce_enum(
+            feature.get("priority"),
+            FeaturePriority,
+            FeaturePriority.HIGH,
+        ),
+        objective=_first_non_empty_str(feature, "objective", default=title),
+        context=_optional_str(feature.get("context")),
+        constraints=_string_tuple(feature.get("constraints")),
+        implementation_notes=_optional_str(feature.get("implementation_notes")),
+        acceptance=_string_tuple(feature.get("acceptance")),
+        artifacts=_coerce_artifacts(artifacts),
+        updated_at=_optional_str(feature.get("updated_at")),
+    )
+
+
+def _coerce_artifacts(value: object) -> FeatureArtifacts:
+    if not isinstance(value, dict):
+        return FeatureArtifacts()
+    return FeatureArtifacts(
+        plan=_optional_str(value.get("plan")),
+        research=_optional_str(value.get("research")),
+        supporting=_string_tuple(value.get("supporting")),
+    )
+
+
+def _optional_str(value: object) -> str | None:
+    if not isinstance(value, str):
+        return None
+    normalized = value.strip()
+    return normalized or None
+
+
+def _first_non_empty_str(values: dict[str, object], key: str, default: str) -> str:
+    value = _optional_str(values.get(key))
+    return value or default
+
+
+def _string_tuple(value: object) -> tuple[str, ...]:
+    if not isinstance(value, (list, tuple)):
+        return ()
+    return tuple(
+        normalized for item in value if (normalized := _optional_str(item)) is not None
+    )
+
+
+def _coerce_enum(
+    value: object,
+    enum_type: type[EnumT],
+    default: EnumT,
+) -> EnumT:
+    if isinstance(value, enum_type):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip()
+        if normalized:
+            try:
+                return enum_type(normalized)
+            except ValueError:
+                pass
+    return default
 
 
 def _emit_agent_output(

@@ -413,6 +413,15 @@ def _application_module_violations(path: Path) -> list[str]:
             message="application and ports modules must not import init_scaffold modules",
         )
     )
+    if rel_path == "src/engineeringagent/application/prompt_builder.py":
+        for node in ast.walk(module):
+            if isinstance(node, ast.FunctionDef) and (
+                node.name == "build_implementation_prompt_from_feature_document"
+            ):
+                violations.append(
+                    f"{rel_path}: prompt builder must not expose raw feature-document compatibility entrypoints"
+                )
+                break
     return violations
 
 

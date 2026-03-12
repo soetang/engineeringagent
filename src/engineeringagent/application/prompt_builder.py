@@ -97,23 +97,6 @@ class PromptBuilder:
         )
         return self.build_implementation_prompt(request)
 
-    def build_implementation_prompt_from_feature_document(
-        self,
-        *,
-        feature: Mapping[str, object],
-        specification_path: Path,
-        feedback: str | None,
-        handoff_path: str | None = None,
-    ) -> str:
-        """Render the implementation prompt from a raw feature document payload."""
-
-        return self.build_implementation_prompt_from_specification(
-            specification=_coerce_feature_specification(feature),
-            specification_path=specification_path,
-            feedback=feedback,
-            handoff_path=handoff_path,
-        )
-
 
 def _resolved_artifact_reference(
     specification_path: Path, artifact_reference: str | None
