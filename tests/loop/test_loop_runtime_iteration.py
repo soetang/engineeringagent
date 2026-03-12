@@ -10,7 +10,7 @@ import engineeringagent.loop_runtime.iteration as iteration_module
 from engineeringagent.adapters.progress.handoff import (
     fallback_implement_progress_envelope,
 )
-from engineeringagent.adapters.runtime.run_loop_context import (
+from engineeringagent.bootstrap.run_loop_context import (
     LoopRun,
     RunConfig,
     RunServices,

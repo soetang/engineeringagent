@@ -5,9 +5,9 @@ from typing import Any, NamedTuple, Sequence
 
 from .adapters.progress import write_iteration_telemetry
 from .adapters.runtime.feature_selector import choose_feature_with_selector
-from .adapters.runtime.run_loop_context import LoopRun, RunConfig, RunServices
 from .agents import preflight, run_agent
 from .application import FeatureIterationRequest
+from .bootstrap.run_loop_context import LoopRun, RunConfig, RunServices
 from .domain.audit import (
     FeatureIterationInputs,
     IterationOutcome,

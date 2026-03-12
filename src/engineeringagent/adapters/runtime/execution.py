@@ -8,20 +8,7 @@ from types import SimpleNamespace
 from typing import Any, Callable
 
 from engineeringagent.adapters.progress import write_iteration_telemetry
-from engineeringagent.adapters.runtime.run_loop_builder import (
-    RunConfigOptions,
-    build_loop_run,
-    build_run_config,
-    enforce_worktree_precondition,
-    run_selected_feature_iterations,
-)
-from engineeringagent.adapters.runtime.run_loop_context import LoopRun
 from engineeringagent.application import FeatureIterationRequest
-from engineeringagent.domain.audit import (
-    FeatureIterationInputs,
-    IterationOutcome,
-    IterationSummaryInputs,
-)
 from engineeringagent.application.feature_iteration_service import (
     FeatureIterationService,
 )
@@ -30,7 +17,20 @@ from engineeringagent.bootstrap.iteration_reporting import (
     build_default_iteration_report_observers,
     publish_iteration_report,
 )
+from engineeringagent.bootstrap.run_loop_builder import (
+    RunConfigOptions,
+    build_loop_run,
+    build_run_config,
+    enforce_worktree_precondition,
+    run_selected_feature_iterations,
+)
+from engineeringagent.bootstrap.run_loop_context import LoopRun
 from engineeringagent.bootstrap.runtime_execution import run_loop_controller
+from engineeringagent.domain.audit import (
+    FeatureIterationInputs,
+    IterationOutcome,
+    IterationSummaryInputs,
+)
 from engineeringagent.domain.specification import feature_completion_commit_subject
 from engineeringagent.ports import (
     CommitRequest,

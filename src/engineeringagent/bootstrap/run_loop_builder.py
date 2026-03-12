@@ -1,4 +1,4 @@
-"""Adapter-owned helpers for constructing transitional loop runtime context."""
+"""Bootstrap-owned helpers for constructing loop runtime context."""
 
 from __future__ import annotations
 
@@ -6,21 +6,21 @@ from pathlib import Path
 from typing import Any, Callable, NamedTuple, Sequence
 
 from engineeringagent.agents import preflight, run_agent
+from engineeringagent.adapters.runtime.feature_selector import choose_feature_with_selector
 from engineeringagent.domain.audit import (
     FeatureIterationInputs,
     IterationOutcome,
     IterationSummaryInputs,
 )
+from engineeringagent.domain.specification import deterministic_feature_choice
 from engineeringagent.loop_runtime.feature_state import (
     discover_active_feature_paths,
     done_features_pending_archive,
     pending_features,
     resolve_feature_paths,
 )
-from engineeringagent.domain.specification import deterministic_feature_choice
 from engineeringagent.ports import VersionControlFailure
 
-from .feature_selector import choose_feature_with_selector
 from .run_loop_context import LoopRun, RunConfig, RunServices
 
 
