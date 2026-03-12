@@ -13,10 +13,10 @@ from engineeringagent.domain.quality import (
     HARNESS_CHECK_GROUPS,
     HarnessCheckPhase,
     SelectionProfile,
-    list_check_groups as domain_list_check_groups,
     normalize_check_groups,
     reviewers_group_selected,
 )
+
 
 class _NormalizedRunChecksRequest(BaseModel):
     """Normalized request consumed by checks orchestration internals."""
@@ -93,11 +93,6 @@ _SELECTION_PROFILE_ERROR = (
 )
 
 HARNESS_GROUPS = HARNESS_CHECK_GROUPS
-
-
-def list_check_groups() -> tuple[str, ...]:
-    """Return supported checks groups in deterministic CLI order."""
-    return domain_list_check_groups()
 
 
 def normalize_groups(
@@ -250,10 +245,7 @@ def _resolve_selection_profile(
     if raw_selection_profile is not None:
         return _coerce_selection_profile(raw_selection_profile)
 
-    if (
-        phase != HarnessCheckPhase.MANUAL
-        and collect_changed_paths_fn is not None
-    ):
+    if phase != HarnessCheckPhase.MANUAL and collect_changed_paths_fn is not None:
         return "loop_runtime"
 
     return "default"

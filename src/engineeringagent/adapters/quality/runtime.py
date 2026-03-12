@@ -8,11 +8,11 @@ from typing import Any, Callable, cast
 from typing_extensions import Unpack
 
 from engineeringagent.checks import collect_changed_paths
-from engineeringagent.checks.config_selection import (
+from engineeringagent.adapters.quality.config_selection import (
     ChecksConfigSelectionError,
     load_selected_harness_checks_document,
 )
-from engineeringagent.checks.request_normalization import (
+from engineeringagent.adapters.quality.request_normalization import (
     CHECK_GROUP_COMMANDS,
     CHECK_GROUP_FITNESS,
     CHECK_GROUP_REVIEWERS,

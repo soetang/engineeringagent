@@ -4,11 +4,11 @@ from pathlib import Path
 
 import pytest
 
-from engineeringagent.checks.config_selection import (
+from engineeringagent.adapters.quality.config_selection import (
     ChecksConfigSelectionError,
     load_selected_harness_checks_document,
 )
-from engineeringagent.checks.request_normalization import (
+from engineeringagent.adapters.quality.request_normalization import (
     build_run_checks_request,
 )
 

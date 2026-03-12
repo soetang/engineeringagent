@@ -104,7 +104,7 @@ def test_checker_ignores_adapter_quality_runtime_when_it_composes_checks_interna
     (src_root / "runtime.py").write_text(
         "\n".join(
             [
-                "from engineeringagent.checks.config_selection import load_selected_harness_checks_document",
+                "from engineeringagent.adapters.quality.config_selection import load_selected_harness_checks_document",
                 "from engineeringagent.adapters.quality.check_strategies import CommandCheckStrategy",
                 "",
                 "__all__ = ['load_selected_harness_checks_document', 'CommandCheckStrategy']",

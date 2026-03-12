@@ -19,7 +19,9 @@ from engineeringagent.adapters.quality.check_strategies import (
     build_strategy_registry,
     strategy_run_decisions,
 )
-from engineeringagent.checks.request_normalization import build_run_checks_request
+from engineeringagent.adapters.quality.request_normalization import (
+    build_run_checks_request,
+)
 from engineeringagent.domain.quality import CheckDecision, CheckExecutionRecord
 from engineeringagent.presentation.presenters.prompt_feedback import normalize_prompt_feedback
 from engineeringagent.domain.quality import HarnessCheckPhase

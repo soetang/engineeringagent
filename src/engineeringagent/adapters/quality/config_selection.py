@@ -6,7 +6,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict
 
 from engineeringagent.adapters.documents import load_harness_checks_document
-from engineeringagent.checks.request_normalization import (
+from engineeringagent.adapters.quality.request_normalization import (
     CHECK_GROUP_COMMANDS,
     CHECK_GROUP_FITNESS,
     CHECK_GROUP_REVIEWERS,
