@@ -146,8 +146,8 @@ def test_default_prompt_builder_renders_artifact_path_prompt(
         ImplementationPromptRequest(
             feature_id=specification.feature_id,
             specification_path=feature_path,
-            plan_path=str(feature_path.parent / "plan.md"),
-            research_path=str(feature_path.parent / "research.md"),
+            plan_path=feature_path.parent / "plan.md",
+            research_path=feature_path.parent / "research.md",
             handoff_path=".engineeringagent/progress/FEAT-900/handoff.md",
             retry_feedback="fix the failing tests first",
         )
@@ -235,10 +235,10 @@ def test_default_prompt_builder_prefers_repo_local_templates(
         "class ImplementationInput(BaseModel):\n"
         "    feature_id: str\n"
         "    specification_path: str\n"
-        "    plan_path: str = ''\n"
-        "    research_path: str = ''\n"
-        "    handoff_path: str = ''\n"
-        "    retry_feedback: str = ''\n"
+        "    plan_path: str | None = None\n"
+        "    research_path: str | None = None\n"
+        "    handoff_path: str | None = None\n"
+        "    retry_feedback: str | None = None\n"
         "class ImplementationOutput(BaseModel):\n"
         "    summary: str\n"
         "PROMPT_DEFINITION = PromptDefinition(\n"
@@ -292,10 +292,10 @@ def test_prompt_builder_uses_configured_implementation_prompt_id(
         "class ImplementationInput(BaseModel):\n"
         "    feature_id: str\n"
         "    specification_path: str\n"
-        "    plan_path: str = ''\n"
-        "    research_path: str = ''\n"
-        "    handoff_path: str = ''\n"
-        "    retry_feedback: str = ''\n"
+        "    plan_path: str | None = None\n"
+        "    research_path: str | None = None\n"
+        "    handoff_path: str | None = None\n"
+        "    retry_feedback: str | None = None\n"
         "class ImplementationOutput(BaseModel):\n"
         "    summary: str\n"
         "PROMPT_DEFINITION = PromptDefinition(\n"
@@ -349,10 +349,10 @@ def test_prompt_builder_renders_with_typed_prompt_input_model(
         "class ImplementationInput(BaseModel):\n"
         "    feature_id: str\n"
         "    specification_path: str\n"
-        "    plan_path: str = ''\n"
-        "    research_path: str = ''\n"
-        "    handoff_path: str = ''\n"
-        "    retry_feedback: str = ''\n"
+        "    plan_path: str | None = None\n"
+        "    research_path: str | None = None\n"
+        "    handoff_path: str | None = None\n"
+        "    retry_feedback: str | None = None\n"
         "class ImplementationOutput(BaseModel):\n"
         "    summary: str\n"
         "def _render(values: ImplementationInput) -> str:\n"

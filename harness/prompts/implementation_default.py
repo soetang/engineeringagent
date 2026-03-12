@@ -19,10 +19,10 @@ class ImplementationPromptInput(BaseModel):
 
     feature_id: str
     specification_path: str
-    plan_path: str = ""
-    research_path: str = ""
-    handoff_path: str = ""
-    retry_feedback: str = ""
+    plan_path: str | None = None
+    research_path: str | None = None
+    handoff_path: str | None = None
+    retry_feedback: str | None = None
 
 
 class ImplementationPromptOutputV1(BaseModel):
@@ -41,10 +41,10 @@ def _render(values: ImplementationPromptInput) -> str:
         "Read and follow these files:",
         f"- specification: {values.specification_path}",
     ]
-    plan_path = values.plan_path.strip()
-    research_path = values.research_path.strip()
-    handoff_path = values.handoff_path.strip()
-    retry_feedback = values.retry_feedback.strip()
+    plan_path = (values.plan_path or "").strip()
+    research_path = (values.research_path or "").strip()
+    handoff_path = (values.handoff_path or "").strip()
+    retry_feedback = (values.retry_feedback or "").strip()
 
     if plan_path:
         sections.append(f"- plan: {plan_path}")

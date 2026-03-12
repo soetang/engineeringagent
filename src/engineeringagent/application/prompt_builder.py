@@ -17,9 +17,9 @@ class ImplementationPromptRequest(BaseModel):
 
     feature_id: str
     specification_path: Path
-    plan_path: str | None = None
-    research_path: str | None = None
-    handoff_path: str | None = None
+    plan_path: Path | None = None
+    research_path: Path | None = None
+    handoff_path: Path | str | None = None
     retry_feedback: str | None = None
 
 
@@ -65,17 +65,20 @@ class PromptBuilder:
         implementation_definition = self._prompt_definitions.get(
             self._implementation_prompt_id
         )
-        return implementation_definition.render(
-            request.model_copy(
-                update={
-                    "specification_path": str(request.specification_path),
-                    "plan_path": request.plan_path or "",
-                    "research_path": request.research_path or "",
-                    "handoff_path": request.handoff_path or "",
-                    "retry_feedback": _normalize_feedback(request.retry_feedback),
-                }
-            )
-        )
+        prompt_values: dict[str, str] = {
+            "feature_id": request.feature_id,
+            "specification_path": str(request.specification_path),
+        }
+        if request.plan_path is not None:
+            prompt_values["plan_path"] = str(request.plan_path)
+        if request.research_path is not None:
+            prompt_values["research_path"] = str(request.research_path)
+        if request.handoff_path is not None:
+            prompt_values["handoff_path"] = str(request.handoff_path)
+        normalized_feedback = _normalize_feedback(request.retry_feedback)
+        if normalized_feedback:
+            prompt_values["retry_feedback"] = normalized_feedback
+        return implementation_definition.render(prompt_values)
 
     def build_implementation_prompt_from_specification(
         self,
@@ -98,13 +101,13 @@ class PromptBuilder:
 
 def _resolved_artifact_reference(
     specification_path: Path, artifact_reference: str | None
-) -> str | None:
+) -> Path | None:
     if artifact_reference is None:
         return None
     normalized = artifact_reference.strip()
     if not normalized:
         return None
-    return str(specification_path.parent / normalized)
+    return specification_path.parent / normalized
 
 
 def _normalize_feedback(feedback: str | None) -> str:
