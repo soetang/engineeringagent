@@ -93,6 +93,20 @@ rules:
       - run
       - python
       - harness/fitness_functions/rules/check_legacy_run_loop_bridge_absent.py
+  - rule_id: architecture.repo-config-presence
+    name: Repository config presence
+    summary: Require the canonical engineeringagent.toml file at the repository root.
+    rationale: The target architecture makes engineeringagent.toml the primary repository configuration surface so operators can inspect one dedicated file for defaults instead of relying on pyproject fallback.
+    remediation: Commit engineeringagent.toml at the repository root and keep it current with the repository's effective defaults.
+    scope: engineeringagent.toml at repository root
+    severity: error
+    side_effect_free: true
+    adapter: command
+    command:
+      - uv
+      - run
+      - python
+      - harness/fitness_functions/rules/check_repo_config_presence.py
   - rule_id: architecture.module-statement-budget
     name: Module statement budget
     summary: Enforce AST-based non-doc statement caps for Python modules.

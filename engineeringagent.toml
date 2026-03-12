@@ -1,11 +1,21 @@
-[harness.fitness]
-opencode-real-smoke = false
+[paths]
+docs_root = "docs"
+harness_root = "harness"
+progress_root = ".engineeringagent/progress"
+specifications_root = "docs/spec"
+harness_checks_path = "harness/checks.yaml"
 
-[harness.pytest]
-opencode-integration = true
+[agents.implementation]
+prompt_definition = "implementation_default"
 
 [agents]
 backend = "codex"
 
 [agents.codex]
 profile = "engineeringagent"
+
+[harness.fitness]
+opencode-real-smoke = false
+
+[harness.pytest]
+opencode-integration = true

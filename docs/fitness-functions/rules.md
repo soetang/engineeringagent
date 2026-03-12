@@ -8,19 +8,20 @@ This file is generated from active manifest-declared fitness rules.
 | --- | --- | --- | --- | --- | --- | --- |
 | `architecture.adapter-root-locality` | error | command | custom | `src/engineeringagent/adapters` | - | Keep adapter implementation modules inside focused adapters subpackages. |
 | `architecture.agents-backends-boundary` | error | command | custom | `src/engineeringagent` | - | Forbid direct backend package usage outside the agents boundary. |
+| `architecture.application-output-boundary` | error | command | custom | `src/engineeringagent/application` | - | Keep direct terminal output out of application modules. |
 | `architecture.application-tests-boundary` | error | command | custom | `tests/application` | - | Keep application tests on application/domain/ports contracts instead of legacy checks internals. |
 | `architecture.backend-literal-locality-budget` | error | command | custom | `src/engineeringagent excluding src/engineeringagent/agents/** and src/engineeringagent/checks/**` | `harness/fitness_functions/policies/backend_literal_locality_budget.yaml` | Enforce a zero-budget backend literal locality boundary outside allowed packages. |
 | `architecture.checks-import-surface` | error | command | custom | `src/engineeringagent` | - | Enforce a narrow import surface for engineeringagent.checks. |
-| `architecture.checks-own-prompt-feedback-rendering` | error | command | custom | `src/engineeringagent/loop_runtime/**, src/engineeringagent/loop.py, and src/engineeringagent/prompts/renderer.py` | - | Fail when loop/prompt code performs checks-specific feedback shaping outside checks strategies. |
+| `architecture.checks-own-prompt-feedback-rendering` | error | command | custom | `src/engineeringagent/loop_runtime/**, src/engineeringagent/adapters/runtime/iteration_phases.py, src/engineeringagent/loop.py, and src/engineeringagent/prompts/renderer.py` | - | Fail when loop/prompt code performs checks-specific feedback shaping outside checks strategies. |
 | `architecture.dep-directionality` | error | command | custom | `src/engineeringagent` | `harness/fitness_functions/policies/dependency_directionality.yaml` | Enforce ports-and-adapters dependency direction boundaries across presentation, application, ports, and domain seams. |
 | `architecture.guidance-module-locations` | error | command | custom | `src/engineeringagent guidance adapter and CLI modules` | - | Keep guidance adapter and CLI modules in the target architecture paths. |
 | `architecture.harness-root-yaml-only` | error | command | custom | `harness/ (regular files at root)` | - | Enforce YAML-only regular files directly under harness root. |
 | `architecture.harness-src-import-allowlist` | error | command | custom | `harness/fitness_functions` | - | Restrict harness fitness functions to a narrow supported engineeringagent surface. |
 | `architecture.hermetic-fitness-test-isolation` | error | command | custom | `tests/fitness` | `harness/fitness_functions/policies/hermetic_fitness_test_isolation.yaml` | Prevent tests/fitness from scanning the live repository checkout. |
-| `architecture.iteration-pipeline-observer-decoupling` | error | command | custom | `src/engineeringagent/loop_runtime/iteration.py` | - | Keep iteration pipeline free of telemetry and console side effects. |
+| `architecture.iteration-pipeline-observer-decoupling` | error | command | custom | `src/engineeringagent/application/feature_iteration_pipeline.py` | - | Keep iteration pipeline free of telemetry and console side effects. |
 | `architecture.legacy-run-loop-bridge-absent` | error | command | custom | `src/engineeringagent/ports/run_loop_executor.py and deleted source files under src/engineeringagent/adapters/loop` | - | Keep the deleted loop adapter package removed. |
-| `architecture.loop-checks-policy-ownership` | error | command | custom | `src/engineeringagent/loop_runtime/** and src/engineeringagent/loop.py` | - | Fail when loop runtime encodes checks group/timing selection policy. |
-| `architecture.loop-checks-result-boundary` | error | command | custom | `src/engineeringagent/loop_runtime/** and src/engineeringagent/loop.py` | - | Fail when loop runtime branches on checks type/group semantics or parses checks-internal payloads. |
+| `architecture.loop-checks-policy-ownership` | error | command | custom | `src/engineeringagent/loop_runtime/**, src/engineeringagent/adapters/runtime/iteration_phases.py, and src/engineeringagent/loop.py` | - | Fail when loop runtime encodes checks group/timing selection policy. |
+| `architecture.loop-checks-result-boundary` | error | command | custom | `src/engineeringagent/loop_runtime/**, src/engineeringagent/adapters/runtime/iteration_phases.py, and src/engineeringagent/loop.py` | - | Fail when loop runtime branches on checks type/group semantics or parses checks-internal payloads. |
 | `architecture.loop-facade-line-budget` | error | command | custom | `src/engineeringagent/loop.py` | - | Enforce a permanent line budget cap for the loop facade. |
 | `architecture.loop-subprocess-boundary` | error | command | custom | `src/engineeringagent` | `harness/fitness_functions/policies/loop_subprocess_boundary_policy.yaml` | Enforce subprocess allowlist boundaries for command adapters/clients. |
 | `architecture.markdown-locality-reference-coverage` | error | command | custom | `repository markdown (*.md)` | - | Restrict markdown to approved paths and require non-doc markdown files to be referenced in-repo (excluding prompt/scaffold template asset roots). |
@@ -33,6 +34,7 @@ This file is generated from active manifest-declared fitness rules.
 | `architecture.no-stdlib-dataclasses-in-src` | error | command | custom | `src/engineeringagent` | - | Block stdlib dataclasses usage in production source models. |
 | `architecture.progress-log-path-locality` | error | command | custom | `src/engineeringagent` | - | Centralize loop progress artifact paths and writes behind approved helpers. |
 | `architecture.prompt-locality` | error | command | custom | `src/engineeringagent` | - | Keep canonical loop prompt content and template reads localized. |
+| `architecture.repo-config-presence` | error | command | custom | `engineeringagent.toml at repository root` | - | Require the canonical engineeringagent.toml file at the repository root. |
 | `architecture.repo-layer-contracts` | error | command | custom | `src/engineeringagent package structure, legacy path deletions, and agent boundary surfaces` | - | Enforce repository-owned architecture contracts as fitness checks instead of validate-time unit rules. |
 | `architecture.scaffold-template-locality` | error | command | custom | `src/engineeringagent` | - | Keep scaffold template payloads in scaffold_templates assets. |
 | `architecture.shared-kernel-locality` | error | command | custom | `src/engineeringagent/domain/shared plus legacy duplicate-definition surfaces` | - | Localize cross-domain identifiers and enums under engineeringagent.domain.shared. |
@@ -56,6 +58,13 @@ This file is generated from active manifest-declared fitness rules.
 - Side-effect free: `true`
 - Rationale: Keeps backend implementations an internal detail behind engineeringagent.agents.run_agent.
 - Remediation: Replace direct engineeringagent.adapters.agents imports with engineeringagent.agents.run_agent.
+
+### `architecture.application-output-boundary`
+
+- Name: Application output boundary
+- Side-effect free: `true`
+- Rationale: Application workflows should return typed data and leave terminal rendering to bootstrap or presentation-owned callbacks.
+- Remediation: Remove direct print calls from application modules and route output through injected runtime or presentation callbacks.
 
 ### `architecture.application-tests-boundary`
 
@@ -128,14 +137,14 @@ This file is generated from active manifest-declared fitness rules.
 - Name: Iteration pipeline observer decoupling
 - Side-effect free: `true`
 - Rationale: Preserves the report-plus-observer split so orchestration remains testable and side effects stay localized.
-- Remediation: Move telemetry and console output calls out of loop_runtime.iteration and into loop-wired observers that consume IterationReport.
+- Remediation: Move telemetry and console output calls out of application.feature_iteration_pipeline and into loop-wired observers that consume IterationReport.
 
 ### `architecture.legacy-run-loop-bridge-absent`
 
 - Name: Legacy run-loop bridge absent
 - Side-effect free: `true`
-- Rationale: The target architecture keeps runtime loop execution wiring in bootstrap during migration and does not retain a dedicated adapters.loop package.
-- Remediation: Keep runtime loop execution wiring under engineeringagent.bootstrap.runtime_execution and do not restore the deleted engineeringagent.adapters.loop package.
+- Rationale: The target architecture keeps transitional runtime execution inside the focused adapters.runtime package and does not retain a dedicated adapters.loop package.
+- Remediation: Keep runtime loop execution wiring under engineeringagent.adapters.runtime.execution and do not restore the deleted engineeringagent.adapters.loop package.
 
 ### `architecture.loop-checks-policy-ownership`
 
@@ -238,6 +247,13 @@ This file is generated from active manifest-declared fitness rules.
 - Side-effect free: `true`
 - Rationale: Prevents prompt drift and duplicate canonical wording across modules.
 - Remediation: Move canonical prompt text and template reads to engineeringagent.prompts templates/renderer modules.
+
+### `architecture.repo-config-presence`
+
+- Name: Repository config presence
+- Side-effect free: `true`
+- Rationale: The target architecture makes engineeringagent.toml the primary repository configuration surface so operators can inspect one dedicated file for defaults instead of relying on pyproject fallback.
+- Remediation: Commit engineeringagent.toml at the repository root and keep it current with the repository's effective defaults.
 
 ### `architecture.repo-layer-contracts`
 
