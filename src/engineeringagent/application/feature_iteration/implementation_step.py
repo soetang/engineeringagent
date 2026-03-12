@@ -7,6 +7,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, TypeVar
 
+from engineeringagent.application.prompt_builder import PromptBuilder
 from engineeringagent.application.feature_iteration.contracts import (
     ImplementStepInputs,
     ImplementStepResult,
@@ -28,7 +29,7 @@ from engineeringagent.domain.specification import (
 )
 from engineeringagent.ports import AgentRunner, AgentRunRequest, ProgressJournal
 
-ImplementationPromptBuilder = Any
+
 DescribeImplementAction = Any
 ClassifyImplementFailure = Callable[[Exception], tuple[str, str]]
 ShouldHandleImplementFailure = Callable[[Exception], bool]
@@ -91,7 +92,7 @@ def run_implement_step_from_inputs(
     implement_inputs: ImplementStepInputs,
     *,
     agent_runner: AgentRunner,
-    prompt_builder: ImplementationPromptBuilder,
+    prompt_builder: PromptBuilder,
     progress_journal: ProgressJournal,
     runtime_dependencies: ImplementStepRuntimeDependencies,
 ) -> ImplementStepResult:
@@ -129,7 +130,13 @@ def run_implement_step_from_inputs(
                 emit_output=runtime_dependencies.output.emit_output,
             )
             command_output = _format_success_implement_output(command, output)
-            return (True, None, command_output, fallback_envelope, True)
+            return ImplementStepResult(
+                ok=True,
+                failed_gate=None,
+                command_output=command_output,
+                handoff_envelope=fallback_envelope,
+                used_handoff_fallback=True,
+            )
         failed_gate, message = runtime_dependencies.failure.classify_backend_exception(
             exc
         )
@@ -138,12 +145,12 @@ def run_implement_step_from_inputs(
             exc,
             message,
         )
-        return (
-            False,
-            failed_gate,
-            command_output,
-            fallback_implement_progress_envelope(**fallback_context),
-            True,
+        return ImplementStepResult(
+            ok=False,
+            failed_gate=failed_gate,
+            command_output=command_output,
+            handoff_envelope=fallback_implement_progress_envelope(**fallback_context),
+            used_handoff_fallback=True,
         )
 
     envelope, used_fallback, output = _coerce_implement_output(
@@ -156,7 +163,13 @@ def run_implement_step_from_inputs(
         emit_output=runtime_dependencies.output.emit_output,
     )
     command_output = _format_success_implement_output(command, output)
-    return (True, None, command_output, envelope, used_fallback)
+    return ImplementStepResult(
+        ok=True,
+        failed_gate=None,
+        command_output=command_output,
+        handoff_envelope=envelope,
+        used_handoff_fallback=used_fallback,
+    )
 
 
 def _run_agent_with_structured_output(
@@ -263,7 +276,7 @@ def _format_success_implement_output(command: str, output: str) -> str:
 def _build_implement_prompt(
     implement_inputs: ImplementStepInputs,
     *,
-    prompt_builder: ImplementationPromptBuilder,
+    prompt_builder: PromptBuilder,
     progress_journal: ProgressJournal,
     repo_relative_label: RepoRelativePathLabeler,
 ) -> str:

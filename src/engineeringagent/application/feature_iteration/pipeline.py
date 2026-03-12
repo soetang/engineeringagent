@@ -229,24 +229,23 @@ def _run_implement_phase_if_ready(
         feature, iteration_inputs.feature_path
     )
     state.implement_status = "passed"
-    (
-        ok,
-        implement_failed_gate,
-        state.implement_output,
-        state.implement_handoff_envelope,
-        state.implement_handoff_used_fallback,
-    ) = dependencies.run_implement_step(
+    implement_result = dependencies.run_implement_step(
         iteration_inputs.project_root,
         feature,
         iteration_inputs.feature_path,
         iteration_inputs.feedback,
         iteration_inputs.verbose_output,
     )
-    if ok:
+    state.implement_output = implement_result.command_output
+    state.implement_handoff_envelope = implement_result.handoff_envelope
+    state.implement_handoff_used_fallback = (
+        implement_result.used_handoff_fallback
+    )
+    if implement_result.ok:
         return
     state.result = "failed"
-    state.failed_gate = implement_failed_gate
-    state.implement_status = f"failed:{implement_failed_gate or 'unknown'}"
+    state.failed_gate = implement_result.failed_gate
+    state.implement_status = f"failed:{implement_result.failed_gate or 'unknown'}"
 
 
 def _run_verification_phase_if_passed(

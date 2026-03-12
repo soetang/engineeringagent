@@ -3,19 +3,22 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, TypeAlias
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from engineeringagent.domain.audit.handoff import ImplementProgressEnvelope
 
-ImplementStepResult: TypeAlias = tuple[
-    bool,
-    str | None,
-    str,
-    ImplementProgressEnvelope,
-    bool,
-]
+class ImplementStepResult(BaseModel):
+    """Typed outcome of one application-owned implementation step."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    ok: bool
+    failed_gate: str | None
+    command_output: str
+    handoff_envelope: ImplementProgressEnvelope
+    used_handoff_fallback: bool
 
 
 class IterationOutcome(BaseModel):

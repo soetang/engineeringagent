@@ -5,6 +5,7 @@ from typing import Any, Sequence
 
 import pytest
 
+from engineeringagent.application.prompt_builder import PromptBuilder
 from engineeringagent.application.feature_iteration.contracts import (
     ImplementStepInputs,
 )
@@ -35,7 +36,10 @@ class _FakeAgentRunner:
         return self._result
 
 
-class _FakePromptBuilder:
+class _FakePromptBuilder(PromptBuilder):
+    def __init__(self) -> None:
+        """Avoid repository wiring; tests only exercise the render method."""
+
     def build_implementation_prompt_from_specification(
         self,
         *,
@@ -180,7 +184,7 @@ def test_run_implement_step_emits_start_and_output_through_runtime_callbacks() -
         runtime_dependencies=_runtime_dependencies(observed),
     )
 
-    assert result[0] is True
+    assert result.ok is True
     assert progress_journal.handoff_calls == [(Path("/tmp/project"), "FEAT-300")]
     assert observed["commands"] == ["uv run engineeringagent implement"]
     assert observed["outputs"] == [

@@ -73,7 +73,13 @@ class _CompletionPhaseDependencies(BaseModel):
 
 
 def _passing_implement_result(output: str = "") -> ImplementStepResult:
-    return (True, None, output, fallback_implement_progress_envelope(), True)
+    return ImplementStepResult(
+        ok=True,
+        failed_gate=None,
+        command_output=output,
+        handoff_envelope=fallback_implement_progress_envelope(),
+        used_handoff_fallback=True,
+    )
 
 
 def archive_completed_feature(
