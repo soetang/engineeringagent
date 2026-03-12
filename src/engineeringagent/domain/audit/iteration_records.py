@@ -1,4 +1,4 @@
-"""Internal typed models for feature-iteration workflow orchestration."""
+"""Audit-domain iteration records and operational value objects."""
 
 from __future__ import annotations
 

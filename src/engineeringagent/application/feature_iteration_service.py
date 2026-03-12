@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.application.feature_iteration.models import (
+from engineeringagent.domain.audit.iteration_records import (
     CommandTiming,
     CompletionCommitOutcome,
     FeatureIterationInputs,

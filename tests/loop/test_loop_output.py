@@ -6,8 +6,8 @@ from types import SimpleNamespace
 from typing import Any, get_type_hints
 
 import engineeringagent.adapters.progress.iteration_telemetry as telemetry_module
-import engineeringagent.application.feature_iteration.models as models_module
 import engineeringagent.adapters.runtime.iteration_phases as phases_module
+import engineeringagent.domain.audit.iteration_records as iteration_records_module
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.application.feature_iteration_service import (
     CommandTiming,
@@ -46,7 +46,7 @@ def _progress_root(project_root: Path) -> Path:
 
 
 def test_loop_runtime_models_define_timing_types_before_first_use() -> None:
-    source = Path(models_module.__file__).read_text(encoding="utf-8")
+    source = Path(iteration_records_module.__file__).read_text(encoding="utf-8")
 
     phase_class_pos = source.index("class PhaseTiming")
     assert "PhaseTiming" not in source[:phase_class_pos]

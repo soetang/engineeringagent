@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict
 from engineeringagent.domain.specification import feature_completion_commit_subject
 from engineeringagent.ports import Clock, CommitRequest, VersionControlGateway
 
-from engineeringagent.application.feature_iteration.models import (
+from engineeringagent.domain.audit.iteration_records import (
     IterationOutcome,
     IterationReport,
 )
