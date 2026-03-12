@@ -9,8 +9,8 @@ from engineeringagent.adapters.clock import SystemClock
 from engineeringagent.adapters.config import FilesystemConfigurationProvider
 from engineeringagent.adapters.documents import filesystem_feature_state
 from engineeringagent.adapters.quality.changed_paths import collect_changed_paths
-from engineeringagent.adapters.quality.repository_validator import (
-    ChecksRepositoryValidator,
+from engineeringagent.adapters.quality.validation import (
+    QualityRepositoryValidator,
 )
 from engineeringagent.adapters.quality.runtime import RuntimeChecksRunner
 from engineeringagent.adapters.documents import (
@@ -195,7 +195,7 @@ class AppFactory:
 
     def build_validation_service(self) -> ValidationService:
         """Create the default repository validation service."""
-        return ValidationService(ChecksRepositoryValidator())
+        return ValidationService(QualityRepositoryValidator())
 
     def build_init_workspace_service(self) -> InitWorkspaceService:
         """Create the default workspace initialization service."""

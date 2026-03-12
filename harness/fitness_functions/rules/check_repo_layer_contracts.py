@@ -39,6 +39,7 @@ DELETED_MODULE_PATHS = {
     "src/engineeringagent/adapters/checks/repository_validator.py",
     "src/engineeringagent/adapters/checks/runtime_checks_runner.py",
     "src/engineeringagent/adapters/quality/__init__.py",
+    "src/engineeringagent/adapters/quality/repository_validator.py",
     "src/engineeringagent/adapters/checks/filesystem_checks_catalog_repository.py",
     "src/engineeringagent/adapters/guidance/packaged_guidance_topics.py",
     "src/engineeringagent/adapters/prompts/bundled_prompt_definitions.py",

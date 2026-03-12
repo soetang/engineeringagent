@@ -181,6 +181,32 @@ def test_repo_layer_contracts_rule_blocks_deleted_quality_adapter_facade_module(
     ]
 
 
+def test_repo_layer_contracts_rule_blocks_deleted_quality_repository_validator_module(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Fail when the removed flat quality repository-validator module reappears."""
+    legacy_module = (
+        tmp_path
+        / "src"
+        / "engineeringagent"
+        / "adapters"
+        / "quality"
+        / "repository_validator.py"
+    )
+    legacy_module.parent.mkdir(parents=True, exist_ok=True)
+    legacy_module.write_text("", encoding="utf-8")
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert payload["rule_id"] == "architecture.repo-layer-contracts"
+    assert payload["violations"] == [
+        "src/engineeringagent/adapters/quality/repository_validator.py: deleted legacy module path must remain absent"
+    ]
+
+
 def test_repo_layer_contracts_rule_blocks_deleted_configured_agent_runner_module(
     tmp_path: Path,
     repo_root: Path,

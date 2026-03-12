@@ -13,8 +13,8 @@ from engineeringagent.adapters.documents import (
 )
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
-from engineeringagent.adapters.quality.repository_validator import (
-    ChecksRepositoryValidator,
+from engineeringagent.adapters.quality.validation import (
+    QualityRepositoryValidator,
 )
 from engineeringagent.adapters.quality.runtime import RuntimeChecksRunner
 from engineeringagent.adapters.runtime import (
@@ -114,7 +114,7 @@ def test_app_factory_builds_default_application_services(tmp_path: Path) -> None
     assert isinstance(factory.build_guidance_service(), GuidanceService)
     validation_service = factory.build_validation_service()
     assert isinstance(validation_service, ValidationService)
-    assert isinstance(validation_service._validator, ChecksRepositoryValidator)
+    assert isinstance(validation_service._validator, QualityRepositoryValidator)
     assert isinstance(factory.build_init_workspace_service(), InitWorkspaceService)
     assert isinstance(factory.build_progress_journal(), FilesystemProgressJournal)
     assert isinstance(factory.build_agent_runner(), ConfiguredAgentRunner)

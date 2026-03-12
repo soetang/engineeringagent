@@ -4,16 +4,16 @@ from pathlib import Path
 
 import pytest
 
-from engineeringagent.adapters.quality.repository_validator import (
-    ChecksRepositoryValidator,
+from engineeringagent.adapters.quality.validation.repository_validation_adapter import (
+    QualityRepositoryValidator,
 )
 from engineeringagent.ports import RepositoryValidationRequest, RepositoryValidationResult
 
 
-def test_checks_repository_validator_delegates_to_checks_surface(
+def test_quality_repository_validator_delegates_to_validation_entrypoint(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The adapter forwards the typed request to the concrete validator entrypoint."""
+    """The adapter forwards the typed request to the validation entrypoint."""
     captured: dict[str, object] = {}
 
     def _fake_validate(
@@ -26,11 +26,11 @@ def test_checks_repository_validator_delegates_to_checks_surface(
         return ["issue one", "issue two"]
 
     monkeypatch.setattr(
-        "engineeringagent.adapters.quality.repository_validator.validate",
+        "engineeringagent.adapters.quality.validation.repository_validation_adapter.validate",
         _fake_validate,
     )
 
-    result = ChecksRepositoryValidator().validate(
+    result = QualityRepositoryValidator().validate(
         RepositoryValidationRequest(
             project_root=Path("/tmp/project"),
             schema_only=True,
