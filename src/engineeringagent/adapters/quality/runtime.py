@@ -36,7 +36,6 @@ from engineeringagent.domain.quality import (
     CheckDecision,
     CheckExecutionRecord,
     ChecksRunResult,
-    ChecksRunResult as DomainChecksRunResult,
     ChangedPathsResult,
     CommandInvocationRecord,
     HarnessChecksDocument,
@@ -55,7 +54,7 @@ __all__ = [
 class RuntimeChecksRunner(ChecksRunner):
     """Run checks through the packaged quality runtime."""
 
-    def run(self, request: ChecksRunRequest) -> DomainChecksRunResult:
+    def run(self, request: ChecksRunRequest) -> ChecksRunResult:
         """Execute one checks request through the concrete runtime module."""
         return run_checks(
             request.project_root,

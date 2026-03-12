@@ -26,6 +26,7 @@ CONFIGURED_AGENT_RUNNER_ALLOWED_ROOTS = (
 )
 AGENTS_ROOT = SRC_ROOT / "agents"
 ADAPTERS_AGENTS_ROOT = SRC_ROOT / "adapters" / "agents"
+ADAPTERS_DOCUMENTS_ROOT = SRC_ROOT / "adapters" / "documents"
 BOOTSTRAP_RUNTIME_SUPPORT_PATH = SRC_ROOT / "bootstrap" / "runtime_support.py"
 DELETED_MODULE_PATHS = {
     "src/engineeringagent/changed_paths.py",
@@ -432,6 +433,28 @@ def _application_module_violations(path: Path) -> list[str]:
     return violations
 
 
+def _documents_adapter_violations(path: Path) -> list[str]:
+    rel_path = path.as_posix()
+    module = _parse_module(path)
+    if isinstance(module, str):
+        return [module]
+
+    return [
+        *_forbidden_import_violations(
+            module,
+            rel_path=rel_path,
+            forbidden_modules=("engineeringagent.application",),
+            message="document adapters must not import application modules",
+        ),
+        *_forbidden_dynamic_import_violations(
+            module,
+            rel_path=rel_path,
+            forbidden_modules=("engineeringagent.application",),
+            message="document adapters must not import application modules",
+        ),
+    ]
+
+
 def _domain_module_violations(path: Path) -> list[str]:
     rel_path = path.as_posix()
     module = _parse_module(path)
@@ -618,6 +641,9 @@ def _repo_layer_contract_violations() -> list[str]:
 
     for path in _iter_python_modules(APPLICATION_ROOT):
         violations.extend(_application_module_violations(path))
+
+    for path in _iter_python_modules(ADAPTERS_DOCUMENTS_ROOT):
+        violations.extend(_documents_adapter_violations(path))
 
     for path in sorted(PORTS_ROOT.glob("*.py")):
         if path.name == "__init__.py" or path.as_posix() in deleted_paths:

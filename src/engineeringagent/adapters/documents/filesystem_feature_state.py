@@ -11,6 +11,10 @@ from pydantic import BaseModel, ConfigDict
 import yaml
 
 from engineeringagent.adapters.config import resolve_specifications_root
+from engineeringagent.domain.specification import (
+    InitialFeatureLoadOutcome,
+    PostImplementFeatureOutcome,
+)
 from engineeringagent.domain.shared import utc_now_iso
 from engineeringagent.specs import (
     _is_bundled_feature_spec_path,
@@ -21,10 +25,6 @@ from engineeringagent.specs import (
     load_yaml,
     resolve_feature_package_paths,
     resolve_feature_plan_path,
-)
-from engineeringagent.application.feature_iteration_contracts import (
-    InitialFeatureLoadOutcome,
-    PostImplementFeatureOutcome,
 )
 
 FEATURE_TRANSITIONS: dict[str, set[str]] = {

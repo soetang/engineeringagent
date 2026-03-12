@@ -14,15 +14,17 @@ from engineeringagent.application import (
     FeatureIterationInputs,
     GatePhaseOutcome,
     ImplementStepResult,
-    InitialFeatureLoadOutcome,
     IterationReport,
     IterationTelemetryInputs,
-    PostImplementFeatureOutcome,
     ReviewerPhaseOutcome,
     VerificationPhaseOutcome,
 )
 from engineeringagent.domain.audit import fallback_implement_progress_envelope
 from engineeringagent.domain.quality import ChangedPathsResult
+from engineeringagent.domain.specification import (
+    InitialFeatureLoadOutcome,
+    PostImplementFeatureOutcome,
+)
 from engineeringagent.application.feature_iteration_pipeline import (
     IterationPipelineDependencies,
     _timed_phase,

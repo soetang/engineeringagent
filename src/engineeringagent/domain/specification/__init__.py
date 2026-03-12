@@ -15,6 +15,10 @@ from .feature_specification import (
     FeatureSpecification,
     FeatureType,
 )
+from .feature_state_outcomes import (
+    InitialFeatureLoadOutcome,
+    PostImplementFeatureOutcome,
+)
 
 from .progress import (
     ProgressUnit,
@@ -32,8 +36,10 @@ __all__ = [
     "FeatureSelectionCandidate",
     "FeatureSpecification",
     "FeatureStatus",
+    "InitialFeatureLoadOutcome",
     "FeatureType",
     "PlanningTier",
+    "PostImplementFeatureOutcome",
     "ProgressUnit",
     "current_progress_unit",
     "done_transition_verification_commands",

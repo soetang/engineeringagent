@@ -54,30 +54,6 @@ class IterationOutcome(BaseModel):
         )
 
 
-class InitialFeatureLoadOutcome(BaseModel):
-    """Outcome of loading the selected feature YAML."""
-
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-    feature: dict[str, Any] | None
-    result: str
-    failed_gate: str | None
-    feedback: str | None
-
-
-class PostImplementFeatureOutcome(BaseModel):
-    """Outcome from post-implementation bookkeeping."""
-
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-    feature: dict[str, Any] | None
-    archived_in_iteration: bool
-    archived_path: Path | None
-    result: str
-    failed_gate: str | None
-    feedback: str | None
-
-
 class ImplementStepInputs(BaseModel):
     """Inputs for a single implementation step of the loop."""
 

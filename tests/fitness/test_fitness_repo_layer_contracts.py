@@ -146,6 +146,30 @@ def test_repo_layer_contracts_rule_allows_application_iteration_pipeline_contrac
     assert payload["violations"] == []
 
 
+def test_repo_layer_contracts_rule_blocks_document_adapters_importing_application(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Fail when document adapters depend on application-layer models."""
+    documents_root = (
+        tmp_path / "src" / "engineeringagent" / "adapters" / "documents"
+    )
+    documents_root.mkdir(parents=True, exist_ok=True)
+    (documents_root / "filesystem_feature_state.py").write_text(
+        "from engineeringagent.application import RunLoopRequest\n",
+        encoding="utf-8",
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert payload["rule_id"] == "architecture.repo-layer-contracts"
+    assert payload["violations"] == [
+        "src/engineeringagent/adapters/documents/filesystem_feature_state.py: document adapters must not import application modules"
+    ]
+
+
 def test_repo_layer_contracts_rule_blocks_deleted_audit_iteration_module(
     tmp_path: Path,
     repo_root: Path,

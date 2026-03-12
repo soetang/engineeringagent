@@ -14,6 +14,8 @@ from engineeringagent.domain.specification import (
     current_progress_unit,
     done_transition_verification_commands,
     feature_progress_reference,
+    InitialFeatureLoadOutcome,
+    PostImplementFeatureOutcome,
     progress_status_snapshot,
 )
 from engineeringagent.specs import feature_progress_kind
@@ -24,11 +26,9 @@ from .feature_iteration_contracts import (
     FeatureIterationInputs,
     GatePhaseOutcome,
     ImplementStepResult,
-    InitialFeatureLoadOutcome,
     IterationReport,
     IterationTelemetryInputs,
     PhaseTiming,
-    PostImplementFeatureOutcome,
     ReviewerPhaseOutcome,
     VerificationPhaseOutcome,
 )
