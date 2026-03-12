@@ -5,8 +5,8 @@ allowlisted_modules:
   - src/engineeringagent/adapters/vcs/git_version_control_gateway.py
   - src/engineeringagent/adapters/vcs/git_cli.py
   - src/engineeringagent/process.py
-  - src/engineeringagent/agents/backends/opencode/client.py
-  - src/engineeringagent/agents/backends/codex/client.py
+  - src/engineeringagent/adapters/agents/opencode/client.py
+  - src/engineeringagent/adapters/agents/codex/client.py
 subprocess_call_names:
   - run
   - Popen

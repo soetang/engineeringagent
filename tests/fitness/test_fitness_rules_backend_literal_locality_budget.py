@@ -87,6 +87,7 @@ def test_backend_literal_locality_budget_policy_defines_backend_tokens() -> None
     assert isinstance(allowed_roots, list)
     assert allowed_roots == [
         "src/engineeringagent/agents",
+        "src/engineeringagent/adapters/agents",
         "src/engineeringagent/checks",
     ]
 
@@ -208,7 +209,7 @@ def test_backend_literal_locality_budget_rule_detects_identifier_tokens(
         "src/engineeringagent/runtime_backend_coupling.py",
         "\n".join(
             [
-                "from engineeringagent.agents.backends.opencode.client import DEFAULT_OPENCODE_AGENT",
+                "from engineeringagent.adapters.agents.opencode.client import DEFAULT_OPENCODE_AGENT",
                 "BACKEND_NAME = 'opencode'",
                 "",
             ]

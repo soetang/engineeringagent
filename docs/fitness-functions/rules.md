@@ -55,7 +55,7 @@ This file is generated from active manifest-declared fitness rules.
 - Name: Agents/backends boundary
 - Side-effect free: `true`
 - Rationale: Keeps backend implementations an internal detail behind engineeringagent.agents.run_agent.
-- Remediation: Replace direct engineeringagent.agents.backends imports with engineeringagent.agents.run_agent.
+- Remediation: Replace direct engineeringagent.adapters.agents imports with engineeringagent.agents.run_agent.
 
 ### `architecture.application-tests-boundary`
 
@@ -164,7 +164,7 @@ This file is generated from active manifest-declared fitness rules.
 - Config file: `harness/fitness_functions/policies/loop_subprocess_boundary_policy.yaml`
 - Side-effect free: `true`
 - Rationale: Centralizes command execution paths for consistent control.
-- Remediation: Move OpenCode command execution to engineeringagent.agents.backends.opencode.client and Git command execution to engineeringagent.adapters.vcs.git_cli.
+- Remediation: Move OpenCode command execution to engineeringagent.adapters.agents.opencode.client and Git command execution to engineeringagent.adapters.vcs.git_cli.
 
 ### `architecture.markdown-locality-reference-coverage`
 

@@ -6,9 +6,9 @@ from typing import Any
 
 import pytest
 
-from engineeringagent.agents.backends.codex import client as client_module
-from engineeringagent.agents.backends.codex.model_ids import normalize_codex_model_id
-from engineeringagent.agents.backends.codex.scaffold import (
+from engineeringagent.adapters.agents.codex import client as client_module
+from engineeringagent.adapters.agents.codex.model_ids import normalize_codex_model_id
+from engineeringagent.adapters.agents.codex.scaffold import (
     build_codex_scaffold_manifest,
 )
 

@@ -147,7 +147,7 @@ def test_markdown_locality_rule_allows_backend_scaffold_markdown(
     """Allow backend-owned scaffold markdown templates under agents backends."""
     _write_markdown(
         tmp_path,
-        "src/engineeringagent/agents/backends/opencode/scaffold_templates/agent.engineeringagent.md",
+        "src/engineeringagent/adapters/agents/opencode/scaffold_templates/agent.engineeringagent.md",
     )
 
     proc, result = _run_checker(tmp_path, checker_path=_script_path(repo_root))

@@ -5,7 +5,7 @@ from string import Template
 
 from .model_ids import normalize_codex_model_id
 
-_SCAFFOLD_TEMPLATE_PACKAGE = "engineeringagent.agents.backends.codex.scaffold_templates"
+_SCAFFOLD_TEMPLATE_PACKAGE = "engineeringagent.adapters.agents.codex.scaffold_templates"
 
 
 def _render_template(

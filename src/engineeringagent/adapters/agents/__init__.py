@@ -1,7 +1,5 @@
 """Agent execution adapters."""
 
-from __future__ import annotations
-
 import engineeringagent.agents as agent_runtime
 from engineeringagent.ports import AgentRunRequest, AgentRunner
 

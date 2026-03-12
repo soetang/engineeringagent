@@ -3,7 +3,7 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-from engineeringagent.agents.backends.opencode.client import DEFAULT_OPENCODE_AGENT
+from engineeringagent.adapters.agents.opencode.client import DEFAULT_OPENCODE_AGENT
 from engineeringagent.agents.contracts import AgentBackendError
 from engineeringagent.agents.opencode_preflight import (
     PERMISSION_REMEDIATION_HINT,

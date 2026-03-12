@@ -1,4 +1,4 @@
-from engineeringagent.agents.backends.codex.client import (
+from engineeringagent.adapters.agents.codex.client import (
     DEFAULT_CODEX_SANDBOX,
     CodexExecConfig,
     CodexExecResult,

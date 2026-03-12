@@ -20,7 +20,7 @@ _MARKDOWN_ALLOWED_ROOTS = (
     Path("src/engineeringagent/scaffold_templates"),
     Path("src/engineeringagent/approach/docs"),
 )
-_BACKEND_SCAFFOLD_ROOT = Path("src/engineeringagent/agents/backends")
+_BACKEND_SCAFFOLD_ROOT = Path("src/engineeringagent/adapters/agents")
 _SCAFFOLD_TEMPLATE_ROOT = Path("src/engineeringagent/scaffold_templates")
 _MARKDOWN_ALLOWED_ROOT_FILES = (
     Path("README.md"),
@@ -58,7 +58,7 @@ _MARKDOWN_LOCALITY_REMEDIATION = (
     "new_architecture/, "
     "src/engineeringagent/scaffold_templates/, "
     "src/engineeringagent/approach/docs/, or "
-    "src/engineeringagent/agents/backends/*/scaffold_templates/; "
+    "src/engineeringagent/adapters/agents/*/scaffold_templates/; "
     "only repository-root README.md, AGENTS.md, and PROMPT.md are exempt from locality "
     "restrictions."
 )

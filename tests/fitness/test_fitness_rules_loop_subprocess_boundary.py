@@ -121,7 +121,7 @@ def test_loop_subprocess_boundary_rule_reports_expected_violations_and_respects_
         # Backend command execution is intentionally centralized behind allowlisted
         # client adapter modules.
         (
-            "src/engineeringagent/agents/backends/opencode/client.py",
+            "src/engineeringagent/adapters/agents/opencode/client.py",
             "\n".join(
                 [
                     "import subprocess",
@@ -132,7 +132,7 @@ def test_loop_subprocess_boundary_rule_reports_expected_violations_and_respects_
             ),
         ),
         (
-            "src/engineeringagent/agents/backends/codex/client.py",
+            "src/engineeringagent/adapters/agents/codex/client.py",
             "\n".join(
                 [
                     "import subprocess",

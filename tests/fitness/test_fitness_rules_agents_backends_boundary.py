@@ -99,8 +99,8 @@ def test_agents_backends_boundary_reports_deterministic_import_violations(
         "src/engineeringagent/foo.py",
         "\n".join(
             [
-                "from engineeringagent.agents.backends.opencode import client",
-                "import engineeringagent.agents.backends.opencode.client",
+                "from engineeringagent.adapters.agents.opencode import client",
+                "import engineeringagent.adapters.agents.opencode.client",
                 "",
                 "def noop() -> None:",
                 "    return",
@@ -120,11 +120,11 @@ def test_agents_backends_boundary_reports_deterministic_import_violations(
     assert len(violations) == 2
     assert any(
         "src/engineeringagent/foo.py:1:" in violation
-        and "outside agents boundary" in violation
+        and "outside adapters.agents boundary" in violation
         for violation in violations
     ), violations
     assert any(
         "src/engineeringagent/foo.py:2:" in violation
-        and "outside agents boundary" in violation
+        and "outside adapters.agents boundary" in violation
         for violation in violations
     ), violations

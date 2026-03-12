@@ -17,7 +17,7 @@ from engineeringagent.adapters.progress.filesystem_journal import (
     _logger_name_for_path,
 )
 from engineeringagent.checks import on_change_matcher
-from engineeringagent.agents.backends.opencode import client as opencode_client
+from engineeringagent.adapters.agents.opencode import client as opencode_client
 
 
 def _load_harness_commit_messages(repo_root: Path) -> ModuleType:

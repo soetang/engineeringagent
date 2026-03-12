@@ -17,7 +17,7 @@ from engineeringagent.checks.pytest.config import (
     resolve_harness_pytest_opencode_integration_enabled,
 )
 from engineeringagent.adapters.progress import paths as progress_paths
-from engineeringagent.agents.backends.opencode.permissions import (
+from engineeringagent.adapters.agents.opencode.permissions import (
     PERMISSION_REMEDIATION_HINT,
     PermissionProbeResult,
     evaluate_permission_probe,

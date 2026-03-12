@@ -65,8 +65,8 @@ def test_test_layout_module_mirroring_rule_passes_with_module_mirroring_and_exce
     _write_file(tmp_path, "tests/__init__.py", "")
     _write_file(tmp_path, "tests/checks/reviewers/test_reviewers_runtime.py", "")
     _write_file(tmp_path, "src/engineeringagent/checks/reviewers/__init__.py", "")
-    _write_file(tmp_path, "src/engineeringagent/agents/backends/opencode.py", "")
-    _write_file(tmp_path, "tests/agents/backends/opencode/test_opencode_client.py", "")
+    _write_file(tmp_path, "src/engineeringagent/adapters/agents/opencode.py", "")
+    _write_file(tmp_path, "tests/adapters/agents/opencode/test_client.py", "")
 
     proc, result = _run_checker(
         tmp_path,

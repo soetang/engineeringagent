@@ -1,7 +1,7 @@
 from __future__ import annotations
 # pylint: disable=protected-access
 
-from engineeringagent.agents.backends.opencode import client as client_module
+from engineeringagent.adapters.agents.opencode import client as client_module
 
 
 def test_extract_json_session_and_last_text_payload_ignores_blank_and_nondict_events() -> (

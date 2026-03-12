@@ -17,9 +17,11 @@ RULE_ID = "architecture.agents-backends-boundary"
 
 _SRC_ROOT = Path("src/engineeringagent")
 _AGENTS_ROOT = _SRC_ROOT / "agents"
+_ADAPTERS_AGENTS_ROOT = _SRC_ROOT / "adapters" / "agents"
+_BOOTSTRAP_ROOT = _SRC_ROOT / "bootstrap"
 
-_BACKENDS_IMPORT_PREFIX = "engineeringagent.agents.backends"
-_RELATIVE_BACKENDS_IMPORT_PREFIX = "agents.backends"
+_BACKENDS_IMPORT_PREFIX = "engineeringagent.adapters.agents"
+_RELATIVE_BACKENDS_IMPORT_PREFIX = "adapters.agents"
 
 
 @dataclass(frozen=True)
@@ -73,7 +75,10 @@ def _collect_violations(project_root: Path) -> list[str]:
     violations: list[_Violation] = []
 
     for path in _iter_python_files(source_root):
-        if _is_under(path, _AGENTS_ROOT):
+        if any(
+            _is_under(path, allowed_root)
+            for allowed_root in (_AGENTS_ROOT, _ADAPTERS_AGENTS_ROOT, _BOOTSTRAP_ROOT)
+        ):
             continue
 
         tree = _parse_module(path)
@@ -87,7 +92,8 @@ def _collect_violations(project_root: Path) -> list[str]:
                             path=path.relative_to(project_root),
                             lineno=getattr(node, "lineno", 1),
                             message=(
-                                f"imports backend package {module!r} outside agents boundary"
+                                "imports backend adapter package "
+                                f"{module!r} outside adapters.agents boundary"
                             ),
                         )
                     )
@@ -101,7 +107,8 @@ def _collect_violations(project_root: Path) -> list[str]:
                                 path=path.relative_to(project_root),
                                 lineno=getattr(node, "lineno", 1),
                                 message=(
-                                    f"imports backend package {imported!r} outside agents boundary"
+                                    "imports backend adapter package "
+                                    f"{imported!r} outside adapters.agents boundary"
                                 ),
                             )
                         )

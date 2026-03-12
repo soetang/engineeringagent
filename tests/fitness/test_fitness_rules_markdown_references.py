@@ -148,7 +148,7 @@ def test_markdown_reference_coverage_exempts_backend_scaffold_markdown(
 ) -> None:
     _write_file(
         tmp_path,
-        "src/engineeringagent/agents/backends/opencode/scaffold_templates/agent.engineeringagent.md",
+        "src/engineeringagent/adapters/agents/opencode/scaffold_templates/agent.engineeringagent.md",
     )
 
     proc, result = _run_checker(tmp_path, checker_path=_script_path(repo_root))

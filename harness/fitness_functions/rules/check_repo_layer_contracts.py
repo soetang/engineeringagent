@@ -19,12 +19,13 @@ APPLICATION_ROOT = SRC_ROOT / "application"
 DOMAIN_ROOT = SRC_ROOT / "domain"
 PORTS_ROOT = SRC_ROOT / "ports"
 LOOP_RUNTIME_ROOT = SRC_ROOT / "loop_runtime"
-OPENCODE_ALLOWED_ROOT = SRC_ROOT / "agents" / "backends" / "opencode"
+OPENCODE_ALLOWED_ROOT = SRC_ROOT / "adapters" / "agents" / "opencode"
 CONFIGURED_AGENT_RUNNER_ALLOWED_ROOTS = (
     SRC_ROOT / "bootstrap",
     SRC_ROOT / "adapters" / "agents",
 )
 AGENTS_ROOT = SRC_ROOT / "agents"
+ADAPTERS_AGENTS_ROOT = SRC_ROOT / "adapters" / "agents"
 BOOTSTRAP_RUNTIME_SUPPORT_PATH = SRC_ROOT / "bootstrap" / "runtime_support.py"
 DELETED_MODULE_PATHS = {
     "src/engineeringagent/changed_paths.py",
@@ -483,7 +484,7 @@ def _start_agent_boundary_violations(path: Path) -> list[str]:
             imported_module = node.module or ""
             if _matches_forbidden_module(
                 imported_module,
-                ("engineeringagent.agents.backends.opencode",),
+                ("engineeringagent.adapters.agents.opencode",),
             ) and any(alias.name == "start_agent" for alias in node.names):
                 violations.append(
                     f"{rel_path}: production modules must not import start_agent outside the opencode backend adapter"
@@ -523,7 +524,7 @@ def _configured_agent_runner_boundary_violations(path: Path) -> list[str]:
 
 
 def _json_format_boundary_violations(path: Path) -> list[str]:
-    if _is_under(path, AGENTS_ROOT):
+    if _is_under(path, ADAPTERS_AGENTS_ROOT):
         return []
 
     rel_path = path.as_posix()
@@ -542,7 +543,7 @@ def _json_format_boundary_violations(path: Path) -> list[str]:
             for keyword in node.keywords
         ):
             violations.append(
-                f'{rel_path}: production modules must not pass format="json" outside agents modules'
+                f'{rel_path}: production modules must not pass format="json" outside adapters.agents modules'
             )
     return violations
 

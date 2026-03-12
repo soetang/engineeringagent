@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 
-from engineeringagent.agents.backends.opencode import client as client_module
+from engineeringagent.adapters.agents.opencode import client as client_module
 
 
 def test_start_agent_runs_opencode_with_expected_defaults(

@@ -3,12 +3,12 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
-from engineeringagent.agents.backends.codex import CodexAgentBackend
-from engineeringagent.agents.backends.codex.scaffold import (
+from engineeringagent.adapters.agents.codex import CodexAgentBackend
+from engineeringagent.adapters.agents.codex.scaffold import (
     build_codex_scaffold_manifest,
 )
-from engineeringagent.agents.backends.opencode import OpenCodeAgentBackend
-from engineeringagent.agents.backends.opencode.scaffold import (
+from engineeringagent.adapters.agents.opencode import OpenCodeAgentBackend
+from engineeringagent.adapters.agents.opencode.scaffold import (
     build_opencode_scaffold_manifest,
 )
 from engineeringagent.agents.contracts import RequestRunAgentBackend

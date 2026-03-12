@@ -8,8 +8,8 @@ import pytest
 from pydantic import BaseModel
 
 from engineeringagent.agents import AgentBackendError
-from engineeringagent.agents.backends.opencode import OpenCodeAgentBackend
-from engineeringagent.agents.backends.opencode import client as client_module
+from engineeringagent.adapters.agents.opencode import OpenCodeAgentBackend
+from engineeringagent.adapters.agents.opencode import client as client_module
 from engineeringagent.agents.contracts import AgentRunRequest
 
 
@@ -46,7 +46,7 @@ def test_opencode_backend_happy_path(
         )
 
     monkeypatch.setattr(
-        "engineeringagent.agents.backends.opencode.backend.start_agent",
+        "engineeringagent.adapters.agents.opencode.backend.start_agent",
         _fake_start_agent,
     )
 
@@ -79,7 +79,7 @@ def test_opencode_backend_raises_on_nonzero_exit(
         return _Proc(returncode=1, stderr="boom")
 
     monkeypatch.setattr(
-        "engineeringagent.agents.backends.opencode.backend.start_agent",
+        "engineeringagent.adapters.agents.opencode.backend.start_agent",
         _fake_start_agent,
     )
 
@@ -98,7 +98,7 @@ def test_opencode_backend_raises_on_missing_text_payload(
         return _Proc(returncode=0, text_payload=None)
 
     monkeypatch.setattr(
-        "engineeringagent.agents.backends.opencode.backend.start_agent",
+        "engineeringagent.adapters.agents.opencode.backend.start_agent",
         _fake_start_agent,
     )
 
@@ -163,7 +163,7 @@ def test_opencode_backend_run_structured_retries_with_same_session(
         return responses.pop(0)
 
     monkeypatch.setattr(
-        "engineeringagent.agents.backends.opencode.backend.start_agent",
+        "engineeringagent.adapters.agents.opencode.backend.start_agent",
         _fake_start_agent,
     )
 
@@ -191,7 +191,7 @@ def test_opencode_backend_run_structured_rejects_negative_retry_budget(
         raise AssertionError("start_agent should not be called")
 
     monkeypatch.setattr(
-        "engineeringagent.agents.backends.opencode.backend.start_agent",
+        "engineeringagent.adapters.agents.opencode.backend.start_agent",
         _fail_if_called,
     )
 
@@ -216,7 +216,7 @@ def test_opencode_backend_run_request_text_mode(
         return _Proc(returncode=0, stdout="plain")
 
     monkeypatch.setattr(
-        "engineeringagent.agents.backends.opencode.backend.start_agent",
+        "engineeringagent.adapters.agents.opencode.backend.start_agent",
         _fake_start_agent,
     )
 
@@ -254,7 +254,7 @@ def test_opencode_backend_run_request_structured_mode_uses_backend_json_path(
         return responses.pop(0)
 
     monkeypatch.setattr(
-        "engineeringagent.agents.backends.opencode.backend.start_agent",
+        "engineeringagent.adapters.agents.opencode.backend.start_agent",
         _fake_start_agent,
     )
 

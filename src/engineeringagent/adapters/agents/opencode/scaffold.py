@@ -4,7 +4,7 @@ from importlib.resources import files
 from string import Template
 
 _SCAFFOLD_TEMPLATE_PACKAGE = (
-    "engineeringagent.agents.backends.opencode.scaffold_templates"
+    "engineeringagent.adapters.agents.opencode.scaffold_templates"
 )
 
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from engineeringagent.agents.backends.codex.model_ids import normalize_codex_model_id
-from engineeringagent.agents.backends.codex.scaffold import (
+from engineeringagent.adapters.agents.codex.model_ids import normalize_codex_model_id
+from engineeringagent.adapters.agents.codex.scaffold import (
     build_codex_scaffold_manifest,
 )
 

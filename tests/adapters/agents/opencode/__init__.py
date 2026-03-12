@@ -1,0 +1,1 @@
+"""OpenCode adapter tests."""

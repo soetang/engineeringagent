@@ -1,6 +1,7 @@
 rule_id: architecture.backend-literal-locality-budget
 allowed_literal_roots:
   - src/engineeringagent/agents
+  - src/engineeringagent/adapters/agents
   - src/engineeringagent/checks
 backends:
   codex:
