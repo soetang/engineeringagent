@@ -216,18 +216,18 @@ def test_checker_allows_feature_iteration_imports_from_explicit_subpackage(
     assert _violations(payload) == []
 
 
-def test_checker_allows_root_workspace_service_exports_from_application_root(
+def test_checker_allows_workspace_service_exports_from_application_root(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Allow root-level workspace services on the documented application surface."""
+    """Allow workspace services on the application export surface."""
     _write_module(
         tmp_path,
         relative_path="src/engineeringagent/application/__init__.py",
         content="\n".join(
             [
-                "from .init_workspace_service import InitWorkspaceService",
-                "from .workspace_recovery_service import WorkspaceRecoveryService",
+                "from .workspace import InitWorkspaceService",
+                "from .workspace import WorkspaceRecoveryService",
                 "",
                 '__all__ = ["InitWorkspaceService", "WorkspaceRecoveryService"]',
                 "",

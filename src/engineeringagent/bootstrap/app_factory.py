@@ -42,10 +42,10 @@ from engineeringagent.application import (
     FeatureIterationService,
     GuidanceService,
     InitWorkspaceService,
-    PromptBuilder,
-    WorkspaceRecoveryService,
     RunLoopService,
+    PromptBuilder,
     ValidationService,
+    WorkspaceRecoveryService,
 )
 from engineeringagent.ports import (
     AgentRunner,

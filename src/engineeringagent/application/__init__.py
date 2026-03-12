@@ -12,22 +12,20 @@ from .guidance_service import (
     GuidanceResult,
     GuidanceService,
 )
-from .init_workspace_service import (
-    InitWorkspaceRequest,
-    InitWorkspaceResult,
-    InitWorkspaceService,
-)
-from .workspace_recovery_service import (
-    RecoverWorkspaceRequest,
-    RecoverWorkspaceResult,
-    WorkspaceRecoveryService,
-)
 from .prompt_builder import ImplementationPromptRequest, PromptBuilder
 from .run_loop_service import RunLoopRequest, RunLoopResult, RunLoopService
 from .validation_service import (
     ValidateRepositoryRequest,
     ValidationResult,
     ValidationService,
+)
+from .workspace import (
+    InitWorkspaceRequest,
+    InitWorkspaceResult,
+    InitWorkspaceService,
+    RecoverWorkspaceRequest,
+    RecoverWorkspaceResult,
+    WorkspaceRecoveryService,
 )
 
 __all__ = [
