@@ -24,7 +24,7 @@ from engineeringagent.adapters.quality.fitness.contracts import (
 RULE_ID = "smoke.opencode-real-hello-world"
 _SPEC_TEMPLATE_NAME = "real_opencode_hello_world_feature_template.yaml"
 _PLAN_TEMPLATE_PATH = Path("docs/fixtures/real_opencode_hello_world_plan_template.md")
-_FEATURE_SPEC_RELATIVE_PATH = Path("docs/spec/features/FEAT-001-hello-world-smoke/spec.yaml")
+_FEATURE_SPEC_RELATIVE_PATH = Path("docs/specifications/features/FEAT-001-hello-world-smoke/spec.yaml")
 _RUNTIME_STATUSES = {"backlog", "in_progress", "done", "blocked"}
 _SMOKE_TEMPLATE_ALLOWED_KEYS = frozenset(
     {
@@ -231,7 +231,7 @@ def _write_feature_spec(tmp_repo: Path) -> None:
 
 
 def _iter_done_specs(tmp_repo: Path) -> Iterable[Path]:
-    root = tmp_repo / "docs/spec/features_done"
+    root = tmp_repo / "docs/specifications/features_done"
     if not root.exists():
         return ()
     return iter_feature_files(root)
@@ -485,7 +485,7 @@ def main() -> int:
             ]
             if not done_specs:
                 violations.append(
-                    "expected archived feature spec under docs/spec/features_done (missing FEAT-001 bundle)"
+                    "expected archived feature spec under docs/specifications/features_done (missing FEAT-001 bundle)"
                 )
                 emit_fitness_result(
                     _result(

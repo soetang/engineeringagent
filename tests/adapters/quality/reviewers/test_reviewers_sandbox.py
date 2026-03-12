@@ -15,8 +15,8 @@ from engineeringagent.adapters.quality.reviewers.engine import (
 DEPRECATED_RESPONSEFORMAT_PROMPT_SENTENCE = (
     "Return exactly one strict JSON object and no other text."
 )
-FEATURE_050_PATH = Path("docs/spec/features/FEAT-050/spec.yaml")
-FEATURE_052_PATH = Path("docs/spec/features/FEAT-052/spec.yaml")
+FEATURE_050_PATH = Path("docs/specifications/features/FEAT-050/spec.yaml")
+FEATURE_052_PATH = Path("docs/specifications/features/FEAT-052/spec.yaml")
 
 
 def test_empty_folder_sandbox_copies_only_prompt_and_configured_assets_only(

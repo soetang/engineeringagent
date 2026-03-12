@@ -149,7 +149,7 @@ def _implement_inputs(verbose_output: bool = True) -> ImplementStepInputs:
     return ImplementStepInputs(
         project_root=Path("/tmp/project"),
         feature={"id": "FEAT-300", "title": "Move output ownership"},
-        feature_path=Path("docs/spec/features/FEAT-300/spec.yaml"),
+        feature_path=Path("docs/specifications/features/FEAT-300/spec.yaml"),
         feedback="retry",
         verbose_output=verbose_output,
     )

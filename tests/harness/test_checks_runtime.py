@@ -54,8 +54,8 @@ def _write_fitness_manifest(tmp_path: Path, content: str) -> Path:
     return manifest_path
 
 
-ACTIVE_FEATURE_PATH = Path("docs/spec/features/FEAT-001/spec.yaml")
-ARCHIVED_FEATURE_PATH = Path("docs/spec/features_done/FEAT-001/spec.yaml")
+ACTIVE_FEATURE_PATH = Path("docs/specifications/features/FEAT-001/spec.yaml")
+ARCHIVED_FEATURE_PATH = Path("docs/specifications/features_done/FEAT-001/spec.yaml")
 
 
 def test_run_gate_phase_uses_checks_yaml_for_run_all_iteration_end(

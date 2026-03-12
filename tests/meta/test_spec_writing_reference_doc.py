@@ -226,7 +226,7 @@ def test_specifications_doc_requires_bundled_spec_packages_only(
 
     assert "Create a bundled feature package rooted at `docs/specifications/features/FEAT-XXX-some-header/spec.yaml`." in specifications_doc
     assert "Bundled `spec.yaml` packages are the only supported active feature layout." in specifications_doc
-    assert "docs/spec/features/FEAT-XXX-some-header.yaml" not in specifications_doc
+    assert "docs/specifications/features/FEAT-XXX-some-header.yaml" not in specifications_doc
     assert "temporary compatibility shim" not in specifications_doc
 
 
@@ -257,7 +257,7 @@ def test_reviewer_authoring_doc_covers_bundled_feature_review_context(
     ).read_text(encoding="utf-8")
 
     assert "docs/specifications/features/**/spec.yaml" in reviewer_authoring_doc
-    assert "docs/spec/features/*.yaml" not in reviewer_authoring_doc
+    assert "docs/specifications/features/*.yaml" not in reviewer_authoring_doc
     assert "compatibility wrapper" not in reviewer_authoring_doc
     assert "canonical bundled package" not in reviewer_authoring_doc
     assert "`plan.md` phases" in reviewer_authoring_doc or "plan.md phases" in reviewer_authoring_doc

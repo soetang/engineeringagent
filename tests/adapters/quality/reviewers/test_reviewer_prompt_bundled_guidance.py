@@ -16,11 +16,11 @@ def test_reviewer_prompts_reference_bundled_feature_packages(repo_root: Path) ->
     for prompt_path in prompt_paths:
         prompt = prompt_path.read_text(encoding="utf-8")
 
-        assert "docs/spec/features/**/spec.yaml" in prompt
+        assert "docs/specifications/features/**/spec.yaml" in prompt
         assert "`plan.md` phases" in prompt or "plan.md phases" in prompt
         assert "`planning_tier`" in prompt or "planning_tier" in prompt
         assert "`research.md`" in prompt or "research.md" in prompt
         assert "supporting artifacts" in prompt or "support files" in prompt
-        assert "docs/spec/features/*.yaml" not in prompt
+        assert "docs/specifications/features/*.yaml" not in prompt
         assert "compatibility wrapper" not in prompt
         assert "canonical bundled package" not in prompt

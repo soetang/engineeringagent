@@ -135,7 +135,7 @@ def test_feedback_prompt_render_does_not_truncate_contract_json() -> None:
     injected = _PROMPT_BUILDER.build_implementation_prompt(
         ImplementationPromptRequest(
             feature_id="FEAT-900",
-            specification_path=Path("docs/spec/features/FEAT-900/spec.yaml"),
+            specification_path=Path("docs/specifications/features/FEAT-900/spec.yaml"),
             retry_feedback=serialized,
         )
     )
@@ -150,7 +150,7 @@ def test_feedback_prompt_render_accepts_plain_markdown_feedback() -> None:
     injected = _PROMPT_BUILDER.build_implementation_prompt(
         ImplementationPromptRequest(
             feature_id="FEAT-900",
-            specification_path=Path("docs/spec/features/FEAT-900/spec.yaml"),
+            specification_path=Path("docs/specifications/features/FEAT-900/spec.yaml"),
             retry_feedback=feedback,
         )
     )
@@ -162,7 +162,7 @@ def test_feedback_prompt_render_ignores_blank_plain_feedback() -> None:
     injected = _PROMPT_BUILDER.build_implementation_prompt(
         ImplementationPromptRequest(
             feature_id="FEAT-900",
-            specification_path=Path("docs/spec/features/FEAT-900/spec.yaml"),
+            specification_path=Path("docs/specifications/features/FEAT-900/spec.yaml"),
             retry_feedback="   \n\t",
         )
     )

@@ -103,7 +103,7 @@ def test_repo_policy_validator_projects_messages_to_validation_issues(
         messages.extend(
             [
                 "first issue",
-                "docs/spec/features/FEAT-100-example.yaml:status: invalid status value",
+                "docs/specifications/features/FEAT-100-example.yaml:status: invalid status value",
             ]
         )
 
@@ -131,7 +131,7 @@ def test_repo_policy_validator_projects_messages_to_validation_issues(
         ValidationIssue(
             validator_id="repo.policy",
             scope="repo",
-            path="docs/spec/features/FEAT-100-example.yaml:status",
+            path="docs/specifications/features/FEAT-100-example.yaml:status",
             message="invalid status value",
             code="repo.policy.field-status",
         ),
@@ -156,7 +156,7 @@ def test_repo_policy_validator_derives_semantic_issue_codes(
             [
                 "validate: duplicate base feature id FEAT-101 found in active specs",
                 "validate: git ls-files failed: test failure",
-                "docs/spec/features/FEAT-101-example.yaml:id: filename id token FEAT-101 does not match frontmatter id FEAT-102",
+                "docs/specifications/features/FEAT-101-example.yaml:id: filename id token FEAT-101 does not match frontmatter id FEAT-102",
             ]
         )
 
@@ -199,7 +199,7 @@ def test_run_repo_validation_messages_returns_deterministic_tuple_in_append_orde
         messages.extend(
             [
                 "first repo issue",
-                "docs/spec/features/FEAT-222-example.yaml:status: invalid status value",
+                "docs/specifications/features/FEAT-222-example.yaml:status: invalid status value",
                 "validate: duplicate base feature id FEAT-222 found in active specs",
             ]
         )
@@ -218,7 +218,7 @@ def test_run_repo_validation_messages_returns_deterministic_tuple_in_append_orde
     assert calls == [(tmp_path, tmp_path / "docs", True)]
     assert messages == (
         "first repo issue",
-        "docs/spec/features/FEAT-222-example.yaml:status: invalid status value",
+        "docs/specifications/features/FEAT-222-example.yaml:status: invalid status value",
         "validate: duplicate base feature id FEAT-222 found in active specs",
     )
 
@@ -237,11 +237,11 @@ def test_run_repo_validation_messages_returns_deterministic_tuple_in_append_orde
             ),
         ),
         (
-            "docs/spec/features/FEAT-100-example.yaml:status: invalid status value",
+            "docs/specifications/features/FEAT-100-example.yaml:status: invalid status value",
             ValidationIssue(
                 validator_id="repo.policy",
                 scope="repo",
-                path="docs/spec/features/FEAT-100-example.yaml:status",
+                path="docs/specifications/features/FEAT-100-example.yaml:status",
                 message="invalid status value",
                 code="repo.policy.field-status",
             ),

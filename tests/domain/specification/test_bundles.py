@@ -103,7 +103,7 @@ def test_iter_feature_files_returns_only_bundled_specs(tmp_path: Path) -> None:
 
 def test_feature_storage_root_rejects_flat_entrypoints() -> None:
     with pytest.raises(ValueError, match="bundled spec.yaml"):
-        bundles.feature_storage_root(Path("docs/spec/features/FEAT-181-example.yaml"))
+        bundles.feature_storage_root(Path("docs/specifications/features/FEAT-181-example.yaml"))
 
 
 def test_resolve_feature_package_paths_reports_configured_active_root(

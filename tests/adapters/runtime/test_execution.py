@@ -142,7 +142,7 @@ def test_runtime_run_loop_executor_uses_runtime_run_builder(
     result = executor.run(
         RunLoopExecutionRequest(
             project_root=Path("/tmp/project"),
-            feature_paths=("docs/spec/features/FEAT-001/spec.yaml",),
+            feature_paths=("docs/specifications/features/FEAT-001/spec.yaml",),
             run_all=False,
             dry_run=True,
             max_iterations=3,
@@ -155,7 +155,7 @@ def test_runtime_run_loop_executor_uses_runtime_run_builder(
     config_args = observed["config_args"]
     assert isinstance(config_args, tuple)
     assert config_args[0] == Path("/tmp/project")
-    assert config_args[1] == ("docs/spec/features/FEAT-001/spec.yaml",)
+    assert config_args[1] == ("docs/specifications/features/FEAT-001/spec.yaml",)
     options = config_args[2]
     assert isinstance(options, runtime_executor_adapter_module.RunConfigOptions)
     assert options == runtime_executor_adapter_module.RunConfigOptions(

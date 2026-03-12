@@ -166,7 +166,7 @@ def test_init_preserve_mode_reports_skipped_merge_spec(
 
     assert result.exit_code == 0
     assert (
-        "merge_spec_skipped=docs/spec/features/FEAT-900-merge-preserved-agents-guidance.yaml"
+        "merge_spec_skipped=docs/specifications/features/FEAT-900-merge-preserved-agents-guidance.yaml"
         in result.stdout
     )
     backup_paths = sorted(tmp_path.glob("AGENTS.user*.md"))

@@ -16,8 +16,8 @@ from engineeringagent.adapters.runtime.iteration_phases import (
     run_verification_phase,
 )
 
-ACTIVE_FEATURE_PATH = Path("docs/spec/features/FEAT-001/spec.yaml")
-ARCHIVED_FEATURE_PATH = Path("docs/spec/features_done/FEAT-001/spec.yaml")
+ACTIVE_FEATURE_PATH = Path("docs/specifications/features/FEAT-001/spec.yaml")
+ARCHIVED_FEATURE_PATH = Path("docs/specifications/features_done/FEAT-001/spec.yaml")
 
 
 def _write_text(path: Path, content: str) -> None:

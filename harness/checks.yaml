@@ -89,7 +89,7 @@ checks:
         - "harness/**/*.py"
         - "harness/**/*.md"
         - "docs/fixtures/**/*.md"
-        - "docs/spec/features/**/spec.yaml"
-        - "docs/spec/features/**/*.md"
+        - "docs/specifications/features/**/spec.yaml"
+        - "docs/specifications/features/**/*.md"
     approval:
       first_feature_approval: true

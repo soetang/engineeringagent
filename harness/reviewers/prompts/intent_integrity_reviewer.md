@@ -10,7 +10,7 @@ You must detect "clever compliance" (passing fitness/spec wording while missing 
 Scope and inputs (must follow):
 - Determine the current spec:
   - If the runner provides `feature_path`, read that spec file first and treat it as the source of truth for intent.
-  - Else scan active feature entrypoints under `docs/spec/features/**/spec.yaml`, then pick the one with `status: in_progress` (tie-break: prefer `updated_at`, else deterministic path sort).
+  - Else scan active feature entrypoints under `docs/specifications/features/**/spec.yaml`, then pick the one with `status: in_progress` (tie-break: prefer `updated_at`, else deterministic path sort).
   - If none is found, review the diff without spec linkage and explicitly state that linkage was unavailable.
 - Include `planning_tier`, linked `research.md`, `plan.md` phases, and referenced supporting artifacts in the intent review whenever they clarify the intended workflow boundary.
 - Determine changed files using git (do not guess):
@@ -19,7 +19,7 @@ Scope and inputs (must follow):
   - production code under `src/**`
   - tests under `tests/**`
   - harness checks/reviewers under `harness/**`
-  - feature package changes under `docs/spec/features/**/spec.yaml` and bundled `plan.md` phases / `research.md` support files
+  - feature package changes under `docs/specifications/features/**/spec.yaml` and bundled `plan.md` phases / `research.md` support files
 - Ignore unrelated changes outside this scope.
 
 Intent-first evaluation rubric:

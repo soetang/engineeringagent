@@ -117,7 +117,7 @@ def test_print_summary_renders_passed_iteration_details(capsys: Any) -> None:
             failed_gate=None,
             attempt=2,
             next_action="continue_same_feature",
-            selected_path="docs/spec/features/FEAT-100/spec.yaml",
+            selected_path="docs/specifications/features/FEAT-100/spec.yaml",
             implement_step="opencode run --agent engineeringagent",
             progress_kind="step",
             progress_id="P1",
@@ -132,7 +132,7 @@ def test_print_summary_renders_passed_iteration_details(capsys: Any) -> None:
 
     output = capsys.readouterr().out
     assert "Iteration 2" in output
-    assert "Selected: docs/spec/features/FEAT-100/spec.yaml" in output
+    assert "Selected: docs/specifications/features/FEAT-100/spec.yaml" in output
     assert "Implement: opencode run --agent engineeringagent" in output
     assert "Progress: implementation step P1 - Wire run builder tests" in output
     assert "Verify: failed (uv run pytest -q)" in output
@@ -152,7 +152,7 @@ def test_print_summary_renders_failed_iteration_with_archived_selection(
             failed_gate="git_add",
             attempt=3,
             next_action="retry_same_feature",
-            archived_selection_path="docs/spec/features_done/FEAT-200/spec.yaml",
+            archived_selection_path="docs/specifications/features_done/FEAT-200/spec.yaml",
             implement_step="implement",
             log_path=".engineeringagent/progress/FEAT-200/run.txt",
         )
@@ -160,7 +160,7 @@ def test_print_summary_renders_failed_iteration_with_archived_selection(
 
     output = capsys.readouterr().out
     assert "Selected archived counterpart:" in output
-    assert "docs/spec/features_done/FEAT-200/spec.yaml" in output
+    assert "docs/specifications/features_done/FEAT-200/spec.yaml" in output
     assert "Log: .engineeringagent/progress/FEAT-200/run.txt" in output
     assert "Failed gate: git_add" in output
 
@@ -185,7 +185,7 @@ def test_print_summary_shows_verification_and_reviewer_failure_details(
             failed_gate="unknown",
             attempt=2,
             next_action="retry_same_feature",
-            selected_path="docs/spec/features/FEAT-040-per-iteration-verification-feedback-and-failure-signaling.yaml",
+            selected_path="docs/specifications/features/FEAT-040-per-iteration-verification-feedback-and-failure-signaling.yaml",
             implement_step="default opencode implement step",
             log_path=".engineeringagent/progress/FEAT-040/run.txt",
             verification_status=f"failed:{verification_command}",
@@ -214,7 +214,7 @@ def test_print_summary_shows_phase_progress_context(capsys: Any) -> None:
             failed_gate=None,
             attempt=3,
             next_action="continue_same_feature",
-            selected_path="docs/spec/features_done/FEAT-181-bundled-feature-planning-workflow/spec.yaml",
+            selected_path="docs/specifications/features_done/FEAT-181-bundled-feature-planning-workflow/spec.yaml",
             implement_step="uv run engineeringagent implement",
             progress_kind="phase",
             progress_id="P3",

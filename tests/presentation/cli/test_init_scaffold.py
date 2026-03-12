@@ -31,7 +31,7 @@ def test_build_baseline_scaffold_manifest_excludes_reviewers_by_default() -> Non
 
     assert "harness/reviewers.yaml" not in manifest
     assert "harness/gates.yaml" not in manifest
-    assert "docs/spec/schemas/feature.schema.json" not in manifest
+    assert "docs/specifications/schemas/feature.schema.json" not in manifest
     assert "harness/reviewers/prompts/code_simplifier.md" not in manifest
     assert removed_prompt not in manifest
 
@@ -47,8 +47,8 @@ def test_build_baseline_scaffold_manifest_excludes_user_guidance_templates() -> 
 
     assert not any(path.startswith("docs/references/") for path in manifest)
     assert not any(path.startswith("docs/principles/") for path in manifest)
-    assert "docs/spec/potential_features.yaml" not in manifest
-    assert "docs/spec/features/potential_features.yaml" not in manifest
+    assert "docs/specifications/potential_features.yaml" not in manifest
+    assert "docs/specifications/features/potential_features.yaml" not in manifest
 
 
 def test_build_init_scaffold_manifest_excludes_legacy_harness_files() -> None:

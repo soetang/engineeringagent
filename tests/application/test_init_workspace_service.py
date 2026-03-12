@@ -46,7 +46,7 @@ def _build_dependencies(
         write_agents_merge_followup_spec=lambda **_kwargs: (
             1,
             0,
-            " merge_spec=docs/spec/features/FEAT-900-merge-preserved-agents-guidance.yaml",
+            " merge_spec=docs/specifications/features/FEAT-900-merge-preserved-agents-guidance.yaml",
         ),
         install_precommit_hooks_best_effort=lambda **_kwargs: ("precommit-installed",),
     )
@@ -125,7 +125,7 @@ def test_init_workspace_service_delegates_agents_filesystem_side_effects(
         return (
             1,
             0,
-            " merge_spec=docs/spec/features/FEAT-900-merge-preserved-agents-guidance.yaml",
+            " merge_spec=docs/specifications/features/FEAT-900-merge-preserved-agents-guidance.yaml",
         )
 
     dependencies = InitWorkspaceDependencies(
@@ -154,5 +154,5 @@ def test_init_workspace_service_delegates_agents_filesystem_side_effects(
     assert result.agents_backup_name == "AGENTS.user.md"
     assert (
         result.merge_spec_output
-        == "merge_spec=docs/spec/features/FEAT-900-merge-preserved-agents-guidance.yaml"
+        == "merge_spec=docs/specifications/features/FEAT-900-merge-preserved-agents-guidance.yaml"
     )

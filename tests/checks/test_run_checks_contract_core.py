@@ -99,7 +99,7 @@ def test_run_checks_direct_mode_ignores_on_change_for_phase_matched_checks(
         tmp_path,
         phase="feature_done",
         checks=["commands", "fitness", "reviewers"],
-        feature_path="docs/spec/features/FEAT-175/spec.yaml",
+        feature_path="docs/specifications/features/FEAT-175/spec.yaml",
         dry_run=True,
         collect_changed_paths=lambda *_args, **_kwargs: ChangedPathsResult(
             paths=("README.md",),

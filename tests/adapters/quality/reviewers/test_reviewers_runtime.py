@@ -14,9 +14,9 @@ from engineeringagent.adapters.quality.reviewers.engine import (
 )
 from engineeringagent.ports import AgentBackendError, AgentOutputValidationError
 
-FEATURE_050_PATH = Path("docs/spec/features/FEAT-050/spec.yaml")
-FEATURE_070_PATH = Path("docs/spec/features/FEAT-070/spec.yaml")
-FEATURE_167_PATH = Path("docs/spec/features/FEAT-167/spec.yaml")
+FEATURE_050_PATH = Path("docs/specifications/features/FEAT-050/spec.yaml")
+FEATURE_070_PATH = Path("docs/specifications/features/FEAT-070/spec.yaml")
+FEATURE_167_PATH = Path("docs/specifications/features/FEAT-167/spec.yaml")
 
 
 def test_run_reviewer_loads_harness_prompt_and_parses_decision(tmp_path) -> None:

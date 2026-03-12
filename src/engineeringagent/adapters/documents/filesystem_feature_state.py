@@ -451,7 +451,7 @@ def refresh_feature_after_implement(
 def archive_completed_feature(
     project_root: Path, feature_path: Path
 ) -> tuple[bool, Path | None, str]:
-    """Move a done feature spec to docs/spec/features_done safely."""
+    """Move a done feature spec to docs/specifications/features_done safely."""
     try:
         active_dir, done_dir = resolve_spec_directories(project_root)
         package_paths = resolve_feature_package_paths(active_dir, done_dir, feature_path)

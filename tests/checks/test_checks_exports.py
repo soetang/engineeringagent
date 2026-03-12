@@ -105,7 +105,7 @@ def test_feature_plan_resolver_remains_available_from_package_facade(
     tmp_path: Path,
 ) -> None:
     """Checks facade should expose the bundled feature plan resolver for harness code."""
-    spec_path = tmp_path / "docs/spec/features/FEAT-181/spec.yaml"
+    spec_path = tmp_path / "docs/specifications/features/FEAT-181/spec.yaml"
     spec_path.parent.mkdir(parents=True)
 
     resolved = resolve_feature_plan_path(
@@ -124,7 +124,7 @@ def test_bundled_spec_helpers_remain_available_from_package_facade(
     tmp_path: Path,
 ) -> None:
     """Checks facade should expose bundled spec helpers for harness scripts."""
-    features_dir = tmp_path / "docs/spec/features"
+    features_dir = tmp_path / "docs/specifications/features"
     bundled_root = features_dir / "FEAT-181-bundled"
     bundled_root.mkdir(parents=True)
     spec_path = bundled_root / "spec.yaml"

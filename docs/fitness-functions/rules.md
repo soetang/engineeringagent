@@ -43,7 +43,7 @@ This file is generated from active manifest-declared fitness rules.
 | `architecture.shared-kernel-locality` | error | command | custom | `src/engineeringagent/domain/shared plus legacy duplicate-definition surfaces` | - | Localize cross-domain identifiers and enums under engineeringagent.domain.shared. |
 | `architecture.source-first-loop-command-policy` | error | command | custom | `legacy spec verification, bundled plan.md phases/examples, packaged plan-session/research-session guidance, contributor approach docs, loop implementation prompt template, docs/fixtures/real_opencode_hello_world_plan_template.md, and harness/checks.yaml` | - | Enforce source-first workspace execution for loop command surfaces. |
 | `architecture.test-layout-module-mirroring` | error | command | custom | `tests` | `harness/fitness_functions/policies/test_layout_module_mirroring.yaml` | Enforce module-mirroring test structure and explicit test-layout exceptions. |
-| `quality.purge-invariant` | error | command | custom | `tracked repository files excluding docs/spec/features_done/ and .engineeringagent/progress/` | - | Keep removed identifiers out of tracked repository files. |
+| `quality.purge-invariant` | error | command | custom | `tracked repository files excluding docs/specifications/features_done/ and .engineeringagent/progress/` | - | Keep removed identifiers out of tracked repository files. |
 | `smoke.opencode-real-hello-world` | error | command | custom | `repository (temp repo)` | - | Validate the real agent loop end-to-end in an isolated temp repository. |
 
 ## Rule Details

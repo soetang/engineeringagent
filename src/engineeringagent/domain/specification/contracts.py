@@ -55,7 +55,7 @@ class PotentialFeatureSpec(StrictContractModel):
 
 
 class PotentialFeaturesDocument(StrictContractModel):
-    """Top-level schema for docs/spec/potential_features.yaml."""
+    """Top-level schema for docs/specifications/potential_features.yaml."""
 
     version: Annotated[int, Field(strict=True, ge=1)]
     description: StrictString | None = None

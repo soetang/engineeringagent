@@ -48,7 +48,7 @@ def test_no_gate_profile_references_outside_specs() -> None:
 
         for path in files:
             # Feature specs are allowed to mention legacy surfaces for migration context.
-            if "docs/spec/" in path.as_posix():
+            if "docs/specifications/" in path.as_posix():
                 continue
 
             try:

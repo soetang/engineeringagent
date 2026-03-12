@@ -14,7 +14,7 @@ from engineeringagent.ports import RunLoopExecutionRequest, ValidationFailure
 def _build_request(**overrides: object) -> RunLoopRequest:
     fields: dict[str, object] = {
         "project_root": Path("/tmp/project"),
-        "feature_paths": ("docs/spec/features/FEAT-001/spec.yaml",),
+        "feature_paths": ("docs/specifications/features/FEAT-001/spec.yaml",),
         "run_all": False,
         "dry_run": False,
         "max_iterations": 5,

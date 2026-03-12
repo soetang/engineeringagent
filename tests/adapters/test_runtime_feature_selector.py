@@ -13,15 +13,15 @@ import engineeringagent.adapters.runtime.feature_selector as selector_module
 def _pending_features() -> list[tuple[Path, dict[str, Any]]]:
     return [
         (
-            Path("docs/spec/features/FEAT-200-third-feature/spec.yaml"),
+            Path("docs/specifications/features/FEAT-200-third-feature/spec.yaml"),
             {"id": "FEAT-200", "status": "backlog", "priority": "low"},
         ),
         (
-            Path("docs/spec/features/FEAT-100-first-feature/spec.yaml"),
+            Path("docs/specifications/features/FEAT-100-first-feature/spec.yaml"),
             {"id": "FEAT-100", "status": "in_progress", "priority": "high"},
         ),
         (
-            Path("docs/spec/features/FEAT-150-second-feature/spec.yaml"),
+            Path("docs/specifications/features/FEAT-150-second-feature/spec.yaml"),
             {"id": "FEAT-150", "status": "backlog", "priority": "medium"},
         ),
     ]
@@ -31,7 +31,7 @@ def test_choose_feature_with_selector_returns_single_pending_without_selector_ca
     None
 ):
     """Skip selector execution when only one candidate exists."""
-    pending = [(Path("docs/spec/features/solo/spec.yaml"), {"id": "FEAT-999"})]
+    pending = [(Path("docs/specifications/features/solo/spec.yaml"), {"id": "FEAT-999"})]
 
     def _should_not_run(*_: Any, **__: Any) -> Any:
         raise AssertionError("selector should not run with one candidate")
@@ -61,7 +61,7 @@ def test_choose_feature_with_selector_uses_selector_output_when_parse_succeeds()
         run_agent_fn=_run_agent,
     )
 
-    assert chosen_path == Path("docs/spec/features/FEAT-150-second-feature/spec.yaml")
+    assert chosen_path == Path("docs/specifications/features/FEAT-150-second-feature/spec.yaml")
     assert chosen_feature["id"] == "FEAT-150"
 
 
@@ -88,7 +88,7 @@ def test_choose_feature_with_selector_falls_back_when_opencode_missing(
     output = capsys.readouterr().out
     assert "Selector step: opencode run --agent engineeringagent" in output
     assert "Selector fallback: agent_missing" in output
-    assert chosen_path == Path("docs/spec/features/FEAT-100-first-feature/spec.yaml")
+    assert chosen_path == Path("docs/specifications/features/FEAT-100-first-feature/spec.yaml")
     assert chosen_feature["id"] == "FEAT-100"
 
 
@@ -123,7 +123,7 @@ def test_choose_feature_with_selector_falls_back_on_parse_or_command_failure(
     output = capsys.readouterr().out
     assert "Selector step: opencode run --agent engineeringagent" in output
     assert "Selector fallback: opencode_build" in output
-    assert chosen_path == Path("docs/spec/features/FEAT-100-first-feature/spec.yaml")
+    assert chosen_path == Path("docs/specifications/features/FEAT-100-first-feature/spec.yaml")
     assert chosen_feature["id"] == "FEAT-100"
 
 
@@ -185,5 +185,5 @@ def test_choose_feature_with_selector_uses_configured_codex_backend(
     output = capsys.readouterr().out
     assert "Selector step: codex run selector" in output
     assert "Selector fallback: codex_build" in output
-    assert chosen_path == Path("docs/spec/features/FEAT-100-first-feature/spec.yaml")
+    assert chosen_path == Path("docs/specifications/features/FEAT-100-first-feature/spec.yaml")
     assert chosen_feature["id"] == "FEAT-100"

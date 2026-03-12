@@ -2,7 +2,7 @@
 docs_root = "docs"
 harness_root = "harness"
 progress_root = ".engineeringagent/progress"
-specifications_root = "docs/spec"
+specifications_root = "docs/specifications"
 harness_checks_path = "harness/checks.yaml"
 
 [agents.implementation]

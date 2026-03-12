@@ -46,7 +46,7 @@ def _write_done_plan_artifact(feature_root: Path, *, feature_id: str) -> Path:
 def test_validate_missing_required_fields_with_bundled_contract(tmp_path: Path) -> None:
     project_root = tmp_path
     feature_root = (
-        project_root / "docs" / "spec" / "features" / "FEAT-904-missing-required"
+        project_root / "docs" / "specifications" / "features" / "FEAT-904-missing-required"
     )
     feature_root.mkdir(parents=True, exist_ok=True)
     feature_path = feature_root / "spec.yaml"
@@ -78,7 +78,7 @@ def test_validate_missing_required_fields_with_bundled_contract(tmp_path: Path) 
 
 def test_validate_requires_feature_type(tmp_path: Path) -> None:
     project_root = tmp_path
-    feature_root = project_root / "docs" / "spec" / "features" / "FEAT-910-missing-type"
+    feature_root = project_root / "docs" / "specifications" / "features" / "FEAT-910-missing-type"
     feature_root.mkdir(parents=True, exist_ok=True)
 
     (feature_root / "spec.yaml").write_text(
@@ -111,7 +111,7 @@ def test_validate_requires_expected_commit_subject(tmp_path: Path) -> None:
     feature_root = (
         project_root
         / "docs"
-        / "spec"
+        / "specifications"
         / "features"
         / "FEAT-911-missing-expected-subject"
     )
@@ -168,7 +168,7 @@ def test_validate_uses_configured_specifications_root(tmp_path: Path) -> None:
 
 def test_validate_reports_invalid_potential_features_contract(tmp_path: Path) -> None:
     project_root = tmp_path
-    potential_features_path = project_root / "docs" / "spec" / "potential_features.yaml"
+    potential_features_path = project_root / "docs" / "specifications" / "potential_features.yaml"
     potential_features_path.parent.mkdir(parents=True, exist_ok=True)
     potential_features_path.write_text(
         yaml.safe_dump(
@@ -209,9 +209,9 @@ def test_validate_reports_invalid_potential_features_contract(tmp_path: Path) ->
 def test_validate_reports_yaml_parse_errors_across_validator_inputs(
     tmp_path: Path,
 ) -> None:
-    features_dir = tmp_path / "docs" / "spec" / "features"
-    features_done_dir = tmp_path / "docs" / "spec" / "features_done"
-    potential_features_path = tmp_path / "docs" / "spec" / "potential_features.yaml"
+    features_dir = tmp_path / "docs" / "specifications" / "features"
+    features_done_dir = tmp_path / "docs" / "specifications" / "features_done"
+    potential_features_path = tmp_path / "docs" / "specifications" / "potential_features.yaml"
 
     features_dir.mkdir(parents=True, exist_ok=True)
     features_done_dir.mkdir(parents=True, exist_ok=True)
@@ -235,8 +235,8 @@ def test_validate_reports_yaml_parse_errors_across_validator_inputs(
 def test_validate_ignores_legacy_feature_schema_artifact_parse_and_sync_errors(
     tmp_path: Path,
 ) -> None:
-    feature_root = tmp_path / "docs" / "spec" / "features" / "FEAT-999-valid"
-    schemas_dir = tmp_path / "docs" / "spec" / "schemas"
+    feature_root = tmp_path / "docs" / "specifications" / "features" / "FEAT-999-valid"
+    schemas_dir = tmp_path / "docs" / "specifications" / "schemas"
     feature_root.mkdir(parents=True, exist_ok=True)
     schemas_dir.mkdir(parents=True, exist_ok=True)
 
@@ -351,7 +351,7 @@ def test_validate_allows_arbitrary_agents_content(tmp_path: Path) -> None:
 def test_validate_preserves_non_legacy_done_required_field_errors(
     tmp_path: Path,
 ) -> None:
-    features_done_dir = tmp_path / "docs" / "spec" / "features_done"
+    features_done_dir = tmp_path / "docs" / "specifications" / "features_done"
     features_done_dir.mkdir(parents=True, exist_ok=True)
     feature_root = features_done_dir / "FEAT-897-missing-priority"
     feature_root.mkdir(parents=True, exist_ok=True)
@@ -386,7 +386,11 @@ def test_validate_reports_done_feature_left_in_active_directory(
 ) -> None:
     project_root = tmp_path
     feature_root = (
-        project_root / "docs" / "spec" / "features" / "FEAT-901-preexisting-done"
+        project_root
+        / "docs"
+        / "specifications"
+        / "features"
+        / "FEAT-901-preexisting-done"
     )
     write_bundled_feature_spec(
         feature_root,
@@ -402,7 +406,7 @@ def test_validate_reports_done_feature_left_in_active_directory(
         "completed feature specs must be archived" in message for message in messages
     )
     assert any(
-        "docs/spec/features_done/FEAT-901-preexisting-done/spec.yaml" in message
+        "docs/specifications/features_done/FEAT-901-preexisting-done/spec.yaml" in message
         for message in messages
     )
 
@@ -414,7 +418,7 @@ def test_validate_reports_done_bundled_feature_left_in_active_directory(
     feature_root = (
         project_root
         / "docs"
-        / "spec"
+        / "specifications"
         / "features"
         / "FEAT-902-preexisting-done-bundle"
     )
@@ -455,7 +459,7 @@ def test_validate_reports_done_bundled_feature_left_in_active_directory(
         "completed feature specs must be archived" in message for message in messages
     )
     assert any(
-        "docs/spec/features_done/FEAT-902-preexisting-done-bundle/spec.yaml"
+        "docs/specifications/features_done/FEAT-902-preexisting-done-bundle/spec.yaml"
         in message
         for message in messages
     )
@@ -464,7 +468,11 @@ def test_validate_reports_done_bundled_feature_left_in_active_directory(
 def test_validate_defaults_to_docs_without_toml_config(tmp_path: Path) -> None:
     project_root = tmp_path
     feature_root = (
-        project_root / "docs" / "spec" / "features" / "FEAT-938-default-docs-root"
+        project_root
+        / "docs"
+        / "specifications"
+        / "features"
+        / "FEAT-938-default-docs-root"
     )
     write_bundled_feature_spec(
         feature_root,
@@ -477,7 +485,7 @@ def test_validate_defaults_to_docs_without_toml_config(tmp_path: Path) -> None:
 
     assert messages
     assert any(
-        "docs/spec/features_done/FEAT-938-default-docs-root/spec.yaml" in message
+        "docs/specifications/features_done/FEAT-938-default-docs-root/spec.yaml" in message
         for message in messages
     )
 
@@ -485,7 +493,7 @@ def test_validate_defaults_to_docs_without_toml_config(tmp_path: Path) -> None:
 def test_validate_uses_configured_docs_root(tmp_path: Path) -> None:
     project_root = tmp_path
     docs_root = project_root / "docs.engineeringagent"
-    features_dir = docs_root / "spec" / "features"
+    features_dir = docs_root / "specifications" / "features"
 
     (project_root / "engineeringagent.toml").write_text(
         'docs-root = "docs.engineeringagent"\n',
@@ -509,12 +517,13 @@ def test_validate_uses_configured_docs_root(tmp_path: Path) -> None:
 
     assert messages
     assert any(
-        "docs.engineeringagent/spec/features/.allow-done-active.txt" in message
+        "docs.engineeringagent/specifications/features/.allow-done-active.txt"
+        in message
         and "unsupported configuration file" in message
         for message in messages
     )
     assert any(
-        "docs.engineeringagent/spec/features_done/FEAT-937-configured-docs-root/spec.yaml"
+        "docs.engineeringagent/specifications/features_done/FEAT-937-configured-docs-root/spec.yaml"
         in message
         for message in messages
     )
@@ -524,7 +533,7 @@ def test_validate_transitional_policy_for_preexisting_done_features(
     tmp_path: Path,
 ) -> None:
     project_root = tmp_path
-    features_dir = project_root / "docs" / "spec" / "features"
+    features_dir = project_root / "docs" / "specifications" / "features"
 
     features_dir.mkdir(parents=True, exist_ok=True)
 
@@ -564,7 +573,7 @@ def test_validate_transitional_policy_for_preexisting_done_features(
 
     assert messages
     assert any(
-        "docs/spec/features/.allow-done-active.txt" in message
+        "docs/specifications/features/.allow-done-active.txt" in message
         and "unsupported configuration file" in message
         for message in messages
     )
@@ -574,7 +583,7 @@ def test_validate_rejects_done_specs_missing_required_metadata(
     tmp_path: Path,
 ) -> None:
     project_root = tmp_path
-    features_done_dir = project_root / "docs" / "spec" / "features_done"
+    features_done_dir = project_root / "docs" / "specifications" / "features_done"
     feature_root = features_done_dir / "FEAT-899-missing-done-metadata"
     feature_root.mkdir(parents=True, exist_ok=True)
 
@@ -614,7 +623,7 @@ def test_validate_preserves_bundled_plan_phase_status_invariants(
 ) -> None:
     project_root = tmp_path
     feature_dir = (
-        project_root / "docs" / "spec" / "features" / "FEAT-909-bundled-status-mismatch"
+        project_root / "docs" / "specifications" / "features" / "FEAT-909-bundled-status-mismatch"
     )
     feature_dir.mkdir(parents=True, exist_ok=True)
 
@@ -673,7 +682,7 @@ def test_validate_preserves_blocked_bundled_plan_phase_status_invariants(
 ) -> None:
     project_root = tmp_path
     feature_dir = (
-        project_root / "docs" / "spec" / "features" / "FEAT-910-bundled-status-mismatch"
+        project_root / "docs" / "specifications" / "features" / "FEAT-910-bundled-status-mismatch"
     )
     feature_dir.mkdir(parents=True, exist_ok=True)
 
@@ -867,8 +876,8 @@ def test_validate_rejects_filename_frontmatter_id_mismatch_active_and_done(
     tmp_path: Path,
 ) -> None:
     project_root = tmp_path
-    features_dir = project_root / "docs" / "spec" / "features"
-    features_done_dir = project_root / "docs" / "spec" / "features_done"
+    features_dir = project_root / "docs" / "specifications" / "features"
+    features_done_dir = project_root / "docs" / "specifications" / "features_done"
     features_dir.mkdir(parents=True, exist_ok=True)
     features_done_dir.mkdir(parents=True, exist_ok=True)
 
@@ -932,7 +941,7 @@ def test_validate_rejects_duplicate_feature_ids_in_active_specs_without_opt_out(
     tmp_path: Path,
 ) -> None:
     project_root = tmp_path
-    features_dir = project_root / "docs" / "spec" / "features"
+    features_dir = project_root / "docs" / "specifications" / "features"
     features_dir.mkdir(parents=True, exist_ok=True)
 
     payload = {
@@ -965,7 +974,7 @@ def test_validate_rejects_duplicate_feature_ids_in_done_specs(
     tmp_path: Path,
 ) -> None:
     project_root = tmp_path
-    features_done_dir = project_root / "docs" / "spec" / "features_done"
+    features_done_dir = project_root / "docs" / "specifications" / "features_done"
     features_done_dir.mkdir(parents=True, exist_ok=True)
 
     payload = {
@@ -996,7 +1005,7 @@ def test_validate_rejects_duplicate_feature_ids_in_done_specs(
 
 def test_validate_reports_filename_id_token_extraction_failure(tmp_path: Path) -> None:
     project_root = tmp_path
-    features_dir = project_root / "docs" / "spec" / "features"
+    features_dir = project_root / "docs" / "specifications" / "features"
     features_dir.mkdir(parents=True, exist_ok=True)
 
     feature_root = features_dir / "FEAT999"
@@ -1031,8 +1040,8 @@ def test_validate_rejects_duplicate_feature_id_across_active_and_done_specs(
     tmp_path: Path,
 ) -> None:
     project_root = tmp_path
-    features_dir = project_root / "docs" / "spec" / "features"
-    features_done_dir = project_root / "docs" / "spec" / "features_done"
+    features_dir = project_root / "docs" / "specifications" / "features"
+    features_done_dir = project_root / "docs" / "specifications" / "features_done"
     features_dir.mkdir(parents=True, exist_ok=True)
     features_done_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1091,7 +1100,7 @@ def test_validate_bundled_feature_contract_accepts_planned_package(
     tmp_path: Path,
 ) -> None:
     feature_root = (
-        tmp_path / "docs" / "spec" / "features" / "FEAT-181-bundled-feature-contract"
+        tmp_path / "docs" / "specifications" / "features" / "FEAT-181-bundled-feature-contract"
     )
     write_bundled_feature_spec(feature_root)
     write_plan_artifact(feature_root)
@@ -1105,7 +1114,7 @@ def test_validate_bundled_feature_contract_rejects_subtasks_in_active_spec(
     tmp_path: Path,
 ) -> None:
     feature_root = (
-        tmp_path / "docs" / "spec" / "features" / "FEAT-181-bundled-feature-contract"
+        tmp_path / "docs" / "specifications" / "features" / "FEAT-181-bundled-feature-contract"
     )
     write_bundled_feature_spec(
         feature_root,
@@ -1134,7 +1143,7 @@ def test_validate_bundled_feature_contract_requires_companion_artifacts(
     tmp_path: Path,
 ) -> None:
     feature_root = (
-        tmp_path / "docs" / "spec" / "features" / "FEAT-181-bundled-feature-contract"
+        tmp_path / "docs" / "specifications" / "features" / "FEAT-181-bundled-feature-contract"
     )
     write_bundled_feature_spec(
         feature_root,
@@ -1155,7 +1164,7 @@ def test_validate_bundled_feature_contract_requires_companion_artifacts(
 def test_validate_bundled_feature_contract_rejects_flat_wrapper_alongside_bundle(
     tmp_path: Path,
 ) -> None:
-    features_dir = tmp_path / "docs" / "spec" / "features"
+    features_dir = tmp_path / "docs" / "specifications" / "features"
     wrapper_path = features_dir / "FEAT-181-bundled-feature-contract.yaml"
     wrapper_path.parent.mkdir(parents=True, exist_ok=True)
     wrapper_path.write_text(

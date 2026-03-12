@@ -5,7 +5,7 @@ Your job: review tests associated with the current feature spec, focusing ONLY o
 Determine scope (must follow):
 - Determine the current spec:
   - If the runner provides `feature_path`, read that spec file first and treat it as the source of truth for intent. Intent is the goal; do not mechanically follow the spec text if it conflicts with achieving the goal.
-  - Else scan active feature entrypoints under `docs/spec/features/**/spec.yaml`, then pick the one with `status: in_progress` (tie-break: prefer `updated_at`, else deterministic path sort).
+  - Else scan active feature entrypoints under `docs/specifications/features/**/spec.yaml`, then pick the one with `status: in_progress` (tie-break: prefer `updated_at`, else deterministic path sort).
   - If none found, review the diff tests without spec linkage and state that spec linkage was unavailable.
 - Treat `planning_tier`, linked `research.md`, `plan.md` phases, and referenced supporting artifacts as part of the review context when they constrain what tests should prove.
 - Determine changed files using git (do not guess):

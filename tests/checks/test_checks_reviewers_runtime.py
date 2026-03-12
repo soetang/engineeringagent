@@ -283,8 +283,8 @@ def test_plan_reviewer_checks_match_bundled_workflow_markdown_surfaces(
                 "        - harness/**/*.py",
                 "        - harness/**/*.md",
                 "        - docs/fixtures/**/*.md",
-                "        - docs/spec/features/**/spec.yaml",
-                "        - docs/spec/features/**/*.md",
+                "        - docs/specifications/features/**/spec.yaml",
+                "        - docs/specifications/features/**/*.md",
                 "",
             ]
         ),

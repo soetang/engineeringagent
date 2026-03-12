@@ -176,7 +176,7 @@ def test_prompt_definition_render_rejects_undeclared_interpolations(
         prompt.render(
             {
                 "feature_id": "FEAT-100",
-                "specification_path": "docs/spec/features/FEAT-100/spec.yaml",
+                "specification_path": "docs/specifications/features/FEAT-100/spec.yaml",
                 "extra": "nope",
             }
         )

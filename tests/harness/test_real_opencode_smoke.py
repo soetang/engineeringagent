@@ -129,7 +129,7 @@ def test_smoke_helper_targets_bundled_feature_package(repo_root: Path) -> None:
     smoke = _load_smoke_module(repo_root)
 
     assert smoke._FEATURE_SPEC_RELATIVE_PATH == Path(
-        "docs/spec/features/FEAT-001-hello-world-smoke/spec.yaml"
+        "docs/specifications/features/FEAT-001-hello-world-smoke/spec.yaml"
     )
 
 

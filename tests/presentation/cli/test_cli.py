@@ -153,7 +153,7 @@ def test_run_help_describes_bundled_feature_entrypoints() -> None:
     assert "auto-discover active feature entrypoints" in normalized_output
     assert "under docs/specifications/features" in normalized_output
     assert (
-        "auto-discover active feature specs under docs/spec/features"
+        "auto-discover active feature specs under docs/specifications/features"
         not in normalized_output
     )
 
@@ -161,7 +161,7 @@ def test_run_help_describes_bundled_feature_entrypoints() -> None:
 def test_run_rejects_removed_skip_flag() -> None:
     removed_skip_flag = "--skip-" + "implement"
     result = _invoke_cli(
-        ["run", "docs/spec/features/FEAT-900/spec.yaml", removed_skip_flag]
+        ["run", "docs/specifications/features/FEAT-900/spec.yaml", removed_skip_flag]
     )
 
     assert result.exit_code != 0
@@ -357,7 +357,7 @@ def test_main_run_command_executes_loop_context_via_real_cli(
             "--project-root",
             str(tmp_path),
             "run",
-            "docs/spec/features/FEAT-900/spec.yaml",
+            "docs/specifications/features/FEAT-900/spec.yaml",
             "--dry-run",
             "--max-iterations",
             "7",
@@ -369,7 +369,7 @@ def test_main_run_command_executes_loop_context_via_real_cli(
     assert result.exit_code == 7
     request = captured["request"]
     assert request.project_root == tmp_path.resolve()
-    assert request.feature_paths == ("docs/spec/features/FEAT-900/spec.yaml",)
+    assert request.feature_paths == ("docs/specifications/features/FEAT-900/spec.yaml",)
     assert request.run_all is False
     assert request.dry_run is True
     assert request.max_iterations == 7
@@ -428,7 +428,7 @@ def test_cmd_run_builds_application_request_for_run_entrypoint(
     exit_code = cli_module.cmd_run(
         SimpleNamespace(
             project_root=str(tmp_path),
-            feature_paths=["docs/spec/features/FEAT-078/spec.yaml"],
+            feature_paths=["docs/specifications/features/FEAT-078/spec.yaml"],
             run_all=False,
             dry_run=True,
             max_iterations=7,
@@ -440,7 +440,7 @@ def test_cmd_run_builds_application_request_for_run_entrypoint(
     assert exit_code == 7
     request = captured["request"]
     assert request.project_root == tmp_path.resolve()
-    assert request.feature_paths == ("docs/spec/features/FEAT-078/spec.yaml",)
+    assert request.feature_paths == ("docs/specifications/features/FEAT-078/spec.yaml",)
     assert request.run_all is False
     assert request.dry_run is True
     assert request.max_iterations == 7

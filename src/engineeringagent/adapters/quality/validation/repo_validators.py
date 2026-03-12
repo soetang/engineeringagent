@@ -182,7 +182,7 @@ def run_repo_validation(
 ) -> None:
     """Run repo-owned static validation checks in deterministic order."""
 
-    spec_root = docs_root / "spec"
+    spec_root = docs_root / "specifications"
     features_dir = spec_root / "features"
     features_done_dir = spec_root / "features_done"
     potential_features_path = spec_root / "potential_features.yaml"

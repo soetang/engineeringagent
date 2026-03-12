@@ -284,7 +284,7 @@ def test_run_loop_all_snapshot_banner_mentions_feature_entrypoints_for_bundles(
     output = capsys.readouterr().out
     assert code == 0
     assert "runnable feature entrypoint(s) from docs/specifications/features/" in output
-    assert "docs/spec/features/*.yaml" not in output
+    assert "docs/specifications/features/*.yaml" not in output
     assert "Selection is taken from the startup snapshot" in output
 
 
@@ -688,7 +688,7 @@ def test_run_loop_iteration_output_uses_emoji_contract(
             failed_gate=None,
             attempt=1,
             next_action="continue_same_feature",
-            selected_path="docs/spec/features/FEAT-900/spec.yaml",
+            selected_path="docs/specifications/features/FEAT-900/spec.yaml",
             implement_step="opencode run --agent engineeringagent",
         )
     )
@@ -699,7 +699,7 @@ def test_run_loop_iteration_output_uses_emoji_contract(
             failed_gate="spec_validate",
             attempt=2,
             next_action="retry_same_feature",
-            selected_path="docs/spec/features/FEAT-900/spec.yaml",
+            selected_path="docs/specifications/features/FEAT-900/spec.yaml",
             implement_step="opencode run --agent engineeringagent",
             log_path=FEATURE_LOG_REF,
         )
@@ -711,15 +711,15 @@ def test_run_loop_iteration_output_uses_emoji_contract(
             failed_gate=None,
             attempt=3,
             next_action="select_next_feature",
-            selected_path="docs/spec/features/FEAT-900/spec.yaml",
+            selected_path="docs/specifications/features/FEAT-900/spec.yaml",
             implement_step="opencode run --agent engineeringagent",
-            archived_selection_path="docs/spec/features_done/FEAT-900/spec.yaml",
+            archived_selection_path="docs/specifications/features_done/FEAT-900/spec.yaml",
         )
     )
 
     output = capsys.readouterr().out
     assert "🔁 Iteration 1 · FEAT-900" in output
-    assert "🎯 Selected: docs/spec/features/FEAT-900/spec.yaml" in output
+    assert "🎯 Selected: docs/specifications/features/FEAT-900/spec.yaml" in output
     assert "🛠 Implement: opencode run --agent engineeringagent" in output
     assert "✅ Passed" in output
     assert "➡️ Next: continue_same_feature" in output

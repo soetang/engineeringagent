@@ -9,13 +9,13 @@ tags: [research, codebase, tests, meta, fitness, loop]
 status: complete
 last_updated: 2026-03-10
 last_updated_by: OpenCode
-specification_path: docs/spec/features/FEAT-184-delete-low-value-tests/
+specification_path: docs/specifications/features/FEAT-184-delete-low-value-tests/
 ---
 
 # Research: Research for FEAT-184 delete legacy and low-value brittle tests
 
 ## Research Question
-Create `research.md` for `docs/spec/features/FEAT-184-delete-low-value-tests/spec.yaml`, using the CLI research-session guidance, after thorough inspection of the test suite to identify legacy, brittle, low-value, heavily mocked, and implementation-coupled tests that are good deletion candidates while preserving behavior-facing anchors.
+Create `research.md` for `docs/specifications/features/FEAT-184-delete-low-value-tests/spec.yaml`, using the CLI research-session guidance, after thorough inspection of the test suite to identify legacy, brittle, low-value, heavily mocked, and implementation-coupled tests that are good deletion candidates while preserving behavior-facing anchors.
 
 ## Summary
 - The main concentration of low-value tests is in `tests/meta` and `tests/fitness`, not the behavior-facing CLI, git, backend, or full loop-flow suites. Those two areas contain many repo-shape checks, migration guards, wording locks, deleted-path assertions, and checker self-tests that mostly enforce internal structure instead of user-visible behavior.

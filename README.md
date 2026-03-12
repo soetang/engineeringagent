@@ -18,7 +18,7 @@ This means the flow is really simple:
 
 1. Run `uv run engineeringagent init` - this creates the necessary files and guides you through the first decisions.
 2. Start your favorite coding agent at the repository root.
-3. Ask it to write a bundled feature package rooted at `docs/spec/features/FEAT-XXX-some-header/spec.yaml`.
+3. Ask it to write a bundled feature package rooted at `docs/specifications/features/FEAT-XXX-some-header/spec.yaml`.
 4. Keep `spec.yaml` outcome-oriented and put implementation sequencing in `plan.md` phases when the feature uses a `planned` or `researched` planning tier.
 5. Implement the spec with `uv run engineeringagent run --all`.
 

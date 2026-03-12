@@ -134,7 +134,7 @@ def _make_project_root(tmp_path: Path) -> tuple[Path, Path]:
                 "version = 1",
                 "",
                 "[paths]",
-                'specifications_root = "docs/spec"',
+                'specifications_root = "docs/specifications"',
             ]
         )
         + "\n",

@@ -14,8 +14,8 @@ from engineeringagent.adapters.runtime.iteration_phases import (
     run_reviewer_phase,
 )
 
-ACTIVE_FEATURE_PATH = Path("docs/spec/features/FEAT-001/spec.yaml")
-ARCHIVED_FEATURE_PATH = Path("docs/spec/features_done/FEAT-001/spec.yaml")
+ACTIVE_FEATURE_PATH = Path("docs/specifications/features/FEAT-001/spec.yaml")
+ARCHIVED_FEATURE_PATH = Path("docs/specifications/features_done/FEAT-001/spec.yaml")
 
 
 def test_run_gate_phase_is_not_configured_without_checks_yaml(

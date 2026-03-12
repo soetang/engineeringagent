@@ -23,8 +23,8 @@ def _load_markdown_frontmatter(path: Path) -> dict[str, object]:
 
 def test_feature_specs_directory_exists(pytestconfig: pytest.Config) -> None:
     repo_root = Path(pytestconfig.rootpath)
-    features_dir = repo_root / "docs" / "spec" / "features"
-    features_done_dir = repo_root / "docs" / "spec" / "features_done"
+    features_dir = repo_root / "docs" / "specifications" / "features"
+    features_done_dir = repo_root / "docs" / "specifications" / "features_done"
     assert features_dir.exists()
     assert _has_feature_entrypoints(features_dir) or _has_feature_entrypoints(
         features_done_dir
@@ -32,7 +32,7 @@ def test_feature_specs_directory_exists(pytestconfig: pytest.Config) -> None:
 
 
 def test_bundled_feature_package_counts_as_feature_layout(tmp_path: Path) -> None:
-    features_dir = tmp_path / "docs" / "spec" / "features"
+    features_dir = tmp_path / "docs" / "specifications" / "features"
     bundled_dir = features_dir / "FEAT-999-example"
     bundled_dir.mkdir(parents=True)
     (bundled_dir / "spec.yaml").write_text("id: FEAT-999\n", encoding="utf-8")
@@ -41,7 +41,7 @@ def test_bundled_feature_package_counts_as_feature_layout(tmp_path: Path) -> Non
 
 
 def test_missing_feature_entrypoints_is_detected(tmp_path: Path) -> None:
-    features_dir = tmp_path / "docs" / "spec" / "features"
+    features_dir = tmp_path / "docs" / "specifications" / "features"
     features_dir.mkdir(parents=True)
 
     assert not _has_feature_entrypoints(features_dir)
@@ -51,7 +51,7 @@ def test_active_bundled_plan_frontmatter_uses_runtime_status_vocabulary(
     repo_root: Path,
 ) -> None:
     allowed_statuses = {"backlog", "in_progress", "done", "blocked"}
-    features_dir = repo_root / "docs" / "spec" / "features"
+    features_dir = repo_root / "docs" / "specifications" / "features"
 
     for spec_path in sorted(features_dir.glob("*/spec.yaml")):
         payload = yaml.safe_load(spec_path.read_text(encoding="utf-8"))
@@ -80,14 +80,14 @@ def test_active_bundled_plan_frontmatter_uses_runtime_status_vocabulary(
 
 
 def test_active_features_use_bundled_spec_entrypoints_only(repo_root: Path) -> None:
-    features_dir = repo_root / "docs" / "spec" / "features"
+    features_dir = repo_root / "docs" / "specifications" / "features"
 
     assert sorted(features_dir.glob("*.yaml")) == []
     assert sorted(features_dir.glob("*.yml")) == []
 
 
 def test_archived_features_use_bundled_spec_entrypoints_only(repo_root: Path) -> None:
-    features_done_dir = repo_root / "docs" / "spec" / "features_done"
+    features_done_dir = repo_root / "docs" / "specifications" / "features_done"
 
     assert sorted(features_done_dir.glob("*.yaml")) == []
     assert sorted(features_done_dir.glob("*.yml")) == []

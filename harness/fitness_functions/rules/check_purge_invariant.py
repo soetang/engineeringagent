@@ -15,7 +15,7 @@ from engineeringagent.adapters.quality.fitness.contracts import (
 RULE_ID = "quality.purge-invariant"
 PROJECT_ROOT = Path(".")
 EXCLUDED_PREFIXES = (
-    "docs/spec/features_done/",
+    "docs/specifications/features_done/",
     ".engineeringagent/progress/",
 )
 
