@@ -47,14 +47,16 @@ def _repo_policy_rules(repo_root: Path) -> list[dict[str, object]]:
     return rules
 
 
-def _policy_module_target_path(repo_root: Path, module_name: str) -> Path:
-    source_root = repo_root / "src" / "engineeringagent"
-    _, _, suffix = module_name.partition("engineeringagent.")
-    relative_path = Path(*suffix.split(".")) if suffix else Path()
-    package_path = source_root / relative_path / "__init__.py"
-    if package_path.is_file():
-        return Path(*suffix.split(".")) / "__init__.py"
-    return Path(*suffix.split(".")).with_suffix(".py")
+def _layer_target_path(layer_id: str) -> Path:
+    return {
+        "adapters": Path("adapters/__init__.py"),
+        "application": Path("application/__init__.py"),
+        "bootstrap": Path("bootstrap/__init__.py"),
+        "domain": Path("domain/__init__.py"),
+        "ports": Path("ports/__init__.py"),
+        "presentation": Path("presentation/__init__.py"),
+        "presentation_cli": Path("presentation/cli/__init__.py"),
+    }[layer_id]
 
 
 def _write_repo_policy_fixture(project_root: Path, repo_root: Path) -> None:
@@ -62,22 +64,8 @@ def _write_repo_policy_fixture(project_root: Path, repo_root: Path) -> None:
     for rule in _repo_policy_rules(repo_root):
         source_layers = cast(list[str] | None, rule.get("source_layers"))
         assert isinstance(source_layers, list)
-        module_names = [
-            {
-                "application": "engineeringagent.application",
-                "domain": "engineeringagent.domain",
-                "ports": "engineeringagent.ports",
-                "presentation_cli": "engineeringagent.presentation.cli",
-            }[layer_id]
-            for layer_id in source_layers
-        ]
-        for module_name in module_names:
-            assert isinstance(module_name, str)
-            _write_module(
-                project_root,
-                str(_policy_module_target_path(repo_root, module_name)),
-                "",
-            )
+        for layer_id in source_layers:
+            _write_module(project_root, str(_layer_target_path(layer_id)), "")
 
 
 def _write_policy(project_root: Path, rules: list[dict[str, object]]) -> Path:
@@ -373,8 +361,7 @@ def test_directionality_rule_errors_when_policy_repeats_module_boundary(
     assert payload["violations"] == []
     assert (
         _summary(payload)
-        == "Dependency directionality scan failed: duplicate policy module: "
-        "engineeringagent.domain"
+        == "Dependency directionality scan failed: duplicate policy layer: domain"
     )
 
 

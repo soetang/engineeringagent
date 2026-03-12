@@ -20,14 +20,19 @@ _DEFAULT_POLICY = (
     / "policies"
     / "dependency_directionality.yaml"
 )
-_LAYER_MODULES = {
-    "adapters": ("engineeringagent.adapters",),
-    "application": ("engineeringagent.application",),
-    "bootstrap": ("engineeringagent.bootstrap",),
-    "domain": ("engineeringagent.domain",),
-    "ports": ("engineeringagent.ports",),
-    "presentation": ("engineeringagent.presentation",),
-    "presentation_cli": ("engineeringagent.presentation.cli",),
+_SOURCE_ROOT = Path("src") / "engineeringagent"
+_LAYER_DIRECTORIES = {
+    "adapters": Path("adapters"),
+    "application": Path("application"),
+    "bootstrap": Path("bootstrap"),
+    "domain": Path("domain"),
+    "ports": Path("ports"),
+    "presentation": Path("presentation"),
+    "presentation_cli": Path("presentation") / "cli",
+}
+_BLOCKED_MODULE_PREFIXES = {
+    layer_id: f"engineeringagent.{layer_path.as_posix().replace('/', '.')}"
+    for layer_id, layer_path in _LAYER_DIRECTORIES.items()
 }
 
 
@@ -50,14 +55,13 @@ def _read_module_list(
                 raise ValueError(
                     f"policy {alias_field_name} must contain only non-empty strings"
                 )
-            layer_modules = _LAYER_MODULES.get(layer_id)
-            if layer_modules is None:
-                known_layers = ", ".join(sorted(_LAYER_MODULES))
+            if layer_id not in _LAYER_DIRECTORIES:
+                known_layers = ", ".join(sorted(_LAYER_DIRECTORIES))
                 raise ValueError(
                     f"unknown {item_label} layer id '{layer_id}'; expected one of: "
                     f"{known_layers}"
                 )
-            expanded_values.extend(layer_modules)
+            expanded_values.append(layer_id)
         return expanded_values
     if rule.get(field_name) is not None:
         raise ValueError(
@@ -96,36 +100,27 @@ def _load_policy(config_file: Path) -> dict[str, tuple[str, ...]]:
             alias_field_name="blocked_layers",
             item_label="blocked dependency",
         )
-        for source_module in source_modules:
-            if source_module in disallowed_imports:
-                raise ValueError(f"duplicate policy module: {source_module}")
-            disallowed_imports[source_module] = tuple(blocked_dependencies)
+        for source_layer in source_modules:
+            if source_layer in disallowed_imports:
+                raise ValueError(f"duplicate policy layer: {source_layer}")
+            disallowed_imports[source_layer] = tuple(blocked_dependencies)
 
     return disallowed_imports
 
 
-def _module_path(project_root: Path, module_name: str) -> Path:
-    _, _, suffix = module_name.partition("engineeringagent.")
-    module_root = project_root / "src" / "engineeringagent"
-    relative_path = Path(*suffix.split(".")) if suffix else Path()
-    package_path = module_root / relative_path / "__init__.py"
-    if package_path.is_file():
-        return package_path
-    return module_root / relative_path.with_suffix(".py")
-
-
-def _module_paths(project_root: Path, module_name: str) -> tuple[Path, ...]:
-    module_path = _module_path(project_root, module_name)
-    if module_path.name == "__init__.py":
-        package_root = module_path.parent
-        return tuple(
-            sorted(
-                path
-                for path in package_root.rglob("*.py")
-                if path.is_file() and "__pycache__" not in path.parts
-            )
+def _iter_layer_module_paths(project_root: Path, layer_id: str) -> tuple[Path, ...]:
+    layer_root = project_root / _SOURCE_ROOT / _LAYER_DIRECTORIES[layer_id]
+    if not layer_root.exists():
+        return ()
+    if layer_root.is_file():
+        return (layer_root,)
+    return tuple(
+        sorted(
+            path
+            for path in layer_root.rglob("*.py")
+            if path.is_file() and "__pycache__" not in path.parts
         )
-    return (module_path,)
+    )
 
 
 def _path_to_module_name(project_root: Path, path: Path) -> str:
@@ -175,19 +170,22 @@ def _directionality_violations(
     project_root: Path, *, config_file: Path
 ) -> list[str]:
     violations: list[str] = []
-    for source_name, blocked_modules in sorted(_load_policy(config_file).items()):
-        module_paths = _module_paths(project_root, source_name)
-        if not module_paths or not module_paths[0].exists():
+    for source_layer, blocked_layers in sorted(_load_policy(config_file).items()):
+        module_paths = _iter_layer_module_paths(project_root, source_layer)
+        if not module_paths:
             violations.append(
-                f"missing module for directionality check: {source_name}"
+                f"missing layer root for directionality check: {source_layer}"
             )
             continue
 
         for module_path in module_paths:
             module_name = _path_to_module_name(project_root, module_path)
             for imported in sorted(_collect_imports(module_path, module_name)):
-                for blocked in blocked_modules:
-                    if imported == blocked or imported.startswith(f"{blocked}."):
+                for blocked_layer in blocked_layers:
+                    blocked_prefix = _BLOCKED_MODULE_PREFIXES[blocked_layer]
+                    if imported == blocked_prefix or imported.startswith(
+                        f"{blocked_prefix}."
+                    ):
                         violations.append(
                             f"{module_name} imports blocked dependency {imported}"
                         )
