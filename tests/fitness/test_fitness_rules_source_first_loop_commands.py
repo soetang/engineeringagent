@@ -75,7 +75,7 @@ def test_detects_forbidden_uvx_from_dot_in_feature_verification(
     repo_root: Path,
 ) -> None:
     """Fail when a bundled plan phase verification command uses uvx --from ."""
-    feature_root = tmp_path / "docs/spec/features/FEAT-001-bundled"
+    feature_root = tmp_path / "docs/specifications/features/FEAT-001-bundled"
     _write_yaml(
         feature_root / "spec.yaml",
         {
@@ -104,7 +104,7 @@ def test_detects_forbidden_uvx_from_dot_in_feature_verification(
     assert isinstance(violations, list)
     assert len(violations) == 1
     assert (
-        "docs/spec/features/FEAT-001-bundled/plan.md:phases[0].verification[0]"
+        "docs/specifications/features/FEAT-001-bundled/plan.md:phases[0].verification[0]"
         in violations[0]
     )
 
@@ -114,7 +114,7 @@ def test_detects_forbidden_uvx_from_dot_in_checks_config(
     repo_root: Path,
 ) -> None:
     """Fail when a command check uses uvx --from . engineeringagent."""
-    feature_root = tmp_path / "docs/spec/features/FEAT-001-bundled"
+    feature_root = tmp_path / "docs/specifications/features/FEAT-001-bundled"
     _write_yaml(
         feature_root / "spec.yaml",
         {
@@ -162,7 +162,7 @@ def test_detects_legacy_module_form_in_loop_command_surfaces(
     repo_root: Path,
 ) -> None:
     """Fail when loop command surfaces still use python -m engineeringagent.cli."""
-    feature_root = tmp_path / "docs/spec/features/FEAT-001-bundled"
+    feature_root = tmp_path / "docs/specifications/features/FEAT-001-bundled"
     _write_yaml(
         feature_root / "spec.yaml",
         {
@@ -202,7 +202,7 @@ def test_detects_legacy_module_form_in_loop_command_surfaces(
     violations = payload["violations"]
     assert isinstance(violations, list)
     assert len(violations) == 2
-    assert "docs/spec/features/FEAT-001-bundled/plan.md:phases[0].verification[0]" in (
+    assert "docs/specifications/features/FEAT-001-bundled/plan.md:phases[0].verification[0]" in (
         violations[0]
     )
     assert "harness/checks.yaml:checks.spec_validate.command" in violations[1]
@@ -214,7 +214,7 @@ def test_detects_forbidden_uvx_from_dot_in_bundled_plan_phase_verification(
     repo_root: Path,
 ) -> None:
     """Fail when bundled plan phases use uvx --from . engineeringagent."""
-    feature_root = tmp_path / "docs/spec/features/FEAT-181-bundled"
+    feature_root = tmp_path / "docs/specifications/features/FEAT-181-bundled"
     _write_yaml(
         feature_root / "spec.yaml",
         {
@@ -258,7 +258,7 @@ def test_detects_forbidden_uvx_from_dot_in_bundled_plan_phase_verification(
     violations = payload["violations"]
     assert isinstance(violations, list)
     assert len(violations) == 1
-    assert "docs/spec/features/FEAT-181-bundled/plan.md:phases[0].verification[0]" in (
+    assert "docs/specifications/features/FEAT-181-bundled/plan.md:phases[0].verification[0]" in (
         violations[0]
     )
 
@@ -268,7 +268,7 @@ def test_detects_forbidden_uvx_from_dot_in_bundled_declared_plan_artifact(
     repo_root: Path,
 ) -> None:
     """Fail when bundled specs point at a non-default plan artifact path."""
-    feature_root = tmp_path / "docs/spec/features/FEAT-181-bundled"
+    feature_root = tmp_path / "docs/specifications/features/FEAT-181-bundled"
     _write_yaml(
         feature_root / "spec.yaml",
         {
@@ -313,7 +313,7 @@ def test_detects_forbidden_uvx_from_dot_in_bundled_declared_plan_artifact(
     assert isinstance(violations, list)
     assert len(violations) == 1
     assert (
-        "docs/spec/features/FEAT-181-bundled/planning/active-plan.md:phases[0].verification[0]"
+        "docs/specifications/features/FEAT-181-bundled/planning/active-plan.md:phases[0].verification[0]"
         in violations[0]
     )
 
@@ -469,6 +469,7 @@ def test_detects_forbidden_uvx_from_dot_in_default_implementation_prompt_definit
 
 
 def test_smoke_plan_template_fixtures_use_bundled_status_vocabulary() -> None:
+    """Keep smoke plan frontmatter fixtures aligned to the bundled status vocabulary."""
     smoke_failure_frontmatter = _smoke_plan_frontmatter(
         "uvx --from . engineeringagent validate --schema-only"
     )
@@ -486,7 +487,7 @@ def test_smoke_plan_template_fixtures_use_bundled_status_vocabulary() -> None:
 def test_allows_uv_run_source_first_forms(tmp_path: Path, repo_root: Path) -> None:
     """Pass when scoped commands use uv run or direct local workspace execution."""
     _write_yaml(
-        tmp_path / "docs/spec/features/FEAT-001-bundled/spec.yaml",
+        tmp_path / "docs/specifications/features/FEAT-001-bundled/spec.yaml",
         {
             "id": "FEAT-001",
             "title": "Bundled feature",
@@ -501,11 +502,11 @@ def test_allows_uv_run_source_first_forms(tmp_path: Path, repo_root: Path) -> No
         },
     )
     _write_markdown_frontmatter(
-        tmp_path / "docs/spec/features/FEAT-001-bundled/plan.md",
+        tmp_path / "docs/specifications/features/FEAT-001-bundled/plan.md",
         _smoke_plan_frontmatter("uv run engineeringagent validate --schema-only"),
     )
     _write_yaml(
-        tmp_path / "docs/spec/features/FEAT-181-bundled/spec.yaml",
+        tmp_path / "docs/specifications/features/FEAT-181-bundled/spec.yaml",
         {
             "id": "FEAT-181",
             "title": "Bundled feature",
@@ -520,7 +521,7 @@ def test_allows_uv_run_source_first_forms(tmp_path: Path, repo_root: Path) -> No
         },
     )
     _write_markdown_frontmatter(
-        tmp_path / "docs/spec/features/FEAT-181-bundled/plan.md",
+        tmp_path / "docs/specifications/features/FEAT-181-bundled/plan.md",
         {
             "plan_id": "FEAT-181",
             "feature_id": "FEAT-181",

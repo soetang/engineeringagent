@@ -22,6 +22,7 @@ from engineeringagent.checks import (
     load_harness_checks_document,
     normalize_groups,
     resolve_feature_plan_path,
+    resolve_specifications_root,
     render_fitness_catalog,
     reviewer_decision_schema_from_model,
     reviewers_group_selected,
@@ -46,6 +47,7 @@ def test_checks_supported_exports_are_importable() -> None:
     assert callable(load_harness_checks_document)
     assert callable(normalize_groups)
     assert callable(resolve_feature_plan_path)
+    assert callable(resolve_specifications_root)
     assert callable(render_fitness_catalog)
     assert callable(custom_rule_manifest_schema_from_model)
     assert callable(reviewer_decision_schema_from_model)
@@ -69,6 +71,7 @@ def test_checks_supported_exports_are_importable() -> None:
         "load_harness_checks_document",
         "normalize_groups",
         "resolve_feature_plan_path",
+        "resolve_specifications_root",
         "render_fitness_catalog",
         "reviewer_decision_schema_from_model",
         "reviewers_group_selected",
@@ -137,6 +140,21 @@ def test_bundled_spec_helpers_remain_available_from_package_facade(
         "status": "backlog",
         "phases": [],
     }
+
+
+def test_resolve_specifications_root_remains_available_from_package_facade(
+    tmp_path: Path,
+) -> None:
+    """Checks facade should expose configured specifications-root resolution."""
+
+    (tmp_path / "engineeringagent.toml").write_text(
+        '[paths]\nspecifications_root = "docs/specifications"\n',
+        encoding="utf-8",
+    )
+
+    assert resolve_specifications_root(tmp_path) == (
+        tmp_path / "docs" / "specifications"
+    )
 
 
 def test_checks_run_result_remains_importable_after_specification_import(

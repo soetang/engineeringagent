@@ -42,6 +42,7 @@ __all__ = [
     "load_harness_checks_document",
     "normalize_groups",
     "resolve_feature_plan_path",
+    "resolve_specifications_root",
     "render_fitness_catalog",
     "reviewer_decision_schema_from_model",
     "reviewers_group_selected",
@@ -166,6 +167,13 @@ def resolve_feature_plan_path(
 
     specification = import_module("engineeringagent.domain.specification")
     return specification.resolve_feature_plan_path(spec_path, feature)
+
+
+def resolve_specifications_root(project_root: Path) -> Path:
+    """Proxy to repository specifications-root resolution for harness code."""
+
+    config_runtime = import_module("engineeringagent.adapters.config")
+    return config_runtime.resolve_specifications_root(project_root)
 
 
 def iter_feature_files(features_root: Path) -> tuple[Path, ...]:

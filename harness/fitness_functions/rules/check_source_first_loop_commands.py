@@ -7,7 +7,9 @@ import re
 import yaml
 
 from engineeringagent.checks import emit_fitness_result
+from engineeringagent.checks import iter_feature_files
 from engineeringagent.checks import resolve_feature_plan_path
+from engineeringagent.checks import resolve_specifications_root
 from engineeringagent.adapters.quality.fitness.contracts import (
     CONTRACT_VERSION,
     FitnessRuleResult,
@@ -17,7 +19,6 @@ from engineeringagent.adapters.quality.fitness.contracts import (
 
 
 RULE_ID = "architecture.source-first-loop-command-policy"
-FEATURES_ROOT = Path("docs/spec/features")
 CHECKS_PATH = Path("harness/checks.yaml")
 SMOKE_PLAN_TEMPLATE_PATH = Path("docs/fixtures/real_opencode_hello_world_plan_template.md")
 PLAN_SESSION_APPROACH_PATH = Path("src/engineeringagent/approach/docs/plan-session.md")
@@ -120,14 +121,11 @@ def _command_policy_violation(command: object) -> str | None:
     return None
 
 
-def _iter_feature_specs() -> list[Path]:
-    if not FEATURES_ROOT.is_dir():
+def _iter_feature_specs(project_root: Path) -> list[Path]:
+    features_root = resolve_specifications_root(project_root) / "features"
+    if not features_root.is_dir():
         return []
-    return sorted(
-        child / "spec.yaml"
-        for child in FEATURES_ROOT.iterdir()
-        if child.is_dir() and (child / "spec.yaml").is_file()
-    )
+    return list(iter_feature_files(features_root))
 
 
 def _load_markdown_frontmatter(path: Path) -> dict[str, object] | None:
@@ -188,9 +186,9 @@ def _scan_bundled_plan_phase_commands(
     return _scan_markdown_phase_commands(plan_path)
 
 
-def _scan_feature_verification_commands() -> list[str]:
+def _scan_feature_verification_commands(project_root: Path) -> list[str]:
     violations: list[str] = []
-    for feature_path in _iter_feature_specs():
+    for feature_path in _iter_feature_specs(project_root):
         document = yaml.safe_load(feature_path.read_text(encoding="utf-8")) or {}
         if not isinstance(document, dict):
             continue
@@ -287,7 +285,7 @@ def main() -> int:
     """Check scoped loop commands for forbidden in-repo uvx self-invocation."""
     violations = sorted(
         set(
-            _scan_feature_verification_commands()
+            _scan_feature_verification_commands(Path("."))
             + _scan_smoke_template_commands()
             + _scan_bundled_approach_commands()
             + _scan_contributor_approach_commands()
