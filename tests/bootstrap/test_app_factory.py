@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from engineeringagent.adapters.agents import ConfiguredAgentRunner
+from engineeringagent.adapters.clock import SystemClock
 from engineeringagent.adapters.config import FilesystemConfigurationProvider
 from engineeringagent.adapters.quality import (
     ChecksRepositoryValidator,
@@ -89,6 +90,7 @@ def test_app_factory_builds_default_application_services(tmp_path: Path) -> None
     assert isinstance(factory.build_init_workspace_service(), InitWorkspaceService)
     assert isinstance(factory.build_progress_journal(), FilesystemProgressJournal)
     assert isinstance(factory.build_agent_runner(), ConfiguredAgentRunner)
+    assert isinstance(factory.build_clock(), SystemClock)
     configuration_provider = factory.build_configuration_provider()
     assert isinstance(configuration_provider, FilesystemConfigurationProvider)
     assert isinstance(configuration_provider, ConfigurationProvider)
@@ -101,6 +103,7 @@ def test_app_factory_builds_default_application_services(tmp_path: Path) -> None
         FilesystemPromptDefinitionRepository,
     )
     assert isinstance(factory.build_prompt_builder(), PromptBuilder)
+    assert isinstance(feature_iteration_service._runtime_dependencies.clock, SystemClock)
     recovery_service = factory.build_workspace_recovery_service()
     assert isinstance(recovery_service, WorkspaceRecoveryService)
     assert isinstance(recovery_service._workspace_manager, GitFeatureWorkspaceManager)

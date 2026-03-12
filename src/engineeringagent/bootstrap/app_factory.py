@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from engineeringagent.adapters.agents import ConfiguredAgentRunner
+from engineeringagent.adapters.clock import SystemClock
 from engineeringagent.adapters.config import FilesystemConfigurationProvider
 from engineeringagent.adapters.quality import (
     ChecksRepositoryValidator,
@@ -34,6 +35,7 @@ from engineeringagent.application import (
 )
 from engineeringagent.ports import (
     AgentRunner,
+    Clock,
     ConfigurationProvider,
     PromptDefinitionRepository,
     VersionControlGateway,
@@ -90,7 +92,9 @@ class AppFactory:
         return FeatureIterationService(
             version_control_gateway=self.build_version_control_gateway(),
             progress_journal=self.build_progress_journal(),
-            runtime_dependencies=build_feature_iteration_runtime_dependencies(),
+            runtime_dependencies=build_feature_iteration_runtime_dependencies(
+                clock=self.build_clock(),
+            ),
         )
 
     def build_guidance_service(self) -> GuidanceService:
@@ -112,6 +116,10 @@ class AppFactory:
     def build_agent_runner(self) -> AgentRunner:
         """Create the default configured agent-runner adapter."""
         return ConfiguredAgentRunner()
+
+    def build_clock(self) -> Clock:
+        """Create the default clock adapter."""
+        return SystemClock()
 
     def build_version_control_gateway(self) -> VersionControlGateway:
         """Create the default git-backed version-control gateway."""

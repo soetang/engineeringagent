@@ -9,6 +9,7 @@ from .checks_catalog_repository import (
     ChecksCatalogRepository,
 )
 from .checks_runner import ChecksRunRequest, ChecksRunner
+from .clock import Clock
 from .configuration_provider import ConfigurationProvider
 from .feature_workspace_manager import (
     FeatureWorkspaceFailure,
@@ -56,6 +57,7 @@ __all__ = [
     "ChecksRunResult",
     "ChecksCatalogRepository",
     "ChecksRunner",
+    "Clock",
     "CommandResult",
     "ConfigurationProvider",
     "DEFAULT_AGENT_MODEL",

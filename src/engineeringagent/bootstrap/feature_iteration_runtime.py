@@ -24,13 +24,16 @@ from engineeringagent.adapters.runtime.iteration_phases import (
     run_verification_phase,
 )
 from engineeringagent.bootstrap import runtime_support
+from engineeringagent.ports import Clock
 
 
-def build_feature_iteration_runtime_dependencies() -> (
-    FeatureIterationRuntimeDependencies
-):
+def build_feature_iteration_runtime_dependencies(
+    *,
+    clock: Clock,
+) -> FeatureIterationRuntimeDependencies:
     """Build the default runtime seam bundle for feature iterations."""
     return FeatureIterationRuntimeDependencies(
+        clock=clock,
         evaluate_initial_feature_load=filesystem_feature_state.evaluate_initial_feature_load,
         describe_action=runtime_support.describe_action,
         ready_for_active_iteration=filesystem_feature_state.ready_for_active_iteration,

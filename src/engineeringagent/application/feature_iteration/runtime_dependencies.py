@@ -7,12 +7,15 @@ from typing import Any, Callable
 
 from pydantic import BaseModel, ConfigDict
 
+from engineeringagent.ports import Clock
+
 
 class FeatureIterationRuntimeDependencies(BaseModel):
     """Application-owned runtime seams for feature-iteration execution."""
 
     model_config = ConfigDict(frozen=True, extra="forbid", arbitrary_types_allowed=True)
 
+    clock: Clock
     evaluate_initial_feature_load: Callable[[Path], Any]
     describe_action: Callable[..., str]
     ready_for_active_iteration: Callable[[str, dict[str, object] | None], bool]

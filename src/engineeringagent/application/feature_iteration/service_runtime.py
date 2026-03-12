@@ -54,6 +54,7 @@ def build_iteration_pipeline_dependencies(
 ) -> IterationPipelineDependencies:
     """Build the pipeline dependency bundle from runtime seams."""
     return IterationPipelineDependencies(
+        clock=runtime_dependencies.clock,
         evaluate_initial_feature_load=runtime_dependencies.evaluate_initial_feature_load,
         describe_action=runtime_dependencies.describe_action,
         ready_for_active_iteration=runtime_dependencies.ready_for_active_iteration,

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import time
 from pathlib import Path
 from typing import Any, Callable, TypeVar
 
@@ -18,6 +17,7 @@ from engineeringagent.domain.specification import (
     PostImplementFeatureOutcome,
     progress_status_snapshot,
 )
+from engineeringagent.ports import Clock
 from engineeringagent.specs import feature_progress_kind
 
 from .contracts import (
@@ -45,8 +45,13 @@ def _default_describe_action(project_root: Path, action: str, structured: bool) 
 class IterationPipelineDependencies(BaseModel):
     """Injectable dependencies for the iteration pipeline."""
 
-    model_config = ConfigDict(frozen=True, extra="forbid")
+    model_config = ConfigDict(
+        frozen=True,
+        extra="forbid",
+        arbitrary_types_allowed=True,
+    )
 
+    clock: Clock
     evaluate_initial_feature_load: Callable[[Path], InitialFeatureLoadOutcome]
     describe_action: Callable[..., str] = _default_describe_action
     ready_for_active_iteration: Callable[[str, dict[str, Any] | None], bool]
@@ -139,15 +144,16 @@ T = TypeVar("T")
 
 
 def _timed_phase(
+    clock: Clock,
     phase_timings: list[PhaseTiming],
     phase: str,
     fn: Callable[[], T],
     *,
     timing_hook: Callable[[int, int], None] | None = None,
 ) -> T:
-    started_epoch_sec = int(time.time())
+    started_epoch_sec = int(clock.now_epoch_seconds())
     result = fn()
-    ended_epoch_sec = max(started_epoch_sec, int(time.time()))
+    ended_epoch_sec = max(started_epoch_sec, int(clock.now_epoch_seconds()))
     duration_sec = ended_epoch_sec - started_epoch_sec
     phase_timings.append(
         PhaseTiming(
@@ -513,7 +519,7 @@ def run_feature_iteration_pipeline(
         update={"collect_changed_paths": _collect_changed_paths_once}
     )
 
-    started = time.time()
+    started = dependencies.clock.now_epoch_seconds()
     state = _PipelineState()
     phase_timings: list[PhaseTiming] = []
 
@@ -529,7 +535,12 @@ def run_feature_iteration_pipeline(
         )
         return initial_load
 
-    initial_load = _timed_phase(phase_timings, "initial_load", _run_initial_load_phase)
+    initial_load = _timed_phase(
+        dependencies.clock,
+        phase_timings,
+        "initial_load",
+        _run_initial_load_phase,
+    )
     feature = initial_load.feature
     feature_id = str(feature.get("id", "")) if feature else ""
 
@@ -543,6 +554,7 @@ def run_feature_iteration_pipeline(
         )
 
     _timed_phase(
+        dependencies.clock,
         phase_timings,
         "implement",
         lambda: _run_implement_phase_if_ready(
@@ -561,6 +573,7 @@ def run_feature_iteration_pipeline(
     )
 
     _timed_phase(
+        dependencies.clock,
         phase_timings,
         "archive",
         lambda: _archive_selected_feature_if_needed(
@@ -571,6 +584,7 @@ def run_feature_iteration_pipeline(
         ),
     )
     _timed_phase(
+        dependencies.clock,
         phase_timings,
         "verification",
         lambda: _run_verification_phase_if_passed(
@@ -581,6 +595,7 @@ def run_feature_iteration_pipeline(
         ),
     )
     _timed_phase(
+        dependencies.clock,
         phase_timings,
         "gates",
         lambda: _run_gate_phase_if_passed(
@@ -591,6 +606,7 @@ def run_feature_iteration_pipeline(
         ),
     )
     _timed_phase(
+        dependencies.clock,
         phase_timings,
         "reviewers",
         lambda: _run_reviewer_phase_if_passed(
@@ -602,6 +618,7 @@ def run_feature_iteration_pipeline(
         ),
     )
     _timed_phase(
+        dependencies.clock,
         phase_timings,
         "completion_commit",
         lambda: _run_completion_phase_if_needed(

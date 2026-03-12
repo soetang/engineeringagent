@@ -8,7 +8,6 @@ from typing import Any, Callable
 import pytest
 from pydantic import BaseModel, ConfigDict
 
-import engineeringagent.application.feature_iteration.pipeline as iteration_module
 from engineeringagent.application.feature_iteration import (
     CompletionCommitOutcome,
     FeatureIterationInputs,
@@ -34,6 +33,17 @@ from tests.loop.feature_iteration_support import (
     base_feature,
     make_bundled_project_root,
 )
+
+
+class _FakeClock:
+    def __init__(self, *timestamps: float) -> None:
+        self._timestamps = list(timestamps) or [0.0]
+        self._index = 0
+
+    def now_epoch_seconds(self) -> float:
+        value = self._timestamps[min(self._index, len(self._timestamps) - 1)]
+        self._index += 1
+        return value
 
 
 class _GatePhaseDependencies(BaseModel):
@@ -209,6 +219,7 @@ def test_iteration_pipeline_carries_passed_reviewer_feedback_to_continue(
     report = run_feature_iteration_pipeline(
         iteration_inputs,
         IterationPipelineDependencies(
+            clock=_FakeClock(),
             evaluate_initial_feature_load=(
                 lambda _path: InitialFeatureLoadOutcome(
                     feature={"id": "FEAT-065", "status": "in_progress"},
@@ -341,6 +352,7 @@ def test_iteration_pipeline_tracks_bundled_plan_phase_progress_metadata(
     report = run_feature_iteration_pipeline(
         iteration_inputs,
         IterationPipelineDependencies(
+            clock=_FakeClock(),
             evaluate_initial_feature_load=(
                 lambda _path: InitialFeatureLoadOutcome(
                     feature=feature_data,
@@ -468,6 +480,7 @@ def test_iteration_pipeline_keeps_phase_progress_kind_when_bundled_plan_is_inval
     report = run_feature_iteration_pipeline(
         iteration_inputs,
         IterationPipelineDependencies(
+            clock=_FakeClock(),
             evaluate_initial_feature_load=(
                 lambda _path: InitialFeatureLoadOutcome(
                     feature=feature_data,
@@ -588,6 +601,7 @@ def test_iteration_pipeline_tracks_direct_bundle_feature_progress_metadata(
     report = run_feature_iteration_pipeline(
         iteration_inputs,
         IterationPipelineDependencies(
+            clock=_FakeClock(),
             evaluate_initial_feature_load=(
                 lambda _path: InitialFeatureLoadOutcome(
                     feature=feature_data,
@@ -692,6 +706,7 @@ def test_iteration_pipeline_uses_feature_progress_kind_without_plan_unit(
     report = run_feature_iteration_pipeline(
         iteration_inputs,
         IterationPipelineDependencies(
+            clock=_FakeClock(),
             evaluate_initial_feature_load=(
                 lambda _path: InitialFeatureLoadOutcome(
                     feature=feature_data,
@@ -817,6 +832,7 @@ def test_iteration_pipeline_recovers_phase_metadata_from_parseable_invalid_plan_
     report = run_feature_iteration_pipeline(
         iteration_inputs,
         IterationPipelineDependencies(
+            clock=_FakeClock(),
             evaluate_initial_feature_load=(
                 lambda _path: InitialFeatureLoadOutcome(
                     feature=feature_data,
@@ -987,6 +1003,7 @@ def test_iteration_pipeline_preserves_phase_metadata_after_bundled_archive(
     report = run_feature_iteration_pipeline(
         iteration_inputs,
         IterationPipelineDependencies(
+            clock=_FakeClock(),
             evaluate_initial_feature_load=(
                 lambda _path: InitialFeatureLoadOutcome(
                     feature=feature_data,
@@ -1156,6 +1173,7 @@ def test_iteration_pipeline_clears_archived_selection_after_reviewer_rollback(
     report = run_feature_iteration_pipeline(
         iteration_inputs,
         IterationPipelineDependencies(
+            clock=_FakeClock(),
             evaluate_initial_feature_load=(
                 lambda _path: InitialFeatureLoadOutcome(
                     feature=feature_data,
@@ -1240,6 +1258,7 @@ def test_iteration_pipeline_clears_archived_selection_after_completion_rollback(
     report = run_feature_iteration_pipeline(
         iteration_inputs,
         IterationPipelineDependencies(
+            clock=_FakeClock(),
             evaluate_initial_feature_load=(
                 lambda _path: InitialFeatureLoadOutcome(
                     feature={"id": "FEAT-999", "status": "in_progress"},
@@ -1383,6 +1402,7 @@ def test_iteration_pipeline_archives_before_running_done_transition_verification
     report = run_feature_iteration_pipeline(
         iteration_inputs,
         IterationPipelineDependencies(
+            clock=_FakeClock(),
             evaluate_initial_feature_load=(
                 lambda _path: InitialFeatureLoadOutcome(
                     feature={
@@ -1543,6 +1563,7 @@ def test_iteration_pipeline_runs_gate_phase_after_verification_failure_cases(
     report = run_feature_iteration_pipeline(
         iteration_inputs,
         IterationPipelineDependencies(
+            clock=_FakeClock(),
             evaluate_initial_feature_load=(
                 lambda _path: InitialFeatureLoadOutcome(
                     feature={
@@ -1684,6 +1705,7 @@ def test_iteration_pipeline_collects_changed_paths_once_per_iteration(
     report = run_feature_iteration_pipeline(
         iteration_inputs,
         IterationPipelineDependencies(
+            clock=_FakeClock(),
             evaluate_initial_feature_load=(
                 lambda _path: InitialFeatureLoadOutcome(
                     feature={
@@ -1757,29 +1779,26 @@ def test_iteration_pipeline_collects_changed_paths_once_per_iteration(
 
 
 def test_iteration_pipeline_records_phase_timings(
-    tmp_path: Path, monkeypatch: Any
+    tmp_path: Path,
 ) -> None:
     """Record timing metadata for each pipeline phase."""
-    times = iter(
-        [
-            1000.0,  # iteration started
-            1001.0,
-            1003.0,  # initial_load
-            1003.0,
-            1008.0,  # implement
-            1008.0,
-            1010.0,  # archive
-            1010.0,
-            1010.0,  # verification
-            1010.0,
-            1013.0,  # gates
-            1013.0,
-            1014.0,  # reviewers
-            1014.0,
-            1014.0,  # completion_commit
-        ]
+    clock = _FakeClock(
+        1000.0,  # iteration started
+        1001.0,
+        1003.0,  # initial_load
+        1003.0,
+        1008.0,  # implement
+        1008.0,
+        1010.0,  # archive
+        1010.0,
+        1010.0,  # verification
+        1010.0,
+        1013.0,  # gates
+        1013.0,
+        1014.0,  # reviewers
+        1014.0,
+        1014.0,  # completion_commit
     )
-    monkeypatch.setattr(iteration_module.time, "time", lambda: next(times))
     iteration_inputs = FeatureIterationInputs(
         project_root=tmp_path,
         feature_path=tmp_path / "docs" / "spec" / "features" / "FEAT-065.yaml",
@@ -1791,6 +1810,7 @@ def test_iteration_pipeline_records_phase_timings(
     report = run_feature_iteration_pipeline(
         iteration_inputs,
         IterationPipelineDependencies(
+            clock=clock,
             evaluate_initial_feature_load=(
                 lambda _path: InitialFeatureLoadOutcome(
                     feature={"id": "FEAT-065", "status": "in_progress"},
@@ -1909,14 +1929,11 @@ def test_iteration_pipeline_records_phase_timings(
 
 
 def test_timed_phase_clamps_ended_at_when_clock_skews_backwards(
-    monkeypatch: Any,
 ) -> None:
     """Clamp phase timing when the clock moves backwards."""
-    times = iter([10.0, 9.0])
-    monkeypatch.setattr(iteration_module.time, "time", lambda: next(times))
-
     phase_timings: list[Any] = []
     result = _timed_phase(
+        _FakeClock(10.0, 9.0),
         phase_timings,
         "initial_load",
         lambda: "ok",

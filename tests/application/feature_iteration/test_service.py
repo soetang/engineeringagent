@@ -24,6 +24,11 @@ from engineeringagent.domain.audit import ProgressEvent
 from engineeringagent.ports import CommitRequest, CommitResult, DiffSummary, WorktreeStatus
 
 
+class _FakeClock:
+    def now_epoch_seconds(self) -> float:
+        return 0.0
+
+
 class _FakeGatePhaseDependencies:
     def __init__(self, observed: dict[str, object], **kwargs: object) -> None:
         observed["gate_dependencies"] = kwargs
@@ -176,6 +181,7 @@ def _build_service(
     run_reviewer_phase = lambda *args, **kwargs: None  # noqa: E731
     run_completion_commit_phase = lambda *args, **kwargs: None  # noqa: E731
     runtime_dependencies = FeatureIterationRuntimeDependencies(
+        clock=_FakeClock(),
         evaluate_initial_feature_load=evaluate_initial_feature_load,
         describe_action=describe_action,
         ready_for_active_iteration=ready_for_active_iteration,
