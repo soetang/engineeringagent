@@ -6,9 +6,10 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.checks.config_loader import load_harness_checks_document
 from engineeringagent.domain.quality import HarnessChecksDocument
 from engineeringagent.ports import ChecksCatalogRepository, ValidationFailure
+
+from .checks_catalog_loader import load_harness_checks_document
 
 
 class ChecksCatalogLoadOptions(BaseModel):

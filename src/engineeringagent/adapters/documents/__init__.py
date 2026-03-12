@@ -1,5 +1,6 @@
 """Document-store adapters."""
 
+from .checks_catalog_loader import load_harness_checks_document
 from .filesystem_checks_catalog_repository import (
     ChecksCatalogLoadOptions,
     FilesystemChecksCatalogRepository,
@@ -14,4 +15,5 @@ __all__ = [
     "FilesystemChecksCatalogRepository",
     "FilesystemFeatureSpecificationRepository",
     "FilesystemGuidanceTopicRepository",
+    "load_harness_checks_document",
 ]

@@ -102,8 +102,8 @@ def load_harness_checks_document(
 ) -> tuple[HarnessChecksDocument | None, str | None]:
     """Proxy to config loading without importing specs during package init."""
 
-    config_loader = import_module("engineeringagent.checks.config_loader")
-    return config_loader.load_harness_checks_document(
+    loader = import_module("engineeringagent.adapters.documents")
+    return loader.load_harness_checks_document(
         project_root,
         error_prefix=error_prefix,
         missing_context=missing_context,

@@ -1,3 +1,5 @@
+"""Shared checks-catalog loading for document-backed adapters."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -10,10 +12,7 @@ from engineeringagent.adapters.config import (
     resolve_harness_checks_config_path,
 )
 from engineeringagent.domain.quality import HarnessChecksDocument
-from engineeringagent.specs import (
-    checks_contract_issues,
-    load_yaml,
-)
+from engineeringagent.specs import checks_contract_issues, load_yaml
 
 
 def load_harness_checks_document(
@@ -22,7 +21,7 @@ def load_harness_checks_document(
     error_prefix: str,
     missing_context: str = "",
 ) -> tuple[HarnessChecksDocument | None, str | None]:
-    """Load and validate resolved checks config path with deterministic errors."""
+    """Load and validate the resolved checks catalog with deterministic errors."""
     try:
         checks_path = resolve_harness_checks_config_path(project_root)
     except ValueError as exc:
@@ -47,8 +46,8 @@ def load_harness_checks_document(
         return None, f"{error_prefix}: invalid {checks_label}\n{rendered}"
 
     try:
-        doc = HarnessChecksDocument.model_validate(payload)
+        document = HarnessChecksDocument.model_validate(payload)
     except ValidationError as exc:
         return None, f"{error_prefix}: failed to validate {checks_label}: {exc}"
 
-    return doc, None
+    return document, None
