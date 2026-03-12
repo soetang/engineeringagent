@@ -14,7 +14,6 @@ from .domain.audit import (
     IterationReport,
     IterationSummaryInputs,
 )
-from .application.feature_selection import deterministic_feature_choice
 from .bootstrap import AppFactory
 from .bootstrap import runtime_support as _runtime_support
 from .bootstrap.iteration_reporting import (
@@ -25,6 +24,7 @@ from .bootstrap.iteration_reporting import (
 )
 from .bootstrap.runtime_execution import run_loop_controller
 from .domain.specification import feature_completion_commit_subject
+from .domain.specification import deterministic_feature_choice
 from .loop_runtime.feature_state import (
     discover_active_feature_paths,
     done_features_pending_archive,

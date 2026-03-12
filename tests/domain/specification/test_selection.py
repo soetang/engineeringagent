@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-import engineeringagent.application.feature_selection as selection
+import engineeringagent.domain.specification.selection as selection
 
 
 def _pending_features() -> list[tuple[Path, dict[str, Any]]]:

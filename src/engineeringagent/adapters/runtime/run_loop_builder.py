@@ -11,15 +11,13 @@ from engineeringagent.domain.audit import (
     IterationOutcome,
     IterationSummaryInputs,
 )
-from engineeringagent.application.feature_selection import (
-    deterministic_feature_choice,
-)
 from engineeringagent.loop_runtime.feature_state import (
     discover_active_feature_paths,
     done_features_pending_archive,
     pending_features,
     resolve_feature_paths,
 )
+from engineeringagent.domain.specification import deterministic_feature_choice
 from engineeringagent.ports import VersionControlFailure
 
 from .feature_selector import choose_feature_with_selector

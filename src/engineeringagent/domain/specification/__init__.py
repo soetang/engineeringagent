@@ -24,6 +24,7 @@ from .progress import (
     iter_progress_units,
     progress_status_snapshot,
 )
+from .selection import deterministic_feature_choice, parse_selector_output
 
 __all__ = [
     "FeatureArtifacts",
@@ -40,6 +41,8 @@ __all__ = [
     "feature_completion_commit_subject",
     "feature_progress_kind",
     "iter_progress_units",
+    "deterministic_feature_choice",
+    "parse_selector_output",
     "progress_status_snapshot",
     "resolve_feature_plan_path",
     "resolve_feature_research_path",

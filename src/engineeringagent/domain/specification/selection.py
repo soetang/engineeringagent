@@ -1,17 +1,17 @@
-"""Application-layer helpers for deterministic feature selection."""
+"""Specification-domain helpers for deterministic feature selection."""
 
 from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, Sequence
 
-from engineeringagent.specs import feature_sort_key
-
 STATUS_ORDER: dict[str, int] = {
     "in_progress": 0,
     "backlog": 1,
     "blocked": 2,
 }
+
+PRIORITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 
 
 def deterministic_feature_choice(
@@ -22,7 +22,8 @@ def deterministic_feature_choice(
     def sort_key(item: tuple[Path, dict[str, Any]]) -> tuple[int, int, str, str]:
         feature_path, feature = item
         status_rank = STATUS_ORDER.get(str(feature.get("status", "")), 99)
-        priority_rank, feature_id = feature_sort_key(feature)
+        priority_rank = PRIORITY_ORDER.get(str(feature.get("priority", "medium")), 1)
+        feature_id = str(feature.get("id", ""))
         return (status_rank, priority_rank, feature_id, str(feature_path))
 
     return sorted(pending, key=sort_key)[0]

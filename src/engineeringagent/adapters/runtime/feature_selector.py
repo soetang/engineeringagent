@@ -10,7 +10,7 @@ from engineeringagent.agents.helpers import (
     classify_backend_exception,
     describe_action,
 )
-from engineeringagent.application.feature_selection import (
+from engineeringagent.domain.specification import (
     deterministic_feature_choice,
     parse_selector_output,
 )

@@ -149,7 +149,7 @@ def test_directionality_rule_reports_blocked_loop_runtime_import(
     _write_module(
         tmp_path,
         "checks/validate/validator.py",
-        "import engineeringagent.application.feature_selection\n",
+        "import engineeringagent.domain.specification.selection\n",
     )
 
     proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
@@ -161,7 +161,7 @@ def test_directionality_rule_reports_blocked_loop_runtime_import(
     assert any(
         (
             "engineeringagent.checks.validate.validator imports blocked dependency "
-            "engineeringagent.application.feature_selection"
+            "engineeringagent.domain.specification.selection"
         )
         in violation
         for violation in violations
@@ -183,7 +183,7 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
     _write_module(
         tmp_path,
         "presentation/cli/app.py",
-        "import engineeringagent.application.feature_selection\n",
+        "import engineeringagent.domain.specification.selection\n",
     )
     _write_module(
         tmp_path,
@@ -203,7 +203,7 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
     _write_module(
         tmp_path,
         "application/guidance_service.py",
-        "import engineeringagent.application.feature_selection\n",
+        "import engineeringagent.domain.specification.selection\n",
     )
     _write_module(
         tmp_path,
@@ -226,7 +226,7 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
     _write_module(
         tmp_path,
         "application/run_loop_service.py",
-        "import engineeringagent.application.feature_selection\n",
+        "import engineeringagent.domain.specification.selection\n",
     )
     _write_module(
         tmp_path,
@@ -277,7 +277,7 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
     assert sorted(cast(list[str], payload["violations"])) == sorted([
         (
             "engineeringagent.application.guidance_service imports blocked dependency "
-            "engineeringagent.application.feature_selection"
+            "engineeringagent.domain.specification.selection"
         ),
         (
             "engineeringagent.application.init_workspace_service imports blocked "
@@ -309,7 +309,7 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
         ),
         (
             "engineeringagent.application.run_loop_service imports blocked dependency "
-            "engineeringagent.application.feature_selection"
+            "engineeringagent.domain.specification.selection"
         ),
         (
             "engineeringagent.application.workspace_recovery_service imports blocked "
@@ -333,7 +333,7 @@ def test_directionality_rule_uses_repo_policy_for_cli_and_contract_boundaries(
         ),
         (
             "engineeringagent.presentation.cli.app imports blocked dependency "
-            "engineeringagent.application.feature_selection"
+            "engineeringagent.domain.specification.selection"
         ),
         (
             "engineeringagent.presentation.cli.guidance imports blocked dependency "
