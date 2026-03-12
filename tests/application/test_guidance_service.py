@@ -4,10 +4,11 @@ import re
 
 import pytest
 
-from engineeringagent.application import (
+from engineeringagent.application.guidance_service import (
+    GuidanceInputError,
+    GuidanceQuery,
     GuidanceService,
 )
-from engineeringagent.application.guidance_service import GuidanceInputError, GuidanceQuery
 from engineeringagent.domain.guidance import GuidanceTopic
 from tests.presentation.cli.approach_fixture_data import APPROACH_TOPIC_IDS
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Sequence
 
-from engineeringagent.application import (
+from engineeringagent.application.feature_iteration_service import (
     FeatureIterationService,
 )
 from engineeringagent.application.feature_iteration.contracts import (

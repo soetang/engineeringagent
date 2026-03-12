@@ -72,6 +72,34 @@ def test_checker_flags_root_barrel_re_exports_of_workflow_contracts(
     ]
 
 
+def test_checker_flags_root_barrel_re_exports_of_workflow_services(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Fail when the application root barrel re-exports workflow services."""
+    _write_module(
+        tmp_path,
+        relative_path="src/engineeringagent/application/__init__.py",
+        content="\n".join(
+            [
+                "from .checks_service import ChecksService",
+                "",
+                '__all__ = ["ChecksService"]',
+                "",
+            ]
+        ),
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert _violations(payload) == [
+        "src/engineeringagent/application/__init__.py:1 application root must not re-export internal workflow symbol ChecksService",
+        "src/engineeringagent/application/__init__.py:3 application root __all__ must not include internal workflow symbol ChecksService",
+    ]
+
+
 def test_checker_flags_callers_importing_workflow_contracts_from_application_root(
     tmp_path: Path,
     repo_root: Path,
@@ -80,7 +108,7 @@ def test_checker_flags_callers_importing_workflow_contracts_from_application_roo
     _write_module(
         tmp_path,
         relative_path="src/engineeringagent/application/__init__.py",
-        content='__all__ = ["RunLoopService"]\n',
+        content='"""Application-layer workflow modules."""\n',
     )
     _write_module(
         tmp_path,
@@ -104,6 +132,38 @@ def test_checker_flags_callers_importing_workflow_contracts_from_application_roo
     ]
 
 
+def test_checker_flags_callers_importing_workflow_services_from_application_root(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Fail when callers import workflow services from the application package root."""
+    _write_module(
+        tmp_path,
+        relative_path="src/engineeringagent/application/__init__.py",
+        content='"""Application-layer workflow modules."""\n',
+    )
+    _write_module(
+        tmp_path,
+        relative_path="src/engineeringagent/bootstrap/app_factory.py",
+        content="\n".join(
+            [
+                "from engineeringagent.application import ChecksService",
+                "",
+                "SERVICE = ChecksService",
+                "",
+            ]
+        ),
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert _violations(payload) == [
+        "src/engineeringagent/bootstrap/app_factory.py:1 import ChecksService from engineeringagent.application.checks_service instead of engineeringagent.application"
+    ]
+
+
 def test_checker_allows_direct_imports_from_service_modules(
     tmp_path: Path,
     repo_root: Path,
@@ -112,7 +172,7 @@ def test_checker_allows_direct_imports_from_service_modules(
     _write_module(
         tmp_path,
         relative_path="src/engineeringagent/application/__init__.py",
-        content='__all__ = ["RunLoopService"]\n',
+        content='"""Application-layer workflow modules."""\n',
     )
     _write_module(
         tmp_path,

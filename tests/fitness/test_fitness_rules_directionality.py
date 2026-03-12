@@ -314,12 +314,12 @@ def test_directionality_rule_allows_cli_modules_to_import_application_services(
     _write_module(
         tmp_path,
         "presentation/cli/checks.py",
-        "from engineeringagent.application import ChecksService\n",
+        "from engineeringagent.application.checks_service import ChecksService\n",
     )
     _write_module(
         tmp_path,
         "presentation/cli/validate.py",
-        "from engineeringagent.application import ValidationService\n",
+        "from engineeringagent.application.validation_service import ValidationService\n",
     )
 
     proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))

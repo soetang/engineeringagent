@@ -2,11 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from engineeringagent.application import (
-    ValidationService,
-)
 from engineeringagent.application.validation_service import (
     ValidateRepositoryRequest,
+    ValidationService,
     ValidationResult,
 )
 from engineeringagent.ports import (

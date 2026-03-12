@@ -4,12 +4,10 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from engineeringagent.application import (
-    WorkspaceRecoveryService,
-)
 from engineeringagent.application.workspace_recovery_service import (
     RecoverWorkspaceRequest,
     RecoverWorkspaceResult,
+    WorkspaceRecoveryService,
 )
 from engineeringagent.domain.audit import ProgressEvent
 from engineeringagent.ports import (

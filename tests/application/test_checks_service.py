@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from engineeringagent.application import ChecksService
+from engineeringagent.application.checks_service import ChecksService
 from engineeringagent.application.checks_service import RunChecksRequest
 from engineeringagent.domain.quality import (
     CheckExecutionRecord,

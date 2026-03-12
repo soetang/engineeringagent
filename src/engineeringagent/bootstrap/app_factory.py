@@ -39,14 +39,16 @@ from engineeringagent.adapters.vcs import (
     GitCliVersionControlGateway,
     GitFeatureWorkspaceManager,
 )
-from engineeringagent.application import (
-    ChecksService,
+from engineeringagent.application.checks_service import ChecksService
+from engineeringagent.application.feature_iteration_service import (
     FeatureIterationService,
-    GuidanceService,
-    InitWorkspaceService,
-    PromptBuilder,
-    RunLoopService,
-    ValidationService,
+)
+from engineeringagent.application.guidance_service import GuidanceService
+from engineeringagent.application.init_workspace_service import InitWorkspaceService
+from engineeringagent.application.prompt_builder import PromptBuilder
+from engineeringagent.application.run_loop_service import RunLoopService
+from engineeringagent.application.validation_service import ValidationService
+from engineeringagent.application.workspace_recovery_service import (
     WorkspaceRecoveryService,
 )
 from engineeringagent.ports import (

@@ -5,9 +5,7 @@ from pathlib import Path
 from types import ModuleType
 
 import engineeringagent.application.prompt_builder as prompt_builder_module
-from engineeringagent.application import (
-    PromptBuilder,
-)
+from engineeringagent.application.prompt_builder import PromptBuilder
 from engineeringagent.application.prompt_builder import ImplementationPromptRequest
 from engineeringagent.domain.shared.prompt_definition import PromptDefinition
 from engineeringagent.domain.specification import (

@@ -28,7 +28,7 @@ from engineeringagent.application.feature_iteration.implementation_step import (
     ImplementStepRuntimeDependencies,
     run_implement_step_from_inputs,
 )
-from engineeringagent.application import PromptBuilder
+from engineeringagent.application.prompt_builder import PromptBuilder
 from engineeringagent.adapters.config import (
     load_repository_config,
     repo_relative_label,
