@@ -49,9 +49,6 @@ from engineeringagent.application import (
     ValidationService,
     WorkspaceRecoveryService,
 )
-from engineeringagent.application.feature_iteration_service import (
-    FeatureIterationDependencies,
-)
 from engineeringagent.ports import (
     AgentRunner,
     Clock,
@@ -60,7 +57,10 @@ from engineeringagent.ports import (
     ProgressJournal,
     VersionControlGateway,
 )
-from engineeringagent.application.feature_iteration_runtime import IterationReport
+from engineeringagent.application.feature_iteration_runtime import (
+    FeatureIterationDependencies,
+    IterationReport,
+)
 from engineeringagent.bootstrap import runtime_support
 from engineeringagent.bootstrap.iteration_reporting import (
     DefaultObserverDependencies,

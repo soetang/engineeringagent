@@ -32,10 +32,8 @@ from engineeringagent.application import (
     ValidationService,
     WorkspaceRecoveryService,
 )
-from engineeringagent.application.feature_iteration_service import (
-    FeatureIterationDependencies,
-)
 from engineeringagent.application.feature_iteration_runtime import (
+    FeatureIterationDependencies,
     FeatureIterationInputs,
     IterationReport,
     IterationTelemetryInputs,

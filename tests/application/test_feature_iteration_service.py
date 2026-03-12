@@ -6,10 +6,11 @@ from typing import Any, Sequence
 from engineeringagent.application import (
     FeatureIterationService,
 )
-from engineeringagent.application.feature_iteration_service import (
+from engineeringagent.application.feature_iteration_runtime import (
     FeatureIterationDependencies,
+)
+from engineeringagent.application.feature_iteration_service import (
     FeatureIterationRequest,
-    build_feature_iteration_pipeline_dependencies,
 )
 from engineeringagent.application.feature_iteration_runtime import (
     CompletionCommitOutcome,
@@ -299,44 +300,6 @@ def test_feature_iteration_service_executes_application_owned_pipeline() -> None
     assert published_report.feature_id == "FEAT-001"
     assert published_report.attempt == 3
     assert published_report.telemetry_inputs.gate_status == "failed:tests"
-
-
-def test_build_feature_iteration_pipeline_dependencies_wires_completion_commit() -> None:
-    """Pipeline dependency assembly should keep completion commit wiring in application."""
-    observed: dict[str, object] = {}
-    gateway = _FakeVersionControlGateway(
-        observed,
-        CommitResult(
-            stdout="ok\n",
-            stderr="",
-            commit_created=True,
-            commit_sha="abc1234",
-            failure_stage=None,
-        ),
-    )
-
-    pipeline_dependencies = build_feature_iteration_pipeline_dependencies(
-        _build_runtime_dependencies(observed),
-        gateway,
-    )
-
-    assert pipeline_dependencies.describe_action(Path("/tmp/project"), "implement", False)
-    completion_dependencies = pipeline_dependencies.completion_phase_dependencies
-    assert isinstance(completion_dependencies, _FakeCompletionPhaseDependencies)
-    recorded_completion_dependencies = observed["completion_dependencies"]
-    assert isinstance(recorded_completion_dependencies, dict)
-    assert recorded_completion_dependencies["commit_feature_completion"](
-        Path("/tmp/project"),
-        {"expected_commit_subject": "feat: complete FEAT-001"},
-    ) == (True, None, "ok\n")
-    assert observed["commit_requests"] == [
-        CommitRequest(
-            workspace_path=Path("/tmp/project"),
-            message="feat: complete FEAT-001",
-            stage_all=True,
-            allow_empty=False,
-        )
-    ]
 
 
 def test_iteration_outcome_from_report_copies_report_status_fields() -> None:
