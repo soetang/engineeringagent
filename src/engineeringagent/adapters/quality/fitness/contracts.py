@@ -7,7 +7,7 @@ from typing import Annotated, Any, Literal
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from engineeringagent.presentation.presenters.json_schema import JSON_SCHEMA_DRAFT_URL
+from engineeringagent.domain.shared import JSON_SCHEMA_DRAFT_URL
 
 CONTRACT_VERSION = "1.0"
 

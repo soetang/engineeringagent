@@ -7,11 +7,14 @@ from typing import Annotated, Any
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from engineeringagent.domain.quality import HarnessChecksDocument
-from engineeringagent.domain.shared import FeatureId, FeatureStatus, PlanningTier
+from engineeringagent.domain.shared import (
+    FeatureId,
+    FeatureStatus,
+    JSON_SCHEMA_DRAFT_URL,
+    PlanningTier,
+)
 
 from .feature_specification import FeatureArtifacts, FeaturePriority, FeatureType
-
-JSON_SCHEMA_DRAFT_URL = "https://json-schema.org/draft/2020-12/schema"
 
 PRIORITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 

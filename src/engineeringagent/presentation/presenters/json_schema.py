@@ -2,20 +2,29 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from copy import deepcopy
+from importlib import import_module
 from typing import Any
 
-from engineeringagent.checks import (
-    custom_rule_manifest_schema_from_model,
-    reviewer_decision_schema_from_model,
-)
+from engineeringagent.domain.shared import JSON_SCHEMA_DRAFT_URL as _JSON_SCHEMA_DRAFT_URL
 from engineeringagent.domain.specification import (
     checks_schema_from_model,
     feature_schema_from_model,
 )
 
-JSON_SCHEMA_DRAFT_URL = "https://json-schema.org/draft/2020-12/schema"
-
 SchemaProducer = Callable[[], dict[str, Any]]
+JSON_SCHEMA_DRAFT_URL = _JSON_SCHEMA_DRAFT_URL
+
+
+def custom_rule_manifest_schema_from_model() -> dict[str, Any]:
+    """Load the fitness manifest schema producer from its owning adapter module."""
+    contracts = import_module("engineeringagent.adapters.quality.fitness.contracts")
+    return contracts.custom_rule_manifest_schema_from_model()
+
+
+def reviewer_decision_schema_from_model() -> dict[str, Any]:
+    """Load the reviewer schema producer from its owning adapter module."""
+    engine = import_module("engineeringagent.adapters.quality.reviewers.engine")
+    return engine.reviewer_decision_schema_from_model()
 
 
 SCHEMA_REGISTRY: dict[str, SchemaProducer] = {

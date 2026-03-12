@@ -13,8 +13,8 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 from engineeringagent.adapters.agents import run_agent
 from engineeringagent.adapters.progress import paths as progress_paths
 from engineeringagent.domain.quality import ChangedPathsResult, path_matches_any_glob
+from engineeringagent.domain.shared import JSON_SCHEMA_DRAFT_URL
 from engineeringagent.ports import AgentBackendError, AgentOutputValidationError
-from engineeringagent.presentation.presenters.json_schema import JSON_SCHEMA_DRAFT_URL
 
 
 FALLBACK_CHANGE_DISCOVERY_REASON = "fallback_run_all_change_discovery_failed"

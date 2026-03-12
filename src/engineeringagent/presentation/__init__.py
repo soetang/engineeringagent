@@ -1,6 +1,7 @@
 """Presentation-layer helpers and presenters."""
 
-from .presenters import JSON_SCHEMA_DRAFT_URL
+from engineeringagent.domain.shared import JSON_SCHEMA_DRAFT_URL
+
 from .presenters import (
     CHECKS_FAILURE_FALLBACK,
     format_command_failure_output_excerpt,

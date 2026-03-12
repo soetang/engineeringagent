@@ -18,6 +18,7 @@ from .repository_config import (
     RepositoryVcsConfig,
     ReviewerAgentConfig,
 )
+from .json_schema import JSON_SCHEMA_DRAFT_URL
 from .timestamps import utc_iso_from_epoch_sec, utc_now_iso
 
 __all__ = [
@@ -28,6 +29,7 @@ __all__ = [
     "FeatureId",
     "FeatureStatus",
     "ImplementationAgentConfig",
+    "JSON_SCHEMA_DRAFT_URL",
     "PhaseId",
     "PlanningTier",
     "RepositoryExecutionConfig",
