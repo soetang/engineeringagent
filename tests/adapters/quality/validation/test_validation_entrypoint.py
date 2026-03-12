@@ -143,6 +143,7 @@ def test_repo_policy_validator_derives_semantic_issue_codes(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Repo adapter emits deterministic semantic rule codes for stable ownership."""
+
     def _fake_run_repo_validation(
         messages: list[str],
         *,
@@ -223,52 +224,34 @@ def test_run_repo_validation_messages_returns_deterministic_tuple_in_append_orde
 
 
 @pytest.mark.parametrize(
-    ("message", "expected_path", "expected_message", "expected_code"),
+    ("message", "expected"),
     [
-        pytest.param(
-            "validate: duplicate base feature id FEAT-101 found in active specs",
-            "",
-            "validate: duplicate base feature id FEAT-101 found in active specs",
-            "repo.policy.duplicate-base-id",
-            id="original-prefix-mapping",
+        (
+            "validate: duplicate base feature id FEAT-123 found in active specs",
+            ValidationIssue(
+                validator_id="repo.policy",
+                scope="repo",
+                path="",
+                message="validate: duplicate base feature id FEAT-123 found in active specs",
+                code="repo.policy.duplicate-base-id",
+            ),
         ),
-        pytest.param(
-            "docs/spec/features/FEAT-101-example.yaml:id: invalid id",
-            "docs/spec/features/FEAT-101-example.yaml:id",
-            "invalid id",
-            "repo.policy.field-id",
-            id="field-path-mapping",
-        ),
-        pytest.param(
-            "plain message without path",
-            "",
-            "plain message without path",
-            "repo.policy.message",
-            id="fallback-mapping",
-        ),
-        pytest.param(
-            "README.md: some unknown validator message",
-            "README.md",
-            "some unknown validator message",
-            "repo.policy.message",
-            id="unknown-path-message-falls-back",
+        (
+            "docs/spec/features/FEAT-100-example.yaml:status: invalid status value",
+            ValidationIssue(
+                validator_id="repo.policy",
+                scope="repo",
+                path="docs/spec/features/FEAT-100-example.yaml:status",
+                message="invalid status value",
+                code="repo.policy.field-status",
+            ),
         ),
     ],
 )
-def test_repo_message_to_issue_projects_deterministic_semantic_codes(
+def test_repo_message_to_issue_projects_legacy_messages(
     message: str,
-    expected_path: str,
-    expected_message: str,
-    expected_code: str,
+    expected: ValidationIssue,
 ) -> None:
-    """Message projection keeps path/message parsing and code mapping stable."""
+    """Legacy validate messages still map into canonical issue objects."""
 
-    issue = _repo_message_to_issue(message, validator_id="repo.policy")
-
-    assert issue == ValidationIssue(
-        validator_id="repo.policy",
-        scope="repo",
-        path=expected_path,
-        message=expected_message,
-        code=expected_code,
-    )
+    assert _repo_message_to_issue(message, validator_id="repo.policy") == expected

@@ -7,10 +7,12 @@ import pytest
 from engineeringagent.adapters.quality.runtime import run_checks
 
 
-def test_run_checks_validate_group_delegates_to_checks_validate(
+def test_run_checks_validate_group_delegates_to_validation_adapter(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Validate checks delegate to the validation adapter entrypoint."""
+
     calls: list[Path] = []
 
     def _fake_validate(project_root: Path, *, schema_only: bool = False) -> list[str]:
@@ -35,6 +37,8 @@ def test_run_checks_validate_group_passes_schema_only(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Validate checks forward the schema-only flag unchanged."""
+
     calls: list[bool] = []
 
     def _fake_validate(_project_root: Path, *, schema_only: bool = False) -> list[str]:

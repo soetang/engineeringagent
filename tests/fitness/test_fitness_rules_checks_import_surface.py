@@ -34,6 +34,8 @@ def test_checker_flags_checks_submodule_imports_outside_checks_dir(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
+    """Production code outside checks may not import checks submodules directly."""
+
     checker = _load_checker_module(repo_root)
 
     src_root = tmp_path / "src" / "engineeringagent"
@@ -42,7 +44,7 @@ def test_checker_flags_checks_submodule_imports_outside_checks_dir(
     (src_root / "app.py").write_text(
         "\n".join(
             [
-                "from engineeringagent.checks.validate.validator import validate",
+                "from engineeringagent.checks.commands.runtime import run_command_checks",
                 "\n",
                 "def run() -> None:",
                 "    _ = validate",
@@ -54,7 +56,7 @@ def test_checker_flags_checks_submodule_imports_outside_checks_dir(
 
     violations = checker._collect_violations(tmp_path)
     assert (
-        "src/engineeringagent/app.py:1 imports checks submodule engineeringagent.checks.validate.validator"
+        "src/engineeringagent/app.py:1 imports checks submodule engineeringagent.checks.commands.runtime"
         in violations
     )
 
@@ -63,6 +65,8 @@ def test_checker_allows_importing_allowed_top_level_names(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
+    """Top-level checks exports remain the supported external import surface."""
+
     checker = _load_checker_module(repo_root)
 
     src_root = tmp_path / "src" / "engineeringagent"
@@ -88,6 +92,8 @@ def test_checker_ignores_adapter_quality_runtime_when_it_composes_checks_interna
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
+    """Checks-internal adapter composition remains allowed within adapter quality code."""
+
     checker = _load_checker_module(repo_root)
 
     src_root = tmp_path / "src" / "engineeringagent" / "adapters" / "quality"
@@ -121,6 +127,8 @@ def test_checker_allows_importing_shared_loader_from_top_level_checks(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
+    """The top-level checks loader stays available to non-checks callers."""
+
     checker = _load_checker_module(repo_root)
 
     src_root = tmp_path / "src" / "engineeringagent"
@@ -146,6 +154,8 @@ def test_checker_allows_importing_top_level_validation_entrypoint(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
+    """Non-checks callers may import the top-level validation facade."""
+
     checker = _load_checker_module(repo_root)
 
     src_root = tmp_path / "src" / "engineeringagent"
@@ -171,6 +181,8 @@ def test_checker_allows_importing_checks_group_helpers_from_top_level_checks(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
+    """Group helper imports are allowed only through the top-level checks facade."""
+
     checker = _load_checker_module(repo_root)
 
     src_root = tmp_path / "src" / "engineeringagent"
@@ -194,6 +206,8 @@ def test_checker_allows_importing_checks_group_helpers_from_top_level_checks(
 
 
 def test_checker_allowed_top_level_names_match_checks_exports(repo_root: Path) -> None:
+    """The fitness rule and the exported checks facade must stay aligned."""
+
     checker = _load_checker_module(repo_root)
     assert checker._ALLOWED_CHECKS_IMPORT_NAMES == set(checks.__all__)
 
@@ -202,6 +216,8 @@ def test_checker_flags_disallowed_top_level_imports_even_if_exported(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
+    """Legacy top-level names remain forbidden even if they were once exported."""
+
     checker = _load_checker_module(repo_root)
 
     src_root = tmp_path / "src" / "engineeringagent"
@@ -243,6 +259,8 @@ def test_checker_flags_removed_legacy_runtime_helper_imports(
     repo_root: Path,
     legacy_name: str,
 ) -> None:
+    """Removed legacy checks helpers must stay blocked by the import-surface rule."""
+
     checker = _load_checker_module(repo_root)
 
     src_root = tmp_path / "src" / "engineeringagent"
@@ -272,6 +290,8 @@ def test_cli_production_module_uses_checks_top_level_surface_only(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
+    """CLI production code may only depend on the top-level checks facade."""
+
     checker = _load_checker_module(repo_root)
 
     src_root = tmp_path / "src" / "engineeringagent" / "cli"
@@ -315,6 +335,8 @@ def test_checker_still_flags_non_specs_checks_strategy_imports(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
+    """Checks strategy modules remain internal outside approved specs tooling."""
+
     checker = _load_checker_module(repo_root)
 
     src_root = tmp_path / "src" / "engineeringagent"

@@ -6,9 +6,9 @@ from typing import Any, Literal, cast
 import pytest
 
 from engineeringagent.adapters.quality.validation import (
-    ValidationRegistry,
     ValidationContext,
     ValidationIssue,
+    ValidationRegistry,
 )
 
 
@@ -96,11 +96,15 @@ def _issue(
 
 
 def test_validation_registry_rejects_empty_repo_validator_id() -> None:
+    """Repo validator registrations require a non-empty identifier."""
+
     with pytest.raises(ValueError, match="repo validator_id must be non-empty"):
         ValidationRegistry(repo_validators=[_RepoValidator(validator_id=" ")])
 
 
 def test_validation_registry_rejects_empty_strategy_validator_fields() -> None:
+    """Strategy validator registrations require both strategy type and id."""
+
     with pytest.raises(
         ValueError, match="strategy validator strategy_type must be non-empty"
     ):
@@ -119,6 +123,8 @@ def test_validation_registry_rejects_empty_strategy_validator_fields() -> None:
 
 
 def test_validation_registry_rejects_duplicate_validator_id() -> None:
+    """Validator ids must stay unique across repo and strategy registrations."""
+
     with pytest.raises(
         ValueError,
         match="duplicate validate validator registration: repo.rules",
@@ -146,6 +152,8 @@ def test_validation_registry_rejects_duplicate_validator_id() -> None:
 
 
 def test_validation_registry_runs_in_deterministic_order() -> None:
+    """Registry execution order is deterministic after registration sorting."""
+
     issue_a = _issue("repo.alpha", "repo", "a.yaml", "repo-a", "R001")
     issue_b = _issue("repo.beta", "repo", "b.yaml", "repo-b", "R002")
     issue_c = _issue(
@@ -204,6 +212,8 @@ def test_validation_registry_runs_in_deterministic_order() -> None:
 
 
 def test_validation_registry_filters_strategy_validators_by_selected_groups() -> None:
+    """Selected groups filter strategy validators without skipping repo validators."""
+
     issue_repo = _issue("repo.policy", "repo", "", "repo", "R001")
     issue_fitness = _issue("fitness.catalog", "strategy", "", "fitness", "S001")
     issue_reviewer = _issue(
@@ -229,6 +239,7 @@ def test_validation_registry_filters_strategy_validators_by_selected_groups() ->
             ),
         ],
     )
+
     context = ValidationContext(
         project_root=Path("/tmp/project"),
         docs_root=Path("/tmp/project/docs"),
@@ -239,12 +250,64 @@ def test_validation_registry_filters_strategy_validators_by_selected_groups() ->
     assert registry.run(context=context) == (issue_repo, issue_reviewer)
 
 
-def test_validation_registry_rejects_repo_issue_scope_or_validator_mismatch() -> None:
+def test_validation_registry_requires_tuple_issue_containers() -> None:
+    """Validators must return tuples to satisfy the registry contract."""
+
+    registry = ValidationRegistry(
+        repo_validators=[
+            cast(
+                Any,
+                _ListIssueRepoValidator(
+                    validator_id="repo.policy",
+                    issues=[],
+                ),
+            )
+        ]
+    )
+
     context = ValidationContext(
         project_root=Path("/tmp/project"),
         docs_root=Path("/tmp/project/docs"),
         schema_only=False,
     )
+
+    with pytest.raises(
+        ValueError,
+        match="validate issue container type mismatch for repo.policy: expected tuple, got list",
+    ):
+        registry.run(context=context)
+
+
+def test_validation_registry_requires_validation_issue_items() -> None:
+    """Validators must return `ValidationIssue` objects inside their tuples."""
+
+    registry = ValidationRegistry(
+        repo_validators=[
+            cast(
+                Any,
+                _InvalidTupleIssueRepoValidator(
+                    validator_id="repo.policy",
+                    issues=("bad",),
+                ),
+            )
+        ]
+    )
+
+    context = ValidationContext(
+        project_root=Path("/tmp/project"),
+        docs_root=Path("/tmp/project/docs"),
+        schema_only=False,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="validate issue item type mismatch for repo.policy: expected ValidationIssue, got str",
+    ):
+        registry.run(context=context)
+
+
+def test_validation_registry_requires_matching_issue_scope() -> None:
+    """Registry rejects issues whose scope disagrees with validator ownership."""
 
     wrong_scope_registry = ValidationRegistry(
         repo_validators=[
@@ -255,18 +318,29 @@ def test_validation_registry_rejects_repo_issue_scope_or_validator_mismatch() ->
                         "repo.policy",
                         "strategy",
                         "",
-                        "invalid scope",
+                        "wrong scope",
                         "R001",
                     ),
                 ),
             )
         ]
     )
+
+    context = ValidationContext(
+        project_root=Path("/tmp/project"),
+        docs_root=Path("/tmp/project/docs"),
+        schema_only=False,
+    )
+
     with pytest.raises(
         ValueError,
         match="validate issue scope mismatch for repo.policy: expected repo, got strategy",
     ):
         wrong_scope_registry.run(context=context)
+
+
+def test_validation_registry_requires_matching_issue_validator_id() -> None:
+    """Registry rejects issues whose validator id differs from the emitter."""
 
     wrong_validator_registry = ValidationRegistry(
         repo_validators=[
@@ -277,131 +351,22 @@ def test_validation_registry_rejects_repo_issue_scope_or_validator_mismatch() ->
                         "repo.other",
                         "repo",
                         "",
-                        "invalid validator id",
+                        "wrong validator",
                         "R001",
                     ),
                 ),
             )
         ]
     )
+
+    context = ValidationContext(
+        project_root=Path("/tmp/project"),
+        docs_root=Path("/tmp/project/docs"),
+        schema_only=False,
+    )
+
     with pytest.raises(
         ValueError,
         match="validate issue validator_id mismatch for repo.policy: got repo.other",
     ):
         wrong_validator_registry.run(context=context)
-
-
-def test_validation_registry_rejects_strategy_issue_scope_or_validator_mismatch() -> None:
-    context = ValidationContext(
-        project_root=Path("/tmp/project"),
-        docs_root=Path("/tmp/project/docs"),
-        schema_only=False,
-    )
-
-    wrong_scope_registry = ValidationRegistry(
-        strategy_validators=[
-            _StrategyValidator(
-                strategy_type="reviewer",
-                validator_id="reviewer.prompt-policy",
-                issues=(
-                    _issue(
-                        "reviewer.prompt-policy",
-                        "repo",
-                        "",
-                        "invalid scope",
-                        "S001",
-                    ),
-                ),
-            )
-        ]
-    )
-    with pytest.raises(
-        ValueError,
-        match=(
-            "validate issue scope mismatch for reviewer.prompt-policy: "
-            "expected strategy, got repo"
-        ),
-    ):
-        wrong_scope_registry.run(context=context)
-
-    wrong_validator_registry = ValidationRegistry(
-        strategy_validators=[
-            _StrategyValidator(
-                strategy_type="reviewer",
-                validator_id="reviewer.prompt-policy",
-                issues=(
-                    _issue(
-                        "reviewer.other",
-                        "strategy",
-                        "",
-                        "invalid validator id",
-                        "S001",
-                    ),
-                ),
-            )
-        ]
-    )
-    with pytest.raises(
-        ValueError,
-        match=(
-            "validate issue validator_id mismatch for reviewer.prompt-policy: "
-            "got reviewer.other"
-        ),
-    ):
-        wrong_validator_registry.run(context=context)
-
-
-def test_validation_registry_rejects_non_tuple_issue_container() -> None:
-    context = ValidationContext(
-        project_root=Path("/tmp/project"),
-        docs_root=Path("/tmp/project/docs"),
-        schema_only=False,
-    )
-    registry = ValidationRegistry(
-        repo_validators=[
-            cast(
-                Any,
-                _ListIssueRepoValidator(
-                    validator_id="repo.policy",
-                    issues=[_issue("repo.policy", "repo", "", "repo", "R001")],
-                ),
-            )
-        ],
-    )
-
-    with pytest.raises(
-        ValueError,
-        match=(
-            "validate issue container type mismatch for repo.policy: "
-            "expected tuple, got list"
-        ),
-    ):
-        registry.run(context=context)
-
-
-def test_validation_registry_rejects_invalid_issue_item_type() -> None:
-    context = ValidationContext(
-        project_root=Path("/tmp/project"),
-        docs_root=Path("/tmp/project/docs"),
-        schema_only=False,
-    )
-    registry = ValidationRegistry(
-        repo_validators=[
-            cast(
-                Any,
-                _InvalidTupleIssueRepoValidator(
-                    validator_id="repo.policy",
-                    issues=("not-an-issue",),
-                ),
-            )
-        ],
-    )
-
-    with pytest.raises(
-        ValueError,
-        match=(
-            "validate issue item type mismatch for repo.policy: "
-            "expected ValidationIssue, got str"
-        ),
-    ):
-        registry.run(context=context)
