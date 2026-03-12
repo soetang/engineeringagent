@@ -12,6 +12,8 @@ from engineeringagent.application.feature_iteration import (
     IterationTelemetryInputs,
     IterationPipelineDependencies,
     PhaseTiming,
+    commit_feature_completion,
+    persist_iteration_report,
 )
 from engineeringagent.application import (
     FeatureIterationRequest,
@@ -342,6 +344,63 @@ def test_feature_iteration_service_reports_commit_success() -> None:
         Path("/tmp/project"),
         {"expected_commit_subject": "feat: complete FEAT-001"},
     ) == (True, None, "ok\n")
+
+
+def test_commit_feature_completion_returns_failure_tuple_shape() -> None:
+    """Internal commit wiring should preserve the pipeline callback contract."""
+    observed: dict[str, object] = {}
+    gateway = _FakeVersionControlGateway(
+        observed,
+        CommitResult(
+            stdout="commit stdout\n",
+            stderr="commit stderr\n",
+            commit_created=False,
+            commit_sha=None,
+            failure_stage="git_commit",
+        ),
+    )
+
+    outcome = commit_feature_completion(
+        gateway,
+        project_root=Path("/tmp/project"),
+        feature={"expected_commit_subject": "feat: complete FEAT-001"},
+    )
+
+    assert outcome == (False, "git_commit", "commit stdout\ncommit stderr\n")
+    assert observed["commit_requests"] == [
+        CommitRequest(
+            workspace_path=Path("/tmp/project"),
+            message="feat: complete FEAT-001",
+            stage_all=True,
+            allow_empty=False,
+        )
+    ]
+
+
+def test_persist_iteration_report_writes_json_payload_to_journal() -> None:
+    """Internal report persistence should stay on the journal port boundary."""
+    observed: dict[str, object] = {}
+    journal = _FakeProgressJournal(observed)
+    report = cast(
+        IterationReport,
+        SimpleNamespace(
+            telemetry_inputs=SimpleNamespace(
+                iteration_inputs=SimpleNamespace(project_root=Path("/tmp/project"))
+            ),
+            feature_id="FEAT-001",
+            model_dump=lambda mode="json": {"result": "failed", "mode": mode},
+        ),
+    )
+
+    persist_iteration_report(journal, report)
+
+    assert observed["iteration_reports"] == [
+        {
+            "project_root": Path("/tmp/project"),
+            "feature_id": "FEAT-001",
+            "payload": {"result": "failed", "mode": "json"},
+        }
+    ]
 
 
 def test_iteration_outcome_from_report_copies_report_status_fields() -> None:
