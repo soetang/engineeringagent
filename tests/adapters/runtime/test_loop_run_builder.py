@@ -9,7 +9,7 @@ from engineeringagent.adapters.runtime.context import (
     RunConfig,
     RunState,
 )
-from engineeringagent.application.feature_iteration import (
+from engineeringagent.application.feature_iteration.contracts import (
     FeatureIterationInputs,
     IterationOutcome,
     IterationSummaryInputs,

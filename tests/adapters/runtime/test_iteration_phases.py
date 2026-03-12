@@ -12,7 +12,9 @@ from engineeringagent.adapters.runtime.iteration_phases import (
     run_gate_phase,
     run_reviewer_phase,
 )
-from engineeringagent.application.feature_iteration import FeatureIterationInputs
+from engineeringagent.application.feature_iteration.contracts import (
+    FeatureIterationInputs,
+)
 from engineeringagent.checks import ChecksRunResult
 from engineeringagent.domain.quality import ChangedPathsResult
 

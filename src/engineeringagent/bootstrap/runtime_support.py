@@ -17,13 +17,15 @@ from engineeringagent.adapters.progress import paths as progress_paths
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
 from engineeringagent.adapters.vcs import GitCliVersionControlGateway
-from engineeringagent.application.feature_iteration import (
-    ImplementStepFailureDependencies,
+from engineeringagent.application.feature_iteration.contracts import (
     ImplementStepInputs,
     ImplementStepResult,
+    IterationSummaryInputs,
+)
+from engineeringagent.application.feature_iteration.implementation_step import (
+    ImplementStepFailureDependencies,
     ImplementStepOutputDependencies,
     ImplementStepRuntimeDependencies,
-    IterationSummaryInputs,
     run_implement_step_from_inputs,
 )
 from engineeringagent.application import PromptBuilder

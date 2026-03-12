@@ -6,11 +6,15 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.application.feature_iteration import (
-    FeatureIterationDependencies,
+from engineeringagent.application.feature_iteration.contracts import (
     FeatureIterationInputs,
+)
+from engineeringagent.application.feature_iteration.runtime_dependencies import (
+    FeatureIterationDependencies,
     IterationReportPublisher,
     build_feature_iteration_pipeline_dependencies,
+)
+from engineeringagent.application.feature_iteration.pipeline import (
     run_feature_iteration_pipeline,
 )
 from engineeringagent.ports import VersionControlGateway

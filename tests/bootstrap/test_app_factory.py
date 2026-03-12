@@ -32,11 +32,13 @@ from engineeringagent.application import (
     ValidationService,
     WorkspaceRecoveryService,
 )
-from engineeringagent.application.feature_iteration import (
-    FeatureIterationDependencies,
+from engineeringagent.application.feature_iteration.contracts import (
     FeatureIterationInputs,
     IterationReport,
     IterationTelemetryInputs,
+)
+from engineeringagent.application.feature_iteration.runtime_dependencies import (
+    FeatureIterationDependencies,
 )
 from engineeringagent.bootstrap import AppFactory
 import engineeringagent.bootstrap.app_factory as app_factory_module

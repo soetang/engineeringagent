@@ -352,11 +352,87 @@ def test_checker_allows_feature_iteration_request_from_service_module(
     assert _violations(payload) == []
 
 
-def test_checker_allows_feature_iteration_imports_from_explicit_subpackage(
+def test_checker_flags_feature_iteration_barrel_re_exports(
     tmp_path: Path,
     repo_root: Path,
 ) -> None:
-    """Allow consumers to import feature-iteration internals from its subpackage."""
+    """Reject re-exporting feature-iteration internals through the package barrel."""
+    _write_module(
+        tmp_path,
+        relative_path="src/engineeringagent/application/__init__.py",
+        content='__all__ = ["RunLoopService"]\n',
+    )
+    _write_module(
+        tmp_path,
+        relative_path="src/engineeringagent/application/feature_iteration/__init__.py",
+        content="\n".join(
+            [
+                "from .contracts import FeatureIterationInputs",
+                "",
+                '__all__ = ["FeatureIterationInputs"]',
+                "",
+            ]
+        ),
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert any(
+        "src/engineeringagent/application/feature_iteration/__init__.py:1" in violation
+        and "must not re-export internal workflow symbol FeatureIterationInputs"
+        in violation
+        for violation in _violations(payload)
+    )
+    assert any(
+        "src/engineeringagent/application/feature_iteration/__init__.py:3" in violation
+        and "__all__ must not include internal workflow symbol FeatureIterationInputs"
+        in violation
+        for violation in _violations(payload)
+    )
+
+
+def test_checker_flags_feature_iteration_barrel_imports(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Reject importing feature-iteration internals from the package barrel."""
+    _write_module(
+        tmp_path,
+        relative_path="src/engineeringagent/application/__init__.py",
+        content='__all__ = ["RunLoopService"]\n',
+    )
+    _write_module(
+        tmp_path,
+        relative_path="tests/loop/test_boundary_violation.py",
+        content="\n".join(
+            [
+                "from engineeringagent.application.feature_iteration import FeatureIterationInputs",
+                "",
+                "def test_placeholder() -> None:",
+                "    assert FeatureIterationInputs is not None",
+                "",
+            ]
+        ),
+    )
+
+    proc, payload = _run_checker(tmp_path, checker_path=_script_path(repo_root))
+
+    assert proc.returncode == 0
+    assert payload["status"] == "fail"
+    assert any(
+        "tests/loop/test_boundary_violation.py:1" in violation
+        and "engineeringagent.application.feature_iteration.contracts" in violation
+        for violation in _violations(payload)
+    )
+
+
+def test_checker_allows_feature_iteration_direct_module_imports(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Allow consumers to import feature-iteration internals from defining modules."""
     _write_module(
         tmp_path,
         relative_path="src/engineeringagent/application/__init__.py",
@@ -368,7 +444,7 @@ def test_checker_allows_feature_iteration_imports_from_explicit_subpackage(
         content="\n".join(
             [
                 "from engineeringagent.application import RunLoopService",
-                "from engineeringagent.application.feature_iteration import FeatureIterationInputs",
+                "from engineeringagent.application.feature_iteration.contracts import FeatureIterationInputs",
                 "",
                 "def test_placeholder() -> None:",
                 "    assert RunLoopService is not None",

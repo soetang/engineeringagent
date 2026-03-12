@@ -5,9 +5,11 @@ from typing import Any, Sequence
 
 import pytest
 
-from engineeringagent.application.feature_iteration import (
-    ImplementStepFailureDependencies,
+from engineeringagent.application.feature_iteration.contracts import (
     ImplementStepInputs,
+)
+from engineeringagent.application.feature_iteration.implementation_step import (
+    ImplementStepFailureDependencies,
     ImplementStepOutputDependencies,
     ImplementStepRuntimeDependencies,
     run_implement_step_from_inputs,

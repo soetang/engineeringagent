@@ -180,10 +180,10 @@ rules:
       - harness/fitness_functions/rules/check_application_tests_boundary.py
   - rule_id: architecture.application-root-workflow-surface
     name: Application root workflow surface
-    summary: Keep engineeringagent.application focused on workflow services instead of feature-iteration internals.
-    rationale: The target architecture gives feature-iteration contracts and helpers an explicit subpackage, so the application root should expose service entrypoints only instead of acting as a compatibility facade.
-    remediation: Import public feature-iteration request/result models from engineeringagent.application.feature_iteration_service, keep workflow services on engineeringagent.application, and remove runtime-helper re-exports from engineeringagent.application.__init__.
-    scope: src/engineeringagent/application/__init__.py plus repository imports of engineeringagent.application
+    summary: Keep engineeringagent.application focused on workflow services and forbid barrel re-exports for feature-iteration internals.
+    rationale: The target architecture gives feature-iteration contracts and helpers explicit owning modules, so neither the application root nor engineeringagent.application.feature_iteration should act as compatibility facades.
+    remediation: Import public feature-iteration request/result models from engineeringagent.application.feature_iteration_service, import internal workflow helpers from their defining modules, and remove re-exports from engineeringagent.application.__init__ and engineeringagent.application.feature_iteration.__init__.
+    scope: src/engineeringagent/application/__init__.py, src/engineeringagent/application/feature_iteration/__init__.py, plus repository imports of engineeringagent.application and engineeringagent.application.feature_iteration
     severity: error
     side_effect_free: true
     adapter: command

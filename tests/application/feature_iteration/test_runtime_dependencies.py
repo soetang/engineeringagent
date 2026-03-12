@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from engineeringagent.application.feature_iteration import (
+from engineeringagent.application.feature_iteration.runtime_dependencies import (
     build_feature_iteration_pipeline_dependencies,
 )
 from engineeringagent.ports import CommitRequest, CommitResult

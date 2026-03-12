@@ -20,7 +20,9 @@ from engineeringagent.adapters.agents.opencode.permissions import (
     PermissionProbeResult,
 )
 from engineeringagent.application.run_loop_service import RunLoopRequest
-from engineeringagent.application.feature_iteration import ImplementStepResult
+from engineeringagent.application.feature_iteration.contracts import (
+    ImplementStepResult,
+)
 from engineeringagent.bootstrap import AppFactory
 from engineeringagent.domain.audit import fallback_implement_progress_envelope
 from engineeringagent.ports import AgentBackendError, AgentBackendFailureDetails

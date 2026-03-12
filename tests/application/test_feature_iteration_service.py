@@ -6,13 +6,7 @@ from typing import Any, Sequence
 from engineeringagent.application import (
     FeatureIterationService,
 )
-from engineeringagent.application.feature_iteration import (
-    FeatureIterationDependencies,
-)
-from engineeringagent.application.feature_iteration_service import (
-    FeatureIterationRequest,
-)
-from engineeringagent.application.feature_iteration import (
+from engineeringagent.application.feature_iteration.contracts import (
     CompletionCommitOutcome,
     FeatureIterationInputs,
     GatePhaseOutcome,
@@ -22,6 +16,12 @@ from engineeringagent.application.feature_iteration import (
     PhaseTiming,
     ReviewerPhaseOutcome,
     VerificationPhaseOutcome,
+)
+from engineeringagent.application.feature_iteration.runtime_dependencies import (
+    FeatureIterationDependencies,
+)
+from engineeringagent.application.feature_iteration_service import (
+    FeatureIterationRequest,
 )
 from engineeringagent.domain.audit import ProgressEvent
 from engineeringagent.domain.specification import (
