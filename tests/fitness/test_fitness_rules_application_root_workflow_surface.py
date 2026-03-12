@@ -226,8 +226,8 @@ def test_checker_allows_root_workspace_service_exports_from_application_root(
         relative_path="src/engineeringagent/application/__init__.py",
         content="\n".join(
             [
-                "from .init_workspace_service import InitWorkspaceService",
-                "from .workspace_recovery_service import WorkspaceRecoveryService",
+                "from .workspace import InitWorkspaceService",
+                "from .workspace import WorkspaceRecoveryService",
                 "",
                 '__all__ = ["InitWorkspaceService", "WorkspaceRecoveryService"]',
                 "",

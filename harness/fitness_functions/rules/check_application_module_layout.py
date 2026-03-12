@@ -20,11 +20,9 @@ ALLOWED_ROOT_MODULES = frozenset(
         "checks_service.py",
         "feature_iteration_service.py",
         "guidance_service.py",
-        "init_workspace_service.py",
         "prompt_builder.py",
         "run_loop_service.py",
         "validation_service.py",
-        "workspace_recovery_service.py",
     }
 )
 
@@ -42,7 +40,8 @@ def _application_module_layout_violations() -> list[str]:
             f"{rel_path}: application root may only contain workflow-service modules; "
             "keep only documented workflow-service modules at the application root; "
             "move helpers into an explicit subpackage such as "
-            "engineeringagent.application.feature_iteration or delete the legacy module"
+            "engineeringagent.application.feature_iteration or "
+            "engineeringagent.application.workspace, or delete the legacy module"
         )
     return violations
 
