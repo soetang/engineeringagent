@@ -6,7 +6,7 @@ import errno
 from pathlib import Path
 import shutil
 
-from engineeringagent.config import resolve_specifications_root
+from engineeringagent.adapters.config import resolve_specifications_root
 from engineeringagent.domain.specification import (
     FeatureArtifacts,
     FeaturePriority,

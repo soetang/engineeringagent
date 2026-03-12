@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from engineeringagent.config import resolve_specifications_root
+from engineeringagent.adapters.config import resolve_specifications_root
 
 from .contracts import ValidationContext, ValidationIssue
 from .repo_validators import RepoPolicyValidator

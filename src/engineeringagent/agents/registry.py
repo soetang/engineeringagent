@@ -12,7 +12,7 @@ from engineeringagent.adapters.agents.opencode.scaffold import (
     build_opencode_scaffold_manifest,
 )
 from engineeringagent.agents.contracts import RequestRunAgentBackend
-from engineeringagent.config import resolve_agents_backend_id
+from engineeringagent.adapters.config import resolve_agents_backend_id
 
 BackendFactory = Callable[[], RequestRunAgentBackend]
 BackendScaffoldManifestFactory = Callable[[str], dict[str, str]]

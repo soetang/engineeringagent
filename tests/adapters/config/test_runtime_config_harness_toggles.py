@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-import engineeringagent.config as config_module
+import engineeringagent.adapters.config as config_module
 import engineeringagent.checks.fitness.config as fitness_config_module
 from engineeringagent.checks.fitness.config import (
     resolve_harness_fitness_opencode_real_smoke_enabled,
@@ -13,7 +13,7 @@ from engineeringagent.checks.fitness.config import (
 from engineeringagent.checks.pytest.config import (
     resolve_harness_pytest_opencode_integration_enabled,
 )
-from engineeringagent.config import resolve_harness_bool_setting
+from engineeringagent.adapters.config import resolve_harness_bool_setting
 
 
 def test_harness_fitness_opencode_real_smoke_defaults_to_false(tmp_path: Path) -> None:

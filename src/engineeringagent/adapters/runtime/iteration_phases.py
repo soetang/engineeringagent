@@ -17,7 +17,7 @@ from engineeringagent.checks import (
     HarnessCheckPhase,
     run_checks,
 )
-from engineeringagent.config import (
+from engineeringagent.adapters.config import (
     repo_relative_label,
     resolve_harness_checks_config_path,
 )

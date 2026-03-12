@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import sys
 import re
+import sys
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any, TypeVar, cast
 
-from engineeringagent.adapters.config import load_repository_config
+from .filesystem import load_repository_config
 
 if sys.version_info >= (3, 11):
     import tomllib
@@ -197,19 +197,7 @@ def _toml_table_ranges(lines: list[str]) -> dict[str, tuple[int, int]]:
 
 
 def resolve_docs_root(project_root: Path) -> Path:
-    """Resolve docs root from TOML configuration with deterministic precedence.
-
-    Precedence: engineeringagent.toml -> pyproject.toml[tool.engineeringagent] -> docs.
-
-    Args:
-        project_root: Repository root used as the base for relative docs-root values.
-
-    Returns:
-        Absolute docs-root path under project_root.
-
-    Raises:
-        ValueError: If TOML cannot be parsed or docs-root value is invalid.
-    """
+    """Resolve docs root from TOML configuration with deterministic precedence."""
     config = load_repository_config(project_root)
     return project_root / config.paths.docs_root
 
@@ -221,26 +209,7 @@ def resolve_harness_bool_setting(
     key: str,
     default: bool = False,
 ) -> bool:
-    """Resolve a bool setting under the harness table.
-
-    Precedence:
-    - engineeringagent.toml[harness.<table>]
-    - pyproject.toml[tool.engineeringagent.harness.<table>]
-    - default
-
-    Args:
-        project_root: Repository root.
-        table: Harness sub-table name under ``harness``.
-        key: Bool setting key under the selected harness table.
-        default: Fallback value when the setting is unset.
-
-    Returns:
-        Resolved bool value.
-
-    Raises:
-        ValueError: If TOML cannot be parsed or the configured value is invalid.
-    """
-
+    """Resolve a bool setting under the harness table."""
     return cast(
         bool,
         _resolve_preferred_project_config(
@@ -261,23 +230,7 @@ def resolve_harness_bool_setting(
 
 
 def resolve_harness_checks_config_path(project_root: Path) -> Path:
-    """Resolve checks config path from TOML configuration.
-
-    Precedence:
-    - engineeringagent.toml[harness.checks]
-    - pyproject.toml[tool.engineeringagent.harness.checks]
-    - default: harness/checks.yaml
-
-    Args:
-        project_root: Repository root used as the base for relative path values.
-
-    Returns:
-        Absolute checks config path under project_root.
-
-    Raises:
-        ValueError: If TOML cannot be parsed or the configured value is invalid.
-    """
-
+    """Resolve checks config path from TOML configuration."""
     checks_path = _resolve_preferred_project_config(
         project_root,
         engineeringagent_reader=_harness_checks_path_from_engineeringagent_toml,
@@ -288,67 +241,19 @@ def resolve_harness_checks_config_path(project_root: Path) -> Path:
 
 
 def resolve_progress_root(project_root: Path) -> Path:
-    """Resolve progress root from TOML configuration.
-
-    Precedence:
-    - engineeringagent.toml[paths]
-    - pyproject.toml[tool.engineeringagent.paths]
-    - default: .engineeringagent/progress
-
-    Args:
-        project_root: Repository root used as the base for relative path values.
-
-    Returns:
-        Absolute progress root path under project_root.
-
-    Raises:
-        ValueError: If TOML cannot be parsed or the configured value is invalid.
-    """
-
+    """Resolve progress root from TOML configuration."""
     config = load_repository_config(project_root)
     return project_root / config.paths.progress_root
 
 
 def resolve_specifications_root(project_root: Path) -> Path:
-    """Resolve the specifications root from TOML configuration.
-
-    Precedence:
-    - engineeringagent.toml[paths].specifications_root
-    - pyproject.toml[tool.engineeringagent.paths].specifications_root
-    - fallback: <docs_root>/spec
-
-    Args:
-        project_root: Repository root used as the base for relative path values.
-
-    Returns:
-        Absolute specifications root path under project_root.
-
-    Raises:
-        ValueError: If TOML cannot be parsed or the configured value is invalid.
-    """
-
+    """Resolve the specifications root from TOML configuration."""
     config = load_repository_config(project_root)
     return project_root / config.paths.specifications_root
 
 
 def resolve_harness_root(project_root: Path) -> Path:
-    """Resolve harness root from TOML configuration.
-
-    Precedence:
-    - engineeringagent.toml[paths]
-    - pyproject.toml[tool.engineeringagent.paths]
-    - default: harness
-
-    Args:
-        project_root: Repository root used as the base for relative path values.
-
-    Returns:
-        Absolute harness root path under project_root.
-
-    Raises:
-        ValueError: If TOML cannot be parsed or the configured value is invalid.
-    """
-
+    """Resolve harness root from TOML configuration."""
     config = load_repository_config(project_root)
     return project_root / config.paths.harness_root
 
@@ -362,35 +267,12 @@ def repo_relative_label(project_root: Path, target_path: Path) -> str:
 
 
 def resolve_agents_backend_id(project_root: Path) -> str | None:
-    """Resolve configured default agent backend id.
-
-    Precedence:
-    - engineeringagent.toml[agents]
-    - pyproject.toml[tool.engineeringagent.agents]
-    - default: unset (None)
-
-    Args:
-        project_root: Repository root.
-
-    Returns:
-        Backend id string when configured, otherwise None.
-
-    Raises:
-        ValueError: If TOML cannot be parsed or the configured value is invalid.
-    """
-
+    """Resolve configured default agent backend id."""
     return load_repository_config(project_root).agents.backend
 
 
 def resolve_agents_codex_profile(project_root: Path) -> str | None:
-    """Resolve configured Codex backend profile.
-
-    Precedence:
-    - engineeringagent.toml[agents.codex]
-    - pyproject.toml[tool.engineeringagent.agents.codex]
-    - default: unset (None)
-    """
-
+    """Resolve configured Codex backend profile."""
     return load_repository_config(project_root).agents.codex.profile
 
 
@@ -398,7 +280,6 @@ def resolve_agents_codex_profile_in_engineeringagent_toml(
     project_root: Path,
 ) -> str | None:
     """Resolve Codex profile configured only in engineeringagent.toml."""
-
     engineeringagent_toml = project_root / "engineeringagent.toml"
     if not engineeringagent_toml.exists():
         return None
@@ -415,14 +296,7 @@ def resolve_agents_codex_profile_in_engineeringagent_toml(
 
 
 def resolve_agents_codex_model(project_root: Path) -> str | None:
-    """Resolve configured Codex backend model.
-
-    Precedence:
-    - engineeringagent.toml[agents.codex]
-    - pyproject.toml[tool.engineeringagent.agents.codex]
-    - default: unset (None)
-    """
-
+    """Resolve configured Codex backend model."""
     return load_repository_config(project_root).agents.codex.model
 
 
@@ -433,9 +307,7 @@ def _resolve_preferred_project_config(
     pyproject_reader: Callable[[Path], _ConfigValue],
     default: _ConfigValue,
 ) -> _ConfigValue:
-    engineeringagent_value = engineeringagent_reader(
-        project_root / "engineeringagent.toml"
-    )
+    engineeringagent_value = engineeringagent_reader(project_root / "engineeringagent.toml")
     if engineeringagent_value is not None:
         return engineeringagent_value
 
@@ -475,12 +347,9 @@ def _read_toml_value(
     if document is None:
         return None
 
-    if table_path:
-        table = _table_at_path(document, table_path)
-        if table is None:
-            return None
-    else:
-        table = document
+    table = _table_at_path(document, table_path) if table_path else document
+    if table is None:
+        return None
 
     return table.get(key), _toml_scope(table_path, default=top_level_scope)
 
@@ -678,29 +547,6 @@ def _normalize_bool(
         )
 
     return raw_value
-
-
-def _normalize_backend_id(
-    raw_value: Any,
-    *,
-    source_path: Path,
-    source_scope: str,
-) -> str | None:
-    if raw_value is None:
-        return None
-
-    if not isinstance(raw_value, str):
-        raise ValueError(
-            f"invalid {_BACKEND_KEY} in {source_path} ({source_scope}): expected string"
-        )
-
-    backend_id = raw_value.strip()
-    if not backend_id:
-        raise ValueError(
-            f"invalid {_BACKEND_KEY} in {source_path} ({source_scope}): cannot be empty"
-        )
-
-    return backend_id
 
 
 def _normalize_nonempty_string(

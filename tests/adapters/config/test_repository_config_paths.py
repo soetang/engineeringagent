@@ -12,7 +12,7 @@ else:  # pragma: no cover - Python < 3.11 fallback
 
 def test_repo_engineeringagent_toml_enables_opencode_toggles() -> None:
     """Assert repo-level TOML defaults include expected feature toggles."""
-    repo_root = Path(__file__).resolve().parents[2]
+    repo_root = Path(__file__).resolve().parents[3]
     config_path = repo_root / "engineeringagent.toml"
     assert config_path.exists(), "expected engineeringagent.toml at repo root"
 
@@ -28,11 +28,9 @@ def test_repo_engineeringagent_toml_enables_opencode_toggles() -> None:
     assert isinstance(pytest_table, dict)
     assert pytest_table.get("opencode-integration") is True
 
-
-
 def test_repo_includes_codex_profile_config_for_default_backend() -> None:
     """Assert repo codex profile config exists for deterministic backend execution."""
-    repo_root = Path(__file__).resolve().parents[2]
+    repo_root = Path(__file__).resolve().parents[3]
     config_path = repo_root / ".codex" / "config.toml"
 
     assert config_path.exists(), "expected .codex/config.toml at repo root"

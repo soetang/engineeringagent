@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from engineeringagent.config import (
+from engineeringagent.adapters.config import (
     DEFAULT_HARNESS_ROOT,
     DEFAULT_PROGRESS_ROOT,
     DEFAULT_HARNESS_CHECKS_PATH,

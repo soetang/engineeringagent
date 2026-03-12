@@ -11,7 +11,7 @@ import pytest
 from pydantic import ValidationError
 
 import engineeringagent.checks.fitness.adapters as adapters_module
-import engineeringagent.config as config_module
+import engineeringagent.adapters.config.runtime as config_module
 from engineeringagent.application import FeatureIterationInputs
 import engineeringagent.application.feature_state as feature_state_module
 from engineeringagent.checks.fitness.contracts import (

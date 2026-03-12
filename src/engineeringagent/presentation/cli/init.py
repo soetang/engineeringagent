@@ -12,13 +12,13 @@ from ...application import (
     InitWorkspaceResult,
     InitWorkspaceService,
 )
-from ...agents import default_backend_id, list_backends
-from ...config import (
+from ...adapters.config import (
     resolve_agents_backend_id,
     resolve_agents_codex_profile_in_engineeringagent_toml,
     write_init_backend_config,
     write_init_docs_root_config,
 )
+from ...agents import default_backend_id, list_backends
 from ...init_cli_support import (
     InitAgentsLauncherResolverDeps,
     InitBackendResolverDeps,

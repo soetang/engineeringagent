@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from engineeringagent.config import resolve_progress_root
+from engineeringagent.adapters.config import resolve_progress_root
 
 PROGRESS_DIRNAME = Path(".engineeringagent") / "progress"
 PROGRESS_RUNS_DIRNAME = "runs"

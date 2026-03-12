@@ -10,7 +10,6 @@ from typing import Any, Callable, Sequence
 from pydantic import BaseModel, ConfigDict
 import yaml
 
-from engineeringagent.config import resolve_docs_root
 from engineeringagent.domain.shared import utc_now_iso
 from engineeringagent.specs import (
     _is_bundled_feature_spec_path,
@@ -407,8 +406,7 @@ def _resolve_archive_path(project_root: Path, feature_path: Path) -> Path:
 
 
 def _resolve_spec_directories(project_root: Path) -> tuple[Path, Path]:
-    docs_root = resolve_docs_root(project_root)
-    spec_root = docs_root / "spec"
+    spec_root = (project_root / "docs" / "spec").resolve()
     return (
         (spec_root / "features").resolve(),
         (spec_root / "features_done").resolve(),

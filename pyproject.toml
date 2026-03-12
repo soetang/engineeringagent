@@ -67,6 +67,15 @@ extend-select = [
 "src/engineeringagent/opencode/client.py" = [
   "PLR0913",
 ]
+"tests/adapters/config/*.py" = [
+  "D103",
+]
+"tests/meta/test_coverage_threshold_regressions.py" = [
+  "D103",
+]
+"tests/presentation/cli/test_cli.py" = [
+  "D103",
+]
 "harness/fitness_functions/*.py" = [
   "D103",
   "D417",

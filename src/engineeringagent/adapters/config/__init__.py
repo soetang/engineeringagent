@@ -1,5 +1,47 @@
-"""Filesystem-backed repository configuration loading."""
+"""Filesystem-backed repository configuration adapters."""
 
 from .filesystem import load_repository_config
+from .runtime import (
+    DEFAULT_CODEX_PROFILE,
+    DEFAULT_HARNESS_CHECKS_PATH,
+    DEFAULT_HARNESS_ROOT,
+    DEFAULT_PROGRESS_ROOT,
+    repo_relative_label,
+    resolve_agents_backend_id,
+    resolve_agents_codex_model,
+    resolve_agents_codex_profile,
+    resolve_agents_codex_profile_in_engineeringagent_toml,
+    resolve_docs_root,
+    resolve_harness_bool_setting,
+    resolve_harness_checks_config_path,
+    resolve_harness_root,
+    resolve_progress_root,
+    resolve_specifications_root,
+    upsert_agents_backend_toml,
+    upsert_agents_codex_profile_toml,
+    write_init_backend_config,
+    write_init_docs_root_config,
+)
 
-__all__ = ["load_repository_config"]
+__all__ = [
+    "DEFAULT_CODEX_PROFILE",
+    "DEFAULT_HARNESS_CHECKS_PATH",
+    "DEFAULT_HARNESS_ROOT",
+    "DEFAULT_PROGRESS_ROOT",
+    "load_repository_config",
+    "repo_relative_label",
+    "resolve_agents_backend_id",
+    "resolve_agents_codex_model",
+    "resolve_agents_codex_profile",
+    "resolve_agents_codex_profile_in_engineeringagent_toml",
+    "resolve_docs_root",
+    "resolve_harness_bool_setting",
+    "resolve_harness_checks_config_path",
+    "resolve_harness_root",
+    "resolve_progress_root",
+    "resolve_specifications_root",
+    "upsert_agents_backend_toml",
+    "upsert_agents_codex_profile_toml",
+    "write_init_backend_config",
+    "write_init_docs_root_config",
+]

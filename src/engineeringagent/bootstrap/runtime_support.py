@@ -23,7 +23,7 @@ from engineeringagent.application.implementation_step import (
     ImplementStepRuntimeDependencies,
     run_implement_step_from_inputs,
 )
-from engineeringagent.config import repo_relative_label, resolve_harness_root
+from engineeringagent.adapters.config import repo_relative_label, resolve_harness_root
 from engineeringagent.presentation.presenters.terminal import RunOutputPresenter
 from engineeringagent.specs import progress_kind_label
 

@@ -13,7 +13,7 @@ from engineeringagent.agents.contracts import (
     AgentOutputValidationError,
     AgentRunRequest,
 )
-from engineeringagent.config import (
+from engineeringagent.adapters.config import (
     resolve_agents_codex_model,
     resolve_agents_codex_profile,
 )

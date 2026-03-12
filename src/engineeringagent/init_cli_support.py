@@ -7,13 +7,13 @@ from typing import Callable
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .adapters.vcs import git_cli
-from .agents import default_backend_id, list_backends
-from .config import (
+from .adapters.config import (
     DEFAULT_CODEX_PROFILE,
     resolve_agents_backend_id,
     resolve_agents_codex_profile_in_engineeringagent_toml,
 )
+from .adapters.vcs import git_cli
+from .agents import default_backend_id, list_backends
 from .init_scaffold import AGENTS_LAUNCHER_CHOICES, DEFAULT_AGENTS_LAUNCHER
 from .presentation.presenters.terminal import stdout_is_tty
 

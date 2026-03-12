@@ -11,7 +11,7 @@ if sys.version_info >= (3, 11):
 else:  # pragma: no cover - Python < 3.11 fallback
     import tomli as tomllib
 
-from engineeringagent.config import (
+from engineeringagent.adapters.config import (
     DEFAULT_CODEX_PROFILE,
     resolve_agents_backend_id,
     resolve_agents_codex_model,

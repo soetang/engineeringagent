@@ -20,7 +20,7 @@ from engineeringagent.application import (
     RunLoopRequest,
     RunLoopResult,
 )
-from engineeringagent.config import (
+from engineeringagent.adapters.config import (
     resolve_docs_root,
 )
 from engineeringagent.domain.quality import ChecksRunResult
