@@ -22,13 +22,11 @@ from .implementation_step import (
     run_implement_step_from_inputs,
 )
 from .pipeline import IterationPipelineDependencies, run_feature_iteration_pipeline
-from .runtime_dependencies import FeatureIterationRuntimeDependencies
 
 __all__ = [
     "CommandTiming",
     "CompletionCommitOutcome",
     "FeatureIterationInputs",
-    "FeatureIterationRuntimeDependencies",
     "ImplementStepFailureDependencies",
     "GatePhaseOutcome",
     "ImplementStepInputs",

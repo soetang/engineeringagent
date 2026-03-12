@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Callable
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.ports import VersionControlGateway
-
-from .feature_iteration import FeatureIterationInputs, IterationOutcome, IterationReport
-from .feature_iteration.runtime_dependencies import FeatureIterationRuntimeDependencies
+from engineeringagent.ports import (
+    FeatureIterationExecutionRequest,
+    FeatureIterationExecutor,
+)
 
 
 class FeatureIterationRequest(BaseModel):
@@ -50,32 +49,22 @@ class FeatureIterationService:
     def __init__(
         self,
         *,
-        version_control_gateway: VersionControlGateway,
-        iteration_report_publisher: Callable[[IterationReport], IterationOutcome],
-        runtime_dependencies: FeatureIterationRuntimeDependencies,
+        executor: FeatureIterationExecutor,
     ) -> None:
-        self._version_control_gateway = version_control_gateway
-        self._iteration_report_publisher = iteration_report_publisher
-        self._runtime_dependencies = runtime_dependencies
+        self._executor = executor
 
     def run(self, request: FeatureIterationRequest) -> FeatureIterationResult:
         """Execute one feature iteration through the runtime pipeline."""
-        dependencies = self._runtime_dependencies
-        report = dependencies.run_feature_iteration_pipeline(
-            FeatureIterationInputs(
+        outcome = self._executor.run(
+            FeatureIterationExecutionRequest(
                 project_root=request.project_root,
                 feature_path=request.feature_path,
                 run_all=request.run_all,
                 attempt=request.attempt,
                 feedback=request.feedback,
                 verbose_output=request.verbose_output,
-            ),
-            dependencies.build_iteration_pipeline_dependencies(
-                dependencies,
-                self._version_control_gateway,
-            ),
+            )
         )
-        outcome = self._iteration_report_publisher(report)
         return FeatureIterationResult(
             completed=outcome.completed,
             result=outcome.result,

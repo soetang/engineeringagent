@@ -1,25 +1,25 @@
 from __future__ import annotations
 
 from pathlib import Path
-from types import SimpleNamespace
-from typing import Any, Sequence, cast
+from typing import Any, Sequence
 
 from engineeringagent.application import FeatureIterationRequest, FeatureIterationService
 from engineeringagent.application.feature_iteration import (
     FeatureIterationInputs,
-    FeatureIterationRuntimeDependencies,
     IterationOutcome,
-    IterationPipelineDependencies,
     IterationReport,
     IterationTelemetryInputs,
     PhaseTiming,
 )
-from engineeringagent.domain.audit import fallback_implement_progress_envelope, ProgressEvent
-from engineeringagent.domain.specification import (
-    InitialFeatureLoadOutcome,
-    PostImplementFeatureOutcome,
+from engineeringagent.domain.audit import ProgressEvent
+from engineeringagent.ports import (
+    CommitRequest,
+    CommitResult,
+    DiffSummary,
+    FeatureIterationExecutionRequest,
+    FeatureIterationExecutionResult,
+    WorktreeStatus,
 )
-from engineeringagent.ports import CommitRequest, CommitResult, DiffSummary, WorktreeStatus
 
 
 class _FakeClock:
@@ -133,128 +133,25 @@ def _build_request(**overrides: object) -> FeatureIterationRequest:
 def _build_service(
     observed: dict[str, object],
     *,
-    commit_result: CommitResult,
-    publish_outcome: object,
-) -> tuple[FeatureIterationService, _FakeVersionControlGateway]:
-    def _fake_run_feature_iteration_pipeline(inputs: object, dependencies: object) -> str:
-        observed["inputs"] = inputs
-        observed["dependencies"] = dependencies
-        return "iteration-report"
+    execution_result: FeatureIterationExecutionResult,
+) -> FeatureIterationService:
+    class _FakeFeatureIterationExecutor:
+        def run(
+            self,
+            request: FeatureIterationExecutionRequest,
+        ) -> FeatureIterationExecutionResult:
+            observed["execution_request"] = request
+            return execution_result
 
-    def _fake_build_iteration_pipeline_dependencies(
-        runtime_dependencies: object,
-        version_control_gateway: object,
-    ) -> IterationPipelineDependencies:
-        observed["pipeline_builder_runtime_dependencies"] = runtime_dependencies
-        observed["pipeline_builder_version_control_gateway"] = version_control_gateway
-        return IterationPipelineDependencies(
-            clock=_FakeClock(),
-            evaluate_initial_feature_load=evaluate_initial_feature_load,
-            describe_action=describe_action,
-            ready_for_active_iteration=ready_for_active_iteration,
-            touch_active_feature_for_iteration=touch_active_feature_for_iteration,
-            run_implement_step=run_implement_step,
-            refresh_feature_after_implement=refresh_feature_after_implement,
-            should_archive_selected_feature=should_archive_selected_feature,
-            archive_completed_feature=archive_completed_feature,
-            run_gate_phase=run_gate_phase,
-            gate_phase_dependencies=_FakeGatePhaseDependencies(observed),
-            run_verification_phase=run_verification_phase,
-            run_reviewer_phase=run_reviewer_phase,
-            reviewer_phase_dependencies=_FakeReviewerPhaseDependencies(observed),
-            run_completion_commit_phase=run_completion_commit_phase,
-            completion_phase_dependencies=_FakeCompletionPhaseDependencies(observed),
-        )
-
-    class _FakeIterationReportPublisher:
-        def __call__(self, report: IterationReport) -> IterationOutcome:
-            observed["report"] = report
-            return cast(IterationOutcome, publish_outcome)
-
-    describe_action = lambda project_root, action, structured: (  # noqa: E731
-        f"{project_root}:{action}:{structured}"
-    )
-    run_implement_step = lambda *args, **kwargs: (  # noqa: E731
-        True,
-        None,
-        "",
-        fallback_implement_progress_envelope(),
-        False,
-    )
-    collect_changed_paths = lambda _project_root: None  # noqa: E731
-    evaluate_initial_feature_load = lambda _feature_path: InitialFeatureLoadOutcome(  # noqa: E731
-        feature=None,
-        result="failed",
-        failed_gate="load",
-        feedback=None,
-    )
-    ready_for_active_iteration = lambda _result, _feature: True  # noqa: E731
-    touch_active_feature_for_iteration = lambda _feature, _path: None  # noqa: E731
-    refresh_feature_after_implement = lambda _project_root, _feature_path: PostImplementFeatureOutcome(  # noqa: E731
-        feature=None,
-        archived_in_iteration=False,
-        archived_path=None,
-        result="failed",
-        failed_gate="refresh",
-        feedback=None,
-    )
-    should_archive_selected_feature = lambda _result, _feature: False  # noqa: E731
-    archive_completed_feature = lambda _project_root, _feature_path: (False, None, None)  # noqa: E731
-    restore_archived_feature = lambda _archived_path, _feature_path: (True, None)  # noqa: E731
-    run_gate_phase = cast(Any, lambda *args, **kwargs: None)  # noqa: E731
-    run_verification_phase = cast(Any, lambda *args, **kwargs: None)  # noqa: E731
-    run_reviewer_phase = cast(Any, lambda *args, **kwargs: None)  # noqa: E731
-    run_completion_commit_phase = cast(Any, lambda *args, **kwargs: None)  # noqa: E731
-    runtime_dependencies = FeatureIterationRuntimeDependencies(
-        clock=_FakeClock(),
-        evaluate_initial_feature_load=evaluate_initial_feature_load,
-        describe_action=describe_action,
-        ready_for_active_iteration=ready_for_active_iteration,
-        touch_active_feature_for_iteration=touch_active_feature_for_iteration,
-        run_implement_step=run_implement_step,
-        refresh_feature_after_implement=refresh_feature_after_implement,
-        should_archive_selected_feature=should_archive_selected_feature,
-        archive_completed_feature=archive_completed_feature,
-        collect_changed_paths=collect_changed_paths,
-        restore_archived_feature=restore_archived_feature,
-        run_feature_iteration_pipeline=_fake_run_feature_iteration_pipeline,
-        run_gate_phase=run_gate_phase,
-        build_gate_phase_dependencies=lambda **kwargs: _FakeGatePhaseDependencies(
-            observed, **kwargs
-        ),
-        run_verification_phase=run_verification_phase,
-        run_reviewer_phase=run_reviewer_phase,
-        build_reviewer_phase_dependencies=(
-            lambda **kwargs: _FakeReviewerPhaseDependencies(observed, **kwargs)
-        ),
-        run_completion_commit_phase=run_completion_commit_phase,
-        build_completion_phase_dependencies=(
-            lambda **kwargs: _FakeCompletionPhaseDependencies(observed, **kwargs)
-        ),
-        build_iteration_pipeline_dependencies=_fake_build_iteration_pipeline_dependencies,
-    )
-    version_control_gateway = _FakeVersionControlGateway(observed, commit_result)
-    service = FeatureIterationService(
-        version_control_gateway=version_control_gateway,
-        iteration_report_publisher=_FakeIterationReportPublisher(),
-        runtime_dependencies=runtime_dependencies,
-    )
-    return service, version_control_gateway
+    return FeatureIterationService(executor=_FakeFeatureIterationExecutor())
 
 
 def test_feature_iteration_service_executes_runtime_pipeline() -> None:
-    """The application service should own runtime pipeline composition."""
+    """The application service should delegate feature execution through its port."""
     observed: dict[str, object] = {}
-    service, _ = _build_service(
+    service = _build_service(
         observed,
-        commit_result=CommitResult(
-            stdout="commit stdout\n",
-            stderr="commit stderr\n",
-            commit_created=False,
-            commit_sha=None,
-            failure_stage="git_commit",
-        ),
-        publish_outcome=SimpleNamespace(
+        execution_result=FeatureIterationExecutionResult(
             completed=False,
             result="failed",
             failed_gate="tests",
@@ -272,7 +169,7 @@ def test_feature_iteration_service_executes_runtime_pipeline() -> None:
     result = service.run(_build_request())
 
     assert result.result == "failed"
-    assert observed["inputs"] == FeatureIterationInputs(
+    assert observed["execution_request"] == FeatureIterationExecutionRequest(
         project_root=Path("/tmp/project"),
         feature_path=Path("docs/specifications/features/FEAT-001/specification.yaml"),
         run_all=False,
@@ -280,16 +177,12 @@ def test_feature_iteration_service_executes_runtime_pipeline() -> None:
         feedback="fix the failing check",
         verbose_output=True,
     )
-    dependencies = cast(IterationPipelineDependencies, observed["dependencies"])
-    runtime_dependencies = service._runtime_dependencies
-    assert observed["pipeline_builder_runtime_dependencies"] is runtime_dependencies
+    assert result.failed_gate == "tests"
+    assert result.next_action == "retry_same_feature"
     assert (
-        observed["pipeline_builder_version_control_gateway"]
-        is service._version_control_gateway
+        result.log_path
+        == ".engineeringagent/progress/FEAT-001/iteration-report.json"
     )
-    assert dependencies.describe_action is runtime_dependencies.describe_action
-    assert dependencies.run_implement_step is runtime_dependencies.run_implement_step
-    assert observed["report"] == "iteration-report"
 
 
 def test_iteration_outcome_from_report_copies_report_status_fields() -> None:

@@ -19,6 +19,11 @@ from .checks_catalog_repository import (
 from .checks_runner import ChecksRunRequest, ChecksRunner
 from .clock import Clock
 from .configuration_provider import ConfigurationProvider
+from .feature_iteration_executor import (
+    FeatureIterationExecutionRequest,
+    FeatureIterationExecutionResult,
+    FeatureIterationExecutor,
+)
 from .feature_workspace_manager import (
     FeatureWorkspaceFailure,
     FeatureWorkspaceManager,
@@ -72,6 +77,9 @@ __all__ = [
     "DEFAULT_AGENT_MODEL",
     "DiffSummary",
     "ExecutionFailure",
+    "FeatureIterationExecutionRequest",
+    "FeatureIterationExecutionResult",
+    "FeatureIterationExecutor",
     "FeatureWorkspaceFailure",
     "FeatureWorkspaceManager",
     "FeatureSpecificationRepository",

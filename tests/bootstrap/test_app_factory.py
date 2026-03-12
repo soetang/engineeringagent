@@ -7,17 +7,24 @@ from typing import cast
 from engineeringagent.adapters.agents import ConfiguredAgentRunner
 from engineeringagent.adapters.clock import SystemClock
 from engineeringagent.adapters.config import FilesystemConfigurationProvider
-from engineeringagent.adapters.quality.repository_validator import (
-    ChecksRepositoryValidator,
-)
-from engineeringagent.adapters.quality.runtime import RuntimeChecksRunner
-from engineeringagent.adapters.runtime import RuntimeRunLoopExecutor
 from engineeringagent.adapters.documents import (
     ChecksCatalogLoadOptions,
     FilesystemChecksCatalogRepository,
 )
 from engineeringagent.adapters.progress import FilesystemProgressJournal
 from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
+from engineeringagent.adapters.quality.repository_validator import (
+    ChecksRepositoryValidator,
+)
+from engineeringagent.adapters.quality.runtime import RuntimeChecksRunner
+from engineeringagent.adapters.runtime import (
+    RuntimeFeatureIterationDependencies,
+    RuntimeFeatureIterationExecutor,
+    RuntimeRunLoopExecutor,
+)
+from engineeringagent.adapters.runtime.feature_iteration_execution import (
+    build_iteration_pipeline_dependencies,
+)
 from engineeringagent.adapters.vcs import (
     GitCliVersionControlGateway,
     GitFeatureWorkspaceManager,
@@ -26,23 +33,21 @@ from engineeringagent.application import (
     ChecksService,
     FeatureIterationService,
     GuidanceService,
+    InitWorkspaceService,
     PromptBuilder,
     RunLoopService,
     ValidationService,
+    WorkspaceRecoveryService,
 )
 from engineeringagent.application.feature_iteration import (
-    FeatureIterationRuntimeDependencies,
     FeatureIterationInputs,
     IterationReport,
     IterationTelemetryInputs,
 )
-from engineeringagent.application import InitWorkspaceService, WorkspaceRecoveryService
 from engineeringagent.bootstrap import AppFactory
 import engineeringagent.bootstrap.app_factory as app_factory_module
 from engineeringagent.bootstrap.app_factory import (
-    _build_iteration_pipeline_dependencies,
     _build_iteration_report_publisher,
-    _commit_feature_completion,
     _persist_iteration_report,
 )
 from engineeringagent.bootstrap.iteration_reporting import DefaultIterationReportPublisher
@@ -77,16 +82,17 @@ def test_app_factory_builds_default_application_services(tmp_path: Path) -> None
     assert isinstance(feature_iteration_service, FeatureIterationService)
     assert isinstance(run_loop_service, RunLoopService)
     assert isinstance(checks_service._checks_runner, RuntimeChecksRunner)
+    assert isinstance(feature_iteration_service._executor, RuntimeFeatureIterationExecutor)
     assert isinstance(
-        feature_iteration_service._runtime_dependencies,
-        FeatureIterationRuntimeDependencies,
+        feature_iteration_service._executor._runtime_dependencies,
+        RuntimeFeatureIterationDependencies,
     )
     assert isinstance(
-        feature_iteration_service._version_control_gateway,
+        feature_iteration_service._executor._version_control_gateway,
         GitCliVersionControlGateway,
     )
     assert isinstance(
-        feature_iteration_service._iteration_report_publisher,
+        feature_iteration_service._executor._iteration_report_publisher,
         DefaultIterationReportPublisher,
     )
     assert isinstance(
@@ -125,7 +131,10 @@ def test_app_factory_builds_default_application_services(tmp_path: Path) -> None
         FilesystemPromptDefinitionRepository,
     )
     assert isinstance(factory.build_prompt_builder(), PromptBuilder)
-    assert isinstance(feature_iteration_service._runtime_dependencies.clock, SystemClock)
+    assert isinstance(
+        feature_iteration_service._executor._runtime_dependencies.clock,
+        SystemClock,
+    )
     recovery_service = factory.build_workspace_recovery_service()
     assert isinstance(recovery_service, WorkspaceRecoveryService)
     assert isinstance(recovery_service._workspace_manager, GitFeatureWorkspaceManager)
@@ -169,8 +178,8 @@ def test_app_factory_uses_configured_implementation_prompt_definition(
 
 def _build_runtime_dependencies(
     observed: dict[str, object],
-) -> FeatureIterationRuntimeDependencies:
-    return FeatureIterationRuntimeDependencies(
+) -> RuntimeFeatureIterationDependencies:
+    return RuntimeFeatureIterationDependencies(
         clock=_FakeClock(),
         evaluate_initial_feature_load=lambda _feature_path: None,
         describe_action=lambda project_root, action, structured: (
@@ -184,7 +193,6 @@ def _build_runtime_dependencies(
         archive_completed_feature=lambda _project_root, _feature_path: (False, None, None),
         collect_changed_paths=lambda _project_root: None,
         restore_archived_feature=lambda _archived_path, _feature_path: (True, None),
-        run_feature_iteration_pipeline=lambda inputs, dependencies: "iteration-report",
         run_gate_phase=lambda *args, **kwargs: None,
         build_gate_phase_dependencies=lambda **kwargs: _FakeGatePhaseDependencies(
             observed, **kwargs
@@ -198,12 +206,11 @@ def _build_runtime_dependencies(
         build_completion_phase_dependencies=lambda **kwargs: _FakeCompletionPhaseDependencies(
             observed, **kwargs
         ),
-        build_iteration_pipeline_dependencies=_build_iteration_pipeline_dependencies,
     )
 
 
-def test_app_factory_commit_feature_completion_returns_failure_tuple_shape() -> None:
-    """Bootstrap commit wiring should preserve the pipeline callback contract."""
+def test_runtime_feature_iteration_commit_wiring_returns_failure_tuple_shape() -> None:
+    """Runtime execution wiring should preserve the pipeline callback contract."""
     observed: dict[str, object] = {}
     gateway = _FakeVersionControlGateway(
         observed,
@@ -216,10 +223,18 @@ def test_app_factory_commit_feature_completion_returns_failure_tuple_shape() -> 
         ),
     )
 
-    outcome = _commit_feature_completion(
+    dependencies = build_iteration_pipeline_dependencies(
+        _build_runtime_dependencies(observed),
         gateway,
-        project_root=Path("/tmp/project"),
-        feature={"expected_commit_subject": "feat: complete FEAT-001"},
+    )
+    completion_dependencies = dependencies.completion_phase_dependencies
+
+    assert isinstance(completion_dependencies, _FakeCompletionPhaseDependencies)
+    recorded_completion_dependencies = observed["completion_dependencies"]
+    assert isinstance(recorded_completion_dependencies, dict)
+    outcome = recorded_completion_dependencies["commit_feature_completion"](
+        Path("/tmp/project"),
+        {"expected_commit_subject": "feat: complete FEAT-001"},
     )
 
     assert outcome == (False, "git_commit", "commit stdout\ncommit stderr\n")
@@ -274,10 +289,12 @@ def test_app_factory_build_iteration_pipeline_dependencies_wires_completion_comm
         ),
     )
 
-    dependencies = _build_iteration_pipeline_dependencies(runtime_dependencies, gateway)
+    dependencies = build_iteration_pipeline_dependencies(
+        runtime_dependencies,
+        gateway,
+    )
 
     assert dependencies.describe_action is runtime_dependencies.describe_action
-    assert dependencies.run_implement_step is runtime_dependencies.run_implement_step
     completion_dependencies = dependencies.completion_phase_dependencies
     assert isinstance(completion_dependencies, _FakeCompletionPhaseDependencies)
     recorded_completion_dependencies = observed["completion_dependencies"]
