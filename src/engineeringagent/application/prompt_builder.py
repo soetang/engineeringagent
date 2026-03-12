@@ -80,25 +80,6 @@ class PromptBuilder:
             prompt_values["retry_feedback"] = normalized_feedback
         return implementation_definition.render(prompt_values)
 
-    def build_implementation_prompt_from_specification(
-        self,
-        *,
-        specification: FeatureSpecification,
-        specification_path: Path,
-        feedback: str | None,
-        handoff_path: str | None = None,
-    ) -> str:
-        """Render the implementation prompt from typed specification inputs."""
-
-        request = self.build_implementation_prompt_request(
-            specification=specification,
-            specification_path=specification_path,
-            feedback=feedback,
-            handoff_path=handoff_path,
-        )
-        return self.build_implementation_prompt(request)
-
-
 def _resolved_artifact_reference(
     specification_path: Path, artifact_reference: str | None
 ) -> Path | None:

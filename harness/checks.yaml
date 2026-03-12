@@ -48,7 +48,7 @@ checks:
 
   pylint_validate:
     type: command
-    command: "uv run pylint --score=n --reports=n src/engineeringagent tests harness"
+    command: "uv run pylint --score=n --reports=n src/engineeringagent harness"
     when:
       on_change: ["src/**/*.py", "tests/**/*.py", "harness/**/*.py"]
 

@@ -691,7 +691,7 @@ def test_repo_layer_contracts_rule_blocks_raw_feature_document_prompt_builder_en
         "\n".join(
             [
                 "class PromptBuilder:",
-                "    def build_implementation_prompt_from_feature_document(self) -> str:",
+                "    def build_implementation_prompt_from_specification(self) -> str:",
                 "        return 'legacy'",
                 "",
             ]

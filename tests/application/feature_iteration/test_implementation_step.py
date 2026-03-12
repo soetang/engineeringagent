@@ -38,19 +38,24 @@ class _FakePromptBuilder(PromptBuilder):
     def __init__(self) -> None:
         """Avoid repository wiring; tests only exercise the render method."""
 
-    def build_implementation_prompt_from_specification(
+    def build_implementation_prompt_request(
         self,
         *,
         specification: object,
         specification_path: Path,
         feedback: str | None,
         handoff_path: str | None = None,
-    ) -> str:
-        """Return a deterministic prompt while asserting expected inputs."""
+    ) -> object:
+        """Return a deterministic request while asserting expected inputs."""
         assert getattr(specification, "feature_id") == "FEAT-300"
         assert specification_path.name == "spec.yaml"
         assert feedback == "retry"
         assert handoff_path is None
+        return object()
+
+    def build_implementation_prompt(self, request: object) -> str:
+        """Render a deterministic prompt for the implement-step tests."""
+        assert request is not None
         return "implement prompt"
 
 

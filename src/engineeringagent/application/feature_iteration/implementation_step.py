@@ -290,12 +290,13 @@ def _build_implement_prompt(
             implement_inputs.project_root,
             persisted_handoff_path,
         )
-    return prompt_builder.build_implementation_prompt_from_specification(
+    prompt_request = prompt_builder.build_implementation_prompt_request(
         specification=_coerce_feature_specification(implement_inputs.feature),
         specification_path=implement_inputs.feature_path,
         feedback=implement_inputs.feedback,
         handoff_path=handoff_path,
     )
+    return prompt_builder.build_implementation_prompt(prompt_request)
 
 
 def _coerce_feature_specification(

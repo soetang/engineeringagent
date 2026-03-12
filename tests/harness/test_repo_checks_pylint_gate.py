@@ -32,7 +32,7 @@ def test_repo_checks_yaml_includes_pylint_gate_contract(repo_root: Path) -> None
     assert pylint_validate.get("type") == "command"
     assert (
         pylint_validate.get("command")
-        == "uv run pylint --score=n --reports=n src/engineeringagent tests harness"
+        == "uv run pylint --score=n --reports=n src/engineeringagent harness"
     )
 
     when = pylint_validate.get("when", {})

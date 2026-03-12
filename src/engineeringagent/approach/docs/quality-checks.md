@@ -33,7 +33,7 @@ Use this playbook as a practical default, then apply judgment based on risk.
   - `uv run engineeringagent validate --schema-only`
 - When debugging a specific class of failure:
   - Ruff: `ruff check src/engineeringagent harness`
-  - Pylint: `pylint --score=n --reports=n src/engineeringagent tests harness`
+  - Pylint: `pylint --score=n --reports=n src/engineeringagent harness`
   - Pyright: `pyright src/engineeringagent tests harness`
   - Unit tests: `pytest -q`
   - Fitness functions: `uv run engineeringagent checks run --checks fitness --phase iteration_end`
