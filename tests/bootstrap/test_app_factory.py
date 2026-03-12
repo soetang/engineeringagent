@@ -119,3 +119,17 @@ def test_app_factory_uses_configured_harness_root_for_prompt_definitions(
 
     assert isinstance(repository, FilesystemPromptDefinitionRepository)
     assert repository._prompts_root == prompts_root
+
+
+def test_app_factory_uses_configured_implementation_prompt_definition(
+    tmp_path: Path,
+) -> None:
+    """Factory prompt wiring respects the effective implementation prompt id."""
+    (tmp_path / "engineeringagent.toml").write_text(
+        '[agents.implementation]\nprompt_definition = "repo_override"\n',
+        encoding="utf-8",
+    )
+
+    prompt_builder = AppFactory(tmp_path).build_prompt_builder()
+
+    assert prompt_builder._implementation_prompt_id == "repo_override"

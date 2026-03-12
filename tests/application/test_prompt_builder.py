@@ -41,11 +41,18 @@ class LocalPromptDefinitionRepository(PromptDefinitionRepository):
         return sorted(path.stem for path in self._prompts_root.glob("*.py"))
 
 
-def _prompt_builder(prompts_root: Path | None = None) -> PromptBuilder:
+def _prompt_builder(
+    prompts_root: Path | None = None,
+    *,
+    implementation_prompt_id: str = "implementation_default",
+) -> PromptBuilder:
     resolved_prompts_root = prompts_root or (
         Path(__file__).resolve().parents[2] / "harness" / "prompts"
     )
-    return PromptBuilder(LocalPromptDefinitionRepository(resolved_prompts_root))
+    return PromptBuilder(
+        LocalPromptDefinitionRepository(resolved_prompts_root),
+        implementation_prompt_id=implementation_prompt_id,
+    )
 
 
 def _load_prompt_definition(prompt_path: Path) -> PromptDefinition:
@@ -268,3 +275,59 @@ def test_default_prompt_builder_prefers_repo_local_templates(
 
     assert prompt.startswith("repo implementation\nFEAT-101\n")
     assert prompt.rstrip().endswith("retry")
+
+
+def test_prompt_builder_uses_configured_implementation_prompt_id(
+    tmp_path: Path,
+) -> None:
+    """Implementation prompt rendering should load the configured prompt id."""
+
+    prompts_root = tmp_path / "harness" / "prompts"
+    prompts_root.mkdir(parents=True)
+    _write_prompt_module(
+        prompts_root,
+        "custom_prompt",
+        "from pydantic import BaseModel\n"
+        "from engineeringagent.ports import PromptDefinition, PromptInterpolation\n"
+        "class ImplementationInput(BaseModel):\n"
+        "    feature_id: str\n"
+        "    specification_path: str\n"
+        "    plan_path: str = ''\n"
+        "    research_path: str = ''\n"
+        "    handoff_path: str = ''\n"
+        "    retry_feedback: str = ''\n"
+        "class ImplementationOutput(BaseModel):\n"
+        "    summary: str\n"
+        "PROMPT_DEFINITION = PromptDefinition(\n"
+        "    prompt_id='custom_prompt',\n"
+        "    purpose='implementation',\n"
+        "    target='implementation',\n"
+        "    output_mode='structured',\n"
+        "    token_budget_hint=100,\n"
+        "    input_model=ImplementationInput,\n"
+        "    output_model=ImplementationOutput,\n"
+        "    body_template='custom implementation\\n$feature_id\\n',\n"
+        "    interpolations=(\n"
+        "        PromptInterpolation(name='feature_id', source='test', required=True, rationale='test'),\n"
+        "        PromptInterpolation(name='specification_path', source='test', required=True, rationale='test'),\n"
+        "        PromptInterpolation(name='plan_path', source='test', required=False, rationale='test'),\n"
+        "        PromptInterpolation(name='research_path', source='test', required=False, rationale='test'),\n"
+        "        PromptInterpolation(name='handoff_path', source='test', required=False, rationale='test'),\n"
+        "        PromptInterpolation(name='retry_feedback', source='test', required=False, rationale='test'),\n"
+        "    ),\n"
+        ")\n",
+    )
+    feature_path = tmp_path / "docs" / "features" / "spec.yaml"
+    feature_path.parent.mkdir(parents=True)
+
+    prompt = _prompt_builder(
+        prompts_root,
+        implementation_prompt_id="custom_prompt",
+    ).build_implementation_prompt(
+        ImplementationPromptRequest(
+            feature_id="FEAT-101",
+            specification_path=feature_path,
+        )
+    )
+
+    assert prompt == "custom implementation\nFEAT-101\n"

@@ -72,6 +72,24 @@ class CodexRepositoryConfig(BaseModel):
         return normalized
 
 
+class ImplementationAgentConfig(BaseModel):
+    """Implementation-agent defaults owned by repository configuration."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    prompt_definition: str = "implementation_default"
+
+    @field_validator("prompt_definition", mode="before")
+    @classmethod
+    def _validate_prompt_definition(cls, value: Any) -> str:
+        if not isinstance(value, str):
+            raise ValueError("agents.implementation.prompt_definition must be a string")
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("agents.implementation.prompt_definition cannot be empty")
+        return normalized
+
+
 class RepositoryAgentsConfig(BaseModel):
     """Effective agent-related repository defaults."""
 
@@ -79,6 +97,9 @@ class RepositoryAgentsConfig(BaseModel):
 
     backend: str | None = None
     codex: CodexRepositoryConfig = Field(default_factory=CodexRepositoryConfig)
+    implementation: ImplementationAgentConfig = Field(
+        default_factory=ImplementationAgentConfig
+    )
 
     @field_validator("backend", mode="before")
     @classmethod

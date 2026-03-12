@@ -23,7 +23,11 @@ from engineeringagent.application.implementation_step import (
     ImplementStepRuntimeDependencies,
     run_implement_step_from_inputs,
 )
-from engineeringagent.adapters.config import repo_relative_label, resolve_harness_root
+from engineeringagent.adapters.config import (
+    load_repository_config,
+    repo_relative_label,
+    resolve_harness_root,
+)
 from engineeringagent.presentation.presenters.terminal import RunOutputPresenter
 from engineeringagent.specs import progress_kind_label
 
@@ -85,10 +89,14 @@ def _build_agent_runner(_project_root: Path) -> ConfiguredAgentRunner:
 
 
 def _build_prompt_builder(project_root: Path) -> PromptBuilder:
+    config = load_repository_config(project_root)
     prompt_repository = FilesystemPromptDefinitionRepository(
         resolve_harness_root(project_root) / "prompts"
     )
-    return PromptBuilder(prompt_repository)
+    return PromptBuilder(
+        prompt_repository,
+        implementation_prompt_id=config.agents.implementation.prompt_definition,
+    )
 
 
 def _build_progress_journal(_project_root: Path) -> FilesystemProgressJournal:

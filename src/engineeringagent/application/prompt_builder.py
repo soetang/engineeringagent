@@ -26,8 +26,14 @@ class ImplementationPromptRequest(BaseModel):
 class PromptBuilder:
     """Deterministic prompt builder backed by prompt definitions."""
 
-    def __init__(self, prompt_definitions: PromptDefinitionRepository) -> None:
+    def __init__(
+        self,
+        prompt_definitions: PromptDefinitionRepository,
+        *,
+        implementation_prompt_id: str = "implementation_default",
+    ) -> None:
         self._prompt_definitions = prompt_definitions
+        self._implementation_prompt_id = implementation_prompt_id
 
     def build_implementation_prompt_request(
         self,
@@ -57,7 +63,7 @@ class PromptBuilder:
     def build_implementation_prompt(self, request: ImplementationPromptRequest) -> str:
         """Render the implementation prompt for one iteration."""
         implementation_definition = self._prompt_definitions.get(
-            "implementation_default"
+            self._implementation_prompt_id
         )
         return implementation_definition.render(
             {

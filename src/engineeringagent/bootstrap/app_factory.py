@@ -125,7 +125,11 @@ class AppFactory:
 
     def build_prompt_builder(self) -> PromptBuilder:
         """Create the default deterministic prompt builder."""
-        return PromptBuilder(self.build_prompt_definition_repository())
+        config = load_repository_config(self.project_root)
+        return PromptBuilder(
+            self.build_prompt_definition_repository(),
+            implementation_prompt_id=config.agents.implementation.prompt_definition,
+        )
 
     def build_workspace_recovery_service(self) -> WorkspaceRecoveryService:
         """Create the default workspace recovery service."""

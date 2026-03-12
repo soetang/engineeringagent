@@ -16,6 +16,7 @@ def test_loader_uses_defaults_when_no_config_files_exist(tmp_path: Path) -> None
     assert config.paths.harness_root == "harness"
     assert config.paths.harness_checks_path == "harness/checks.yaml"
     assert config.agents.backend is None
+    assert config.agents.implementation.prompt_definition == "implementation_default"
 
 
 def test_loader_ignores_pyproject_when_dedicated_file_exists(tmp_path: Path) -> None:
@@ -79,4 +80,31 @@ def test_loader_rejects_invalid_backend_values(tmp_path: Path) -> None:
     )
 
     with pytest.raises((TypeError, ValueError), match="backend"):
+        load_repository_config(tmp_path)
+
+
+def test_loader_reads_implementation_prompt_definition_from_agents_table(
+    tmp_path: Path,
+) -> None:
+    """Effective config exposes the configured implementation prompt id."""
+    (tmp_path / "engineeringagent.toml").write_text(
+        '[agents.implementation]\nprompt_definition = "repo_prompt"\n',
+        encoding="utf-8",
+    )
+
+    config = load_repository_config(tmp_path)
+
+    assert config.agents.implementation.prompt_definition == "repo_prompt"
+
+
+def test_loader_rejects_invalid_implementation_prompt_definition(
+    tmp_path: Path,
+) -> None:
+    """Implementation prompt definitions must be non-empty strings."""
+    (tmp_path / "engineeringagent.toml").write_text(
+        "[agents.implementation]\nprompt_definition = 1\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises((TypeError, ValueError), match="prompt_definition"):
         load_repository_config(tmp_path)
