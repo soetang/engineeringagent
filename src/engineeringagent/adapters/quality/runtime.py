@@ -7,7 +7,7 @@ from typing import Any, Callable, cast
 
 from typing_extensions import Unpack
 
-from engineeringagent.checks import collect_changed_paths
+from engineeringagent.adapters.quality.changed_paths import collect_changed_paths
 from engineeringagent.adapters.quality.config_selection import (
     ChecksConfigSelectionError,
     load_selected_harness_checks_document,

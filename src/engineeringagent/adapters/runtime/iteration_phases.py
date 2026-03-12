@@ -10,17 +10,12 @@ from typing import Any, Callable
 
 from pydantic import BaseModel, ConfigDict
 
-from engineeringagent.adapters.shell import run_shell_command
-from engineeringagent.checks import (
-    ChangedPathsResult,
-    ChecksRunResult,
-    HarnessCheckPhase,
-    run_checks,
-)
 from engineeringagent.adapters.config import (
     repo_relative_label,
     resolve_harness_checks_config_path,
 )
+from engineeringagent.adapters.quality.runtime import run_checks
+from engineeringagent.adapters.shell import run_shell_command
 from engineeringagent.application.feature_iteration import (
     CommandTiming,
     CompletionCommitOutcome,
@@ -30,6 +25,11 @@ from engineeringagent.application.feature_iteration import (
     VerificationPhaseOutcome,
 )
 from engineeringagent.domain.quality import build_command_failure_feedback
+from engineeringagent.domain.quality import (
+    ChangedPathsResult,
+    ChecksRunResult,
+    HarnessCheckPhase,
+)
 from engineeringagent.domain.shared import utc_iso_from_epoch_sec
 from engineeringagent.domain.specification import feature_completion_commit_subject
 from engineeringagent.presentation.presenters.prompt_feedback import (

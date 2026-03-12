@@ -18,7 +18,6 @@ RULE_ID = "architecture.checks-import-surface"
 _ALLOWED_CHECKS_IMPORT_NAMES = set(checks.__all__)
 
 _EXCLUDED_PACKAGES = {
-    "adapters",
     "checks",
     "fitness",
 }
@@ -28,6 +27,10 @@ _ALLOWED_ADAPTER_QUALITY_MODULES = {
     "engineeringagent.adapters.quality.config_selection",
     "engineeringagent.adapters.quality.check_strategies",
 }
+_FORBIDDEN_CHECKS_FACADE_IMPORT_PREFIXES = (
+    "engineeringagent.adapters.",
+    "engineeringagent.bootstrap.",
+)
 
 
 def _iter_python_files(project_root: Path) -> list[Path]:
@@ -102,12 +105,20 @@ def _collect_violations(project_root: Path) -> list[str]:
             if isinstance(node, ast.Import):
                 for alias in node.names:
                     name = alias.name
-                    if _is_disallowed_adapter_quality_import(name):
+                    if _should_flag_adapter_quality_import(
+                        importer_module_name=module_name,
+                        imported_module_name=name,
+                    ):
                         violations.add(
                             f"{relpath}:{node.lineno} imports disallowed adapter-quality module {name}"
                         )
                         continue
                     if name == "engineeringagent.checks":
+                        if _is_forbidden_checks_facade_importer(module_name):
+                            violations.add(
+                                f"{relpath}:{node.lineno} imports engineeringagent.checks facade "
+                                "from an internal runtime/bootstrap module"
+                            )
                         continue
                     if name.startswith("engineeringagent.checks."):
                         violations.add(
@@ -122,13 +133,21 @@ def _collect_violations(project_root: Path) -> list[str]:
             if base is None:
                 continue
 
-            if _is_disallowed_adapter_quality_import(base):
+            if _should_flag_adapter_quality_import(
+                importer_module_name=module_name,
+                imported_module_name=base,
+            ):
                 violations.add(
                     f"{relpath}:{node.lineno} imports disallowed adapter-quality module {base}"
                 )
                 continue
 
             if base == "engineeringagent.checks":
+                if _is_forbidden_checks_facade_importer(module_name):
+                    violations.add(
+                        f"{relpath}:{node.lineno} imports engineeringagent.checks facade "
+                        "from an internal runtime/bootstrap module"
+                    )
                 for alias in node.names:
                     if alias.name == "*":
                         violations.add(
@@ -161,6 +180,22 @@ def _is_disallowed_adapter_quality_import(module_name: str) -> bool:
             module_name not in _ALLOWED_ADAPTER_QUALITY_MODULES
         )
     return module_name not in _ALLOWED_ADAPTER_QUALITY_MODULES
+
+
+def _is_forbidden_checks_facade_importer(module_name: str) -> bool:
+    return module_name.startswith(_FORBIDDEN_CHECKS_FACADE_IMPORT_PREFIXES)
+
+
+def _should_flag_adapter_quality_import(
+    *,
+    importer_module_name: str,
+    imported_module_name: str,
+) -> bool:
+    if importer_module_name.startswith(
+        ("engineeringagent.adapters.", "engineeringagent.bootstrap.")
+    ):
+        return False
+    return _is_disallowed_adapter_quality_import(imported_module_name)
 
 
 def main() -> int:

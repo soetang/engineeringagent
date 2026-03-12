@@ -12,6 +12,7 @@ from engineeringagent.adapters.quality import (
     ChecksRepositoryValidator,
     RuntimeChecksRunner,
 )
+from engineeringagent.adapters.quality.changed_paths import collect_changed_paths
 from engineeringagent.adapters.documents import (
     ChecksCatalogLoadOptions,
     FilesystemChecksCatalogRepository,
@@ -67,7 +68,6 @@ from engineeringagent.bootstrap.iteration_reporting import (
     DefaultIterationReportPublisher,
     IterationReportPublisher,
 )
-from engineeringagent.checks import collect_changed_paths
 from engineeringagent.domain.specification import feature_completion_commit_subject
 
 

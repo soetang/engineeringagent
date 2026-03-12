@@ -89,6 +89,74 @@ def test_checker_allows_importing_allowed_top_level_names(
     assert not checker._collect_violations(tmp_path)
 
 
+def test_checker_flags_checks_facade_import_from_bootstrap_modules(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Bootstrap modules must use concrete quality/runtime seams, not the facade."""
+
+    checker = _load_checker_module(repo_root)
+
+    src_root = tmp_path / "src" / "engineeringagent"
+    (src_root / "bootstrap").mkdir(parents=True)
+    (src_root / "__init__.py").write_text("", encoding="utf-8")
+    (src_root / "bootstrap" / "__init__.py").write_text("", encoding="utf-8")
+    (src_root / "bootstrap" / "app_factory.py").write_text(
+        "\n".join(
+            [
+                "from engineeringagent.checks import collect_changed_paths",
+                "",
+                "COLLECT = collect_changed_paths",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    violations = checker._collect_violations(tmp_path)
+    assert (
+        "src/engineeringagent/bootstrap/app_factory.py:1 imports engineeringagent.checks facade "
+        "from an internal runtime/bootstrap module"
+        in violations
+    )
+
+
+def test_checker_flags_checks_facade_import_from_adapter_modules(
+    tmp_path: Path,
+    repo_root: Path,
+) -> None:
+    """Adapter modules must use concrete quality/runtime seams, not the facade."""
+
+    checker = _load_checker_module(repo_root)
+
+    src_root = tmp_path / "src" / "engineeringagent"
+    (src_root / "adapters" / "runtime").mkdir(parents=True)
+    (src_root / "__init__.py").write_text("", encoding="utf-8")
+    (src_root / "adapters" / "__init__.py").write_text("", encoding="utf-8")
+    (src_root / "adapters" / "runtime" / "__init__.py").write_text(
+        "",
+        encoding="utf-8",
+    )
+    (src_root / "adapters" / "runtime" / "phase.py").write_text(
+        "\n".join(
+            [
+                "from engineeringagent.checks import run_checks",
+                "",
+                "RUN = run_checks",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    violations = checker._collect_violations(tmp_path)
+    assert (
+        "src/engineeringagent/adapters/runtime/phase.py:1 imports engineeringagent.checks facade "
+        "from an internal runtime/bootstrap module"
+        in violations
+    )
+
+
 def test_checker_ignores_adapter_quality_runtime_when_it_composes_checks_internals(
     tmp_path: Path,
     repo_root: Path,
