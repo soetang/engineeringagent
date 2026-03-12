@@ -16,8 +16,6 @@ from engineeringagent.ports import (
     CommitRequest,
     CommitResult,
     DiffSummary,
-    FeatureIterationExecutionRequest,
-    FeatureIterationExecutionResult,
     WorktreeStatus,
 )
 
@@ -133,25 +131,22 @@ def _build_request(**overrides: object) -> FeatureIterationRequest:
 def _build_service(
     observed: dict[str, object],
     *,
-    execution_result: FeatureIterationExecutionResult,
+    workflow_result: IterationOutcome,
 ) -> FeatureIterationService:
-    class _FakeFeatureIterationExecutor:
-        def run(
-            self,
-            request: FeatureIterationExecutionRequest,
-        ) -> FeatureIterationExecutionResult:
-            observed["execution_request"] = request
-            return execution_result
+    class _FakeFeatureIterationWorkflow:
+        def __call__(self, request: FeatureIterationRequest) -> IterationOutcome:
+            observed["workflow_request"] = request
+            return workflow_result
 
-    return FeatureIterationService(executor=_FakeFeatureIterationExecutor())
+    return FeatureIterationService(workflow=_FakeFeatureIterationWorkflow())
 
 
 def test_feature_iteration_service_executes_runtime_pipeline() -> None:
-    """The application service should delegate feature execution through its port."""
+    """The application service should delegate feature execution through its workflow."""
     observed: dict[str, object] = {}
     service = _build_service(
         observed,
-        execution_result=FeatureIterationExecutionResult(
+        workflow_result=IterationOutcome(
             completed=False,
             result="failed",
             failed_gate="tests",
@@ -169,7 +164,7 @@ def test_feature_iteration_service_executes_runtime_pipeline() -> None:
     result = service.run(_build_request())
 
     assert result.result == "failed"
-    assert observed["execution_request"] == FeatureIterationExecutionRequest(
+    assert observed["workflow_request"] == FeatureIterationRequest(
         project_root=Path("/tmp/project"),
         feature_path=Path("docs/specifications/features/FEAT-001/specification.yaml"),
         run_all=False,

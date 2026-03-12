@@ -25,7 +25,7 @@ from engineeringagent.adapters.progress import (
 from engineeringagent.adapters.prompts import FilesystemPromptDefinitionRepository
 from engineeringagent.adapters.runtime import (
     RuntimeFeatureIterationDependencies,
-    RuntimeFeatureIterationExecutor,
+    RuntimeFeatureIterationWorkflow,
     RuntimeRunLoopExecutor,
 )
 from engineeringagent.adapters.runtime.iteration_phases import (
@@ -178,7 +178,7 @@ class AppFactory:
     def build_feature_iteration_service(self) -> FeatureIterationService:
         """Create the default feature-iteration application service."""
         return FeatureIterationService(
-            executor=RuntimeFeatureIterationExecutor(
+            workflow=RuntimeFeatureIterationWorkflow(
                 version_control_gateway=self.build_version_control_gateway(),
                 iteration_report_publisher=_build_iteration_report_publisher(
                     self.build_progress_journal()
@@ -186,7 +186,7 @@ class AppFactory:
                 runtime_dependencies=_build_feature_iteration_dependencies(
                     clock=self.build_clock(),
                 ),
-            ),
+            ).run,
         )
 
     def build_guidance_service(self) -> GuidanceService:

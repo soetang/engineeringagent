@@ -19,10 +19,10 @@ from engineeringagent.adapters.quality.validation import (
 from engineeringagent.adapters.quality.runtime import RuntimeChecksRunner
 from engineeringagent.adapters.runtime import (
     RuntimeFeatureIterationDependencies,
-    RuntimeFeatureIterationExecutor,
+    RuntimeFeatureIterationWorkflow,
     RuntimeRunLoopExecutor,
 )
-from engineeringagent.adapters.runtime.feature_iteration_execution import (
+from engineeringagent.adapters.runtime.feature_iteration_workflow import (
     build_iteration_pipeline_dependencies,
 )
 from engineeringagent.adapters.vcs import (
@@ -82,17 +82,17 @@ def test_app_factory_builds_default_application_services(tmp_path: Path) -> None
     assert isinstance(feature_iteration_service, FeatureIterationService)
     assert isinstance(run_loop_service, RunLoopService)
     assert isinstance(checks_service._checks_runner, RuntimeChecksRunner)
-    assert isinstance(feature_iteration_service._executor, RuntimeFeatureIterationExecutor)
+    assert isinstance(feature_iteration_service._workflow.__self__, RuntimeFeatureIterationWorkflow)
     assert isinstance(
-        feature_iteration_service._executor._runtime_dependencies,
+        feature_iteration_service._workflow.__self__._runtime_dependencies,
         RuntimeFeatureIterationDependencies,
     )
     assert isinstance(
-        feature_iteration_service._executor._version_control_gateway,
+        feature_iteration_service._workflow.__self__._version_control_gateway,
         GitCliVersionControlGateway,
     )
     assert isinstance(
-        feature_iteration_service._executor._iteration_report_publisher,
+        feature_iteration_service._workflow.__self__._iteration_report_publisher,
         DefaultIterationReportPublisher,
     )
     assert isinstance(
@@ -132,7 +132,7 @@ def test_app_factory_builds_default_application_services(tmp_path: Path) -> None
     )
     assert isinstance(factory.build_prompt_builder(), PromptBuilder)
     assert isinstance(
-        feature_iteration_service._executor._runtime_dependencies.clock,
+        feature_iteration_service._workflow.__self__._runtime_dependencies.clock,
         SystemClock,
     )
     recovery_service = factory.build_workspace_recovery_service()

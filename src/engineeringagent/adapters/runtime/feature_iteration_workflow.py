@@ -1,4 +1,4 @@
-"""Runtime adapter for feature-iteration execution."""
+"""Runtime adapter for the application-owned feature-iteration workflow."""
 
 from __future__ import annotations
 
@@ -9,6 +9,8 @@ from pydantic import BaseModel, ConfigDict
 
 from engineeringagent.application.feature_iteration_runtime import (
     FeatureIterationInputs,
+    FeatureIterationRequest,
+    FeatureIterationResult,
     IterationOutcome,
     IterationPipelineDependencies,
     IterationReport,
@@ -18,9 +20,6 @@ from engineeringagent.domain.specification import feature_completion_commit_subj
 from engineeringagent.ports import (
     Clock,
     CommitRequest,
-    FeatureIterationExecutionRequest,
-    FeatureIterationExecutionResult,
-    FeatureIterationExecutor,
     VersionControlGateway,
 )
 
@@ -124,7 +123,7 @@ def build_iteration_pipeline_dependencies(
     )
 
 
-class RuntimeFeatureIterationExecutor(FeatureIterationExecutor):
+class RuntimeFeatureIterationWorkflow:
     """Execute feature iterations through the runtime pipeline adapter."""
 
     def __init__(
@@ -138,10 +137,7 @@ class RuntimeFeatureIterationExecutor(FeatureIterationExecutor):
         self._iteration_report_publisher = iteration_report_publisher
         self._runtime_dependencies = runtime_dependencies
 
-    def run(
-        self,
-        request: FeatureIterationExecutionRequest,
-    ) -> FeatureIterationExecutionResult:
+    def run(self, request: FeatureIterationRequest) -> FeatureIterationResult:
         """Execute one feature iteration request and publish its report."""
         report = run_feature_iteration_pipeline(
             FeatureIterationInputs(
@@ -158,7 +154,7 @@ class RuntimeFeatureIterationExecutor(FeatureIterationExecutor):
             ),
         )
         outcome = self._iteration_report_publisher(report)
-        return FeatureIterationExecutionResult(
+        return FeatureIterationResult(
             completed=outcome.completed,
             result=outcome.result,
             failed_gate=outcome.failed_gate,
