@@ -133,7 +133,11 @@ def test_repo_layer_contracts_rule_allows_application_iteration_pipeline_contrac
 ) -> None:
     """Allow the application iteration pipeline to import local contracts."""
     application_root = (
-        tmp_path / "src" / "engineeringagent" / "application" / "feature_iteration"
+        tmp_path
+        / "src"
+        / "engineeringagent"
+        / "application"
+        / "feature_iteration_runtime"
     )
     application_root.mkdir(parents=True, exist_ok=True)
     (application_root / "pipeline.py").write_text(

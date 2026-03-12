@@ -59,7 +59,7 @@ from engineeringagent.ports import (
     ProgressJournal,
     VersionControlGateway,
 )
-from engineeringagent.application.feature_iteration import IterationReport
+from engineeringagent.application.feature_iteration_runtime import IterationReport
 from engineeringagent.bootstrap import runtime_support
 from engineeringagent.bootstrap.iteration_reporting import (
     DefaultObserverDependencies,

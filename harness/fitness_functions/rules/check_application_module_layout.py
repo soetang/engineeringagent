@@ -44,7 +44,7 @@ def _application_module_layout_violations() -> list[str]:
             f"{rel_path}: application root may only contain workflow-service modules; "
             "keep only documented workflow-service modules at the application root; "
             "move helpers into an explicit subpackage such as "
-            "engineeringagent.application.feature_iteration, or delete the legacy module"
+            "engineeringagent.application.feature_iteration_runtime, or delete the legacy module"
         )
     if WORKSPACE_ROOT.exists():
         rel_path = WORKSPACE_ROOT.relative_to(PROJECT_ROOT).as_posix()

@@ -8,7 +8,7 @@ import pytest
 import yaml
 
 import engineeringagent.presentation.presenters.terminal as presentation_module
-from engineeringagent.application.feature_iteration import IterationSummaryInputs
+from engineeringagent.application.feature_iteration_runtime import IterationSummaryInputs
 from engineeringagent.bootstrap import runtime_support as runtime_support_module
 from tests.loop.feature_iteration_support import (
     FEATURE_LOG_REF,

@@ -47,7 +47,7 @@ def test_checker_flags_subprocess_imports_in_application_modules(
         / "src"
         / "engineeringagent"
         / "application"
-        / "feature_iteration"
+        / "feature_iteration_runtime"
         / "implementation_step.py"
     )
     module_path.parent.mkdir(parents=True, exist_ok=True)
@@ -59,7 +59,7 @@ def test_checker_flags_subprocess_imports_in_application_modules(
     assert payload["rule_id"] == "architecture.application-subprocess-boundary"
     assert payload["status"] == "fail"
     assert _violations(payload) == [
-        "src/engineeringagent/application/feature_iteration/implementation_step.py:1 application modules must not import subprocess directly; route command execution and timeout/error classification through ports, adapters, or injected runtime helpers"
+        "src/engineeringagent/application/feature_iteration_runtime/implementation_step.py:1 application modules must not import subprocess directly; route command execution and timeout/error classification through ports, adapters, or injected runtime helpers"
     ]
 
 

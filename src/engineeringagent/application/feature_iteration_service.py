@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from engineeringagent.application.feature_iteration import (
+from engineeringagent.application.feature_iteration_runtime import (
     FeatureIterationRequest,
     FeatureIterationResult,
 )

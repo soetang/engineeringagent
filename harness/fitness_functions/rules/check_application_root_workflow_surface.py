@@ -15,7 +15,7 @@ from engineeringagent.adapters.quality.fitness.contracts import (
 RULE_ID = "architecture.application-root-workflow-surface"
 PROJECT_ROOT = Path(".")
 APPLICATION_ROOT = PROJECT_ROOT / "src" / "engineeringagent" / "application" / "__init__.py"
-FORBIDDEN_EXPORT_MODULES = {"feature_iteration", "run_loop"}
+FORBIDDEN_EXPORT_MODULES = {"feature_iteration_runtime", "run_loop"}
 FORBIDDEN_ROOT_EXPORTS = frozenset(
     {
         "CommandTiming",

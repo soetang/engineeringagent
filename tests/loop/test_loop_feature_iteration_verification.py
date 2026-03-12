@@ -6,7 +6,7 @@ from pathlib import Path
 import yaml
 
 from engineeringagent.application import FeatureIterationRequest
-from engineeringagent.application.feature_iteration import IterationOutcome
+from engineeringagent.application.feature_iteration_runtime import IterationOutcome
 from engineeringagent.bootstrap import AppFactory
 from engineeringagent.adapters.documents.filesystem_feature_state import (
     refresh_feature_after_implement,

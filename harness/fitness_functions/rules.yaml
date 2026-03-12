@@ -182,7 +182,7 @@ rules:
     name: Application root workflow surface
     summary: Keep engineeringagent.application focused on workflow services instead of feature-iteration internals.
     rationale: The target architecture gives feature-iteration contracts and helpers an explicit subpackage, so the application root should expose service entrypoints only instead of acting as a compatibility facade.
-    remediation: Import feature-iteration contracts from engineeringagent.application.feature_iteration and remove any matching re-exports from engineeringagent.application.__init__.
+    remediation: Import feature-iteration contracts from engineeringagent.application.feature_iteration_runtime and remove any matching re-exports from engineeringagent.application.__init__.
     scope: src/engineeringagent/application/__init__.py plus repository imports of engineeringagent.application
     severity: error
     side_effect_free: true
@@ -196,7 +196,7 @@ rules:
     name: Application module layout
     summary: Keep the application package root limited to workflow-service modules.
     rationale: The target architecture keeps orchestration entrypoints at the application root and pushes workflow-specific helpers into explicit subpackages so root-level legacy helper sprawl does not return.
-    remediation: Delete legacy flat helper modules from engineeringagent.application or move them into an explicit subpackage such as engineeringagent.application.feature_iteration.
+    remediation: Delete legacy flat helper modules from engineeringagent.application or move them into an explicit subpackage such as engineeringagent.application.feature_iteration_runtime.
     scope: src/engineeringagent/application/*.py
     severity: error
     side_effect_free: true
@@ -416,8 +416,8 @@ rules:
     name: Iteration pipeline observer decoupling
     summary: Keep iteration pipeline free of telemetry and console side effects.
     rationale: Preserves the report-plus-observer split so orchestration remains testable and side effects stay localized.
-    remediation: Move telemetry and console output calls out of application.feature_iteration.pipeline and into loop-wired observers that consume IterationReport.
-    scope: src/engineeringagent/application/feature_iteration/pipeline.py
+    remediation: Move telemetry and console output calls out of application.feature_iteration_runtime.pipeline and into loop-wired observers that consume IterationReport.
+    scope: src/engineeringagent/application/feature_iteration_runtime/pipeline.py
     severity: error
     side_effect_free: true
     adapter: command

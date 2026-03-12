@@ -53,7 +53,7 @@ def test_checker_flags_feature_iteration_re_exports_from_application_root(
         relative_path="src/engineeringagent/application/__init__.py",
         content="\n".join(
             [
-                "from .feature_iteration import FeatureIterationInputs",
+                "from .feature_iteration_runtime import FeatureIterationInputs",
                 "",
                 '__all__ = ["FeatureIterationInputs"]',
                 "",
@@ -88,7 +88,7 @@ def test_checker_flags_feature_iteration_dependencies_on_application_root(
         relative_path="src/engineeringagent/application/__init__.py",
         content="\n".join(
             [
-                "from .feature_iteration import FeatureIterationRuntimeDependencies",
+                "from .feature_iteration_runtime import FeatureIterationRuntimeDependencies",
                 "",
                 '__all__ = ["FeatureIterationRuntimeDependencies"]',
                 "",
@@ -193,7 +193,7 @@ def test_checker_allows_feature_iteration_request_re_exported_from_subpackage(
         relative_path="src/engineeringagent/application/__init__.py",
         content="\n".join(
             [
-                "from .feature_iteration import FeatureIterationRequest, FeatureIterationResult",
+                "from .feature_iteration_runtime import FeatureIterationRequest, FeatureIterationResult",
                 "",
                 '__all__ = ["FeatureIterationRequest", "FeatureIterationResult"]',
                 "",
@@ -237,7 +237,7 @@ def test_checker_allows_feature_iteration_imports_from_explicit_subpackage(
         content="\n".join(
             [
                 "from engineeringagent.application import RunLoopService",
-                "from engineeringagent.application.feature_iteration import FeatureIterationInputs",
+                "from engineeringagent.application.feature_iteration_runtime import FeatureIterationInputs",
                 "",
                 "def test_placeholder() -> None:",
                 "    assert RunLoopService is not None",
