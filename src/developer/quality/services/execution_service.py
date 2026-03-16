@@ -2,14 +2,17 @@ from typing import List, Dict, Any
 import yaml
 import os
 from pathlib import Path
-from ..adapters import CommandAdapter
+from ..adapters import get_adapters
 
 
 class ExecutionService:
     """Service for executing quality checks."""
 
     def __init__(self):
-        self.adapters = {"command": CommandAdapter()}
+        # Build adapter map from get_adapters()
+        self.adapters = {
+            adapter["check_type"]: adapter["adapter"] for adapter in get_adapters()
+        }
 
     def execute_checks(self, file_path: str = "harness/checks.yaml") -> Dict[str, Any]:
         """Execute all checks specified in checks.yaml and referenced files."""

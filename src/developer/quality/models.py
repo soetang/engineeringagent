@@ -1,5 +1,5 @@
-from typing import List, Union
-from pydantic import BaseModel, Field, ConfigDict
+from typing import List, Union, Type
+from pydantic import BaseModel, Field, ConfigDict, create_model
 
 
 class CheckList(BaseModel):
@@ -37,3 +37,45 @@ class QualitySpec(BaseModel):
     checks: List[Union[CheckList, CheckType]] = Field(
         ..., description="List of checks or check lists to run"
     )
+
+
+def create_dynamic_quality_spec() -> Type[BaseModel]:
+    """
+    Create a dynamic QualitySpec model based on available adapters.
+
+    Returns:
+        A dynamically created pydantic BaseModel class
+    """
+    # Import here to avoid circular imports
+    from .adapters import get_adapters
+
+    adapters = get_adapters()
+
+    if not adapters:
+        # Fallback to basic QualitySpec if no adapters available
+        return QualitySpec
+
+    # Collect all check type models from adapters
+    check_type_models = [adapter["adapter"].get_check_type() for adapter in adapters]
+
+    # Create union of all check types (including CheckList)
+    check_type_models.append(CheckList)
+    DynamicCheckType = Union[tuple(check_type_models)]
+
+    # Create dynamic QualitySpec model
+    DynamicQualitySpec = create_model(
+        "DynamicQualitySpec",
+        name=(str, Field(default="root", description="Name of the check list")),
+        filepath=(
+            str,
+            Field(default="", description="Path to the file containing the check list"),
+        ),
+        checks=(
+            List[DynamicCheckType],
+            Field(..., description="List of checks or check lists to run"),
+        ),
+        __base__=BaseModel,
+        __config__=ConfigDict(extra="forbid"),
+    )
+
+    return DynamicQualitySpec

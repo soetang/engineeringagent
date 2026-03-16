@@ -3,11 +3,19 @@ import yaml
 import os
 from pathlib import Path
 from pydantic import ValidationError
-from ..models import QualitySpec
+from ..models import create_dynamic_quality_spec
+from ..adapters import get_adapters
 
 
 class ValidationService:
     """Service for validating quality check configuration files."""
+
+    def __init__(self):
+        """Initialize with dynamic quality spec based on available adapters."""
+        self.DynamicQualitySpec = create_dynamic_quality_spec()
+        self.supported_check_types = {
+            adapter["check_type"] for adapter in get_adapters()
+        }
 
     def validate_checks_yaml(
         self, file_path: str = "harness/checks.yaml"
@@ -56,26 +64,44 @@ class ValidationService:
                         }
                     )
                 elif "check_type" in check_spec:
+                    # Validate that check_type is supported
+                    check_type = check_spec["check_type"]
+                    if check_type not in self.supported_check_types:
+                        raise ValueError(
+                            f"Unsupported check_type '{check_type}' in {file_path}. "
+                            f"Supported types: {sorted(self.supported_check_types)}"
+                        )
+
                     # This is a direct CheckType item - validate it directly
-                    # Normalize and validate the content
+                    # Create a minimal QualitySpec wrapper for validation
                     try:
-                        normalized_content = self._normalize_check_content({"checks": [check_spec]})
-                        # Try to parse as QualitySpec to validate structure
-                        from ..models import QualitySpec
-                        QualitySpec(**normalized_content)
-                        
+                        # Create a minimal spec with just this check
+                        minimal_spec = {
+                            "name": "direct_check_validation",
+                            "filepath": file_path,
+                            "checks": [check_spec],
+                        }
+                        # Validate using dynamic model
+                        self.DynamicQualitySpec(**minimal_spec)
+
                         validated_specs.append(
                             {
-                                "name": check_spec.get("name", check_spec.get("check_type", "unnamed")),
+                                "name": check_spec.get(
+                                    "name", check_spec.get("check_type", "unnamed")
+                                ),
                                 "filepath": file_path,  # Use the main file path for direct checks
                                 "valid": True,
                                 "direct_check": True,  # Mark as direct check
                             }
                         )
                     except Exception as e:
-                        raise ValueError(f"Invalid direct check format in {file_path}: {str(e)}")
+                        raise ValueError(
+                            f"Invalid direct check format in {file_path}: {str(e)}"
+                        )
                 else:
-                    raise ValueError(f"Check must have either 'filepath' or 'check_type' in {file_path}")
+                    raise ValueError(
+                        f"Check must have either 'filepath' or 'check_type' in {file_path}"
+                    )
 
             return {
                 "valid": True,
@@ -97,21 +123,15 @@ class ValidationService:
             }
 
     def _validate_referenced_file(self, file_path: str) -> bool:
-        """Validate a single referenced YAML file against QualitySpec model."""
+        """Validate a single referenced YAML file against dynamic QualitySpec model."""
         try:
             with open(file_path, "r") as f:
                 content = yaml.safe_load(f)
 
-            # Try to parse as QualitySpec
-            # First, try direct parsing
-            try:
-                QualitySpec(**content)
-                return True
-            except ValidationError:
-                # If direct parsing fails, try to normalize the content
-                normalized_content = self._normalize_check_content(content)
-                QualitySpec(**normalized_content)
-                return True
+            # Try to parse as dynamic QualitySpec directly
+            # The dynamic model should handle all valid check types
+            self.DynamicQualitySpec(**content)
+            return True
 
         except ValidationError as e:
             raise ValueError(f"Invalid format in {file_path}: {str(e)}")
@@ -156,7 +176,7 @@ class ValidationService:
     def validate_quality_spec(self, spec_content: Dict[str, Any]) -> Dict[str, Any]:
         """Validate a quality specification dictionary."""
         try:
-            QualitySpec(**spec_content)
+            self.DynamicQualitySpec(**spec_content)
             return {"valid": True, "message": "Quality specification is valid"}
         except ValidationError as e:
             return {

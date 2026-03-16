@@ -271,12 +271,12 @@ checks:
 
             # Validate the mixed format file
             result = self.service.validate_checks_yaml(checks_yaml)
-            
+
             # Should be valid
             assert result["valid"]
             assert result["message"] == "All 3 check configurations are valid"
             assert len(result["checks"]) == 3
-            
+
             # Check that we have both types
             check_names = [check["name"] for check in result["checks"]]
             assert "External Commands" in check_names
@@ -320,7 +320,7 @@ checks:
 
             # Validate the nested references
             result = self.service.validate_checks_yaml(checks_yaml)
-            
+
             # Should be valid
             assert result["valid"]
             assert result["message"] == "All 2 check configurations are valid"
@@ -352,4 +352,6 @@ checks:
             # Should be invalid
             result = self.service.validate_checks_yaml(checks_yaml)
             assert not result["valid"]
-            assert "Check must have either 'filepath' or 'check_type'" in result["message"]
+            assert (
+                "Check must have either 'filepath' or 'check_type'" in result["message"]
+            )
