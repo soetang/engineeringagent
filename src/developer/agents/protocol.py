@@ -1,4 +1,5 @@
 from typing import Protocol, Type, TypeVar, Union
+
 from pydantic import BaseModel
 
 T = TypeVar("T", bound=Union[BaseModel, str])

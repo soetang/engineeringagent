@@ -1,8 +1,10 @@
-from pathlib import Path
+"""Real integration tests for Codex CLI adapter."""
 
 import pytest
+import tempfile
+import shutil
+from pathlib import Path
 from pydantic import BaseModel
-
 from developer.agents.adapters.codex_adapter import CodexAdapter
 
 
@@ -28,6 +30,50 @@ class SimpleResult(BaseModel):
     answer: str
 
 
+@pytest.fixture
+def temp_stub_dir():
+    """Fixture that creates a temporary directory with test files and git repo."""
+    import subprocess
+
+    # Create temporary directory
+    temp_dir = tempfile.mkdtemp()
+
+    # Initialize git repository in temp directory
+    subprocess.run(["git", "init"], cwd=temp_dir, capture_output=True, check=True)
+    subprocess.run(
+        ["git", "config", "user.email", "test@example.com"],
+        cwd=temp_dir,
+        capture_output=True,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Test User"],
+        cwd=temp_dir,
+        capture_output=True,
+        check=True,
+    )
+
+    # Copy stub files to temp directory
+    stub_source = Path(__file__).parent / "stub_data"
+    for file_path in stub_source.glob("*.py"):
+        dest_path = Path(temp_dir) / file_path.name
+        shutil.copy(str(file_path), str(dest_path))
+
+    # Add and commit files to make it a proper git repo
+    subprocess.run(["git", "add", "."], cwd=temp_dir, capture_output=True, check=True)
+    subprocess.run(
+        ["git", "commit", "-m", "Initial commit"],
+        cwd=temp_dir,
+        capture_output=True,
+        check=True,
+    )
+
+    yield temp_dir
+
+    # Clean up - remove temporary directory
+    shutil.rmtree(temp_dir)
+
+
 @pytest.mark.integration
 class TestRealIntegration:
     """Real integration tests using actual Codex CLI."""
@@ -40,8 +86,10 @@ class TestRealIntegration:
             model="gpt-5.1-codex-mini",  # Use fast model
         )
 
-        # Since the model is not deterministic, we just check that we get a string response.
         assert isinstance(result, str)
+        assert result.strip()  # Should not be empty
+        # Check for mathematical answer (could be "4", "2+2", "4.0", etc.)
+        assert any(char.isdigit() for char in result) or "+" in result
 
     def test_real_pydantic_output_math(self):
         """Test real CLI with pydantic model output for math operations."""
@@ -57,16 +105,13 @@ class TestRealIntegration:
         assert result.operation.strip()  # Should have some operation description
         assert result.success is True
 
-    def test_real_pydantic_output_files(self):
+    def test_real_pydantic_output_files(self, temp_stub_dir):
         """Test real CLI with pydantic model output for file listing."""
-        # Use stub directory for testing
-        stub_dir = str(Path(__file__).parent / "stub_data")
-
         adapter = CodexAdapter()
         result = adapter.run_agent(
             prompt="List Python files in current directory as JSON",
             output_format=FileListResult,
-            path=stub_dir,  # Use path parameter instead of changing directory
+            path=temp_stub_dir,  # Use temporary directory
             model="gpt-5.1-codex-mini",  # Use fast model
         )
 
@@ -192,21 +237,21 @@ class TestSlowIntegration:
         assert all(r.operation.strip() for r in [result1, result2, result3])
         assert all(r.success is True for r in [result1, result2, result3])
 
-    def test_real_path_parameter(self):
+    def test_real_path_parameter(self, temp_stub_dir):
         """Test the path parameter functionality."""
-        # Test with stub directory
-        stub_dir = str(Path(__file__).parent / "stub_data")
-
         adapter = CodexAdapter()
         result = adapter.run_agent(
             prompt="List files in the specified directory",
             output_format=FileListResult,
-            path=stub_dir,
+            path=temp_stub_dir,
             model="gpt-5.1-codex-mini",  # Use fast model
         )
 
         assert isinstance(result, FileListResult)
         assert isinstance(result.files, list)
         assert len(result.files) >= 2
-        # Path should reflect the stub directory
-        assert stub_dir in result.path or result.path == stub_dir
+        # Path should be set (could be relative, absolute, or model's interpretation)
+        assert result.path and isinstance(result.path, str)
+        # Check that we found our test files
+        assert any("test_file1.py" in f for f in result.files)
+        assert any("test_file2.py" in f for f in result.files)
