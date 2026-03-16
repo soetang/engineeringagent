@@ -5,6 +5,7 @@ from ..protocol import CheckAdapter, CheckResult, CheckResultList, CheckStatus
 from ..models import CheckType
 from developer.agents.protocol import AgentProtocol
 from developer.agents.adapters.codex_adapter import CodexAdapter
+from developer.agents.adapters.vibe_adapter import VibeAdapter
 
 
 class ReviewStatus(str, Enum):
@@ -82,6 +83,8 @@ class AgenticReviewAdapter(CheckAdapter):
         """Factory function to get agent implementation for backend."""
         if backend is None or backend == "codex":
             return CodexAdapter()
+        elif backend == "vibe":
+            return VibeAdapter()
         # Add more backends here as needed
         # elif backend == "other_backend":
         #     return OtherAgentAdapter()
@@ -113,18 +116,17 @@ class AgenticReviewAdapter(CheckAdapter):
                 )
 
                 # Map review status to check status using explicit mapping
-                status_map = {
-                    ReviewStatus.APPROVED: CheckStatus.PASSED,
-                    ReviewStatus.FAILED: CheckStatus.FAILED,
-                }
-                status = status_map.get(review_output.status)
-                
-                if status is None:  # NOT_RUNABLE case
-                    # Raise an error for not_reviewable status
+                if review_output.status is ReviewStatus.NOT_REVIEWABLE:
                     raise Exception(
                         f"Agentic review is not reviewable for prompt: {check.prompt_path}. "
                         f"Reason: {review_output.summary}"
                     )
+                if review_output.status is ReviewStatus.APPROVED:
+                    status = CheckStatus.PASSED
+                elif review_output.status is ReviewStatus.FAILED:
+                    status = CheckStatus.FAILED
+                else:
+                    raise Exception(f"Unexpected review status: {review_output.status}")
 
                 # Create summary message
                 message = f"Review Status: {review_output.status.value}\n"
