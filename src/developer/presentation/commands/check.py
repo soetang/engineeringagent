@@ -51,10 +51,14 @@ def run():
 
     # Show detailed results
     for check_result in result.get("results", []):
-        status_color = typer.colors.GREEN if check_result["success"] else typer.colors.RED
+        status_color = (
+            typer.colors.GREEN if check_result["success"] else typer.colors.RED
+        )
         status_symbol = "✓" if check_result["success"] else "✗"
-        
-        typer.echo(f"  {status_symbol} {check_result['name']}: {check_result['status']}")
+
+        typer.echo(
+            f"  {status_symbol} {check_result['name']}: {check_result['status']}"
+        )
         if check_result["message"]:
             typer.echo(f"    {check_result['message']}")
 

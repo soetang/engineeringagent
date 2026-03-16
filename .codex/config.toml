@@ -1,0 +1,8 @@
+[profiles.reviewer]
+model = "gpt-5.3-codex-spark"
+sandbox_mode = "danger-full-access"
+approval_policy = "never"
+
+[shell_environment_policy]
+inherit = "all"
+set = {UV_CACHE_DIR="/tmp/uv-cache"}

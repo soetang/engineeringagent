@@ -1,6 +1,7 @@
 import subprocess
 import json
 import tempfile
+import os
 from typing import Optional, Type, TypeVar, Union
 from pydantic import BaseModel
 
@@ -32,18 +33,41 @@ class CodexAdapter(AgentProtocol):
         else:
             raise ValueError(f"Unsupported output format: {output_format}")
 
-    def _run_string_output(
-        self, prompt: str, model: Optional[str] = None, profile: Optional[str] = None, path: Optional[str] = None
-    ) -> str:
-        """Execute codex CLI for string output."""
+    def _build_codex_command(
+        self,
+        prompt: str,
+        model: Optional[str] = None,
+        profile: Optional[str] = None,
+        path: Optional[str] = None,
+        output_schema: Optional[str] = None,
+    ) -> list[str]:
+        """Build codex CLI command with common options."""
         cmd = ["codex", "exec", prompt]
-
+        
+        if output_schema:
+            cmd.extend(["--output-schema", output_schema])
+        
         if model:
             cmd.extend(["--model", model])
-        if profile:
-            cmd.extend(["--profile", profile])
+        
+        # Resolve profile to config overrides (checks local config first)
+        profile_args = self._resolve_profile_config(profile, path)
+        cmd.extend(profile_args)
+        
         if path:
             cmd.extend(["--cd", path])
+        
+        return cmd
+
+    def _run_string_output(
+        self,
+        prompt: str,
+        model: Optional[str] = None,
+        profile: Optional[str] = None,
+        path: Optional[str] = None,
+    ) -> str:
+        """Execute codex CLI for string output."""
+        cmd = self._build_codex_command(prompt, model, profile, path)
 
         try:
             result = subprocess.run(cmd, capture_output=True, text=True, check=True)
@@ -70,14 +94,7 @@ class CodexAdapter(AgentProtocol):
 
         try:
             # Build command with schema
-            cmd = ["codex", "exec", prompt, "--output-schema", schema_path]
-
-            if model:
-                cmd.extend(["--model", model])
-            if profile:
-                cmd.extend(["--profile", profile])
-            if path:
-                cmd.extend(["--cd", path])
+            cmd = self._build_codex_command(prompt, model, profile, path, schema_path)
 
             # Execute command
             result = subprocess.run(cmd, capture_output=True, text=True, check=True)
@@ -116,3 +133,39 @@ class CodexAdapter(AgentProtocol):
         schema["additionalProperties"] = False
 
         return schema
+
+    def _resolve_profile_config(self, profile: Optional[str] = None, path: Optional[str] = None) -> list:
+        """Resolve profile settings to config overrides, checking local config first."""
+        if not profile:
+            return []
+        
+        config_overrides = []
+        
+        # Try to read from local .codex/config.toml first
+        local_config_path = ".codex/config.toml"
+        if path:
+            local_config_path = os.path.join(path, ".codex/config.toml")
+        
+        try:
+            import tomllib
+            with open(local_config_path, "rb") as f:
+                local_config = tomllib.load(f)
+                
+            # Check if the profile exists in local config
+            if "profiles" in local_config and profile in local_config["profiles"]:
+                profile_config = local_config["profiles"][profile]
+                
+                # Convert profile settings to config overrides
+                for key, value in profile_config.items():
+                    if isinstance(value, str):
+                        config_overrides.extend(["-c", f"{key}=\"{value}\""])
+                    else:
+                        config_overrides.extend(["-c", f"{key}={value}"])
+                
+                return config_overrides
+        except (FileNotFoundError, ImportError):
+            # If local config not found or can't be parsed, fall back to --profile flag
+            pass
+        
+        # Fall back to using --profile flag (will use global config)
+        return ["--profile", profile]

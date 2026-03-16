@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List, Protocol, Type
+from typing import List, Protocol, Type, runtime_checkable
 from pydantic import BaseModel
 
 
@@ -24,6 +24,7 @@ class CheckResultList(BaseModel):
     results: List[CheckResult]
 
 
+@runtime_checkable
 class CheckAdapter(Protocol):
     """Protocol that all check adapters must implement."""
 

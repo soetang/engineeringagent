@@ -41,8 +41,8 @@ def get_schema_service() -> Dict[str, Any]:
     for adapter_dict in get_adapters():
         if isinstance(adapter_dict, dict) and "check_type" in adapter_dict:
             check_type = adapter_dict["check_type"]
-            if check_type:
-                supported_check_types.append(check_type)  # pyrefly: ignore[bad-argument-type]
+            if check_type and isinstance(check_type, str):
+                supported_check_types.append(check_type)
 
     return {
         "quality_spec_schema": quality_spec_schema,

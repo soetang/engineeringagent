@@ -52,6 +52,9 @@ class AgenticReviewCheck(CheckType):
     profile: Optional[str] = Field(
         default=None, description="Optional profile to use for the review"
     )
+    backend: Optional[str] = Field(
+        default=None, description="Optional backend to use for the review"
+    )
     path: Optional[str] = Field(
         default=None, description="Optional working directory path for the review"
     )
@@ -66,68 +69,60 @@ class AgenticReviewCheck(CheckType):
 class AgenticReviewAdapter(CheckAdapter):
     """Adapter for running agentic code reviews as quality checks."""
 
-    def __init__(self, agent: Optional[AgentProtocol] = None):
-        """Initialize the adapter with an optional agent protocol."""
-        self.agent = agent or CodexAdapter()
+    def __init__(
+        self, agent: Optional[AgentProtocol] = None, backend: Optional[str] = None
+    ):
+        """Initialize the adapter with an optional agent protocol and backend."""
+        if agent:
+            self.agent = agent
+        else:
+            self.agent = self._get_agent_for_backend(backend)
 
-    def run_check(self, checks: List[BaseModel]) -> CheckResultList:
+    def _get_agent_for_backend(self, backend: Optional[str] = None) -> AgentProtocol:
+        """Factory function to get agent implementation for backend."""
+        if backend is None or backend == "codex":
+            return CodexAdapter()
+        # Add more backends here as needed
+        # elif backend == "other_backend":
+        #     return OtherAgentAdapter()
+        else:
+            raise ValueError(f"Unknown backend: {backend}")
+
+    def run_check(self, checks: List[AgenticReviewCheck]) -> CheckResultList:
         """Run the agentic review checks and return the results."""
         results = []
 
         for check in checks:
-            # Accept both AgenticReviewCheck from adapter and raw dicts
-            if isinstance(check, AgenticReviewCheck):
-                review_check = check
-            elif (
-                isinstance(check, dict)
-                and check.get("check_type") == "agentic_review"
-                and "prompt_path" in check
-            ):
-                # Handle raw dict review checks
-                review_check = check
-            else:
-                continue
-
             try:
-                # Extract prompt path and optional parameters from the check
-                if isinstance(review_check, AgenticReviewCheck):
-                    prompt_path = review_check.prompt_path
-                    model = review_check.model
-                    profile = review_check.profile
-                    path = review_check.path
-                else:
-                    # Handle raw dict check
-                    prompt_path = review_check["prompt_path"]
-                    model = review_check.get("model")
-                    profile = review_check.get("profile")
-                    path = review_check.get("path")
-
-                # Validate that we have a prompt path
-                if not prompt_path:
-                    raise ValueError("prompt_path is required for agentic review checks")
+                # Get the appropriate agent for this backend
+                agent_for_check = (
+                    self._get_agent_for_backend(check.backend) if check.backend else self.agent
+                )
 
                 # Read and execute the prompt
-                with open(prompt_path, "r") as f:
+                with open(check.prompt_path, "r") as f:
                     prompt = f.read()
 
                 # Run the agent with the prompt and expected output format
-                review_output = self.agent.run_agent(
+                review_output = agent_for_check.run_agent(
                     prompt=prompt,
                     output_format=ReviewOutput,  # type: ignore[arg-type]
-                    model=model,
-                    profile=profile,
-                    path=path,
+                    model=check.model,
+                    profile=check.profile,
+                    path=check.path,
                 )
 
-                # Map review status to check status
-                if review_output.status == ReviewStatus.APPROVED:
-                    status = CheckStatus.PASSED
-                elif review_output.status == ReviewStatus.FAILED:
-                    status = CheckStatus.FAILED
-                else:  # NOT_RUNABLE
+                # Map review status to check status using explicit mapping
+                status_map = {
+                    ReviewStatus.APPROVED: CheckStatus.PASSED,
+                    ReviewStatus.FAILED: CheckStatus.FAILED,
+                }
+                status = status_map.get(review_output.status)
+                
+                if status is None:  # NOT_RUNABLE case
                     # Raise an error for not_reviewable status
                     raise Exception(
-                        f"Agentic review is not reviewable for prompt: {prompt_path}. "
+                        f"Agentic review is not reviewable for prompt: {check.prompt_path}. "
                         f"Reason: {review_output.summary}"
                     )
 
@@ -141,7 +136,7 @@ class AgenticReviewAdapter(CheckAdapter):
 
                 results.append(
                     CheckResult(
-                        name=f"Agentic Review: {prompt_path}",
+                        name=f"Agentic Review: {check.prompt_path}",
                         status=status,
                         message=message,
                     )
@@ -149,11 +144,13 @@ class AgenticReviewAdapter(CheckAdapter):
 
             except FileNotFoundError as e:
                 # Prompt file not found
-                raise Exception(f"Prompt file not found: {prompt_path} - {str(e)}")  # pyrefly: ignore[unbound-name]
+                raise Exception(
+                    f"Prompt file not found: {check.prompt_path} - {str(e)}"
+                )
             except Exception as e:
                 # Other execution errors
                 raise Exception(
-                    f"Error executing agentic review: {prompt_path} - {str(e)}"  # pyrefly: ignore[unbound-name]
+                    f"Error executing agentic review: {check.prompt_path} - {str(e)}"
                 )
 
         return CheckResultList(results=results)
