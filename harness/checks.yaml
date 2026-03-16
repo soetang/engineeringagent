@@ -1,0 +1,8 @@
+checks:
+  - name: "Basic Checks"
+    filepath: "commands.yaml"
+  - name: "Advanced Checks"
+    filepath: "fitness_functions.yaml"
+  - check_type: "command"
+    check_category: "unit_tests"
+    command: ["pytest"]

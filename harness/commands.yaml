@@ -1,0 +1,10 @@
+# Basic quality checks configuration
+# This file defines basic checks to run
+
+name: "commands"
+filepath: ""
+checks:
+  - check_type: "command"
+    command: ["ruff", "check"]
+  - check_type: "command"
+    command: ["pyrefly", "check"]

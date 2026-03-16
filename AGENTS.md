@@ -1,6 +1,7 @@
 # Coding Agent Harness Tools
 
 ## Commands
+- To run the `developer` cli user `uv run developer ... `
 
 ### Dependency Management
 - Add dependencies: `uv add <package>`
@@ -13,6 +14,7 @@
 ### Linting and Formatting
 - Lint: `ruff check`
 - Format: `ruff format`
+- **Always run both after code changes**
 
 ### Type Checking
 - Type check: `pyrefly check`

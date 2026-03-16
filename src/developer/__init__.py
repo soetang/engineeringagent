@@ -1,2 +1,5 @@
-def main() -> None:
-    print("Hello from developer!")
+"""Developer package."""
+
+from .main import app
+
+__all__ = ["app"]

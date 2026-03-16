@@ -1,0 +1,12 @@
+# Advanced quality checks configuration
+# This file defines advanced checks to run
+
+name: "fitness_functions"
+filepath: ""
+checks:
+  - check_type: "command"
+    check_category: "fitness"
+    command: ["ruff", "check"]
+  - check_type: "command"
+    check_category: "fitness"
+    command: ["pyrefly", "check"]
