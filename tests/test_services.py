@@ -8,10 +8,12 @@ class TestValidationService:
     """Tests for the ValidationService."""
 
     def setup_method(self):
+        """Set up test fixtures."""
         self.service = ValidationService()
         self.temp_dir = tempfile.mkdtemp()
 
     def teardown_method(self):
+        """Clean up test fixtures."""
         import shutil
 
         shutil.rmtree(self.temp_dir)
@@ -79,10 +81,12 @@ class TestExecutionService:
     """Tests for the ExecutionService."""
 
     def setup_method(self):
+        """Set up test fixtures."""
         self.service = ExecutionService()
         self.temp_dir = tempfile.mkdtemp()
 
     def teardown_method(self):
+        """Clean up test fixtures."""
         import shutil
 
         shutil.rmtree(self.temp_dir)
@@ -183,11 +187,13 @@ class TestIntegration:
     """Integration tests for services working together."""
 
     def setup_method(self):
+        """Set up test fixtures."""
         self.validation_service = ValidationService()
         self.execution_service = ExecutionService()
         self.temp_dir = tempfile.mkdtemp()
 
     def teardown_method(self):
+        """Clean up test fixtures."""
         import shutil
 
         shutil.rmtree(self.temp_dir)
@@ -240,6 +246,7 @@ class TestMixedFormatValidation:
     """Tests for mixed format validation (CheckList + CheckType in same file)."""
 
     def setup_method(self):
+        """Set up test fixtures."""
         self.service = ValidationService()
 
     def test_mixed_format_validation(self):

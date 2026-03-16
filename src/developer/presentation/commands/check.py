@@ -8,7 +8,7 @@ app = typer.Typer()
 
 @app.command()
 def run():
-    """Run validation checks using harness/checks.yaml"""
+    """Run validation checks using harness/checks.yaml."""
     typer.echo("Running validation checks...")
 
     # Initialize validation service

@@ -40,8 +40,7 @@ class QualitySpec(BaseModel):
 
 
 def create_dynamic_quality_spec() -> Type[BaseModel]:
-    """
-    Create a dynamic QualitySpec model based on available adapters.
+    """Create a dynamic QualitySpec model based on available adapters.
 
     Returns:
         A dynamically created pydantic BaseModel class

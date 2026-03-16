@@ -4,8 +4,7 @@ from ..adapters import get_adapters
 
 
 def get_schema_service() -> Dict[str, Any]:
-    """
-    Returns dynamic schemas based on available adapters.
+    """Returns dynamic schemas based on available adapters.
 
     Returns:
         Dict with structure:

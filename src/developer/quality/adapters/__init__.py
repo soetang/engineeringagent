@@ -7,8 +7,7 @@ __all__ = ["CommandAdapter", "CommandCheck", "get_adapters"]
 
 
 def get_adapters():
-    """
-    Returns a list of available adapters with their check types.
+    """Returns a list of available adapters with their check types.
 
     Returns:
         List of dicts with structure:

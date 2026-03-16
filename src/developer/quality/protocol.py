@@ -28,8 +28,7 @@ class CheckAdapter(Protocol):
     """Protocol that all check adapters must implement."""
 
     def run_check(self, checks) -> CheckResultList:
-        """
-        Run the check and return the results.
+        """Run the check and return the results.
 
         Returns:
             CheckResultList: A list of check results.
@@ -37,8 +36,7 @@ class CheckAdapter(Protocol):
         ...
 
     def get_check_type(self) -> Type[BaseModel]:
-        """
-        Return the pydantic model representing the check type.
+        """Return the pydantic model representing the check type.
 
         Returns:
             Type[BaseModel]: The pydantic model for the check type.
