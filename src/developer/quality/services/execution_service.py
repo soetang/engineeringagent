@@ -1,8 +1,10 @@
-from typing import List, Dict, Any
+from typing import Any, Dict, List, Type
 import yaml
 import os
 from pathlib import Path
+from pydantic import BaseModel
 from ..adapters import get_adapters
+from ..protocol import CheckAdapter
 
 
 class ExecutionService:
@@ -10,9 +12,13 @@ class ExecutionService:
 
     def __init__(self):
         # Build adapter map from get_adapters()
-        self.adapters = {
-            adapter["check_type"]: adapter["adapter"] for adapter in get_adapters()
-        }
+        self.adapters: Dict[str, CheckAdapter] = {}
+        for adapter_dict in get_adapters():
+            if isinstance(adapter_dict, dict):
+                check_type = adapter_dict.get("check_type")
+                adapter = adapter_dict.get("adapter")
+                if check_type and adapter:
+                    self.adapters[check_type] = adapter  # pyrefly: ignore[unsupported-operation, bad-argument-type]
 
     def execute_checks(self, file_path: str = "harness/checks.yaml") -> Dict[str, Any]:
         """Execute all checks specified in checks.yaml and referenced files."""

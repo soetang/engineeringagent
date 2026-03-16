@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Any, Dict, List
 from ..models import create_dynamic_quality_spec
 from ..adapters import get_adapters
 
@@ -37,10 +37,15 @@ def get_schema_service() -> Dict[str, Any]:
                 adapter_schemas[check_type] = def_schema
 
     # Get supported check types from adapters
-    supported_check_types = [adapter["check_type"] for adapter in get_adapters()]
+    supported_check_types: List[str] = []
+    for adapter_dict in get_adapters():
+        if isinstance(adapter_dict, dict) and "check_type" in adapter_dict:
+            check_type = adapter_dict["check_type"]
+            if check_type:
+                supported_check_types.append(check_type)  # pyrefly: ignore[bad-argument-type]
 
     return {
         "quality_spec_schema": quality_spec_schema,
         "adapter_schemas": adapter_schemas,
-        "supported_check_types": sorted(supported_check_types),
+        "supported_check_types": sorted(supported_check_types),  # type: ignore[arg-type]
     }

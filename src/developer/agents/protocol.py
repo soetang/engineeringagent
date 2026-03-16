@@ -1,4 +1,4 @@
-from typing import Protocol, Type, TypeVar, Union
+from typing import Optional, Protocol, Type, TypeVar, Union
 
 from pydantic import BaseModel
 
@@ -11,10 +11,10 @@ class AgentProtocol(Protocol):
     def run_agent(
         self,
         prompt: str,
-        output_format: Type[T] = str,
-        model: str = None,
-        profile: str = None,
-        path: str = None,
+        output_format: Type[T] = str,  # type: ignore[type-arg]
+        model: Optional[str] = None,
+        profile: Optional[str] = None,
+        path: Optional[str] = None,
     ) -> T:
         """Execute agent with prompt, return structured output or string."""
         ...

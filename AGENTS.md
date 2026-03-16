@@ -21,3 +21,6 @@
 
 ### Testing
 - Run tests: `pytest`
+
+# Guidelines 
+1. [Testing](docs/contributor/TESTING.md) - Read this before writing tests, running test or debugging tests.

@@ -55,11 +55,22 @@ def create_dynamic_quality_spec() -> Type[BaseModel]:
         return QualitySpec
 
     # Collect all check type models from adapters
-    check_type_models = [adapter["adapter"].get_check_type() for adapter in adapters]
+    check_type_models = []
+    for adapter_dict in adapters:
+        if isinstance(adapter_dict, dict) and "adapter" in adapter_dict:
+            adapter = adapter_dict["adapter"]
+            if hasattr(adapter, "get_check_type"):
+                check_type = adapter.get_check_type()
+                if check_type:
+                    check_type_models.append(check_type)
 
     # Create union of all check types (including CheckList)
-    check_type_models.append(CheckList)
-    DynamicCheckType = Union[tuple(check_type_models)]
+    if check_type_models:
+        check_type_models.append(CheckList)
+        DynamicCheckType = Union[tuple(check_type_models)]  # type: ignore[misc]
+    else:
+        # Fallback to basic QualitySpec if no adapters available
+        return QualitySpec
 
     # Create dynamic QualitySpec model
     DynamicQualitySpec = create_model(

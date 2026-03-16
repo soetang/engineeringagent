@@ -1,7 +1,7 @@
 import subprocess
 import json
 import tempfile
-from typing import Type, TypeVar, Union
+from typing import Optional, Type, TypeVar, Union
 from pydantic import BaseModel
 
 from developer.agents.protocol import AgentProtocol
@@ -15,25 +15,25 @@ class CodexAdapter(AgentProtocol):
     def run_agent(
         self,
         prompt: str,
-        output_format: Type[T] = str,
-        model: str = None,
-        profile: str = None,
-        path: str = None,
+        output_format: Type[T] = str,  # type: ignore[type-arg]
+        model: Optional[str] = None,
+        profile: Optional[str] = None,
+        path: Optional[str] = None,
     ) -> T:
         """Execute agent with prompt, return structured output or string."""
         # Handle string output (default case)
         if output_format is str or output_format == str:
-            return self._run_string_output(prompt, model, profile, path)
+            return self._run_string_output(prompt, model, profile, path)  # type: ignore[return-value]
 
         # Handle pydantic model output
         elif issubclass(output_format, BaseModel):
-            return self._run_model_output(prompt, output_format, model, profile, path)
+            return self._run_model_output(prompt, output_format, model, profile, path)  # type: ignore[return-value]
 
         else:
             raise ValueError(f"Unsupported output format: {output_format}")
 
     def _run_string_output(
-        self, prompt: str, model: str = None, profile: str = None, path: str = None
+        self, prompt: str, model: Optional[str] = None, profile: Optional[str] = None, path: Optional[str] = None
     ) -> str:
         """Execute codex CLI for string output."""
         cmd = ["codex", "exec", prompt]
@@ -55,9 +55,9 @@ class CodexAdapter(AgentProtocol):
         self,
         prompt: str,
         output_format: Type[BaseModel],
-        model: str = None,
-        profile: str = None,
-        path: str = None,
+        model: Optional[str] = None,
+        profile: Optional[str] = None,
+        path: Optional[str] = None,
     ) -> BaseModel:
         """Execute codex CLI with structured output using JSON schema."""
         # Generate JSON schema with all fields required (Codex requirement)

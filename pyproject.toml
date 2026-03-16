@@ -39,3 +39,7 @@ lint.extend-ignore = [
     "D203",  # 1 blank line required before class docstring
     "D213",  # Multi-line docstring summary should start at the second line
 ]
+
+[tool.pyrefly]
+# Configure Pyrefly to exclude test directories
+project_excludes = ["tests/", "test_*.py"]
