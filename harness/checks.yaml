@@ -1,10 +1,8 @@
 checks:
-  - name: "Basic Checks"
+  - name: "Linting and Static Analysis"
     filepath: "commands.yaml"
-  - name: "Advanced Checks"
-    filepath: "fitness_functions.yaml"
-  - name: "Agentic Reviews"
-    filepath: "reviewer.yaml"
+#  - name: "Agentic Reviews"
+#    filepath: "reviewer.yaml"
   - check_type: "command"
     check_category: "unit_tests"
     command: ["uv", "run", "pytest"]

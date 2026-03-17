@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import yaml
 from pydantic import ValidationError
@@ -10,84 +10,80 @@ from developer.quality.settings import QualitySettings
 
 from ..adapters import get_adapters
 from ..models import create_dynamic_quality_spec
+from .check_collection_service import CheckCollectionService
 
 
 class ValidationService:
     """Service for validating quality check configuration files."""
 
-    def __init__(self, config_service: Optional[ConfigService] = None):
+    def __init__(self, config_service: Optional[ConfigService] = ConfigService()):
         """Initialize with dynamic quality spec based on available adapters."""
         self.DynamicQualitySpec = create_dynamic_quality_spec()
         self.supported_check_types = {
             adapter["check_type"] for adapter in get_adapters()
         }
-        self.config_service = config_service or ConfigService()
+        self.check_collection_service = CheckCollectionService(config_service)
 
     def validate_checks_yaml(self) -> Dict[str, Any]:
         """Validate the main checks.yaml file and all referenced files."""
-        # Use config-based path if not provided
-        settings = self.config_service.get_config("quality", QualitySettings)
-        file_path = settings.checks_path
-
         try:
-            with open(file_path, "r") as f:
-                checks_config = yaml.safe_load(f)
-
-            if not checks_config or "checks" not in checks_config:
-                raise ValueError(
-                    f"Invalid checks.yaml format: missing 'checks' section in {file_path}"
-                )
+            # Collect all checks from the configuration tree
+            all_checks = self.check_collection_service.collect_all_checks()
 
             validated_specs = []
 
-            for check_spec in checks_config["checks"]:
-                if not isinstance(check_spec, dict):
-                    raise ValueError(f"Each check must be a dictionary in {file_path}")
+            for check_spec in all_checks:
+                source_type = check_spec.get("_source_type")
 
-                # Handle two types of checks:
-                # 1. CheckList items (with filepath) - references to other YAML files
-                # 2. CheckType items (with check_type) - direct command checks
-                if "filepath" in check_spec:
-                    # This is a CheckList item - validate the referenced file
-                    ref_file_path = check_spec["filepath"]
-                    # Handle both relative and absolute paths
-                    if os.path.isabs(ref_file_path):
-                        full_ref_path = Path(ref_file_path)
-                    else:
-                        full_ref_path = Path(file_path).parent / ref_file_path
-
-                    if not full_ref_path.exists():
-                        raise FileNotFoundError(
-                            f"Referenced file not found: {full_ref_path}"
-                        )
-
-                    # Validate the referenced file content
-                    self._validate_referenced_file(str(full_ref_path))
-
-                    validated_specs.append(
-                        {
-                            "name": check_spec.get("name", "unnamed"),
-                            "filepath": str(full_ref_path),
-                            "valid": True,
-                        }
-                    )
-                elif "check_type" in check_spec:
-                    # Validate that check_type is supported
-                    check_type = check_spec["check_type"]
-                    if check_type not in self.supported_check_types:
+                if source_type == "file_reference":
+                    # This is a file reference - validate the referenced file exists
+                    if check_spec.get("_missing_file"):
                         raise ValueError(
-                            f"Unsupported check_type '{check_type}' in {file_path}. "
+                            f"Referenced file not found: {check_spec.get('_error_message', 'unknown file')}"
+                        )
+                    else:
+                        resolved_filepath = check_spec.get("_resolved_filepath")
+                        if resolved_filepath is None:
+                            raise ValueError("File reference missing resolved filepath")
+                        else:
+                            try:
+                                # Validate the referenced file content
+                                self._validate_referenced_file(resolved_filepath)
+
+                                validated_specs.append(
+                                    {
+                                        "name": check_spec.get("name", "unnamed"),
+                                        "filepath": resolved_filepath,
+                                        "valid": True,
+                                    }
+                                )
+                            except Exception as e:
+                                raise ValueError(
+                                    f"Invalid file reference '{resolved_filepath}': {str(e)}"
+                                )
+                elif source_type == "direct_check":
+                    # This is a direct check - validate it
+                    check_type = check_spec.get("check_type")
+                    source_file = check_spec.get("_source_file", "unknown")
+
+                    # Validate that check_type is supported
+                    if check_type and check_type not in self.supported_check_types:
+                        raise ValueError(
+                            f"Unsupported check_type '{check_type}' in {source_file}. "
                             f"Supported types: {sorted(self.supported_check_types)}"
                         )
 
-                    # This is a direct CheckType item - validate it directly
-                    # Create a minimal QualitySpec wrapper for validation
+                    # Validate the check format using dynamic model
                     try:
-                        # Create a minimal spec with just this check
+                        # Remove metadata fields before validation
+                        clean_check_spec = {
+                            k: v for k, v in check_spec.items() if not k.startswith("_")
+                        }
+                        # Create a minimal spec with just this check for validation
                         minimal_spec = {
-                            "name": "direct_check_validation",
-                            "filepath": file_path,
-                            "checks": [check_spec],
+                            "name": "validation",
+                            "filepath": source_file,
+                            "checks": [clean_check_spec],
                         }
                         # Validate using dynamic model
                         self.DynamicQualitySpec(**minimal_spec)
@@ -97,19 +93,18 @@ class ValidationService:
                                 "name": check_spec.get(
                                     "name", check_spec.get("check_type", "unnamed")
                                 ),
-                                "filepath": file_path,  # Use the main file path for direct checks
+                                "filepath": source_file,
                                 "valid": True,
-                                "direct_check": True,  # Mark as direct check
+                                "direct_check": True,
                             }
                         )
+
                     except Exception as e:
                         raise ValueError(
-                            f"Invalid direct check format in {file_path}: {str(e)}"
+                            f"Invalid check format in {source_file}: {str(e)}"
                         )
                 else:
-                    raise ValueError(
-                        f"Check must have either 'filepath' or 'check_type' in {file_path}"
-                    )
+                    raise ValueError(f"Unknown check source type: {source_type}")
 
             return {
                 "valid": True,
@@ -117,17 +112,26 @@ class ValidationService:
                 "message": f"All {len(validated_specs)} check configurations are valid",
             }
 
-        except yaml.YAMLError as e:
-            return {
-                "valid": False,
-                "message": f"YAML parsing error in {file_path}: {str(e)}",
-            }
-        except (ValueError, FileNotFoundError) as e:
-            return {"valid": False, "message": str(e)}
         except Exception as e:
             return {
                 "valid": False,
-                "message": f"Unexpected error validating {file_path}: {str(e)}",
+                "message": str(e),
+            }
+
+    def validate_quality_spec(self, spec_content: Dict[str, Any]) -> Dict[str, Any]:
+        """Validate a quality specification dictionary."""
+        try:
+            self.DynamicQualitySpec(**spec_content)
+            return {"valid": True, "message": "Quality specification is valid"}
+        except ValidationError as e:
+            return {
+                "valid": False,
+                "message": f"Invalid quality specification: {str(e)}",
+            }
+        except Exception as e:
+            return {
+                "valid": False,
+                "message": f"Error validating quality specification: {str(e)}",
             }
 
     def _validate_referenced_file(self, file_path: str) -> bool:
@@ -147,52 +151,3 @@ class ValidationService:
             raise ValueError(f"YAML parsing error in {file_path}: {str(e)}")
         except Exception as e:
             raise ValueError(f"Error validating {file_path}: {str(e)}")
-
-    def _normalize_check_content(self, content: dict) -> dict:
-        """Normalize check content to validate command checks."""
-        if not isinstance(content, dict) or "checks" not in content:
-            return content
-
-        normalized_checks = []
-        for check in content["checks"]:
-            if isinstance(check, dict):
-                normalized_check = check.copy()
-
-                # For command checks, validate they have the required fields
-                if normalized_check.get("check_type") == "command":
-                    # Command checks need a command field
-                    if "command" not in normalized_check:
-                        raise ValueError(
-                            f"Command check is missing 'command' field: {normalized_check}"
-                        )
-                    # Remove command field for validation since CheckType doesn't allow it
-                    command_field = normalized_check.pop("command")
-                    # Store it temporarily to validate it's a list
-                    if not isinstance(command_field, list):
-                        raise ValueError(
-                            f"Command field must be a list, got {type(command_field)}"
-                        )
-
-                normalized_checks.append(normalized_check)
-            else:
-                normalized_checks.append(check)
-
-        normalized_content = content.copy()
-        normalized_content["checks"] = normalized_checks
-        return normalized_content
-
-    def validate_quality_spec(self, spec_content: Dict[str, Any]) -> Dict[str, Any]:
-        """Validate a quality specification dictionary."""
-        try:
-            self.DynamicQualitySpec(**spec_content)
-            return {"valid": True, "message": "Quality specification is valid"}
-        except ValidationError as e:
-            return {
-                "valid": False,
-                "message": f"Invalid quality specification: {str(e)}",
-            }
-        except Exception as e:
-            return {
-                "valid": False,
-                "message": f"Error validating quality specification: {str(e)}",
-            }

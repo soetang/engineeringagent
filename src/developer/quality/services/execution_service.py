@@ -10,12 +10,13 @@ from developer.quality.settings import QualitySettings
 
 from ..adapters import get_adapters
 from ..protocol import CheckAdapter
+from .check_collection_service import CheckCollectionService
 
 
 class ExecutionService:
     """Service for executing quality checks."""
 
-    def __init__(self, config_service: Optional[ConfigService] = None):
+    def __init__(self, config_service: Optional[ConfigService] = ConfigService()):
         # Build adapter map from get_adapters()
         self.adapters: Dict[str, CheckAdapter] = {}
         for adapter_dict in get_adapters():
@@ -25,7 +26,7 @@ class ExecutionService:
             adapter = adapter_dict.get("adapter")
             if isinstance(check_type, str) and isinstance(adapter, CheckAdapter):
                 self.adapters[check_type] = adapter
-        self.config_service = config_service or ConfigService()
+        self.check_collection_service = CheckCollectionService(config_service)
 
     def _group_checks_by_type(
         self, checks: List[Dict[str, Any]]
@@ -81,54 +82,118 @@ class ExecutionService:
 
     def execute_checks(self) -> Dict[str, Any]:
         """Execute all checks specified in checks.yaml and referenced files."""
-        # Use config-based path if not provided
-        settings = self.config_service.get_config("quality", QualitySettings)
-        file_path = settings.checks_path
-
         try:
-            # Read and validate the main checks file
-            with open(file_path, "r") as f:
-                checks_config = yaml.safe_load(f)
+            # Collect all checks from the configuration tree
+            all_checks = self.check_collection_service.collect_all_checks()
 
-            if not checks_config or "checks" not in checks_config:
-                return {
-                    "success": False,
-                    "message": f"Invalid checks.yaml format: missing 'checks' section in {file_path}",
-                }
-
+            # Execute each check
             all_results = []
+            for check_spec in all_checks:
+                source_type = check_spec.get("_source_type")
 
-            for check_spec in checks_config["checks"]:
-                # Handle two types of checks:
-                # 1. CheckList items (with filepath) - references to other YAML files
-                # 2. CheckType items (with check_type) - direct command checks
-                if "filepath" in check_spec:
-                    # This is a CheckList item - execute checks from referenced file
-                    ref_file_path = check_spec["filepath"]
-                    # Handle both relative and absolute paths
-                    if os.path.isabs(ref_file_path):
-                        full_ref_path = Path(ref_file_path)
-                    else:
-                        full_ref_path = Path(file_path).parent / ref_file_path
-
-                    if not full_ref_path.exists():
+                if source_type == "file_reference":
+                    # This is a file reference - execute checks from the referenced file
+                    if check_spec.get("_missing_file"):
+                        # Handle missing file case
                         all_results.append(
                             {
                                 "name": check_spec.get("name", "unnamed"),
-                                "filepath": str(full_ref_path),
+                                "filepath": check_spec.get("_resolved_filepath"),
+                                "status": "ERROR",
                                 "success": False,
-                                "message": f"Referenced file not found: {full_ref_path}",
+                                "message": check_spec.get(
+                                    "_error_message", "File not found"
+                                ),
+                            }
+                        )
+                    else:
+                        resolved_filepath = check_spec.get("_resolved_filepath")
+                        if resolved_filepath is None:
+                            all_results.append(
+                                {
+                                    "name": check_spec.get("name", "unnamed"),
+                                    "status": "ERROR",
+                                    "success": False,
+                                    "message": "File reference missing resolved filepath",
+                                }
+                            )
+                        else:
+                            try:
+                                file_results = self._execute_file_checks(resolved_filepath)
+                                all_results.extend(file_results)
+                            except Exception as e:
+                                all_results.append(
+                                    {
+                                        "name": check_spec.get("name", "unnamed"),
+                                        "filepath": resolved_filepath,
+                                        "status": "ERROR",
+                                        "success": False,
+                                        "message": f"Error processing file {resolved_filepath}: {str(e)}",
+                                    }
+                                )
+                elif source_type == "direct_check":
+                    # This is a direct check
+                    check_type = check_spec.get("check_type")
+
+                    if check_type not in self.adapters:
+                        all_results.append(
+                            {
+                                "name": check_spec.get(
+                                    "name", check_spec.get("check_type", "unnamed")
+                                ),
+                                "status": "ERROR",
+                                "success": False,
+                                "message": f"No adapter available for check type: {check_type}",
+                                "check_type": check_type,
                             }
                         )
                         continue
 
-                    # Execute checks from the referenced file
-                    file_results = self._execute_file_checks(str(full_ref_path))
-                    all_results.extend(file_results)
-                elif "check_type" in check_spec:
-                    # This is a direct CheckType item - execute it directly
-                    direct_results = self._execute_direct_check(check_spec)
-                    all_results.extend(direct_results)
+                    try:
+                        adapter = self.adapters[check_type]
+                        # Remove metadata fields before passing to adapter
+                        clean_check_spec = {
+                            k: v for k, v in check_spec.items() if not k.startswith("_")
+                        }
+                        # Convert single check to list format expected by adapter
+                        check_list = [clean_check_spec]
+                        check_results = adapter.run_check(
+                            self._coerce_checks_for_adapter(adapter, check_list)
+                        )
+
+                        # Convert CheckResult objects to result dictionaries
+                        for result in check_results.results:
+                            all_results.append(
+                                {
+                                    "name": result.name,
+                                    "status": result.status.value,
+                                    "message": result.message,
+                                    "success": result.status.value == "passed",
+                                    "check_type": check_type,
+                                }
+                            )
+
+                    except Exception as e:
+                        all_results.append(
+                            {
+                                "name": check_spec.get(
+                                    "name", check_spec.get("check_type", "unnamed")
+                                ),
+                                "status": "ERROR",
+                                "success": False,
+                                "message": f"Error executing {check_type} check: {str(e)}",
+                                "check_type": check_type,
+                            }
+                        )
+                else:
+                    all_results.append(
+                        {
+                            "name": check_spec.get("name", "unnamed"),
+                            "status": "ERROR",
+                            "success": False,
+                            "message": f"Unknown check source type: {source_type}",
+                        }
+                    )
 
             # Calculate summary statistics
             total_checks = len(all_results)
@@ -146,57 +211,25 @@ class ExecutionService:
                 "message": f"Executed {total_checks} checks: {passed_checks} passed, {failed_checks} failed",
             }
 
-        except yaml.YAMLError as e:
+        except FileNotFoundError as e:
+            # Handle missing file references gracefully
             return {
                 "success": False,
-                "message": f"YAML parsing error in {file_path}: {str(e)}",
+                "total_checks": 0,
+                "passed_checks": 0,
+                "failed_checks": 1,
+                "results": [
+                    {
+                        "name": "Check configuration",
+                        "status": "ERROR",
+                        "success": False,
+                        "message": str(e),
+                    }
+                ],
+                "message": f"Error executing checks: {str(e)}",
             }
         except Exception as e:
             return {"success": False, "message": f"Error executing checks: {str(e)}"}
-
-    def _execute_direct_check(self, check_spec: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Execute a single direct check specification."""
-        check_type = check_spec["check_type"]
-        
-        if check_type not in self.adapters:
-            return [
-                {
-                    "name": check_spec.get("name", check_spec.get("check_type", "unnamed")),
-                    "success": False,
-                    "message": f"No adapter available for check type: {check_type}",
-                    "check_type": check_type,
-                }
-            ]
-        
-        try:
-            adapter = self.adapters[check_type]
-            # Convert single check to list format expected by adapter
-            check_list = [check_spec]
-            check_results = adapter.run_check(
-                self._coerce_checks_for_adapter(adapter, check_list)
-            )
-            
-            return [
-                {
-                    "name": result.name,
-                    "status": result.status.value,
-                    "message": result.message,
-                    "success": result.status.value == "passed",
-                    "check_type": check_type,
-                    "direct_check": True,  # Mark as direct check
-                }
-                for result in check_results.results
-            ]
-        except Exception as e:
-            return [
-                {
-                    "name": check_spec.get("name", check_spec.get("check_type", "unnamed")),
-                    "success": False,
-                    "message": f"Error executing {check_type} check: {str(e)}",
-                    "check_type": check_type,
-                    "direct_check": True,
-                }
-            ]
 
     def _execute_file_checks(self, file_path: str) -> List[Dict[str, Any]]:
         """Execute checks from a single YAML file."""
@@ -210,7 +243,7 @@ class ExecutionService:
             all_results = []
 
             for check_spec in content["checks"]:
-                # Handle both direct checks and file references
+                # Handle both direct checks and file references within the file
                 if "filepath" in check_spec:
                     # This is a nested file reference - execute checks from referenced file
                     ref_file_path = check_spec["filepath"]
@@ -225,6 +258,7 @@ class ExecutionService:
                             {
                                 "name": check_spec.get("name", "unnamed"),
                                 "filepath": str(full_ref_path),
+                                "status": "ERROR",
                                 "success": False,
                                 "message": f"Referenced file not found: {full_ref_path}",
                             }
@@ -239,13 +273,65 @@ class ExecutionService:
                     direct_results = self._execute_direct_check(check_spec)
                     all_results.extend(direct_results)
 
-            return all_results if all_results else [self._create_warning_result(file_path)]
+            return (
+                all_results if all_results else [self._create_warning_result(file_path)]
+            )
 
         except Exception as e:
             return [
                 self._create_error_result(
                     file_path, "unknown", f"Error processing file {file_path}: {str(e)}"
                 )
+            ]
+
+    def _execute_direct_check(self, check_spec: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Execute a single direct check specification."""
+        check_type = check_spec["check_type"]
+
+        if check_type not in self.adapters:
+            return [
+                {
+                    "name": check_spec.get(
+                        "name", check_spec.get("check_type", "unnamed")
+                    ),
+                    "status": "ERROR",
+                    "success": False,
+                    "message": f"No adapter available for check type: {check_type}",
+                    "check_type": check_type,
+                }
+            ]
+
+        try:
+            adapter = self.adapters[check_type]
+            # Convert single check to list format expected by adapter
+            check_list = [check_spec]
+            check_results = adapter.run_check(
+                self._coerce_checks_for_adapter(adapter, check_list)
+            )
+
+            return [
+                {
+                    "name": result.name,
+                    "status": result.status.value,
+                    "message": result.message,
+                    "success": result.status.value == "passed",
+                    "check_type": check_type,
+                    "direct_check": True,  # Mark as direct check
+                }
+                for result in check_results.results
+            ]
+        except Exception as e:
+            return [
+                {
+                    "name": check_spec.get(
+                        "name", check_spec.get("check_type", "unnamed")
+                    ),
+                    "status": "ERROR",
+                    "success": False,
+                    "message": f"Error executing {check_type} check: {str(e)}",
+                    "check_type": check_type,
+                    "direct_check": True,
+                }
             ]
 
     def execute_single_spec(self, spec_content: Dict[str, Any]) -> Dict[str, Any]:

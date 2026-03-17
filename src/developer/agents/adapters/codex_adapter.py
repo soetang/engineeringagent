@@ -27,13 +27,12 @@ class CodexAdapter(AgentProtocol):
         # For model output, we need to write schema to temp file
         schema_path = None
         if output_format is not None and issubclass(output_format, BaseModel):
-            try:
-                schema = self._generate_schema(output_format)
-                with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-                    json.dump(schema, f)
-                    schema_path = f.name
-            except Exception as e:
-                raise RuntimeError(f"Failed to create schema file: {e}") from e
+            schema = self._generate_schema(output_format)
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".json", delete=False
+            ) as f:
+                json.dump(schema, f)
+                schema_path = f.name
 
         try:
             # Build command
@@ -60,18 +59,16 @@ class CodexAdapter(AgentProtocol):
                 except json.JSONDecodeError as e:
                     raise RuntimeError(f"Failed to parse JSON output: {e}") from e
                 except Exception as e:
-                    raise RuntimeError(f"Failed to create model from output: {e}") from e
+                    raise RuntimeError(
+                        f"Failed to create model from output: {e}"
+                    ) from e
             else:
                 raise ValueError(f"Unsupported output format: {output_format}")
 
         finally:
             # Clean up temporary schema file
             if schema_path:
-                try:
-                    unlink(schema_path)
-                except Exception:
-                    # Ignore cleanup errors to avoid masking other exceptions
-                    pass
+                os.unlink(schema_path)
 
     def _build_codex_command(
         self,
@@ -99,8 +96,6 @@ class CodexAdapter(AgentProtocol):
 
         return cmd
 
-
-
     def _generate_schema(self, model_class: Type[BaseModel]) -> dict:
         """Generate JSON schema with all fields required for Codex."""
         # Get the model schema
@@ -122,18 +117,18 @@ class CodexAdapter(AgentProtocol):
         """Resolve profile settings to config overrides, checking local config first."""
         if not profile:
             return []
-        
+
         # Try to read from local .codex/config.toml first
         local_config_path = ".codex/config.toml"
         if path:
             local_config_path = os.path.join(path, ".codex/config.toml")
-        
+
         try:
             import tomllib
-            
+
             with open(local_config_path, "rb") as f:
                 local_config = tomllib.load(f)
-            
+
             # Check if the profile exists in local config
             if "profiles" in local_config and profile in local_config["profiles"]:
                 profile_config = local_config["profiles"][profile]
@@ -147,6 +142,6 @@ class CodexAdapter(AgentProtocol):
                 return config_overrides
         except (FileNotFoundError, ImportError):
             pass  # Fall back to using --profile flag
-        
+
         # Fall back to using --profile flag (will use global config)
         return ["--profile", profile]
