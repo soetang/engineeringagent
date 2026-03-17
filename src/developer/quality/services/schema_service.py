@@ -28,24 +28,25 @@ def get_schema_service() -> Dict[str, Any]:
     quality_spec_schema = DynamicQualitySpec.model_json_schema()
 
     # Extract individual adapter schemas from $defs (modern JSON Schema)
-    adapter_schemas = {}
-    if "$defs" in quality_spec_schema:
-        for def_name, def_schema in quality_spec_schema["$defs"].items():
-            # Filter out non-adapter definitions (like CheckList)
-            if def_name.endswith("Check") and not def_name == "CheckList":
-                check_type = def_name.replace("Check", "").lower()
-                adapter_schemas[check_type] = def_schema
+    adapter_schemas = {
+        def_name.replace("Check", "").lower(): def_schema
+        for def_name, def_schema in quality_spec_schema.get("$defs", {}).items()
+        if def_name.endswith("Check") and def_name != "CheckList"
+    }
 
     # Get supported check types from adapters
-    supported_check_types: List[str] = []
-    for adapter_dict in get_adapters():
-        if isinstance(adapter_dict, dict) and "check_type" in adapter_dict:
-            check_type = adapter_dict["check_type"]
-            if check_type and isinstance(check_type, str):
-                supported_check_types.append(check_type)
+    supported_check_types: List[str] = sorted(
+        {
+            adapter_dict["check_type"]
+            for adapter_dict in get_adapters()
+            if isinstance(adapter_dict, dict)
+            and isinstance(adapter_dict.get("check_type"), str)
+            and adapter_dict.get("check_type")
+        }
+    )
 
     return {
         "quality_spec_schema": quality_spec_schema,
         "adapter_schemas": adapter_schemas,
-        "supported_check_types": sorted(supported_check_types),  # type: ignore[arg-type]
+        "supported_check_types": supported_check_types,
     }

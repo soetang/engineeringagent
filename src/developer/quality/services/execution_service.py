@@ -6,7 +6,6 @@ import yaml
 from pydantic import BaseModel
 
 from developer.config.service import ConfigService
-from developer.quality.settings import QualitySettings
 
 from ..adapters import get_adapters
 from ..protocol import CheckAdapter
@@ -32,14 +31,18 @@ class ExecutionService:
         self, checks: List[Dict[str, Any]]
     ) -> Dict[str, List[Dict[str, Any]]]:
         """Group checks by their check_type from raw content."""
-        checks_by_type = {}
+        checks_by_type: Dict[str, List[Dict[str, Any]]] = {}
         for check in checks:
             if isinstance(check, dict) and "check_type" in check:
                 check_type = check["check_type"]
-                if check_type not in checks_by_type:
-                    checks_by_type[check_type] = []
-                checks_by_type[check_type].append(check)
+                if isinstance(check_type, str):
+                    checks_by_type.setdefault(check_type, []).append(check)
         return checks_by_type
+
+    @staticmethod
+    def _strip_internal_fields(check_spec: Dict[str, Any]) -> Dict[str, Any]:
+        """Return a copy of check spec without internal metadata fields."""
+        return {k: v for k, v in check_spec.items() if not k.startswith("_")}
 
     def _coerce_checks_for_adapter(
         self, adapter: CheckAdapter, checks: list
@@ -94,7 +97,6 @@ class ExecutionService:
                 if source_type == "file_reference":
                     # This is a file reference - execute checks from the referenced file
                     if check_spec.get("_missing_file"):
-                        # Handle missing file case
                         all_results.append(
                             {
                                 "name": check_spec.get("name", "unnamed"),
@@ -106,32 +108,36 @@ class ExecutionService:
                                 ),
                             }
                         )
-                    else:
-                        resolved_filepath = check_spec.get("_resolved_filepath")
-                        if resolved_filepath is None:
-                            all_results.append(
-                                {
-                                    "name": check_spec.get("name", "unnamed"),
-                                    "status": "ERROR",
-                                    "success": False,
-                                    "message": "File reference missing resolved filepath",
-                                }
-                            )
-                        else:
-                            try:
-                                file_results = self._execute_file_checks(resolved_filepath)
-                                all_results.extend(file_results)
-                            except Exception as e:
-                                all_results.append(
-                                    {
-                                        "name": check_spec.get("name", "unnamed"),
-                                        "filepath": resolved_filepath,
-                                        "status": "ERROR",
-                                        "success": False,
-                                        "message": f"Error processing file {resolved_filepath}: {str(e)}",
-                                    }
-                                )
-                elif source_type == "direct_check":
+                        continue
+
+                    resolved_filepath = check_spec.get("_resolved_filepath")
+                    if resolved_filepath is None:
+                        all_results.append(
+                            {
+                                "name": check_spec.get("name", "unnamed"),
+                                "status": "ERROR",
+                                "success": False,
+                                "message": "File reference missing resolved filepath",
+                            }
+                        )
+                        continue
+
+                    try:
+                        file_results = self._execute_file_checks(resolved_filepath)
+                        all_results.extend(file_results)
+                    except Exception as e:
+                        all_results.append(
+                            {
+                                "name": check_spec.get("name", "unnamed"),
+                                "filepath": resolved_filepath,
+                                "status": "ERROR",
+                                "success": False,
+                                "message": f"Error processing file {resolved_filepath}: {str(e)}",
+                            }
+                        )
+                    continue
+
+                if source_type == "direct_check":
                     # This is a direct check
                     check_type = check_spec.get("check_type")
 
@@ -152,9 +158,7 @@ class ExecutionService:
                     try:
                         adapter = self.adapters[check_type]
                         # Remove metadata fields before passing to adapter
-                        clean_check_spec = {
-                            k: v for k, v in check_spec.items() if not k.startswith("_")
-                        }
+                        clean_check_spec = self._strip_internal_fields(check_spec)
                         # Convert single check to list format expected by adapter
                         check_list = [clean_check_spec]
                         check_results = adapter.run_check(
@@ -185,15 +189,16 @@ class ExecutionService:
                                 "check_type": check_type,
                             }
                         )
-                else:
-                    all_results.append(
-                        {
-                            "name": check_spec.get("name", "unnamed"),
-                            "status": "ERROR",
-                            "success": False,
-                            "message": f"Unknown check source type: {source_type}",
-                        }
-                    )
+                    continue
+
+                all_results.append(
+                    {
+                        "name": check_spec.get("name", "unnamed"),
+                        "status": "ERROR",
+                        "success": False,
+                        "message": f"Unknown check source type: {source_type}",
+                    }
+                )
 
             # Calculate summary statistics
             total_checks = len(all_results)

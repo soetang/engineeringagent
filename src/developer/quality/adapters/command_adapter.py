@@ -27,18 +27,18 @@ class CommandAdapter(CheckAdapter):
         for check in checks:
             # Accept both CommandCheck from adapter and raw dicts with command checks
             if isinstance(check, CommandCheck):
-                command_check = check
-                command_list = command_check.command
+                command_list = check.command
             elif (
                 isinstance(check, dict)
                 and check.get("check_type") == "command"
                 and "command" in check
             ):
                 # Handle raw dict command checks
-                command_check = check
                 command_list = check["command"]
             else:
                 continue
+
+            command_repr = " ".join(command_list)
 
             try:
                 # Run the command
@@ -63,26 +63,20 @@ class CommandAdapter(CheckAdapter):
                     )
 
                 results.append(
-                    CheckResult(
-                        name=" ".join(command_list), status=status, message=message
-                    )
+                    CheckResult(name=command_repr, status=status, message=message)
                 )
 
             except FileNotFoundError as e:
                 # Command not found - this is an execution error, not a check failure
-                raise Exception(
-                    f"Command not found: {' '.join(command_list)} - {str(e)}"
-                )
+                raise Exception(f"Command not found: {command_repr} - {str(e)}")
             except PermissionError as e:
                 # Permission error - this is an execution error
                 raise Exception(
-                    f"Permission denied executing command: {' '.join(command_list)} - {str(e)}"
+                    f"Permission denied executing command: {command_repr} - {str(e)}"
                 )
             except Exception as e:
                 # Other execution errors
-                raise Exception(
-                    f"Error executing command: {' '.join(command_list)} - {str(e)}"
-                )
+                raise Exception(f"Error executing command: {command_repr} - {str(e)}")
 
         return CheckResultList(results=results)
 

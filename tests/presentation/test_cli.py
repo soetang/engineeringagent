@@ -1,7 +1,9 @@
 """Test the CLI check command with real harness files."""
 
-from typer.testing import CliRunner
 from pathlib import Path
+
+from typer.testing import CliRunner
+
 from developer.presentation.cli import app
 
 
@@ -73,4 +75,6 @@ def test_cli_check_help():
     result = runner.invoke(app, ["check", "--help"])
 
     assert result.exit_code == 0
-    assert "Execute all quality checks defined in harness/checks.yaml" in result.output
+    # Validate that subcommands are listed in help output
+    assert "run" in result.output
+    assert "validate" in result.output

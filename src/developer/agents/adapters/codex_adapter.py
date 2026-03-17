@@ -1,8 +1,8 @@
-import json
 import os
 import subprocess
 import tempfile
-from typing import Optional, Type, TypeVar, Union
+import json
+from typing import Optional, Type, TypeVar
 
 from pydantic import BaseModel
 
@@ -20,9 +20,9 @@ class CodexAdapter(AgentProtocol):
     def run_agent(
         self,
         prompt: str,
-        output_format: Union[Type[TModel], None] = None,
+        output_format: Optional[Type[TModel]] = None,
         path: Optional[str] = None,
-    ) -> Union[TModel, str]:
+    ) -> TModel | str:
         """Execute agent with prompt, return structured output or string."""
         # For model output, we need to write schema to temp file
         schema_path = None
@@ -49,7 +49,7 @@ class CodexAdapter(AgentProtocol):
                 raise RuntimeError(f"Failed to execute Codex CLI command: {e}") from e
 
             # Handle output based on format
-            if output_format is None or output_format is str or output_format == str:
+            if output_format is None or output_format is str:
                 return result.stdout.strip()
             elif issubclass(output_format, BaseModel):
                 # Parse JSON output

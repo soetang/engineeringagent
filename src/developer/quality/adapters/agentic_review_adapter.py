@@ -125,6 +125,7 @@ class AgenticReviewAdapter(CheckAdapter):
                         f"Agentic review is not reviewable for prompt: {check.prompt_path}. "
                         f"Reason: {review_output.summary}"
                     )
+
                 if review_output.status is ReviewStatus.APPROVED:
                     status = CheckStatus.PASSED
                 elif review_output.status is ReviewStatus.FAILED:

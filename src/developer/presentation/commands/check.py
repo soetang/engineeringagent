@@ -33,7 +33,7 @@ def validate():
 
 @app.command()
 def run():
-    """Execute all quality checks defined in harness/checks.yaml."""
+    """Execute all configured quality checks."""
     typer.echo("Running quality checks...")
 
     # Initialize execution service
@@ -51,9 +51,6 @@ def run():
 
     # Show detailed results
     for check_result in result.get("results", []):
-        status_color = (
-            typer.colors.GREEN if check_result["success"] else typer.colors.RED
-        )
         status_symbol = "✓" if check_result["success"] else "✗"
 
         typer.echo(

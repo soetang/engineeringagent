@@ -1,6 +1,6 @@
 import json
 import subprocess
-from typing import Optional, Type, TypeVar, Union
+from typing import Optional, Type, TypeVar
 
 from pydantic import BaseModel
 
@@ -18,9 +18,9 @@ class VibeAdapter(AgentProtocol):
     def run_agent(
         self,
         prompt: str,
-        output_format: Union[Type[TModel], None] = None,
+        output_format: Optional[Type[TModel]] = None,
         path: Optional[str] = None,
-    ) -> Union[TModel, str]:
+    ) -> TModel | str:
         """Execute agent with prompt, return structured output or string."""
         # Build and execute command
 
