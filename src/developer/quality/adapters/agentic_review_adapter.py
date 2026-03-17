@@ -1,11 +1,13 @@
-from typing import List, Optional
-from pydantic import BaseModel, Field
 from enum import Enum
-from ..protocol import CheckAdapter, CheckResult, CheckResultList, CheckStatus
-from ..models import CheckType
+from typing import List, Optional
+
+from pydantic import BaseModel, Field
+
 from developer.agents.protocol import AgentProtocol
-from developer.agents.adapters.codex_adapter import CodexAdapter
-from developer.agents.adapters.vibe_adapter import VibeAdapter
+from developer.agents.select_agent_service import get_agent_service
+
+from ..models import CheckType
+from ..protocol import CheckAdapter, CheckResult, CheckResultList, CheckStatus
 
 
 class ReviewStatus(str, Enum):
@@ -74,22 +76,20 @@ class AgenticReviewAdapter(CheckAdapter):
         self, agent: Optional[AgentProtocol] = None, backend: Optional[str] = None
     ):
         """Initialize the adapter with an optional agent protocol and backend."""
+        self.agent_service = get_agent_service()
         if agent:
             self.agent = agent
         else:
-            self.agent = self._get_agent_for_backend(backend)
+            self.agent = self.agent_service.select_agent(backend=backend)
 
-    def _get_agent_for_backend(self, backend: Optional[str] = None) -> AgentProtocol:
-        """Factory function to get agent implementation for backend."""
-        if backend is None or backend == "codex":
-            return CodexAdapter()
-        elif backend == "vibe":
-            return VibeAdapter()
-        # Add more backends here as needed
-        # elif backend == "other_backend":
-        #     return OtherAgentAdapter()
-        else:
-            raise ValueError(f"Unknown backend: {backend}")
+    def _get_agent_for_check(self, check: AgenticReviewCheck) -> AgentProtocol:
+        """Get agent for a specific check, using check parameters or defaults."""
+        if check.backend is None and self.agent is not None:
+            return self.agent
+
+        return self.agent_service.select_agent(
+            backend=check.backend, profile=check.profile, model=check.model
+        )
 
     def run_check(self, checks: List[AgenticReviewCheck]) -> CheckResultList:
         """Run the agentic review checks and return the results."""
@@ -97,23 +97,27 @@ class AgenticReviewAdapter(CheckAdapter):
 
         for check in checks:
             try:
-                # Get the appropriate agent for this backend
-                agent_for_check = (
-                    self._get_agent_for_backend(check.backend) if check.backend else self.agent
-                )
+                # Get the appropriate agent for this check
+                agent_for_check = self._get_agent_for_check(check)
 
                 # Read and execute the prompt
                 with open(check.prompt_path, "r") as f:
                     prompt = f.read()
 
                 # Run the agent with the prompt and expected output format
+                # Agent is already configured with profile/model from SelectAgentService
                 review_output = agent_for_check.run_agent(
                     prompt=prompt,
                     output_format=ReviewOutput,  # type: ignore[arg-type]
-                    model=check.model,
-                    profile=check.profile,
                     path=check.path,
                 )
+
+                # Ensure review_output is a ReviewOutput object
+                if not isinstance(review_output, ReviewOutput):
+                    raise Exception(
+                        f"Agent returned unexpected output type: {type(review_output).__name__}. "
+                        f"Expected ReviewOutput object. Content: {str(review_output)[:200]}"
+                    )
 
                 # Map review status to check status using explicit mapping
                 if review_output.status is ReviewStatus.NOT_REVIEWABLE:

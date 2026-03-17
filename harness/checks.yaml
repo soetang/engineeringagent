@@ -7,4 +7,4 @@ checks:
     filepath: "reviewer.yaml"
   - check_type: "command"
     check_category: "unit_tests"
-    command: ["pytest"]
+    command: ["uv", "run", "pytest"]

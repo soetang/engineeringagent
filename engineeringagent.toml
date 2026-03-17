@@ -1,0 +1,6 @@
+[quality]
+checks_path = "harness/checks.yaml"
+
+[agents]
+backend = "codex"
+model = "gpt-5.3-codex-spark"

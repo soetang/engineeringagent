@@ -1,11 +1,65 @@
 import tempfile
 import os
 import shutil
-from typing import List
+from typing import List, Optional, Type, Union
 from pydantic import BaseModel
 import pytest
+from developer.agents.protocol import AgentProtocol
 from developer.quality.adapters import AgenticReviewAdapter, AgenticReviewCheck
 from developer.quality.protocol import CheckStatus
+
+
+class MockAgent(AgentProtocol):
+    """Mock agent for testing without requiring actual Codex CLI."""
+
+    def __init__(self, profile: Optional[str] = None, model: Optional[str] = None):
+        """Initialize mock agent."""
+        self.profile = profile
+        self.model = model
+
+    def run_agent(
+        self,
+        prompt: str,
+        output_format: Type[BaseModel] = str,  # type: ignore[type-arg]
+        model: Optional[str] = None,
+        path: Optional[str] = None,
+    ) -> Union[BaseModel, str]:
+        """Mock agent that returns predefined responses."""
+        if output_format == str or output_format is str:
+            return "Mock response"
+
+        elif issubclass(output_format, BaseModel):
+            # Return a mock review output
+            from developer.quality.adapters.agentic_review_adapter import (
+                ReviewOutput,
+                ReviewStatus,
+            )
+
+            # Simple logic: if prompt contains known functions, approve them
+            if "def hello_world" in prompt:
+                return ReviewOutput(
+                    status=ReviewStatus.APPROVED,
+                    summary="Code looks good and follows best practices",
+                    actions=[],
+                )
+            elif "def test_function_0" in prompt:
+                return ReviewOutput(
+                    status=ReviewStatus.APPROVED,
+                    summary="Test function 0 looks good",
+                    actions=[],
+                )
+            elif "def test_function_1" in prompt:
+                return ReviewOutput(
+                    status=ReviewStatus.FAILED,
+                    summary="Test function 1 has issues",
+                    actions=["Add proper error handling", "Improve test coverage"],
+                )
+            else:
+                return ReviewOutput(
+                    status=ReviewStatus.NOT_REVIEWABLE,
+                    summary="Cannot review this type of code",
+                    actions=["Need more context to review"],
+                )
 
 
 def test_agentic_review_adapter_success():
@@ -29,8 +83,8 @@ Please analyze the code and provide:
 - List of recommended actions if any
 """)
 
-        # Create the adapter
-        adapter = AgenticReviewAdapter()
+        # Create the adapter with mock agent
+        adapter = AgenticReviewAdapter(agent=MockAgent())
 
         # Create a review check
         checks: List[BaseModel] = [
@@ -86,7 +140,7 @@ Please analyze the code and provide:
             prompt_paths.append(prompt_path)
 
         # Create the adapter
-        adapter = AgenticReviewAdapter()
+        adapter = AgenticReviewAdapter(agent=MockAgent())
 
         # Create multiple review checks
         checks: List[BaseModel] = [
@@ -122,7 +176,7 @@ Please analyze the code and provide:
 def test_agentic_review_adapter_execution_error():
     """Test that the agentic review adapter raises exceptions for execution errors."""
     # Create the adapter
-    adapter = AgenticReviewAdapter()
+    adapter = AgenticReviewAdapter(agent=MockAgent())
 
     # Test with non-existent prompt file
     checks: List[BaseModel] = [
@@ -139,7 +193,7 @@ def test_agentic_review_adapter_execution_error():
 
 def test_agentic_review_adapter_get_check_type():
     """Test that the adapter returns the correct check type."""
-    adapter = AgenticReviewAdapter()
+    adapter = AgenticReviewAdapter(agent=MockAgent())
 
     check_type = adapter.get_check_type()
 
@@ -149,8 +203,10 @@ def test_agentic_review_adapter_get_check_type():
 def test_agentic_review_adapter_backend_selection():
     """Test that the adapter correctly handles backend parameter using mock agent."""
     from typing import Optional
+    from typing import Optional
     from developer.agents.protocol import AgentProtocol
     from developer.agents.adapters.codex_adapter import CodexAdapter
+    from developer.agents.adapters.vibe_adapter import VibeAdapter
     from developer.quality.adapters.agentic_review_adapter import (
         ReviewOutput,
         ReviewStatus,
@@ -230,19 +286,30 @@ def test_agentic_review_adapter_backend_selection():
         assert raw_check.get("profile") == "test_profile"
         assert raw_check.get("model") == "test_model"
 
-        # Test 5: Test _get_agent_for_backend method
+        # Test 5: Test _get_agent_for_check method with new SelectAgentService
         adapter = AgenticReviewAdapter()
 
-        # Should return CodexAdapter for None or "codex"
-        agent_none = adapter._get_agent_for_backend(None)
-        assert isinstance(agent_none, CodexAdapter)
+        # Test agent selection through the new service
+        check_none = AgenticReviewCheck(
+            check_type="agentic_review", prompt_path=prompt_path
+        )
+        agent_none = adapter._get_agent_for_check(check_none)
+        assert isinstance(agent_none, CodexAdapter)  # Should use default from config
 
-        agent_codex = adapter._get_agent_for_backend("codex")
-        assert isinstance(agent_codex, CodexAdapter)
+        check_vibe = AgenticReviewCheck(
+            check_type="agentic_review", prompt_path=prompt_path, backend="vibe"
+        )
+        agent_vibe = adapter._get_agent_for_check(check_vibe)
+        assert isinstance(agent_vibe, VibeAdapter)
 
         # Should raise ValueError for unknown backend
+        check_unknown = AgenticReviewCheck(
+            check_type="agentic_review",
+            prompt_path=prompt_path,
+            backend="unknown_backend",
+        )
         with pytest.raises(ValueError) as exc_info:
-            adapter._get_agent_for_backend("unknown_backend")
+            adapter._get_agent_for_check(check_unknown)
         assert "Unknown backend: unknown_backend" in str(exc_info.value)
 
     finally:

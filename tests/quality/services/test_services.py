@@ -2,6 +2,7 @@ import yaml
 import tempfile
 import os
 from developer.quality.services import ValidationService, ExecutionService
+from developer.config.service import ConfigService
 
 
 class TestValidationService:
@@ -9,8 +10,18 @@ class TestValidationService:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.service = ValidationService()
         self.temp_dir = tempfile.mkdtemp()
+
+        # Create a temporary config file that points to our test checks.yaml
+        config_file_path = os.path.join(self.temp_dir, "test_config.toml")
+        with open(config_file_path, "w") as f:
+            f.write(f"""[quality]
+checks_path = "{os.path.join(self.temp_dir, "checks.yaml")}"
+""")
+
+        # Create ValidationService with custom config file
+        config_service = ConfigService(config_file=config_file_path)
+        self.service = ValidationService(config_service=config_service)
 
     def teardown_method(self):
         """Clean up test fixtures."""
@@ -32,7 +43,7 @@ class TestValidationService:
         with open(ref_file_path, "w") as f:
             yaml.dump({"name": "test_checks", "filepath": "", "checks": []}, f)
 
-        result = self.service.validate_checks_yaml(checks_yaml_path)
+        result = self.service.validate_checks_yaml()
         assert result["valid"]
         assert len(result["checks"]) == 1
         assert result["checks"][0]["name"] == "Test Checks"
@@ -45,7 +56,7 @@ class TestValidationService:
                 {"checks": [{"name": "Test Checks", "filepath": "nonexistent.yaml"}]}, f
             )
 
-        result = self.service.validate_checks_yaml(checks_yaml_path)
+        result = self.service.validate_checks_yaml()
         assert not result["valid"]
         assert "not found" in result["message"]
 
@@ -55,7 +66,7 @@ class TestValidationService:
         with open(checks_yaml_path, "w") as f:
             yaml.dump({"invalid": "format"}, f)
 
-        result = self.service.validate_checks_yaml(checks_yaml_path)
+        result = self.service.validate_checks_yaml()
         assert not result["valid"]
         assert "missing 'checks' section" in result["message"]
 
@@ -82,8 +93,18 @@ class TestExecutionService:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.service = ExecutionService()
         self.temp_dir = tempfile.mkdtemp()
+
+        # Create a temporary config file that points to our test checks.yaml
+        config_file_path = os.path.join(self.temp_dir, "test_config.toml")
+        with open(config_file_path, "w") as f:
+            f.write(f"""[quality]
+checks_path = "{os.path.join(self.temp_dir, "checks.yaml")}"
+""")
+
+        # Create ExecutionService with custom config file
+        config_service = ConfigService(config_file=config_file_path)
+        self.service = ExecutionService(config_service=config_service)
 
     def teardown_method(self):
         """Clean up test fixtures."""
@@ -120,7 +141,7 @@ class TestExecutionService:
                 f,
             )
 
-        result = self.service.execute_checks(checks_yaml_path)
+        result = self.service.execute_checks()
         assert result["success"]
         assert result["total_checks"] == 1
         assert result["passed_checks"] == 1
@@ -150,7 +171,7 @@ class TestExecutionService:
                 f,
             )
 
-        result = self.service.execute_checks(checks_yaml_path)
+        result = self.service.execute_checks()
         assert not result["success"]
         assert result["total_checks"] == 1
         assert result["passed_checks"] == 0
@@ -164,7 +185,7 @@ class TestExecutionService:
                 {"checks": [{"name": "Test Checks", "filepath": "nonexistent.yaml"}]}, f
             )
 
-        result = self.service.execute_checks(checks_yaml_path)
+        result = self.service.execute_checks()
         assert not result["success"]
         assert len(result["results"]) == 1
         assert "not found" in result["results"][0]["message"]
@@ -188,9 +209,19 @@ class TestIntegration:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.validation_service = ValidationService()
-        self.execution_service = ExecutionService()
         self.temp_dir = tempfile.mkdtemp()
+
+        # Create a temporary config file that points to our test checks.yaml
+        config_file_path = os.path.join(self.temp_dir, "test_config.toml")
+        with open(config_file_path, "w") as f:
+            f.write(f"""[quality]
+checks_path = "{os.path.join(self.temp_dir, "checks.yaml")}"
+""")
+
+        # Create services with custom config file
+        config_service = ConfigService(config_file=config_file_path)
+        self.validation_service = ValidationService(config_service=config_service)
+        self.execution_service = ExecutionService(config_service=config_service)
 
     def teardown_method(self):
         """Clean up test fixtures."""
@@ -230,13 +261,11 @@ class TestIntegration:
             )
 
         # Step 1: Validate
-        validation_result = self.validation_service.validate_checks_yaml(
-            checks_yaml_path
-        )
+        validation_result = self.validation_service.validate_checks_yaml()
         assert validation_result["valid"]
 
         # Step 2: Execute
-        execution_result = self.execution_service.execute_checks(checks_yaml_path)
+        execution_result = self.execution_service.execute_checks()
         assert execution_result["success"]
         assert execution_result["total_checks"] == 1
         assert execution_result["passed_checks"] == 1
@@ -247,6 +276,8 @@ class TestMixedFormatValidation:
 
     def setup_method(self):
         """Set up test fixtures."""
+        # TestMixedFormatValidation uses temporary directories, so we'll configure
+        # the service dynamically in each test
         self.service = ValidationService()
 
     def test_mixed_format_validation(self):
@@ -276,8 +307,18 @@ checks:
     filepath: "commands.yaml"
 """)
 
+            # Create a config service that points to our test checks.yaml
+            config_file_path = os.path.join(temp_dir, "test_config.toml")
+            with open(config_file_path, "w") as f:
+                f.write(f"""[quality]
+checks_path = "{checks_yaml}"
+""")
+
+            config_service = ConfigService(config_file=config_file_path)
+            test_service = ValidationService(config_service=config_service)
+
             # Validate the mixed format file
-            result = self.service.validate_checks_yaml(checks_yaml)
+            result = test_service.validate_checks_yaml()
 
             # Should be valid
             assert result["valid"]
@@ -325,8 +366,18 @@ checks:
     command: ["echo", "main"]
 """)
 
+            # Create a config service that points to our test checks.yaml
+            config_file_path = os.path.join(temp_dir, "test_config.toml")
+            with open(config_file_path, "w") as f:
+                f.write(f"""[quality]
+checks_path = "{checks_yaml}"
+""")
+
+            config_service = ConfigService(config_file=config_file_path)
+            test_service = ValidationService(config_service=config_service)
+
             # Validate the nested references
-            result = self.service.validate_checks_yaml(checks_yaml)
+            result = test_service.validate_checks_yaml()
 
             # Should be valid
             assert result["valid"]
@@ -356,8 +407,18 @@ checks:
     invalid_field: "value"
 """)
 
+            # Create a config service that points to our test checks.yaml
+            config_file_path = os.path.join(temp_dir, "test_config.toml")
+            with open(config_file_path, "w") as f:
+                f.write(f"""[quality]
+checks_path = "{checks_yaml}"
+""")
+
+            config_service = ConfigService(config_file=config_file_path)
+            test_service = ValidationService(config_service=config_service)
+
             # Should be invalid
-            result = self.service.validate_checks_yaml(checks_yaml)
+            result = test_service.validate_checks_yaml()
             assert not result["valid"]
             assert (
                 "Check must have either 'filepath' or 'check_type'" in result["message"]

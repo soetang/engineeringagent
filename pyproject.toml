@@ -43,3 +43,9 @@ lint.extend-ignore = [
 [tool.pyrefly]
 # Configure Pyrefly to exclude test directories
 project_excludes = ["tests/", "test_*.py"]
+
+[tool.pytest.ini_options]
+addopts = ["-m", "not integration", "--strict-markers" , "-q"]
+markers = [
+    "integration: mark tests as integration tests",
+]

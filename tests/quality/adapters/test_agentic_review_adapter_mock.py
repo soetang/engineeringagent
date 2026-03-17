@@ -11,6 +11,11 @@ from developer.agents.protocol import AgentProtocol
 class MockAgent(AgentProtocol):
     """Mock agent for testing without requiring actual Codex CLI."""
 
+    def __init__(self, profile: Optional[str] = None, model: Optional[str] = None):
+        """Initialize mock agent."""
+        self.profile = profile
+        self.model = model
+
     def run_agent(
         self,
         prompt: str,

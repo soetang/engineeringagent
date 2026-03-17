@@ -15,8 +15,8 @@ def validate():
     # Initialize validation service
     validation_service = ValidationService()
 
-    # Validate the checks.yaml file
-    result = validation_service.validate_checks_yaml("harness/checks.yaml")
+    # Validate the checks.yaml file (uses config-based path)
+    result = validation_service.validate_checks_yaml()
 
     if result["valid"]:
         typer.echo(typer.style("✓ Validation successful!", typer.colors.GREEN))
@@ -39,8 +39,8 @@ def run():
     # Initialize execution service
     execution_service = ExecutionService()
 
-    # Execute the checks
-    result = execution_service.execute_checks("harness/checks.yaml")
+    # Execute the checks (uses config-based path)
+    result = execution_service.execute_checks()
 
     if result["success"]:
         typer.echo(typer.style("✓ All checks passed!", typer.colors.GREEN))

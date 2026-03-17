@@ -1,26 +1,34 @@
-from typing import Dict, Any
-import yaml
 import os
 from pathlib import Path
+from typing import Any, Dict, Optional
+
+import yaml
 from pydantic import ValidationError
-from ..models import create_dynamic_quality_spec
+
+from developer.config.service import ConfigService
+from developer.quality.settings import QualitySettings
+
 from ..adapters import get_adapters
+from ..models import create_dynamic_quality_spec
 
 
 class ValidationService:
     """Service for validating quality check configuration files."""
 
-    def __init__(self):
+    def __init__(self, config_service: Optional[ConfigService] = None):
         """Initialize with dynamic quality spec based on available adapters."""
         self.DynamicQualitySpec = create_dynamic_quality_spec()
         self.supported_check_types = {
             adapter["check_type"] for adapter in get_adapters()
         }
+        self.config_service = config_service or ConfigService()
 
-    def validate_checks_yaml(
-        self, file_path: str = "harness/checks.yaml"
-    ) -> Dict[str, Any]:
+    def validate_checks_yaml(self) -> Dict[str, Any]:
         """Validate the main checks.yaml file and all referenced files."""
+        # Use config-based path if not provided
+        settings = self.config_service.get_config("quality", QualitySettings)
+        file_path = settings.checks_path
+
         try:
             with open(file_path, "r") as f:
                 checks_config = yaml.safe_load(f)
