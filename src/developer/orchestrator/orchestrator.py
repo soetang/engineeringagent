@@ -1,6 +1,11 @@
 """Loop-based orchestrator for iterative agent execution."""
 
-from .models import AgentResult, CompletionResult, GatePhase, OrchestratorOutcome
+from .models import (
+    AgentResult,
+    CompletionResult,
+    GatePhase,
+    OrchestratorOutcome,
+)
 from .protocols import AgentRunner, CompletionJudge, GateRunner, PromptBuilder
 
 
@@ -30,7 +35,11 @@ class AgentOrchestrator:
         self._completion_judge = completion_judge
         self._max_iterations = max_iterations
 
-    def run(self, task: str, injections: dict | None = None) -> OrchestratorOutcome:
+    def run(
+        self,
+        task: str,
+        injections: dict | None = None,
+    ) -> OrchestratorOutcome:
         """Run the orchestrator loop for a single task.
 
         Args:
@@ -41,23 +50,21 @@ class AgentOrchestrator:
             OrchestratorOutcome: minimal loop result payload.
         """
         feedback: str | None = None
-        iterations = 0
         base_injections = dict(injections or {})
         base_injections["task"] = task
 
-        while iterations < self._max_iterations:
-            iterations += 1
-
-            attempt_context = dict(base_injections)
-            attempt_context["feedback"] = feedback
-            attempt_context["iteration"] = iterations
+        for iterations in range(1, self._max_iterations + 1):
+            attempt_context = {
+                **base_injections,
+                "feedback": feedback,
+                "iteration": iterations,
+            }
 
             prompt = self._prompt_builder.build(attempt_context)
             _ = self._agent_runner.run_agent(prompt, output_format=AgentResult)
 
-            fast_gate = self._gate_runner.check(GatePhase.ITERATION_COMPLETE)
-            if not fast_gate.passed:
-                feedback = fast_gate.feedback
+            feedback = self._run_gate_feedback(GatePhase.ITERATION_COMPLETE)
+            if feedback is not None:
                 continue
 
             completion = self._completion_judge.is_complete()
@@ -65,11 +72,17 @@ class AgentOrchestrator:
                 feedback = None
                 continue
 
-            final_gate = self._gate_runner.check(GatePhase.IMPLEMENTATION_COMPLETE)
-            if not final_gate.passed:
-                feedback = final_gate.feedback
+            feedback = self._run_gate_feedback(GatePhase.IMPLEMENTATION_COMPLETE)
+            if feedback is not None:
                 continue
 
             return OrchestratorOutcome(status="success", iterations=iterations)
 
         return OrchestratorOutcome(status="failed", iterations=iterations)
+
+    def _run_gate_feedback(self, phase: GatePhase) -> str | None:
+        """Run a gate for a phase and return feedback when it fails."""
+        gate_result = self._gate_runner.check(phase, stop_on_first_failure=True)
+        if gate_result.passed:
+            return None
+        return gate_result.feedback

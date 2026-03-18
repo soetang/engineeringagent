@@ -66,7 +66,7 @@ class ValidationService:
             "direct_check": True,
         }
 
-    def __init__(self, config_service: Optional[ConfigService] = ConfigService()):
+    def __init__(self, config_service: Optional[ConfigService] = None):
         """Initialize with dynamic quality spec based on available adapters."""
         self.DynamicQualitySpec = create_dynamic_quality_spec()
         self.supported_check_types = {

@@ -1,6 +1,6 @@
 """Protocol interfaces for orchestrator dependencies."""
 
-from typing import Optional, Protocol, Type
+from typing import Protocol, Type
 
 from pydantic import BaseModel
 
@@ -21,7 +21,7 @@ class AgentRunner(Protocol):
     def run_agent(
         self,
         prompt: str,
-        output_format: Optional[Type[BaseModel]] = None,
+        output_format: Type[BaseModel] | None = None,
     ) -> BaseModel | str:
         """Execute the agent and return the parsed output."""
         ...
@@ -30,7 +30,9 @@ class AgentRunner(Protocol):
 class GateRunner(Protocol):
     """Runs quality gates for a given phase."""
 
-    def check(self, phase: GatePhase) -> GateResult:
+    def check(
+        self, phase: GatePhase, stop_on_first_failure: bool = False
+    ) -> GateResult:
         """Run the requested phase gate and return pass/fail state."""
         ...
 

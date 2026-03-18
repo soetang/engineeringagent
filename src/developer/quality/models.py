@@ -1,6 +1,8 @@
 from typing import List, Union, Type
 from pydantic import BaseModel, Field, ConfigDict, create_model
 
+from developer.orchestrator.models import GatePhase
+
 
 class CheckList(BaseModel):
     """Represents a list of checks defined in an external file."""
@@ -22,6 +24,10 @@ class CheckType(BaseModel):
     check_category: str = Field(
         default="",
         description="Semantic category of check (e.g., 'linting', 'fitness')",
+    )
+    phase: GatePhase = Field(
+        default=GatePhase.ITERATION_COMPLETE,
+        description="Execution phase for the check.",
     )
 
 

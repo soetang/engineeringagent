@@ -46,11 +46,15 @@ class FakeGateRunner:
     def __init__(self, checks: Iterable[models.GateResult]) -> None:
         """Initialize scripted gate check results."""
         self.checks = list(checks)
-        self.calls: list[models.GatePhase] = []
+        self.calls: list[tuple[models.GatePhase, bool]] = []
 
-    def check(self, phase: models.GatePhase) -> models.GateResult:
+    def check(
+        self,
+        phase: models.GatePhase,
+        stop_on_first_failure: bool = False,
+    ) -> models.GateResult:
         """Return the next scripted gate result."""
-        self.calls.append(phase)
+        self.calls.append((phase, stop_on_first_failure))
         return self.checks.pop(0)
 
 
@@ -246,3 +250,38 @@ def test_max_iterations_complete_in_last_iteration() -> None:
     assert outcome.status == "success"
     assert outcome.iterations == 3
     assert len(prompt_builder.inputs) == 3
+
+
+def test_orchestrator_force_single_failure_feedback() -> None:
+    """Gate calls should use stop-on-first-failure mode."""
+    prompt_builder = FakePromptBuilder()
+    agent_runner = FakeAgentRunner(["first", "second", "third"])
+    gate_runner = FakeGateRunner(
+        [
+            models.GateResult(passed=False, feedback="iteration failure"),
+            models.GateResult(passed=True),
+            models.GateResult(passed=True),
+            models.GateResult(passed=True),
+        ]
+    )
+    completion_judge = FakeCompletionJudge(
+        [
+            models.CompletionResult.INCOMPLETE,
+            models.CompletionResult.COMPLETE,
+        ]
+    )
+
+    orchestrator = AgentOrchestrator(
+        prompt_builder=prompt_builder,
+        agent_runner=agent_runner,
+        gate_runner=gate_runner,
+        completion_judge=completion_judge,
+        max_iterations=3,
+    )
+    outcome = orchestrator.run("failing task")
+
+    assert outcome.iterations == 3
+    assert outcome.status == "success"
+    assert all(stop for _, stop in gate_runner.calls)
+    assert (models.GatePhase.ITERATION_COMPLETE, True) in gate_runner.calls
+    assert (models.GatePhase.IMPLEMENTATION_COMPLETE, True) in gate_runner.calls

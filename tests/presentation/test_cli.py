@@ -46,7 +46,7 @@ checks:
         assert result.exit_code == 0
         assert "Running quality checks..." in result.output
         assert "✓ All checks passed!" in result.output
-        assert "Executed 1 checks: 1 passed, 0 failed" in result.output
+        assert "✗ Some checks failed!" not in result.output
 
 
 def test_cli_check_without_checks_yaml():
@@ -69,6 +69,153 @@ checks_path = "harness/checks.yaml"
         assert "No such file or directory" in result.output
 
 
+def test_cli_check_phase_option_runs_selected_phase() -> None:
+    """Pass only implementation checks when requested."""
+    runner = CliRunner()
+
+    with runner.isolated_filesystem():
+        harness_dir = Path(".") / "harness"
+        harness_dir.mkdir()
+
+        config_file = Path(".") / "engineeringagent.toml"
+        config_file.write_text(f"""[quality]
+checks_path = "{harness_dir / "checks.yaml"}"
+""")
+
+        checks_yaml = harness_dir / "checks.yaml"
+        checks_yaml.write_text("""checks:
+  - name: "Test Check"
+    filepath: "test.yaml"
+""")
+
+        test_yaml = harness_dir / "test.yaml"
+        test_yaml.write_text("""name: "test"
+filepath: ""
+checks:
+  - check_type: "command"
+    phase: "ImplementationComplete"
+    command: ["python", "-c", "import sys; sys.exit(1)"]
+""")
+
+        result = runner.invoke(
+            app,
+            [
+                "check",
+                "run",
+                "--phase",
+                "ImplementationComplete",
+            ],
+        )
+
+        assert result.exit_code == 1
+        assert "✗ Some checks failed!" in result.output
+        assert "Command failed with return code 1" in result.output
+
+
+def test_cli_check_default_phase_is_iteration() -> None:
+    """Omitting --phase should run IterationComplete."""
+    runner = CliRunner()
+
+    with runner.isolated_filesystem():
+        harness_dir = Path(".") / "harness"
+        harness_dir.mkdir()
+
+        config_file = Path(".") / "engineeringagent.toml"
+        config_file.write_text(f"""[quality]
+checks_path = "{harness_dir / "checks.yaml"}"
+""")
+
+        checks_yaml = harness_dir / "checks.yaml"
+        checks_yaml.write_text("""checks:
+  - name: "Test Check"
+    filepath: "test.yaml"
+""")
+
+        test_yaml = harness_dir / "test.yaml"
+        test_yaml.write_text("""name: "test"
+filepath: ""
+checks:
+  - check_type: "command"
+    command: ["echo", "ok"]
+""")
+
+        result = runner.invoke(app, ["check", "run"])
+
+        assert result.exit_code == 0
+        assert "✓ All checks passed!" in result.output
+
+
+def test_cli_check_runs_all_checks_by_default() -> None:
+    """Without an explicit failure-short-circuit option, all checks run."""
+    runner = CliRunner()
+
+    with runner.isolated_filesystem():
+        harness_dir = Path(".") / "harness"
+        harness_dir.mkdir()
+
+        config_file = Path(".") / "engineeringagent.toml"
+        config_file.write_text(f"""[quality]
+checks_path = "{harness_dir / "checks.yaml"}"
+""")
+
+        checks_yaml = harness_dir / "checks.yaml"
+        checks_yaml.write_text("""checks:
+  - name: "Test Check"
+    filepath: "test.yaml"
+""")
+
+        test_yaml = harness_dir / "test.yaml"
+        test_yaml.write_text("""name: "test"
+filepath: ""
+checks:
+  - check_type: "command"
+    command: ["python", "-c", "import sys; sys.exit(1)"]
+  - check_type: "command"
+    command: ["python", "-c", "open('ran_second_command.txt', 'w').write('done')"]
+""")
+
+        result = runner.invoke(app, ["check", "run"])
+
+        assert result.exit_code == 1
+        assert "✗ Some checks failed!" in result.output
+        assert Path("ran_second_command.txt").exists() is True
+        assert "1." in result.output and "2." in result.output
+
+
+def test_cli_check_displays_each_check_entry() -> None:
+    """Check command should include individual check lines in output."""
+    runner = CliRunner()
+
+    with runner.isolated_filesystem():
+        fictive_dir = Path(".") / "fictive_project"
+        fictive_dir.mkdir()
+
+        config_file = Path(".") / "engineeringagent.toml"
+        config_file.write_text(f"""[quality]
+checks_path = "{fictive_dir / "fictive_checks.yaml"}"
+""")
+
+        checks_yaml = fictive_dir / "fictive_checks.yaml"
+        checks_yaml.write_text("""checks:
+  - name: "Fictive Check"
+    filepath: "fictive_suite.yaml"
+""")
+
+        test_yaml = fictive_dir / "fictive_suite.yaml"
+        test_yaml.write_text("""name: "test"
+filepath: ""
+checks:
+  - check_type: "command"
+    command: ["echo", "check_one"]
+""")
+
+        result = runner.invoke(app, ["check", "run"])
+
+        assert result.exit_code == 0
+        assert "[command] echo check_one" in result.output
+        assert "1. ✓" in result.output
+
+
 def test_cli_check_help():
     """Test the CLI check command help."""
     runner = CliRunner()
@@ -78,3 +225,4 @@ def test_cli_check_help():
     # Validate that subcommands are listed in help output
     assert "run" in result.output
     assert "validate" in result.output
+    assert "--stop-on-first-failure" not in result.output

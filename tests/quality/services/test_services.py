@@ -1,7 +1,8 @@
 import yaml
 import tempfile
 import os
-from developer.quality.services import ValidationService, ExecutionService
+from developer.quality.services import CheckGateRunner, ValidationService
+from developer.orchestrator.models import GatePhase
 from developer.config.service import ConfigService
 
 
@@ -88,8 +89,8 @@ checks_path = "{os.path.join(self.temp_dir, "checks.yaml")}"
         assert not result["valid"]
 
 
-class TestExecutionService:
-    """Tests for the ExecutionService."""
+class TestCheckGateRunner:
+    """Tests for the CheckGateRunner service."""
 
     def setup_method(self):
         """Set up test fixtures."""
@@ -102,9 +103,9 @@ class TestExecutionService:
 checks_path = "{os.path.join(self.temp_dir, "checks.yaml")}"
 """)
 
-        # Create ExecutionService with custom config file
+        # Create CheckGateRunner with custom config file
         config_service = ConfigService(config_file=config_file_path)
-        self.service = ExecutionService(config_service=config_service)
+        self.service = CheckGateRunner(config_service=config_service)
 
     def teardown_method(self):
         """Clean up test fixtures."""
@@ -190,6 +191,133 @@ checks_path = "{os.path.join(self.temp_dir, "checks.yaml")}"
         assert len(result["results"]) == 1
         assert "not found" in result["results"][0]["message"]
 
+    def test_check_with_default_phase_matches_iteration_complete(self):
+        """Checks without explicit phase execute as iteration-complete."""
+        checks_yaml_path = os.path.join(self.temp_dir, "checks.yaml")
+        with open(checks_yaml_path, "w") as f:
+            yaml.dump(
+                {
+                    "checks": [
+                        {
+                            "name": "Default phase check",
+                            "filepath": "test_checks.yaml",
+                        }
+                    ]
+                },
+                f,
+            )
+
+        ref_file_path = os.path.join(self.temp_dir, "test_checks.yaml")
+        with open(ref_file_path, "w") as f:
+            yaml.dump(
+                {
+                    "name": "test_checks",
+                    "filepath": "",
+                    "checks": [
+                        {"check_type": "command", "command": ["echo", "iter default"]}
+                    ],
+                },
+                f,
+            )
+
+        result = self.service.run_checks_for_phase(GatePhase.ITERATION_COMPLETE)
+
+        assert result["success"]
+        assert result["total_checks"] == 1
+        assert result["passed_checks"] == 1
+
+    def test_phase_filtering_executes_only_matching_checks(self):
+        """Run exactly one phase when multiple phases are configured."""
+        checks_yaml_path = os.path.join(self.temp_dir, "checks.yaml")
+        with open(checks_yaml_path, "w") as f:
+            yaml.dump(
+                {
+                    "checks": [
+                        {
+                            "name": "Mixed checks",
+                            "filepath": "mixed_checks.yaml",
+                        }
+                    ]
+                },
+                f,
+            )
+
+        mixed_file_path = os.path.join(self.temp_dir, "mixed_checks.yaml")
+        with open(mixed_file_path, "w") as f:
+            yaml.dump(
+                {
+                    "name": "mixed",
+                    "filepath": "",
+                    "checks": [
+                        {"check_type": "command", "command": ["echo", "iter"]},
+                        {
+                            "check_type": "command",
+                            "phase": "ImplementationComplete",
+                            "command": ["echo", "impl"],
+                        },
+                    ],
+                },
+                f,
+            )
+
+        iter_result = self.service.run_checks_for_phase(GatePhase.ITERATION_COMPLETE)
+        impl_result = self.service.run_checks_for_phase(
+            GatePhase.IMPLEMENTATION_COMPLETE
+        )
+
+        assert iter_result["success"]
+        assert iter_result["total_checks"] == 1
+        assert impl_result["success"]
+        assert impl_result["total_checks"] == 1
+
+    def test_stop_on_first_failure_short_circuits_execution(self):
+        """Stop on first failure should avoid executing later checks."""
+        checks_yaml_path = os.path.join(self.temp_dir, "checks.yaml")
+        with open(checks_yaml_path, "w") as f:
+            yaml.dump(
+                {
+                    "checks": [
+                        {
+                            "name": "Three checks",
+                            "filepath": "three_checks.yaml",
+                        }
+                    ]
+                },
+                f,
+            )
+
+        three_checks_path = os.path.join(self.temp_dir, "three_checks.yaml")
+        with open(three_checks_path, "w") as f:
+            yaml.dump(
+                {
+                    "name": "three_checks",
+                    "filepath": "",
+                    "checks": [
+                        {"check_type": "command", "command": ["false"]},
+                        {
+                            "check_type": "command",
+                            "command": ["echo", "should be skipped"],
+                        },
+                        {"check_type": "command", "command": ["true"]},
+                    ],
+                },
+                f,
+            )
+
+        short_circuit_result = self.service.run_checks_for_phase(
+            GatePhase.ITERATION_COMPLETE,
+            stop_on_first_failure=True,
+        )
+        full_result = self.service.run_checks_for_phase(
+            GatePhase.ITERATION_COMPLETE,
+            stop_on_first_failure=False,
+        )
+
+        assert short_circuit_result["total_checks"] == 1
+        assert short_circuit_result["failed_checks"] == 1
+        assert full_result["total_checks"] == 3
+        assert full_result["failed_checks"] == 1
+
     def test_execute_single_spec(self):
         """Test execution of a single quality specification."""
         spec = {
@@ -221,7 +349,7 @@ checks_path = "{os.path.join(self.temp_dir, "checks.yaml")}"
         # Create services with custom config file
         config_service = ConfigService(config_file=config_file_path)
         self.validation_service = ValidationService(config_service=config_service)
-        self.execution_service = ExecutionService(config_service=config_service)
+        self.execution_service = CheckGateRunner(config_service=config_service)
 
     def teardown_method(self):
         """Clean up test fixtures."""
