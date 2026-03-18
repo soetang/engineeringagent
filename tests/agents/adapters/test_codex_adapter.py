@@ -111,11 +111,12 @@ def test_real_pydantic_output_math():
 @pytest.mark.integration
 def test_real_pydantic_output_files(temp_stub_dir):
     """Test real CLI with pydantic model output for file listing."""
-    adapter = CodexAdapter(model="gpt-5.3-codex-spark", profile="test")
+    adapter = CodexAdapter(
+        model="gpt-5.3-codex-spark", profile="test", path=str(temp_stub_dir)
+    )
     result = adapter.run_agent(
         prompt="List Python files in current directory as JSON",
         output_format=FileListResult,
-        path=temp_stub_dir,  # Use temporary directory
     )
 
     assert isinstance(result, FileListResult)

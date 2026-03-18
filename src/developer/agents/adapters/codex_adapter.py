@@ -12,16 +12,21 @@ from developer.agents.protocol import AgentProtocol, TModel
 class CodexAdapter(AgentProtocol):
     """Codex CLI adapter implementing AgentProtocol."""
 
-    def __init__(self, profile: Optional[str] = None, model: Optional[str] = None):
+    def __init__(
+        self,
+        profile: Optional[str] = None,
+        model: Optional[str] = None,
+        path: Optional[str] = None,
+    ):
         """Initialize Codex adapter with profile and model configuration."""
         self.profile = profile
         self.model = model
+        self.path = path
 
     def run_agent(
         self,
         prompt: str,
         output_format: Optional[Type[TModel]] = None,
-        path: Optional[str] = None,
     ) -> TModel | str:
         """Execute agent with prompt, return structured output or string."""
         # For model output, we need to write schema to temp file
@@ -37,7 +42,7 @@ class CodexAdapter(AgentProtocol):
         try:
             # Build command
             cmd = self._build_codex_command(
-                prompt, self.model, self.profile, path, schema_path
+                prompt, self.model, self.profile, schema_path
             )
 
             # Execute command
@@ -75,7 +80,6 @@ class CodexAdapter(AgentProtocol):
         prompt: str,
         model: Optional[str] = None,
         profile: Optional[str] = None,
-        path: Optional[str] = None,
         output_schema: Optional[str] = None,
     ) -> list[str]:
         """Build codex CLI command with common options."""
@@ -88,11 +92,11 @@ class CodexAdapter(AgentProtocol):
             cmd.extend(["--model", model])
 
         # Resolve profile to config overrides (checks local config first)
-        profile_args = self._resolve_profile_config(profile, path)
+        profile_args = self._resolve_profile_config(profile)
         cmd.extend(profile_args)
 
-        if path:
-            cmd.extend(["--cd", path])
+        if self.path:
+            cmd.extend(["--cd", self.path])
 
         return cmd
 
@@ -111,17 +115,15 @@ class CodexAdapter(AgentProtocol):
 
         return schema
 
-    def _resolve_profile_config(
-        self, profile: Optional[str] = None, path: Optional[str] = None
-    ) -> list:
+    def _resolve_profile_config(self, profile: Optional[str] = None) -> list:
         """Resolve profile settings to config overrides, checking local config first."""
         if not profile:
             return []
 
         # Try to read from local .codex/config.toml first
         local_config_path = ".codex/config.toml"
-        if path:
-            local_config_path = os.path.join(path, ".codex/config.toml")
+        if self.path:
+            local_config_path = os.path.join(self.path, ".codex/config.toml")
 
         try:
             import tomllib

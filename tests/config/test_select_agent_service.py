@@ -103,3 +103,13 @@ def test_select_agent_service_factory_function():
     # This is fine for our use case
     service2 = get_agent_service()
     assert isinstance(service2, SelectAgentService)
+
+
+def test_select_agent_service_with_path():
+    """Test SelectAgentService passes path to the selected agent."""
+    service = SelectAgentService()
+
+    agent = service.select_agent(backend="vibe", path="/tmp")
+
+    assert isinstance(agent, VibeAdapter)
+    assert agent.path == "/tmp"

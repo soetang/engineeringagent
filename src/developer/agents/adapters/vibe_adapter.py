@@ -10,16 +10,21 @@ from developer.agents.protocol import AgentProtocol, TModel
 class VibeAdapter(AgentProtocol):
     """Vibe CLI adapter implementing AgentProtocol."""
 
-    def __init__(self, profile: Optional[str] = None, model: Optional[str] = None):
+    def __init__(
+        self,
+        profile: Optional[str] = None,
+        model: Optional[str] = None,
+        path: Optional[str] = None,
+    ):
         """Initialize Vibe adapter with profile and model configuration."""
         self.profile = profile
         self.model = model
+        self.path = path
 
     def run_agent(
         self,
         prompt: str,
         output_format: Optional[Type[TModel]] = None,
-        path: Optional[str] = None,
     ) -> TModel | str:
         """Execute agent with prompt, return structured output or string."""
         # Build and execute command
@@ -29,9 +34,9 @@ class VibeAdapter(AgentProtocol):
             schema = self._generate_schema(output_format)
             schema_str = json.dumps(schema, indent=2)
             full_prompt = f"Return JSON matching this schema:\n```json\n{schema_str}\n```\n\n{prompt}"
-            cmd = self._build_vibe_command(full_prompt, self.model, path)
+            cmd = self._build_vibe_command(full_prompt, self.model)
         else:
-            cmd = self._build_vibe_command(prompt, self.model, path)
+            cmd = self._build_vibe_command(prompt, self.model)
 
         # Execute subprocess command
         try:
@@ -87,7 +92,6 @@ class VibeAdapter(AgentProtocol):
         self,
         prompt: str,
         model: Optional[str] = None,
-        path: Optional[str] = None,
     ) -> list[str]:
         """Build vibe CLI command with common options."""
         cmd = ["vibe", "-p", prompt, "--output", "json"]
@@ -95,8 +99,8 @@ class VibeAdapter(AgentProtocol):
         if model:
             cmd.extend(["--agent", model])
 
-        if path:
-            cmd.extend(["--workdir", path])
+        if self.path:
+            cmd.extend(["--workdir", self.path])
 
         return cmd
 

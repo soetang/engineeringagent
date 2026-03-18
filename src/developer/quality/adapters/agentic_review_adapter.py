@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List, Optional
+from typing import List, Optional, Protocol
 
 from pydantic import BaseModel, Field
 
@@ -43,6 +43,16 @@ class ReviewOutput(BaseModel):
         return schema
 
 
+class _AgentSelectionService(Protocol):
+    def select_agent(
+        self,
+        backend: Optional[str] = ...,
+        profile: Optional[str] = None,
+        model: Optional[str] = None,
+        path: Optional[str] = None,
+    ) -> AgentProtocol: ...
+
+
 class AgenticReviewCheck(CheckType):
     """Represents an agentic code review check."""
 
@@ -72,24 +82,9 @@ class AgenticReviewCheck(CheckType):
 class AgenticReviewAdapter(CheckAdapter):
     """Adapter for running agentic code reviews as quality checks."""
 
-    def __init__(
-        self, agent: Optional[AgentProtocol] = None, backend: Optional[str] = None
-    ):
-        """Initialize the adapter with an optional agent protocol and backend."""
-        self.agent_service = get_agent_service()
-        if agent:
-            self.agent = agent
-        else:
-            self.agent = self.agent_service.select_agent(backend=backend)
-
-    def _get_agent_for_check(self, check: AgenticReviewCheck) -> AgentProtocol:
-        """Get agent for a specific check, using check parameters or defaults."""
-        if check.backend is None and self.agent is not None:
-            return self.agent
-
-        return self.agent_service.select_agent(
-            backend=check.backend, profile=check.profile, model=check.model
-        )
+    def __init__(self, agent_service: _AgentSelectionService | None = None):
+        """Initialize the adapter and default agent service selection."""
+        self.agent_service = agent_service or get_agent_service()
 
     def run_check(self, checks: List[AgenticReviewCheck]) -> CheckResultList:
         """Run the agentic review checks and return the results."""
@@ -97,8 +92,13 @@ class AgenticReviewAdapter(CheckAdapter):
 
         for check in checks:
             try:
-                # Get the appropriate agent for this check
-                agent_for_check = self._get_agent_for_check(check)
+                # Select the right agent for this check.
+                agent_for_check = self.agent_service.select_agent(
+                    backend=check.backend,
+                    profile=check.profile,
+                    model=check.model,
+                    path=check.path,
+                )
 
                 # Read and execute the prompt
                 with open(check.prompt_path, "r") as f:
@@ -109,7 +109,6 @@ class AgenticReviewAdapter(CheckAdapter):
                 review_output = agent_for_check.run_agent(
                     prompt=prompt,
                     output_format=ReviewOutput,  # type: ignore[arg-type]
-                    path=check.path,
                 )
 
                 # Ensure review_output is a ReviewOutput object

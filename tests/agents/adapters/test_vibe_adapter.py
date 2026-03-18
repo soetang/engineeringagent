@@ -62,7 +62,8 @@ class TestVibeAdapter:
         test_file = tmp_path / "test.txt"
         test_file.write_text("Hello from temp directory!")
 
-        result = vibe_adapter.run_agent("What is in test.txt?", path=str(tmp_path))
+        adapter = VibeAdapter(path=str(tmp_path))
+        result = adapter.run_agent("What is in test.txt?")
 
         assert isinstance(result, str)
         assert "Hello from temp directory" in result

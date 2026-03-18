@@ -1,75 +1,98 @@
-import tempfile
 import os
-import shutil
-from typing import List, Optional, Type, Union
-from pydantic import BaseModel
+from typing import List, Optional, Type
+
 import pytest
+from pydantic import BaseModel
+
 from developer.agents.protocol import AgentProtocol
-from developer.quality.adapters import AgenticReviewAdapter, AgenticReviewCheck
+from developer.quality.adapters.agentic_review_adapter import (
+    AgenticReviewAdapter,
+    AgenticReviewCheck,
+    ReviewOutput,
+    ReviewStatus,
+)
 from developer.quality.protocol import CheckStatus
 
 
 class MockAgent(AgentProtocol):
-    """Mock agent for testing without requiring actual Codex CLI."""
+    """Mock agent for testing without requiring actual CLI adapters."""
 
-    def __init__(self, profile: Optional[str] = None, model: Optional[str] = None):
-        """Initialize mock agent."""
+    def __init__(
+        self,
+        profile: Optional[str] = None,
+        model: Optional[str] = None,
+        path: Optional[str] = None,
+    ):
         self.profile = profile
         self.model = model
+        self.path = path
 
     def run_agent(
         self,
         prompt: str,
-        output_format: Type[BaseModel] = str,  # type: ignore[type-arg]
-        model: Optional[str] = None,
-        path: Optional[str] = None,
-    ) -> Union[BaseModel, str]:
-        """Mock agent that returns predefined responses."""
-        if output_format == str or output_format is str:
+        output_format: Optional[Type[BaseModel]] = None,
+    ) -> BaseModel | str:
+        """Return mock review output for agentic review tests."""
+        if output_format is None or output_format is str:
             return "Mock response"
 
-        elif issubclass(output_format, BaseModel):
-            # Return a mock review output
-            from developer.quality.adapters.agentic_review_adapter import (
-                ReviewOutput,
-                ReviewStatus,
-            )
-
-            # Simple logic: if prompt contains known functions, approve them
+        if issubclass(output_format, BaseModel):
             if "def hello_world" in prompt:
                 return ReviewOutput(
                     status=ReviewStatus.APPROVED,
                     summary="Code looks good and follows best practices",
                     actions=[],
                 )
-            elif "def test_function_0" in prompt:
+            if "def test_function_0" in prompt:
                 return ReviewOutput(
                     status=ReviewStatus.APPROVED,
                     summary="Test function 0 looks good",
                     actions=[],
                 )
-            elif "def test_function_1" in prompt:
+            if "def test_function_1" in prompt:
                 return ReviewOutput(
                     status=ReviewStatus.FAILED,
                     summary="Test function 1 has issues",
                     actions=["Add proper error handling", "Improve test coverage"],
                 )
-            else:
-                return ReviewOutput(
-                    status=ReviewStatus.NOT_REVIEWABLE,
-                    summary="Cannot review this type of code",
-                    actions=["Need more context to review"],
-                )
+
+            return ReviewOutput(
+                status=ReviewStatus.NOT_REVIEWABLE,
+                summary="Cannot review this type of code",
+                actions=["Need more context to review"],
+            )
+
+        raise ValueError(f"Unsupported output format: {output_format}")
+
+
+class MockAgentService:
+    """Mock agent service returning mock agents for adapter tests."""
+
+    def __init__(self):
+        """Track service selection calls."""
+        self.calls = []
+
+    def select_agent(self, backend=None, profile=None, model=None, path=None):
+        """Return a mock agent for the provided selection params."""
+        self.calls.append(
+            {
+                "backend": backend,
+                "profile": profile,
+                "model": model,
+                "path": path,
+            }
+        )
+        return MockAgent(profile=profile, model=model, path=path)
 
 
 def test_agentic_review_adapter_success():
     """Test that the agentic review adapter can run successful reviews."""
-    # Create a temporary prompt file in current directory (must be git repo for codex)
     prompt_path = "test_review_prompt.txt"
 
     try:
         with open(prompt_path, "w") as f:
-            f.write("""
+            f.write(
+                """\
 Review the following code for quality and provide feedback:
 
 ```python
@@ -81,24 +104,20 @@ Please analyze the code and provide:
 - Status: approved, failed, or not_reviewable
 - Summary of your findings
 - List of recommended actions if any
-""")
+"""
+            )
 
-        # Create the adapter with mock agent
-        adapter = AgenticReviewAdapter(agent=MockAgent())
+        adapter = AgenticReviewAdapter(agent_service=MockAgentService())
 
-        # Create a review check
-        checks: List[BaseModel] = [
+        checks: List[AgenticReviewCheck] = [
             AgenticReviewCheck(
                 check_type="agentic_review",
                 prompt_path=prompt_path,
-                path=".",  # Use current directory
             )
         ]
 
-        # Run the check
         results = adapter.run_check(checks)
 
-        # Verify results
         assert len(results.results) == 1
         result = results.results[0]
 
@@ -108,23 +127,22 @@ Please analyze the code and provide:
         assert "Summary:" in result.message
 
     finally:
-        # Clean up
         try:
             os.unlink(prompt_path)
-        except:
+        except:  # noqa: BLE001
             pass
 
 
 def test_agentic_review_adapter_multiple():
-    """Test that the agentic review adapter can handle multiple reviews."""
-    # Create multiple prompt files in current directory
+    """Test that the adapter can handle multiple reviews."""
     prompt_paths = []
 
     try:
         for i in range(2):
             prompt_path = f"test_review_prompt_{i}.txt"
             with open(prompt_path, "w") as f:
-                f.write(f"""
+                f.write(
+                    f"""\
 Review the following code for quality and provide feedback:
 
 ```python
@@ -136,26 +154,23 @@ Please analyze the code and provide:
 - Status: approved, failed, or not_runnable
 - Summary of your findings
 - List of recommended actions if any
-""")
+"""
+                )
             prompt_paths.append(prompt_path)
 
-        # Create the adapter
-        adapter = AgenticReviewAdapter(agent=MockAgent())
+        adapter = AgenticReviewAdapter(agent_service=MockAgentService())
 
-        # Create multiple review checks
-        checks: List[BaseModel] = [
+        checks: List[AgenticReviewCheck] = [
             AgenticReviewCheck(
-                check_type="agentic_review", prompt_path=prompt_paths[0], path="."
+                check_type="agentic_review", prompt_path=prompt_paths[0]
             ),
             AgenticReviewCheck(
-                check_type="agentic_review", prompt_path=prompt_paths[1], path="."
+                check_type="agentic_review", prompt_path=prompt_paths[1]
             ),
         ]
 
-        # Run the checks
         results = adapter.run_check(checks)
 
-        # Verify we got results for both checks
         assert len(results.results) == 2
 
         for result in results.results:
@@ -165,21 +180,18 @@ Please analyze the code and provide:
             assert "Summary:" in result.message
 
     finally:
-        # Clean up
         for prompt_path in prompt_paths:
             try:
                 os.unlink(prompt_path)
-            except:
+            except:  # noqa: BLE001
                 pass
 
 
 def test_agentic_review_adapter_execution_error():
-    """Test that the agentic review adapter raises exceptions for execution errors."""
-    # Create the adapter
-    adapter = AgenticReviewAdapter(agent=MockAgent())
+    """Test that missing prompt files raise exceptions."""
+    adapter = AgenticReviewAdapter(agent_service=MockAgentService())
 
-    # Test with non-existent prompt file
-    checks: List[BaseModel] = [
+    checks: List[AgenticReviewCheck] = [
         AgenticReviewCheck(
             check_type="agentic_review", prompt_path="/nonexistent/path/prompt.txt"
         )
@@ -193,7 +205,7 @@ def test_agentic_review_adapter_execution_error():
 
 def test_agentic_review_adapter_get_check_type():
     """Test that the adapter returns the correct check type."""
-    adapter = AgenticReviewAdapter(agent=MockAgent())
+    adapter = AgenticReviewAdapter(agent_service=MockAgentService())
 
     check_type = adapter.get_check_type()
 
@@ -201,68 +213,82 @@ def test_agentic_review_adapter_get_check_type():
 
 
 def test_agentic_review_adapter_backend_selection():
-    """Test that the adapter correctly handles backend parameter using mock agent."""
-    from typing import Optional
-    from typing import Optional
-    from developer.agents.protocol import AgentProtocol
-    from developer.agents.adapters.codex_adapter import CodexAdapter
-    from developer.agents.adapters.vibe_adapter import VibeAdapter
-    from developer.quality.adapters.agentic_review_adapter import (
-        ReviewOutput,
-        ReviewStatus,
-    )
+    """Test backend/profile/model/path are forwarded to agent selection."""
 
-    # Create a mock agent that doesn't require actual API calls
-    class MockAgent(AgentProtocol):
-        def __init__(self, name="mock"):
+    class BackendSelectionMockAgent(AgentProtocol):
+        def __init__(
+            self,
+            name="mock",
+            profile: Optional[str] = None,
+            model: Optional[str] = None,
+            path: Optional[str] = None,
+            backend: Optional[str] = None,
+        ):
             self.name = name
+            self.backend = backend
+            self.profile = profile
+            self.model = model
+            self.path = path
             self.calls = []
 
         def run_agent(
             self,
             prompt: str,
-            output_format: type = str,
-            model: Optional[str] = None,
-            profile: Optional[str] = None,
-            path: Optional[str] = None,
-        ):
+            output_format: Optional[Type[BaseModel]] = None,
+        ) -> BaseModel | str:
             self.calls.append(
                 {
                     "prompt": prompt,
                     "output_format": output_format,
-                    "model": model,
-                    "profile": profile,
-                    "path": path,
                 }
             )
 
-            # Return a mock review output
-            if output_format == str:
+            if output_format is None or output_format is str:
                 return "mock response"
-            else:
+            if issubclass(output_format, BaseModel):
                 return ReviewOutput(
                     status=ReviewStatus.APPROVED,
                     summary="Mock review summary",
                     actions=["Mock action 1", "Mock action 2"],
                 )
 
-    # Create a temporary prompt file
+            raise ValueError(f"Unsupported output format: {output_format}")
+
+    class FakeAgentService:
+        def __init__(self):
+            self.calls = []
+
+        def select_agent(self, backend=None, profile=None, model=None, path=None):
+            self.calls.append(
+                {
+                    "backend": backend,
+                    "profile": profile,
+                    "model": model,
+                    "path": path,
+                }
+            )
+            return BackendSelectionMockAgent(
+                name="selected",
+                profile=profile,
+                model=model,
+                path=path,
+                backend=backend,
+            )
+
     prompt_path = "test_backend_prompt.txt"
 
     try:
         with open(prompt_path, "w") as f:
-            f.write("Test prompt content")
+            f.write(
+                """
+def hello_world():
+    return \"Hello, World!\"
+"""
+            )
 
-        # Test 1: Default backend (should use CodexAdapter by default)
-        adapter_default = AgenticReviewAdapter()
-        assert isinstance(adapter_default.agent, CodexAdapter)
+        service = FakeAgentService()
+        adapter = AgenticReviewAdapter(agent_service=service)
 
-        # Test 2: Explicit backend selection in adapter constructor
-        mock_agent = MockAgent("test_backend")
-        adapter_with_backend = AgenticReviewAdapter(agent=mock_agent)
-        assert adapter_with_backend.agent == mock_agent
-
-        # Test 3: Test backend field extraction from AgenticReviewCheck
         check = AgenticReviewCheck(
             check_type="agentic_review",
             prompt_path=prompt_path,
@@ -274,7 +300,6 @@ def test_agentic_review_adapter_backend_selection():
         assert check.profile == "test_profile"
         assert check.model == "test_model"
 
-        # Test 4: Test backend field extraction from raw dict
         raw_check = {
             "check_type": "agentic_review",
             "prompt_path": prompt_path,
@@ -286,42 +311,72 @@ def test_agentic_review_adapter_backend_selection():
         assert raw_check.get("profile") == "test_profile"
         assert raw_check.get("model") == "test_model"
 
-        # Test 5: Test _get_agent_for_check method with new SelectAgentService
-        adapter = AgenticReviewAdapter()
+        checks_no_override = [
+            AgenticReviewCheck(
+                check_type="agentic_review",
+                prompt_path=prompt_path,
+            )
+        ]
+        results = adapter.run_check(checks_no_override)
+        assert len(results.results) == 1
+        assert results.results[0].status == CheckStatus.PASSED
+        assert len(service.calls) == 1
+        assert service.calls[0]["backend"] is None
+        assert service.calls[0]["profile"] is None
+        assert service.calls[0]["model"] is None
+        assert service.calls[0]["path"] is None
 
-        # Test agent selection through the new service
-        check_none = AgenticReviewCheck(
-            check_type="agentic_review", prompt_path=prompt_path
+        service.calls.clear()
+        check_with_path = AgenticReviewCheck(
+            check_type="agentic_review",
+            prompt_path=prompt_path,
+            path="/tmp",
+            backend="vibe",
+            profile="p1",
+            model="m1",
         )
-        agent_none = adapter._get_agent_for_check(check_none)
-        assert isinstance(agent_none, CodexAdapter)  # Should use default from config
+        results = adapter.run_check([check_with_path])
+        assert len(results.results) == 1
+        assert results.results[0].status == CheckStatus.PASSED
+        assert len(service.calls) == 1
+        assert service.calls[0]["backend"] == "vibe"
+        assert service.calls[0]["profile"] == "p1"
+        assert service.calls[0]["model"] == "m1"
+        assert service.calls[0]["path"] == "/tmp"
 
+        service.calls.clear()
         check_vibe = AgenticReviewCheck(
             check_type="agentic_review", prompt_path=prompt_path, backend="vibe"
         )
-        agent_vibe = adapter._get_agent_for_check(check_vibe)
-        assert isinstance(agent_vibe, VibeAdapter)
+        results = adapter.run_check([check_vibe])
+        assert len(results.results) == 1
+        assert len(service.calls) == 1
+        assert service.calls[0]["backend"] == "vibe"
 
-        # Should raise ValueError for unknown backend
+        class FailingAgentService:
+            def select_agent(self, backend=None, profile=None, model=None, path=None):
+                raise ValueError(f"Unknown backend: {backend}")
+
+        adapter = AgenticReviewAdapter(agent_service=FailingAgentService())
         check_unknown = AgenticReviewCheck(
             check_type="agentic_review",
             prompt_path=prompt_path,
             backend="unknown_backend",
         )
-        with pytest.raises(ValueError) as exc_info:
-            adapter._get_agent_for_check(check_unknown)
+        with pytest.raises(Exception) as exc_info:
+            adapter.run_check([check_unknown])
+        assert "Error executing agentic review" in str(exc_info.value)
         assert "Unknown backend: unknown_backend" in str(exc_info.value)
 
     finally:
-        # Clean up
         try:
             os.unlink(prompt_path)
-        except:
+        except:  # noqa: BLE001
             pass
 
 
 def test_agentic_review_adapter_backend_field():
-    """Test that AgenticReviewCheck model accepts backend field."""
+    """Test that AgenticReviewCheck accepts backend/profile/model fields."""
     check = AgenticReviewCheck(
         check_type="agentic_review",
         prompt_path="dummy.txt",

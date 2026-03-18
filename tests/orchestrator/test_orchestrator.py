@@ -31,7 +31,7 @@ class FakeAgentRunner:
         self.results = list(results or ["ok"])
         self.runs = 0
 
-    def run(self, prompt: str, output_format=None) -> models.AgentResult:  # noqa: ARG002
+    def run_agent(self, prompt: str, output_format=None) -> models.AgentResult:
         """Pop and return the next scripted agent result."""
         self.runs += 1
         if not self.results:

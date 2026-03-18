@@ -1,9 +1,10 @@
 """Protocol interfaces for orchestrator dependencies."""
 
-from typing import Type, Protocol
+from typing import Optional, Protocol, Type
+
 from pydantic import BaseModel
 
-from .models import AgentResult, CompletionResult, GatePhase, GateResult
+from .models import CompletionResult, GatePhase, GateResult
 
 
 class PromptBuilder(Protocol):
@@ -17,9 +18,11 @@ class PromptBuilder(Protocol):
 class AgentRunner(Protocol):
     """Runs the agent for a prompt and returns an agent result."""
 
-    def run(
-        self, prompt: str, output_format: Type[BaseModel] | None = None
-    ) -> AgentResult:
+    def run_agent(
+        self,
+        prompt: str,
+        output_format: Optional[Type[BaseModel]] = None,
+    ) -> BaseModel | str:
         """Execute the agent and return the parsed output."""
         ...
 

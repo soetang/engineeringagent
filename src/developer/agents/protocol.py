@@ -1,22 +1,24 @@
 from typing import Optional, Protocol, Type, TypeVar
 
+from developer.orchestrator.protocols import AgentRunner
+
 from pydantic import BaseModel
 
 TModel = TypeVar("TModel", bound=BaseModel)
 
 
-class AgentProtocol(Protocol):
-    """Agent protocol interface."""
+class AgentProtocol(AgentRunner):
+    """Full agent protocol including construction-time inputs.
 
-    def __init__(self, profile: Optional[str] = None, model: Optional[str] = None):
-        """Initialize agent with profile and model configuration."""
-        ...
+    This protocol is a superset of :class:`AgentRunner`.
+    Use ``AgentRunner`` when only execution methods are needed (orchestrator).
+    """
 
-    def run_agent(
+    def __init__(
         self,
-        prompt: str,
-        output_format: Optional[Type[TModel]] = None,
+        profile: Optional[str] = None,
+        model: Optional[str] = None,
         path: Optional[str] = None,
-    ) -> TModel | str:
-        """Execute agent with prompt, return structured output or string."""
+    ):
+        """Initialize agent with profile and model configuration."""
         ...

@@ -1,6 +1,5 @@
-import tempfile
 import os
-from typing import List, Optional, Type, Union
+from typing import List, Optional, Type
 from pydantic import BaseModel
 import pytest
 from developer.quality.adapters import AgenticReviewAdapter, AgenticReviewCheck
@@ -11,21 +10,24 @@ from developer.agents.protocol import AgentProtocol
 class MockAgent(AgentProtocol):
     """Mock agent for testing without requiring actual Codex CLI."""
 
-    def __init__(self, profile: Optional[str] = None, model: Optional[str] = None):
+    def __init__(
+        self,
+        profile: Optional[str] = None,
+        model: Optional[str] = None,
+        path: Optional[str] = None,
+    ):
         """Initialize mock agent."""
         self.profile = profile
         self.model = model
+        self.path = path
 
     def run_agent(
         self,
         prompt: str,
-        output_format: Type[BaseModel] = str,  # type: ignore[type-arg]
-        model: Optional[str] = None,
-        profile: Optional[str] = None,
-        path: Optional[str] = None,
-    ) -> Union[BaseModel, str]:
+        output_format: Optional[Type[BaseModel]] = None,
+    ) -> BaseModel | str:
         """Mock agent that returns predefined responses."""
-        if output_format == str or output_format is str:
+        if output_format is None or output_format is str:
             return "Mock response"
 
         elif issubclass(output_format, BaseModel):
@@ -65,6 +67,14 @@ class MockAgent(AgentProtocol):
             raise ValueError(f"Unsupported output format: {output_format}")
 
 
+class MockAgentService:
+    """Mock agent service returning mock agents for adapter tests."""
+
+    def select_agent(self, backend=None, profile=None, model=None, path=None):
+        """Return a mock agent for the provided selection params."""
+        return MockAgent(profile=profile, model=model, path=path)
+
+
 def test_agentic_review_adapter_with_mock():
     """Test the agentic review adapter using mock agent."""
     # Create a temporary prompt file
@@ -87,13 +97,11 @@ Please analyze the code and provide:
 """)
 
         # Create the adapter with mock agent
-        adapter = AgenticReviewAdapter(agent=MockAgent())
+        adapter = AgenticReviewAdapter(agent_service=MockAgentService())
 
         # Create a review check
-        checks: List[BaseModel] = [
-            AgenticReviewCheck(
-                check_type="agentic_review", prompt_path=prompt_path, path="."
-            )
+        checks: List[AgenticReviewCheck] = [
+            AgenticReviewCheck(check_type="agentic_review", prompt_path=prompt_path)
         ]
 
         # Run the check
@@ -141,15 +149,15 @@ Please analyze the code and provide:
             prompt_paths.append(prompt_path)
 
         # Create the adapter with mock agent
-        adapter = AgenticReviewAdapter(agent=MockAgent())
+        adapter = AgenticReviewAdapter(agent_service=MockAgentService())
 
         # Create multiple review checks
-        checks: List[BaseModel] = [
+        checks: List[AgenticReviewCheck] = [
             AgenticReviewCheck(
-                check_type="agentic_review", prompt_path=prompt_paths[0], path="."
+                check_type="agentic_review", prompt_path=prompt_paths[0]
             ),
             AgenticReviewCheck(
-                check_type="agentic_review", prompt_path=prompt_paths[1], path="."
+                check_type="agentic_review", prompt_path=prompt_paths[1]
             ),
         ]
 
@@ -203,13 +211,11 @@ Please analyze the code and provide feedback.
 """)
 
         # Create the adapter with mock agent
-        adapter = AgenticReviewAdapter(agent=MockAgent())
+        adapter = AgenticReviewAdapter(agent_service=MockAgentService())
 
         # Create a review check
-        checks: List[BaseModel] = [
-            AgenticReviewCheck(
-                check_type="agentic_review", prompt_path=prompt_path, path="."
-            )
+        checks: List[AgenticReviewCheck] = [
+            AgenticReviewCheck(check_type="agentic_review", prompt_path=prompt_path)
         ]
 
         # Run the check and expect an exception for not_runnable status

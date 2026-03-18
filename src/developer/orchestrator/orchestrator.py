@@ -1,7 +1,7 @@
 """Loop-based orchestrator for iterative agent execution."""
 
-from .models import CompletionResult, GatePhase, OrchestratorOutcome
-from .protocols import CompletionJudge, PromptBuilder, AgentRunner, GateRunner
+from .models import AgentResult, CompletionResult, GatePhase, OrchestratorOutcome
+from .protocols import AgentRunner, CompletionJudge, GateRunner, PromptBuilder
 
 
 class AgentOrchestrator:
@@ -53,7 +53,7 @@ class AgentOrchestrator:
             attempt_context["iteration"] = iterations
 
             prompt = self._prompt_builder.build(attempt_context)
-            _ = self._agent_runner.run(prompt, output_format=None)
+            _ = self._agent_runner.run_agent(prompt, output_format=AgentResult)
 
             fast_gate = self._gate_runner.check(GatePhase.ITERATION_COMPLETE)
             if not fast_gate.passed:

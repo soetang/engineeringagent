@@ -1,6 +1,6 @@
 """Agent selection service that uses configuration or explicit parameters."""
 
-from typing import Optional, Tuple
+from typing import Optional
 from developer.config.service import ConfigService
 from developer.agents.settings import AgentSettings
 from developer.agents.adapters.codex_adapter import CodexAdapter
@@ -20,6 +20,7 @@ class SelectAgentService:
         backend: Optional[str] = None,
         profile: Optional[str] = None,
         model: Optional[str] = None,
+        path: Optional[str] = None,
     ) -> AgentProtocol:
         """Select an agent based on configuration or explicit parameters.
 
@@ -27,6 +28,7 @@ class SelectAgentService:
             backend: Optional backend name (codex, vibe, etc.)
             profile: Optional profile name
             model: Optional model name
+            path: Optional check working directory
 
         Returns:
             AgentProtocol instance configured with the selected parameters
@@ -44,9 +46,11 @@ class SelectAgentService:
                 model = settings.model
 
         # Create and return the appropriate agent with configuration
-        return self._create_agent(backend, profile, model)
+        return self._create_agent(backend, profile, model, path)
 
-    def _create_agent(self, backend: str, profile: str, model: str) -> AgentProtocol:
+    def _create_agent(
+        self, backend: str, profile: str, model: str, path: Optional[str]
+    ) -> AgentProtocol:
         """Create an agent instance based on backend type with configuration."""
         backends = {
             "codex": CodexAdapter,
@@ -55,7 +59,7 @@ class SelectAgentService:
         adapter_cls = backends.get(backend)
         if adapter_cls is None:
             raise ValueError(f"Unknown backend: {backend}")
-        return adapter_cls(profile=profile, model=model)
+        return adapter_cls(profile=profile, model=model, path=path)
 
 
 def get_agent_service() -> SelectAgentService:
