@@ -1,0 +1,75 @@
+"""Loop-based orchestrator for iterative agent execution."""
+
+from .models import CompletionResult, GatePhase, OrchestratorOutcome
+from .protocols import CompletionJudge, PromptBuilder, AgentRunner, GateRunner
+
+
+class AgentOrchestrator:
+    """Execute a task through repeated agent and gate cycles."""
+
+    def __init__(
+        self,
+        prompt_builder: PromptBuilder,
+        agent_runner: AgentRunner,
+        gate_runner: GateRunner,
+        completion_judge: CompletionJudge,
+        max_iterations: int = 3,
+    ) -> None:
+        """Create an orchestrator wired to its collaboration dependencies.
+
+        Args:
+            prompt_builder: Builds prompts for each loop iteration.
+            agent_runner: Runs the agent with a rendered prompt.
+            gate_runner: Executes quality gates for each phase.
+            completion_judge: Indicates whether the task is complete.
+            max_iterations: Maximum number of loop iterations.
+        """
+        self._prompt_builder = prompt_builder
+        self._agent_runner = agent_runner
+        self._gate_runner = gate_runner
+        self._completion_judge = completion_judge
+        self._max_iterations = max_iterations
+
+    def run(self, task: str, injections: dict | None = None) -> OrchestratorOutcome:
+        """Run the orchestrator loop for a single task.
+
+        Args:
+            task: The task instruction for the agent loop.
+            injections: Optional context injected into prompt rendering.
+
+        Returns:
+            OrchestratorOutcome: minimal loop result payload.
+        """
+        feedback: str | None = None
+        iterations = 0
+        base_injections = dict(injections or {})
+        base_injections["task"] = task
+
+        while iterations < self._max_iterations:
+            iterations += 1
+
+            attempt_context = dict(base_injections)
+            attempt_context["feedback"] = feedback
+            attempt_context["iteration"] = iterations
+
+            prompt = self._prompt_builder.build(attempt_context)
+            _ = self._agent_runner.run(prompt, output_format=None)
+
+            fast_gate = self._gate_runner.check(GatePhase.ITERATION_COMPLETE)
+            if not fast_gate.passed:
+                feedback = fast_gate.feedback
+                continue
+
+            completion = self._completion_judge.is_complete()
+            if completion == CompletionResult.INCOMPLETE:
+                feedback = None
+                continue
+
+            final_gate = self._gate_runner.check(GatePhase.IMPLEMENTATION_COMPLETE)
+            if not final_gate.passed:
+                feedback = final_gate.feedback
+                continue
+
+            return OrchestratorOutcome(status="success", iterations=iterations)
+
+        return OrchestratorOutcome(status="failed", iterations=iterations)
