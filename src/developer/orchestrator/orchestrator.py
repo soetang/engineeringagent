@@ -44,23 +44,15 @@ class AgentOrchestrator:
 
         Args:
             task: The task instruction for the agent loop.
-            injections: Optional context injected into prompt rendering.
+            injections: Optional context provided by callers (currently ignored
+                for prompt rendering).
 
         Returns:
             OrchestratorOutcome: minimal loop result payload.
         """
         feedback: str | None = None
-        base_injections = dict(injections or {})
-        base_injections["task"] = task
-
-        for iterations in range(1, self._max_iterations + 1):
-            attempt_context = {
-                **base_injections,
-                "feedback": feedback,
-                "iteration": iterations,
-            }
-
-            prompt = self._prompt_builder.build(attempt_context)
+        for attempt in range(1, self._max_iterations + 1):
+            prompt = self._prompt_builder.build({"feedback": feedback})
             _ = self._agent_runner.run_agent(prompt, output_format=AgentResult)
 
             feedback = self._run_gate_feedback(GatePhase.ITERATION_COMPLETE)
@@ -76,9 +68,9 @@ class AgentOrchestrator:
             if feedback is not None:
                 continue
 
-            return OrchestratorOutcome(status="success", iterations=iterations)
+            return OrchestratorOutcome(status="success", iterations=attempt)
 
-        return OrchestratorOutcome(status="failed", iterations=iterations)
+        return OrchestratorOutcome(status="failed", iterations=self._max_iterations)
 
     def _run_gate_feedback(self, phase: GatePhase) -> str | None:
         """Run a gate for a phase and return feedback when it fails."""

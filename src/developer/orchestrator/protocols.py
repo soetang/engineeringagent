@@ -1,6 +1,6 @@
 """Protocol interfaces for orchestrator dependencies."""
 
-from typing import Protocol, Type
+from typing import Any, Mapping, Protocol, Type
 
 from pydantic import BaseModel
 
@@ -8,9 +8,9 @@ from .models import CompletionResult, GatePhase, GateResult
 
 
 class PromptBuilder(Protocol):
-    """Builds prompts from task-specific and attempt-specific injections."""
+    """Builds prompts from orchestrator context."""
 
-    def build(self, injections: dict) -> str:
+    def build(self, context: Mapping[str, Any]) -> str:
         """Return the prompt text for the next agent run."""
         ...
 

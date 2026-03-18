@@ -1,6 +1,7 @@
 """Unit tests for the orchestrator loop with fake adapters."""
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
+from typing import Any
 
 from developer.orchestrator import models
 from developer.orchestrator.orchestrator import AgentOrchestrator
@@ -11,16 +12,19 @@ class FakePromptBuilder:
 
     def __init__(self) -> None:
         """Initialize an empty prompt input history."""
-        self.inputs: list[dict] = []
+        self.inputs: list[dict[str, object]] = []
 
-    def build(self, injections: dict) -> str:
+    def build(self, context: Mapping[str, Any]) -> str:
         """Record the payload and return a deterministic prompt."""
-        self.inputs.append(dict(injections))
-        return (
-            f"TASK={injections.get('task')}|"
-            f"FEEDBACK={injections.get('feedback')}|"
-            f"ITERATION={injections.get('iteration')}"
-        )
+        self.inputs.append(dict(context))
+        return f"FEEDBACK={context.get('feedback')}"
+
+
+def _assert_feedback_only_payloads(
+    payloads: list[dict[str, object]], expected_feedbacks: list[str | None]
+) -> None:
+    """Verify each payload contains only expected feedback values."""
+    assert payloads == [{"feedback": feedback} for feedback in expected_feedbacks]
 
 
 class FakeAgentRunner:
@@ -95,9 +99,33 @@ def test_fast_gate_fail_then_recover_with_feedback() -> None:
 
     assert outcome.status == "success"
     assert outcome.iterations == 2
-    assert len(prompt_builder.inputs) == 2
-    assert prompt_builder.inputs[0]["feedback"] is None
-    assert prompt_builder.inputs[1]["feedback"] == "fix fast gate"
+    _assert_feedback_only_payloads(prompt_builder.inputs, [None, "fix fast gate"])
+
+
+def test_prompt_builder_receives_feedback_only_context() -> None:
+    """Caller task/injection context should not leak into prompt payload."""
+    prompt_builder = FakePromptBuilder()
+    agent_runner = FakeAgentRunner(["only"])
+    gate_runner = FakeGateRunner(
+        [models.GateResult(passed=True), models.GateResult(passed=True)]
+    )
+    completion_judge = FakeCompletionJudge([models.CompletionResult.COMPLETE])
+
+    orchestrator = AgentOrchestrator(
+        prompt_builder=prompt_builder,
+        agent_runner=agent_runner,
+        gate_runner=gate_runner,
+        completion_judge=completion_judge,
+    )
+    outcome = orchestrator.run(
+        "task text",
+        injections={"task": "should not be used", "iteration": 1},
+    )
+
+    assert outcome.status == "success"
+    assert len(prompt_builder.inputs) == 1
+    _assert_feedback_only_payloads(prompt_builder.inputs, [None])
+    assert set(prompt_builder.inputs[0]) == {"feedback"}
 
 
 def test_incomplete_path_uses_none_feedback() -> None:
@@ -129,8 +157,7 @@ def test_incomplete_path_uses_none_feedback() -> None:
     assert outcome.status == "success"
     assert outcome.iterations == 2
     assert len(prompt_builder.inputs) == 2
-    assert prompt_builder.inputs[0]["feedback"] is None
-    assert prompt_builder.inputs[1]["feedback"] is None
+    _assert_feedback_only_payloads(prompt_builder.inputs, [None, None])
 
 
 def test_final_gate_fail_then_recover_with_feedback() -> None:
@@ -163,7 +190,7 @@ def test_final_gate_fail_then_recover_with_feedback() -> None:
     assert outcome.status == "success"
     assert outcome.iterations == 2
     assert len(prompt_builder.inputs) == 2
-    assert prompt_builder.inputs[1]["feedback"] == "fix final gate"
+    _assert_feedback_only_payloads(prompt_builder.inputs, [None, "fix final gate"])
 
 
 def test_all_pass_first_try() -> None:
@@ -189,6 +216,7 @@ def test_all_pass_first_try() -> None:
     assert outcome.status == "success"
     assert outcome.iterations == 1
     assert len(prompt_builder.inputs) == 1
+    _assert_feedback_only_payloads(prompt_builder.inputs, [None])
 
 
 def test_max_iterations_failure() -> None:
@@ -216,6 +244,10 @@ def test_max_iterations_failure() -> None:
     assert outcome.status == "failed"
     assert outcome.iterations == 3
     assert len(prompt_builder.inputs) == 3
+    _assert_feedback_only_payloads(
+        prompt_builder.inputs,
+        [None, "fail 1", "fail 2"],
+    )
 
 
 def test_max_iterations_complete_in_last_iteration() -> None:
@@ -250,6 +282,10 @@ def test_max_iterations_complete_in_last_iteration() -> None:
     assert outcome.status == "success"
     assert outcome.iterations == 3
     assert len(prompt_builder.inputs) == 3
+    _assert_feedback_only_payloads(
+        prompt_builder.inputs,
+        [None, "fail 1", "fail 2"],
+    )
 
 
 def test_orchestrator_force_single_failure_feedback() -> None:
@@ -282,6 +318,9 @@ def test_orchestrator_force_single_failure_feedback() -> None:
 
     assert outcome.iterations == 3
     assert outcome.status == "success"
-    assert all(stop for _, stop in gate_runner.calls)
-    assert (models.GatePhase.ITERATION_COMPLETE, True) in gate_runner.calls
-    assert (models.GatePhase.IMPLEMENTATION_COMPLETE, True) in gate_runner.calls
+    assert gate_runner.calls == [
+        (models.GatePhase.ITERATION_COMPLETE, True),
+        (models.GatePhase.ITERATION_COMPLETE, True),
+        (models.GatePhase.ITERATION_COMPLETE, True),
+        (models.GatePhase.IMPLEMENTATION_COMPLETE, True),
+    ]
