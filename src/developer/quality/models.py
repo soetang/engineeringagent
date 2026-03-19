@@ -1,7 +1,7 @@
 from typing import List, Union, Type
 from pydantic import BaseModel, Field, ConfigDict, create_model
 
-from developer.orchestrator.models import GatePhase
+from developer.orchestrators.models import GatePhase
 
 
 class CheckList(BaseModel):

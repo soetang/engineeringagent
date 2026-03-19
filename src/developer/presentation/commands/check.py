@@ -3,10 +3,10 @@
 from typing import Any
 
 import typer
-from developer.orchestrator.models import GatePhase
+from developer.orchestrators.models import GatePhase
 
-from developer.quality.services.validation_service import ValidationService
 from developer.quality.services import CheckGateRunner
+from developer.quality.services.validation_service import ValidationService
 
 app = typer.Typer()
 

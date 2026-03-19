@@ -1,8 +1,8 @@
 """Real integration tests for Codex CLI adapter."""
 
-import shutil
-import tempfile
+import subprocess
 from pathlib import Path
+from shutil import copytree
 
 import pytest
 from pydantic import BaseModel
@@ -33,50 +33,34 @@ class SimpleResult(BaseModel):
 
 
 @pytest.fixture
-def temp_stub_dir():
+def temp_stub_dir(tmp_path: Path) -> Path:
     """Fixture that creates a temporary directory with test files and git repo."""
-    import subprocess
+    stub_source = Path(__file__).parent / "stub_data"
+    copytree(stub_source, tmp_path, dirs_exist_ok=True)
 
-    # Create temporary directory
-    temp_dir = tempfile.mkdtemp()
-
-    # Initialize git repository in temp directory
-    subprocess.run(["git", "init"], cwd=temp_dir, capture_output=True, check=True)
+    subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True, check=True)
     subprocess.run(
         ["git", "config", "user.email", "test@example.com"],
-        cwd=temp_dir,
+        cwd=tmp_path,
         capture_output=True,
         check=True,
     )
     subprocess.run(
         ["git", "config", "user.name", "Test User"],
-        cwd=temp_dir,
+        cwd=tmp_path,
         capture_output=True,
         check=True,
     )
 
-    # Copy stub files to temp directory
-    stub_source = Path(__file__).parent / "stub_data"
-    # copy all folders and files from stub_source to temp_dir
-    for item in stub_source.iterdir():
-        if item.is_dir():
-            shutil.copytree(item, Path(temp_dir) / item.name)
-        else:
-            shutil.copy2(item, temp_dir)
-
-    # Add and commit files to make it a proper git repo
-    subprocess.run(["git", "add", "."], cwd=temp_dir, capture_output=True, check=True)
+    subprocess.run(["git", "add", "."], cwd=tmp_path, capture_output=True, check=True)
     subprocess.run(
         ["git", "commit", "-m", "Initial commit"],
-        cwd=temp_dir,
+        cwd=tmp_path,
         capture_output=True,
         check=True,
     )
 
-    yield temp_dir
-
-    # Clean up - remove temporary directory
-    shutil.rmtree(temp_dir)
+    return tmp_path
 
 
 @pytest.mark.integration
@@ -115,7 +99,10 @@ def test_real_pydantic_output_files(temp_stub_dir):
         model="gpt-5.3-codex-spark", profile="test", path=str(temp_stub_dir)
     )
     result = adapter.run_agent(
-        prompt="List Python files in current directory as JSON",
+        prompt=(
+            "Run 'ls' to inspect the current directory, identify the Python files "
+            "present there, and return them as JSON."
+        ),
         output_format=FileListResult,
     )
 

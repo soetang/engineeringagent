@@ -2,7 +2,7 @@ import yaml
 import tempfile
 import os
 from developer.quality.services import CheckGateRunner, ValidationService
-from developer.orchestrator.models import GatePhase
+from developer.orchestrators.models import GatePhase
 from developer.config.service import ConfigService
 
 

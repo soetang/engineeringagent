@@ -226,3 +226,12 @@ def test_cli_check_help():
     assert "run" in result.output
     assert "validate" in result.output
     assert "--stop-on-first-failure" not in result.output
+
+
+def test_root_cli_help_lists_implementation_group() -> None:
+    """The root CLI help should list the implementation command group."""
+    runner = CliRunner()
+    result = runner.invoke(app, ["--help"])
+
+    assert result.exit_code == 0
+    assert "implementation" in result.output

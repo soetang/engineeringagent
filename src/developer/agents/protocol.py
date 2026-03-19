@@ -1,6 +1,6 @@
 from typing import Optional, Protocol, Type, TypeVar
 
-from developer.orchestrator.protocols import AgentRunner
+from developer.orchestrators.protocols import AgentRunner
 
 from pydantic import BaseModel
 

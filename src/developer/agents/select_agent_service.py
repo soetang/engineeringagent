@@ -45,11 +45,18 @@ class SelectAgentService:
             if model is None:
                 model = settings.model
 
+        if backend is None:
+            raise ValueError("Agent backend must be configured")
+
         # Create and return the appropriate agent with configuration
         return self._create_agent(backend, profile, model, path)
 
     def _create_agent(
-        self, backend: str, profile: str, model: str, path: Optional[str]
+        self,
+        backend: str,
+        profile: Optional[str],
+        model: Optional[str],
+        path: Optional[str],
     ) -> AgentProtocol:
         """Create an agent instance based on backend type with configuration."""
         backends = {

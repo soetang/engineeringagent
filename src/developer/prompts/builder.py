@@ -4,7 +4,7 @@ from typing import Any, Mapping
 from jinja2 import Template, TemplateError
 
 from developer.config.service import ConfigService
-from developer.orchestrator.protocols import PromptBuilder
+from developer.orchestrators.protocols import PromptBuilder
 
 from .errors import PromptTemplateMissingError, PromptTemplateSyntaxError
 from .settings import OrchestratorPromptSettings

@@ -1,10 +1,10 @@
-"""Unit tests for the orchestrator loop with fake adapters."""
+"""Unit tests for the implementation loop with fake adapters."""
 
 from collections.abc import Iterable, Mapping
 from typing import Any
 
-from developer.orchestrator import models
-from developer.orchestrator.orchestrator import AgentOrchestrator
+from developer.orchestrators import models
+from developer.orchestrators.implementation_agent import ImplementationAgent
 
 
 class FakePromptBuilder:
@@ -89,13 +89,13 @@ def test_fast_gate_fail_then_recover_with_feedback() -> None:
     )
     completion_judge = FakeCompletionJudge([models.CompletionResult.COMPLETE])
 
-    orchestrator = AgentOrchestrator(
+    implementation_agent = ImplementationAgent(
         prompt_builder=prompt_builder,
         agent_runner=agent_runner,
         gate_runner=gate_runner,
         completion_judge=completion_judge,
     )
-    outcome = orchestrator.run("first task")
+    outcome = implementation_agent.run()
 
     assert outcome.status == "success"
     assert outcome.iterations == 2
@@ -103,7 +103,7 @@ def test_fast_gate_fail_then_recover_with_feedback() -> None:
 
 
 def test_prompt_builder_receives_feedback_only_context() -> None:
-    """Caller task/injection context should not leak into prompt payload."""
+    """Only feedback should be passed into the prompt payload."""
     prompt_builder = FakePromptBuilder()
     agent_runner = FakeAgentRunner(["only"])
     gate_runner = FakeGateRunner(
@@ -111,16 +111,13 @@ def test_prompt_builder_receives_feedback_only_context() -> None:
     )
     completion_judge = FakeCompletionJudge([models.CompletionResult.COMPLETE])
 
-    orchestrator = AgentOrchestrator(
+    implementation_agent = ImplementationAgent(
         prompt_builder=prompt_builder,
         agent_runner=agent_runner,
         gate_runner=gate_runner,
         completion_judge=completion_judge,
     )
-    outcome = orchestrator.run(
-        "task text",
-        injections={"task": "should not be used", "iteration": 1},
-    )
+    outcome = implementation_agent.run()
 
     assert outcome.status == "success"
     assert len(prompt_builder.inputs) == 1
@@ -146,13 +143,13 @@ def test_incomplete_path_uses_none_feedback() -> None:
         ]
     )
 
-    orchestrator = AgentOrchestrator(
+    implementation_agent = ImplementationAgent(
         prompt_builder=prompt_builder,
         agent_runner=agent_runner,
         gate_runner=gate_runner,
         completion_judge=completion_judge,
     )
-    outcome = orchestrator.run("second task")
+    outcome = implementation_agent.run()
 
     assert outcome.status == "success"
     assert outcome.iterations == 2
@@ -179,13 +176,13 @@ def test_final_gate_fail_then_recover_with_feedback() -> None:
         ]
     )
 
-    orchestrator = AgentOrchestrator(
+    implementation_agent = ImplementationAgent(
         prompt_builder=prompt_builder,
         agent_runner=agent_runner,
         gate_runner=gate_runner,
         completion_judge=completion_judge,
     )
-    outcome = orchestrator.run("third task")
+    outcome = implementation_agent.run()
 
     assert outcome.status == "success"
     assert outcome.iterations == 2
@@ -205,13 +202,13 @@ def test_all_pass_first_try() -> None:
     )
     completion_judge = FakeCompletionJudge([models.CompletionResult.COMPLETE])
 
-    orchestrator = AgentOrchestrator(
+    implementation_agent = ImplementationAgent(
         prompt_builder=prompt_builder,
         agent_runner=agent_runner,
         gate_runner=gate_runner,
         completion_judge=completion_judge,
     )
-    outcome = orchestrator.run("fourth task")
+    outcome = implementation_agent.run()
 
     assert outcome.status == "success"
     assert outcome.iterations == 1
@@ -232,14 +229,14 @@ def test_max_iterations_failure() -> None:
     )
     completion_judge = FakeCompletionJudge()
 
-    orchestrator = AgentOrchestrator(
+    implementation_agent = ImplementationAgent(
         prompt_builder=prompt_builder,
         agent_runner=agent_runner,
         gate_runner=gate_runner,
         completion_judge=completion_judge,
         max_iterations=3,
     )
-    outcome = orchestrator.run("failing task")
+    outcome = implementation_agent.run()
 
     assert outcome.status == "failed"
     assert outcome.iterations == 3
@@ -270,14 +267,14 @@ def test_max_iterations_complete_in_last_iteration() -> None:
         ]
     )
 
-    orchestrator = AgentOrchestrator(
+    implementation_agent = ImplementationAgent(
         prompt_builder=prompt_builder,
         agent_runner=agent_runner,
         gate_runner=gate_runner,
         completion_judge=completion_judge,
         max_iterations=3,
     )
-    outcome = orchestrator.run("failing task")
+    outcome = implementation_agent.run()
 
     assert outcome.status == "success"
     assert outcome.iterations == 3
@@ -288,7 +285,7 @@ def test_max_iterations_complete_in_last_iteration() -> None:
     )
 
 
-def test_orchestrator_force_single_failure_feedback() -> None:
+def test_implementation_agent_force_single_failure_feedback() -> None:
     """Gate calls should use stop-on-first-failure mode."""
     prompt_builder = FakePromptBuilder()
     agent_runner = FakeAgentRunner(["first", "second", "third"])
@@ -307,14 +304,14 @@ def test_orchestrator_force_single_failure_feedback() -> None:
         ]
     )
 
-    orchestrator = AgentOrchestrator(
+    implementation_agent = ImplementationAgent(
         prompt_builder=prompt_builder,
         agent_runner=agent_runner,
         gate_runner=gate_runner,
         completion_judge=completion_judge,
         max_iterations=3,
     )
-    outcome = orchestrator.run("failing task")
+    outcome = implementation_agent.run()
 
     assert outcome.iterations == 3
     assert outcome.status == "success"

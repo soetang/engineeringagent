@@ -31,8 +31,8 @@ def test_agent_settings_defaults():
     """Test AgentSettings default values."""
     settings = AgentSettings()
     assert settings.backend == "codex"
-    assert settings.profile == "default"
-    assert settings.model == "gpt-4"
+    assert settings.profile is None
+    assert settings.model is None
 
 
 def test_agent_settings_custom_values():

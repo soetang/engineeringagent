@@ -9,8 +9,8 @@ from .models import (
 from .protocols import AgentRunner, CompletionJudge, GateRunner, PromptBuilder
 
 
-class AgentOrchestrator:
-    """Execute a task through repeated agent and gate cycles."""
+class ImplementationAgent:
+    """Execute an implementation task through repeated agent and gate cycles."""
 
     def __init__(
         self,
@@ -20,7 +20,7 @@ class AgentOrchestrator:
         completion_judge: CompletionJudge,
         max_iterations: int = 3,
     ) -> None:
-        """Create an orchestrator wired to its collaboration dependencies.
+        """Create an implementation agent wired to its dependencies.
 
         Args:
             prompt_builder: Builds prompts for each loop iteration.
@@ -35,20 +35,11 @@ class AgentOrchestrator:
         self._completion_judge = completion_judge
         self._max_iterations = max_iterations
 
-    def run(
-        self,
-        task: str,
-        injections: dict | None = None,
-    ) -> OrchestratorOutcome:
-        """Run the orchestrator loop for a single task.
-
-        Args:
-            task: The task instruction for the agent loop.
-            injections: Optional context provided by callers (currently ignored
-                for prompt rendering).
+    def run(self) -> OrchestratorOutcome:
+        """Run the implementation loop.
 
         Returns:
-            OrchestratorOutcome: minimal loop result payload.
+            Minimal loop result payload.
         """
         feedback: str | None = None
         for attempt in range(1, self._max_iterations + 1):

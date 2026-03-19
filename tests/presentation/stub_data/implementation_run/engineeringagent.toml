@@ -1,0 +1,9 @@
+[orchestrator]
+implementation_prompt_path = "implementation_prompt.md"
+
+[quality]
+checks_path = "harness/checks.yaml"
+
+[agents]
+backend = "codex"
+model = "gpt5.3-codex-spark"

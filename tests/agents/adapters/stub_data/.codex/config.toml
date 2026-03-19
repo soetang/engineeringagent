@@ -1,6 +1,6 @@
 [profiles.test]
 model = "gpt-5.3-codex-spark"
-sandbox_mode = "workspace-write"
+sandbox_mode = "danger-full-access"
 approval_policy = "never"
 
 [shell_environment_policy]

@@ -1,5 +1,4 @@
-from pydantic import BaseModel, Field
-from pydantic import ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class AgentSettings(BaseModel):
@@ -9,8 +8,14 @@ class AgentSettings(BaseModel):
         default="codex", description="Agent backend to use (codex, vibe, etc.)"
     )
 
-    profile: str = Field(default="default", description="Agent profile to use")
+    profile: str | None = Field(
+        default=None,
+        description="Optional agent profile to use",
+    )
 
-    model: str = Field(default="gpt-4", description="LLM model to use")
+    model: str | None = Field(
+        default=None,
+        description="Optional LLM model to use",
+    )
 
     model_config = ConfigDict(extra="forbid")

@@ -6,7 +6,7 @@ import yaml
 from pydantic import BaseModel
 
 from developer.config.service import ConfigService
-from developer.orchestrator.models import GatePhase, GateResult
+from developer.orchestrators.models import GatePhase, GateResult
 
 from ..adapters import get_adapters
 from ..protocol import CheckAdapter
