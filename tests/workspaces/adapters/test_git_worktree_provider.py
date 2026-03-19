@@ -64,6 +64,7 @@ def test_git_worktree_provider_creates_worktree_and_records_metadata(tmp_path) -
 
     worktree_path = Path(workspace.execution_target.location)
     assert workspace.status is WorkspaceStatus.READY
+    assert workspace.execution_target.kind == "local_path"
     assert worktree_path.exists()
     assert (worktree_path / ".git").exists()
     assert workspace.metadata["base_branch"] == "main"
@@ -93,5 +94,6 @@ def test_git_worktree_provider_stores_absolute_execution_paths(
     )
 
     execution_path = Path(workspace.execution_target.location)
+    assert workspace.execution_target.kind == "local_path"
     assert execution_path.is_absolute() is True
     assert workspace.execution_target.metadata["repo_path"] == str(repo.resolve())

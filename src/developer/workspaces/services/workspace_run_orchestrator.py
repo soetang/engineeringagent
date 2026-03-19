@@ -1,11 +1,12 @@
 """Composition service for workspace-backed workflow execution."""
 
-from developer.orchestrators.workspace_protocols import (
-    WorkspaceProvider,
-    WorkspaceRunner,
+from developer.workspaces.models import (
+    RunHandle,
+    RunRequest,
+    WorkspaceSession,
+    WorkspaceSpec,
 )
-
-from .workspace_models import RunHandle, RunRequest, WorkspaceSession, WorkspaceSpec
+from developer.workspaces.protocols import WorkspaceProvider, WorkspaceRunner
 
 
 class WorkspaceRunOrchestrator:

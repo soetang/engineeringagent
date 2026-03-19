@@ -6,6 +6,7 @@ from developer.workspaces.models import (
     RunRequest,
     RunStatus,
     WorkspaceSession,
+    WorkspaceRunnableResult,
     WorkspaceSpec,
     WorkspaceStatus,
 )
@@ -17,6 +18,7 @@ __all__ = [
     "RunRequest",
     "RunStatus",
     "WorkspaceSession",
+    "WorkspaceRunnableResult",
     "WorkspaceSettings",
     "WorkspaceSpec",
     "WorkspaceStatus",

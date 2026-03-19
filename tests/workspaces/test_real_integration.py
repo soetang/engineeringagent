@@ -6,7 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from developer.orchestrators.workspace_protocols import WorkspaceRunnableAgent
+from developer.workspaces.adapters.default_execution_adapter_resolver import (
+    DefaultWorkspaceExecutionAdapterResolver,
+)
 from developer.workspaces.adapters.git_worktree_provider import (
     GitWorktreeWorkspaceProvider,
 )
@@ -15,6 +17,7 @@ from developer.workspaces.adapters.local_process_runner import (
 )
 from developer.workspaces.models import RunRequest, WorkspaceSession, WorkspaceSpec
 from developer.workspaces.models import WorkspaceRunnableResult
+from developer.workspaces.protocols import WorkspaceRunnableAgent
 from developer.workspaces.services.file_registry import FileWorkspaceRegistry
 
 
@@ -60,8 +63,9 @@ class _FakeWorkspaceRunnableAgent(WorkspaceRunnableAgent):
     ) -> WorkspaceRunnableResult:
         del request
         workspace_root = Path(workspace.execution_target.location)
-        (workspace_root / "app.py").write_text("print('after')\n", encoding="utf-8")
-        (workspace_root / "new_file.txt").write_text("created\n", encoding="utf-8")
+        assert Path.cwd() == workspace_root
+        Path("app.py").write_text("print('after')\n", encoding="utf-8")
+        Path("new_file.txt").write_text("created\n", encoding="utf-8")
         return WorkspaceRunnableResult(
             status="succeeded",
             message="updated 2 files",
@@ -98,6 +102,7 @@ def test_workspace_run_modifies_files_in_isolated_worktree(tmp_path) -> None:
     runner = LocalProcessWorkspaceRunner(
         registry=registry,
         agent_resolver=_StaticResolver(_FakeWorkspaceRunnableAgent()),
+        execution_adapter_resolver=DefaultWorkspaceExecutionAdapterResolver(),
     )
 
     run = runner.start_run(

@@ -2,7 +2,6 @@
 
 from datetime import UTC, datetime
 
-from developer.orchestrators.workspace_run_orchestrator import WorkspaceRunOrchestrator
 from developer.workspaces.models import (
     ExecutionTarget,
     RunHandle,
@@ -11,6 +10,9 @@ from developer.workspaces.models import (
     WorkspaceSession,
     WorkspaceSpec,
     WorkspaceStatus,
+)
+from developer.workspaces.services.workspace_run_orchestrator import (
+    WorkspaceRunOrchestrator,
 )
 
 

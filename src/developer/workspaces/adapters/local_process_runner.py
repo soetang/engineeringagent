@@ -3,11 +3,12 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from developer.orchestrators.workspace_protocols import (
+from developer.workspaces.models import RunHandle, RunRequest, RunStatus
+from developer.workspaces.protocols import (
+    WorkspaceExecutionAdapterResolver,
     WorkspaceRunRegistry,
     WorkspaceRunnableAgentResolver,
 )
-from developer.workspaces.models import RunHandle, RunRequest, RunStatus
 
 
 class LocalProcessWorkspaceRunner:
@@ -17,59 +18,61 @@ class LocalProcessWorkspaceRunner:
         self,
         registry: WorkspaceRunRegistry,
         agent_resolver: WorkspaceRunnableAgentResolver,
+        execution_adapter_resolver: WorkspaceExecutionAdapterResolver,
     ) -> None:
         """Store persistence and workflow resolution dependencies."""
         self._registry = registry
         self._agent_resolver = agent_resolver
+        self._execution_adapter_resolver = execution_adapter_resolver
 
     def start_run(self, workspace_id: str, request: RunRequest) -> RunHandle:
         """Create, execute, and persist a run handle."""
         workspace = self._registry.get_workspace(workspace_id)
-        run = RunHandle(
+        pending_run = RunHandle(
             id=uuid4().hex,
             workspace_id=workspace_id,
             status=RunStatus.PENDING,
             agent_kind=request.agent_kind,
             latest_message="Run created",
         )
-        self._registry.save_run(run)
+        self._registry.save_run(pending_run)
 
-        running_run = run.model_copy(
-            update={
-                "status": RunStatus.RUNNING,
-                "started_at": datetime.now(UTC),
-                "latest_message": f"{request.agent_kind} run started",
-            }
+        running_run = self._save_updated_run(
+            pending_run,
+            status=RunStatus.RUNNING,
+            started_at=datetime.now(UTC),
+            latest_message=f"{request.agent_kind} run started",
         )
-        self._registry.save_run(running_run)
 
         try:
             agent = self._agent_resolver.resolve(request.agent_kind)
-            result = agent.run(request=request, workspace=workspace)
-        except Exception as exc:
-            failed_run = running_run.model_copy(
-                update={
-                    "status": RunStatus.FAILED,
-                    "finished_at": datetime.now(UTC),
-                    "latest_message": str(exc),
-                }
+            execution_adapter = self._execution_adapter_resolver.resolve(
+                workspace.execution_target
             )
-            self._registry.save_run(failed_run)
+            result = execution_adapter.run(
+                workspace=workspace,
+                request=request,
+                agent=agent,
+            )
+        except Exception as exc:
+            self._save_updated_run(
+                running_run,
+                status=RunStatus.FAILED,
+                finished_at=datetime.now(UTC),
+                latest_message=str(exc),
+            )
             raise
 
         final_status = (
             RunStatus.SUCCEEDED if result.status == "succeeded" else RunStatus.FAILED
         )
-        finished_run = running_run.model_copy(
-            update={
-                "status": final_status,
-                "finished_at": datetime.now(UTC),
-                "latest_message": result.message,
-                "result_summary": result.summary,
-            }
+        return self._save_updated_run(
+            running_run,
+            status=final_status,
+            finished_at=datetime.now(UTC),
+            latest_message=result.message,
+            result_summary=result.summary,
         )
-        self._registry.save_run(finished_run)
-        return finished_run
 
     def get_run(self, run_id: str) -> RunHandle:
         """Return one persisted run handle."""
@@ -89,11 +92,15 @@ class LocalProcessWorkspaceRunner:
         }:
             return
 
-        cancelled_run = run.model_copy(
-            update={
-                "status": RunStatus.CANCELLED,
-                "finished_at": datetime.now(UTC),
-                "latest_message": "Run cancelled",
-            }
+        self._save_updated_run(
+            run,
+            status=RunStatus.CANCELLED,
+            finished_at=datetime.now(UTC),
+            latest_message="Run cancelled",
         )
-        self._registry.save_run(cancelled_run)
+
+    def _save_updated_run(self, run: RunHandle, **updates: object) -> RunHandle:
+        """Persist one updated run handle and return it."""
+        updated_run = run.model_copy(update=updates)
+        self._registry.save_run(updated_run)
+        return updated_run

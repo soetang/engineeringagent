@@ -22,6 +22,18 @@ rules:
     deny:
       local_prefixes:
         - "developer"
+  - name: "workspaces-only-import-workspaces"
+    paths:
+      - "src/developer/workspaces/**/*.py"
+    allow:
+      local_prefixes:
+        - "developer.workspaces"
+      relative_import_roots:
+        - "."
+    deny:
+      local_prefixes:
+        - "developer.application"
+        - "developer.orchestrators"
   - name: "no-non-entrypoint-imports-from-presentation"
     paths:
       - "src/developer/agents/**/*.py"

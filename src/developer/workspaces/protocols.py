@@ -1,8 +1,9 @@
-"""Protocol boundaries for workspace orchestration."""
+"""Protocol boundaries for workspace runtime components."""
 
 from typing import Protocol
 
-from .workspace_models import (
+from developer.workspaces.models import (
+    ExecutionTarget,
     RunHandle,
     RunRequest,
     WorkspaceRunnableResult,
@@ -77,6 +78,27 @@ class WorkspaceRunnableAgentResolver(Protocol):
         ...
 
 
+class WorkspaceExecutionAdapter(Protocol):
+    """Execute a workspace-runnable workflow inside one execution target."""
+
+    def run(
+        self,
+        workspace: WorkspaceSession,
+        request: RunRequest,
+        agent: WorkspaceRunnableAgent,
+    ) -> WorkspaceRunnableResult:
+        """Run a workflow inside the requested execution target."""
+        ...
+
+
+class WorkspaceExecutionAdapterResolver(Protocol):
+    """Resolve target-specific execution adapters."""
+
+    def resolve(self, target: ExecutionTarget) -> WorkspaceExecutionAdapter:
+        """Return the execution adapter for the requested target."""
+        ...
+
+
 class WorkspaceRunner(Protocol):
     """Start and inspect workflow runs within workspaces."""
 
@@ -95,3 +117,14 @@ class WorkspaceRunner(Protocol):
     def cancel_run(self, run_id: str) -> None:
         """Cancel a run when supported."""
         ...
+
+
+__all__ = [
+    "WorkspaceExecutionAdapter",
+    "WorkspaceExecutionAdapterResolver",
+    "WorkspaceProvider",
+    "WorkspaceRunRegistry",
+    "WorkspaceRunnableAgent",
+    "WorkspaceRunnableAgentResolver",
+    "WorkspaceRunner",
+]

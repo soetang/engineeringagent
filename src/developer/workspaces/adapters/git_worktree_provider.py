@@ -6,16 +6,13 @@ from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
 
-from developer.orchestrators.workspace_protocols import (
-    WorkspaceProvider,
-    WorkspaceRunRegistry,
-)
 from developer.workspaces.models import (
     ExecutionTarget,
     WorkspaceSession,
     WorkspaceSpec,
     WorkspaceStatus,
 )
+from developer.workspaces.protocols import WorkspaceProvider, WorkspaceRunRegistry
 
 
 class GitWorktreeWorkspaceProvider(WorkspaceProvider):
@@ -59,11 +56,7 @@ class GitWorktreeWorkspaceProvider(WorkspaceProvider):
             provider="git_worktree",
             status=WorkspaceStatus.READY,
             created_at=datetime.now(UTC),
-            execution_target=ExecutionTarget(
-                kind="local_path",
-                location=str(worktree_path),
-                metadata={"repo_path": str(repo_path)},
-            ),
+            execution_target=self._build_execution_target(repo_path, worktree_path),
             metadata={
                 **spec.metadata,
                 "branch_name": branch_name,
@@ -87,7 +80,7 @@ class GitWorktreeWorkspaceProvider(WorkspaceProvider):
         workspace = self._registry.get_workspace(workspace_id)
         worktree_path = workspace.execution_target.location
         repo_path = workspace.execution_target.metadata.get("repo_path")
-        if not isinstance(worktree_path, str) or not isinstance(repo_path, str):
+        if not isinstance(repo_path, str):
             raise ValueError("Workspace metadata is missing worktree removal details")
 
         subprocess.run(
@@ -106,3 +99,13 @@ class GitWorktreeWorkspaceProvider(WorkspaceProvider):
         cleaned_task_id = re.sub(r"[^A-Za-z0-9._-]+", "-", task_id).strip("-")
         normalized_task_id = cleaned_task_id or "task"
         return f"developer/{normalized_task_id}/{workspace_id}"
+
+    def _build_execution_target(
+        self, repo_path: Path, worktree_path: Path
+    ) -> ExecutionTarget:
+        """Build the execution target persisted for a git worktree."""
+        return ExecutionTarget(
+            kind="local_path",
+            location=str(worktree_path),
+            metadata={"repo_path": str(repo_path)},
+        )
