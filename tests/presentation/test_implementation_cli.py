@@ -100,7 +100,7 @@ def test_implementation_command_uses_workspace_flow_when_configured(
 [workspaces]
 default_provider = "git_worktree"
 state_dir = ".developer/state"
-git_worktree_root_dir = ".developer/workspaces"
+git_worktree_root_dir = "developer-workspaces"
 """.strip(),
             encoding="utf-8",
         )

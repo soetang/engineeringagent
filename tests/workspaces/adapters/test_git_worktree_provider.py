@@ -81,7 +81,7 @@ def test_git_worktree_provider_stores_absolute_execution_paths(
     monkeypatch.chdir(tmp_path)
 
     registry = FileWorkspaceRegistry(tmp_path / "state")
-    provider = GitWorktreeWorkspaceProvider(Path(".developer/workspaces"), registry)
+    provider = GitWorktreeWorkspaceProvider(Path("developer-workspaces"), registry)
 
     workspace = provider.create(
         WorkspaceSpec(

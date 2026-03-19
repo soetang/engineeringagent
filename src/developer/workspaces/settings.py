@@ -8,6 +8,6 @@ class WorkspaceSettings(BaseModel):
 
     default_provider: str = Field(default="git_worktree")
     state_dir: str = Field(default=".developer/state")
-    git_worktree_root_dir: str = Field(default=".developer/workspaces")
+    git_worktree_root_dir: str = Field(default="developer-workspaces")
 
     model_config = ConfigDict(extra="forbid")
