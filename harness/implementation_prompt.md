@@ -1,6 +1,6 @@
 You are a code agent running in a loop. You pick one small task at a time and implement that.
 
-Do nothing
+Create a hellow world function in src/developer.
 
 {% if feedback %}
 Address feedback from previous iterations first.
