@@ -43,7 +43,7 @@ lint.extend-ignore = [
 
 [tool.pyrefly]
 # Configure Pyrefly to exclude test directories
-project_excludes = ["tests/", "test_*.py"]
+project_excludes = ["tests/", "test_*.py", "harness/fitness/"]
 
 [tool.pytest.ini_options]
 addopts = ["-m", "not integration", "--strict-markers" , "-q"]

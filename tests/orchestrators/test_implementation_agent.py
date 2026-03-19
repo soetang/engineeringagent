@@ -240,6 +240,7 @@ def test_max_iterations_failure() -> None:
 
     assert outcome.status == "failed"
     assert outcome.iterations == 3
+    assert outcome.feedback == "fail 3"
     assert len(prompt_builder.inputs) == 3
     _assert_feedback_only_payloads(
         prompt_builder.inputs,

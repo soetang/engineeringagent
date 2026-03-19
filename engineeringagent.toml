@@ -7,3 +7,8 @@ implementation_prompt_path = "harness/implementation_prompt.md"
 [agents]
 backend = "codex"
 profile = "implementation"
+
+[workspaces]
+default_provider = "git_worktree"
+state_dir = ".developer/state"
+git_worktree_root_dir = ".developer/workspaces"

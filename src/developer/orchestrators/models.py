@@ -44,3 +44,4 @@ class OrchestratorOutcome(BaseModel):
 
     status: Literal["success", "failed"]
     iterations: int
+    feedback: str | None = None

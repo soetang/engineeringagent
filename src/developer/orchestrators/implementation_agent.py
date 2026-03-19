@@ -61,7 +61,11 @@ class ImplementationAgent:
 
             return OrchestratorOutcome(status="success", iterations=attempt)
 
-        return OrchestratorOutcome(status="failed", iterations=self._max_iterations)
+        return OrchestratorOutcome(
+            status="failed",
+            iterations=self._max_iterations,
+            feedback=feedback,
+        )
 
     def _run_gate_feedback(self, phase: GatePhase) -> str | None:
         """Run a gate for a phase and return feedback when it fails."""

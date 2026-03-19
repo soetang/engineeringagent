@@ -30,6 +30,11 @@ class ConfigService:
 
         return config_instance  # type: ignore[return-value]
 
+    def has_section(self, section: str) -> bool:
+        """Return whether the loaded configuration file declares a section."""
+        raw_data = self._adapter.load(self._config_file)
+        return section in raw_data
+
     def clear_cache(self):
         """Clear the configuration cache."""
         self._cache.clear()

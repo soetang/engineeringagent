@@ -3,10 +3,8 @@
 from typing import Any
 
 import typer
-from developer.orchestrators.models import GatePhase
 
-from developer.quality.services import CheckGateRunner
-from developer.quality.services.validation_service import ValidationService
+from developer.application.services.check_service import run_checks, validate_checks
 
 app = typer.Typer()
 
@@ -52,9 +50,7 @@ def validate() -> None:
     """Validate the schema of checks.yaml and referenced files."""
     typer.echo("Validating check configurations...")
 
-    validation_service = ValidationService()
-
-    result = validation_service.validate_checks_yaml()
+    result = validate_checks()
 
     if not result["valid"]:
         typer.echo(typer.style("✗ Validation failed!", typer.colors.RED))
@@ -70,8 +66,8 @@ def validate() -> None:
 
 @app.command()
 def run(
-    phase: GatePhase = typer.Option(
-        GatePhase.ITERATION_COMPLETE,
+    phase: str = typer.Option(
+        "IterationComplete",
         "--phase",
         "-p",
         help="Quality-check execution phase.",
@@ -80,11 +76,7 @@ def run(
     """Execute all configured quality checks."""
     typer.echo("Running quality checks...")
 
-    # Initialize gate runner service
-    service = CheckGateRunner()
-
-    # Execute all checks in the selected phase for detailed output.
-    result = service.run_checks_for_phase(phase=phase)
+    result = run_checks(phase=phase)
 
     if result["success"]:
         typer.echo(typer.style("✓ All checks passed!", typer.colors.GREEN))

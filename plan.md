@@ -820,3 +820,169 @@ Once the local git worktree flow works end-to-end, the next design step should b
 3. enable reviewer flows using workspace-aware diff inputs.
 
 That ordering keeps the architecture open for remote workspaces without forcing remote execution too early.
+
+## Follow-Up Architecture: Application Layer and Import Boundaries
+
+The first workspace milestone surfaced a useful boundary issue: the presentation layer is still doing too much runtime composition, and the current package structure benefits from one more explicit layer between CLI commands and workflow wiring.
+
+Recommendation:
+
+- keep `developer/orchestrators` focused on workflow/domain coordination,
+- keep `developer/workspaces` and `developer/agents` as separate capability packages rather than folding them into `orchestrators`,
+- add a new `developer/application` layer that owns use-case assembly and command-facing execution entrypoints.
+
+This keeps responsibilities clearer:
+
+- `presentation` handles CLI input/output only,
+- `application` assembles workflows and infrastructure for a use case,
+- `orchestrators` defines workflow coordination and protocol boundaries,
+- `workspaces` provides workspace adapters, registry, and settings,
+- `agents` provides agent adapters and selection,
+- `quality`, `prompts`, and `tasks` remain supporting domains.
+
+### Proposed Package Layout
+
+```text
+src/developer/presentation/
+src/developer/application/
+src/developer/orchestrators/
+src/developer/workspaces/
+src/developer/agents/
+src/developer/quality/
+src/developer/prompts/
+src/developer/tasks/
+src/developer/config/
+```
+
+### What Should Move Into `application`
+
+The following responsibilities should move out of `presentation` and into `developer/application`:
+
+- runtime composition such as `build_workspace_orchestrator(...)`,
+- shared workflow assembly such as `build_implementation_agent(...)`,
+- workspace-mode feature switching,
+- default workflow resolver wiring,
+- command-facing use cases like `run implementation`.
+
+Suggested files:
+
+```text
+src/developer/application/implementation_run_service.py
+src/developer/application/workspace_runtime.py
+src/developer/application/models.py  # optional, if command-facing result types grow
+```
+
+### Dependency Direction
+
+Target dependency flow:
+
+- `presentation -> application`
+- `application -> orchestrators | workspaces | agents | quality | prompts | tasks | config`
+- `orchestrators -> orchestrators`
+- `workspaces -> orchestrators | config`
+- `agents -> config`
+- `quality -> config | orchestrators`
+- `prompts -> config | orchestrators`
+- `tasks -> orchestrators`
+
+Hard rule: non-entrypoint packages should not import from `presentation`.
+
+### Import Rule Additions
+
+After the `application` layer is added, extend `harness/policy/import_rules.yaml` with rules like:
+
+```yaml
+rules:
+  - name: "presentation-only-imports-presentation-or-application"
+    paths:
+      - "src/developer/presentation/**/*.py"
+    allow:
+      local_prefixes:
+        - "developer.presentation"
+        - "developer.application"
+      relative_import_roots:
+        - "."
+    deny:
+      local_prefixes:
+        - "developer"
+
+  - name: "application-must-not-import-presentation"
+    paths:
+      - "src/developer/application/**/*.py"
+    allow:
+      local_prefixes: []
+      relative_import_roots: []
+    deny:
+      local_prefixes:
+        - "developer.presentation"
+
+  - name: "workspaces-must-not-import-presentation"
+    paths:
+      - "src/developer/workspaces/**/*.py"
+    allow:
+      local_prefixes: []
+      relative_import_roots: []
+    deny:
+      local_prefixes:
+        - "developer.presentation"
+
+  - name: "agents-must-not-import-presentation"
+    paths:
+      - "src/developer/agents/**/*.py"
+    allow:
+      local_prefixes: []
+      relative_import_roots: []
+    deny:
+      local_prefixes:
+        - "developer.presentation"
+
+  - name: "quality-must-not-import-presentation"
+    paths:
+      - "src/developer/quality/**/*.py"
+    allow:
+      local_prefixes: []
+      relative_import_roots: []
+    deny:
+      local_prefixes:
+        - "developer.presentation"
+
+  - name: "prompts-must-not-import-presentation"
+    paths:
+      - "src/developer/prompts/**/*.py"
+    allow:
+      local_prefixes: []
+      relative_import_roots: []
+    deny:
+      local_prefixes:
+        - "developer.presentation"
+
+  - name: "tasks-must-not-import-presentation"
+    paths:
+      - "src/developer/tasks/**/*.py"
+    allow:
+      local_prefixes: []
+      relative_import_roots: []
+    deny:
+      local_prefixes:
+        - "developer.presentation"
+```
+
+Keep the existing `orchestrators-only-import-orchestrators` rule unless the codebase later introduces a neutral shared domain package.
+
+### Migration Plan
+
+Follow this order:
+
+1. add `src/developer/application/`,
+2. move command-facing composition helpers into `application`,
+3. update `presentation/commands/implementation.py` to call one application service,
+4. add the new import rules,
+5. tighten boundaries further only after the new layer settles.
+
+### Design Decision
+
+Do not collapse `workspaces` and `agents` into `orchestrators`.
+
+Those packages should remain separate because they represent concrete capability areas and adapters, while `orchestrators` should stay focused on workflow/domain coordination.
+
+If shared workflow models and protocols begin to spread across multiple packages beyond `orchestrators`, the better follow-up is likely a neutral `developer/domain` package, not a weaker import policy.

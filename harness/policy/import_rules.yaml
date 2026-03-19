@@ -1,4 +1,16 @@
 rules:
+  - name: "presentation-only-imports-presentation-or-application"
+    paths:
+      - "src/developer/presentation/**/*.py"
+    allow:
+      local_prefixes:
+        - "developer.presentation"
+        - "developer.application"
+      relative_import_roots:
+        - "."
+    deny:
+      local_prefixes:
+        - "developer"
   - name: "orchestrators-only-import-orchestrators"
     paths:
       - "src/developer/orchestrators/**/*.py"
@@ -13,11 +25,22 @@ rules:
   - name: "no-non-entrypoint-imports-from-presentation"
     paths:
       - "src/developer/agents/**/*.py"
+      - "src/developer/application/**/*.py"
       - "src/developer/config/**/*.py"
       - "src/developer/orchestrators/**/*.py"
       - "src/developer/prompts/**/*.py"
       - "src/developer/quality/**/*.py"
       - "src/developer/tasks/**/*.py"
+      - "src/developer/workspaces/**/*.py"
+    allow:
+      local_prefixes: []
+      relative_import_roots: []
+    deny:
+      local_prefixes:
+        - "developer.presentation"
+  - name: "application-must-not-import-presentation"
+    paths:
+      - "src/developer/application/**/*.py"
     allow:
       local_prefixes: []
       relative_import_roots: []

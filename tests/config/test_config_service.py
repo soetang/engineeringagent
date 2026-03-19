@@ -120,6 +120,25 @@ string_field = "test"
         os.unlink(temp_file)
 
 
+def test_config_service_has_section() -> None:
+    """ConfigService should report whether a section exists."""
+    toml_content = """
+[existing_section]
+string_field = "test"
+"""
+
+    temp_file = create_test_toml(toml_content)
+
+    try:
+        service = ConfigService(temp_file)
+
+        assert service.has_section("existing_section") is True
+        assert service.has_section("missing_section") is False
+
+    finally:
+        os.unlink(temp_file)
+
+
 def test_config_service_invalid_data():
     """Test ConfigService with invalid data for model."""
     toml_content = """
