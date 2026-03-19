@@ -7,7 +7,7 @@ from shutil import copytree
 import pytest
 from pydantic import BaseModel
 
-from developer.agents.adapters.codex_adapter import CodexAdapter
+from developer.agent_backends.adapters.codex_adapter import CodexAdapter
 
 
 class MathResult(BaseModel):
@@ -30,6 +30,48 @@ class SimpleResult(BaseModel):
     """Simple model with single field."""
 
     answer: str
+
+
+def test_build_codex_command_maps_model_profile_and_path(monkeypatch, tmp_path):
+    """Codex command building should preserve shared model/profile/path semantics."""
+    adapter = CodexAdapter(
+        model="gpt-5.3-codex-spark",
+        profile="implementation",
+        path=str(tmp_path),
+    )
+    monkeypatch.setattr(
+        adapter,
+        "_resolve_profile_config",
+        lambda profile: ["--profile", profile] if profile else [],
+    )
+
+    command = adapter._build_codex_command(
+        prompt="Solve the task",
+        model=adapter.model,
+        profile=adapter.profile,
+    )
+
+    assert command == [
+        "codex",
+        "exec",
+        "Solve the task",
+        "--model",
+        "gpt-5.3-codex-spark",
+        "--profile",
+        "implementation",
+        "--cd",
+        str(tmp_path),
+    ]
+
+
+def test_resolve_profile_config_falls_back_to_profile_flag(tmp_path):
+    """Missing local profile config should fall back to the Codex profile flag."""
+    adapter = CodexAdapter(path=str(tmp_path))
+
+    assert adapter._resolve_profile_config("implementation") == [
+        "--profile",
+        "implementation",
+    ]
 
 
 @pytest.fixture

@@ -1,24 +1,30 @@
 import os
+import json
 import subprocess
 import tempfile
-import json
-from typing import Optional, Type, TypeVar
+from typing import Optional, Type
 
 from pydantic import BaseModel
 
-from developer.agents.protocol import AgentProtocol, TModel
+from developer.agent_backends.protocol import AgentBackendProtocol, TModel
 
 
-class CodexAdapter(AgentProtocol):
-    """Codex CLI adapter implementing AgentProtocol."""
+class CodexAdapter(AgentBackendProtocol):
+    """Codex CLI adapter implementing the shared backend contract."""
 
     def __init__(
         self,
-        profile: Optional[str] = None,
-        model: Optional[str] = None,
-        path: Optional[str] = None,
-    ):
-        """Initialize Codex adapter with profile and model configuration."""
+        profile: str | None = None,
+        model: str | None = None,
+        path: str | None = None,
+    ) -> None:
+        """Initialize Codex adapter state.
+
+        Args:
+            profile: Optional Codex profile name or resolved config preset.
+            model: Optional raw Codex model name for ``--model``.
+            path: Optional working directory for ``--cd``.
+        """
         self.profile = profile
         self.model = model
         self.path = path
@@ -78,9 +84,9 @@ class CodexAdapter(AgentProtocol):
     def _build_codex_command(
         self,
         prompt: str,
-        model: Optional[str] = None,
-        profile: Optional[str] = None,
-        output_schema: Optional[str] = None,
+        model: str | None = None,
+        profile: str | None = None,
+        output_schema: str | None = None,
     ) -> list[str]:
         """Build codex CLI command with common options."""
         cmd = ["codex", "exec", prompt]
@@ -115,7 +121,7 @@ class CodexAdapter(AgentProtocol):
 
         return schema
 
-    def _resolve_profile_config(self, profile: Optional[str] = None) -> list:
+    def _resolve_profile_config(self, profile: str | None = None) -> list[str]:
         """Resolve profile settings to config overrides, checking local config first."""
         if not profile:
             return []

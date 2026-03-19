@@ -24,3 +24,4 @@
 
 # Guidelines 
 1. [Testing](docs/contributor/TESTING.md) - Read this before writing tests, running test or debugging tests.
+2. [Agent backends](docs/contributor/AGENT_BACKENDS.md) - Shared backend semantics for `backend`, `profile`, `model`, and runtime `path`.

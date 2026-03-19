@@ -4,7 +4,9 @@ import subprocess
 from pathlib import Path
 from uuid import uuid4
 
-from developer.agents.select_agent_service import SelectAgentService
+from developer.agent_backends.select_agent_backend_service import (
+    SelectAgentBackendService,
+)
 from developer.application.models import ImplementationRunResult
 from developer.application.workspace_bridges import build_implementation_agent
 from developer.application.workspace_runtime import (
@@ -24,7 +26,9 @@ def run_implementation(
     if _workspace_mode_enabled(resolved_config_service):
         return _run_implementation_in_workspace(resolved_config_service)
 
-    outcome = build_implementation_agent(SelectAgentService().select_agent()).run()
+    outcome = build_implementation_agent(
+        SelectAgentBackendService().select_agent()
+    ).run()
     if outcome.status == "success":
         return ImplementationRunResult(
             exit_code=0, message="Implementation run succeeded"

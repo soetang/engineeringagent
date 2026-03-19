@@ -1,7 +1,9 @@
 """Application-owned bridges between orchestrators and workspace runtime."""
 
-from developer.agents.protocol import AgentProtocol
-from developer.agents.select_agent_service import SelectAgentService
+from developer.agent_backends.protocol import AgentBackendProtocol
+from developer.agent_backends.select_agent_backend_service import (
+    SelectAgentBackendService,
+)
 from developer.orchestrators.implementation_agent import ImplementationAgent
 from developer.orchestrators.models import OrchestratorOutcome
 from developer.prompts.builder import OrchestratorPromptBuilder
@@ -19,7 +21,9 @@ from developer.workspaces.protocols import (
 )
 
 
-def build_implementation_agent(agent_runner: AgentProtocol) -> ImplementationAgent:
+def build_implementation_agent(
+    agent_runner: AgentBackendProtocol,
+) -> ImplementationAgent:
     """Create the shared implementation workflow graph."""
     return ImplementationAgent(
         prompt_builder=OrchestratorPromptBuilder(),
@@ -54,14 +58,19 @@ def _build_workspace_result(outcome: OrchestratorOutcome) -> WorkspaceRunnableRe
 class LocalExecutionAgentFactory:
     """Create concrete agent runners from execution targets."""
 
-    def __init__(self, select_agent_service: SelectAgentService | None = None) -> None:
+    def __init__(
+        self,
+        select_agent_backend_service: SelectAgentBackendService | None = None,
+    ) -> None:
         """Create a factory backed by the normal agent selection service."""
-        self._select_agent_service = select_agent_service or SelectAgentService()
+        self._select_agent_backend_service = (
+            select_agent_backend_service or SelectAgentBackendService()
+        )
 
-    def for_execution_target(self, target: ExecutionTarget) -> AgentProtocol:
+    def for_execution_target(self, target: ExecutionTarget) -> AgentBackendProtocol:
         """Return an agent runner for the requested execution target."""
         if target.kind == "local_path":
-            return self._select_agent_service.select_agent()
+            return self._select_agent_backend_service.select_agent()
         raise ValueError(f"Unsupported execution target kind: {target.kind}")
 
 

@@ -6,7 +6,7 @@ from shutil import copytree
 import pytest
 from typer.testing import CliRunner
 
-from developer.agents.adapters.codex_adapter import CodexAdapter
+from developer.agent_backends.adapters.codex_adapter import CodexAdapter
 from developer.application.models import ImplementationRunResult
 from developer.orchestrators.models import AgentResult, OrchestratorOutcome
 from developer.presentation.cli import app
@@ -36,7 +36,7 @@ def test_implementation_command_uses_real_selectors(monkeypatch) -> None:
         return FakeImplementationAgent()
 
     monkeypatch.setattr(
-        "developer.agents.select_agent_service.SelectAgentService.select_agent",
+        "developer.agent_backends.select_agent_backend_service.SelectAgentBackendService.select_agent",
         fake_select_agent,
     )
     monkeypatch.setattr(

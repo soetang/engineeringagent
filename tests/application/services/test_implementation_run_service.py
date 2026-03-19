@@ -21,7 +21,7 @@ def test_run_implementation_returns_failure_feedback(monkeypatch) -> None:
         lambda config_service: False,
     )
     monkeypatch.setattr(
-        "developer.agents.select_agent_service.SelectAgentService.select_agent",
+        "developer.agent_backends.select_agent_backend_service.SelectAgentBackendService.select_agent",
         lambda self: object(),
     )
     monkeypatch.setattr(

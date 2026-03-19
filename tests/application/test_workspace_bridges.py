@@ -10,8 +10,10 @@ from developer.application.workspace_bridges import (
     LocalExecutionAgentFactory,
     WorkspaceRunnableImplementationAgent,
 )
-from developer.agents.protocol import AgentProtocol
-from developer.agents.select_agent_service import SelectAgentService
+from developer.agent_backends.protocol import AgentBackendProtocol
+from developer.agent_backends.select_agent_backend_service import (
+    SelectAgentBackendService,
+)
 from developer.orchestrators.models import OrchestratorOutcome
 from developer.workspaces.models import (
     ExecutionTarget,
@@ -35,21 +37,21 @@ class _FakeAgentRunner:
         return "done"
 
 
-class _RecordingSelectAgentService:
+class _RecordingSelectAgentBackendService:
     def __init__(self) -> None:
         self.calls: list[dict[str, object]] = []
 
-    def select_agent(self, **kwargs) -> AgentProtocol:
+    def select_agent(self, **kwargs) -> AgentBackendProtocol:
         self.calls.append(kwargs)
-        return cast(AgentProtocol, _FakeAgentRunner())
+        return cast(AgentBackendProtocol, _FakeAgentRunner())
 
 
 class _RecordingAgentFactory(LocalExecutionAgentFactory):
-    def __init__(self, runner: AgentProtocol) -> None:
+    def __init__(self, runner: AgentBackendProtocol) -> None:
         self.runner = runner
         self.targets: list[ExecutionTarget] = []
 
-    def for_execution_target(self, target: ExecutionTarget) -> AgentProtocol:
+    def for_execution_target(self, target: ExecutionTarget) -> AgentBackendProtocol:
         self.targets.append(target)
         return self.runner
 
@@ -81,9 +83,11 @@ def _patch_implementation_agent(monkeypatch, outcome: OrchestratorOutcome) -> No
 
 def test_local_execution_agent_factory_does_not_pass_workspace_path() -> None:
     """Local-path bridge selection should still rely on ambient cwd."""
-    select_agent_service = _RecordingSelectAgentService()
+    select_agent_backend_service = _RecordingSelectAgentBackendService()
     factory = LocalExecutionAgentFactory(
-        select_agent_service=cast(SelectAgentService, select_agent_service)
+        select_agent_backend_service=cast(
+            SelectAgentBackendService, select_agent_backend_service
+        )
     )
 
     runner = factory.for_execution_target(
@@ -91,7 +95,7 @@ def test_local_execution_agent_factory_does_not_pass_workspace_path() -> None:
     )
 
     assert isinstance(runner, _FakeAgentRunner)
-    assert select_agent_service.calls == [{}]
+    assert select_agent_backend_service.calls == [{}]
 
 
 def test_workspace_runnable_implementation_agent_maps_success(monkeypatch) -> None:
@@ -156,5 +160,5 @@ def test_default_workspace_runnable_agent_resolver_rejects_unknown_kind() -> Non
         DefaultWorkspaceRunnableAgentResolver().resolve("unknown")
 
 
-def _fake_agent_runner() -> AgentProtocol:
-    return cast(AgentProtocol, _FakeAgentRunner())
+def _fake_agent_runner() -> AgentBackendProtocol:
+    return cast(AgentBackendProtocol, _FakeAgentRunner())

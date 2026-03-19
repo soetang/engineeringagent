@@ -3,8 +3,10 @@ from typing import List, Optional, Protocol
 
 from pydantic import BaseModel, Field
 
-from developer.agents.protocol import AgentProtocol
-from developer.agents.select_agent_service import get_agent_service
+from developer.agent_backends.protocol import AgentBackendProtocol
+from developer.agent_backends.select_agent_backend_service import (
+    get_agent_backend_service,
+)
 
 from ..models import CheckType
 from ..protocol import CheckAdapter, CheckResult, CheckResultList, CheckStatus
@@ -43,14 +45,14 @@ class ReviewOutput(BaseModel):
         return schema
 
 
-class _AgentSelectionService(Protocol):
+class _AgentBackendSelectionService(Protocol):
     def select_agent(
         self,
-        backend: Optional[str] = ...,
-        profile: Optional[str] = None,
-        model: Optional[str] = None,
-        path: Optional[str] = None,
-    ) -> AgentProtocol: ...
+        backend: str | None = ...,
+        profile: str | None = None,
+        model: str | None = None,
+        path: str | None = None,
+    ) -> AgentBackendProtocol: ...
 
 
 class AgenticReviewCheck(CheckType):
@@ -60,10 +62,18 @@ class AgenticReviewCheck(CheckType):
         ..., description="Path to the prompt file for the code review"
     )
     model: Optional[str] = Field(
-        default=None, description="Optional model to use for the review"
+        default=None,
+        description=(
+            "Optional underlying LLM to use for the review when supported by the "
+            "selected backend."
+        ),
     )
     profile: Optional[str] = Field(
-        default=None, description="Optional profile to use for the review"
+        default=None,
+        description=(
+            "Optional backend profile or agent persona to use for the review. "
+            "Vibe users should use this field for `--agent` selection."
+        ),
     )
     backend: Optional[str] = Field(
         default=None, description="Optional backend to use for the review"
@@ -82,9 +92,12 @@ class AgenticReviewCheck(CheckType):
 class AgenticReviewAdapter(CheckAdapter):
     """Adapter for running agentic code reviews as quality checks."""
 
-    def __init__(self, agent_service: _AgentSelectionService | None = None):
+    def __init__(
+        self,
+        agent_service: _AgentBackendSelectionService | None = None,
+    ) -> None:
         """Initialize the adapter and default agent service selection."""
-        self.agent_service = agent_service or get_agent_service()
+        self.agent_service = agent_service or get_agent_backend_service()
 
     def run_check(self, checks: List[AgenticReviewCheck]) -> CheckResultList:
         """Run the agentic review checks and return the results."""
@@ -104,8 +117,9 @@ class AgenticReviewAdapter(CheckAdapter):
                 with open(check.prompt_path, "r") as f:
                     prompt = f.read()
 
-                # Run the agent with the prompt and expected output format
-                # Agent is already configured with profile/model from SelectAgentService
+                # Run the agent with the prompt and expected output format.
+                # Backend-specific profile/model semantics are handled during
+                # backend selection before the adapter is returned.
                 review_output = agent_for_check.run_agent(
                     prompt=prompt,
                     output_format=ReviewOutput,  # type: ignore[arg-type]

@@ -2,8 +2,8 @@
 
 import pytest
 
+from developer.agent_backends.settings import AgentBackendSettings
 from developer.quality.settings import QualitySettings
-from developer.agents.settings import AgentSettings
 from developer.prompts.settings import OrchestratorPromptSettings
 
 
@@ -27,26 +27,41 @@ def test_quality_settings_extra_forbid():
         )
 
 
-def test_agent_settings_defaults():
-    """Test AgentSettings default values."""
-    settings = AgentSettings()
+def test_agent_backend_settings_defaults():
+    """Test AgentBackendSettings default values."""
+    settings = AgentBackendSettings()
     assert settings.backend == "codex"
     assert settings.profile is None
     assert settings.model is None
 
 
-def test_agent_settings_custom_values():
-    """Test AgentSettings with custom values."""
-    settings = AgentSettings(backend="vibe", profile="production", model="gpt-4-turbo")
-    assert settings.backend == "vibe"
-    assert settings.profile == "production"
+def test_agent_backend_settings_custom_values():
+    """Test AgentBackendSettings with custom values."""
+    settings = AgentBackendSettings(
+        backend="codex",
+        profile="implementation",
+        model="gpt-4-turbo",
+    )
+    assert settings.backend == "codex"
+    assert settings.profile == "implementation"
     assert settings.model == "gpt-4-turbo"
 
 
-def test_agent_settings_extra_forbid():
-    """Test AgentSettings extra fields are forbidden."""
+def test_agent_backend_settings_accepts_vibe_profile_without_model():
+    """Vibe configuration should use profile for agent selection semantics."""
+    settings = AgentBackendSettings(backend="vibe", profile="testagent")
+
+    assert settings.backend == "vibe"
+    assert settings.profile == "testagent"
+    assert settings.model is None
+
+
+def test_agent_backend_settings_extra_forbid():
+    """Test AgentBackendSettings extra fields are forbidden."""
     with pytest.raises(Exception, match="(?i)extra|forbid"):
-        AgentSettings.model_validate({"backend": "test", "extra_field": "should_fail"})
+        AgentBackendSettings.model_validate(
+            {"backend": "test", "extra_field": "should_fail"}
+        )
 
 
 def test_settings_validation():

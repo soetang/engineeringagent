@@ -1,24 +1,38 @@
 import json
 import subprocess
-from typing import Optional, Type, TypeVar
+from typing import Optional, Type
 
 from pydantic import BaseModel
 
-from developer.agents.protocol import AgentProtocol, TModel
+from developer.agent_backends.protocol import AgentBackendProtocol, TModel
 
 
-class VibeAdapter(AgentProtocol):
-    """Vibe CLI adapter implementing AgentProtocol."""
+class VibeAdapter(AgentBackendProtocol):
+    """Vibe CLI adapter mapping shared profile semantics to ``vibe --agent``."""
 
     def __init__(
         self,
-        profile: Optional[str] = None,
-        model: Optional[str] = None,
-        path: Optional[str] = None,
-    ):
-        """Initialize Vibe adapter with profile and model configuration."""
+        profile: str | None = None,
+        model: str | None = None,
+        path: str | None = None,
+    ) -> None:
+        """Initialize Vibe adapter state.
+
+        Args:
+            profile: Optional Vibe agent profile passed through ``--agent``.
+            model: Unsupported for Vibe. Use ``profile`` instead.
+            path: Optional working directory for ``--workdir``.
+
+        Raises:
+            ValueError: If ``model`` is provided for the Vibe backend.
+        """
+        if model is not None:
+            raise ValueError(
+                "Vibe backend does not support `model`; use `profile` to select a Vibe agent."
+            )
+
         self.profile = profile
-        self.model = model
+        self.model = None
         self.path = path
 
     def run_agent(
@@ -34,9 +48,9 @@ class VibeAdapter(AgentProtocol):
             schema = self._generate_schema(output_format)
             schema_str = json.dumps(schema, indent=2)
             full_prompt = f"Return JSON matching this schema:\n```json\n{schema_str}\n```\n\n{prompt}"
-            cmd = self._build_vibe_command(full_prompt, self.model)
+            cmd = self._build_vibe_command(full_prompt)
         else:
-            cmd = self._build_vibe_command(prompt, self.model)
+            cmd = self._build_vibe_command(prompt)
 
         # Execute subprocess command
         try:
@@ -91,13 +105,12 @@ class VibeAdapter(AgentProtocol):
     def _build_vibe_command(
         self,
         prompt: str,
-        model: Optional[str] = None,
     ) -> list[str]:
         """Build vibe CLI command with common options."""
         cmd = ["vibe", "-p", prompt, "--output", "json"]
 
-        if model:
-            cmd.extend(["--agent", model])
+        if self.profile:
+            cmd.extend(["--agent", self.profile])
 
         if self.path:
             cmd.extend(["--workdir", self.path])

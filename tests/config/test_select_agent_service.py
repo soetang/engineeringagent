@@ -1,115 +1,138 @@
-"""Tests for SelectAgentService."""
+"""Tests for SelectAgentBackendService."""
 
-import tempfile
-import os
-from developer.agents.select_agent_service import SelectAgentService
-from developer.agents.adapters.codex_adapter import CodexAdapter
-from developer.agents.adapters.vibe_adapter import VibeAdapter
+import pytest
 
-
-def test_select_agent_service_with_config():
-    """Test SelectAgentService using configuration."""
-    # Create temporary TOML file
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
-        f.write("""
-[agents]
-backend = "codex"
-profile = "test_profile"
-model = "gpt-4"
-""")
-        temp_file = f.name
-
-    try:
-        # Create service with custom config file
-        service = SelectAgentService()
-        service.config_service._config_file = temp_file
-
-        # Test selecting agent with no parameters (should use config)
-        agent = service.select_agent()
-        assert isinstance(agent, CodexAdapter)
-        # With constructor-based config, agents now store profile/model
-        assert agent.profile == "test_profile"
-        assert agent.model == "gpt-4"
-
-    finally:
-        os.unlink(temp_file)
+from developer.agent_backends.adapters.codex_adapter import CodexAdapter
+from developer.agent_backends.adapters.vibe_adapter import VibeAdapter
+from developer.agent_backends.select_agent_backend_service import (
+    SelectAgentBackendService,
+    get_agent_backend_service,
+)
+from developer.config.service import ConfigService
 
 
-def test_select_agent_service_with_explicit_params():
-    """Test SelectAgentService with explicit parameters."""
-    service = SelectAgentService()
-
-    # Test with explicit backend
-    agent = service.select_agent(backend="vibe", profile="custom", model="gpt-4-turbo")
-    assert isinstance(agent, VibeAdapter)
-    # With constructor-based config, agents now store profile/model
-    assert agent.profile == "custom"
-    assert agent.model == "gpt-4-turbo"
+def _config_service(tmp_path, config_text: str = "") -> ConfigService:
+    """Create an isolated config service for backend selection tests."""
+    config_file = tmp_path / "engineeringagent.toml"
+    config_file.write_text(config_text, encoding="utf-8")
+    return ConfigService(config_file=str(config_file))
 
 
-def test_select_agent_service_mixed_params():
-    """Test SelectAgentService with mix of config and explicit parameters."""
-    # Create temporary TOML file
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
-        f.write("""
-[agents]
-backend = "codex"
-profile = "config_profile"
-model = "config_model"
-""")
-        temp_file = f.name
-
-    try:
-        service = SelectAgentService()
-        service.config_service._config_file = temp_file
-
-        # Test with explicit backend but config profile/model
-        agent = service.select_agent(backend="vibe")
-        assert isinstance(agent, VibeAdapter)
-        # With constructor-based config, agents now store profile/model from config
-        assert agent.profile == "config_profile"
-        assert agent.model == "config_model"
-
-        # Test with explicit profile but config backend/model
-        agent = service.select_agent(profile="custom_profile")
-        assert isinstance(agent, CodexAdapter)
-        # With constructor-based config, agents now store profile/model
-        assert agent.profile == "custom_profile"
-        assert agent.model == "config_model"
-
-    finally:
-        os.unlink(temp_file)
+def _agents_config(**settings: str) -> str:
+    """Build a minimal `[agents]` config block for tests."""
+    lines = ["[agents]"]
+    lines.extend(f'{key} = "{value}"' for key, value in settings.items())
+    return "\n".join(lines)
 
 
-def test_select_agent_service_unknown_backend():
-    """Test SelectAgentService with unknown backend."""
-    service = SelectAgentService()
+def test_select_agent_backend_service_with_codex_config(tmp_path):
+    """Service should load Codex backend settings from config."""
+    service = SelectAgentBackendService(
+        config_service=_config_service(
+            tmp_path,
+            _agents_config(
+                backend="codex",
+                profile="test_profile",
+                model="gpt-4",
+            ),
+        )
+    )
 
-    try:
-        service.select_agent(backend="unknown_backend")
-        assert False, "Expected ValueError for unknown backend"
-    except ValueError as e:
-        assert "Unknown backend" in str(e)
+    agent = service.select_agent()
 
-
-def test_select_agent_service_factory_function():
-    """Test the factory function for getting agent service."""
-    from developer.agents.select_agent_service import get_agent_service
-
-    service = get_agent_service()
-    assert isinstance(service, SelectAgentService)
-
-    # Note: get_agent_service() creates new instances, not singleton
-    # This is fine for our use case
-    service2 = get_agent_service()
-    assert isinstance(service2, SelectAgentService)
+    assert isinstance(agent, CodexAdapter)
+    assert agent.profile == "test_profile"
+    assert agent.model == "gpt-4"
+    assert agent.path is None
 
 
-def test_select_agent_service_with_path():
-    """Test SelectAgentService passes path to the selected agent."""
-    service = SelectAgentService()
+def test_select_agent_backend_service_with_explicit_vibe_profile(tmp_path):
+    """Vibe selection should use profile as the agent source."""
+    service = SelectAgentBackendService(config_service=_config_service(tmp_path))
 
-    agent = service.select_agent(backend="vibe", path="/tmp")
+    agent = service.select_agent(backend="vibe", profile="testagent", path="/tmp")
 
     assert isinstance(agent, VibeAdapter)
+    assert agent.profile == "testagent"
+    assert agent.model is None
     assert agent.path == "/tmp"
+
+
+def test_select_agent_backend_service_mixed_params(tmp_path):
+    """Explicit overrides should merge with shared config defaults."""
+    service = SelectAgentBackendService(
+        config_service=_config_service(
+            tmp_path,
+            _agents_config(
+                backend="codex",
+                profile="config_profile",
+                model="config_model",
+            ),
+        )
+    )
+
+    agent = service.select_agent(profile="custom_profile")
+
+    assert isinstance(agent, CodexAdapter)
+    assert agent.profile == "custom_profile"
+    assert agent.model == "config_model"
+    assert agent.path is None
+
+
+def test_select_agent_backend_service_unknown_backend(tmp_path):
+    """Unknown backends should fail clearly."""
+    service = SelectAgentBackendService(config_service=_config_service(tmp_path))
+
+    with pytest.raises(ValueError, match="Unknown backend: unknown_backend"):
+        service.select_agent(backend="unknown_backend")
+
+
+def test_select_agent_backend_service_factory_function():
+    """Factory should create fresh backend selection service instances."""
+    service = get_agent_backend_service()
+    assert isinstance(service, SelectAgentBackendService)
+
+    service2 = get_agent_backend_service()
+    assert isinstance(service2, SelectAgentBackendService)
+
+
+def test_select_agent_backend_service_rejects_vibe_model(tmp_path):
+    """Vibe should reject raw model configuration."""
+    service = SelectAgentBackendService(config_service=_config_service(tmp_path))
+
+    with pytest.raises(
+        ValueError,
+        match="Vibe backend does not support `model`; use `profile`",
+    ):
+        service.select_agent(backend="vibe", model="gpt-4-turbo")
+
+
+def test_select_agent_backend_service_rejects_vibe_profile_and_model(tmp_path):
+    """Vibe should reject providing both profile and model."""
+    service = SelectAgentBackendService(config_service=_config_service(tmp_path))
+
+    with pytest.raises(
+        ValueError,
+        match="Received both `profile` and `model`",
+    ):
+        service.select_agent(
+            backend="vibe",
+            profile="testagent",
+            model="gpt-4-turbo",
+        )
+
+
+def test_select_agent_backend_service_rejects_vibe_model_from_config(tmp_path):
+    """Config-driven Vibe selection should also reject raw model usage."""
+    service = SelectAgentBackendService(
+        config_service=_config_service(
+            tmp_path,
+            _agents_config(backend="vibe", model="gpt-4-turbo"),
+        )
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="Vibe backend does not support `model`; use `profile`",
+    ):
+        service.select_agent()

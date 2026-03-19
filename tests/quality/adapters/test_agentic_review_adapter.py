@@ -4,7 +4,7 @@ from typing import List, Optional, Type
 import pytest
 from pydantic import BaseModel
 
-from developer.agents.protocol import AgentProtocol
+from developer.agent_backends.protocol import AgentBackendProtocol
 from developer.quality.adapters.agentic_review_adapter import (
     AgenticReviewAdapter,
     AgenticReviewCheck,
@@ -14,7 +14,7 @@ from developer.quality.adapters.agentic_review_adapter import (
 from developer.quality.protocol import CheckStatus
 
 
-class MockAgent(AgentProtocol):
+class MockAgent(AgentBackendProtocol):
     """Mock agent for testing without requiring actual CLI adapters."""
 
     def __init__(
@@ -215,7 +215,7 @@ def test_agentic_review_adapter_get_check_type():
 def test_agentic_review_adapter_backend_selection():
     """Test backend/profile/model/path are forwarded to agent selection."""
 
-    class BackendSelectionMockAgent(AgentProtocol):
+    class BackendSelectionMockAgent(AgentBackendProtocol):
         def __init__(
             self,
             name="mock",
@@ -332,16 +332,15 @@ def hello_world():
             prompt_path=prompt_path,
             path="/tmp",
             backend="vibe",
-            profile="p1",
-            model="m1",
+            profile="testagent",
         )
         results = adapter.run_check([check_with_path])
         assert len(results.results) == 1
         assert results.results[0].status == CheckStatus.PASSED
         assert len(service.calls) == 1
         assert service.calls[0]["backend"] == "vibe"
-        assert service.calls[0]["profile"] == "p1"
-        assert service.calls[0]["model"] == "m1"
+        assert service.calls[0]["profile"] == "testagent"
+        assert service.calls[0]["model"] is None
         assert service.calls[0]["path"] == "/tmp"
 
         service.calls.clear()
@@ -355,6 +354,10 @@ def hello_world():
 
         class FailingAgentService:
             def select_agent(self, backend=None, profile=None, model=None, path=None):
+                if backend == "vibe" and model is not None:
+                    raise ValueError(
+                        "Vibe backend does not support `model`; use `profile` to select a Vibe agent."
+                    )
                 raise ValueError(f"Unknown backend: {backend}")
 
         adapter = AgenticReviewAdapter(agent_service=FailingAgentService())
@@ -367,6 +370,18 @@ def hello_world():
             adapter.run_check([check_unknown])
         assert "Error executing agentic review" in str(exc_info.value)
         assert "Unknown backend: unknown_backend" in str(exc_info.value)
+
+        adapter = AgenticReviewAdapter(agent_service=FailingAgentService())
+        check_vibe_model = AgenticReviewCheck(
+            check_type="agentic_review",
+            prompt_path=prompt_path,
+            backend="vibe",
+            model="devstral-small",
+        )
+        with pytest.raises(Exception) as exc_info:
+            adapter.run_check([check_vibe_model])
+        assert "Error executing agentic review" in str(exc_info.value)
+        assert "Vibe backend does not support `model`" in str(exc_info.value)
 
     finally:
         try:

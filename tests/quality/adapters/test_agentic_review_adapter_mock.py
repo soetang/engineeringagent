@@ -1,13 +1,15 @@
 import os
 from typing import List, Optional, Type
-from pydantic import BaseModel
+
 import pytest
+from pydantic import BaseModel
+
+from developer.agent_backends.protocol import AgentBackendProtocol
 from developer.quality.adapters import AgenticReviewAdapter, AgenticReviewCheck
 from developer.quality.protocol import CheckStatus
-from developer.agents.protocol import AgentProtocol
 
 
-class MockAgent(AgentProtocol):
+class MockAgent(AgentBackendProtocol):
     """Mock agent for testing without requiring actual Codex CLI."""
 
     def __init__(

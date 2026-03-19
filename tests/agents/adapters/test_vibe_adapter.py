@@ -1,7 +1,7 @@
 import pytest
 from pydantic import BaseModel
 
-from developer.agents.adapters.vibe_adapter import VibeAdapter
+from developer.agent_backends.adapters.vibe_adapter import VibeAdapter
 from developer.quality.adapters.agentic_review_adapter import ReviewOutput, ReviewStatus
 
 
@@ -16,7 +16,35 @@ class VibeTestModel(BaseModel):
 @pytest.fixture
 def vibe_adapter() -> VibeAdapter:
     """Fixture providing VibeAdapter instance for tests."""
-    return VibeAdapter()
+    return VibeAdapter(profile="testagent")
+
+
+def test_vibe_adapter_uses_profile_for_agent_flag():
+    """Vibe command building should use profile for the agent selector."""
+    adapter = VibeAdapter(profile="testagent", path="/tmp/workspace")
+
+    command = adapter._build_vibe_command("hello")
+
+    assert command == [
+        "vibe",
+        "-p",
+        "hello",
+        "--output",
+        "json",
+        "--agent",
+        "testagent",
+        "--workdir",
+        "/tmp/workspace",
+    ]
+
+
+def test_vibe_adapter_rejects_model_configuration():
+    """Vibe adapters should reject unsupported raw model configuration."""
+    with pytest.raises(
+        ValueError,
+        match="Vibe backend does not support `model`; use `profile`",
+    ):
+        VibeAdapter(model="devstral-small")
 
 
 @pytest.mark.integration
@@ -62,7 +90,7 @@ class TestVibeAdapter:
         test_file = tmp_path / "test.txt"
         test_file.write_text("Hello from temp directory!")
 
-        adapter = VibeAdapter(path=str(tmp_path))
+        adapter = VibeAdapter(profile="testagent", path=str(tmp_path))
         result = adapter.run_agent("What is in test.txt?")
 
         assert isinstance(result, str)
