@@ -6,4 +6,4 @@ implementation_prompt_path = "harness/implementation_prompt.md"
 
 [agents]
 backend = "codex"
-model = "gpt-5.3-codex-spark"
+profile = "implementation"
