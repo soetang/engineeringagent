@@ -1,8 +1,14 @@
 checks:
   - name: "Linting and Static Analysis"
     filepath: "commands.yaml"
+  - name: "Architectural Fitness Functions"
+    filepath: "fitness_functions.yaml"
 #  - name: "Agentic Reviews"
 #    filepath: "reviewer.yaml"
+  - check_type: "command"
+    check_category: "fitness_tests"
+    phase: "IterationComplete"
+    command: ["uv", "run", "pytest", "harness/fitness/tests"]
   - check_type: "command"
     check_category: "unit_tests"
     command: ["uv", "run", "pytest"]

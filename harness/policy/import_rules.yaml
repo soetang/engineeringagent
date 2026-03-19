@@ -1,0 +1,37 @@
+rules:
+  - name: "orchestrators-only-import-orchestrators"
+    paths:
+      - "src/developer/orchestrators/**/*.py"
+    allow:
+      local_prefixes:
+        - "developer.orchestrators"
+      relative_import_roots:
+        - "."
+    deny:
+      local_prefixes:
+        - "developer"
+  - name: "no-non-entrypoint-imports-from-presentation"
+    paths:
+      - "src/developer/agents/**/*.py"
+      - "src/developer/config/**/*.py"
+      - "src/developer/orchestrators/**/*.py"
+      - "src/developer/prompts/**/*.py"
+      - "src/developer/quality/**/*.py"
+      - "src/developer/tasks/**/*.py"
+    allow:
+      local_prefixes: []
+      relative_import_roots: []
+    deny:
+      local_prefixes:
+        - "developer.presentation"
+  - name: "config-only-imports-config"
+    paths:
+      - "src/developer/config/**/*.py"
+    allow:
+      local_prefixes:
+        - "developer.config"
+      relative_import_roots:
+        - "."
+    deny:
+      local_prefixes:
+        - "developer"

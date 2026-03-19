@@ -211,9 +211,9 @@ checks:
 
         result = runner.invoke(app, ["check", "run"])
 
-        assert result.exit_code == 0
-        assert "[command] echo check_one" in result.output
-        assert "1. ✓" in result.output
+    assert result.exit_code == 0
+    assert "[command] echo check_one" in result.output
+    assert "1. ✓" in result.output
 
 
 def test_cli_check_help():

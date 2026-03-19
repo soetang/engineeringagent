@@ -1,12 +1,16 @@
-# Advanced quality checks configuration
-# This file defines advanced checks to run
-
 name: "fitness_functions"
 filepath: ""
 checks:
   - check_type: "command"
     check_category: "fitness"
-    command: ["ruff", "check"]
-  - check_type: "command"
-    check_category: "fitness"
-    command: ["pyrefly", "check"]
+    phase: "IterationComplete"
+    command:
+      [
+        "uv",
+        "run",
+        "python",
+        "-m",
+        "harness.fitness.scripts.import_rules",
+        "--config",
+        "harness/policy/import_rules.yaml",
+      ]
