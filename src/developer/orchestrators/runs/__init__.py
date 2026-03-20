@@ -14,6 +14,7 @@ from developer.orchestrators.runs.models import (
 from developer.orchestrators.runs.protocols import (
     BranchInspectionPort,
     ImplementationRunTask,
+    PublishedTaskBranchView,
     TaskPublicationStore,
     WorkspaceRunPort,
 )
@@ -26,6 +27,7 @@ __all__ = [
     "ImplementationWorkspaceRunOutcome",
     "ImplementationWorkspaceRunRequest",
     "PublishedTaskBranch",
+    "PublishedTaskBranchView",
     "TaskPublicationStore",
     "WorkspaceRunCommand",
     "WorkspaceRunPort",

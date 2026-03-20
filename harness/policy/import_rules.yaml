@@ -118,6 +118,23 @@ rules:
     deny:
       local_prefixes:
         - "developer.presentation"
+  - name: "implementation-run-service-import-boundary"
+    paths:
+      - "src/developer/application/services/implementation_run_service.py"
+    allow:
+      local_prefixes:
+        - "developer.agent_backends"
+        - "developer.application"
+        - "developer.config"
+        - "developer.orchestrators.loop"
+        - "developer.orchestrators.runs"
+        - "developer.tasks"
+        - "developer.version_control.adapters.git_adapter"
+      relative_import_roots:
+        - "."
+    deny:
+      local_prefixes:
+        - "developer"
   - name: "config-only-imports-config"
     paths:
       - "src/developer/config/**/*.py"
