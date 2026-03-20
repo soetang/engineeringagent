@@ -910,8 +910,8 @@ If the import rules later prove insufficient, a follow-up script can assert that
 - [x] Move `ImplementationAgent` into `src/developer/orchestrators/loop/implementation_agent.py`
 - [x] Move loop-specific models into `src/developer/orchestrators/loop/models.py`
 - [x] Move loop-specific protocols into `src/developer/orchestrators/loop/protocols.py`
-- [ ] Add `src/developer/orchestrators/runs/models.py`
-- [ ] Add `src/developer/orchestrators/runs/protocols.py`
+- [x] Add `src/developer/orchestrators/runs/models.py`
+- [x] Add `src/developer/orchestrators/runs/protocols.py`
 - [x] Update all existing imports to the new orchestrator module paths in the same change
 - [x] Remove use of flat `developer.orchestrators.*` module paths
 - [x] Remove the old flat orchestrator modules after imports are migrated
@@ -924,15 +924,15 @@ This phase should end with only the new orchestrator module layout in use.
 
 ## Phase 2: Move orchestration-facing protocols into orchestrators
 
-- [ ] Define `ImplementationRunTask` in `src/developer/orchestrators/runs/protocols.py`
-- [ ] Define `TaskPublicationStore` in `src/developer/orchestrators/runs/protocols.py`
-- [ ] Define `BranchInspectionPort` in `src/developer/orchestrators/runs/protocols.py`
-- [ ] Define `WorkspaceRunPort` in `src/developer/orchestrators/runs/protocols.py`
-- [ ] Define `ImplementationWorkspaceRunRequest` in `src/developer/orchestrators/runs/models.py`
-- [ ] Define `PublishedTaskBranch` in `src/developer/orchestrators/runs/models.py`
-- [ ] Define `ImplementationWorkspacePlan` in `src/developer/orchestrators/runs/models.py`
-- [ ] Define `ImplementationWorkspaceRunOutcome` in `src/developer/orchestrators/runs/models.py`
-- [ ] Update the resolved implementation-task type to satisfy `ImplementationRunTask`
+- [x] Define `ImplementationRunTask` in `src/developer/orchestrators/runs/protocols.py`
+- [x] Define `TaskPublicationStore` in `src/developer/orchestrators/runs/protocols.py`
+- [x] Define `BranchInspectionPort` in `src/developer/orchestrators/runs/protocols.py`
+- [x] Define `WorkspaceRunPort` in `src/developer/orchestrators/runs/protocols.py`
+- [x] Define `ImplementationWorkspaceRunRequest` in `src/developer/orchestrators/runs/models.py`
+- [x] Define `PublishedTaskBranch` in `src/developer/orchestrators/runs/models.py`
+- [x] Define `ImplementationWorkspacePlan` in `src/developer/orchestrators/runs/models.py`
+- [x] Define `ImplementationWorkspaceRunOutcome` in `src/developer/orchestrators/runs/models.py`
+- [x] Update the resolved implementation-task type to satisfy `ImplementationRunTask`
 - [ ] Update `developer.workspaces` implementations to satisfy the new orchestrator-owned ports
 - [ ] Update `developer.version_control` implementations to satisfy the new orchestrator-owned ports
 - [ ] Keep concrete implementations outside orchestrators

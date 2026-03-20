@@ -1,11 +1,12 @@
 """Implementation task models."""
 
 from developer.orchestrators.loop.models import CompletionResult
+from developer.orchestrators.runs.protocols import ImplementationRunTask
 from developer.tasks.models import TaskPhaseDefinition, TaskPlanDefinition
 from developer.tasks.services.markdown_plan_loader import MarkdownPlanLoader
 
 
-class MarkdownPlanImplementationTask:
+class MarkdownPlanImplementationTask(ImplementationRunTask):
     """Concrete implementation task backed by a markdown plan file."""
 
     def __init__(
