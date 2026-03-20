@@ -902,7 +902,7 @@ If the import rules later prove insufficient, a follow-up script can assert that
 
 ## Phase 1: Restructure orchestrators around loop and run ownership
 
-- [ ] Update `harness/policy/import_rules.yaml` before moving code so the new orchestrator split is policy-compliant immediately
+- [x] Update `harness/policy/import_rules.yaml` before moving code so the new orchestrator split is policy-compliant immediately
 - [ ] Add `src/developer/orchestrators/loop/`
 - [ ] Add `src/developer/orchestrators/loop/__init__.py`
 - [ ] Add `src/developer/orchestrators/runs/`
