@@ -5,7 +5,7 @@ checks_path = "harness/checks.yaml"
 max_iterations = 40
 
 [prompts]
-implementation_prompt_path = "harness/implementation_prompt.md"
+implementation_prompt_path = "harness/prompts/implementation_prompt.md"
 commit_prompt_path = "harness/prompts/commit_message_prompt.md"
 pull_request_prompt_path = "harness/prompts/pull_request_prompt.md"
 
