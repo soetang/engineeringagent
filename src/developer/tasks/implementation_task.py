@@ -1,6 +1,6 @@
 """Implementation task models."""
 
-from developer.orchestrators.models import CompletionResult
+from developer.orchestrators.loop.models import CompletionResult
 from developer.tasks.models import TaskPhaseDefinition, TaskPlanDefinition
 from developer.tasks.services.markdown_plan_loader import MarkdownPlanLoader
 

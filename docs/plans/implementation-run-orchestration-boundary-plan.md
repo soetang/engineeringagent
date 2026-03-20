@@ -903,18 +903,18 @@ If the import rules later prove insufficient, a follow-up script can assert that
 ## Phase 1: Restructure orchestrators around loop and run ownership
 
 - [x] Update `harness/policy/import_rules.yaml` before moving code so the new orchestrator split is policy-compliant immediately
-- [ ] Add `src/developer/orchestrators/loop/`
-- [ ] Add `src/developer/orchestrators/loop/__init__.py`
-- [ ] Add `src/developer/orchestrators/runs/`
-- [ ] Add `src/developer/orchestrators/runs/__init__.py`
-- [ ] Move `ImplementationAgent` into `src/developer/orchestrators/loop/implementation_agent.py`
-- [ ] Move loop-specific models into `src/developer/orchestrators/loop/models.py`
-- [ ] Move loop-specific protocols into `src/developer/orchestrators/loop/protocols.py`
+- [x] Add `src/developer/orchestrators/loop/`
+- [x] Add `src/developer/orchestrators/loop/__init__.py`
+- [x] Add `src/developer/orchestrators/runs/`
+- [x] Add `src/developer/orchestrators/runs/__init__.py`
+- [x] Move `ImplementationAgent` into `src/developer/orchestrators/loop/implementation_agent.py`
+- [x] Move loop-specific models into `src/developer/orchestrators/loop/models.py`
+- [x] Move loop-specific protocols into `src/developer/orchestrators/loop/protocols.py`
 - [ ] Add `src/developer/orchestrators/runs/models.py`
 - [ ] Add `src/developer/orchestrators/runs/protocols.py`
-- [ ] Update all existing imports to the new orchestrator module paths in the same change
-- [ ] Remove use of flat `developer.orchestrators.*` module paths
-- [ ] Remove the old flat orchestrator modules after imports are migrated
+- [x] Update all existing imports to the new orchestrator module paths in the same change
+- [x] Remove use of flat `developer.orchestrators.*` module paths
+- [x] Remove the old flat orchestrator modules after imports are migrated
 
 ### Notes
 

@@ -12,7 +12,7 @@ from developer.application.services.implementation_run_service import (
     run_implementation,
 )
 from developer.config.service import ConfigService
-from developer.orchestrators.models import OrchestratorOutcome
+from developer.orchestrators.loop.models import OrchestratorOutcome
 from developer.tasks.models import TaskPublicationState
 from developer.version_control.adapters.git_adapter import GitVersionControlAdapter
 from developer.workspaces.models import RunHandle, RunStatus

@@ -6,12 +6,17 @@ from developer.agent_backends.protocol import AgentBackendProtocol
 from developer.agent_backends.select_agent_backend_service import (
     SelectAgentBackendService,
 )
-from developer.orchestrators.implementation_agent import ImplementationAgent
-from developer.orchestrators.models import ImplementationContext, OrchestratorOutcome
-from developer.orchestrators.protocols import ImplementationLifecycleObserver
+from developer.orchestrators.loop.implementation_agent import ImplementationAgent
+from developer.orchestrators.loop.models import (
+    ImplementationContext,
+    OrchestratorOutcome,
+)
+from developer.orchestrators.loop.protocols import (
+    ImplementationLifecycleObserver,
+    ImplementationTask,
+)
 from developer.prompts.builder import OrchestratorPromptBuilder
 from developer.quality.services import CheckGateRunner
-from developer.tasks.protocol import ImplementationTask
 from developer.tasks.select_service import TaskSelectionService
 from developer.workspaces.models import (
     ExecutionTarget,

@@ -11,10 +11,10 @@ from developer.application.settings import ImplementationSettings
 from developer.application.workspace_bridges import build_implementation_agent
 from developer.application.workspace_runtime import build_workspace_orchestrator
 from developer.config.service import ConfigService
-from developer.orchestrators.models import OrchestratorOutcome
+from developer.orchestrators.loop.models import OrchestratorOutcome
+from developer.orchestrators.loop.protocols import ImplementationTask
 from developer.tasks.errors import TaskError
 from developer.tasks.models import TaskPublicationState
-from developer.tasks.protocol import ImplementationTask
 from developer.tasks.select_service import TaskSelectionService
 from developer.version_control.adapters.git_adapter import GitVersionControlAdapter
 from developer.workspaces.models import RunHandle, RunRequest, WorkspaceSpec
