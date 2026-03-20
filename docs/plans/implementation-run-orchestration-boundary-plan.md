@@ -188,11 +188,37 @@ The exact names can change, but the ownership should stay the same.
 
 Recommended run-orchestration ports:
 
+- `ImplementationRunTask`
 - `TaskPublicationStore`
 - `BranchInspectionPort`
 - `WorkspaceRunPort`
 
+`developer.orchestrators.runs` should not import from `developer.tasks`.
+
+That means:
+
+- the task module may implement orchestrator-owned task protocols; and
+- infrastructure implementations map persisted publication records into orchestrator-owned publication models before returning them through orchestrator ports.
+
 Suggested shapes:
+
+```python
+class ImplementationRunTask(Protocol):
+    @property
+    def task_id(self) -> str:
+        ...
+
+    @property
+    def task_name(self) -> str:
+        ...
+
+    @property
+    def task_path(self) -> str | None:
+        ...
+
+    def get_branch_name(self) -> str:
+        ...
+```
 
 ```python
 class TaskPublicationStore(Protocol):
@@ -200,7 +226,7 @@ class TaskPublicationStore(Protocol):
         self,
         task_name: str,
         task_path: str | None,
-    ) -> TaskPublicationState | None:
+    ) -> PublishedTaskBranch | None:
         ...
 ```
 
@@ -229,6 +255,7 @@ Concrete implementations should live outside orchestrators:
 - `FileWorkspaceRegistry` can satisfy `TaskPublicationStore`
 - `GitVersionControlAdapter` can satisfy `BranchInspectionPort`
 - `WorkspaceRunOrchestrator` can satisfy `WorkspaceRunPort`
+- the resolved implementation-task type in `developer.tasks` can satisfy `ImplementationRunTask`
 
 One additional ownership decision should stay explicit in the plan:
 
@@ -241,8 +268,28 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from developer.orchestrators.runs.models import WorkspaceRunCommand, WorkspaceRunResult
-from developer.tasks.models import TaskPublicationState
+from developer.orchestrators.runs.models import (
+    PublishedTaskBranch,
+    WorkspaceRunCommand,
+    WorkspaceRunResult,
+)
+
+
+class ImplementationRunTask(Protocol):
+    @property
+    def task_id(self) -> str:
+        ...
+
+    @property
+    def task_name(self) -> str:
+        ...
+
+    @property
+    def task_path(self) -> str | None:
+        ...
+
+    def get_branch_name(self) -> str:
+        ...
 
 
 class TaskPublicationStore(Protocol):
@@ -250,7 +297,7 @@ class TaskPublicationStore(Protocol):
         self,
         task_name: str,
         task_path: str | None,
-    ) -> TaskPublicationState | None:
+    ) -> PublishedTaskBranch | None:
         ...
 
 
@@ -272,6 +319,16 @@ class WorkspaceRunPort(Protocol):
         ...
 ```
 
+Concrete task-side sketch showing the allowed dependency direction:
+
+```python
+from developer.orchestrators.runs.protocols import ImplementationRunTask
+
+
+class MarkdownImplementationTask(ImplementationRunTask):
+    ...
+```
+
 # Proposed Models
 
 Recommended domain models inside `developer.orchestrators.runs.models`:
@@ -287,9 +344,13 @@ Suggested fields:
 - `repo_path: str`
 - `task_input: str`
 - `normalized_task_input: str`
-- `task: ImplementationTask`
+- `task: ImplementationRunTask`
 - `max_iterations: int | None`
 - `remote_name: str = "origin"`
+
+`PublishedTaskBranch`
+
+- `branch_name: str`
 
 `ImplementationWorkspacePlan`
 
@@ -328,6 +389,7 @@ Suggested fields:
 Ownership defaults:
 
 - application resolves and normalizes task input before constructing the request;
+- `developer.tasks` may implement `ImplementationRunTask`, which lets application pass the resolved task directly into the orchestrator-owned request model;
 - `_normalize_workspace_task_input(...)` stays in application because it is caller-input normalization, not orchestration policy;
 - `developer.orchestrators.runs` builds the plan and outcome;
 - application maps the outcome to `ImplementationRunResult`; and
@@ -340,7 +402,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from developer.tasks.protocol import ImplementationTask
+from developer.orchestrators.runs.protocols import ImplementationRunTask
 
 
 class ImplementationWorkspaceRunRequest(BaseModel):
@@ -349,9 +411,13 @@ class ImplementationWorkspaceRunRequest(BaseModel):
     repo_path: str
     task_input: str
     normalized_task_input: str
-    task: ImplementationTask
+    task: ImplementationRunTask
     max_iterations: int | None
     remote_name: str = "origin"
+
+
+class PublishedTaskBranch(BaseModel):
+    branch_name: str
 
 
 class ImplementationWorkspacePlan(BaseModel):
@@ -396,10 +462,10 @@ Application flow should become:
 
 1. resolve config;
 2. ensure clean checkout;
-3. resolve task input into `ImplementationTask`;
+3. resolve task input into a task-module object;
 4. resolve `max_iterations`;
 5. if workspace mode is disabled, run direct mode as today;
-6. otherwise build `ImplementationWorkspaceRunOrchestrator` through application composition;
+6. otherwise normalize caller input, build `ImplementationWorkspaceRunRequest` with the resolved task object, and build `ImplementationWorkspaceRunOrchestrator` through application composition;
 7. call `orchestrator.run(...)`; and
 8. map the returned outcome into `ImplementationRunResult`.
 
@@ -425,6 +491,7 @@ from developer.orchestrators.runs.models import (
     ImplementationWorkspacePlan,
     ImplementationWorkspaceRunOutcome,
     ImplementationWorkspaceRunRequest,
+    PublishedTaskBranch,
     WorkspaceRunCommand,
 )
 from developer.orchestrators.runs.protocols import (
@@ -432,9 +499,6 @@ from developer.orchestrators.runs.protocols import (
     TaskPublicationStore,
     WorkspaceRunPort,
 )
-from developer.tasks.models import TaskPublicationState
-
-
 class ImplementationWorkspaceRunOrchestrator:
     def __init__(
         self,
@@ -477,7 +541,7 @@ class ImplementationWorkspaceRunOrchestrator:
     def _build_plan(
         self,
         request: ImplementationWorkspaceRunRequest,
-        publication: TaskPublicationState | None,
+        publication: PublishedTaskBranch | None,
     ) -> ImplementationWorkspacePlan:
         base_branch = self._branch_inspector.get_current_branch(request.repo_path)
         task_branch_name = self._resolve_task_branch(request, publication)
@@ -510,7 +574,7 @@ class ImplementationWorkspaceRunOrchestrator:
     def _resolve_task_branch(
         self,
         request: ImplementationWorkspaceRunRequest,
-        publication: TaskPublicationState | None,
+        publication: PublishedTaskBranch | None,
     ) -> str:
         if publication is not None:
             return publication.branch_name
@@ -525,7 +589,7 @@ class ImplementationWorkspaceRunOrchestrator:
 
     def _resolve_workspace_start_point(
         self,
-        publication: TaskPublicationState | None,
+        publication: PublishedTaskBranch | None,
         base_branch: str,
     ) -> str:
         if publication is not None:
@@ -710,8 +774,10 @@ Recommended rules:
 - add a rule for `src/developer/orchestrators/loop/**/*.py`
 - add a rule for `src/developer/orchestrators/runs/**/*.py`
 - keep both orchestrator subpackages from importing `developer.application`
+- keep both orchestrator subpackages from importing `developer.tasks`
 - keep both orchestrator subpackages from importing concrete `developer.workspaces` and `developer.version_control` modules
 - allow orchestrator subpackages to import only from orchestrator-local modules and shared domain-facing types they already own
+- allow `developer.tasks` to import orchestrator-owned protocol modules when task types implement them
 - keep `developer.workspaces` and `developer.version_control` free to import orchestrator-owned protocol modules so they can implement those ports
 
 Recommended `import_rules.yaml` draft after the split:
@@ -724,7 +790,6 @@ rules:
     allow:
       local_prefixes:
         - "developer.orchestrators.loop"
-        - "developer.tasks.protocol"
       relative_import_roots:
         - "."
     deny:
@@ -737,8 +802,6 @@ rules:
     allow:
       local_prefixes:
         - "developer.orchestrators.runs"
-        - "developer.tasks.protocol"
-        - "developer.tasks.models"
       relative_import_roots:
         - "."
     deny:
@@ -781,7 +844,7 @@ rules:
 Notes on this draft:
 
 - the orchestrator rules deny all non-allowed `developer.*` imports, which preserves domain ownership;
-- `developer.orchestrators.runs` is allowed to depend on `developer.tasks.protocol` and `developer.tasks.models`, but not on concrete workspace or git modules;
+- `developer.orchestrators.runs` is not allowed to depend on `developer.tasks`; task-module objects must satisfy orchestrator-owned protocols instead;
 - `developer.workspaces` and `developer.version_control` are allowed to import only the orchestrator protocol module they need to implement; and
 - the current broad orchestrator rule and flat orchestrator imports should be removed as part of this refactor.
 
@@ -861,19 +924,22 @@ This phase should end with only the new orchestrator module layout in use.
 
 ## Phase 2: Move orchestration-facing protocols into orchestrators
 
+- [ ] Define `ImplementationRunTask` in `src/developer/orchestrators/runs/protocols.py`
 - [ ] Define `TaskPublicationStore` in `src/developer/orchestrators/runs/protocols.py`
 - [ ] Define `BranchInspectionPort` in `src/developer/orchestrators/runs/protocols.py`
 - [ ] Define `WorkspaceRunPort` in `src/developer/orchestrators/runs/protocols.py`
 - [ ] Define `ImplementationWorkspaceRunRequest` in `src/developer/orchestrators/runs/models.py`
+- [ ] Define `PublishedTaskBranch` in `src/developer/orchestrators/runs/models.py`
 - [ ] Define `ImplementationWorkspacePlan` in `src/developer/orchestrators/runs/models.py`
 - [ ] Define `ImplementationWorkspaceRunOutcome` in `src/developer/orchestrators/runs/models.py`
+- [ ] Update the resolved implementation-task type to satisfy `ImplementationRunTask`
 - [ ] Update `developer.workspaces` implementations to satisfy the new orchestrator-owned ports
 - [ ] Update `developer.version_control` implementations to satisfy the new orchestrator-owned ports
 - [ ] Keep concrete implementations outside orchestrators
 
 ### Notes
 
-This is the key inversion step. The protocols should move toward the domain layer, not away from it.
+This is the key inversion step. The protocols and task-facing run contracts should move toward the domain layer, not away from it.
 
 ## Phase 3: Extract workspace implementation run flow from application
 
