@@ -91,6 +91,7 @@ Recommended behavior:
 - `developer validate-plan @docs/plans/my-plan.md`
 - `developer validate-plan docs/plans/my-plan.md`
 - accept either `path/to/plan.md` or `@path/to/plan.md`;
+- treat leading-`@` normalization as presentation-layer input handling;
 - strip the leading `@` when present before filesystem resolution; and
 - fail clearly only when the normalized value does not point to a markdown file.
 
@@ -456,6 +457,7 @@ Why the clean-checkout guardrail matters:
 Recommended behavior:
 
 - check for uncommitted tracked or untracked changes before `implement` starts;
+- ignore files excluded by normal git ignore rules when enforcing this preflight;
 - fail with a clear message instructing the user to commit or stash changes first; and
 - do this before workspace creation and before any task resolution that depends on the current repository state.
 
@@ -740,7 +742,7 @@ Recommendation:
 
 Concrete placement recommendation:
 
-- add an `ImplementationSettings` model under the existing implementation/orchestrator-owned code rather than under a new standalone package;
+- add an `ImplementationSettings` model under `src/developer/application/` rather than creating a new standalone package;
 - load it through `ConfigService.get_config("implementation", ImplementationSettings)` in the same style as other subsystems; and
 - keep the application service responsible for combining config defaults with CLI overrides before constructing the orchestrator.
 
@@ -749,7 +751,7 @@ Config migration note:
 - move prompt-path ownership out of legacy `[orchestrator]` usage and keep it under `[prompts]`;
 - add `[implementation]` for iteration settings;
 - update the checked-in root `engineeringagent.toml` accordingly; and
-- keep backward-compatible prompt loading only if the existing prompt builder still needs a temporary fallback during rollout.
+- remove legacy `[orchestrator]` fallback as part of this change rather than carrying compatibility behavior forward.
 
 ## Expected Outcome
 
