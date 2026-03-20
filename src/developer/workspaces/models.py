@@ -83,6 +83,7 @@ class RunHandle(BaseModel):
     finished_at: datetime | None = None
     latest_message: str | None = None
     result_summary: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class WorkspaceRunnableResult(BaseModel):
@@ -93,6 +94,7 @@ class WorkspaceRunnableResult(BaseModel):
     status: Literal["succeeded", "failed"]
     message: str
     summary: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 __all__ = [

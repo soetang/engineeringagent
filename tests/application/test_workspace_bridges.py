@@ -56,6 +56,26 @@ class _RecordingAgentFactory(LocalExecutionAgentFactory):
         return self.runner
 
 
+class _RecordingObserver:
+    def __init__(self) -> None:
+        self.validated_contexts = []
+
+    def validate(self, context) -> None:
+        self.validated_contexts.append(context)
+
+    def on_iteration_passed(self, attempt, context, agent_result):
+        del attempt, context, agent_result
+        return None
+
+    def on_run_succeeded(self, attempt, context):
+        del attempt, context
+        return None
+
+    def on_run_failed(self, attempt, context, feedback):
+        del attempt, context, feedback
+        return None
+
+
 class _FakeImplementationAgent:
     def __init__(self, outcome: OrchestratorOutcome) -> None:
         self._outcome = outcome
@@ -70,14 +90,26 @@ def _workspace() -> WorkspaceSession:
         provider="git_worktree",
         status=WorkspaceStatus.READY,
         created_at=datetime.now(UTC),
-        execution_target=ExecutionTarget(kind="local_path", location="/tmp/workspace"),
+        execution_target=ExecutionTarget(
+            kind="local_path",
+            location="/tmp/workspace",
+            metadata={"repo_path": "/tmp/repo"},
+        ),
+        metadata={
+            "workspace_branch_name": "developer/ship-it/ws-123",
+            "task_branch_name": "ship-it",
+            "base_branch": "main",
+            "remote_name": "origin",
+        },
     )
 
 
 def _patch_implementation_agent(monkeypatch, outcome: OrchestratorOutcome) -> None:
     monkeypatch.setattr(
         "developer.application.workspace_bridges.build_implementation_agent",
-        lambda agent_runner: _FakeImplementationAgent(outcome),
+        lambda agent_runner, task, observer=None, context=None: (
+            _FakeImplementationAgent(outcome)
+        ),
     )
 
 
@@ -103,13 +135,20 @@ def test_workspace_runnable_implementation_agent_maps_success(monkeypatch) -> No
     workspace = _workspace()
     runner = _fake_agent_runner()
     agent_factory = _RecordingAgentFactory(runner)
+    observer = _RecordingObserver()
     _patch_implementation_agent(
         monkeypatch,
         OrchestratorOutcome(status="success", iterations=2),
     )
 
-    result = WorkspaceRunnableImplementationAgent(agent_factory=agent_factory).run(
-        request=RunRequest(agent_kind="implementation", context={}),
+    result = WorkspaceRunnableImplementationAgent(
+        agent_factory=agent_factory,
+        observer=observer,
+    ).run(
+        request=RunRequest(
+            agent_kind="implementation",
+            context={"task_name": "ship-it", "run_id": "run-1"},
+        ),
         workspace=workspace,
     )
 
@@ -117,6 +156,9 @@ def test_workspace_runnable_implementation_agent_maps_success(monkeypatch) -> No
     assert result.message == "Implementation run succeeded after 2 iterations"
     assert result.summary == "iterations=2"
     assert agent_factory.targets == [workspace.execution_target]
+    assert observer.validated_contexts[0].repo_path == "/tmp/repo"
+    assert observer.validated_contexts[0].workspace_path == "/tmp/workspace"
+    assert observer.validated_contexts[0].task_branch_name == "ship-it"
 
 
 def test_workspace_runnable_implementation_agent_maps_failed_feedback(
@@ -135,7 +177,9 @@ def test_workspace_runnable_implementation_agent_maps_failed_feedback(
     result = WorkspaceRunnableImplementationAgent(
         agent_factory=_RecordingAgentFactory(_fake_agent_runner())
     ).run(
-        request=RunRequest(agent_kind="implementation", context={}),
+        request=RunRequest(
+            agent_kind="implementation", context={"task_name": "ship-it"}
+        ),
         workspace=_workspace(),
     )
 

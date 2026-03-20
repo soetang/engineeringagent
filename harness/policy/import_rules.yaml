@@ -17,6 +17,7 @@ rules:
     allow:
       local_prefixes:
         - "developer.orchestrators"
+        - "developer.tasks.protocol"
       relative_import_roots:
         - "."
     deny:
@@ -28,21 +29,52 @@ rules:
     allow:
       local_prefixes:
         - "developer.workspaces"
+        - "developer.tasks.models"
       relative_import_roots:
         - "."
     deny:
       local_prefixes:
         - "developer.application"
         - "developer.orchestrators"
+  - name: "version-control-only-import-version-control"
+    paths:
+      - "src/developer/version_control/**/*.py"
+    allow:
+      local_prefixes:
+        - "developer.version_control"
+        - "developer.orchestrators.protocols"
+        - "developer.agent_backends.protocol"
+        - "developer.config"
+        - "developer.prompts"
+      relative_import_roots:
+        - "."
+    deny:
+      local_prefixes:
+        - "developer"
+  - name: "forge-only-import-forge"
+    paths:
+      - "src/developer/forge/**/*.py"
+    allow:
+      local_prefixes:
+        - "developer.forge"
+        - "developer.orchestrators.protocols"
+        - "developer.config"
+      relative_import_roots:
+        - "."
+    deny:
+      local_prefixes:
+        - "developer"
   - name: "no-non-entrypoint-imports-from-presentation"
     paths:
       - "src/developer/agents/**/*.py"
       - "src/developer/application/**/*.py"
       - "src/developer/config/**/*.py"
+      - "src/developer/forge/**/*.py"
       - "src/developer/orchestrators/**/*.py"
       - "src/developer/prompts/**/*.py"
       - "src/developer/quality/**/*.py"
       - "src/developer/tasks/**/*.py"
+      - "src/developer/version_control/**/*.py"
       - "src/developer/workspaces/**/*.py"
     allow:
       local_prefixes: []

@@ -2,32 +2,35 @@
 
 import subprocess
 from pathlib import Path
-from uuid import uuid4
 
 from developer.agent_backends.select_agent_backend_service import (
     SelectAgentBackendService,
 )
 from developer.application.models import ImplementationRunResult
 from developer.application.workspace_bridges import build_implementation_agent
-from developer.application.workspace_runtime import (
-    build_workspace_orchestrator,
-)
+from developer.application.workspace_runtime import build_workspace_orchestrator
 from developer.config.service import ConfigService
-from developer.workspaces.models import RunRequest, WorkspaceSpec
+from developer.tasks.implementation_task import SimpleImplementationTask
+from developer.workspaces.models import RunHandle, RunRequest, WorkspaceSpec
+from developer.workspaces.services.file_registry import FileWorkspaceRegistry
+from developer.workspaces.settings import WorkspaceSettings
 
 IMPLEMENTATION_AGENT_KIND = "implementation"
 
 
 def run_implementation(
+    task_name: str,
     config_service: ConfigService | None = None,
 ) -> ImplementationRunResult:
     """Run the implementation workflow using the configured execution mode."""
     resolved_config_service = config_service or ConfigService()
+    task = SimpleImplementationTask(task_name)
     if _workspace_mode_enabled(resolved_config_service):
-        return _run_implementation_in_workspace(resolved_config_service)
+        return _run_implementation_in_workspace(resolved_config_service, task)
 
     outcome = build_implementation_agent(
-        SelectAgentBackendService().select_agent()
+        SelectAgentBackendService(resolved_config_service).select_agent(),
+        task=task,
     ).run()
     if outcome.status == "success":
         return ImplementationRunResult(
@@ -46,31 +49,85 @@ def _workspace_mode_enabled(config_service: ConfigService) -> bool:
 
 def _run_implementation_in_workspace(
     config_service: ConfigService,
+    task: SimpleImplementationTask,
 ) -> ImplementationRunResult:
     """Run the implementation workflow through workspace orchestration."""
     repo_path = Path.cwd()
+    base_branch = _resolve_current_branch(repo_path)
+    publication_branch = _resolve_task_branch(config_service, task)
     workspace, run_handle = build_workspace_orchestrator(
         config_service
     ).run_in_workspace(
         WorkspaceSpec(
             provider="git_worktree",
             repo_path=str(repo_path),
-            base_branch=_resolve_current_branch(repo_path),
-            task_id=f"implementation-{uuid4().hex[:8]}",
+            base_branch=base_branch,
+            task_id=task.identity.name,
+            metadata={
+                "task_name": task.identity.name,
+                "task_path": task.identity.path,
+                "task_branch_name": publication_branch,
+                "remote_name": "origin",
+            },
         ),
-        RunRequest(agent_kind=IMPLEMENTATION_AGENT_KIND, context={}),
+        RunRequest(
+            agent_kind=IMPLEMENTATION_AGENT_KIND,
+            context={
+                "task_name": task.identity.name,
+                "task_path": task.identity.path,
+                "task_branch_name": publication_branch,
+            },
+        ),
     )
     return ImplementationRunResult(
         exit_code=0 if run_handle.status.value == "succeeded" else 1,
-        message=" | ".join(
-            (
-                f"workspace={workspace.id}",
-                f"run={run_handle.id}",
-                f"status={run_handle.status.value}",
-                run_handle.latest_message or "No message available",
-            )
+        message=_format_workspace_run_message(
+            workspace.id, run_handle, task.identity.name
         ),
     )
+
+
+def _resolve_task_branch(
+    config_service: ConfigService,
+    task: SimpleImplementationTask,
+) -> str:
+    """Reuse an existing publication branch when one is already known."""
+    settings = config_service.get_config("workspaces", WorkspaceSettings)
+    registry = FileWorkspaceRegistry(Path(settings.state_dir).resolve())
+    publication = registry.get_task_publication(task.identity.name, task.identity.path)
+    if publication is not None:
+        return publication.branch_name
+    return task.get_branch_name()
+
+
+def _format_workspace_run_message(
+    workspace_id: str,
+    run_handle: RunHandle,
+    task_name: str,
+) -> str:
+    """Build the final workspace run status line."""
+    metadata = run_handle.metadata
+    parts = [
+        f"workspace={workspace_id}",
+        f"run={run_handle.id}",
+        f"task={task_name}",
+        f"status={run_handle.status.value}",
+    ]
+    commit_shas = metadata.get("commit_shas", [])
+    if isinstance(commit_shas, list) and commit_shas:
+        parts.append(f"commits={len(commit_shas)}")
+    branch = metadata.get("pushed_branch") or metadata.get("task_branch_name")
+    if isinstance(branch, str) and branch:
+        parts.append(f"branch={branch}")
+    pr_url = metadata.get("pr_url")
+    if isinstance(pr_url, str) and pr_url:
+        parts.append(f"pr={pr_url}")
+    if run_handle.latest_message:
+        parts.append(run_handle.latest_message)
+    message = " | ".join(parts)
+    if isinstance(pr_url, str) and pr_url:
+        return f"{message}\nPull request: {pr_url}"
+    return message
 
 
 def _resolve_current_branch(repo_path: Path) -> str:

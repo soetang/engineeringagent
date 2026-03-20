@@ -5,20 +5,27 @@ from typing import cast
 
 from developer.application.workspace_runtime import build_workspace_orchestrator
 from developer.config.service import ConfigService
+from developer.forge.settings import ForgeSettings
+from developer.version_control.settings import VersionControlSettings
 from developer.workspaces.settings import WorkspaceSettings
 
 
 class _FakeConfigService:
-    def get_config(
-        self, section: str, config_type: type[WorkspaceSettings]
-    ) -> WorkspaceSettings:
-        assert section == "workspaces"
-        assert config_type is WorkspaceSettings
-        return WorkspaceSettings(
-            default_provider="git_worktree",
-            state_dir=".developer/state",
-            git_worktree_root_dir="developer-workspaces",
-        )
+    def get_config(self, section: str, config_type):
+        if section == "workspaces":
+            assert config_type is WorkspaceSettings
+            return WorkspaceSettings(
+                default_provider="git_worktree",
+                state_dir=".developer/state",
+                git_worktree_root_dir="developer-workspaces",
+            )
+        if section == "version_control":
+            assert config_type is VersionControlSettings
+            return VersionControlSettings(enabled=False)
+        if section == "forge":
+            assert config_type is ForgeSettings
+            return ForgeSettings(enabled=False)
+        raise AssertionError(section)
 
 
 class _RecordingRegistry:
@@ -35,13 +42,6 @@ class _RecordingProvider:
     def __init__(self, workspaces_root: Path, registry) -> None:
         self.workspaces_root = workspaces_root
         self.registry = registry
-        self.__class__.instances.append(self)
-
-
-class _RecordingAgentResolver:
-    instances: list["_RecordingAgentResolver"] = []
-
-    def __init__(self) -> None:
         self.__class__.instances.append(self)
 
 
@@ -82,10 +82,6 @@ def test_build_workspace_orchestrator_wires_runtime_dependencies(monkeypatch) ->
         _RecordingProvider,
     )
     monkeypatch.setattr(
-        "developer.application.workspace_runtime.DefaultWorkspaceRunnableAgentResolver",
-        _RecordingAgentResolver,
-    )
-    monkeypatch.setattr(
         "developer.application.workspace_runtime.DefaultWorkspaceExecutionAdapterResolver",
         _RecordingExecutionAdapterResolver,
     )
@@ -96,6 +92,10 @@ def test_build_workspace_orchestrator_wires_runtime_dependencies(monkeypatch) ->
     monkeypatch.setattr(
         "developer.application.workspace_runtime.WorkspaceRunOrchestrator",
         _RecordingOrchestrator,
+    )
+    monkeypatch.setattr(
+        "developer.application.workspace_runtime._build_workspace_observer",
+        lambda config_service, registry, provider: None,
     )
 
     orchestrator = build_workspace_orchestrator(
@@ -111,7 +111,7 @@ def test_build_workspace_orchestrator_wires_runtime_dependencies(monkeypatch) ->
     assert provider.workspaces_root == Path("developer-workspaces").resolve()
     assert provider.registry is registry
     assert runner.registry is registry
-    assert isinstance(runner.agent_resolver, _RecordingAgentResolver)
+    assert runner.agent_resolver is not None
     assert isinstance(
         runner.execution_adapter_resolver,
         _RecordingExecutionAdapterResolver,

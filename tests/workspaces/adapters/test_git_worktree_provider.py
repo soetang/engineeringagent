@@ -69,7 +69,10 @@ def test_git_worktree_provider_creates_worktree_and_records_metadata(tmp_path) -
     assert (worktree_path / ".git").exists()
     assert workspace.metadata["base_branch"] == "main"
     assert workspace.metadata["task_id"] == "task 123"
-    assert workspace.metadata["branch_name"].startswith("developer/task-123/")
+    assert workspace.metadata["task_branch_name"] == "task 123"
+    assert workspace.metadata["workspace_branch_name"].startswith(
+        "developer/task-123/ws-"
+    )
     assert registry.get_workspace(workspace.id) == workspace
 
 

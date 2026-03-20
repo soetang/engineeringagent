@@ -3,6 +3,7 @@
 import json
 from pathlib import Path
 
+from developer.tasks.models import TaskPublicationState
 from developer.workspaces.models import RunHandle, WorkspaceSession
 
 
@@ -14,8 +15,10 @@ class FileWorkspaceRegistry:
         self._state_dir = state_dir
         self._workspaces_dir = state_dir / "workspaces"
         self._runs_dir = state_dir / "runs"
+        self._task_publications_dir = state_dir / "task_publications"
         self._workspaces_dir.mkdir(parents=True, exist_ok=True)
         self._runs_dir.mkdir(parents=True, exist_ok=True)
+        self._task_publications_dir.mkdir(parents=True, exist_ok=True)
 
     def save_workspace(self, workspace: WorkspaceSession) -> None:
         """Persist a workspace session."""
@@ -56,6 +59,34 @@ class FileWorkspaceRegistry:
         if workspace_id is None:
             return runs
         return [run for run in runs if run.workspace_id == workspace_id]
+
+    def save_task_publication(self, publication: TaskPublicationState) -> None:
+        """Persist task publication state."""
+        self._write_json(
+            self._task_publications_dir
+            / self._task_key(publication.task_name, publication.task_path),
+            publication.model_dump(mode="json"),
+        )
+
+    def get_task_publication(
+        self,
+        task_name: str,
+        task_path: str | None = None,
+    ) -> TaskPublicationState | None:
+        """Load task publication state if it exists."""
+        path = self._task_publications_dir / self._task_key(task_name, task_path)
+        if not path.exists():
+            return None
+        return TaskPublicationState.model_validate(self._read_json(path))
+
+    def _task_key(self, task_name: str, task_path: str | None) -> str:
+        """Build a stable filename for one task publication."""
+        task_key = task_path or task_name
+        normalized = "".join(
+            character if character.isalnum() or character in {"-", "_", "."} else "-"
+            for character in task_key
+        ).strip("-")
+        return f"{normalized or 'task'}.json"
 
     def _write_json(self, path: Path, payload: dict[str, object]) -> None:
         """Write one JSON payload to disk."""

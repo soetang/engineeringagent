@@ -10,8 +10,8 @@ app = typer.Typer()
 
 
 @app.command()
-def run() -> None:
+def run(task: str = typer.Option(..., "--task")) -> None:
     """Run the implementation agent."""
-    result = run_implementation()
+    result = run_implementation(task_name=task)
     typer.echo(result.message)
     raise typer.Exit(code=result.exit_code)

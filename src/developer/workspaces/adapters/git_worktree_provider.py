@@ -32,7 +32,8 @@ class GitWorktreeWorkspaceProvider(WorkspaceProvider):
         """Create a git worktree for the requested task."""
         repo_path = Path(spec.repo_path).resolve()
         workspace_id = uuid4().hex
-        branch_name = self._build_branch_name(spec.task_id, workspace_id)
+        task_branch_name = str(spec.metadata.get("task_branch_name") or spec.task_id)
+        branch_name = self._build_branch_name(task_branch_name, workspace_id)
         worktree_path = (self._workspaces_root / workspace_id).resolve()
 
         subprocess.run(
@@ -59,9 +60,11 @@ class GitWorktreeWorkspaceProvider(WorkspaceProvider):
             execution_target=self._build_execution_target(repo_path, worktree_path),
             metadata={
                 **spec.metadata,
-                "branch_name": branch_name,
+                "workspace_branch_name": branch_name,
+                "task_branch_name": task_branch_name,
                 "base_branch": spec.base_branch,
                 "task_id": spec.task_id,
+                "remote_name": spec.metadata.get("remote_name", "origin"),
             },
         )
         self._registry.save_workspace(workspace)
@@ -94,11 +97,13 @@ class GitWorktreeWorkspaceProvider(WorkspaceProvider):
         destroyed = workspace.model_copy(update={"status": WorkspaceStatus.DESTROYED})
         self._registry.save_workspace(destroyed)
 
-    def _build_branch_name(self, task_id: str, workspace_id: str) -> str:
-        """Create a task-derived branch name safe for git refs."""
-        cleaned_task_id = re.sub(r"[^A-Za-z0-9._-]+", "-", task_id).strip("-")
+    def _build_branch_name(self, task_branch_name: str, workspace_id: str) -> str:
+        """Create a disposable workspace branch from a stable task branch name."""
+        cleaned_task_id = re.sub(r"[^A-Za-z0-9._/-]+", "-", task_branch_name).strip(
+            "-/"
+        )
         normalized_task_id = cleaned_task_id or "task"
-        return f"developer/{normalized_task_id}/{workspace_id}"
+        return f"developer/{normalized_task_id}/ws-{workspace_id}"
 
     def _build_execution_target(
         self, repo_path: Path, worktree_path: Path

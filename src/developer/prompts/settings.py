@@ -1,12 +1,5 @@
-from pydantic import BaseModel, Field, ConfigDict
+"""Backward-compatible prompt settings exports."""
 
+from developer.prompts.models import PromptSettings
 
-class OrchestratorPromptSettings(BaseModel):
-    """Configuration for orchestrator prompt templates."""
-
-    implementation_prompt_path: str = Field(
-        default="prompts/implementation_prompt.md",
-        description="Path to the implementation prompt template",
-    )
-
-    model_config = ConfigDict(extra="forbid")
+OrchestratorPromptSettings = PromptSettings

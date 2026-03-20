@@ -7,17 +7,16 @@ from developer.config.service import ConfigService
 from developer.orchestrators.protocols import PromptBuilder
 
 from .errors import PromptTemplateMissingError, PromptTemplateSyntaxError
-from .settings import OrchestratorPromptSettings
+from .models import PromptSettings
 
 
 class OrchestratorPromptBuilder(PromptBuilder):
     """Build prompts from configured Jinja templates."""
 
     def __init__(self, config_service: ConfigService | None = None):
+        """Load prompt settings from the shared prompt section."""
         self._config_service = config_service or ConfigService()
-        self._settings = self._config_service.get_config(
-            "orchestrator", OrchestratorPromptSettings
-        )
+        self._settings = _load_prompt_settings(self._config_service)
 
     def build(self, context: Mapping[str, Any]) -> str:
         """Render the implementation prompt with the provided context."""
@@ -37,3 +36,10 @@ class OrchestratorPromptBuilder(PromptBuilder):
             raise PromptTemplateSyntaxError(
                 f"Failed to render prompt template: {prompt_path}"
             ) from exc
+
+
+def _load_prompt_settings(config_service: ConfigService) -> PromptSettings:
+    """Load prompt settings with fallback to the legacy section name."""
+    if config_service.has_section("prompts"):
+        return config_service.get_config("prompts", PromptSettings)
+    return config_service.get_config("orchestrator", PromptSettings)

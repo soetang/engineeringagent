@@ -1,11 +1,11 @@
-"""Implementation completion judge."""
+"""Backward-compatible implementation completion judge."""
 
-from developer.orchestrators.models import CompletionResult
+from developer.tasks.implementation_task import SimpleImplementationTask
 
 
-class ImplementationJudge:
-    """Stub judge used while the implementation loop is being wired."""
+class ImplementationJudge(SimpleImplementationTask):
+    """Legacy wrapper around the simple implementation task model."""
 
-    def is_complete(self) -> CompletionResult:
-        """Always report completion for the current mock flow."""
-        return CompletionResult.COMPLETE
+    def __init__(self) -> None:
+        """Create the legacy stub task instance."""
+        super().__init__("implementation")

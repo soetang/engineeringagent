@@ -147,9 +147,10 @@ def test_runner_marks_run_succeeded(tmp_path) -> None:
     assert persisted_run == run
     assert agent_resolver.agent_kinds == ["implementation"]
     assert execution_adapter_resolver.targets == [workspace.execution_target]
-    assert execution_adapter.calls == [
-        (workspace, RunRequest(agent_kind="implementation", context={}), agent)
-    ]
+    assert execution_adapter.calls[0][0] == workspace
+    assert execution_adapter.calls[0][2] is agent
+    assert execution_adapter.calls[0][1].agent_kind == "implementation"
+    assert execution_adapter.calls[0][1].context["run_id"] == run.id
 
 
 def test_runner_marks_run_failed_without_raising_for_unsuccessful_result(
