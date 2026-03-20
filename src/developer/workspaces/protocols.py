@@ -2,6 +2,7 @@
 
 from typing import Protocol
 
+from developer.tasks.models import TaskPublicationState
 from developer.workspaces.models import (
     ExecutionTarget,
     RunHandle,
@@ -57,6 +58,18 @@ class WorkspaceRunRegistry(Protocol):
 
     def list_runs(self, workspace_id: str | None = None) -> list[RunHandle]:
         """List persisted runs."""
+        ...
+
+    def save_task_publication(self, publication: TaskPublicationState) -> None:
+        """Persist publication state for one task."""
+        ...
+
+    def get_task_publication(
+        self,
+        task_name: str,
+        task_path: str | None = None,
+    ) -> TaskPublicationState | None:
+        """Load publication state for one task, if present."""
         ...
 
 

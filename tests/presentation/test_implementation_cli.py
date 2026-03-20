@@ -31,8 +31,8 @@ def test_implementation_command_uses_real_selectors(monkeypatch) -> None:
         def run(self) -> OrchestratorOutcome:
             return OrchestratorOutcome(status="success", iterations=1)
 
-    def fake_build_implementation_agent(agent_runner):
-        del agent_runner
+    def fake_build_implementation_agent(agent_runner, task):
+        del agent_runner, task
         return FakeImplementationAgent()
 
     monkeypatch.setattr(
@@ -49,7 +49,7 @@ def test_implementation_command_uses_real_selectors(monkeypatch) -> None:
     )
 
     runner = CliRunner()
-    result = runner.invoke(app, ["implementation", "run"])
+    result = runner.invoke(app, ["implementation", "run", "--task", "ship-it"])
 
     assert result.exit_code == 0
     assert len(selected_agents) == 1
@@ -74,7 +74,7 @@ def test_cli_implementation_run_succeeds(monkeypatch) -> None:
 
     with runner.isolated_filesystem():
         copytree(fixture_dir, Path("."), dirs_exist_ok=True)
-        result = runner.invoke(app, ["implementation", "run"])
+        result = runner.invoke(app, ["implementation", "run", "--task", "ship-it"])
 
     assert result.exit_code == 0
     assert "Implementation run succeeded" in result.output
@@ -88,9 +88,9 @@ def test_implementation_command_uses_workspace_flow_when_configured(
 
     monkeypatch.setattr(
         "developer.presentation.commands.implementation.run_implementation",
-        lambda: ImplementationRunResult(
+        lambda task_name: ImplementationRunResult(
             exit_code=0,
-            message="workspace=workspace-1 run=run-1 status=succeeded",
+            message=f"workspace=workspace-1 run=run-1 task={task_name} status=succeeded",
         ),
     )
 
@@ -104,7 +104,17 @@ git_worktree_root_dir = "developer-workspaces"
 """.strip(),
             encoding="utf-8",
         )
-        result = runner.invoke(app, ["implementation", "run"])
+        result = runner.invoke(app, ["implementation", "run", "--task", "ship-it"])
 
     assert result.exit_code == 0
-    assert "workspace=workspace-1 run=run-1 status=succeeded" in result.output
+    assert "task=ship-it" in result.output
+
+
+def test_implementation_command_requires_task() -> None:
+    """The implementation command should require an explicit task."""
+    runner = CliRunner()
+
+    result = runner.invoke(app, ["implementation", "run"])
+
+    assert result.exit_code != 0
+    assert "--task" in result.output

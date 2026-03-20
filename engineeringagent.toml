@@ -12,3 +12,8 @@ profile = "implementation"
 default_provider = "git_worktree"
 state_dir = ".developer/state"
 git_worktree_root_dir = "developer-workspaces"
+
+[version_control]
+enabled = true
+[forge]
+enabled = true

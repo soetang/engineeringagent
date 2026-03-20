@@ -34,6 +34,7 @@ class LocalProcessWorkspaceRunner:
             status=RunStatus.PENDING,
             agent_kind=request.agent_kind,
             latest_message="Run created",
+            metadata=dict(request.context),
         )
         self._registry.save_run(pending_run)
 
@@ -43,6 +44,9 @@ class LocalProcessWorkspaceRunner:
             started_at=datetime.now(UTC),
             latest_message=f"{request.agent_kind} run started",
         )
+        enriched_request = request.model_copy(
+            update={"context": {**request.context, "run_id": running_run.id}}
+        )
 
         try:
             agent = self._agent_resolver.resolve(request.agent_kind)
@@ -51,7 +55,7 @@ class LocalProcessWorkspaceRunner:
             )
             result = execution_adapter.run(
                 workspace=workspace,
-                request=request,
+                request=enriched_request,
                 agent=agent,
             )
         except Exception as exc:
@@ -72,6 +76,7 @@ class LocalProcessWorkspaceRunner:
             finished_at=datetime.now(UTC),
             latest_message=result.message,
             result_summary=result.summary,
+            metadata={**running_run.metadata, **result.metadata},
         )
 
     def get_run(self, run_id: str) -> RunHandle:
