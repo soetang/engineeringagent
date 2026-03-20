@@ -34,6 +34,10 @@ class VersionControlProtocol(Protocol):
         """Return the current HEAD commit sha."""
         ...
 
+    def get_current_branch(self, repo_path: str) -> str:
+        """Return the currently checked out branch name."""
+        ...
+
     def push_branch(
         self,
         repo_path: str,
@@ -48,7 +52,12 @@ class VersionControlProtocol(Protocol):
         """Resolve commit author identity for the repository."""
         ...
 
-    def branch_exists(self, repo_path: str, branch_name: str) -> bool:
+    def branch_exists(
+        self,
+        repo_path: str,
+        branch_name: str,
+        remote_name: str = "origin",
+    ) -> bool:
         """Return whether a branch exists locally or remotely."""
         ...
 
@@ -62,4 +71,8 @@ class VersionControlProtocol(Protocol):
 
     def validate_repository(self, repo_path: str) -> None:
         """Validate that the path points at a git repository."""
+        ...
+
+    def ensure_clean_checkout(self, repo_path: str) -> None:
+        """Fail when the repository contains tracked or untracked changes."""
         ...

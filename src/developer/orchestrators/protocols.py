@@ -64,7 +64,6 @@ class ImplementationLifecycleObserver(Protocol):
 
     def on_run_succeeded(
         self,
-        attempt: int,
         context: ImplementationContext,
     ) -> RunPublicationResult | None:
         """Handle publication after the final success gate passes."""
@@ -72,7 +71,6 @@ class ImplementationLifecycleObserver(Protocol):
 
     def on_run_failed(
         self,
-        attempt: int,
         context: ImplementationContext,
         feedback: str | None,
     ) -> None:

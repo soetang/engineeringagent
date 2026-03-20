@@ -20,9 +20,10 @@ class ImplementationAgent:
         agent_runner: AgentRunner,
         gate_runner: GateRunner,
         task: ImplementationTask,
+        *,
+        max_iterations: int | None,
         observer: ImplementationLifecycleObserver | None = None,
         context: ImplementationContext | None = None,
-        max_iterations: int = 3,
     ) -> None:
         """Create an implementation agent wired to its dependencies.
 
@@ -33,7 +34,7 @@ class ImplementationAgent:
             task: Determines whether the task is complete.
             observer: Optional lifecycle observer for side effects.
             context: Optional typed execution context.
-            max_iterations: Maximum number of loop iterations.
+            max_iterations: Maximum number of loop iterations, or None for unbounded.
         """
         self._prompt_builder = prompt_builder
         self._agent_runner = agent_runner
@@ -50,20 +51,14 @@ class ImplementationAgent:
     def run(self) -> OrchestratorOutcome:
         """Run the implementation loop."""
         feedback: str | None = None
-        for attempt in range(1, self._max_iterations + 1):
-            prompt = self._prompt_builder.build(
-                {
-                    "feedback": feedback,
-                    "task_name": self._task.task_name,
-                    "task_path": self._task.task_path,
-                }
-            )
+        attempt = 0
+        while self._should_continue(attempt):
+            attempt += 1
+            prompt = self._prompt_builder.build(self._build_prompt_context(feedback))
             agent_result = AgentResult.model_validate(
                 self._agent_runner.run_agent(prompt, output_format=AgentResult)
             )
-            self._context = self._context.model_copy(
-                update={"latest_change_summary": agent_result.summary}
-            )
+            self._update_latest_change_summary(agent_result.summary)
 
             feedback = self._run_gate_feedback(GatePhase.ITERATION_COMPLETE)
             if feedback is not None:
@@ -86,7 +81,7 @@ class ImplementationAgent:
             if feedback is not None:
                 continue
 
-            publication_feedback, publication = self._notify_run_succeeded(attempt)
+            publication_feedback, publication = self._notify_run_succeeded()
             if publication_feedback is not None:
                 return OrchestratorOutcome(
                     status="failed",
@@ -99,11 +94,28 @@ class ImplementationAgent:
                 publication_message=publication.message if publication else None,
             )
 
-        self._notify_run_failed(self._max_iterations, feedback)
+        self._notify_run_failed(feedback)
         return OrchestratorOutcome(
             status="failed",
-            iterations=self._max_iterations,
+            iterations=attempt,
             feedback=feedback,
+        )
+
+    def _should_continue(self, attempt: int) -> bool:
+        """Return whether another implementation iteration may run."""
+        return self._max_iterations is None or attempt < self._max_iterations
+
+    def _build_prompt_context(self, feedback: str | None) -> dict[str, str | None]:
+        """Build the prompt payload for the next agent iteration."""
+        return {
+            "feedback": feedback,
+            "task_path": self._task.task_path,
+        }
+
+    def _update_latest_change_summary(self, summary: str) -> None:
+        """Store the latest agent summary on the shared execution context."""
+        self._context = self._context.model_copy(
+            update={"latest_change_summary": summary}
         )
 
     def _run_gate_feedback(self, phase: GatePhase) -> str | None:
@@ -129,21 +141,20 @@ class ImplementationAgent:
 
     def _notify_run_succeeded(
         self,
-        attempt: int,
     ) -> tuple[str | None, RunPublicationResult | None]:
         """Run the success observer hook and convert errors into feedback."""
         if self._observer is None:
             return None, None
         try:
-            return None, self._observer.on_run_succeeded(attempt, self._context)
+            return None, self._observer.on_run_succeeded(self._context)
         except Exception as exc:
             return str(exc), None
 
-    def _notify_run_failed(self, attempt: int, feedback: str | None) -> None:
+    def _notify_run_failed(self, feedback: str | None) -> None:
         """Run the failure observer hook and ignore cleanup failures."""
         if self._observer is None:
             return
         try:
-            self._observer.on_run_failed(attempt, self._context, feedback)
+            self._observer.on_run_failed(self._context, feedback)
         except Exception:
             return

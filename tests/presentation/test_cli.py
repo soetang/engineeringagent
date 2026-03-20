@@ -228,10 +228,11 @@ def test_cli_check_help():
     assert "--stop-on-first-failure" not in result.output
 
 
-def test_root_cli_help_lists_implementation_group() -> None:
-    """The root CLI help should list the implementation command group."""
+def test_root_cli_help_lists_plan_commands() -> None:
+    """The root CLI help should list implement and validate-plan."""
     runner = CliRunner()
     result = runner.invoke(app, ["--help"])
 
     assert result.exit_code == 0
-    assert "implementation" in result.output
+    assert "implement" in result.output
+    assert "validate-plan" in result.output

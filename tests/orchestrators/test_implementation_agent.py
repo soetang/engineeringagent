@@ -5,7 +5,6 @@ from typing import Any
 
 from developer.orchestrators import models
 from developer.orchestrators.implementation_agent import ImplementationAgent
-from developer.tasks.implementation_task import SimpleImplementationTask
 
 
 class FakePromptBuilder:
@@ -25,11 +24,10 @@ def _assert_prompt_payloads(
     payloads: list[dict[str, object]],
     expected_feedbacks: list[str | None],
 ) -> None:
-    """Verify each payload contains expected task and feedback values."""
+    """Verify each payload contains expected task-path and feedback values."""
     assert payloads == [
         {
             "feedback": feedback,
-            "task_name": "implementation",
             "task_path": None,
         }
         for feedback in expected_feedbacks
@@ -72,19 +70,40 @@ class FakeGateRunner:
         return self.checks.pop(0)
 
 
-class FakeTask(SimpleImplementationTask):
+class FakeTask:
     """Task with scripted completion states."""
 
     def __init__(self, states: Iterable[models.CompletionResult] | None = None) -> None:
         """Initialize scripted completion states."""
-        super().__init__("implementation")
+        self._task_id = "implementation"
+        self._task_name = "implementation"
+        self._task_path = None
         self.states = list(states or [models.CompletionResult.COMPLETE])
+
+    @property
+    def task_id(self) -> str:
+        """Return the fake task id."""
+        return self._task_id
+
+    @property
+    def task_name(self) -> str:
+        """Return the fake task name."""
+        return self._task_name
+
+    @property
+    def task_path(self) -> str | None:
+        """Return the fake task path."""
+        return self._task_path
 
     def is_complete(self) -> models.CompletionResult:
         """Return the next scripted completion state."""
         if not self.states:
             return models.CompletionResult.COMPLETE
         return self.states.pop(0)
+
+    def get_branch_name(self) -> str:
+        """Return the fake branch name."""
+        return self._task_id
 
 
 class RecordingObserver:
@@ -93,8 +112,8 @@ class RecordingObserver:
     def __init__(self, *, iteration_error: str | None = None) -> None:
         self.iteration_error = iteration_error
         self.iteration_calls: list[tuple[int, str]] = []
-        self.success_calls: list[int] = []
-        self.failure_calls: list[tuple[int, str | None]] = []
+        self.success_calls = 0
+        self.failure_calls: list[str | None] = []
 
     def validate(self, context: models.ImplementationContext) -> None:
         """Record validation without mutating the context."""
@@ -115,23 +134,21 @@ class RecordingObserver:
 
     def on_run_succeeded(
         self,
-        attempt: int,
         context: models.ImplementationContext,
     ) -> models.RunPublicationResult | None:
         """Record successful completion and return a publication message."""
         del context
-        self.success_calls.append(attempt)
+        self.success_calls += 1
         return models.RunPublicationResult(message="published")
 
     def on_run_failed(
         self,
-        attempt: int,
         context: models.ImplementationContext,
         feedback: str | None,
     ) -> None:
         """Record terminal run failures."""
         del context
-        self.failure_calls.append((attempt, feedback))
+        self.failure_calls.append(feedback)
 
 
 def test_fast_gate_fail_then_recover_with_feedback() -> None:
@@ -151,6 +168,7 @@ def test_fast_gate_fail_then_recover_with_feedback() -> None:
         agent_runner=agent_runner,
         gate_runner=gate_runner,
         task=FakeTask([models.CompletionResult.COMPLETE]),
+        max_iterations=3,
     )
     outcome = implementation_agent.run()
 
@@ -159,8 +177,8 @@ def test_fast_gate_fail_then_recover_with_feedback() -> None:
     _assert_prompt_payloads(prompt_builder.inputs, [None, "fix fast gate"])
 
 
-def test_prompt_builder_receives_task_and_feedback_context() -> None:
-    """Task metadata should be passed into the prompt payload."""
+def test_prompt_builder_receives_task_path_and_feedback_context() -> None:
+    """Prompt payload should include only feedback and task path."""
     prompt_builder = FakePromptBuilder()
     agent_runner = FakeAgentRunner(["only"])
     gate_runner = FakeGateRunner(
@@ -172,12 +190,47 @@ def test_prompt_builder_receives_task_and_feedback_context() -> None:
         agent_runner=agent_runner,
         gate_runner=gate_runner,
         task=FakeTask([models.CompletionResult.COMPLETE]),
+        max_iterations=3,
     )
     outcome = implementation_agent.run()
 
     assert outcome.status == "success"
     assert len(prompt_builder.inputs) == 1
     _assert_prompt_payloads(prompt_builder.inputs, [None])
+
+
+def test_unbounded_iterations_allow_late_success() -> None:
+    """None max_iterations should allow an unbounded loop."""
+    prompt_builder = FakePromptBuilder()
+    agent_runner = FakeAgentRunner(["first", "second", "third", "fourth"])
+    gate_runner = FakeGateRunner(
+        [
+            models.GateResult(passed=True),
+            models.GateResult(passed=True),
+            models.GateResult(passed=True),
+            models.GateResult(passed=True),
+            models.GateResult(passed=True),
+        ]
+    )
+
+    implementation_agent = ImplementationAgent(
+        prompt_builder=prompt_builder,
+        agent_runner=agent_runner,
+        gate_runner=gate_runner,
+        task=FakeTask(
+            [
+                models.CompletionResult.INCOMPLETE,
+                models.CompletionResult.INCOMPLETE,
+                models.CompletionResult.COMPLETE,
+            ]
+        ),
+        max_iterations=None,
+    )
+
+    outcome = implementation_agent.run()
+
+    assert outcome.status == "success"
+    assert outcome.iterations == 3
 
 
 def test_incomplete_path_uses_none_feedback() -> None:
@@ -202,6 +255,7 @@ def test_incomplete_path_uses_none_feedback() -> None:
                 models.CompletionResult.COMPLETE,
             ]
         ),
+        max_iterations=3,
     )
     outcome = implementation_agent.run()
 
@@ -234,6 +288,7 @@ def test_final_gate_fail_then_recover_with_feedback() -> None:
                 models.CompletionResult.COMPLETE,
             ]
         ),
+        max_iterations=3,
     )
     outcome = implementation_agent.run()
 
@@ -259,6 +314,7 @@ def test_all_pass_first_try() -> None:
         agent_runner=agent_runner,
         gate_runner=gate_runner,
         task=FakeTask([models.CompletionResult.COMPLETE]),
+        max_iterations=3,
     )
     outcome = implementation_agent.run()
 
@@ -299,7 +355,7 @@ def test_max_iterations_failure() -> None:
         prompt_builder.inputs,
         [None, "fail 1", "fail 2"],
     )
-    assert observer.failure_calls == [(3, "fail 3")]
+    assert observer.failure_calls == ["fail 3"]
 
 
 def test_max_iterations_complete_in_last_iteration() -> None:
@@ -386,6 +442,7 @@ def test_observer_failure_returns_failed_outcome() -> None:
         ),
         task=FakeTask([models.CompletionResult.COMPLETE]),
         observer=RecordingObserver(iteration_error="commit failed"),
+        max_iterations=3,
     )
 
     outcome = implementation_agent.run()
@@ -405,6 +462,7 @@ def test_success_observer_message_is_returned() -> None:
         ),
         task=FakeTask([models.CompletionResult.COMPLETE]),
         observer=observer,
+        max_iterations=3,
     )
 
     outcome = implementation_agent.run()
@@ -412,4 +470,4 @@ def test_success_observer_message_is_returned() -> None:
     assert outcome.status == "success"
     assert outcome.publication_message == "published"
     assert observer.iteration_calls == [(1, "only")]
-    assert observer.success_calls == [1]
+    assert observer.success_calls == 1

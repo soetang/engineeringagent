@@ -73,6 +73,11 @@ class GitVersionControlAdapter:
         """Return the current HEAD commit sha."""
         return self._run_git(repo_path, "rev-parse", "HEAD").stdout.strip()
 
+    def get_current_branch(self, repo_path: str) -> str:
+        """Return the currently checked out branch name."""
+        branch = self._run_git(repo_path, "branch", "--show-current").stdout.strip()
+        return branch or "main"
+
     def push_branch(
         self,
         repo_path: str,
@@ -111,8 +116,13 @@ class GitVersionControlAdapter:
             email=self._settings.author_email or email,
         )
 
-    def branch_exists(self, repo_path: str, branch_name: str) -> bool:
-        """Return whether a branch exists locally or on origin."""
+    def branch_exists(
+        self,
+        repo_path: str,
+        branch_name: str,
+        remote_name: str = "origin",
+    ) -> bool:
+        """Return whether a branch exists locally or on the requested remote."""
         local = subprocess.run(
             ["git", "show-ref", "--verify", "--quiet", f"refs/heads/{branch_name}"],
             cwd=repo_path,
@@ -122,7 +132,7 @@ class GitVersionControlAdapter:
         if local.returncode == 0:
             return True
         remote = subprocess.run(
-            ["git", "ls-remote", "--heads", "origin", branch_name],
+            ["git", "ls-remote", "--heads", remote_name, branch_name],
             cwd=repo_path,
             capture_output=True,
             text=True,
@@ -148,6 +158,14 @@ class GitVersionControlAdapter:
     def validate_repository(self, repo_path: str) -> None:
         """Validate that the given path is a git repository."""
         self._run_git(repo_path, "rev-parse", "--is-inside-work-tree")
+
+    def ensure_clean_checkout(self, repo_path: str) -> None:
+        """Require that the repository has no tracked or untracked changes."""
+        self.validate_repository(repo_path)
+        if self.has_changes(repo_path):
+            raise ValueError(
+                "Implement requires a clean checkout; commit or stash changes first"
+            )
 
     def _git_identity_env(self, request: CommitRequest) -> dict[str, str]:
         """Build a subprocess environment for git author identity."""

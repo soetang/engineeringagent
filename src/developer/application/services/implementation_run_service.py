@@ -1,6 +1,5 @@
 """Application service for implementation runs."""
 
-import subprocess
 from pathlib import Path
 from uuid import uuid4
 
@@ -8,40 +7,57 @@ from developer.agent_backends.select_agent_backend_service import (
     SelectAgentBackendService,
 )
 from developer.application.models import ImplementationRunResult
+from developer.application.settings import ImplementationSettings
 from developer.application.workspace_bridges import build_implementation_agent
 from developer.application.workspace_runtime import build_workspace_orchestrator
 from developer.config.service import ConfigService
-from developer.tasks.implementation_task import SimpleImplementationTask
+from developer.orchestrators.models import OrchestratorOutcome
+from developer.tasks.errors import TaskError
 from developer.tasks.models import TaskPublicationState
+from developer.tasks.protocol import ImplementationTask
+from developer.tasks.select_service import TaskSelectionService
+from developer.version_control.adapters.git_adapter import GitVersionControlAdapter
 from developer.workspaces.models import RunHandle, RunRequest, WorkspaceSpec
 from developer.workspaces.services.file_registry import FileWorkspaceRegistry
 from developer.workspaces.settings import WorkspaceSettings
 
 IMPLEMENTATION_AGENT_KIND = "implementation"
+MAX_ITERATIONS_HELP = "Use a positive integer or 'infinite'"
 
 
 def run_implementation(
-    task_name: str,
+    task_input: str,
+    max_iterations: int | str | None = None,
     config_service: ConfigService | None = None,
 ) -> ImplementationRunResult:
     """Run the implementation workflow using the configured execution mode."""
     resolved_config_service = config_service or ConfigService()
-    task = SimpleImplementationTask(task_name)
+    repo_path = Path.cwd()
+    version_control = GitVersionControlAdapter()
+    try:
+        version_control.ensure_clean_checkout(str(repo_path))
+        task = TaskSelectionService().resolve(task_input, base_path=repo_path)
+        resolved_max_iterations = _resolve_max_iterations(
+            resolved_config_service,
+            cli_override=max_iterations,
+        )
+    except (ValueError, TaskError) as exc:
+        return ImplementationRunResult(exit_code=1, message=str(exc))
+
     if _workspace_mode_enabled(resolved_config_service):
-        return _run_implementation_in_workspace(resolved_config_service, task)
+        return _run_implementation_in_workspace(
+            resolved_config_service,
+            task,
+            task_input=task_input,
+            max_iterations=resolved_max_iterations,
+        )
 
     outcome = build_implementation_agent(
         SelectAgentBackendService(resolved_config_service).select_agent(),
         task=task,
+        max_iterations=resolved_max_iterations,
     ).run()
-    if outcome.status == "success":
-        return ImplementationRunResult(
-            exit_code=0, message="Implementation run succeeded"
-        )
-    failure_message = "Implementation run failed"
-    if outcome.feedback:
-        failure_message = f"{failure_message}: {outcome.feedback}"
-    return ImplementationRunResult(exit_code=1, message=failure_message)
+    return _build_direct_run_result(outcome)
 
 
 def _workspace_mode_enabled(config_service: ConfigService) -> bool:
@@ -51,17 +67,42 @@ def _workspace_mode_enabled(config_service: ConfigService) -> bool:
 
 def _run_implementation_in_workspace(
     config_service: ConfigService,
-    task: SimpleImplementationTask,
+    task: ImplementationTask,
+    *,
+    task_input: str,
+    max_iterations: int | None,
 ) -> ImplementationRunResult:
     """Run the implementation workflow through workspace orchestration."""
     repo_path = Path.cwd()
-    base_branch = _resolve_current_branch(repo_path)
+    version_control = GitVersionControlAdapter()
+    base_branch = version_control.get_current_branch(str(repo_path))
     publication = _load_task_publication(config_service, task)
-    publication_branch = _resolve_task_branch(repo_path, task, publication)
+    publication_branch = _resolve_task_branch(
+        repo_path,
+        task,
+        publication,
+        version_control=version_control,
+    )
     workspace_start_point = _resolve_workspace_start_point(
         publication=publication,
         base_branch=base_branch,
     )
+    workspace_metadata = {
+        "task_id": task.task_id,
+        "task_name": task.task_name,
+        "task_path": task.task_path,
+        "task_branch_name": publication_branch,
+        "remote_name": "origin",
+        "start_point": workspace_start_point,
+    }
+    request_context = {
+        "task_input": _normalize_workspace_task_input(repo_path, task_input),
+        "task_id": task.task_id,
+        "task_name": task.task_name,
+        "task_path": task.task_path,
+        "task_branch_name": publication_branch,
+        "max_iterations": max_iterations,
+    }
     workspace, run_handle = build_workspace_orchestrator(
         config_service
     ).run_in_workspace(
@@ -69,22 +110,12 @@ def _run_implementation_in_workspace(
             provider="git_worktree",
             repo_path=str(repo_path),
             base_branch=base_branch,
-            task_id=task.task_name,
-            metadata={
-                "task_name": task.task_name,
-                "task_path": task.task_path,
-                "task_branch_name": publication_branch,
-                "remote_name": "origin",
-                "start_point": workspace_start_point,
-            },
+            task_id=task.task_id,
+            metadata=workspace_metadata,
         ),
         RunRequest(
             agent_kind=IMPLEMENTATION_AGENT_KIND,
-            context={
-                "task_name": task.task_name,
-                "task_path": task.task_path,
-                "task_branch_name": publication_branch,
-            },
+            context=request_context,
         ),
     )
     return ImplementationRunResult(
@@ -95,7 +126,7 @@ def _run_implementation_in_workspace(
 
 def _load_task_publication(
     config_service: ConfigService,
-    task: SimpleImplementationTask,
+    task: ImplementationTask,
 ) -> TaskPublicationState | None:
     """Load any persisted publication state for the task."""
     settings = config_service.get_config("workspaces", WorkspaceSettings)
@@ -105,15 +136,21 @@ def _load_task_publication(
 
 def _resolve_task_branch(
     repo_path: Path,
-    task: SimpleImplementationTask,
+    task: ImplementationTask,
     publication: TaskPublicationState | None,
+    *,
+    version_control: GitVersionControlAdapter,
 ) -> str:
     """Resolve the publication branch for the current task run."""
     if publication is not None:
         return publication.branch_name
 
     candidate = task.get_branch_name()
-    if not _branch_exists(repo_path, candidate, remote_name="origin"):
+    if not version_control.branch_exists(
+        str(repo_path),
+        candidate,
+        remote_name="origin",
+    ):
         return candidate
     return f"{candidate}-{uuid4().hex[:8]}"
 
@@ -158,34 +195,62 @@ def _format_workspace_run_message(
     return message
 
 
-def _resolve_current_branch(repo_path: Path) -> str:
-    """Return the currently checked out branch for the given repository."""
-    result = subprocess.run(
-        ["git", "branch", "--show-current"],
-        cwd=repo_path,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    branch = result.stdout.strip()
-    return branch or "main"
+def _resolve_max_iterations(
+    config_service: ConfigService,
+    *,
+    cli_override: int | str | None,
+) -> int | None:
+    """Resolve max iterations from CLI override, config, or defaults."""
+    if cli_override is not None:
+        return _normalize_max_iterations(cli_override, source="CLI --max-iterations")
+    settings = config_service.get_config("implementation", ImplementationSettings)
+    return _normalize_max_iterations(settings.max_iterations, source="config")
 
 
-def _branch_exists(repo_path: Path, branch_name: str, remote_name: str) -> bool:
-    """Return whether the candidate publication branch already exists."""
-    local = subprocess.run(
-        ["git", "show-ref", "--verify", "--quiet", f"refs/heads/{branch_name}"],
-        cwd=repo_path,
-        capture_output=True,
-        text=True,
-    )
-    if local.returncode == 0:
-        return True
+def _normalize_max_iterations(value: int | str, *, source: str) -> int | None:
+    """Normalize finite and infinite iteration settings."""
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized == "infinite":
+            return None
+        if normalized.isdigit():
+            value = int(normalized)
+        else:
+            raise _invalid_max_iterations_error(source, value)
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        raise _invalid_max_iterations_error(source, value)
+    return value
 
-    remote = subprocess.run(
-        ["git", "ls-remote", "--heads", remote_name, branch_name],
-        cwd=repo_path,
-        capture_output=True,
-        text=True,
+
+def _build_direct_run_result(
+    outcome: OrchestratorOutcome,
+) -> ImplementationRunResult:
+    """Convert a direct orchestrator outcome into a CLI-facing result."""
+    if outcome.status == "success":
+        return ImplementationRunResult(
+            exit_code=0, message="Implementation run succeeded"
+        )
+
+    message = "Implementation run failed"
+    if outcome.feedback:
+        message = f"{message}: {outcome.feedback}"
+    return ImplementationRunResult(exit_code=1, message=message)
+
+
+def _invalid_max_iterations_error(source: str, value: object) -> ValueError:
+    """Build a consistent max-iterations validation error."""
+    return ValueError(
+        f"Invalid {source} max_iterations value: {value}. {MAX_ITERATIONS_HELP}"
     )
-    return remote.returncode == 0 and bool(remote.stdout.strip())
+
+
+def _normalize_workspace_task_input(repo_path: Path, task_input: str) -> str:
+    """Store a workspace-safe task input path relative to the repository."""
+    normalized = task_input[1:] if task_input.startswith("@") else task_input
+    candidate = Path(normalized).expanduser()
+    if candidate.is_absolute():
+        try:
+            candidate = candidate.resolve().relative_to(repo_path.resolve())
+        except ValueError:
+            return str(candidate.resolve())
+    return str(candidate)

@@ -67,12 +67,12 @@ class _RecordingObserver:
         del attempt, context, agent_result
         return None
 
-    def on_run_succeeded(self, attempt, context):
-        del attempt, context
+    def on_run_succeeded(self, context):
+        del context
         return None
 
-    def on_run_failed(self, attempt, context, feedback):
-        del attempt, context, feedback
+    def on_run_failed(self, context, feedback):
+        del context, feedback
         return None
 
 
@@ -82,6 +82,31 @@ class _FakeImplementationAgent:
 
     def run(self) -> OrchestratorOutcome:
         return self._outcome
+
+
+class _ResolvedTask:
+    def __init__(self, task_id: str, task_name: str, task_path: str | None) -> None:
+        self._task_id = task_id
+        self._task_name = task_name
+        self._task_path = task_path
+
+    @property
+    def task_id(self) -> str:
+        return self._task_id
+
+    @property
+    def task_name(self) -> str:
+        return self._task_name
+
+    @property
+    def task_path(self) -> str | None:
+        return self._task_path
+
+    def is_complete(self):
+        raise NotImplementedError
+
+    def get_branch_name(self) -> str:
+        return self._task_id
 
 
 def _workspace() -> WorkspaceSession:
@@ -104,15 +129,6 @@ def _workspace() -> WorkspaceSession:
     )
 
 
-def _patch_implementation_agent(monkeypatch, outcome: OrchestratorOutcome) -> None:
-    monkeypatch.setattr(
-        "developer.application.workspace_bridges.build_implementation_agent",
-        lambda agent_runner, task, observer=None, context=None: (
-            _FakeImplementationAgent(outcome)
-        ),
-    )
-
-
 def test_local_execution_agent_factory_does_not_pass_workspace_path() -> None:
     """Local-path bridge selection should still rely on ambient cwd."""
     select_agent_backend_service = _RecordingSelectAgentBackendService()
@@ -131,14 +147,37 @@ def test_local_execution_agent_factory_does_not_pass_workspace_path() -> None:
 
 
 def test_workspace_runnable_implementation_agent_maps_success(monkeypatch) -> None:
-    """Bridge should convert successful orchestrator outcomes into workspace results."""
+    """Bridge should re-resolve the task and map successful outcomes."""
     workspace = _workspace()
-    runner = _fake_agent_runner()
+    runner = cast(AgentBackendProtocol, _FakeAgentRunner())
     agent_factory = _RecordingAgentFactory(runner)
     observer = _RecordingObserver()
-    _patch_implementation_agent(
-        monkeypatch,
-        OrchestratorOutcome(status="success", iterations=2),
+    resolved_tasks: list[tuple[str, str]] = []
+    agent_calls: list[int | None] = []
+
+    def fake_resolve(self, task_input, base_path=None):
+        del self
+        resolved_tasks.append((task_input, str(base_path)))
+        return _ResolvedTask(
+            "ship-it", "Ship it", "/tmp/workspace/docs/plans/ship-it.md"
+        )
+
+    def fake_build_implementation_agent(
+        agent_runner, task, observer=None, context=None, max_iterations=None
+    ):
+        del agent_runner, task, observer, context
+        agent_calls.append(max_iterations)
+        return _FakeImplementationAgent(
+            OrchestratorOutcome(status="success", iterations=2)
+        )
+
+    monkeypatch.setattr(
+        "developer.application.workspace_bridges.TaskSelectionService.resolve",
+        fake_resolve,
+    )
+    monkeypatch.setattr(
+        "developer.application.workspace_bridges.build_implementation_agent",
+        fake_build_implementation_agent,
     )
 
     result = WorkspaceRunnableImplementationAgent(
@@ -147,38 +186,63 @@ def test_workspace_runnable_implementation_agent_maps_success(monkeypatch) -> No
     ).run(
         request=RunRequest(
             agent_kind="implementation",
-            context={"task_name": "ship-it", "run_id": "run-1"},
+            context={
+                "task_input": "docs/plans/ship-it.md",
+                "run_id": "run-1",
+                "max_iterations": 20,
+            },
         ),
         workspace=workspace,
     )
 
     assert result.status == "succeeded"
     assert result.message == "Implementation run succeeded after 2 iterations"
-    assert result.summary == "iterations=2"
     assert agent_factory.targets == [workspace.execution_target]
+    assert resolved_tasks == [("docs/plans/ship-it.md", "/tmp/workspace")]
+    assert agent_calls == [20]
     assert observer.validated_contexts[0].repo_path == "/tmp/repo"
     assert observer.validated_contexts[0].workspace_path == "/tmp/workspace"
-    assert observer.validated_contexts[0].task_branch_name == "ship-it"
+    assert (
+        observer.validated_contexts[0].task_path
+        == "/tmp/workspace/docs/plans/ship-it.md"
+    )
 
 
 def test_workspace_runnable_implementation_agent_maps_failed_feedback(
     monkeypatch,
 ) -> None:
     """Bridge should preserve failure feedback in workspace results."""
-    _patch_implementation_agent(
-        monkeypatch,
-        OrchestratorOutcome(
-            status="failed",
-            iterations=3,
-            feedback="ruff check failed",
+
+    def fake_build_implementation_agent(
+        agent_runner, task, observer=None, context=None, max_iterations=None
+    ):
+        del agent_runner, task, observer, context, max_iterations
+        return _FakeImplementationAgent(
+            OrchestratorOutcome(
+                status="failed",
+                iterations=3,
+                feedback="ruff check failed",
+            )
+        )
+
+    monkeypatch.setattr(
+        "developer.application.workspace_bridges.TaskSelectionService.resolve",
+        lambda self, task_input, base_path=None: _ResolvedTask(
+            "ship-it", "Ship it", "/tmp/workspace/docs/plans/ship-it.md"
         ),
+    )
+    monkeypatch.setattr(
+        "developer.application.workspace_bridges.build_implementation_agent",
+        fake_build_implementation_agent,
     )
 
     result = WorkspaceRunnableImplementationAgent(
-        agent_factory=_RecordingAgentFactory(_fake_agent_runner())
+        agent_factory=_RecordingAgentFactory(
+            cast(AgentBackendProtocol, _FakeAgentRunner())
+        )
     ).run(
         request=RunRequest(
-            agent_kind="implementation", context={"task_name": "ship-it"}
+            agent_kind="implementation", context={"task_input": "docs/plans/ship-it.md"}
         ),
         workspace=_workspace(),
     )
@@ -202,7 +266,3 @@ def test_default_workspace_runnable_agent_resolver_rejects_unknown_kind() -> Non
     """Resolver should reject unsupported workspace agent kinds."""
     with pytest.raises(ValueError, match="Unsupported agent kind: unknown"):
         DefaultWorkspaceRunnableAgentResolver().resolve("unknown")
-
-
-def _fake_agent_runner() -> AgentBackendProtocol:
-    return cast(AgentBackendProtocol, _FakeAgentRunner())

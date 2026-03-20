@@ -1,5 +1,6 @@
 """Tests for orchestrator prompt template rendering."""
 
+import os
 from pathlib import Path
 
 import pytest
@@ -56,15 +57,15 @@ def test_render_injects_additional_context_values(tmp_path) -> None:
     """Template rendering should include values from additional context keys."""
     prompt_file = tmp_path / "implementation_prompt.md"
     prompt_file.write_text(
-        "Task: {{ task }} | Feedback: {{ feedback }}", encoding="utf-8"
+        "Task: {{ task_path }} | Feedback: {{ feedback }}", encoding="utf-8"
     )
     config_file = tmp_path / "engineeringagent.toml"
     _write_config_with_prompt_path(config_file, prompt_file)
 
     builder = OrchestratorPromptBuilder(ConfigService(config_file=config_file))
-    rendered = builder.build({"task": "ship it", "feedback": "fine"})
+    rendered = builder.build({"task_path": "docs/plans/ship-it.md", "feedback": "fine"})
 
-    assert rendered == "Task: ship it | Feedback: fine"
+    assert rendered == "Task: docs/plans/ship-it.md | Feedback: fine"
 
 
 def test_render_raises_on_invalid_template_syntax(tmp_path) -> None:
@@ -94,13 +95,19 @@ def test_render_raises_on_missing_prompt_file(tmp_path) -> None:
         builder.build({"feedback": "still needed"})
 
 
-def test_legacy_orchestrator_prompt_section_still_works(tmp_path) -> None:
-    """Prompt builder should fall back to the legacy orchestrator section."""
-    prompt_file = tmp_path / "implementation_prompt.md"
-    prompt_file.write_text("Legacy: {{ feedback }}", encoding="utf-8")
+def test_prompt_builder_uses_default_prompts_section_when_missing(tmp_path) -> None:
+    """Prompt builder should use defaults when the prompts section is omitted."""
+    prompt_file = tmp_path / "harness" / "implementation_prompt.md"
+    prompt_file.parent.mkdir(parents=True, exist_ok=True)
+    prompt_file.write_text("Prompt: {{ feedback }}", encoding="utf-8")
     config_file = tmp_path / "engineeringagent.toml"
-    _write_config_with_prompt_path(config_file, prompt_file, section="orchestrator")
+    config_file.write_text("", encoding="utf-8")
 
-    builder = OrchestratorPromptBuilder(ConfigService(config_file=config_file))
+    current_dir = Path.cwd()
+    try:
+        os.chdir(tmp_path)
+        builder = OrchestratorPromptBuilder(ConfigService(config_file=config_file))
 
-    assert builder.build({"feedback": "ok"}) == "Legacy: ok"
+        assert builder.build({"feedback": "ok"}) == "Prompt: ok"
+    finally:
+        os.chdir(current_dir)

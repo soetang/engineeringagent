@@ -39,7 +39,5 @@ class OrchestratorPromptBuilder(PromptBuilder):
 
 
 def _load_prompt_settings(config_service: ConfigService) -> PromptSettings:
-    """Load prompt settings with fallback to the legacy section name."""
-    if config_service.has_section("prompts"):
-        return config_service.get_config("prompts", PromptSettings)
-    return config_service.get_config("orchestrator", PromptSettings)
+    """Load prompt settings from the shared prompts section."""
+    return config_service.get_config("prompts", PromptSettings)

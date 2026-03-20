@@ -9,6 +9,11 @@ class ImplementationTask(Protocol):
     """Task contract used by the implementation orchestrator."""
 
     @property
+    def task_id(self) -> str:
+        """Return the stable task identity."""
+        ...
+
+    @property
     def task_name(self) -> str:
         """Return the current task name."""
         ...

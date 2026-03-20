@@ -3,6 +3,49 @@
 from pydantic import BaseModel, ConfigDict
 
 
+class TaskPhaseDefinition(BaseModel):
+    """Parsed phase metadata from one task plan."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    title: str
+    status: str
+
+
+class TaskPlanDefinition(BaseModel):
+    """Validated task plan definition loaded from markdown frontmatter."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: int
+    task_id: str
+    title: str
+    status: str
+    branch: str | None = None
+    base_branch: str | None = None
+    phases: list[TaskPhaseDefinition]
+    path: str
+
+
+class PlanValidationError(BaseModel):
+    """One semantic validation error for a task plan."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    location: str
+    message: str
+
+
+class PlanValidationResult(BaseModel):
+    """Structured task plan validation result."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    valid: bool
+    errors: list[PlanValidationError]
+
+
 class TaskPublicationState(BaseModel):
     """Persisted publication state for a task."""
 

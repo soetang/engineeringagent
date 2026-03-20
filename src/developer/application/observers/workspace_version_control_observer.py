@@ -95,11 +95,9 @@ class WorkspaceVersionControlObserver:
 
     def on_run_succeeded(
         self,
-        attempt: int,
         context: ImplementationContext,
     ) -> RunPublicationResult | None:
         """Push the publication branch and optionally create or reuse a PR."""
-        del attempt
         workspace_path = _require_context_value(
             context.workspace_path, "workspace_path"
         )
@@ -200,12 +198,10 @@ class WorkspaceVersionControlObserver:
 
     def on_run_failed(
         self,
-        attempt: int,
         context: ImplementationContext,
         feedback: str | None,
     ) -> None:
         """Record a failed publication state on the run handle."""
-        del attempt
         run_id = context.run_id
         if run_id is None:
             return

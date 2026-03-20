@@ -1,1 +1,1 @@
-"""Commands for the quality CLI."""
+"""CLI command modules."""

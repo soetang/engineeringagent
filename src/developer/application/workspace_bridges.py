@@ -1,5 +1,7 @@
 """Application-owned bridges between orchestrators and workspace runtime."""
 
+from pathlib import Path
+
 from developer.agent_backends.protocol import AgentBackendProtocol
 from developer.agent_backends.select_agent_backend_service import (
     SelectAgentBackendService,
@@ -9,8 +11,8 @@ from developer.orchestrators.models import ImplementationContext, OrchestratorOu
 from developer.orchestrators.protocols import ImplementationLifecycleObserver
 from developer.prompts.builder import OrchestratorPromptBuilder
 from developer.quality.services import CheckGateRunner
-from developer.tasks.implementation_task import SimpleImplementationTask
 from developer.tasks.protocol import ImplementationTask
+from developer.tasks.select_service import TaskSelectionService
 from developer.workspaces.models import (
     ExecutionTarget,
     RunRequest,
@@ -26,6 +28,8 @@ from developer.workspaces.protocols import (
 def build_implementation_agent(
     agent_runner: AgentBackendProtocol,
     task: ImplementationTask,
+    *,
+    max_iterations: int | None,
     observer: ImplementationLifecycleObserver | None = None,
     context: ImplementationContext | None = None,
 ) -> ImplementationAgent:
@@ -37,6 +41,7 @@ def build_implementation_agent(
         task=task,
         observer=observer,
         context=context,
+        max_iterations=max_iterations,
     )
 
 
@@ -104,7 +109,8 @@ class WorkspaceRunnableImplementationAgent(WorkspaceRunnableAgent):
         agent_runner = self._agent_factory.for_execution_target(
             workspace.execution_target
         )
-        task = _build_task(request)
+        task = _build_task(request, workspace)
+        max_iterations = _read_max_iterations_override(request)
         context = _build_context(request, workspace, task)
         if self._observer is not None:
             self._observer.validate(context)
@@ -113,6 +119,7 @@ class WorkspaceRunnableImplementationAgent(WorkspaceRunnableAgent):
             task=task,
             observer=self._observer,
             context=context,
+            max_iterations=max_iterations,
         ).run()
         return _build_workspace_result(outcome)
 
@@ -133,12 +140,25 @@ class DefaultWorkspaceRunnableAgentResolver(WorkspaceRunnableAgentResolver):
         raise ValueError(f"Unsupported agent kind: {agent_kind}")
 
 
-def _build_task(request: RunRequest) -> SimpleImplementationTask:
-    """Create the mock task object from the run request."""
-    task_name = str(request.context["task_name"])
-    task_path = request.context.get("task_path")
-    normalized_task_path = str(task_path) if isinstance(task_path, str) else None
-    return SimpleImplementationTask(task_name, task_path=normalized_task_path)
+def _build_task(request: RunRequest, workspace: WorkspaceSession) -> ImplementationTask:
+    """Re-resolve the task object from workspace run context."""
+    task_input = request.context.get("task_input")
+    if not isinstance(task_input, str) or not task_input:
+        raise ValueError("Workspace implementation run is missing task_input")
+    return TaskSelectionService().resolve(
+        task_input,
+        base_path=Path(workspace.execution_target.location),
+    )
+
+
+def _read_max_iterations_override(request: RunRequest) -> int | None:
+    """Read the already-normalized max-iteration override from workspace context."""
+    value = request.context.get("max_iterations")
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError("Workspace implementation run has invalid max_iterations")
+    return value
 
 
 def _build_context(
@@ -147,21 +167,19 @@ def _build_context(
     task: ImplementationTask,
 ) -> ImplementationContext:
     """Build the typed implementation context for one workspace run."""
-    repo_path = workspace.execution_target.metadata.get("repo_path")
-    normalized_repo_path = str(repo_path) if isinstance(repo_path, str) else None
-    run_id = request.context.get("run_id")
-    normalized_run_id = str(run_id) if isinstance(run_id, str) else None
+    execution_metadata = workspace.execution_target.metadata
+    workspace_metadata = workspace.metadata
     return ImplementationContext(
         workspace_id=workspace.id,
-        run_id=normalized_run_id,
-        repo_path=normalized_repo_path,
+        run_id=_optional_string(request.context.get("run_id")),
+        repo_path=_optional_string(execution_metadata.get("repo_path")),
         workspace_path=str(workspace.execution_target.location),
         workspace_branch_name=_optional_string(
-            workspace.metadata.get("workspace_branch_name")
+            workspace_metadata.get("workspace_branch_name")
         ),
-        task_branch_name=_optional_string(workspace.metadata.get("task_branch_name")),
-        base_branch=_optional_string(workspace.metadata.get("base_branch")),
-        remote_name=_optional_string(workspace.metadata.get("remote_name")) or "origin",
+        task_branch_name=_optional_string(workspace_metadata.get("task_branch_name")),
+        base_branch=_optional_string(workspace_metadata.get("base_branch")),
+        remote_name=_optional_string(workspace_metadata.get("remote_name")) or "origin",
         task_name=task.task_name,
         task_path=task.task_path,
     )
