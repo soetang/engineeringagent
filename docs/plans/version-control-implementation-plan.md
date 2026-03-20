@@ -32,11 +32,13 @@ Direct-mode `implementation run` should continue to work unchanged and should no
 
 - `run_implementation()` switches between direct execution and workspace execution in `src/developer/application/services/implementation_run_service.py`.
 - workspace mode creates a branch-backed worktree through `GitWorktreeWorkspaceProvider` in `src/developer/workspaces/adapters/git_worktree_provider.py`.
-- `ImplementationAgent` in `src/developer/orchestrators/implementation_agent.py` owns the iteration loop and has no lifecycle hooks for post-iteration side effects.
+- `ImplementationAgent` in `src/developer/orchestrators/implementation_agent.py` owns the iteration loop, has no lifecycle hooks for post-iteration side effects, and does not accept an explicit task object today.
 - successful workspace runs currently return only run status and a short message.
 - git support stops at branch discovery and `git worktree add/remove`.
 - there is no commit, push, remote inspection, or PR creation service today.
-- `ImplementationJudge` is still a stub, so "completion" currently means "first iteration that clears the gates."
+- workspace mode currently generates an opaque workspace `task_id`; there is no stable user-supplied task name or task path that can be reused across runs.
+- `ImplementationJudge` is still a stub, so "completion" currently means "first iteration that clears the gates," and completion semantics live separately from any branch naming policy.
+- `harness/policy/import_rules.yaml` does not yet define package-boundary rules for `developer.version_control` or `developer.forge`.
 
 ## Design Overview
 
@@ -49,10 +51,24 @@ Prompt generation for commit and PR text is not a third adapter family; it is an
 High-level shape:
 
 ```python
+class ImplementationTask(Protocol):
+    def is_complete(self) -> CompletionResult:
+        ...
+
+    def get_branch_name(self) -> str:
+        ...
+
+
 class ImplementationAgent:
-    def run(self, context: ImplementationContext | None = None) -> OrchestratorOutcome:
+    def run(
+        self,
+        task: ImplementationTask,
+        context: ImplementationContext | None = None,
+    ) -> OrchestratorOutcome:
         ...
         agent_result = self._agent_runner.run_agent(prompt, output_format=AgentResult)
+        ...
+        completion = task.is_complete()
         ...
         iteration_artifact = observer.on_iteration_passed(attempt, context, agent_result)
         ...
@@ -66,7 +82,7 @@ class WorkspaceVersionControlObserver(ImplementationLifecycleObserver):
         return self._git.commit_iteration(...)
 
     def on_run_succeeded(...):
-        pushed = self._git.push_branch(...)
+        pushed = self._git.push_branch(... branch_name=context.task_branch_name ...)
         pr = self._forge.find_open_pull_request(...) or self._forge.create_pull_request(...)
         self._workspace_provider.destroy(workspace_id)
         return RunPublicationResult(pr_url=pr.url, branch_name=pushed.branch_name)
@@ -84,6 +100,29 @@ class VersionControlContentService:
         prompt = self._prompt_builder.build_pull_request_prompt(context)
         return self._agent.run_agent(prompt, output_format=PullRequestContentOutput)
 ```
+
+### Task Model And Identity
+
+Make task identity the stable concept for completion, branch naming, and PR reuse.
+
+Recommended package shape:
+
+- `src/developer/tasks/protocol.py`
+- `src/developer/tasks/models.py`
+- `src/developer/tasks/implementation_task.py`
+
+Recommended task protocol surface:
+
+- `is_complete() -> CompletionResult`
+- `get_branch_name() -> str`
+
+Recommended behavior:
+
+- `ImplementationAgent` should take a task object instead of depending on a standalone completion judge;
+- `get_branch_name()` should return the stable branch name for that task;
+- in v1, `get_branch_name()` can resolve directly to the task name or task slug;
+- future edits or appended subtasks should continue using the same task object and therefore the same branch name; and
+- branch reuse and PR reuse should be keyed by task identity first, with branch name as task-owned publication state rather than the primary lookup key.
 
 ### 1. Version Control Layer
 
@@ -158,7 +197,7 @@ Recommended structured output models:
 
 Recommended service behavior:
 
-- gather repository context from the git adapter: branch name, base branch, staged or working diff, changed files, and recent commits;
+- gather repository context from the git adapter: task branch name, current workspace branch, base branch, staged or working diff, changed files, and recent commits;
 - treat git diff data as supporting evidence, not the primary narrative source;
 - prefer a high-level change summary from the implementation run when available;
 - render a dedicated prompt for commit generation after a passing iteration with changes;
@@ -176,9 +215,10 @@ These paths should be defaults only. The actual prompt locations should come fro
 
 Recommended prompt inputs:
 
-- `task_id`
+- `task_name`
+- `task_path` when present
 - `iteration`
-- `branch_name`
+- `task_branch_name`
 - `base_branch`
 - `change_summary`
 - `diff_evidence`
@@ -215,9 +255,10 @@ Rules:
 - If a `body` is needed, keep it to 1-2 short sentences about why this change exists.
 
 Context:
-- Task ID: {{ task_id }}
+- Task: {{ task_name }}
+- Task path: {{ task_path }}
 - Iteration: {{ iteration }}
-- Branch: {{ branch_name }}
+- Task branch: {{ task_branch_name }}
 - Base branch: {{ base_branch }}
 
 Change summary:
@@ -260,8 +301,9 @@ Rules:
 - Avoid filler text and generic phrases like "updates code".
 
 Context:
-- Task ID: {{ task_id }}
-- Branch: {{ branch_name }}
+- Task: {{ task_name }}
+- Task path: {{ task_path }}
+- Task branch: {{ task_branch_name }}
 - Base branch: {{ base_branch }}
 
 Change summary:
@@ -304,6 +346,16 @@ Recommended new protocol:
 
 - `ImplementationLifecycleObserver` in `src/developer/orchestrators/protocols.py`
 
+Recommended task protocol:
+
+- `ImplementationTask` in `src/developer/tasks/protocol.py`
+
+Placement guidance:
+
+- the lifecycle observer interface belongs in `developer.orchestrators` because it is part of the loop contract;
+- the concrete `WorkspaceVersionControlObserver` should live in `developer.application` because it composes orchestrator callbacks with workspace, version-control, forge, and task-publication concerns; and
+- keep `ImplementationAgent` generic so `developer.orchestrators` does not need to import `developer.version_control`, `developer.forge`, or `developer.workspaces` directly.
+
 Recommended callbacks:
 
 - `on_iteration_passed(attempt: int, context: ImplementationContext) -> IterationArtifact | None`
@@ -313,7 +365,7 @@ Recommended callbacks:
 Recommended behavior:
 
 - `ImplementationAgent` calls `on_iteration_passed()` after `GatePhase.ITERATION_COMPLETE` passes;
-- if the completion judge says the task is complete, the agent still runs `GatePhase.IMPLEMENTATION_COMPLETE` before `on_run_succeeded()`;
+- if the task says the work is complete, the agent still runs `GatePhase.IMPLEMENTATION_COMPLETE` before `on_run_succeeded()`;
 - `on_run_succeeded()` handles final push and PR creation;
 - observer callback failures should be caught inside `ImplementationAgent` and converted into `OrchestratorOutcome(status="failed", feedback=...)` instead of being re-raised; and
 - when no observer is configured, current behavior stays unchanged.
@@ -326,14 +378,15 @@ Define a typed context model so lifecycle callbacks do not depend on ad hoc dict
 
 Recommended model:
 
-- `ImplementationContext` with `workspace_id`, `run_id`, `repo_path`, `workspace_path`, `branch_name`, `base_branch`, `remote_name`, and `task_id`
+- `ImplementationContext` with `workspace_id`, `run_id`, `repo_path`, `workspace_path`, `workspace_branch_name`, `task_branch_name`, `base_branch`, `remote_name`, `task_name`, and optional `task_path`
 
 Recommended plumbing path:
 
 1. `LocalProcessWorkspaceRunner.start_run()` creates the `RunHandle` first, as it does today;
-2. before invoking the runnable agent, it enriches `RunRequest.context` with `run_id`;
-3. `WorkspaceRunnableImplementationAgent.run()` builds `ImplementationContext` from `workspace.metadata`, `workspace.execution_target`, and `request.context`; and
-4. that context is passed into `ImplementationAgent`, which forwards it to lifecycle callbacks.
+2. the CLI and application service resolve the requested task name or task path into a task object before workspace execution starts;
+3. before invoking the runnable agent, `LocalProcessWorkspaceRunner.start_run()` enriches `RunRequest.context` with `run_id` and task metadata;
+4. `WorkspaceRunnableImplementationAgent.run()` builds `ImplementationContext` from `workspace.metadata`, `workspace.execution_target`, and `request.context`; and
+5. that context, plus the resolved task object, is passed into `ImplementationAgent`, which forwards context to lifecycle callbacks.
 
 This is the smallest change that gives the observer enough information to commit, push, and persist run artifacts.
 
@@ -351,11 +404,11 @@ Why this trigger point:
 
 - it matches the user's request to commit each iteration that passes checks;
 - it preserves progress even if a later iteration is needed; and
-- it avoids coupling commit creation to the still-stubbed completion judge.
+- it avoids coupling commit creation to the still-evolving task completion implementation.
 
 Recommended default commit message template:
 
-- `chore: implementation iteration {{ iteration }} for {{ task_id }}`
+- `chore: implementation iteration {{ iteration }} for {{ task_name }}`
 
 Use this only as the fallback path.
 
@@ -371,22 +424,22 @@ Primary v1 behavior should be:
 Recommended v1 behavior:
 
 - only attempt PR creation after the overall run succeeds;
-- push the workspace branch to the configured remote first, without force;
+- push the task branch to the configured remote first, without force;
 - create the PR against the workspace base branch unless overridden by config; and
 - return the PR URL in the final run message and persisted metadata.
 
 ### Follow-Up Work On An Existing PR
 
-Further work should update the same PR when possible, not open a second PR for the same branch.
+Further work should update the same PR when possible, not open a second PR for the same task.
 
 Recommended behavior:
 
-- treat the published branch as a stable `publication_branch` separate from any temporary local execution branch;
-- on a fresh run, `publication_branch` is the generated implementation branch;
-- on a rerun started from a branch that already has an open PR, reuse that branch as `publication_branch`;
-- provision a new workspace from that branch, but allow the workspace to use a temporary execution branch if needed for worktree safety;
-- on success, push `HEAD` back to the same `publication_branch`; and
-- before creating a PR, ask the forge adapter whether an open PR already exists for `publication_branch`.
+- treat publication as task-scoped state keyed by repository plus task identity, separate from any temporary local execution branch;
+- on every run, resolve the task first and look up existing publication state for that task before deciding which branch or PR to use;
+- if task publication state already exists, reuse its stored task branch and PR details;
+- provision a fresh workspace for the run, but keep the workspace branch disposable for worktree safety;
+- on success, push `HEAD` back to the stored task branch; and
+- before creating a PR, ask the forge adapter whether an open PR already exists for that stored task branch.
 
 If an open PR already exists:
 
@@ -395,42 +448,49 @@ If an open PR already exists:
 - report terminal output as an update, for example `Pull request updated: <url>`; and
 - keep the existing PR title/body unchanged in v1, while new commits update the PR diff automatically.
 
-If no open PR exists for `publication_branch`:
+If no task publication state exists yet:
 
-- create a new PR as normal.
+- use `task.get_branch_name()` as the initial task branch name;
+- if that branch name already exists and maps cleanly to the same open PR, reconnect to it instead of creating a duplicate publication;
+- otherwise create the branch and create a new PR as normal.
 
-This gives a clean follow-up workflow: the user checks out the branch locally, adds more instructions, runs again, and the system pushes more commits to the same PR branch.
+This gives a clean follow-up workflow: the user reruns the same task, adds more instructions or subtasks, and the system pushes more commits to the same task branch and PR.
 
-### Publication Branch Naming
+The user's currently checked-out branch should only influence the base branch for new work when no task publication exists yet. It should not be the primary signal for PR reuse.
 
-Use a stable publication branch and a disposable execution branch.
+### Task Branch Naming
+
+Use a stable task branch and a disposable execution branch.
 
 Recommended behavior:
 
-- if the current branch already has an open PR, reuse that branch as `publication_branch`
-- else if the current branch is not the base branch, reuse the current branch as `publication_branch`
-- else create `developer/<task_slug>` as the `publication_branch`
-- if that name already exists, append a short suffix such as `developer/<task_slug>-a1b2c3`
-- keep the workspace branch disposable, for example `developer/<task_slug>/ws-<workspace_id>`
+- `task.get_branch_name()` returns the stable branch name for the task;
+- in v1, that can resolve directly to the task name or task slug;
+- when the task is first published, persist that branch name as task publication state;
+- future reruns of the same task should reuse the stored branch name even if the user starts from a different local checkout;
+- only append a suffix on the initial publication if the candidate branch name collides and cannot be safely reconnected to the same task; and
+- keep the workspace branch disposable, for example `<task_branch_name>/ws-<workspace_id>`.
 
 Code sketch:
 
 ```python
-def resolve_publication_branch(
-    current_branch: str,
-    base_branch: str,
-    task_slug: str,
-    has_open_pr: Callable[[str], bool],
+def resolve_task_branch(
+    task: ImplementationTask,
+    publication_store: TaskPublicationStore,
     branch_exists: Callable[[str], bool],
+    find_open_pr: Callable[[str], PullRequestResult | None],
 ) -> str:
-    if has_open_pr(current_branch):
-        return current_branch
-    if current_branch != base_branch:
-        return current_branch
+    publication = publication_store.get(task)
+    if publication is not None:
+        return publication.branch_name
 
-    candidate = f"developer/{task_slug}"
+    candidate = task.get_branch_name()
     if not branch_exists(candidate):
         return candidate
+
+    if find_open_pr(candidate) is not None:
+        return candidate
+
     return f"{candidate}-{short_uuid()}"
 ```
 
@@ -566,41 +626,57 @@ class PullRequestContentOutput(BaseModel):
     body: str
 
 
+class TaskPublicationState(BaseModel):
+    task_name: str
+    task_path: str | None = None
+    branch_name: str
+    base_branch: str
+    pr_url: str | None = None
+    pr_number: str | None = None
+    status: str
+
+
 class ImplementationContext(BaseModel):
     workspace_id: str
     run_id: str
     repo_path: str
     workspace_path: str
-    branch_name: str
-    publication_branch: str
+    workspace_branch_name: str
+    task_branch_name: str
     base_branch: str
     remote_name: str
-    task_id: str
-    task_slug: str
+    task_name: str
+    task_path: str | None = None
     latest_change_summary: str | None = None
 ```
 
 Example terminal output:
 
 ```text
-workspace=ws-123 | run=run-456 | status=succeeded | commits=2 | branch=developer/add-version-control | pr=https://github.com/org/repo/pull/42
+workspace=ws-123 | run=run-456 | task=add-version-control | status=succeeded | commits=2 | branch=add-version-control | pr=https://github.com/org/repo/pull/42
 Pull request: https://github.com/org/repo/pull/42
 ```
 
 ## Domain Model Changes
 
-Extend workspace/run metadata instead of creating a separate persistence system.
+Add task-scoped publication state and keep workspace/run metadata as execution history.
 
 Recommended additions:
 
-- workspace metadata: `branch_name`, `base_branch`, `repo_path`, `remote_name`
-- workspace metadata: `publication_branch`
+- task publication state: `task_name`, optional `task_path`, `branch_name`, `base_branch`, publication status, and PR identifiers
+- workspace metadata: `workspace_branch_name`, `base_branch`, `repo_path`, `remote_name`, `task_name`, and optional `task_path`
 - add `metadata: dict[str, Any] = Field(default_factory=dict)` to `RunHandle`
 - store publication data in `RunHandle.metadata` with these keys:
   - created commit SHAs in order;
-  - pushed branch name;
+  - pushed task branch name;
   - publication status;
   - PR URL when created
+
+Recommended persistence shape:
+
+- persist task publication state alongside workspace/run state so follow-up runs can look up publication by task;
+- keep `RunHandle.metadata` as a per-run audit trail rather than the primary task lookup record; and
+- keep workspace metadata focused on the disposable execution workspace.
 
 Recommended `RunHandle.metadata` keys:
 
@@ -613,7 +689,9 @@ Recommended `RunHandle.metadata` keys:
 - `commit_message_subjects: list[str]`
 - `pull_request_title: str`
 - `pull_request_number: str`
-- `publication_branch: str`
+- `task_name: str`
+- `task_path: str`
+- `task_branch_name: str`
 
 ## Runtime Composition Changes
 
@@ -621,12 +699,14 @@ Update `src/developer/application/workspace_runtime.py` to assemble the new serv
 
 Recommended composition flow:
 
-1. build workspace provider as today;
-2. resolve version control settings and create a git adapter when enabled;
-3. resolve an agent-backed content generation service when commit or PR generation is enabled;
-4. resolve forge settings and create a GitHub adapter when enabled;
-5. wrap them in a workspace-aware lifecycle observer; and
-6. inject that observer into `ImplementationAgent` for workspace runs only.
+1. resolve the CLI task input into a task object;
+2. load task publication state if one already exists for that task;
+3. build workspace provider as today;
+4. resolve version control settings and create a git adapter when enabled;
+5. resolve an agent-backed content generation service when commit or PR generation is enabled;
+6. resolve forge settings and create a GitHub adapter when enabled;
+7. wrap them in a workspace-aware lifecycle observer that can read/write task publication state; and
+8. inject that observer plus the resolved task into `ImplementationAgent` for workspace runs only.
 
 The content generation service should mirror the existing implementation prompt flow:
 
@@ -638,15 +718,18 @@ The content generation service should mirror the existing implementation prompt 
 Recommended new concrete service:
 
 - `WorkspaceVersionControlObserver`
+- recommended location: `src/developer/application/observers/workspace_version_control_observer.py`
 
 Responsibilities:
 
 - read workspace metadata and repo paths;
+- read task metadata and existing task publication state;
 - commit successful iterations;
 - ask the content generation service for a structured commit message when needed;
-- push the branch on final success;
+- push the task branch on final success;
 - ask the content generation service for structured PR content before publication;
 - create or reuse a PR when forge publication is enabled; and
+- persist task publication state for follow-up runs; and
 - optionally destroy the workspace after successful publication; and
 - produce human-readable status strings for the run result.
 
@@ -656,15 +739,48 @@ Preflight checks should run when the observer is created:
 - if forge publication is enabled, validate that `gh` is installed and can inspect the repo context; and
 - fail early with actionable errors before the implementation loop starts.
 
+## Import Boundary Policy
+
+Update the architectural fitness policy when adding `developer.version_control` and `developer.forge`.
+
+### `harness/policy/import_rules.yaml`
+
+Recommended policy additions:
+
+- add a `version-control-only-import-version-control` rule for `src/developer/version_control/**/*.py`;
+- add a `forge-only-import-forge` rule for `src/developer/forge/**/*.py`;
+- allow `developer.orchestrators.protocols` as an additional local prefix for those two rules so the new packages can consume shared orchestrator protocols;
+- add `src/developer/version_control/**/*.py` and `src/developer/forge/**/*.py` to the existing `no-non-entrypoint-imports-from-presentation` rule; and
+- keep allow-lists as narrow as the final package layout permits.
+
+Recommended boundary guidance:
+
+- prefer `developer.version_control` and `developer.forge` importing their own packages plus `developer.orchestrators.protocols` only;
+- if `src/developer/version_control/content_service.py` keeps the agent-backed prompt generation logic, explicitly whitelist only the protocol modules it truly needs instead of allowing broad `developer.*` imports; and
+- prefer moving cross-cutting composition into `developer.application` rather than widening package-local allow-lists.
+
+### `harness/fitness/tests/test_import_rules.py`
+
+Only update the generic fitness-script tests if the YAML policy format or evaluation behavior changes.
+
+Do not add repository architecture assertions under `tests/`; keep package-boundary enforcement in the harness fitness layer.
+
 ## CLI / UX Changes
 
 Keep the CLI surface small in v1.
 
-No new command is required to deliver this feature.
+No new command is required to deliver this feature, but `implementation run` should take a `--task <name-or-path>` parameter.
+
+Recommended behavior:
+
+- accept either a stable task name or a filesystem path that resolves to a task definition;
+- resolve that input into the task module before creating the workspace or prompt;
+- use the resolved task both for completion checks and for `get_branch_name()`; and
+- fail early with an actionable error if the task cannot be resolved.
 
 Update the final `implementation run` message to include publication details when available, for example:
 
-- `workspace=<id> | run=<id> | status=succeeded | commits=2 | branch=developer/... | pr=https://github.com/...`
+- `workspace=<id> | run=<id> | task=<name> | status=succeeded | commits=2 | branch=<task-branch> | pr=https://github.com/...`
 
 When a PR is created, print the PR URL plainly in terminal output so it is easy to click or copy.
 
@@ -676,7 +792,7 @@ Recommended terminal output shape:
 
 If publication fails, include the durable artifacts in the failure message, for example:
 
-- `status=failed | branch=developer/... | commits=2 | publication=github pr create failed`
+- `status=failed | branch=<task-branch> | commits=2 | publication=github pr create failed`
 
 ## Testing Plan
 
@@ -694,12 +810,14 @@ If publication fails, include the durable artifacts in the failure message, for 
 - config-driven adapter selection for version control and forge services
 - config-driven content generation enablement and fallback behavior
 - workspace runtime builds the observer only when the related sections are enabled
+- CLI/application task input is resolved into a task object and passed into the orchestrator
 - final result messages include commit counts and PR URL when present
 - observer failures are converted into failed outcomes instead of uncaught exceptions
 - passing iteration with no diff records no commit and still allows the run to continue
 - successful publication triggers workspace teardown when enabled
 - cleanup failure is surfaced as a warning without flipping a successful publication to failed
-- rerunning from a branch with an existing open PR reuses that PR instead of creating a new one
+- rerunning the same task with an existing publication reuses that PR instead of creating a new one
+- import-boundary policy covers `developer.version_control` and `developer.forge`
 
 ### Integration Tests
 
@@ -714,13 +832,16 @@ If publication fails, include the durable artifacts in the failure message, for 
 - successful PR creation removes the local worktree when cleanup is enabled
 - cleanup failure after PR creation leaves the run successful and reports a warning
 - missing `gh` when GitHub is enabled fails before the first iteration with a clear message
-- rerunning from an already-published branch pushes new commits to the same branch and reports the existing PR URL
+- rerunning an already-published task pushes new commits to the same branch and reports the existing PR URL
 
 ## Implementation Order
 
 ### Phase 1: Protocols, settings, and models
 
+- extend the `tasks` module with task identity, completion, and `get_branch_name()`
+- add CLI/application support for a `--task <name-or-path>` input
 - add `version_control` and `forge` packages
+- update `harness/policy/import_rules.yaml` for the new package boundaries
 - add settings models and config coverage
 - add domain models for commits, pushes, and PR results
 - add structured content models for commit and PR generation
@@ -735,15 +856,15 @@ If publication fails, include the durable artifacts in the failure message, for 
 ### Phase 3: Loop lifecycle hooks
 
 - add lifecycle observer protocol to the orchestrator layer
-- update `ImplementationAgent` to notify the observer
+- update `ImplementationAgent` to accept a task object and notify the observer
 - keep direct-mode behavior unchanged when no observer is present
 
 ### Phase 4: Workspace observer
 
 - implement `WorkspaceVersionControlObserver`
 - connect it in `workspace_runtime`
-- plumb `run_id` and workspace metadata into `ImplementationContext`
-- persist commit and publication metadata on runs
+- plumb `run_id`, task metadata, and workspace metadata into `ImplementationContext`
+- persist task publication state plus commit/publication metadata on runs
 
 ### Phase 5: Content generation service
 
@@ -755,7 +876,7 @@ If publication fails, include the durable artifacts in the failure message, for 
 
 - implement GitHub adapter over `gh`
 - push branch on successful completion
-- detect existing open PRs for the publication branch
+- detect existing open PRs for the task branch
 - create or reuse PR and surface the returned URL
 - destroy the workspace after successful publication when configured
 
@@ -763,26 +884,27 @@ If publication fails, include the durable artifacts in the failure message, for 
 
 - update CLI output messages
 - document new config in `engineeringagent.toml` examples or README when that documentation exists
+- run the import-boundary fitness check after the package-boundary changes
 - add end-to-end coverage for success and publication failure paths
 
 ## Risks And Mitigations
 
-- stub completion judge means PR creation will happen as soon as the run reports success today; keep the design correct for a future real judge and document the current behavior clearly
-- generated commit and PR content quality depends on the available diff and task context; keep deterministic fallbacks configurable and revisit once task input exists
+- stub task completion logic means PR creation will happen as soon as the run reports success today; keep the design correct for a future real task implementation and document the current behavior clearly
+- generated commit and PR content quality depends on the available diff and task context; keep deterministic fallbacks configurable and revisit once richer task definitions exist
 - `gh` CLI availability/auth can fail outside controlled environments; validate early and return actionable errors
 - automatic commits in a user checkout could be surprising; keep v1 scoped to workspace-backed runs only
 - moving implementation prompt config from `[orchestrator]` to `[prompts]` can break existing configs if done abruptly; keep a temporary fallback during rollout
+- task identity must be stable across reruns for PR reuse to work; require an explicit CLI task input and persist publication state keyed by task
 
 ## Rollout And Rollback
 
 - rollout is config-gated; behavior only changes when `[version_control] enabled = true`
 - PR publication is independently config-gated through `[forge] enabled = true`
 - rollback is simply disabling one or both sections; no data migration is required
-- the only schema change is additive `RunHandle.metadata`, which is backward compatible for persisted run files
+- schema changes are additive: `RunHandle.metadata` grows and task publication state is persisted alongside existing run/workspace files, which is backward compatible for existing state
 
 ## Open Questions
 
-- do you want PRs opened as draft by default until the completion judge becomes real?
 - should fallback to deterministic commit/PR text remain enabled by default, or should structured generation failures fail the run?
 
 ## Recommended Default Decisions
@@ -795,7 +917,10 @@ Unless the user says otherwise, implement with these defaults:
 - version control provider defaults to `git`
 - forge provider defaults to `github`
 - commit author defaults to the current git user identity
+- explicit task input is required for `implementation run`
+- `task.get_branch_name()` defaults to the task name or slug
 - prompt-driven structured output for commit messages and PR content
 - deterministic fallback text enabled by default
 - PR creation enabled only after a successful workspace run
+- reruns reuse publication by task, not by the user's currently checked-out branch
 - non-draft PRs by default
