@@ -47,6 +47,8 @@ project_excludes = ["tests/", "test_*.py", "harness/fitness/"]
 
 [tool.pytest.ini_options]
 addopts = ["-m", "not integration", "--strict-markers" , "-q"]
+testpaths = ["tests", "harness/fitness/tests"]
+norecursedirs = ["developer-workspaces", ".developer", ".git", ".venv"]
 markers = [
     "integration: mark tests as integration tests",
 ]
