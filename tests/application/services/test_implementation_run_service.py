@@ -1,9 +1,15 @@
 """Tests for the implementation run application service."""
 
+from pathlib import Path
+
 from developer.application.services.implementation_run_service import (
+    _resolve_task_branch,
+    _resolve_workspace_start_point,
     run_implementation,
 )
 from developer.orchestrators.models import OrchestratorOutcome
+from developer.tasks.implementation_task import SimpleImplementationTask
+from developer.tasks.models import TaskPublicationState
 from developer.workspaces.models import RunHandle, RunStatus
 
 
@@ -79,7 +85,7 @@ def test_workspace_run_formats_task_and_commit_count(monkeypatch) -> None:
     )
     monkeypatch.setattr(
         "developer.application.services.implementation_run_service._resolve_task_branch",
-        lambda config_service, task: task.get_branch_name(),
+        lambda repo_path, task, publication: task.get_branch_name(),
     )
 
     result = run_implementation(task_name="add-version-control")
@@ -88,3 +94,50 @@ def test_workspace_run_formats_task_and_commit_count(monkeypatch) -> None:
     assert "task=add-version-control" in result.message
     assert "commits=1" in result.message
     assert "branch=add-version-control" in result.message
+
+
+def test_resolve_task_branch_reuses_existing_publication() -> None:
+    """Existing publication state should own future branch reuse."""
+    task = SimpleImplementationTask("add-version-control")
+    publication = TaskPublicationState(
+        task_name="add-version-control",
+        task_path=None,
+        branch_name="published-branch",
+        base_branch="main",
+        status="created",
+    )
+
+    branch = _resolve_task_branch(Path("."), task, publication)
+
+    assert branch == "published-branch"
+
+
+def test_resolve_task_branch_adds_suffix_when_candidate_exists(monkeypatch) -> None:
+    """New tasks should avoid colliding with existing publication branches."""
+    task = SimpleImplementationTask("add-version-control")
+    monkeypatch.setattr(
+        "developer.application.services.implementation_run_service._branch_exists",
+        lambda repo_path, branch_name, remote_name: True,
+    )
+
+    branch = _resolve_task_branch(Path("."), task, publication=None)
+
+    assert branch.startswith("add-version-control-")
+
+
+def test_resolve_workspace_start_point_prefers_publication_branch() -> None:
+    """Follow-up runs should start from the publication branch when present."""
+    publication = TaskPublicationState(
+        task_name="add-version-control",
+        task_path=None,
+        branch_name="published-branch",
+        base_branch="main",
+        status="created",
+    )
+
+    start_point = _resolve_workspace_start_point(
+        publication=publication,
+        base_branch="main",
+    )
+
+    assert start_point == "published-branch"

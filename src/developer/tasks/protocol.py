@@ -4,15 +4,18 @@ from typing import Protocol
 
 from developer.orchestrators.models import CompletionResult
 
-from .models import TaskIdentity
-
 
 class ImplementationTask(Protocol):
     """Task contract used by the implementation orchestrator."""
 
     @property
-    def identity(self) -> TaskIdentity:
-        """Return the stable task identity."""
+    def task_name(self) -> str:
+        """Return the current task name."""
+        ...
+
+    @property
+    def task_path(self) -> str | None:
+        """Return the current task path when present."""
         ...
 
     def is_complete(self) -> CompletionResult:

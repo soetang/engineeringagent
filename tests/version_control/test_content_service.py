@@ -26,9 +26,7 @@ class _FakeAgentRunner:
 def test_content_service_renders_commit_prompt_and_parses_output(tmp_path) -> None:
     """Commit generation should render the configured prompt and parse output."""
     commit_prompt = tmp_path / "commit.md"
-    commit_prompt.write_text(
-        "Task {{ task_name }} iteration {{ iteration }}", encoding="utf-8"
-    )
+    commit_prompt.write_text("Task {{ task_name }}", encoding="utf-8")
     pr_prompt = tmp_path / "pr.md"
     pr_prompt.write_text("PR {{ task_name }}", encoding="utf-8")
     config = tmp_path / "engineeringagent.toml"
@@ -45,14 +43,13 @@ def test_content_service_renders_commit_prompt_and_parses_output(tmp_path) -> No
     result = service.build_commit_message(
         CommitPromptContext(
             task_name="ship-it",
-            iteration=2,
             task_branch_name="ship-it",
             base_branch="main",
         )
     )
 
     assert result.subject == "Ship it"
-    assert "Task ship-it iteration 2" in agent.prompts[0]
+    assert "Task ship-it" in agent.prompts[0]
 
 
 def test_content_service_uses_pr_fallback_on_agent_failure(tmp_path) -> None:
@@ -76,10 +73,9 @@ def test_content_service_uses_pr_fallback_on_agent_failure(tmp_path) -> None:
             task_name="ship-it",
             task_branch_name="ship-it",
             base_branch="main",
-            change_summary="Adds publication plumbing.",
         )
     )
 
     assert result.title == "Complete ship-it"
-    assert result.summary == ["Adds publication plumbing."]
+    assert result.summary == ["Complete task ship-it."]
     assert "## Summary" in result.body

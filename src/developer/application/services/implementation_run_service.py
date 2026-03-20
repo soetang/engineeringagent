@@ -2,6 +2,7 @@
 
 import subprocess
 from pathlib import Path
+from uuid import uuid4
 
 from developer.agent_backends.select_agent_backend_service import (
     SelectAgentBackendService,
@@ -11,6 +12,7 @@ from developer.application.workspace_bridges import build_implementation_agent
 from developer.application.workspace_runtime import build_workspace_orchestrator
 from developer.config.service import ConfigService
 from developer.tasks.implementation_task import SimpleImplementationTask
+from developer.tasks.models import TaskPublicationState
 from developer.workspaces.models import RunHandle, RunRequest, WorkspaceSpec
 from developer.workspaces.services.file_registry import FileWorkspaceRegistry
 from developer.workspaces.settings import WorkspaceSettings
@@ -54,7 +56,12 @@ def _run_implementation_in_workspace(
     """Run the implementation workflow through workspace orchestration."""
     repo_path = Path.cwd()
     base_branch = _resolve_current_branch(repo_path)
-    publication_branch = _resolve_task_branch(config_service, task)
+    publication = _load_task_publication(config_service, task)
+    publication_branch = _resolve_task_branch(repo_path, task, publication)
+    workspace_start_point = _resolve_workspace_start_point(
+        publication=publication,
+        base_branch=base_branch,
+    )
     workspace, run_handle = build_workspace_orchestrator(
         config_service
     ).run_in_workspace(
@@ -62,42 +69,63 @@ def _run_implementation_in_workspace(
             provider="git_worktree",
             repo_path=str(repo_path),
             base_branch=base_branch,
-            task_id=task.identity.name,
+            task_id=task.task_name,
             metadata={
-                "task_name": task.identity.name,
-                "task_path": task.identity.path,
+                "task_name": task.task_name,
+                "task_path": task.task_path,
                 "task_branch_name": publication_branch,
                 "remote_name": "origin",
+                "start_point": workspace_start_point,
             },
         ),
         RunRequest(
             agent_kind=IMPLEMENTATION_AGENT_KIND,
             context={
-                "task_name": task.identity.name,
-                "task_path": task.identity.path,
+                "task_name": task.task_name,
+                "task_path": task.task_path,
                 "task_branch_name": publication_branch,
             },
         ),
     )
     return ImplementationRunResult(
         exit_code=0 if run_handle.status.value == "succeeded" else 1,
-        message=_format_workspace_run_message(
-            workspace.id, run_handle, task.identity.name
-        ),
+        message=_format_workspace_run_message(workspace.id, run_handle, task.task_name),
     )
 
 
-def _resolve_task_branch(
+def _load_task_publication(
     config_service: ConfigService,
     task: SimpleImplementationTask,
-) -> str:
-    """Reuse an existing publication branch when one is already known."""
+) -> TaskPublicationState | None:
+    """Load any persisted publication state for the task."""
     settings = config_service.get_config("workspaces", WorkspaceSettings)
     registry = FileWorkspaceRegistry(Path(settings.state_dir).resolve())
-    publication = registry.get_task_publication(task.identity.name, task.identity.path)
+    return registry.get_task_publication(task.task_name, task.task_path)
+
+
+def _resolve_task_branch(
+    repo_path: Path,
+    task: SimpleImplementationTask,
+    publication: TaskPublicationState | None,
+) -> str:
+    """Resolve the publication branch for the current task run."""
     if publication is not None:
         return publication.branch_name
-    return task.get_branch_name()
+
+    candidate = task.get_branch_name()
+    if not _branch_exists(repo_path, candidate, remote_name="origin"):
+        return candidate
+    return f"{candidate}-{uuid4().hex[:8]}"
+
+
+def _resolve_workspace_start_point(
+    publication: TaskPublicationState | None,
+    base_branch: str,
+) -> str:
+    """Choose the branch or ref used to seed the disposable workspace branch."""
+    if publication is not None:
+        return publication.branch_name
+    return base_branch
 
 
 def _format_workspace_run_message(
@@ -141,3 +169,23 @@ def _resolve_current_branch(repo_path: Path) -> str:
     )
     branch = result.stdout.strip()
     return branch or "main"
+
+
+def _branch_exists(repo_path: Path, branch_name: str, remote_name: str) -> bool:
+    """Return whether the candidate publication branch already exists."""
+    local = subprocess.run(
+        ["git", "show-ref", "--verify", "--quiet", f"refs/heads/{branch_name}"],
+        cwd=repo_path,
+        capture_output=True,
+        text=True,
+    )
+    if local.returncode == 0:
+        return True
+
+    remote = subprocess.run(
+        ["git", "ls-remote", "--heads", remote_name, branch_name],
+        cwd=repo_path,
+        capture_output=True,
+        text=True,
+    )
+    return remote.returncode == 0 and bool(remote.stdout.strip())

@@ -10,10 +10,10 @@ Rules:
 - Use these sections in the body: `## Summary` and `## Testing`.
 - Under `## Summary`, explain why this change exists and what it achieves.
 - Under `## Testing`, list only checks that actually ran or passed if that information is available.
+- You can inspect the git repository directly if you need more detail.
 - Focus on intent, behavior, and outcome.
 - Do not enumerate files or low-level implementation details.
 - Do not turn the PR body into a diff summary.
-- Treat diff evidence as support for accuracy, not as the main narrative.
 - Do not invent motivation, requirements, or testing that is not present in the context.
 - Avoid filler text and generic phrases like "updates code".
 
@@ -22,17 +22,3 @@ Context:
 - Task path: {{ task_path }}
 - Task branch: {{ task_branch_name }}
 - Base branch: {{ base_branch }}
-
-Change summary:
-{{ change_summary }}
-
-Diff evidence:
-{{ diff_evidence }}
-
-Recent commits:
-{{ recent_commits }}
-
-Run summary:
-{{ run_summary }}
-
-Return JSON matching the provided schema.

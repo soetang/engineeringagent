@@ -44,10 +44,7 @@ class VersionControlContentService:
             )
         except Exception:
             return CommitMessageOutput(
-                subject=(
-                    f"chore: implementation iteration {context.iteration} "
-                    f"for {context.task_name}"
-                )[:72],
+                subject=f"chore: implement {context.task_name}"[:72],
                 body="",
             )
         return CommitMessageOutput.model_validate(result)
@@ -63,7 +60,7 @@ class VersionControlContentService:
                 output_format=PullRequestContentOutput,
             )
         except Exception:
-            summary = context.change_summary or f"Complete task {context.task_name}."
+            summary = f"Complete task {context.task_name}."
             body = "## Summary\n- " + summary + "\n\n## Testing\n- Not run"
             return PullRequestContentOutput(
                 title=f"Complete {context.task_name}",

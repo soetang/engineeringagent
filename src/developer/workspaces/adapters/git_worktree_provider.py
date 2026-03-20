@@ -34,22 +34,24 @@ class GitWorktreeWorkspaceProvider(WorkspaceProvider):
         workspace_id = uuid4().hex
         task_branch_name = str(spec.metadata.get("task_branch_name") or spec.task_id)
         branch_name = self._build_branch_name(task_branch_name, workspace_id)
+        remote_name = str(spec.metadata.get("remote_name") or "origin")
+        start_point = self._resolve_start_point(
+            repo_path=repo_path,
+            remote_name=remote_name,
+            requested_start_point=str(
+                spec.metadata.get("start_point") or spec.base_branch
+            ),
+        )
         worktree_path = (self._workspaces_root / workspace_id).resolve()
 
-        subprocess.run(
-            [
-                "git",
-                "worktree",
-                "add",
-                "-b",
-                branch_name,
-                str(worktree_path),
-                spec.base_branch,
-            ],
-            cwd=repo_path,
-            check=True,
-            capture_output=True,
-            text=True,
+        self._run_git(
+            repo_path,
+            "worktree",
+            "add",
+            "-b",
+            branch_name,
+            str(worktree_path),
+            start_point,
         )
 
         workspace = WorkspaceSession(
@@ -64,7 +66,8 @@ class GitWorktreeWorkspaceProvider(WorkspaceProvider):
                 "task_branch_name": task_branch_name,
                 "base_branch": spec.base_branch,
                 "task_id": spec.task_id,
-                "remote_name": spec.metadata.get("remote_name", "origin"),
+                "remote_name": remote_name,
+                "start_point": start_point,
             },
         )
         self._registry.save_workspace(workspace)
@@ -86,13 +89,7 @@ class GitWorktreeWorkspaceProvider(WorkspaceProvider):
         if not isinstance(repo_path, str):
             raise ValueError("Workspace metadata is missing worktree removal details")
 
-        subprocess.run(
-            ["git", "worktree", "remove", worktree_path],
-            cwd=repo_path,
-            check=True,
-            capture_output=True,
-            text=True,
-        )
+        self._run_git(Path(repo_path), "worktree", "remove", worktree_path)
 
         destroyed = workspace.model_copy(update={"status": WorkspaceStatus.DESTROYED})
         self._registry.save_workspace(destroyed)
@@ -104,6 +101,54 @@ class GitWorktreeWorkspaceProvider(WorkspaceProvider):
         )
         normalized_task_id = cleaned_task_id or "task"
         return f"developer/{normalized_task_id}/ws-{workspace_id}"
+
+    def _resolve_start_point(
+        self,
+        repo_path: Path,
+        remote_name: str,
+        requested_start_point: str,
+    ) -> str:
+        """Resolve a valid git ref for the new disposable workspace branch."""
+        if self._local_branch_exists(repo_path, requested_start_point):
+            return requested_start_point
+        if not self._remote_branch_exists(
+            repo_path, remote_name, requested_start_point
+        ):
+            return requested_start_point
+        self._run_git(repo_path, "fetch", remote_name, requested_start_point)
+        return f"{remote_name}/{requested_start_point}"
+
+    def _local_branch_exists(self, repo_path: Path, branch_name: str) -> bool:
+        """Return whether the named branch exists locally."""
+        result = subprocess.run(
+            ["git", "show-ref", "--verify", "--quiet", f"refs/heads/{branch_name}"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+        )
+        return result.returncode == 0
+
+    def _remote_branch_exists(
+        self, repo_path: Path, remote_name: str, branch_name: str
+    ) -> bool:
+        """Return whether the named branch exists on the remote."""
+        result = subprocess.run(
+            ["git", "ls-remote", "--heads", remote_name, branch_name],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+        )
+        return result.returncode == 0 and bool(result.stdout.strip())
+
+    def _run_git(self, repo_path: Path, *args: str) -> None:
+        """Run a git command for workspace lifecycle management."""
+        subprocess.run(
+            ["git", *args],
+            cwd=repo_path,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
 
     def _build_execution_target(
         self, repo_path: Path, worktree_path: Path

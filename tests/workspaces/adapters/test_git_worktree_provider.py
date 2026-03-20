@@ -100,3 +100,49 @@ def test_git_worktree_provider_stores_absolute_execution_paths(
     assert workspace.execution_target.kind == "local_path"
     assert execution_path.is_absolute() is True
     assert workspace.execution_target.metadata["repo_path"] == str(repo.resolve())
+
+
+def test_git_worktree_provider_can_start_from_remote_publication_branch(
+    tmp_path,
+) -> None:
+    """Provider should seed reruns from the existing remote publication branch."""
+    remote = tmp_path / "remote.git"
+    repo = tmp_path / "repo"
+    subprocess.run(
+        ["git", "init", "--bare", str(remote)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    _init_repo(repo)
+    _run_git(repo, "remote", "add", "origin", str(remote))
+    _run_git(repo, "checkout", "-b", "published-branch")
+    (repo / "README.md").write_text("published\n", encoding="utf-8")
+    _run_git(repo, "add", "README.md")
+    _run_git(repo, "commit", "-m", "published")
+    _run_git(repo, "push", "-u", "origin", "published-branch")
+    _run_git(repo, "checkout", "main")
+    _run_git(repo, "branch", "-D", "published-branch")
+
+    registry = FileWorkspaceRegistry(tmp_path / "state")
+    provider = GitWorktreeWorkspaceProvider(tmp_path / "workspaces", registry)
+
+    workspace = provider.create(
+        WorkspaceSpec(
+            provider="git_worktree",
+            repo_path=str(repo),
+            base_branch="main",
+            task_id="published-branch",
+            metadata={
+                "task_branch_name": "published-branch",
+                "start_point": "published-branch",
+                "remote_name": "origin",
+            },
+        )
+    )
+
+    worktree_path = Path(workspace.execution_target.location)
+    content = (worktree_path / "README.md").read_text(encoding="utf-8")
+
+    assert workspace.metadata["start_point"] == "origin/published-branch"
+    assert content == "published\n"

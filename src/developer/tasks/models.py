@@ -2,17 +2,6 @@
 
 from pydantic import BaseModel, ConfigDict
 
-from developer.orchestrators.models import CompletionResult
-
-
-class TaskIdentity(BaseModel):
-    """Stable identity for one implementation task."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    name: str
-    path: str | None = None
-
 
 class TaskPublicationState(BaseModel):
     """Persisted publication state for a task."""
@@ -26,11 +15,3 @@ class TaskPublicationState(BaseModel):
     pr_url: str | None = None
     pr_number: str | None = None
     status: str
-
-
-class TaskCompletionState(BaseModel):
-    """Simple task completion wrapper."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    result: CompletionResult

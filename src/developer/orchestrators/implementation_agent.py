@@ -41,8 +41,8 @@ class ImplementationAgent:
         self._task = task
         self._observer = observer
         self._context = context or ImplementationContext(
-            task_name=task.identity.name,
-            task_path=task.identity.path,
+            task_name=task.task_name,
+            task_path=task.task_path,
             task_branch_name=task.get_branch_name(),
         )
         self._max_iterations = max_iterations
@@ -54,8 +54,8 @@ class ImplementationAgent:
             prompt = self._prompt_builder.build(
                 {
                     "feedback": feedback,
-                    "task_name": self._task.identity.name,
-                    "task_path": self._task.identity.path,
+                    "task_name": self._task.task_name,
+                    "task_path": self._task.task_path,
                 }
             )
             agent_result = AgentResult.model_validate(

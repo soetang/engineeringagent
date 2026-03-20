@@ -162,8 +162,8 @@ def _build_context(
         task_branch_name=_optional_string(workspace.metadata.get("task_branch_name")),
         base_branch=_optional_string(workspace.metadata.get("base_branch")),
         remote_name=_optional_string(workspace.metadata.get("remote_name")) or "origin",
-        task_name=task.identity.name,
-        task_path=task.identity.path,
+        task_name=task.task_name,
+        task_path=task.task_path,
     )
 
 

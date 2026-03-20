@@ -69,14 +69,8 @@ class WorkspaceVersionControlObserver:
             CommitPromptContext(
                 task_name=context.task_name,
                 task_path=context.task_path,
-                iteration=attempt,
                 task_branch_name=task_branch_name,
                 base_branch=base_branch,
-                change_summary=agent_result.summary,
-                diff_evidence=self._version_control.get_diff(
-                    workspace_path, staged=True
-                ),
-                recent_commits=self._version_control.get_recent_commits(workspace_path),
             )
         )
         commit_result = self._version_control.create_commit(
@@ -88,10 +82,11 @@ class WorkspaceVersionControlObserver:
                 author_email=identity.email,
             ),
         )
-        self._update_run_metadata(
+        self._append_run_metadata_item(run_id, "commit_shas", commit_result.sha)
+        self._append_run_metadata_item(
             run_id,
-            commit_shas=_append_metadata_item(commit_result.sha),
-            commit_message_subjects=_append_metadata_item(commit_message.subject),
+            "commit_message_subjects",
+            commit_message.subject,
         )
         return IterationArtifact(
             commit_sha=commit_result.sha,
@@ -157,12 +152,6 @@ class WorkspaceVersionControlObserver:
                     task_path=context.task_path,
                     task_branch_name=branch_name,
                     base_branch=base_branch,
-                    change_summary=context.latest_change_summary,
-                    diff_evidence=self._version_control.get_diff(workspace_path),
-                    recent_commits=self._version_control.get_recent_commits(
-                        workspace_path
-                    ),
-                    run_summary=context.latest_change_summary,
                 )
             )
             pr = self._forge.create_pull_request(
@@ -242,26 +231,16 @@ class WorkspaceVersionControlObserver:
         run = self._registry.get_run(run_id)
         metadata = dict(run.metadata)
         for key, value in updates.items():
-            if isinstance(value, _AppendValue):
-                existing = list(metadata.get(key, []))
-                existing.append(value.value)
-                metadata[key] = existing
-                continue
             metadata[key] = value
         self._registry.save_run(run.model_copy(update={"metadata": metadata}))
 
-
-class _AppendValue:
-    """Sentinel wrapper for metadata list appends."""
-
-    def __init__(self, value: object) -> None:
-        """Store the appended value."""
-        self.value = value
-
-
-def _append_metadata_item(value: object) -> _AppendValue:
-    """Create an append wrapper for run metadata updates."""
-    return _AppendValue(value)
+    def _append_run_metadata_item(self, run_id: str, key: str, value: object) -> None:
+        """Append one value to a list stored on run metadata."""
+        run = self._registry.get_run(run_id)
+        metadata = dict(run.metadata)
+        existing = metadata.get(key, [])
+        metadata[key] = [*existing, value] if isinstance(existing, list) else [value]
+        self._registry.save_run(run.model_copy(update={"metadata": metadata}))
 
 
 def _require_context_value(value: str | None, name: str) -> str:

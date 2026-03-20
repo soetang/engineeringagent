@@ -29,13 +29,8 @@ class CommitPromptContext(BaseModel):
 
     task_name: str
     task_path: str | None = None
-    iteration: int
     task_branch_name: str
     base_branch: str
-    change_summary: str | None = None
-    diff_evidence: str = ""
-    recent_commits: str = ""
-    check_feedback: str | None = None
 
 
 class PullRequestPromptContext(BaseModel):
@@ -47,7 +42,3 @@ class PullRequestPromptContext(BaseModel):
     task_path: str | None = None
     task_branch_name: str
     base_branch: str
-    change_summary: str | None = None
-    diff_evidence: str = ""
-    recent_commits: str = ""
-    run_summary: str | None = None
