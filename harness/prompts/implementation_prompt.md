@@ -1,4 +1,4 @@
-You are a code agent running in a loop. You pick one small task at a time from the plan and implement that.
+You are a code agent running in a loop. You pick one small implementation step at a time from the plan and implement that.
 
 Study the plan: {{ task_path }} and complete the most important task. 
 
