@@ -943,7 +943,7 @@ This is the key inversion step. The protocols and task-facing run contracts shou
 
 ## Phase 3: Extract workspace implementation run flow from application
 
-- [ ] Add `src/developer/orchestrators/runs/implementation_workspace_run_orchestrator.py`
+- [x] Add `src/developer/orchestrators/runs/implementation_workspace_run_orchestrator.py`
 - [ ] Keep `_normalize_workspace_task_input(...)` in application as an input-normalization helper
 - [ ] Move publication reuse logic out of `src/developer/application/services/implementation_run_service.py`
 - [ ] Move base-branch selection out of `src/developer/application/services/implementation_run_service.py`
@@ -993,11 +993,11 @@ The main fitness update is about enforcing dependency direction, not just packag
 
 ## Phase 6: Update tests to match the new ownership model
 
-- [ ] Add `tests/orchestrators/runs/test_implementation_workspace_run_orchestrator.py`
-- [ ] Cover publication reuse in run-orchestrator tests
-- [ ] Cover branch collision handling in run-orchestrator tests
-- [ ] Cover workspace start-point selection in run-orchestrator tests
-- [ ] Cover `WorkspaceRunCommand` content in run-orchestrator tests
+- [x] Add `tests/orchestrators/runs/test_implementation_workspace_run_orchestrator.py`
+- [x] Cover publication reuse in run-orchestrator tests
+- [x] Cover branch collision handling in run-orchestrator tests
+- [x] Cover workspace start-point selection in run-orchestrator tests
+- [x] Cover `WorkspaceRunCommand` content in run-orchestrator tests
 - [ ] Cover `WorkspaceRunCommand` to workspace runtime adaptation in `src/developer/application/implementation_run_runtime.py` tests
 - [ ] Cover `WorkspaceSpec` and `RunRequest` assembly in `src/developer/application/implementation_run_runtime.py` adapter tests
 - [ ] Cover `_normalize_workspace_task_input(...)` behavior in application-level tests
