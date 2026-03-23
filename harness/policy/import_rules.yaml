@@ -92,27 +92,21 @@ rules:
     deny:
       local_prefixes:
         - "developer.presentation"
-  - name: "application-must-not-import-presentation"
+  - name: "application-import-boundary"
     paths:
       - "src/developer/application/**/*.py"
-    allow:
-      local_prefixes: []
-      relative_import_roots: []
-    deny:
-      local_prefixes:
-        - "developer.presentation"
-  - name: "implementation-run-service-import-boundary"
-    paths:
-      - "src/developer/application/services/implementation_run_service.py"
     allow:
       local_prefixes:
         - "developer.agent_backends"
         - "developer.application"
         - "developer.config"
-        - "developer.orchestrators.loop"
-        - "developer.orchestrators.runs"
+        - "developer.forge"
+        - "developer.orchestrators"
+        - "developer.prompts"
+        - "developer.quality"
         - "developer.tasks"
-        - "developer.version_control.adapters.git_adapter"
+        - "developer.version_control"
+        - "developer.workspaces"
       relative_import_roots:
         - "."
     deny:

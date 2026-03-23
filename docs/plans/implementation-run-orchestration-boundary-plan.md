@@ -1047,7 +1047,7 @@ Recommended default:
 - [x] Rewrite the new orchestrator, workspace, and version-control boundary rules to use the repository's standard "allow specific prefixes + deny `developer`" shape
 - [x] Remove redundant deny entries where a broad `developer` deny already enforces the boundary
 - [x] Narrow `developer.version_control` allows to only the exact orchestrator protocol modules still needed after the follow-through cleanup
-- [ ] Re-evaluate whether `implementation-run-service-import-boundary` adds unique protection beyond the broader application import rules and remove it if it is duplicative
+- [x] Re-evaluate whether `implementation-run-service-import-boundary` adds unique protection beyond the broader application import rules and remove it if it is duplicative
 - [x] Audit `PublishedTaskBranch` and `PublishedTaskBranchView` and collapse them to the smallest useful contract, or remove them if task-owned branch data plus publication lookup already cover the reuse case
 - [x] Audit `ImplementationWorkspaceRunRequest` for fields that merely echo task-owned data and trim them once the task execution contract is settled
 - [x] Keep a dedicated publication-store adapter only if publication lookup remains a distinct concern from the broader workspace registry after the simplification pass
@@ -1056,6 +1056,8 @@ Recommended default:
 ### Notes
 
 The goal here is to keep the final boundary small and obvious. The review feedback suggests some of the first-slice scaffolding may be transitional rather than permanent.
+
+- [x] All phases complete; this plan is complete.
 
 # Migration Sequence
 
