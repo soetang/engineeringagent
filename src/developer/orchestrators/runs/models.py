@@ -18,7 +18,6 @@ class ImplementationWorkspaceRunRequest(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="forbid")
 
     repo_path: str
-    task_input: str
     normalized_task_input: str
     task: ImplementationRunTask
     max_iterations: int | None
