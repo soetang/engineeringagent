@@ -4,7 +4,7 @@ task_id: add-agent-first-cli-onboarding
 title: Add minimal agent-first onboarding with init, schema export, and user docs
 status: ready
 branch: feat/add-agent-first-cli-onboarding
-base_branch: main
+base_branch: master
 phases:
   - id: cli
     title: Add minimal init and schema CLI commands
