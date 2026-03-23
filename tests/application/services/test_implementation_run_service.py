@@ -166,6 +166,41 @@ git_worktree_root_dir = "developer-workspaces"
     assert request.max_iterations == 20
 
 
+def test_workspace_run_uses_runtime_repo_path(monkeypatch, tmp_path) -> None:
+    """Workspace requests should carry the caller checkout path from runtime state."""
+    fake_orchestrator = _FakeWorkspaceRunOrchestrator()
+    repo_path = tmp_path / "repo"
+    repo_path.mkdir()
+    monkeypatch.setattr(
+        "developer.application.services.implementation_run_service._workspace_mode_enabled",
+        lambda config_service: True,
+    )
+    monkeypatch.setattr(
+        "developer.version_control.adapters.git_adapter.GitVersionControlAdapter.ensure_clean_checkout",
+        lambda self, checkout_path: None,
+    )
+    monkeypatch.setattr(
+        "developer.application.services.implementation_run_service.TaskSelectionService.resolve",
+        lambda self, task_input, base_path=None: _ResolvedTask(
+            "ship-it", task_path=str(Path("docs/plans/ship-it.md"))
+        ),
+    )
+    monkeypatch.setattr(
+        "developer.application.services.implementation_run_service.build_implementation_workspace_run_orchestrator",
+        lambda config_service: fake_orchestrator,
+    )
+    monkeypatch.setattr(
+        "developer.application.services.implementation_run_service.Path.cwd",
+        lambda: repo_path,
+    )
+
+    result = run_implementation(task_input="docs/plans/ship-it.md")
+
+    assert result.exit_code == 0
+    request = fake_orchestrator.requests[-1]
+    assert request.repo_path == str(repo_path)
+
+
 def test_run_implementation_fails_when_checkout_is_dirty(monkeypatch) -> None:
     """Implement should fail before resolution when the checkout is dirty."""
     monkeypatch.setattr(

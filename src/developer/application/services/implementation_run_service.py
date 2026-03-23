@@ -47,6 +47,7 @@ def run_implementation(
         return _run_implementation_in_workspace(
             resolved_config_service,
             task,
+            repo_path=repo_path,
             task_input=task_input,
             max_iterations=resolved_max_iterations,
         )
@@ -68,11 +69,11 @@ def _run_implementation_in_workspace(
     config_service: ConfigService,
     task,
     *,
+    repo_path: Path,
     task_input: str,
     max_iterations: int | None,
 ) -> ImplementationRunResult:
     """Run the implementation workflow through workspace orchestration."""
-    repo_path = Path.cwd()
     outcome = build_implementation_workspace_run_orchestrator(config_service).run(
         ImplementationWorkspaceRunRequest(
             repo_path=str(repo_path),
