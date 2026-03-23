@@ -221,10 +221,10 @@ Behavior:
 
 ### Phase 1: CLI surface
 
-- add `schema` command group to the root CLI;
-- add `init` command to the root CLI;
-- keep presentation code thin and push generation/schema logic into application-layer services where practical; and
-- define the minimal prompt flow for interactive setup.
+- [x] add `schema` command group to the root CLI;
+- [ ] add `init` command to the root CLI;
+- [x] keep presentation code thin and push generation/schema logic into application-layer services where practical; and
+- [ ] define the minimal prompt flow for interactive setup.
 
 ### Phase 2: Scaffold assets and generation
 
@@ -236,10 +236,10 @@ Behavior:
 
 ### Phase 3: Schema export
 
-- expose JSON Schema for the validated task-plan frontmatter shape;
-- expose JSON Schema for the dynamic quality spec model;
-- ensure schema output reflects supported enum values and required fields; and
-- document clearly that the plan schema applies to frontmatter, not the whole markdown file.
+- [x] expose JSON Schema for the validated task-plan frontmatter shape;
+- [x] expose JSON Schema for the dynamic quality spec model;
+- [x] ensure schema output reflects supported enum values and required fields; and
+- [ ] document clearly that the plan schema applies to frontmatter, not the whole markdown file.
 
 ### Phase 4: Documentation
 
@@ -291,13 +291,13 @@ Cover:
 
 Add focused tests for:
 
-- root CLI help listing new commands;
+- [x] root CLI help listing new commands;
 - `developer init` interactive success path;
 - file generation in an isolated filesystem;
 - no-silent-overwrite behavior;
 - `AGENTS.md` creation or snippet fallback behavior;
-- `developer schema plan` output shape;
-- `developer schema quality` output shape; and
+- [x] `developer schema plan` output shape;
+- [x] `developer schema quality` output shape; and
 - generated sample plan passing `validate-plan` when intended.
 
 ## Acceptance Criteria
