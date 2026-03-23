@@ -173,7 +173,7 @@ git_worktree_root_dir = "developer-workspaces"
     assert request.repo_path == str(Path.cwd())
     assert request.task is not None
     assert request.task.task_name == "Ship it"
-    assert request.normalized_task_input == "docs/plans/ship-it.md"
+    assert request.task_input == "docs/plans/ship-it.md"
     assert request.max_iterations == 20
     assert not hasattr(request, "agent_kind")
 

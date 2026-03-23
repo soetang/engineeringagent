@@ -88,7 +88,7 @@ class ImplementationWorkspaceRunOrchestrator:
                 "start_point": workspace_start_point,
             },
             run_context={
-                "task_input": request.normalized_task_input,
+                "task_input": request.task_input,
                 "task_id": request.task.task_id,
                 "task_name": request.task.task_name,
                 "task_path": request.task.task_path,
