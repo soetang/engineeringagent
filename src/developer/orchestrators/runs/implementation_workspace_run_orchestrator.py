@@ -8,16 +8,15 @@ from developer.orchestrators.runs.models import (
     ImplementationWorkspacePlan,
     ImplementationWorkspaceRunOutcome,
     ImplementationWorkspaceRunRequest,
+    PublishedTaskBranch,
     WorkspaceRunCommand,
 )
 from developer.orchestrators.runs.protocols import (
     BranchInspectionPort,
-    PublishedTaskBranchView,
+    ImplementationRunTaskExecutionDefaults,
     TaskPublicationStore,
     WorkspaceRunPort,
 )
-
-IMPLEMENTATION_AGENT_KIND = "implementation"
 
 
 class ImplementationWorkspaceRunOrchestrator:
@@ -49,8 +48,9 @@ class ImplementationWorkspaceRunOrchestrator:
                 repo_path=request.repo_path,
                 base_branch=plan.base_branch,
                 task_id=request.task.task_id,
+                workspace_provider=self._get_task_workspace_provider(request),
+                agent_kind=self._get_task_agent_kind(request),
                 workspace_metadata=plan.workspace_metadata,
-                agent_kind=IMPLEMENTATION_AGENT_KIND,
                 run_context=plan.run_context,
             )
         )
@@ -66,10 +66,10 @@ class ImplementationWorkspaceRunOrchestrator:
     def _build_plan(
         self,
         request: ImplementationWorkspaceRunRequest,
-        publication: PublishedTaskBranchView | None,
+        publication: PublishedTaskBranch | None,
     ) -> ImplementationWorkspacePlan:
         """Resolve the workspace branch plan for one run."""
-        base_branch = self._branch_inspector.get_current_branch(request.repo_path)
+        base_branch = self._resolve_base_branch(request)
         task_branch_name = self._resolve_task_branch(request, publication)
         workspace_start_point = self._resolve_workspace_start_point(
             publication=publication,
@@ -88,7 +88,7 @@ class ImplementationWorkspaceRunOrchestrator:
                 "start_point": workspace_start_point,
             },
             run_context={
-                "task_input": request.normalized_task_input,
+                "task_input": request.task_input,
                 "task_id": request.task.task_id,
                 "task_name": request.task.task_name,
                 "task_path": request.task.task_path,
@@ -97,10 +97,16 @@ class ImplementationWorkspaceRunOrchestrator:
             },
         )
 
+    def _resolve_base_branch(self, request: ImplementationWorkspaceRunRequest) -> str:
+        """Prefer the task-defined base branch and fall back to repository state."""
+        if request.task.base_branch:
+            return request.task.base_branch
+        return self._branch_inspector.get_current_branch(request.repo_path)
+
     def _resolve_task_branch(
         self,
         request: ImplementationWorkspaceRunRequest,
-        publication: PublishedTaskBranchView | None,
+        publication: PublishedTaskBranch | None,
     ) -> str:
         """Reuse a published branch when available, otherwise avoid collisions."""
         if publication is not None:
@@ -117,10 +123,28 @@ class ImplementationWorkspaceRunOrchestrator:
 
     def _resolve_workspace_start_point(
         self,
-        publication: PublishedTaskBranchView | None,
+        publication: PublishedTaskBranch | None,
         base_branch: str,
     ) -> str:
         """Choose the ref used to seed the disposable workspace branch."""
         if publication is not None:
             return publication.branch_name
         return base_branch
+
+    def _get_task_workspace_provider(
+        self, request: ImplementationWorkspaceRunRequest
+    ) -> str | None:
+        """Read a task-specific provider override when the task exposes one."""
+        task = request.task
+        if isinstance(task, ImplementationRunTaskExecutionDefaults):
+            return task.workspace_provider
+        return None
+
+    def _get_task_agent_kind(
+        self, request: ImplementationWorkspaceRunRequest
+    ) -> str | None:
+        """Read a task-specific agent override when the task exposes one."""
+        task = request.task
+        if isinstance(task, ImplementationRunTaskExecutionDefaults):
+            return task.agent_kind
+        return None

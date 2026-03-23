@@ -6,6 +6,7 @@ from typing import Optional, Type
 
 from pydantic import BaseModel
 
+from developer.agent_backends.json_output import parse_structured_json
 from developer.agent_backends.protocol import AgentBackendProtocol, TModel
 
 
@@ -37,6 +38,7 @@ class CodexAdapter(AgentBackendProtocol):
         """Execute agent with prompt, return structured output or string."""
         # For model output, we need to write schema to temp file
         schema_path = None
+        command_prompt = prompt
         if output_format is not None and issubclass(output_format, BaseModel):
             schema = self._generate_schema(output_format)
             with tempfile.NamedTemporaryFile(
@@ -44,11 +46,12 @@ class CodexAdapter(AgentBackendProtocol):
             ) as f:
                 json.dump(schema, f)
                 schema_path = f.name
+            command_prompt = self._build_structured_prompt(prompt, schema)
 
         try:
             # Build command
             cmd = self._build_codex_command(
-                prompt, self.model, self.profile, schema_path
+                command_prompt, self.model, self.profile, schema_path
             )
 
             # Execute command
@@ -65,7 +68,7 @@ class CodexAdapter(AgentBackendProtocol):
             elif issubclass(output_format, BaseModel):
                 # Parse JSON output
                 try:
-                    json_data = json.loads(result.stdout.strip())
+                    json_data = self._parse_json_content(result.stdout)
                     return output_format(**json_data)
                 except json.JSONDecodeError as e:
                     raise RuntimeError(f"Failed to parse JSON output: {e}") from e
@@ -105,6 +108,20 @@ class CodexAdapter(AgentBackendProtocol):
             cmd.extend(["--cd", self.path])
 
         return cmd
+
+    def _build_structured_prompt(self, prompt: str, schema: dict) -> str:
+        """Add an explicit JSON-only instruction for structured outputs."""
+        schema_str = json.dumps(schema, indent=2)
+        return (
+            "Return JSON only. Do not include markdown, prose, or code fences.\n"
+            "The JSON must match this schema exactly:\n"
+            f"{schema_str}\n\n"
+            f"{prompt}"
+        )
+
+    def _parse_json_content(self, content: str) -> dict:
+        """Parse JSON content, tolerating fenced or wrapped JSON responses."""
+        return parse_structured_json(content)
 
     def _generate_schema(self, model_class: Type[BaseModel]) -> dict:
         """Generate JSON schema with all fields required for Codex."""

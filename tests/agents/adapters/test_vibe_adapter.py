@@ -47,6 +47,48 @@ def test_vibe_adapter_rejects_model_configuration():
         VibeAdapter(model="devstral-small")
 
 
+def test_vibe_adapter_parses_wrapped_json_content():
+    """Vibe structured parsing should tolerate prose plus fenced JSON."""
+    adapter = VibeAdapter(profile="testagent")
+
+    parsed = adapter._parse_json_content(
+        """Analysis complete:
+
+```json
+{"status": "approved", "summary": "Looks good", "actions": []}
+```"""
+    )
+
+    assert parsed == {
+        "status": "approved",
+        "summary": "Looks good",
+        "actions": [],
+    }
+
+
+def test_vibe_adapter_parses_reviewer_style_prose_plus_json_block():
+    """Vibe parsing should extract JSON when the assistant adds prose first."""
+    adapter = VibeAdapter(profile="testagent")
+
+    parsed = adapter._parse_json_content(
+        """Based on my analysis of the recently modified code, I found:
+
+```json
+{
+  "status": "approved",
+  "summary": "Code is well-structured",
+  "actions": ["Simplify one conditional"]
+}
+```"""
+    )
+
+    assert parsed == {
+        "status": "approved",
+        "summary": "Code is well-structured",
+        "actions": ["Simplify one conditional"],
+    }
+
+
 @pytest.mark.integration
 class TestVibeAdapter:
     """Test suite for Vibe CLI adapter - integration tests requiring Vibe CLI."""

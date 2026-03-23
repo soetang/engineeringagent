@@ -8,14 +8,21 @@ from developer.tasks.errors import TaskPlanLoadError
 from developer.tasks.select_service import TaskSelectionService
 
 
-def _write_plan(path, *, status: str = "ready", phase_status: str = "todo") -> None:
+def _write_plan(
+    path,
+    *,
+    status: str = "ready",
+    phase_status: str = "todo",
+    base_branch: str | None = None,
+) -> None:
+    base_branch_line = f"base_branch: {base_branch}\n" if base_branch else ""
     path.write_text(
         f"""---
 schema_version: 1
 task_id: ship-it
 title: Ship it
 status: {status}
-phases:
+{base_branch_line}phases:
   - id: build
     title: Build
     status: {phase_status}
@@ -35,7 +42,18 @@ def test_markdown_plan_adapter_resolves_task_and_defaults_branch(tmp_path) -> No
     assert task.task_id == "ship-it"
     assert task.task_name == "Ship it"
     assert task.task_path == str(plan_path.resolve())
+    assert task.base_branch is None
     assert task.get_branch_name() == "ship-it"
+
+
+def test_markdown_plan_adapter_exposes_base_branch_from_frontmatter(tmp_path) -> None:
+    """Resolved tasks should surface the plan-defined base branch preference."""
+    plan_path = tmp_path / "plan.md"
+    _write_plan(plan_path, base_branch="develop")
+
+    task = MarkdownPlanAdapter().resolve(str(plan_path))
+
+    assert task.base_branch == "develop"
 
 
 def test_markdown_plan_task_reloads_completion_from_disk(tmp_path) -> None:

@@ -4,6 +4,9 @@ from pathlib import Path
 from typing import cast
 
 from developer.application.implementation_run_runtime import (
+    DEFAULT_IMPLEMENTATION_WORKSPACE_AGENT_KIND,
+    DEFAULT_IMPLEMENTATION_WORKSPACE_PROVIDER,
+    TaskPublicationStoreAdapter,
     WorkspaceRunOrchestratorPortAdapter,
     build_implementation_workspace_run_orchestrator,
 )
@@ -16,10 +19,8 @@ from developer.orchestrators.runs.implementation_workspace_run_orchestrator impo
 from developer.orchestrators.runs.models import WorkspaceRunCommand
 from developer.version_control.settings import VersionControlSettings
 from developer.workspaces.models import RunHandle, RunStatus
+from developer.workspaces.services.file_registry import FileWorkspaceRegistry
 from developer.workspaces.settings import WorkspaceSettings
-from developer.workspaces.task_publication_store import (
-    FileWorkspaceTaskPublicationStore,
-)
 
 
 class _FakeConfigService:
@@ -163,24 +164,44 @@ def test_workspace_run_port_adapter_translates_to_workspace_runtime() -> None:
             base_branch="main",
             task_id="ship-it",
             workspace_metadata={"task_branch_name": "ship-it"},
-            agent_kind="implementation",
             run_context={"task_input": "docs/plans/ship-it.md"},
         )
     )
 
     workspace_spec, run_request = runtime.calls[-1]
-    assert workspace_spec.provider == "git_worktree"
+    assert workspace_spec.provider == DEFAULT_IMPLEMENTATION_WORKSPACE_PROVIDER
     assert workspace_spec.repo_path == "/repo"
     assert workspace_spec.base_branch == "main"
     assert workspace_spec.task_id == "ship-it"
     assert workspace_spec.metadata == {"task_branch_name": "ship-it"}
-    assert run_request.agent_kind == "implementation"
+    assert run_request.agent_kind == DEFAULT_IMPLEMENTATION_WORKSPACE_AGENT_KIND
     assert run_request.context == {"task_input": "docs/plans/ship-it.md"}
     assert result.workspace_id == "workspace-1"
     assert result.run_id == "run-1"
     assert result.status == "succeeded"
     assert result.latest_message == "latest update"
     assert result.metadata == {"task_branch_name": "ship-it"}
+
+
+def test_workspace_run_port_adapter_prefers_task_execution_defaults() -> None:
+    """Task-specified execution defaults should override composed runtime defaults."""
+    runtime = _FakeWorkspaceRuntime()
+
+    WorkspaceRunOrchestratorPortAdapter(runtime).run(
+        WorkspaceRunCommand(
+            repo_path="/repo",
+            base_branch="main",
+            task_id="ship-it",
+            workspace_provider="snapshot",
+            agent_kind="repair",
+            workspace_metadata={"task_branch_name": "ship-it"},
+            run_context={"task_input": "docs/plans/ship-it.md"},
+        )
+    )
+
+    workspace_spec, run_request = runtime.calls[-1]
+    assert workspace_spec.provider == "snapshot"
+    assert run_request.agent_kind == "repair"
 
 
 def test_build_implementation_workspace_run_orchestrator_wires_ports(
@@ -202,10 +223,7 @@ def test_build_implementation_workspace_run_orchestrator_wires_ports(
     )
 
     assert isinstance(orchestrator, ImplementationWorkspaceRunOrchestrator)
-    assert isinstance(
-        orchestrator._publication_store,
-        FileWorkspaceTaskPublicationStore,
-    )
+    assert isinstance(orchestrator._publication_store, TaskPublicationStoreAdapter)
     assert (
         orchestrator._publication_store._registry._state_dir
         == Path(".developer/state").resolve()
@@ -218,3 +236,11 @@ def test_build_implementation_workspace_run_orchestrator_wires_ports(
         WorkspaceRunOrchestratorPortAdapter,
     )
     assert orchestrator._workspace_runner._workspace_runner is runtime
+    assert (
+        orchestrator._workspace_runner._workspace_provider
+        == DEFAULT_IMPLEMENTATION_WORKSPACE_PROVIDER
+    )
+    assert (
+        orchestrator._workspace_runner._agent_kind
+        == DEFAULT_IMPLEMENTATION_WORKSPACE_AGENT_KIND
+    )

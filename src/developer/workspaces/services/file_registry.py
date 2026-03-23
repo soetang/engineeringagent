@@ -5,9 +5,10 @@ from pathlib import Path
 
 from developer.tasks.models import TaskPublicationState
 from developer.workspaces.models import RunHandle, WorkspaceSession
+from developer.workspaces.protocols import WorkspaceRunRegistry
 
 
-class FileWorkspaceRegistry:
+class FileWorkspaceRegistry(WorkspaceRunRegistry):
     """Persist workspace and run metadata as JSON files."""
 
     def __init__(self, state_dir: Path) -> None:
@@ -73,7 +74,7 @@ class FileWorkspaceRegistry:
         task_name: str,
         task_path: str | None = None,
     ) -> TaskPublicationState | None:
-        """Load task publication state if it exists."""
+        """Load task publication state for one task when present."""
         path = self._task_publications_dir / self._task_key(task_name, task_path)
         if not path.exists():
             return None

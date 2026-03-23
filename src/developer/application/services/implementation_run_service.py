@@ -76,10 +76,7 @@ def _run_implementation_in_workspace(
     outcome = build_implementation_workspace_run_orchestrator(config_service).run(
         ImplementationWorkspaceRunRequest(
             repo_path=str(repo_path),
-            task_input=task_input,
-            normalized_task_input=_normalize_workspace_task_input(
-                repo_path, task_input
-            ),
+            task_input=_normalize_workspace_task_input(repo_path, task_input),
             task=task,
             max_iterations=max_iterations,
         )

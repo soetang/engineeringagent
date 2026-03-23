@@ -43,9 +43,17 @@ class _FakeWorkspaceRunOrchestrator:
 
 
 class _ResolvedTask:
-    def __init__(self, task_id: str, task_path: str | None = None) -> None:
+    def __init__(
+        self,
+        task_id: str,
+        task_path: str | None = None,
+        workspace_provider: str | None = None,
+        agent_kind: str | None = None,
+    ) -> None:
         self._task_id = task_id
         self._task_path = task_path
+        self._workspace_provider = workspace_provider
+        self._agent_kind = agent_kind
 
     @property
     def task_id(self) -> str:
@@ -58,6 +66,18 @@ class _ResolvedTask:
     @property
     def task_path(self) -> str | None:
         return self._task_path
+
+    @property
+    def base_branch(self) -> str | None:
+        return None
+
+    @property
+    def workspace_provider(self) -> str | None:
+        return self._workspace_provider
+
+    @property
+    def agent_kind(self) -> str | None:
+        return self._agent_kind
 
     def is_complete(self):
         raise NotImplementedError
@@ -150,10 +170,65 @@ git_worktree_root_dir = "developer-workspaces"
     assert "branch=ship-it" in result.message
     assert len(fake_orchestrator.requests) == 1
     request = fake_orchestrator.requests[0]
+    assert request.repo_path == str(Path.cwd())
     assert request.task is not None
     assert request.task.task_name == "Ship it"
-    assert request.normalized_task_input == "docs/plans/ship-it.md"
+    assert request.task_input == "docs/plans/ship-it.md"
     assert request.max_iterations == 20
+    assert not hasattr(request, "agent_kind")
+
+
+def test_workspace_run_uses_caller_checkout_for_repo_path(
+    monkeypatch, tmp_path
+) -> None:
+    """Workspace requests should take repo_path from the current checkout."""
+    fake_orchestrator = _FakeWorkspaceRunOrchestrator()
+    workspace_repo = tmp_path / "workspace-checkout"
+    workspace_repo.mkdir()
+    monkeypatch.setattr(
+        "developer.application.services.implementation_run_service._workspace_mode_enabled",
+        lambda config_service: True,
+    )
+    monkeypatch.setattr(
+        "developer.application.services.implementation_run_service.Path.cwd",
+        lambda: workspace_repo,
+    )
+    monkeypatch.setattr(
+        "developer.version_control.adapters.git_adapter.GitVersionControlAdapter.ensure_clean_checkout",
+        lambda self, repo_path: None,
+    )
+    monkeypatch.setattr(
+        "developer.application.services.implementation_run_service.TaskSelectionService.resolve",
+        lambda self, task_input, base_path=None: _ResolvedTask(
+            "ship-it", task_path="/different/task/location.md"
+        ),
+    )
+    monkeypatch.setattr(
+        "developer.application.services.implementation_run_service.build_implementation_workspace_run_orchestrator",
+        lambda config_service: fake_orchestrator,
+    )
+
+    config_file = tmp_path / "engineeringagent.toml"
+    config_file.write_text(
+        """[implementation]
+max_iterations = 40
+
+[workspaces]
+default_provider = "git_worktree"
+state_dir = ".developer/state"
+git_worktree_root_dir = "developer-workspaces"
+""",
+        encoding="utf-8",
+    )
+
+    run_implementation(
+        task_input="docs/plans/ship-it.md",
+        config_service=ConfigService(config_file=str(config_file)),
+    )
+
+    request = fake_orchestrator.requests[0]
+    assert request.repo_path == str(workspace_repo)
+    assert request.task.task_path == "/different/task/location.md"
 
 
 def test_run_implementation_fails_when_checkout_is_dirty(monkeypatch) -> None:

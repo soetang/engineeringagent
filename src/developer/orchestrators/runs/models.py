@@ -19,7 +19,6 @@ class ImplementationWorkspaceRunRequest(BaseModel):
 
     repo_path: str
     task_input: str
-    normalized_task_input: str
     task: ImplementationRunTask
     max_iterations: int | None
     remote_name: str = "origin"
@@ -66,8 +65,9 @@ class WorkspaceRunCommand(BaseModel):
     repo_path: str
     base_branch: str
     task_id: str
+    workspace_provider: str | None = None
+    agent_kind: str | None = None
     workspace_metadata: dict[str, object]
-    agent_kind: str
     run_context: dict[str, object]
 
 
