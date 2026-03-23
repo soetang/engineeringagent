@@ -184,6 +184,27 @@ def test_workspace_run_port_adapter_translates_to_workspace_runtime() -> None:
     assert result.metadata == {"task_branch_name": "ship-it"}
 
 
+def test_workspace_run_port_adapter_prefers_task_execution_defaults() -> None:
+    """Task-specified execution defaults should override composed runtime defaults."""
+    runtime = _FakeWorkspaceRuntime()
+
+    WorkspaceRunOrchestratorPortAdapter(runtime).run(
+        WorkspaceRunCommand(
+            repo_path="/repo",
+            base_branch="main",
+            task_id="ship-it",
+            workspace_provider="snapshot",
+            agent_kind="repair",
+            workspace_metadata={"task_branch_name": "ship-it"},
+            run_context={"task_input": "docs/plans/ship-it.md"},
+        )
+    )
+
+    workspace_spec, run_request = runtime.calls[-1]
+    assert workspace_spec.provider == "snapshot"
+    assert run_request.agent_kind == "repair"
+
+
 def test_build_implementation_workspace_run_orchestrator_wires_ports(
     monkeypatch,
 ) -> None:

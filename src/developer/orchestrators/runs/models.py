@@ -65,6 +65,8 @@ class WorkspaceRunCommand(BaseModel):
     repo_path: str
     base_branch: str
     task_id: str
+    workspace_provider: str | None = None
+    agent_kind: str | None = None
     workspace_metadata: dict[str, object]
     run_context: dict[str, object]
 

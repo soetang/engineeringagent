@@ -43,9 +43,17 @@ class _FakeWorkspaceRunOrchestrator:
 
 
 class _ResolvedTask:
-    def __init__(self, task_id: str, task_path: str | None = None) -> None:
+    def __init__(
+        self,
+        task_id: str,
+        task_path: str | None = None,
+        workspace_provider: str | None = None,
+        agent_kind: str | None = None,
+    ) -> None:
         self._task_id = task_id
         self._task_path = task_path
+        self._workspace_provider = workspace_provider
+        self._agent_kind = agent_kind
 
     @property
     def task_id(self) -> str:
@@ -62,6 +70,14 @@ class _ResolvedTask:
     @property
     def base_branch(self) -> str | None:
         return None
+
+    @property
+    def workspace_provider(self) -> str | None:
+        return self._workspace_provider
+
+    @property
+    def agent_kind(self) -> str | None:
+        return self._agent_kind
 
     def is_complete(self):
         raise NotImplementedError

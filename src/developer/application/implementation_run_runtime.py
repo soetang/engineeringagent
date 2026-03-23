@@ -42,14 +42,14 @@ class WorkspaceRunOrchestratorPortAdapter(WorkspaceRunPort):
         """Translate orchestrator commands into workspace runtime requests."""
         workspace, run_handle = self._workspace_runner.run_in_workspace(
             WorkspaceSpec(
-                provider=self._workspace_provider,
+                provider=command.workspace_provider or self._workspace_provider,
                 repo_path=command.repo_path,
                 base_branch=command.base_branch,
                 task_id=command.task_id,
                 metadata=command.workspace_metadata,
             ),
             RunRequest(
-                agent_kind=self._agent_kind,
+                agent_kind=command.agent_kind or self._agent_kind,
                 context=command.run_context,
             ),
         )

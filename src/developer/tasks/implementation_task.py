@@ -1,12 +1,18 @@
 """Implementation task models."""
 
 from developer.orchestrators.loop.models import CompletionResult
-from developer.orchestrators.runs.protocols import ImplementationRunTask
+from developer.orchestrators.runs.protocols import (
+    ImplementationRunTask,
+    ImplementationRunTaskExecutionDefaults,
+)
 from developer.tasks.models import TaskPhaseDefinition, TaskPlanDefinition
 from developer.tasks.services.markdown_plan_loader import MarkdownPlanLoader
 
 
-class MarkdownPlanImplementationTask(ImplementationRunTask):
+class MarkdownPlanImplementationTask(
+    ImplementationRunTask,
+    ImplementationRunTaskExecutionDefaults,
+):
     """Concrete implementation task backed by a markdown plan file."""
 
     def __init__(
@@ -37,6 +43,16 @@ class MarkdownPlanImplementationTask(ImplementationRunTask):
     def base_branch(self) -> str | None:
         """Return the task-defined base branch preference when present."""
         return self._plan.base_branch
+
+    @property
+    def workspace_provider(self) -> str | None:
+        """Return the task-defined workspace provider when present."""
+        return self._plan.workspace_provider
+
+    @property
+    def agent_kind(self) -> str | None:
+        """Return the task-defined workspace agent kind when present."""
+        return self._plan.agent_kind
 
     @property
     def status(self) -> str:

@@ -16,10 +16,14 @@ class _FakeTask:
         task_id: str = "ship-it",
         task_path: str | None = None,
         base_branch: str | None = None,
+        workspace_provider: str | None = None,
+        agent_kind: str | None = None,
     ) -> None:
         self._task_id = task_id
         self._task_path = task_path
         self._base_branch = base_branch
+        self._workspace_provider = workspace_provider
+        self._agent_kind = agent_kind
 
     @property
     def task_id(self) -> str:
@@ -36,6 +40,14 @@ class _FakeTask:
     @property
     def base_branch(self) -> str | None:
         return self._base_branch
+
+    @property
+    def workspace_provider(self) -> str | None:
+        return self._workspace_provider
+
+    @property
+    def agent_kind(self) -> str | None:
+        return self._agent_kind
 
     def get_branch_name(self) -> str:
         return "ship-it"
@@ -184,6 +196,8 @@ def test_builds_workspace_run_command_from_resolved_plan() -> None:
     assert command.repo_path == "/repo"
     assert command.base_branch == "develop"
     assert command.task_id == "task-123"
+    assert command.workspace_provider is None
+    assert command.agent_kind is None
     assert command.workspace_metadata == {
         "task_id": "task-123",
         "task_name": "Ship it",
@@ -201,3 +215,27 @@ def test_builds_workspace_run_command_from_resolved_plan() -> None:
         "max_iterations": 20,
     }
     assert outcome.metadata == {"task_branch_name": "ship-it"}
+
+
+def test_includes_task_specific_execution_defaults_in_workspace_command() -> None:
+    """Task execution defaults should flow through the orchestrator boundary."""
+    publication_store = _PublicationStore(None)
+    branch_inspector = _BranchInspector(current_branch="develop", branch_exists=False)
+    workspace_runner = _WorkspaceRunner()
+    task = _FakeTask(
+        task_id="task-123",
+        task_path="docs/plans/ship-it.md",
+        workspace_provider="snapshot",
+        agent_kind="repair",
+    )
+    orchestrator = ImplementationWorkspaceRunOrchestrator(
+        publication_store=publication_store,
+        branch_inspector=branch_inspector,
+        workspace_runner=workspace_runner,
+    )
+
+    orchestrator.run(_build_request(task))
+
+    command = workspace_runner.commands[0]
+    assert command.workspace_provider == "snapshot"
+    assert command.agent_kind == "repair"

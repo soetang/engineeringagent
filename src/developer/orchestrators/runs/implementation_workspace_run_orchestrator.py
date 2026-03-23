@@ -12,6 +12,7 @@ from developer.orchestrators.runs.models import (
 )
 from developer.orchestrators.runs.protocols import (
     BranchInspectionPort,
+    ImplementationRunTaskExecutionDefaults,
     PublishedTaskBranchView,
     TaskPublicationStore,
     WorkspaceRunPort,
@@ -47,6 +48,8 @@ class ImplementationWorkspaceRunOrchestrator:
                 repo_path=request.repo_path,
                 base_branch=plan.base_branch,
                 task_id=request.task.task_id,
+                workspace_provider=self._get_task_workspace_provider(request),
+                agent_kind=self._get_task_agent_kind(request),
                 workspace_metadata=plan.workspace_metadata,
                 run_context=plan.run_context,
             )
@@ -127,3 +130,21 @@ class ImplementationWorkspaceRunOrchestrator:
         if publication is not None:
             return publication.branch_name
         return base_branch
+
+    def _get_task_workspace_provider(
+        self, request: ImplementationWorkspaceRunRequest
+    ) -> str | None:
+        """Read a task-specific provider override when the task exposes one."""
+        task = request.task
+        if isinstance(task, ImplementationRunTaskExecutionDefaults):
+            return task.workspace_provider
+        return None
+
+    def _get_task_agent_kind(
+        self, request: ImplementationWorkspaceRunRequest
+    ) -> str | None:
+        """Read a task-specific agent override when the task exposes one."""
+        task = request.task
+        if isinstance(task, ImplementationRunTaskExecutionDefaults):
+            return task.agent_kind
+        return None
