@@ -4,7 +4,9 @@ from pathlib import Path
 
 import typer
 
-from developer.tasks.select_service import TaskSelectionService
+from developer.application.services.plan_service import (
+    validate_plan as validate_task_plan,
+)
 
 
 def _display_plan_path(plan_path: str) -> str:
@@ -20,7 +22,7 @@ def validate_plan(
     ),
 ) -> None:
     """Validate one markdown task plan."""
-    result = TaskSelectionService().validate_plan(plan_path, base_path=Path.cwd())
+    result = validate_task_plan(plan_path, base_path=Path.cwd())
     normalized_path = _display_plan_path(plan_path)
     if result.valid:
         typer.echo(f"Plan validation successful: {normalized_path}")

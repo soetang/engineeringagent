@@ -2,7 +2,7 @@
 
 from developer.forge.models import PullRequestRequest
 from developer.forge.protocol import ForgeProtocol
-from developer.orchestrators.models import (
+from developer.orchestrators.loop.models import (
     AgentResult,
     ImplementationContext,
     IterationArtifact,

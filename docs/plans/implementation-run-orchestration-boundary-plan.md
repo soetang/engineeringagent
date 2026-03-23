@@ -2,28 +2,34 @@
 schema_version: 1
 task_id: move-implementation-run-orchestration-boundary
 title: Move implementation run orchestration into orchestrators
-status: ready
+status: done
 branch: feat/move-implementation-run-orchestration-boundary
 base_branch: main
 phases:
   - id: orchestrator-boundary
     title: Restructure orchestrators around loop and run ownership
-    status: todo
+    status: done
   - id: protocol-inversion
     title: Move orchestration-facing protocols into orchestrators
-    status: todo
+    status: done
   - id: workspace-run-flow
     title: Extract workspace implementation run flow from application
-    status: todo
+    status: done
   - id: application-composition
     title: Reduce application to composition and result mapping
-    status: todo
+    status: done
   - id: fitness-guards
     title: Tighten fitness rules around the new boundary
-    status: todo
+    status: done
   - id: tests
     title: Update tests to match the new ownership model
-    status: todo
+    status: done
+  - id: task-owned-run-contract
+    title: Push remaining task-owned run defaults out of application
+    status: done
+  - id: policy-simplification
+    title: Simplify rule and contract scaffolding after extraction
+    status: done
 ---
 
 # Goal
@@ -902,19 +908,19 @@ If the import rules later prove insufficient, a follow-up script can assert that
 
 ## Phase 1: Restructure orchestrators around loop and run ownership
 
-- [ ] Update `harness/policy/import_rules.yaml` before moving code so the new orchestrator split is policy-compliant immediately
-- [ ] Add `src/developer/orchestrators/loop/`
-- [ ] Add `src/developer/orchestrators/loop/__init__.py`
-- [ ] Add `src/developer/orchestrators/runs/`
-- [ ] Add `src/developer/orchestrators/runs/__init__.py`
-- [ ] Move `ImplementationAgent` into `src/developer/orchestrators/loop/implementation_agent.py`
-- [ ] Move loop-specific models into `src/developer/orchestrators/loop/models.py`
-- [ ] Move loop-specific protocols into `src/developer/orchestrators/loop/protocols.py`
-- [ ] Add `src/developer/orchestrators/runs/models.py`
-- [ ] Add `src/developer/orchestrators/runs/protocols.py`
-- [ ] Update all existing imports to the new orchestrator module paths in the same change
-- [ ] Remove use of flat `developer.orchestrators.*` module paths
-- [ ] Remove the old flat orchestrator modules after imports are migrated
+- [x] Update `harness/policy/import_rules.yaml` before moving code so the new orchestrator split is policy-compliant immediately
+- [x] Add `src/developer/orchestrators/loop/`
+- [x] Add `src/developer/orchestrators/loop/__init__.py`
+- [x] Add `src/developer/orchestrators/runs/`
+- [x] Add `src/developer/orchestrators/runs/__init__.py`
+- [x] Move `ImplementationAgent` into `src/developer/orchestrators/loop/implementation_agent.py`
+- [x] Move loop-specific models into `src/developer/orchestrators/loop/models.py`
+- [x] Move loop-specific protocols into `src/developer/orchestrators/loop/protocols.py`
+- [x] Add `src/developer/orchestrators/runs/models.py`
+- [x] Add `src/developer/orchestrators/runs/protocols.py`
+- [x] Update all existing imports to the new orchestrator module paths in the same change
+- [x] Remove use of flat `developer.orchestrators.*` module paths
+- [x] Remove the old flat orchestrator modules after imports are migrated
 
 ### Notes
 
@@ -924,18 +930,18 @@ This phase should end with only the new orchestrator module layout in use.
 
 ## Phase 2: Move orchestration-facing protocols into orchestrators
 
-- [ ] Define `ImplementationRunTask` in `src/developer/orchestrators/runs/protocols.py`
-- [ ] Define `TaskPublicationStore` in `src/developer/orchestrators/runs/protocols.py`
-- [ ] Define `BranchInspectionPort` in `src/developer/orchestrators/runs/protocols.py`
-- [ ] Define `WorkspaceRunPort` in `src/developer/orchestrators/runs/protocols.py`
-- [ ] Define `ImplementationWorkspaceRunRequest` in `src/developer/orchestrators/runs/models.py`
-- [ ] Define `PublishedTaskBranch` in `src/developer/orchestrators/runs/models.py`
-- [ ] Define `ImplementationWorkspacePlan` in `src/developer/orchestrators/runs/models.py`
-- [ ] Define `ImplementationWorkspaceRunOutcome` in `src/developer/orchestrators/runs/models.py`
-- [ ] Update the resolved implementation-task type to satisfy `ImplementationRunTask`
-- [ ] Update `developer.workspaces` implementations to satisfy the new orchestrator-owned ports
-- [ ] Update `developer.version_control` implementations to satisfy the new orchestrator-owned ports
-- [ ] Keep concrete implementations outside orchestrators
+- [x] Define `ImplementationRunTask` in `src/developer/orchestrators/runs/protocols.py`
+- [x] Define `TaskPublicationStore` in `src/developer/orchestrators/runs/protocols.py`
+- [x] Define `BranchInspectionPort` in `src/developer/orchestrators/runs/protocols.py`
+- [x] Define `WorkspaceRunPort` in `src/developer/orchestrators/runs/protocols.py`
+- [x] Define `ImplementationWorkspaceRunRequest` in `src/developer/orchestrators/runs/models.py`
+- [x] Define `PublishedTaskBranch` in `src/developer/orchestrators/runs/models.py`
+- [x] Define `ImplementationWorkspacePlan` in `src/developer/orchestrators/runs/models.py`
+- [x] Define `ImplementationWorkspaceRunOutcome` in `src/developer/orchestrators/runs/models.py`
+- [x] Update the resolved implementation-task type to satisfy `ImplementationRunTask`
+- [x] Update `developer.workspaces` implementations to satisfy the new orchestrator-owned ports
+- [x] Update `developer.version_control` implementations to satisfy the new orchestrator-owned ports
+- [x] Keep concrete implementations outside orchestrators
 
 ### Notes
 
@@ -943,17 +949,17 @@ This is the key inversion step. The protocols and task-facing run contracts shou
 
 ## Phase 3: Extract workspace implementation run flow from application
 
-- [ ] Add `src/developer/orchestrators/runs/implementation_workspace_run_orchestrator.py`
-- [ ] Keep `_normalize_workspace_task_input(...)` in application as an input-normalization helper
-- [ ] Move publication reuse logic out of `src/developer/application/services/implementation_run_service.py`
-- [ ] Move base-branch selection out of `src/developer/application/services/implementation_run_service.py`
-- [ ] Move task-branch collision handling out of `src/developer/application/services/implementation_run_service.py`
-- [ ] Move workspace start-point selection out of `src/developer/application/services/implementation_run_service.py`
-- [ ] Move workspace metadata assembly into the new run orchestrator
-- [ ] Move run-context assembly into the new run orchestrator
-- [ ] Build `WorkspaceRunCommand` in the new run orchestrator
-- [ ] Delegate workspace execution through `WorkspaceRunPort`
-- [ ] Return `ImplementationWorkspaceRunOutcome` instead of formatting CLI-facing text inside orchestrators
+- [x] Add `src/developer/orchestrators/runs/implementation_workspace_run_orchestrator.py`
+- [x] Keep `_normalize_workspace_task_input(...)` in application as an input-normalization helper
+- [x] Move publication reuse logic out of `src/developer/application/services/implementation_run_service.py`
+- [x] Move base-branch selection out of `src/developer/application/services/implementation_run_service.py`
+- [x] Move task-branch collision handling out of `src/developer/application/services/implementation_run_service.py`
+- [x] Move workspace start-point selection out of `src/developer/application/services/implementation_run_service.py`
+- [x] Move workspace metadata assembly into the new run orchestrator
+- [x] Move run-context assembly into the new run orchestrator
+- [x] Build `WorkspaceRunCommand` in the new run orchestrator
+- [x] Delegate workspace execution through `WorkspaceRunPort`
+- [x] Return `ImplementationWorkspaceRunOutcome` instead of formatting CLI-facing text inside orchestrators
 
 ### Notes
 
@@ -961,15 +967,15 @@ The helpers currently named `_load_task_publication(...)`, `_resolve_task_branch
 
 ## Phase 4: Reduce application to composition and result mapping
 
-- [ ] Add `src/developer/application/implementation_run_runtime.py`
-- [ ] Build `ImplementationWorkspaceRunOrchestrator` in that file from concrete implementations of orchestrator-owned protocols
-- [ ] Update `src/developer/application/services/implementation_run_service.py` to delegate workspace mode to `developer.orchestrators.runs`
-- [ ] Keep task resolution in application
-- [ ] Keep `max_iterations` normalization in application
-- [ ] Keep clean-checkout preflight in application for this refactor unless a small shared preflight abstraction is already obvious and low-risk
-- [ ] Keep CLI-facing message formatting in application
-- [ ] Keep direct-mode execution unchanged in the first slice
-- [ ] Remove workspace-planning helpers from `src/developer/application/services/implementation_run_service.py`
+- [x] Add `src/developer/application/implementation_run_runtime.py`
+- [x] Build `ImplementationWorkspaceRunOrchestrator` in that file from concrete implementations of orchestrator-owned protocols
+- [x] Update `src/developer/application/services/implementation_run_service.py` to delegate workspace mode to `developer.orchestrators.runs`
+- [x] Keep task resolution in application
+- [x] Keep `max_iterations` normalization in application
+- [x] Keep clean-checkout preflight in application for this refactor unless a small shared preflight abstraction is already obvious and low-risk
+- [x] Keep CLI-facing message formatting in application
+- [x] Keep direct-mode execution unchanged in the first slice
+- [x] Remove workspace-planning helpers from `src/developer/application/services/implementation_run_service.py`
 
 ### Notes
 
@@ -977,15 +983,15 @@ Application remains important, but only as the composition root and CLI-facing u
 
 ## Phase 5: Tighten fitness rules around the new boundary
 
-- [ ] Add a dedicated import rule for `src/developer/orchestrators/loop/**/*.py`
-- [ ] Add a dedicated import rule for `src/developer/orchestrators/runs/**/*.py`
-- [ ] Ensure orchestrator subpackages cannot import `developer.application`
-- [ ] Ensure orchestrator subpackages cannot import concrete `developer.workspaces` modules
-- [ ] Ensure orchestrator subpackages cannot import concrete `developer.version_control` modules
-- [ ] Allow infrastructure packages to import orchestrator-owned protocol modules they implement
-- [ ] Add a targeted import rule for `src/developer/application/services/implementation_run_service.py`
-- [ ] Keep the preflight exception explicit if it still exists in application
-- [ ] Run the import-boundary fitness command after the refactor
+- [x] Add a dedicated import rule for `src/developer/orchestrators/loop/**/*.py`
+- [x] Add a dedicated import rule for `src/developer/orchestrators/runs/**/*.py`
+- [x] Ensure orchestrator subpackages cannot import `developer.application`
+- [x] Ensure orchestrator subpackages cannot import concrete `developer.workspaces` modules
+- [x] Ensure orchestrator subpackages cannot import concrete `developer.version_control` modules
+- [x] Allow infrastructure packages to import orchestrator-owned protocol modules they implement
+- [x] Add a targeted import rule for `src/developer/application/services/implementation_run_service.py`
+- [x] Keep the preflight exception explicit if it still exists in application
+- [x] Run the import-boundary fitness command after the refactor
 
 ### Notes
 
@@ -993,25 +999,67 @@ The main fitness update is about enforcing dependency direction, not just packag
 
 ## Phase 6: Update tests to match the new ownership model
 
-- [ ] Add `tests/orchestrators/runs/test_implementation_workspace_run_orchestrator.py`
-- [ ] Cover publication reuse in run-orchestrator tests
-- [ ] Cover branch collision handling in run-orchestrator tests
-- [ ] Cover workspace start-point selection in run-orchestrator tests
-- [ ] Cover `WorkspaceRunCommand` content in run-orchestrator tests
-- [ ] Cover `WorkspaceRunCommand` to workspace runtime adaptation in `src/developer/application/implementation_run_runtime.py` tests
-- [ ] Cover `WorkspaceSpec` and `RunRequest` assembly in `src/developer/application/implementation_run_runtime.py` adapter tests
-- [ ] Cover `_normalize_workspace_task_input(...)` behavior in application-level tests
-- [ ] Update `tests/application/services/test_implementation_run_service.py` to assert delegation instead of internal workspace planning
-- [ ] Move helper-focused tests for branch resolution and start-point selection out of application tests and into run-orchestrator tests
-- [ ] Add or update composition tests for `src/developer/application/implementation_run_runtime.py`
-- [ ] Run `uv run pytest harness/fitness/tests`
-- [ ] Run `uv run python -m harness.fitness.scripts.import_rules --config harness/policy/import_rules.yaml`
-- [ ] Run `uv run pytest tests/application/services/test_implementation_run_service.py tests/orchestrators`
-- [ ] Run `uv run developer validate-plan docs/plans/implementation-run-orchestration-boundary-plan.md`
+- [x] Add `tests/orchestrators/runs/test_implementation_workspace_run_orchestrator.py`
+- [x] Cover publication reuse in run-orchestrator tests
+- [x] Cover branch collision handling in run-orchestrator tests
+- [x] Cover workspace start-point selection in run-orchestrator tests
+- [x] Cover `WorkspaceRunCommand` content in run-orchestrator tests
+- [x] Cover `WorkspaceRunCommand` to workspace runtime adaptation in `src/developer/application/implementation_run_runtime.py` tests
+- [x] Cover `WorkspaceSpec` and `RunRequest` assembly in `src/developer/application/implementation_run_runtime.py` adapter tests
+- [x] Cover `_normalize_workspace_task_input(...)` behavior in application-level tests
+- [x] Update `tests/application/services/test_implementation_run_service.py` to assert delegation instead of internal workspace planning
+- [x] Move helper-focused tests for branch resolution and start-point selection out of application tests and into run-orchestrator tests
+- [x] Add or update composition tests for `src/developer/application/implementation_run_runtime.py`
+- [x] Run `uv run pytest harness/fitness/tests`
+- [x] Run `uv run python -m harness.fitness.scripts.import_rules --config harness/policy/import_rules.yaml`
+- [x] Run `uv run pytest tests/application/services/test_implementation_run_service.py tests/orchestrators`
+- [x] Run `uv run developer validate-plan docs/plans/implementation-run-orchestration-boundary-plan.md`
 
 ### Notes
 
 After extraction, application tests should stop asserting workspace-planning helpers and instead assert delegation and result mapping.
+
+## Phase 7: Push remaining task-owned run defaults out of application
+
+- [x] Extend `ImplementationRunTask` with a base-branch accessor backed by task frontmatter instead of rediscovering it during workspace-run planning
+- [x] Update the markdown-plan task implementation to expose `base_branch` directly from `TaskPlanDefinition`
+- [x] Teach `ImplementationWorkspaceRunOrchestrator` to prefer the task-provided base branch and fall back to `BranchInspectionPort.get_current_branch(...)` only when the task does not specify one
+- [x] Keep task-owned branch naming on `ImplementationRunTask` and avoid adding duplicate "default branch" fields to run-request models
+- [x] Revisit whether both `task_input` and `normalized_task_input` need to survive after task resolution and collapse them to one workspace-safe task reference if possible
+- [x] Make an explicit ownership decision for workspace execution defaults such as `agent_kind` and workspace provider
+- [x] If those defaults vary by task, expose them through an orchestrator-owned task execution contract implemented by `developer.tasks`
+- [x] If those defaults do not vary by task, move them out of per-run application assembly and centralize them inside runtime composition helpers
+- [x] Keep `repo_path` runtime-owned because it comes from the caller's checkout rather than the task definition
+- [x] Update runtime-adapter and application tests to assert the final ownership split for branch selection, base-branch selection, and workspace execution defaults
+
+### Notes
+
+This phase closes the review concern that task-owned execution intent should not leak back into application through ad hoc command assembly.
+
+Recommended default:
+
+- task owns stable identity, branch naming, and optional base-branch preference; and
+- runtime composition owns environment defaults that do not vary by task, but those defaults should no longer be assembled ad hoc inside application request adapters.
+
+## Phase 8: Simplify rule and contract scaffolding after extraction
+
+- [x] Remove the legacy `orchestrators-only-import-orchestrators` rule once no flat orchestrator modules remain
+- [x] Rewrite the new orchestrator, workspace, and version-control boundary rules to use the repository's standard "allow specific prefixes + deny `developer`" shape
+- [x] Remove redundant deny entries where a broad `developer` deny already enforces the boundary
+- [x] Narrow `developer.version_control` allows to only the exact orchestrator protocol modules still needed after the follow-through cleanup
+- [x] Re-evaluate whether `implementation-run-service-import-boundary` adds unique protection beyond the broader application import rules and remove it if it is duplicative
+- [x] Audit `PublishedTaskBranch` and `PublishedTaskBranchView` and collapse them to the smallest useful contract, or remove them if task-owned branch data plus publication lookup already cover the reuse case
+- [x] Audit `ImplementationWorkspaceRunRequest` for fields that merely echo task-owned data and trim them once the task execution contract is settled
+- [x] Keep a dedicated publication-store adapter only if publication lookup remains a distinct concern from the broader workspace registry after the simplification pass
+- [x] Re-run `uv run python -m harness.fitness.scripts.import_rules --config harness/policy/import_rules.yaml` and the targeted implementation-run tests after the simplification pass
+
+### Notes
+
+The goal here is to keep the final boundary small and obvious. The review feedback suggests some of the first-slice scaffolding may be transitional rather than permanent.
+
+Result:
+
+- the dedicated `implementation-run-service-import-boundary` rule stays because the broader application rules only block presentation imports and do not prevent this service from reacquiring workspace-planning or broad version-control dependencies
 
 # Migration Sequence
 
@@ -1020,8 +1068,10 @@ After extraction, application tests should stop asserting workspace-planning hel
 3. move orchestration-facing protocols into `developer.orchestrators.runs`;
 4. move workspace implementation-run planning into `developer.orchestrators.runs`;
 5. update application composition to wire concrete implementations into the orchestrator;
-6. migrate tests to the new ownership model; and
-7. remove flat orchestrator imports and finish with tests and fitness checks green.
+6. migrate tests to the new ownership model;
+7. push remaining task-owned branch and base-branch defaults into the task contract or runtime defaults that clearly own them;
+8. simplify temporary import-rule and run-contract scaffolding added during the extraction; and
+9. remove flat orchestrator imports and finish with tests and fitness checks green.
 
 # Risks And Mitigations
 
@@ -1029,6 +1079,8 @@ After extraction, application tests should stop asserting workspace-planning hel
 - if application keeps a few planning helpers “for convenience,” orchestration will accumulate there again; mitigate by using a targeted import rule and delegation-focused tests
 - if `developer.workspaces` or `developer.version_control` starts owning branch or publication policy, the orchestration split will blur; mitigate by keeping those packages focused on concrete operations and protocol implementations
 - if the migration updates module paths incompletely, imports and fitness checks will fail; mitigate by migrating imports in the same change and validating with targeted tests
+- if task-owned defaults such as base-branch preference remain duplicated in run models or application adapters, the boundary will keep feeling leaky; mitigate by making the task contract or runtime defaults the single source of truth and trimming duplicate fields afterward
+- if temporary models and import rules added during the first extraction stay in place indefinitely, the final architecture will be harder to read than the one it replaced; mitigate by scheduling an explicit simplification pass before calling the refactor done
 
 # Recommended Default Decision
 
@@ -1037,7 +1089,9 @@ Implement this as:
 - two orchestrator subpackages: `developer.orchestrators.loop` and `developer.orchestrators.runs`;
 - orchestrator-owned protocols in `src/developer/orchestrators/runs/protocols.py`;
 - a new `ImplementationWorkspaceRunOrchestrator` in `src/developer/orchestrators/runs/implementation_workspace_run_orchestrator.py`;
-- application-owned composition in `src/developer/application/implementation_run_runtime.py`; and
-- stronger import-boundary rules that enforce the dependency direction from infrastructure toward orchestrator-owned protocols.
+- application-owned composition in `src/developer/application/implementation_run_runtime.py`;
+- stronger import-boundary rules that enforce the dependency direction from infrastructure toward orchestrator-owned protocols;
+- task-owned branch naming plus task-owned optional base-branch preference; and
+- a final simplification pass that removes temporary rule and model scaffolding once the boundary is stable.
 
 This keeps `developer.orchestrators` as the domain module while moving implementation-run orchestration to the layer that should own it.

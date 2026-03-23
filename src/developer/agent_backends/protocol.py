@@ -1,6 +1,6 @@
 from typing import TypeVar
 
-from developer.orchestrators.protocols import AgentRunner
+from developer.orchestrators.loop.protocols import AgentRunner
 
 from pydantic import BaseModel
 

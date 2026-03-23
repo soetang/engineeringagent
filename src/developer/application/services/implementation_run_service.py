@@ -1,27 +1,26 @@
 """Application service for implementation runs."""
 
 from pathlib import Path
-from uuid import uuid4
 
 from developer.agent_backends.select_agent_backend_service import (
     SelectAgentBackendService,
 )
+from developer.application.implementation_run_runtime import (
+    build_implementation_workspace_run_orchestrator,
+)
 from developer.application.models import ImplementationRunResult
 from developer.application.settings import ImplementationSettings
 from developer.application.workspace_bridges import build_implementation_agent
-from developer.application.workspace_runtime import build_workspace_orchestrator
 from developer.config.service import ConfigService
-from developer.orchestrators.models import OrchestratorOutcome
+from developer.orchestrators.loop.models import OrchestratorOutcome
+from developer.orchestrators.runs.models import (
+    ImplementationWorkspaceRunOutcome,
+    ImplementationWorkspaceRunRequest,
+)
 from developer.tasks.errors import TaskError
-from developer.tasks.models import TaskPublicationState
-from developer.tasks.protocol import ImplementationTask
 from developer.tasks.select_service import TaskSelectionService
 from developer.version_control.adapters.git_adapter import GitVersionControlAdapter
-from developer.workspaces.models import RunHandle, RunRequest, WorkspaceSpec
-from developer.workspaces.services.file_registry import FileWorkspaceRegistry
-from developer.workspaces.settings import WorkspaceSettings
 
-IMPLEMENTATION_AGENT_KIND = "implementation"
 MAX_ITERATIONS_HELP = "Use a positive integer or 'infinite'"
 
 
@@ -48,6 +47,7 @@ def run_implementation(
         return _run_implementation_in_workspace(
             resolved_config_service,
             task,
+            repo_path=repo_path,
             task_input=task_input,
             max_iterations=resolved_max_iterations,
         )
@@ -67,116 +67,33 @@ def _workspace_mode_enabled(config_service: ConfigService) -> bool:
 
 def _run_implementation_in_workspace(
     config_service: ConfigService,
-    task: ImplementationTask,
+    task,
     *,
+    repo_path: Path,
     task_input: str,
     max_iterations: int | None,
 ) -> ImplementationRunResult:
     """Run the implementation workflow through workspace orchestration."""
-    repo_path = Path.cwd()
-    version_control = GitVersionControlAdapter()
-    base_branch = version_control.get_current_branch(str(repo_path))
-    publication = _load_task_publication(config_service, task)
-    publication_branch = _resolve_task_branch(
-        repo_path,
-        task,
-        publication,
-        version_control=version_control,
-    )
-    workspace_start_point = _resolve_workspace_start_point(
-        publication=publication,
-        base_branch=base_branch,
-    )
-    workspace_metadata = {
-        "task_id": task.task_id,
-        "task_name": task.task_name,
-        "task_path": task.task_path,
-        "task_branch_name": publication_branch,
-        "remote_name": "origin",
-        "start_point": workspace_start_point,
-    }
-    request_context = {
-        "task_input": _normalize_workspace_task_input(repo_path, task_input),
-        "task_id": task.task_id,
-        "task_name": task.task_name,
-        "task_path": task.task_path,
-        "task_branch_name": publication_branch,
-        "max_iterations": max_iterations,
-    }
-    workspace, run_handle = build_workspace_orchestrator(
-        config_service
-    ).run_in_workspace(
-        WorkspaceSpec(
-            provider="git_worktree",
+    outcome = build_implementation_workspace_run_orchestrator(config_service).run(
+        ImplementationWorkspaceRunRequest(
             repo_path=str(repo_path),
-            base_branch=base_branch,
-            task_id=task.task_id,
-            metadata=workspace_metadata,
-        ),
-        RunRequest(
-            agent_kind=IMPLEMENTATION_AGENT_KIND,
-            context=request_context,
-        ),
+            task=task,
+            max_iterations=max_iterations,
+        )
     )
-    return ImplementationRunResult(
-        exit_code=0 if run_handle.status.value == "succeeded" else 1,
-        message=_format_workspace_run_message(workspace.id, run_handle, task.task_name),
-    )
+    return _build_workspace_run_result(outcome)
 
 
-def _load_task_publication(
-    config_service: ConfigService,
-    task: ImplementationTask,
-) -> TaskPublicationState | None:
-    """Load any persisted publication state for the task."""
-    settings = config_service.get_config("workspaces", WorkspaceSettings)
-    registry = FileWorkspaceRegistry(Path(settings.state_dir).resolve())
-    return registry.get_task_publication(task.task_name, task.task_path)
-
-
-def _resolve_task_branch(
-    repo_path: Path,
-    task: ImplementationTask,
-    publication: TaskPublicationState | None,
-    *,
-    version_control: GitVersionControlAdapter,
-) -> str:
-    """Resolve the publication branch for the current task run."""
-    if publication is not None:
-        return publication.branch_name
-
-    candidate = task.get_branch_name()
-    if not version_control.branch_exists(
-        str(repo_path),
-        candidate,
-        remote_name="origin",
-    ):
-        return candidate
-    return f"{candidate}-{uuid4().hex[:8]}"
-
-
-def _resolve_workspace_start_point(
-    publication: TaskPublicationState | None,
-    base_branch: str,
-) -> str:
-    """Choose the branch or ref used to seed the disposable workspace branch."""
-    if publication is not None:
-        return publication.branch_name
-    return base_branch
-
-
-def _format_workspace_run_message(
-    workspace_id: str,
-    run_handle: RunHandle,
-    task_name: str,
-) -> str:
+def _build_workspace_run_result(
+    outcome: ImplementationWorkspaceRunOutcome,
+) -> ImplementationRunResult:
     """Build the final workspace run status line."""
-    metadata = run_handle.metadata
+    metadata = outcome.metadata
     parts = [
-        f"workspace={workspace_id}",
-        f"run={run_handle.id}",
-        f"task={task_name}",
-        f"status={run_handle.status.value}",
+        f"workspace={outcome.workspace_id}",
+        f"run={outcome.run_id}",
+        f"task={outcome.task_name}",
+        f"status={outcome.status}",
     ]
     commit_shas = metadata.get("commit_shas", [])
     if isinstance(commit_shas, list) and commit_shas:
@@ -187,12 +104,15 @@ def _format_workspace_run_message(
     pr_url = metadata.get("pr_url")
     if isinstance(pr_url, str) and pr_url:
         parts.append(f"pr={pr_url}")
-    if run_handle.latest_message:
-        parts.append(run_handle.latest_message)
+    if outcome.latest_message:
+        parts.append(outcome.latest_message)
     message = " | ".join(parts)
     if isinstance(pr_url, str) and pr_url:
-        return f"{message}\nPull request: {pr_url}"
-    return message
+        message = f"{message}\nPull request: {pr_url}"
+    return ImplementationRunResult(
+        exit_code=0 if outcome.status == "succeeded" else 1,
+        message=message,
+    )
 
 
 def _resolve_max_iterations(
@@ -242,15 +162,3 @@ def _invalid_max_iterations_error(source: str, value: object) -> ValueError:
     return ValueError(
         f"Invalid {source} max_iterations value: {value}. {MAX_ITERATIONS_HELP}"
     )
-
-
-def _normalize_workspace_task_input(repo_path: Path, task_input: str) -> str:
-    """Store a workspace-safe task input path relative to the repository."""
-    normalized = task_input[1:] if task_input.startswith("@") else task_input
-    candidate = Path(normalized).expanduser()
-    if candidate.is_absolute():
-        try:
-            candidate = candidate.resolve().relative_to(repo_path.resolve())
-        except ValueError:
-            return str(candidate.resolve())
-    return str(candidate)

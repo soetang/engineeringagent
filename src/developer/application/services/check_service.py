@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from developer.orchestrators.models import GatePhase
+from developer.orchestrators.loop.models import GatePhase
 from developer.quality.services import CheckGateRunner
 from developer.quality.services.validation_service import ValidationService
 

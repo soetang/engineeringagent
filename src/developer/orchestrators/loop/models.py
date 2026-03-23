@@ -1,4 +1,4 @@
-"""Domain models for orchestrator control flow."""
+"""Domain models for loop orchestrator control flow."""
 
 from enum import Enum
 from typing import Literal

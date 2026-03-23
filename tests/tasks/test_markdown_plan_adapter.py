@@ -2,7 +2,7 @@
 
 import pytest
 
-from developer.orchestrators.models import CompletionResult
+from developer.orchestrators.loop.models import CompletionResult
 from developer.tasks.adapters.markdown_plan_adapter import MarkdownPlanAdapter
 from developer.tasks.errors import TaskPlanLoadError
 from developer.tasks.select_service import TaskSelectionService

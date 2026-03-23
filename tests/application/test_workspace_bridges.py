@@ -14,7 +14,7 @@ from developer.agent_backends.protocol import AgentBackendProtocol
 from developer.agent_backends.select_agent_backend_service import (
     SelectAgentBackendService,
 )
-from developer.orchestrators.models import OrchestratorOutcome
+from developer.orchestrators.loop.models import OrchestratorOutcome
 from developer.workspaces.models import (
     ExecutionTarget,
     RunRequest,
