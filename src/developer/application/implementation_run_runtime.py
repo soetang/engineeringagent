@@ -19,6 +19,9 @@ from developer.workspaces.task_publication_store import (
     FileWorkspaceTaskPublicationStore,
 )
 
+IMPLEMENTATION_WORKSPACE_PROVIDER = "git_worktree"
+IMPLEMENTATION_WORKSPACE_AGENT_KIND = "implementation"
+
 
 class WorkspaceRunOrchestratorPortAdapter(WorkspaceRunPort):
     """Adapt the generic workspace runtime to the run-orchestrator port."""
@@ -31,14 +34,14 @@ class WorkspaceRunOrchestratorPortAdapter(WorkspaceRunPort):
         """Translate orchestrator commands into workspace runtime requests."""
         workspace, run_handle = self._workspace_runner.run_in_workspace(
             WorkspaceSpec(
-                provider="git_worktree",
+                provider=IMPLEMENTATION_WORKSPACE_PROVIDER,
                 repo_path=command.repo_path,
                 base_branch=command.base_branch,
                 task_id=command.task_id,
                 metadata=command.workspace_metadata,
             ),
             RunRequest(
-                agent_kind=command.agent_kind,
+                agent_kind=IMPLEMENTATION_WORKSPACE_AGENT_KIND,
                 context=command.run_context,
             ),
         )

@@ -4,6 +4,8 @@ from pathlib import Path
 from typing import cast
 
 from developer.application.implementation_run_runtime import (
+    IMPLEMENTATION_WORKSPACE_AGENT_KIND,
+    IMPLEMENTATION_WORKSPACE_PROVIDER,
     WorkspaceRunOrchestratorPortAdapter,
     build_implementation_workspace_run_orchestrator,
 )
@@ -163,18 +165,17 @@ def test_workspace_run_port_adapter_translates_to_workspace_runtime() -> None:
             base_branch="main",
             task_id="ship-it",
             workspace_metadata={"task_branch_name": "ship-it"},
-            agent_kind="implementation",
             run_context={"task_input": "docs/plans/ship-it.md"},
         )
     )
 
     workspace_spec, run_request = runtime.calls[-1]
-    assert workspace_spec.provider == "git_worktree"
+    assert workspace_spec.provider == IMPLEMENTATION_WORKSPACE_PROVIDER
     assert workspace_spec.repo_path == "/repo"
     assert workspace_spec.base_branch == "main"
     assert workspace_spec.task_id == "ship-it"
     assert workspace_spec.metadata == {"task_branch_name": "ship-it"}
-    assert run_request.agent_kind == "implementation"
+    assert run_request.agent_kind == IMPLEMENTATION_WORKSPACE_AGENT_KIND
     assert run_request.context == {"task_input": "docs/plans/ship-it.md"}
     assert result.workspace_id == "workspace-1"
     assert result.run_id == "run-1"

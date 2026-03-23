@@ -67,7 +67,6 @@ class WorkspaceRunCommand(BaseModel):
     base_branch: str
     task_id: str
     workspace_metadata: dict[str, object]
-    agent_kind: str
     run_context: dict[str, object]
 
 
