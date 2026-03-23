@@ -107,6 +107,29 @@ def test_parse_json_content_extracts_json_from_wrapped_response():
     }
 
 
+def test_parse_json_content_extracts_first_fenced_json_after_prose():
+    """Parsing should handle reviewer prose before a fenced JSON payload."""
+    adapter = CodexAdapter()
+
+    parsed = adapter._parse_json_content(
+        """Based on my analysis of the recently modified code, here are my findings:
+
+```json
+{
+  "status": "approved",
+  "summary": "Code is well-structured",
+  "actions": ["Simplify one conditional"]
+}
+```"""
+    )
+
+    assert parsed == {
+        "status": "approved",
+        "summary": "Code is well-structured",
+        "actions": ["Simplify one conditional"],
+    }
+
+
 def test_run_agent_adds_structured_prompt_and_parses_fenced_json(monkeypatch):
     """Structured output requests should explicitly demand JSON-only output."""
     adapter = CodexAdapter(model="gpt-5.3-codex-spark")
