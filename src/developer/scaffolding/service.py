@@ -5,6 +5,14 @@ import tomllib
 
 from developer.scaffolding.filesystem import upsert_text_file, write_file_if_missing
 from developer.scaffolding.models import FileWriteResult, InitRequest, InitResult
+from developer.scaffolding.paths import (
+    AGENTS_MD_START_MARKER,
+    COMMIT_MESSAGE_PROMPT_NAME,
+    IMPLEMENTATION_PROMPT_NAME,
+    PULL_REQUEST_PROMPT_NAME,
+    build_checks_path,
+    build_prompt_path,
+)
 from developer.scaffolding.templates import AGENTS_MD_SNIPPET, build_scaffold_files
 
 
@@ -50,20 +58,20 @@ class ScaffoldingService:
         prompts = dict(config.get("prompts", {}))
         prompts.setdefault(
             "implementation_prompt_path",
-            f"{harness_dir}/prompts/implementation_prompt.md",
+            build_prompt_path(harness_dir, IMPLEMENTATION_PROMPT_NAME),
         )
         prompts.setdefault(
             "commit_prompt_path",
-            f"{harness_dir}/prompts/commit_message_prompt.md",
+            build_prompt_path(harness_dir, COMMIT_MESSAGE_PROMPT_NAME),
         )
         prompts.setdefault(
             "pull_request_prompt_path",
-            f"{harness_dir}/prompts/pull_request_prompt.md",
+            build_prompt_path(harness_dir, PULL_REQUEST_PROMPT_NAME),
         )
         config["prompts"] = prompts
 
         quality = dict(config.get("quality", {}))
-        quality.setdefault("checks_path", f"{harness_dir}/checks.yaml")
+        quality.setdefault("checks_path", build_checks_path(harness_dir))
         config["quality"] = quality
 
         implementation = dict(config.get("implementation", {}))
@@ -92,7 +100,7 @@ class ScaffoldingService:
             return upsert_text_file(agents_path, f"# Agent Instructions\n\n{snippet}\n")
 
         current = agents_path.read_text()
-        if "<!-- developer:init:start -->" in current:
+        if AGENTS_MD_START_MARKER in current:
             return FileWriteResult(
                 path=agents_path,
                 status="skipped",

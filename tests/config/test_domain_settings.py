@@ -7,6 +7,13 @@ from developer.config.service import ConfigService
 from developer.forge.settings import ForgeSettings
 from developer.prompts.settings import OrchestratorPromptSettings
 from developer.quality.settings import QualitySettings
+from developer.scaffolding.paths import (
+    COMMIT_MESSAGE_PROMPT_NAME,
+    DEFAULT_HARNESS_DIR,
+    IMPLEMENTATION_PROMPT_NAME,
+    PULL_REQUEST_PROMPT_NAME,
+    build_prompt_path,
+)
 from developer.version_control.settings import VersionControlSettings
 
 
@@ -76,12 +83,15 @@ def test_settings_validation() -> None:
 def test_orchestrator_prompt_settings_defaults() -> None:
     """Test default orchestrator prompt settings."""
     settings = OrchestratorPromptSettings()
-    assert (
-        settings.implementation_prompt_path
-        == "harness/prompts/implementation_prompt.md"
+    assert settings.implementation_prompt_path == build_prompt_path(
+        DEFAULT_HARNESS_DIR, IMPLEMENTATION_PROMPT_NAME
     )
-    assert settings.commit_prompt_path == "harness/prompts/commit_message_prompt.md"
-    assert settings.pull_request_prompt_path == "harness/prompts/pull_request_prompt.md"
+    assert settings.commit_prompt_path == build_prompt_path(
+        DEFAULT_HARNESS_DIR, COMMIT_MESSAGE_PROMPT_NAME
+    )
+    assert settings.pull_request_prompt_path == build_prompt_path(
+        DEFAULT_HARNESS_DIR, PULL_REQUEST_PROMPT_NAME
+    )
 
 
 def test_orchestrator_prompt_settings_custom_values() -> None:

@@ -6,6 +6,19 @@ import tomllib
 from typer.testing import CliRunner
 
 from developer.presentation.cli import app
+from developer.scaffolding.paths import (
+    AGENTS_MD_START_MARKER,
+    CHECKS_FILE_NAME,
+    COMMIT_MESSAGE_PROMPT_NAME,
+    DEFAULT_HARNESS_DIR,
+    IMPLEMENTATION_PROMPT_NAME,
+    PROMPTS_DIR,
+    PULL_REQUEST_PROMPT_NAME,
+    QUALITY_COMMANDS_FILE_NAME,
+    QUALITY_DIR,
+    build_checks_path,
+    build_prompt_path,
+)
 
 
 def test_init_scaffolds_minimal_repository() -> None:
@@ -18,18 +31,27 @@ def test_init_scaffolds_minimal_repository() -> None:
         assert result.exit_code == 0
         assert Path("engineeringagent.toml").exists()
         assert Path("AGENTS.md").exists()
-        assert Path("harness/checks.yaml").exists()
-        assert Path("harness/quality/commands.yaml").exists()
-        assert Path("harness/prompts/implementation_prompt.md").exists()
-        assert Path("harness/prompts/commit_message_prompt.md").exists()
-        assert Path("harness/prompts/pull_request_prompt.md").exists()
+        assert Path(build_checks_path(DEFAULT_HARNESS_DIR)).exists()
+        assert Path(
+            DEFAULT_HARNESS_DIR, QUALITY_DIR, QUALITY_COMMANDS_FILE_NAME
+        ).exists()
+        assert Path(
+            build_prompt_path(DEFAULT_HARNESS_DIR, IMPLEMENTATION_PROMPT_NAME)
+        ).exists()
+        assert Path(
+            build_prompt_path(DEFAULT_HARNESS_DIR, COMMIT_MESSAGE_PROMPT_NAME)
+        ).exists()
+        assert Path(
+            build_prompt_path(DEFAULT_HARNESS_DIR, PULL_REQUEST_PROMPT_NAME)
+        ).exists()
         assert Path("docs/plans/example-plan.md").exists()
 
         config = tomllib.loads(Path("engineeringagent.toml").read_text())
-        assert config["quality"]["checks_path"] == "harness/checks.yaml"
-        assert (
-            config["prompts"]["implementation_prompt_path"]
-            == "harness/prompts/implementation_prompt.md"
+        assert config["quality"]["checks_path"] == build_checks_path(
+            DEFAULT_HARNESS_DIR
+        )
+        assert config["prompts"]["implementation_prompt_path"] == build_prompt_path(
+            DEFAULT_HARNESS_DIR, IMPLEMENTATION_PROMPT_NAME
         )
         assert "uv run --active developer init" in Path("AGENTS.md").read_text()
 
@@ -48,8 +70,8 @@ def test_init_updates_existing_config_without_overwriting_existing_values() -> N
         assert result.exit_code == 0
         config = tomllib.loads(Path("engineeringagent.toml").read_text())
         assert config["prompts"]["implementation_prompt_path"] == "custom.md"
-        assert config["quality"]["checks_path"] == "bootstrap/checks.yaml"
-        assert Path("bootstrap/prompts/implementation_prompt.md").exists()
+        assert config["quality"]["checks_path"] == build_checks_path("bootstrap")
+        assert Path(build_prompt_path("bootstrap", IMPLEMENTATION_PROMPT_NAME)).exists()
         assert not Path("AGENTS.md").exists()
 
 
@@ -58,7 +80,9 @@ def test_init_skips_existing_files_without_silent_overwrite() -> None:
     runner = CliRunner()
 
     with runner.isolated_filesystem():
-        existing_prompt = Path("harness/prompts/implementation_prompt.md")
+        existing_prompt = Path(
+            build_prompt_path(DEFAULT_HARNESS_DIR, IMPLEMENTATION_PROMPT_NAME)
+        )
         existing_prompt.parent.mkdir(parents=True, exist_ok=True)
         existing_prompt.write_text("existing prompt")
 
@@ -84,7 +108,7 @@ def test_init_appends_guidance_to_existing_agents_file_once() -> None:
         assert second.exit_code == 0
 
         agents_text = Path("AGENTS.md").read_text()
-        assert agents_text.count("<!-- developer:init:start -->") == 1
+        assert agents_text.count(AGENTS_MD_START_MARKER) == 1
         assert "uv run --active developer schema plan" in agents_text
 
 
@@ -113,8 +137,12 @@ def test_generated_guidance_uses_active_uv_invocation() -> None:
         assert result.exit_code == 0
 
         agents_text = Path("AGENTS.md").read_text()
-        prompt_text = Path("harness/prompts/implementation_prompt.md").read_text()
-        quality_text = Path("harness/quality/commands.yaml").read_text()
+        prompt_text = Path(
+            build_prompt_path(DEFAULT_HARNESS_DIR, IMPLEMENTATION_PROMPT_NAME)
+        ).read_text()
+        quality_text = Path(
+            DEFAULT_HARNESS_DIR, QUALITY_DIR, QUALITY_COMMANDS_FILE_NAME
+        ).read_text()
 
         assert "uv run --active developer init" in agents_text
         assert "uv run developer" not in agents_text

@@ -3,6 +3,17 @@
 from pathlib import Path
 
 from developer.scaffolding.models import ScaffoldFile
+from developer.scaffolding.paths import (
+    AGENTS_MD_END_MARKER,
+    AGENTS_MD_START_MARKER,
+    CHECKS_FILE_NAME,
+    COMMIT_MESSAGE_PROMPT_NAME,
+    IMPLEMENTATION_PROMPT_NAME,
+    PROMPTS_DIR,
+    PULL_REQUEST_PROMPT_NAME,
+    QUALITY_COMMANDS_FILE_NAME,
+    QUALITY_DIR,
+)
 
 IMPLEMENTATION_PROMPT_TEMPLATE = """You are a code agent running in a loop. You pick one small implementation step at a time from the plan and implement that.
 
@@ -81,7 +92,7 @@ Describe the user-visible outcome here.
 - [ ] Replace this placeholder task with real implementation work.
 """
 
-AGENTS_MD_SNIPPET = """<!-- developer:init:start -->
+AGENTS_MD_SNIPPET = f"""{AGENTS_MD_START_MARKER}
 ## Developer CLI
 
 - Run package commands with `uv run --active developer ...`.
@@ -92,7 +103,7 @@ AGENTS_MD_SNIPPET = """<!-- developer:init:start -->
 - Start an implementation loop with `uv run --active developer implement <plan.md>`.
 - Scaffolded harness files live under `<harness-dir>/`, and the sample plan lives under `docs/plans/`.
 - Reuse the generated schemas and templates instead of inventing new plan or quality formats.
-<!-- developer:init:end -->
+{AGENTS_MD_END_MARKER}
 """
 
 
@@ -101,23 +112,23 @@ def build_scaffold_files(harness_dir: str) -> list[ScaffoldFile]:
     harness_path = Path(harness_dir)
     return [
         ScaffoldFile(
-            path=harness_path / "checks.yaml",
+            path=harness_path / CHECKS_FILE_NAME,
             content=CHECKS_YAML_TEMPLATE,
         ),
         ScaffoldFile(
-            path=harness_path / "quality" / "commands.yaml",
+            path=harness_path / QUALITY_DIR / QUALITY_COMMANDS_FILE_NAME,
             content=QUALITY_COMMANDS_TEMPLATE,
         ),
         ScaffoldFile(
-            path=harness_path / "prompts" / "implementation_prompt.md",
+            path=harness_path / PROMPTS_DIR / IMPLEMENTATION_PROMPT_NAME,
             content=IMPLEMENTATION_PROMPT_TEMPLATE,
         ),
         ScaffoldFile(
-            path=harness_path / "prompts" / "commit_message_prompt.md",
+            path=harness_path / PROMPTS_DIR / COMMIT_MESSAGE_PROMPT_NAME,
             content=COMMIT_MESSAGE_PROMPT_TEMPLATE,
         ),
         ScaffoldFile(
-            path=harness_path / "prompts" / "pull_request_prompt.md",
+            path=harness_path / PROMPTS_DIR / PULL_REQUEST_PROMPT_NAME,
             content=PULL_REQUEST_PROMPT_TEMPLATE,
         ),
         ScaffoldFile(
