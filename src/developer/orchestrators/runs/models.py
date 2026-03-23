@@ -23,14 +23,6 @@ class ImplementationWorkspaceRunRequest(BaseModel):
     remote_name: str = "origin"
 
 
-class PublishedTaskBranch(BaseModel):
-    """Persisted branch information reused across implementation runs."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    branch_name: str
-
-
 class ImplementationWorkspacePlan(BaseModel):
     """Resolved workspace execution plan built by the run orchestrator."""
 

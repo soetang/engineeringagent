@@ -5,7 +5,6 @@ from developer.orchestrators.runs.implementation_workspace_run_orchestrator impo
 )
 from developer.orchestrators.runs.models import (
     ImplementationWorkspaceRunRequest,
-    PublishedTaskBranch,
     WorkspaceRunResult,
 )
 
@@ -50,17 +49,17 @@ class _FakeTask:
 
 
 class _PublicationStore:
-    def __init__(self, publication: PublishedTaskBranch | None) -> None:
-        self.publication = publication
+    def __init__(self, publication_branch: str | None) -> None:
+        self.publication_branch = publication_branch
         self.calls: list[tuple[str, str | None]] = []
 
-    def get_task_publication(
+    def get_task_publication_branch(
         self,
         task_name: str,
         task_path: str | None,
-    ) -> PublishedTaskBranch | None:
+    ) -> str | None:
         self.calls.append((task_name, task_path))
-        return self.publication
+        return self.publication_branch
 
 
 class _BranchInspector:
@@ -111,7 +110,7 @@ def _build_request(task: _FakeTask | None = None) -> ImplementationWorkspaceRunR
 
 def test_reuses_publication_branch_for_task_branch_and_start_point() -> None:
     """Published tasks should keep using the published branch and start point."""
-    publication_store = _PublicationStore(PublishedTaskBranch(branch_name="published"))
+    publication_store = _PublicationStore("published")
     branch_inspector = _BranchInspector(current_branch="main")
     workspace_runner = _WorkspaceRunner()
     orchestrator = ImplementationWorkspaceRunOrchestrator(

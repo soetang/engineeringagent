@@ -7,7 +7,6 @@ from developer.orchestrators.runs.models import (
     ImplementationWorkspacePlan,
     ImplementationWorkspaceRunOutcome,
     ImplementationWorkspaceRunRequest,
-    PublishedTaskBranch,
     WorkspaceRunCommand,
     WorkspaceRunResult,
 )
@@ -25,7 +24,6 @@ __all__ = [
     "ImplementationWorkspacePlan",
     "ImplementationWorkspaceRunOutcome",
     "ImplementationWorkspaceRunRequest",
-    "PublishedTaskBranch",
     "TaskPublicationStore",
     "WorkspaceRunCommand",
     "WorkspaceRunPort",

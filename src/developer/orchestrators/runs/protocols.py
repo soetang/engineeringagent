@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from developer.orchestrators.runs.models import PublishedTaskBranch
 from developer.orchestrators.runs.models import WorkspaceRunCommand, WorkspaceRunResult
 
 
@@ -49,11 +48,11 @@ class ImplementationRunTask(Protocol):
 class TaskPublicationStore(Protocol):
     """Loads persisted publication information used during planning."""
 
-    def get_task_publication(
+    def get_task_publication_branch(
         self,
         task_name: str,
         task_path: str | None,
-    ) -> PublishedTaskBranch | None:
+    ) -> str | None:
         """Return the stored publication branch for the task when present."""
         ...
 

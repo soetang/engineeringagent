@@ -9,7 +9,6 @@ from developer.orchestrators.runs.models import (
     ImplementationWorkspacePlan,
     ImplementationWorkspaceRunOutcome,
     ImplementationWorkspaceRunRequest,
-    PublishedTaskBranch,
     WorkspaceRunCommand,
 )
 from developer.orchestrators.runs.protocols import (
@@ -38,11 +37,11 @@ class ImplementationWorkspaceRunOrchestrator:
         request: ImplementationWorkspaceRunRequest,
     ) -> ImplementationWorkspaceRunOutcome:
         """Build a workspace plan and delegate execution to the runtime port."""
-        publication = self._publication_store.get_task_publication(
+        publication_branch = self._publication_store.get_task_publication_branch(
             request.task.task_name,
             request.task.task_path,
         )
-        plan = self._build_plan(request, publication)
+        plan = self._build_plan(request, publication_branch)
         run_result = self._workspace_runner.run(
             WorkspaceRunCommand(
                 repo_path=request.repo_path,
@@ -66,13 +65,13 @@ class ImplementationWorkspaceRunOrchestrator:
     def _build_plan(
         self,
         request: ImplementationWorkspaceRunRequest,
-        publication: PublishedTaskBranch | None,
+        publication_branch: str | None,
     ) -> ImplementationWorkspacePlan:
         """Resolve the workspace branch plan for one run."""
         base_branch = self._resolve_base_branch(request)
-        task_branch_name = self._resolve_task_branch(request, publication)
+        task_branch_name = self._resolve_task_branch(request, publication_branch)
         workspace_start_point = self._resolve_workspace_start_point(
-            publication=publication,
+            publication_branch=publication_branch,
             base_branch=base_branch,
         )
         return ImplementationWorkspacePlan(
@@ -106,11 +105,11 @@ class ImplementationWorkspaceRunOrchestrator:
     def _resolve_task_branch(
         self,
         request: ImplementationWorkspaceRunRequest,
-        publication: PublishedTaskBranch | None,
+        publication_branch: str | None,
     ) -> str:
         """Reuse a published branch when available, otherwise avoid collisions."""
-        if publication is not None:
-            return publication.branch_name
+        if publication_branch is not None:
+            return publication_branch
 
         candidate = request.task.get_branch_name()
         if not self._branch_inspector.branch_exists(
@@ -123,12 +122,12 @@ class ImplementationWorkspaceRunOrchestrator:
 
     def _resolve_workspace_start_point(
         self,
-        publication: PublishedTaskBranch | None,
+        publication_branch: str | None,
         base_branch: str,
     ) -> str:
         """Choose the ref used to seed the disposable workspace branch."""
-        if publication is not None:
-            return publication.branch_name
+        if publication_branch is not None:
+            return publication_branch
         return base_branch
 
     def _build_workspace_task_input(
