@@ -4,7 +4,7 @@
 +title: Add session-aware structured output retry for the Vibe adapter
 +status: ready
 +branch: feat/add-vibe-structured-output-retry
-+base_branch: main
++base_branch: master
 +phases:
 +  - id: adapter
 +    title: Add session-aware retry and resume support to the Vibe adapter
