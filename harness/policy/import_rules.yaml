@@ -1,135 +1,92 @@
 rules:
-  - name: "presentation-only-imports-presentation-or-application"
-    paths:
-      - "src/developer/presentation/**/*.py"
+  - name: "presentation-boundary"
+    description: "Presentation is the CLI-facing layer and only depends on application entrypoints."
+    targets:
+      - "developer.presentation"
+    mode: "allow_only"
     allow:
-      local_prefixes:
-        - "developer.presentation"
-        - "developer.application"
-      relative_import_roots:
-        - "."
-    deny:
-      local_prefixes:
-        - "developer"
-  - name: "orchestrator-loop-import-boundary"
-    paths:
-      - "src/developer/orchestrators/loop/**/*.py"
+      - "developer.presentation"
+      - "developer.application"
+
+  - name: "orchestrators-loop-boundary"
+    description: "Loop orchestration stays isolated from other developer packages."
+    targets:
+      - "developer.orchestrators.loop"
+    mode: "allow_only"
     allow:
-      local_prefixes:
-        - "developer.orchestrators.loop"
-      relative_import_roots:
-        - "."
-    deny:
-      local_prefixes:
-        - "developer"
-  - name: "orchestrator-runs-import-boundary"
-    paths:
-      - "src/developer/orchestrators/runs/**/*.py"
+      - "developer.orchestrators.loop"
+
+  - name: "orchestrators-runs-boundary"
+    description: "Run orchestration stays isolated from other developer packages."
+    targets:
+      - "developer.orchestrators.runs"
+    mode: "allow_only"
     allow:
-      local_prefixes:
-        - "developer.orchestrators.runs"
-      relative_import_roots:
-        - "."
-    deny:
-      local_prefixes:
-        - "developer"
-  - name: "workspaces-only-import-workspaces"
-    paths:
-      - "src/developer/workspaces/**/*.py"
+      - "developer.orchestrators.runs"
+
+  - name: "workspaces-boundary"
+    description: "Workspace execution owns its local abstractions and a narrow set of shared models."
+    targets:
+      - "developer.workspaces"
+    mode: "allow_only"
     allow:
-      local_prefixes:
-        - "developer.workspaces"
-        - "developer.tasks.models"
-        - "developer.orchestrators.runs.models"
-        - "developer.orchestrators.runs.protocols"
-      relative_import_roots:
-        - "."
-    deny:
-      local_prefixes:
-        - "developer"
-  - name: "version-control-only-import-version-control"
-    paths:
-      - "src/developer/version_control/**/*.py"
+      - "developer.workspaces"
+      - "developer.tasks.models"
+      - "developer.orchestrators.runs.models"
+      - "developer.orchestrators.runs.protocols"
+
+  - name: "version-control-boundary"
+    description: "Version-control integrations stay behind their package boundary plus shared prompts and config."
+    targets:
+      - "developer.version_control"
+    mode: "allow_only"
     allow:
-      local_prefixes:
-        - "developer.version_control"
-        - "developer.agent_backends.protocol"
-        - "developer.config"
-        - "developer.prompts"
-      relative_import_roots:
-        - "."
-    deny:
-      local_prefixes:
-        - "developer"
-  - name: "forge-only-import-forge"
-    paths:
-      - "src/developer/forge/**/*.py"
+      - "developer.version_control"
+      - "developer.agent_backends.protocol"
+      - "developer.config"
+      - "developer.prompts"
+
+  - name: "forge-boundary"
+    description: "Forge integrations depend only on their package boundary and shared orchestration contracts."
+    targets:
+      - "developer.forge"
+    mode: "allow_only"
     allow:
-      local_prefixes:
-        - "developer.forge"
-        - "developer.orchestrators.protocols"
-        - "developer.config"
-      relative_import_roots:
-        - "."
+      - "developer.forge"
+      - "developer.orchestrators.protocols"
+      - "developer.config"
+
+  - name: "non-entrypoints-must-not-import-presentation"
+    description: "Core packages stay independent from CLI presentation code."
+    targets:
+      - "developer.agent_backends"
+      - "developer.application"
+      - "developer.orchestrators"
+      - "developer.prompts"
+      - "developer.quality"
+      - "developer.tasks"
+    mode: "deny_only"
     deny:
-      local_prefixes:
-        - "developer"
-  - name: "no-non-entrypoint-imports-from-presentation"
-    paths:
-      - "src/developer/agents/**/*.py"
-      - "src/developer/application/**/*.py"
-      - "src/developer/config/**/*.py"
-      - "src/developer/forge/**/*.py"
-      - "src/developer/orchestrators/**/*.py"
-      - "src/developer/prompts/**/*.py"
-      - "src/developer/quality/**/*.py"
-      - "src/developer/tasks/**/*.py"
-      - "src/developer/version_control/**/*.py"
-      - "src/developer/workspaces/**/*.py"
+      - "developer.presentation"
+
+  - name: "implementation-run-service-boundary"
+    description: "The implementation run service may orchestrate agents without pulling in broader workspace or version-control concrete code."
+    targets:
+      - "developer.application.services.implementation_run_service"
+    mode: "allow_only"
     allow:
-      local_prefixes: []
-      relative_import_roots: []
-    deny:
-      local_prefixes:
-        - "developer.presentation"
-  - name: "application-must-not-import-presentation"
-    paths:
-      - "src/developer/application/**/*.py"
+      - "developer.agent_backends"
+      - "developer.application"
+      - "developer.config"
+      - "developer.orchestrators.loop"
+      - "developer.orchestrators.runs"
+      - "developer.tasks"
+      - "developer.version_control.adapters.git_adapter"
+
+  - name: "config-boundary"
+    description: "Config code stays self-contained."
+    targets:
+      - "developer.config"
+    mode: "allow_only"
     allow:
-      local_prefixes: []
-      relative_import_roots: []
-    deny:
-      local_prefixes:
-        - "developer.presentation"
-  # Keep this targeted rule: the broader application rules only block
-  # presentation imports, while this one preserves the thinner boundary for the
-  # implementation entrypoint by denying workspace and broad version-control
-  # dependencies from creeping back in.
-  - name: "implementation-run-service-import-boundary"
-    paths:
-      - "src/developer/application/services/implementation_run_service.py"
-    allow:
-      local_prefixes:
-        - "developer.agent_backends"
-        - "developer.application"
-        - "developer.config"
-        - "developer.orchestrators.loop"
-        - "developer.orchestrators.runs"
-        - "developer.tasks"
-        - "developer.version_control.adapters.git_adapter"
-      relative_import_roots:
-        - "."
-    deny:
-      local_prefixes:
-        - "developer"
-  - name: "config-only-imports-config"
-    paths:
-      - "src/developer/config/**/*.py"
-    allow:
-      local_prefixes:
-        - "developer.config"
-      relative_import_roots:
-        - "."
-    deny:
-      local_prefixes:
-        - "developer"
+      - "developer.config"
