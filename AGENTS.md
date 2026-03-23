@@ -1,7 +1,7 @@
 # Coding Agent Harness Tools
 
 ## Commands
-- To run the `developer` cli user `uv run developer ... `
+- To run the `developer` CLI, use `uv run --active developer ...`
 
 ### Dependency Management
 - Add dependencies: `uv add <package>`
@@ -9,7 +9,7 @@
 - Do not manually edit `pyproject.toml`
 
 ### Running Commands
-- Run commands from installed packages: `uv run <command>`
+- Run commands from installed packages: `uv run --active <command>`
 
 ### Linting and Formatting
 - Lint: `ruff check`

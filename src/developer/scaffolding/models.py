@@ -1,4 +1,4 @@
-"""Application-facing command and result models."""
+"""Models for repository scaffold generation."""
 
 from pathlib import Path
 from typing import Literal
@@ -7,13 +7,22 @@ from pydantic import BaseModel, ConfigDict
 
 
 class InitRequest(BaseModel):
-    """Structured onboarding inputs accepted at the application boundary."""
+    """Structured onboarding inputs for the init workflow."""
 
     model_config = ConfigDict(extra="forbid")
 
     harness_dir: str
     create_or_update_config: bool
     create_or_append_agents_md: bool
+
+
+class ScaffoldFile(BaseModel):
+    """One generated file entry."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    path: Path
+    content: str
 
 
 class FileWriteResult(BaseModel):
@@ -27,18 +36,9 @@ class FileWriteResult(BaseModel):
 
 
 class InitResult(BaseModel):
-    """Structured onboarding result returned to presentation."""
+    """Structured result returned from the init workflow."""
 
     model_config = ConfigDict(extra="forbid")
 
     harness_dir: Path
     file_results: list[FileWriteResult]
-
-
-class ImplementationRunResult(BaseModel):
-    """Command-facing result for an implementation run."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    exit_code: int
-    message: str

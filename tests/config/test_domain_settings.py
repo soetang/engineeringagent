@@ -76,7 +76,10 @@ def test_settings_validation() -> None:
 def test_orchestrator_prompt_settings_defaults() -> None:
     """Test default orchestrator prompt settings."""
     settings = OrchestratorPromptSettings()
-    assert settings.implementation_prompt_path == "harness/implementation_prompt.md"
+    assert (
+        settings.implementation_prompt_path
+        == "harness/prompts/implementation_prompt.md"
+    )
     assert settings.commit_prompt_path == "harness/prompts/commit_message_prompt.md"
     assert settings.pull_request_prompt_path == "harness/prompts/pull_request_prompt.md"
 
