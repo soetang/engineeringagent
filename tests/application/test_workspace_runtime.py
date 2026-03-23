@@ -6,6 +6,7 @@ from typing import cast
 from developer.application.implementation_run_runtime import (
     DEFAULT_IMPLEMENTATION_WORKSPACE_AGENT_KIND,
     DEFAULT_IMPLEMENTATION_WORKSPACE_PROVIDER,
+    TaskPublicationStoreAdapter,
     WorkspaceRunOrchestratorPortAdapter,
     build_implementation_workspace_run_orchestrator,
 )
@@ -18,10 +19,8 @@ from developer.orchestrators.runs.implementation_workspace_run_orchestrator impo
 from developer.orchestrators.runs.models import WorkspaceRunCommand
 from developer.version_control.settings import VersionControlSettings
 from developer.workspaces.models import RunHandle, RunStatus
+from developer.workspaces.services.file_registry import FileWorkspaceRegistry
 from developer.workspaces.settings import WorkspaceSettings
-from developer.workspaces.task_publication_store import (
-    FileWorkspaceTaskPublicationStore,
-)
 
 
 class _FakeConfigService:
@@ -224,10 +223,7 @@ def test_build_implementation_workspace_run_orchestrator_wires_ports(
     )
 
     assert isinstance(orchestrator, ImplementationWorkspaceRunOrchestrator)
-    assert isinstance(
-        orchestrator._publication_store,
-        FileWorkspaceTaskPublicationStore,
-    )
+    assert isinstance(orchestrator._publication_store, TaskPublicationStoreAdapter)
     assert (
         orchestrator._publication_store._registry._state_dir
         == Path(".developer/state").resolve()

@@ -9,15 +9,19 @@ from developer.config.service import ConfigService
 from developer.orchestrators.runs.implementation_workspace_run_orchestrator import (
     ImplementationWorkspaceRunOrchestrator,
 )
-from developer.orchestrators.runs.models import WorkspaceRunCommand, WorkspaceRunResult
-from developer.orchestrators.runs.protocols import WorkspaceRunPort
+from developer.orchestrators.runs.models import (
+    PublishedTaskBranch,
+    WorkspaceRunCommand,
+    WorkspaceRunResult,
+)
+from developer.orchestrators.runs.protocols import (
+    TaskPublicationStore,
+    WorkspaceRunPort,
+)
 from developer.version_control.adapters.git_adapter import GitVersionControlAdapter
 from developer.workspaces.models import RunRequest, WorkspaceSpec
 from developer.workspaces.services.file_registry import FileWorkspaceRegistry
 from developer.workspaces.settings import WorkspaceSettings
-from developer.workspaces.task_publication_store import (
-    FileWorkspaceTaskPublicationStore,
-)
 
 DEFAULT_IMPLEMENTATION_WORKSPACE_PROVIDER = "git_worktree"
 DEFAULT_IMPLEMENTATION_WORKSPACE_AGENT_KIND = "implementation"
@@ -62,6 +66,25 @@ class WorkspaceRunOrchestratorPortAdapter(WorkspaceRunPort):
         )
 
 
+class TaskPublicationStoreAdapter(TaskPublicationStore):
+    """Project workspace publication persistence onto the orchestrator port."""
+
+    def __init__(self, registry: FileWorkspaceRegistry) -> None:
+        """Store the workspace registry used for persisted publication state."""
+        self._registry = registry
+
+    def get_task_publication(
+        self,
+        task_name: str,
+        task_path: str | None,
+    ) -> PublishedTaskBranch | None:
+        """Load persisted publication state and expose branch-only run metadata."""
+        publication = self._registry.get_task_publication(task_name, task_path)
+        if publication is None:
+            return None
+        return PublishedTaskBranch(branch_name=publication.branch_name)
+
+
 def build_implementation_workspace_run_orchestrator(
     config_service: ConfigService,
 ) -> ImplementationWorkspaceRunOrchestrator:
@@ -69,7 +92,7 @@ def build_implementation_workspace_run_orchestrator(
     workspace_settings = config_service.get_config("workspaces", WorkspaceSettings)
     registry = FileWorkspaceRegistry(Path(workspace_settings.state_dir).resolve())
     return ImplementationWorkspaceRunOrchestrator(
-        publication_store=FileWorkspaceTaskPublicationStore(registry),
+        publication_store=TaskPublicationStoreAdapter(registry),
         branch_inspector=GitVersionControlAdapter(),
         workspace_runner=WorkspaceRunOrchestratorPortAdapter(
             build_workspace_orchestrator(config_service),

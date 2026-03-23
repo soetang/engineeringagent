@@ -63,4 +63,5 @@ def test_file_registry_saves_task_publication_state(tmp_path) -> None:
 
     registry.save_task_publication(publication)
 
-    assert registry.get_task_publication("add-version-control") == publication
+    stored = registry.get_task_publication("add-version-control")
+    assert stored == publication
