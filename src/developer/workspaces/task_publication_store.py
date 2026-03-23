@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-from developer.orchestrators.runs.protocols import (
-    PublishedTaskBranchView,
-    TaskPublicationStore,
-)
+from developer.orchestrators.runs.models import PublishedTaskBranch
+from developer.orchestrators.runs.protocols import TaskPublicationStore
 from developer.workspaces.services.file_registry import FileWorkspaceRegistry
 
 
@@ -20,6 +18,9 @@ class FileWorkspaceTaskPublicationStore(TaskPublicationStore):
         self,
         task_name: str,
         task_path: str | None,
-    ) -> PublishedTaskBranchView | None:
+    ) -> PublishedTaskBranch | None:
         """Return the persisted publication record when one exists."""
-        return self._registry.get_task_publication(task_name, task_path)
+        publication = self._registry.get_task_publication(task_name, task_path)
+        if publication is None:
+            return None
+        return PublishedTaskBranch(branch_name=publication.branch_name)

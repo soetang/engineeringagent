@@ -11,20 +11,6 @@ rules:
     deny:
       local_prefixes:
         - "developer"
-  - name: "orchestrators-only-import-orchestrators"
-    paths:
-      - "src/developer/orchestrators/**/*.py"
-      - "!src/developer/orchestrators/loop/**/*.py"
-      - "!src/developer/orchestrators/runs/**/*.py"
-    allow:
-      local_prefixes:
-        - "developer.orchestrators"
-        - "developer.tasks.protocol"
-      relative_import_roots:
-        - "."
-    deny:
-      local_prefixes:
-        - "developer"
   - name: "orchestrator-loop-import-boundary"
     paths:
       - "src/developer/orchestrators/loop/**/*.py"
@@ -54,22 +40,19 @@ rules:
       local_prefixes:
         - "developer.workspaces"
         - "developer.tasks.models"
+        - "developer.orchestrators.runs.models"
         - "developer.orchestrators.runs.protocols"
       relative_import_roots:
         - "."
     deny:
       local_prefixes:
-        - "developer.application"
-        - "developer.orchestrators.loop"
-        - "developer.orchestrators.runs"
+        - "developer"
   - name: "version-control-only-import-version-control"
     paths:
       - "src/developer/version_control/**/*.py"
     allow:
       local_prefixes:
         - "developer.version_control"
-        - "developer.orchestrators.protocols"
-        - "developer.orchestrators.runs.protocols"
         - "developer.agent_backends.protocol"
         - "developer.config"
         - "developer.prompts"

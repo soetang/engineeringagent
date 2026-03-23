@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
-from developer.orchestrators.runs.models import WorkspaceRunCommand, WorkspaceRunResult
+from developer.orchestrators.runs.models import (
+    PublishedTaskBranch,
+    WorkspaceRunCommand,
+    WorkspaceRunResult,
+)
 
 
 class ImplementationRunTask(Protocol):
@@ -50,15 +54,6 @@ class ImplementationRunTaskExecutionDefaults(Protocol):
         ...
 
 
-class PublishedTaskBranchView(Protocol):
-    """Minimal publication data required by the run orchestrator."""
-
-    @property
-    def branch_name(self) -> str:
-        """Return the published branch name for the task."""
-        ...
-
-
 class TaskPublicationStore(Protocol):
     """Loads persisted publication information used during planning."""
 
@@ -66,7 +61,7 @@ class TaskPublicationStore(Protocol):
         self,
         task_name: str,
         task_path: str | None,
-    ) -> PublishedTaskBranchView | None:
+    ) -> PublishedTaskBranch | None:
         """Return the stored publication branch for the task when present."""
         ...
 
@@ -100,7 +95,6 @@ __all__ = [
     "BranchInspectionPort",
     "ImplementationRunTask",
     "ImplementationRunTaskExecutionDefaults",
-    "PublishedTaskBranchView",
     "TaskPublicationStore",
     "WorkspaceRunPort",
 ]
