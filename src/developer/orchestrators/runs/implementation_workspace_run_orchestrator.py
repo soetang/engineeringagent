@@ -17,8 +17,6 @@ from developer.orchestrators.runs.protocols import (
     WorkspaceRunPort,
 )
 
-IMPLEMENTATION_AGENT_KIND = "implementation"
-
 
 class ImplementationWorkspaceRunOrchestrator:
     """Plan and dispatch one implementation run through workspace infrastructure."""
@@ -50,7 +48,6 @@ class ImplementationWorkspaceRunOrchestrator:
                 base_branch=plan.base_branch,
                 task_id=request.task.task_id,
                 workspace_metadata=plan.workspace_metadata,
-                agent_kind=IMPLEMENTATION_AGENT_KIND,
                 run_context=plan.run_context,
             )
         )

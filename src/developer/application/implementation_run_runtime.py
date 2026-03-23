@@ -19,26 +19,37 @@ from developer.workspaces.task_publication_store import (
     FileWorkspaceTaskPublicationStore,
 )
 
+DEFAULT_IMPLEMENTATION_WORKSPACE_PROVIDER = "git_worktree"
+DEFAULT_IMPLEMENTATION_WORKSPACE_AGENT_KIND = "implementation"
+
 
 class WorkspaceRunOrchestratorPortAdapter(WorkspaceRunPort):
     """Adapt the generic workspace runtime to the run-orchestrator port."""
 
-    def __init__(self, workspace_runner) -> None:
-        """Store the composed workspace runtime."""
+    def __init__(
+        self,
+        workspace_runner,
+        *,
+        workspace_provider: str = DEFAULT_IMPLEMENTATION_WORKSPACE_PROVIDER,
+        agent_kind: str = DEFAULT_IMPLEMENTATION_WORKSPACE_AGENT_KIND,
+    ) -> None:
+        """Store the composed workspace runtime and fixed execution defaults."""
         self._workspace_runner = workspace_runner
+        self._workspace_provider = workspace_provider
+        self._agent_kind = agent_kind
 
     def run(self, command: WorkspaceRunCommand) -> WorkspaceRunResult:
         """Translate orchestrator commands into workspace runtime requests."""
         workspace, run_handle = self._workspace_runner.run_in_workspace(
             WorkspaceSpec(
-                provider="git_worktree",
+                provider=self._workspace_provider,
                 repo_path=command.repo_path,
                 base_branch=command.base_branch,
                 task_id=command.task_id,
                 metadata=command.workspace_metadata,
             ),
             RunRequest(
-                agent_kind=command.agent_kind,
+                agent_kind=self._agent_kind,
                 context=command.run_context,
             ),
         )
@@ -61,6 +72,7 @@ def build_implementation_workspace_run_orchestrator(
         publication_store=FileWorkspaceTaskPublicationStore(registry),
         branch_inspector=GitVersionControlAdapter(),
         workspace_runner=WorkspaceRunOrchestratorPortAdapter(
-            build_workspace_orchestrator(config_service)
+            build_workspace_orchestrator(config_service),
+            workspace_provider=workspace_settings.default_provider,
         ),
     )

@@ -154,10 +154,12 @@ git_worktree_root_dir = "developer-workspaces"
     assert "branch=ship-it" in result.message
     assert len(fake_orchestrator.requests) == 1
     request = fake_orchestrator.requests[0]
+    assert request.repo_path == str(Path.cwd())
     assert request.task is not None
     assert request.task.task_name == "Ship it"
     assert request.normalized_task_input == "docs/plans/ship-it.md"
     assert request.max_iterations == 20
+    assert not hasattr(request, "agent_kind")
 
 
 def test_run_implementation_fails_when_checkout_is_dirty(monkeypatch) -> None:

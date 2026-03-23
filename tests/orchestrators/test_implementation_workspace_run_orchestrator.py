@@ -184,7 +184,6 @@ def test_builds_workspace_run_command_from_resolved_plan() -> None:
     assert command.repo_path == "/repo"
     assert command.base_branch == "develop"
     assert command.task_id == "task-123"
-    assert command.agent_kind == "implementation"
     assert command.workspace_metadata == {
         "task_id": "task-123",
         "task_name": "Ship it",
