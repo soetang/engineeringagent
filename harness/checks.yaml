@@ -11,4 +11,9 @@ checks:
     command: ["uv", "run", "pytest", "harness/fitness/tests"]
   - check_type: "command"
     check_category: "unit_tests"
+    phase: "IterationComplete"
     command: ["uv", "run", "pytest"]
+  - check_type: "command"
+    check_category: "unit_tests"
+    phase: "ImplementationComplete"
+    command: ["uv", "run", "pytest", "-m", "integration"]
