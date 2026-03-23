@@ -34,6 +34,11 @@ class MarkdownPlanImplementationTask(ImplementationRunTask):
         return self._plan.path
 
     @property
+    def base_branch(self) -> str | None:
+        """Return the task-defined base branch preference when present."""
+        return self._plan.base_branch
+
+    @property
     def status(self) -> str:
         """Return the current top-level task status from the resolved plan."""
         return self._plan.status

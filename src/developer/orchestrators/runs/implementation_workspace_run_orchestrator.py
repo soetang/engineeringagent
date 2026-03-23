@@ -69,7 +69,7 @@ class ImplementationWorkspaceRunOrchestrator:
         publication: PublishedTaskBranchView | None,
     ) -> ImplementationWorkspacePlan:
         """Resolve the workspace branch plan for one run."""
-        base_branch = self._branch_inspector.get_current_branch(request.repo_path)
+        base_branch = self._resolve_base_branch(request)
         task_branch_name = self._resolve_task_branch(request, publication)
         workspace_start_point = self._resolve_workspace_start_point(
             publication=publication,
@@ -96,6 +96,12 @@ class ImplementationWorkspaceRunOrchestrator:
                 "max_iterations": request.max_iterations,
             },
         )
+
+    def _resolve_base_branch(self, request: ImplementationWorkspaceRunRequest) -> str:
+        """Prefer the task-defined base branch and fall back to repository state."""
+        if request.task.base_branch:
+            return request.task.base_branch
+        return self._branch_inspector.get_current_branch(request.repo_path)
 
     def _resolve_task_branch(
         self,

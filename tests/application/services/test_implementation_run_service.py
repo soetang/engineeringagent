@@ -59,6 +59,10 @@ class _ResolvedTask:
     def task_path(self) -> str | None:
         return self._task_path
 
+    @property
+    def base_branch(self) -> str | None:
+        return None
+
     def is_complete(self):
         raise NotImplementedError
 

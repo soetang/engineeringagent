@@ -11,9 +11,15 @@ from developer.orchestrators.runs.models import (
 
 
 class _FakeTask:
-    def __init__(self, task_id: str = "ship-it", task_path: str | None = None) -> None:
+    def __init__(
+        self,
+        task_id: str = "ship-it",
+        task_path: str | None = None,
+        base_branch: str | None = None,
+    ) -> None:
         self._task_id = task_id
         self._task_path = task_path
+        self._base_branch = base_branch
 
     @property
     def task_id(self) -> str:
@@ -26,6 +32,10 @@ class _FakeTask:
     @property
     def task_path(self) -> str | None:
         return self._task_path
+
+    @property
+    def base_branch(self) -> str | None:
+        return self._base_branch
 
     def get_branch_name(self) -> str:
         return "ship-it"
@@ -113,6 +123,27 @@ def test_reuses_publication_branch_for_task_branch_and_start_point() -> None:
     assert command.workspace_metadata["task_branch_name"] == "published"
     assert command.workspace_metadata["start_point"] == "published"
     assert command.run_context["task_branch_name"] == "published"
+
+
+def test_prefers_task_defined_base_branch_without_branch_lookup() -> None:
+    """Task-defined base branches should override repository branch discovery."""
+    publication_store = _PublicationStore(None)
+    branch_inspector = _BranchInspector(current_branch="main")
+    workspace_runner = _WorkspaceRunner()
+    orchestrator = ImplementationWorkspaceRunOrchestrator(
+        publication_store=publication_store,
+        branch_inspector=branch_inspector,
+        workspace_runner=workspace_runner,
+    )
+
+    orchestrator.run(
+        _build_request(_FakeTask(task_path="docs/plans/ship-it.md", base_branch="dev"))
+    )
+
+    command = workspace_runner.commands[0]
+    assert command.base_branch == "dev"
+    assert command.workspace_metadata["start_point"] == "dev"
+    assert branch_inspector.current_branch_calls == []
 
 
 def test_adds_suffix_when_branch_candidate_already_exists() -> None:
