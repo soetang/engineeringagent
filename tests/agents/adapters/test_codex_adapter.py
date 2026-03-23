@@ -88,6 +88,25 @@ def test_parse_json_content_accepts_fenced_json():
     assert parsed == {"answer": "Paris"}
 
 
+def test_parse_json_content_extracts_json_from_wrapped_response():
+    """Structured parsing should tolerate leading prose before a JSON block."""
+    adapter = CodexAdapter()
+
+    parsed = adapter._parse_json_content(
+        """Let me analyze the code for simplification opportunities:
+
+```json
+{"status": "approved", "summary": "Looks good", "actions": []}
+```"""
+    )
+
+    assert parsed == {
+        "status": "approved",
+        "summary": "Looks good",
+        "actions": [],
+    }
+
+
 def test_run_agent_adds_structured_prompt_and_parses_fenced_json(monkeypatch):
     """Structured output requests should explicitly demand JSON-only output."""
     adapter = CodexAdapter(model="gpt-5.3-codex-spark")

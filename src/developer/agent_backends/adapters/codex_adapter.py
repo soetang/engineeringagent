@@ -119,13 +119,31 @@ class CodexAdapter(AgentBackendProtocol):
         )
 
     def _parse_json_content(self, content: str) -> dict:
-        """Parse JSON content, tolerating fenced JSON responses."""
+        """Parse JSON content, tolerating fenced or wrapped JSON responses."""
         clean_content = content.strip()
         if clean_content.startswith("```json") and clean_content.endswith("```"):
             clean_content = "\n".join(clean_content.splitlines()[1:-1]).strip()
         elif clean_content.startswith("```") and clean_content.endswith("```"):
             clean_content = "\n".join(clean_content.splitlines()[1:-1]).strip()
-        return json.loads(clean_content)
+
+        try:
+            return json.loads(clean_content)
+        except json.JSONDecodeError:
+            decoder = json.JSONDecoder()
+            for index, char in enumerate(clean_content):
+                if char != "{":
+                    continue
+                try:
+                    parsed, end = decoder.raw_decode(clean_content[index:])
+                except json.JSONDecodeError:
+                    continue
+
+                trailing = clean_content[index + end :].strip()
+                if trailing and trailing != "```":
+                    continue
+                return parsed
+
+            raise
 
     def _generate_schema(self, model_class: Type[BaseModel]) -> dict:
         """Generate JSON schema with all fields required for Codex."""
