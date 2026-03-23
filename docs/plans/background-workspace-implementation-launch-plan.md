@@ -4,7 +4,7 @@ task_id: add-background-workspace-implementation-launch
 title: Add background launch mode for workspace implementation runs
 status: ready
 branch: feat/add-background-workspace-implementation-launch
-base_branch: main
+base_branch: master
 phases:
   - id: architecture
     title: Align launch ownership with orchestration boundaries
