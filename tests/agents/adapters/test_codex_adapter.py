@@ -1,5 +1,6 @@
 """Real integration tests for Codex CLI adapter."""
 
+import json
 import subprocess
 from pathlib import Path
 from shutil import copytree
@@ -72,6 +73,47 @@ def test_resolve_profile_config_falls_back_to_profile_flag(tmp_path):
         "--profile",
         "implementation",
     ]
+
+
+def test_parse_json_content_accepts_fenced_json():
+    """Structured parsing should tolerate fenced JSON from Codex."""
+    adapter = CodexAdapter()
+
+    parsed = adapter._parse_json_content(
+        """```json
+{"answer": "Paris"}
+```"""
+    )
+
+    assert parsed == {"answer": "Paris"}
+
+
+def test_run_agent_adds_structured_prompt_and_parses_fenced_json(monkeypatch):
+    """Structured output requests should explicitly demand JSON-only output."""
+    adapter = CodexAdapter(model="gpt-5.3-codex-spark")
+    captured: dict[str, list[str]] = {}
+
+    def fake_run(cmd, capture_output, text, check):
+        captured["cmd"] = cmd
+        return subprocess.CompletedProcess(
+            args=cmd,
+            returncode=0,
+            stdout='```json\n{"answer": "Paris"}\n```',
+            stderr="",
+        )
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    result = adapter.run_agent(
+        prompt="What is the capital of France?",
+        output_format=SimpleResult,
+    )
+
+    assert result == SimpleResult(answer="Paris")
+    prompt_arg = captured["cmd"][2]
+    assert "Return JSON only." in prompt_arg
+    assert "Do not include markdown, prose, or code fences." in prompt_arg
+    assert json.dumps(adapter._generate_schema(SimpleResult), indent=2) in prompt_arg
 
 
 @pytest.fixture
