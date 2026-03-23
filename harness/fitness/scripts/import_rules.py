@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import re
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -29,6 +29,7 @@ class RuleSpec:
     mode: str
     allowed_local_prefixes: tuple[str, ...]
     denied_local_prefixes: tuple[str, ...]
+    matched_files: tuple[Path, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -137,7 +138,7 @@ def iter_selected_rules(repo_root: Path, rules: list[RuleSpec]) -> dict[Path, Ru
     """Return the most-specific rule selected for each configured file."""
     candidate_rules: dict[Path, list[RuleSpec]] = {}
     for rule in rules:
-        for file_path in _iter_target_files(repo_root=repo_root, rule=rule):
+        for file_path in rule.matched_files:
             candidate_rules.setdefault(file_path, []).append(rule)
 
     selected_rules: dict[Path, RuleSpec] = {}
@@ -294,9 +295,15 @@ def _as_string_tuple(
 
 
 def _resolve_rule_specs(repo_root: Path, rules: list[RuleSpec]) -> list[RuleSpec]:
+    resolved_rules: list[RuleSpec] = []
     for rule in rules:
-        _iter_target_files(repo_root=repo_root, rule=rule)
-    return rules
+        resolved_rules.append(
+            replace(
+                rule,
+                matched_files=_iter_target_files(repo_root=repo_root, rule=rule),
+            )
+        )
+    return resolved_rules
 
 
 def _iter_target_files(repo_root: Path, rule: RuleSpec) -> tuple[Path, ...]:
@@ -334,33 +341,28 @@ def _select_rule_for_file(
     repo_root: Path,
     matching_rules: list[RuleSpec],
 ) -> RuleSpec:
-    ranked_rules = sorted(
-        matching_rules,
-        key=lambda rule: _rule_specificity_for_file(
-            file_path=file_path,
-            repo_root=repo_root,
-            rule=rule,
-        ),
-        reverse=True,
-    )
-    winner = ranked_rules[0]
-    if len(ranked_rules) == 1:
+    module_name = build_module_context(
+        file_path=file_path, repo_root=repo_root
+    ).module_name
+    scored_rules = [
+        (
+            _rule_specificity_for_file(
+                file_path=file_path,
+                module_name=module_name,
+                rule=rule,
+            ),
+            rule,
+        )
+        for rule in matching_rules
+    ]
+    scored_rules.sort(key=lambda item: item[0], reverse=True)
+
+    winning_score, winner = scored_rules[0]
+    if len(scored_rules) == 1:
         return winner
 
-    winning_score = _rule_specificity_for_file(
-        file_path=file_path,
-        repo_root=repo_root,
-        rule=winner,
-    )
     same_score_rules = [
-        rule
-        for rule in ranked_rules[1:]
-        if _rule_specificity_for_file(
-            file_path=file_path,
-            repo_root=repo_root,
-            rule=rule,
-        )
-        == winning_score
+        rule for score, rule in scored_rules[1:] if score == winning_score
     ]
     if same_score_rules:
         conflicting_names = ", ".join(
@@ -375,14 +377,11 @@ def _select_rule_for_file(
 
 def _rule_specificity_for_file(
     file_path: Path,
-    repo_root: Path,
+    module_name: str,
     rule: RuleSpec,
 ) -> tuple[int, int]:
-    module_context = build_module_context(file_path=file_path, repo_root=repo_root)
     matching_targets = [
-        target
-        for target in rule.targets
-        if matches_prefix(module_context.module_name, target)
+        target for target in rule.targets if matches_prefix(module_name, target)
     ]
     if not matching_targets:
         raise ValueError(f"Rule '{rule.name}' does not apply to '{file_path}'")

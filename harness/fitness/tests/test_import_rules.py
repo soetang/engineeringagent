@@ -7,6 +7,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import yaml
+
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -369,25 +371,7 @@ def write_policy(repo_root: Path, rules: list[dict[str, object]]) -> None:
 
 def build_policy_yaml(rules: list[dict[str, object]]) -> str:
     """Build YAML for a temporary rule configuration."""
-    lines = ["rules:"]
-    for raw_rule in rules:
-        lines.append(f'  - name: "{raw_rule["name"]}"')
-        if "description" in raw_rule:
-            lines.append(f'    description: "{raw_rule["description"]}"')
-        if "targets" in raw_rule:
-            lines.append("    targets:")
-            for target in raw_rule["targets"]:
-                lines.append(f'      - "{target}"')
-        lines.append(f'    mode: "{raw_rule["mode"]}"')
-        if "allow" in raw_rule:
-            lines.append("    allow:")
-            for prefix in raw_rule["allow"]:
-                lines.append(f'      - "{prefix}"')
-        if "deny" in raw_rule:
-            lines.append("    deny:")
-            for prefix in raw_rule["deny"]:
-                lines.append(f'      - "{prefix}"')
-    return "\n".join(lines) + "\n"
+    return yaml.safe_dump({"rules": rules}, sort_keys=False)
 
 
 def write_file(path: Path, content: str) -> None:

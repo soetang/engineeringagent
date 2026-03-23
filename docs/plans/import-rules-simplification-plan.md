@@ -341,6 +341,7 @@ Recommended policy simplification during this phase:
 ### Checklist
 
 - [x] Rewrite `harness/fitness/tests/test_import_rules.py` helpers for the new YAML schema.
+- [x] Simplify resolved-target caching and YAML fixture generation after review feedback.
 - [x] Add coverage for `allow_only`, `deny_only`, and `deny_except`.
 - [x] Verify relative imports pass or fail based on resolved package names alone.
 - [x] Verify package selector recursion covers nested modules and `__init__.py`.
