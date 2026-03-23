@@ -77,6 +77,78 @@ The documentation should follow that workflow:
 4. validate; and
 5. run implementation/check commands.
 
+## Architecture
+
+Keep this feature out of the `orchestrators` domain layer.
+
+Reasoning:
+
+- `developer init` is a repository bootstrap workflow, not an implementation-run orchestration rule;
+- `developer schema` exposes machine-readable contracts for external users and agents, not core orchestration behavior; and
+- both features may later be reused from non-CLI entrypoints, so they should live below presentation but outside domain.
+
+Recommended layering for this slice:
+
+### Presentation
+
+Add thin Typer commands only.
+
+- `src/developer/presentation/commands/init.py`
+- `src/developer/presentation/commands/schema.py`
+
+Responsibilities:
+
+- collect CLI arguments and interactive answers;
+- call application services;
+- render summaries, prompts, and errors; and
+- avoid file-generation, schema-building, or config-assembly logic.
+
+### Application
+
+Add small use-case services.
+
+- `src/developer/application/services/init_service.py`
+- `src/developer/application/services/schema_service.py`
+
+Responsibilities:
+
+- define the onboarding and schema-export workflows;
+- coordinate scaffolding and schema collaborators;
+- normalize user inputs into structured requests;
+- return structured results for presentation; and
+- keep CLI concerns and filesystem details out of the use-case layer.
+
+### Scaffolding support module
+
+Add a small `developer.scaffolding` module for repository bootstrap concerns.
+
+Recommended files:
+
+- `src/developer/scaffolding/models.py`
+- `src/developer/scaffolding/service.py`
+- `src/developer/scaffolding/filesystem.py`
+- `src/developer/scaffolding/templates.py`
+
+Responsibilities:
+
+- define scaffold file entries and write results;
+- provide canonical starter template contents;
+- assemble the generated file set for a chosen harness directory;
+- apply safe write rules such as create, skip, or conflict; and
+- keep starter-file behavior cohesive without pushing it into presentation or domain.
+
+### Domain boundary
+
+Do not add onboarding or schema concerns to `developer.orchestrators`.
+
+For this slice, `orchestrators` should remain focused on implementation-loop and gate/run semantics.
+
+### Practical design rule
+
+If logic would still be useful from a future non-CLI entrypoint, it belongs below presentation.
+
+If logic does not represent implementation-run orchestration semantics, it does not belong in `orchestrators`.
+
 ## Command Design
 
 ### `developer init`
@@ -85,6 +157,7 @@ Add an interactive command that:
 
 - asks for a harness directory name, defaulting to `harness`;
 - asks whether to create or update `engineeringagent.toml`;
+- asks whether to create or append a short `AGENTS.md` guidance block for using this package;
 - writes prompt paths that match the generated scaffold layout;
 - generates a minimal `checks.yaml` plus one referenced quality file; and
 - generates one sample markdown plan template.
@@ -93,6 +166,7 @@ Recommended generated layout:
 
 ```text
 engineeringagent.toml
+AGENTS.md
 <harness-dir>/checks.yaml
 <harness-dir>/quality/commands.yaml
 <harness-dir>/prompts/implementation_prompt.md
@@ -106,6 +180,28 @@ Safety rules:
 - never silently overwrite existing files;
 - show a concise summary of created and skipped files; and
 - keep the command useful even when only part of the scaffold is missing.
+
+### Suggested `AGENTS.md` content
+
+`developer init` should be able to create or append a suggested `AGENTS.md` snippet that explains how an agent should use the package inside the repository.
+
+Keep this v1 content small and practical.
+
+It should cover:
+
+- the preferred invocation style, for example `uv run developer ...`;
+- the primary commands an agent should know about, especially `init`, `schema`, `validate-plan`, `check`, and `implement`;
+- the expected plan-validation workflow before implementation;
+- where scaffolded harness files live; and
+- a reminder to use the generated schemas/templates rather than inventing plan or quality formats.
+
+Recommended behavior in v1:
+
+- only create or append the block when the user explicitly opts in;
+- if `AGENTS.md` does not exist, create it from a starter template;
+- if it already exists, append a clearly delimited block instead of overwriting the file; and
+- avoid appending duplicate guidance on repeated runs; and
+- keep the generated guidance focused on repository-local usage of the `developer` package rather than broad coding policy.
 
 ### `developer schema`
 
@@ -134,6 +230,7 @@ Behavior:
 
 - create a canonical set of packaged starter templates;
 - reuse existing harness prompt/check content where it fits the minimal bootstrap;
+- add a starter `AGENTS.md` template or merge snippet template;
 - normalize prompt path defaults to the generated directory structure; and
 - implement file generation for config, prompts, checks, and example plan content.
 
@@ -174,6 +271,7 @@ Cover:
 
 - the agent-first bootstrap flow;
 - generated files and what each one is for;
+- the suggested `AGENTS.md` guidance and how to adopt it safely;
 - validating a sample plan;
 - validating and running checks; and
 - starting an implementation run.
@@ -184,6 +282,7 @@ Cover:
 
 - command reference for `init`, `schema`, `validate-plan`, `check`, and `implement`;
 - config keys created by `init`;
+- the `AGENTS.md` snippet generated by `init`;
 - plan frontmatter rules;
 - quality YAML structure; and
 - common failure cases.
@@ -196,6 +295,7 @@ Add focused tests for:
 - `developer init` interactive success path;
 - file generation in an isolated filesystem;
 - no-silent-overwrite behavior;
+- `AGENTS.md` creation or snippet fallback behavior;
 - `developer schema plan` output shape;
 - `developer schema quality` output shape; and
 - generated sample plan passing `validate-plan` when intended.
@@ -204,6 +304,7 @@ Add focused tests for:
 
 - `developer init` scaffolds a minimal usable setup in a clean repository.
 - The generated config points to the generated prompt and check files correctly.
+- `developer init` creates or surfaces a suggested `AGENTS.md` text for package-specific agent usage.
 - `developer schema plan` and `developer schema quality` emit valid JSON Schema.
 - `README.md`, `docs/getting-started.md`, and `docs/reference.md` describe the new onboarding flow.
 - The prompt-path inconsistency is removed or explicitly resolved as part of this work.
