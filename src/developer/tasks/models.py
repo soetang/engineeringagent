@@ -24,8 +24,6 @@ class TaskPlanDefinition(BaseModel):
     status: str
     branch: str | None = None
     base_branch: str | None = None
-    workspace_provider: str | None = None
-    agent_kind: str | None = None
     phases: list[TaskPhaseDefinition]
     path: str
 

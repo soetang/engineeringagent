@@ -92,18 +92,12 @@ class AgenticReviewCheck(CheckType):
 class AgenticReviewAdapter(CheckAdapter):
     """Adapter for running agentic code reviews as quality checks."""
 
-    _REVIEW_OUTPUT_INSTRUCTIONS = """\n\nResponse contract:\nReturn a single JSON object only. Do not include markdown, prose before the JSON, or code fences.\nUse exactly this shape:\n{\n  \"status\": \"approved\" | \"failed\" | \"not_reviewable\",\n  \"summary\": \"short summary\",\n  \"actions\": [\"action 1\", \"action 2\"]\n}\nIf there are no recommended actions, return an empty array for \"actions\"."""
-
     def __init__(
         self,
         agent_service: _AgentBackendSelectionService | None = None,
     ) -> None:
         """Initialize the adapter and default agent service selection."""
         self.agent_service = agent_service or get_agent_backend_service()
-
-    def _build_review_prompt(self, prompt: str) -> str:
-        """Append a backend-agnostic output contract for structured reviews."""
-        return prompt.rstrip() + self._REVIEW_OUTPUT_INSTRUCTIONS
 
     def run_check(self, checks: List[AgenticReviewCheck]) -> CheckResultList:
         """Run the agentic review checks and return the results."""
@@ -121,7 +115,7 @@ class AgenticReviewAdapter(CheckAdapter):
 
                 # Read and execute the prompt
                 with open(check.prompt_path, "r") as f:
-                    prompt = self._build_review_prompt(f.read())
+                    prompt = f.read()
 
                 # Run the agent with the prompt and expected output format.
                 # Backend-specific profile/model semantics are handled during

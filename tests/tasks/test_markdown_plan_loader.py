@@ -35,32 +35,6 @@ def test_markdown_plan_loader_loads_definition(tmp_path) -> None:
     assert definition.path == str(plan_path.resolve())
 
 
-def test_markdown_plan_loader_loads_optional_execution_defaults(tmp_path) -> None:
-    """Loader should preserve optional task execution defaults from frontmatter."""
-    plan_path = tmp_path / "plan.md"
-    plan_path.write_text(
-        """---
-schema_version: 1
-task_id: ship-it
-title: Ship it
-status: ready
-workspace_provider: snapshot
-agent_kind: repair
-phases:
-  - id: build
-    title: Build
-    status: todo
----
-""",
-        encoding="utf-8",
-    )
-
-    definition = MarkdownPlanLoader().load_definition(str(plan_path))
-
-    assert definition.workspace_provider == "snapshot"
-    assert definition.agent_kind == "repair"
-
-
 def test_markdown_plan_loader_returns_validation_errors(tmp_path) -> None:
     """Loader validation should return semantic errors without raising."""
     plan_path = tmp_path / "plan.md"

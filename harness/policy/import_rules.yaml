@@ -11,6 +11,20 @@ rules:
     deny:
       local_prefixes:
         - "developer"
+  - name: "orchestrators-only-import-orchestrators"
+    paths:
+      - "src/developer/orchestrators/**/*.py"
+      - "!src/developer/orchestrators/loop/**/*.py"
+      - "!src/developer/orchestrators/runs/**/*.py"
+    allow:
+      local_prefixes:
+        - "developer.orchestrators"
+        - "developer.tasks.protocol"
+      relative_import_roots:
+        - "."
+    deny:
+      local_prefixes:
+        - "developer"
   - name: "orchestrator-loop-import-boundary"
     paths:
       - "src/developer/orchestrators/loop/**/*.py"
@@ -40,19 +54,22 @@ rules:
       local_prefixes:
         - "developer.workspaces"
         - "developer.tasks.models"
-        - "developer.orchestrators.runs.models"
         - "developer.orchestrators.runs.protocols"
       relative_import_roots:
         - "."
     deny:
       local_prefixes:
-        - "developer"
+        - "developer.application"
+        - "developer.orchestrators.loop"
+        - "developer.orchestrators.runs"
   - name: "version-control-only-import-version-control"
     paths:
       - "src/developer/version_control/**/*.py"
     allow:
       local_prefixes:
         - "developer.version_control"
+        - "developer.orchestrators.protocols"
+        - "developer.orchestrators.runs.protocols"
         - "developer.agent_backends.protocol"
         - "developer.config"
         - "developer.prompts"
@@ -92,21 +109,27 @@ rules:
     deny:
       local_prefixes:
         - "developer.presentation"
-  - name: "application-import-boundary"
+  - name: "application-must-not-import-presentation"
     paths:
       - "src/developer/application/**/*.py"
+    allow:
+      local_prefixes: []
+      relative_import_roots: []
+    deny:
+      local_prefixes:
+        - "developer.presentation"
+  - name: "implementation-run-service-import-boundary"
+    paths:
+      - "src/developer/application/services/implementation_run_service.py"
     allow:
       local_prefixes:
         - "developer.agent_backends"
         - "developer.application"
         - "developer.config"
-        - "developer.forge"
-        - "developer.orchestrators"
-        - "developer.prompts"
-        - "developer.quality"
+        - "developer.orchestrators.loop"
+        - "developer.orchestrators.runs"
         - "developer.tasks"
-        - "developer.version_control"
-        - "developer.workspaces"
+        - "developer.version_control.adapters.git_adapter"
       relative_import_roots:
         - "."
     deny:

@@ -4,7 +4,6 @@ from typing import Optional, Type
 
 from pydantic import BaseModel
 
-from developer.agent_backends.json_output import parse_structured_json
 from developer.agent_backends.protocol import AgentBackendProtocol, TModel
 
 
@@ -126,8 +125,11 @@ class VibeAdapter(AgentBackendProtocol):
         return None
 
     def _parse_json_content(self, content: str) -> dict:
-        """Parse JSON content, handling fenced or wrapped JSON responses."""
-        return parse_structured_json(content)
+        """Parse JSON content, handling markdown code blocks."""
+        clean_content = content.strip()
+        if clean_content.startswith("```json") and clean_content.endswith("```"):
+            clean_content = "\n".join(clean_content.splitlines()[1:-1]).strip()
+        return json.loads(clean_content)
 
     def _generate_schema(self, model_class: Type[BaseModel]) -> dict:
         """Generate JSON schema with all fields required for Vibe."""

@@ -5,7 +5,7 @@ Write a clear PR title and body based only on the repository context provided.
 Rules:
 - Return structured output only.
 - The `title` must be specific and concise.
-- The `summary` must include the core changes made in the pull request
+- The `summary` must be 1-3 short bullets focused on intent and outcome.
 - The `body` should be valid GitHub markdown.
 - Use these sections in the body: `## Summary` and `## Testing`.
 - Under `## Summary`, explain why this change exists and what it achieves.

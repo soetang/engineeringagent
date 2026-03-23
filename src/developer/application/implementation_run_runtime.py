@@ -9,51 +9,36 @@ from developer.config.service import ConfigService
 from developer.orchestrators.runs.implementation_workspace_run_orchestrator import (
     ImplementationWorkspaceRunOrchestrator,
 )
-from developer.orchestrators.runs.models import (
-    PublishedTaskBranch,
-    WorkspaceRunCommand,
-    WorkspaceRunResult,
-)
-from developer.orchestrators.runs.protocols import (
-    TaskPublicationStore,
-    WorkspaceRunPort,
-)
+from developer.orchestrators.runs.models import WorkspaceRunCommand, WorkspaceRunResult
+from developer.orchestrators.runs.protocols import WorkspaceRunPort
 from developer.version_control.adapters.git_adapter import GitVersionControlAdapter
 from developer.workspaces.models import RunRequest, WorkspaceSpec
 from developer.workspaces.services.file_registry import FileWorkspaceRegistry
 from developer.workspaces.settings import WorkspaceSettings
-
-DEFAULT_IMPLEMENTATION_WORKSPACE_PROVIDER = "git_worktree"
-DEFAULT_IMPLEMENTATION_WORKSPACE_AGENT_KIND = "implementation"
+from developer.workspaces.task_publication_store import (
+    FileWorkspaceTaskPublicationStore,
+)
 
 
 class WorkspaceRunOrchestratorPortAdapter(WorkspaceRunPort):
     """Adapt the generic workspace runtime to the run-orchestrator port."""
 
-    def __init__(
-        self,
-        workspace_runner,
-        *,
-        workspace_provider: str = DEFAULT_IMPLEMENTATION_WORKSPACE_PROVIDER,
-        agent_kind: str = DEFAULT_IMPLEMENTATION_WORKSPACE_AGENT_KIND,
-    ) -> None:
-        """Store the composed workspace runtime and fixed execution defaults."""
+    def __init__(self, workspace_runner) -> None:
+        """Store the composed workspace runtime."""
         self._workspace_runner = workspace_runner
-        self._workspace_provider = workspace_provider
-        self._agent_kind = agent_kind
 
     def run(self, command: WorkspaceRunCommand) -> WorkspaceRunResult:
         """Translate orchestrator commands into workspace runtime requests."""
         workspace, run_handle = self._workspace_runner.run_in_workspace(
             WorkspaceSpec(
-                provider=command.workspace_provider or self._workspace_provider,
+                provider="git_worktree",
                 repo_path=command.repo_path,
                 base_branch=command.base_branch,
                 task_id=command.task_id,
                 metadata=command.workspace_metadata,
             ),
             RunRequest(
-                agent_kind=command.agent_kind or self._agent_kind,
+                agent_kind=command.agent_kind,
                 context=command.run_context,
             ),
         )
@@ -66,25 +51,6 @@ class WorkspaceRunOrchestratorPortAdapter(WorkspaceRunPort):
         )
 
 
-class TaskPublicationStoreAdapter(TaskPublicationStore):
-    """Project workspace publication persistence onto the orchestrator port."""
-
-    def __init__(self, registry: FileWorkspaceRegistry) -> None:
-        """Store the workspace registry used for persisted publication state."""
-        self._registry = registry
-
-    def get_task_publication(
-        self,
-        task_name: str,
-        task_path: str | None,
-    ) -> PublishedTaskBranch | None:
-        """Load persisted publication state and expose branch-only run metadata."""
-        publication = self._registry.get_task_publication(task_name, task_path)
-        if publication is None:
-            return None
-        return PublishedTaskBranch(branch_name=publication.branch_name)
-
-
 def build_implementation_workspace_run_orchestrator(
     config_service: ConfigService,
 ) -> ImplementationWorkspaceRunOrchestrator:
@@ -92,10 +58,9 @@ def build_implementation_workspace_run_orchestrator(
     workspace_settings = config_service.get_config("workspaces", WorkspaceSettings)
     registry = FileWorkspaceRegistry(Path(workspace_settings.state_dir).resolve())
     return ImplementationWorkspaceRunOrchestrator(
-        publication_store=TaskPublicationStoreAdapter(registry),
+        publication_store=FileWorkspaceTaskPublicationStore(registry),
         branch_inspector=GitVersionControlAdapter(),
         workspace_runner=WorkspaceRunOrchestratorPortAdapter(
-            build_workspace_orchestrator(config_service),
-            workspace_provider=workspace_settings.default_provider,
+            build_workspace_orchestrator(config_service)
         ),
     )

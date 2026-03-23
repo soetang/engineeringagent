@@ -57,8 +57,6 @@ class PlanValidator:
 
         self._validate_optional_string(frontmatter, "branch", errors)
         self._validate_optional_string(frontmatter, "base_branch", errors)
-        self._validate_optional_string(frontmatter, "workspace_provider", errors)
-        self._validate_optional_string(frontmatter, "agent_kind", errors)
         phases = self._validate_phases(phases_value, errors)
 
         if status == "done" and phases is not None:
@@ -94,8 +92,6 @@ class PlanValidator:
             status=str(frontmatter["status"]),
             branch=_optional_string(frontmatter.get("branch")),
             base_branch=_optional_string(frontmatter.get("base_branch")),
-            workspace_provider=_optional_string(frontmatter.get("workspace_provider")),
-            agent_kind=_optional_string(frontmatter.get("agent_kind")),
             phases=[
                 TaskPhaseDefinition.model_validate(phase) for phase in phases_value
             ],

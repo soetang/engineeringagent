@@ -2,13 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Protocol, runtime_checkable
+from typing import Protocol
 
-from developer.orchestrators.runs.models import (
-    PublishedTaskBranch,
-    WorkspaceRunCommand,
-    WorkspaceRunResult,
-)
+from developer.orchestrators.runs.models import WorkspaceRunCommand, WorkspaceRunResult
 
 
 class ImplementationRunTask(Protocol):
@@ -29,28 +25,17 @@ class ImplementationRunTask(Protocol):
         """Return the task path when one is available."""
         ...
 
-    @property
-    def base_branch(self) -> str | None:
-        """Return the task-preferred base branch when one is defined."""
-        ...
-
     def get_branch_name(self) -> str:
         """Return the stable branch name for this task."""
         ...
 
 
-@runtime_checkable
-class ImplementationRunTaskExecutionDefaults(Protocol):
-    """Optional task-defined workspace execution defaults."""
+class PublishedTaskBranchView(Protocol):
+    """Minimal publication data required by the run orchestrator."""
 
     @property
-    def workspace_provider(self) -> str | None:
-        """Return the preferred workspace provider when one is defined."""
-        ...
-
-    @property
-    def agent_kind(self) -> str | None:
-        """Return the preferred workspace agent kind when one is defined."""
+    def branch_name(self) -> str:
+        """Return the published branch name for the task."""
         ...
 
 
@@ -61,7 +46,7 @@ class TaskPublicationStore(Protocol):
         self,
         task_name: str,
         task_path: str | None,
-    ) -> PublishedTaskBranch | None:
+    ) -> PublishedTaskBranchView | None:
         """Return the stored publication branch for the task when present."""
         ...
 
@@ -94,7 +79,7 @@ class WorkspaceRunPort(Protocol):
 __all__ = [
     "BranchInspectionPort",
     "ImplementationRunTask",
-    "ImplementationRunTaskExecutionDefaults",
+    "PublishedTaskBranchView",
     "TaskPublicationStore",
     "WorkspaceRunPort",
 ]

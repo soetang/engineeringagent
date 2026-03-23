@@ -19,24 +19,6 @@ def test_plan_validator_accepts_valid_plan() -> None:
     assert result.errors == []
 
 
-def test_plan_validator_accepts_optional_execution_defaults() -> None:
-    """Validator should allow optional task-owned workspace execution defaults."""
-    result = PlanValidator().validate(
-        {
-            "schema_version": 1,
-            "task_id": "ship-it",
-            "title": "Ship it",
-            "status": "ready",
-            "workspace_provider": "snapshot",
-            "agent_kind": "repair",
-            "phases": [{"id": "build", "title": "Build", "status": "todo"}],
-        }
-    )
-
-    assert result.valid is True
-    assert result.errors == []
-
-
 def test_plan_validator_rejects_duplicate_phase_ids() -> None:
     """Validator should reject duplicate phase ids."""
     result = PlanValidator().validate(

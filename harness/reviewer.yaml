@@ -5,6 +5,5 @@ checks:
     check_category: "code_quality"
     prompt_path: "harness/reviewers/code_simplifier.md"
     backend: "vibe"  # Optional backend specification
-    phase: "ImplementationComplete"
     # profile: "reviewer"  # Uses the reviewer profile from ~/.codex/config.toml
     
