@@ -101,6 +101,10 @@ rules:
     deny:
       local_prefixes:
         - "developer.presentation"
+  # Keep this targeted rule: the broader application rules only block
+  # presentation imports, while this one preserves the thinner boundary for the
+  # implementation entrypoint by denying workspace and broad version-control
+  # dependencies from creeping back in.
   - name: "implementation-run-service-import-boundary"
     paths:
       - "src/developer/application/services/implementation_run_service.py"
