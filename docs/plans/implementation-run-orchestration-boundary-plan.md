@@ -1027,7 +1027,7 @@ After extraction, application tests should stop asserting workspace-planning hel
 - [x] Keep task-owned branch naming on `ImplementationRunTask` and avoid adding duplicate "default branch" fields to run-request models
 - [x] Revisit whether both `task_input` and `normalized_task_input` need to survive after task resolution and collapse them to one workspace-safe task reference if possible
 - [x] Make an explicit ownership decision for workspace execution defaults such as `agent_kind` and workspace provider
-- [ ] If those defaults vary by task, expose them through an orchestrator-owned task execution contract implemented by `developer.tasks`
+- [x] If those defaults vary by task, expose them through an orchestrator-owned task execution contract implemented by `developer.tasks`
 - [x] If those defaults do not vary by task, move them out of per-run application assembly and centralize them inside runtime composition helpers
 - [x] Keep `repo_path` runtime-owned because it comes from the caller's checkout rather than the task definition
 - [x] Update runtime-adapter and application tests to assert the final ownership split for branch selection, base-branch selection, and workspace execution defaults

@@ -9,6 +9,9 @@ from developer.tasks.services.markdown_plan_loader import MarkdownPlanLoader
 class MarkdownPlanImplementationTask(ImplementationRunTask):
     """Concrete implementation task backed by a markdown plan file."""
 
+    _WORKSPACE_PROVIDER = "git_worktree"
+    _WORKSPACE_AGENT_KIND = "implementation"
+
     def __init__(
         self,
         plan: TaskPlanDefinition,
@@ -37,6 +40,16 @@ class MarkdownPlanImplementationTask(ImplementationRunTask):
     def base_branch(self) -> str | None:
         """Return the task's preferred base branch from frontmatter."""
         return self._plan.base_branch
+
+    @property
+    def workspace_provider(self) -> str:
+        """Return the workspace provider for markdown-plan implementation tasks."""
+        return self._WORKSPACE_PROVIDER
+
+    @property
+    def workspace_agent_kind(self) -> str:
+        """Return the workspace agent kind for markdown-plan implementation tasks."""
+        return self._WORKSPACE_AGENT_KIND
 
     @property
     def status(self) -> str:

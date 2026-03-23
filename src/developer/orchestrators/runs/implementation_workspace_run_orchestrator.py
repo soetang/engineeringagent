@@ -45,8 +45,10 @@ class ImplementationWorkspaceRunOrchestrator:
         run_result = self._workspace_runner.run(
             WorkspaceRunCommand(
                 repo_path=request.repo_path,
+                workspace_provider=request.task.workspace_provider,
                 base_branch=plan.base_branch,
                 task_id=request.task.task_id,
+                agent_kind=request.task.workspace_agent_kind,
                 workspace_metadata=plan.workspace_metadata,
                 run_context=plan.run_context,
             )

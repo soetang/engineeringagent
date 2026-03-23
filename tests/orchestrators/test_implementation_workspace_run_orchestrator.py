@@ -37,6 +37,14 @@ class _FakeTask:
     def base_branch(self) -> str | None:
         return self._base_branch
 
+    @property
+    def workspace_provider(self) -> str:
+        return "git_worktree"
+
+    @property
+    def workspace_agent_kind(self) -> str:
+        return "implementation"
+
     def get_branch_name(self) -> str:
         return "ship-it"
 
@@ -161,8 +169,10 @@ def test_builds_workspace_run_command_from_resolved_plan() -> None:
 
     command = workspace_runner.commands[0]
     assert command.repo_path == "/repo"
+    assert command.workspace_provider == "git_worktree"
     assert command.base_branch == "develop"
     assert command.task_id == "task-123"
+    assert command.agent_kind == "implementation"
     assert command.workspace_metadata == {
         "task_id": "task-123",
         "task_name": "Ship it",

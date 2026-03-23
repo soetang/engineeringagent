@@ -30,6 +30,16 @@ class ImplementationRunTask(Protocol):
         """Return the task's preferred base branch when explicitly defined."""
         ...
 
+    @property
+    def workspace_provider(self) -> str:
+        """Return the workspace provider required for this task."""
+        ...
+
+    @property
+    def workspace_agent_kind(self) -> str:
+        """Return the workspace agent kind required for this task."""
+        ...
+
     def get_branch_name(self) -> str:
         """Return the stable branch name for this task."""
         ...

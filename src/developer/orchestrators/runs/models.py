@@ -63,8 +63,10 @@ class WorkspaceRunCommand(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     repo_path: str
+    workspace_provider: str
     base_branch: str
     task_id: str
+    agent_kind: str
     workspace_metadata: dict[str, object]
     run_context: dict[str, object]
 
