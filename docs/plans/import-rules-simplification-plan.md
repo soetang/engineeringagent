@@ -2,22 +2,22 @@
 schema_version: 1
 task_id: simplify-import-rules-config
 title: Simplify import rules config around module selectors and explicit modes
-status: ready
+status: done
 branch: feat/simplify-import-rules-config
 base_branch: master
 phases:
   - id: schema
     title: Replace path-based selectors with dotted module and package selectors
-    status: todo
+    status: done
   - id: semantics
     title: Make allow and deny behavior explicit through rule modes
-    status: todo
+    status: done
   - id: policy
     title: Migrate the live import policy to the simplified schema
-    status: todo
+    status: done
   - id: tests
     title: Lock the new behavior with targeted coverage and validation
-    status: todo
+    status: done
 ---
 
 # Import Rules Simplification Plan
@@ -225,13 +225,13 @@ This keeps the schema strict and avoids ambiguous combinations.
 
 ### Checklist
 
-- [ ] Replace `paths` with `targets` in `RuleSpec` and YAML parsing.
-- [ ] Add optional `description` support for short architectural intent on each rule.
-- [ ] Add strict validation that `targets` is a non-empty list of dotted module or package selectors.
-- [ ] Remove `allowed_relative_import_roots` from the rule model.
-- [ ] Resolve each configured target to either a `src/...` module file or package directory internally.
-- [ ] Fail clearly when a configured target does not map to a real source module or package.
-- [ ] Define and implement deterministic overlap handling for parent and child targets.
+- [x] Replace `paths` with `targets` in `RuleSpec` and YAML parsing.
+- [x] Add optional `description` support for short architectural intent on each rule.
+- [x] Add strict validation that `targets` is a non-empty list of dotted module or package selectors.
+- [x] Remove `allowed_relative_import_roots` from the rule model.
+- [x] Resolve each configured target to either a `src/...` module file or package directory internally.
+- [x] Fail clearly when a configured target does not map to a real source module or package.
+- [x] Define and implement deterministic overlap handling for parent and child targets.
 
 ### Implementation Details
 
@@ -265,11 +265,11 @@ This makes Python-ness implicit and removes the need for `*.py` in policy.
 
 ### Checklist
 
-- [ ] Add `mode` with supported values `allow_only`, `deny_only`, and `deny_except`.
-- [ ] Reject ambiguous config combinations such as `allow_only` plus `deny`.
-- [ ] Rework violation evaluation to follow the configured mode directly.
-- [ ] Remove rule-time dependence on relative-import syntax.
-- [ ] Keep local-import detection scoped to `developer.*` for this change.
+- [x] Add `mode` with supported values `allow_only`, `deny_only`, and `deny_except`.
+- [x] Reject ambiguous config combinations such as `allow_only` plus `deny`.
+- [x] Rework violation evaluation to follow the configured mode directly.
+- [x] Remove rule-time dependence on relative-import syntax.
+- [x] Keep local-import detection scoped to `developer.*` for this change.
 
 ### Implementation Details
 
@@ -293,17 +293,17 @@ If `relative_root` becomes unused entirely, remove it from `ImportStatement` as 
 
 ### Checklist
 
-- [ ] Rewrite `harness/policy/import_rules.yaml` to use `targets` and `mode`.
-- [ ] Add short architectural descriptions to each retained rule.
-- [ ] Convert package boundary rules like presentation and orchestrators to `allow_only`.
-- [ ] Convert negative rules like application-vs-presentation to `deny_only`.
-- [ ] Use `deny_except` only where a real deny-with-exceptions rule is needed.
-- [ ] Remove duplicate rules that are already enforced by a broader or stricter rule.
-- [ ] Remove stale selectors that do not map to real packages.
-- [ ] Reduce broad deny rules when stricter `allow_only` rules already imply the same boundary.
-- [ ] Replace branch-only negated path exclusions with explicit parent/child target rules.
-- [ ] Preserve necessary single-module boundaries using dotted module targets instead of file paths.
-- [ ] Rename rules where useful so the new policy reads like architecture, not implementation detail.
+- [x] Rewrite `harness/policy/import_rules.yaml` to use `targets` and `mode`.
+- [x] Add short architectural descriptions to each retained rule.
+- [x] Convert package boundary rules like presentation and orchestrators to `allow_only`.
+- [x] Convert negative rules like application-vs-presentation to `deny_only`.
+- [x] Use `deny_except` only where a real deny-with-exceptions rule is needed.
+- [x] Remove duplicate rules that are already enforced by a broader or stricter rule.
+- [x] Remove stale selectors that do not map to real packages.
+- [x] Reduce broad deny rules when stricter `allow_only` rules already imply the same boundary.
+- [x] Replace branch-only negated path exclusions with explicit parent/child target rules.
+- [x] Preserve necessary single-module boundaries using dotted module targets instead of file paths.
+- [x] Rename rules where useful so the new policy reads like architecture, not implementation detail.
 
 ### Implementation Details
 
@@ -340,14 +340,14 @@ Recommended policy simplification during this phase:
 
 ### Checklist
 
-- [ ] Rewrite `harness/fitness/tests/test_import_rules.py` helpers for the new YAML schema.
-- [ ] Add coverage for `allow_only`, `deny_only`, and `deny_except`.
-- [ ] Verify relative imports pass or fail based on resolved package names alone.
-- [ ] Verify package selector recursion covers nested modules and `__init__.py`.
-- [ ] Verify config errors are clear for invalid `mode`, missing `targets`, incompatible allow/deny combinations, and nonexistent targets.
-- [ ] Verify validation errors and violation output include useful rule descriptions when present.
-- [ ] Run `uv run developer validate-plan docs/plans/import-rules-simplification-plan.md`.
-- [ ] Run `pytest`, `ruff check`, `ruff format`, and `pyrefly check` once implementation lands.
+- [x] Rewrite `harness/fitness/tests/test_import_rules.py` helpers for the new YAML schema.
+- [x] Add coverage for `allow_only`, `deny_only`, and `deny_except`.
+- [x] Verify relative imports pass or fail based on resolved package names alone.
+- [x] Verify package selector recursion covers nested modules and `__init__.py`.
+- [x] Verify config errors are clear for invalid `mode`, missing `targets`, incompatible allow/deny combinations, and nonexistent targets.
+- [x] Verify validation errors and violation output include useful rule descriptions when present.
+- [x] Run `uv run developer validate-plan docs/plans/import-rules-simplification-plan.md`.
+- [x] Run `pytest`, `ruff check`, `ruff format`, and `pyrefly check` once implementation lands.
 
 ### Implementation Details
 

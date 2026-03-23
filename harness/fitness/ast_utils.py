@@ -15,7 +15,6 @@ class ImportStatement:
     module: str
     line: int
     category: str
-    relative_root: str | None = None
 
 
 @dataclass(frozen=True)
@@ -114,7 +113,6 @@ def _collect_from_imports(
     if not base_module:
         return []
 
-    relative_root = "." * node.level if node.level else None
     statements: list[ImportStatement] = []
     for alias in node.names:
         normalized_module = _normalize_from_import_alias(base_module, alias.name)
@@ -123,7 +121,6 @@ def _collect_from_imports(
                 module=normalized_module,
                 line=node.lineno,
                 category=classify_import(normalized_module),
-                relative_root=relative_root,
             )
         )
     return statements
