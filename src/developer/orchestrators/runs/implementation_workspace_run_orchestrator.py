@@ -8,11 +8,11 @@ from developer.orchestrators.runs.models import (
     ImplementationWorkspacePlan,
     ImplementationWorkspaceRunOutcome,
     ImplementationWorkspaceRunRequest,
+    PublishedTaskBranch,
     WorkspaceRunCommand,
 )
 from developer.orchestrators.runs.protocols import (
     BranchInspectionPort,
-    PublishedTaskBranchView,
     TaskPublicationStore,
     WorkspaceRunPort,
 )
@@ -65,7 +65,7 @@ class ImplementationWorkspaceRunOrchestrator:
     def _build_plan(
         self,
         request: ImplementationWorkspaceRunRequest,
-        publication: PublishedTaskBranchView | None,
+        publication: PublishedTaskBranch | None,
     ) -> ImplementationWorkspacePlan:
         """Resolve the workspace branch plan for one run."""
         base_branch = self._resolve_base_branch(request)
@@ -105,7 +105,7 @@ class ImplementationWorkspaceRunOrchestrator:
     def _resolve_task_branch(
         self,
         request: ImplementationWorkspaceRunRequest,
-        publication: PublishedTaskBranchView | None,
+        publication: PublishedTaskBranch | None,
     ) -> str:
         """Reuse a published branch when available, otherwise avoid collisions."""
         if publication is not None:
@@ -122,7 +122,7 @@ class ImplementationWorkspaceRunOrchestrator:
 
     def _resolve_workspace_start_point(
         self,
-        publication: PublishedTaskBranchView | None,
+        publication: PublishedTaskBranch | None,
         base_branch: str,
     ) -> str:
         """Choose the ref used to seed the disposable workspace branch."""
