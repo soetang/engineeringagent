@@ -2,7 +2,7 @@
 schema_version: 1
 task_id: move-implementation-run-orchestration-boundary
 title: Move implementation run orchestration into orchestrators
-status: ready
+status: done
 branch: feat/move-implementation-run-orchestration-boundary
 base_branch: main
 phases:
@@ -29,7 +29,7 @@ phases:
     status: done
   - id: policy-simplification
     title: Simplify rule and contract scaffolding after extraction
-    status: todo
+    status: done
 ---
 
 # Goal
