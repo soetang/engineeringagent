@@ -2,7 +2,7 @@
 schema_version: 1
 task_id: move-implementation-run-orchestration-boundary
 title: Move implementation run orchestration into orchestrators
-status: ready
+status: done
 branch: feat/move-implementation-run-orchestration-boundary
 base_branch: main
 phases:
@@ -26,10 +26,10 @@ phases:
     status: done
   - id: task-owned-run-contract
     title: Push remaining task-owned run defaults out of application
-    status: todo
+    status: done
   - id: policy-simplification
     title: Simplify rule and contract scaffolding after extraction
-    status: todo
+    status: done
 ---
 
 # Goal
@@ -1021,16 +1021,16 @@ After extraction, application tests should stop asserting workspace-planning hel
 
 ## Phase 7: Push remaining task-owned run defaults out of application
 
-- [ ] Extend `ImplementationRunTask` with a base-branch accessor backed by task frontmatter instead of rediscovering it during workspace-run planning
-- [ ] Update the markdown-plan task implementation to expose `base_branch` directly from `TaskPlanDefinition`
-- [ ] Teach `ImplementationWorkspaceRunOrchestrator` to prefer the task-provided base branch and fall back to `BranchInspectionPort.get_current_branch(...)` only when the task does not specify one
-- [ ] Keep task-owned branch naming on `ImplementationRunTask` and avoid adding duplicate "default branch" fields to run-request models
-- [ ] Revisit whether both `task_input` and `normalized_task_input` need to survive after task resolution and collapse them to one workspace-safe task reference if possible
-- [ ] Make an explicit ownership decision for workspace execution defaults such as `agent_kind` and workspace provider
-- [ ] If those defaults vary by task, expose them through an orchestrator-owned task execution contract implemented by `developer.tasks`
-- [ ] If those defaults do not vary by task, move them out of per-run application assembly and centralize them inside runtime composition helpers
-- [ ] Keep `repo_path` runtime-owned because it comes from the caller's checkout rather than the task definition
-- [ ] Update runtime-adapter and application tests to assert the final ownership split for branch selection, base-branch selection, and workspace execution defaults
+- [x] Extend `ImplementationRunTask` with a base-branch accessor backed by task frontmatter instead of rediscovering it during workspace-run planning
+- [x] Update the markdown-plan task implementation to expose `base_branch` directly from `TaskPlanDefinition`
+- [x] Teach `ImplementationWorkspaceRunOrchestrator` to prefer the task-provided base branch and fall back to `BranchInspectionPort.get_current_branch(...)` only when the task does not specify one
+- [x] Keep task-owned branch naming on `ImplementationRunTask` and avoid adding duplicate "default branch" fields to run-request models
+- [x] Revisit whether both `task_input` and `normalized_task_input` need to survive after task resolution and collapse them to one workspace-safe task reference if possible
+- [x] Make an explicit ownership decision for workspace execution defaults such as `agent_kind` and workspace provider
+- [x] If those defaults vary by task, expose them through an orchestrator-owned task execution contract implemented by `developer.tasks`
+- [x] If those defaults do not vary by task, move them out of per-run application assembly and centralize them inside runtime composition helpers
+- [x] Keep `repo_path` runtime-owned because it comes from the caller's checkout rather than the task definition
+- [x] Update runtime-adapter and application tests to assert the final ownership split for branch selection, base-branch selection, and workspace execution defaults
 
 ### Notes
 
@@ -1043,19 +1043,23 @@ Recommended default:
 
 ## Phase 8: Simplify rule and contract scaffolding after extraction
 
-- [ ] Remove the legacy `orchestrators-only-import-orchestrators` rule once no flat orchestrator modules remain
-- [ ] Rewrite the new orchestrator, workspace, and version-control boundary rules to use the repository's standard "allow specific prefixes + deny `developer`" shape
-- [ ] Remove redundant deny entries where a broad `developer` deny already enforces the boundary
-- [ ] Narrow `developer.version_control` allows to only the exact orchestrator protocol modules still needed after the follow-through cleanup
-- [ ] Re-evaluate whether `implementation-run-service-import-boundary` adds unique protection beyond the broader application import rules and remove it if it is duplicative
-- [ ] Audit `PublishedTaskBranch` and `PublishedTaskBranchView` and collapse them to the smallest useful contract, or remove them if task-owned branch data plus publication lookup already cover the reuse case
-- [ ] Audit `ImplementationWorkspaceRunRequest` for fields that merely echo task-owned data and trim them once the task execution contract is settled
-- [ ] Keep a dedicated publication-store adapter only if publication lookup remains a distinct concern from the broader workspace registry after the simplification pass
-- [ ] Re-run `uv run python -m harness.fitness.scripts.import_rules --config harness/policy/import_rules.yaml` and the targeted implementation-run tests after the simplification pass
+- [x] Remove the legacy `orchestrators-only-import-orchestrators` rule once no flat orchestrator modules remain
+- [x] Rewrite the new orchestrator, workspace, and version-control boundary rules to use the repository's standard "allow specific prefixes + deny `developer`" shape
+- [x] Remove redundant deny entries where a broad `developer` deny already enforces the boundary
+- [x] Narrow `developer.version_control` allows to only the exact orchestrator protocol modules still needed after the follow-through cleanup
+- [x] Re-evaluate whether `implementation-run-service-import-boundary` adds unique protection beyond the broader application import rules and remove it if it is duplicative
+- [x] Audit `PublishedTaskBranch` and `PublishedTaskBranchView` and collapse them to the smallest useful contract, or remove them if task-owned branch data plus publication lookup already cover the reuse case
+- [x] Audit `ImplementationWorkspaceRunRequest` for fields that merely echo task-owned data and trim them once the task execution contract is settled
+- [x] Keep a dedicated publication-store adapter only if publication lookup remains a distinct concern from the broader workspace registry after the simplification pass
+- [x] Re-run `uv run python -m harness.fitness.scripts.import_rules --config harness/policy/import_rules.yaml` and the targeted implementation-run tests after the simplification pass
 
 ### Notes
 
 The goal here is to keep the final boundary small and obvious. The review feedback suggests some of the first-slice scaffolding may be transitional rather than permanent.
+
+Result:
+
+- the dedicated `implementation-run-service-import-boundary` rule stays because the broader application rules only block presentation imports and do not prevent this service from reacquiring workspace-planning or broad version-control dependencies
 
 # Migration Sequence
 

@@ -15,9 +15,6 @@ from developer.version_control.adapters.git_adapter import GitVersionControlAdap
 from developer.workspaces.models import RunRequest, WorkspaceSpec
 from developer.workspaces.services.file_registry import FileWorkspaceRegistry
 from developer.workspaces.settings import WorkspaceSettings
-from developer.workspaces.task_publication_store import (
-    FileWorkspaceTaskPublicationStore,
-)
 
 
 class WorkspaceRunOrchestratorPortAdapter(WorkspaceRunPort):
@@ -31,7 +28,7 @@ class WorkspaceRunOrchestratorPortAdapter(WorkspaceRunPort):
         """Translate orchestrator commands into workspace runtime requests."""
         workspace, run_handle = self._workspace_runner.run_in_workspace(
             WorkspaceSpec(
-                provider="git_worktree",
+                provider=command.workspace_provider,
                 repo_path=command.repo_path,
                 base_branch=command.base_branch,
                 task_id=command.task_id,
@@ -58,7 +55,7 @@ def build_implementation_workspace_run_orchestrator(
     workspace_settings = config_service.get_config("workspaces", WorkspaceSettings)
     registry = FileWorkspaceRegistry(Path(workspace_settings.state_dir).resolve())
     return ImplementationWorkspaceRunOrchestrator(
-        publication_store=FileWorkspaceTaskPublicationStore(registry),
+        publication_store=registry,
         branch_inspector=GitVersionControlAdapter(),
         workspace_runner=WorkspaceRunOrchestratorPortAdapter(
             build_workspace_orchestrator(config_service)

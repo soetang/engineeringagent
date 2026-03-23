@@ -5,7 +5,6 @@ from pathlib import Path
 import pytest
 
 from developer.application.services.implementation_run_service import (
-    _normalize_workspace_task_input,
     _normalize_max_iterations,
     _resolve_max_iterations,
     run_implementation,
@@ -43,9 +42,15 @@ class _FakeWorkspaceRunOrchestrator:
 
 
 class _ResolvedTask:
-    def __init__(self, task_id: str, task_path: str | None = None) -> None:
+    def __init__(
+        self,
+        task_id: str,
+        task_path: str | None = None,
+        base_branch: str | None = None,
+    ) -> None:
         self._task_id = task_id
         self._task_path = task_path
+        self._base_branch = base_branch
 
     @property
     def task_id(self) -> str:
@@ -58,6 +63,18 @@ class _ResolvedTask:
     @property
     def task_path(self) -> str | None:
         return self._task_path
+
+    @property
+    def base_branch(self) -> str | None:
+        return self._base_branch
+
+    @property
+    def workspace_provider(self) -> str:
+        return "git_worktree"
+
+    @property
+    def workspace_agent_kind(self) -> str:
+        return "implementation"
 
     def is_complete(self):
         raise NotImplementedError
@@ -152,8 +169,42 @@ git_worktree_root_dir = "developer-workspaces"
     request = fake_orchestrator.requests[0]
     assert request.task is not None
     assert request.task.task_name == "Ship it"
-    assert request.normalized_task_input == "docs/plans/ship-it.md"
     assert request.max_iterations == 20
+
+
+def test_workspace_run_uses_runtime_repo_path(monkeypatch, tmp_path) -> None:
+    """Workspace requests should carry the caller checkout path from runtime state."""
+    fake_orchestrator = _FakeWorkspaceRunOrchestrator()
+    repo_path = tmp_path / "repo"
+    repo_path.mkdir()
+    monkeypatch.setattr(
+        "developer.application.services.implementation_run_service._workspace_mode_enabled",
+        lambda config_service: True,
+    )
+    monkeypatch.setattr(
+        "developer.version_control.adapters.git_adapter.GitVersionControlAdapter.ensure_clean_checkout",
+        lambda self, checkout_path: None,
+    )
+    monkeypatch.setattr(
+        "developer.application.services.implementation_run_service.TaskSelectionService.resolve",
+        lambda self, task_input, base_path=None: _ResolvedTask(
+            "ship-it", task_path=str(Path("docs/plans/ship-it.md"))
+        ),
+    )
+    monkeypatch.setattr(
+        "developer.application.services.implementation_run_service.build_implementation_workspace_run_orchestrator",
+        lambda config_service: fake_orchestrator,
+    )
+    monkeypatch.setattr(
+        "developer.application.services.implementation_run_service.Path.cwd",
+        lambda: repo_path,
+    )
+
+    result = run_implementation(task_input="docs/plans/ship-it.md")
+
+    assert result.exit_code == 0
+    request = fake_orchestrator.requests[-1]
+    assert request.repo_path == str(repo_path)
 
 
 def test_run_implementation_fails_when_checkout_is_dirty(monkeypatch) -> None:
@@ -197,14 +248,3 @@ max_iterations = 10
     )
 
     assert resolved == 20
-
-
-def test_normalize_workspace_task_input_rewrites_repo_absolute_paths(tmp_path) -> None:
-    """Workspace task input should stay relative when it points inside the repo."""
-    task_path = tmp_path / "docs/plans/ship-it.md"
-    task_path.parent.mkdir(parents=True)
-    task_path.write_text("plan", encoding="utf-8")
-
-    normalized = _normalize_workspace_task_input(tmp_path, str(task_path))
-
-    assert normalized == "docs/plans/ship-it.md"

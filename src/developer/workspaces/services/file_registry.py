@@ -79,6 +79,17 @@ class FileWorkspaceRegistry:
             return None
         return TaskPublicationState.model_validate(self._read_json(path))
 
+    def get_task_publication_branch(
+        self,
+        task_name: str,
+        task_path: str | None = None,
+    ) -> str | None:
+        """Return the published branch name for one task when it exists."""
+        publication = self.get_task_publication(task_name, task_path)
+        if publication is None:
+            return None
+        return publication.branch_name
+
     def _task_key(self, task_name: str, task_path: str | None) -> str:
         """Build a stable filename for one task publication."""
         task_key = task_path or task_name

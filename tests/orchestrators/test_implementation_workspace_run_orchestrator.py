@@ -5,15 +5,20 @@ from developer.orchestrators.runs.implementation_workspace_run_orchestrator impo
 )
 from developer.orchestrators.runs.models import (
     ImplementationWorkspaceRunRequest,
-    PublishedTaskBranch,
     WorkspaceRunResult,
 )
 
 
 class _FakeTask:
-    def __init__(self, task_id: str = "ship-it", task_path: str | None = None) -> None:
+    def __init__(
+        self,
+        task_id: str = "ship-it",
+        task_path: str | None = None,
+        base_branch: str | None = None,
+    ) -> None:
         self._task_id = task_id
         self._task_path = task_path
+        self._base_branch = base_branch
 
     @property
     def task_id(self) -> str:
@@ -27,22 +32,34 @@ class _FakeTask:
     def task_path(self) -> str | None:
         return self._task_path
 
+    @property
+    def base_branch(self) -> str | None:
+        return self._base_branch
+
+    @property
+    def workspace_provider(self) -> str:
+        return "git_worktree"
+
+    @property
+    def workspace_agent_kind(self) -> str:
+        return "implementation"
+
     def get_branch_name(self) -> str:
         return "ship-it"
 
 
 class _PublicationStore:
-    def __init__(self, publication: PublishedTaskBranch | None) -> None:
-        self.publication = publication
+    def __init__(self, publication_branch: str | None) -> None:
+        self.publication_branch = publication_branch
         self.calls: list[tuple[str, str | None]] = []
 
-    def get_task_publication(
+    def get_task_publication_branch(
         self,
         task_name: str,
         task_path: str | None,
-    ) -> PublishedTaskBranch | None:
+    ) -> str | None:
         self.calls.append((task_name, task_path))
-        return self.publication
+        return self.publication_branch
 
 
 class _BranchInspector:
@@ -86,8 +103,6 @@ class _WorkspaceRunner:
 def _build_request(task: _FakeTask | None = None) -> ImplementationWorkspaceRunRequest:
     return ImplementationWorkspaceRunRequest(
         repo_path="/repo",
-        task_input="docs/plans/ship-it.md",
-        normalized_task_input="docs/plans/ship-it.md",
         task=task or _FakeTask(task_path="docs/plans/ship-it.md"),
         max_iterations=20,
     )
@@ -95,7 +110,7 @@ def _build_request(task: _FakeTask | None = None) -> ImplementationWorkspaceRunR
 
 def test_reuses_publication_branch_for_task_branch_and_start_point() -> None:
     """Published tasks should keep using the published branch and start point."""
-    publication_store = _PublicationStore(PublishedTaskBranch(branch_name="published"))
+    publication_store = _PublicationStore("published")
     branch_inspector = _BranchInspector(current_branch="main")
     workspace_runner = _WorkspaceRunner()
     orchestrator = ImplementationWorkspaceRunOrchestrator(
@@ -152,6 +167,7 @@ def test_builds_workspace_run_command_from_resolved_plan() -> None:
 
     command = workspace_runner.commands[0]
     assert command.repo_path == "/repo"
+    assert command.workspace_provider == "git_worktree"
     assert command.base_branch == "develop"
     assert command.task_id == "task-123"
     assert command.agent_kind == "implementation"
@@ -172,3 +188,41 @@ def test_builds_workspace_run_command_from_resolved_plan() -> None:
         "max_iterations": 20,
     }
     assert outcome.metadata == {"task_branch_name": "ship-it"}
+
+
+def test_prefers_task_base_branch_before_branch_inspection() -> None:
+    """Task-owned base branch should override repository branch discovery."""
+    publication_store = _PublicationStore(None)
+    branch_inspector = _BranchInspector(current_branch="main", branch_exists=False)
+    workspace_runner = _WorkspaceRunner()
+    task = _FakeTask(task_path="docs/plans/ship-it.md", base_branch="release/1.2")
+    orchestrator = ImplementationWorkspaceRunOrchestrator(
+        publication_store=publication_store,
+        branch_inspector=branch_inspector,
+        workspace_runner=workspace_runner,
+    )
+
+    orchestrator.run(_build_request(task))
+
+    command = workspace_runner.commands[0]
+    assert command.base_branch == "release/1.2"
+    assert command.workspace_metadata["start_point"] == "release/1.2"
+    assert branch_inspector.current_branch_calls == []
+
+
+def test_builds_workspace_relative_task_input_from_task_path() -> None:
+    """Workspace run context should carry a repo-relative task path when possible."""
+    publication_store = _PublicationStore(None)
+    branch_inspector = _BranchInspector(current_branch="main", branch_exists=False)
+    workspace_runner = _WorkspaceRunner()
+    task = _FakeTask(task_path="/repo/docs/plans/ship-it.md")
+    orchestrator = ImplementationWorkspaceRunOrchestrator(
+        publication_store=publication_store,
+        branch_inspector=branch_inspector,
+        workspace_runner=workspace_runner,
+    )
+
+    orchestrator.run(_build_request(task))
+
+    command = workspace_runner.commands[0]
+    assert command.run_context["task_input"] == "docs/plans/ship-it.md"

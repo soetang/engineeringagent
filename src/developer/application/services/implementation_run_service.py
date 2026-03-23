@@ -47,6 +47,7 @@ def run_implementation(
         return _run_implementation_in_workspace(
             resolved_config_service,
             task,
+            repo_path=repo_path,
             task_input=task_input,
             max_iterations=resolved_max_iterations,
         )
@@ -68,18 +69,14 @@ def _run_implementation_in_workspace(
     config_service: ConfigService,
     task,
     *,
+    repo_path: Path,
     task_input: str,
     max_iterations: int | None,
 ) -> ImplementationRunResult:
     """Run the implementation workflow through workspace orchestration."""
-    repo_path = Path.cwd()
     outcome = build_implementation_workspace_run_orchestrator(config_service).run(
         ImplementationWorkspaceRunRequest(
             repo_path=str(repo_path),
-            task_input=task_input,
-            normalized_task_input=_normalize_workspace_task_input(
-                repo_path, task_input
-            ),
             task=task,
             max_iterations=max_iterations,
         )
@@ -165,15 +162,3 @@ def _invalid_max_iterations_error(source: str, value: object) -> ValueError:
     return ValueError(
         f"Invalid {source} max_iterations value: {value}. {MAX_ITERATIONS_HELP}"
     )
-
-
-def _normalize_workspace_task_input(repo_path: Path, task_input: str) -> str:
-    """Store a workspace-safe task input path relative to the repository."""
-    normalized = task_input[1:] if task_input.startswith("@") else task_input
-    candidate = Path(normalized).expanduser()
-    if candidate.is_absolute():
-        try:
-            candidate = candidate.resolve().relative_to(repo_path.resolve())
-        except ValueError:
-            return str(candidate.resolve())
-    return str(candidate)

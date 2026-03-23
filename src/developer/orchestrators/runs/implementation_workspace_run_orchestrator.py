@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from uuid import uuid4
 
 from developer.orchestrators.runs.models import (
@@ -12,12 +13,9 @@ from developer.orchestrators.runs.models import (
 )
 from developer.orchestrators.runs.protocols import (
     BranchInspectionPort,
-    PublishedTaskBranchView,
     TaskPublicationStore,
     WorkspaceRunPort,
 )
-
-IMPLEMENTATION_AGENT_KIND = "implementation"
 
 
 class ImplementationWorkspaceRunOrchestrator:
@@ -39,18 +37,19 @@ class ImplementationWorkspaceRunOrchestrator:
         request: ImplementationWorkspaceRunRequest,
     ) -> ImplementationWorkspaceRunOutcome:
         """Build a workspace plan and delegate execution to the runtime port."""
-        publication = self._publication_store.get_task_publication(
+        publication_branch = self._publication_store.get_task_publication_branch(
             request.task.task_name,
             request.task.task_path,
         )
-        plan = self._build_plan(request, publication)
+        plan = self._build_plan(request, publication_branch)
         run_result = self._workspace_runner.run(
             WorkspaceRunCommand(
                 repo_path=request.repo_path,
+                workspace_provider=request.task.workspace_provider,
                 base_branch=plan.base_branch,
                 task_id=request.task.task_id,
+                agent_kind=request.task.workspace_agent_kind,
                 workspace_metadata=plan.workspace_metadata,
-                agent_kind=IMPLEMENTATION_AGENT_KIND,
                 run_context=plan.run_context,
             )
         )
@@ -66,13 +65,13 @@ class ImplementationWorkspaceRunOrchestrator:
     def _build_plan(
         self,
         request: ImplementationWorkspaceRunRequest,
-        publication: PublishedTaskBranchView | None,
+        publication_branch: str | None,
     ) -> ImplementationWorkspacePlan:
         """Resolve the workspace branch plan for one run."""
-        base_branch = self._branch_inspector.get_current_branch(request.repo_path)
-        task_branch_name = self._resolve_task_branch(request, publication)
+        base_branch = self._resolve_base_branch(request)
+        task_branch_name = self._resolve_task_branch(request, publication_branch)
         workspace_start_point = self._resolve_workspace_start_point(
-            publication=publication,
+            publication_branch=publication_branch,
             base_branch=base_branch,
         )
         return ImplementationWorkspacePlan(
@@ -88,7 +87,7 @@ class ImplementationWorkspaceRunOrchestrator:
                 "start_point": workspace_start_point,
             },
             run_context={
-                "task_input": request.normalized_task_input,
+                "task_input": self._build_workspace_task_input(request),
                 "task_id": request.task.task_id,
                 "task_name": request.task.task_name,
                 "task_path": request.task.task_path,
@@ -97,14 +96,20 @@ class ImplementationWorkspaceRunOrchestrator:
             },
         )
 
+    def _resolve_base_branch(self, request: ImplementationWorkspaceRunRequest) -> str:
+        """Prefer the task-defined base branch before consulting repository state."""
+        if request.task.base_branch:
+            return request.task.base_branch
+        return self._branch_inspector.get_current_branch(request.repo_path)
+
     def _resolve_task_branch(
         self,
         request: ImplementationWorkspaceRunRequest,
-        publication: PublishedTaskBranchView | None,
+        publication_branch: str | None,
     ) -> str:
         """Reuse a published branch when available, otherwise avoid collisions."""
-        if publication is not None:
-            return publication.branch_name
+        if publication_branch is not None:
+            return publication_branch
 
         candidate = request.task.get_branch_name()
         if not self._branch_inspector.branch_exists(
@@ -117,10 +122,28 @@ class ImplementationWorkspaceRunOrchestrator:
 
     def _resolve_workspace_start_point(
         self,
-        publication: PublishedTaskBranchView | None,
+        publication_branch: str | None,
         base_branch: str,
     ) -> str:
         """Choose the ref used to seed the disposable workspace branch."""
-        if publication is not None:
-            return publication.branch_name
+        if publication_branch is not None:
+            return publication_branch
         return base_branch
+
+    def _build_workspace_task_input(
+        self,
+        request: ImplementationWorkspaceRunRequest,
+    ) -> str:
+        """Build a workspace-safe task reference from the task's canonical path."""
+        task_path = request.task.task_path
+        if not task_path:
+            raise ValueError("Workspace implementation run is missing task_path")
+
+        repo_path = Path(request.repo_path).resolve()
+        candidate = Path(task_path).expanduser()
+        if candidate.is_absolute():
+            try:
+                candidate = candidate.resolve().relative_to(repo_path)
+            except ValueError:
+                return str(candidate.resolve())
+        return str(candidate)

@@ -17,9 +17,6 @@ from developer.orchestrators.runs.models import WorkspaceRunCommand
 from developer.version_control.settings import VersionControlSettings
 from developer.workspaces.models import RunHandle, RunStatus
 from developer.workspaces.settings import WorkspaceSettings
-from developer.workspaces.task_publication_store import (
-    FileWorkspaceTaskPublicationStore,
-)
 
 
 class _FakeConfigService:
@@ -160,10 +157,11 @@ def test_workspace_run_port_adapter_translates_to_workspace_runtime() -> None:
     result = WorkspaceRunOrchestratorPortAdapter(runtime).run(
         WorkspaceRunCommand(
             repo_path="/repo",
+            workspace_provider="git_worktree",
             base_branch="main",
             task_id="ship-it",
-            workspace_metadata={"task_branch_name": "ship-it"},
             agent_kind="implementation",
+            workspace_metadata={"task_branch_name": "ship-it"},
             run_context={"task_input": "docs/plans/ship-it.md"},
         )
     )
@@ -202,13 +200,9 @@ def test_build_implementation_workspace_run_orchestrator_wires_ports(
     )
 
     assert isinstance(orchestrator, ImplementationWorkspaceRunOrchestrator)
-    assert isinstance(
-        orchestrator._publication_store,
-        FileWorkspaceTaskPublicationStore,
-    )
+    assert orchestrator._publication_store.__class__.__name__ == "FileWorkspaceRegistry"
     assert (
-        orchestrator._publication_store._registry._state_dir
-        == Path(".developer/state").resolve()
+        orchestrator._publication_store._state_dir == Path(".developer/state").resolve()
     )
     assert (
         orchestrator._branch_inspector.__class__.__name__ == "GitVersionControlAdapter"

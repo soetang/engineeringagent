@@ -25,28 +25,34 @@ class ImplementationRunTask(Protocol):
         """Return the task path when one is available."""
         ...
 
-    def get_branch_name(self) -> str:
-        """Return the stable branch name for this task."""
+    @property
+    def base_branch(self) -> str | None:
+        """Return the task's preferred base branch when explicitly defined."""
         ...
 
-
-class PublishedTaskBranchView(Protocol):
-    """Minimal publication data required by the run orchestrator."""
+    @property
+    def workspace_provider(self) -> str:
+        """Return the workspace provider required for this task."""
+        ...
 
     @property
-    def branch_name(self) -> str:
-        """Return the published branch name for the task."""
+    def workspace_agent_kind(self) -> str:
+        """Return the workspace agent kind required for this task."""
+        ...
+
+    def get_branch_name(self) -> str:
+        """Return the stable branch name for this task."""
         ...
 
 
 class TaskPublicationStore(Protocol):
     """Loads persisted publication information used during planning."""
 
-    def get_task_publication(
+    def get_task_publication_branch(
         self,
         task_name: str,
         task_path: str | None,
-    ) -> PublishedTaskBranchView | None:
+    ) -> str | None:
         """Return the stored publication branch for the task when present."""
         ...
 
@@ -79,7 +85,6 @@ class WorkspaceRunPort(Protocol):
 __all__ = [
     "BranchInspectionPort",
     "ImplementationRunTask",
-    "PublishedTaskBranchView",
     "TaskPublicationStore",
     "WorkspaceRunPort",
 ]

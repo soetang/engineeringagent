@@ -18,19 +18,9 @@ class ImplementationWorkspaceRunRequest(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="forbid")
 
     repo_path: str
-    task_input: str
-    normalized_task_input: str
     task: ImplementationRunTask
     max_iterations: int | None
     remote_name: str = "origin"
-
-
-class PublishedTaskBranch(BaseModel):
-    """Persisted branch information reused across implementation runs."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    branch_name: str
 
 
 class ImplementationWorkspacePlan(BaseModel):
@@ -64,10 +54,11 @@ class WorkspaceRunCommand(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     repo_path: str
+    workspace_provider: str
     base_branch: str
     task_id: str
-    workspace_metadata: dict[str, object]
     agent_kind: str
+    workspace_metadata: dict[str, object]
     run_context: dict[str, object]
 
 
