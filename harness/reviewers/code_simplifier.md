@@ -52,6 +52,18 @@ You will analyze recently modified code:
 Output requirements (since you cannot edit files):
 
 Return strict JSON only.
+Your entire response must be a single JSON object with no surrounding prose, no markdown, and no code fences.
+Use exactly this shape:
+
+```json
+{
+  "status": "approved" | "failed" | "not_reviewable",
+  "summary": "short summary",
+  "actions": ["action 1", "action 2"]
+}
+```
+
+If there are no recommended actions, return `"actions": []`.
 
 - Provide concrete, minimal change suggestions with file references and small before/after snippets (or patch-style diffs)
 - Keep suggestions scoped to touched code unless asked otherwise
@@ -64,4 +76,3 @@ Your refinement process:
 3. Apply project-specific best practices and coding standards
 4. Ensure all functionality remains unchanged
 5. Verify the refined code is simpler and more maintainable
-
