@@ -1021,9 +1021,9 @@ After extraction, application tests should stop asserting workspace-planning hel
 
 ## Phase 7: Push remaining task-owned run defaults out of application
 
-- [ ] Extend `ImplementationRunTask` with a base-branch accessor backed by task frontmatter instead of rediscovering it during workspace-run planning
-- [ ] Update the markdown-plan task implementation to expose `base_branch` directly from `TaskPlanDefinition`
-- [ ] Teach `ImplementationWorkspaceRunOrchestrator` to prefer the task-provided base branch and fall back to `BranchInspectionPort.get_current_branch(...)` only when the task does not specify one
+- [x] Extend `ImplementationRunTask` with a base-branch accessor backed by task frontmatter instead of rediscovering it during workspace-run planning
+- [x] Update the markdown-plan task implementation to expose `base_branch` directly from `TaskPlanDefinition`
+- [x] Teach `ImplementationWorkspaceRunOrchestrator` to prefer the task-provided base branch and fall back to `BranchInspectionPort.get_current_branch(...)` only when the task does not specify one
 - [ ] Keep task-owned branch naming on `ImplementationRunTask` and avoid adding duplicate "default branch" fields to run-request models
 - [ ] Revisit whether both `task_input` and `normalized_task_input` need to survive after task resolution and collapse them to one workspace-safe task reference if possible
 - [ ] Make an explicit ownership decision for workspace execution defaults such as `agent_kind` and workspace provider

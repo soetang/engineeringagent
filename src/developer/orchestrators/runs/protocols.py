@@ -25,6 +25,11 @@ class ImplementationRunTask(Protocol):
         """Return the task path when one is available."""
         ...
 
+    @property
+    def base_branch(self) -> str | None:
+        """Return the task's preferred base branch when explicitly defined."""
+        ...
+
     def get_branch_name(self) -> str:
         """Return the stable branch name for this task."""
         ...
