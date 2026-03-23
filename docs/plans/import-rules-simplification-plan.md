@@ -4,7 +4,7 @@ task_id: simplify-import-rules-config
 title: Simplify import rules config around module selectors and explicit modes
 status: ready
 branch: feat/simplify-import-rules-config
-base_branch: main
+base_branch: master
 phases:
   - id: schema
     title: Replace path-based selectors with dotted module and package selectors
