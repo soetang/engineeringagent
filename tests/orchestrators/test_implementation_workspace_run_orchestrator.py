@@ -96,8 +96,7 @@ class _WorkspaceRunner:
 def _build_request(task: _FakeTask | None = None) -> ImplementationWorkspaceRunRequest:
     return ImplementationWorkspaceRunRequest(
         repo_path="/repo",
-        task_input="docs/plans/ship-it.md",
-        normalized_task_input="docs/plans/ship-it.md",
+        workspace_task_input="docs/plans/ship-it.md",
         task=task or _FakeTask(task_path="docs/plans/ship-it.md"),
         max_iterations=20,
     )

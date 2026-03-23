@@ -162,7 +162,7 @@ git_worktree_root_dir = "developer-workspaces"
     request = fake_orchestrator.requests[0]
     assert request.task is not None
     assert request.task.task_name == "Ship it"
-    assert request.normalized_task_input == "docs/plans/ship-it.md"
+    assert request.workspace_task_input == "docs/plans/ship-it.md"
     assert request.max_iterations == 20
 
 
