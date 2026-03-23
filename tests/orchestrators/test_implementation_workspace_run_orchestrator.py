@@ -104,7 +104,6 @@ class _WorkspaceRunner:
 def _build_request(task: _FakeTask | None = None) -> ImplementationWorkspaceRunRequest:
     return ImplementationWorkspaceRunRequest(
         repo_path="/repo",
-        workspace_task_input="docs/plans/ship-it.md",
         task=task or _FakeTask(task_path="docs/plans/ship-it.md"),
         max_iterations=20,
     )
@@ -210,3 +209,21 @@ def test_prefers_task_base_branch_before_branch_inspection() -> None:
     assert command.base_branch == "release/1.2"
     assert command.workspace_metadata["start_point"] == "release/1.2"
     assert branch_inspector.current_branch_calls == []
+
+
+def test_builds_workspace_relative_task_input_from_task_path() -> None:
+    """Workspace run context should carry a repo-relative task path when possible."""
+    publication_store = _PublicationStore(None)
+    branch_inspector = _BranchInspector(current_branch="main", branch_exists=False)
+    workspace_runner = _WorkspaceRunner()
+    task = _FakeTask(task_path="/repo/docs/plans/ship-it.md")
+    orchestrator = ImplementationWorkspaceRunOrchestrator(
+        publication_store=publication_store,
+        branch_inspector=branch_inspector,
+        workspace_runner=workspace_runner,
+    )
+
+    orchestrator.run(_build_request(task))
+
+    command = workspace_runner.commands[0]
+    assert command.run_context["task_input"] == "docs/plans/ship-it.md"

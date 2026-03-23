@@ -5,7 +5,6 @@ from pathlib import Path
 import pytest
 
 from developer.application.services.implementation_run_service import (
-    _normalize_workspace_task_input,
     _normalize_max_iterations,
     _resolve_max_iterations,
     run_implementation,
@@ -68,6 +67,14 @@ class _ResolvedTask:
     @property
     def base_branch(self) -> str | None:
         return self._base_branch
+
+    @property
+    def workspace_provider(self) -> str:
+        return "git_worktree"
+
+    @property
+    def workspace_agent_kind(self) -> str:
+        return "implementation"
 
     def is_complete(self):
         raise NotImplementedError
@@ -162,7 +169,6 @@ git_worktree_root_dir = "developer-workspaces"
     request = fake_orchestrator.requests[0]
     assert request.task is not None
     assert request.task.task_name == "Ship it"
-    assert request.workspace_task_input == "docs/plans/ship-it.md"
     assert request.max_iterations == 20
 
 
@@ -242,14 +248,3 @@ max_iterations = 10
     )
 
     assert resolved == 20
-
-
-def test_normalize_workspace_task_input_rewrites_repo_absolute_paths(tmp_path) -> None:
-    """Workspace task input should stay relative when it points inside the repo."""
-    task_path = tmp_path / "docs/plans/ship-it.md"
-    task_path.parent.mkdir(parents=True)
-    task_path.write_text("plan", encoding="utf-8")
-
-    normalized = _normalize_workspace_task_input(tmp_path, str(task_path))
-
-    assert normalized == "docs/plans/ship-it.md"

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from uuid import uuid4
 
 from developer.orchestrators.runs.models import (
@@ -87,7 +88,7 @@ class ImplementationWorkspaceRunOrchestrator:
                 "start_point": workspace_start_point,
             },
             run_context={
-                "task_input": request.workspace_task_input,
+                "task_input": self._build_workspace_task_input(request),
                 "task_id": request.task.task_id,
                 "task_name": request.task.task_name,
                 "task_path": request.task.task_path,
@@ -129,3 +130,21 @@ class ImplementationWorkspaceRunOrchestrator:
         if publication is not None:
             return publication.branch_name
         return base_branch
+
+    def _build_workspace_task_input(
+        self,
+        request: ImplementationWorkspaceRunRequest,
+    ) -> str:
+        """Build a workspace-safe task reference from the task's canonical path."""
+        task_path = request.task.task_path
+        if not task_path:
+            raise ValueError("Workspace implementation run is missing task_path")
+
+        repo_path = Path(request.repo_path).resolve()
+        candidate = Path(task_path).expanduser()
+        if candidate.is_absolute():
+            try:
+                candidate = candidate.resolve().relative_to(repo_path)
+            except ValueError:
+                return str(candidate.resolve())
+        return str(candidate)

@@ -1049,7 +1049,7 @@ Recommended default:
 - [x] Narrow `developer.version_control` allows to only the exact orchestrator protocol modules still needed after the follow-through cleanup
 - [ ] Re-evaluate whether `implementation-run-service-import-boundary` adds unique protection beyond the broader application import rules and remove it if it is duplicative
 - [x] Audit `PublishedTaskBranch` and `PublishedTaskBranchView` and collapse them to the smallest useful contract, or remove them if task-owned branch data plus publication lookup already cover the reuse case
-- [ ] Audit `ImplementationWorkspaceRunRequest` for fields that merely echo task-owned data and trim them once the task execution contract is settled
+- [x] Audit `ImplementationWorkspaceRunRequest` for fields that merely echo task-owned data and trim them once the task execution contract is settled
 - [ ] Keep a dedicated publication-store adapter only if publication lookup remains a distinct concern from the broader workspace registry after the simplification pass
 - [ ] Re-run `uv run python -m harness.fitness.scripts.import_rules --config harness/policy/import_rules.yaml` and the targeted implementation-run tests after the simplification pass
 
