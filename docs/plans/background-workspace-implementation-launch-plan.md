@@ -3,17 +3,17 @@ schema_version: 1
 task_id: add-background-workspace-implementation-launch
 title: Add background launch mode for workspace implementation runs
 status: ready
-branch: feat/add-background-workspace-implementation-launch
+branch: feat/background-launch-strategy
 base_branch: master
 phases:
   - id: architecture
-    title: Align launch ownership with orchestration boundaries
+    title: Model launch mode as a strategy boundary
     status: todo
   - id: runtime
-    title: Add background launch lifecycle and worker bootstrap
+    title: Introduce shared run preparation, execution, and worker bootstrap
     status: todo
   - id: application
-    title: Gate launch mode through config and result mapping
+    title: Select launch strategy through config and result mapping
     status: todo
   - id: status-ux
     title: Surface run identity and inspection details
@@ -100,6 +100,13 @@ Today the workspace-backed implementation path is still fully synchronous.
 
 Implement v1 background launch as a detached subprocess that starts only after foreground workspace creation succeeds.
 
+Important architecture refinement after review:
+
+- treat `implementation_launch_mode` as a first-class launch-strategy seam, not as an accumulating `if`/`elif` tree in application composition;
+- do not keep adding one top-level `WorkspaceRunner` implementation per launch mode when those implementations need materially different dependency graphs;
+- instead, keep one high-level workspace runner boundary and vary launch behavior through pluggable launch strategies or adapters selected by mode; and
+- keep run preparation and run execution as shared responsibilities so foreground, background, and future modes do not drift.
+
 ## Config
 
 Add a workspace setting:
@@ -160,7 +167,7 @@ Recommended responsibility split:
 
 - `developer.orchestrators.runs` decides that an implementation workspace run should start and produces the typed workspace run request and outcome;
 - `developer.workspaces` decides how a workspace run is executed in `foreground` versus `background` launch mode;
-- `developer.application` resolves `implementation_launch_mode`, builds the workspace runtime with the correct runner or launcher, and maps outcomes into `ImplementationRunResult`; and
+- `developer.application` resolves `implementation_launch_mode`, builds the workspace runtime from shared services plus launch-strategy selection, and maps outcomes into `ImplementationRunResult`; and
 - `developer.presentation` remains unchanged except for the message shown to the user.
 
 Do not make orchestrators aware of `Popen(...)`, worker module paths, or file-backed process metadata.
@@ -172,18 +179,28 @@ Recommended runtime additions:
 - add `STARTING` to `RunStatus` so a detached launch has an explicit pre-acknowledgment state;
 - persist launch input separately from mutable run result metadata so a fresh worker can replay the same `RunRequest` safely;
 - persist a resolved launch snapshot for launch-critical runtime selection so the worker cannot drift if config changes after launch;
-- add a background-capable workspace runner or launcher collaborator instead of overloading the current synchronous runner with opaque branches;
-- keep the foreground runner path available for `implementation_launch_mode = "foreground"`; and
-- add a small worker entrypoint that rehydrates one persisted run and executes it to completion.
+- add a shared run-preparation service that creates the run record and persists immutable launch input before any launch strategy starts executing;
+- add a shared run-execution service that rehydrates one persisted run by `run_id` and executes it to completion;
+- model foreground, background, and future launch modes as implementations of a common launch-strategy or launch-adapter protocol selected by mode;
+- keep the worker entrypoint thin by delegating real execution to the shared run-execution service; and
+- avoid growing mode selection as an inline `if`/`elif` chain in composition once additional launch modes such as `queued` or `remote` are introduced.
 
 Recommended persistence split:
 
 - `RunHandle` remains the mutable status record;
-- `RunRequest` is persisted separately as immutable launch input for the worker; and
-- `LaunchSnapshot` or an equivalent model is persisted separately as immutable launch-time runtime/config input for the worker; and
+- `RunRequest` is persisted separately as immutable launch input for the shared executor;
+- `LaunchSnapshot` or an equivalent model is persisted separately as immutable launch-time runtime/config input for the shared executor; and
 - `RunHandle.metadata` is reserved for derived runtime and result metadata such as process identity, log path, commit SHAs, and publication details.
 
 This is cleaner than storing launch input and output metadata in the same bag.
+
+Recommended responsibility split inside `developer.workspaces`:
+
+- `WorkspaceRunner` stays the outer contract used by `WorkspaceRunOrchestrator`;
+- `WorkspaceRunPreparer` or similarly named service owns durable run creation and persistence of launch input;
+- `WorkspaceRunExecutor` or similarly named service owns replaying one prepared run to a terminal state;
+- `WorkspaceLaunchStrategy` or similarly named protocol owns how prepared work is started for one mode; and
+- `BackgroundWorkspaceLauncher` remains a narrow subprocess-spawn concern beneath the background launch strategy rather than becoming the top-level runtime abstraction.
 
 # Proposed Files
 
@@ -194,14 +211,19 @@ Targeting the post-boundary layout, recommended additions and updates are:
 - `src/developer/workspaces/settings.py`
 - `src/developer/workspaces/services/file_registry.py`
 - `src/developer/workspaces/services/workspace_run_orchestrator.py`
-- `src/developer/workspaces/adapters/local_process_runner.py` for the existing foreground path
-- `src/developer/workspaces/adapters/background_process_runner.py` or similarly named background runner
+- `src/developer/workspaces/services/workspace_run_preparer.py` or similarly named shared preparation service
+- `src/developer/workspaces/services/workspace_run_executor.py` or similarly named shared execution service
+- `src/developer/workspaces/services/workspace_launch_strategy_factory.py` or similarly named selector/registry
+- `src/developer/workspaces/adapters/foreground_launch_strategy.py` or similarly named foreground strategy
+- `src/developer/workspaces/adapters/background_process_launch_strategy.py` or similarly named subprocess strategy
 - `src/developer/application/implementation_run_runtime.py` as the composition root described in `docs/plans/implementation-run-orchestration-boundary-plan.md`
 - `src/developer/application/workspace_run_worker.py` or similarly named worker entrypoint
 - `src/developer/application/services/implementation_run_service.py`
 - `src/developer/presentation/commands/implement.py`
-- `tests/workspaces/adapters/test_background_process_runner.py`
-- `tests/workspaces/adapters/test_local_process_runner.py`
+- `tests/workspaces/services/test_workspace_run_preparer.py`
+- `tests/workspaces/services/test_workspace_run_executor.py`
+- `tests/workspaces/adapters/test_background_process_launch_strategy.py`
+- `tests/workspaces/adapters/test_foreground_launch_strategy.py`
 - `tests/application/services/test_implementation_run_service.py`
 - `tests/presentation/test_implementation_cli.py`
 
@@ -236,7 +258,9 @@ Recommended updates:
 - extend the registry protocol with methods for saving and loading one persisted `RunRequest` by `run_id`
 - extend the registry protocol with methods for saving and loading one persisted launch snapshot by `run_id`
 - keep `WorkspaceRunner.start_run(...) -> RunHandle` as the high-level contract
-- add a small launch-focused protocol only if it meaningfully separates subprocess spawning from run-state coordination
+- add a small launch-strategy protocol with one stable input shape for all launch modes
+- keep subprocess spawning behind a narrower background-launcher protocol used only by the subprocess strategy
+- prefer a strategy registry or factory over inline mode branching in composition
 
 Avoid making the workspace runner protocol implementation-specific by exposing raw `Popen` objects or shell commands.
 
@@ -248,15 +272,16 @@ Add `implementation_launch_mode` with a default of `"foreground"` and validation
 
 ## Foreground Mode
 
-Foreground mode should remain the current behavior.
+Foreground mode should remain user-visible current behavior while using the same prepared-run contract as background mode.
 
 Recommended flow:
 
 1. create workspace;
-2. create run handle;
-3. execute inline;
-4. persist terminal outcome; and
-5. return the terminal result.
+2. prepare persisted run state, including `RunHandle`, `RunRequest`, and launch snapshot;
+3. select the foreground launch strategy;
+4. let the foreground strategy mark the run runnable and invoke the shared executor inline;
+5. persist terminal outcome through the shared executor; and
+6. return the terminal result.
 
 ## Background Mode
 
@@ -265,26 +290,28 @@ Background mode should keep workspace creation synchronous, then detach before t
 Recommended parent flow:
 
 1. create the workspace in the foreground;
-2. persist a `RunHandle(status=STARTING, ...)`;
-3. persist the immutable `RunRequest` for replay;
-4. persist the immutable launch snapshot used for runtime/config replay;
-5. allocate the per-run log path;
-6. create a one-shot startup-acknowledgment channel for the child;
-7. spawn a detached worker subprocess;
-8. wait briefly on the acknowledgment channel; and
-9. return success only after the worker reports successful bootstrap and flips the run to `RUNNING`.
+2. prepare persisted run state through the shared preparation service;
+3. select the background launch strategy;
+4. allocate the per-run log path;
+5. create a one-shot startup-acknowledgment channel for the child;
+6. spawn a detached worker subprocess;
+7. wait briefly on the acknowledgment channel; and
+8. return success only after the worker reports successful bootstrap and flips the run to `RUNNING`.
 
 Recommended worker flow:
 
-1. load the `WorkspaceSession`, `RunHandle`, persisted `RunRequest`, and persisted launch snapshot;
+1. load the prepared run state by `run_id`;
 2. open the configured log file and redirect uncaught bootstrap diagnostics there;
 3. record `pid`, `process_start_time`, and `process_group_id` onto run metadata;
-4. resolve the same runnable agent and execution adapter using the persisted launch snapshot rather than current config;
-5. perform early validation needed to start safely;
-6. re-check the persisted run state and stop if it is already terminal;
-7. flip the run to `RUNNING` and send a success acknowledgment to the parent;
-8. execute the existing implementation flow to completion; and
-9. persist `SUCCEEDED` or `FAILED` with the final summary.
+4. perform early validation needed to start safely;
+5. re-check the persisted run state and stop if it is already terminal;
+6. flip the run to `RUNNING` and send a success acknowledgment to the parent;
+7. delegate real run execution to the shared executor; and
+8. persist `SUCCEEDED` or `FAILED` with the final summary.
+
+Important design constraint:
+
+- the foreground path and the worker path should converge on the same execution service once launch-time setup is complete.
 
 Recommended startup-time failure handling:
 
@@ -305,8 +332,9 @@ Recommended application flow after the orchestration-boundary refactor:
 3. resolve the task and normalize `max_iterations`;
 4. resolve `implementation_launch_mode` from workspace settings;
 5. delegate workspace-run planning to `developer.orchestrators.runs`;
-6. delegate workspace execution to a launch-aware workspace runtime; and
-7. map the returned run outcome into `ImplementationRunResult`.
+6. build the workspace runtime from shared preparation and execution services plus a launch-strategy registry or factory;
+7. delegate workspace execution to that launch-aware workspace runtime; and
+8. map the returned run outcome into `ImplementationRunResult`.
 
 Do not teach `implementation_run_service.py` how detached workers start.
 
@@ -356,38 +384,46 @@ Cancellation can remain a follow-up, but this slice should store enough process 
 
 - [ ] Keep new launch mechanics out of `developer.orchestrators.runs`
 - [ ] Keep subprocess and worker-bootstrap code out of `implementation_run_service.py`
+- [ ] Model launch mode as a strategy or adapter seam instead of a growing `if`/`elif` tree in composition
+- [ ] Keep one outer workspace-runner boundary while moving launch variation under a launch-strategy protocol
 - [ ] Add launch-mode resolution only to application composition and workspace runtime wiring
 - [ ] If `docs/plans/implementation-run-orchestration-boundary-plan.md` lands first, implement against `src/developer/application/implementation_run_runtime.py`
 - [ ] If it has not landed yet, confine temporary composition changes to `src/developer/application/workspace_runtime.py`
 - [ ] Avoid new branch-planning helpers in application while adding background launch support
+- [ ] Avoid creating one top-level runner class per launch mode when those modes mainly differ in dispatch behavior
 
 ### Notes
 
-This phase is about keeping the feature aligned with the target boundary so the later orchestrator refactor does not need to undo the launch design.
+This phase is about keeping the feature aligned with the target boundary and choosing an extension seam that will still read clearly if a third or fourth launch mode is added later.
 
 # Phase 2: Add background launch lifecycle and worker bootstrap
 
 - [ ] Add `RunStatus.STARTING`
-- [ ] Persist `RunRequest` separately from `RunHandle`
-- [ ] Persist a launch snapshot separately from `RunRequest`
-- [ ] Add a background-capable workspace runner or launcher collaborator
+- [ ] Persist `RunRequest` separately from `RunHandle` through a shared preparation path
+- [ ] Persist a launch snapshot separately from `RunRequest` through that same preparation path
+- [ ] Add a shared run-preparation service
+- [ ] Add a shared run-execution service
+- [ ] Add a launch-strategy protocol and selection mechanism
+- [ ] Add a foreground launch strategy that delegates to the shared executor
+- [ ] Add a subprocess background launch strategy
 - [ ] Add a worker entrypoint that can execute one persisted run by `run_id`
 - [ ] Launch the worker through `sys.executable -m ...` with detached-process settings
 - [ ] Write per-run logs beneath the configured workspace state directory
 - [ ] Persist `pid`, `process_start_time`, and `process_group_id` after bootstrap
 - [ ] Require a direct startup-acknowledgment handshake that flips `STARTING` to `RUNNING`
 - [ ] Fail fast when startup acknowledgment does not arrive within the timeout
+- [ ] Keep the worker entrypoint thin and delegate actual replay to the shared executor
 
 ### Notes
 
-The key runtime requirement is that the CLI returns only after the worker proves it started, not merely after `Popen(...)` returns.
+The key runtime requirements are that the CLI returns only after the worker proves it started, not merely after `Popen(...)` returns, and that foreground and background execution share the same post-launch execution path.
 
 # Phase 3: Gate launch mode through config and result mapping
 
 - [ ] Add `implementation_launch_mode = "foreground"` to `WorkspaceSettings`
 - [ ] Validate accepted values in config parsing
 - [ ] Update checked-in config examples such as `engineeringagent.toml`
-- [ ] Select foreground versus background workspace execution in application composition
+- [ ] Select launch strategy from config through a registry or factory rather than inline branching
 - [ ] Keep direct mode unchanged
 - [ ] Update `run_implementation(...)` result mapping so background launches return a non-terminal `running` message
 - [ ] Keep `developer.presentation.commands.implement` thin and unchanged except for displayed output
@@ -409,7 +445,9 @@ The first background-launch slice is much easier to validate and debug when user
 
 # Phase 5: Cover handshake, persistence, and failure paths
 
-- [ ] Add workspace-runner tests for foreground versus background launch behavior
+- [ ] Add launch-strategy tests for foreground versus background behavior
+- [ ] Add shared-executor tests that foreground and worker replay use the same execution path
+- [ ] Add strategy-selection tests for launch-mode resolution
 - [ ] Add registry tests for persisted `RunRequest` storage and retrieval
 - [ ] Add registry tests for persisted launch snapshot storage and retrieval
 - [ ] Add worker-entrypoint tests for bootstrap success and bootstrap failure
@@ -432,17 +470,22 @@ The most important regression risk is claiming a run started when the worker nev
 1. finish or at least preserve the ownership direction from `docs/plans/implementation-run-orchestration-boundary-plan.md`;
 2. clear any existing local workspace-run state before relying on the new format;
 3. add the launch-mode setting and explicit `STARTING` run state;
-4. add persisted `RunRequest`, launch-snapshot storage, and log-path allocation;
-5. add the detached worker entrypoint and direct startup handshake;
-6. wire foreground versus background selection through application composition;
-7. update CLI-facing result mapping and add `developer runs get <run-id>`; and
-8. add tests for handshake, timeout, bootstrap failure, mocked temp-folder E2E behavior, and boundary fitness.
+4. introduce the shared run-preparation and run-execution services;
+5. add persisted `RunRequest`, launch-snapshot storage, and log-path allocation through the shared preparation path;
+6. add the foreground launch strategy on top of the shared executor;
+7. add the detached worker entrypoint, subprocess background strategy, and direct startup handshake;
+8. wire launch-strategy selection through application composition;
+9. update CLI-facing result mapping and add `developer runs get <run-id>`; and
+10. add tests for strategy selection, handshake, timeout, bootstrap failure, mocked temp-folder E2E behavior, and boundary fitness.
 
 # Risks And Mitigations
 
 - if the worker is launched without a startup handshake, the CLI can claim success for runs that never really started; mitigate with `STARTING`, direct startup acknowledgment, and timeout-based failure
 - if launch input is stored only in ad hoc metadata, worker replay will become brittle as the request shape evolves; mitigate by persisting `RunRequest` and a launch snapshot separately from mutable result metadata
+- if launch modes are added through an accumulating `if`/`elif` tree in composition, the runtime wiring will become harder to extend and review; mitigate by introducing a launch-strategy protocol plus a selector or registry
+- if foreground and background continue to use different execution paths after startup, behavior will drift and tests will duplicate; mitigate by introducing one shared executor reached by both inline and worker-based launch flows
 - if subprocess launching is wired directly into application services, the ownership split from `docs/plans/implementation-run-orchestration-boundary-plan.md` will erode again; mitigate by keeping launch mechanics inside workspace runtime plus application composition
+- if each launch mode becomes a separate top-level runner with a different constructor shape, the abstraction will grow more awkward as new modes are added; mitigate by keeping launch variation beneath a shared runner boundary and common prepared-run contract
 - if PID is treated as the durable identity, later status and cancellation behavior can target the wrong process after PID reuse; mitigate by keeping `run_id` as the canonical identifier and storing PID only as launcher metadata together with process start time
 - if background mode ships without any inspection surface, debugging failed launches will be unnecessarily painful; mitigate by printing `run_id` and `log_path` and adding a small read-only status command in the same slice
 - if old local state files are read as if they matched the new persistence shape, debugging will become confusing; mitigate by treating this refactor as a local state-format break and requiring state cleanup before use
@@ -453,6 +496,8 @@ Implement this as:
 
 - a new workspace config setting `implementation_launch_mode = "foreground"`;
 - workspace-only background launch in v1;
+- one outer workspace-runner boundary backed by shared run preparation and shared run execution services;
+- launch-mode-specific behavior modeled as pluggable launch strategies or adapters selected from config rather than a growing inline branch;
 - a detached Python worker subprocess launched after foreground workspace creation;
 - explicit `STARTING -> RUNNING -> terminal` run-state transitions with direct startup acknowledgment;
 - persisted `RunRequest` storage, launch snapshots, and per-run log files;
