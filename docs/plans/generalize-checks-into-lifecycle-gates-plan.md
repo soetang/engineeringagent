@@ -4,7 +4,7 @@ task_id: generalize-checks-into-lifecycle-gates
 title: Generalize checks into lifecycle gates
 status: ready
 branch: feat/generalize-checks-into-lifecycle-gates
-base_branch: main
+base_branch: master
 phases:
   - id: rename
     title: Rename quality and checks concepts to gates
