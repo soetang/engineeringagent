@@ -4,6 +4,8 @@
 
 Install the CLI however you prefer, then run `engineeringagent ...` commands.
 
+eg: `uv add engineeringagent`
+
 Quickstart:
 
 ```bash
