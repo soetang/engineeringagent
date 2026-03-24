@@ -2,8 +2,8 @@
 
 import typer
 
-from developer.application.models import InitRequest
 from developer.application.services.init_service import initialize_repository
+from developer.scaffolding.models import InitRequest
 
 
 def init() -> None:

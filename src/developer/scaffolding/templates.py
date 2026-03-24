@@ -24,7 +24,7 @@ Use the checkmarks in the plan, to mark when a task is complete.
 Mark phases as complete when all tasks for a phase is complete and relevant refactoring / clean-up is finished.
 When the full plan is implemented mark the plan as complete.
 
-You can validate that status update are correct with `uv run --active developer validate-plan {{ task_path }}`
+You can validate that status update are correct with `developer validate-plan {{ task_path }}`
 
 {% if feedback %}
 Address feedback from previous iterations first.
@@ -61,11 +61,7 @@ QUALITY_COMMANDS_TEMPLATE = """name: "commands"
 filepath: ""
 checks:
   - check_type: "command"
-    command: ["uv", "run", "--active", "ruff", "check"]
-  - check_type: "command"
-    command: ["uv", "run", "--active", "pyrefly", "check"]
-  - check_type: "command"
-    command: ["uv", "run", "--active", "pytest"]
+    command: ["pytest"]
 """
 
 EXAMPLE_PLAN_TEMPLATE = """---
@@ -95,12 +91,12 @@ Describe the user-visible outcome here.
 AGENTS_MD_SNIPPET = f"""{AGENTS_MD_START_MARKER}
 ## Developer CLI
 
-- Run package commands with `uv run --active developer ...`.
-- Initialize a repository scaffold with `uv run --active developer init`.
-- Export machine-readable contracts with `uv run --active developer schema plan` and `uv run --active developer schema quality`.
-- Validate plans before implementation with `uv run --active developer validate-plan <plan.md>`.
-- Run checks with `uv run --active developer check validate` and `uv run --active developer check run`.
-- Start an implementation loop with `uv run --active developer implement <plan.md>`.
+- Run package commands with `developer ...`.
+- Initialize a repository scaffold with `developer init`.
+- Export machine-readable contracts with `developer schema plan` and `developer schema quality`.
+- Validate plans before implementation with `developer validate-plan <plan.md>`.
+- Run checks with `developer check validate` and `developer check run`.
+- Start an implementation loop with `developer implement <plan.md>`.
 - Scaffolded harness files live under `<harness-dir>/`, and the sample plan lives under `docs/plans/`.
 - Reuse the generated schemas and templates instead of inventing new plan or quality formats.
 {AGENTS_MD_END_MARKER}

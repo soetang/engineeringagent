@@ -8,11 +8,9 @@ from typer.testing import CliRunner
 from developer.presentation.cli import app
 from developer.scaffolding.paths import (
     AGENTS_MD_START_MARKER,
-    CHECKS_FILE_NAME,
     COMMIT_MESSAGE_PROMPT_NAME,
     DEFAULT_HARNESS_DIR,
     IMPLEMENTATION_PROMPT_NAME,
-    PROMPTS_DIR,
     PULL_REQUEST_PROMPT_NAME,
     QUALITY_COMMANDS_FILE_NAME,
     QUALITY_DIR,
@@ -53,7 +51,7 @@ def test_init_scaffolds_minimal_repository() -> None:
         assert config["prompts"]["implementation_prompt_path"] == build_prompt_path(
             DEFAULT_HARNESS_DIR, IMPLEMENTATION_PROMPT_NAME
         )
-        assert "uv run --active developer init" in Path("AGENTS.md").read_text()
+        assert AGENTS_MD_START_MARKER in Path("AGENTS.md").read_text()
 
 
 def test_init_updates_existing_config_without_overwriting_existing_values() -> None:
@@ -109,7 +107,7 @@ def test_init_appends_guidance_to_existing_agents_file_once() -> None:
 
         agents_text = Path("AGENTS.md").read_text()
         assert agents_text.count(AGENTS_MD_START_MARKER) == 1
-        assert "uv run --active developer schema plan" in agents_text
+        assert "## Developer CLI" in agents_text
 
 
 def test_generated_example_plan_passes_validate_plan() -> None:
@@ -127,8 +125,8 @@ def test_generated_example_plan_passes_validate_plan() -> None:
         assert "Plan validation successful" in validate_result.output
 
 
-def test_generated_guidance_uses_active_uv_invocation() -> None:
-    """The scaffolded guidance should consistently target the active uv environment."""
+def test_generated_scaffold_contains_expected_quality_commands() -> None:
+    """The scaffolded quality file should contain the starter command checks."""
     runner = CliRunner()
 
     with runner.isolated_filesystem():
@@ -136,17 +134,10 @@ def test_generated_guidance_uses_active_uv_invocation() -> None:
 
         assert result.exit_code == 0
 
-        agents_text = Path("AGENTS.md").read_text()
-        prompt_text = Path(
-            build_prompt_path(DEFAULT_HARNESS_DIR, IMPLEMENTATION_PROMPT_NAME)
-        ).read_text()
         quality_text = Path(
             DEFAULT_HARNESS_DIR, QUALITY_DIR, QUALITY_COMMANDS_FILE_NAME
         ).read_text()
 
-        assert "uv run --active developer init" in agents_text
-        assert "uv run developer" not in agents_text
-        assert "uv run --active developer validate-plan" in prompt_text
-        assert 'command: ["uv", "run", "--active", "ruff", "check"]' in quality_text
-        assert 'command: ["uv", "run", "--active", "pyrefly", "check"]' in quality_text
-        assert 'command: ["uv", "run", "--active", "pytest"]' in quality_text
+        assert 'check_type: "command"' in quality_text
+        assert quality_text.count('check_type: "command"') == 1
+        assert 'command: ["pytest"]' in quality_text

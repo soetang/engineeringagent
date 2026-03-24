@@ -12,7 +12,7 @@ This package is designed for repositories that want a small, agent-first workflo
 Run:
 
 ```bash
-uv run --active developer init
+developer init
 ```
 
 The command asks for:
@@ -39,7 +39,7 @@ What each file is for:
 - `engineeringagent.toml`: points the CLI at the generated prompts and quality checks.
 - `AGENTS.md`: optional repository-local guidance for code agents using this package.
 - `<harness-dir>/checks.yaml`: top-level quality manifest.
-- `<harness-dir>/quality/commands.yaml`: sample command checks for `ruff`, `pyrefly`, and `pytest`.
+- `<harness-dir>/quality/commands.yaml`: a minimal sample command check for `pytest`.
 - `<harness-dir>/prompts/*.md`: starter prompts for implementation, commit messages, and pull requests.
 - `docs/plans/example-plan.md`: a minimal markdown task plan that already matches the validator.
 
@@ -51,7 +51,7 @@ If you opt in, `developer init` either creates `AGENTS.md` or appends a delimite
 
 The snippet is intentionally small. It tells agents to:
 
-- run this package as `uv run --active developer ...`;
+- run this package through `developer ...` commands;
 - use `init`, `schema`, `validate-plan`, `check`, and `implement`;
 - look in the scaffolded harness directory for prompts and checks; and
 - reuse the generated schemas and templates instead of inventing new formats.
@@ -63,16 +63,16 @@ If your repository already has broader coding instructions, keep those and let t
 Export machine-readable schemas with:
 
 ```bash
-uv run --active developer schema plan
-uv run --active developer schema quality
+developer schema plan
+developer schema quality
 ```
 
-`uv run --active developer schema plan` emits the schema for the YAML frontmatter object in a markdown plan file. It does not describe headings, task lists, or the rest of the markdown body.
+`developer schema plan` emits the schema for the YAML frontmatter object in a markdown plan file. It does not describe headings, task lists, or the rest of the markdown body.
 
 Validate the generated sample plan with:
 
 ```bash
-uv run --active developer validate-plan docs/plans/example-plan.md
+developer validate-plan docs/plans/example-plan.md
 ```
 
 ## Validate and run checks
@@ -80,27 +80,25 @@ uv run --active developer validate-plan docs/plans/example-plan.md
 First validate the quality configuration:
 
 ```bash
-uv run --active developer check validate
+developer check validate
 ```
 
 Then run the configured checks:
 
 ```bash
-uv run --active developer check run
+developer check run
 ```
 
 The starter quality file runs:
 
-- `uv run --active ruff check`
-- `uv run --active pyrefly check`
-- `uv run --active pytest`
+- `pytest`
 
 ## Start an implementation run
 
 Once the plan validates and checks are configured, start the implementation loop with:
 
 ```bash
-uv run --active developer implement docs/plans/example-plan.md
+developer implement docs/plans/example-plan.md
 ```
 
-The default implementation prompt tells the agent to treat the markdown plan as the source of truth, update its checkboxes as work completes, validate plan status with `uv run --active developer validate-plan`, and address prior feedback first when feedback is provided.
+The default implementation prompt tells the agent to treat the markdown plan as the source of truth, update its checkboxes as work completes, validate plan status with `developer validate-plan`, and address prior feedback first when feedback is provided.

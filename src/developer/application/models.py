@@ -2,8 +2,6 @@
 
 from pydantic import BaseModel, ConfigDict
 
-from developer.scaffolding.models import FileWriteResult, InitRequest, InitResult
-
 
 class ImplementationRunResult(BaseModel):
     """Command-facing result for an implementation run."""

@@ -4,7 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from developer.quality.services import get_schema_service
+from developer.quality.services import get_quality_schema as build_quality_schema
 
 
 class PlanPhaseSchema(BaseModel):
@@ -38,4 +38,4 @@ def get_plan_schema() -> dict[str, object]:
 
 def get_quality_schema() -> dict[str, object]:
     """Return the JSON Schema for the quality-spec YAML structure."""
-    return get_schema_service()["quality_spec_schema"]
+    return build_quality_schema()
