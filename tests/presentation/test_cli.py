@@ -229,10 +229,12 @@ def test_cli_check_help():
 
 
 def test_root_cli_help_lists_plan_commands() -> None:
-    """The root CLI help should list implement and validate-plan."""
+    """The root CLI help should list the primary command surfaces."""
     runner = CliRunner()
     result = runner.invoke(app, ["--help"])
 
     assert result.exit_code == 0
+    assert "check" in result.output
     assert "implement" in result.output
+    assert "schema" in result.output
     assert "validate-plan" in result.output

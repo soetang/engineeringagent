@@ -7,7 +7,7 @@ Use the checkmarks in the plan, to mark when a task is complete.
 Mark phases as complete when all tasks for a phase is complete and relevant refactoring / clean-up is finished.
 When the full plan is implemented mark the plan as complete.
 
-You can validate that status update are correct with `uv run developer validate-plan {{ task_path }}`
+You can validate that status update are correct with `developer validate-plan {{ task_path }}`
 
 {% if feedback %}
 Address feedback from previous iterations first.

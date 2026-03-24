@@ -2,22 +2,22 @@
 schema_version: 1
 task_id: add-agent-first-cli-onboarding
 title: Add minimal agent-first onboarding with init, schema export, and user docs
-status: ready
+status: done
 branch: feat/add-agent-first-cli-onboarding
 base_branch: master
 phases:
   - id: cli
     title: Add minimal init and schema CLI commands
-    status: todo
+    status: done
   - id: scaffolding
     title: Package and generate starter config, prompts, and templates
-    status: todo
+    status: done
   - id: docs
     title: Document the minimal getting-started and reference flows
-    status: todo
+    status: done
   - id: tests
     title: Cover onboarding CLI behavior and generated outputs
-    status: todo
+    status: done
 ---
 
 # Agent-First CLI Onboarding Plan
@@ -189,7 +189,7 @@ Keep this v1 content small and practical.
 
 It should cover:
 
-- the preferred invocation style, for example `uv run developer ...`;
+- the preferred invocation style, for example `uv run --active developer ...`;
 - the primary commands an agent should know about, especially `init`, `schema`, `validate-plan`, `check`, and `implement`;
 - the expected plan-validation workflow before implementation;
 - where scaffolded harness files live; and
@@ -221,31 +221,31 @@ Behavior:
 
 ### Phase 1: CLI surface
 
-- add `schema` command group to the root CLI;
-- add `init` command to the root CLI;
-- keep presentation code thin and push generation/schema logic into application-layer services where practical; and
-- define the minimal prompt flow for interactive setup.
+- [x] add `schema` command group to the root CLI;
+- [x] add `init` command to the root CLI;
+- [x] keep presentation code thin and push generation/schema logic into application-layer services where practical; and
+- [x] define the minimal prompt flow for interactive setup.
 
 ### Phase 2: Scaffold assets and generation
 
-- create a canonical set of packaged starter templates;
-- reuse existing harness prompt/check content where it fits the minimal bootstrap;
-- add a starter `AGENTS.md` template or merge snippet template;
-- normalize prompt path defaults to the generated directory structure; and
-- implement file generation for config, prompts, checks, and example plan content.
+- [x] create a canonical set of packaged starter templates;
+- [x] reuse existing harness prompt/check content where it fits the minimal bootstrap;
+- [x] add a starter `AGENTS.md` template or merge snippet template;
+- [x] normalize prompt path defaults to the generated directory structure; and
+- [x] implement file generation for config, prompts, checks, and example plan content.
 
 ### Phase 3: Schema export
 
-- expose JSON Schema for the validated task-plan frontmatter shape;
-- expose JSON Schema for the dynamic quality spec model;
-- ensure schema output reflects supported enum values and required fields; and
-- document clearly that the plan schema applies to frontmatter, not the whole markdown file.
+- [x] expose JSON Schema for the validated task-plan frontmatter shape;
+- [x] expose JSON Schema for the dynamic quality spec model;
+- [x] ensure schema output reflects supported enum values and required fields; and
+- [x] document clearly that the plan schema applies to frontmatter, not the whole markdown file.
 
 ### Phase 4: Documentation
 
-- populate `README.md` with the shortest useful quickstart;
-- add `docs/getting-started.md` for the bootstrap workflow; and
-- add `docs/reference.md` for commands, config, schema rules, and common errors.
+- [x] populate `README.md` with the shortest useful quickstart;
+- [x] add `docs/getting-started.md` for the bootstrap workflow; and
+- [x] add `docs/reference.md` for commands, config, schema rules, and common errors.
 
 ## Documentation Shape
 
@@ -291,14 +291,14 @@ Cover:
 
 Add focused tests for:
 
-- root CLI help listing new commands;
-- `developer init` interactive success path;
-- file generation in an isolated filesystem;
-- no-silent-overwrite behavior;
-- `AGENTS.md` creation or snippet fallback behavior;
-- `developer schema plan` output shape;
-- `developer schema quality` output shape; and
-- generated sample plan passing `validate-plan` when intended.
+- [x] root CLI help listing new commands;
+- [x] `developer init` interactive success path;
+- [x] file generation in an isolated filesystem;
+- [x] no-silent-overwrite behavior;
+- [x] `AGENTS.md` creation or snippet fallback behavior;
+- [x] `developer schema plan` output shape;
+- [x] `developer schema quality` output shape; and
+- [x] generated sample plan passing `validate-plan` when intended.
 
 ## Acceptance Criteria
 

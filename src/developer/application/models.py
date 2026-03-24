@@ -1,4 +1,4 @@
-"""Application-facing result models."""
+"""Application-facing command and result models."""
 
 from pydantic import BaseModel, ConfigDict
 

@@ -97,7 +97,7 @@ def test_render_raises_on_missing_prompt_file(tmp_path) -> None:
 
 def test_prompt_builder_uses_default_prompts_section_when_missing(tmp_path) -> None:
     """Prompt builder should use defaults when the prompts section is omitted."""
-    prompt_file = tmp_path / "harness" / "implementation_prompt.md"
+    prompt_file = tmp_path / "harness" / "prompts" / "implementation_prompt.md"
     prompt_file.parent.mkdir(parents=True, exist_ok=True)
     prompt_file.write_text("Prompt: {{ feedback }}", encoding="utf-8")
     config_file = tmp_path / "engineeringagent.toml"
