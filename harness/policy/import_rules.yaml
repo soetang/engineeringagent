@@ -1,12 +1,13 @@
 rules:
   - name: "presentation-boundary"
-    description: "Presentation is the CLI-facing layer and only depends on application entrypoints."
+    description: "Presentation is the CLI-facing layer and only depends on application entrypoints plus presentation-safe scaffolding models."
     targets:
       - "developer.presentation"
     mode: "allow_only"
     allow:
       - "developer.presentation"
       - "developer.application"
+      - "developer.scaffolding.models"
 
   - name: "orchestrators-loop-boundary"
     description: "Loop orchestration stays isolated from other developer packages."
