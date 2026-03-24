@@ -4,14 +4,14 @@ from typing import List, Optional, Type
 import pytest
 from pydantic import BaseModel
 
-from developer.agent_backends.protocol import AgentBackendProtocol
-from developer.quality.adapters.agentic_review_adapter import (
+from engineeringagent.agent_backends.protocol import AgentBackendProtocol
+from engineeringagent.quality.adapters.agentic_review_adapter import (
     AgenticReviewAdapter,
     AgenticReviewCheck,
     ReviewOutput,
     ReviewStatus,
 )
-from developer.quality.protocol import CheckStatus
+from engineeringagent.quality.protocol import CheckStatus
 
 
 class MockAgent(AgentBackendProtocol):

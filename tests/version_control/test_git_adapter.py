@@ -4,8 +4,10 @@ import os
 import subprocess
 from pathlib import Path
 
-from developer.version_control.adapters.git_adapter import GitVersionControlAdapter
-from developer.version_control.models import CommitRequest
+from engineeringagent.version_control.adapters.git_adapter import (
+    GitVersionControlAdapter,
+)
+from engineeringagent.version_control.models import CommitRequest
 
 
 def _git_env() -> dict[str, str]:

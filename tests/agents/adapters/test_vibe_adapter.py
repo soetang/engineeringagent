@@ -1,8 +1,11 @@
 import pytest
 from pydantic import BaseModel
 
-from developer.agent_backends.adapters.vibe_adapter import VibeAdapter
-from developer.quality.adapters.agentic_review_adapter import ReviewOutput, ReviewStatus
+from engineeringagent.agent_backends.adapters.vibe_adapter import VibeAdapter
+from engineeringagent.quality.adapters.agentic_review_adapter import (
+    ReviewOutput,
+    ReviewStatus,
+)
 
 
 class VibeTestModel(BaseModel):

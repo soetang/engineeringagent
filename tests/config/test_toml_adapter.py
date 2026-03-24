@@ -2,7 +2,7 @@
 
 import tempfile
 import os
-from developer.config.adapter.toml_adapter import TomlAdapter
+from engineeringagent.config.adapter.toml_adapter import TomlAdapter
 
 
 def test_toml_adapter_load():

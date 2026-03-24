@@ -2,8 +2,8 @@
 
 import pytest
 
-from developer.tasks.errors import TaskPlanValidationError
-from developer.tasks.services.markdown_plan_loader import MarkdownPlanLoader
+from engineeringagent.tasks.errors import TaskPlanValidationError
+from engineeringagent.tasks.services.markdown_plan_loader import MarkdownPlanLoader
 
 
 def _write_plan(path, *, status: str = "ready", phase_status: str = "todo") -> None:

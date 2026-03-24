@@ -2,13 +2,13 @@
 
 import pytest
 
-from developer.agent_backends.adapters.codex_adapter import CodexAdapter
-from developer.agent_backends.adapters.vibe_adapter import VibeAdapter
-from developer.agent_backends.select_agent_backend_service import (
+from engineeringagent.agent_backends.adapters.codex_adapter import CodexAdapter
+from engineeringagent.agent_backends.adapters.vibe_adapter import VibeAdapter
+from engineeringagent.agent_backends.select_agent_backend_service import (
     SelectAgentBackendService,
     get_agent_backend_service,
 )
-from developer.config.service import ConfigService
+from engineeringagent.config.service import ConfigService
 
 
 def _config_service(tmp_path, config_text: str = "") -> ConfigService:

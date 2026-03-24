@@ -20,14 +20,14 @@ def test_allow_only_allows_resolved_relative_imports(tmp_path: Path) -> None:
         [
             rule(
                 name="feature-area-boundary",
-                targets=["developer.feature_area"],
+                targets=["engineeringagent.feature_area"],
                 mode="allow_only",
-                allow=["developer.feature_area"],
+                allow=["engineeringagent.feature_area"],
             )
         ],
     )
     write_file(
-        tmp_path / "src/developer/feature_area/protocols.py",
+        tmp_path / "src/engineeringagent/feature_area/protocols.py",
         "from .models import GatePhase\n",
     )
 
@@ -45,22 +45,22 @@ def test_allow_only_rejects_non_allowed_local_import(tmp_path: Path) -> None:
             rule(
                 name="feature-area-boundary",
                 description="Feature code stays inside its package boundary.",
-                targets=["developer.feature_area"],
+                targets=["engineeringagent.feature_area"],
                 mode="allow_only",
-                allow=["developer.feature_area"],
+                allow=["engineeringagent.feature_area"],
             )
         ],
     )
     write_file(
-        tmp_path / "src/developer/feature_area/example.py",
-        "from developer.ui.models import Screen\n",
+        tmp_path / "src/engineeringagent/feature_area/example.py",
+        "from engineeringagent.ui.models import Screen\n",
     )
 
     result = run_import_rules(tmp_path)
 
     assert result.returncode == 1
     assert (
-        "src/developer/feature_area/example.py:1 imports developer.ui.models"
+        "src/engineeringagent/feature_area/example.py:1 imports engineeringagent.ui.models"
         in result.stderr
     )
     assert "rule: feature-area-boundary" in result.stderr
@@ -74,22 +74,22 @@ def test_deny_only_rejects_matching_local_imports(tmp_path: Path) -> None:
         [
             rule(
                 name="application-no-presentation",
-                targets=["developer.feature_area"],
+                targets=["engineeringagent.feature_area"],
                 mode="deny_only",
-                deny=["developer.ui"],
+                deny=["engineeringagent.ui"],
             )
         ],
     )
     write_file(
-        tmp_path / "src/developer/feature_area/example.py",
-        "from developer.ui.models import Screen\n",
+        tmp_path / "src/engineeringagent/feature_area/example.py",
+        "from engineeringagent.ui.models import Screen\n",
     )
 
     result = run_import_rules(tmp_path)
 
     assert result.returncode == 1
     assert (
-        "src/developer/feature_area/example.py:1 imports developer.ui.models"
+        "src/engineeringagent/feature_area/example.py:1 imports engineeringagent.ui.models"
         in result.stderr
     )
 
@@ -101,16 +101,19 @@ def test_deny_except_allows_configured_exception(tmp_path: Path) -> None:
         [
             rule(
                 name="feature-area-boundary",
-                targets=["developer.feature_area"],
+                targets=["engineeringagent.feature_area"],
                 mode="deny_except",
-                allow=["developer.feature_area", "developer.shared_protocols"],
-                deny=["developer"],
+                allow=[
+                    "engineeringagent.feature_area",
+                    "engineeringagent.shared_protocols",
+                ],
+                deny=["engineeringagent"],
             )
         ],
     )
     write_file(
-        tmp_path / "src/developer/feature_area/example.py",
-        "from developer.shared_protocols.models import Event\n",
+        tmp_path / "src/engineeringagent/feature_area/example.py",
+        "from engineeringagent.shared_protocols.models import Event\n",
     )
 
     result = run_import_rules(tmp_path)
@@ -125,30 +128,30 @@ def test_package_targets_cover_nested_modules_and_init_files(tmp_path: Path) -> 
         [
             rule(
                 name="feature-area-boundary",
-                targets=["developer.feature_area"],
+                targets=["engineeringagent.feature_area"],
                 mode="deny_only",
-                deny=["developer.ui"],
+                deny=["engineeringagent.ui"],
             )
         ],
     )
     write_file(
-        tmp_path / "src/developer/feature_area/__init__.py",
-        "from developer.ui.models import Screen\n",
+        tmp_path / "src/engineeringagent/feature_area/__init__.py",
+        "from engineeringagent.ui.models import Screen\n",
     )
     write_file(
-        tmp_path / "src/developer/feature_area/nested/example.py",
-        "import developer.ui.models\n",
+        tmp_path / "src/engineeringagent/feature_area/nested/example.py",
+        "import engineeringagent.ui.models\n",
     )
 
     result = run_import_rules(tmp_path)
 
     assert result.returncode == 1
     assert (
-        "src/developer/feature_area/__init__.py:1 imports developer.ui.models"
+        "src/engineeringagent/feature_area/__init__.py:1 imports engineeringagent.ui.models"
         in result.stderr
     )
     assert (
-        "src/developer/feature_area/nested/example.py:1 imports developer.ui.models"
+        "src/engineeringagent/feature_area/nested/example.py:1 imports engineeringagent.ui.models"
         in result.stderr
     )
 
@@ -160,21 +163,21 @@ def test_exact_module_target_wins_over_parent_package_target(tmp_path: Path) -> 
         [
             rule(
                 name="feature-area-parent",
-                targets=["developer.feature_area"],
+                targets=["engineeringagent.feature_area"],
                 mode="deny_only",
-                deny=["developer.shared_protocols"],
+                deny=["engineeringagent.shared_protocols"],
             ),
             rule(
                 name="feature-area-entrypoint",
-                targets=["developer.feature_area.entrypoint"],
+                targets=["engineeringagent.feature_area.entrypoint"],
                 mode="allow_only",
-                allow=["developer.shared_protocols"],
+                allow=["engineeringagent.shared_protocols"],
             ),
         ],
     )
     write_file(
-        tmp_path / "src/developer/feature_area/entrypoint.py",
-        "from developer.shared_protocols.models import Event\n",
+        tmp_path / "src/engineeringagent/feature_area/entrypoint.py",
+        "from engineeringagent.shared_protocols.models import Event\n",
     )
 
     result = run_import_rules(tmp_path)
@@ -189,21 +192,21 @@ def test_same_specificity_overlap_fails_validation(tmp_path: Path) -> None:
         [
             rule(
                 name="first-boundary",
-                targets=["developer.feature_area"],
+                targets=["engineeringagent.feature_area"],
                 mode="deny_only",
-                deny=["developer.ui"],
+                deny=["engineeringagent.ui"],
             ),
             rule(
                 name="second-boundary",
-                targets=["developer.feature_area"],
+                targets=["engineeringagent.feature_area"],
                 mode="allow_only",
-                allow=["developer.feature_area"],
+                allow=["engineeringagent.feature_area"],
             ),
         ],
     )
     write_file(
-        tmp_path / "src/developer/feature_area/example.py",
-        "import developer.feature_area.models\n",
+        tmp_path / "src/engineeringagent/feature_area/example.py",
+        "import engineeringagent.feature_area.models\n",
     )
 
     result = run_import_rules(tmp_path)
@@ -221,19 +224,21 @@ def test_nonexistent_target_fails_clearly(tmp_path: Path) -> None:
         [
             rule(
                 name="missing-target",
-                targets=["developer.does_not_exist"],
+                targets=["engineeringagent.does_not_exist"],
                 mode="deny_only",
-                deny=["developer.ui"],
+                deny=["engineeringagent.ui"],
             )
         ],
     )
-    write_file(tmp_path / "src/developer/feature_area/example.py", "import typing\n")
+    write_file(
+        tmp_path / "src/engineeringagent/feature_area/example.py", "import typing\n"
+    )
 
     result = run_import_rules(tmp_path)
 
     assert result.returncode == 1
     assert (
-        "Target 'developer.does_not_exist' does not resolve to a source module or package under src/"
+        "Target 'engineeringagent.does_not_exist' does not resolve to a source module or package under src/"
         in result.stderr
     )
 
@@ -245,13 +250,15 @@ def test_invalid_mode_fails_clearly(tmp_path: Path) -> None:
         [
             {
                 "name": "bad-mode",
-                "targets": ["developer.feature_area"],
+                "targets": ["engineeringagent.feature_area"],
                 "mode": "allow",
-                "allow": ["developer.feature_area"],
+                "allow": ["engineeringagent.feature_area"],
             }
         ],
     )
-    write_file(tmp_path / "src/developer/feature_area/example.py", "import typing\n")
+    write_file(
+        tmp_path / "src/engineeringagent/feature_area/example.py", "import typing\n"
+    )
 
     result = run_import_rules(tmp_path)
 
@@ -263,9 +270,17 @@ def test_missing_targets_fails_clearly(tmp_path: Path) -> None:
     """Fail clearly when a rule omits targets."""
     write_policy(
         tmp_path,
-        [{"name": "missing-targets", "mode": "deny_only", "deny": ["developer.ui"]}],
+        [
+            {
+                "name": "missing-targets",
+                "mode": "deny_only",
+                "deny": ["engineeringagent.ui"],
+            }
+        ],
     )
-    write_file(tmp_path / "src/developer/feature_area/example.py", "import typing\n")
+    write_file(
+        tmp_path / "src/engineeringagent/feature_area/example.py", "import typing\n"
+    )
 
     result = run_import_rules(tmp_path)
 
@@ -283,14 +298,16 @@ def test_invalid_allow_deny_combination_fails_clearly(tmp_path: Path) -> None:
         [
             rule(
                 name="bad-combination",
-                targets=["developer.feature_area"],
+                targets=["engineeringagent.feature_area"],
                 mode="allow_only",
-                allow=["developer.feature_area"],
-                deny=["developer.ui"],
+                allow=["engineeringagent.feature_area"],
+                deny=["engineeringagent.ui"],
             )
         ],
     )
-    write_file(tmp_path / "src/developer/feature_area/example.py", "import typing\n")
+    write_file(
+        tmp_path / "src/engineeringagent/feature_area/example.py", "import typing\n"
+    )
 
     result = run_import_rules(tmp_path)
 
@@ -304,7 +321,9 @@ def test_invalid_allow_deny_combination_fails_clearly(tmp_path: Path) -> None:
 def test_malformed_yaml_returns_clear_failure(tmp_path: Path) -> None:
     """Fail clearly when the policy file is invalid YAML."""
     write_file(tmp_path / "harness/policy/import_rules.yaml", "rules: [\n")
-    write_file(tmp_path / "src/developer/feature_area/example.py", "import typing\n")
+    write_file(
+        tmp_path / "src/engineeringagent/feature_area/example.py", "import typing\n"
+    )
 
     result = run_import_rules(tmp_path)
 

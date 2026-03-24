@@ -2,10 +2,10 @@
 
 import pytest
 
-from developer.orchestrators.loop.models import CompletionResult
-from developer.tasks.adapters.markdown_plan_adapter import MarkdownPlanAdapter
-from developer.tasks.errors import TaskPlanLoadError
-from developer.tasks.select_service import TaskSelectionService
+from engineeringagent.orchestrators.loop.models import CompletionResult
+from engineeringagent.tasks.adapters.markdown_plan_adapter import MarkdownPlanAdapter
+from engineeringagent.tasks.errors import TaskPlanLoadError
+from engineeringagent.tasks.select_service import TaskSelectionService
 
 
 def _write_plan(path, *, status: str = "ready", phase_status: str = "todo") -> None:

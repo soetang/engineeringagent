@@ -15,8 +15,8 @@ profile = "implementation"
 
 [workspaces]
 default_provider = "git_worktree"
-state_dir = ".developer/state"
-git_worktree_root_dir = "developer-workspaces"
+state_dir = ".engineeringagent/state"
+git_worktree_root_dir = "engineeringagent-workspaces"
 
 [version_control]
 enabled = true

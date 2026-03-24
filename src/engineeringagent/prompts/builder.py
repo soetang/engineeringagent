@@ -1,0 +1,43 @@
+from pathlib import Path
+from typing import Any, Mapping
+
+from jinja2 import Template, TemplateError
+
+from engineeringagent.config.service import ConfigService
+from engineeringagent.orchestrators.loop.protocols import PromptBuilder
+
+from .errors import PromptTemplateMissingError, PromptTemplateSyntaxError
+from .models import PromptSettings
+
+
+class OrchestratorPromptBuilder(PromptBuilder):
+    """Build prompts from configured Jinja templates."""
+
+    def __init__(self, config_service: ConfigService | None = None):
+        """Load prompt settings from the shared prompt section."""
+        self._config_service = config_service or ConfigService()
+        self._settings = _load_prompt_settings(self._config_service)
+
+    def build(self, context: Mapping[str, Any]) -> str:
+        """Render the implementation prompt with the provided context."""
+        prompt_path = Path(self._settings.implementation_prompt_path)
+
+        try:
+            template_text = prompt_path.read_text()
+        except FileNotFoundError as exc:
+            raise PromptTemplateMissingError(
+                f"Prompt template not found: {self._settings.implementation_prompt_path}"
+            ) from exc
+
+        try:
+            template = Template(template_text)
+            return template.render(**dict(context))
+        except TemplateError as exc:
+            raise PromptTemplateSyntaxError(
+                f"Failed to render prompt template: {prompt_path}"
+            ) from exc
+
+
+def _load_prompt_settings(config_service: ConfigService) -> PromptSettings:
+    """Load prompt settings from the shared prompts section."""
+    return config_service.get_config("prompts", PromptSettings)

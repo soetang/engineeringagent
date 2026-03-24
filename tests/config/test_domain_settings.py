@@ -2,19 +2,19 @@
 
 import pytest
 
-from developer.agent_backends.settings import AgentBackendSettings
-from developer.config.service import ConfigService
-from developer.forge.settings import ForgeSettings
-from developer.prompts.settings import OrchestratorPromptSettings
-from developer.quality.settings import QualitySettings
-from developer.scaffolding.paths import (
+from engineeringagent.agent_backends.settings import AgentBackendSettings
+from engineeringagent.config.service import ConfigService
+from engineeringagent.forge.settings import ForgeSettings
+from engineeringagent.prompts.settings import OrchestratorPromptSettings
+from engineeringagent.quality.settings import QualitySettings
+from engineeringagent.scaffolding.paths import (
     COMMIT_MESSAGE_PROMPT_NAME,
     DEFAULT_HARNESS_DIR,
     IMPLEMENTATION_PROMPT_NAME,
     PULL_REQUEST_PROMPT_NAME,
     build_prompt_path,
 )
-from developer.version_control.settings import VersionControlSettings
+from engineeringagent.version_control.settings import VersionControlSettings
 
 
 def test_quality_settings_defaults() -> None:
@@ -25,8 +25,8 @@ def test_quality_settings_defaults() -> None:
 
 def test_quality_settings_custom_values() -> None:
     """Test QualitySettings with custom values."""
-    settings = QualitySettings(checks_path=".developer/quality/checks.yaml")
-    assert settings.checks_path == ".developer/quality/checks.yaml"
+    settings = QualitySettings(checks_path=".engineeringagent/quality/checks.yaml")
+    assert settings.checks_path == ".engineeringagent/quality/checks.yaml"
 
 
 def test_quality_settings_extra_forbid() -> None:

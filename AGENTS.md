@@ -1,7 +1,7 @@
 # Coding Agent Harness Tools
 
 ## Commands
-- Run the `developer` CLI with whatever launcher your environment provides.
+- Run the `engineeringagent` CLI with whatever launcher your environment provides.
 
 ### Dependency Management
 - Add dependencies: `uv add <package>`

@@ -2,8 +2,8 @@
 
 from typer.testing import CliRunner
 
-from developer.application.models import ImplementationRunResult
-from developer.presentation.cli import app
+from engineeringagent.application.models import ImplementationRunResult
+from engineeringagent.presentation.cli import app
 
 
 def test_implement_command_calls_service_with_plan_path(monkeypatch) -> None:
@@ -18,7 +18,7 @@ def test_implement_command_calls_service_with_plan_path(monkeypatch) -> None:
         )
 
     monkeypatch.setattr(
-        "developer.presentation.commands.implement.run_implementation",
+        "engineeringagent.presentation.commands.implement.run_implementation",
         fake_run_implementation,
     )
 
@@ -34,7 +34,7 @@ def test_implement_command_uses_workspace_flow_when_configured(monkeypatch) -> N
     runner = CliRunner()
 
     monkeypatch.setattr(
-        "developer.presentation.commands.implement.run_implementation",
+        "engineeringagent.presentation.commands.implement.run_implementation",
         lambda task_input, max_iterations=None: ImplementationRunResult(
             exit_code=0,
             message=(

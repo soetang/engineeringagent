@@ -30,40 +30,40 @@ phases:
 
 ## Goal
 
-Move commit, push, and pull request workflow ownership out of `developer.version_control` and out of `developer.application`, and place it in an orchestrator-owned publication boundary.
+Move commit, push, and pull request workflow ownership out of `engineeringagent.version_control` and out of `engineeringagent.application`, and place it in an orchestrator-owned publication boundary.
 
 After this refactor:
 
-- `developer.orchestrators` owns publication workflow policy;
-- `developer.version_control` owns only repository-local git operations;
-- `developer.forge` owns only forge-hosting operations such as pull request lookup and creation;
-- `developer.agent_backends` remains an execution mechanism, not an architectural dependency of version control; and
-- `developer.application` stays a composition root that wires concrete implementations into orchestrator-owned ports.
+- `engineeringagent.orchestrators` owns publication workflow policy;
+- `engineeringagent.version_control` owns only repository-local git operations;
+- `engineeringagent.forge` owns only forge-hosting operations such as pull request lookup and creation;
+- `engineeringagent.agent_backends` remains an execution mechanism, not an architectural dependency of version control; and
+- `engineeringagent.application` stays a composition root that wires concrete implementations into orchestrator-owned ports.
 
 ## Decision
 
 Treat publication as its own orchestration concern, separate from both:
 
-- loop orchestration (`developer.orchestrators.loop`); and
-- implementation-run planning (`developer.orchestrators.runs`).
+- loop orchestration (`engineeringagent.orchestrators.loop`); and
+- implementation-run planning (`engineeringagent.orchestrators.runs`).
 
 Recommended ownership split:
 
-- `developer.orchestrators.publication` owns commit/push/PR policy and the content-generation ports it needs.
-- `developer.version_control` implements git command adapters and shared git request/result models.
-- `developer.forge` implements forge command adapters and shared forge request/result models.
-- `developer.agent_backends` may implement an orchestrator-owned publication content generation port, but version control must not import agent backend protocols directly.
+- `engineeringagent.orchestrators.publication` owns commit/push/PR policy and the content-generation ports it needs.
+- `engineeringagent.version_control` implements git command adapters and shared git request/result models.
+- `engineeringagent.forge` implements forge command adapters and shared forge request/result models.
+- `engineeringagent.agent_backends` may implement an orchestrator-owned publication content generation port, but version control must not import agent backend protocols directly.
 
 ## Problem In The Current Design
 
 Today the main architectural leak is:
 
-- `developer.version_control.content_service.VersionControlContentService` imports `developer.agent_backends.protocol.AgentBackendProtocol`; and
+- `engineeringagent.version_control.content_service.VersionControlContentService` imports `engineeringagent.agent_backends.protocol.AgentBackendProtocol`; and
 - `WorkspaceVersionControlObserver` coordinates commit, push, and PR flow even though it is application-owned.
 
 That creates two distinct problems.
 
-### 1. `developer.version_control` owns workflow-adjacent policy
+### 1. `engineeringagent.version_control` owns workflow-adjacent policy
 
 `version_control` currently contains:
 
@@ -73,7 +73,7 @@ That creates two distinct problems.
 
 That package now mixes infrastructure with orchestration policy.
 
-### 2. `developer.application` owns more than composition
+### 2. `engineeringagent.application` owns more than composition
 
 `WorkspaceVersionControlObserver` currently decides:
 
@@ -88,19 +88,19 @@ That is orchestration logic, not application composition.
 
 ## Package Ownership
 
-### `developer.orchestrators.loop`
+### `engineeringagent.orchestrators.loop`
 
 Keeps owning the inner implementation loop only.
 
 It may publish lifecycle events, but it should not decide git or PR workflow directly.
 
-### `developer.orchestrators.runs`
+### `engineeringagent.orchestrators.runs`
 
 Keeps owning implementation-run planning only.
 
 It may prepare run context for publication, but it should not own commit/push/PR workflow.
 
-### `developer.orchestrators.publication`
+### `engineeringagent.orchestrators.publication`
 
 New package.
 
@@ -115,7 +115,7 @@ Owns publication policy:
 
 This package defines the ports and typed models needed for publication orchestration.
 
-### `developer.version_control`
+### `engineeringagent.version_control`
 
 Owns only git mechanics.
 
@@ -130,9 +130,9 @@ Examples:
 - push a branch; and
 - return diffs or recent commits when asked by an orchestrator-owned content port.
 
-This package must not decide message policy and must not import `developer.agent_backends`.
+This package must not decide message policy and must not import `engineeringagent.agent_backends`.
 
-### `developer.forge`
+### `engineeringagent.forge`
 
 Owns only forge mechanics.
 
@@ -144,7 +144,7 @@ Examples:
 
 This package must not render prompts or decide whether a PR should exist.
 
-### `developer.application`
+### `engineeringagent.application`
 
 Owns composition only.
 
@@ -160,35 +160,35 @@ Application should not decide publication sequencing or content policy.
 
 Desired direction:
 
-- `developer.orchestrators.publication` defines ports
-- `developer.version_control` implements git-facing ports
-- `developer.forge` implements forge-facing ports
-- `developer.agent_backends` may implement content-generation ports
-- `developer.application` wires concrete implementations into orchestrators
+- `engineeringagent.orchestrators.publication` defines ports
+- `engineeringagent.version_control` implements git-facing ports
+- `engineeringagent.forge` implements forge-facing ports
+- `engineeringagent.agent_backends` may implement content-generation ports
+- `engineeringagent.application` wires concrete implementations into orchestrators
 
 Avoid these directions:
 
-- `developer.version_control -> developer.agent_backends`
-- `developer.forge -> developer.agent_backends`
-- `developer.orchestrators.publication -> developer.version_control.adapters`
-- `developer.orchestrators.publication -> developer.forge.adapters`
-- `developer.application -> publication workflow helpers or policy logic`
+- `engineeringagent.version_control -> engineeringagent.agent_backends`
+- `engineeringagent.forge -> engineeringagent.agent_backends`
+- `engineeringagent.orchestrators.publication -> engineeringagent.version_control.adapters`
+- `engineeringagent.orchestrators.publication -> engineeringagent.forge.adapters`
+- `engineeringagent.application -> publication workflow helpers or policy logic`
 
 ## Proposed Modules
 
 Recommended additions:
 
-- `src/developer/orchestrators/publication/__init__.py`
-- `src/developer/orchestrators/publication/models.py`
-- `src/developer/orchestrators/publication/protocols.py`
-- `src/developer/orchestrators/publication/publication_observer.py`
-- `src/developer/orchestrators/publication/content_generation.py` or `services.py`
+- `src/engineeringagent/orchestrators/publication/__init__.py`
+- `src/engineeringagent/orchestrators/publication/models.py`
+- `src/engineeringagent/orchestrators/publication/protocols.py`
+- `src/engineeringagent/orchestrators/publication/publication_observer.py`
+- `src/engineeringagent/orchestrators/publication/content_generation.py` or `services.py`
 
 Recommended removals or moves:
 
-- remove `src/developer/version_control/content_service.py`
-- move `src/developer/version_control/content_models.py` into `developer.orchestrators.publication.models` or split them into publication-owned models
-- replace `src/developer/application/observers/workspace_version_control_observer.py` with an orchestrator-owned publication observer
+- remove `src/engineeringagent/version_control/content_service.py`
+- move `src/engineeringagent/version_control/content_models.py` into `engineeringagent.orchestrators.publication.models` or split them into publication-owned models
+- replace `src/engineeringagent/application/observers/workspace_version_control_observer.py` with an orchestrator-owned publication observer
 
 ## Concrete Protocols
 
@@ -198,7 +198,7 @@ The exact names can change, but the ownership should stay the same.
 
 Recommended protocol module:
 
-- `src/developer/orchestrators/publication/protocols.py`
+- `src/engineeringagent/orchestrators/publication/protocols.py`
 
 Recommended shapes:
 
@@ -207,20 +207,20 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from developer.orchestrators.publication.models import (
+from engineeringagent.orchestrators.publication.models import (
     CommitMessage,
     CommitMessageContext,
     PullRequestContent,
     PullRequestContentContext,
 )
-from developer.version_control.models import (
+from engineeringagent.version_control.models import (
     CommitRequest,
     CommitResult,
     GitIdentity,
     PushResult,
     WorkingTreeStatus,
 )
-from developer.forge.models import PullRequestRequest, PullRequestResult
+from engineeringagent.forge.models import PullRequestRequest, PullRequestResult
 
 
 class PublicationVersionControlPort(Protocol):
@@ -306,7 +306,7 @@ This keeps `run_agent(...)` out of the publication orchestration boundary. If th
 
 Recommended model module:
 
-- `src/developer/orchestrators/publication/models.py`
+- `src/engineeringagent/orchestrators/publication/models.py`
 
 Suggested shapes:
 
@@ -376,17 +376,17 @@ class PublicationRunResult(BaseModel):
 
 Notes:
 
-- move prompt-context ownership from `developer.version_control.content_models` into publication models;
-- keep `CommitRequest`, `CommitResult`, `PushResult`, and `GitIdentity` in `developer.version_control.models`, because those are still git-domain transport models; and
-- keep `PullRequestRequest` and `PullRequestResult` in `developer.forge.models`, because those are still forge-domain transport models.
+- move prompt-context ownership from `engineeringagent.version_control.content_models` into publication models;
+- keep `CommitRequest`, `CommitResult`, `PushResult`, and `GitIdentity` in `engineeringagent.version_control.models`, because those are still git-domain transport models; and
+- keep `PullRequestRequest` and `PullRequestResult` in `engineeringagent.forge.models`, because those are still forge-domain transport models.
 
 ## Publication Observer Shape
 
 Recommended orchestrator-owned observer:
 
-- `src/developer/orchestrators/publication/publication_observer.py`
+- `src/engineeringagent/orchestrators/publication/publication_observer.py`
 
-This object should implement `developer.orchestrators.loop.protocols.ImplementationLifecycleObserver`.
+This object should implement `engineeringagent.orchestrators.loop.protocols.ImplementationLifecycleObserver`.
 
 Its dependencies should be only protocol-typed:
 
@@ -408,7 +408,7 @@ That sequencing is orchestration, so it belongs here.
 
 ## Content Generation Adapters
 
-The generator implementations should live outside `developer.version_control`.
+The generator implementations should live outside `engineeringagent.version_control`.
 
 Recommended implementations:
 
@@ -420,24 +420,24 @@ Recommended implementations:
 
 Recommended package placement:
 
-- either `developer.application.publication_content` if treated as composition-time adapters; or
-- `developer.publication_content` if you want a dedicated infrastructure package later.
+- either `engineeringagent.application.publication_content` if treated as composition-time adapters; or
+- `engineeringagent.publication_content` if you want a dedicated infrastructure package later.
 
 For this slice, the simplest clean choice is application-owned adapter implementations composed into orchestrator ports, because the underlying backend selection already lives in application composition.
 
 What should not happen:
 
-- do not put these generators back under `developer.version_control`;
-- do not make `developer.orchestrators.publication` import `developer.agent_backends` directly.
+- do not put these generators back under `engineeringagent.version_control`;
+- do not make `engineeringagent.orchestrators.publication` import `engineeringagent.agent_backends` directly.
 
 ## Prompt Ownership
 
-Prompt rendering for commit and PR generation should move with the content generator adapters, not stay in `developer.version_control`.
+Prompt rendering for commit and PR generation should move with the content generator adapters, not stay in `engineeringagent.version_control`.
 
 Recommended rule:
 
 - prompt templates are content-generation implementation details;
-- prompt paths may still come from `developer.config` and `developer.prompts`; and
+- prompt paths may still come from `engineeringagent.config` and `engineeringagent.prompts`; and
 - publication orchestrators should see only typed generator ports.
 
 ## Import Restrictions
@@ -448,7 +448,7 @@ Update `harness/policy/import_rules.yaml` to make the dependency direction enfor
 
 #### `orchestrators-publication-boundary`
 
-`developer.orchestrators.publication` should depend only on itself and orchestrator-shared models/protocols.
+`engineeringagent.orchestrators.publication` should depend only on itself and orchestrator-shared models/protocols.
 
 Recommended shape under the current policy system:
 
@@ -456,21 +456,21 @@ Recommended shape under the current policy system:
 - name: "orchestrators-publication-boundary"
   description: "Publication orchestration owns workflow policy and stays isolated from infrastructure packages."
   targets:
-    - "developer.orchestrators.publication"
+    - "engineeringagent.orchestrators.publication"
   mode: "allow_only"
   allow:
-    - "developer.orchestrators.publication"
-    - "developer.orchestrators.loop.models"
-    - "developer.orchestrators.loop.protocols"
-    - "developer.workspaces.protocols"
+    - "engineeringagent.orchestrators.publication"
+    - "engineeringagent.orchestrators.loop.models"
+    - "engineeringagent.orchestrators.loop.protocols"
+    - "engineeringagent.workspaces.protocols"
 ```
 ```
 
-If publication models need shared transport models from `developer.version_control.models` or `developer.forge.models`, prefer moving those few transport types into publication-owned request/response models instead of allowing broad imports from infrastructure packages.
+If publication models need shared transport models from `engineeringagent.version_control.models` or `engineeringagent.forge.models`, prefer moving those few transport types into publication-owned request/response models instead of allowing broad imports from infrastructure packages.
 
 #### `version-control-boundary`
 
-Replace the current `developer.agent_backends.protocol` allowance.
+Replace the current `engineeringagent.agent_backends.protocol` allowance.
 
 Recommended direction:
 
@@ -478,15 +478,15 @@ Recommended direction:
 - name: "version-control-boundary"
   description: "Version control stays a git adapter package and does not depend on agent backends or publication policy."
   targets:
-    - "developer.version_control"
+    - "engineeringagent.version_control"
   mode: "allow_only"
   allow:
-    - "developer.version_control"
-    - "developer.config"
+    - "engineeringagent.version_control"
+    - "engineeringagent.config"
 ```
 ```
 
-If prompt-backed content generation is fully removed from this package, `developer.prompts` should be removed from the allowlist too.
+If prompt-backed content generation is fully removed from this package, `engineeringagent.prompts` should be removed from the allowlist too.
 
 #### `forge-boundary`
 
@@ -496,11 +496,11 @@ Tighten forge similarly:
 - name: "forge-boundary"
   description: "Forge adapters stay infrastructure-only and do not own publication policy."
   targets:
-    - "developer.forge"
+    - "engineeringagent.forge"
   mode: "allow_only"
   allow:
-    - "developer.forge"
-    - "developer.config"
+    - "engineeringagent.forge"
+    - "engineeringagent.config"
 ```
 ```
 
@@ -511,25 +511,25 @@ If you add publication content generator adapters under application, no new rule
 If you instead add a dedicated package for agent-backed publication content generation, allow it to import:
 
 - that package itself
-- `developer.agent_backends`
-- `developer.config`
-- `developer.prompts`
-- `developer.orchestrators.publication.models`
-- `developer.orchestrators.publication.protocols`
+- `engineeringagent.agent_backends`
+- `engineeringagent.config`
+- `engineeringagent.prompts`
+- `engineeringagent.orchestrators.publication.models`
+- `engineeringagent.orchestrators.publication.protocols`
 
 ### Import Rules To Preserve
 
 Keep these architectural constraints explicit:
 
-- `developer.orchestrators.publication` must not import `developer.application`
-- `developer.orchestrators.publication` must not import `developer.version_control`
-- `developer.orchestrators.publication` must not import `developer.forge`
-- `developer.orchestrators.publication` must not import `developer.agent_backends`
-- `developer.version_control` must not import `developer.agent_backends`
-- `developer.version_control` must not import `developer.orchestrators.publication`
-- `developer.forge` must not import `developer.agent_backends`
-- `developer.forge` must not import `developer.orchestrators.publication`
-- `developer.application` may import all of the above only to compose them
+- `engineeringagent.orchestrators.publication` must not import `engineeringagent.application`
+- `engineeringagent.orchestrators.publication` must not import `engineeringagent.version_control`
+- `engineeringagent.orchestrators.publication` must not import `engineeringagent.forge`
+- `engineeringagent.orchestrators.publication` must not import `engineeringagent.agent_backends`
+- `engineeringagent.version_control` must not import `engineeringagent.agent_backends`
+- `engineeringagent.version_control` must not import `engineeringagent.orchestrators.publication`
+- `engineeringagent.forge` must not import `engineeringagent.agent_backends`
+- `engineeringagent.forge` must not import `engineeringagent.orchestrators.publication`
+- `engineeringagent.application` may import all of the above only to compose them
 
 ## Recommended Runtime Shape
 
@@ -555,7 +555,7 @@ Application should not contain any of the following decisions:
 
 ### Checklist
 
-- [ ] Add `src/developer/orchestrators/publication/`
+- [ ] Add `src/engineeringagent/orchestrators/publication/`
 - [ ] Add `models.py` with publication content and result models
 - [ ] Add `protocols.py` with publication-facing version control, forge, and content-generator ports
 - [ ] Keep the publication package free of infrastructure imports
@@ -569,9 +569,9 @@ Prefer dedicated publication models if they keep loop models smaller and more ge
 
 ### Checklist
 
-- [ ] Remove `VersionControlContentService` from `developer.version_control`
+- [ ] Remove `VersionControlContentService` from `engineeringagent.version_control`
 - [ ] Move or replace `CommitPromptContext` and `PullRequestPromptContext` with publication-owned models
-- [ ] Add concrete commit-message and PR-content generator adapters outside `developer.version_control`
+- [ ] Add concrete commit-message and PR-content generator adapters outside `engineeringagent.version_control`
 - [ ] Preserve deterministic fallback behavior in generator adapters or a wrapper
 - [ ] Keep prompt rendering out of orchestrators and out of git adapters
 
@@ -585,8 +585,8 @@ This is the key inversion step for the `version_control -> agent_backends` depen
 
 - [ ] Make `GitVersionControlAdapter` satisfy `PublicationVersionControlPort`
 - [ ] Make `GitHubForgeAdapter` satisfy `PublicationForgePort`
-- [ ] Remove any lingering content-generation code from `developer.version_control`
-- [ ] Remove any lingering workflow-policy code from `developer.forge`
+- [ ] Remove any lingering content-generation code from `engineeringagent.version_control`
+- [ ] Remove any lingering workflow-policy code from `engineeringagent.forge`
 - [ ] Keep commit and PR request/result transport models in their infrastructure packages only if they remain purely command payloads
 
 ### Notes
@@ -599,7 +599,7 @@ After this phase, these packages should read like command adapters, not mini orc
 
 - [ ] Add an orchestrator-owned publication observer implementing `ImplementationLifecycleObserver`
 - [ ] Replace `WorkspaceVersionControlObserver` with the orchestrator-owned observer
-- [ ] Update `src/developer/application/workspace_runtime.py` to build and inject the publication observer
+- [ ] Update `src/engineeringagent/application/workspace_runtime.py` to build and inject the publication observer
 - [ ] Keep application limited to dependency selection and assembly
 - [ ] Remove publication sequencing logic from application-owned modules
 
@@ -612,8 +612,8 @@ It is acceptable for application to build the concrete observer. It is not accep
 ### Checklist
 
 - [ ] Add `orchestrators-publication-boundary`
-- [ ] Tighten `version-control-boundary` so it no longer allows `developer.agent_backends.protocol`
-- [ ] Remove `developer.prompts` from `version-control-boundary` if content generation fully leaves that package
+- [ ] Tighten `version-control-boundary` so it no longer allows `engineeringagent.agent_backends.protocol`
+- [ ] Remove `engineeringagent.prompts` from `version-control-boundary` if content generation fully leaves that package
 - [ ] Tighten `forge-boundary` so it does not import orchestration or agent packages
 - [ ] Run the import-rule fitness check after each package-boundary change
 
@@ -639,16 +639,16 @@ The most important tests after the refactor should live at the publication orche
 
 ## Risks And Mitigations
 
-- if publication content generators stay under `developer.version_control`, the main dependency leak remains; mitigate by moving the content service first
-- if the publication observer stays under `developer.application`, the workflow boundary remains blurry; mitigate by making the observer orchestrator-owned in the same slice
+- if publication content generators stay under `engineeringagent.version_control`, the main dependency leak remains; mitigate by moving the content service first
+- if the publication observer stays under `engineeringagent.application`, the workflow boundary remains blurry; mitigate by making the observer orchestrator-owned in the same slice
 - if publication orchestrators start importing git or forge adapters directly, the domain boundary just moves sideways; mitigate with protocol-only orchestrator imports and import rules
-- if publication models depend heavily on `developer.version_control.models` and `developer.forge.models`, infrastructure details may leak upward; mitigate by introducing publication-owned models where useful
+- if publication models depend heavily on `engineeringagent.version_control.models` and `engineeringagent.forge.models`, infrastructure details may leak upward; mitigate by introducing publication-owned models where useful
 
 ## Recommended Execution Order
 
-1. add `developer.orchestrators.publication` models and protocols;
-2. move content-generation contracts out of `developer.version_control`;
-3. add concrete generator adapters outside `developer.version_control`;
+1. add `engineeringagent.orchestrators.publication` models and protocols;
+2. move content-generation contracts out of `engineeringagent.version_control`;
+3. add concrete generator adapters outside `engineeringagent.version_control`;
 4. add an orchestrator-owned publication observer;
 5. rewire `workspace_runtime.py` to compose the new observer;
 6. delete `version_control.content_service` and the application-owned publication observer;
@@ -659,10 +659,10 @@ The most important tests after the refactor should live at the publication orche
 
 Implement this as:
 
-- a new `developer.orchestrators.publication` package;
+- a new `engineeringagent.orchestrators.publication` package;
 - orchestrator-owned ports for git commands, forge commands, and publication content generation;
-- infrastructure adapters in `developer.version_control` and `developer.forge` that accept already-decided commit/PR text;
-- agent-backed content generators outside `developer.version_control`; and
-- import rules that explicitly forbid `developer.version_control` from importing `developer.agent_backends`.
+- infrastructure adapters in `engineeringagent.version_control` and `engineeringagent.forge` that accept already-decided commit/PR text;
+- agent-backed content generators outside `engineeringagent.version_control`; and
+- import rules that explicitly forbid `engineeringagent.version_control` from importing `engineeringagent.agent_backends`.
 
 That keeps version control and forge as adapters, keeps application as composition, and puts commit/push/PR workflow ownership where it belongs: in orchestrators.

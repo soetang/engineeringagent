@@ -1,9 +1,9 @@
 """Tests for workspace-backed implementation run orchestration."""
 
-from developer.orchestrators.runs.implementation_workspace_run_orchestrator import (
+from engineeringagent.orchestrators.runs.implementation_workspace_run_orchestrator import (
     ImplementationWorkspaceRunOrchestrator,
 )
-from developer.orchestrators.runs.models import (
+from engineeringagent.orchestrators.runs.models import (
     ImplementationWorkspaceRunRequest,
     WorkspaceRunResult,
 )

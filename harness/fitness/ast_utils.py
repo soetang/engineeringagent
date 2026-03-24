@@ -159,7 +159,7 @@ def resolve_import_from(
 def classify_import(module_name: str) -> str:
     """Classify an import as stdlib, third-party, or local."""
     root_name = module_name.split(".", 1)[0]
-    if root_name == "developer":
+    if root_name == "engineeringagent":
         return "local"
     if root_name in sys.stdlib_module_names:
         return "stdlib"

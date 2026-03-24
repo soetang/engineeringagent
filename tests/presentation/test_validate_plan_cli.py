@@ -4,7 +4,7 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
-from developer.presentation.cli import app
+from engineeringagent.presentation.cli import app
 
 
 def _write_plan(

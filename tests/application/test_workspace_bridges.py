@@ -5,17 +5,17 @@ from typing import cast
 
 import pytest
 
-from developer.application.workspace_bridges import (
+from engineeringagent.application.workspace_bridges import (
     DefaultWorkspaceRunnableAgentResolver,
     LocalExecutionAgentFactory,
     WorkspaceRunnableImplementationAgent,
 )
-from developer.agent_backends.protocol import AgentBackendProtocol
-from developer.agent_backends.select_agent_backend_service import (
+from engineeringagent.agent_backends.protocol import AgentBackendProtocol
+from engineeringagent.agent_backends.select_agent_backend_service import (
     SelectAgentBackendService,
 )
-from developer.orchestrators.loop.models import OrchestratorOutcome
-from developer.workspaces.models import (
+from engineeringagent.orchestrators.loop.models import OrchestratorOutcome
+from engineeringagent.workspaces.models import (
     ExecutionTarget,
     RunRequest,
     WorkspaceSession,
@@ -121,7 +121,7 @@ def _workspace() -> WorkspaceSession:
             metadata={"repo_path": "/tmp/repo"},
         ),
         metadata={
-            "workspace_branch_name": "developer/ship-it/ws-123",
+            "workspace_branch_name": "engineeringagent/ship-it/ws-123",
             "task_branch_name": "ship-it",
             "base_branch": "main",
             "remote_name": "origin",
@@ -172,11 +172,11 @@ def test_workspace_runnable_implementation_agent_maps_success(monkeypatch) -> No
         )
 
     monkeypatch.setattr(
-        "developer.application.workspace_bridges.TaskSelectionService.resolve",
+        "engineeringagent.application.workspace_bridges.TaskSelectionService.resolve",
         fake_resolve,
     )
     monkeypatch.setattr(
-        "developer.application.workspace_bridges.build_implementation_agent",
+        "engineeringagent.application.workspace_bridges.build_implementation_agent",
         fake_build_implementation_agent,
     )
 
@@ -226,13 +226,13 @@ def test_workspace_runnable_implementation_agent_maps_failed_feedback(
         )
 
     monkeypatch.setattr(
-        "developer.application.workspace_bridges.TaskSelectionService.resolve",
+        "engineeringagent.application.workspace_bridges.TaskSelectionService.resolve",
         lambda self, task_input, base_path=None: _ResolvedTask(
             "ship-it", "Ship it", "/tmp/workspace/docs/plans/ship-it.md"
         ),
     )
     monkeypatch.setattr(
-        "developer.application.workspace_bridges.build_implementation_agent",
+        "engineeringagent.application.workspace_bridges.build_implementation_agent",
         fake_build_implementation_agent,
     )
 

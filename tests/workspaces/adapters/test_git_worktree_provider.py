@@ -4,9 +4,9 @@ import os
 import subprocess
 from pathlib import Path
 
-from developer.workspaces.models import WorkspaceSpec, WorkspaceStatus
-from developer.workspaces.services.file_registry import FileWorkspaceRegistry
-from developer.workspaces.adapters.git_worktree_provider import (
+from engineeringagent.workspaces.models import WorkspaceSpec, WorkspaceStatus
+from engineeringagent.workspaces.services.file_registry import FileWorkspaceRegistry
+from engineeringagent.workspaces.adapters.git_worktree_provider import (
     GitWorktreeWorkspaceProvider,
 )
 
@@ -71,7 +71,7 @@ def test_git_worktree_provider_creates_worktree_and_records_metadata(tmp_path) -
     assert workspace.metadata["task_id"] == "task 123"
     assert workspace.metadata["task_branch_name"] == "task 123"
     assert workspace.metadata["workspace_branch_name"].startswith(
-        "developer/task-123/ws-"
+        "engineeringagent/task-123/ws-"
     )
     assert registry.get_workspace(workspace.id) == workspace
 
@@ -85,7 +85,9 @@ def test_git_worktree_provider_stores_absolute_execution_paths(
     monkeypatch.chdir(tmp_path)
 
     registry = FileWorkspaceRegistry(tmp_path / "state")
-    provider = GitWorktreeWorkspaceProvider(Path("developer-workspaces"), registry)
+    provider = GitWorktreeWorkspaceProvider(
+        Path("engineeringagent-workspaces"), registry
+    )
 
     workspace = provider.create(
         WorkspaceSpec(

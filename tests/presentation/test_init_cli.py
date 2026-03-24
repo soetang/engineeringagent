@@ -5,8 +5,8 @@ from pathlib import Path
 import tomllib
 from typer.testing import CliRunner
 
-from developer.presentation.cli import app
-from developer.scaffolding.paths import (
+from engineeringagent.presentation.cli import app
+from engineeringagent.scaffolding.paths import (
     AGENTS_MD_START_MARKER,
     COMMIT_MESSAGE_PROMPT_NAME,
     DEFAULT_HARNESS_DIR,
@@ -93,7 +93,7 @@ def test_init_skips_existing_files_without_silent_overwrite() -> None:
 
 
 def test_init_appends_guidance_to_existing_agents_file_once() -> None:
-    """Init should append the developer guidance block without duplicating it."""
+    """Init should append the engineeringagent guidance block without duplicating it."""
     runner = CliRunner()
 
     with runner.isolated_filesystem():
@@ -107,7 +107,7 @@ def test_init_appends_guidance_to_existing_agents_file_once() -> None:
 
         agents_text = Path("AGENTS.md").read_text()
         assert agents_text.count(AGENTS_MD_START_MARKER) == 1
-        assert "## Developer CLI" in agents_text
+        assert "## Engineeringagent CLI" in agents_text
 
 
 def test_generated_example_plan_passes_validate_plan() -> None:

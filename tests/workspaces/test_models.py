@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 import pytest
 from pydantic import ValidationError
 
-from developer.workspaces.models import (
+from engineeringagent.workspaces.models import (
     ExecutionTarget,
     RunHandle,
     RunStatus,

@@ -4,9 +4,9 @@ from typing import List, Optional, Type
 import pytest
 from pydantic import BaseModel
 
-from developer.agent_backends.protocol import AgentBackendProtocol
-from developer.quality.adapters import AgenticReviewAdapter, AgenticReviewCheck
-from developer.quality.protocol import CheckStatus
+from engineeringagent.agent_backends.protocol import AgentBackendProtocol
+from engineeringagent.quality.adapters import AgenticReviewAdapter, AgenticReviewCheck
+from engineeringagent.quality.protocol import CheckStatus
 
 
 class MockAgent(AgentBackendProtocol):
@@ -34,7 +34,7 @@ class MockAgent(AgentBackendProtocol):
 
         elif issubclass(output_format, BaseModel):
             # Return a mock review output
-            from developer.quality.adapters.agentic_review_adapter import (
+            from engineeringagent.quality.adapters.agentic_review_adapter import (
                 ReviewOutput,
                 ReviewStatus,
             )

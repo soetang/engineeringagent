@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 
-from developer.workspaces.models import (
+from engineeringagent.workspaces.models import (
     ExecutionTarget,
     RunHandle,
     RunRequest,
@@ -11,7 +11,7 @@ from developer.workspaces.models import (
     WorkspaceSpec,
     WorkspaceStatus,
 )
-from developer.workspaces.services.workspace_run_orchestrator import (
+from engineeringagent.workspaces.services.workspace_run_orchestrator import (
     WorkspaceRunOrchestrator,
 )
 

@@ -3,8 +3,8 @@
 from collections.abc import Iterable, Mapping
 from typing import Any
 
-from developer.orchestrators.loop import models
-from developer.orchestrators.loop.implementation_agent import ImplementationAgent
+from engineeringagent.orchestrators.loop import models
+from engineeringagent.orchestrators.loop.implementation_agent import ImplementationAgent
 
 
 class FakePromptBuilder:

@@ -4,7 +4,7 @@ import json
 
 from typer.testing import CliRunner
 
-from developer.presentation.cli import app
+from engineeringagent.presentation.cli import app
 
 
 def test_schema_plan_outputs_frontmatter_schema() -> None:

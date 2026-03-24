@@ -111,22 +111,22 @@ Do the rename directly instead of carrying legacy translation layers.
 For this slice:
 
 - prefer `steps.yaml`, `steps:`, `step_type`, and step-oriented CLI/schema names only;
-- rename the existing `developer.quality` package in place to `developer.steps`; and
-- avoid introducing a second package such as `developer.lifecycle` alongside the renamed subsystem.
+- rename the existing `engineeringagent.quality` package in place to `engineeringagent.steps`; and
+- avoid introducing a second package such as `engineeringagent.lifecycle` alongside the renamed subsystem.
 
 ## Implementation Progress Checklist
 
 Use this checklist during implementation and update the checkboxes as work lands.
 
-- [ ] Rename the `developer.quality` package to `developer.steps` and update imports.
+- [ ] Rename the `engineeringagent.quality` package to `engineeringagent.steps` and update imports.
 - [ ] Rename check-oriented models, protocols, services, and adapters to step-oriented names.
 - [ ] Replace `GatePhase` with orchestrator-owned `LifecyclePhase`, including `BeforeImplementation`.
 - [ ] Add step config models using `steps`, `step_type`, and `phases`.
 - [ ] Rename TOML config ownership from `quality.checks_path` to `steps.root_path`.
-- [ ] Keep orchestrator dependency direction intact by wiring concrete step runners only from `developer.application`.
+- [ ] Keep orchestrator dependency direction intact by wiring concrete step runners only from `engineeringagent.application`.
 - [ ] Run `BeforeImplementation` once before any agent prompt and abort immediately on failure.
 - [ ] Replace iteration/final gate execution with lifecycle-step execution.
-- [ ] Rename CLI and schema surfaces to `developer step ...` and `developer schema steps`.
+- [ ] Rename CLI and schema surfaces to `engineeringagent step ...` and `engineeringagent schema steps`.
 - [ ] Update scaffolding, docs, and harness files to the new step-oriented names.
 - [ ] Add and pass the required rename, loop, and failure-behavior tests.
 
@@ -142,9 +142,9 @@ Replace check-specific loop terms with lifecycle-step terms:
 
 Architectural ownership rule:
 
-- `LifecyclePhase` remains owned by `developer.orchestrators.loop` because phases describe orchestrator timing, not step configuration;
-- `developer.steps` consumes the orchestrator-owned phase contract when filtering and executing steps; and
-- `developer.orchestrators` must continue to define ports and domain models without importing from `developer.steps`, `developer.application`, `developer.workspaces`, or other infrastructure-facing modules.
+- `LifecyclePhase` remains owned by `engineeringagent.orchestrators.loop` because phases describe orchestrator timing, not step configuration;
+- `engineeringagent.steps` consumes the orchestrator-owned phase contract when filtering and executing steps; and
+- `engineeringagent.orchestrators` must continue to define ports and domain models without importing from `engineeringagent.steps`, `engineeringagent.application`, `engineeringagent.workspaces`, or other infrastructure-facing modules.
 
 Recommended phase enum for v1:
 
@@ -220,31 +220,31 @@ steps:
 
 ## Proposed File Ownership
 
-Rename the existing `developer.quality` subsystem in place to `developer.steps`.
+Rename the existing `engineeringagent.quality` subsystem in place to `engineeringagent.steps`.
 
 Recommended target files:
 
-- `src/developer/steps/models.py`
-- `src/developer/steps/protocol.py`
-- `src/developer/steps/settings.py`
-- `src/developer/steps/services/collection_service.py`
-- `src/developer/steps/services/validation_service.py`
-- `src/developer/steps/services/runner.py`
-- `src/developer/steps/services/schema_service.py`
-- `src/developer/steps/adapters/...`
+- `src/engineeringagent/steps/models.py`
+- `src/engineeringagent/steps/protocol.py`
+- `src/engineeringagent/steps/settings.py`
+- `src/engineeringagent/steps/services/collection_service.py`
+- `src/engineeringagent/steps/services/validation_service.py`
+- `src/engineeringagent/steps/services/runner.py`
+- `src/engineeringagent/steps/services/schema_service.py`
+- `src/engineeringagent/steps/adapters/...`
 
 Architectural rule for this slice:
 
-- do not keep `developer.quality` as a parallel package;
-- do not introduce a separate `developer.lifecycle` package; and
-- finish the rename with application wiring, CLI, schema, docs, and scaffolding all pointing at `developer.steps`.
+- do not keep `engineeringagent.quality` as a parallel package;
+- do not introduce a separate `engineeringagent.lifecycle` package; and
+- finish the rename with application wiring, CLI, schema, docs, and scaffolding all pointing at `engineeringagent.steps`.
 
 Dependency rule for this slice:
 
-- `developer.orchestrators.loop` remains the domain owner of lifecycle timing and phase names;
-- `developer.orchestrators` must not import concrete execution/config modules from `developer.steps`;
-- `developer.steps` may import orchestrator-owned phase models or protocols when needed; and
-- `developer.application` continues to compose concrete `developer.steps` implementations into orchestrator-owned ports.
+- `engineeringagent.orchestrators.loop` remains the domain owner of lifecycle timing and phase names;
+- `engineeringagent.orchestrators` must not import concrete execution/config modules from `engineeringagent.steps`;
+- `engineeringagent.steps` may import orchestrator-owned phase models or protocols when needed; and
+- `engineeringagent.application` continues to compose concrete `engineeringagent.steps` implementations into orchestrator-owned ports.
 
 ## Required Implementation Work
 
@@ -254,7 +254,7 @@ Dependency rule for this slice:
 - [ ] Define a step-root model replacing the top-level `checks` terminology with `steps`.
 - [ ] Rename direct-entry typing from `check_type` to `step_type`.
 - [ ] Allow one step entry to target multiple phases through `phases`.
-- [ ] Rename `developer.quality` modules, imports, and service names to `developer.steps`.
+- [ ] Rename `engineeringagent.quality` modules, imports, and service names to `engineeringagent.steps`.
 - [ ] Rename TOML-backed settings from `quality.checks_path` to `steps.root_path`.
 - [ ] Update schema generation to emit only the step-oriented public schema.
 
@@ -263,7 +263,7 @@ Dependency rule for this slice:
 - [ ] Replace `CheckCollectionService` with a step-oriented collection service that preserves declaration order across file references.
 - [ ] Replace `CheckGateRunner` with a lifecycle-step runner that filters by `LifecyclePhase` and returns loop-ready feedback.
 - [ ] Keep adapter-backed execution so existing command and agentic-review behavior still works.
-- [ ] Define an orchestrator-owned runner protocol and ensure `ImplementationAgent` depends on that protocol rather than importing `developer.steps` directly.
+- [ ] Define an orchestrator-owned runner protocol and ensure `ImplementationAgent` depends on that protocol rather than importing `engineeringagent.steps` directly.
 - [ ] Update `ImplementationAgent` to run `BeforeImplementation` once before entering the loop.
 - [ ] Ensure `BeforeImplementation` failure aborts before any prompt is built or any agent iteration starts.
 - [ ] Update `ImplementationAgent` to call the lifecycle-step runner instead of the check gate runner for iteration and completion phases.
@@ -271,12 +271,12 @@ Dependency rule for this slice:
 
 ### Phase 3: Rename public surfaces and scaffold defaults
 
-- [ ] Add the lifecycle-step CLI group as `developer step validate` and `developer step run`.
-- [ ] Remove the old `developer check ...` CLI surface rather than carrying both names.
-- [ ] Rename the schema command surface from `developer schema quality` to `developer schema steps` and remove the old name.
+- [ ] Add the lifecycle-step CLI group as `engineeringagent step validate` and `engineeringagent step run`.
+- [ ] Remove the old `engineeringagent check ...` CLI surface rather than carrying both names.
+- [ ] Rename the schema command surface from `engineeringagent schema quality` to `engineeringagent schema steps` and remove the old name.
 - [ ] Update `init` scaffolding to generate `steps.yaml` and referenced step files instead of `checks.yaml` and quality files.
 - [ ] Update generated `engineeringagent.toml` defaults to point at `steps.root_path`.
-- [ ] Update AGENTS scaffolding text to teach `developer step ...` and `developer schema steps` as the preferred workflow.
+- [ ] Update AGENTS scaffolding text to teach `engineeringagent step ...` and `engineeringagent schema steps` as the preferred workflow.
 - [ ] Update the repository's checked-in harness files to include a `BeforeImplementation` `uv sync` step in `harness/steps.yaml`.
 
 ### Phase 4: Tests, docs, and rename coverage
@@ -285,7 +285,7 @@ Dependency rule for this slice:
 - [ ] Update loop tests to cover `BeforeImplementation` execution and failure handling.
 - [ ] Update CLI tests for the renamed `step` command group.
 - [ ] Add tests proving setup failure aborts before any prompt build or agent execution.
-- [ ] Add tests proving removed legacy surfaces fail clearly, including `checks.yaml`-shaped config, `developer check ...`, and `developer schema quality`.
+- [ ] Add tests proving removed legacy surfaces fail clearly, including `checks.yaml`-shaped config, `engineeringagent check ...`, and `engineeringagent schema quality`.
 - [ ] Update onboarding/reference docs and relevant plan docs away from quality/check wording where they describe the current product surface.
 - [ ] Update harness fixtures to use the new preferred step naming.
 
@@ -293,19 +293,19 @@ Dependency rule for this slice:
 
 Expected primary touch points:
 
-- `src/developer/orchestrators/loop/models.py`
-- `src/developer/orchestrators/loop/protocols.py`
-- `src/developer/orchestrators/loop/implementation_agent.py`
-- `src/developer/application/workspace_bridges.py`
-- `src/developer/application/services/check_service.py` (rename to step service)
-- `src/developer/application/services/schema_service.py`
-- `src/developer/presentation/cli.py`
-- `src/developer/presentation/commands/check.py` (rename to step command)
-- `src/developer/presentation/commands/schema.py`
-- `src/developer/scaffolding/paths.py`
-- `src/developer/scaffolding/service.py`
-- `src/developer/scaffolding/templates.py`
-- `src/developer/quality/` (rename package to `src/developer/steps/`)
+- `src/engineeringagent/orchestrators/loop/models.py`
+- `src/engineeringagent/orchestrators/loop/protocols.py`
+- `src/engineeringagent/orchestrators/loop/implementation_agent.py`
+- `src/engineeringagent/application/workspace_bridges.py`
+- `src/engineeringagent/application/services/check_service.py` (rename to step service)
+- `src/engineeringagent/application/services/schema_service.py`
+- `src/engineeringagent/presentation/cli.py`
+- `src/engineeringagent/presentation/commands/check.py` (rename to step command)
+- `src/engineeringagent/presentation/commands/schema.py`
+- `src/engineeringagent/scaffolding/paths.py`
+- `src/engineeringagent/scaffolding/service.py`
+- `src/engineeringagent/scaffolding/templates.py`
+- `src/engineeringagent/quality/` (rename package to `src/engineeringagent/steps/`)
 - `engineeringagent.toml`
 - `docs/getting-started.md`
 - `docs/reference.md`

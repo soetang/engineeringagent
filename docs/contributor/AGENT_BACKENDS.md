@@ -59,4 +59,4 @@ If Vibe receives `model`, selection fails with a clear validation error. Use `pr
 
 ## Code Layout
 
-Shared backend settings, protocols, adapters, and selection code live under `developer.agent_backends`.
+Shared backend settings, protocols, adapters, and selection code live under `engineeringagent.agent_backends`.

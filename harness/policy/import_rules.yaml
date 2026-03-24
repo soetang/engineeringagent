@@ -2,92 +2,92 @@ rules:
   - name: "presentation-boundary"
     description: "Presentation is the CLI-facing layer and only depends on application entrypoints plus presentation-safe scaffolding models."
     targets:
-      - "developer.presentation"
+      - "engineeringagent.presentation"
     mode: "allow_only"
     allow:
-      - "developer.presentation"
-      - "developer.application"
-      - "developer.scaffolding.models"
+      - "engineeringagent.presentation"
+      - "engineeringagent.application"
+      - "engineeringagent.scaffolding.models"
 
   - name: "orchestrators-loop-boundary"
-    description: "Loop orchestration stays isolated from other developer packages."
+    description: "Loop orchestration stays isolated from other engineeringagent packages."
     targets:
-      - "developer.orchestrators.loop"
+      - "engineeringagent.orchestrators.loop"
     mode: "allow_only"
     allow:
-      - "developer.orchestrators.loop"
+      - "engineeringagent.orchestrators.loop"
 
   - name: "orchestrators-runs-boundary"
-    description: "Run orchestration stays isolated from other developer packages."
+    description: "Run orchestration stays isolated from other engineeringagent packages."
     targets:
-      - "developer.orchestrators.runs"
+      - "engineeringagent.orchestrators.runs"
     mode: "allow_only"
     allow:
-      - "developer.orchestrators.runs"
+      - "engineeringagent.orchestrators.runs"
 
   - name: "workspaces-boundary"
     description: "Workspace execution owns its local abstractions and a narrow set of shared models."
     targets:
-      - "developer.workspaces"
+      - "engineeringagent.workspaces"
     mode: "allow_only"
     allow:
-      - "developer.workspaces"
-      - "developer.tasks.models"
-      - "developer.orchestrators.runs.models"
-      - "developer.orchestrators.runs.protocols"
+      - "engineeringagent.workspaces"
+      - "engineeringagent.tasks.models"
+      - "engineeringagent.orchestrators.runs.models"
+      - "engineeringagent.orchestrators.runs.protocols"
 
   - name: "version-control-boundary"
     description: "Version-control integrations stay behind their package boundary plus shared prompts and config."
     targets:
-      - "developer.version_control"
+      - "engineeringagent.version_control"
     mode: "allow_only"
     allow:
-      - "developer.version_control"
-      - "developer.agent_backends.protocol"
-      - "developer.config"
-      - "developer.prompts"
+      - "engineeringagent.version_control"
+      - "engineeringagent.agent_backends.protocol"
+      - "engineeringagent.config"
+      - "engineeringagent.prompts"
 
   - name: "forge-boundary"
     description: "Forge integrations depend only on their package boundary and shared orchestration contracts."
     targets:
-      - "developer.forge"
+      - "engineeringagent.forge"
     mode: "allow_only"
     allow:
-      - "developer.forge"
-      - "developer.orchestrators.protocols"
-      - "developer.config"
+      - "engineeringagent.forge"
+      - "engineeringagent.orchestrators.protocols"
+      - "engineeringagent.config"
 
   - name: "non-entrypoints-must-not-import-presentation"
     description: "Core packages stay independent from CLI presentation code."
     targets:
-      - "developer.agent_backends"
-      - "developer.application"
-      - "developer.orchestrators"
-      - "developer.prompts"
-      - "developer.quality"
-      - "developer.tasks"
+      - "engineeringagent.agent_backends"
+      - "engineeringagent.application"
+      - "engineeringagent.orchestrators"
+      - "engineeringagent.prompts"
+      - "engineeringagent.quality"
+      - "engineeringagent.tasks"
     mode: "deny_only"
     deny:
-      - "developer.presentation"
+      - "engineeringagent.presentation"
 
   - name: "implementation-run-service-boundary"
     description: "The implementation run service may orchestrate agents without pulling in broader workspace or version-control concrete code."
     targets:
-      - "developer.application.services.implementation_run_service"
+      - "engineeringagent.application.services.implementation_run_service"
     mode: "allow_only"
     allow:
-      - "developer.agent_backends"
-      - "developer.application"
-      - "developer.config"
-      - "developer.orchestrators.loop"
-      - "developer.orchestrators.runs"
-      - "developer.tasks"
-      - "developer.version_control.adapters.git_adapter"
+      - "engineeringagent.agent_backends"
+      - "engineeringagent.application"
+      - "engineeringagent.config"
+      - "engineeringagent.orchestrators.loop"
+      - "engineeringagent.orchestrators.runs"
+      - "engineeringagent.tasks"
+      - "engineeringagent.version_control.adapters.git_adapter"
 
   - name: "config-boundary"
     description: "Config code stays self-contained."
     targets:
-      - "developer.config"
+      - "engineeringagent.config"
     mode: "allow_only"
     allow:
-      - "developer.config"
+      - "engineeringagent.config"

@@ -25,15 +25,15 @@ phases:
 
 # Goal
 
-Add an opt-in background launch mode for workspace-backed `developer implement` so the CLI returns after startup succeeds while the long-running implementation workflow continues in a detached worker process.
+Add an opt-in background launch mode for workspace-backed `engineeringagent implement` so the CLI returns after startup succeeds while the long-running implementation workflow continues in a detached worker process.
 
 After this change:
 
-- workspace-backed `developer implement` remains foreground by default;
+- workspace-backed `engineeringagent implement` remains foreground by default;
 - `[workspaces].implementation_launch_mode = "background"` launches the implementation run in a detached subprocess after workspace creation succeeds;
 - the CLI does not report success until the worker proves it has started the run;
 - persisted workspace run state remains the source of truth for later inspection; and
-- direct-mode `developer implement` continues to behave exactly as it does today.
+- direct-mode `engineeringagent implement` continues to behave exactly as it does today.
 
 # Scope Boundaries
 
@@ -52,11 +52,11 @@ Keep these boundaries in v1:
 - `implementation_launch_mode` defaults to `"foreground"`;
 - do not introduce a daemon, queue, or `systemd` dependency in this slice;
 - do not promise hard cancellation yet, but store enough process metadata to support it later; and
-- do not make `developer.application.services.implementation_run_service` own new branch-planning or workspace-run policy.
+- do not make `engineeringagent.application.services.implementation_run_service` own new branch-planning or workspace-run policy.
 
 State compatibility for this slice:
 
-- do not preserve backward compatibility for old `.developer/state` data;
+- do not preserve backward compatibility for old `.engineeringagent/state` data;
 - treat the persisted workspace-run format as allowed to change in this refactor; and
 - require clearing existing state before relying on the new background-launch behavior.
 
@@ -66,12 +66,12 @@ This plan should align with `docs/plans/implementation-run-orchestration-boundar
 
 Recommended ownership after both plans land:
 
-- `developer.orchestrators.runs` owns implementation-run planning and decides what workspace run should be launched;
-- `developer.workspaces` owns generic run lifecycle, detached-process mechanics, persisted run state, and worker bootstrap contracts;
-- `developer.application` owns composition, config resolution, and CLI-facing result mapping; and
-- `developer.presentation` stays thin and should only echo the mapped result.
+- `engineeringagent.orchestrators.runs` owns implementation-run planning and decides what workspace run should be launched;
+- `engineeringagent.workspaces` owns generic run lifecycle, detached-process mechanics, persisted run state, and worker bootstrap contracts;
+- `engineeringagent.application` owns composition, config resolution, and CLI-facing result mapping; and
+- `engineeringagent.presentation` stays thin and should only echo the mapped result.
 
-This means the background-launch work should not add new task-branch, publication-reuse, or workspace-request assembly helpers to `src/developer/application/services/implementation_run_service.py`.
+This means the background-launch work should not add new task-branch, publication-reuse, or workspace-request assembly helpers to `src/engineeringagent/application/services/implementation_run_service.py`.
 
 This plan should also respect `docs/plans/workspace-execution-boundary-plan.md`.
 
@@ -81,17 +81,17 @@ Important implication:
 
 If the orchestration-boundary refactor lands first, target the post-refactor file layout from the start.
 
-If it has not landed yet, keep new launch mechanics in `developer.workspaces` and application composition helpers only, so the code can move cleanly once run orchestration shifts into `developer.orchestrators.runs`.
+If it has not landed yet, keep new launch mechanics in `engineeringagent.workspaces` and application composition helpers only, so the code can move cleanly once run orchestration shifts into `engineeringagent.orchestrators.runs`.
 
 # Current State
 
 Today the workspace-backed implementation path is still fully synchronous.
 
-- `src/developer/presentation/commands/implement.py` calls `run_implementation(...)` and waits for a terminal result.
-- `src/developer/application/services/implementation_run_service.py` selects workspace mode and waits for `WorkspaceRunOrchestrator.run_in_workspace(...)` to return a finished `RunHandle`.
-- `src/developer/workspaces/services/workspace_run_orchestrator.py` creates the workspace and immediately calls the runner inline.
-- `src/developer/workspaces/adapters/local_process_runner.py` persists a pending handle and then executes the full implementation workflow in the caller process.
-- `src/developer/workspaces/adapters/local_path_execution_adapter.py` uses `os.chdir(...)`, which makes in-process background execution risky.
+- `src/engineeringagent/presentation/commands/implement.py` calls `run_implementation(...)` and waits for a terminal result.
+- `src/engineeringagent/application/services/implementation_run_service.py` selects workspace mode and waits for `WorkspaceRunOrchestrator.run_in_workspace(...)` to return a finished `RunHandle`.
+- `src/engineeringagent/workspaces/services/workspace_run_orchestrator.py` creates the workspace and immediately calls the runner inline.
+- `src/engineeringagent/workspaces/adapters/local_process_runner.py` persists a pending handle and then executes the full implementation workflow in the caller process.
+- `src/engineeringagent/workspaces/adapters/local_path_execution_adapter.py` uses `os.chdir(...)`, which makes in-process background execution risky.
 - there is no dedicated persisted request payload for replaying a run in a fresh worker process;
 - there is no startup handshake state between the parent CLI process and a detached worker; and
 - there is no CLI command yet for later run inspection, even though the registry already persists run state.
@@ -165,10 +165,10 @@ Once `docs/plans/implementation-run-orchestration-boundary-plan.md` lands, launc
 
 Recommended responsibility split:
 
-- `developer.orchestrators.runs` decides that an implementation workspace run should start and produces the typed workspace run request and outcome;
-- `developer.workspaces` decides how a workspace run is executed in `foreground` versus `background` launch mode;
-- `developer.application` resolves `implementation_launch_mode`, builds the workspace runtime from shared services plus launch-strategy selection, and maps outcomes into `ImplementationRunResult`; and
-- `developer.presentation` remains unchanged except for the message shown to the user.
+- `engineeringagent.orchestrators.runs` decides that an implementation workspace run should start and produces the typed workspace run request and outcome;
+- `engineeringagent.workspaces` decides how a workspace run is executed in `foreground` versus `background` launch mode;
+- `engineeringagent.application` resolves `implementation_launch_mode`, builds the workspace runtime from shared services plus launch-strategy selection, and maps outcomes into `ImplementationRunResult`; and
+- `engineeringagent.presentation` remains unchanged except for the message shown to the user.
 
 Do not make orchestrators aware of `Popen(...)`, worker module paths, or file-backed process metadata.
 
@@ -194,7 +194,7 @@ Recommended persistence split:
 
 This is cleaner than storing launch input and output metadata in the same bag.
 
-Recommended responsibility split inside `developer.workspaces`:
+Recommended responsibility split inside `engineeringagent.workspaces`:
 
 - `WorkspaceRunner` stays the outer contract used by `WorkspaceRunOrchestrator`;
 - `WorkspaceRunPreparer` or similarly named service owns durable run creation and persistence of launch input;
@@ -206,20 +206,20 @@ Recommended responsibility split inside `developer.workspaces`:
 
 Targeting the post-boundary layout, recommended additions and updates are:
 
-- `src/developer/workspaces/models.py`
-- `src/developer/workspaces/protocols.py`
-- `src/developer/workspaces/settings.py`
-- `src/developer/workspaces/services/file_registry.py`
-- `src/developer/workspaces/services/workspace_run_orchestrator.py`
-- `src/developer/workspaces/services/workspace_run_preparer.py` or similarly named shared preparation service
-- `src/developer/workspaces/services/workspace_run_executor.py` or similarly named shared execution service
-- `src/developer/workspaces/services/workspace_launch_strategy_factory.py` or similarly named selector/registry
-- `src/developer/workspaces/adapters/foreground_launch_strategy.py` or similarly named foreground strategy
-- `src/developer/workspaces/adapters/background_process_launch_strategy.py` or similarly named subprocess strategy
-- `src/developer/application/implementation_run_runtime.py` as the composition root described in `docs/plans/implementation-run-orchestration-boundary-plan.md`
-- `src/developer/application/workspace_run_worker.py` or similarly named worker entrypoint
-- `src/developer/application/services/implementation_run_service.py`
-- `src/developer/presentation/commands/implement.py`
+- `src/engineeringagent/workspaces/models.py`
+- `src/engineeringagent/workspaces/protocols.py`
+- `src/engineeringagent/workspaces/settings.py`
+- `src/engineeringagent/workspaces/services/file_registry.py`
+- `src/engineeringagent/workspaces/services/workspace_run_orchestrator.py`
+- `src/engineeringagent/workspaces/services/workspace_run_preparer.py` or similarly named shared preparation service
+- `src/engineeringagent/workspaces/services/workspace_run_executor.py` or similarly named shared execution service
+- `src/engineeringagent/workspaces/services/workspace_launch_strategy_factory.py` or similarly named selector/registry
+- `src/engineeringagent/workspaces/adapters/foreground_launch_strategy.py` or similarly named foreground strategy
+- `src/engineeringagent/workspaces/adapters/background_process_launch_strategy.py` or similarly named subprocess strategy
+- `src/engineeringagent/application/implementation_run_runtime.py` as the composition root described in `docs/plans/implementation-run-orchestration-boundary-plan.md`
+- `src/engineeringagent/application/workspace_run_worker.py` or similarly named worker entrypoint
+- `src/engineeringagent/application/services/implementation_run_service.py`
+- `src/engineeringagent/presentation/commands/implement.py`
 - `tests/workspaces/services/test_workspace_run_preparer.py`
 - `tests/workspaces/services/test_workspace_run_executor.py`
 - `tests/workspaces/adapters/test_background_process_launch_strategy.py`
@@ -227,11 +227,11 @@ Targeting the post-boundary layout, recommended additions and updates are:
 - `tests/application/services/test_implementation_run_service.py`
 - `tests/presentation/test_implementation_cli.py`
 
-If `src/developer/application/implementation_run_runtime.py` does not exist yet when this work starts, use the current `src/developer/application/workspace_runtime.py` only as a temporary composition host and plan to move the wiring afterward.
+If `src/engineeringagent/application/implementation_run_runtime.py` does not exist yet when this work starts, use the current `src/engineeringagent/application/workspace_runtime.py` only as a temporary composition host and plan to move the wiring afterward.
 
 # Proposed Model And Protocol Changes
 
-## `src/developer/workspaces/models.py`
+## `src/engineeringagent/workspaces/models.py`
 
 Recommended updates:
 
@@ -251,7 +251,7 @@ Recommended metadata persisted onto the run once the worker starts:
 
 `pid` is useful for inspection and later cancellation, but it should be treated as launcher metadata rather than the primary run identity.
 
-## `src/developer/workspaces/protocols.py`
+## `src/engineeringagent/workspaces/protocols.py`
 
 Recommended updates:
 
@@ -264,7 +264,7 @@ Recommended updates:
 
 Avoid making the workspace runner protocol implementation-specific by exposing raw `Popen` objects or shell commands.
 
-## `src/developer/workspaces/settings.py`
+## `src/engineeringagent/workspaces/settings.py`
 
 Add `implementation_launch_mode` with a default of `"foreground"` and validation for the accepted values.
 
@@ -331,7 +331,7 @@ Recommended application flow after the orchestration-boundary refactor:
 2. ensure clean checkout;
 3. resolve the task and normalize `max_iterations`;
 4. resolve `implementation_launch_mode` from workspace settings;
-5. delegate workspace-run planning to `developer.orchestrators.runs`;
+5. delegate workspace-run planning to `engineeringagent.orchestrators.runs`;
 6. build the workspace runtime from shared preparation and execution services plus a launch-strategy registry or factory;
 7. delegate workspace execution to that launch-aware workspace runtime; and
 8. map the returned run outcome into `ImplementationRunResult`.
@@ -361,7 +361,7 @@ Background mode is much easier to use if the CLI can read persisted run state af
 
 Required support in this slice:
 
-- add a read-only `developer runs get <run-id>` command that loads one persisted run by `run_id`.
+- add a read-only `engineeringagent runs get <run-id>` command that loads one persisted run by `run_id`.
 
 Recommended v1 output fields:
 
@@ -382,13 +382,13 @@ Cancellation can remain a follow-up, but this slice should store enough process 
 
 # Phase 1: Align launch ownership with orchestration boundaries
 
-- [ ] Keep new launch mechanics out of `developer.orchestrators.runs`
+- [ ] Keep new launch mechanics out of `engineeringagent.orchestrators.runs`
 - [ ] Keep subprocess and worker-bootstrap code out of `implementation_run_service.py`
 - [ ] Model launch mode as a strategy or adapter seam instead of a growing `if`/`elif` tree in composition
 - [ ] Keep one outer workspace-runner boundary while moving launch variation under a launch-strategy protocol
 - [ ] Add launch-mode resolution only to application composition and workspace runtime wiring
-- [ ] If `docs/plans/implementation-run-orchestration-boundary-plan.md` lands first, implement against `src/developer/application/implementation_run_runtime.py`
-- [ ] If it has not landed yet, confine temporary composition changes to `src/developer/application/workspace_runtime.py`
+- [ ] If `docs/plans/implementation-run-orchestration-boundary-plan.md` lands first, implement against `src/engineeringagent/application/implementation_run_runtime.py`
+- [ ] If it has not landed yet, confine temporary composition changes to `src/engineeringagent/application/workspace_runtime.py`
 - [ ] Avoid new branch-planning helpers in application while adding background launch support
 - [ ] Avoid creating one top-level runner class per launch mode when those modes mainly differ in dispatch behavior
 
@@ -426,7 +426,7 @@ The key runtime requirements are that the CLI returns only after the worker prov
 - [ ] Select launch strategy from config through a registry or factory rather than inline branching
 - [ ] Keep direct mode unchanged
 - [ ] Update `run_implementation(...)` result mapping so background launches return a non-terminal `running` message
-- [ ] Keep `developer.presentation.commands.implement` thin and unchanged except for displayed output
+- [ ] Keep `engineeringagent.presentation.commands.implement` thin and unchanged except for displayed output
 
 ### Notes
 
@@ -435,7 +435,7 @@ This phase keeps the feature opt-in and avoids surprising users who already rely
 # Phase 4: Surface run identity and inspection details
 
 - [ ] Include `workspace_id`, `run_id`, and `log_path` in successful background launch output
-- [ ] Add `developer runs get <run-id>` as a small read-only inspection command
+- [ ] Add `engineeringagent runs get <run-id>` as a small read-only inspection command
 - [ ] Ensure persisted run state shows `starting`, `running`, and terminal statuses clearly
 - [ ] Keep the source of truth in the registry rather than relying on process liveness alone
 
@@ -453,13 +453,13 @@ The first background-launch slice is much easier to validate and debug when user
 - [ ] Add worker-entrypoint tests for bootstrap success and bootstrap failure
 - [ ] Add application-service tests for config gating and result mapping
 - [ ] Add CLI tests for background launch output
-- [ ] Add CLI tests for `developer runs get <run-id>`
+- [ ] Add CLI tests for `engineeringagent runs get <run-id>`
 - [ ] Add timeout tests for runs that never acknowledge `RUNNING`
 - [ ] Add tests that confirm bootstrap failures become terminal `FAILED` runs
 - [ ] Add tests that confirm background launch stores process metadata and log path
 - [ ] Run the import-boundary fitness check aligned with `docs/plans/implementation-run-orchestration-boundary-plan.md`
 - [ ] Add an integration-style mocked E2E test in a temp folder covering launch, startup acknowledgment, and `runs get`
-- [ ] Run `uv run developer validate-plan docs/plans/background-workspace-implementation-launch-plan.md`
+- [ ] Run `uv run engineeringagent validate-plan docs/plans/background-workspace-implementation-launch-plan.md`
 
 ### Notes
 
@@ -475,7 +475,7 @@ The most important regression risk is claiming a run started when the worker nev
 6. add the foreground launch strategy on top of the shared executor;
 7. add the detached worker entrypoint, subprocess background strategy, and direct startup handshake;
 8. wire launch-strategy selection through application composition;
-9. update CLI-facing result mapping and add `developer runs get <run-id>`; and
+9. update CLI-facing result mapping and add `engineeringagent runs get <run-id>`; and
 10. add tests for strategy selection, handshake, timeout, bootstrap failure, mocked temp-folder E2E behavior, and boundary fitness.
 
 # Risks And Mitigations
@@ -501,7 +501,7 @@ Implement this as:
 - a detached Python worker subprocess launched after foreground workspace creation;
 - explicit `STARTING -> RUNNING -> terminal` run-state transitions with direct startup acknowledgment;
 - persisted `RunRequest` storage, launch snapshots, and per-run log files;
-- a required read-only `developer runs get <run-id>` command; and
+- a required read-only `engineeringagent runs get <run-id>` command; and
 - application-owned composition that stays aligned with the ownership model from `docs/plans/implementation-run-orchestration-boundary-plan.md`.
 
-This keeps the feature opt-in, durable enough for real use, and compatible with the planned move of implementation-run orchestration out of `developer.application` and into `developer.orchestrators.runs`.
+This keeps the feature opt-in, durable enough for real use, and compatible with the planned move of implementation-run orchestration out of `engineeringagent.application` and into `engineeringagent.orchestrators.runs`.

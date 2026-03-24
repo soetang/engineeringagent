@@ -12,7 +12,7 @@ This package is designed for repositories that want a small, agent-first workflo
 Run:
 
 ```bash
-developer init
+engineeringagent init
 ```
 
 The command asks for:
@@ -43,36 +43,36 @@ What each file is for:
 - `<harness-dir>/prompts/*.md`: starter prompts for implementation, commit messages, and pull requests.
 - `docs/plans/example-plan.md`: a minimal markdown task plan that already matches the validator.
 
-`developer init` does not silently overwrite scaffold files. Existing files are reported as skipped, and existing `AGENTS.md` content is preserved.
+`engineeringagent init` does not silently overwrite scaffold files. Existing files are reported as skipped, and existing `AGENTS.md` content is preserved.
 
 ## Adopt the generated AGENTS.md guidance
 
-If you opt in, `developer init` either creates `AGENTS.md` or appends a delimited `developer` block to the existing file. Re-running `init` does not duplicate that block.
+If you opt in, `engineeringagent init` either creates `AGENTS.md` or appends a delimited `engineeringagent` block to the existing file. Re-running `init` does not duplicate that block.
 
 The snippet is intentionally small. It tells agents to:
 
-- run this package through `developer ...` commands;
+- run this package through `engineeringagent ...` commands;
 - use `init`, `schema`, `validate-plan`, `check`, and `implement`;
 - look in the scaffolded harness directory for prompts and checks; and
 - reuse the generated schemas and templates instead of inventing new formats.
 
-If your repository already has broader coding instructions, keep those and let the appended `developer` block cover only package-specific workflow.
+If your repository already has broader coding instructions, keep those and let the appended `engineeringagent` block cover only package-specific workflow.
 
 ## Generate schemas and validate a sample plan
 
 Export machine-readable schemas with:
 
 ```bash
-developer schema plan
-developer schema quality
+engineeringagent schema plan
+engineeringagent schema quality
 ```
 
-`developer schema plan` emits the schema for the YAML frontmatter object in a markdown plan file. It does not describe headings, task lists, or the rest of the markdown body.
+`engineeringagent schema plan` emits the schema for the YAML frontmatter object in a markdown plan file. It does not describe headings, task lists, or the rest of the markdown body.
 
 Validate the generated sample plan with:
 
 ```bash
-developer validate-plan docs/plans/example-plan.md
+engineeringagent validate-plan docs/plans/example-plan.md
 ```
 
 ## Validate and run checks
@@ -80,13 +80,13 @@ developer validate-plan docs/plans/example-plan.md
 First validate the quality configuration:
 
 ```bash
-developer check validate
+engineeringagent check validate
 ```
 
 Then run the configured checks:
 
 ```bash
-developer check run
+engineeringagent check run
 ```
 
 The starter quality file runs:
@@ -98,7 +98,7 @@ The starter quality file runs:
 Once the plan validates and checks are configured, start the implementation loop with:
 
 ```bash
-developer implement docs/plans/example-plan.md
+engineeringagent implement docs/plans/example-plan.md
 ```
 
-The default implementation prompt tells the agent to treat the markdown plan as the source of truth, update its checkboxes as work completes, validate plan status with `developer validate-plan`, and address prior feedback first when feedback is provided.
+The default implementation prompt tells the agent to treat the markdown plan as the source of truth, update its checkboxes as work completes, validate plan status with `engineeringagent validate-plan`, and address prior feedback first when feedback is provided.

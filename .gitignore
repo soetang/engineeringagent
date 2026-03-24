@@ -10,3 +10,5 @@ wheels/
 .venv
 .developer/*
 developer-workspaces/
+.engineeringagent/*
+engineeringagent-workspaces/

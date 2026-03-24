@@ -7,4 +7,4 @@ checks:
   - check_type: "command"
     command: ["ruff", "check"]
   - check_type: "command"
-    command: ["pyrefly", "check", "src/developer"]
+    command: ["pyrefly", "check", "src/engineeringagent"]

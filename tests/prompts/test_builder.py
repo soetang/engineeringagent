@@ -5,9 +5,9 @@ from pathlib import Path
 
 import pytest
 
-from developer.config.service import ConfigService
-from developer.prompts.builder import OrchestratorPromptBuilder
-from developer.prompts.errors import (
+from engineeringagent.config.service import ConfigService
+from engineeringagent.prompts.builder import OrchestratorPromptBuilder
+from engineeringagent.prompts.errors import (
     PromptTemplateMissingError,
     PromptTemplateSyntaxError,
 )

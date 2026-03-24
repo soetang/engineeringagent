@@ -6,17 +6,17 @@ from typing import Any, cast
 
 import pytest
 
-from developer.workspaces.adapters.local_path_execution_adapter import (
+from engineeringagent.workspaces.adapters.local_path_execution_adapter import (
     LocalPathWorkspaceExecutionAdapter,
 )
-from developer.workspaces.models import (
+from engineeringagent.workspaces.models import (
     ExecutionTarget,
     RunRequest,
     WorkspaceRunnableResult,
     WorkspaceSession,
     WorkspaceStatus,
 )
-from developer.workspaces.protocols import WorkspaceRunnableAgent
+from engineeringagent.workspaces.protocols import WorkspaceRunnableAgent
 
 
 class _RecordingAgent(WorkspaceRunnableAgent):

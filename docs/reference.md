@@ -2,7 +2,7 @@
 
 ## Commands
 
-### `developer init`
+### `engineeringagent init`
 
 Interactive onboarding flow that scaffolds:
 
@@ -20,7 +20,7 @@ Behavior notes:
 - creates missing files and skips existing scaffold files; and
 - preserves existing `AGENTS.md` content and avoids appending duplicate guidance.
 
-### `developer schema plan`
+### `engineeringagent schema plan`
 
 Prints JSON Schema for markdown task-plan frontmatter to stdout.
 
@@ -39,33 +39,33 @@ The exported schema requires:
 
 Supported plan status values are `draft`, `ready`, `in_progress`, `done`, and `blocked`.
 
-### `developer schema quality`
+### `engineeringagent schema quality`
 
 Prints JSON Schema for the supported quality YAML structure to stdout.
 
 Use it for editor tooling, agent prompts, or external validation when producing files referenced from `<harness-dir>/checks.yaml`.
 
-### `developer validate-plan <plan.md>`
+### `engineeringagent validate-plan <plan.md>`
 
 Validates one markdown plan file. The command accepts the path with or without a leading `@`.
 
 It checks the parsed frontmatter and fails with field-level errors when required fields are missing or malformed.
 
-### `developer check validate`
+### `engineeringagent check validate`
 
 Validates `checks.yaml` and referenced quality files before execution.
 
-### `developer check run`
+### `engineeringagent check run`
 
 Executes configured quality checks. The optional `--phase` flag defaults to `IterationComplete`.
 
-### `developer implement <plan.md>`
+### `engineeringagent implement <plan.md>`
 
 Starts an implementation run for one markdown plan. The optional `--max-iterations` flag accepts a positive integer or `infinite`.
 
 ## Config written by `init`
 
-`developer init` writes these keys when they are missing:
+`engineeringagent init` writes these keys when they are missing:
 
 ```toml
 [prompts]
@@ -86,13 +86,13 @@ If a key already exists, `init` keeps the existing value instead of replacing it
 
 The generated block tells agents to:
 
-- invoke commands through `developer ...`;
+- invoke commands through `engineeringagent ...`;
 - use `init`, `schema`, `validate-plan`, `check`, and `implement`;
 - look for generated harness files under the chosen harness directory;
 - use the sample plan under `docs/plans/`; and
 - prefer the generated schemas and templates over ad hoc formats.
 
-The snippet is wrapped in `<!-- developer:init:start -->` and `<!-- developer:init:end -->` markers so repeated runs can detect and avoid duplicate inserts.
+The snippet is wrapped in `<!-- engineeringagent:init:start -->` and `<!-- engineeringagent:init:end -->` markers so repeated runs can detect and avoid duplicate inserts.
 
 ## Plan frontmatter rules
 
@@ -112,7 +112,7 @@ Each phase needs:
 
 `branch` and `base_branch` are optional string fields.
 
-The markdown body after the frontmatter is still important for humans and agents, but it is not covered by `developer schema plan`.
+The markdown body after the frontmatter is still important for humans and agents, but it is not covered by `engineeringagent schema plan`.
 
 ## Quality YAML structure
 
@@ -127,7 +127,7 @@ The starter `commands.yaml` file uses direct local tool commands that you can ed
 
 - `engineeringagent.toml` already exists with custom paths: `init` keeps those values, so generated files may not match your custom paths unless you align them intentionally.
 - A scaffold file already exists: `init` reports it as skipped instead of overwriting it.
-- `AGENTS.md` already contains the `developer:init` block: `init` skips the duplicate append.
+- `AGENTS.md` already contains the `engineeringagent:init` block: `init` skips the duplicate append.
 - `validate-plan` fails on a markdown file without YAML frontmatter: add the opening and closing `---` delimiters.
 - `validate-plan` fails on a schema export example: use `schema plan` for frontmatter generation only, not as a schema for the full markdown document.
-- `check validate` fails: confirm that `<harness-dir>/checks.yaml` points to real quality files and that those files match `developer schema quality`.
+- `check validate` fails: confirm that `<harness-dir>/checks.yaml` points to real quality files and that those files match `engineeringagent schema quality`.

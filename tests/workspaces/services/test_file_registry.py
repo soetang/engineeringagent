@@ -2,15 +2,15 @@
 
 from datetime import UTC, datetime
 
-from developer.tasks.models import TaskPublicationState
-from developer.workspaces.models import (
+from engineeringagent.tasks.models import TaskPublicationState
+from engineeringagent.workspaces.models import (
     ExecutionTarget,
     RunHandle,
     RunStatus,
     WorkspaceSession,
     WorkspaceStatus,
 )
-from developer.workspaces.services.file_registry import FileWorkspaceRegistry
+from engineeringagent.workspaces.services.file_registry import FileWorkspaceRegistry
 
 
 def test_file_registry_saves_and_lists_workspaces_and_runs(tmp_path) -> None:
@@ -24,7 +24,7 @@ def test_file_registry_saves_and_lists_workspaces_and_runs(tmp_path) -> None:
         execution_target=ExecutionTarget(
             kind="local_path", location="/tmp/workspace-1"
         ),
-        metadata={"workspace_branch_name": "developer/task/ws-workspace-1"},
+        metadata={"workspace_branch_name": "engineeringagent/task/ws-workspace-1"},
     )
     run = RunHandle(
         id="run-1",

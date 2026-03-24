@@ -1,8 +1,8 @@
 from typing import List
 from pydantic import BaseModel
 import pytest
-from developer.quality.adapters import CommandAdapter, CommandCheck
-from developer.quality.protocol import CheckStatus
+from engineeringagent.quality.adapters import CommandAdapter, CommandCheck
+from engineeringagent.quality.protocol import CheckStatus
 
 
 def test_command_adapter_success():

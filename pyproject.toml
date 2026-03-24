@@ -1,5 +1,5 @@
 [project]
-name = "developer"
+name = "engineeringagent"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [project.scripts]
-developer = "developer.presentation.cli:app"
+engineeringagent = "engineeringagent.presentation.cli:app"
 
 [build-system]
 requires = ["uv_build>=0.10.4,<0.11.0"]

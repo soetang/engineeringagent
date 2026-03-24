@@ -37,7 +37,7 @@ Keep this slice narrow.
 
 Include only:
 
-- changes in `src/developer/agent_backends/adapters/vibe_adapter.py`;
+- changes in `src/engineeringagent/agent_backends/adapters/vibe_adapter.py`;
 - targeted tests in `tests/agents/adapters/test_vibe_adapter.py`; and
 - small helper methods needed to discover the created Vibe session and run the repair retry.
 
@@ -164,7 +164,7 @@ Previous invalid response:
 - keep session discovery internal to the adapter; and
 - use `--resume <session_id>` for the repair retry.
 
-Likely helper additions in `src/developer/agent_backends/adapters/vibe_adapter.py`:
+Likely helper additions in `src/engineeringagent/agent_backends/adapters/vibe_adapter.py`:
 
 - `_build_vibe_command(prompt: str, session_id: str | None = None) -> list[str]`
 - `_find_created_session_id(start_time: float) -> str | None`

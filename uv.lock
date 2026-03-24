@@ -126,7 +126,7 @@ wheels = [
 ]
 
 [[package]]
-name = "developer"
+name = "engineeringagent"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

@@ -6,19 +6,23 @@ from pathlib import Path
 
 import pytest
 
-from developer.workspaces.adapters.default_execution_adapter_resolver import (
+from engineeringagent.workspaces.adapters.default_execution_adapter_resolver import (
     DefaultWorkspaceExecutionAdapterResolver,
 )
-from developer.workspaces.adapters.git_worktree_provider import (
+from engineeringagent.workspaces.adapters.git_worktree_provider import (
     GitWorktreeWorkspaceProvider,
 )
-from developer.workspaces.adapters.local_process_runner import (
+from engineeringagent.workspaces.adapters.local_process_runner import (
     LocalProcessWorkspaceRunner,
 )
-from developer.workspaces.models import RunRequest, WorkspaceSession, WorkspaceSpec
-from developer.workspaces.models import WorkspaceRunnableResult
-from developer.workspaces.protocols import WorkspaceRunnableAgent
-from developer.workspaces.services.file_registry import FileWorkspaceRegistry
+from engineeringagent.workspaces.models import (
+    RunRequest,
+    WorkspaceSession,
+    WorkspaceSpec,
+)
+from engineeringagent.workspaces.models import WorkspaceRunnableResult
+from engineeringagent.workspaces.protocols import WorkspaceRunnableAgent
+from engineeringagent.workspaces.services.file_registry import FileWorkspaceRegistry
 
 
 def _git_env() -> dict[str, str]:

@@ -4,14 +4,14 @@ from pathlib import Path
 
 import pytest
 
-from developer.application.services.implementation_run_service import (
+from engineeringagent.application.services.implementation_run_service import (
     _normalize_max_iterations,
     _resolve_max_iterations,
     run_implementation,
 )
-from developer.config.service import ConfigService
-from developer.orchestrators.loop.models import OrchestratorOutcome
-from developer.orchestrators.runs.models import ImplementationWorkspaceRunOutcome
+from engineeringagent.config.service import ConfigService
+from engineeringagent.orchestrators.loop.models import OrchestratorOutcome
+from engineeringagent.orchestrators.runs.models import ImplementationWorkspaceRunOutcome
 
 
 class _FakeImplementationAgent:
@@ -86,25 +86,25 @@ class _ResolvedTask:
 def test_run_implementation_returns_failure_feedback(monkeypatch) -> None:
     """Direct runs should surface the last failure feedback."""
     monkeypatch.setattr(
-        "developer.application.services.implementation_run_service._workspace_mode_enabled",
+        "engineeringagent.application.services.implementation_run_service._workspace_mode_enabled",
         lambda config_service: False,
     )
     monkeypatch.setattr(
-        "developer.version_control.adapters.git_adapter.GitVersionControlAdapter.ensure_clean_checkout",
+        "engineeringagent.version_control.adapters.git_adapter.GitVersionControlAdapter.ensure_clean_checkout",
         lambda self, repo_path: None,
     )
     monkeypatch.setattr(
-        "developer.application.services.implementation_run_service.TaskSelectionService.resolve",
+        "engineeringagent.application.services.implementation_run_service.TaskSelectionService.resolve",
         lambda self, task_input, base_path=None: _ResolvedTask(
             "ship-it", task_path=str(Path("docs/plans/ship-it.md"))
         ),
     )
     monkeypatch.setattr(
-        "developer.agent_backends.select_agent_backend_service.SelectAgentBackendService.select_agent",
+        "engineeringagent.agent_backends.select_agent_backend_service.SelectAgentBackendService.select_agent",
         lambda self: object(),
     )
     monkeypatch.setattr(
-        "developer.application.services.implementation_run_service.build_implementation_agent",
+        "engineeringagent.application.services.implementation_run_service.build_implementation_agent",
         lambda agent_runner, task, max_iterations=None: _FakeImplementationAgent(
             OrchestratorOutcome(
                 status="failed",
@@ -124,21 +124,21 @@ def test_workspace_run_formats_task_and_commit_count(monkeypatch, tmp_path) -> N
     """Workspace runs should include task and commit metadata in the final message."""
     fake_orchestrator = _FakeWorkspaceRunOrchestrator()
     monkeypatch.setattr(
-        "developer.application.services.implementation_run_service._workspace_mode_enabled",
+        "engineeringagent.application.services.implementation_run_service._workspace_mode_enabled",
         lambda config_service: True,
     )
     monkeypatch.setattr(
-        "developer.version_control.adapters.git_adapter.GitVersionControlAdapter.ensure_clean_checkout",
+        "engineeringagent.version_control.adapters.git_adapter.GitVersionControlAdapter.ensure_clean_checkout",
         lambda self, repo_path: None,
     )
     monkeypatch.setattr(
-        "developer.application.services.implementation_run_service.TaskSelectionService.resolve",
+        "engineeringagent.application.services.implementation_run_service.TaskSelectionService.resolve",
         lambda self, task_input, base_path=None: _ResolvedTask(
             "ship-it", task_path=str(Path("docs/plans/ship-it.md"))
         ),
     )
     monkeypatch.setattr(
-        "developer.application.services.implementation_run_service.build_implementation_workspace_run_orchestrator",
+        "engineeringagent.application.services.implementation_run_service.build_implementation_workspace_run_orchestrator",
         lambda config_service: fake_orchestrator,
     )
 
@@ -149,8 +149,8 @@ max_iterations = 40
 
 [workspaces]
 default_provider = "git_worktree"
-state_dir = ".developer/state"
-git_worktree_root_dir = "developer-workspaces"
+state_dir = ".engineeringagent/state"
+git_worktree_root_dir = "engineeringagent-workspaces"
 """,
         encoding="utf-8",
     )
@@ -178,25 +178,25 @@ def test_workspace_run_uses_runtime_repo_path(monkeypatch, tmp_path) -> None:
     repo_path = tmp_path / "repo"
     repo_path.mkdir()
     monkeypatch.setattr(
-        "developer.application.services.implementation_run_service._workspace_mode_enabled",
+        "engineeringagent.application.services.implementation_run_service._workspace_mode_enabled",
         lambda config_service: True,
     )
     monkeypatch.setattr(
-        "developer.version_control.adapters.git_adapter.GitVersionControlAdapter.ensure_clean_checkout",
+        "engineeringagent.version_control.adapters.git_adapter.GitVersionControlAdapter.ensure_clean_checkout",
         lambda self, checkout_path: None,
     )
     monkeypatch.setattr(
-        "developer.application.services.implementation_run_service.TaskSelectionService.resolve",
+        "engineeringagent.application.services.implementation_run_service.TaskSelectionService.resolve",
         lambda self, task_input, base_path=None: _ResolvedTask(
             "ship-it", task_path=str(Path("docs/plans/ship-it.md"))
         ),
     )
     monkeypatch.setattr(
-        "developer.application.services.implementation_run_service.build_implementation_workspace_run_orchestrator",
+        "engineeringagent.application.services.implementation_run_service.build_implementation_workspace_run_orchestrator",
         lambda config_service: fake_orchestrator,
     )
     monkeypatch.setattr(
-        "developer.application.services.implementation_run_service.Path.cwd",
+        "engineeringagent.application.services.implementation_run_service.Path.cwd",
         lambda: repo_path,
     )
 
@@ -210,7 +210,7 @@ def test_workspace_run_uses_runtime_repo_path(monkeypatch, tmp_path) -> None:
 def test_run_implementation_fails_when_checkout_is_dirty(monkeypatch) -> None:
     """Implement should fail before resolution when the checkout is dirty."""
     monkeypatch.setattr(
-        "developer.version_control.adapters.git_adapter.GitVersionControlAdapter.ensure_clean_checkout",
+        "engineeringagent.version_control.adapters.git_adapter.GitVersionControlAdapter.ensure_clean_checkout",
         lambda self, repo_path: (_ for _ in ()).throw(ValueError("dirty checkout")),
     )
 

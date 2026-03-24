@@ -4,10 +4,10 @@ from datetime import UTC, datetime
 
 import pytest
 
-from developer.workspaces.adapters.local_process_runner import (
+from engineeringagent.workspaces.adapters.local_process_runner import (
     LocalProcessWorkspaceRunner,
 )
-from developer.workspaces.models import (
+from engineeringagent.workspaces.models import (
     ExecutionTarget,
     RunRequest,
     RunStatus,
@@ -15,8 +15,8 @@ from developer.workspaces.models import (
     WorkspaceSession,
     WorkspaceStatus,
 )
-from developer.workspaces.protocols import WorkspaceRunnableAgent
-from developer.workspaces.services.file_registry import FileWorkspaceRegistry
+from engineeringagent.workspaces.protocols import WorkspaceRunnableAgent
+from engineeringagent.workspaces.services.file_registry import FileWorkspaceRegistry
 
 
 class _ResolvedAgent(WorkspaceRunnableAgent):

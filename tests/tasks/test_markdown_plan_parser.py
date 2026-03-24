@@ -2,8 +2,8 @@
 
 import pytest
 
-from developer.tasks.errors import TaskPlanLoadError
-from developer.tasks.services.markdown_plan_parser import MarkdownPlanParser
+from engineeringagent.tasks.errors import TaskPlanLoadError
+from engineeringagent.tasks.services.markdown_plan_parser import MarkdownPlanParser
 
 
 def test_markdown_plan_parser_parses_frontmatter_and_body(tmp_path) -> None:

@@ -1,9 +1,9 @@
 import yaml
 import tempfile
 import os
-from developer.quality.services import CheckGateRunner, ValidationService
-from developer.orchestrators.loop.models import GatePhase
-from developer.config.service import ConfigService
+from engineeringagent.quality.services import CheckGateRunner, ValidationService
+from engineeringagent.orchestrators.loop.models import GatePhase
+from engineeringagent.config.service import ConfigService
 
 
 class TestValidationService:

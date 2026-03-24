@@ -1,6 +1,6 @@
 """Tests for markdown plan validation."""
 
-from developer.tasks.services.plan_validator import PlanValidator
+from engineeringagent.tasks.services.plan_validator import PlanValidator
 
 
 def test_plan_validator_accepts_valid_plan() -> None:

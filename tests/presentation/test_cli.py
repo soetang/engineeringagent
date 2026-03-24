@@ -1,10 +1,11 @@
 """Test the CLI check command with real harness files."""
 
 from pathlib import Path
+import sys
 
 from typer.testing import CliRunner
 
-from developer.presentation.cli import app
+from engineeringagent.presentation.cli import app
 
 
 def test_cli_check_with_valid_checks_yaml():
@@ -89,12 +90,12 @@ checks_path = "{harness_dir / "checks.yaml"}"
 """)
 
         test_yaml = harness_dir / "test.yaml"
-        test_yaml.write_text("""name: "test"
+        test_yaml.write_text(f"""name: "test"
 filepath: ""
 checks:
   - check_type: "command"
     phase: "ImplementationComplete"
-    command: ["python", "-c", "import sys; sys.exit(1)"]
+    command: ["{sys.executable}", "-c", "import sys; sys.exit(1)"]
 """)
 
         result = runner.invoke(
@@ -165,13 +166,13 @@ checks_path = "{harness_dir / "checks.yaml"}"
 """)
 
         test_yaml = harness_dir / "test.yaml"
-        test_yaml.write_text("""name: "test"
+        test_yaml.write_text(f"""name: "test"
 filepath: ""
 checks:
   - check_type: "command"
-    command: ["python", "-c", "import sys; sys.exit(1)"]
+    command: ["{sys.executable}", "-c", "import sys; sys.exit(1)"]
   - check_type: "command"
-    command: ["python", "-c", "open('ran_second_command.txt', 'w').write('done')"]
+    command: ["{sys.executable}", "-c", "open('ran_second_command.txt', 'w').write('done')"]
 """)
 
         result = runner.invoke(app, ["check", "run"])

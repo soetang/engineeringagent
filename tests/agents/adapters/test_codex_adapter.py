@@ -7,7 +7,7 @@ from shutil import copytree
 import pytest
 from pydantic import BaseModel
 
-from developer.agent_backends.adapters.codex_adapter import CodexAdapter
+from engineeringagent.agent_backends.adapters.codex_adapter import CodexAdapter
 
 
 class MathResult(BaseModel):

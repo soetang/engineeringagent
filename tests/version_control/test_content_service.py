@@ -1,13 +1,15 @@
 """Tests for prompt-backed version control content generation."""
 
-from developer.config.service import ConfigService
-from developer.version_control.content_models import (
+from engineeringagent.config.service import ConfigService
+from engineeringagent.version_control.content_models import (
     CommitMessageOutput,
     CommitPromptContext,
     PullRequestContentOutput,
     PullRequestPromptContext,
 )
-from developer.version_control.content_service import VersionControlContentService
+from engineeringagent.version_control.content_service import (
+    VersionControlContentService,
+)
 
 
 class _FakeAgentRunner:

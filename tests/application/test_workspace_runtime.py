@@ -3,20 +3,20 @@
 from pathlib import Path
 from typing import cast
 
-from developer.application.implementation_run_runtime import (
+from engineeringagent.application.implementation_run_runtime import (
     WorkspaceRunOrchestratorPortAdapter,
     build_implementation_workspace_run_orchestrator,
 )
-from developer.application.workspace_runtime import build_workspace_orchestrator
-from developer.config.service import ConfigService
-from developer.forge.settings import ForgeSettings
-from developer.orchestrators.runs.implementation_workspace_run_orchestrator import (
+from engineeringagent.application.workspace_runtime import build_workspace_orchestrator
+from engineeringagent.config.service import ConfigService
+from engineeringagent.forge.settings import ForgeSettings
+from engineeringagent.orchestrators.runs.implementation_workspace_run_orchestrator import (
     ImplementationWorkspaceRunOrchestrator,
 )
-from developer.orchestrators.runs.models import WorkspaceRunCommand
-from developer.version_control.settings import VersionControlSettings
-from developer.workspaces.models import RunHandle, RunStatus
-from developer.workspaces.settings import WorkspaceSettings
+from engineeringagent.orchestrators.runs.models import WorkspaceRunCommand
+from engineeringagent.version_control.settings import VersionControlSettings
+from engineeringagent.workspaces.models import RunHandle, RunStatus
+from engineeringagent.workspaces.settings import WorkspaceSettings
 
 
 class _FakeConfigService:
@@ -25,8 +25,8 @@ class _FakeConfigService:
             assert config_type is WorkspaceSettings
             return WorkspaceSettings(
                 default_provider="git_worktree",
-                state_dir=".developer/state",
-                git_worktree_root_dir="developer-workspaces",
+                state_dir=".engineeringagent/state",
+                git_worktree_root_dir="engineeringagent-workspaces",
             )
         if section == "version_control":
             assert config_type is VersionControlSettings
@@ -103,27 +103,27 @@ class _FakeWorkspaceRuntime:
 def test_build_workspace_orchestrator_wires_runtime_dependencies(monkeypatch) -> None:
     """Composition should wire the bridge resolver and execution adapter resolver."""
     monkeypatch.setattr(
-        "developer.application.workspace_runtime.FileWorkspaceRegistry",
+        "engineeringagent.application.workspace_runtime.FileWorkspaceRegistry",
         _RecordingRegistry,
     )
     monkeypatch.setattr(
-        "developer.application.workspace_runtime.GitWorktreeWorkspaceProvider",
+        "engineeringagent.application.workspace_runtime.GitWorktreeWorkspaceProvider",
         _RecordingProvider,
     )
     monkeypatch.setattr(
-        "developer.application.workspace_runtime.DefaultWorkspaceExecutionAdapterResolver",
+        "engineeringagent.application.workspace_runtime.DefaultWorkspaceExecutionAdapterResolver",
         _RecordingExecutionAdapterResolver,
     )
     monkeypatch.setattr(
-        "developer.application.workspace_runtime.LocalProcessWorkspaceRunner",
+        "engineeringagent.application.workspace_runtime.LocalProcessWorkspaceRunner",
         _RecordingRunner,
     )
     monkeypatch.setattr(
-        "developer.application.workspace_runtime.WorkspaceRunOrchestrator",
+        "engineeringagent.application.workspace_runtime.WorkspaceRunOrchestrator",
         _RecordingOrchestrator,
     )
     monkeypatch.setattr(
-        "developer.application.workspace_runtime._build_workspace_observer",
+        "engineeringagent.application.workspace_runtime._build_workspace_observer",
         lambda config_service, registry, provider: None,
     )
 
@@ -136,8 +136,8 @@ def test_build_workspace_orchestrator_wires_runtime_dependencies(monkeypatch) ->
     runner = _RecordingRunner.instances[-1]
 
     assert orchestrator is _RecordingOrchestrator.instances[-1]
-    assert registry.state_dir == Path(".developer/state").resolve()
-    assert provider.workspaces_root == Path("developer-workspaces").resolve()
+    assert registry.state_dir == Path(".engineeringagent/state").resolve()
+    assert provider.workspaces_root == Path("engineeringagent-workspaces").resolve()
     assert provider.registry is registry
     assert runner.registry is registry
     assert runner.agent_resolver is not None
@@ -191,7 +191,7 @@ def test_build_implementation_workspace_run_orchestrator_wires_ports(
 
     runtime = _RecordingWorkspaceRuntime()
     monkeypatch.setattr(
-        "developer.application.implementation_run_runtime.build_workspace_orchestrator",
+        "engineeringagent.application.implementation_run_runtime.build_workspace_orchestrator",
         lambda config_service: runtime,
     )
 
@@ -202,7 +202,8 @@ def test_build_implementation_workspace_run_orchestrator_wires_ports(
     assert isinstance(orchestrator, ImplementationWorkspaceRunOrchestrator)
     assert orchestrator._publication_store.__class__.__name__ == "FileWorkspaceRegistry"
     assert (
-        orchestrator._publication_store._state_dir == Path(".developer/state").resolve()
+        orchestrator._publication_store._state_dir
+        == Path(".engineeringagent/state").resolve()
     )
     assert (
         orchestrator._branch_inspector.__class__.__name__ == "GitVersionControlAdapter"
