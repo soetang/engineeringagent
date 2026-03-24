@@ -6,10 +6,12 @@ from .errors import (
     PromptTemplateMissingError,
     PromptTemplateSyntaxError,
 )
+from .renderer import ConfiguredPublicationPromptRenderer
 from .settings import OrchestratorPromptSettings
 
 __all__ = [
     "OrchestratorPromptBuilder",
+    "ConfiguredPublicationPromptRenderer",
     "PromptTemplateError",
     "PromptTemplateMissingError",
     "PromptTemplateSyntaxError",

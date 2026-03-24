@@ -1,15 +1,28 @@
 """Tests for application-layer workspace runtime composition."""
 
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 from engineeringagent.application.implementation_run_runtime import (
     WorkspaceRunOrchestratorPortAdapter,
     build_implementation_workspace_run_orchestrator,
 )
-from engineeringagent.application.workspace_runtime import build_workspace_orchestrator
 from engineeringagent.config.service import ConfigService
 from engineeringagent.forge.settings import ForgeSettings
+from engineeringagent.application.publication_runtime import (
+    RegistryPublicationStateStore,
+    RegistryRunMetadataStore,
+    WorkspaceProviderLifecyclePort,
+)
+from engineeringagent.application.workspace_runtime import (
+    _build_workspace_observer,
+    build_workspace_orchestrator,
+)
+from engineeringagent.orchestrators.publication import (
+    PublicationObserver,
+    PublicationState,
+)
+from engineeringagent.prompts.models import PromptSettings
 from engineeringagent.orchestrators.runs.implementation_workspace_run_orchestrator import (
     ImplementationWorkspaceRunOrchestrator,
 )
@@ -34,6 +47,9 @@ class _FakeConfigService:
         if section == "forge":
             assert config_type is ForgeSettings
             return ForgeSettings(enabled=False)
+        if section == "prompts":
+            assert config_type is PromptSettings
+            return PromptSettings()
         raise AssertionError(section)
 
 
@@ -148,6 +164,95 @@ def test_build_workspace_orchestrator_wires_runtime_dependencies(monkeypatch) ->
     recording_orchestrator = cast(_RecordingOrchestrator, orchestrator)
     assert recording_orchestrator.provider is provider
     assert recording_orchestrator.runner is runner
+
+
+def test_build_workspace_observer_returns_publication_observer(monkeypatch) -> None:
+    """Application composition should wire the orchestrator-owned observer."""
+
+    class _EnabledVersionControlConfigService(_FakeConfigService):
+        def get_config(self, section: str, config_type):
+            if section == "version_control":
+                assert config_type is VersionControlSettings
+                return VersionControlSettings(enabled=True)
+            return super().get_config(section, config_type)
+
+    class _FakeAgentRunner:
+        def run_agent(self, prompt: str, output_format):
+            del prompt, output_format
+            raise AssertionError("run_agent should not be called during composition")
+
+    monkeypatch.setattr(
+        "engineeringagent.application.workspace_runtime.SelectAgentBackendService.select_agent",
+        lambda self: _FakeAgentRunner(),
+    )
+
+    observer = _build_workspace_observer(
+        cast(ConfigService, _EnabledVersionControlConfigService()),
+        _RecordingRegistry(Path(".engineeringagent/state").resolve()),
+        _RecordingProvider(Path("engineeringagent-workspaces").resolve(), object()),
+    )
+
+    assert isinstance(observer, PublicationObserver)
+
+
+def test_publication_runtime_adapters_bridge_workspace_components() -> None:
+    """Application adapters should translate workspace services into publication ports."""
+
+    class _Registry:
+        def __init__(self) -> None:
+            self.run = RunHandle(
+                id="run-1",
+                workspace_id="ws-1",
+                status=RunStatus.RUNNING,
+                agent_kind="implementation",
+                metadata={"existing": "value"},
+            )
+            self.publication = None
+
+        def save_task_publication(self, publication) -> None:
+            self.publication = publication
+
+        def get_run(self, run_id: str) -> RunHandle:
+            assert run_id == "run-1"
+            return self.run
+
+        def save_run(self, run: RunHandle) -> None:
+            self.run = run
+
+    class _Provider:
+        def __init__(self) -> None:
+            self.destroyed: list[str] = []
+
+        def destroy(self, workspace_id: str) -> None:
+            self.destroyed.append(workspace_id)
+
+    registry = _Registry()
+    provider = _Provider()
+
+    publication_store = RegistryPublicationStateStore(cast(Any, registry))
+    metadata_store = RegistryRunMetadataStore(cast(Any, registry))
+    workspace_lifecycle = WorkspaceProviderLifecyclePort(cast(Any, provider))
+
+    publication_store.save_publication(
+        PublicationState(
+            task_name="ship-it",
+            task_path="docs/plans/ship-it.md",
+            branch_name="ship-it",
+            base_branch="main",
+            status="pushed",
+        )
+    )
+    metadata_store.update_run_metadata("run-1", {"publication_status": "pushed"})
+    metadata_store.append_run_metadata_item("run-1", "commit_shas", "abc123")
+    workspace_lifecycle.destroy_workspace("ws-1")
+
+    assert registry.publication.task_name == "ship-it"
+    assert registry.run.metadata == {
+        "existing": "value",
+        "publication_status": "pushed",
+        "commit_shas": ["abc123"],
+    }
+    assert provider.destroyed == ["ws-1"]
 
 
 def test_workspace_run_port_adapter_translates_to_workspace_runtime() -> None:

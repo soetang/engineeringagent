@@ -1,45 +1,55 @@
-"""Workspace lifecycle observer for version control and publication."""
+"""Publication lifecycle observer owned by the publication orchestrator."""
 
-from engineeringagent.forge.models import PullRequestRequest
-from engineeringagent.forge.protocol import ForgeProtocol
 from engineeringagent.orchestrators.loop.models import (
     AgentResult,
     ImplementationContext,
     IterationArtifact,
     RunPublicationResult,
 )
-from engineeringagent.tasks.models import TaskPublicationState
-from engineeringagent.version_control.content_models import (
-    CommitPromptContext,
-    PullRequestPromptContext,
+from engineeringagent.orchestrators.loop.protocols import (
+    AgentRunner,
+    ImplementationLifecycleObserver,
 )
-from engineeringagent.version_control.content_service import (
-    VersionControlContentService,
+
+from .models import (
+    CommitMessage,
+    CommitMessageContext,
+    CommitRequest,
+    PublicationState,
+    PullRequestContent,
+    PullRequestContentContext,
+    PullRequestRequest,
 )
-from engineeringagent.version_control.models import CommitRequest
-from engineeringagent.version_control.protocol import VersionControlProtocol
-from engineeringagent.workspaces.protocols import (
-    WorkspaceProvider,
-    WorkspaceRunRegistry,
+from .protocols import (
+    PublicationForgePort,
+    PublicationPromptRenderer,
+    PublicationStateStore,
+    PublicationVersionControlPort,
+    RunMetadataStore,
+    WorkspaceLifecyclePort,
 )
 
 
-class WorkspaceVersionControlObserver:
+class PublicationObserver(ImplementationLifecycleObserver):
     """Commit, push, and publish successful workspace runs."""
 
     def __init__(
         self,
-        registry: WorkspaceRunRegistry,
-        workspace_provider: WorkspaceProvider,
-        version_control: VersionControlProtocol,
-        content_service: VersionControlContentService,
-        forge: ForgeProtocol | None = None,
+        publication_state_store: PublicationStateStore,
+        run_metadata_store: RunMetadataStore,
+        workspace_lifecycle: WorkspaceLifecyclePort,
+        version_control: PublicationVersionControlPort,
+        prompt_renderer: PublicationPromptRenderer | None = None,
+        agent_runner: AgentRunner | None = None,
+        forge: PublicationForgePort | None = None,
     ) -> None:
-        """Store dependencies and validate required tooling early."""
-        self._registry = registry
-        self._workspace_provider = workspace_provider
+        """Store publication dependencies and validate tooling early."""
+        self._publication_state_store = publication_state_store
+        self._run_metadata_store = run_metadata_store
+        self._workspace_lifecycle = workspace_lifecycle
         self._version_control = version_control
-        self._content_service = content_service
+        self._prompt_renderer = prompt_renderer
+        self._agent_runner = agent_runner
         self._forge = forge
 
     def validate(self, context: ImplementationContext) -> None:
@@ -58,6 +68,7 @@ class WorkspaceVersionControlObserver:
         agent_result: AgentResult,
     ) -> IterationArtifact | None:
         """Commit a passing iteration when the workspace tree changed."""
+        del attempt, agent_result
         workspace_path = _require_context_value(
             context.workspace_path, "workspace_path"
         )
@@ -70,12 +81,16 @@ class WorkspaceVersionControlObserver:
             return None
         self._version_control.stage_all(workspace_path)
         identity = self._version_control.resolve_identity(workspace_path)
-        commit_message = self._content_service.build_commit_message(
-            CommitPromptContext(
+        commit_message = self._build_commit_message(
+            CommitMessageContext(
+                repo_path=workspace_path,
                 task_name=context.task_name,
                 task_path=context.task_path,
                 task_branch_name=task_branch_name,
                 base_branch=base_branch,
+                latest_change_summary=context.latest_change_summary,
+                staged_diff=self._version_control.get_diff(workspace_path, staged=True),
+                recent_commits=self._version_control.get_recent_commits(workspace_path),
             )
         )
         commit_result = self._version_control.create_commit(
@@ -87,8 +102,10 @@ class WorkspaceVersionControlObserver:
                 author_email=identity.email,
             ),
         )
-        self._append_run_metadata_item(run_id, "commit_shas", commit_result.sha)
-        self._append_run_metadata_item(
+        self._run_metadata_store.append_run_metadata_item(
+            run_id, "commit_shas", commit_result.sha
+        )
+        self._run_metadata_store.append_run_metadata_item(
             run_id,
             "commit_message_subjects",
             commit_message.subject,
@@ -118,14 +135,14 @@ class WorkspaceVersionControlObserver:
             remote_name=remote_name,
             source_ref="HEAD",
         )
-        publication = TaskPublicationState(
+        publication = PublicationState(
             task_name=context.task_name,
             task_path=context.task_path,
             branch_name=branch_name,
             base_branch=base_branch,
             status="pushed",
         )
-        self._registry.save_task_publication(publication)
+        self._publication_state_store.save_publication(publication)
         metadata_updates: dict[str, object] = {
             "pushed_branch": push_result.branch_name,
             "publication_status": "pushed",
@@ -137,7 +154,8 @@ class WorkspaceVersionControlObserver:
         }
 
         if self._forge is None:
-            self._update_run_metadata(run_id, **metadata_updates)
+            self._run_metadata_store.update_run_metadata(run_id, metadata_updates)
+            self._cleanup_workspace(context)
             return RunPublicationResult(
                 branch_name=branch_name,
                 message=f"branch={branch_name}",
@@ -149,12 +167,18 @@ class WorkspaceVersionControlObserver:
             base_branch=base_branch,
         )
         if existing_pr is None:
-            content = self._content_service.build_pull_request_content(
-                PullRequestPromptContext(
+            content = self._build_pull_request_content(
+                PullRequestContentContext(
+                    repo_path=workspace_path,
                     task_name=context.task_name,
                     task_path=context.task_path,
                     task_branch_name=branch_name,
                     base_branch=base_branch,
+                    latest_change_summary=context.latest_change_summary,
+                    diff=self._version_control.get_diff(workspace_path),
+                    recent_commits=self._version_control.get_recent_commits(
+                        workspace_path
+                    ),
                 )
             )
             pr = self._forge.create_pull_request(
@@ -174,7 +198,7 @@ class WorkspaceVersionControlObserver:
             publication_status = "updated"
             message = f"Pull request updated: {pr.url}"
 
-        self._registry.save_task_publication(
+        self._publication_state_store.save_publication(
             publication.model_copy(
                 update={
                     "pr_url": pr.url,
@@ -190,10 +214,7 @@ class WorkspaceVersionControlObserver:
                 "pull_request_number": pr.number,
             }
         )
-        self._update_run_metadata(
-            run_id,
-            **metadata_updates,
-        )
+        self._run_metadata_store.update_run_metadata(run_id, metadata_updates)
         self._cleanup_workspace(context)
         return RunPublicationResult(
             branch_name=branch_name,
@@ -210,8 +231,12 @@ class WorkspaceVersionControlObserver:
         run_id = context.run_id
         if run_id is None:
             return
-        self._update_run_metadata(
-            run_id, publication_status="failed", failure_feedback=feedback
+        self._run_metadata_store.update_run_metadata(
+            run_id,
+            {
+                "publication_status": "failed",
+                "failure_feedback": feedback,
+            },
         )
 
     def _cleanup_workspace(self, context: ImplementationContext) -> None:
@@ -220,28 +245,38 @@ class WorkspaceVersionControlObserver:
         if workspace_id is None:
             return
         try:
-            self._workspace_provider.destroy(workspace_id)
+            self._workspace_lifecycle.destroy_workspace(workspace_id)
         except Exception:
-            self._update_run_metadata(
+            self._run_metadata_store.update_run_metadata(
                 _require_context_value(context.run_id, "run_id"),
-                cleanup_warning="Workspace cleanup failed after publication",
+                {"cleanup_warning": "Workspace cleanup failed after publication"},
             )
 
-    def _update_run_metadata(self, run_id: str, **updates: object) -> None:
-        """Persist metadata updates onto the run handle."""
-        run = self._registry.get_run(run_id)
-        metadata = dict(run.metadata)
-        for key, value in updates.items():
-            metadata[key] = value
-        self._registry.save_run(run.model_copy(update={"metadata": metadata}))
+    def _build_commit_message(self, context: CommitMessageContext) -> CommitMessage:
+        """Generate a commit message using the configured strategy."""
+        if self._prompt_renderer is None or self._agent_runner is None:
+            return _build_deterministic_commit_message(context)
+        try:
+            prompt = self._prompt_renderer.render_commit_prompt(context)
+            result = self._agent_runner.run_agent(prompt, output_format=CommitMessage)
+            return CommitMessage.model_validate(result)
+        except Exception:
+            return _build_deterministic_commit_message(context)
 
-    def _append_run_metadata_item(self, run_id: str, key: str, value: object) -> None:
-        """Append one value to a list stored on run metadata."""
-        run = self._registry.get_run(run_id)
-        metadata = dict(run.metadata)
-        existing = metadata.get(key, [])
-        metadata[key] = [*existing, value] if isinstance(existing, list) else [value]
-        self._registry.save_run(run.model_copy(update={"metadata": metadata}))
+    def _build_pull_request_content(
+        self, context: PullRequestContentContext
+    ) -> PullRequestContent:
+        """Generate pull-request content using the configured strategy."""
+        if self._prompt_renderer is None or self._agent_runner is None:
+            return _build_deterministic_pull_request_content(context)
+        try:
+            prompt = self._prompt_renderer.render_pull_request_prompt(context)
+            result = self._agent_runner.run_agent(
+                prompt, output_format=PullRequestContent
+            )
+            return PullRequestContent.model_validate(result)
+        except Exception:
+            return _build_deterministic_pull_request_content(context)
 
 
 def _require_context_value(value: str | None, name: str) -> str:
@@ -249,3 +284,21 @@ def _require_context_value(value: str | None, name: str) -> str:
     if value is None or value == "":
         raise ValueError(f"Implementation context is missing {name}")
     return value
+
+
+def _build_deterministic_commit_message(context: CommitMessageContext) -> CommitMessage:
+    """Return a stable commit message when agent-backed generation is unavailable."""
+    return CommitMessage(subject=f"chore: implement {context.task_name}"[:72], body="")
+
+
+def _build_deterministic_pull_request_content(
+    context: PullRequestContentContext,
+) -> PullRequestContent:
+    """Return stable pull-request content when agent-backed generation fails."""
+    summary = f"Complete task {context.task_name}."
+    body = "## Summary\n- " + summary + "\n\n## Testing\n- Not run"
+    return PullRequestContent(
+        title=f"Complete {context.task_name}",
+        summary=[summary],
+        body=body,
+    )

@@ -5,8 +5,10 @@ from pathlib import Path
 from engineeringagent.agent_backends.select_agent_backend_service import (
     SelectAgentBackendService,
 )
-from engineeringagent.application.observers.workspace_version_control_observer import (
-    WorkspaceVersionControlObserver,
+from engineeringagent.application.publication_runtime import (
+    RegistryPublicationStateStore,
+    RegistryRunMetadataStore,
+    WorkspaceProviderLifecyclePort,
 )
 from engineeringagent.application.workspace_bridges import (
     DefaultWorkspaceRunnableAgentResolver,
@@ -14,9 +16,8 @@ from engineeringagent.application.workspace_bridges import (
 )
 from engineeringagent.config.service import ConfigService
 from engineeringagent.forge.select_service import SelectForgeService
-from engineeringagent.version_control.content_service import (
-    VersionControlContentService,
-)
+from engineeringagent.orchestrators.publication import PublicationObserver
+from engineeringagent.prompts import ConfiguredPublicationPromptRenderer
 from engineeringagent.version_control.select_service import SelectVersionControlService
 from engineeringagent.workspaces.adapters.default_execution_adapter_resolver import (
     DefaultWorkspaceExecutionAdapterResolver,
@@ -60,20 +61,19 @@ def _build_workspace_observer(
     config_service: ConfigService,
     registry: FileWorkspaceRegistry,
     provider: GitWorktreeWorkspaceProvider,
-) -> WorkspaceVersionControlObserver | None:
+) -> PublicationObserver | None:
     """Build the optional observer used for commits and publication."""
     version_control = SelectVersionControlService(config_service).select()
     forge = SelectForgeService(config_service).select()
     if version_control is None:
         return None
-    content_service = VersionControlContentService(
-        agent_runner=SelectAgentBackendService(config_service).select_agent(),
-        config_service=config_service,
-    )
-    return WorkspaceVersionControlObserver(
-        registry=registry,
-        workspace_provider=provider,
+    agent_runner = SelectAgentBackendService(config_service).select_agent()
+    return PublicationObserver(
+        publication_state_store=RegistryPublicationStateStore(registry),
+        run_metadata_store=RegistryRunMetadataStore(registry),
+        workspace_lifecycle=WorkspaceProviderLifecyclePort(provider),
         version_control=version_control,
-        content_service=content_service,
+        prompt_renderer=ConfiguredPublicationPromptRenderer(config_service),
+        agent_runner=agent_runner,
         forge=forge,
     )
